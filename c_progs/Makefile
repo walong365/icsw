@@ -15,6 +15,7 @@ INSTALLOPTS=-p
 
 comp=gcc
 progs=send_collectd_zmq
+INDENT_OPTIONS=-linux --no-tabs --indent-level4
 
 default: all
 
@@ -22,6 +23,9 @@ clean:
 	rm -f *.o $(progs)
 
 all: $(progs)
+
+indent:
+	indent send_collectd_zmq.c $(INDENT_OPTIONS)
 
 send_collectd_zmq: send_collectd_zmq.o
 	export LDFLAGS="-Xlinker -rpath=${PREFIX_CLUSTER}/$(LIB_DIR) "; \

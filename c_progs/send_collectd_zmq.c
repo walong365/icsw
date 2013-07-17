@@ -54,37 +54,46 @@
 
 #include "parse_uuid.c"
 
-int err_message(char* str) {
-    char* errstr;
-    errstr = (char*)malloc(ERRSTR_SIZE);
-    if (!errstr) return -ENOMEM;
+int err_message(char *str)
+{
+    char *errstr;
+    errstr = (char *)malloc(ERRSTR_SIZE);
+    if (!errstr)
+        return -ENOMEM;
     if (errno) {
-        sprintf (errstr, "An error occured : %s (%d) %s\n", str, errno, strerror(errno));
+        sprintf(errstr, "An error occured (%d) : %s (%d) %s\n", getpid(), str,
+                errno, strerror(errno));
     } else {
-        sprintf (errstr, "An error occured : %s\n", str);
+        sprintf(errstr, "An error occured (%d) : %s\n", getpid(), str);
     }
-    syslog (LOG_DAEMON|LOG_ERR, errstr);
-    fprintf (stderr, errstr);
+    syslog(LOG_DAEMON | LOG_ERR, errstr);
+    fprintf(stderr, errstr);
     free(errstr);
     return 0;
 }
 
-int err_exit(char* str) {
-    if ( (err_message(str)) <0 ) exit(ENOMEM);
+int err_exit(char *str)
+{
+    if ((err_message(str)) < 0)
+        exit(ENOMEM);
     exit(STATE_CRITICAL);
 }
 
-void mysigh(int dummy) {
+void mysigh(int dummy)
+{
     err_exit("Timeout while waiting for answer");
     //err_exit(0, ebuff, 0);
 }
 
-int main (int argc, char** argv) {
-    int ret, num, inlen, file, i/*, time*/, port, rchar, verbose, quiet, retcode, timeout, file_size;
+int main(int argc, char **argv)
+{
+    int ret, num, inlen, file, i /*, time */ , port, rchar, verbose, quiet,
+        retcode, timeout, file_size;
     struct in_addr sia;
     struct hostent *h;
     struct stat st;
-    char *iobuff, *sendbuff, *filebuff, *host_b, *act_pos, *act_source, *act_bp, *dest_host, *uuid_buffer;
+    char *iobuff, *sendbuff, *filebuff, *host_b, *act_pos, *act_source, *act_bp,
+        *dest_host, *uuid_buffer;
     struct itimerval mytimer;
     struct sigaction *alrmsigact;
     struct utsname myuts;
@@ -98,8 +107,8 @@ int main (int argc, char** argv) {
     verbose = 0;
     quiet = 0;
     h = NULL;
-    host_b = (char*)malloc(HOSTB_SIZE);
-    dest_host = (char*)malloc(HOSTB_SIZE);
+    host_b = (char *)malloc(HOSTB_SIZE);
+    dest_host = (char *)malloc(HOSTB_SIZE);
     dest_host[0] = 0;
     // get uts struct
     uname(&myuts);
@@ -108,32 +117,36 @@ int main (int argc, char** argv) {
         rchar = getopt(argc, argv, "+vm:p:ht:q");
         //printf("%d %c\n", rchar, rchar);
         switch (rchar) {
-            case 'p':
-                port = strtol(optarg, NULL, 10);
-                break;
-            case 'm':
-                sprintf(dest_host, optarg);
-                //h = gethostbyname(optarg);
-                //if (!h) err_exit("Can't resolve hostname");
-                break;
-            case 't':
-                timeout = strtol(optarg, NULL, 10);
-                break;
-            case 'v':
-                verbose = 1;
-                break;
-            case 'q':
-                quiet = 1;
-                break;
-            case 'h':
-            case '?':
-                printf("Usage: %s [-t TIMEOUT] [-m HOST] [-p PORT] [-h] [-v] [-q] filename\n", basename(argv[0]));
-                printf("  defaults: port=%d, timeout=%d, dest_host=%s\n", port, timeout, dest_host);
-                free(host_b);
-                exit(STATE_CRITICAL);
-                break;
+        case 'p':
+            port = strtol(optarg, NULL, 10);
+            break;
+        case 'm':
+            sprintf(dest_host, optarg);
+            //h = gethostbyname(optarg);
+            //if (!h) err_exit("Can't resolve hostname");
+            break;
+        case 't':
+            timeout = strtol(optarg, NULL, 10);
+            break;
+        case 'v':
+            verbose = 1;
+            break;
+        case 'q':
+            quiet = 1;
+            break;
+        case 'h':
+        case '?':
+            printf
+                ("Usage: %s [-t TIMEOUT] [-m HOST] [-p PORT] [-h] [-v] [-q] filename\n",
+                 basename(argv[0]));
+            printf("  defaults: port=%d, timeout=%d, dest_host=%s\n", port,
+                   timeout, dest_host);
+            free(host_b);
+            exit(STATE_CRITICAL);
+            break;
         }
-        if (rchar < 0) break;
+        if (rchar < 0)
+            break;
     }
     // generate connection string
     sprintf(host_b, "tcp://%s:%d", dest_host, port);
@@ -141,10 +154,10 @@ int main (int argc, char** argv) {
     //if (!h) err_exit("Wrong host or no host given!\n");
     // get file size
     stat(argv[optind], &st);
-    file_size = st.st_size;   
+    file_size = st.st_size;
     sendbuff_size = file_size + 1024;
-    sendbuff = (char*)malloc(sendbuff_size);
-    filebuff = (char*)malloc(sendbuff_size);
+    sendbuff = (char *)malloc(sendbuff_size);
+    filebuff = (char *)malloc(sendbuff_size);
     if (!sendbuff) {
         free(host_b);
         exit(ENOMEM);
@@ -154,35 +167,43 @@ int main (int argc, char** argv) {
     read(file, filebuff, file_size);
     close(file);
     // no empty it
-    open(argv[optind], O_NOFOLLOW|O_WRONLY|O_CREAT|O_TRUNC, S_IREAD|S_IWRITE|S_IRGRP|S_IROTH);
+    open(argv[optind], O_NOFOLLOW | O_WRONLY | O_CREAT | O_TRUNC,
+         S_IREAD | S_IWRITE | S_IRGRP | S_IROTH);
     close(file);
     // mimic XML
-    sprintf(sendbuff, "<?xml version='1.0'?><perf_data>%s</perf_data>", filebuff);
-    sendbuff[sendbuff_size] = '\0';/* terminate optarg for secure use of strlen() */
-    if (!strlen(sendbuff)) err_exit("Nothing to send!\n");
+    sprintf(sendbuff, "<?xml version='1.0'?><perf_data>%s</perf_data>",
+            filebuff);
+    sendbuff[sendbuff_size] = '\0';     /* terminate optarg for secure use of strlen() */
+    if (!strlen(sendbuff))
+        err_exit("Nothing to send!\n");
     //printf("Send: %s %d\n", sendbuff, strlen(sendbuff));
     void *context = zmq_init(1);
     void *requester = zmq_socket(context, ZMQ_PUSH);
-    char* identity_str = parse_uuid();
+    char *identity_str = parse_uuid();
     int64_t tcp_keepalive, tcp_keepalive_idle;
     tcp_keepalive = 1;
     tcp_keepalive_idle = 300;
     zmq_setsockopt(requester, ZMQ_IDENTITY, identity_str, strlen(identity_str));
-    zmq_setsockopt(requester, ZMQ_TCP_KEEPALIVE, &tcp_keepalive, sizeof(tcp_keepalive));
-    zmq_setsockopt(requester, ZMQ_TCP_KEEPALIVE_IDLE, &tcp_keepalive_idle, sizeof(tcp_keepalive_idle));
-    alrmsigact = (struct sigaction*)malloc(sizeof(struct sigaction));
+    zmq_setsockopt(requester, ZMQ_TCP_KEEPALIVE, &tcp_keepalive,
+                   sizeof(tcp_keepalive));
+    zmq_setsockopt(requester, ZMQ_TCP_KEEPALIVE_IDLE, &tcp_keepalive_idle,
+                   sizeof(tcp_keepalive_idle));
+    alrmsigact = (struct sigaction *)malloc(sizeof(struct sigaction));
     if (!alrmsigact) {
         free(host_b);
         free(sendbuff);
         free(filebuff);
         exit(ENOMEM);
     }
-    alrmsigact -> sa_handler = &mysigh;
-    if ((ret = sigaction(SIGALRM, (struct sigaction*)alrmsigact, NULL))<0) {
+    alrmsigact->sa_handler = &mysigh;
+    if ((ret = sigaction(SIGALRM, (struct sigaction *)alrmsigact, NULL)) < 0) {
         retcode = err_exit("sigaction");
     } else {
         if (verbose) {
-            printf("send buffer has %d bytes, nodename is '%s', servicename is '%s', identity_string is '%s', pid is %d\n", strlen(sendbuff), myuts.nodename, SERVICE_NAME, identity_str, getpid());
+            printf
+                ("send buffer has %d bytes, nodename is '%s', servicename is '%s', identity_string is '%s', pid is %d\n",
+                 strlen(sendbuff), myuts.nodename, SERVICE_NAME, identity_str,
+                 getpid());
             printf("target is '%s'\n", host_b);
             // printf("send_str: '%s'\n", sendbuff);
         };
@@ -193,7 +214,7 @@ int main (int argc, char** argv) {
         // send
         zmq_connect(requester, host_b);
         zmq_msg_t request;
-        zmq_msg_init_size (&request, strlen(sendbuff));
+        zmq_msg_init_size(&request, strlen(sendbuff));
         memcpy(zmq_msg_data(&request), sendbuff, strlen(sendbuff));
         zmq_sendmsg(requester, &request, 0);
         zmq_msg_close(&request);
