@@ -679,14 +679,16 @@ class graph_process(threading_tools.process_obj):
                 color_table = None
             else:
                 color_table = self.colortables.find("colortable[@name='%s']" % (range_xml.attrib["colortable"]))
-            #print start_color, start_color.hue, start_color.luminance
             second_len = len(next_level_keys)
             for next_idx, next_key in enumerate(sorted(next_level_keys.keys())):
                 next_keys = next_level_keys[next_key]
                 if color_table is not None:
                     color_list = []
                     for color in color_table:
-                        color_list.append(color.get("rgb"))
+                        cur_c = Color("#%s" % (color.get("rgb")))
+                        # remove colors which are too bright
+                        if (int(cur_c.hex_l[1:3], 16) + int(cur_c.hex_l[3:5], 16) + int(cur_c.hex_l[5:7], 16)) < 3 * 220:
+                            color_list.append(cur_c.hex[1:])
                     while len(color_list) < len(next_keys):
                         color_list = color_list + color_list
                     color_list = ["#%s" % (entry) for entry in color_list[:len(next_keys)]]
