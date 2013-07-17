@@ -47,7 +47,7 @@ master_array = {
             new draw_info("wed_range", {label : "Wed", size : 14, default : "00:00-24:00"}),
             new draw_info("thu_range", {label : "Thu", size : 14, default : "00:00-24:00"}),
             new draw_info("fri_range", {label : "Fri", size : 14, default : "00:00-24:00"}),
-            new draw_info("sat_range", {label : "Sat", size : 14, default : "00:00-24:00"})
+            new draw_info("sat_range", {label : "Sat", size : 14, default : "00:00-24:00"}),
         ], {
             lock_div : "mon_tables"
         }
@@ -74,11 +74,11 @@ master_array = {
             new draw_info("snperiod", {select_source : "mon_periods mon_period", label : "Service Notify"}),
             new draw_info("snrecovery", {boolean : 1, label : "Recov / Crit / Warn / Unknown", span : 4}),
             new draw_info("sncritical", {boolean : 1}),
-            new draw_info("snwarning", {boolean : 1}),
-            new draw_info("snunknown", {boolean : 1}),
+            new draw_info("snwarning" , {boolean : 1}),
+            new draw_info("snunknown" , {boolean : 1}),
             new draw_info("hnperiod", {select_source : "mon_periods mon_period", label : "Host Notify"}),
-            new draw_info("hnrecovery", {boolean : 1, label : "Recov / Down / Unreach", span : 3}),
-            new draw_info("hndown", {boolean : 1}),
+            new draw_info("hnrecovery"   , {boolean : 1, label : "Recov / Down / Unreach", span : 3}),
+            new draw_info("hndown"       , {boolean : 1}),
             new draw_info("hnunreachable", {boolean : 1})
             new draw_info("notifications", {select_source : "mon_notifications mon_notification", label : "Notifications",   manytomany : 1}),
         ], {
@@ -100,8 +100,15 @@ master_array = {
             new draw_info("ninterval", {min : 0, max: 60, number : 1, default : 5, label : "Notif IV"}),
             new draw_info("nrecovery", {boolean : 1, label : "Recov / Crit / Warn / Unknown", span : 4}),
             new draw_info("ncritical", {boolean : 1}),
-            new draw_info("nwarning", {boolean : 1}),
-            new draw_info("nunknown", {boolean : 1}),
+            new draw_info("nwarning" , {boolean : 1}),
+            new draw_info("nunknown" , {boolean : 1}),
+            new draw_info("flap_detection_enabled", {boolean : 1, label : "Flap"}),
+            new draw_info("low_flap_threshold" , {min : 0, max : 100, number : 1, default : 0, label : "min"}),
+            new draw_info("high_flap_threshold", {min : 0, max : 100, number : 1, default : 0, label : "max"}),
+            new draw_info("flap_detect_ok"      , {boolean : 1, label : "Ok / Warn / Crit / Unk", span : 4}),
+            new draw_info("flap_detect_warn"    , {boolean : 1}),
+            new draw_info("flap_detect_critical", {boolean : 1}),
+            new draw_info("flap_detect_unknown" , {boolean : 1}),
         ], {
             "required_xml" : ["monper"],
             "lock_div"     : "mon_tables"
@@ -130,10 +137,16 @@ master_array = {
             new draw_info("max_attempts", {min : 1, max : 5, number : 1, default : 1, label : "max attempts"}),
             new draw_info("ninterval", {min : 0, max: 60, number : 1, default : 5, label : "Notif IV"}),
             new draw_info("mon_period", {select_source : "mon_periods mon_period", label : "Mon period"}),
-            new draw_info("nrecovery", {boolean : 1, label : "Recov / Down / Unreach", span : 3}),
-            new draw_info("ndown", {boolean : 1}),
+            new draw_info("nrecovery"   , {boolean : 1, label : "Recov / Down / Unreach", span : 3}),
+            new draw_info("ndown"       , {boolean : 1}),
             new draw_info("nunreachable", {boolean : 1}),
             new draw_info("ccommand", {select_source : get_check_command_list}),
+            new draw_info("flap_detection_enabled", {boolean : 1, label : "Flap"}),
+            new draw_info("low_flap_threshold" , {min : 0, max : 100, number : 1, default : 0, label : "min"}),
+            new draw_info("high_flap_threshold", {min : 0, max : 100, number : 1, default : 0, label : "max"}),
+            new draw_info("flap_detect_up"         , {boolean : 1, label : "Ok / Down / Unr", span : 3}),
+            new draw_info("flap_detect_down"       , {boolean : 1}),
+            new draw_info("flap_detect_unreachable", {boolean : 1}),
         ], {
             "required_xml" : ["monper", "monst"],
             "lock_div"     : "mon_tables"

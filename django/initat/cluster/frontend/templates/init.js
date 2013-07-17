@@ -614,7 +614,13 @@ class rrd_config
                 if parse_xml_response(xml)
                     graph_result = $(xml).find("graph")
                     @graph_div.children().remove()
-                    @graph_div.append($("<image>").attr("src", graph_result.attr("href")))
+                    new_image = $("<img>").attr("src", graph_result.attr("href"))
+                    @graph_div.append(new_image)
+                    # add crop
+                    new_image.Jcrop(
+                        bgOpacity : 0.8
+                        onSelect  : -> console.log("x")
+                    )
         
 root.show_device_info = (event, dev_key, callback) ->
     new device_info(event, dev_key, callback).show()

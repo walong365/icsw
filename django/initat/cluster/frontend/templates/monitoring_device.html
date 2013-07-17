@@ -42,7 +42,7 @@ class config_table
         @top_div.children().remove()
         c_table = $("<table>").attr({"id" : "config"})
         @c_table = c_table
-        ref_width = {% if settings.CLUSTER_LICENSE.monext %}13{% else %}11{% endif %}
+        ref_width = {% if settings.CLUSTER_LICENSE.monext %}14{% else %}12{% endif %}
         @devices.find("device_group").each (devg_index, cur_dg) =>
             cur_dg = $(cur_dg)
             line_prefix = cur_dg.attr("key")
@@ -53,7 +53,7 @@ class config_table
                 $("<th>").append(
                     $("<input>").attr({
                         "type" : "checkbox",
-                        "id"   : line_prefix + "__sel"
+                        "id"   : "#{line_prefix}__sel"
                     }).bind("click", @change_dg_sel)
                 )
             ).append(
@@ -97,7 +97,7 @@ class config_table
             $("<td>").append(
                 $("<input>").attr({
                     "type" : "checkbox",
-                    "id"   : line_prefix + "__sel"
+                    "id"   : "#{line_prefix}__sel"
                 }).bind("click", if d_el then @change_d_sel else @change_global_sel)
             )
         ).append(
@@ -113,14 +113,21 @@ class config_table
                     master_xml      : @devices,
                     title           : "device template"
                 })
-            )
-        ).append(
+            ),
             $("<td>").append(
                 create_input_el(d_el, "monitor_checks", line_prefix, {
                     boolean    : true,
                     change_cb  : if d_el then undefined else @change_monitor_checks,
                     master_xml : @devices,
                     title      : "checks enabled",
+                })
+            ),
+            $("<td>").append(
+                create_input_el(d_el, "enable_flap_detection", line_prefix, {
+                    boolean    : true,
+                    change_cb  : if d_el then undefined else @change_flap_detection,
+                    master_xml : @devices,
+                    title      : "flap detection enabled",
                 })
             )
         )
@@ -327,6 +334,9 @@ class config_table
     change_monitor_checks : (event) =>
         @c_table.find("tr td input[id^='dev__'][id$='__sel']:checked").each (idx, sel_el) =>
             $(sel_el).parents("tr:first").find("input[id$='__monitor_checks']").trigger("click")
+    change_flap_detection : (event) =>
+        @c_table.find("tr td input[id^='dev__'][id$='__sel']:checked").each (idx, sel_el) =>
+            $(sel_el).parents("tr:first").find("input[id$='__enable_flap_detection']").trigger("click")
     change_md_cache_mode : (event) =>
         mon_val = $(event.target).val()
         @c_table.find("tr td input[id^='dev__'][id$='__sel']:checked").each (idx, sel_el) =>

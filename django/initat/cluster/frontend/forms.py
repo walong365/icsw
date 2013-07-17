@@ -151,6 +151,7 @@ class device_general_form(ModelForm):
                      Field("mon_device_templ"),
                      Field("monitor_checks"),
                      Field("enable_perfdata"),
+                     Field("flap_detection_enabled"),
                      ),
             css_class="inlineLabels",
         )
@@ -160,7 +161,8 @@ class device_general_form(ModelForm):
         self.fields["domain_tree_node"].queryset = domain_name_tree()
     class Meta:
         model = device
-        fields = ["name", "comment", "monitor_checks", "domain_tree_node", "mon_device_templ", "enable_perfdata"]
+        fields = ["name", "comment", "monitor_checks", "domain_tree_node", "mon_device_templ",
+                  "enable_perfdata", "flap_detection_enabled"]
 
 class dummy_password_form(Form):
     helper = FormHelper()
