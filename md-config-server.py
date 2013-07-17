@@ -65,7 +65,7 @@ except ImportError:
 from django.db.models import Q
 from django.db import connection, connections
 from initat.cluster.backbone.models import device, device_group, device_variable, mon_device_templ, \
-     mon_service, mon_ext_host, mon_check_command, mon_period, mon_contact, \
+     mon_ext_host, mon_check_command, mon_period, mon_contact, \
      mon_contactgroup, mon_service_templ, netdevice, network, network_type, net_ip, \
      user, mon_host_cluster, mon_service_cluster, config, md_check_data_store, category, \
      category_tree, TOP_MONITORING_CATEGORY, mon_notification, config_str, config_int
@@ -706,7 +706,11 @@ class main_config(object):
             ("check_for_orphaned_services"      , 0),
             ("check_service_freshness"          , 0),
             ("freshness_check_interval"         , 15),
-            ("enable_flap_detection"            , 0),
+            ("enable_flap_detection"            , 1 if global_config["ENABLE_FLAP_DETECTION"] else 0),
+            ("low_service_flap_treshold"        , 25),
+            ("high_service_flap_treshold"       , 50),
+            ("low_host_flap_treshold"           , 25),
+            ("high_host_flap_treshold"          , 50),
             ("date_format"                      , "euro"),
             ("illegal_object_name_chars"        , r"~!$%^&*|'\"<>?),()"),
             ("illegal_macro_output_chars"       , r"~$&|'\"<>"),
@@ -2645,6 +2649,18 @@ class build_process(threading_tools.process_obj):
                     act_host["checks_enabled"]            = 1
                     act_host["%s_checks_enabled" % ("active" if checks_are_active else "passive")] = 1
                     act_host["%s_checks_enabled" % ("passive" if checks_are_active else "active")] = 0
+                    act_host["flap_detection_enabled"] = 1 if (host.flap_detection_enabled and act_def_dev.flap_detection_enabled) else 0
+                    if host.flap_detection_enabled and act_def_dev.flap_detection_enabled:
+                        # add flap fields
+                        act_host["low_flap_threshold"]  = act_def_dev.low_flap_threshold
+                        act_host["high_flap_threshold"] = act_def_dev.high_flap_threshold
+                        n_field = []
+                        for short, f_name in [("o", "up"), ("d", "down"), ("u", "unreachable")]:
+                            if getattr(act_def_dev, "flap_detect_%s" % (f_name)):
+                                n_field.append(short)
+                        if not n_field:
+                            n_field.append("o")
+                        act_host["flap_detection_option"] = ",".join(n_field)
                     if checks_are_active and not cur_gc.master:
                         # trace changes
                         act_host["obsess_over_host"] = 1
@@ -3133,6 +3149,17 @@ class build_process(threading_tools.process_obj):
             if checks_are_active and not cur_gc.master:
                 # trace
                 act_serv["obsess_over_service"] = 1
+            act_serv["flap_detection_enabled"] = 1 if serv_temp.flap_detection_enabled else 0
+            if serv_temp.flap_detection_enabled:
+                act_serv["low_flap_threshold"]  = serv_temp.low_flap_threshold
+                act_serv["high_flap_threshold"] = serv_temp.high_flap_threshold
+                n_field = []
+                for short, f_name in [("o", "ok"), ("w", "warn"), ("c", "critical"), ("u", "unknown")]:
+                    if getattr(serv_temp, "flap_detect_%s" % (f_name)):
+                        n_field.append(short)
+                if not n_field:
+                    n_field.append("o")
+                act_serv["flap_detection_options"] = ",".join(n_field)
             if global_config["ENABLE_PNP"] or global_config["ENABLE_COLLECTD"]:
                 act_serv["process_perf_data"] = 1 if (host.enable_perfdata and s_check.enable_perfdata) else 0
                 if host.enable_perfdata and s_check.enable_perfdata:
@@ -3731,6 +3758,7 @@ def main():
         ("ENABLE_LIVESTATUS"           , configfile.bool_c_var(True)),
         ("ENABLE_NDO"                  , configfile.bool_c_var(False)),
         ("ENABLE_NAGVIS"               , configfile.bool_c_var(False)),
+        ("ENABLE_FLAP_DETECTION"       , configfile.bool_c_var(False)),
         ("PNP_DIR"                     , configfile.str_c_var("/opt/pnp4nagios")),
         ("PNP_URL"                     , configfile.str_c_var("/pnp4nagios")),
         ("NAGVIS_DIR"                  , configfile.str_c_var("/opt/nagvis4icinga")),
