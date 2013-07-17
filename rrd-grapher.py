@@ -770,14 +770,16 @@ class graph_process(threading_tools.process_obj):
                                   logging_tools.get_diff_time_str(para_dict["timeframe"])),
             ])
             try:
-                draw_result = rrdtool.graph(*rrd_args)
+                draw_result = rrdtool.graphv(*rrd_args)
             except:
                 self.log("error creating graph: %s" % (process_tools.get_except_info()), logging_tools.LOG_LEVEL_ERROR)
-                pprint.pprint(rrd_args)
+                #pprint.pprint(rrd_args)
             else:
-                size_x, size_y, rest = draw_result
                 graph_list.append(
-                    E.graph(href=rel_file_loc, w="%d" % (size_x), h="%d" % (size_y))
+                    E.graph(
+                        href=rel_file_loc,
+                        **dict([(key, "%d" % (value) if type(value) in [int, long] else "%.6f" % (value)) for key, value in draw_result.iteritems()])
+                    )
                 )
         else:
             self.log("no DEFs", logging_tools.LOG_LEVEL_ERROR)
