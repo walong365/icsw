@@ -460,6 +460,7 @@ class device(models.Model):
     monitor_checks = models.BooleanField(default=True, db_column="nagios_checks")
     # performance data tracking
     enable_perfdata = models.BooleanField(default=False)
+    enable_flap_detection = models.BooleanField(default=False)
     show_in_bootcontrol = models.BooleanField()
     # not so clever here, better in extra table, FIXME
     #cpu_info = models.TextField(blank=True, null=True)
@@ -555,6 +556,7 @@ class device(models.Model):
             domain_tree_node="%d" % (self.domain_tree_node_id or 0),
             uptime="%d" % (self.uptime or 0),
             categories="::".join(["%d" % (cur_cat.pk) for cur_cat in self.categories.all()]),
+            enable_flap_detection="1" if self.enable_flap_detection else "0",
         )
         if kwargs.get("full_name", False):
             r_xml.attrib["full_name"] = self.full_name
@@ -2601,6 +2603,12 @@ class mon_device_templ(models.Model):
     ndown = models.BooleanField()
     nunreachable = models.BooleanField()
     is_default = models.BooleanField()
+    low_flap_threshold = models.IntegerField(default=0)
+    high_flap_threshold = models.IntegerField(default=0)
+    flap_detection_enabled = models.BooleanField(default=False)
+    flap_detect_up = models.BooleanField(default=True)
+    flap_detect_down = models.BooleanField(default=False)
+    flap_detect_unreachable = models.BooleanField(default=False)
     date = models.DateTimeField(auto_now_add=True)
     def get_xml(self):
         return E.mon_device_templ(
@@ -2616,6 +2624,12 @@ class mon_device_templ(models.Model):
             nrecovery="%d" % (1 if self.nrecovery else 0),
             ndown="%d" % (1 if self.ndown else 0),
             nunreachable="%d" % (1 if self.nunreachable else 0),
+            low_flap_threshold="%d" % (self.low_flap_threshold),
+            high_flap_threshold="%d" % (self.high_flap_threshold),
+            flap_detection_enabled="%d" % (1 if self.flap_detection_enabled else 0),
+            flap_detect_up="%d" % (1 if self.flap_detect_up else 0),
+            flap_detect_down="%d" % (1 if self.flap_detect_down else 0),
+            flap_detect_unreachable="%d" % (1 if self.flap_detect_unreachable else 0),
         )
     def __unicode__(self):
         return self.name
@@ -2630,7 +2644,10 @@ def mon_device_templ_pre_save(sender, **kwargs):
             raise ValidationError("name must not be zero")
         for attr_name, min_val, max_val in [
             ("max_attempts", 1, 10),
-            ("ninterval"   , 0, 60 * 24)]:
+            ("ninterval"   , 0, 60 * 24),
+            ("low_flap_threshold" , 0, 100),
+            ("high_flap_threshold", 0, 100),
+            ]:
             _check_integer(cur_inst, attr_name, min_val=min_val, max_val=max_val)
                     
 class mon_device_esc_templ(models.Model):
@@ -2760,18 +2777,18 @@ def mon_period_pre_save(sender, **kwargs):
                     new_val.append("%02d:%02d" % (hours, minutes))
                 setattr(cur_inst, r_name, "-".join(new_val))
 
-class mon_service(models.Model):
-    idx = models.AutoField(db_column="ng_service_idx", primary_key=True)
-    name = models.CharField(max_length=192)
-    alias = models.CharField(max_length=192, blank=True)
-    command = models.CharField(max_length=192, blank=True)
-    parameter1 = models.CharField(max_length=192, blank=True)
-    parameter2 = models.CharField(max_length=192, blank=True)
-    parameter3 = models.CharField(max_length=192, blank=True)
-    parameter4 = models.CharField(max_length=192, blank=True)
-    date = models.DateTimeField(auto_now_add=True)
-    class Meta:
-        db_table = u'ng_service'
+#class mon_service(models.Model):
+    #idx = models.AutoField(db_column="ng_service_idx", primary_key=True)
+    #name = models.CharField(max_length=192)
+    #alias = models.CharField(max_length=192, blank=True)
+    #command = models.CharField(max_length=192, blank=True)
+    #parameter1 = models.CharField(max_length=192, blank=True)
+    #parameter2 = models.CharField(max_length=192, blank=True)
+    #parameter3 = models.CharField(max_length=192, blank=True)
+    #parameter4 = models.CharField(max_length=192, blank=True)
+    #date = models.DateTimeField(auto_now_add=True)
+    #class Meta:
+        #db_table = u'ng_service'
 
 class mon_service_templ(models.Model):
     idx = models.AutoField(db_column="ng_service_templ_idx", primary_key=True)
@@ -2787,6 +2804,13 @@ class mon_service_templ(models.Model):
     ncritical = models.BooleanField(default=False)
     nwarning = models.BooleanField(default=False)
     nunknown = models.BooleanField(default=False)
+    low_flap_threshold = models.IntegerField(default=0)
+    high_flap_threshold = models.IntegerField(default=0)
+    flap_detection_enabled = models.BooleanField(default=False)
+    flap_detect_up = models.BooleanField(default=True)
+    flap_detect_down = models.BooleanField(default=False)
+    flap_detect_warn = models.BooleanField(default=False)
+    flap_detect_unreachable = models.BooleanField(default=False)
     date = models.DateTimeField(auto_now_add=True)
     def get_xml(self):
         return E.mon_service_templ(
@@ -2805,6 +2829,13 @@ class mon_service_templ(models.Model):
             ncritical="%d" % (1 if self.ncritical else 0),
             nwarning="%d" % (1 if self.nwarning else 0),
             nunknown="%d" % (1 if self.nunknown else 0),
+            low_flap_threshold="%d" % (self.low_flap_threshold),
+            high_flap_threshold="%d" % (self.high_flap_threshold),
+            flap_detection_enabled="%d" % (1 if self.flap_detection_enabled else 0),
+            flap_detect_up="%d" % (1 if self.flap_detect_up else 0),
+            flap_detect_down="%d" % (1 if self.flap_detect_down else 0),
+            flap_detect_warn="%d" % (1 if self.flap_detect_warn else 0),
+            flap_detect_unreachable="%d" % (1 if self.flap_detect_unreachable else 0),
         )
     def __unicode__(self):
         return self.name
@@ -2821,7 +2852,10 @@ def mon_service_templ_pre_save(sender, **kwargs):
             ("max_attempts"  , 1, 10),
             ("check_interval", 1, 60),
             ("retry_interval", 1, 60),
-            ("ninterval"     , 0, 60)]:
+            ("ninterval"     , 0, 60),
+            ("low_flap_threshold" , 0, 100),
+            ("high_flap_threshold", 0, 100),
+            ]:
             cur_val = _check_integer(cur_inst, attr_name, min_val=min_val, max_val=max_val)
 
 class mon_service_esc_templ(models.Model):
