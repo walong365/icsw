@@ -26,8 +26,8 @@ import os
 
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "initat.cluster.settings")
 
-import zmq
-import re
+import base64
+import binascii
 import configfile
 import os.path
 import time
@@ -42,12 +42,26 @@ import threading_tools
 import config_tools
 import codecs
 import sqlite3
+import shutil
+import uuid_tools
+import stat
+import ConfigParser
+import re
+import hashlib
+import networkx
+import operator
+import zmq
+from lxml import etree
+from lxml.builder import E
+
 from initat.md_config_server.config import global_config
 from initat.md_config_server import special_commands
+
 try:
     from md_config_server.version import VERSION_STRING
 except ImportError:
     VERSION_STRING = "?.?"
+
 from django.db.models import Q
 from django.db import connection, connections
 from initat.cluster.backbone.models import device, device_group, device_variable, mon_device_templ, \
@@ -56,16 +70,7 @@ from initat.cluster.backbone.models import device, device_group, device_variable
      user, mon_host_cluster, mon_service_cluster, config, md_check_data_store, category, \
      category_tree, TOP_MONITORING_CATEGORY, mon_notification, config_str, config_int
 from django.conf import settings
-import base64
-import uuid_tools
-import stat
-import ConfigParser
-import hashlib
-import binascii
-import operator
-import networkx
-from lxml import etree
-from lxml.builder import E
+
 try:
     import mk_livestatus
 except ImportError:
@@ -82,7 +87,7 @@ SERVER_COM_PORT = 8010
 TEMPLATE_NAME = "t"
 
 # maps to transfer for single_build
-SINGLE_BUILD_MAPS = set(["service", "host", "command"])
+SINGLE_BUILD_MAPS = set(["device.d", "command"])
 
 IDOMOD_PROCESS_PROCESS_DATA           = 2 ** 0
 IDOMOD_PROCESS_TIMED_EVENT_DATA       = 2 ** 1
@@ -657,9 +662,6 @@ class main_config(object):
                     ("debug_verbosity"        , 1),
                     ("debug_file"             , "%s/ndo2db.debug" % (self.__r_dir_dict["var"])),
                     ("max_debug_file_size"    , 1000000)])
-        settings_dir = "%s/df_settings" % (self.__w_dir_dict["etc"])
-        if not os.path.isdir(settings_dir):
-            os.mkdir(settings_dir)
         enable_perf = global_config["ENABLE_PNP"] or global_config["ENABLE_COLLECTD"]
         main_values = [
             ("log_file"                         , "%s/%s.log" % (
@@ -670,7 +672,7 @@ class main_config(object):
                 self.__r_dir_dict["etc"],
                 resource_cfg.get_name())),
             ("%s_user" % (global_config["MD_TYPE"]) , "idnagios"),
-            ("%s_group" % (global_config["MD_TYPE"]) , "idg"),
+            ("%s_group" % (global_config["MD_TYPE"]), "idg"),
             ("check_external_commands"          , 1),
             ("command_check_interval"           , 1),
             ("command_file"                     , self.get_command_name()),
@@ -716,10 +718,15 @@ class main_config(object):
             # NDO stuff
         ]
         lib_dir_name = "lib64" if process_tools.get_sys_bits() == 64 else "lib"
+        for sub_dir_name in ["device.d"]:
+            sub_dir = os.path.join(self.__w_dir_dict["etc"], sub_dir_name)
+            if not os.path.isdir(sub_dir):
+                os.mkdir(sub_dir)
+        for sub_dir_name in ["df_settings", "manual"]:
+            sub_dir = os.path.join(self.__w_dir_dict["etc"], sub_dir_name)
+            if os.path.isdir(sub_dir):
+                shutil.rmtree(sub_dir)
         if self.master:
-            manual_dir = "%s/manual" % (self.__w_dir_dict["etc"])
-            if not os.path.isdir(manual_dir):
-                os.mkdir(manual_dir)
             main_values.append(
                 ("cfg_dir", os.path.join(self.__r_dir_dict["etc"], "manual")),
             )
@@ -780,6 +787,7 @@ class main_config(object):
         else:
             # add global event handlers
             main_values.extend([
+                ("cfg_dir"                , []            ),
                 ("ochp_command"           , "ochp-command"),
                 ("ocsp_command"           , "ocsp-command"),
                 ("stalking_event_handlers_for_hosts"   , 1),
@@ -976,41 +984,50 @@ class main_config(object):
         cfg_written, empty_cfg_written = ([], [])
         start_time = time.time()
         for key, stuff in self.__dict.iteritems():
-            if isinstance(stuff, base_config) or isinstance(stuff, host_type_config):
-                if isinstance(stuff, base_config):
-                    act_cfg_name = stuff.get_file_name(self.__w_dir_dict["etc"])
+            if isinstance(stuff, base_config) or isinstance(stuff, host_type_config) or isinstance(stuff, config_dir):
+                if isinstance(stuff, config_dir):
+                    cfg_written.extend(stuff.create_content(self.__w_dir_dict["etc"]))
                 else:
-                    act_cfg_name = os.path.normpath(os.path.join(
-                        self.__w_dir_dict["etc"],
-                        "%s.cfg" % (key)))
-                stuff.create_content()
-                if stuff.act_content != stuff.old_content:
-                    try:
-                        codecs.open(act_cfg_name, "w", "Utf-8").write(u"\n".join(stuff.act_content + [u""]))
-                    except IOError:
-                        self.log(
-                            "Error writing content of %s to %s: %s" % (
-                                key,
-                                act_cfg_name,
-                                process_tools.get_except_info()),
-                            logging_tools.LOG_LEVEL_CRITICAL)
-                        stuff.act_content = []
+                    if isinstance(stuff, base_config):
+                        act_cfg_name = stuff.get_file_name(self.__w_dir_dict["etc"])
                     else:
-                        os.chmod(act_cfg_name, 0644)
-                        cfg_written.append(key)
-                elif not os.path.isfile(act_cfg_name) and not stuff.act_content:
-                    empty_cfg_written.append(act_cfg_name)
-                    self.log("creating empty file %s" % (act_cfg_name),
-                             logging_tools.LOG_LEVEL_WARN)
-                    open(act_cfg_name, "w").write("\n")
-                else:
-                    # no change
-                    pass
+                        act_cfg_name = os.path.normpath(os.path.join(
+                            self.__w_dir_dict["etc"],
+                            "%s.cfg" % (key)))
+                    #print "*", key, act_cfg_name
+                    stuff.create_content()
+                    if stuff.act_content != stuff.old_content:
+                        try:
+                            codecs.open(act_cfg_name, "w", "utf-8").write(u"\n".join(stuff.act_content + [u""]))
+                        except IOError:
+                            self.log(
+                                "Error writing content of %s to %s: %s" % (
+                                    key,
+                                    act_cfg_name,
+                                    process_tools.get_except_info()),
+                                logging_tools.LOG_LEVEL_CRITICAL)
+                            stuff.act_content = []
+                        else:
+                            os.chmod(act_cfg_name, 0644)
+                            cfg_written.append(key)
+                    elif not stuff.act_content:
+                        # crate empty config file
+                        empty_cfg_written.append(act_cfg_name)
+                        self.log("creating empty file %s" % (act_cfg_name),
+                                 logging_tools.LOG_LEVEL_WARN)
+                        open(act_cfg_name, "w").write("\n")
+                    else:
+                        # no change
+                        pass
         end_time = time.time()
         if cfg_written:
-            self.log("wrote %s (%s) in %s" % (logging_tools.get_plural("config_file", len(cfg_written)),
-                                              ", ".join(cfg_written),
-                                              logging_tools.get_diff_time_str(end_time - start_time)))
+            self.log(
+                "wrote %s (%s) in %s" % (
+                    logging_tools.get_plural("config_file", len(cfg_written)),
+                    ", ".join(cfg_written),
+                    logging_tools.get_diff_time_str(end_time - start_time)
+                )
+            )
         else:
             self.log("no config files written")
         return len(cfg_written) + len(empty_cfg_written)
@@ -1022,13 +1039,26 @@ class main_config(object):
         if self.has_config(config.get_name()):
             config.set_previous_config(self.get_config(config.get_name()))
         self[config.get_name()] = config
+    def add_config_dir(self, config_dir):
+        self[config_dir.get_name()] = config_dir
     def __setitem__(self, key, value):
         self.__dict[key] = value
         config_keys = self.__dict.keys()
-        new_keys = sorted(["%s/%s.cfg" % (self.__r_dir_dict["etc"], key) for key, value in self.__dict.iteritems() if not isinstance(value, base_config) or not (value.is_host_file or value.belongs_to_ndo)])
-        old_keys = self[global_config["MAIN_CONFIG_NAME"]]["cfg_file"]
-        if old_keys != new_keys:
-            self[global_config["MAIN_CONFIG_NAME"]]["cfg_file"] = new_keys
+        new_file_keys = sorted([
+            "%s/%s.cfg" % (self.__r_dir_dict["etc"], key) for key, value in self.__dict.iteritems() if
+            (not isinstance(value, base_config) or not (value.is_host_file or value.belongs_to_ndo)) and (not isinstance(value, config_dir))
+        ])
+        old_file_keys = self[global_config["MAIN_CONFIG_NAME"]]["cfg_file"]
+        new_dir_keys = sorted(["%s/%s" % (self.__r_dir_dict["etc"], key) for key, value in self.__dict.iteritems() if isinstance(value, config_dir)])
+        old_dir_keys = self[global_config["MAIN_CONFIG_NAME"]]["cfg_dir"]
+        write_cfg = False
+        if old_file_keys != new_file_keys:
+            self[global_config["MAIN_CONFIG_NAME"]]["cfg_file"] = new_file_keys
+            write_cfg = True
+        if old_dir_keys != new_dir_keys:
+            self[global_config["MAIN_CONFIG_NAME"]]["cfg_dir"] = new_dir_keys
+            write_cfg = True
+        if write_cfg:
             self._write_entries()
     def __getitem__(self, key):
         return self.__dict[key]
@@ -1084,7 +1114,8 @@ class base_config(object):
         self.act_content = self.headers + c_lines
 
 class nag_config(dict):
-    def __init__(self, name, **kwargs):
+    def __init__(self, obj_type, name, **kwargs):
+        self.obj_type = obj_type
         self._name = name
         super(nag_config, self).__init__()
         self.update(kwargs)
@@ -1127,17 +1158,20 @@ class host_type_config(object):
         content = []
         if act_list:
             for act_le in act_list:
-                content.extend(["define %s {" % (dest_type)] + \
-                               ["  %s %s" % (act_key, unicode(val)) for act_key, val in act_le.iteritems()] + \
-                               ["}", ""])
-            self.log("created %s for %s" % (logging_tools.get_plural("entry", len(act_list)),
-                                            dest_type))
+                content.extend(
+                    ["define %s {" % (dest_type)] + \
+                    ["  %s %s" % (act_key, unicode(val)) for act_key, val in act_le.iteritems()] + \
+                    ["}", ""]
+                )
+            self.log("created %s for %s" % (
+                logging_tools.get_plural("entry", len(act_list)),
+                dest_type))
         return content
     def get_xml(self):
         res_xml = getattr(E, "%s_list" % (self.get_name()))()
         for act_le in self.get_object_list():
             res_xml.append(getattr(E, self.get_name())(**dict([(key, unicode(value)) for key, value in act_le.iteritems()])))
-        return res_xml
+        return [res_xml]
 
 class time_periods(host_type_config):
     def __init__(self, gen_conf, build_proc):
@@ -1148,7 +1182,8 @@ class time_periods(host_type_config):
         return "timeperiod"
     def _add_time_periods_from_db(self):
         for cur_per in mon_period.objects.all():
-            nag_conf = nag_config(cur_per.name,
+            nag_conf = nag_config("timeperiod",
+                                  cur_per.name,
                                   timeperiod_name=cur_per.name,
                                   alias=cur_per.alias or "-")
             for short_s, long_s in [
@@ -1177,7 +1212,8 @@ class all_service_groups(host_type_config):
     def _add_servicegroups_from_db(self):
         for cat_pk in self.cat_tree.get_sorted_pks():
             cur_cat = self.cat_tree[cat_pk]
-            nag_conf = nag_config(cur_cat.full_name,
+            nag_conf = nag_config("servicegroup",
+                                  cur_cat.full_name,
                                   servicegroup_name=cur_cat.full_name,
                                   alias="%s group" % (cur_cat.full_name))
             self.__host_srv_lut[cur_cat.full_name] = set()
@@ -1238,6 +1274,7 @@ class all_commands(host_type_config):
         
         self.__obj_list.append(
             nag_config(
+                "command",
                 "dummy-notify",
                 command_name="dummy-notify",
                 command_line="/usr/bin/true",
@@ -1257,51 +1294,12 @@ class all_commands(host_type_config):
                     self._expand_str(cur_not.content),
                 )
             nag_conf = nag_config(
+                "command",
                 cur_not.name,
                 command_name=cur_not.name,
                 command_line=command_line.replace("\n", "\\n"),
             )
             self.__obj_list.append(nag_conf)
-##        service_str_field = [self._expand_str(global_config["NOTIFY_BY_EMAIL_LINE%02d" % (idx)]) for idx in xrange(1, 16)]
-##        host_str_field = [self._expand_str(global_config["HOST_NOTIFY_BY_EMAIL_LINE%02d" % (idx)]) for idx in xrange(1, 16)]
-##        nag_conf = nag_config(
-##            "notify-by-email",
-##            command_name="notify-by-email",
-##            command_line=r"%s -f '%s' -s '%s' -t $CONTACTEMAIL$ -- '%s'" % (
-##                send_mail_prog,
-##                from_addr,
-##                self._expand_str(global_config["NOTIFY_BY_EMAIL_SUBJECT"]),
-##                r"\n".join(service_str_field)
-##            )
-##        )
-##        self.__obj_list.append(nag_conf)
-##        nag_conf = nag_config(
-##            "notify-by-sms",
-##            command_name="notify-by-sms",
-##            command_line="/opt/icinga/bin/sendsms $CONTACTPAGER$ '%s'" % (
-##                self._expand_str(global_config["NOTIFY_BY_SMS_LINE01"])
-##            )
-##        )
-##        self.__obj_list.append(nag_conf)
-##        nag_conf = nag_config(
-##            "host-notify-by-email",
-##            command_name="host-notify-by-email",
-##            command_line=r"%s -f '%s'  -s '%s' -t $CONTACTEMAIL$ -- '%s'" % (
-##                send_mail_prog,
-##                from_addr,
-##                self._expand_str(global_config["HOST_NOTIFY_BY_EMAIL_SUBJECT"]),
-##                r"\n".join(host_str_field)
-##            )
-##        )
-##        self.__obj_list.append(nag_conf)
-##        nag_conf = nag_config(
-##            "host-notify-by-sms",
-##            command_name="host-notify-by-sms",
-##            command_line="/opt/icinga/bin/sendsms $CONTACTPAGER$ '%s'" % (
-##                self._expand_str(global_config["HOST_NOTIFY_BY_SMS_LINE01"])
-##            )
-##        )
-##        self.__obj_list.append(nag_conf)
     def _add_commands_from_db(self, gen_conf):
         ngc_re1 = re.compile("^\@(?P<special>\S+)\@(?P<comname>\S+)$")
         check_coms = list(mon_check_command.objects.all()
@@ -1458,6 +1456,7 @@ class all_contacts(host_type_config):
                 not_h_list.extend(list(contact.notifications.filter(Q(channel="sms") & Q(not_type="host") & Q(enabled=True))))
                 not_s_list.extend(list(contact.notifications.filter(Q(channel="sms") & Q(not_type="service") & Q(enabled=True))))
             nag_conf = nag_config(
+                "contact",
                 full_name,
                 contact_name=contact.user.login,
                 host_notification_period=gen_conf["timeperiod"][contact.hnperiod_id]["name"],
@@ -1522,13 +1521,17 @@ class all_contact_groups(host_type_config):
         return "contactgroup"
     def _add_contact_groups_from_db(self, gen_conf):
         # none group
-        self.__dict[0] = nag_config(global_config["NONE_CONTACT_GROUP"],
-                                    contactgroup_name=global_config["NONE_CONTACT_GROUP"],
-                                    alias="None group")
+        self.__dict[0] = nag_config(
+            "contactgroup",
+            global_config["NONE_CONTACT_GROUP"],
+            contactgroup_name=global_config["NONE_CONTACT_GROUP"],
+            alias="None group")
         for cg_group in mon_contactgroup.objects.all().prefetch_related("members"):
-            nag_conf = nag_config(cg_group.name,
-                                  contactgroup_name=cg_group.name,
-                                  alias=cg_group.alias)
+            nag_conf = nag_config(
+                "contactgroup",
+                cg_group.name,
+                contactgroup_name=cg_group.name,
+                alias=cg_group.alias)
             self.__dict[cg_group.pk] = nag_conf
             for member in cg_group.members.all():
                 nag_conf["members"] = gen_conf["contact"][member.pk]["contact_name"]
@@ -1555,14 +1558,15 @@ class all_host_groups(host_type_config):
     def get_name(self):
         return "hostgroup"
     def _add_host_groups_from_db(self, gen_conf):
-        if gen_conf.has_key("host"):
-            host_pks = gen_conf["host"].host_pks
+        if gen_conf.has_key("device.d"):
+            host_pks = gen_conf["device.d"].host_pks
             host_filter = Q(enabled=True) & Q(device_group__enabled=True) & Q(device_group__pk__in=host_pks)
             if host_pks:
                 # hostgroups by devicegroups
                 # distinct is important here
                 for h_group in device_group.objects.filter(host_filter).prefetch_related("device_group").distinct():
                     nag_conf = nag_config(
+                        "hostgroup",
                         h_group.name,
                         hostgroup_name=h_group.name,
                         alias=h_group.description or h_group.name,
@@ -1574,6 +1578,7 @@ class all_host_groups(host_type_config):
                 for cat_pk in self.cat_tree.get_sorted_pks():
                     cur_cat = self.cat_tree[cat_pk]
                     nag_conf = nag_config(
+                        "hostgroup",
                         cur_cat.full_name,
                         hostgroup_name=cur_cat.full_name,
                         alias=cur_cat.comment or cur_cat.full_name,
@@ -1594,82 +1599,132 @@ class all_host_groups(host_type_config):
     def values(self):
         return self.__dict.values()
 
-class all_hosts(host_type_config):
-    def __init__(self, gen_conf, build_proc):
-        host_type_config.__init__(self, build_proc)
-        self.refresh(gen_conf)
+class config_dir(object):
+    def __init__(self, name, gen_conf, build_proc):
+        self.name = "%s.d" % (name)
+        self.__build_proc = build_proc
         self.host_pks = set()
-    def add_db_host(self, cur_dev):
-        self.host_pks.add(cur_dev.pk)
+        self.refresh(gen_conf)
+        self.act_content, self.prev_content = ([], [])
+    def clear(self):
+        self.__dict = {}
     def refresh(self, gen_conf):
-        self.__obj_list, self.__dict = ([], {})
-        #self._add_hosts_from_db(gen_conf)
+        # ???
+        self.clear()
+    def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
+        self.__build_proc.log(what, log_level)
     def get_name(self):
-        return "host"
-    def get_object_list(self):
-        return self.__obj_list
+        return self.name
+    def add_device(self, c_list, host):
+        host_conf = c_list[0]
+        self.host_pks.add(host.pk)
+        self[host_conf["name"]] = c_list
     def values(self):
         return self.__dict.values()
+    def __contains__(self, key):
+        return key in self.__dict
     def __getitem__(self, key):
         return self.__dict[key]
     def __setitem__(self, key, value):
         self.__dict[key] = value
-        self.__obj_list.append(value)
     def __delitem__(self, key):
-        self.__obj_list.remove(self.__dict[key])
         del self.__dict[key]
     def has_key(self, key):
         return self.__dict.has_key(key)
     def keys(self):
         return self.__dict.keys()
-
-class all_hosts_extinfo(host_type_config):
+    def create_content(self, etc_dir):
+        cfg_written = []
+        # check for missing files, FIXME
+        cfg_dir = os.path.join(etc_dir, self.name)
+        self.log("creating entries in %s" % (cfg_dir))
+        new_entries = set()
+        for key in sorted(self.keys()):
+            new_entries.add("%s.cfg" % (key))
+            cfg_name = os.path.join(cfg_dir, "%s.cfg" % (key))
+            # check for changed content, FIXME
+            content = self._create_sub_content(key)
+            try:
+                codecs.open(cfg_name, "w", "utf-8").write(u"\n".join(content + [u""]))
+            except IOError:
+                self.log(
+                    "Error writing content of %s to %s: %s" % (
+                        key,
+                        cfg_name,
+                        process_tools.get_except_info()),
+                    logging_tools.LOG_LEVEL_CRITICAL)
+            else:
+                os.chmod(cfg_name, 0644)
+                cfg_written.append(key)
+        present_entries = set(os.listdir(cfg_dir))
+        del_entries = present_entries - new_entries
+        if del_entries:
+            self.log("removing %s from %s" % (logging_tools.get_plural("entry", len(del_entries)),
+                                              cfg_dir), logging_tools.LOG_LEVEL_WARN)
+            for del_entry in del_entries:
+                full_name = os.path.join(cfg_dir, del_entry)
+                try:
+                    os.unlink(full_name)
+                except:
+                    self.log("cannot remove %s: %s" % (
+                        full_name,
+                        process_tools.get_except_info()), logging_tools.LOG_LEVEL_ERROR)
+                else:
+                    self.log("removed %s" % (full_name), logging_tools.LOG_LEVEL_WARN)
+        return cfg_written
+    def _create_sub_content(self, key):
+        content = []
+        for entry in self[key]:
+            content.extend(
+                ["define %s {" % (entry.obj_type)] + \
+                ["  %s %s" % (act_key, unicode(val)) for act_key, val in entry.iteritems()] + \
+                ["}", ""])
+        return content
+    def get_xml(self):
+        res_list = []
+        # only working for a single host, FIXME ?
+        for key, value in self.__dict.iteritems():
+            prev_tag = None
+            for entry in value:
+                if entry.obj_type != prev_tag:
+                    res_xml = getattr(E, "%s_list" % (entry.obj_type))()
+                    res_list.append(res_xml)
+                    prev_tag = entry.obj_type
+                res_xml.append(getattr(E, entry.obj_type)(**dict([(key, unicode(value)) for key, value in entry.iteritems()])))
+        return res_list
+        
+class all_hosts(host_type_config):
+    """ only a dummy, now via device.d """
     def __init__(self, gen_conf, build_proc):
         host_type_config.__init__(self, build_proc)
-        self.refresh(gen_conf)
     def refresh(self, gen_conf):
-        self.__obj_list, self.__dict = ([], {})
-        self._add_hosts_from_db(gen_conf)
+        pass
+    def get_name(self):
+        return "host"
+    def get_object_list(self):
+        return []
+
+class all_hosts_extinfo(host_type_config):
+    """ only a dummy, now via device.d """
+    def __init__(self, gen_conf, build_proc):
+        host_type_config.__init__(self, build_proc)
+    def refresh(self, gen_conf):
+        pass
     def get_name(self):
         return "hostextinfo"
     def get_object_list(self):
-        return self.__obj_list
-    def values(self):
-        return self.__dict.values()
-    def __setitem__(self, key, value):
-        self.__dict[key] = value
-        self.__obj_list.append(value)
-    def __delitem__(self, key):
-        self.__obj_list.remove(self.__dict[key])
-        del self.__dict[key]
-    def has_key(self, key):
-        return self.__dict.has_key(key)
-    def keys(self):
-        return self.__dict.keys()
-    def _add_hosts_from_db(self, gen_conf):
-        pass
+        return []
 
 class all_services(host_type_config):
+    """ only a dummy, now via device.d """
     def __init__(self, gen_conf, build_proc):
         host_type_config.__init__(self, build_proc)
-        self.refresh(gen_conf)
     def refresh(self, gen_conf):
-        self.__obj_list, self.__dict = ([], {})
-        self._add_services_from_db(gen_conf)
+        pass
     def get_name(self):
         return "service"
     def get_object_list(self):
-        return self.__obj_list
-    def append(self, value):
-        self.__obj_list.append(value)
-    def extend(self, value):
-        self.__obj_list.extend(value)
-    def values(self):
-        return self.__obj_list
-    def remove_host(self, host_obj):
-        self.__obj_list.remove(host_obj)
-    def _add_services_from_db(self, gen_conf):
-        pass
+        return []
 
 class check_command(object):
     def __init__(self, name, com_line, config, template, descr, device=0, special=None, **kwargs):
@@ -1759,46 +1814,6 @@ class check_command(object):
             else:
                 break
         self.__md_com_line = cur_line
-            ## parse command_line
-                    #if com_part.endswith("}$"):
-                        #com_part = com_part[2:-2]
-                    #else:
-                        #com_part = com_part[2:-1]
-                    #if com_part.count(":") == 2:
-                        #arg_name, var_name, default_value = com_part.split(":")
-                    #elif com_part.count(":") == 1:
-                        #arg_name, default_value = com_part.split(":")
-                        #var_name = None
-                    #else:
-                        #arg_name = com_part
-                        #default_value, var_name = (None, None)
-                    #if prev_part:
-                        #arg_lut[prev_part] = arg_name
-                    #else:
-                        #arg_list.append(arg_name)
-                    #new_parts.append("$%s$" % (arg_name))
-                    #if var_name:
-                        #self.__default_values[arg_name] = (var_name, default_value)
-                    #elif default_value is not None:
-                        #self.__default_values[arg_name] = default_value
-                    #self.__num_args += 1
-                    #prev_part = None
-                #elif com_part.startswith("$ARG") and com_part.endswith("$"):
-                    #arg_name = com_part[1:-1]
-                    #if prev_part:
-                        #arg_lut[prev_part] = arg_name
-                    #else:
-                        #arg_list.append(arg_name)
-                    #new_parts.append(com_part)
-                    #self.__num_args += 1
-                    #prev_part = None
-                #else:
-                    #new_parts.append(com_part)
-                    #prev_part = com_part
-            #except:
-                ## need some logging, FIXME
-                #new_parts.append(com_part)
-        #self.__md_com_line = " ".join(new_parts)
         if self.command_line == self.md_command_line:
             self.log("command_line in/out is '%s'" % (self.command_line))
         else:
@@ -1837,9 +1852,11 @@ class check_command(object):
                 out_list.append(value)
         return out_list
     def get_nag_config(self):
-        return nag_config(self.__name,
-                          command_name=self.__name,
-                          command_line=self.md_command_line)
+        return nag_config(
+            "command",
+            self.__name,
+            command_name=self.__name,
+            command_line=self.md_command_line)
     def __getitem__(self, k):
         if k == "command_name":
             return self.__name
@@ -2285,7 +2302,7 @@ class build_process(threading_tools.process_obj):
         else:
             cur_gc = self.__gen_config
             res_node = E.config(
-                *[cur_gc[key].get_xml() for key in SINGLE_BUILD_MAPS]
+                *sum([cur_gc[key].get_xml() for key in SINGLE_BUILD_MAPS], [])
             )
         if global_config["DEBUG"]:
             tot_query_count = len(connection.queries) - cur_query_count
@@ -2389,6 +2406,8 @@ class build_process(threading_tools.process_obj):
             cur_gc.add_config(all_hosts_extinfo(cur_gc, self))
             # services
             cur_gc.add_config(all_services(cur_gc, self))
+            # device dir
+            cur_gc.add_config_dir(config_dir("device", cur_gc, self))
             end_time = time.time()
             cur_gc.log("created host_configs in %s" % (logging_tools.get_diff_time_str(end_time - start_time)))
     def _get_mon_ext_hosts(self):
@@ -2481,7 +2500,7 @@ class build_process(threading_tools.process_obj):
                                    ):
         start_time = time.time()
         # set some vars
-        host_nc, service_nc, hostext_nc  = (cur_gc["host"], cur_gc["service"], cur_gc["hostextinfo"])
+        host_nc = cur_gc["device.d"]
         if cur_gc.master:
             check_for_passive_checks = True
         else:
@@ -2554,7 +2573,9 @@ class build_process(threading_tools.process_obj):
                     self.mach_log("device has %s" % (
                         logging_tools.get_plural("device_variable", len(host.dev_variables.keys()))))
                     # now we have the device- and service template
-                    act_host = nag_config(host.full_name)
+                    host_config_list = []
+                    act_host = nag_config("host", host.full_name)
+                    host_config_list.append(act_host)
                     act_host["host_name"] = host.full_name
                     act_host["display_name"] = host.full_name
                     # action url
@@ -2692,11 +2713,12 @@ class build_process(threading_tools.process_obj):
                         if host.mon_ext_host_id and ng_ext_hosts.has_key(host.mon_ext_host_id):
                             if (global_config["MD_TYPE"] == "nagios" and global_config["MD_VERSION"] > 1) or (global_config["MD_TYPE"] == "icinga"):
                                 # handle for nagios 2
-                                act_hostext_info = nag_config(host.full_name)
+                                act_hostext_info = nag_config("hostextinfo", host.full_name)
                                 act_hostext_info["host_name"] = host.full_name
                                 for key in ["icon_image", "statusmap_image"]:
                                     act_hostext_info[key] = getattr(ng_ext_hosts[host.mon_ext_host_id], key)
-                                hostext_nc[host.full_name] = act_hostext_info
+                                # FIXME, not working for nagios2
+                                #hostext_nc[host.full_name] = act_hostext_info
                             else:
                                 self.log("don't know how to handle hostextinfo for %s_version %d" % (
                                     global_config["MD_TYPE"],
@@ -2765,7 +2787,7 @@ class build_process(threading_tools.process_obj):
                                 serv_temp = serv_templates[s_check.get_template(act_def_serv.name)]
                                 serv_cgs = set(serv_temp.contact_groups).intersection(host_groups)
                                 sc_list = self.get_service(host, act_host, s_check, sc_array, act_def_serv, serv_cgs, checks_are_active, serv_temp, cur_gc)
-                                service_nc.extend(sc_list)
+                                host_config_list.extend(sc_list)
                                 num_ok += len(sc_list)
                         # add cluster checks
                         mhc_checks = host.main_mon_host_cluster.all().prefetch_related("devices")
@@ -2794,7 +2816,7 @@ class build_process(threading_tools.process_obj):
                                         checks_are_active,
                                         serv_temp,
                                         cur_gc)
-                                    service_nc.extend(sub_list)
+                                    host_config_list.extend(sub_list)
                                     num_ok += len(sub_list)
                                 else:
                                     self.mach_log("ignoring empty host_cluster", logging_tools.LOG_LEVEL_WARN)
@@ -2826,12 +2848,11 @@ class build_process(threading_tools.process_obj):
                                         checks_are_active,
                                         serv_temp,
                                         cur_gc)
-                                    service_nc.extend(sub_list)
+                                    host_config_list.extend(sub_list)
                                     num_ok += len(sub_list)
                                 else:
                                     self.mach_log("ignoring empty service_cluster", logging_tools.LOG_LEVEL_WARN)
-                        host_nc[act_host["name"]] = act_host
-                        host_nc.add_db_host(host)
+                        host_nc.add_device(host_config_list, host)#[act_host["name"]] = act_host
                     else:
                         self.mach_log("Host %s is disabled" % (host.full_name))
             else:
@@ -2956,11 +2977,11 @@ class build_process(threading_tools.process_obj):
                 getattr(cur_host, "valid_ips" if n_t in valid_nwt_list else "invalid_ips").setdefault(n_d, []).append((n_i, dom_name))
         # get all masterswitch connections, FIXME
         #dc.execute("SELECT d.device_idx, ms.device FROM device d, msoutlet ms WHERE ms.slave_device = d.device_idx")
-        all_ms_connections = {}
+        #all_ms_connections = {}
         #for db_rec in dc.fetchall():
         #    all_ms_connections.setdefault(db_rec["device_idx"], []).append(db_rec["device"])
         # get all device relationships
-        all_dev_relationships = {}
+        #all_dev_relationships = {}
         # FIXME
         #dc.execute("SELECT * FROM device_relationship")
         #for db_rec in dc.fetchall():
@@ -2968,21 +2989,15 @@ class build_process(threading_tools.process_obj):
         # get all ibm bladecenter connections
         # FIXME
         #dc.execute("SELECT d.device_idx, ib.device FROM device d, ibc_connection ib WHERE #ib.slave_device = d.device_idx")
-        all_ib_connections = {}
+        #all_ib_connections = {}
         #for db_rec in dc.fetchall():
         #    all_ib_connections.setdefault(db_rec["device_idx"], []).append(db_rec["device"])
-        host_nc, service_nc, hostext_nc  = (cur_gc["host"], cur_gc["service"], cur_gc["hostextinfo"])
+        host_nc = cur_gc["device.d"]
         # delete host if already present in host_table
         for host_pk, host in check_hosts.iteritems():
-            del_list = set([cur_dev for cur_dev in host_nc.values() if cur_dev["host_name"] == host.full_name])
-            for del_h in del_list:
-                del_list_2 = [cur_dev for cur_dev in service_nc.values() if cur_dev["host_name"] == del_h["host_name"]]
-                for del_h_2 in del_list_2:
-                    service_nc.remove_host(del_h_2)
-                # delete hostextinfo for nagios V1.x
-                if hostext_nc.has_key(del_h["host_name"]):
-                    del hostext_nc[del_h["host_name"]]
-                del host_nc[del_h["host_name"]]
+            if host.full_name in host_nc:
+                # now very simple
+                del host_nc[host.full_name]
         # build lookup-table
         nagvis_maps = set()
         for host_name, host in sorted([(cur_dev.full_name, cur_dev) for cur_dev in check_hosts.itervalues()]):
@@ -3011,7 +3026,7 @@ class build_process(threading_tools.process_obj):
         host_names = host_nc.keys()
         host_uuids = set([host_val.uuid for host_val in all_hosts_dict.itervalues() if host_val.full_name in host_names])
         for host_name in sorted(host_names):
-            host = host_nc[host_name]
+            host = host_nc[host_name][0]
             if host.has_key("possible_parents"):
                 parent_list = []
                 p_parents = host["possible_parents"]
@@ -3094,7 +3109,7 @@ class build_process(threading_tools.process_obj):
         ret_field = []
         #for sc_name, sc in sc_array:
         for arg_temp in sc_array:
-            act_serv = nag_config(arg_temp.info)
+            act_serv = nag_config("service", arg_temp.info)
             act_serv["%s_checks_enabled" % ("active" if checks_are_active else "passive")] = 1
             act_serv["%s_checks_enabled" % ("passive" if checks_are_active else "active")] = 0
             act_serv["service_description"]   = arg_temp.info.replace("(", "[").replace(")", "]")
@@ -3415,41 +3430,63 @@ class server_process(threading_tools.process_pool):
                             self.log("cannot parse source %s of %s" % (src, key), logging_tools.LOG_LEVEL_ERROR)
             else:
                 # default dict
-                str_dict = {'mail': {'host': (u'Host $HOSTSTATE$ alert for $HOSTNAME$@$INIT_CLUSTER_NAME$',
-                                              [u'***** $INIT_MONITOR_INFO$ *****',
-                                               u'',
-                                               u'Notification Type: $NOTIFICATIONTYPE$',
-                                               u'',
-                                               u'Cluster: $INIT_CLUSTER_NAME$',
-                                               u'Host   : $HOSTNAME$',
-                                               u'State  : $HOSTSTATE$',
-                                               u'Address: $HOSTADDRESS$',
-                                               u'Info   : $HOSTOUTPUT$',
-                                               u'',
-                                               u'Date/Time: $LONGDATETIME$',
-                                               u'',
-                                               u'',
-                                               u'',
-                                               u'']),
-                                     'service': (u'$NOTIFICATIONTYPE$ alert - $HOSTNAME$@$INIT_CLUSTER_NAME$ ($HOSTALIAS$)/$SERVICEDESC$ is $SERVICESTATE$',
-                                                 [u'***** $INIT_MONITOR_INFO$ *****',
-                                                  u'',
-                                                  u'Notification Type: $NOTIFICATIONTYPE$',
-                                                  u'',
-                                                  u'Cluster: $INIT_CLUSTER_NAME$',
-                                                  u'Service: $SERVICEDESC$',
-                                                  u'Host   : $HOSTALIAS$',
-                                                  u'Address: $HOSTADDRESS$',
-                                                  u'State  : $SERVICESTATE$',
-                                                  u'',
-                                                  u'Date/Time: $LONGDATETIME$',
-                                                  u'',
-                                                  u'Additional Info:',
-                                                  u'',
-                                                  u'$SERVICEOUTPUT$'])},
-                            'sms': {'host': ('', [u'$HOSTSTATE$ alert for $HOSTNAME$ ($HOSTADDRESS$)']),
-                                    'service': ('',
-                                                [u'$NOTIFICATIONTYPE$ alert - $SERVICEDESC$ is $SERVICESTATE$ on $HOSTNAME$'])}}
+                str_dict = {
+                    'mail': {
+                        'host': (
+                            u'Host $HOSTSTATE$ alert for $HOSTNAME$@$INIT_CLUSTER_NAME$',
+                            [
+                                u'***** $INIT_MONITOR_INFO$ *****',
+                                u'',
+                                u'Notification Type: $NOTIFICATIONTYPE$',
+                                u'',
+                                u'Cluster: $INIT_CLUSTER_NAME$',
+                                u'Host   : $HOSTNAME$',
+                                u'State  : $HOSTSTATE$',
+                                u'Address: $HOSTADDRESS$',
+                                u'Info   : $HOSTOUTPUT$',
+                                u'',
+                                u'Date/Time: $LONGDATETIME$',
+                                u'',
+                                u'',
+                                u'',
+                                u''
+                                ]
+                        ),
+                        'service': (
+                            u'$NOTIFICATIONTYPE$ alert - $HOSTNAME$@$INIT_CLUSTER_NAME$ ($HOSTALIAS$)/$SERVICEDESC$ is $SERVICESTATE$',
+                            [
+                                u'***** $INIT_MONITOR_INFO$ *****',
+                                u'',
+                                u'Notification Type: $NOTIFICATIONTYPE$',
+                                u'',
+                                u'Cluster: $INIT_CLUSTER_NAME$',
+                                u'Service: $SERVICEDESC$',
+                                u'Host   : $HOSTALIAS$',
+                                u'Address: $HOSTADDRESS$',
+                                u'State  : $SERVICESTATE$',
+                                u'',
+                                u'Date/Time: $LONGDATETIME$',
+                                u'',
+                                u'Additional Info:',
+                                u'',
+                                u'$SERVICEOUTPUT$'
+                                ]
+                            )
+                        },
+                    'sms': {
+                        'host': (
+                            '', [
+                                u'$HOSTSTATE$ alert for $HOSTNAME$ ($HOSTADDRESS$)'
+                                ]
+                            ),
+                        'service': (
+                            '',
+                            [
+                                u'$NOTIFICATIONTYPE$ alert - $SERVICEDESC$ is $SERVICESTATE$ on $HOSTNAME$'
+                            ]
+                        )
+                    }
+                }
             for channel, s_dict in str_dict.iteritems():
                 for not_type, (subject, content) in s_dict.iteritems():
                     mon_notification.objects.create(
