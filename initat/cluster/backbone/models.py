@@ -460,7 +460,7 @@ class device(models.Model):
     monitor_checks = models.BooleanField(default=True, db_column="nagios_checks")
     # performance data tracking
     enable_perfdata = models.BooleanField(default=False)
-    enable_flap_detection = models.BooleanField(default=False)
+    flap_detection_enabled = models.BooleanField(default=False)
     show_in_bootcontrol = models.BooleanField()
     # not so clever here, better in extra table, FIXME
     #cpu_info = models.TextField(blank=True, null=True)
@@ -556,7 +556,7 @@ class device(models.Model):
             domain_tree_node="%d" % (self.domain_tree_node_id or 0),
             uptime="%d" % (self.uptime or 0),
             categories="::".join(["%d" % (cur_cat.pk) for cur_cat in self.categories.all()]),
-            enable_flap_detection="1" if self.enable_flap_detection else "0",
+            flap_detection_enabled="1" if self.flap_detection_enabled else "0",
         )
         if kwargs.get("full_name", False):
             r_xml.attrib["full_name"] = self.full_name
@@ -2807,10 +2807,10 @@ class mon_service_templ(models.Model):
     low_flap_threshold = models.IntegerField(default=0)
     high_flap_threshold = models.IntegerField(default=0)
     flap_detection_enabled = models.BooleanField(default=False)
-    flap_detect_up = models.BooleanField(default=True)
-    flap_detect_down = models.BooleanField(default=False)
+    flap_detect_ok = models.BooleanField(default=True)
     flap_detect_warn = models.BooleanField(default=False)
-    flap_detect_unreachable = models.BooleanField(default=False)
+    flap_detect_critical = models.BooleanField(default=False)
+    flap_detect_unknown = models.BooleanField(default=False)
     date = models.DateTimeField(auto_now_add=True)
     def get_xml(self):
         return E.mon_service_templ(
@@ -2832,10 +2832,10 @@ class mon_service_templ(models.Model):
             low_flap_threshold="%d" % (self.low_flap_threshold),
             high_flap_threshold="%d" % (self.high_flap_threshold),
             flap_detection_enabled="%d" % (1 if self.flap_detection_enabled else 0),
-            flap_detect_up="%d" % (1 if self.flap_detect_up else 0),
-            flap_detect_down="%d" % (1 if self.flap_detect_down else 0),
+            flap_detect_ok="%d" % (1 if self.flap_detect_ok else 0),
             flap_detect_warn="%d" % (1 if self.flap_detect_warn else 0),
-            flap_detect_unreachable="%d" % (1 if self.flap_detect_unreachable else 0),
+            flap_detect_critical="%d" % (1 if self.flap_detect_critical else 0),
+            flap_detect_unknown="%d" % (1 if self.flap_detect_unknown else 0),
         )
     def __unicode__(self):
         return self.name
