@@ -97,7 +97,6 @@ class twisted_process(threading_tools.process_obj):
                     process_tools.get_except_info()),
                 logging_tools.LOG_LEVEL_ERROR)
             bind_errors += 1
-        self.register_func("ping", self._ping)
         if bind_errors:
             self.send_pool_message("startup_error", bind_errors)
     def log_recv(self, raw_data):
@@ -543,7 +542,6 @@ class main_process(threading_tools.process_pool):
         self.register_poller(client, zmq.POLLIN, self._recv_data)
         self.std_client = client
     def _heartbeat(self):
-        #self.send_to_process("twisted", "ping", 0)
         if self.__msi_block:
             self.__msi_block.heartbeat()
     def _update(self):
