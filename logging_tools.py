@@ -371,7 +371,10 @@ class zmq_handler(logging.Handler):
         if ei:
             dummy = self.format(record) # just to get traceback text into record.exc_text
             record.exc_info = None  # to avoid Unpickleable error
-        p_str = cPickle.dumps(record.__dict__, 1)
+        _d = dict(record.__dict__)
+        _d["msg"]  = record.getMessage()
+        _d["args"] = None
+        p_str = cPickle.dumps(_d, 1)
         if ei:
             record.exc_info = ei  # for next handler
         return p_str
