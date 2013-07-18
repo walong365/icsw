@@ -861,8 +861,9 @@ class data_store(object):
         c_keys = old_keys ^ new_keys
         if c_keys:
             self.log("pde: %d keys total, %d keys changed" % (len(new_keys), len(c_keys)))
-        else:
-            self.log("pde: %d keys total" % (len(new_keys)))
+        #else:
+        #    too verbose
+        #    self.log("pde: %d keys total" % (len(new_keys)))
         self.store_info()
     def _update_pd_entry(self, entry, src_entry, rrd_dir):
         entry.attrib["last_update"] = "%d" % (time.time())
@@ -1209,7 +1210,7 @@ class server_process(threading_tools.process_pool):
                 self.com_socket.send_unicode("internal error")
             else:
                 cur_com = srv_com["command"].text
-                if self.__verbose or cur_com not in ["ocsp-event", "ochp-event"]:
+                if self.__verbose or cur_com not in ["ocsp-event", "ochp-event" "vector", "perfdata_info"]:
                     self.log("got command '%s' from '%s'" % (
                         cur_com,
                         srv_com["source"].attrib["host"]))
