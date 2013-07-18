@@ -286,23 +286,26 @@ class main_config(object):
                 time.sleep(0.2)
                 self.__build_process.send_command(self.monitor_server.uuid, unicode(srv_com))
                 # send content of /etc
-                for cur_file in os.listdir(self.__w_dir_dict["etc"]):
-                    full_r_path = os.path.join(self.__w_dir_dict["etc"], cur_file)
-                    full_w_path = os.path.join(self.__r_dir_dict["etc"], cur_file)
-                    if os.path.isfile(full_r_path):
-                        self.__tcv_dict[full_w_path] = send_version
-                        srv_com = server_command.srv_command(
-                            command="file_content",
-                            host="DIRECT",
-                            slave_name=self.__slave_name,
-                            port="0",
-                            uid="%d" % (os.stat(full_r_path)[stat.ST_UID]),
-                            gid="%d" % (os.stat(full_r_path)[stat.ST_GID]),
-                            version="%d" % (send_version),
-                            file_name="%s" % (full_w_path),
-                            content=base64.b64encode(file(full_r_path, "r").read())
-                        )
-                        self.__build_process.send_command(self.monitor_server.uuid, unicode(srv_com))
+                dir_offset = len(self.__w_dir_dict["etc"])
+                for cur_dir, dir_names, file_names in os.walk(self.__w_dir_dict["etc"]):
+                    rel_dir = cur_dir[dir_offset + 1:]
+                    for cur_file in file_names:
+                        full_r_path = os.path.join(self.__w_dir_dict["etc"], rel_dir, cur_file)
+                        full_w_path = os.path.join(self.__r_dir_dict["etc"], rel_dir, cur_file)
+                        if os.path.isfile(full_r_path):
+                            self.__tcv_dict[full_w_path] = send_version
+                            srv_com = server_command.srv_command(
+                                command="file_content",
+                                host="DIRECT",
+                                slave_name=self.__slave_name,
+                                port="0",
+                                uid="%d" % (os.stat(full_r_path)[stat.ST_UID]),
+                                gid="%d" % (os.stat(full_r_path)[stat.ST_GID]),
+                                version="%d" % (send_version),
+                                file_name="%s" % (full_w_path),
+                                content=base64.b64encode(file(full_r_path, "r").read())
+                            )
+                            self.__build_process.send_command(self.monitor_server.uuid, unicode(srv_com))
                 srv_com = server_command.srv_command(
                     command="call_command",
                     host="DIRECT",
@@ -707,10 +710,10 @@ class main_config(object):
             ("check_service_freshness"          , 0),
             ("freshness_check_interval"         , 15),
             ("enable_flap_detection"            , 1 if global_config["ENABLE_FLAP_DETECTION"] else 0),
-            ("low_service_flap_treshold"        , 25),
-            ("high_service_flap_treshold"       , 50),
-            ("low_host_flap_treshold"           , 25),
-            ("high_host_flap_treshold"          , 50),
+            ("low_service_flap_threshold"       , 25),
+            ("high_service_flap_threshold"      , 50),
+            ("low_host_flap_threshold"          , 25),
+            ("high_host_flap_threshold"         , 50),
             ("date_format"                      , "euro"),
             ("illegal_object_name_chars"        , r"~!$%^&*|'\"<>?),()"),
             ("illegal_macro_output_chars"       , r"~$&|'\"<>"),
