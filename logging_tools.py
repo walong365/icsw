@@ -266,7 +266,11 @@ def get_logger(name, destination, **kwargs):
             act_dest = act_dest[1]
             act_logger.handler_strings.append((cur_pid, act_dest))
             if kwargs.get("zmq", False):
-                cur_context = kwargs["context"]
+                if "context" not in kwargs:
+                    cur_context = zmq.Context()
+                else:
+                    cur_context = kwargs["context"]
+                    
                 pub = cur_context.socket(zmq.PUSH)
                 pub.setsockopt(zmq.LINGER, 0)
                 pub.connect(rewrite_log_destination(act_dest if act_dest.endswith("_zmq") else "%s_zmq" % (act_dest)))
