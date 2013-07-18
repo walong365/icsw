@@ -33,8 +33,8 @@ os.environ.setdefault("DJANGO_SETTINGS_MODULE", "initat.cluster.settings")
 
 import time
 import threading
-import re
 import zmq
+import re
 # transition fix
 import configfile
 import cluster_location
