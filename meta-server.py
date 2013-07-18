@@ -22,19 +22,18 @@
 #
 """ meta-server """
 
-import zmq
-import sys
-import os
-import os.path
-import socket
-import time
-import logging_tools
-import process_tools
-import mail_tools
-import threading_tools
 import configfile
+import logging_tools
+import mail_tools
+import os
+import process_tools
+import threading_tools
+import time
 import server_command
+import socket
 import stat
+import sys
+import zmq
 
 try:
     from meta_server_version import VERSION_STRING
