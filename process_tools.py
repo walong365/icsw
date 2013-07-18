@@ -20,45 +20,41 @@
 #
 """ various tools to handle processes and stuff """
 
-import sys
+import atexit
+import commands
+import codecs
+import cPickle
+import inspect
+import locale
+import logging_tools
+import marshal
 import os
-import os.path
-import datetime
+import platform
+import pprint
+import random
+import re
+import signal
+import socket
+import stat
+import sys
+import threading
+import time
+import traceback
+
 if sys.platform in ["linux2", "linux3"]:
     import pwd
     import grp
     import cpu_database
     # helper function for proepilogue
     from io_stream_helper import io_stream
-    # for meta_server_info
-    try:
-        from lxml import etree
-        from lxml.builder import E
-    except ImportError:
-        etree, E = (None, None)
-import signal
-import time
-import stat
-import socket
-import commands
-import re
-import logging_tools
-import cPickle
-import marshal
-import threading
-import locale
-import traceback
-import pprint
-import random
-import inspect
-import atexit
-import codecs
-import platform
+    from lxml import etree
+    from lxml.builder import E
 
 try:
     ENCODING = locale.getpreferredencoding()
 except locale.Error:
     ENCODING = "C"
+    
 try:
     import affinity_tools
 except:
@@ -183,14 +179,18 @@ def bind_zmq_socket(zmq_socket, name):
             try:
                 os.unlink(s_name)
             except:
-                logging_tools.my_syslog("error removing zmq_socket '%s': %s" % (s_name,
-                                                                                get_except_info()),
-                                        logging_tools.LOG_LEVEL_ERROR)
+                logging_tools.my_syslog(
+                    "error removing zmq_socket '%s': %s" % (
+                        s_name,
+                        get_except_info()),
+                    logging_tools.LOG_LEVEL_ERROR)
     try:
         zmq_socket.bind(name)
     except:
-        logging_tools.my_syslog("error binding to zmq_socket '%s': %s" % (name,
-                                                                          get_except_info()))
+        logging_tools.my_syslog(
+            "error binding to zmq_socket '%s': %s" % (
+                name,
+                get_except_info()))
         raise
     else:
         logging_tools.my_syslog("zmq_socket bound to %s" % (name))
@@ -202,11 +202,17 @@ def submit_at_command(com, diff_time=0):
         pre_time_str = ""
     diff_time_str = diff_time and "+%d minutes" % (diff_time) or ""
     time_str = "%s%s" % (pre_time_str, diff_time_str)
-    cstat, cout = commands.getstatusoutput("echo %s | /usr/bin/at %s" % (com,
-                                                                         time_str))
-    log_f = ["Starting command '%s' at time '%s' resulted in stat %d" % (com,
-                                                                         time_str,
-                                                                         cstat)]
+    cstat, cout = commands.getstatusoutput(
+        "echo %s | /usr/bin/at %s" % (
+            com,
+            time_str))
+    log_f = [
+        "Starting command '%s' at time '%s' resulted in stat %d" % (
+            com,
+            time_str,
+            cstat
+        )
+    ]
     for out_l in cout.split("\n"):
         log_f.append(" - %s" % (out_l))
     return cstat, log_f
@@ -517,10 +523,12 @@ class meta_server_info(object):
                 prop_val = getattr(self, opt)
                 if prop_val is not None:
                     xml_struct.find("properties").append(
-                        E.prop(str(prop_val), **{"key"  : opt,
-                                                 "type" : {"s" : "string",
-                                                           "i" : "integer",
-                                                           "b" : "boolean"}[val_type]}))
+                        E.prop(str(prop_val), **{
+                            "key"  : opt,
+                            "type" : {
+                                "s" : "string",
+                                "i" : "integer",
+                                "b" : "boolean"}[val_type]}))
             file_content = etree.tostring(xml_struct, pretty_print=True, encoding=unicode)
         else:
             file_content = ["NAME = %s" % (self.__name),
@@ -1022,15 +1030,16 @@ def change_user_group(user, group, groups=[], **kwargs):
     if add_groups:
         logging_tools.my_syslog("Trying to set additional groups to %s (%s)" % (", ".join(add_group_names), ", ".join(["%d" % (x) for x in add_groups])))
         os.setgroups(add_groups)
-    logging_tools.my_syslog("Trying to drop pid %d from [%s (%d), %s (%d)] to [%s (%d), %s (%d)] ..." % (os.getpid(),
-                                                                                                         act_uid_name,
-                                                                                                         act_uid,
-                                                                                                         act_gid_name,
-                                                                                                         act_gid,
-                                                                                                         new_uid_name,
-                                                                                                         new_uid,
-                                                                                                         new_gid_name,
-                                                                                                         new_gid))
+    logging_tools.my_syslog("Trying to drop pid %d from [%s (%d), %s (%d)] to [%s (%d), %s (%d)] ..." % (
+        os.getpid(),
+        act_uid_name,
+        act_uid,
+        act_gid_name,
+        act_gid,
+        new_uid_name,
+        new_uid,
+        new_gid_name,
+        new_gid))
     try:
         if "global_config" in kwargs:
             kwargs["global_config"].set_uid_gid(new_uid, new_gid)
@@ -1140,11 +1149,15 @@ def get_process_id_list(with_threadcount=True, with_dotprocs=False):
     for i in range(max_try_count):
         try:
             if with_dotprocs:
-                pid_list, dotpid_list = ([int(x) for x in os.listdir("/proc") if x.isdigit()],
-                                         [int(x[1:]) for x in os.listdir("/proc") if x.startswith(".") and x[1:].isdigit()])
+                pid_list, dotpid_list = (
+                    [int(x) for x in os.listdir("/proc") if x.isdigit()],
+                    [int(x[1:]) for x in os.listdir("/proc") if x.startswith(".") and x[1:].isdigit()]
+                )
             else:
-                pid_list, dotpid_list = ([int(x) for x in os.listdir("/proc") if x.isdigit()],
-                                         [])
+                pid_list, dotpid_list = (
+                    [int(x) for x in os.listdir("/proc") if x.isdigit()],
+                    []
+                )
         except:
             pid_list, dotpid_list = ([], [])
         else:
@@ -1299,11 +1312,12 @@ def kill_running_processes(p_name=None, **kwargs):
     if kill_dict:
         for pid, name in kill_dict.iteritems():
             if name not in kwargs.get("ignore_names", []):
-                log_str = "%s (%d): Trying to kill pid %d (%s) with signal %d ..." % (p_name,
-                                                                                      my_pid,
-                                                                                      pid,
-                                                                                      name,
-                                                                                      kill_sig)
+                log_str = "%s (%d): Trying to kill pid %d (%s) with signal %d ..." % (
+                    p_name,
+                    my_pid,
+                    pid,
+                    name,
+                    kill_sig)
                 try:
                     os.kill(pid, kill_sig)
                 except:
@@ -1375,10 +1389,11 @@ def fix_directories(user, group, f_list):
             try:
                 os.path.walk(dir_name, fd_change, (named_uid, named_gid))
             except:
-                logging_tools.my_syslog("Something went wrong while walking() '%s' (uid %d, gid %d): %s" % (dir_name,
-                                                                                                            named_uid,
-                                                                                                            named_gid,
-                                                                                                            get_except_info()))
+                logging_tools.my_syslog("Something went wrong while walking() '%s' (uid %d, gid %d): %s" % (
+                    dir_name,
+                    named_uid,
+                    named_gid,
+                    get_except_info()))
     
 def fix_files(user, group, f_dict):
     try:
@@ -1712,4 +1727,3 @@ def get_sys_bits():
 if __name__ == "__main__":
     print "Loadable module, exiting..."
     sys.exit(0)
-    

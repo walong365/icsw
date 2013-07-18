@@ -22,26 +22,25 @@
 #
 """ logging tools """
 
-import sys
-import time
-import os
-import os.path
-import gzip
-import stat
-import traceback
-import inspect
 try:
     import bz2
 except:
     bz2 = None
-import re
+import cPickle
 import datetime
+import gzip
+import inspect
 import logging
 import logging.handlers
-import cPickle
+import os
 import pprint
+import re
+import stat
 import socket
+import sys
 import threading
+import time
+import traceback
 if sys.platform in ["linux2", "linux3"]:
     import syslog
 try:
@@ -1337,7 +1336,6 @@ class syslog_ng_filter(syslog_helper_obj):
     def __repr__(self):
         return "%s %s" % ("filter", " ".join(self.__filter_list))
     def get_conf_str(self):
-        #print "XXX", self.__filter_list
         return " ".join(self.__filter_list)
 
 class syslog_ng_log(syslog_helper_obj):
