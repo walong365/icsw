@@ -262,7 +262,7 @@ class net_receiver(multiprocessing.Process):
             self.__perfdatas[pd_tuple] = 1
         self.__perfdatas[pd_tuple] -= 1
         if not self.__perfdatas[pd_tuple]:
-            self.__perfdatas[pd_tuple] = 1#0
+            self.__perfdatas[pd_tuple] = 10
             pd_obj = globals()["%s_pdata" % (mach_values[0])]()
             new_com = server_command.srv_command(command="perfdata_info")
             new_com["hostname"] = mach_values[1]
