@@ -3754,7 +3754,7 @@ def main():
         ("NETSPEED_WARN_MULT"          , configfile.float_c_var(0.85)),
         ("NETSPEED_CRITICAL_MULT"      , configfile.float_c_var(0.95)),
         ("NETSPEED_DEFAULT_VALUE"      , configfile.int_c_var(10000000)),
-        ("CHECK_HOST_ALIVE_PINGS"      , configfile.int_c_var(3)),
+        ("CHECK_HOST_ALIVE_PINGS"      , configfile.int_c_var(5)),
         ("CHECK_HOST_ALIVE_TIMEOUT"    , configfile.float_c_var(5.0)),
         ("ENABLE_PNP"                  , configfile.bool_c_var(False)),
         ("ENABLE_COLLECTD"             , configfile.bool_c_var(False)),
