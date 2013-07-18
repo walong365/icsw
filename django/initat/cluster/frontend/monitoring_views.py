@@ -3,12 +3,14 @@
 
 """ config views """
 
+import base64
 import logging_tools
 import process_tools
 import pprint
 import server_command
 import net_tools
 import logging
+import urllib2
 from lxml import etree, objectify
 from lxml.builder import E
 
@@ -165,7 +167,14 @@ class rebuild_config(View):
 class call_icinga(View):
     @method_decorator(login_required)
     def get(self, request):
-        return HttpResponseRedirect("http://%s/icinga" % (request.META["HTTP_HOST"]))
+        resp = HttpResponseRedirect(
+            "http://%s:%s@%s/icinga/" % (
+                request.user.login,
+                base64.b64decode(request.session["password"]),
+                request.META["HTTP_HOST"]
+            )
+        )
+        return resp
 
 class fetch_partition(View):
     @method_decorator(login_required)

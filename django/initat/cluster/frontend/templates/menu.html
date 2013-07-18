@@ -67,7 +67,7 @@
             {% endif %}
             <li><a href="{% url 'mon:device_config' %}">{% trans "Device settings" %}</a></li>
             <li><a href="{% url 'mon:call_icinga' %}">{% trans "Icinga (replace)" %}</a></li>
-            <li><a href="/icinga/" target="_blank">{% trans "Icinga (new tab)" %}</a></li>
+            <li><a href="{% url 'mon:call_icinga' %}" target="_blank">{% trans "Icinga (new tab)" %}</a></li>
             {% if settings.CLUSTER_LICENSE.ganglia %}
                 <li><a href="/ganglia-web">{% trans "Ganglia" %}</a></li>
             {% endif %}

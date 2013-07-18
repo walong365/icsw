@@ -2,6 +2,7 @@
 
 """ basic session views """
 
+import base64
 import sys
 import os
 import logging
@@ -59,6 +60,7 @@ class sess_login(View):
         if login_form.is_valid():
             db_user = login_form.get_user()
             login(request, db_user)
+            request.session["password"] = base64.b64encode(login_form.cleaned_data.get("password"))
             request.session["user_vars"] = dict([(user_var.name, user_var) for user_var in db_user.user_variable_set.all()])
             update_session_object(request)
             return HttpResponseRedirect(reverse("main:index"))
