@@ -1320,6 +1320,15 @@ class relay_process(threading_tools.process_pool):
             ret_com["result"] = None
             if self._check_version(t_file, new_vers):
                 content = base64.b64decode(srv_com["content"].text)
+                t_dir = os.path.dirname(t_file)
+                if not os.path.exists(t_dir):
+                    try:
+                        os.makedirs(t_dir)
+                    except:
+                        self.log("error creating directory %s: %s" % (t_dir, process_tools.get_except_info()),
+                                 logging_tools.LOG_LEVEL_ERROR)
+                    else:
+                        self.log("created directory %s" % (t_dir))
                 try:
                     file(t_file, "w").write(content)
                     os.chown(t_file, int(srv_com["uid"].text), int(srv_com["gid"].text))
