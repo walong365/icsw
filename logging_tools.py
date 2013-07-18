@@ -41,8 +41,10 @@ import sys
 import threading
 import time
 import traceback
+
 if sys.platform in ["linux2", "linux3"]:
     import syslog
+
 try:
     import zmq
 except ImportError:
