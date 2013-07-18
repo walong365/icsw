@@ -315,6 +315,7 @@ def get_logger(name, destination, **kwargs):
         act_adapter = act_logger
     return act_adapter
 
+
 try:
     class log_adapter(logging.LoggerAdapter):
         """ small adapater which adds host information to logRecords """
