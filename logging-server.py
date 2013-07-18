@@ -22,51 +22,27 @@
 #
 """ logging server, central logging facility """
 
-from twisted.internet import reactor
-from twisted.internet.protocol import Protocol, DatagramProtocol
-from twisted.python import log
-import zmq
-# twisted integration
+import configfile
+import cPickle
+import grp
 import io_stream_helper
+import logging
 import logging_server_version
 import logging_tools
+import mail_tools
+import os
+import pprint
+import process_tools
+import pwd
+import socket
+import sys
 import threading_tools
 import time
-import os
-import sys
-import process_tools
-import cPickle
-import pprint
-import logging
-import socket
-import configfile
-import mail_tools
-import pwd
-import grp
+import zmq
+from twisted.internet import reactor
+from twisted.internet.protocol import DatagramProtocol
 
 SEP_STR = "-" * 50
-
-class udp_log_receiver(Protocol):
-    #def __init__(self, log_recv):
-        #Protocol.__init__(self)
-        #self.__log_recv = log_recv
-    def dataReceived(self, data):
-        #print data
-        self.log_recv.datagramReceived(data, None)
-        self.transport.write("ok")
-    def doStop(self):
-        pass
-
-class tcp_log_receiver(Protocol):
-    #def __init__(self, log_recv):
-        #Protocol.__init__(self)
-        #self.__log_recv = log_recv
-    def dataReceived(self, data):
-        #print data
-        #self.log_recv.datagramReceived(data, None)
-        self.transport.write("ok")
-    def connectionLost(self, reason):
-        print "gone", reason
 
 class twisted_log_receiver(DatagramProtocol):
     def __init__(self, t_process):
@@ -94,32 +70,36 @@ class twisted_process(threading_tools.process_obj):
                 try:
                     os.unlink(h_name)
                 except:
-                    self.log("error removing (stale) UDS-handle %s: %s" % (h_name,
-                                                                           process_tools.get_except_info()),
-                             logging_tools.LOG_LEVEL_ERROR)
+                    self.log(
+                        "error removing (stale) UDS-handle %s: %s" % (
+                            h_name,
+                            process_tools.get_except_info()),
+                        logging_tools.LOG_LEVEL_ERROR)
                 else:
                     self.log("remove stale UDS-handle %s" % (h_name))
             try:
                 reactor.listenUNIXDatagram(h_name, log_recv)
             except:
-                self.log("cannot listen to UDS %s: %s" % (h_name,
-                                                          process_tools.get_except_info()),
-                          logging_tools.LOG_LEVEL_ERROR)
+                self.log(
+                    "cannot listen to UDS %s: %s" % (
+                        h_name,
+                        process_tools.get_except_info()),
+                    logging_tools.LOG_LEVEL_ERROR)
                 bind_errors += 1
             else:
                 self.log("listening on UDS %s" % (h_name))
         try:
             reactor.listenUDP(global_config["LISTEN_PORT"], log_recv)
         except:
-            self.log("cannot listen to UDP port %d: %s" % (global_config["LISTEN_PORT"],
-                                                           process_tools.get_except_info()),
-                      logging_tools.LOG_LEVEL_ERROR)
+            self.log(
+                "cannot listen to UDP port %d: %s" % (
+                    global_config["LISTEN_PORT"],
+                    process_tools.get_except_info()),
+                logging_tools.LOG_LEVEL_ERROR)
             bind_errors += 1
         self.register_func("ping", self._ping)
         if bind_errors:
             self.send_pool_message("startup_error", bind_errors)
-    def _ping(self, cur_idx, *args, **kwargs):
-        self.send_pool_message("pong", cur_idx)
     def log_recv(self, raw_data):
         self.send_to_socket(self.__log_socket, ["log_recv", raw_data])
     def loop_post(self):
@@ -136,7 +116,6 @@ class log_receiver(threading_tools.process_obj):
         self.register_func("log_recv", self._log_recv)
         self.register_func("log", self.log)
         self.register_func("update", self._update)
-        self.register_func("ping", self._ping)
         os.umask(2)
         self.__num_write, self.__num_close, self.__num_open = (0, 0, 0)
         self.log("logging_process %s is now awake (pid %d)" % (self.name, self.pid))
@@ -158,8 +137,10 @@ class log_receiver(threading_tools.process_obj):
             if dst != "log":
                 for cur_handle in cur_dst.handlers:
                     if not os.path.exists(cur_handle.baseFilename):
-                        self.log("reopening file %s for %s" % (cur_handle.baseFilename,
-                                                               dst))
+                        self.log(
+                            "reopening file %s for %s" % (
+                                cur_handle.baseFilename,
+                                dst))
                         cur_handle.stream = cur_handle._open()
             #print dir(cur_dst)
             if "src_thread" in kwargs or "src_process" in kwargs:
@@ -175,8 +156,6 @@ class log_receiver(threading_tools.process_obj):
                 cur_dst.log(level, what)#, extra={"threadName" : kwargs.get("src_thread", "bla")})
         else:
             self.__log_cache.append((dst, what, level))
-    def _ping(self, cur_idx, *args, **kwargs):
-        self.send_pool_message("pong", cur_idx)
     def _flush_log_cache(self):
         for dst, what, level in self.__log_cache:
             self.log(what, level, dst=dst)
@@ -243,10 +222,11 @@ class log_receiver(threading_tools.process_obj):
             self.log("Sent %s in %.2f seconds" % (logging_tools.get_plural("mail", mails_sent),
                                                   e_time - s_time))
     def _send_mail(self, subject, msg_body):
-        new_mail = mail_tools.mail(subject,
-                                   "%s@%s" % (global_config["FROM_NAME"], global_config["FROM_ADDR"]),
-                                   global_config["TO_ADDR"],
-                                   msg_body)
+        new_mail = mail_tools.mail(
+            subject,
+            "%s@%s" % (global_config["FROM_NAME"], global_config["FROM_ADDR"]),
+            global_config["TO_ADDR"],
+            msg_body)
         new_mail.set_server(global_config["MAILSERVER"],
                             global_config["MAILSERVER"])
         try:
@@ -322,9 +302,10 @@ class log_receiver(threading_tools.process_obj):
             # special type for direct handles (log, log_py, err_py)
             sub_dirs = []
             record_host = "localhost"
-            record_name, record_process, record_parent_process = ("init.at.%s" % (record),
-                                                                  os.getpid(),
-                                                                  os.getppid())
+            record_name, record_process, record_parent_process = (
+                "init.at.%s" % (record),
+                os.getpid(),
+                os.getppid())
         else:
             if not hasattr(record, "host"):
                 # no host set: use local machine name
@@ -422,9 +403,11 @@ class log_receiver(threading_tools.process_obj):
         try:
             log_com, in_str, python_log_com = self.decode_in_str(in_str)
         except:
-            self.log("error reconstructing log-command (len of in_str: %d): %s" % (len(in_str),
-                                                                                   process_tools.get_except_info()),
-                     logging_tools.LOG_LEVEL_ERROR)
+            self.log(
+                "error reconstructing log-command (len of in_str: %d): %s" % (
+                    len(in_str),
+                    process_tools.get_except_info()),
+                logging_tools.LOG_LEVEL_ERROR)
         else:
             if log_com:
                 if not python_log_com:
@@ -479,9 +462,11 @@ class log_receiver(threading_tools.process_obj):
                     try:
                         handle.handle(log_com)
                     except:
-                        self.log("error handling log_com '%s': %s" % (str(log_com),
-                                                                      process_tools.get_except_info()),
-                                 logging_tools.LOG_LEVEL_ERROR)
+                        self.log(
+                            "error handling log_com '%s': %s" % (
+                                str(log_com),
+                                process_tools.get_except_info()),
+                            logging_tools.LOG_LEVEL_ERROR)
                 del log_com
             elif in_str:
                 self.log("error reconstructing log-command (len of in_str: %d): no log_com (possibly very long log_str)" % (len(in_str)),
@@ -505,7 +490,6 @@ class main_process(threading_tools.process_pool):
         process_tools.delete_lockfile(global_config["LOCKFILE_NAME"])
         self.register_exception("int_error", self._int_error)
         self.register_exception("term_error", self._int_error)
-        self.register_func("pong", self._pong)
         self.register_func("startup_error", self._startup_error)
         self.renice()
         self._init_msi_block()
@@ -539,16 +523,6 @@ class main_process(threading_tools.process_pool):
         self.log("Found %d valid config-lines:" % (len(conf_info)))
         for conf in conf_info:
             self.log("Config : %s" % (conf))
-        if False:
-            # test code
-            s_time = time.time()
-            NUM_TESTS = 1000000
-            for idx in xrange(NUM_TESTS):
-                self.send_to_process("twisted", "test %d" % (idx))
-            e_time = time.time()
-            self.log("%d took %s (%.6f)" % (NUM_TESTS,
-                                            logging_tools.get_diff_time_str(e_time - s_time),
-                                            (e_time - s_time) * 1000000 / NUM_TESTS))
     def _remove_handles(self):
         any_removed = False
         for act_hname in self.__open_handles:
@@ -558,10 +532,6 @@ class main_process(threading_tools.process_pool):
                 any_removed = True
         if any_removed:
             time.sleep(0.5)
-    def _pong(self, src_name, src_pid, *args, **kwargs):
-        if args[0] % 10000 == 0:
-            self.log("index: %d" % (args[0]))
-        self.send_to_process("receiver", "ping", args[0] + 1)
     def _init_network_sockets(self):
         self.__open_handles = [io_stream_helper.zmq_socket_name(global_config[h_name]) for h_name in ["LOG_HANDLE", "ERR_HANDLE", "OUT_HANDLE"]] + \
             [global_config[h_name] for h_name in ["LOG_HANDLE", "ERR_HANDLE", "OUT_HANDLE"]]
