@@ -22,8 +22,8 @@ class var_table
         $.ajax
             url     : "{% url 'device:get_group_tree' %}"
             data    : {
-                "sel_list"       : sel_list,
-                "ignore_cdg"     : 0,
+                "sel_list"       : sel_list
+                "ignore_cdg"     : 0
                 "with_variables" : 1
             },
             success : (xml) =>

@@ -209,6 +209,10 @@ def _get_group_tree(request, sel_list, **kwargs):
                 if permission_tree:
                     any_sel = True
         if any_sel:
+            # add when any device is selected
+            devg_resp.append(cur_xml)
+        elif not ignore_cdg and int(cur_xml.attrib.get("is_cdg")):
+            # or add the CDG when the CDG should not be ignored
             devg_resp.append(cur_xml)
     return E.repsonse(devg_resp)
 
