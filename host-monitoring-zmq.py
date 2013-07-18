@@ -682,6 +682,7 @@ class hm_icmp_protocol(icmp_twisted.icmp_protocol):
         icmp_twisted.icmp_protocol.__init__(self)
         self.__work_dict, self.__seqno_dict = ({}, {})
         self.__twisted_process = tw_process
+        self.__debug = global_config["DEBUG"]
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
         self.__log_template.log(log_level, "[icmp] %s" % (what))
     def __setitem__(self, key, value):
@@ -694,7 +695,8 @@ class hm_icmp_protocol(icmp_twisted.icmp_protocol):
                 del self.__seqno_dict[seq_key]
         del self.__work_dict[key]
     def ping(self, seq_str, target, num_pings, timeout):
-        self.log("ping to %s (%d, %.2f) [%s]" % (target, num_pings, timeout, seq_str))
+        if self.__debug:
+            self.log("ping to %s (%d, %.2f) [%s]" % (target, num_pings, timeout, seq_str))
         cur_time = time.time()
         self[seq_str] = {"host"       : target,
                          "num"        : num_pings,
@@ -1586,6 +1588,7 @@ class server_process(threading_tools.process_pool):
         self.register_exception("term_error", self._sigint)
         self.register_func("twisted_ping_result", self._twisted_ping_result)
         self._show_config()
+        self.__debug = global_config["DEBUG"]
         if not self._init_commands():
             self._sigint("error init")
     def log(self, what, lev=logging_tools.LOG_LEVEL_OK):
@@ -1935,7 +1938,8 @@ class server_process(threading_tools.process_pool):
             log_level = logging_tools.LOG_LEVEL_WARN
         else:
             log_level = logging_tools.LOG_LEVEL_OK
-        self.log(info_str, log_level)
+        if self.__debug:
+            self.log(info_str, log_level)
         srv_com.update_source()
         zmq_sock.send_unicode(src_id, zmq.SNDMORE)
         zmq_sock.send_unicode(unicode(srv_com))
