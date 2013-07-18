@@ -27,31 +27,32 @@ from icmp_twisted import install
 
 reactor = install()
 
-from twisted.python import log
-import zmq
-import sys
-import os
-import os.path
-import socket
-import time
-import logging_tools
-import process_tools
-import threading_tools
-import configfile
-import server_command
-import net_tools
-from initat.host_monitoring import limits, hm_classes
 import argparse
+import base64
+import configfile
+import difflib
 import icmp_twisted
+import logging_tools
+import net_tools
+import netifaces
+import os
 import pprint
+import process_tools
+import server_command
+import socket
+import sys
+import threading_tools
+import time
 import uuid
 import uuid_tools
-import base64
-import difflib
+import zmq
+
 from lxml import etree
 from lxml.builder import E
-import netifaces
 from twisted.internet.protocol import ClientFactory, Protocol
+from twisted.python import log
+
+from initat.host_monitoring import limits, hm_classes
 
 try:
     from host_monitoring_version import VERSION_STRING
