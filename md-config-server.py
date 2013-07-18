@@ -28,28 +28,27 @@ os.environ.setdefault("DJANGO_SETTINGS_MODULE", "initat.cluster.settings")
 
 import base64
 import binascii
-import configfile
-import os.path
-import time
-import signal
-import commands
-import pprint
-import logging_tools
-import process_tools
 import cluster_location
-import server_command
-import threading_tools
-import config_tools
 import codecs
-import sqlite3
-import shutil
-import uuid_tools
-import stat
+import commands
+import config_tools
+import configfile
 import ConfigParser
-import re
 import hashlib
+import logging_tools
 import networkx
 import operator
+import pprint
+import process_tools
+import re
+import server_command
+import shutil
+import signal
+import sqlite3
+import stat
+import threading_tools
+import time
+import uuid_tools
 import zmq
 from lxml import etree
 from lxml.builder import E
@@ -62,6 +61,7 @@ try:
 except ImportError:
     VERSION_STRING = "?.?"
 
+from django.conf import settings
 from django.db.models import Q
 from django.db import connection, connections
 from initat.cluster.backbone.models import device, device_group, device_variable, mon_device_templ, \
@@ -69,7 +69,6 @@ from initat.cluster.backbone.models import device, device_group, device_variable
      mon_contactgroup, mon_service_templ, netdevice, network, network_type, net_ip, \
      user, mon_host_cluster, mon_service_cluster, config, md_check_data_store, category, \
      category_tree, TOP_MONITORING_CATEGORY, mon_notification, config_str, config_int
-from django.conf import settings
 
 try:
     import mk_livestatus
