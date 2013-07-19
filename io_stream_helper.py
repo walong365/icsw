@@ -20,16 +20,15 @@
 #
 """ sends everything to the local logging-server """
 
-import sys
-import os
 import cPickle
+import os
+import sys
 try:
     import zmq
 except:
     zmq = None
-if True:
-    from twisted.internet.protocol import ConnectedDatagramProtocol
-    from twisted.internet import reactor
+from twisted.internet.protocol import ConnectedDatagramProtocol
+from twisted.internet import reactor
 
 def zmq_socket_name(sock_name, **kwargs):
     if not sock_name.endswith("_zmq"):
@@ -65,9 +64,10 @@ class io_stream(object):
             self.__protocol = error_protocol()
             self.__zmq_sock = None
     def write(self, err_str):
-        pid, t_dict = (os.getpid(), {"IOS_type"  : "error",
-                                     "error_str" : err_str,
-                                     "pid"       : os.getpid()})
+        pid, t_dict = (os.getpid(), {
+            "IOS_type"  : "error",
+            "error_str" : err_str,
+            "pid"       : os.getpid()})
         if os.path.isdir("/proc/%d" % (pid)):
             try:
                 stat_lines = [(entry.split() + ["", ""])[0 : 2] for entry in file("/proc/%d/status" % (pid), "r").read().split("\n")]

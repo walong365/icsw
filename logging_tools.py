@@ -1049,9 +1049,10 @@ class new_logfile(logging.handlers.BaseRotatingHandler):
                 act_z = gzip.open(gz_file_name, "wb", 4)
         except:
             exc_info = sys.exc_info()
-            my_syslog("error opening %s: %s (%s)" % (gz_file_name,
-                                                     str(exc_info[0]),
-                                                     str(exc_info[1])))
+            my_syslog("error opening %s: %s (%s)" % (
+                gz_file_name,
+                str(exc_info[0]),
+                str(exc_info[1])))
         else:
             act_z.write(open(self.baseFilename, "r").read())
             act_z.close()
@@ -1063,156 +1064,6 @@ class new_logfile(logging.handlers.BaseRotatingHandler):
             self.mode = "w"
             self.stream = self._open()
         
-class logfile(object):
-    def __init__(self, name, max_size=10000000, max_repeat=100, temp_close_timeout=60):
-        # if name is None we use stdout for writing
-        self.__name = name
-        self.__max_size = max_size
-        self.__max_repeat = max_repeat
-        self.__last_line = None
-        self.__repeated = 0
-        self.__lines = 0
-        # temporarily close ?
-        self.__temporary_closed = False
-        # temp_close timeout
-        self.__temporary_close_timeout = temp_close_timeout
-        if self.__name:
-            self.__stdout = False
-            try:
-                os.makedirs(os.path.dirname(name))
-            except:
-                pass
-            self._open()
-            self.__last_postfix = ""
-            self.__act_index = 0
-        else:
-            self.__stdout = True
-            self.__handle = None
-        act_time = time.time()
-        self.__create_time, self.__last_write = (act_time,
-                                                 act_time)
-    def _open(self):
-        try:
-            if os.path.exists(self.__name):
-                self.__act_size = os.path.getsize(self.__name)
-            else:
-                self.__act_size = 0
-            self.__handle = file(self.__name, "a+")
-            try:
-                os.chmod(self.__name, 0640)
-            except:
-                pass
-        except:
-            self.__handle = None
-    def check_for_temp_close(self):
-        if abs(time.time() - self.__last_write) > self.__temporary_close_timeout and not self.__temporary_closed and self.__handle:
-            self.__temporary_closed = True
-            self.__handle.close()
-            tc = True
-        else:
-            tc = False
-        return tc
-    def write_header(self):
-        if self.__handle:
-            self.write("starting at %s" % (time.ctime(time.time())))
-        elif self.__stdout:
-            print "starting at %s" % (time.ctime(time.time()))
-    def write_footer(self):
-        if self.__handle:
-            self.write("wrote %d lines" % (self.__lines))
-        elif self.__stdout:
-            print "wrote %d lines" % (self.__lines)
-    def write(self, what, header=1, log_time=None):
-        if self.__temporary_closed:
-            self._open()
-        self.__last_write = time.time()
-        if not self.__stdout:
-            if self.__last_line and self.__last_line == what:
-                self.__repeated += 1
-                if self.__repeated >= self.__max_repeat:
-                    what_list = ["last message repeated %s" % (get_plural("time", self.__repeated))]
-                    self.__repeated = 0
-                else:
-                    what_list = []
-            else:
-                if self.__repeated:
-                    what_list = ["last message repeated %s" % (get_plural("time", self.__repeated)), what]
-                    self.__repeated = 0
-                else:
-                    what_list = [what]
-        else:
-            what_list = [what]
-        if what_list:
-            self.__last_line = what
-            for what in what_list:
-                if header:
-                    if not log_time:
-                        log_time = time.time()
-                    out_str = "%s : %s" % (time.ctime(log_time), what)
-                else:
-                    out_str = what
-                if self.__stdout:
-                    print out_str
-                else:
-                    if self.__handle:
-                        try:
-                            self.__handle.write("%s\n" % (out_str))
-                        except:
-                            my_syslog(out_str)
-                        self.__lines += 1
-                        self.__act_size += len(out_str) + 1
-                    else:
-                        my_syslog(what)
-            if self.__handle:
-                if self.__act_size > self.__max_size:
-                    act_time = time.localtime()
-                    base_postfix = "%04d%02d%02d" % (act_time[0], act_time[1], act_time[2])
-                    if self.__last_postfix == base_postfix:
-                        self.__act_index += 1
-                    else:
-                        self.__act_index = 0
-                    self.__last_postfix = base_postfix
-                    act_postfix = "%s%d" % (base_postfix, self.__act_index)
-                    if bz2:
-                        gz_postfix = "bz2"
-                    else:
-                        gz_postfix = "gz"
-                    gz_file_name = "%s-%s.%s" % (self.__name,
-                                                 act_postfix,
-                                                 gz_postfix)
-                    try:
-                        if bz2:
-                            act_z = bz2.BZ2File(gz_file_name, "w")
-                        else:
-                            act_z = gzip.open(gz_file_name, "wb", 4)
-                    except:
-                        exc_info = sys.exc_info()
-                        my_syslog("error opening %s: %s, %s" % (gz_file_name,
-                                                                str(exc_info[0]),
-                                                                str(exc_info[1])))
-                    else:
-                        self.__handle.seek(0, 0)
-                        act_z.write(self.__handle.read())
-                        act_z.close()
-                        os.chmod(gz_file_name, 0640)
-                        self.__handle.close()
-                        os.unlink(self.__name)
-                        self.__handle = file(self.__name, "a+")
-                        os.chmod(self.__name, 0640)
-                        self.__act_size = 0
-                else:
-                    try:
-                        self.__handle.flush()
-                    except:
-                        pass
-    def close(self, footer=0):
-        if footer:
-            self.write_footer()
-        if self.__handle:
-            self.__handle.close()
-    def __del__(self):
-        self.close(0)
-
 class syslog_helper_obj(object):
     def __init__(self):
         pass

@@ -59,7 +59,7 @@ try:
     import affinity_tools
 except:
     affinity_tools = None
-
+    
 # net to sys and reverse functions
 def net_to_sys(in_val):
     try:
