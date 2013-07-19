@@ -2662,7 +2662,7 @@ class build_process(threading_tools.process_obj):
                                 n_field.append(short)
                         if not n_field:
                             n_field.append("o")
-                        act_host["flap_detection_option"] = ",".join(n_field)
+                        act_host["flap_detection_options"] = ",".join(n_field)
                     if checks_are_active and not cur_gc.master:
                         # trace changes
                         act_host["obsess_over_host"] = 1
@@ -3151,8 +3151,8 @@ class build_process(threading_tools.process_obj):
             if checks_are_active and not cur_gc.master:
                 # trace
                 act_serv["obsess_over_service"] = 1
-            act_serv["flap_detection_enabled"] = 1 if serv_temp.flap_detection_enabled else 0
-            if serv_temp.flap_detection_enabled:
+            act_serv["flap_detection_enabled"] = 1 if (host.flap_detection_enabled and serv_temp.flap_detection_enabled) else 0
+            if serv_temp.flap_detection_enabled and host.flap_detection_enabled:
                 act_serv["low_flap_threshold"]  = serv_temp.low_flap_threshold
                 act_serv["high_flap_threshold"] = serv_temp.high_flap_threshold
                 n_field = []
