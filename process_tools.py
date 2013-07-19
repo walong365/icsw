@@ -89,15 +89,20 @@ def get_except_info(exc_info=None, **kwargs):
                 fr_idx += 1
         frame_info.reverse()
         try:
-            frame_info = ["line %d, %s in %s" % (frame.f_lineno,
-                                                 frame.f_code.co_name,
-                                                 frame.f_code.co_filename) for frame in frame_info]
+            frame_info = [
+                "line %d, %s in %s" % (
+                    frame.f_lineno,
+                    frame.f_code.co_name,
+                    frame.f_code.co_filename
+                    ) for frame in frame_info
+            ]
         except:
             frame_info = []
     #print frame.f_lineno, frame.f_code.co_name
-    return u"%s (%s, %s)" % (unicode(exc_info[0]),
-                             unicode(exc_info[1]),
-                             ", ".join(frame_info) if frame_info else "no frame_info")
+    return u"%s (%s, %s)" % (
+        unicode(exc_info[0]),
+        unicode(exc_info[1]),
+        ", ".join(frame_info) if frame_info else "no frame_info")
 
 class exception_info(object):
     def __init__(self, **kwargs):
@@ -285,19 +290,15 @@ def get_stat_info(pid=0):
             rest_part = s_parts.pop(-1).strip()
             com_part = (")".join(s_parts)).strip()
             stat_parts = rest_part.split()
-            stat_keys = ["state*", "ppid",
-                         "pgrp", "session",
-                         "tty_nr", "tpgid",
-                         "flags",
-                         "minflt", "cminflt",
-                         "maxflt", "cmaxflt",
-                         "utime", "stime",
-                         "cutime", "cstime",
-                         "priority", "nice",
-                         "num_threads",
-                         "itrealvalue", "starttime",
-                         "vsize", "rss", "rlim"
-                         ]
+            stat_keys = [
+                "state*", "ppid", "pgrp", "session",
+                "tty_nr", "tpgid", "flags",
+                "minflt", "cminflt", "maxflt", "cmaxflt",
+                "utime", "stime", "cutime", "cstime",
+                "priority", "nice", "num_threads",
+                "itrealvalue", "starttime",
+                "vsize", "rss", "rlim"
+            ]
             stat_dict = dict([(key.replace("*", ""), value if key.endswith("*") else int(value)) for key, value in zip(stat_keys, stat_parts)])
             stat_dict["pid"] = int(pid_part)
             stat_dict["comm"] = com_part
