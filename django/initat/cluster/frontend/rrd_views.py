@@ -3,6 +3,7 @@
 
 """ RRD views """
 
+import datetime
 import logging
 import pprint
 import server_command
@@ -18,8 +19,8 @@ from initat.cluster.frontend.helper_functions import xml_wrapper, contact_server
 logger = logging.getLogger("cluster.rrd")
 
 class device_rrds(View):
-    #@method_decorator(login_required)
-    #def get(self, request):
+    # @method_decorator(login_required)
+    # def get(self, request):
     #    return render_me(
     #        request, "rrd_class_overview.html",
     #    )()
@@ -48,6 +49,7 @@ class graph_rrds(View):
     @method_decorator(xml_wrapper)
     def post(self, request):
         _post = request.POST
+        pprint.pprint(_post)
         srv_com = server_command.srv_command(command="graph_rrd")
         pk_list, graph_keys = (_post.getlist("pks[]"), set(_post.getlist("keys[]")))
         srv_com["device_list"] = E.device_list(
@@ -56,8 +58,18 @@ class graph_rrds(View):
         srv_com["graph_key_list"] = E.graph_key_list(
             *[E.graph_key(graph_key) for graph_key in graph_keys if not graph_key.startswith("_")]
         )
+        dt_1970 = datetime.datetime(1970, 1, 1)
+        if "start_time" in _post:
+            start_time = datetime.datetime.strptime(_post["start_time"], "%Y-%m-%d %H:%M")
+            end_time = datetime.datetime.strptime(_post["end_time"], "%Y-%m-%d %H:%M")
+        else:
+            start_time = datetime.datetime.now() - datetime.timedelta(4 * 3600)
+            end_time = datetime.datetime.now()
         srv_com["parameters"] = E.parameters(
-            E.timeframe(_post.get("timeframe", "3600")),
+            E.start_time(_post.get("start_time",
+                                   start_time.strftime("%Y-%m-%d %H:%M"))),
+            E.end_time(_post.get("end_time",
+                                end_time.strftime("%Y-%m-%d %H:%M"))),
             E.size(_post.get("size", "400x200"))
         )
         result = contact_server(request, "tcp://localhost:8003", srv_com, timeout=30)

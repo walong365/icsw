@@ -74,7 +74,7 @@ class show_configs(View):
                     category_tree().get_xml(),
                 ]
             )
-        #print etree.tostring(xml_resp, pretty_print=True)
+        # print etree.tostring(xml_resp, pretty_print=True)
         request.xml_response["response"] = xml_resp
 
 class create_config(View):
@@ -118,7 +118,7 @@ def delete_object(request, del_obj, **kwargs):
             request.xml_response.info("deleted %s" % (del_obj._meta.object_name), logger)
         else:
             logger.info("deleted %s" % (del_obj._meta.object_name))
-    
+
 class create_var(View):
     @method_decorator(login_required)
     @method_decorator(xml_wrapper)
@@ -196,7 +196,7 @@ class get_device_configs(View):
         request.xml_response["response"] = _get_device_configs(request.POST.getlist("sel_list[]", []))
 
 def _get_device_configs(sel_list, **kwargs):
-    dev_list  = [key.split("__")[1] for key in sel_list if key.startswith("dev__")]
+    dev_list = [key.split("__")[1] for key in sel_list if key.startswith("dev__")]
     devg_list = [key.split("__")[1] for key in sel_list if key.startswith("devg__")]
     all_devs = device.objects.exclude(Q(device_type__identifier="MD")).filter(Q(pk__in=dev_list) | Q(device_group__in=devg_list))
     # all meta devices
@@ -222,7 +222,7 @@ def _get_device_configs(sel_list, **kwargs):
                 config="%d" % (conf_id),
                 meta="1"))
     return xml_resp
-    
+
 class alter_config_cb(View):
     @method_decorator(login_required)
     @method_decorator(xml_wrapper)
@@ -315,7 +315,7 @@ class alter_config_cb(View):
                                 request.xml_response.warn("removed meta conf %s and set %s" % (
                                     unicode(cur_conf),
                                     logging_tools.get_plural("device", add_devs)), logger)
-                                                                                 
+
                     else:
                         request.xml_response.warn("config %s already unset" % (unicode(cur_conf)), logger)
                 else:
@@ -367,7 +367,7 @@ class tree_struct(object):
                                unicode(self.node),
                                self.depth,
                                self.get_name())
-            ] + 
+            ] +
             ["%s" % (unicode(sub_entry)) for sub_entry in self.childs])
     def get_xml(self):
         return E.tree(
@@ -379,7 +379,7 @@ class tree_struct(object):
             is_link="1" if self.node.is_link else "0",
             node_id="%d_%d" % (self.dev_pk, self.node.pk)
         )
-        
+
 class generate_config(View):
     @method_decorator(login_required)
     @method_decorator(xml_wrapper)
@@ -402,7 +402,7 @@ class generate_config(View):
             for dev_node in result.xpath(None, ".//ns:device"):
                 res_node = E.device(dev_node.text, **dev_node.attrib)
                 if int(dev_node.attrib["state_level"]) < logging_tools.LOG_LEVEL_ERROR:
-                    #if int(dev_node.attrib["state_level"]) == logging_tools.LOG_LEVEL_OK or True:
+                    # if int(dev_node.attrib["state_level"]) == logging_tools.LOG_LEVEL_OK or True:
                     cur_dev = dev_dict[int(dev_node.attrib["pk"])]
                     # build tree
                     cur_tree = tree_struct(cur_dev, tree_node.objects.filter(Q(device=cur_dev)).select_related("wc_files"))
@@ -441,7 +441,7 @@ class download_configs(View):
             "config_script_set")
         for cur_conf in conf_list:
             cur_xml = cur_conf.get_xml()
-            #cur_xml.append(cur_conf.config_type.get_xml())
+            # cur_xml.append(cur_conf.config_type.get_xml())
             configs.append(cur_xml)
         # remove all pks and keys
         for pk_el in res_xml.xpath(".//*[@pk]"):
@@ -470,14 +470,14 @@ class upload_config(View):
             logger.error("cannot interpret upload file: %s" % (process_tools.get_except_info()))
         else:
             for cur_conf in conf_xml.xpath(".//config"):
-                ## check config_type
-                #conf_type = cur_conf.find("config_type")
-                #try:
-                    #cur_ct = config_type.objects.get(Q(name=conf_type.attrib["name"]))
-                #except config_type.DoesNotExist:
-                    #cur_ct = config_type(**conf_type.attrib)
-                    #logger.info("creating new config_type '%s'" % (unicode(cur_ct)))
-                    #cur_ct.save()
+                # # check config_type
+                # conf_type = cur_conf.find("config_type")
+                # try:
+                    # cur_ct = config_type.objects.get(Q(name=conf_type.attrib["name"]))
+                # except config_type.DoesNotExist:
+                    # cur_ct = config_type(**conf_type.attrib)
+                    # logger.info("creating new config_type '%s'" % (unicode(cur_ct)))
+                    # cur_ct.save()
                 try:
                     new_conf = config.objects.get(Q(name=cur_conf.attrib["name"]))
                 except config.DoesNotExist:
@@ -505,4 +505,3 @@ class upload_config(View):
                             new_sub_obj.mon_service_templ = default_mst
                         new_sub_obj.save()
         return HttpResponseRedirect(reverse("config:show_configs"))
-    
