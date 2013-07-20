@@ -1,6 +1,6 @@
 {% extends "main.html" %}
 
-{% load i18n %}
+{% load i18n coffeescript %}
 
 {% block title %}{% trans "Indexpage" %}{% endblock %}
 
@@ -9,5 +9,23 @@
 <div id="center_content">
     <h1 class="center">Please select a device from the tree on the left side</h1>
 </div>
+
+<script type="text/javascript">
+
+{% inlinecoffeescript %}
+
+use_devs = (dev_list) ->
+    cur_di = new device_info(undefined, dev_list[0], undefined)
+    cur_di.addon_devices = (entry for entry in dev_list[1..]) 
+    cur_di.show()
+
+add_config_handlers = ->
+    install_devsel_link(use_devs, true)
+
+$(document).ready(add_config_handlers)
+
+{% endinlinecoffeescript %}
+
+</script>
 
 {% endblock %}

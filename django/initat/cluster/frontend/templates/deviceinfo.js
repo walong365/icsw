@@ -59,7 +59,7 @@ class category_tree
             @build_node(new_node, $(sub_db_node))
 
 class rrd_config
-    constructor: (@top_div, @key_tree, @graph_div, @pk_list) ->
+    constructor: (@top_div, @key_tree_div, @graph_div, @pk_list) ->
         @top_div.css("vertical-align", "middle")
         @init()
     init: () =>
@@ -134,6 +134,62 @@ class rrd_config
         )
         @rrd_from_field.datetimepicker("setDate", start_date)
         @rrd_to_field.datetimepicker("setDate", cur_date)
+        @load_rrd_tree()
+    load_rrd_tree: () =>
+        $.ajax
+            url  : "{% url 'rrd:device_rrds' %}"
+            data : {
+                "pks" : @pk_list
+            }
+            success : (xml) =>
+                if parse_xml_response(xml)
+                    @vector = $(xml).find("machine_vector")
+                    if @vector.length
+                        @key_tree_div.dynatree
+                            autoFocus : false
+                            checkbox  : true
+                            clickFolderMode : 2
+                            #onExpand : (flag, dtnode) =>
+                            #    dtnode.toggleSelect()
+                            onClick : (dtnode, event) =>
+                                if dtnode.data.key[0] != "_"
+                                    sel_list = (entry.data.key for entry in @key_tree_div.dynatree("getSelectedNodes"))
+                                    sel_list.push(dtnode.data.key)
+                                    @draw_rrd(sel_list)
+                        root_node = @key_tree_div.dynatree("getRoot")
+                        @build_rrd_node(root_node, @vector)
+                    else
+                        @key_tree_div.append($("<h2>").text("No graphs found"))
+    build_rrd_node: (dt_node, db_node) =>
+        if db_node.prop("tagName") == "machine_vector"
+            title_str = "vector"
+            key         = ""
+            expand_flag = true
+            hide_cb     = true
+            tooltip     = "Device vector"
+        else if db_node.prop("tagName") == "entry"
+            title_str   = db_node.attr("part")
+            expand_flag = false
+            key         = ""
+            hide_cb     = true
+            tooltip     = ""
+        else
+            title_str   = db_node.attr("info")
+            expand_flag = false
+            key         = db_node.attr("name")
+            hide_cb     = false
+            tooltip     = "key: " + db_node.attr("name")
+        new_node = dt_node.addChild(
+            title        : title_str
+            expand       : expand_flag
+            key          : key
+            hideCheckbox : hide_cb
+            isFolder     : hide_cb
+            tooltip      : tooltip
+            #select       : selected
+        )
+        db_node.find("> *").each (idx, sub_node) =>
+            @build_rrd_node(new_node, $(sub_node))
     update_rrd_timeframe: () =>
         @draw_rrd_el() 
     change_rrd_sel: (event) =>
@@ -141,7 +197,7 @@ class rrd_config
         if new_filter != @CUR_FILTER
             @CUR_FILTER = new_filter
             cur_re = new RegExp(@CUR_FILTER)
-            @key_tree.dynatree("getRoot").visit(
+            @key_tree_div.dynatree("getRoot").visit(
                 (node) ->
                     if node.data.title.match(cur_re) or node.data.key.match(cur_re)
                         node.makeVisible(true)
@@ -153,7 +209,7 @@ class rrd_config
     clear_rrd_sel: (event) =>
         @filter_el.val("")
         @CUR_FILTER = ""
-        @key_tree.dynatree("getRoot").visit(
+        @key_tree_div.dynatree("getRoot").visit(
             (node) ->
                 node.select(false)
                 if node.getLevel() < 2
@@ -162,7 +218,7 @@ class rrd_config
                     node.expand(false)
         )
     draw_rrd_el: (event) =>
-        sel_list = (entry.data.key for entry in @key_tree.dynatree("getSelectedNodes"))
+        sel_list = (entry.data.key for entry in @key_tree_div.dynatree("getSelectedNodes"))
         @draw_rrd(sel_list)
     crop_select: (selection) =>
         # calculate new time
@@ -193,22 +249,27 @@ class rrd_config
             }
             success : (xml) =>
                 if parse_xml_response(xml)
-                    graph_result = $(xml).find("graph")
                     @graph_div.children().remove()
-                    new_image = $("<img>").attr("src", graph_result.attr("href"))
-                    @graph_div.append(new_image)
-                    @cur_graph = graph_result
-                    # add crop
-                    new_image.Jcrop(
-                        bgOpacity : 0.8
-                        onSelect  : @crop_select
-                    )
+                    @cur_graph = undefined
+                    graph_list = $(xml).find("graph_list")
+                    graph_list.find("graph").each (idx, cur_g) =>
+                        cur_g = $(cur_g)
+                        new_image = $("<img>").attr("src", cur_g.attr("href"))
+                        @graph_div.append(new_image)
+                        if idx == 0
+                            @cur_graph = cur_g
+                        # add crop
+                        new_image.Jcrop(
+                            bgOpacity : 0.8
+                            onSelect  : @crop_select
+                        )
         
-root.show_device_info = (event, dev_key, callback) ->
+show_device_info = (event, dev_key, callback) ->
     new device_info(event, dev_key, callback).show()
 
 class device_info
-    constructor: (@event, @dev_key, @callback) ->
+    constructor: (@event, @dev_key, @callback=undefined) ->
+        @addon_devices = []
     show: () =>
         replace_div = {% if index_view %}true{% else %}false{% endif %}
         $.ajax
@@ -261,6 +322,10 @@ class device_info
         )
         tabs_div = $("<div>").attr("id", "tabs")
         dev_div.append(tabs_div)
+        graphs_text = "Graphs"
+        if @addon_devices.length
+            num_devs = @addon_devices.length + 1
+            graphs_text = "#{graphs_text} (#{num_devs})"
         tabs_div.append(
             $("<ul>").append(
                 $("<li>").append($("<a>").attr("href", "#general").text("General")),
@@ -272,7 +337,7 @@ class device_info
                 $("<li>").append($("<a>").attr("href", "#mdcds").text("MD data store")),
                 $("<li>").append($("<a>").attr("href", "#livestatus").text("Livestatus")),
                 $("<li>").append($("<a>").attr("href", "#monconfig").text("MonConfig")),
-                $("<li>").append($("<a>").attr("href", "#rrd").text("Graphs")),
+                $("<li>").append($("<a>").attr("href", "#rrd").text(graphs_text)),
             )
         )
         @dev_div = dev_div
@@ -290,19 +355,20 @@ class device_info
             activate : @activate_tab
         )
     activate_tab: (event, ui) =>
-        if ui.newTab.text() == "Config"
+        t_href = ui.newTab.find("a").attr("href")
+        if t_href == "#config"
             if not ui.newPanel.html()
                 # lazy load config
                 new config_table(ui.newPanel, undefined, @resp_xml.find("device"))
-        else if ui.newTab.text() == "Livestatus"
+        else if t_href == "#livestatus"
             if not ui.newPanel.html()
                 # lazy load status
                 @init_livestatus(ui.newPanel)
-        else if ui.newTab.text() == "MonConfig"
+        else if t_href == "#monconfig"
             if not ui.newPanel.html()
                 # lazy load monconfig
                 @init_monconfig(ui.newPanel)
-        else if ui.newTab.text() == "Graphs"
+        else if t_href == "#rrd"
             if not ui.newPanel.html()
                 # lazy load rrd
                 @init_rrd(ui.newPanel)
@@ -435,68 +501,14 @@ class device_info
         @rrd_div = rrd_div
         @graph_div = graph_div
         @config_div = config_div
-        @rrd_config = new rrd_config(@config_div, @rrd_div, @graph_div, [@resp_xml.find("device").attr("pk")])
+        pk_list = [@resp_xml.find("device").attr("pk")]
+        for addon_key in @addon_devices
+            pk_list.push(addon_key.split("__")[1]) 
+        @rrd_config = new rrd_config(@config_div, @rrd_div, @graph_div, pk_list)
         top_div.append(@config_div)
         top_div.append(@rrd_div)
         top_div.append(@graph_div)
-        @load_rrd_tree()
-    load_rrd_tree: () =>
-        $.ajax
-            url  : "{% url 'rrd:device_rrds' %}"
-            data : {
-                "pk" : @resp_xml.find("device").attr("pk")
-            }
-            success : (xml) =>
-                if parse_xml_response(xml)
-                    @vector = $(xml).find("machine_vector")
-                    if @vector.length
-                        @rrd_div.dynatree
-                            autoFocus : false
-                            checkbox  : true
-                            clickFolderMode : 2
-                            #onExpand : (flag, dtnode) =>
-                            #    dtnode.toggleSelect()
-                            onClick : (dtnode, event) =>
-                                if dtnode.data.key[0] != "_"
-                                    sel_list = (entry.data.key for entry in @rrd_div.dynatree("getSelectedNodes"))
-                                    sel_list.push(dtnode.data.key)
-                                    @rrd_config.draw_rrd(sel_list)
-                                    #@graph_rrd(sel_list)
-                                #dtnode.toggleSelect()
-                        root_node = @rrd_div.dynatree("getRoot")
-                        @build_rrd_node(root_node, @vector)
-                    else
-                        @rrd_div.append($("<h2>").text("No graphs found"))
-    build_rrd_node: (dt_node, db_node) =>
-        if db_node.prop("tagName") == "machine_vector"
-            title_str = "vector"
-            key         = ""
-            expand_flag = true
-            hide_cb     = true
-            tooltip     = "Device vector"
-        else if db_node.prop("tagName") == "entry"
-            title_str   = db_node.attr("part")
-            expand_flag = false
-            key         = ""
-            hide_cb     = true
-            tooltip     = ""
-        else
-            title_str   = db_node.attr("info")
-            expand_flag = false
-            key         = db_node.attr("name")
-            hide_cb     = false
-            tooltip     = "key: " + db_node.attr("name")
-        new_node = dt_node.addChild(
-            title        : title_str
-            expand       : expand_flag
-            key          : key
-            hideCheckbox : hide_cb
-            isFolder     : hide_cb
-            tooltip      : tooltip
-            #select       : selected
-        )
-        db_node.find("> *").each (idx, sub_node) =>
-            @build_rrd_node(new_node, $(sub_node))
+        #@load_rrd_tree()
     general_div: (dev_xml) =>
         # general div
         general_div = $("<div>").attr("id", "general")
@@ -613,6 +625,9 @@ class device_info
             mdcds_div.append($("<h3>").text("No entries found"))
         return mdcds_div
     
+root.show_device_info = show_device_info
+root.device_info = device_info
+
 {% endinlinecoffeescript %}
 
 </script>

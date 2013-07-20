@@ -27,9 +27,9 @@ class device_rrds(View):
     @method_decorator(xml_wrapper)
     def post(self, request):
         srv_com = server_command.srv_command(command="get_node_rrd")
-        dev_pk = request.POST["pk"]
+        dev_pks = request.POST.getlist("pks[]")
         srv_com["device_list"] = E.device_list(
-            E.device(pk="%d" % (int(dev_pk)))
+            *[E.device(pk="%d" % (int(dev_pk))) for dev_pk in dev_pks]
         )
         result = contact_server(request, "tcp://localhost:8003", srv_com, timeout=30)
         if result:
@@ -49,7 +49,6 @@ class graph_rrds(View):
     @method_decorator(xml_wrapper)
     def post(self, request):
         _post = request.POST
-        pprint.pprint(_post)
         srv_com = server_command.srv_command(command="graph_rrd")
         pk_list, graph_keys = (_post.getlist("pks[]"), set(_post.getlist("keys[]")))
         srv_com["device_list"] = E.device_list(
@@ -79,8 +78,7 @@ class graph_rrds(View):
                 graph_list = graph_list[0]
                 if len(graph_list):
                     # first device
-                    res_graph = graph_list[0]
-                    request.xml_response["result"] = res_graph
+                    request.xml_response["result"] = graph_list
                 else:
                     request.xml_response.error("no node_results", logger=logger)
             else:
