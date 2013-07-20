@@ -80,7 +80,7 @@ class _general(hm_classes.hm_module):
                         self._save_mv(
                             mv,
                             "%s.%s.read" % (disk_base, act_disk),
-                            "byte read from $4",
+                            "byte read from $4 ($2)",
                             "B/s",
                             1024,
                             _d.disk_dict[act_disk].stats["read"]["bytes"]
@@ -88,7 +88,7 @@ class _general(hm_classes.hm_module):
                         self._save_mv(
                             mv,
                             "%s.%s.write" % (disk_base, act_disk),
-                            "byte written to $4",
+                            "byte written to $4 ($2)",
                             "B/s",
                             1024,
                             _d.disk_dict[act_disk].stats["write"]["bytes"]
@@ -98,7 +98,7 @@ class _general(hm_classes.hm_module):
                     self._save_mv(
                         mv,
                         "%s.%s.read" % (disk_base, "total"),
-                        "byte read from $4",
+                        "byte read from $4 ($2)",
                         "B/s",
                         1024,
                         t_read,
@@ -106,7 +106,7 @@ class _general(hm_classes.hm_module):
                     self._save_mv(
                         mv,
                         "%s.%s.write" % (disk_base, "total"),
-                        "byte written to $4",
+                        "byte written to $4 ($2)",
                         "B/s",
                         1024,
                         t_write,
@@ -119,7 +119,7 @@ class _general(hm_classes.hm_module):
                         self._save_mv(
                             mv,
                             "%s.%s.read" % (net_base, act_net),
-                            "byte read from $4",
+                            "byte read from $4 ($2)",
                             "B/s",
                             1024,
                             _d.net_dict[act_net].stats["read"]["bytes"]
@@ -127,7 +127,7 @@ class _general(hm_classes.hm_module):
                         self._save_mv(
                             mv,
                             "%s.%s.write" % (net_base, act_net),
-                            "byte written to $4",
+                            "byte written to $4 ($2)",
                             "B/s",
                             1024,
                             _d.net_dict[act_net].stats["write"]["bytes"]
@@ -137,7 +137,7 @@ class _general(hm_classes.hm_module):
                     self._save_mv(
                         mv,
                         "%s.%s.read" % (net_base, "all"),
-                        "byte read from $4",
+                        "byte read from $4 ($2)",
                         "B/s",
                         1024,
                         t_read,
@@ -145,7 +145,7 @@ class _general(hm_classes.hm_module):
                     self._save_mv(
                         mv,
                         "%s.%s.write" % (net_base, "all"),
-                        "byte written to $4",
+                        "byte written to $4 ($2)",
                         "B/s",
                         1024,
                         t_write,
