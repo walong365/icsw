@@ -28,22 +28,23 @@ os.environ.setdefault("DJANGO_SETTINGS_MODULE", "initat.cluster.settings")
 
 from django.conf import settings
 
-import re
-import time
-import getopt
-import socket
 import colorsys
-import pprint
-import zmq
-import copy
-import stat
 import commands
+import copy
+import datetime
+import getopt
+import re
+import socket
+import stat
+import pprint
+import time
+import zmq
+from colour import Color
 from lxml import etree
 from lxml.builder import E
-from colour import Color
 
-#import rrdtool
-#import configfile
+# import rrdtool
+# import configfile
 import logging_tools
 import process_tools
 import config_tools
@@ -62,7 +63,7 @@ except ImportError:
 from initat.cluster.backbone.models import device
 
 SERVER_COM_PORT = 8003
-MAX_INFO_WIDTH  = 42
+MAX_INFO_WIDTH = 42
 
 class report_thread(threading_tools.thread_obj):
     def __init__(self, glob_config, loc_config, db_con, log_queue):
@@ -146,7 +147,7 @@ class report_thread(threading_tools.thread_obj):
                     # Total part
                     rrd_graph_args.extend(["VDEF:d%dtotal=av%d,TOTAL" % (act_idx, act_idx),
                                            "PRINT:d%dtotal:total\:%s\:%%14.6le" % (act_idx, fetch_rrd)])
-                #print rrd_graph_args
+                # print rrd_graph_args
                 try:
                     rrd_res = rrdtool.graph(*rrd_graph_args)
                 except:
@@ -165,14 +166,14 @@ class report_thread(threading_tools.thread_obj):
                             except:
                                 value = None
                         dev_rep_dict[report_dev].setdefault(fetch_rrd, {})[f_type] = value
-                        #print "\n".join(out_list)
+                        # print "\n".join(out_list)
         report_end_time = time.time()
         self.log("fetching on %s took %s" % (logging_tools.get_plural("device", len(report_devs)),
                                              logging_tools.get_diff_time_str(report_end_time - report_start_time)))
-        tcp_obj.add_to_out_buffer(server_command.server_reply(state = server_command.SRV_REPLY_STATE_OK,
-                                                              result = "ok fetched",
-                                                              node_results = node_res,
-                                                              node_dicts = dev_rep_dict))
+        tcp_obj.add_to_out_buffer(server_command.server_reply(state=server_command.SRV_REPLY_STATE_OK,
+                                                              result="ok fetched",
+                                                              node_results=node_res,
+                                                              node_dicts=dev_rep_dict))
     def _get_path(self, rrd_data):
         valid_descrs = [l_d.replace("/", "") for l_d in [rrd_data["descr1"],
                                                          rrd_data["descr2"],
@@ -338,8 +339,8 @@ class report_thread(threading_tools.thread_obj):
                                 rrd_graph_args.append("VRULE:%d#%s%s" % (vr_time,
                                                                          vr_options.get("color", "000000"),
                                                                          act_text and ":%s" % (act_text) or ""))
-                    #print " ".join(rrd_graph_args)
-                    #print rrd_graph_args
+                    # print " ".join(rrd_graph_args)
+                    # print rrd_graph_args
                     if any_defs_defined:
                         draw_time_start = time.time()
                         try:
@@ -368,10 +369,10 @@ class report_thread(threading_tools.thread_obj):
         self.log("fetching on %s took %s" % (logging_tools.get_plural("device", len(report_devs)),
                                              logging_tools.get_diff_time_str(draw_end_time - draw_start_time)))
         dc.release()
-        tcp_obj.add_to_out_buffer(server_command.server_reply(state = server_command.SRV_REPLY_STATE_OK,
-                                                              result = "ok drawn",
-                                                              node_results = node_res,
-                                                              option_dict = compound_results),
+        tcp_obj.add_to_out_buffer(server_command.server_reply(state=server_command.SRV_REPLY_STATE_OK,
+                                                              result="ok drawn",
+                                                              node_results=node_res,
+                                                              option_dict=compound_results),
                                   "draw_graph")
     def _create_draw_args(self, act_idx, full_path, rrd_option, mma, max_len):
         mma_short = {"average" : "aver"}.get(mma, mma)
@@ -513,7 +514,7 @@ class graph_var(object):
             ("last" , "LAST"),
             ("total", "TOTAL")]:
             c_lines.extend(
-                [ 
+                [
                     "VDEF:%s%s=%s,%s" % (self.name, rep_name, self.name, cf),
                     "GPRINT:%s%s:<tt>%%6.1lf%%s</tt>%s" % (
                         self.name, rep_name,
@@ -528,7 +529,7 @@ class graph_var(object):
             ("%%-%ds" % (MAX_INFO_WIDTH + 2)) % ("value"),
             "".join(["%9s" % (rep_name) for rep_name in ["min", "ave", "max", "latest", "total"]])
         )
-        
+
 class graph_process(threading_tools.process_obj):
     def process_init(self):
         self.__log_template = logging_tools.get_logger(global_config["LOG_NAME"], global_config["LOG_DESTINATION"], zmq=True, context=self.zmq_context, init_logger=True)
@@ -628,11 +629,11 @@ class graph_process(threading_tools.process_obj):
             </entry>
          </colourizing>
         """)
-        #match_keys = color_xml.xpath(".//entry[@key]")
+        # match_keys = color_xml.xpath(".//entry[@key]")
         match_re_keys = [
             (re.compile("^%s" % (entry.attrib["key"].replace(".", r"\."))),
              entry) for entry in color_xml.xpath(".//entry[@key]")]
-        #print etree.tostring(color_xml, pretty_print=True)
+        # print etree.tostring(color_xml, pretty_print=True)
         keys_touched = set()
         for xml_ent in xml_vect.findall(".//entry[@full]"):
             if "colour" in xml_ent.attrib:
@@ -641,17 +642,17 @@ class graph_process(threading_tools.process_obj):
             else:
                 full_key = xml_ent.attrib["full"]
                 if full_key not in keys_touched:
-                    #print full_key
+                    # print full_key
                     for c_re, entry in match_re_keys:
                         if c_re.match(full_key):
                             keys_touched.add(full_key)
                             self._colourize(xml_ent, entry)
                             break
-        #print etree.tostring(xml_vect, pretty_print=True)
+        # print etree.tostring(xml_vect, pretty_print=True)
     def _colourize(self, xml_ent, xml_col):
         # colourize the subtree of xml_ent according to xml_col
         main_key = xml_ent.attrib["full"]
-        #print "***", main_key
+        # print "***", main_key
         sub_keys = sorted([name[len(main_key) + 1:] for name in xml_ent.xpath(".//mve/@name")])
         if int(xml_col.get("integer_subkeys", "0")):
             try:
@@ -665,7 +666,7 @@ class graph_process(threading_tools.process_obj):
             for key in sub_keys:
                 next_key, sub_key = key.split(".", 1) if key.count(".") else (key, "")
                 next_level_keys.setdefault(next_key, []).append(sub_key)
-            #pprint.pprint(next_level_keys)
+            # pprint.pprint(next_level_keys)
         else:
             # build dummy dict
             next_level_keys = {"" : sub_keys}
@@ -704,7 +705,7 @@ class graph_process(threading_tools.process_obj):
                         ref_key = "%s.%s" % (ref_key, next_key)
                     if sub_key:
                         ref_key = "%s.%s" % (ref_key, sub_key)
-                    #print sub_key, sub_color
+                    # print sub_key, sub_color
                     sub_xml = xml_ent.find(".//mve[@name='%s']" % (ref_key))
                     if "colour" not in sub_xml.attrib:
                         sub_xml.attrib["colour"] = sub_color
@@ -713,18 +714,21 @@ class graph_process(threading_tools.process_obj):
                             sub_xml.attrib[modify_xml.attrib["attribute"]] = modify_xml.attrib["value"]
     def _graph_rrd(self, *args, **kwargs):
         src_id, srv_com = (args[0], server_command.srv_command(source=args[1]))
-        dev_pks    = [entry for entry in map(lambda x: int(x), srv_com.xpath(None, ".//device_list/device/@pk")) if entry in self.vector_dict]
+        dev_pks = [entry for entry in map(lambda x: int(x), srv_com.xpath(None, ".//device_list/device/@pk")) if entry in self.vector_dict]
         graph_keys = srv_com.xpath(None, ".//graph_key_list/graph_key/text()")
         self.log("found device pks: %s" % (", ".join(["%d" % (pk) for pk in dev_pks])))
         self.log("graph keys: %s" % (", ".join(graph_keys)))
         para_dict = {
-            "timeframe" : 3600,
             "size"      : "400x200",
         }
         for para in srv_com.xpath(None, ".//parameters")[0]:
             para_dict[para.tag] = para.text
         # cast to integer
-        para_dict = dict([(key, int(value) if key in ["timeframe"] else value) for key, value in para_dict.iteritems()])
+        para_dict = dict([(key, int(value) if key in [] else value) for key, value in para_dict.iteritems()])
+        for key in ["start_time", "end_time"]:
+            # cast to datetime
+            para_dict[key] = datetime.datetime.strptime(para_dict[key], "%Y-%m-%d %H:%M")
+        para_dict["timeframe"] = abs((para_dict["end_time"] - para_dict["start_time"]).total_seconds())
         dev_vector = self.vector_dict[dev_pks[0]]
         graph_list = E.graph_list()
         graph_name = "gfx_%d.png" % (int(time.time()))
@@ -732,6 +736,7 @@ class graph_process(threading_tools.process_obj):
             os.path.join(self.graph_root, graph_name),
             os.path.join("/%s/graphs/%s" % (settings.REL_SITE_ROOT, graph_name)),
         )
+        dt_1970 = datetime.datetime(1970, 1, 1)
         rrd_args = [
                 abs_file_loc,
                 "-E",
@@ -739,7 +744,7 @@ class graph_process(threading_tools.process_obj):
                 "-G",
                 "normal",
                 "-P",
-                #"-nDEFAULT:8:",
+                # "-nDEFAULT:8:",
                 "-w %d" % (int(para_dict["size"].split("x")[0])),
                 "-h %d" % (int(para_dict["size"].split("x")[1])),
                 "-a"
@@ -750,9 +755,10 @@ class graph_process(threading_tools.process_obj):
                 "--slope-mode",
                 "-cBACK#ffffff",
                 "--end",
-                "now",
+                # offset to fix UTC, FIXME
+                "%d" % ((para_dict["end_time"] - dt_1970).total_seconds() - 2 * 3600),
                 "--start",
-                "end-%d" % (para_dict["timeframe"]),
+                "%d" % ((para_dict["start_time"] - dt_1970).total_seconds() - 2 * 3600),
                 graph_var(None).header_line,
         ]
         graph_var.init(self.colortables.find("colortable[@name='dark28']"))
@@ -773,7 +779,7 @@ class graph_process(threading_tools.process_obj):
                 draw_result = rrdtool.graphv(*rrd_args)
             except:
                 self.log("error creating graph: %s" % (process_tools.get_except_info()), logging_tools.LOG_LEVEL_ERROR)
-                #pprint.pprint(rrd_args)
+                # pprint.pprint(rrd_args)
             else:
                 graph_list.append(
                     E.graph(
@@ -784,7 +790,7 @@ class graph_process(threading_tools.process_obj):
         else:
             self.log("no DEFs", logging_tools.LOG_LEVEL_ERROR)
         srv_com["graphs"] = graph_list
-        #print srv_com.pretty_print()
+        # print srv_com.pretty_print()
         srv_com.set_result(
             "generated %s" % (logging_tools.get_plural("graph", len(graph_list))),
             server_command.SRV_REPLY_STATE_OK)
@@ -809,7 +815,7 @@ class data_store(object):
         # send a copy to the grapher
         self.sync_to_grapher()
     def feed(self, in_vector):
-        #self.xml_vector = in_vector
+        # self.xml_vector = in_vector
         if self.store_name != in_vector.attrib["name"]:
             self.log("changing store_name from '%s' to '%s'" % (
                 self.store_name,
@@ -861,7 +867,7 @@ class data_store(object):
         c_keys = old_keys ^ new_keys
         if c_keys:
             self.log("pde: %d keys total, %d keys changed" % (len(new_keys), len(c_keys)))
-        #else:
+        # else:
         #    too verbose
         #    self.log("pde: %d keys total" % (len(new_keys)))
         self.store_info()
@@ -929,7 +935,7 @@ class data_store(object):
             parent = struct_ent.getparent()
             parent.append(struct_ent[0])
             parent.remove(struct_ent)
-        #print etree.tostring(xml_vect, pretty_print=True)
+        # print etree.tostring(xml_vect, pretty_print=True)
          # add pde entries
         pde_keys = set(cur_xml.xpath(".//pde/@name"))
         for key in sorted(pde_keys):
@@ -1015,7 +1021,7 @@ class data_store(object):
                 logging_tools.LOG_LEVEL_ERROR)
     @staticmethod
     def feed_vector(in_vector):
-        #print in_vector, type(in_vector), etree.tostring(in_vector, pretty_print=True)
+        # print in_vector, type(in_vector), etree.tostring(in_vector, pretty_print=True)
         # at first check for uuid
         match_dev = None
         if "uuid" in in_vector.attrib:
@@ -1062,7 +1068,7 @@ class data_store(object):
                 logging_tools.get_plural("key", len(in_vector.attrib)),
                 ", ".join(["%s=%s" % (key, str(value)) for key, value in in_vector.attrib.iteritems()])
             ), logging_tools.LOG_LEVEL_ERROR)
-        
+
 class server_process(threading_tools.process_pool):
     def __init__(self):
         self.__log_cache, self.__log_template = ([], None)
@@ -1089,7 +1095,7 @@ class server_process(threading_tools.process_pool):
         self.register_timer(self._clear_old_graphs, 60, instant=True)
         data_store.setup(self)
     def _log_config(self):
-        self.log("Config info:")	
+        self.log("Config info:")
         for line, log_level in global_config.get_log(clear=True):
             self.log(" - clf: [%d] %s" % (log_level, line))
         conf_info = global_config.get_config_info()
@@ -1147,7 +1153,7 @@ class server_process(threading_tools.process_pool):
             msi_block.add_actual_pid(mult=3)
             msi_block.add_actual_pid(act_pid=configfile.get_manager_pid(), mult=3)
             msi_block.start_command = "/etc/init.d/rrd-grapher start"
-            msi_block.stop_command  = "/etc/init.d/rrd-grapher force-stop"
+            msi_block.stop_command = "/etc/init.d/rrd-grapher force-stop"
             msi_block.kill_pids = True
             msi_block.save_block()
         else:
