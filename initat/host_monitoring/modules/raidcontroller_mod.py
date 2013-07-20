@@ -3,7 +3,7 @@
 # Copyright (C) 2001,2002,2003,2004,2005,2006,2007,2008,2012,2013 Andreas Lang-Nevyjel, init.at
 #
 # Send feedback to: <lang-nevyjel@init.at>
-# 
+#
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License Version 2 as
 # published by the Free Software Foundation.
@@ -74,7 +74,7 @@ def _split_config_line(line):
 class dummy_mod(object):
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
         print "[%d] %s" % (log_level, what)
-        
+
 class ctrl_type(object):
     _all_types = None
     def __init__(self, module_struct, **kwargs):
@@ -93,8 +93,8 @@ class ctrl_type(object):
         ctrl_type._all_types = {}
         for ctrl_struct in [glob_struct for glob_struct in globals().itervalues() if type(glob_struct) == type and issubclass(glob_struct, ctrl_type) and not glob_struct == ctrl_type]:
             ctrl_type._all_types[ctrl_struct.Meta.name] = ctrl_struct(module_struct)
-        #for sub_class in globals()#
-        #for type_name, exec_name in 
+        # for sub_class in globals()#
+        # for type_name, exec_name in
     @staticmethod
     def update(c_type, ctrl_ids=[]):
         if c_type is None:
@@ -124,7 +124,7 @@ class ctrl_type(object):
             lines = [" ".join(line.strip().split()) for line in lines]
         if not kwargs.get("empty_ok", False):
             lines = [cur_line for cur_line in lines if cur_line.strip()]
-        #print cur_stat, lines
+        # print cur_stat, lines
         return cur_stat, lines
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
         self._module.log("[ct %s] %s" % (self.name, what), log_level)
@@ -184,7 +184,7 @@ class ctrl_check_struct(hm_classes.subprocess_struct):
             self.send_return()
     def log(self, what, level=logging_tools.LOG_LEVEL_OK):
         self.__log_com("[ccs] %s" % (what), level)
-        
+
 class ctrl_type_lsi(ctrl_type):
     class Meta:
         name = "lsi"
@@ -204,7 +204,7 @@ class ctrl_type_lsi(ctrl_type):
             self._dict = dict([(key, {}) for key in c_ids])
     def update_ctrl(self, ctrl_ids):
         pass
-        #print ctrl_ids
+        # print ctrl_ids
     def process(self, ccs):
         ctrl_id = "ioc%s" % (ccs.run_info["command"].split()[1])
         ctrl_dict = self._dict[ctrl_id]
@@ -223,7 +223,7 @@ class ctrl_type_lsi(ctrl_type):
                 else:
                     if cur_mode:
                         if space_line:
-                            #print cur_mode, "s", line
+                            # print cur_mode, "s", line
                             if line.count(":"):
                                 key, value = line.strip().split(":", 1)
                                 key = (" ".join(key.strip().lower().split("(")[0].split()))
@@ -243,7 +243,7 @@ class ctrl_type_lsi(ctrl_type):
                                 elif cur_mode == "p":
                                     phys_dict[key] = value
                         else:
-                            #print cur_mode, line
+                            # print cur_mode, line
                             if cur_mode == "v":
                                 vol_dict = {}
                                 ctrl_dict.setdefault("volumes", {})[line.split()[-1]] = vol_dict
@@ -305,7 +305,7 @@ class ctrl_type_lsi(ctrl_type):
             return ret_state, "; ".join(c_array)
         else:
             return limits.nag_STATE_WARNING, "no controller found"
-    
+
 class ctrl_type_tw(ctrl_type):
     class Meta:
         name = "tw"
@@ -320,7 +320,7 @@ class ctrl_type_tw(ctrl_type):
         if not cur_stat:
             mode = None
             for line in cur_lines:
-                #print "*", line
+                # print "*", line
                 line_p = line.split()
                 if mode is None:
                     if line_p[0].lower() == "list":
@@ -340,7 +340,7 @@ class ctrl_type_tw(ctrl_type):
                         self._dict[line_p[0]] = {"type" : line_p[1]}
     def update_ctrl(self, ctrl_ids):
         pass
-        #print ctrl_ids
+        # print ctrl_ids
     def update_ok(self, srv_com):
         if self._dict:
             return ctrl_type.update_ok(self, srv_com)
@@ -354,8 +354,8 @@ class ctrl_type_tw(ctrl_type):
         port_match = re.compile("^\s+Port\s*(?P<num>\d+):\s*(?P<info>[^:]+):\s*(?P<status>.*)\(unit\s*(?P<unit>\d+)\)$")
         u2_0_match = re.compile("^u(?P<num>\d+)\s+(?P<raid>\S+)\s+(?P<status>\S+)\s+(?P<cmpl>\S+)\s+(?P<stripe>\S+)\s+(?P<size>\S+)\s+(?P<cache>\S+)\s+.*$")
         u2_1_match = re.compile("^u(?P<num>\d+)\s+(?P<raid>\S+)\s+(?P<status>\S+)\s+(?P<rcmpl>\S+)\s+(?P<cmpl>\S+)\s+(?P<stripe>\S+)\s+(?P<size>\S+)\s+(?P<cache>\S+)\s+(?P<avrfy>\S+)$")
-        p2_match   = re.compile("^p(?P<num>\d+)\s+(?P<status>\S+)\s+u(?P<unit>\d+)\s+(?P<size>\S+\s+\S+)\s+(?P<blocks>\d+)\s+.*$")
-        bbu_match  = re.compile("^bbu\s+(?P<onlinestate>\S+)\s+(?P<ready>\S+)\s+(?P<status>\S+)\s+(?P<volt>\S+)\s+(?P<temp>\S+)\s+.*$")
+        p2_match = re.compile("^p(?P<num>\d+)\s+(?P<status>\S+)\s+u(?P<unit>\d+)\s+(?P<size>\S+\s+\S+)\s+(?P<blocks>\d+)\s+.*$")
+        bbu_match = re.compile("^bbu\s+(?P<onlinestate>\S+)\s+(?P<ready>\S+)\s+(?P<status>\S+)\s+(?P<volt>\S+)\s+(?P<temp>\S+)\s+.*$")
         com_line, com_type, ctrl_id = ccs.run_info["command"].strip().split()
         if com_type == "info":
             ctrl_result = {
@@ -442,20 +442,20 @@ class ctrl_type_tw(ctrl_type):
             ccs.srv_com["result:ctrl_%s" % (ctrl_id)] = ctrl_result
         else:
             pass
-##    def server_call(self, cm):
-##        ret_str = self.module_info.check_exec()
-##        if ret_str.startswith("ok"):
-##            ret_str = self.module_info.update_ctrl_dict()
-##            if ret_str.startswith("ok"):
-##                if cm:
-##                    ctrl_list = [x for x in cm if x in self.module_info.ctrl_dict.keys()]
-##                else:
-##                    ctrl_list = self.module_info.ctrl_dict.keys()
-##                ret_dict = {}
-##                for ctrl_id in ctrl_list:
-##                    ret_dict[ctrl_id] = self.module_info.check_controller(ctrl_id)
-##                ret_str = "ok %s" % (hm_classes.sys_to_net(ret_dict))
-##        return ret_str
+# #    def server_call(self, cm):
+# #        ret_str = self.module_info.check_exec()
+# #        if ret_str.startswith("ok"):
+# #            ret_str = self.module_info.update_ctrl_dict()
+# #            if ret_str.startswith("ok"):
+# #                if cm:
+# #                    ctrl_list = [x for x in cm if x in self.module_info.ctrl_dict.keys()]
+# #                else:
+# #                    ctrl_list = self.module_info.ctrl_dict.keys()
+# #                ret_dict = {}
+# #                for ctrl_id in ctrl_list:
+# #                    ret_dict[ctrl_id] = self.module_info.check_controller(ctrl_id)
+# #                ret_str = "ok %s" % (hm_classes.sys_to_net(ret_dict))
+# #        return ret_str
     def _interpret(self, tw_dict, cur_ns):
         if tw_dict.has_key("units"):
             tw_dict = {parsed_coms[0] : tw_dict}
@@ -520,7 +520,7 @@ class ctrl_type_tw(ctrl_type):
         else:
             ret_state = limits.nag_STATE_OK
         return ret_state, ", ".join(ret_list)
-        
+
 class ctrl_type_ips(ctrl_type):
     class Meta:
         name = "ips"
@@ -531,7 +531,7 @@ class ctrl_type_ips(ctrl_type):
         return [("%s getconfig %d AL" % (self._check_exec, ctrl_id),
                  "config", ctrl_id) for ctrl_id in ctrl_ids] + \
                [("%s getstatus %d" % (self._check_exec, ctrl_id),
-                 "status", ctrl_id) for ctrl_id in ctrl_ids]               
+                 "status", ctrl_id) for ctrl_id in ctrl_ids]
     def scan_ctrl(self):
         cur_stat, cur_lines = self.exec_command(" getversion", post="strip")
         if not cur_stat:
@@ -564,6 +564,11 @@ class ctrl_type_ips(ctrl_type):
             for line in ccs.read().split("\n"):
                 ls = line.strip()
                 lsl = ls.lower()
+                # get key and value, space is important here
+                if lsl.count(" :"):
+                    key, value = [entry.strip() for entry in lsl.split(" :", 1)]
+                else:
+                    key, value = (None, None)
                 if prev_line.startswith("-" * 10) and line.endswith("information"):
                     act_part = " ".join(line.split()[0:2]).lower().replace(" ", "_").replace("drive", "device")
                 elif line.lower().startswith("command complet") or line.startswith("-" * 10):
@@ -589,11 +594,15 @@ class ctrl_type_ips(ctrl_type):
                             act_channel_num = -1
                             act_scsi_stuff = {}
                         elif lsl.startswith("reported channel,device"):
-                            act_scsi_id = int(lsl.split(",")[-1])
+                            # key should be set here
+                            if key.endswith(")"):
+                                key, value = (key.split("(", 1)[0],
+                                              value.split("(", 1)[0])
+                            act_scsi_id = int(value.split(",")[-1])
                             if act_channel_num == -1:
-                                act_channel_num = int(lsl.split(",")[-2].split()[-1])
+                                act_channel_num = int(value.split(",")[-2].split()[-1])
                                 ctrl_config["channel"][act_channel_num] = {}
-                            ctrl_config["channel"][act_channel_num][act_scsi_id] = " ".join(lsl.split()[:-4])
+                            ctrl_config["channel"][act_channel_num][act_scsi_id] = key
                             act_scsi_stuff["channel"] = act_channel_num
                             act_scsi_stuff["scsi_id"] = act_scsi_id
                             ctrl_config["channel"][act_channel_num][act_scsi_id] = act_scsi_stuff
@@ -603,10 +612,9 @@ class ctrl_type_ips(ctrl_type):
                                 key, val = _split_config_line(line)
                                 act_scsi_stuff[key] = val
                     elif act_part == "controller_information":
-                        if lsl.count(":"):
-                            key, value = [entry.strip() for entry in lsl.split(":", 1)]
+                        if key:
                             ctrl_config["controller"][key] = value
-                    #print act_part, linea
+                    # print act_part, linea
                 prev_line = line
             self._dict[ctrl_num].update(ctrl_config)
         elif com_type == "status":
@@ -631,7 +639,7 @@ class ctrl_type_ips(ctrl_type):
         num_warn, num_error = (0, 0)
         ret_f = []
         for c_num, c_stuff in aac_dict.iteritems():
-            #pprint.pprint(c_stuff)
+            # pprint.pprint(c_stuff)
             act_field = []
             if c_stuff["logical"]:
                 log_field = []
@@ -703,7 +711,7 @@ class ctrl_type_ips(ctrl_type):
             return limits.nag_STATE_WARNING, "no controller information found"
         else:
             return ret_state, "; ".join(ret_f)
-            
+
 class ctrl_type_megaraid_sas(ctrl_type):
     class Meta:
         name = "megaraid_sas"
@@ -745,7 +753,7 @@ class ctrl_type_megaraid_sas(ctrl_type):
                             cur_mode = "adp"
                             count_dict = {
                                 "adp"  : count_dict.get("adp", -1) + 1,
-                                "virt" : -1,
+                                "virt" :-1,
                                 "pd"   : 0}
                         elif (parts[0], cur_mode) in [("number", "adp"), ("virtual", "pd")]:
                             cur_mode = "virt"
@@ -768,7 +776,7 @@ class ctrl_type_megaraid_sas(ctrl_type):
                             # unknown mode
                             raise ValueError, "cannot parse mode, ctrl_type_megaraid_sas: %s" % (str(line))
                         mode_sense = False
-                        #print cur_mode, mode_sense, count_dict, line
+                        # print cur_mode, mode_sense, count_dict, line
                     else:
                         if line.count(":"):
                             key, value = line.split(":", 1)
@@ -776,11 +784,11 @@ class ctrl_type_megaraid_sas(ctrl_type):
                             if key in SAS_OK_KEYS[cur_mode]:
                                 value = value.strip()
                                 cur_dict["lines"].append((key, value))
-            #pprint.pprint(ctrl_stuff)
-            #if line.lower().count("virtual disk:") or line.lower().count("virtual drive:"):
+            # pprint.pprint(ctrl_stuff)
+            # if line.lower().count("virtual disk:") or line.lower().count("virtual drive:"):
             #    log_drive_num = int(line.strip().split()[2])
             #    ctrl_stuff["logical_lines"][log_drive_num] = []
-            #if log_drive_num is not None:
+            # if log_drive_num is not None:
             #    if line.count(":"):
             #        ctrl_stuff["logical_lines"][log_drive_num].append([part.strip() for part in line.split(":", 1)])
         elif run_type == "enc":
@@ -851,7 +859,7 @@ class ctrl_type_megaraid_sas(ctrl_type):
                 # rewrite from old to new format
                 ctrl_stuff["virt"] = dict([(key, {"lines" : [(line[0].lower().replace(" ", "_"), line[1]) for line in value]}) for key, value in ctrl_stuff["logical_lines"].iteritems()])
             for log_num, log_stuff in ctrl_stuff.get("virt", {}).iteritems():
-                #pprint.pprint(log_dict)
+                # pprint.pprint(log_dict)
                 log_dict = dict(log_stuff["lines"])
                 num_d += 1
                 num_drives = int(log_dict["number_of_drives"])
@@ -944,7 +952,7 @@ class ctrl_type_megaraid(ctrl_type):
         cur_stat, cur_lines = self.exec_command(" info", post="strip")
     def update_ctrl(self, ctrl_ids):
         pass
-        #print ctrl_ids
+        # print ctrl_ids
     def update_ok(self, srv_com):
         if self._dict:
             return ctrl_type.update_ok(self, srv_com)
@@ -975,7 +983,7 @@ class ctrl_type_megaraid(ctrl_type):
                                                 logging_tools.get_plural("logical drive", num_d),
                                                 logging_tools.get_plural("controller", num_c),
                                                 ", ".join(drive_stats))
- 
+
 class ctrl_type_gdth(ctrl_type):
     class Meta:
         name = "gdth"
@@ -992,7 +1000,7 @@ class ctrl_type_gdth(ctrl_type):
                 self._dict[entry] = {}
     def update_ctrl(self, ctrl_ids):
         pass
-        #print ctrl_ids
+        # print ctrl_ids
     def update_ok(self, srv_com):
         if self._dict:
             return ctrl_type.update_ok(self, srv_com)
@@ -1028,7 +1036,7 @@ class ctrl_type_gdth(ctrl_type):
             elif line.lower().startswith("controller even"):
                 act_mode = "ce"
             elif line.strip():
-                #print "%s %s" % (act_mode, line)
+                # print "%s %s" % (act_mode, line)
                 if act_mode == "pd":
                     left_str, right_str = (line[0:27].strip(), line[27:].strip())
                     for act_str in [x for x in [left_str, right_str] if x]:
@@ -1051,7 +1059,7 @@ class ctrl_type_gdth(ctrl_type):
                         left_str, right_str = (line[0:27].strip(), line[27:].strip())
                         for act_str in [x for x in [left_str, right_str] if x]:
                             key, value = [x.strip() for x in act_str.split(":", 1)]
-                            act_ad_dict[key.lower()]=value
+                            act_ad_dict[key.lower()] = value
                             if key.lower().startswith("type"):
                                 ad_dict[len(ad_dict)] = act_ad_dict
                                 act_ad_dict = {}
@@ -1094,13 +1102,13 @@ class ctrl_type_gdth(ctrl_type):
                                   ("h", "host drive"   , hd_list)]:
             if lst:
                 num = len(lst)
-                cap = reduce(lambda x, y : x+y, [int(x["capacity [mb]"]) for x in lst if x.has_key("capacity [mb]")])
+                cap = reduce(lambda x, y : x + y, [int(x["capacity [mb]"]) for x in lst if x.has_key("capacity [mb]")])
                 loc_out = ["%s (%s)" % (logging_tools.get_plural(what, num),
-                                        ", ".join([entry for entry in ["%.2f GB" % (float(cap)/1024) if cap else "",
+                                        ", ".join([entry for entry in ["%.2f GB" % (float(cap) / 1024) if cap else "",
                                                                        ", ".join([x["type"] for x in lst if x.has_key("type")]) if lst[0].has_key("type") else ""] if entry]))]
                 if lst[0].has_key("status"):
                     loc_warn = [x for x in lst if x["status"].lower() in ["rebuild", "build", "rebuild/patch"]]
-                    loc_err  = [x for x in lst if x["status"].lower() not in ["ok", "ready", "rebuild", "build", "rebuild/patch", "ready/patch"]]
+                    loc_err = [x for x in lst if x["status"].lower() not in ["ok", "ready", "rebuild", "build", "rebuild/patch", "ready/patch"]]
                     if loc_warn:
                         num_w += 1
                         loc_out.append(", ".join(["%s %s: %s" % (what, x["number"], x["status"]) for x in loc_warn]))
@@ -1149,7 +1157,7 @@ class ctrl_type_hpacu(ctrl_type):
                     self._dict[ctrl_num] = ctrl_stuff
     def update_ctrl(self, ctrl_ids):
         pass
-        #print ctrl_ids
+        # print ctrl_ids
     def update_ok(self, srv_com):
         if self._dict:
             return ctrl_type.update_ok(self, srv_com)
@@ -1202,7 +1210,7 @@ class ctrl_type_hpacu(ctrl_type):
             if l_line.count(":") and act_obj:
                 key, value = self._interpret_line(l_line)
                 act_obj["config"][key] = value
-            #else:
+            # else:
             #    if l_line.count("status"):
             #        c_dict[act_ctrl]["status"][l_line.split()[0]] = " ".join(l_line.split()[2:])
         ccs.srv_com["result:ctrl"] = c_dict
@@ -1225,7 +1233,7 @@ class ctrl_type_hpacu(ctrl_type):
     def _interpret(self, ctrl_dict, cur_ns):
         num_cont, num_array, num_log, num_phys = (0, 0, 0, 0)
         array_names, size_log, size_phys = ([], [], 0)
-        #pprint.pprint(c_dict)
+        # pprint.pprint(c_dict)
         error_f, warn_f = ([], [])
         if "ctrl" not in ctrl_dict and len(ctrl_dict):
             ctrl_dict = {"ctrl" : ctrl_dict}
@@ -1308,7 +1316,7 @@ class ctrl_type_ibmbcraid(ctrl_type):
     def get_exec_list(self, ctrl_list=[]):
         if ctrl_list == []:
             ctrl_list = self._dict.keys()
-        
+
         _list = [(
             "/opt/python-init/lib/python2.7/site-packages/initat/host_monitoring/exe/check_ibmbcraid.py --host %s --user %s --passwd %s --target %s" % (
                 ctrl_id,
@@ -1368,7 +1376,7 @@ class ctrl_type_ibmbcraid(ctrl_type):
                         ret_state = max(ret_state, limits.nag_STATE_CRITICAL)
                 for ctrl_key in [key for key in ctrl_dict.keys() if key.split("_")[1].isdigit()]:
                     cur_dict = ctrl_dict[ctrl_key]
-                    #pprint.pprint(cur_dict)
+                    # pprint.pprint(cur_dict)
                     ctrl_f = []
                     ctrl_f.append("C%d: %s" % (int(ctrl_key.split("_")[1]),
                                                cur_dict["Current Status"]))
@@ -1402,11 +1410,11 @@ class ctrl_type_ibmbcraid(ctrl_type):
 class _general(hm_classes.hm_module):
     def init_module(self):
         ctrl_type.init(self)
-##    def check_exec(self):
-##        if os.path.isfile(TW_EXEC):
-##            return "ok"
-##        else:
-##            return "error no %s found" % (TW_EXEC)
+# #    def check_exec(self):
+# #        if os.path.isfile(TW_EXEC):
+# #            return "ok"
+# #        else:
+# #            return "error no %s found" % (TW_EXEC)
     def check_controller(self, ctrl_id):
         ctrl_dict = {
             "type"  : self.ctrl_dict[ctrl_id]["type"],
