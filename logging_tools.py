@@ -6,7 +6,7 @@
 # this file is part of python-modules-base
 #
 # Send feedback to: <lang-nevyjel@init.at>
-# 
+#
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License Version 2 as
 # published by the Free Software Foundation.
@@ -98,7 +98,7 @@ def get_relative_dt(dt_struct):
             return dt_struct.strftime("%%a, %d days ago %%H:%%M:%%S" % (diff_days))
     else:
         return dt_struct.strftime("%a, %d. %b %Y %H:%M:%S")
-    
+
 def get_plural(in_str, num, show_int=1, fstr_len=0, **kwargs):
     if type(num) in [list, set]:
         r_num = len(num)
@@ -159,7 +159,7 @@ def interpret_size_str(in_str, **kwargs):
         return value
     else:
         return 0
-    
+
 def get_diff_time_str(diff_secs):
     if type(diff_secs) == datetime.timedelta:
         diff_secs = diff_secs.total_seconds()
@@ -272,7 +272,7 @@ def get_logger(name, destination, **kwargs):
                     cur_context = zmq.Context()
                 else:
                     cur_context = kwargs["context"]
-                    
+
                 pub = cur_context.socket(zmq.PUSH)
                 pub.setsockopt(zmq.LINGER, 0)
                 pub.connect(rewrite_log_destination(act_dest if act_dest.endswith("_zmq") else "%s_zmq" % (act_dest)))
@@ -429,7 +429,7 @@ class initat_formatter(object):
             record.exc_text = "\n".join(frame_info + var_list + info_lines)
         if hasattr(record, "request"):
             delattr(record, "request")
-    
+
 class init_handler(zmq_handler):
     zmq_context = None
     def __init__(self, filename=None):
@@ -495,7 +495,7 @@ class queue_handler(logging.Handler):
             self.__target_queue.put((self.__pre_tuple, record))
         except:
             self.handleError(record)
-    
+
 class udp_handler(logging.handlers.DatagramHandler):
     def __init__(self, target_str):
         # parse target_str
@@ -516,7 +516,7 @@ class udp_handler(logging.handlers.DatagramHandler):
         if ei:
             record.exc_info = ei  # for next handler
         return "%08d" % (len(out_str)) + out_str
-    
+
 class local_uds_handler(logging.Handler):
     """ local unix domain socket handler """
     def __init__(self, address, **kwargs):
@@ -583,7 +583,7 @@ class local_uds_handler(logging.Handler):
                     msg = msg[to_send:]
         else:
             my_syslog(record)
-    
+
 class progress_counter(object):
     def __init__(self, action, total_count, **kwargs):
         self.__act_cs_time = time.time()
@@ -653,7 +653,7 @@ class dummy_ios(object):
         pass
     def get_content(self):
         return "".join(self.out_buffer)
-    
+
 class dummy_ios_low(object):
     def __init__(self, save_fd):
         self.orig_fd = save_fd
@@ -668,7 +668,7 @@ class dummy_ios_low(object):
         del self.orig_fd
         del self.tmp_fo
         os.close(self.save_fd)
-    
+
 class form_list(object):
     def __init__(self):
         self.lines = []
@@ -865,7 +865,7 @@ class new_form_list(object):
                 form_str = self.__col_sep.join(body_forms[0 : len(line)])
             else:
                 form_str = self.__col_sep.join(body_forms)
-            
+
             out_lines.append((form_str % tuple(line)).rstrip())
         return "\n".join(out_lines)
     def __len__(self):
@@ -887,7 +887,7 @@ def compress_list(ql, **kwargs):
         if pf_m:
             # prefix, postfix and index
             pef, pof = (
-                pf_m.group("pef"), 
+                pf_m.group("pef"),
                 pf_m.group("pof"),
             )
             nc_dict.setdefault(pef, {}).setdefault(pof, {})[int(pf_m.group("num"))] = pf_m.group("num")
@@ -986,7 +986,7 @@ class my_formatter(logging.Formatter):
             if left > 4:
                 message.msg = "%s (%d left)" % (message.msg[:self.__max_line_length], len(message.msg))
         return logging.Formatter.format(self, message)
-    
+
 class new_logfile(logging.handlers.BaseRotatingHandler):
     def __init__(self, filename, mode="a", max_bytes=1000000, encoding=None, max_age_days=365):
         # always append if max_size > 0
@@ -1035,9 +1035,10 @@ class new_logfile(logging.handlers.BaseRotatingHandler):
         act_idx = 0
         while True:
             act_postfix = "%s.%d" % (base_postfix, act_idx) if act_idx else base_postfix
-            gz_file_name = "%s-%s.%s" % (self.baseFilename,
-                                         act_postfix,
-                                         gz_postfix)
+            gz_file_name = "%s-%s.%s" % (
+                self.baseFilename,
+                act_postfix,
+                gz_postfix)
             if os.path.isfile(gz_file_name):
                 act_idx += 1
             else:
@@ -1063,7 +1064,7 @@ class new_logfile(logging.handlers.BaseRotatingHandler):
             os.chmod(self.baseFilename, 0640)
             self.mode = "w"
             self.stream = self._open()
-        
+
 class syslog_helper_obj(object):
     def __init__(self):
         pass
@@ -1163,7 +1164,7 @@ class syslog_helper_obj(object):
                     if self.is_string(sub_part):
                         ret_dict[self.flatten_string(sub_part)] = (top_k, sub_k, [x for x in sub_v if x != sub_part])
         return ret_dict
-    
+
 class syslog_ng_destination(syslog_helper_obj):
     def __init__(self, in_str):
         syslog_helper_obj.__init__(self)
@@ -1218,7 +1219,7 @@ class syslog_ng_log(syslog_helper_obj):
                                                 self.__obj_dict["filter"] and " with filter (%s)" % (", ".join(self.__obj_dict["destination"])) or "",
                                                 ", ".join(self.__obj_dict["destination"]),
                                                 self.__obj_dict["flags"] and ", flags (%s)" % (", ".join(self.__obj_dict["flags"])) or "")
-        
+
 class syslog_ng_config(syslog_helper_obj):
     def __init__(self, name="/etc/syslog-ng/syslog-ng.conf"):
         syslog_helper_obj.__init__(self)
@@ -1271,7 +1272,7 @@ def main():
     #print a.get_dict_sort(a.get_multi_object("source"))
     #print "\n".join(a.get_config_lines())
     sys.exit(0)
-    
+
 if __name__ == "__main__":
     main()
     print "Loadable module, exiting..."

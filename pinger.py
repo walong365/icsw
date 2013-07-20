@@ -10,7 +10,7 @@ import re
 
 FailMark=-666
 
-class Pinger:
+class Pinger(object):
     def __init__(self, addrs, num):
         ip_ms=re.compile("^\d+\.\d+\.\d+\.\d+$")
         self.num=num

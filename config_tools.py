@@ -5,7 +5,7 @@
 # this file is part of python-modules-base
 #
 # Send feedback to: <lang-nevyjel@init.at>
-# 
+#
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License Version 2 as
 # published by the Free Software Foundation.
@@ -241,7 +241,7 @@ def get_config_var_list(config_obj, config_dev):
             new_val.is_global = var_global
             r_dict[var_name.upper()] = new_val
     return r_dict
-        
+
 class server_check(object):
     """ is called server_check, but can also be used for nodes """
     def __init__(self, **kwargs):
@@ -252,10 +252,10 @@ class server_check(object):
         self.short_host_name = kwargs.get("short_host_name", process_tools.get_machine_name())
         self.__fetch_network_info = kwargs.get("fetch_network_info", True)
         self.__network_info_fetched = False
-        #self.set_hopcount_cache()
+        # self.set_hopcount_cache()
         self._check(**kwargs)
-    #def set_hopcount_cache(self, in_cache=[]):
-        #self.__hc_cache = in_cache
+    # def set_hopcount_cache(self, in_cache=[]):
+        # self.__hc_cache = in_cache
     def _check(self, **kwargs):
         # device from database or None
         self.device = None
@@ -301,9 +301,9 @@ class server_check(object):
             try:
                 self.device = device.objects.prefetch_related(
                     # intermediate sets not needed
-                    #"netdevice_set",
-                    #"netdevice_set__net_ip_set",
-                    #"netdevice_set__net_ip_set__network",
+                    # "netdevice_set",
+                    # "netdevice_set__net_ip_set",
+                    # "netdevice_set__net_ip_set__network",
                     "netdevice_set__net_ip_set__network__network_type").get(Q(name=self.short_host_name))
             except device.DoesNotExist:
                 self.device = None
@@ -314,7 +314,7 @@ class server_check(object):
                 except config.DoesNotExist:
                     try:
                         self.config = config.objects.get(
-                            Q(name=self.__server_type) & Q(device_config__device__device_type__identifier="MD") & 
+                            Q(name=self.__server_type) & Q(device_config__device__device_type__identifier="MD") &
                             Q(device_config__device__device_group=self.device.device_group_id))
                     except config.DoesNotExist:
                         self.config = None
@@ -322,9 +322,9 @@ class server_check(object):
                         self.effective_device = device.objects.get(Q(device_group=self.device.device_group_id) & Q(device_type__identifier="MD"))
                 else:
                     self.effective_device = self.device
-        #self.num_servers = len(all_servers)
+        # self.num_servers = len(all_servers)
         if self.config:
-            # name matches -> 
+            # name matches ->
             self._set_srv_info("real" if self.device.pk == self.effective_device.pk else "meta",
                                "hostname '%s'" % (self.short_host_name))
             if self.__fetch_network_info:
@@ -338,42 +338,42 @@ class server_check(object):
     def fetch_config_vars(self):
         self.__config_vars.update(get_config_var_list(self.config, self.effective_device))
     # FIXME, deprecated due to circular import problem
-##    def fetch_config_vars(self, dc):
-##        if self.config_idx:
-##            # dict of local vars without specified host
-##            l_var_wo_host = {}
-##            # code from configfile.py
-##            for short, what_value in [("str" , configfile_old.str_c_var),
-##                                      ("int" , configfile_old.int_c_var),
-##                                      ("blob", configfile_old.str_c_var)]:
-##                sql_str = "SELECT cv.* FROM config_%s cv WHERE cv.new_config=%d ORDER BY cv.name" % (short, self.config_idx)
-##                dc.execute(sql_str)
-##                for db_rec in [rec for rec in dc.fetchall() if rec["name"]]:
-##                    if db_rec["name"].count(":"):
-##                        var_global = False
-##                        local_host_name, var_name = db_rec["name"].split(":", 1)
-##                    else:
-##                        var_global = True
-##                        local_host_name, var_name = (self.short_host_name, db_rec["name"])
-##                    if type(db_rec["value"]) == type(array.array("b")):
-##                        new_val = what_value(db_rec["value"].tostring(), source="%s_table" % (short))
-##                    elif short == "int":
-##                        new_val = what_value(int(db_rec["value"]), source="%s_table" % (short))
-##                    else:
-##                        new_val = what_value(db_rec["value"], source="%s_table" % (short))
-##                    new_val.set_is_global(var_global)
-##                    if local_host_name == self.short_host_name:
-##                        if var_name.upper() in self and self.is_fixed(var_name.upper()):
-##                            # present value is fixed, keep value, only copy global / local status
-##                            self.copy_flag(var_name.upper(), new_val)
-##                        else:
-##                            self[var_name.upper()] = new_val
-##                    elif local_host_name == "":
-##                        l_var_wo_host[var_name.upper()] = new_val
-##            # check for vars to insert
-##            for wo_var_name, wo_var in l_var_wo_host.iteritems():
-##                if not wo_var_name in self or self.get_source(wo_var_name) == "default":
-##                    self[wo_var_name] = wo_var
+# #    def fetch_config_vars(self, dc):
+# #        if self.config_idx:
+# #            # dict of local vars without specified host
+# #            l_var_wo_host = {}
+# #            # code from configfile.py
+# #            for short, what_value in [("str" , configfile_old.str_c_var),
+# #                                      ("int" , configfile_old.int_c_var),
+# #                                      ("blob", configfile_old.str_c_var)]:
+# #                sql_str = "SELECT cv.* FROM config_%s cv WHERE cv.new_config=%d ORDER BY cv.name" % (short, self.config_idx)
+# #                dc.execute(sql_str)
+# #                for db_rec in [rec for rec in dc.fetchall() if rec["name"]]:
+# #                    if db_rec["name"].count(":"):
+# #                        var_global = False
+# #                        local_host_name, var_name = db_rec["name"].split(":", 1)
+# #                    else:
+# #                        var_global = True
+# #                        local_host_name, var_name = (self.short_host_name, db_rec["name"])
+# #                    if type(db_rec["value"]) == type(array.array("b")):
+# #                        new_val = what_value(db_rec["value"].tostring(), source="%s_table" % (short))
+# #                    elif short == "int":
+# #                        new_val = what_value(int(db_rec["value"]), source="%s_table" % (short))
+# #                    else:
+# #                        new_val = what_value(db_rec["value"], source="%s_table" % (short))
+# #                    new_val.set_is_global(var_global)
+# #                    if local_host_name == self.short_host_name:
+# #                        if var_name.upper() in self and self.is_fixed(var_name.upper()):
+# #                            # present value is fixed, keep value, only copy global / local status
+# #                            self.copy_flag(var_name.upper(), new_val)
+# #                        else:
+# #                            self[var_name.upper()] = new_val
+# #                    elif local_host_name == "":
+# #                        l_var_wo_host[var_name.upper()] = new_val
+# #            # check for vars to insert
+# #            for wo_var_name, wo_var in l_var_wo_host.iteritems():
+# #                if not wo_var_name in self or self.get_source(wo_var_name) == "default":
+# #                    self[wo_var_name] = wo_var
     def has_key(self, var_name):
         return var_name in self.__config_vars
     def __contains__(self, var_name):
@@ -485,7 +485,7 @@ class server_check(object):
                                                      (d_nd_pk, dest_ip_lut[dst_id])))
         return ret_list
     def report(self):
-        #print self.effective_device
+        # print self.effective_device
         if self.effective_device:
             return "short_host_name is %s (idx %d), server_origin is %s, effective_device_idx is %d, config_idx is %d, info_str is \"%s\"" % (
                 self.short_host_name,
@@ -500,7 +500,7 @@ class server_check(object):
                 self.device.pk,
                 self.server_origin,
                 self.server_info_str)
-        
+
 from django.db import connection
 
 class device_with_config(dict):
@@ -517,7 +517,7 @@ class device_with_config(dict):
     def _check(self, **kwargs):
         # locates devices with the given config_name
         # right now we are fetching a little bit too much ...
-        #print "*** %s=%s" % (self.__match_str, self.__m_config_name)
+        # print "*** %s=%s" % (self.__match_str, self.__m_config_name)
         exp_group = set()
         direct_list = device_config.objects.filter(
             Q(**{"config__%s" % (self.__match_str) : self.__m_config_name})).select_related(
@@ -557,15 +557,15 @@ class device_with_config(dict):
             dev_conf_dict.setdefault(tuple(cur_entry[2:6]), []).append((cur_entry[0], cur_entry[1], cur_entry[5], cur_entry[6]))
         dev_dict = dict([(cur_dev.pk, cur_dev) for cur_dev in device.objects.filter(Q(pk__in=[key[1] for key in dev_conf_dict.iterkeys()] + list(md_set))).prefetch_related(
             # intermediates not needed
-            #"netdevice_set",
-            #"netdevice_set__net_ip_set",
-            #"netdevice_set__net_ip_set__network",
+            # "netdevice_set",
+            # "netdevice_set__net_ip_set",
+            # "netdevice_set__net_ip_set__network",
             "netdevice_set__net_ip_set__network__network_type")])
         conf_dict = dict([(cur_conf.pk, cur_conf) for cur_conf in config.objects.filter(Q(pk__in=conf_pks))])
         for dev_key, conf_list in dev_conf_dict.iteritems():
             dev_name, dev_pk, devg_pk, dev_type = dev_key
             for conf_name, conf_pk, m_type, src_type in conf_list:
-                #print "%s (%s/%s), %s" % (conf_name, m_type, src_type, dev_key[0])
+                # print "%s (%s/%s), %s" % (conf_name, m_type, src_type, dev_key[0])
                 cur_struct = server_check(
                     short_host_name=dev_name,
                     server_type=conf_name,
@@ -574,20 +574,20 @@ class device_with_config(dict):
                     effective_device=dev_dict[dev_pk] if m_type == src_type else dev_dict[group_md_lut[devg_pk]],
                 )
                 self.setdefault(conf_name, []).append(cur_struct)
-    #def prefetch_hopcount_table(self, d_dev):
-        #dev_pks = set()
-        #for conf, srv_list in self.iteritems():
-            #dev_pks |= set([cur_str.device.pk for cur_str in srv_list])
-        #latest_gen = route_generation.objects.filter(Q(valid=True)).order_by("-pk")[0]
-        #all_hcs = hopcount.objects.filter(
-            #Q(route_generation=latest_gen) & 
-            #Q(s_netdevice__device__in=dev_pks) &
-            #Q(d_netdevice__in=d_dev.netdevice_idx_list)).distinct().order_by("value").values_list("s_netdevice__device", "s_netdevice", "d_netdevice", "value")
-        #dev_dict = {}
-        #for in_list in all_hcs:
-            #dev_dict.setdefault(in_list[0], []).append(tuple(in_list[1:]))
-        #for conf, srv_list in self.iteritems():
-            #[cur_srv.set_hopcount_cache(dev_dict.get(cur_srv.device.pk, [])) for cur_srv in srv_list]
+    # def prefetch_hopcount_table(self, d_dev):
+        # dev_pks = set()
+        # for conf, srv_list in self.iteritems():
+            # dev_pks |= set([cur_str.device.pk for cur_str in srv_list])
+        # latest_gen = route_generation.objects.filter(Q(valid=True)).order_by("-pk")[0]
+        # all_hcs = hopcount.objects.filter(
+            # Q(route_generation=latest_gen) &
+            # Q(s_netdevice__device__in=dev_pks) &
+            # Q(d_netdevice__in=d_dev.netdevice_idx_list)).distinct().order_by("value").values_list("s_netdevice__device", "s_netdevice", "d_netdevice", "value")
+        # dev_dict = {}
+        # for in_list in all_hcs:
+            # dev_dict.setdefault(in_list[0], []).append(tuple(in_list[1:]))
+        # for conf, srv_list in self.iteritems():
+            # [cur_srv.set_hopcount_cache(dev_dict.get(cur_srv.device.pk, [])) for cur_srv in srv_list]
     def set_key_type(self, k_type):
         print "deprecated, only one key_type (config) supported"
         sys.exit(0)

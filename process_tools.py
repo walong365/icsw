@@ -54,12 +54,12 @@ try:
     ENCODING = locale.getpreferredencoding()
 except locale.Error:
     ENCODING = "C"
-    
+
 try:
     import affinity_tools
 except:
     affinity_tools = None
-    
+
 # net to sys and reverse functions
 def net_to_sys(in_val):
     try:
@@ -110,8 +110,11 @@ class exception_info(object):
         self.except_info = kwargs.get("exc_info", sys.exc_info())
         tb_object = self.except_info[2]
         exc_type = str(self.except_info[0]).split(".")[-1].split("'")[0]
-        self.log_lines = ["caught exception %s (%s), traceback follows:" % (exc_type, get_except_info(self.except_info)),
-                          "exception in process/thread '%s'" % (self.thread_name)]
+        self.log_lines = [
+            "caught exception %s (%s), traceback follows:" % (
+                exc_type,
+                get_except_info(self.except_info)),
+            "exception in process/thread '%s'" % (self.thread_name)]
         for file_name, line_no, name, line in traceback.extract_tb(tb_object):
             self.log_lines.append("File '%s', line %d, in %s" % (file_name, line_no, name))
             if line:
@@ -221,7 +224,7 @@ def submit_at_command(com, diff_time=0):
     for out_l in cout.split("\n"):
         log_f.append(" - %s" % (out_l))
     return cstat, log_f
-    
+
 def get_mem_info(pid=0, **kwargs):
     if not pid:
         pid = os.getpid()
@@ -253,7 +256,8 @@ def get_mem_info(pid=0, **kwargs):
         elif os.path.isfile(map_file_name):
             # not always correct ...
             try:
-                map_lines = [[y.strip() for y in x.strip().split()] for x in  file(map_file_name, "r").read().split("\n") if x.strip()]
+                map_lines = [[y.strip() for y in x.strip().split()] for x in
+                             file(map_file_name, "r").read().split("\n") if x.strip()]
             except:
                 pass
             else:
@@ -264,7 +268,10 @@ def get_mem_info(pid=0, **kwargs):
                         mem_start, mem_end = (int(mem_start, 16),
                                               int(mem_end  , 16))
                         mem_size = mem_end - mem_start
-                        perm, offset, dev, inode = (map_p[1], int(map_p[2], 16), map_p[3], int(map_p[4]))
+                        perm, offset, dev, inode = (map_p[1],
+                                                    int(map_p[2], 16),
+                                                    map_p[3],
+                                                    int(map_p[4]))
                         if not inode:
                             tot_size += mem_size
                     except:
@@ -299,7 +306,8 @@ def get_stat_info(pid=0):
                 "itrealvalue", "starttime",
                 "vsize", "rss", "rlim"
             ]
-            stat_dict = dict([(key.replace("*", ""), value if key.endswith("*") else int(value)) for key, value in zip(stat_keys, stat_parts)])
+            stat_dict = dict([(key.replace("*", ""), value if key.endswith("*") else int(value))
+                              for key, value in zip(stat_keys, stat_parts)])
             stat_dict["pid"] = int(pid_part)
             stat_dict["comm"] = com_part
     return stat_dict
@@ -319,7 +327,7 @@ def beautify_mem_info(mi=None, short=0):
         return "%.2f M%s" % (mi / (1024. * 1024.), bs)
     else:
         return "%.2f G%s" % (mi / (1024. * 1024. * 1024.), bs)
-    
+
 
 class error(Exception):
     def __init__(self, value = None):
@@ -357,7 +365,8 @@ class meta_server_info(object):
                 try:
                     xml_struct = etree.fromstring(file(name, "r").read())
                 except:
-                    logging_tools.my_syslog("error parsing XML file %s (meta_server_info): %s" % (name, get_except_info()))
+                    logging_tools.my_syslog("error parsing XML file %s (meta_server_info): %s" % (
+                        name, get_except_info()))
             if xml_struct is not None:
                 self.__name = xml_struct.xpath(".//name/text()")[0]
                 # reads pids
@@ -382,7 +391,9 @@ class meta_server_info(object):
                 try:
                     lines = [line.strip() for line in file(name, "r").read().split("\n")]
                 except:
-                    logging_tools.my_syslog("error reading file %s (meta_server_info): %s" % (name, get_except_info()))
+                    logging_tools.my_syslog("error reading file %s (meta_server_info): %s" % (
+                        name,
+                        get_except_info()))
                 else:
                     act_dict = dict([(line[0].strip().lower(), line[1].strip()) for line in [lp.split("=", 1) for lp in lines if lp.count("=")] if len(line) > 1])
                     self.__name = act_dict.get("name", None)
@@ -653,7 +664,7 @@ class meta_server_info(object):
                     ", ".join(["%d" % (cur_pid) for cur_pid in error_pids])) or "---")
         else:
             return "no pids to kill"
-         
+
 
 class cached_file(object):
     def __init__(self, name, **kwargs):
@@ -703,7 +714,7 @@ class cached_file(object):
             self.log("file '%s' does not exist" % (self.__name), logging_tools.LOG_LEVEL_ERROR)
             self.content = None
             self.changed()
-        
+
 def save_pid(name, pid=None, mult=1):
     return append_pids(name, pid=pid, mult=mult, mode="w")
 
@@ -715,7 +726,7 @@ RUN_DIR = "/var/run"
 ##    suse_ver = [line.strip().split()[-1] for line in file("/etc/SuSE-release", "r").read().split("\n") if line.startswith("VERSION")]
 ##    if suse_ver == ["12.1"]:
 ##        RUN_DIR = "/run"
-    
+
 def append_pids(name, pid=None, mult=1, mode="a"):
     if pid == None:
         actp = [os.getpid()]
@@ -821,7 +832,7 @@ def set_lockfile_msg(lf_name, msg):
             file(lf_msg_name, "w").write(msg.strip())
         except:
             pass
-        
+
 def delete_lockfile(lf_name, msg="OK", check=True):
     set_lockfile_msg(lf_name, msg)
     if os.path.isfile(lf_name):
@@ -833,7 +844,7 @@ def delete_lockfile(lf_name, msg="OK", check=True):
         except IOError:
             if check:
                 logging_tools.my_syslog("error (IOError) deleting lockfile %s: %s" % (lf_name, get_except_info()))
-    
+
 def wait_for_lockfile(lf_name, timeout=1, max_iter=10):
     lf_msg_name = get_msg_file_name(lf_name)
     last_out = "???"
@@ -988,7 +999,7 @@ def resolve_user(user):
     except KeyError:
         uid_stuff = None
     return uid_stuff
-    
+
 def change_user_group(user, group, groups=[], **kwargs):
     try:
         if type(user) in [int, long]:
@@ -1061,7 +1072,7 @@ def fix_sysconfig_rights():
     target_group = "idg"
     os.chown(conf_dir, 0, grp.getgrnam(target_group)[2])
     os.chmod(conf_dir, 0775)
-    
+
 def change_user_group_path(path, user, group):
     try:
         if type(user) in [int, long]:
@@ -1112,7 +1123,7 @@ def change_user_group_path(path, user, group):
     else:
         logging_tools.my_syslog("  ... path '%s' does not exist" % (path))
     return ok
-    
+
 def become_daemon(debug=None, wait=0, mother_hook=None, mother_hook_args=None, **kwargs):
     os.chdir("/")
     debug_f = None
@@ -1144,7 +1155,7 @@ def become_daemon(debug=None, wait=0, mother_hook=None, mother_hook_args=None, *
         time.sleep(wait)
         os._exit(0)
     return True
-            
+
 def get_process_id_list(with_threadcount=True, with_dotprocs=False):
     max_try_count = 10
     for i in range(max_try_count):
@@ -1257,7 +1268,7 @@ def bpt_show_childs(in_dict, idx, start):
         p_list = in_dict[start]["childs"].keys()
         for pid in p_list:
             bpt_show_childs(in_dict[start]["childs"], idx + 2, pid)
-            
+
 def build_ps_tree(pdict):
     def bpt_get_childs(master):
         r_dict = {}
@@ -1395,7 +1406,7 @@ def fix_directories(user, group, f_list):
                     named_uid,
                     named_gid,
                     get_except_info()))
-    
+
 def fix_files(user, group, f_dict):
     try:
         named_uid = pwd.getpwnam(user)[2]
@@ -1422,7 +1433,7 @@ def is_windows():
 
 def get_fqdn():
     """
-    return short and fqdn 
+    return short and fqdn
     """
     short_sock_name = get_machine_name()
     full_sock_name = socket.getfqdn(short_sock_name)
@@ -1450,7 +1461,7 @@ def get_machine_name(short=True):
         return m_name.split(".")[0]
     else:
         return m_name
-        
+
 def get_cluster_name(f_name="/etc/sysconfig/cluster/cluster_name"):
     if os.path.isfile(f_name):
         try:
@@ -1460,7 +1471,7 @@ def get_cluster_name(f_name="/etc/sysconfig/cluster/cluster_name"):
     else:
         c_name = "not set"
     return c_name
-    
+
 class automount_checker(object):
     def __init__(self, **kwargs):
         if kwargs.get("check_paths", True):
@@ -1536,7 +1547,7 @@ def get_arp_dict():
     except:
         arp_dict = {}
     return arp_dict
-        
+
 def get_char_block_device_dict():
     # parses /proc/devices and returns two dicts
     char_dict, block_dict = ({}, {})
@@ -1710,7 +1721,7 @@ def find_file(file_name, s_path=None):
         return os.path.join(cur_path, file_name)
     else:
         return None
-    
+
 def create_password(**kwargs):
     def_chars = "".join([chr(asc) for asc in range(ord("a"), ord("z") + 1)])
     chars = kwargs.get("chars", "%s%s%s" % (
