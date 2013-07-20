@@ -24,6 +24,7 @@ import logging_tools
 import argparse
 import threading_tools
 
+
 class my_options(argparse.ArgumentParser):
     def __init__(self):
         argparse.ArgumentParser.__init__(self)
@@ -36,18 +37,22 @@ class my_options(argparse.ArgumentParser):
         self.add_argument("--log-name", default="logging_client", type=str, dest="log_name", help="name of logging instance [%(default)s]")
         self.add_argument("args", nargs="+")
 
+
 class log_process(threading_tools.process_obj):
     def __init__(self, t_name, options, log_template):
         self.__options = options
         threading_tools.process_obj.__init__(self, t_name)
+
     def process_init(self):
         self.__log_template = logging_tools.get_logger(self.__options.log_name, self.__options.dst, zmq=True, context=self.zmq_context)
         self.__log_template.log_command("set_max_line_length %d" % (256))
         self.__log_str = self.__options.mult * (" ".join(self.__options.args))
         self.log("log_str has %s" % (logging_tools.get_plural("byte", len(self.__log_str))))
         self.register_func("start_logging", self._start_logging)
+
     def log(self, what, log_lev=logging_tools.LOG_LEVEL_OK):
         self.__log_template.log(log_lev, what)
+
     def _start_logging(self, **kwargs):
         self.log("start logging")
         emitted = 0
@@ -56,6 +61,7 @@ class log_process(threading_tools.process_obj):
             emitted += len(self.__log_str)
         self.log("bytes emitted: %s" % (logging_tools.get_size_str(emitted)))
         self.send_pool_message("stop_logging", emitted)
+
 
 class my_thread_pool(threading_tools.process_pool):
     def __init__(self, options):
@@ -74,6 +80,7 @@ class my_thread_pool(threading_tools.process_pool):
         self.__processes_running = len(self.__process_names)
         self.__bytes_total = 0
         [self.send_to_process(t_name, "start_logging") for t_name in self.__process_names]
+
     def log(self, what, log_lev=logging_tools.LOG_LEVEL_OK):
         if self.__log_template:
             if self.__log_cache:
@@ -83,6 +90,7 @@ class my_thread_pool(threading_tools.process_pool):
             self.__log_template.log(log_lev, what)
         else:
             self.__log_cache.append((log_lev, what))
+
     def _stop_logging(self, p_name, p_pid, num_bytes, **kwargs):
         self.__bytes_total += num_bytes
         self.__processes_running -= 1
@@ -91,8 +99,10 @@ class my_thread_pool(threading_tools.process_pool):
         else:
             self.log("bytes emitted: %s" % (logging_tools.get_size_str(self.__bytes_total)))
             self["exit_requested"] = True
+
     def loop_post(self):
         self.__log_template.log_command("close")
+
 
 def main():
     options = my_options().parse_args()
@@ -101,6 +111,6 @@ def main():
     else:
         io_stream_helper.io_stream(options.dst, zmq=True).write(" ".join(options.args))
 
+
 if __name__ == "__main__":
     main()
-    

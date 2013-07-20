@@ -47,12 +47,14 @@ SEP_STR = "-" * 50
 class twisted_log_receiver(DatagramProtocol):
     def __init__(self, t_process):
         self.__process = t_process
+        
     def datagramReceived(self, in_str, addr):
         if in_str[0:8].isdigit():
             self.__process.log_recv(in_str[8:])
         else:
             self.__process.log("invalid header", logging_tools.LOG_LEVEL_ERROR)
         
+
 class twisted_process(threading_tools.process_obj):
     def process_init(self):
         self.__log_socket = self.connect_to_socket("receiver")
