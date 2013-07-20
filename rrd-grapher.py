@@ -712,12 +712,19 @@ class graph_process(threading_tools.process_obj):
                     for modify_xml in modify_list:
                         if re.match(modify_xml.attrib["key_match"], ref_key):
                             sub_xml.attrib[modify_xml.attrib["attribute"]] = modify_xml.attrib["value"]
+    def _create_graph_keys(self, graph_keys):
+        # graph_keys ... list of keys
+        first_level_keys = set([key.split(".")[0] for key in graph_keys])
+        g_key_dict = dict([(flk, sorted([key for key in graph_keys if key.split(".")[0] == flk])) for flk in first_level_keys])
+        return g_key_dict
     def _graph_rrd(self, *args, **kwargs):
         src_id, srv_com = (args[0], server_command.srv_command(source=args[1]))
         dev_pks = [entry for entry in map(lambda x: int(x), srv_com.xpath(None, ".//device_list/device/@pk")) if entry in self.vector_dict]
-        graph_keys = srv_com.xpath(None, ".//graph_key_list/graph_key/text()")
+        graph_keys = sorted(srv_com.xpath(None, ".//graph_key_list/graph_key/text()"))
+        graph_key_dict = self._create_graph_keys(graph_keys)
         self.log("found device pks: %s" % (", ".join(["%d" % (pk) for pk in dev_pks])))
         self.log("graph keys: %s" % (", ".join(graph_keys)))
+        self.log("top level keys (== distinct graphs): %d" % (len(graph_key_dict)))
         para_dict = {
             "size"      : "400x200",
         }
@@ -731,64 +738,66 @@ class graph_process(threading_tools.process_obj):
         para_dict["timeframe"] = abs((para_dict["end_time"] - para_dict["start_time"]).total_seconds())
         dev_vector = self.vector_dict[dev_pks[0]]
         graph_list = E.graph_list()
-        graph_name = "gfx_%d.png" % (int(time.time()))
-        abs_file_loc, rel_file_loc = (
-            os.path.join(self.graph_root, graph_name),
-            os.path.join("/%s/graphs/%s" % (settings.REL_SITE_ROOT, graph_name)),
-        )
-        dt_1970 = datetime.datetime(1970, 1, 1)
-        rrd_args = [
-                abs_file_loc,
-                "-E",
-                "-Rlight",
-                "-G",
-                "normal",
-                "-P",
-                # "-nDEFAULT:8:",
-                "-w %d" % (int(para_dict["size"].split("x")[0])),
-                "-h %d" % (int(para_dict["size"].split("x")[1])),
-                "-a"
-                "PNG",
-                "--daemon",
-                "unix:/var/run/rrdcached.sock",
-                "-W init.at clustersoftware",
-                "--slope-mode",
-                "-cBACK#ffffff",
-                "--end",
-                # offset to fix UTC, FIXME
-                "%d" % ((para_dict["end_time"] - dt_1970).total_seconds() - 2 * 3600),
-                "--start",
-                "%d" % ((para_dict["start_time"] - dt_1970).total_seconds() - 2 * 3600),
-                graph_var(None).header_line,
-        ]
-        graph_var.init(self.colortables.find("colortable[@name='dark28']"))
-        for graph_key in sorted(graph_keys):
-            graph_mve = dev_vector.find(".//mve[@name='%s']" % (graph_key))
-            if graph_mve is not None:
-                rrd_args.extend(graph_var(graph_mve).config)
-            graph_pde = dev_vector.find(".//value[@full='%s']" % (graph_key))
-            if graph_pde is not None:
-                rrd_args.extend(graph_var(graph_pde).config)
-        if graph_var.var_idx:
-            rrd_args.extend([
-                "--title",
-                "RRD (%s, %s)" % (logging_tools.get_plural("DEF", graph_var.var_idx),
-                                  logging_tools.get_diff_time_str(para_dict["timeframe"])),
-            ])
-            try:
-                draw_result = rrdtool.graphv(*rrd_args)
-            except:
-                self.log("error creating graph: %s" % (process_tools.get_except_info()), logging_tools.LOG_LEVEL_ERROR)
-                # pprint.pprint(rrd_args)
-            else:
-                graph_list.append(
-                    E.graph(
-                        href=rel_file_loc,
-                        **dict([(key, "%d" % (value) if type(value) in [int, long] else "%.6f" % (value)) for key, value in draw_result.iteritems()])
+        for tlk in sorted(graph_key_dict):
+            graph_keys = graph_key_dict[tlk]
+            graph_name = "gfx_%s_%d.png" % (tlk, int(time.time()))
+            abs_file_loc, rel_file_loc = (
+                os.path.join(self.graph_root, graph_name),
+                os.path.join("/%s/graphs/%s" % (settings.REL_SITE_ROOT, graph_name)),
+            )
+            dt_1970 = datetime.datetime(1970, 1, 1)
+            rrd_args = [
+                    abs_file_loc,
+                    "-E",
+                    "-Rlight",
+                    "-G",
+                    "normal",
+                    "-P",
+                    # "-nDEFAULT:8:",
+                    "-w %d" % (int(para_dict["size"].split("x")[0])),
+                    "-h %d" % (int(para_dict["size"].split("x")[1])),
+                    "-a"
+                    "PNG",
+                    "--daemon",
+                    "unix:/var/run/rrdcached.sock",
+                    "-W init.at clustersoftware",
+                    "--slope-mode",
+                    "-cBACK#ffffff",
+                    "--end",
+                    # offset to fix UTC, FIXME
+                    "%d" % ((para_dict["end_time"] - dt_1970).total_seconds() - 2 * 3600),
+                    "--start",
+                    "%d" % ((para_dict["start_time"] - dt_1970).total_seconds() - 2 * 3600),
+                    graph_var(None).header_line,
+            ]
+            graph_var.init(self.colortables.find("colortable[@name='dark28']"))
+            for graph_key in sorted(graph_keys):
+                graph_mve = dev_vector.find(".//mve[@name='%s']" % (graph_key))
+                if graph_mve is not None:
+                    rrd_args.extend(graph_var(graph_mve).config)
+                graph_pde = dev_vector.find(".//value[@full='%s']" % (graph_key))
+                if graph_pde is not None:
+                    rrd_args.extend(graph_var(graph_pde).config)
+            if graph_var.var_idx:
+                rrd_args.extend([
+                    "--title",
+                    "RRD (%s, %s)" % (logging_tools.get_plural("DEF", graph_var.var_idx),
+                                      logging_tools.get_diff_time_str(para_dict["timeframe"])),
+                ])
+                try:
+                    draw_result = rrdtool.graphv(*rrd_args)
+                except:
+                    self.log("error creating graph: %s" % (process_tools.get_except_info()), logging_tools.LOG_LEVEL_ERROR)
+                    # pprint.pprint(rrd_args)
+                else:
+                    graph_list.append(
+                        E.graph(
+                            href=rel_file_loc,
+                            **dict([(key, "%d" % (value) if type(value) in [int, long] else "%.6f" % (value)) for key, value in draw_result.iteritems()])
+                        )
                     )
-                )
-        else:
-            self.log("no DEFs", logging_tools.LOG_LEVEL_ERROR)
+            else:
+                self.log("no DEFs", logging_tools.LOG_LEVEL_ERROR)
         srv_com["graphs"] = graph_list
         # print srv_com.pretty_print()
         srv_com.set_result(
