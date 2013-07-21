@@ -449,6 +449,57 @@ class report_thread(threading_tools.thread_obj):
                       "GPRINT:%s:total %%6.1lf%%s\l" % (report_names["total"])])
         return ret_f
 
+class colorizer(object):
+    def __init__(self, g_proc):
+        self.graph_process = g_proc
+        self.def_color_table = "dark28"
+        self._read_files()
+    def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
+        self.graph_process.log("[col] %s" % (what), log_level)
+    def _read_files(self):
+        self.colortables = etree.fromstring(file(global_config["COLORTABLE_FILE"], "r").read())
+        self.color_tables = {}
+        for c_table in self.colortables.findall(".//colortable[@name]"):
+            self.color_tables[c_table.get("name")] = ["#%s" % (color.get("rgb")) for color in c_table if self._check_color(color)]
+        self.log("read colortables from %s" % (global_config["COLORTABLE_FILE"]))
+        self.color_rules = etree.fromstring(file(global_config["COLORRULES_FILE"], "r").read())
+        self.log("read colorrules from %s" % (global_config["COLORRULES_FILE"]))
+        self.match_re_keys = [
+            (re.compile("^%s" % (entry.attrib["key"].replace(".", r"\."))),
+             entry) for entry in self.color_rules.xpath(".//entry[@key]")]
+        # fast lookup table, store computed lookups
+        self.fast_lut = {}
+    def _check_color(self, color):
+        cur_c = "#%s" % (color.get("rgb"))
+        return (int(cur_c[1:3], 16) + int(cur_c[3:5], 16) + int(cur_c[5:7], 16)) < 3 * 224
+    def reset(self):
+        # reset values for next graph
+        self.table_offset = {}
+    def get_color_and_style(self, entry):
+        t_name, s_dict = self.get_table_name(entry)
+        if t_name not in self.table_offset:
+            self.table_offset[t_name] = 0
+        self.table_offset[t_name] += 1
+        if self.table_offset[t_name] == len(self.color_tables[t_name]):
+            self.table_offset[t_name] = 0
+        return self.color_tables[t_name][self.table_offset[t_name]], s_dict
+    def get_table_name(self, entry):
+        s_dict = {}
+        key_name = entry.get("full", entry.get("name"))
+        if key_name not in self.fast_lut:
+            for c_re, c_entry in self.match_re_keys:
+                if c_re.match(key_name):
+                    self.fast_lut[key_name] = c_entry
+        t_name = self.def_color_table
+        if key_name in self.fast_lut:
+            c_xml = self.fast_lut[key_name]
+            if c_xml.find(".//range[@colortable]") is not None:
+                t_name = c_xml.find(".//range[@colortable]").get("colortable")
+            for modify_xml in c_xml.findall("modify"):
+                if re.match(modify_xml.get("key_match"), key_name):
+                    s_dict[modify_xml.attrib["attribute"]] = modify_xml.attrib["value"]
+        return t_name, s_dict
+
 class graph_var(object):
     var_idx = 0
     def __init__(self, entry, dev_name=""):
@@ -463,10 +514,9 @@ class graph_var(object):
     def get(self, key, default):
         return self.entry.attrib.get(key, default)
     @staticmethod
-    def init(def_ct):
-        graph_var.var_idx = 0
-        graph_var.color_idx = 0
-        graph_var.colortable = [color.attrib["rgb"] for color in def_ct]
+    def init(clrz):
+        graph_var.colorizer = clrz
+        graph_var.colorizer.reset()
     @property
     def info(self):
         info = self["info"]
@@ -476,17 +526,11 @@ class graph_var(object):
         if self.dev_name:
             info = "%s (%s)" % (info, str(self.dev_name))
         return info
-    @property
-    def color(self):
-        if "colour" in self:
-            return self["colour"]
-        else:
-            graph_var.color_idx += 1
-            if graph_var.color_idx >= len(graph_var.colortable):
-                graph_var.color_idx = 0
-            return "#%s" % (graph_var.colortable[graph_var.color_idx])
+    def get_color_and_style(self):
+        self.color, self.style_dict = graph_var.colorizer.get_color_and_style(self.entry)
     @property
     def config(self):
+        self.get_color_and_style()
         if self.entry.tag == "value":
             # pde entry
             c_lines = [
@@ -505,7 +549,7 @@ class graph_var(object):
             draw_name = self.name
         c_lines.append(
             "%s:%s%s:<tt>%s</tt>" % (
-                self.get("draw_type", "LINE1"),
+                self.style_dict.get("draw_type", "LINE1"),
                 draw_name,
                 self.color,
                 ("%%-%ds" % (MAX_INFO_WIDTH)) % (self.info)[:MAX_INFO_WIDTH]),
@@ -533,18 +577,6 @@ class graph_var(object):
             "".join(["%9s" % (rep_name) for rep_name in ["min", "ave", "max", "latest", "total"]])
         )
 
-class colorizer(object):
-    def __init__(self, g_proc):
-        self.graph_process = g_proc
-        self._read_files()
-    def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
-        self.graph_process.log("[col] %s" % (what), log_level)
-    def _read_files(self):
-        self.colortables = etree.fromstring(file(global_config["COLORTABLE_FILE"], "r").read())
-        self.log("read colortables from %s" % (global_config["COLORTABLE_FILE"]))
-        self.color_rules = etree.fromstring(file(global_config["COLORRULES_FILE"], "r").read())
-        self.log("read colorrules from %s" % (global_config["COLORRULES_FILE"]))
-
 class graph_process(threading_tools.process_obj):
     def process_init(self):
         self.__log_template = logging_tools.get_logger(global_config["LOG_NAME"], global_config["LOG_DESTINATION"], zmq=True, context=self.zmq_context, init_logger=True)
@@ -566,7 +598,6 @@ class graph_process(threading_tools.process_obj):
         # needed ?
         self.raw_vector_dict[dev_id] = xml_str
         self.vector_dict[dev_id] = self._struct_vector(xml_str)
-        # self._set_colours(self.vector_dict[dev_id])
     def _struct_vector(self, cur_xml):
         # somehow related to struct_xml_vector
         all_keys = set(cur_xml.xpath(".//mve/@name"))
@@ -603,92 +634,6 @@ class graph_process(threading_tools.process_obj):
                 new_val.attrib["full"] = "%s.%s" % (new_el.get("name"), new_val.get("name"))
                 new_el.append(new_val)
         return xml_vect
-    def _set_colours(self, xml_vect):
-        color_xml = etree.fromstring("""
-        """)
-        # match_keys = color_xml.xpath(".//entry[@key]")
-        match_re_keys = [
-            (re.compile("^%s" % (entry.attrib["key"].replace(".", r"\."))),
-             entry) for entry in color_xml.xpath(".//entry[@key]")]
-        # print etree.tostring(color_xml, pretty_print=True)
-        keys_touched = set()
-        for xml_ent in xml_vect.findall(".//entry[@full]"):
-            if "colour" in xml_ent.attrib:
-                # colour already set
-                pass
-            else:
-                full_key = xml_ent.attrib["full"]
-                if full_key not in keys_touched:
-                    # print full_key
-                    for c_re, entry in match_re_keys:
-                        if c_re.match(full_key):
-                            keys_touched.add(full_key)
-                            self._colourize(xml_ent, entry)
-                            break
-        # print etree.tostring(xml_vect, pretty_print=True)
-    def _colourize(self, xml_ent, xml_col):
-        # colourize the subtree of xml_ent according to xml_col
-        main_key = xml_ent.attrib["full"]
-        # print "***", main_key
-        sub_keys = sorted([name[len(main_key) + 1:] for name in xml_ent.xpath(".//mve/@name")])
-        if int(xml_col.get("integer_subkeys", "0")):
-            try:
-                # sort after casting to int
-                sub_keys = ["%d" % (int_key) for int_key in sorted([int(key) for key in sub_keys])]
-            except:
-                pass
-        range_xml = xml_col.find("range")
-        if int(xml_col.get("ignore_next_level", "0")):
-            next_level_keys = {}
-            for key in sub_keys:
-                next_key, sub_key = key.split(".", 1) if key.count(".") else (key, "")
-                next_level_keys.setdefault(next_key, []).append(sub_key)
-            # pprint.pprint(next_level_keys)
-        else:
-            # build dummy dict
-            next_level_keys = {"" : sub_keys}
-        modify_list = xml_col.findall("modify")
-        if range_xml != None:
-            if "start_color" in range_xml.attrib:
-                start_color, end_color = (
-                    Color(range_xml.attrib["start_color"]),
-                    Color(range_xml.attrib["end_color"]),
-                )
-                color_table = None
-            else:
-                color_table = self.colortables.find("colortable[@name='%s']" % (range_xml.attrib["colortable"]))
-            second_len = len(next_level_keys)
-            for next_idx, next_key in enumerate(sorted(next_level_keys.keys())):
-                next_keys = next_level_keys[next_key]
-                if color_table is not None:
-                    color_list = []
-                    for color in color_table:
-                        cur_c = Color("#%s" % (color.get("rgb")))
-                        # remove colors which are too bright
-                        if (int(cur_c.hex_l[1:3], 16) + int(cur_c.hex_l[3:5], 16) + int(cur_c.hex_l[5:7], 16)) < 3 * 220:
-                            color_list.append(cur_c.hex[1:])
-                    while len(color_list) < len(next_keys):
-                        color_list = color_list + color_list
-                    color_list = ["#%s" % (entry) for entry in color_list[:len(next_keys)]]
-                else:
-                    if len(next_keys) > 1:
-                        color_list = list(start_color.range_to(end_color, len(next_keys)))
-                    else:
-                        color_list = [start_color]
-                    color_list = [entry.hex for entry in color_list]
-                for sub_key, sub_color in zip(next_keys, color_list):
-                    ref_key = main_key
-                    if next_key:
-                        ref_key = "%s.%s" % (ref_key, next_key)
-                    if sub_key:
-                        ref_key = "%s.%s" % (ref_key, sub_key)
-                    # print sub_key, sub_color
-                    sub_xml = xml_ent.find(".//mve[@name='%s']" % (ref_key))
-                    if "colour" not in sub_xml.attrib:
-                        sub_xml.attrib["colour"] = sub_color
-                    for modify_xml in modify_list:
-                        if re.match(modify_xml.attrib["key_match"], ref_key):
-                            sub_xml.attrib[modify_xml.attrib["attribute"]] = modify_xml.attrib["value"]
     def _create_graph_keys(self, graph_keys):
         # graph_keys ... list of keys
         first_level_keys = set([key.split(".")[0] for key in graph_keys])
@@ -748,7 +693,7 @@ class graph_process(threading_tools.process_obj):
                     "%d" % ((para_dict["start_time"] - dt_1970).total_seconds() - 2 * 3600),
                     graph_var(None, "").header_line,
             ]
-            graph_var.init(self.colortables.find("colortable[@name='dark28']"))
+            graph_var.init(self.colorizer)
             for graph_key in sorted(graph_keys):
                 for cur_pk in dev_pks:
                     dev_vector = self.vector_dict[cur_pk]
@@ -874,16 +819,17 @@ class data_store(object):
         if len(entry) == len(src_entry):
             for v_idx, (cur_value, src_value) in enumerate(zip(entry, src_entry)):
                 for key, def_value in [
-                    ("info", "performance_data"),
+                    ("info"  , "performance_data"),
                     ("v_type", "f"),
                     ("unit"  , "1"),
-                    ("name", None),
-                    ("index", "%d" % (v_idx))]:
+                    ("name"  , None),
+                    ("index" , "%d" % (v_idx))]:
                     cur_value.attrib[key] = src_value.get(key, def_value)
     def _update_entry(self, entry, src_entry, rrd_dir):
         for key, def_value in [
             ("info"  , None),
             ("v_type", None),
+            ("full"  , entry.get("name")),
             ("unit"  , "1"),
             ("base"  , "1"),
             ("factor", "1")]:
