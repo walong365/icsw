@@ -1,0 +1,36 @@
+<colourizing>
+    <entry key="load" iterate="1" integer_subkeys="1">
+        <range colortable='dark23'/>
+    </entry>
+    <entry key="net" iterate="1" ignore_next_level="1">
+        <range colortable='bupu9'/>
+        <modify key_match=".*tx.*" attribute="invert" value="1"/>
+        <modify key_match=".*err.*" attribute="draw_type" value="LINE2"/>
+    </entry>
+    <entry key="vms" iterate="1" ignore_next_level="1">
+        <range colortable='paired12'/>
+        <!--<modify key_match=".*" attribute="draw_type" value="STACK"/>
+        <modify key_match=".*idle.*" attribute="draw_type" value="LINE"/>-->
+    </entry>
+    <entry key="df" iterate="1" ignore_next_level="1">
+        <range colortable='set19'/>
+    </entry>
+    <entry key="io" iterate="1" ignore_next_level="1">
+        <range colortable='prgn11'/>
+    </entry>
+    <entry key="mem" iterate="1" ignore_next_level="1">
+        <range colortable='rdgy11'/>
+        <modify key_match=".*bc$" attribute="draw_type" value="LINE2"/>
+    </entry>
+    <entry key="num" iterate="1">
+        <range start_color='blue' end_color='#ff8800'/>
+    </entry>
+    <entry key="ovpn" iterate="1">
+        <range start_color='red' end_color='yellow'/>
+    </entry>
+    <entry key="proc" iterate="1">
+        <range start_color='red' end_color='#008888'/>
+        <modify key_match=".*" attribute="draw_type" value="LINE2"/>
+    </entry>
+ </colourizing>
+        

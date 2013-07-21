@@ -533,6 +533,18 @@ class graph_var(object):
             "".join(["%9s" % (rep_name) for rep_name in ["min", "ave", "max", "latest", "total"]])
         )
 
+class colorizer(object):
+    def __init__(self, g_proc):
+        self.graph_process = g_proc
+        self._read_files()
+    def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
+        self.graph_process.log("[col] %s" % (what), log_level)
+    def _read_files(self):
+        self.colortables = etree.fromstring(file(global_config["COLORTABLE_FILE"], "r").read())
+        self.log("read colortables from %s" % (global_config["COLORTABLE_FILE"]))
+        self.color_rules = etree.fromstring(file(global_config["COLORRULES_FILE"], "r").read())
+        self.log("read colorrules from %s" % (global_config["COLORRULES_FILE"]))
+
 class graph_process(threading_tools.process_obj):
     def process_init(self):
         self.__log_template = logging_tools.get_logger(global_config["LOG_NAME"], global_config["LOG_DESTINATION"], zmq=True, context=self.zmq_context, init_logger=True)
@@ -541,7 +553,7 @@ class graph_process(threading_tools.process_obj):
         self.raw_vector_dict, self.vector_dict = ({}, {})
         self.graph_root = global_config["GRAPH_ROOT"]
         self.log("graphs go into %s" % (self.graph_root))
-        self._read_colortables()
+        self.colorizer = colorizer(self)
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
         self.__log_template.log(log_level, what)
     def loop_post(self):
@@ -549,15 +561,12 @@ class graph_process(threading_tools.process_obj):
         self.__log_template.close()
     def _close(self):
         pass
-    def _read_colortables(self):
-        self.colortables = etree.fromstring(file(global_config["COLORTABLE_FILE"], "r").read())
-        self.log("read colortables from %s" % (global_config["COLORTABLE_FILE"]))
     def _xml_info(self, *args, **kwargs):
         dev_id, xml_str = (args[0], etree.fromstring(args[1]))
         # needed ?
         self.raw_vector_dict[dev_id] = xml_str
         self.vector_dict[dev_id] = self._struct_vector(xml_str)
-        self._set_colours(self.vector_dict[dev_id])
+        # self._set_colours(self.vector_dict[dev_id])
     def _struct_vector(self, cur_xml):
         # somehow related to struct_xml_vector
         all_keys = set(cur_xml.xpath(".//mve/@name"))
@@ -596,41 +605,6 @@ class graph_process(threading_tools.process_obj):
         return xml_vect
     def _set_colours(self, xml_vect):
         color_xml = etree.fromstring("""
-        <colourizing>
-            <entry key="load" iterate="1" integer_subkeys="1">
-                <range colortable='dark23'/>
-            </entry>
-            <entry key="net" iterate="1" ignore_next_level="1">
-                <range colortable='bupu9'/>
-                <modify key_match=".*tx.*" attribute="invert" value="1"/>
-                <modify key_match=".*err.*" attribute="draw_type" value="LINE2"/>
-            </entry>
-            <entry key="vms" iterate="1" ignore_next_level="1">
-                <range colortable='paired12'/>
-                <!--<modify key_match=".*" attribute="draw_type" value="STACK"/>
-                <modify key_match=".*idle.*" attribute="draw_type" value="LINE"/>-->
-            </entry>
-            <entry key="df" iterate="1" ignore_next_level="1">
-                <range colortable='set19'/>
-            </entry>
-            <entry key="io" iterate="1" ignore_next_level="1">
-                <range colortable='prgn11'/>
-            </entry>
-            <entry key="mem" iterate="1" ignore_next_level="1">
-                <range colortable='rdgy11'/>
-                <modify key_match=".*bc$" attribute="draw_type" value="LINE2"/>
-            </entry>
-            <entry key="num" iterate="1">
-                <range start_color='blue' end_color='#ff8800'/>
-            </entry>
-            <entry key="ovpn" iterate="1">
-                <range start_color='red' end_color='yellow'/>
-            </entry>
-            <entry key="proc" iterate="1">
-                <range start_color='red' end_color='#008888'/>
-                <modify key_match=".*" attribute="draw_type" value="LINE2"/>
-            </entry>
-         </colourizing>
         """)
         # match_keys = color_xml.xpath(".//entry[@key]")
         match_re_keys = [
@@ -730,7 +704,7 @@ class graph_process(threading_tools.process_obj):
         self.log("graph keys: %s" % (", ".join(graph_keys)))
         self.log("top level keys (== distinct graphs): %d" % (len(graph_key_dict)))
         para_dict = {
-            "size"      : "400x200",
+            "size" : "400x200",
         }
         for para in srv_com.xpath(None, ".//parameters")[0]:
             para_dict[para.tag] = para.text
@@ -980,19 +954,20 @@ class data_store(object):
                 val_el.attrib["devices"] = "1"
             pprint.pprint(ref_dict)
             for other_node in res_list[1:]:
-                other_mv = other_node[0]
-                for add_el in other_mv.xpath(".//mve|.//value"):
-                    add_tag, add_name = (add_el.tag, add_el.get("name"))
-                    ref_el = ref_dict[add_tag].get(add_name)
-                    if ref_el is not None:
-                        new_count = int(ref_el.get("devices")) + 1
-                        while "devices" in ref_el.attrib:
-                            if int(ref_el.get("devices")) < new_count:
-                                ref_el.attrib["devices"] = "%d" % (new_count)
-                            # increase all above me
-                            ref_el = ref_el.getparent()
-                    else:
-                        print "***", add_tag, add_name
+                if len(other_node):
+                    other_mv = other_node[0]
+                    for add_el in other_mv.xpath(".//mve|.//value"):
+                        add_tag, add_name = (add_el.tag, add_el.get("name"))
+                        ref_el = ref_dict[add_tag].get(add_name)
+                        if ref_el is not None:
+                            new_count = int(ref_el.get("devices")) + 1
+                            while "devices" in ref_el.attrib:
+                                if int(ref_el.get("devices")) < new_count:
+                                    ref_el.attrib["devices"] = "%d" % (new_count)
+                                # increase all above me
+                                ref_el = ref_el.getparent()
+                        else:
+                            print "***", add_tag, add_name
                 other_node.getparent().remove(other_node)
         print etree.tostring(res_list, pretty_print=True)
     def _expand_info(self, entry):
@@ -1342,6 +1317,7 @@ def main():
         ("VERBOSE"             , configfile.int_c_var(0, help_string="set verbose level [%(default)d]", short_options="v", only_commandline=True)),
         ("RRD_DIR"             , configfile.str_c_var("/var/cache/rrd", help_string="directory of rrd-files on local disc")),
         ("COLORTABLE_FILE"     , configfile.str_c_var("/opt/cluster/share/colortables.xml", help_string="name of colortable file")),
+        ("COLORRULES_FILE"     , configfile.str_c_var("/opt/cluster/share/color_rules.xml", help_string="name of color_rules file")),
     ])
     global_config.parse_file()
     options = global_config.handle_commandline(
