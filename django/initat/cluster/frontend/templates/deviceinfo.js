@@ -110,8 +110,13 @@ class rrd_config
             )
         # default size
         size_select.val("640x300")
+        # now field
+        @now_field = $("<input>").attr(
+            "type"  : "button"
+            "value" : "now"
+        ).on("click", @set_to_field)
         @CUR_FILTER = ""
-        @top_div.append(@filter_el, clear_el, draw_el, size_select, @rrd_from_field, @rrd_to_field)
+        @top_div.append(@filter_el, clear_el, draw_el, size_select, @rrd_from_field, @rrd_to_field, @now_field)
         @rrd_from_field.datetimepicker(
             minDate     : min_date
             maxDate     : cur_date
@@ -142,6 +147,19 @@ class rrd_config
         @rrd_from_field.datetimepicker("setDate", start_date)
         @rrd_to_field.datetimepicker("setDate", cur_date)
         @load_rrd_tree()
+    set_to_field: (event) =>
+        # not working right now, FIXME
+        cur_date = new Date()
+        @rrd_to_field.datetimepicker({
+            "maxDate"     : cur_date,
+            "defaultDate" : cur_date,
+            "maxDateTime" : cur_date,
+        })
+        @rrd_to_field.datetimepicker({
+            "hour"        : cur_date.getHours(),
+            "minute"      : cur_date.getMinutes(),
+        })
+        @rrd_to_field.datetimepicker("setDate", cur_date)
     load_rrd_tree: () =>
         $.ajax
             url  : "{% url 'rrd:device_rrds' %}"
