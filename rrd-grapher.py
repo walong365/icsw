@@ -451,8 +451,9 @@ class report_thread(threading_tools.thread_obj):
 
 class graph_var(object):
     var_idx = 0
-    def __init__(self, entry):
+    def __init__(self, entry, dev_name=""):
         self.entry = entry
+        self.dev_name = dev_name
         graph_var.var_idx += 1
         self.name = "v%d" % (graph_var.var_idx)
     def __getitem__(self, key):
@@ -472,6 +473,8 @@ class graph_var(object):
         parts = self["name"].split(".")
         for idx in xrange(len(parts)):
             info = info.replace("$%d" % (idx + 1), parts[idx])
+        if self.dev_name:
+            info = "%s (%s)" % (info, str(self.dev_name))
         return info
     @property
     def color(self):
@@ -720,6 +723,7 @@ class graph_process(threading_tools.process_obj):
     def _graph_rrd(self, *args, **kwargs):
         src_id, srv_com = (args[0], server_command.srv_command(source=args[1]))
         dev_pks = [entry for entry in map(lambda x: int(x), srv_com.xpath(None, ".//device_list/device/@pk")) if entry in self.vector_dict]
+        dev_dict = dict([(cur_dev.pk, unicode(cur_dev.full_name)) for cur_dev in device.objects.filter(Q(pk__in=dev_pks))])
         graph_keys = sorted(srv_com.xpath(None, ".//graph_key_list/graph_key/text()"))
         graph_key_dict = self._create_graph_keys(graph_keys)
         self.log("found device pks: %s" % (", ".join(["%d" % (pk) for pk in dev_pks])))
@@ -736,8 +740,8 @@ class graph_process(threading_tools.process_obj):
             # cast to datetime
             para_dict[key] = datetime.datetime.strptime(para_dict[key], "%Y-%m-%d %H:%M")
         para_dict["timeframe"] = abs((para_dict["end_time"] - para_dict["start_time"]).total_seconds())
-        dev_vector = self.vector_dict[dev_pks[0]]
         graph_list = E.graph_list()
+        multi_dev_mode = len(dev_pks) > 1
         for tlk in sorted(graph_key_dict):
             graph_keys = graph_key_dict[tlk]
             graph_name = "gfx_%s_%d.png" % (tlk, int(time.time()))
@@ -768,27 +772,32 @@ class graph_process(threading_tools.process_obj):
                     "%d" % ((para_dict["end_time"] - dt_1970).total_seconds() - 2 * 3600),
                     "--start",
                     "%d" % ((para_dict["start_time"] - dt_1970).total_seconds() - 2 * 3600),
-                    graph_var(None).header_line,
+                    graph_var(None, "").header_line,
             ]
             graph_var.init(self.colortables.find("colortable[@name='dark28']"))
             for graph_key in sorted(graph_keys):
-                graph_mve = dev_vector.find(".//mve[@name='%s']" % (graph_key))
-                if graph_mve is not None:
-                    rrd_args.extend(graph_var(graph_mve).config)
-                graph_pde = dev_vector.find(".//value[@full='%s']" % (graph_key))
-                if graph_pde is not None:
-                    rrd_args.extend(graph_var(graph_pde).config)
+                for cur_pk in dev_pks:
+                    dev_vector = self.vector_dict[cur_pk]
+                    graph_mve = dev_vector.find(".//mve[@name='%s']" % (graph_key))
+                    if graph_mve is not None:
+                        rrd_args.extend(graph_var(graph_mve, dev_dict[cur_pk]).config)
+                    graph_pde = dev_vector.find(".//value[@full='%s']" % (graph_key))
+                    if graph_pde is not None:
+                        rrd_args.extend(graph_var(graph_pde, dev_dict[cur_pk]).config)
             if graph_var.var_idx:
                 rrd_args.extend([
                     "--title",
-                    "RRD (%s, %s)" % (logging_tools.get_plural("DEF", graph_var.var_idx),
-                                      logging_tools.get_diff_time_str(para_dict["timeframe"])),
+                    "%s (%s, %s)" % (
+                                     tlk,
+                                     logging_tools.get_plural("DEF", graph_var.var_idx),
+                                     logging_tools.get_diff_time_str(para_dict["timeframe"])),
                 ])
                 try:
                     draw_result = rrdtool.graphv(*rrd_args)
                 except:
                     self.log("error creating graph: %s" % (process_tools.get_except_info()), logging_tools.LOG_LEVEL_ERROR)
-                    # pprint.pprint(rrd_args)
+                    if global_config["DEBUG"]:
+                        pprint.pprint(rrd_args)
                 else:
                     graph_list.append(
                         E.graph(
@@ -936,6 +945,10 @@ class data_store(object):
                     s_dict[part] = (new_el, {})
                 s_xml, s_dict = s_dict[part]
             add_entry = copy.deepcopy(cur_xml.find(".//mve[@name='%s']" % (key)))
+            # remove unneded entries
+            for rem_attr in ["file_name", "last_update", "sane_name"]:
+                if rem_attr in add_entry.attrib:
+                    del add_entry.attrib[rem_attr]
             if "info" in add_entry.attrib:
                 add_entry.attrib["info"] = self._expand_info(add_entry)
             s_xml.append(add_entry)
@@ -955,6 +968,33 @@ class data_store(object):
                 new_val.attrib["name"] = "%s.%s" % (new_el.get("name"), new_val.get("name"))
                 new_el.append(new_val)
         return xml_vect
+    @staticmethod
+    def merge_node_results(res_list):
+        if len(res_list) > 1:
+            data_store.g_log("merging %s" % (logging_tools.get_plural("node result", len(res_list))))
+            first_mv = res_list[0][0]
+            ref_dict = {"mve" : {}, "value" : {}}
+            for val_el in first_mv.xpath(".//*"):
+                if val_el.tag in ["value", "mve"]:
+                    ref_dict[val_el.tag][val_el.get("name")] = val_el
+                val_el.attrib["devices"] = "1"
+            pprint.pprint(ref_dict)
+            for other_node in res_list[1:]:
+                other_mv = other_node[0]
+                for add_el in other_mv.xpath(".//mve|.//value"):
+                    add_tag, add_name = (add_el.tag, add_el.get("name"))
+                    ref_el = ref_dict[add_tag].get(add_name)
+                    if ref_el is not None:
+                        new_count = int(ref_el.get("devices")) + 1
+                        while "devices" in ref_el.attrib:
+                            if int(ref_el.get("devices")) < new_count:
+                                ref_el.attrib["devices"] = "%d" % (new_count)
+                            # increase all above me
+                            ref_el = ref_el.getparent()
+                    else:
+                        print "***", add_tag, add_name
+                other_node.getparent().remove(other_node)
+        print etree.tostring(res_list, pretty_print=True)
     def _expand_info(self, entry):
         info = entry.attrib["info"]
         parts = entry.attrib["name"].split(".")
@@ -972,6 +1012,7 @@ class data_store(object):
     def setup(srv_proc):
         data_store.process = srv_proc
         data_store.g_log("init")
+        data_store.debug = global_config["DEBUG"]
         # pk -> data_store
         data_store.__devices = {}
         data_store.store_dir = os.path.join(global_config["RRD_DIR"], "data_store")
@@ -1020,7 +1061,8 @@ class data_store(object):
             else:
                 match_mode = "name"
         if match_dev:
-            data_store.g_log("found device %s (%s) for pd_type=%s" % (unicode(match_dev), match_mode, pd_type))
+            if data_store.debug:
+                data_store.g_log("found device %s (%s) for pd_type=%s" % (unicode(match_dev), match_mode, pd_type))
             if match_dev.pk not in data_store.__devices:
                 data_store.__devices[match_dev.pk] = data_store(match_dev)
             data_store.__devices[match_dev.pk].feed_pd(name, pd_type, pd_info)
@@ -1065,7 +1107,8 @@ class data_store(object):
                 else:
                     match_mode = "name"
         if match_dev:
-            data_store.g_log("found device %s (%s)" % (unicode(match_dev), match_mode))
+            if data_store.debug:
+                data_store.g_log("found device %s (%s)" % (unicode(match_dev), match_mode))
             if "name" in in_vector.attrib:
                 if match_dev.pk not in data_store.__devices:
                     data_store.__devices[match_dev.pk] = data_store(match_dev)
@@ -1198,14 +1241,17 @@ class server_process(threading_tools.process_pool):
         data_store.feed_perfdata(host_name, pd_type, pd_info)
     def _get_node_rrd(self, srv_com):
         node_results = E.node_results()
-        for cur_dev in srv_com["device_list"][0]:
-            dev_pk = int(cur_dev.attrib["pk"])
+        dev_list = srv_com.xpath(None, ".//device_list")[0]
+        pk_list = [int(cur_pk) for cur_pk in dev_list.xpath(".//device/@pk")]
+        for dev_pk in pk_list:
             cur_res = E.node_result(pk="%d" % (dev_pk))
             if data_store.has_rrd_xml(dev_pk):
                 cur_res.append(data_store.get_rrd_xml(dev_pk, sort=True))
             else:
                 self.log("no rrd_xml found for device %d" % (dev_pk), logging_tools.LOG_LEVEL_WARN)
             node_results.append(cur_res)
+        if int(dev_list.get("merge_results", "0")):
+            data_store.merge_node_results(node_results)
         srv_com["result"] = node_results
     def _recv_command(self, zmq_sock):
         in_data = []
