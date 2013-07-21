@@ -215,9 +215,8 @@ class get_node_config(View):
     @method_decorator(xml_wrapper)
     def post(self, request):
         srv_com = server_command.srv_command(command="get_host_config")
-        dev_name = request.POST["name"]
         srv_com["device_list"] = E.device_list(
-            E.device(dev_name),
+            *[E.device(pk="%d" % (int(cur_pk))) for cur_pk in request.POST.getlist("pks[]")]
         )
         result = contact_server(request, "tcp://localhost:8010", srv_com, timeout=30)
         if result:
@@ -234,9 +233,8 @@ class get_node_status(View):
     @method_decorator(xml_wrapper)
     def post(self, request):
         srv_com = server_command.srv_command(command="get_node_status")
-        dev_name = request.POST["name"]
         srv_com["device_list"] = E.device_list(
-            E.device(dev_name),
+            *[E.device(pk="%d" % (int(cur_pk))) for cur_pk in request.POST.getlist("pks[]")]
         )
         result = contact_server(request, "tcp://localhost:8010", srv_com, timeout=30)
         if result:
@@ -245,12 +243,11 @@ class get_node_status(View):
                 node_results = node_results[0]
                 if len(node_results):
                     # first device
-                    node_result = node_results[0]
                     request.xml_response["result"] = E.node_results(
-                        E.node_result(
+                        *[E.node_result(
                             *[E.result(cur_res.attrib.pop("plugin_output"), **cur_res.attrib) for cur_res in node_result],
                             **node_result.attrib
-                        )
+                        ) for node_result in node_results]
                     )
                 else:
                     request.xml_response.error("no node_results", logger=logger)

@@ -6,6 +6,13 @@
 
 root = exports ? this
 
+beautify_seconds = (in_sec) ->
+    if in_sec > 60
+        mins = parseInt(in_sec / 60)
+        return  "#{mins}:#{in_sec - 60 * mins}" 
+    else
+        return "#{in_sec} s"
+        
 class category_tree
     constructor: (@tree_div, @top_xml, @xml, @cat_tree, @top_node, @multi_sel=true) ->
         @tree_div.dynatree
@@ -179,6 +186,8 @@ class rrd_config
             key         = db_node.attr("name")
             hide_cb     = false
             tooltip     = "key: " + db_node.attr("name")
+        if db_node.attr("devices") and parseInt(db_node.attr("devices")) > 1
+            title_str = "#{title_str} (" + db_node.attr("devices") + ")"
         new_node = dt_node.addChild(
             title        : title_str
             expand       : expand_flag
@@ -297,6 +306,12 @@ class device_info
                                 $.modal.close()
                                 if @callback
                                     @callback(@dev_key)
+    get_pk_list: () =>
+        # get all pks
+        pk_list = [@resp_xml.find("device").attr("pk")]
+        for addon_key in @addon_devices
+            pk_list.push(addon_key.split("__")[1]) 
+        return pk_list
     fqdn_compound: (in_dict) =>
         dev_key = in_dict["id"].split("__")[0..1].join("__")
         el_name = in_dict["id"].split("__")[2]
@@ -322,10 +337,11 @@ class device_info
         )
         tabs_div = $("<div>").attr("id", "tabs")
         dev_div.append(tabs_div)
-        graphs_text = "Graphs"
         if @addon_devices.length
             num_devs = @addon_devices.length + 1
-            graphs_text = "#{graphs_text} (#{num_devs})"
+            addon_text = " (#{num_devs})"
+        else
+            addon_text = ""
         tabs_div.append(
             $("<ul>").append(
                 $("<li>").append($("<a>").attr("href", "#general").text("General")),
@@ -335,9 +351,9 @@ class device_info
                 $("<li>").append($("<a>").attr("href", "#config").text("Config")),
                 $("<li>").append($("<a>").attr("href", "#disk").text("Disk")),
                 $("<li>").append($("<a>").attr("href", "#mdcds").text("MD data store")),
-                $("<li>").append($("<a>").attr("href", "#livestatus").text("Livestatus")),
-                $("<li>").append($("<a>").attr("href", "#monconfig").text("MonConfig")),
-                $("<li>").append($("<a>").attr("href", "#rrd").text(graphs_text)),
+                $("<li>").append($("<a>").attr("href", "#livestatus").text("Livestatus#{addon_text}")),
+                $("<li>").append($("<a>").attr("href", "#monconfig").text("MonConfig#{addon_text}")),
+                $("<li>").append($("<a>").attr("href", "#rrd").text("Graphs#{addon_text}")),
             )
         )
         @dev_div = dev_div
@@ -387,15 +403,16 @@ class device_info
         $.ajax
             url  : "{% url 'mon:get_node_status' %}"
             data : {
-                "name" : @resp_xml.find("device").attr("full_name")
+                "pks" : @get_pk_list()
             }
             success : (xml) =>
                 if parse_xml_response(xml)
-                    node_result = $(xml).find("node_results node_result")
+                    node_results = $(xml).find("node_results")
                     new_tab = $("<table>").addClass("style2")
                     new_tab.append(
                         $("<thead>").append(
                             $("<tr>").addClass("ui-widget ui-widget-header").append(
+                                $("<th>").text("Host"),
                                 $("<th>").text("Check"),
                                 $("<th>").text("when"),
                                 $("<th>").text("Result"),
@@ -404,16 +421,19 @@ class device_info
                     )
                     cur_date = new Date()
                     tab_body = $("<tbody>")
-                    node_result.find("result").each (idx, cur_res) =>
-                        cur_res = $(cur_res)
-                        diff_date = parseInt(cur_date.getTime() / 1000 - parseInt(cur_res.attr("last_check")))
-                        tab_body.append(
-                            $("<tr>").addClass({"0" : "ok", "1" : "warn", "2" : "error", "3" : "unknown"}[cur_res.attr("state")]).append(
-                                $("<td>").text(cur_res.attr("description")),
-                                $("<td>").addClass("right").text(beautify_seconds(diff_date)),
-                                $("<td>").text(cur_res.text()),
+                    node_results.find("node_result").each (node_idx, cur_node) =>
+                        cur_node = $(cur_node)
+                        cur_node.find("result").each (idx, cur_res) =>
+                            cur_res = $(cur_res)
+                            diff_date = parseInt(cur_date.getTime() / 1000 - parseInt(cur_res.attr("last_check")))
+                            tab_body.append(
+                                $("<tr>").addClass({"0" : "ok", "1" : "warn", "2" : "error", "3" : "unknown"}[cur_res.attr("state")]).append(
+                                    $("<td>").text(cur_node.attr("name")),
+                                    $("<td>").text(cur_res.attr("description")),
+                                    $("<td>").addClass("right").text(beautify_seconds(diff_date)),
+                                    $("<td>").text(cur_res.text()),
+                                )
                             )
-                        )
                     new_tab.append(tab_body)
                     @livestatus_div.empty().html(new_tab)
                     if tab_body.children().length
@@ -432,7 +452,7 @@ class device_info
         top_div.append(@monconfig_div)
         top_div.append(
             $("<input>").attr(
-                "type" : "button",
+                "type"  : "button",
                 "value" : "reload",
             ).on("click", @update_monconfig)
         )
@@ -443,7 +463,7 @@ class device_info
         $.ajax
             url  : "{% url 'mon:get_node_config' %}"
             data : {
-                "name" : @resp_xml.find("device").attr("full_name")
+                "pks" : @get_pk_list()
             }
             success : (xml) =>
                 @monconfig_div.empty()
@@ -501,10 +521,7 @@ class device_info
         @rrd_div = rrd_div
         @graph_div = graph_div
         @config_div = config_div
-        pk_list = [@resp_xml.find("device").attr("pk")]
-        for addon_key in @addon_devices
-            pk_list.push(addon_key.split("__")[1]) 
-        @rrd_config = new rrd_config(@config_div, @rrd_div, @graph_div, pk_list)
+        @rrd_config = new rrd_config(@config_div, @rrd_div, @graph_div, @get_pk_list())
         top_div.append(@config_div)
         top_div.append(@rrd_div)
         top_div.append(@graph_div)

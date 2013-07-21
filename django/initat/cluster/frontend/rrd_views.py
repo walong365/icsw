@@ -29,7 +29,8 @@ class device_rrds(View):
         srv_com = server_command.srv_command(command="get_node_rrd")
         dev_pks = request.POST.getlist("pks[]")
         srv_com["device_list"] = E.device_list(
-            *[E.device(pk="%d" % (int(dev_pk))) for dev_pk in dev_pks]
+            *[E.device(pk="%d" % (int(dev_pk))) for dev_pk in dev_pks],
+            merge_results="1"
         )
         result = contact_server(request, "tcp://localhost:8003", srv_com, timeout=30)
         if result:

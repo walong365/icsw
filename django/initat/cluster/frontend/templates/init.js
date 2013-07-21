@@ -60,13 +60,6 @@ $.ajaxSetup
                 alert("*** #{status} ***\nxhr.status : #{xhr.status}\nxhr.statusText : #{xhr.statusText}")
         return false
 
-beautify_seconds = (in_sec) ->
-    if in_sec > 60
-        mins = parseInt(in_sec / 60)
-        return  "#{mins}:#{in_sec - 60 * mins}" 
-    else
-        return "#{in_sec} s"
-        
 class display_config
     constructor: (cur_conf) ->
         @pk = cur_conf.attr("pk")
