@@ -5,7 +5,7 @@
 # this file is part of md-config-server
 #
 # Send feedback to: <lang-nevyjel@init.at>
-# 
+#
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License Version 2 as
 # published by the Free Software Foundation.
@@ -76,9 +76,9 @@ except ImportError:
     mk_livestatus = None
 
 # nagios constants
-NAG_HOST_UNKNOWN     = -1
-NAG_HOST_UP          = 0
-NAG_HOST_DOWN        = 1
+NAG_HOST_UNKNOWN = -1
+NAG_HOST_UP = 0
+NAG_HOST_DOWN = 1
 NAG_HOST_UNREACHABLE = 2
 
 # default port
@@ -88,53 +88,53 @@ TEMPLATE_NAME = "t"
 # maps to transfer for single_build
 SINGLE_BUILD_MAPS = set(["device.d", "command"])
 
-IDOMOD_PROCESS_PROCESS_DATA           = 2 ** 0
-IDOMOD_PROCESS_TIMED_EVENT_DATA       = 2 ** 1
-IDOMOD_PROCESS_LOG_DATA               = 2 ** 2
-IDOMOD_PROCESS_SYSTEM_COMMAND_DATA    = 2 ** 3
-IDOMOD_PROCESS_EVENT_HANDLER_DATA     = 2 ** 4
-IDOMOD_PROCESS_NOTIFICATION_DATA      = 2 ** 5
-IDOMOD_PROCESS_SERVICE_CHECK_DATA     = 2 ** 6
-IDOMOD_PROCESS_HOST_CHECK_DATA        = 2 ** 7
-IDOMOD_PROCESS_COMMENT_DATA           = 2 ** 8
-IDOMOD_PROCESS_DOWNTIME_DATA          = 2 ** 9
-IDOMOD_PROCESS_FLAPPING_DATA          = 2 ** 10
-IDOMOD_PROCESS_PROGRAM_STATUS_DATA    = 2 ** 11
-IDOMOD_PROCESS_HOST_STATUS_DATA       = 2 ** 12
-IDOMOD_PROCESS_SERVICE_STATUS_DATA    = 2 ** 13
-IDOMOD_PROCESS_ADAPTIVE_PROGRAM_DATA  = 2 ** 14
-IDOMOD_PROCESS_ADAPTIVE_HOST_DATA     = 2 ** 15
-IDOMOD_PROCESS_ADAPTIVE_SERVICE_DATA  = 2 ** 16
-IDOMOD_PROCESS_EXTERNAL_COMMAND_DATA  = 2 ** 17
-IDOMOD_PROCESS_OBJECT_CONFIG_DATA     = 2 ** 18
-IDOMOD_PROCESS_MAIN_CONFIG_DATA       = 2 ** 19
+IDOMOD_PROCESS_PROCESS_DATA = 2 ** 0
+IDOMOD_PROCESS_TIMED_EVENT_DATA = 2 ** 1
+IDOMOD_PROCESS_LOG_DATA = 2 ** 2
+IDOMOD_PROCESS_SYSTEM_COMMAND_DATA = 2 ** 3
+IDOMOD_PROCESS_EVENT_HANDLER_DATA = 2 ** 4
+IDOMOD_PROCESS_NOTIFICATION_DATA = 2 ** 5
+IDOMOD_PROCESS_SERVICE_CHECK_DATA = 2 ** 6
+IDOMOD_PROCESS_HOST_CHECK_DATA = 2 ** 7
+IDOMOD_PROCESS_COMMENT_DATA = 2 ** 8
+IDOMOD_PROCESS_DOWNTIME_DATA = 2 ** 9
+IDOMOD_PROCESS_FLAPPING_DATA = 2 ** 10
+IDOMOD_PROCESS_PROGRAM_STATUS_DATA = 2 ** 11
+IDOMOD_PROCESS_HOST_STATUS_DATA = 2 ** 12
+IDOMOD_PROCESS_SERVICE_STATUS_DATA = 2 ** 13
+IDOMOD_PROCESS_ADAPTIVE_PROGRAM_DATA = 2 ** 14
+IDOMOD_PROCESS_ADAPTIVE_HOST_DATA = 2 ** 15
+IDOMOD_PROCESS_ADAPTIVE_SERVICE_DATA = 2 ** 16
+IDOMOD_PROCESS_EXTERNAL_COMMAND_DATA = 2 ** 17
+IDOMOD_PROCESS_OBJECT_CONFIG_DATA = 2 ** 18
+IDOMOD_PROCESS_MAIN_CONFIG_DATA = 2 ** 19
 IDOMOD_PROCESS_AGGREGATED_STATUS_DATA = 2 ** 20
-IDOMOD_PROCESS_RETENTION_DATA         = 2 ** 21
-IDOMOD_PROCESS_ACKNOWLEDGEMENT_DATA   = 2 ** 22
-IDOMOD_PROCESS_STATECHANGE_DATA       = 2 ** 23
-IDOMOD_PROCESS_CONTACT_STATUS_DATA    = 2 ** 24
-IDOMOD_PROCESS_ADAPTIVE_CONTACT_DATA  = 2 ** 25
+IDOMOD_PROCESS_RETENTION_DATA = 2 ** 21
+IDOMOD_PROCESS_ACKNOWLEDGEMENT_DATA = 2 ** 22
+IDOMOD_PROCESS_STATECHANGE_DATA = 2 ** 23
+IDOMOD_PROCESS_CONTACT_STATUS_DATA = 2 ** 24
+IDOMOD_PROCESS_ADAPTIVE_CONTACT_DATA = 2 ** 25
 
-BROKER_PROGRAM_STATE        = 2 ** 0
-BROKER_TIMED_EVENTS         = 2 ** 1
-BROKER_SERVICE_CHECKS       = 2 ** 2
-BROKER_HOST_CHECKS          = 2 ** 3
-BROKER_EVENT_HANDLERS       = 2 ** 4
-BROKER_LOGGED_DATA          = 2 ** 5
-BROKER_NOTIFICATIONS        = 2 ** 6
-BROKER_FLAPPING_DATA        = 2 ** 7
-BROKER_COMMENT_DATA         = 2 ** 8
-BROKER_DOWNTIME_DATA        = 2 ** 9
-BROKER_SYSTEM_COMMANDS      = 2 ** 10
-BROKER_OCP_DATA             = 2 ** 11
-BROKER_STATUS_DATA          = 2 ** 12
-BROKER_ADAPTIVE_DATA        = 2 ** 13
+BROKER_PROGRAM_STATE = 2 ** 0
+BROKER_TIMED_EVENTS = 2 ** 1
+BROKER_SERVICE_CHECKS = 2 ** 2
+BROKER_HOST_CHECKS = 2 ** 3
+BROKER_EVENT_HANDLERS = 2 ** 4
+BROKER_LOGGED_DATA = 2 ** 5
+BROKER_NOTIFICATIONS = 2 ** 6
+BROKER_FLAPPING_DATA = 2 ** 7
+BROKER_COMMENT_DATA = 2 ** 8
+BROKER_DOWNTIME_DATA = 2 ** 9
+BROKER_SYSTEM_COMMANDS = 2 ** 10
+BROKER_OCP_DATA = 2 ** 11
+BROKER_STATUS_DATA = 2 ** 12
+BROKER_ADAPTIVE_DATA = 2 ** 13
 BROKER_EXTERNALCOMMAND_DATA = 2 ** 14
-BROKER_RETENTION_DATA       = 2 ** 15
+BROKER_RETENTION_DATA = 2 ** 15
 BROKER_ACKNOWLEDGEMENT_DATA = 2 ** 16
-BROKER_STATECHANGE_DATA     = 2 ** 17
-BROKER_RESERVED18           = 2 ** 18
-BROKER_RESERVED19           = 2 ** 19
+BROKER_STATECHANGE_DATA = 2 ** 17
+BROKER_RESERVED18 = 2 ** 18
+BROKER_RESERVED19 = 2 ** 19
 
 class snmp_settings(object):
     def __init__(self, cdg):
@@ -181,7 +181,7 @@ class main_config(object):
             self.slave_uuid = monitor_server.uuid
             route = master_cfg["monitor_server"][0].get_route_to_other_device(self.__build_process.router_obj, slave_cfg, allow_route_to_other_networks=True)
             if not route:
-                self.slave_ip  = None
+                self.slave_ip = None
                 self.master_ip = None
                 self.log("no route to slave %s found" % (unicode(monitor_server)), logging_tools.LOG_LEVEL_ERROR)
             else:
@@ -198,7 +198,7 @@ class main_config(object):
             self.__send_version = None
         else:
             self.__dir_offset = ""
-            #self.__main_dir = os.path.join(self.__main_dir, "slaves", self.__slave_name)
+            # self.__main_dir = os.path.join(self.__main_dir, "slaves", self.__slave_name)
         self.monitor_server = monitor_server
         self.master = True if not self.__slave_name else False
         self.__dict = {}
@@ -369,7 +369,7 @@ class main_config(object):
     def _create_nagvis_base_entries(self):
         if os.path.isdir(global_config["NAGVIS_DIR"]):
             self.log("creating base entries for nagvis (under %s)" % (global_config["NAGVIS_DIR"]))
-            # 
+            #
             nagvis_main_cfg = ConfigParser.RawConfigParser(allow_no_value=True)
             for sect_name, var_list in [
                 ("global", [
@@ -381,9 +381,9 @@ class main_config(object):
                     ("dialog_ack_sticky", 1),
                     ("dialog_ack_notify", 1),
                     ("dialog_ack_persist", 0),
-                    #("file_group", ""),
+                    # ("file_group", ""),
                     ("file_mode", "660"),
-                    #("http_proxy", ""),
+                    # ("http_proxy", ""),
                     ("http_timeout", 10),
                     ("language_detection", "user,session,browser,config"),
                     ("language", "en_US"),
@@ -400,7 +400,7 @@ class main_config(object):
                     ("startshow", ""),
                     ]),
                 ("paths", [
-                    ("base", "%s/"% (os.path.normpath(global_config["NAGVIS_DIR"]))),
+                    ("base", "%s/" % (os.path.normpath(global_config["NAGVIS_DIR"]))),
                     ("htmlbase", global_config["NAGVIS_URL"]),
                     ("htmlcgi", "/icinga/cgi-bin"),
                     ]),
@@ -438,7 +438,7 @@ class main_config(object):
                     ("recognizeservices", 1),
                     ("showinlists", 1),
                     ("showinmultisite", 1),
-                    #("stylesheet", ""),
+                    # ("stylesheet", ""),
                     ("urltarget", "_self"),
                     ("hosturl", "[htmlcgi]/status.cgi?host=[host_name]"),
                     ("hostgroupurl", "[htmlcgi]/status.cgi?hostgroup=[hostgroup_name]"),
@@ -494,7 +494,7 @@ class main_config(object):
                     ("maxtimewithoutupdate", 180),
                     ("htmlcgi", "/nagios/cgi-bin"),
                     ]),
-                #("backend_merlinmy_1", [
+                # ("backend_merlinmy_1", [
                 #    ("backendtype", "merlinmy"),
                 #    ("dbhost", "localhost"),
                 #    ("dbport", 3306),
@@ -504,7 +504,7 @@ class main_config(object):
                 #    ("maxtimewithoutupdate", 180),
                 #    ("htmlcgi", "/nagios/cgi-bin"),
                 #    ]),
-                #("rotation_demo", [
+                # ("rotation_demo", [
                 #    ("maps", "demo-germany,demo-ham-racks,demo-load,demo-muc-srv1,demo-geomap,demo-automap"),
                 #    ("interval", 15),
                 #    ]),
@@ -533,24 +533,24 @@ class main_config(object):
                     ("pending", 0),
                     ("unreachable_bgcolor", "#F1811B"),
                     ("unreachable_color", "#F1811B"),
-                    #("unreachable_ack_bgcolor", ""),
-                    #("unreachable_downtime_bgcolor", ""),
+                    # ("unreachable_ack_bgcolor", ""),
+                    # ("unreachable_downtime_bgcolor", ""),
                     ("down_bgcolor", "#FF0000"),
                     ("down_color", "#FF0000"),
-                    #("down_ack_bgcolor", ""),
-                    #("down_downtime_bgcolor", ""),
+                    # ("down_ack_bgcolor", ""),
+                    # ("down_downtime_bgcolor", ""),
                     ("critical_bgcolor", "#FF0000"),
                     ("critical_color", "#FF0000"),
-                    #("critical_ack_bgcolor", ""),
-                    #("critical_downtime_bgcolor", ""),
+                    # ("critical_ack_bgcolor", ""),
+                    # ("critical_downtime_bgcolor", ""),
                     ("warning_bgcolor", "#FFFF00"),
                     ("warning_color", "#FFFF00"),
-                    #("warning_ack_bgcolor", ""),
-                    #("warning_downtime_bgcolor", ""),
+                    # ("warning_ack_bgcolor", ""),
+                    # ("warning_downtime_bgcolor", ""),
                     ("unknown_bgcolor", "#FFCC66"),
                     ("unknown_color", "#FFCC66"),
-                    #("unknown_ack_bgcolor", ""),
-                    #("unknown_downtime_bgcolor", ""),
+                    # ("unknown_ack_bgcolor", ""),
+                    # ("unknown_downtime_bgcolor", ""),
                     ("error_bgcolor", "#0000FF"),
                     ("error_color", "#0000FF"),
                     ("up_bgcolor", "#00FF00"),
@@ -565,12 +565,12 @@ class main_config(object):
                     ("down_sound", "std_down.mp3"),
                     ("critical_sound", "std_critical.mp3"),
                     ("warning_sound", "std_warning.mp3"),
-                    #("unknown_sound", ""),
-                    #("error_sound", ""),
-                    #("up_sound", ""),
-                    #("ok_sound", ""),
-                    #("unchecked_sound", ""),
-                    #("pending_sound", ""),
+                    # ("unknown_sound", ""),
+                    # ("error_sound", ""),
+                    # ("up_sound", ""),
+                    # ("ok_sound", ""),
+                    # ("unchecked_sound", ""),
+                    # ("pending_sound", ""),
 
                 ])
                 ]:
@@ -690,7 +690,7 @@ class main_config(object):
             ("max_concurrent_checks"            , global_config["MAX_CONCURRENT_CHECKS"]),
             ("service_reaper_frequency"         , 12),
             ("sleep_time"                       , 1),
-            ("retain_state_information"         , global_config["RETAIN_SERVICE_STATUS"]),# if self.master else 0),
+            ("retain_state_information"         , global_config["RETAIN_SERVICE_STATUS"]), # if self.master else 0),
             ("state_retention_file"             , "%s/retention.dat" % (self.__r_dir_dict["var"])),
             ("retention_update_interval"        , 60),
             ("use_retained_program_state"       , 0),
@@ -718,9 +718,9 @@ class main_config(object):
             ("illegal_macro_output_chars"       , r"~$&|'\"<>"),
             ("admin_email"                      , "lang-nevyjel@init.at"),
             ("admin_pager"                      , "????"),
-            #("debug_file"      , os.path.join(self.__r_dir_dict["var"], "icinga.dbg")),
-            #("debug_level"     , -1),
-            #("debug_verbosity" , 2),
+            # ("debug_file"      , os.path.join(self.__r_dir_dict["var"], "icinga.dbg")),
+            # ("debug_level"     , -1),
+            # ("debug_verbosity" , 2),
             # NDO stuff
         ]
         lib_dir_name = "lib64" if process_tools.get_sys_bits() == 64 else "lib"
@@ -758,8 +758,8 @@ class main_config(object):
                         ("host_perfdata_file_template"   , "DATATYPE::HOSTPERFDATA\tTIMET::$TIMET$\tHOSTNAME::$HOSTNAME$\tHOSTPERFDATA::$HOSTPERFDATA$\tHOSTCHECKCOMMAND::$HOSTCHECKCOMMAND$\tHOSTSTATE::$HOSTSTATE$\tHOSTSTATETYPE::$HOSTSTATETYPE$"),
                     ])
                 main_values.extend([
-                    #("host_perfdata_command"   , "process-host-perfdata"),
-                    #("service_perfdata_command", "process-service-perfdata"),
+                    # ("host_perfdata_command"   , "process-host-perfdata"),
+                    # ("service_perfdata_command", "process-service-perfdata"),
                     ("service_perfdata_file_mode"               , "a"),
                     ("service_perfdata_file_processing_interval", "15"),
                     ("service_perfdata_file_processing_command" , "process-service-perfdata-file"),
@@ -793,7 +793,7 @@ class main_config(object):
         else:
             # add global event handlers
             main_values.extend([
-                ("cfg_dir"                , []            ),
+                ("cfg_dir"                , []),
                 ("ochp_command"           , "ochp-command"),
                 ("ocsp_command"           , "ocsp-command"),
                 ("stalking_event_handlers_for_hosts"   , 1),
@@ -820,7 +820,7 @@ class main_config(object):
                               ("passive_checks", 1)]:
             main_cfg["log_%s" % (log_descr)] = en
         for to_descr, to in [("service_check", 60), ("host_check", 30), ("event_handler", 30),
-                             ("notification" , 30), ("ocsp"      , 5 ), ("perfdata"     , 5 )]:
+                             ("notification" , 30), ("ocsp"      , 5), ("perfdata"     , 5)]:
             main_cfg["%s_timeout" % (to_descr)] = to
         for th_descr, th in [("low_service", 5.0), ("high_service", 20.0),
                              ("low_host"   , 5.0), ("high_host"   , 20.0)]:
@@ -835,7 +835,7 @@ class main_config(object):
                     ("url_html_path"            , "/%s" % (global_config["MD_TYPE"])),
                     ("show_context_help"        , 0),
                     ("use_authentication"       , 1),
-                    #("default_user_name"        , def_user),
+                    # ("default_user_name"        , def_user),
                     ("default_statusmap_layout" , 5),
                     ("default_statuswrl_layout" , 4),
                     ("refresh_rate"             , 60),
@@ -846,7 +846,7 @@ class main_config(object):
                     ("authorized_for_all_hosts"                , def_user),
                     ("authorized_for_all_host_commands"        , def_user),
                     ("authorized_for_all_services"             , def_user),
-                    ("authorized_for_all_service_commands"     , def_user)] + 
+                    ("authorized_for_all_service_commands"     , def_user)] +
             [("tac_show_only_hard_state", 1)] if (global_config["MD_TYPE"] == "icinga" and global_config["MD_RELEASE"] >= 6) else [])
         if sql_suc:
             pass
@@ -887,7 +887,7 @@ class main_config(object):
                     ("daemonize"       , os.path.join(self.__r_dir_dict["var"], "wsgi.log")),
                     ("chown-socket"    , www_user),
                     ("no-site"         , "true"),
-                    #("route"           , "^/icinga/cgi-bin basicauth:Monitor,init:init"),
+                    # ("route"           , "^/icinga/cgi-bin basicauth:Monitor,init:init"),
                 ])
             self[wsgi_config.get_name()] = wsgi_config
         if global_config["ENABLE_NAGVIS"] and self.master:
@@ -926,7 +926,7 @@ class main_config(object):
                         cur_perm[1].lower(),
                         cur_perm[2].lower(),
                         cur_perm[3].lower()), cur_perm[0]) for cur_perm in cur_c.execute("SELECT * FROM perms")])
-                    #pprint.pprint(perms_dict)
+                    # pprint.pprint(perms_dict)
                     cur_c.execute("INSERT INTO roles2perms VALUES(%d, %d)" % (
                         admin_role_id,
                         perms_dict["*.*.*"]))
@@ -1000,7 +1000,7 @@ class main_config(object):
                         act_cfg_name = os.path.normpath(os.path.join(
                             self.__w_dir_dict["etc"],
                             "%s.cfg" % (key)))
-                    #print "*", key, act_cfg_name
+                    # print "*", key, act_cfg_name
                     stuff.create_content()
                     if stuff.act_content != stuff.old_content:
                         try:
@@ -1073,7 +1073,7 @@ class base_config(object):
     def __init__(self, name, **kwargs):
         self.__name = name
         self.__dict, self.__key_list = ({}, [])
-        self.is_host_file   = kwargs.get("is_host_file", False)
+        self.is_host_file = kwargs.get("is_host_file", False)
         self.belongs_to_ndo = kwargs.get("belongs_to_ndo", False)
         self.headers = kwargs.get("headers", [])
         for key, value in kwargs.get("values", []):
@@ -1150,7 +1150,7 @@ class host_type_config(object):
     def is_valid(self):
         return True
     def create_content(self):
-        #if self.act_content:
+        # if self.act_content:
         self.old_content = self.act_content
         self.act_content = self.get_content()
     def set_previous_config(self, prev_conf):
@@ -1193,8 +1193,8 @@ class time_periods(host_type_config):
                                   timeperiod_name=cur_per.name,
                                   alias=cur_per.alias or "-")
             for short_s, long_s in [
-                ("mon", "monday"), ("tue", "tuesday" ), ("wed", "wednesday"), ("thu", "thursday"),
-                ("fri", "friday"), ("sat", "saturday"), ("sun", "sunday"   )]:
+                ("mon", "monday"), ("tue", "tuesday"), ("wed", "wednesday"), ("thu", "thursday"),
+                ("fri", "friday"), ("sat", "saturday"), ("sun", "sunday")]:
                 nag_conf[long_s] = getattr(cur_per, "%s_range" % (short_s))
             self.__dict[cur_per.pk] = nag_conf
             self.__obj_list.append(nag_conf)
@@ -1277,7 +1277,7 @@ class all_commands(host_type_config):
             "$INIT_MONITOR_INFO$" : "%s %s" % (md_type, md_vers),
             "$INIT_CLUSTER_NAME$" : "%s" % (cluster_name),
         }
-        
+
         self.__obj_list.append(
             nag_config(
                 "command",
@@ -1398,7 +1398,7 @@ class all_commands(host_type_config):
                 description="Check Host Cluster"
                 ),
             ]:
-            #pprint.pprint(ngc)
+            # pprint.pprint(ngc)
             # build / extract ngc_name
             re1m = ngc_re1.match(ngc.name)
             if re1m:
@@ -1493,22 +1493,22 @@ class all_contacts(host_type_config):
             self.__obj_list.append(nag_conf)
             self.__dict[contact.pk] = nag_conf
         # add all contacts not used in mon_contacts but somehow related to a device (and active)
-##        if False:
-##            for std_user in user.objects.filter(Q(mon_contact=None) & (Q(active=True))):
-##                devg_ok = len(std_user.allowed_device_groups.all()) > 0 or User.objects.get(Q(username=std_user.login)).has_perm("backbone.all_devices")
-##                if devg_ok:
-##                    full_name = ("%s %s" % (std_user.first_name, std_user.last_name)).strip().replace(" ", "_") or std_user.login
-##                    nag_conf = nag_config(
-##                        full_name,
-##                        contact_name=std_user.login,
-##                        alias=std_user.comment or full_name,
-##                        host_notifications_enabled=0,
-##                        service_notifications_enabled=0,
-##                        host_notification_commands="host-notify-by-email",
-##                        service_notification_commands="notify-by-email",
-##                    )
-##                    self.__obj_list.append(nag_conf)
-##                    #self.__dict[contact.pk] = nag_conf
+# #        if False:
+# #            for std_user in user.objects.filter(Q(mon_contact=None) & (Q(active=True))):
+# #                devg_ok = len(std_user.allowed_device_groups.all()) > 0 or User.objects.get(Q(username=std_user.login)).has_perm("backbone.all_devices")
+# #                if devg_ok:
+# #                    full_name = ("%s %s" % (std_user.first_name, std_user.last_name)).strip().replace(" ", "_") or std_user.login
+# #                    nag_conf = nag_config(
+# #                        full_name,
+# #                        contact_name=std_user.login,
+# #                        alias=std_user.comment or full_name,
+# #                        host_notifications_enabled=0,
+# #                        service_notifications_enabled=0,
+# #                        host_notification_commands="host-notify-by-email",
+# #                        service_notification_commands="notify-by-email",
+# #                    )
+# #                    self.__obj_list.append(nag_conf)
+# #                    #self.__dict[contact.pk] = nag_conf
     def __getitem__(self, key):
         return self.__dict[key]
     def get_object_list(self):
@@ -1687,18 +1687,20 @@ class config_dir(object):
                 ["}", ""])
         return content
     def get_xml(self):
-        res_list = []
-        # only working for a single host, FIXME ?
+        res_dict = {}
         for key, value in self.__dict.iteritems():
             prev_tag = None
             for entry in value:
                 if entry.obj_type != prev_tag:
-                    res_xml = getattr(E, "%s_list" % (entry.obj_type))()
-                    res_list.append(res_xml)
+                    if entry.obj_type not in res_dict:
+                        res_xml = getattr(E, "%s_list" % (entry.obj_type))()
+                        res_dict[entry.obj_type] = res_xml
+                    else:
+                        res_xml = res_dict[entry.obj_type]
                     prev_tag = entry.obj_type
                 res_xml.append(getattr(E, entry.obj_type)(**dict([(key, unicode(value)) for key, value in entry.iteritems()])))
-        return res_list
-        
+        return list(res_dict.itervalues())
+
 class all_hosts(host_type_config):
     """ only a dummy, now via device.d """
     def __init__(self, gen_conf, build_proc):
@@ -1939,11 +1941,11 @@ class service_templates(dict):
         dict.__init__(self)
         self.__build_proc = build_proc
         self.__default = 0
-        #dc.execute("SELECT ng.*, nc.name AS ncname FROM ng_service_templ ng LEFT JOIN ng_cgservicet ngc ON ngc.ng_service_templ=ng.ng_service_templ_idx LEFT JOIN ng_contactgroup nc ON ngc.ng_contactgroup=nc.ng_contactgroup_idx")
+        # dc.execute("SELECT ng.*, nc.name AS ncname FROM ng_service_templ ng LEFT JOIN ng_cgservicet ngc ON ngc.ng_service_templ=ng.ng_service_templ_idx LEFT JOIN ng_contactgroup nc ON ngc.ng_contactgroup=nc.ng_contactgroup_idx")
         for srv_templ in mon_service_templ.objects.all().prefetch_related(
             "mon_device_templ_set",
             "mon_contactgroup_set"):
-            #db_rec["contact_groups"] = set()
+            # db_rec["contact_groups"] = set()
             # generate notification options
             not_options = []
             for long_name, short_name in [("nrecovery", "r"), ("ncritical", "c"), ("nwarning", "w"), ("nunknown", "u")]:
@@ -1952,7 +1954,7 @@ class service_templates(dict):
             if not not_options:
                 not_options.append("n")
             srv_templ.notification_options = not_options
-            self[srv_templ.pk]   = srv_templ
+            self[srv_templ.pk] = srv_templ
             self[srv_templ.name] = srv_templ
             srv_templ.contact_groups = set(srv_templ.mon_contactgroup_set.all().values_list("name", flat=True))
         if self.keys():
@@ -2003,19 +2005,23 @@ class status_process(threading_tools.process_obj):
     def _get_node_status(self, *args, **kwargs):
         src_id, srv_com = (args[0], server_command.srv_command(source=args[1]))
         if mk_livestatus:
-            dev_names = srv_com.xpath(None, ".//device_list/device/text()")
+            pk_list = srv_com.xpath(None, ".//device_list/device/@pk")
+            dev_names = sorted([cur_dev.full_name for cur_dev in device.objects.filter(Q(pk__in=pk_list))])
             try:
                 cur_sock = self._open()
                 if cur_sock:
                     srv_com.set_result("status for %s" % (logging_tools.get_plural("device", len(dev_names))))
-                    query_str = "\n".join(
-                        [
+                    query_field = [
                             "GET services",
                             "Columns: host_name description state plugin_output last_check",
-                            "Filter: host_name = %s" % (dev_names[0]),
-                            ""
-                        ]
-                    )
+                    ]
+                    query_field.append("Filter: host_name = %s" % (dev_names[0]))
+                    if len(dev_names) > 1:
+                        query_field.extend([
+                                          "Filter: host_name = %s" % (dev_n) for dev_n in dev_names[1:]])
+                        query_field.append("Or: %d" % (len(dev_names)))
+                    query_field.append("")
+                    query_str = "\n".join(query_field)
                     cur_query = cur_sock.query(query_str)
                     result = cur_query.get_list()
                     node_results = {}
@@ -2031,11 +2037,12 @@ class status_process(threading_tools.process_obj):
                             *[E.result(**entry) for sort_val, entry in sorted(value)],
                             name=key) for key, value in node_results.iteritems()]
                     )
-                    #print srv_com.pretty_print()
+                    # print srv_com.pretty_print()
                 else:
                     srv_com.set_result("cannot connect", server_command.SRV_REPLY_STATE_CRITICAL)
             except:
                 self._close()
+                self.log("fetch exception: %s" % (process_tools.get_except_info()), logging_tools.LOG_LEVEL_ERROR)
                 srv_com.set_result("exception during fetch", server_command.SRV_REPLY_STATE_CRITICAL)
         else:
             srv_com.set_result("no mk_livestatus found", server_command.SRV_REPLY_STATE_CRITICAL)
@@ -2064,7 +2071,7 @@ class build_process(threading_tools.process_obj):
                 self.__slave_configs[cur_dev.pk] = main_config(
                     self,
                     cur_dev,
-                    slave_name=cur_dev.full_name, 
+                    slave_name=cur_dev.full_name,
                     master_server=master_server,
                 )
                 self.__slave_lut[cur_dev.full_name] = cur_dev.pk
@@ -2199,7 +2206,8 @@ class build_process(threading_tools.process_obj):
         self.__gen_config._create_access_entries()
     def _build_host_config(self, *args, **kwargs):
         src_id, srv_com = (args[0], server_command.srv_command(source=args[1]))
-        dev_names = srv_com.xpath(None, ".//device_list/device/text()")
+        dev_pks = srv_com.xpath(None, ".//device_list/device/@pk")
+        dev_names = [cur_dev.full_name for cur_dev in device.objects.filter(Q(pk__in=dev_pks))]
         self.log("starting single build with %s: %s" % (
             logging_tools.get_plural("device", len(dev_names)),
             ", ".join(sorted(dev_names))))
@@ -2256,7 +2264,7 @@ class build_process(threading_tools.process_obj):
             rebuild_gen_config = True
         if rebuild_gen_config:
             self._create_general_config()
-            #h_list = []
+            # h_list = []
         bc_valid = self.__gen_config.is_valid()
         if bc_valid:
             # get device templates
@@ -2313,7 +2321,7 @@ class build_process(threading_tools.process_obj):
         if global_config["DEBUG"]:
             tot_query_count = len(connection.queries) - cur_query_count
             self.log("queries issued: %d" % (tot_query_count))
-            #for q_idx, act_sql in enumerate(connection.queries[cur_query_count:], 1):
+            # for q_idx, act_sql in enumerate(connection.queries[cur_query_count:], 1):
             #    self.log("%5d %s" % (q_idx, act_sql["sql"][:180]))
         if single_build:
             return res_node
@@ -2495,9 +2503,9 @@ class build_process(threading_tools.process_obj):
                                    snmp_stack,
                                    all_access,
                                    # not used right now
-                                   #all_ms_connections,
-                                   #all_ib_connections,
-                                   #all_dev_relationships,
+                                   # all_ms_connections,
+                                   # all_ib_connections,
+                                   # all_dev_relationships,
                                    contact_group_dict,
                                    ng_ext_hosts,
                                    all_configs,
@@ -2515,7 +2523,7 @@ class build_process(threading_tools.process_obj):
         if check_for_passive_checks:
             if host.monitor_server_id and host.monitor_server_id != cur_gc.monitor_server.pk:
                 checks_are_active = False
-        #h_filter &= (Q(monitor_server=cur_gc.monitor_server) | Q(monitor_server=None))
+        # h_filter &= (Q(monitor_server=cur_gc.monitor_server) | Q(monitor_server=None))
         self.__cached_mach_name = host.full_name
         self.mach_log("-------- %s ---------" % ("master" if cur_gc.master else "slave %s" % (cur_gc.slave_name)))
         glob_log_str = "Starting build of config for device %32s%s (%10s), distance level is %3d" % (
@@ -2526,7 +2534,7 @@ class build_process(threading_tools.process_obj):
         )
         self.mach_log("Starting build of config", logging_tools.LOG_LEVEL_OK, host.full_name)
         num_ok, num_warning, num_error = (0, 0, 0)
-        #print "%s : %s" % (host["name"], host["identifier"])
+        # print "%s : %s" % (host["name"], host["identifier"])
         if host.valid_ips:
             net_devices = host.valid_ips
         elif host.invalid_ips:
@@ -2539,7 +2547,7 @@ class build_process(threading_tools.process_obj):
             num_error += 1
             net_devices = {}
         if net_devices:
-            #print mni_str_s, mni_str_d, dev_str_s, dev_str_d
+            # print mni_str_s, mni_str_d, dev_str_s, dev_str_d
             # get correct netdevice for host
             if host.name == global_config["SERVER_SHORT_NAME"]:
                 valid_ips, traces = ([("127.0.0.1", "localdomain")], [(1, 0, [host.pk])])
@@ -2549,7 +2557,7 @@ class build_process(threading_tools.process_obj):
                     num_error += 1
             act_def_dev = dev_templates[host.mon_device_templ_id or 0]
             if not valid_ips and single_build:
-                valid_ips = [("0.0.0.0", host.full_name),]
+                valid_ips = [("0.0.0.0", host.full_name), ]
                 self.mach_log("no ips found using %s as dummy IP" % (str(valid_ips)))
             if valid_ips and act_def_dev:
                 host.domain_names = [cur_ip[1] for cur_ip in valid_ips if cur_ip[1]]
@@ -2604,31 +2612,31 @@ class build_process(threading_tools.process_obj):
                     if host.device_type.identifier in ["AM", "IBC"] and host.bootserver_id:
                         parents.append(all_hosts_dict[host.bootserver_id].full_name)
                     # rule 2: Devices connected to an apc have this apc set as parent
-                    #elif all_ms_connections.has_key(host.pk):
-                        #for pd in all_ms_connections[host.pk]:
-                            #if all_hosts_dict[pd]["name"] not in parents:
-                                ## disable circular references
-                                #if host["identifier"] == "H" and all_hosts_dict[pd]["bootserver"] == host["device_idx"]:
-                                    #self.mach_log("Disabling parent %s to prevent circular reference" % (all_hosts_dict[pd]["name"]))
-                                #else:
-                                    #parents.append(all_hosts_dict[pd]["name"])
+                    # elif all_ms_connections.has_key(host.pk):
+                        # for pd in all_ms_connections[host.pk]:
+                            # if all_hosts_dict[pd]["name"] not in parents:
+                                # # disable circular references
+                                # if host["identifier"] == "H" and all_hosts_dict[pd]["bootserver"] == host["device_idx"]:
+                                    # self.mach_log("Disabling parent %s to prevent circular reference" % (all_hosts_dict[pd]["name"]))
+                                # else:
+                                    # parents.append(all_hosts_dict[pd]["name"])
                     # rule 3: Devices connected to an ibc have this ibc set as parent
-                    #elif all_ib_connections.has_key(host.pk):
-                        #for pd in all_ib_connections[host.pk]:
-                            #if all_hosts_dict[pd]["name"] not in parents:
-                                ## disable circular references
-                                #if host["identifier"] == "H" and all_hosts_dict[pd]["bootserver"] == host["device_idx"]:
-                                    #self.mach_log("Disabling parent %s to prevent circular reference" % (all_hosts_dict[pd]["name"]))
-                                #else:
-                                    #parents.append(all_hosts_dict[pd]["name"])
+                    # elif all_ib_connections.has_key(host.pk):
+                        # for pd in all_ib_connections[host.pk]:
+                            # if all_hosts_dict[pd]["name"] not in parents:
+                                # # disable circular references
+                                # if host["identifier"] == "H" and all_hosts_dict[pd]["bootserver"] == host["device_idx"]:
+                                    # self.mach_log("Disabling parent %s to prevent circular reference" % (all_hosts_dict[pd]["name"]))
+                                # else:
+                                    # parents.append(all_hosts_dict[pd]["name"])
                     # rule 4: Devices have their xen/vmware-parent set as parent
-                    #elif all_dev_relationships.has_key(host.pk) and all_hosts_dict.has_key(all_dev_relationships[host.pk]["host_device"]):
-                        #act_rel = all_dev_relationships[host.pk]
-                        ## disable circular references
-                        #if host["identifier"] == "H" and host["name"] == global_config["SERVER_SHORT_NAME"]:
-                            #self.mach_log("Disabling parent %s to prevent circular reference" % (all_hosts_dict[act_rel["host_device"]]["name"]))
-                        #else:
-                            #parents.append(all_hosts_dict[act_rel["host_device"]]["name"])
+                    # elif all_dev_relationships.has_key(host.pk) and all_hosts_dict.has_key(all_dev_relationships[host.pk]["host_device"]):
+                        # act_rel = all_dev_relationships[host.pk]
+                        # # disable circular references
+                        # if host["identifier"] == "H" and host["name"] == global_config["SERVER_SHORT_NAME"]:
+                            # self.mach_log("Disabling parent %s to prevent circular reference" % (all_hosts_dict[act_rel["host_device"]]["name"]))
+                        # else:
+                            # parents.append(all_hosts_dict[act_rel["host_device"]]["name"])
                     # rule 5: Check routing
                     else:
                         self.mach_log("No direct parent(s) found, registering trace")
@@ -2636,25 +2644,25 @@ class build_process(threading_tools.process_obj):
                             traces.append((1, 0, [host.pk]))
                         if traces and len(traces[0][2]) > 1:
                             act_host["possible_parents"] = traces
-                            #print traces, host["name"], all_hosts_dict[traces[1]]["name"]
-                            #parents += [all_hosts_dict[traces[1]]["name"]]
-                        #print "No parent set for %s" % (host["name"])
+                            # print traces, host["name"], all_hosts_dict[traces[1]]["name"]
+                            # parents += [all_hosts_dict[traces[1]]["name"]]
+                        # print "No parent set for %s" % (host["name"])
                     if parents:
                         self.mach_log("settings %s: %s" % (
                             logging_tools.get_plural("parent", len(parents)),
                             ", ".join(sorted(parents))))
                         act_host["parents"] = ",".join(parents)
                     act_host["retain_status_information"] = global_config["RETAIN_HOST_STATUS"]
-                    act_host["max_check_attempts"]        = act_def_dev.max_attempts
-                    act_host["notification_interval"]     = act_def_dev.ninterval
-                    act_host["notification_period"]       = cur_gc["timeperiod"][act_def_dev.mon_period_id]["name"]
-                    act_host["checks_enabled"]            = 1
+                    act_host["max_check_attempts"] = act_def_dev.max_attempts
+                    act_host["notification_interval"] = act_def_dev.ninterval
+                    act_host["notification_period"] = cur_gc["timeperiod"][act_def_dev.mon_period_id]["name"]
+                    act_host["checks_enabled"] = 1
                     act_host["%s_checks_enabled" % ("active" if checks_are_active else "passive")] = 1
                     act_host["%s_checks_enabled" % ("passive" if checks_are_active else "active")] = 0
                     act_host["flap_detection_enabled"] = 1 if (host.flap_detection_enabled and act_def_dev.flap_detection_enabled) else 0
                     if host.flap_detection_enabled and act_def_dev.flap_detection_enabled:
                         # add flap fields
-                        act_host["low_flap_threshold"]  = act_def_dev.low_flap_threshold
+                        act_host["low_flap_threshold"] = act_def_dev.low_flap_threshold
                         act_host["high_flap_threshold"] = act_def_dev.high_flap_threshold
                         n_field = []
                         for short, f_name in [("o", "up"), ("d", "down"), ("u", "unreachable")]:
@@ -2736,7 +2744,7 @@ class build_process(threading_tools.process_obj):
                                 for key in ["icon_image", "statusmap_image"]:
                                     act_hostext_info[key] = getattr(ng_ext_hosts[host.mon_ext_host_id], key)
                                 # FIXME, not working for nagios2
-                                #hostext_nc[host.full_name] = act_hostext_info
+                                # hostext_nc[host.full_name] = act_hostext_info
                             else:
                                 self.log("don't know how to handle hostextinfo for %s_version %d" % (
                                     global_config["MD_TYPE"],
@@ -2750,16 +2758,16 @@ class build_process(threading_tools.process_obj):
                         cconf_names = set(host.devs_mon_service_cluster.all().values_list("mon_check_command__name", flat=True))
                         # build lut
                         conf_dict = dict([(
-                            cur_c["command_name"], cur_c) for cur_c in cur_gc["command"].values() if 
+                            cur_c["command_name"], cur_c) for cur_c in cur_gc["command"].values() if
                                           (cur_c.get_config() in conf_names and (not(cur_c.get_device()) or cur_c.get_device() == host.pk)) or
                                           cur_c["command_name"] in cconf_names])
                         # old code, use only_ping config
-                        #if host["identifier"] == "NB" or host["identifier"] == "AM" or host["identifier"] == "S":
+                        # if host["identifier"] == "NB" or host["identifier"] == "AM" or host["identifier"] == "S":
                         #    # set config-dict for netbotzes, APC Masterswitches and switches to ping
                         #    conf_dict = dict([(x["command_name"], x) for x in self.__gen_config["checkcommand"]["struct"].values() if x["command_name"].startswith("check_ping")])
-                        #print host["name"], conf_dict
+                        # print host["name"], conf_dict
                         # now conf_dict is a list of all service-checks defined for this host
-                        #pprint.pprint(conf_dict)
+                        # pprint.pprint(conf_dict)
                         # list of already used checks
                         used_checks = set()
                         conf_names = sorted(conf_dict.keys())
@@ -2855,7 +2863,7 @@ class build_process(threading_tools.process_obj):
                                         s_check,
                                         [special_commands.arg_template(
                                             s_check,
-                                            s_check.get_description(), 
+                                            s_check.get_description(),
                                             arg1=msc_check.description,
                                             arg2=msc_check.warn_value,
                                             arg3=msc_check.error_value,
@@ -2870,7 +2878,7 @@ class build_process(threading_tools.process_obj):
                                     num_ok += len(sub_list)
                                 else:
                                     self.mach_log("ignoring empty service_cluster", logging_tools.LOG_LEVEL_WARN)
-                        host_nc.add_device(host_config_list, host)#[act_host["name"]] = act_host
+                        host_nc.add_device(host_config_list, host) # [act_host["name"]] = act_host
                     else:
                         self.mach_log("Host %s is disabled" % (host.full_name))
             else:
@@ -2892,7 +2900,7 @@ class build_process(threading_tools.process_obj):
         # add master/slave related filters
         if cur_gc.master:
             pass
-            #h_filter &= (Q(monitor_server=cur_gc.monitor_server) | Q(monitor_server=None))
+            # h_filter &= (Q(monitor_server=cur_gc.monitor_server) | Q(monitor_server=None))
         else:
             h_filter &= Q(monitor_server=cur_gc.monitor_server)
         h_filter &= Q(enabled=True) & Q(device_group__enabled=True)
@@ -2934,7 +2942,7 @@ class build_process(threading_tools.process_obj):
         # add master/slave related filters
         if cur_gc.master:
             pass
-            #h_filter &= (Q(monitor_server=cur_gc.monitor_server) | Q(monitor_server=None))
+            # h_filter &= (Q(monitor_server=cur_gc.monitor_server) | Q(monitor_server=None))
         else:
             h_filter &= Q(monitor_server=cur_gc.monitor_server)
         if not single_build:
@@ -2994,21 +3002,21 @@ class build_process(threading_tools.process_obj):
                 cur_host = check_hosts[d_pk]
                 getattr(cur_host, "valid_ips" if n_t in valid_nwt_list else "invalid_ips").setdefault(n_d, []).append((n_i, dom_name))
         # get all masterswitch connections, FIXME
-        #dc.execute("SELECT d.device_idx, ms.device FROM device d, msoutlet ms WHERE ms.slave_device = d.device_idx")
-        #all_ms_connections = {}
-        #for db_rec in dc.fetchall():
+        # dc.execute("SELECT d.device_idx, ms.device FROM device d, msoutlet ms WHERE ms.slave_device = d.device_idx")
+        # all_ms_connections = {}
+        # for db_rec in dc.fetchall():
         #    all_ms_connections.setdefault(db_rec["device_idx"], []).append(db_rec["device"])
         # get all device relationships
-        #all_dev_relationships = {}
+        # all_dev_relationships = {}
         # FIXME
-        #dc.execute("SELECT * FROM device_relationship")
-        #for db_rec in dc.fetchall():
+        # dc.execute("SELECT * FROM device_relationship")
+        # for db_rec in dc.fetchall():
         #    all_dev_relationships[db_rec["domain_device"]] = db_rec
         # get all ibm bladecenter connections
         # FIXME
-        #dc.execute("SELECT d.device_idx, ib.device FROM device d, ibc_connection ib WHERE #ib.slave_device = d.device_idx")
-        #all_ib_connections = {}
-        #for db_rec in dc.fetchall():
+        # dc.execute("SELECT d.device_idx, ib.device FROM device d, ibc_connection ib WHERE #ib.slave_device = d.device_idx")
+        # all_ib_connections = {}
+        # for db_rec in dc.fetchall():
         #    all_ib_connections.setdefault(db_rec["device_idx"], []).append(db_rec["device"])
         host_nc = cur_gc["device.d"]
         # delete host if already present in host_table
@@ -3032,9 +3040,9 @@ class build_process(threading_tools.process_obj):
                 serv_templates,
                 snmp_stack,
                 all_access,
-                #all_ms_connections,
-                #all_ib_connections,
-                #all_dev_relationships,
+                # all_ms_connections,
+                # all_ib_connections,
+                # all_dev_relationships,
                 contact_group_dict,
                 ng_ext_hosts,
                 all_configs,
@@ -3048,7 +3056,7 @@ class build_process(threading_tools.process_obj):
             if host.has_key("possible_parents"):
                 parent_list = []
                 p_parents = host["possible_parents"]
-                #print "*", p_parents
+                # print "*", p_parents
                 for p_val, nd_val, p_list in p_parents:
                     # skip first host (is self)
                     host_pk = p_list.pop(0)
@@ -3078,7 +3086,7 @@ class build_process(threading_tools.process_obj):
                         try:
                             os.unlink(full_name)
                         except:
-                            self.log("error removing %s: %s" % (full_name, 
+                            self.log("error removing %s: %s" % (full_name,
                                                                 process_tools.get_except_info()),
                                      logging_tools.LOG_LEVEL_ERROR)
                 # create group maps
@@ -3125,22 +3133,22 @@ class build_process(threading_tools.process_obj):
             s_check.get_template(act_def_serv.name),
             "cg: %s" % (", ".join(sorted(serv_cgs))) if serv_cgs else "no cgs"))
         ret_field = []
-        #for sc_name, sc in sc_array:
+        # for sc_name, sc in sc_array:
         for arg_temp in sc_array:
             act_serv = nag_config("service", arg_temp.info)
             act_serv["%s_checks_enabled" % ("active" if checks_are_active else "passive")] = 1
             act_serv["%s_checks_enabled" % ("passive" if checks_are_active else "active")] = 0
-            act_serv["service_description"]   = arg_temp.info.replace("(", "[").replace(")", "]")
-            act_serv["host_name"]             = host.full_name
+            act_serv["service_description"] = arg_temp.info.replace("(", "[").replace(")", "]")
+            act_serv["host_name"] = host.full_name
             # volatile
-            act_serv["is_volatile"]           = serv_temp.volatile
-            act_serv["check_period"]          = cur_gc["timeperiod"][serv_temp.nsc_period_id]["name"]
-            act_serv["max_check_attempts"]    = serv_temp.max_attempts
+            act_serv["is_volatile"] = serv_temp.volatile
+            act_serv["check_period"] = cur_gc["timeperiod"][serv_temp.nsc_period_id]["name"]
+            act_serv["max_check_attempts"] = serv_temp.max_attempts
             act_serv["normal_check_interval"] = serv_temp.check_interval
-            act_serv["retry_check_interval"]  = serv_temp.retry_interval
+            act_serv["retry_check_interval"] = serv_temp.retry_interval
             act_serv["notification_interval"] = serv_temp.ninterval
-            act_serv["notification_options"]  = ",".join(serv_temp.notification_options)
-            act_serv["notification_period"]   = cur_gc["timeperiod"][serv_temp.nsn_period_id]["name"]
+            act_serv["notification_options"] = ",".join(serv_temp.notification_options)
+            act_serv["notification_period"] = cur_gc["timeperiod"][serv_temp.nsn_period_id]["name"]
             if serv_cgs:
                 act_serv["contact_groups"] = ",".join(serv_cgs)
             else:
@@ -3153,7 +3161,7 @@ class build_process(threading_tools.process_obj):
                 act_serv["obsess_over_service"] = 1
             act_serv["flap_detection_enabled"] = 1 if (host.flap_detection_enabled and serv_temp.flap_detection_enabled) else 0
             if serv_temp.flap_detection_enabled and host.flap_detection_enabled:
-                act_serv["low_flap_threshold"]  = serv_temp.low_flap_threshold
+                act_serv["low_flap_threshold"] = serv_temp.low_flap_threshold
                 act_serv["high_flap_threshold"] = serv_temp.high_flap_threshold
                 n_field = []
                 for short, f_name in [("o", "ok"), ("w", "warn"), ("c", "critical"), ("u", "unknown")]:
@@ -3166,9 +3174,9 @@ class build_process(threading_tools.process_obj):
                 act_serv["process_perf_data"] = 1 if (host.enable_perfdata and s_check.enable_perfdata) else 0
                 if host.enable_perfdata and s_check.enable_perfdata:
                     act_serv["action_url"] = "%s/index.php/graph?host=$HOSTNAME$&srv=$SERVICEDESC$" % (global_config["PNP_URL"])
-            act_serv["servicegroups"]         = ",".join(s_check.servicegroup_names)
+            act_serv["servicegroups"] = ",".join(s_check.servicegroup_names)
             cur_gc["servicegroup"].add_host(host.name, act_serv["servicegroups"])
-            act_serv["check_command"]         = "!".join([s_check["command_name"]] + s_check.correct_argument_list(arg_temp, host.dev_variables))
+            act_serv["check_command"] = "!".join([s_check["command_name"]] + s_check.correct_argument_list(arg_temp, host.dev_variables))
             if act_host["check_command"] == "check-host-alive-2" and s_check["command_name"].startswith("check_ping"):
                 self.mach_log(
                     "   removing command %s because of %s" % (
@@ -3193,7 +3201,7 @@ class build_process(threading_tools.process_obj):
             valid_ips = []
         else:
             valid_ips = sum([net_devices[nd_pk] for val, nd_pk, loc_trace in traces], [])
-            #(",".join([",".join([y for y in net_devices[x]]) for x in targ_netdev_idxs])).split(",")
+            # (",".join([",".join([y for y in net_devices[x]]) for x in targ_netdev_idxs])).split(",")
         return valid_ips, traces
 
 class server_process(threading_tools.process_pool):
@@ -3225,14 +3233,14 @@ class server_process(threading_tools.process_pool):
         self.register_func("send_command", self._send_command)
         self.__external_cmd_file = None
         self.register_func("external_cmd_file", self._set_external_cmd_file)
-        #self.add_process(db_verify_process("db_verify"), start=True)
+        # self.add_process(db_verify_process("db_verify"), start=True)
         self.add_process(build_process("build"), start=True)
         self.add_process(status_process("status"), start=True)
         self._init_em()
         self.register_timer(self._check_db, 3600, instant=True)
         self.register_timer(self._check_for_redistribute, 30 if global_config["DEBUG"] else 300)
         self.register_timer(self._update, 30, instant=True)
-        #self.__last_update = time.time() - self.__glob_config["MAIN_LOOP_TIMEOUT"]
+        # self.__last_update = time.time() - self.__glob_config["MAIN_LOOP_TIMEOUT"]
         self.send_to_process("build", "rebuild_config", cache_mode="DYNAMIC")
     def _check_db(self):
         self.send_to_process("db_verify", "validate")
@@ -3274,13 +3282,13 @@ class server_process(threading_tools.process_pool):
                         ("up"     , NAG_HOST_UP),
                         ("down"   , NAG_HOST_DOWN)]])
                     res_dict["tot"] = sum(res_dict.values())
-                #cur_s.peer.close()
+                # cur_s.peer.close()
                 del cur_s
             else:
                 self.log("mk_livestatus enabled but module not loaded", logging_tools.LOG_LEVEL_ERROR)
         else:
             # old code, ask SQL Server
-            sql_str = "SELECT nhs.current_state AS host_status, nh.display_name AS host_name FROM %s_hoststatus nhs, %s_hosts nh WHERE nhs.host_object_id=nh.host_object_id" % (	
+            sql_str = "SELECT nhs.current_state AS host_status, nh.display_name AS host_name FROM %s_hoststatus nhs, %s_hosts nh WHERE nhs.host_object_id=nh.host_object_id" % (
                 global_config["MD_TYPE"],
                 global_config["MD_TYPE"])
             cursor = connections["monitor"].cursor()
@@ -3317,7 +3325,7 @@ class server_process(threading_tools.process_pool):
         else:
             self.log("empty result dict for _update()", logging_tools.LOG_LEVEL_WARN)
     def _log_config(self):
-        self.log("Config info:")	
+        self.log("Config info:")
         for line, log_level in global_config.get_log(clear=True):
             self.log(" - clf: [%d] %s" % (log_level, line))
         conf_info = global_config.get_config_info()
@@ -3366,9 +3374,9 @@ class server_process(threading_tools.process_pool):
             ])
         # device_variable local to the server
         dv = cluster_location.db_device_variable(global_config["SERVER_IDX"], "md_version", description="Version of the Monitor-daemon pacakge", value=md_version)
-##        if dv.is_set():
-##            dv.set_value(md_version)
-##            dv.update(dc)
+# #        if dv.is_set():
+# #            dv.set_value(md_version)
+# #            dv.update(dc)
         cluster_location.db_device_variable(global_config["SERVER_IDX"], "md_version", description="Version of the Monitor-daemon RPM", value=md_version, force_update=True)
         cluster_location.db_device_variable(global_config["SERVER_IDX"], "md_type", description="Type of the Monitor-daemon RPM", value=md_type, force_update=True)
         if md_version == "unknown":
@@ -3555,7 +3563,7 @@ class server_process(threading_tools.process_pool):
             msi_block.add_actual_pid(mult=3)
             msi_block.add_actual_pid(act_pid=configfile.get_manager_pid(), mult=4)
             msi_block.start_command = "/etc/init.d/md-config-server start"
-            msi_block.stop_command  = "/etc/init.d/md-config-server force-stop"
+            msi_block.stop_command = "/etc/init.d/md-config-server force-stop"
             msi_block.kill_pids = True
             msi_block.save_block()
         else:
@@ -3802,5 +3810,5 @@ def main():
     ret_state = server_process().loop()
     sys.exit(ret_state)
 
-if __name__  == "__main__":
+if __name__ == "__main__":
     main()
