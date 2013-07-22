@@ -515,6 +515,7 @@ class graph_var(object):
         return self.entry.attrib.get(key, default)
     @staticmethod
     def init(clrz):
+        graph_var.var_idx = 0
         graph_var.colorizer = clrz
         graph_var.colorizer.reset()
     @property
