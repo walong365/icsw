@@ -892,14 +892,22 @@ class data_store(object):
     @staticmethod
     def merge_node_results(res_list):
         if len(res_list) > 1:
-            data_store.g_log("merging %s" % (logging_tools.get_plural("node result", len(res_list))))
+            # print etree.tostring(res_list, pretty_print=True)
+            # remove empty node_results
+            empty_nodes = 0
+            for entry in res_list:
+                if len(entry) == 0:
+                    empty_nodes += 1
+                    entry.getparent().remove(entry)
+            data_store.g_log("merging %s (%s empty)" % (logging_tools.get_plural("node result", len(res_list)),
+                                                        logging_tools.get_plural("entry", empty_nodes)))
             first_mv = res_list[0][0]
             ref_dict = {"mve" : {}, "value" : {}}
             for val_el in first_mv.xpath(".//*"):
                 if val_el.tag in ["value", "mve"]:
                     ref_dict[val_el.tag][val_el.get("name")] = val_el
                 val_el.attrib["devices"] = "1"
-            pprint.pprint(ref_dict)
+            # pprint.pprint(ref_dict)
             for other_node in res_list[1:]:
                 if len(other_node):
                     other_mv = other_node[0]
@@ -916,7 +924,7 @@ class data_store(object):
                         else:
                             print "***", add_tag, add_name
                 other_node.getparent().remove(other_node)
-        print etree.tostring(res_list, pretty_print=True)
+        # print etree.tostring(res_list, pretty_print=True)
     def _expand_info(self, entry):
         info = entry.attrib["info"]
         parts = entry.attrib["name"].split(".")
