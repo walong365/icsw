@@ -131,8 +131,9 @@ class rrd_config
             "height" : "22px"
             "disabled" : "disabled"
         ).on("click", @next_timeframe)
+        @rrd_tf_info = $("<span>").attr("id", "num_rrd_timeframes") 
         @top_div.append(@filter_el, clear_el, draw_el, size_select, @rrd_from_field, @rrd_to_field, @now_field,
-            @tf_prev_arrow, @tf_next_arrow
+            @tf_prev_arrow, @rrd_tf_info, @tf_next_arrow
         )
         @rrd_timeframes = []
         @append_rrd_timeframe(undefined, cur_date, start_date, cur_date)
@@ -164,18 +165,20 @@ class rrd_config
             if Math.abs(new_tf.min - last_tf.min) + Math.abs(new_tf.max - last_tf.max) + Math.abs(new_tf.start - last_tf.start) + Math.abs(new_tf.end - last_tf.end) == 0
                 add_new = false
         else
-          @rrd_tf_idx = 0
+            @rrd_tf_idx = 0
         if add_new
-          @rrd_timeframes.push(new_tf)
-          if @rrd_timeframes.length > 1
-              @tf_prev_arrow.removeAttr("disabled")
-              @tf_next_arrow.removeAttr("disabled")
-          @rrd_tf_idx = @rrd_timeframes.length - 1
-          @init_rrd_from_to()
+            @rrd_timeframes.push(new_tf)
+            if @rrd_timeframes.length > 1
+                @tf_prev_arrow.removeAttr("disabled")
+                @tf_next_arrow.removeAttr("disabled")
+            @rrd_tf_idx = @rrd_timeframes.length - 1
+            @init_rrd_from_to()
+    update_rrd_tf_info: () =>
+        @rrd_tf_info.text((@rrd_tf_idx + 1) + " / " + (@rrd_timeframes.length))
     init_rrd_from_to: () =>
+        @update_rrd_tf_info()
         idx = @rrd_tf_idx
         cur_tf = @rrd_timeframes[idx]
-        console.log cur_tf
         min_date = cur_tf.min
         max_date = cur_tf.max
         from_date = cur_tf.start
