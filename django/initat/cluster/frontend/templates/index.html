@@ -15,9 +15,11 @@
 {% inlinecoffeescript %}
 
 use_devs = (dev_list) ->
-    cur_di = new device_info(undefined, dev_list[0], undefined)
-    cur_di.addon_devices = (entry for entry in dev_list[1..]) 
-    cur_di.show()
+    if dev_list.length
+        # only use when at least one device is selected
+        cur_di = new device_info(undefined, dev_list[0], undefined)
+        cur_di.addon_devices = (entry for entry in dev_list[1..]) 
+        cur_di.show()
 
 add_config_handlers = ->
     install_devsel_link(use_devs, true)

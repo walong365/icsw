@@ -96,11 +96,9 @@ class rrd_config
             type : "text"
             id   : "rrd_to"
         )
-        cur_date = new Date()
-        start_date = new Date()
+        cur_date = @get_date()
+        start_date = @get_date()
         start_date.setHours(cur_date.getHours() - 40)
-        min_date = new Date()
-        min_date.setFullYear(cur_date.getYear() - 10)
         size_select =$("<select>").attr(
             "id"  : "rrd_size"
         ).on("change", @draw_rrd_el)
@@ -116,13 +114,80 @@ class rrd_config
             "value" : "now"
         ).on("click", @set_to_field)
         @CUR_FILTER = ""
-        @top_div.append(@filter_el, clear_el, draw_el, size_select, @rrd_from_field, @rrd_to_field, @now_field)
+        # back / forth arrows
+        @tf_prev_arrow = $("<input>").attr(
+            "title"  : "previous timeframe"
+            "type"   : "image"
+            "src"    : "{{ MEDIA_URL }}frontend/images/left-arrow.png"
+            "width"  : "22px"
+            "height" : "22px"
+            "disabled" : "disabled"
+        ).on("click", @prev_timeframe)
+        @tf_next_arrow = $("<input>").attr(
+            "title"  : "next timeframe"
+            "type"   : "image"
+            "src"    : "{{ MEDIA_URL }}frontend/images/right-arrow.png"
+            "width"  : "22px"
+            "height" : "22px"
+            "disabled" : "disabled"
+        ).on("click", @next_timeframe)
+        @top_div.append(@filter_el, clear_el, draw_el, size_select, @rrd_from_field, @rrd_to_field, @now_field,
+            @tf_prev_arrow, @tf_next_arrow
+        )
+        @rrd_timeframes = []
+        @append_rrd_timeframe(undefined, cur_date, start_date, cur_date)
+        @load_rrd_tree()
+    get_date: () =>
+        cur_date = new Date()
+        cur_date.setSeconds(0)
+        cur_date.setMilliseconds(0)
+        return cur_date
+    prev_timeframe: (event) =>
+        if @rrd_tf_idx > 0
+            @rrd_tf_idx--
+            @init_rrd_from_to()
+            @draw_rrd_el()
+    next_timeframe: (event) =>
+        if @rrd_tf_idx < @rrd_timeframes.length - 1
+            @rrd_tf_idx++
+            @init_rrd_from_to()
+            @draw_rrd_el()
+    append_rrd_timeframe: (min_dt, max_dt, start_dt, end_dt) =>
+        if not min_dt
+            min_dt = @get_date()
+            min_dt.setFullYear(min_dt.getYear() - 10)
+        new_tf = {"min" : min_dt, "max" : max_dt, "start" : start_dt, "end" : end_dt}
+        # check for change
+        add_new = true
+        if @rrd_timeframes.length
+            last_tf = @rrd_timeframes[@rrd_timeframes.length - 1]
+            if Math.abs(new_tf.min - last_tf.min) + Math.abs(new_tf.max - last_tf.max) + Math.abs(new_tf.start - last_tf.start) + Math.abs(new_tf.end - last_tf.end) == 0
+                add_new = false
+        else
+          @rrd_tf_idx = 0
+        if add_new
+          @rrd_timeframes.push(new_tf)
+          if @rrd_timeframes.length > 1
+              @tf_prev_arrow.removeAttr("disabled")
+              @tf_next_arrow.removeAttr("disabled")
+          @rrd_tf_idx = @rrd_timeframes.length - 1
+          @init_rrd_from_to()
+    init_rrd_from_to: () =>
+        idx = @rrd_tf_idx
+        cur_tf = @rrd_timeframes[idx]
+        console.log cur_tf
+        min_date = cur_tf.min
+        max_date = cur_tf.max
+        from_date = cur_tf.start
+        to_date = cur_tf.end
+        @rrd_from_field.datetimepicker("destroy")
+        @rrd_to_field.datetimepicker("destroy")
         @rrd_from_field.datetimepicker(
             minDate     : min_date
-            maxDate     : cur_date
-            defaultDate : start_date
-            hour        : start_date.getHours()
-            minute      : start_date.getMinutes()
+            maxDate     : to_date
+            defaultDate : from_date
+            hour        : from_date.getHours()
+            minute      : from_date.getMinutes()
             changeMonth : true
             changeYear  : true
             gotoCurrent : true
@@ -133,10 +198,10 @@ class rrd_config
         )
         @rrd_to_field.datetimepicker(
             minDate     : min_date
-            maxDate     : cur_date
-            defaultDate : cur_date
-            hour        : cur_date.getHours()
-            minute      : cur_date.getMinutes()
+            maxDate     : to_date
+            defaultDate : to_date
+            hour        : to_date.getHours()
+            minute      : to_date.getMinutes()
             changeMonth : true
             changeYear  : true
             dateFormat  : "yy-mm-dd"
@@ -144,22 +209,11 @@ class rrd_config
                 @rrd_from_field.datepicker("option", "maxDate", sel_date)
                 @update_rrd_timeframe()
         )
-        @rrd_from_field.datetimepicker("setDate", start_date)
-        @rrd_to_field.datetimepicker("setDate", cur_date)
-        @load_rrd_tree()
+        @rrd_from_field.datetimepicker("setDate", from_date)
+        @rrd_to_field.datetimepicker("setDate", to_date)
     set_to_field: (event) =>
-        # not working right now, FIXME
-        cur_date = new Date()
-        @rrd_to_field.datetimepicker({
-            "maxDate"     : cur_date,
-            "defaultDate" : cur_date,
-            "maxDateTime" : cur_date,
-        })
-        @rrd_to_field.datetimepicker({
-            "hour"        : cur_date.getHours(),
-            "minute"      : cur_date.getMinutes(),
-        })
-        @rrd_to_field.datetimepicker("setDate", cur_date)
+        cur_date = @get_date()
+        @append_rrd_timeframe(undefined, cur_date, new Date(@rrd_from_field.val()), cur_date) 
     load_rrd_tree: () =>
         $.ajax
             url  : "{% url 'rrd:device_rrds' %}"
@@ -262,8 +316,13 @@ class rrd_config
         new_gt_end   = parseInt(gt_start + (gt_end - gt_start) * (selection.x2 - gt_left) / (img_width))
         new_gtd_start = new Date(new_gt_start * 1000)
         new_gtd_end   = new Date(new_gt_end   * 1000)
-        @rrd_from_field.datetimepicker("setDate", new_gtd_start)
-        @rrd_to_field.datetimepicker("setDate", new_gtd_end)
+        new_gtd_start.setSeconds(0)
+        new_gtd_start.setMilliseconds(0)
+        new_gtd_end.setSeconds(0)
+        new_gtd_end.setMilliseconds(0)
+        @append_rrd_timeframe(undefined, @get_date(), new_gtd_start, new_gtd_end)
+        #@rrd_from_field.datetimepicker("setDate", new_gtd_start)
+        #@rrd_to_field.datetimepicker("setDate", new_gtd_end)
     draw_rrd: (rrd_key_list) =>
         $.ajax
             url  : "{% url 'rrd:graph_rrds' %}"
