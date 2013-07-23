@@ -1785,7 +1785,8 @@ class server_process(threading_tools.process_pool):
                 for target_ip in ipv4_addresses:
                     if target_ip not in zmq_id_dict:
                         zmq_id_dict[target_ip] = (wc_urn, wc_virtual)
-        self.zeromq_id = zmq_id_dict["*"][0].split(":")[-1]
+        ref_id = "*" if "*" in zmq_id_dict else "127.0.0.1"
+        self.zeromq_id = zmq_id_dict[ref_id][0].split(":")[-1]
         self.log("0MQ bind info (global 0MQ id is %s)" % (self.zeromq_id))
         for key in sorted(zmq_id_dict.iterkeys()):
             self.log("bind address %-15s: %s%s" % (
@@ -1805,7 +1806,7 @@ class server_process(threading_tools.process_pool):
                 client.bind("tcp://%s:%d" % (
                     bind_ip,
                     global_config["COM_PORT"]))
-            except zmq.core.error.ZMQError:
+            except zmq.ZMQError:
                 self.log("error binding to %s:%d: %s" % (
                     "virtual %s" % (bind_ip) if is_virtual else bind_ip,
                     global_config["COM_PORT"],
