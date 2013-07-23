@@ -58,7 +58,7 @@ def read_config_from_db(g_config, server_type, init_list=[], host_name="", **kwa
                 #sql_str = "SELECT cv.* FROM new_config c INNER JOIN device_config dc LEFT JOIN config_%s cv ON cv.new_config=c.new_config_idx WHERE (cv.device=0 OR cv.device=%d) AND dc.device=%d AND dc.new_config=c.new_config_idx AND c.name='%s' ORDER BY cv.device, cv.name" % (short, config_idx, serv_idx, real_config_name)
                 #dc.execute(sql_str)
                 src_sql_obj = globals()["config_%s" % (short)].objects
-                if init_list:
+                if init_list and not kwargs.get("read_all", False):
                     src_sql_obj = src_sql_obj.filter(Q(name__in=[var_name for var_name, var_value in init_list]))
                 for db_rec in src_sql_obj.filter(
                     (Q(device=0) | Q(device=None) | Q(device=serv_idx)) &
