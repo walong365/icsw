@@ -2749,6 +2749,7 @@ class build_process(threading_tools.process_obj):
                                 for key in ["icon_image", "statusmap_image"]:
                                     act_hostext_info[key] = getattr(ng_ext_hosts[host.mon_ext_host_id], key)
                                 # FIXME, not working for nagios2
+                                host_config_list.append(act_hostext_info)
                                 # hostext_nc[host.full_name] = act_hostext_info
                             else:
                                 self.log("don't know how to handle hostextinfo for %s_version %d" % (
