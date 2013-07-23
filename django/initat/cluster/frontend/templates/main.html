@@ -104,7 +104,7 @@
         </div>
         <div class="fp_headline" style="float:right;margin:0;padding:10px;">
             {% now "l, j. F Y" %} <span id="cur_time">00:00:00</span>. {% trans "You are logged in as user" %}
-            <span>'{{ user.username }}'</span>. <a href="{% url 'session:logout' %}">{% trans "Logout" %}</a>
+            <span>'{{ user.login }}'</span>. <a href="{% url 'session:logout' %}">{% trans "Logout" %}</a>
         </div>
     </div>
 {% endif %}
