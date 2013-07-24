@@ -2602,13 +2602,6 @@ class build_process(threading_tools.process_obj):
                         act_host["process_perf_data"] = 1 if host.enable_perfdata else 0
                         if host.enable_perfdata:
                             act_host["action_url"] = "%s/index.php/graph?host=$HOSTNAME$&srv=_HOST_" % (global_config["PNP_URL"])
-                    # deep copy needed here
-                    c_list = [entry for entry in all_access]
-                    # set alias
-                    if host.device_group.user_set.all():
-                        c_list.extend([cur_u.login for cur_u in host.device_group.user_set.filter(Q(mon_contact__pk__gt=0))])
-                    if c_list:
-                        act_host["contacts"] = ",".join(c_list)
                     act_host["alias"] = ",".join(sorted(list(set([entry for entry in [host.alias, host.name, host.full_name] + ["%s.%s" % (host.name, dom_name) for dom_name in host.domain_names] if entry.strip()]))))
                     act_host["address"] = host.valid_ip
                     # check for parents
@@ -2680,8 +2673,15 @@ class build_process(threading_tools.process_obj):
                         # trace changes
                         act_host["obsess_over_host"] = 1
                     host_groups = set(contact_group_dict.get(host.full_name, []))
+                    # print "*", host, set(contact_group_dict.get(host.full_name, []))
                     act_host["contact_groups"] = ",".join(host_groups) if host_groups else global_config["NONE_CONTACT_GROUP"]
-                    act_host["contacts"] = ""
+                    # deep copy needed here
+                    c_list = [entry for entry in all_access]
+                    # set alias
+                    if host.device_group.user_set.all():
+                        c_list.extend([cur_u.login for cur_u in host.device_group.user_set.filter(Q(mon_contact__pk__gt=0))])
+                    if c_list:
+                        act_host["contacts"] = ",".join(c_list)
                     self.mach_log("contact groups for host: %s" % (
                         ", ".join(sorted(host_groups)) or "none"))
                     if host.monitor_checks or single_build:
@@ -2997,13 +2997,14 @@ class build_process(threading_tools.process_obj):
                     first_contactgroup_name),
                          logging_tools.LOG_LEVEL_ERROR)
                 cg_name = first_contactgroup_name
-            for h_name in ct_group.device_groups.all().values_list("device_group__name", flat=True):
-                contact_group_dict.setdefault(h_name, []).append(ct_group.name)
+            for g_devg in ct_group.device_groups.all().prefetch_related("device_group", "device_group__domain_tree_node"):
+                for g_dev in g_devg.device_group.all():
+                    contact_group_dict.setdefault(g_dev.full_name, []).append(ct_group.name)
         # get valid and invalid network types
         valid_nwt_list = set(network_type.objects.filter(Q(identifier__in=["p", "o"])).values_list("identifier", flat=True))
         invalid_nwt_list = set(network_type.objects.exclude(Q(identifier__in=["p", "o"])).values_list("identifier", flat=True))
         # get all network devices (needed for relaying)
-        for n_i, n_n, n_t, n_d, d_pk, dom_name in net_ip.objects.all().values_list("ip", "netdevice__device__name", "network__network_type__identifier", "netdevice__pk", "netdevice__device__pk", "domain_tree_node__full_name"):
+        for n_i, n_t, n_d, d_pk, dom_name in net_ip.objects.all().values_list("ip", "network__network_type__identifier", "netdevice__pk", "netdevice__device__pk", "domain_tree_node__full_name"):
             if d_pk in check_hosts:
                 cur_host = check_hosts[d_pk]
                 getattr(cur_host, "valid_ips" if n_t in valid_nwt_list else "invalid_ips").setdefault(n_d, []).append((n_i, dom_name))
