@@ -28,12 +28,6 @@ get_not_type_list = () ->
         $("<entry>").attr("pk", "service").text("Service"),
     ).children()
     
-get_check_command_list = () ->
-    return $("<list>").append(
-        $("<entry>").attr("pk", "check-host-alive").text("Check via Ping"),
-        $("<entry>").attr("pk", "check-host-alive-2").text("Check via host-monitoring"),
-    ).children()
-    
 master_array = {
     "monper" : new draw_setup("MonPeriod", "monper", "mon_period",
         "{% url 'base:create_object' 'mon_period' %}",
@@ -121,6 +115,16 @@ master_array = {
             "lock_div"     : "mon_tables"
         }
     ),
+    "monhc" : new draw_setup("Host Check Command", "hcc", "host_check_command",
+        "{% url 'base:create_object' 'host_check_command' %}",
+        "{% url 'base:delete_object' 'host_check_command' %}",
+        [
+            new draw_info("name", {size : 32}),
+            new draw_info("command_line", {size : 80}),
+        ], {
+            "lock_div" : "mon_tabels"
+           }
+     ),
     "moncg" : new draw_setup("Contact Group", "moncg", "mon_contactgroup",
         "{% url 'base:create_object' 'mon_contactgroup' %}",
         "{% url 'base:delete_object' 'mon_contactgroup' %}",
@@ -149,7 +153,7 @@ master_array = {
             new draw_info("nunreachable", {boolean : 1}),
             new draw_info("nflapping" , {boolean : 1}),
             new draw_info("nplanned_downtime" , {boolean : 1}),
-            new draw_info("ccommand", {select_source : get_check_command_list}),
+            new draw_info("host_check_command", {select_source : "host_check_commands host_check_command"}),
             new draw_info("flap_detection_enabled", {boolean : 1, label : "Flap"}),
             new draw_info("low_flap_threshold" , {min : 0, max : 100, number : 1, default : 0, label : "min"}),
             new draw_info("high_flap_threshold", {min : 0, max : 100, number : 1, default : 0, label : "max"}),
@@ -157,7 +161,7 @@ master_array = {
             new draw_info("flap_detect_down"       , {boolean : 1}),
             new draw_info("flap_detect_unreachable", {boolean : 1}),
         ], {
-            "required_xml" : ["monper", "monst"],
+            "required_xml" : ["monper", "monst", "monhc"],
             "lock_div"     : "mon_tables"
         }
     ),
