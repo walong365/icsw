@@ -68,7 +68,7 @@ from initat.cluster.backbone.models import device, device_group, device_variable
      mon_ext_host, mon_check_command, mon_period, mon_contact, \
      mon_contactgroup, mon_service_templ, netdevice, network, network_type, net_ip, \
      user, mon_host_cluster, mon_service_cluster, config, md_check_data_store, category, \
-     category_tree, TOP_MONITORING_CATEGORY, mon_notification, config_str, config_int
+     category_tree, TOP_MONITORING_CATEGORY, mon_notification, config_str, config_int, host_check_command
 
 try:
     import mk_livestatus
@@ -1317,6 +1317,13 @@ class all_commands(host_type_config):
             )
             self.__obj_list.append(nag_conf)
     def _add_commands_from_db(self, gen_conf):
+        for hc_com in host_check_command.objects.all():
+            cur_nc = nag_config(
+                                "command",
+                                hc_com.name,
+                                command_name=hc_com.name,
+                                command_line=hc_com.command_line)
+            self.__obj_list.append(cur_nc)
         ngc_re1 = re.compile("^\@(?P<special>\S+)\@(?P<comname>\S+)$")
         check_coms = list(mon_check_command.objects.all()
                           .prefetch_related("categories")
@@ -1361,32 +1368,32 @@ class all_commands(host_type_config):
                 ]
         command_names = set()
         for ngc in check_coms + [
-            mon_check_command(
-                name="check-host-alive",
-                command_line="$USER2$ -m localhost ping $HOSTADDRESS$ %d %.2f" % (
-                    global_config["CHECK_HOST_ALIVE_PINGS"],
-                    global_config["CHECK_HOST_ALIVE_TIMEOUT"]),
-                description="Check-host-alive command via ping",
-                enable_perfdata=enable_perfd,
-                ),
-            mon_check_command(
-                name="check-host-ok",
-                command_line="$USER1$/check_dummy 0 up",
-                description="Check-host-ok, always up",
-                enable_perfdata=False,
-                ),
-            mon_check_command(
-                name="check-host-down",
-                command_line="$USER1$/check_dummy 2 down",
-                description="Check-host-down, always down",
-                enable_perfdata=False,
-                ),
-            mon_check_command(
-                name="check-host-alive-2",
-                command_line="$USER2$ -m $HOSTADDRESS$ version",
-                description="Check-host-alive command via collserver",
-                enable_perfdata=enable_perfd,
-                ),
+#             mon_check_command(
+#                 name="check-host-alive",
+#                 command_line="$USER2$ -m localhost ping $HOSTADDRESS$ %d %.2f" % (
+#                     global_config["CHECK_HOST_ALIVE_PINGS"],
+#                     global_config["CHECK_HOST_ALIVE_TIMEOUT"]),
+#                 description="Check-host-alive command via ping",
+#                 enable_perfdata=enable_perfd,
+#                 ),
+#             mon_check_command(
+#                 name="check-host-ok",
+#                 command_line="$USER1$/check_dummy 0 up",
+#                 description="Check-host-ok, always up",
+#                 enable_perfdata=False,
+#                 ),
+#             mon_check_command(
+#                 name="check-host-down",
+#                 command_line="$USER1$/check_dummy 2 down",
+#                 description="Check-host-down, always down",
+#                 enable_perfdata=False,
+#                 ),
+#             mon_check_command(
+#                 name="check-host-alive-2",
+#                 command_line="$USER2$ -m $HOSTADDRESS$ version",
+#                 description="Check-host-alive command via collserver",
+#                 enable_perfdata=enable_perfd,
+#                 ),
             mon_check_command(
                 name="ochp-command",
                 command_line="$USER2$ -m DIRECT -s ochp-event \"$HOSTNAME$\" \"$HOSTSTATE$\" \"%s\"" % ("$HOSTOUTPUT$|$HOSTPERFDATA$" if enable_perfd else "$HOSTOUTPUT$"),
@@ -1446,6 +1453,7 @@ class all_commands(host_type_config):
             nag_conf = cc_s.get_nag_config()
             self.__obj_list.append(nag_conf)
             self.__dict[nag_conf["command_name"]] = cc_s
+            # self.__dict[nag_conf["command_name"]] = cc_s
     def get_object_list(self):
         return self.__obj_list
     def values(self):
@@ -1917,7 +1925,7 @@ class device_templates(dict):
         dict.__init__(self)
         self.__build_proc = build_proc
         self.__default = None
-        for dev_templ in mon_device_templ.objects.all():
+        for dev_templ in mon_device_templ.objects.all().select_related("host_check_command"):
             self[dev_templ.pk] = dev_templ
             if dev_templ.is_default:
                 self.__default = dev_templ
@@ -2699,7 +2707,7 @@ class build_process(threading_tools.process_obj):
                             self.mach_log("IP address is '%s', host is assumed to be always up" % (unicode(host.valid_ip)))
                             act_host["check_command"] = "check-host-ok"
                         else:
-                            act_host["check_command"] = act_def_dev.ccommand
+                            act_host["check_command"] = act_def_dev.host_check_command.name
                         # check for nagvis map
                         if host.automap_root_nagvis and cur_gc.master:
                             map_file = os.path.join(global_config["NAGVIS_DIR"], "etc", "maps", "%s.cfg" % (host.full_name.encode("ascii", errors="ignore")))
