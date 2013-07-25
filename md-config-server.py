@@ -75,7 +75,7 @@ try:
 except ImportError:
     mk_livestatus = None
 
-# nagios constants
+# icinga constants
 NAG_HOST_UNKNOWN = -1
 NAG_HOST_UP = 0
 NAG_HOST_DOWN = 1
@@ -136,34 +136,40 @@ BROKER_STATECHANGE_DATA = 2 ** 17
 BROKER_RESERVED18 = 2 ** 18
 BROKER_RESERVED19 = 2 ** 19
 
-class snmp_settings(object):
+class var_cache(dict):
     def __init__(self, cdg):
+        super(var_cache, self).__init__(self)
         self.__cdg = cdg
-        self.__snmp_vars = {}
     def get_vars(self, cur_dev):
         global_key, dg_key, dev_key = (
             "GLOBAL",
             "dg__%d" % (cur_dev.device_group_id),
             "dev__%d" % (cur_dev.pk))
-        if global_key not in self.__snmp_vars:
+        if global_key not in self:
+            def_dict = {"SNMP_VERSION"         : 2,
+                        "SNMP_READ_COMMUNITY"  : "public",
+                        "SNMP_WRITE_COMMUNITY" : "private"}
             # read global configs
-            self.__snmp_vars["GLOBAL"] = dict([(cur_var.name, cur_var.get_value()) for cur_var in device_variable.objects.filter(Q(device=self.__cdg) & Q(name__istartswith="snmp_"))])
-        if dg_key not in self.__snmp_vars:
+            self[global_key] = dict([(cur_var.name, cur_var.get_value()) for cur_var in device_variable.objects.filter(Q(device=self.__cdg))])
+            # update with def_dict
+            for key, value in def_dict.iteritems():
+                if key not in self[global_key]:
+                    self[global_key][key] = value
+        if dg_key not in self:
             # read device_group configs
-            self.__snmp_vars[dg_key] = dict([(cur_var.name, cur_var.get_value()) for cur_var in device_variable.objects.filter(Q(device=cur_dev.device_group.device) & Q(name__istartswith="snmp_"))])
-        if dev_key not in self.__snmp_vars:
+            self[dg_key] = dict([(cur_var.name, cur_var.get_value()) for cur_var in device_variable.objects.filter(Q(device=cur_dev.device_group.device))])
+        if dev_key not in self:
             # read device configs
-            self.__snmp_vars[dev_key] = dict([(cur_var.name, cur_var.get_value()) for cur_var in device_variable.objects.filter(Q(device=cur_dev) & Q(name__istartswith="snmp_"))])
-        ret_dict = {
-            "SNMP_VERSION"         : 2,
-            "SNMP_READ_COMMUNITY"  : "public",
-            "SNMP_WRITE_COMMUNITY" : "private"}
-        for s_key in ret_dict.iterkeys():
-            for key in [dev_key, dg_key, global_key]:
-                if s_key in self.__snmp_vars[key]:
-                    ret_dict[s_key] = self.__snmp_vars[key][s_key]
-                    break
-        return ret_dict
+            self[dev_key] = dict([(cur_var.name, cur_var.get_value()) for cur_var in device_variable.objects.filter(Q(device=cur_dev))])
+        ret_dict, info_dict = ({}, {})
+        # for s_key in ret_dict.iterkeys():
+        for key, key_n in [(dev_key, "d"), (dg_key, "g"), (global_key, "c")]:
+            info_dict[key_n] = 0
+            for s_key, s_value in self.get(key, {}).iteritems():
+                if s_key not in ret_dict:
+                    ret_dict[s_key] = s_value
+                    info_dict[key_n] += 1
+        return ret_dict, info_dict
 
 class main_config(object):
     def __init__(self, b_proc, monitor_server, **kwargs):
@@ -1465,13 +1471,19 @@ class all_contacts(host_type_config):
                 # check for pager number
                 not_h_list.extend(list(contact.notifications.filter(Q(channel="sms") & Q(not_type="host") & Q(enabled=True))))
                 not_s_list.extend(list(contact.notifications.filter(Q(channel="sms") & Q(not_type="service") & Q(enabled=True))))
+            if contact.mon_alias:
+                alias = contact.mon_alias
+            elif contact.user.comment:
+                alias = contact.user.comment
+            else:
+                alias = full_name
             nag_conf = nag_config(
                 "contact",
                 full_name,
                 contact_name=contact.user.login,
                 host_notification_period=gen_conf["timeperiod"][contact.hnperiod_id]["name"],
                 service_notification_period=gen_conf["timeperiod"][contact.snperiod_id]["name"],
-                alias=contact.user.comment or full_name,
+                alias=alias,
             )
             if not_h_list:
                 nag_conf["host_notification_commands"] = ",".join([entry.name for entry in not_h_list])
@@ -1482,8 +1494,8 @@ class all_contacts(host_type_config):
             else:
                 nag_conf["service_notification_commands"] = "dummy-notify"
             for targ_opt, pairs in [
-                ("host_notification_options"   , [("hnrecovery", "r"), ("hndown"    , "d"), ("hnunreachable", "u")]),
-                ("service_notification_options", [("snrecovery", "r"), ("sncritical", "c"), ("snwarning"    , "w"), ("snunknown", "u")])]:
+                ("host_notification_options"   , [("hnrecovery", "r"), ("hndown"    , "d"), ("hnunreachable", "u"), ("hflapping", "f"), ("hplanned_downtime", "s")]),
+                ("service_notification_options", [("snrecovery", "r"), ("sncritical", "c"), ("snwarning"    , "w"), ("snunknown", "u"), ("sflapping", "f"), ("splanned_downtime", "s")])]:
                 act_a = []
                 for long_s, short_s in pairs:
                     if getattr(contact, long_s):
@@ -1952,7 +1964,7 @@ class service_templates(dict):
             # db_rec["contact_groups"] = set()
             # generate notification options
             not_options = []
-            for long_name, short_name in [("nrecovery", "r"), ("ncritical", "c"), ("nwarning", "w"), ("nunknown", "u")]:
+            for long_name, short_name in [("nrecovery", "r"), ("ncritical", "c"), ("nwarning", "w"), ("nunknown", "u"), ("nflapping", "f"), ("nplanned_downtime", "s")]:
                 if getattr(srv_templ, long_name):
                     not_options.append(short_name)
             if not not_options:
@@ -2247,8 +2259,8 @@ class build_process(threading_tools.process_obj):
                 name="_SYS_GAUGE_",
                 description="mon config rebuild on %s" % (self.__gen_config.monitor_server.full_name),
                 var_type="i")
-        # fetch SNMP-stuff of cluster
-        snmp_stack = snmp_settings(cdg)
+        # fetch SNMP-stuff of cluster and initialise var cache
+        var_stack = var_cache(cdg)
         rebuild_gen_config = False
         if not h_list:
             self.log(
@@ -2304,7 +2316,7 @@ class build_process(threading_tools.process_obj):
                 if cur_gc.master and not single_build:
                     # recreate access files
                     cur_gc._create_access_entries()
-                self._create_host_config_files(build_dv, cur_gc, h_list, dev_templates, serv_templates, snmp_stack, cur_dmap, single_build)
+                self._create_host_config_files(build_dv, cur_gc, h_list, dev_templates, serv_templates, var_stack, cur_dmap, single_build)
                 if not single_build:
                     # refresh implies _write_entries
                     cur_gc.refresh()
@@ -2505,7 +2517,7 @@ class build_process(threading_tools.process_obj):
                                    all_hosts_dict,
                                    dev_templates,
                                    serv_templates,
-                                   snmp_stack,
+                                   var_stack,
                                    all_access,
                                    # not used right now
                                    # all_ms_connections,
@@ -2583,14 +2595,12 @@ class build_process(threading_tools.process_obj):
                         act_def_serv.name,
                         host.full_name))
                     # get device variables
-                    dev_variables = {}
-                    for cur_var in device_variable.objects.filter(Q(device=host)):
-                        var_name = cur_var.name
-                        dev_variables[var_name] = unicode(cur_var.value)
-                    dev_variables.update(snmp_stack.get_vars(host))
+                    dev_variables, var_info = var_stack.get_vars(host)
                     host.dev_variables = dev_variables
-                    self.mach_log("device has %s" % (
-                        logging_tools.get_plural("device_variable", len(host.dev_variables.keys()))))
+                    self.mach_log("device has %s (%s)" % (
+                        logging_tools.get_plural("device_variable", len(host.dev_variables.keys())),
+                        ", ".join(["%s: %d" % (key, var_info[key]) for key in ["d", "g", "c"]])
+                        ))
                     # now we have the device- and service template
                     host_config_list = []
                     act_host = nag_config("host", host.full_name)
@@ -2734,7 +2744,7 @@ class build_process(threading_tools.process_obj):
                                 map_h.close()
                         # check for notification options
                         not_a = []
-                        for what, shortcut in [("nrecovery", "r"), ("ndown", "d"), ("nunreachable", "u")]:
+                        for what, shortcut in [("nrecovery", "r"), ("ndown", "d"), ("nunreachable", "u"), ("nflapping", "f"), ("nplanned_downtime", "s")]:
                             if getattr(act_def_dev, what):
                                 not_a.append(shortcut)
                         if not not_a:
@@ -2911,7 +2921,7 @@ class build_process(threading_tools.process_obj):
             h_filter &= Q(monitor_server=cur_gc.monitor_server)
         h_filter &= Q(enabled=True) & Q(device_group__enabled=True)
         return device.objects.exclude(Q(device_type__identifier="MD")).filter(h_filter).count()
-    def _create_host_config_files(self, build_dv, cur_gc, hosts, dev_templates, serv_templates, snmp_stack, d_map, single_build):
+    def _create_host_config_files(self, build_dv, cur_gc, hosts, dev_templates, serv_templates, var_stack, d_map, single_build):
         """
         d_map : distance map
         """
@@ -3045,7 +3055,7 @@ class build_process(threading_tools.process_obj):
                 all_hosts_dict,
                 dev_templates,
                 serv_templates,
-                snmp_stack,
+                var_stack,
                 all_access,
                 # all_ms_connections,
                 # all_ib_connections,
