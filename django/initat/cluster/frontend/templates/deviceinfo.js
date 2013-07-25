@@ -724,6 +724,7 @@ class device_info
     
 root.show_device_info = show_device_info
 root.device_info = device_info
+root.category_tree = category_tree
 
 {% endinlinecoffeescript %}
 
