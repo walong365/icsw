@@ -29,12 +29,12 @@ ALLOWED_CFS = ["MAX", "MIN", "AVERAGE"]
 
 # top monitoring category
 TOP_MONITORING_CATEGORY = "/mon"
-TOP_LOCATION_CATEGORY   = "/location"
-TOP_CONFIG_CATEGORY     = "/config"
-TOP_DEVICE_CATEGORY     = "/device"
+TOP_LOCATION_CATEGORY = "/location"
+TOP_CONFIG_CATEGORY = "/config"
+TOP_DEVICE_CATEGORY = "/device"
 
 # validation REs
-valid_domain_re   = re.compile("^[a-zA-Z0-9-_]+$")
+valid_domain_re = re.compile("^[a-zA-Z0-9-_]+$")
 valid_category_re = re.compile("^[a-zA-Z0-9-_\.]+$")
 
 logger = logging.getLogger(__name__)
@@ -105,17 +105,17 @@ def _check_float(inst, attr_name):
     except:
         raise ValidationError("%s is not a float" % (attr_name))
     setattr(inst, attr_name, cur_val)
-    
+
 def _check_empty_string(inst, attr_name):
     cur_val = getattr(inst, attr_name)
     if not cur_val.strip():
         raise ValidationError("%s can not be empty" % (attr_name))
-    
+
 def _check_non_empty_string(inst, attr_name):
     cur_val = getattr(inst, attr_name)
     if cur_val.strip():
         raise ValidationError("%s must be empty" % (attr_name))
-    
+
 class apc_device(models.Model):
     idx = models.AutoField(db_column="idx", primary_key=True)
     device = models.ForeignKey("device")
@@ -144,47 +144,47 @@ class architecture(models.Model):
     def __unicode__(self):
         return self.architecture
 
-#class ccl_event(models.Model):
-    #idx = models.AutoField(db_column="ccl_event_idx", primary_key=True)
-    #device = models.ForeignKey("device")
-    #rrd_data = models.ForeignKey("rrd_data")
-    #device_class = models.ForeignKey("device_class")
-    #threshold = models.FloatField(null=True, blank=True)
-    #threshold_class = models.IntegerField()
-    #cluster_event = models.ForeignKey("cluster_event")
-    #hysteresis = models.FloatField(null=True, blank=True)
-    #disabled = models.BooleanField()
-    #date = models.DateTimeField(auto_now_add=True)
-    #class Meta:
-        #db_table = u'ccl_event'
+# class ccl_event(models.Model):
+    # idx = models.AutoField(db_column="ccl_event_idx", primary_key=True)
+    # device = models.ForeignKey("device")
+    # rrd_data = models.ForeignKey("rrd_data")
+    # device_class = models.ForeignKey("device_class")
+    # threshold = models.FloatField(null=True, blank=True)
+    # threshold_class = models.IntegerField()
+    # cluster_event = models.ForeignKey("cluster_event")
+    # hysteresis = models.FloatField(null=True, blank=True)
+    # disabled = models.BooleanField()
+    # date = models.DateTimeField(auto_now_add=True)
+    # class Meta:
+        # db_table = u'ccl_event'
 
-#class ccl_event_log(models.Model):
-    #idx = models.AutoField(db_column="ccl_event_log_idx", primary_key=True)
-    #device = models.ForeignKey("device", null=True, blank=True)
-    #ccl_event = models.ForeignKey("ccl_event")
-    #cluster_event = models.ForeignKey("cluster_event")
-    #passive = models.BooleanField()
-    #date = models.DateTimeField(auto_now_add=True)
-    #class Meta:
-        #db_table = u'ccl_event_log'
+# class ccl_event_log(models.Model):
+    # idx = models.AutoField(db_column="ccl_event_log_idx", primary_key=True)
+    # device = models.ForeignKey("device", null=True, blank=True)
+    # ccl_event = models.ForeignKey("ccl_event")
+    # cluster_event = models.ForeignKey("cluster_event")
+    # passive = models.BooleanField()
+    # date = models.DateTimeField(auto_now_add=True)
+    # class Meta:
+        # db_table = u'ccl_event_log'
 
-#class ccl_user_con(models.Model):
-    #idx = models.AutoField(db_column="ccl_user_con_idx", primary_key=True)
-    #ccl_event = models.ForeignKey("ccl_event")
-    #user = models.ForeignKey("user")
-    #date = models.DateTimeField(auto_now_add=True)
-    #class Meta:
-        #db_table = u'ccl_user_con'
+# class ccl_user_con(models.Model):
+    # idx = models.AutoField(db_column="ccl_user_con_idx", primary_key=True)
+    # ccl_event = models.ForeignKey("ccl_event")
+    # user = models.ForeignKey("user")
+    # date = models.DateTimeField(auto_now_add=True)
+    # class Meta:
+        # db_table = u'ccl_user_con'
 
-#class cluster_event(models.Model):
-    #idx = models.AutoField(db_column="cluster_event_idx", primary_key=True)
-    #name = models.CharField(unique=True, max_length=96)
-    #description = models.CharField(max_length=384, blank=True)
-    #color = models.CharField(max_length=18, blank=True)
-    #command = models.CharField(max_length=192, blank=True)
-    #date = models.DateTimeField(auto_now_add=True)
-    #class Meta:
-        #db_table = u'cluster_event'
+# class cluster_event(models.Model):
+    # idx = models.AutoField(db_column="cluster_event_idx", primary_key=True)
+    # name = models.CharField(unique=True, max_length=96)
+    # description = models.CharField(max_length=384, blank=True)
+    # color = models.CharField(max_length=18, blank=True)
+    # command = models.CharField(max_length=192, blank=True)
+    # date = models.DateTimeField(auto_now_add=True)
+    # class Meta:
+        # db_table = u'cluster_event'
 
 class config_blob(models.Model):
     idx = models.AutoField(db_column="config_blob_idx", primary_key=True)
@@ -267,7 +267,7 @@ def config_bool_pre_save(sender, **kwargs):
                     cur_inst.value = True if (cur_inst.value or "").lower() in ["1", "true", "yes"] else False
         except ValueError:
             raise ValidationError("value cannot be interpret as bool")
-        
+
 class config_int(models.Model):
     idx = models.AutoField(db_column="config_int_idx", primary_key=True)
     name = models.CharField(max_length=192)
@@ -393,20 +393,20 @@ class device(models.Model):
     device_group = models.ForeignKey("device_group", related_name="device_group")
     device_type = models.ForeignKey("device_type")
     # removed, ancient NDS stuff
-    #axnumber = models.CharField(max_length=192, blank=True)
+    # axnumber = models.CharField(max_length=192, blank=True)
     alias = models.CharField(max_length=384, blank=True)
     comment = models.CharField(max_length=384, blank=True)
     # better suited in a n:m model, removed
-    #switch = models.ForeignKey("device", null=True, related_name="switch_device")
-    #switchport = models.IntegerField(null=True, blank=True)
+    # switch = models.ForeignKey("device", null=True, related_name="switch_device")
+    # switchport = models.IntegerField(null=True, blank=True)
     mon_device_templ = models.ForeignKey("mon_device_templ", null=True)
     mon_device_esc_templ = models.ForeignKey("mon_device_esc_templ", null=True)
     mon_ext_host = models.ForeignKey("mon_ext_host", null=True, blank=True)
     # deprecated
     device_location = models.ForeignKey("device_location", null=True)
-    #device_class = models.ForeignKey("device_class")
-    #rrd_class = models.ForeignKey("rrd_class", null=True)
-    #save_rrd_vectors = models.BooleanField()
+    # device_class = models.ForeignKey("device_class")
+    # rrd_class = models.ForeignKey("rrd_class", null=True)
+    # save_rrd_vectors = models.BooleanField()
     etherboot_valid = models.BooleanField(default=False)
     kernel_append = models.CharField(max_length=384, blank=True)
     newkernel = models.CharField(max_length=192, blank=True)
@@ -417,8 +417,8 @@ class device(models.Model):
     kernelversion = models.CharField(max_length=192, blank=True)
     stage1_flavour = models.CharField(max_length=48, blank=True)
     # removed 20121030 by AL
-##    dom0_memory = models.IntegerField(null=True, blank=True)
-##    xen_guest = models.BooleanField()
+# #    dom0_memory = models.IntegerField(null=True, blank=True)
+# #    xen_guest = models.BooleanField()
     newimage = models.CharField(max_length=765, blank=True)
     new_image = models.ForeignKey("image", null=True, related_name="new_image")
     actimage = models.CharField(max_length=765, blank=True)
@@ -445,7 +445,7 @@ class device(models.Model):
     bootserver = models.ForeignKey("device", null=True, related_name="boot_server")
     reachable_via_bootserver = models.BooleanField(default=False)
     dhcp_mac = models.NullBooleanField(null=True, blank=True)
-    dhcp_write   = models.NullBooleanField(default=False)
+    dhcp_write = models.NullBooleanField(default=False)
     dhcp_written = models.NullBooleanField(default=False)
     dhcp_error = models.CharField(max_length=765, blank=True)
     propagation_level = models.IntegerField(default=0, blank=True)
@@ -454,7 +454,7 @@ class device(models.Model):
     last_kernel = models.CharField(max_length=192, blank=True)
     root_passwd = models.CharField(max_length=192, blank=True)
     # remove, no longer needed
-    #device_mode = models.BooleanField()
+    # device_mode = models.BooleanField()
     # link to monitor_server (or null for master)
     monitor_server = models.ForeignKey("device", null=True)
     monitor_checks = models.BooleanField(default=True, db_column="nagios_checks")
@@ -463,7 +463,7 @@ class device(models.Model):
     flap_detection_enabled = models.BooleanField(default=False)
     show_in_bootcontrol = models.BooleanField()
     # not so clever here, better in extra table, FIXME
-    #cpu_info = models.TextField(blank=True, null=True)
+    # cpu_info = models.TextField(blank=True, null=True)
     # machine uuid
     uuid = models.TextField(default="", max_length=64)
     # cluster url
@@ -533,7 +533,7 @@ class device(models.Model):
             new_state="%d" % (self.new_state_id or 0),
             full_new_state="%d__%d" % (self.new_state_id or 0,
                                        self.prod_link_id or 0),
-            boot_dev_name="%s" % (self.bootnetdevice.devname if self.bootnetdevice else "---"), 
+            boot_dev_name="%s" % (self.bootnetdevice.devname if self.bootnetdevice else "---"),
             boot_dev_macaddr="%s" % (self.bootnetdevice.macaddr if self.bootnetdevice else ""),
             boot_dev_driver="%s" % (self.bootnetdevice.driver if self.bootnetdevice else ""),
             greedy_mode="0" if not self.dhcp_mac else "1",
@@ -592,7 +592,7 @@ class device(models.Model):
                 if not int(mother_xml.get("ok", "0")):
                     # not pingable, down
                     r_xml.attrib["net_state"] = "down"
-                    r_xml.attrib["network"]   = "unknown"
+                    r_xml.attrib["network"] = "unknown"
                 else:
                     r_xml.attrib["network"] = mother_xml.attrib["network"]
                     if recv_ts is not None:
@@ -600,7 +600,7 @@ class device(models.Model):
                     else:
                         recv_timeout = 3600
                     if req_ts is not None:
-                        req_timeout  = (now - req_ts ).seconds
+                        req_timeout = (now - req_ts).seconds
                     else:
                         req_timeout = 3600
                     if req_timeout > recv_timeout:
@@ -650,7 +650,7 @@ class device(models.Model):
     class Meta:
         db_table = u'device'
         ordering = ("name",)
-        unique_together = [("name", "domain_tree_node"),]
+        unique_together = [("name", "domain_tree_node"), ]
 
 @receiver(signals.pre_save, sender=device)
 def device_pre_save(sender, **kwargs):
@@ -683,7 +683,7 @@ def device_pre_save(sender, **kwargs):
                     else:
                         # no meta device (i am the new meta device, ignore)
                         pass
-            #raise ValidationError("no dots allowed in device name '%s'" % (cur_inst.name))
+            # raise ValidationError("no dots allowed in device name '%s'" % (cur_inst.name))
         if not valid_domain_re.match(cur_inst.name):
             raise ValidationError("illegal characters in name '%s'" % (cur_inst.name))
         if int(cur_inst.md_cache_mode) == 0:
@@ -703,30 +703,30 @@ def device_pre_save(sender, **kwargs):
             logger.warning("Device limit %d reached", dev_count)
             raise ValidationError("Device limit reached!")
 
-#class device_class(models.Model):
-    #idx = models.AutoField(db_column="device_class_idx", primary_key=True)
-    #classname = models.CharField(max_length=192, blank=False, unique=True)
-    #priority = models.IntegerField(null=True, blank=True)
-    #date = models.DateTimeField(auto_now_add=True)
-    #def get_xml(self):
-        #return E.device_class(
-            #unicode(self),
-            #pk="%d" % (self.pk),
-            #key="dc__%d" % (self.pk),
-            #classname=unicode(self.classname),
-            #priority="%d" % (self.priority)
-        #)
-    #def __unicode__(self):
-        #return u"%s (%d)" % (self.classname, self.priority)
-    #class Meta:
-        #db_table = u'device_class'
+# class device_class(models.Model):
+    # idx = models.AutoField(db_column="device_class_idx", primary_key=True)
+    # classname = models.CharField(max_length=192, blank=False, unique=True)
+    # priority = models.IntegerField(null=True, blank=True)
+    # date = models.DateTimeField(auto_now_add=True)
+    # def get_xml(self):
+        # return E.device_class(
+            # unicode(self),
+            # pk="%d" % (self.pk),
+            # key="dc__%d" % (self.pk),
+            # classname=unicode(self.classname),
+            # priority="%d" % (self.priority)
+        # )
+    # def __unicode__(self):
+        # return u"%s (%d)" % (self.classname, self.priority)
+    # class Meta:
+        # db_table = u'device_class'
 
-#@receiver(signals.pre_save, sender=device_class)
-#def device_class_pre_save(sender, **kwargs):
-    #if "instance" in kwargs:
-        #cur_inst = kwargs["instance"]
-        #_check_integer(cur_inst, "priority")
-        
+# @receiver(signals.pre_save, sender=device_class)
+# def device_class_pre_save(sender, **kwargs):
+    # if "instance" in kwargs:
+        # cur_inst = kwargs["instance"]
+        # _check_integer(cur_inst, "priority")
+
 class device_config(models.Model):
     idx = models.AutoField(db_column="device_config_idx", primary_key=True)
     device = models.ForeignKey("device")
@@ -780,7 +780,7 @@ def cd_connection_pre_save(sender, **kwargs):
             raise ValidationError("connections already exist")
         else:
             raise ValidationError("connection already exists")
-        
+
 class device_selection(models.Model):
     idx = models.AutoField(db_column="device_selection_idx", primary_key=True)
     name = models.CharField(unique=True, max_length=192)
@@ -801,9 +801,9 @@ class device_group(models.Model):
     idx = models.AutoField(db_column="device_group_idx", primary_key=True)
     name = models.CharField(unique=True, max_length=192, blank=False)
     description = models.CharField(max_length=384, default="")
-    #device = models.ForeignKey("device", null=True, blank=True, related_name="group_device")
+    # device = models.ForeignKey("device", null=True, blank=True, related_name="group_device")
     # must be an IntegerField, otherwise we have a cycle reference
-    #device = models.IntegerField(null=True, blank=True)
+    # device = models.IntegerField(null=True, blank=True)
     device = models.ForeignKey("device", db_column="device", null=True, blank=True, related_name="group_device")
     # flag
     cluster_device_group = models.BooleanField()
@@ -812,7 +812,7 @@ class device_group(models.Model):
     def _add_meta_device(self):
         new_md = device(name=self.get_metadevice_name(),
                         device_group=self,
-                        #device_class=device_class.objects.get(Q(pk=1)),
+                        # device_class=device_class.objects.get(Q(pk=1)),
                         device_type=device_type.objects.get(Q(identifier="MD")))
         new_md.save()
         self.device = new_md
@@ -852,7 +852,7 @@ class device_group(models.Model):
         return cur_xml
     class Meta:
         db_table = u'device_group'
-        ordering = ("-cluster_device_group", "name", )
+        ordering = ("-cluster_device_group", "name",)
     def __unicode__(self):
         return u"%s%s%s" % (
             self.name,
@@ -915,14 +915,14 @@ class device_location(models.Model):
     class Meta:
         db_table = u'device_location'
 
-##class device_relationship(models.Model):
-##    idx = models.AutoField(db_column="device_relationship_idx", primary_key=True)
-##    host_device = models.ForeignKey("device", related_name="host_device")
-##    domain_device = models.ForeignKey("device", related_name="domain_device")
-##    relationship = models.CharField(max_length=9, blank=True)
-##    date = models.DateTimeField(auto_now_add=True)
-##    class Meta:
-##        db_table = u'device_relationship'
+# #class device_relationship(models.Model):
+# #    idx = models.AutoField(db_column="device_relationship_idx", primary_key=True)
+# #    host_device = models.ForeignKey("device", related_name="host_device")
+# #    domain_device = models.ForeignKey("device", related_name="domain_device")
+# #    relationship = models.CharField(max_length=9, blank=True)
+# #    date = models.DateTimeField(auto_now_add=True)
+# #    class Meta:
+# #        db_table = u'device_relationship'
 
 class device_rsync_config(models.Model):
     idx = models.AutoField(db_column="device_rsync_config_idx", primary_key=True)
@@ -1123,7 +1123,7 @@ class route_generation(models.Model):
         return u"route generation %d" % (
             self.generation,
         )
- 
+
 def mark_routing_dirty():
     cur_gen = route_generation.objects.all().order_by("-generation")
     if len(cur_gen):
@@ -1133,7 +1133,7 @@ def mark_routing_dirty():
     else:
         new_gen = route_generation(generation=1)
     new_gen.save()
-        
+
 class hw_entry(models.Model):
     idx = models.AutoField(db_column="hw_entry_idx", primary_key=True)
     device = models.ForeignKey("device")
@@ -1188,7 +1188,7 @@ class image(models.Model):
     builds = models.IntegerField(null=True, blank=True, default=0)
     build_machine = models.CharField(max_length=192, blank=True, default="")
     # not a foreign key to break cyclic dependencies
-    #device = models.ForeignKey("device", null=True)
+    # device = models.ForeignKey("device", null=True)
     device = models.IntegerField(null=True)
     build_lock = models.BooleanField(default=False)
     # size in mbyte
@@ -1224,7 +1224,7 @@ class image(models.Model):
                                  unicode(self.architecture))
     class Meta:
         db_table = u'image'
-        ordering = ("name", )
+        ordering = ("name",)
 
 @receiver(signals.pre_save, sender=image)
 def image_pre_save(sender, **kwargs):
@@ -1277,8 +1277,8 @@ class package_repo(models.Model):
             "",
         ])
     class Meta:
-        ordering = ("name", )
-        
+        ordering = ("name",)
+
 class package_search(models.Model):
     idx = models.AutoField(primary_key=True)
     search_string = models.CharField(max_length=128, default="")
@@ -1364,7 +1364,7 @@ class package_search_result(models.Model):
         )
     class Meta:
         ordering = ("name", "arch", "version",)
-        
+
 class package(models.Model):
     idx = models.AutoField(db_column="package_idx", primary_key=True)
     name = models.CharField(max_length=128)
@@ -1377,14 +1377,14 @@ class package(models.Model):
     # hard to determine ...
     size = models.IntegerField(default=0)
     package_repo = models.ForeignKey(package_repo, null=True)
-##    pgroup = models.TextField()
-##    summary = models.TextField()
-##    distribution = models.ForeignKey("distribution")
-##    vendor = models.ForeignKey("vendor")
-##    buildtime = models.IntegerField(null=True, blank=True)
-##    buildhost = models.CharField(max_length=765, blank=True)
-##    packager = models.CharField(max_length=765, blank=True)
-##    date = models.DateTimeField(auto_now_add=True)
+# #    pgroup = models.TextField()
+# #    summary = models.TextField()
+# #    distribution = models.ForeignKey("distribution")
+# #    vendor = models.ForeignKey("vendor")
+# #    buildtime = models.IntegerField(null=True, blank=True)
+# #    buildhost = models.CharField(max_length=765, blank=True)
+# #    packager = models.CharField(max_length=765, blank=True)
+# #    date = models.DateTimeField(auto_now_add=True)
     created = models.DateTimeField(auto_now_add=True)
     def get_xml(self):
         return E.package(
@@ -1479,11 +1479,11 @@ class kernel(models.Model):
     builds = models.IntegerField(null=True, blank=True)
     build_machine = models.CharField(max_length=192, blank=True)
     # not a foreignkey to break cyclic dependencies
-    #master_server = models.ForeignKey("device", null=True, related_name="master_server")
+    # master_server = models.ForeignKey("device", null=True, related_name="master_server")
     master_server = models.IntegerField(null=True)
     master_role = models.CharField(max_length=192, blank=True)
     # not a foreignkey to break cyclic dependencies
-    #device = models.ForeignKey("device", null=True)
+    # device = models.ForeignKey("device", null=True)
     device = models.IntegerField(null=True)
     build_lock = models.BooleanField()
     config_name = models.CharField(max_length=192, blank=True)
@@ -1625,7 +1625,7 @@ def log_status_lookup(key):
             logging_tools.LOG_LEVEL_WARN     : 50,
             logging_tools.LOG_LEVEL_ERROR    : 100,
             logging_tools.LOG_LEVEL_CRITICAL : 200}[key]))
-        
+
 cached_log_status = memoize(log_status_lookup, {}, 1)
 
 class lvm_lv(models.Model):
@@ -1834,12 +1834,12 @@ class netdevice(models.Model):
 def netdevice_pre_delete(sender, **kwargs):
     # too late here, handled by delete_netdevice in network_views
     pass
-    #if "instance" in kwargs:
-        #cur_inst = kwargs["instance"]
-        #for cur_dev in device.objects.filter(Q(bootnetdevice=cur_inst.pk)):
-            #cur_dev.bootnetdevice = None
-            #cur_dev.save(update_fields=["bootnetdevice"])
-       
+    # if "instance" in kwargs:
+        # cur_inst = kwargs["instance"]
+        # for cur_dev in device.objects.filter(Q(bootnetdevice=cur_inst.pk)):
+            # cur_dev.bootnetdevice = None
+            # cur_dev.save(update_fields=["bootnetdevice"])
+
 @receiver(signals.pre_save, sender=netdevice)
 def netdevice_pre_save(sender, **kwargs):
     if "instance" in kwargs:
@@ -2031,15 +2031,15 @@ class network(models.Model):
             identifier=self.identifier,
             network_type="%d" % (self.network_type_id),
             master_network="%d" % (self.master_network_id or 0),
-            #name=self.name,
-            #postfix=self.postfix or "",
+            # name=self.name,
+            # postfix=self.postfix or "",
             network=self.network,
             netmask=self.netmask,
             broadcast=self.broadcast,
             gateway=self.gateway,
-            #short_names="1" if self.short_names else "0",
-            #write_bind_config="1" if self.write_bind_config else "0",
-            #write_other_network_config="1" if self.write_other_network_config else "0",
+            # short_names="1" if self.short_names else "0",
+            # write_bind_config="1" if self.write_bind_config else "0",
+            # write_other_network_config="1" if self.write_other_network_config else "0",
             network_device_type="::".join(["%d" % (ndev_type.pk) for ndev_type in self.network_device_type.all()]),
         )
         if add_ip_info:
@@ -2072,7 +2072,7 @@ def network_pre_save(sender, **kwargs):
         cur_inst = kwargs["instance"]
         # what was the changed attribute
         change_attr = getattr(cur_inst, "change_attribute", None)
-        _check_integer(cur_inst, "penalty", min_val=-100, max_val=100)
+        _check_integer(cur_inst, "penalty", min_val= -100, max_val=100)
         nw_type = cur_inst.network_type.identifier
         if nw_type != "s" and cur_inst.master_network_id:
             raise ValidationError("only slave networks can have a master")
@@ -2089,15 +2089,15 @@ def network_pre_save(sender, **kwargs):
         if not change_attr:
             change_attr = "network"
         if change_attr in ["network", "netmask"]:
-            ip_dict["broadcast"] = ~ ip_dict["netmask"] | (ip_dict["network"] & ip_dict["netmask"])
+            ip_dict["broadcast"] = ~ip_dict["netmask"] | (ip_dict["network"] & ip_dict["netmask"])
         elif change_attr == "broadcast":
-            ip_dict["netmask"] = ~ (ip_dict["broadcast"] & ~ ip_dict["network"])
+            ip_dict["netmask"] = ~(ip_dict["broadcast"] & ~ip_dict["network"])
         elif change_attr == "gateway":
             # do nothing
             pass
         ip_dict["network"] = ip_dict["network"] & ip_dict["netmask"]
         # always correct gateway
-        ip_dict["gateway"] = (ip_dict["gateway"] & ~ ip_dict["netmask"]) | ip_dict["network"]
+        ip_dict["gateway"] = (ip_dict["gateway"] & ~ip_dict["netmask"]) | ip_dict["network"]
         # set values
         for key, value in ip_dict.iteritems():
             setattr(cur_inst, key, unicode(value))
@@ -2132,7 +2132,7 @@ def network_device_type_pre_save(sender, **kwargs):
         if not(cur_inst.identifier.strip()):
             raise ValidationError("identifer must not be empty")
         _check_integer(cur_inst, "mac_bytes", min_val=6, max_val=24)
-    
+
 class network_network_device_type(models.Model):
     idx = models.AutoField(db_column="network_network_device_type_idx", primary_key=True)
     network = models.ForeignKey("network")
@@ -2176,7 +2176,7 @@ class config(models.Model):
     name = models.CharField(unique=True, max_length=192, blank=False)
     description = models.CharField(max_length=765)
     priority = models.IntegerField(null=True, default=0)
-    #config_type = models.ForeignKey("config_type", db_column="new_config_type_id")
+    # config_type = models.ForeignKey("config_type", db_column="new_config_type_id")
     parent_config = models.ForeignKey("config", null=True)
     date = models.DateTimeField(auto_now_add=True)
     # categories for this config
@@ -2188,7 +2188,7 @@ class config(models.Model):
             name=unicode(self.name),
             description=unicode(self.description or ""),
             priority="%d" % (self.priority or 0),
-            #config_type="%d" % (self.config_type_id),
+            # config_type="%d" % (self.config_type_id),
             parent_config="%d" % (self.parent_config_id or 0),
             categories="::".join(["%d" % (cur_cat.pk) for cur_cat in self.categories.all()]),
         )
@@ -2198,7 +2198,7 @@ class config(models.Model):
             r_xml.attrib["num_device_configs"] = "%d" % (len(dev_names))
             r_xml.attrib["device_list"] = logging_tools.compress_list(sorted(dev_names))
             r_xml.extend([
-                E.config_vars(*[cur_var.get_xml() for cur_var in 
+                E.config_vars(*[cur_var.get_xml() for cur_var in
                                 list(self.config_str_set.all()) + \
                                 list(self.config_int_set.all()) + \
                                 list(self.config_bool_set.all()) + \
@@ -2225,7 +2225,7 @@ def config_pre_save(sender, **kwargs):
         cur_inst = kwargs["instance"]
         _check_empty_string(cur_inst, "name")
         # priority
-        _check_integer(cur_inst, "priority", min_val=-9999, max_val=9999)
+        _check_integer(cur_inst, "priority", min_val= -9999, max_val=9999)
 
 @receiver(signals.post_save, sender=config)
 def config_post_save(sender, **kwargs):
@@ -2296,41 +2296,41 @@ def config_post_save(sender, **kwargs):
         if cur_inst.parent_config_id == cur_inst.pk and cur_inst.pk:
             raise ValidationError("cannot be my own parent")
 
-#class config_type(models.Model):
-    #idx = models.AutoField(db_column="new_config_type_idx", primary_key=True)
-    #name = models.CharField(unique=True, max_length=192)
-    #description = models.CharField(max_length=765, blank=True)
-    #date = models.DateTimeField(auto_now_add=True)
-    #def get_xml(self):
-        #return E.config_type(
-            #unicode(self),
-            #pk="%d" % (self.pk),
-            #key="ctype__%d" % (self.pk),
-            #name=unicode(self.name),
-            #description=unicode(self.description or "")
-        #)
-    #def __unicode__(self):
-        #return self.name
-    #class Meta:
-        #db_table = u'new_config_type'
+# class config_type(models.Model):
+    # idx = models.AutoField(db_column="new_config_type_idx", primary_key=True)
+    # name = models.CharField(unique=True, max_length=192)
+    # description = models.CharField(max_length=765, blank=True)
+    # date = models.DateTimeField(auto_now_add=True)
+    # def get_xml(self):
+        # return E.config_type(
+            # unicode(self),
+            # pk="%d" % (self.pk),
+            # key="ctype__%d" % (self.pk),
+            # name=unicode(self.name),
+            # description=unicode(self.description or "")
+        # )
+    # def __unicode__(self):
+        # return self.name
+    # class Meta:
+        # db_table = u'new_config_type'
 
-##class new_rrd_data(models.Model):
-##    idx = models.AutoField(db_column="new_rrd_data_idx", primary_key=True)
-##    device = models.ForeignKey("device", null=True, blank=True)
-##    descr = models.CharField(max_length=765, blank=True)
-##    descr1 = models.CharField(max_length=192, blank=True)
-##    descr2 = models.CharField(max_length=192, blank=True)
-##    descr3 = models.CharField(max_length=192, blank=True)
-##    descr4 = models.CharField(max_length=192, blank=True)
-##    unit = models.CharField(max_length=96, blank=True)
-##    info = models.CharField(max_length=255, blank=True)
-##    from_snmp = models.IntegerField(null=True, blank=True)
-##    base = models.IntegerField(null=True, blank=True)
-##    factor = models.FloatField(null=True, blank=True)
-##    var_type = models.CharField(max_length=3, blank=True)
-##    date = models.DateTimeField(auto_now_add=True)
-##    class Meta:
-##        db_table = u'new_rrd_data'
+# #class new_rrd_data(models.Model):
+# #    idx = models.AutoField(db_column="new_rrd_data_idx", primary_key=True)
+# #    device = models.ForeignKey("device", null=True, blank=True)
+# #    descr = models.CharField(max_length=765, blank=True)
+# #    descr1 = models.CharField(max_length=192, blank=True)
+# #    descr2 = models.CharField(max_length=192, blank=True)
+# #    descr3 = models.CharField(max_length=192, blank=True)
+# #    descr4 = models.CharField(max_length=192, blank=True)
+# #    unit = models.CharField(max_length=96, blank=True)
+# #    info = models.CharField(max_length=255, blank=True)
+# #    from_snmp = models.IntegerField(null=True, blank=True)
+# #    base = models.IntegerField(null=True, blank=True)
+# #    factor = models.FloatField(null=True, blank=True)
+# #    var_type = models.CharField(max_length=3, blank=True)
+# #    date = models.DateTimeField(auto_now_add=True)
+# #    class Meta:
+# #        db_table = u'new_rrd_data'
 
 class mon_host_cluster(models.Model):
     idx = models.AutoField(primary_key=True)
@@ -2350,7 +2350,7 @@ class mon_host_cluster(models.Model):
             name=self.name,
             main_device="%d" % (self.main_device_id),
             mon_service_templ="%d" % (self.mon_service_templ_id),
-            devices="::".join(["%d" %  (cur_pk) for cur_pk in self.devices.all().values_list("pk", flat=True)]),
+            devices="::".join(["%d" % (cur_pk) for cur_pk in self.devices.all().values_list("pk", flat=True)]),
             warn_value="%d" % (self.warn_value),
             error_value="%d" % (self.error_value),
             description=self.description,
@@ -2367,7 +2367,7 @@ def mon_host_cluster_pre_save(sender, **kwargs):
             ("warn_value" , 0, 128),
             ("error_value", 0, 128)]:
             _check_integer(cur_inst, attr_name, min_val=min_val, max_val=max_val)
-            
+
 class mon_service_cluster(models.Model):
     idx = models.AutoField(primary_key=True)
     name = models.CharField(max_length=128, blank=False, null=False, unique=True)
@@ -2388,7 +2388,7 @@ class mon_service_cluster(models.Model):
             main_device="%d" % (self.main_device_id),
             mon_service_templ="%d" % (self.mon_service_templ_id),
             mon_check_command="%d" % (self.mon_check_command_id),
-            devices="::".join(["%d" %  (cur_pk) for cur_pk in self.devices.all().values_list("pk", flat=True)]),
+            devices="::".join(["%d" % (cur_pk) for cur_pk in self.devices.all().values_list("pk", flat=True)]),
             warn_value="%d" % (self.warn_value),
             error_value="%d" % (self.error_value),
             description=self.description,
@@ -2414,7 +2414,7 @@ class mon_check_command(models.Model):
     mon_check_command_type = models.ForeignKey("mon_check_command_type", null=True, default=None)
     mon_service_templ = models.ForeignKey("mon_service_templ", null=True)
     # only unique per config
-    name = models.CharField(max_length=192)#, unique=True)
+    name = models.CharField(max_length=192) # , unique=True)
     command_line = models.CharField(max_length=765)
     description = models.CharField(max_length=192, blank=True)
     device = models.ForeignKey("device", null=True, blank=True)
@@ -2452,7 +2452,7 @@ def mon_check_command_pre_save(sender, **kwargs):
             raise ValidationError("command_line is empty")
         if cur_inst.name in cur_inst.config.mon_check_command_set.exclude(Q(pk=cur_inst.pk)).values_list("name", flat=True):
             raise ValidationError("name already used")
-            
+
 class mon_check_command_type(models.Model):
     idx = models.AutoField(db_column="ng_check_command_type_idx", primary_key=True)
     name = models.CharField(unique=True, max_length=192)
@@ -2474,15 +2474,20 @@ class mon_contact(models.Model):
     user = models.ForeignKey("user")
     snperiod = models.ForeignKey("mon_period", related_name="service_n_period")
     hnperiod = models.ForeignKey("mon_period", related_name="host_n_period")
-    snrecovery = models.BooleanField()
-    sncritical = models.BooleanField()
-    snwarning  = models.BooleanField()
-    snunknown  = models.BooleanField()
-    hnrecovery = models.BooleanField()
-    hndown        = models.BooleanField()
-    hnunreachable = models.BooleanField()
+    snrecovery = models.BooleanField(default=False)
+    sncritical = models.BooleanField(default=False)
+    snwarning = models.BooleanField(default=False)
+    snunknown = models.BooleanField(default=False)
+    sflapping = models.BooleanField(default=False)
+    splanned_downtime = models.BooleanField(default=False)
+    hnrecovery = models.BooleanField(default=False)
+    hndown = models.BooleanField(default=False)
+    hnunreachable = models.BooleanField(default=False)
+    hflapping = models.BooleanField(default=False)
+    hplanned_downtime = models.BooleanField(default=False)
     date = models.DateTimeField(auto_now_add=True)
     notifications = models.ManyToManyField("mon_notification")
+    mon_alias = models.CharField(max_length=64, default="")
     def get_xml(self):
         ret_xml = E.mon_contact(
             unicode(self),
@@ -2492,9 +2497,10 @@ class mon_contact(models.Model):
             snperiod="%d" % (self.snperiod_id or 0),
             hnperiod="%d" % (self.hnperiod_id or 0),
             notifications="::".join(["%d" % (cur_not.pk) for cur_not in self.notifications.all()]),
+            mon_alias="%s" % (unicode(self.mon_alias or "")),
         )
-        for bf in ["snrecovery", "sncritical", "snunknown", "snwarning",
-                   "hnrecovery", "hndown", "hnunreachable"]:
+        for bf in ["snrecovery", "sncritical", "snunknown", "snwarning", "sflapping", "splanned_downtime",
+                   "hnrecovery", "hndown", "hnunreachable", "hflapping", "hplanned_downtime"]:
             ret_xml.attrib[bf] = "1" if getattr(self, bf) else "0"
         return ret_xml
     def __unicode__(self):
@@ -2515,9 +2521,9 @@ class mon_notification(models.Model):
     name = models.CharField(max_length=128, blank=False, unique=True)
     channel = models.CharField(max_length=8, choices=[
         ("mail", "E-Mail"),
-        ("sms" , "SMS"   )])
+        ("sms" , "SMS")])
     not_type = models.CharField(max_length=8, choices=[
-        ("host"   , "Host"   ),
+        ("host"   , "Host"),
         ("service", "Service")])
     subject = models.CharField(max_length=140, blank=False)
     content = models.CharField(max_length=512, blank=False)
@@ -2541,8 +2547,8 @@ class mon_notification(models.Model):
             self.not_type,
             self.channel,
         )
-    
-            
+
+
 """
 connection between the various nagios / icinage notification objects:
 
@@ -2602,6 +2608,8 @@ class mon_device_templ(models.Model):
     nrecovery = models.BooleanField()
     ndown = models.BooleanField()
     nunreachable = models.BooleanField()
+    nflapping = models.BooleanField(default=False)
+    nplanned_downtime = models.BooleanField(default=False)
     is_default = models.BooleanField()
     low_flap_threshold = models.IntegerField(default=0)
     high_flap_threshold = models.IntegerField(default=0)
@@ -2624,6 +2632,8 @@ class mon_device_templ(models.Model):
             nrecovery="%d" % (1 if self.nrecovery else 0),
             ndown="%d" % (1 if self.ndown else 0),
             nunreachable="%d" % (1 if self.nunreachable else 0),
+            nflapping="%d" % (1 if self.nflapping else 0),
+            nplanned_downtime="%d" % (1 if self.nplanned_downtime else 0),
             low_flap_threshold="%d" % (self.low_flap_threshold),
             high_flap_threshold="%d" % (self.high_flap_threshold),
             flap_detection_enabled="%d" % (1 if self.flap_detection_enabled else 0),
@@ -2649,7 +2659,7 @@ def mon_device_templ_pre_save(sender, **kwargs):
             ("high_flap_threshold", 0, 100),
             ]:
             _check_integer(cur_inst, attr_name, min_val=min_val, max_val=max_val)
-                    
+
 class mon_device_esc_templ(models.Model):
     idx = models.AutoField(primary_key=True)
     name = models.CharField(unique=True, max_length=192)
@@ -2661,6 +2671,8 @@ class mon_device_esc_templ(models.Model):
     nrecovery = models.BooleanField()
     ndown = models.BooleanField()
     nunreachable = models.BooleanField()
+    nflapping = models.BooleanField(default=False)
+    nplanned_downtime = models.BooleanField(default=False)
     date = models.DateTimeField(auto_now_add=True)
     def get_xml(self):
         return E.mon_device_esc_templ(
@@ -2674,12 +2686,14 @@ class mon_device_esc_templ(models.Model):
             ninterval="%d" % (self.ninterval or 0),
             esc_period="%d" % (self.esc_period_id or 0),
             nrecovery="%d" % (1 if self.nrecovery else 0),
+            nflapping="%d" % (1 if self.nflapping else 0),
+            nplanned_downtime="%d" % (1 if self.nplanned_downtime else 0),
             ndown="%d" % (1 if self.ndown else 0),
             nunreachable="%d" % (1 if self.nunreachable else 0),
         )
     def __unicode__(self):
         return self.name
-    
+
 @receiver(signals.pre_save, sender=mon_device_esc_templ)
 def mon_device_esc_templ_pre_save(sender, **kwargs):
     if "instance" in kwargs:
@@ -2691,7 +2705,7 @@ def mon_device_esc_templ_pre_save(sender, **kwargs):
             ("last_notification" , 1, 10),
             ("ninterval"         , 0, 60)]:
             _check_integer(cur_inst, attr_name, min_val=min_val, max_val=max_val)
-                    
+
 class mon_ext_host(models.Model):
     idx = models.AutoField(db_column="ng_ext_host_idx", primary_key=True)
     name = models.CharField(unique=True, max_length=192)
@@ -2717,7 +2731,7 @@ class mon_ext_host(models.Model):
     def __unicode__(self):
         return self.name
     class Meta:
-        ordering = ("name", )
+        ordering = ("name",)
         db_table = u'ng_ext_host'
 
 class mon_period(models.Model):
@@ -2777,18 +2791,18 @@ def mon_period_pre_save(sender, **kwargs):
                     new_val.append("%02d:%02d" % (hours, minutes))
                 setattr(cur_inst, r_name, "-".join(new_val))
 
-#class mon_service(models.Model):
-    #idx = models.AutoField(db_column="ng_service_idx", primary_key=True)
-    #name = models.CharField(max_length=192)
-    #alias = models.CharField(max_length=192, blank=True)
-    #command = models.CharField(max_length=192, blank=True)
-    #parameter1 = models.CharField(max_length=192, blank=True)
-    #parameter2 = models.CharField(max_length=192, blank=True)
-    #parameter3 = models.CharField(max_length=192, blank=True)
-    #parameter4 = models.CharField(max_length=192, blank=True)
-    #date = models.DateTimeField(auto_now_add=True)
-    #class Meta:
-        #db_table = u'ng_service'
+# class mon_service(models.Model):
+    # idx = models.AutoField(db_column="ng_service_idx", primary_key=True)
+    # name = models.CharField(max_length=192)
+    # alias = models.CharField(max_length=192, blank=True)
+    # command = models.CharField(max_length=192, blank=True)
+    # parameter1 = models.CharField(max_length=192, blank=True)
+    # parameter2 = models.CharField(max_length=192, blank=True)
+    # parameter3 = models.CharField(max_length=192, blank=True)
+    # parameter4 = models.CharField(max_length=192, blank=True)
+    # date = models.DateTimeField(auto_now_add=True)
+    # class Meta:
+        # db_table = u'ng_service'
 
 class mon_service_templ(models.Model):
     idx = models.AutoField(db_column="ng_service_templ_idx", primary_key=True)
@@ -2804,6 +2818,8 @@ class mon_service_templ(models.Model):
     ncritical = models.BooleanField(default=False)
     nwarning = models.BooleanField(default=False)
     nunknown = models.BooleanField(default=False)
+    nflapping = models.BooleanField(default=False)
+    nplanned_downtime = models.BooleanField(default=False)
     low_flap_threshold = models.IntegerField(default=0)
     high_flap_threshold = models.IntegerField(default=0)
     flap_detection_enabled = models.BooleanField(default=False)
@@ -2829,6 +2845,8 @@ class mon_service_templ(models.Model):
             ncritical="%d" % (1 if self.ncritical else 0),
             nwarning="%d" % (1 if self.nwarning else 0),
             nunknown="%d" % (1 if self.nunknown else 0),
+            nflapping="%d" % (1 if self.nflapping else 0),
+            nplanned_downtime="%d" % (1 if self.nplanned_downtime else 0),
             low_flap_threshold="%d" % (self.low_flap_threshold),
             high_flap_threshold="%d" % (self.high_flap_threshold),
             flap_detection_enabled="%d" % (1 if self.flap_detection_enabled else 0),
@@ -2869,6 +2887,8 @@ class mon_service_esc_templ(models.Model):
     ncritical = models.BooleanField(default=False)
     nwarning = models.BooleanField(default=False)
     nunknown = models.BooleanField(default=False)
+    nflapping = models.BooleanField(default=False)
+    nplanned_downtime = models.BooleanField(default=False)
     date = models.DateTimeField(auto_now_add=True)
     def get_xml(self):
         return E.mon_service_esc_templ(
@@ -2880,6 +2900,8 @@ class mon_service_esc_templ(models.Model):
             last_notification="%d" % (self.last_notification),
             ninterval="%d" % (self.ninterval or 0),
             esc_period="%d" % (self.esc_period_id or 0),
+            nflapping="%d" % (1 if self.nflapping else 0),
+            nplanned_downtime="%d" % (1 if self.nplanned_downtime else 0),
             nrecovery="%d" % (1 if self.nrecovery else 0),
             ncritical="%d" % (1 if self.ncritical else 0),
             nwarning="%d" % (1 if self.nwarning else 0),
@@ -2887,7 +2909,7 @@ class mon_service_esc_templ(models.Model):
         )
     def __unicode__(self):
         return self.name
-    
+
 @receiver(signals.pre_save, sender=mon_service_esc_templ)
 def mon_service_esc_templ_pre_save(sender, **kwargs):
     if "instance" in kwargs:
@@ -2899,7 +2921,7 @@ def mon_service_esc_templ_pre_save(sender, **kwargs):
             ("last_notification" , 1, 10),
             ("ninterval"         , 0, 60)]:
             _check_integer(cur_inst, attr_name, min_val=min_val, max_val=max_val)
-                    
+
 class partition(models.Model):
     idx = models.AutoField(db_column="partition_idx", primary_key=True)
     partition_disc = models.ForeignKey("partition_disc")
@@ -2912,7 +2934,7 @@ class partition(models.Model):
     fs_freq = models.IntegerField(null=True, blank=True, default=0)
     fs_passno = models.IntegerField(null=True, blank=True, default=0)
     partition_fs = models.ForeignKey("partition_fs")
-    #lut_blob = models.TextField(blank=True, null=True)
+    # lut_blob = models.TextField(blank=True, null=True)
     # comma-delimited list of /dev/disk/by-* entries
     disk_by_info = models.TextField(default="")
     warn_threshold = models.IntegerField(null=True, blank=True, default=85)
@@ -3086,7 +3108,7 @@ class partition_fs(models.Model):
         return self.descr
     class Meta:
         db_table = u'partition_fs'
-        ordering = ("name", )
+        ordering = ("name",)
 
 class partition_table(models.Model):
     idx = models.AutoField(db_column="partition_table_idx", primary_key=True)
@@ -3105,7 +3127,7 @@ class partition_table(models.Model):
             new_valid = not any([log_level in [
                 logging_tools.LOG_LEVEL_ERROR,
                 logging_tools.LOG_LEVEL_CRITICAL] for log_level, what, is_global in prob_list])
-            # validate 
+            # validate
             if new_valid != self.valid:
                 self.valid = new_valid
                 self.save()
@@ -3151,7 +3173,7 @@ def partition_table_pre_save(sender, **kwargs):
         cur_inst = kwargs["instance"]
         if not cur_inst.name.strip():
             raise ValidationError("name must not be zero")
-        
+
 class pci_entry(models.Model):
     idx = models.AutoField(db_column="pci_entry_idx", primary_key=True)
     device_idx = models.ForeignKey("device")
@@ -3212,109 +3234,109 @@ def peer_information_post_delete(sender, **kwargs):
     if "instance" in kwargs:
         mark_routing_dirty()
 
-##class pi_connection(models.Model):
-##    idx = models.AutoField(db_column="pi_connection_idx", primary_key=True)
-##    package = models.ForeignKey("package")
-##    image = models.ForeignKey("image")
-##    install_time = models.IntegerField()
-##    date = models.DateTimeField(auto_now_add=True)
-##    class Meta:
-##        db_table = u'pi_connection'
+# #class pi_connection(models.Model):
+# #    idx = models.AutoField(db_column="pi_connection_idx", primary_key=True)
+# #    package = models.ForeignKey("package")
+# #    image = models.ForeignKey("image")
+# #    install_time = models.IntegerField()
+# #    date = models.DateTimeField(auto_now_add=True)
+# #    class Meta:
+# #        db_table = u'pi_connection'
 
-##class rrd_class(models.Model):
-##    idx = models.AutoField(db_column="rrd_class_idx", primary_key=True)
-##    name = models.CharField(unique=True, max_length=255)
-##    step = models.IntegerField(default=30)
-##    heartbeat = models.IntegerField(default=60)
-##    date = models.DateTimeField(auto_now_add=True)
-##    class Meta:
-##        db_table = u'rrd_class'
-##    def get_xml(self):
-##        return E.rrd_class(
-##            unicode(self),
-##            pk="%d" % (self.pk),
-##            key="rrdc__%d" % (self.pk),
-##            name=self.name,
-##            step="%d" % (self.step),
-##            heartbeat="%d" % (self.heartbeat),
-##        )
-##    def __unicode__(self):
-##        return self.name
-##
-##@receiver(signals.pre_save, sender=rrd_class)
-##def rrd_class_pre_save(sender, **kwargs):
-##    if "instance" in kwargs:
-##        cur_inst = kwargs["instance"]
-##        _check_empty_string(cur_inst, "name")
-##        _check_integer(cur_inst, "step")
-##        _check_integer(cur_inst, "heartbeat")
-##
-##class rrd_data(models.Model):
-##    idx = models.AutoField(db_column="rrd_data_idx", primary_key=True)
-##    rrd_set = models.ForeignKey("rrd_set")
-##    descr = models.CharField(max_length=765)
-##    descr1 = models.CharField(max_length=189)
-##    descr2 = models.CharField(max_length=189, blank=True)
-##    descr3 = models.CharField(max_length=189, blank=True)
-##    descr4 = models.CharField(max_length=189, blank=True)
-##    unit = models.CharField(max_length=96, blank=True)
-##    info = models.CharField(max_length=255, blank=True)
-##    from_snmp = models.BooleanField()
-##    base = models.IntegerField(null=True, blank=True)
-##    factor = models.FloatField(null=True, blank=True)
-##    var_type = models.CharField(max_length=3, blank=True)
-##    date = models.DateTimeField(auto_now_add=True)
-##    class Meta:
-##        db_table = u'rrd_data'
-##
-##class rrd_data_store(models.Model):
-##    idx = models.AutoField(db_column="rrd_data_store_idx", primary_key=True)
-##    device = models.ForeignKey("device")
-##    recv_time = models.IntegerField()
-##    data = models.TextField()
-##    date = models.DateTimeField(auto_now_add=True)
-##    class Meta:
-##        db_table = u'rrd_data_store'
-##
-##class rrd_rra(models.Model):
-##    idx = models.AutoField(db_column="rrd_rra_idx", primary_key=True)
-##    rrd_class = models.ForeignKey("rrd_class")
-##    cf = models.CharField(max_length=192, choices=[(val, val) for val in ALLOWED_CFS])
-##    steps = models.IntegerField(default=30)
-##    rows = models.IntegerField(default=2000)
-##    xff = models.FloatField(default=0.1)
-##    date = models.DateTimeField(auto_now_add=True)
-##    class Meta:
-##        db_table = u'rrd_rra'
-##    def get_xml(self):
-##        return E.rrd_rra(
-##            unicode(self),
-##            pk="%d" % (self.idx),
-##            key="rrdrra_%d" % (self.idx),
-##            rrd_class="%d" % (self.rrd_class_id),
-##            cf=self.cf,
-##            steps="%d" % (self.steps),
-##            rows="%d" % (self.rows),
-##            xff="%.2f" % (self.xff),
-##        )
-##    def __unicode__(self):
-##        return "%s:%d:%d:%.2f" % (self.cf, self.steps, self.rows, self.xff)
-##
-##@receiver(signals.pre_save, sender=rrd_rra)
-##def rrd_rra_pre_save(sender, **kwargs):
-##    if "instance" in kwargs:
-##        cur_inst = kwargs["instance"]
-##        _check_empty_string(cur_inst, "cf")
-##        _check_integer(cur_inst, "steps", min_val=1, max_val=3600)
-##        _check_integer(cur_inst, "rows", min_val=30, max_val=12000)
-##
-##class rrd_set(models.Model):
-##    idx = models.AutoField(db_column="rrd_set_idx", primary_key=True)
-##    device = models.ForeignKey("device")
-##    filename = models.CharField(max_length=765, blank=True, null=True)
-##    date = models.DateTimeField(auto_now_add=True)
-##    class Meta:
-##        db_table = u'rrd_set'
+# #class rrd_class(models.Model):
+# #    idx = models.AutoField(db_column="rrd_class_idx", primary_key=True)
+# #    name = models.CharField(unique=True, max_length=255)
+# #    step = models.IntegerField(default=30)
+# #    heartbeat = models.IntegerField(default=60)
+# #    date = models.DateTimeField(auto_now_add=True)
+# #    class Meta:
+# #        db_table = u'rrd_class'
+# #    def get_xml(self):
+# #        return E.rrd_class(
+# #            unicode(self),
+# #            pk="%d" % (self.pk),
+# #            key="rrdc__%d" % (self.pk),
+# #            name=self.name,
+# #            step="%d" % (self.step),
+# #            heartbeat="%d" % (self.heartbeat),
+# #        )
+# #    def __unicode__(self):
+# #        return self.name
+# #
+# #@receiver(signals.pre_save, sender=rrd_class)
+# #def rrd_class_pre_save(sender, **kwargs):
+# #    if "instance" in kwargs:
+# #        cur_inst = kwargs["instance"]
+# #        _check_empty_string(cur_inst, "name")
+# #        _check_integer(cur_inst, "step")
+# #        _check_integer(cur_inst, "heartbeat")
+# #
+# #class rrd_data(models.Model):
+# #    idx = models.AutoField(db_column="rrd_data_idx", primary_key=True)
+# #    rrd_set = models.ForeignKey("rrd_set")
+# #    descr = models.CharField(max_length=765)
+# #    descr1 = models.CharField(max_length=189)
+# #    descr2 = models.CharField(max_length=189, blank=True)
+# #    descr3 = models.CharField(max_length=189, blank=True)
+# #    descr4 = models.CharField(max_length=189, blank=True)
+# #    unit = models.CharField(max_length=96, blank=True)
+# #    info = models.CharField(max_length=255, blank=True)
+# #    from_snmp = models.BooleanField()
+# #    base = models.IntegerField(null=True, blank=True)
+# #    factor = models.FloatField(null=True, blank=True)
+# #    var_type = models.CharField(max_length=3, blank=True)
+# #    date = models.DateTimeField(auto_now_add=True)
+# #    class Meta:
+# #        db_table = u'rrd_data'
+# #
+# #class rrd_data_store(models.Model):
+# #    idx = models.AutoField(db_column="rrd_data_store_idx", primary_key=True)
+# #    device = models.ForeignKey("device")
+# #    recv_time = models.IntegerField()
+# #    data = models.TextField()
+# #    date = models.DateTimeField(auto_now_add=True)
+# #    class Meta:
+# #        db_table = u'rrd_data_store'
+# #
+# #class rrd_rra(models.Model):
+# #    idx = models.AutoField(db_column="rrd_rra_idx", primary_key=True)
+# #    rrd_class = models.ForeignKey("rrd_class")
+# #    cf = models.CharField(max_length=192, choices=[(val, val) for val in ALLOWED_CFS])
+# #    steps = models.IntegerField(default=30)
+# #    rows = models.IntegerField(default=2000)
+# #    xff = models.FloatField(default=0.1)
+# #    date = models.DateTimeField(auto_now_add=True)
+# #    class Meta:
+# #        db_table = u'rrd_rra'
+# #    def get_xml(self):
+# #        return E.rrd_rra(
+# #            unicode(self),
+# #            pk="%d" % (self.idx),
+# #            key="rrdrra_%d" % (self.idx),
+# #            rrd_class="%d" % (self.rrd_class_id),
+# #            cf=self.cf,
+# #            steps="%d" % (self.steps),
+# #            rows="%d" % (self.rows),
+# #            xff="%.2f" % (self.xff),
+# #        )
+# #    def __unicode__(self):
+# #        return "%s:%d:%d:%.2f" % (self.cf, self.steps, self.rows, self.xff)
+# #
+# #@receiver(signals.pre_save, sender=rrd_rra)
+# #def rrd_rra_pre_save(sender, **kwargs):
+# #    if "instance" in kwargs:
+# #        cur_inst = kwargs["instance"]
+# #        _check_empty_string(cur_inst, "cf")
+# #        _check_integer(cur_inst, "steps", min_val=1, max_val=3600)
+# #        _check_integer(cur_inst, "rows", min_val=30, max_val=12000)
+# #
+# #class rrd_set(models.Model):
+# #    idx = models.AutoField(db_column="rrd_set_idx", primary_key=True)
+# #    device = models.ForeignKey("device")
+# #    filename = models.CharField(max_length=765, blank=True, null=True)
+# #    date = models.DateTimeField(auto_now_add=True)
+# #    class Meta:
+# #        db_table = u'rrd_set'
 
 class session_data(models.Model):
     idx = models.AutoField(db_column="session_data_idx", primary_key=True)
@@ -3515,11 +3537,11 @@ class status(models.Model):
         return u"%s (%s)%s" % (
             self.status,
             ",".join([short for short, attr_name in [
-                ("link"  , "prod_link"    ),
-                ("mem"   , "memory_test"  ),
-                ("loc"   , "boot_local"   ),
-                ("ins"   , "do_install"   ),
-                ("retain", "is_clean"     )] if getattr(self, attr_name)]),
+                ("link"  , "prod_link"),
+                ("mem"   , "memory_test"),
+                ("loc"   , "boot_local"),
+                ("ins"   , "do_install"),
+                ("retain", "is_clean")] if getattr(self, attr_name)]),
             "(*)" if self.allow_boolean_modify else "")
     def get_xml(self, prod_net=None):
         return E.status(
@@ -3553,7 +3575,7 @@ def check_permissions(obj, perm):
     else:
         print "Unknown permission format '%s'" % (perm)
         return False
-    
+
 class user_manager(models.Manager):
     def get_by_natural_key(self, login):
         return super(user_manager, self).get(Q(login=login))
@@ -3577,7 +3599,7 @@ class user_manager(models.Manager):
 class user(models.Model):
     objects = user_manager()
     USERNAME_FIELD = "login"
-    REQUIRED_FIELDS = ["email",]
+    REQUIRED_FIELDS = ["email", ]
     idx = models.AutoField(db_column="user_idx", primary_key=True)
     active = models.BooleanField(default=True)
     login = models.CharField(unique=True, max_length=255)
@@ -3592,7 +3614,7 @@ class user(models.Model):
     # SHA encrypted
     password = models.CharField(max_length=48, blank=True)
     password_ssha = models.CharField(max_length=64, blank=True, default="")
-    #cluster_contact = models.BooleanField()
+    # cluster_contact = models.BooleanField()
     first_name = models.CharField(max_length=765, blank=True, default="")
     last_name = models.CharField(max_length=765, blank=True, default="")
     title = models.CharField(max_length=765, blank=True, default="")
@@ -3666,14 +3688,14 @@ class user(models.Model):
         return user_xml
     class Meta:
         db_table = u'user'
-        ordering = ("login", )
+        ordering = ("login",)
         permissions = {
             ("all_devices", "access all devices"),
-            #("test_right" , "Test right"),
+            # ("test_right" , "Test right"),
             ("group_admin", "Group administrator"),
             ("admin"      , "Administrator"),
-            #(""),
-            #("wf_apc" , "APC control"),
+            # (""),
+            # ("wf_apc" , "APC control"),
         }
     def __unicode__(self):
         return u"%s (%d; %s, %s)" % (
@@ -3693,7 +3715,7 @@ class user_serializer(serializers.ModelSerializer):
     class Meta:
         model = user
         fields = ("idx", "login", "uid", "group")
-        
+
 @receiver(signals.pre_save, sender=user)
 def user_pre_save(sender, **kwargs):
     if "instance" in kwargs:
@@ -3718,7 +3740,7 @@ def user_post_save(sender, **kwargs):
             # ssha1
             salt = os.urandom(4)
             new_sh.update(salt)
-            #print base64.b64encode(new_sh.digest() +  salt)
+            # print base64.b64encode(new_sh.digest() +  salt)
             cur_inst.password_ssha = "%s:%s" % ("SSHA", base64.b64encode(new_sh.digest() + salt))
             cur_inst.save()
 
@@ -3792,7 +3814,7 @@ class group(models.Model):
         return group_xml
     class Meta:
         db_table = u'ggroup'
-        ordering = ("groupname", )
+        ordering = ("groupname",)
     def __unicode__(self):
         return "%s (gid=%d)" % (
             self.groupname,
@@ -3833,12 +3855,12 @@ def group_pre_save(sender, **kwargs):
 def group_post_save(sender, **kwargs):
     if not kwargs["raw"] and "instance" in kwargs:
         cur_inst = kwargs["instance"]
-        
+
 @receiver(signals.post_delete, sender=group)
 def group_post_delete(sender, **kwargs):
     if "instance" in kwargs:
         cur_inst = kwargs["instance"]
-        
+
 class user_device_login(models.Model):
     idx = models.AutoField(db_column="user_device_login_idx", primary_key=True)
     user = models.ForeignKey("user")
@@ -3847,14 +3869,14 @@ class user_device_login(models.Model):
     class Meta:
         db_table = u'user_device_login'
 
-### for secondary groups
-##class user_group(models.Model):
-##    idx = models.AutoField(db_column="user_ggroup_idx", primary_key=True)
-##    group = models.ForeignKey("group")
-##    user = models.ForeignKey("user")
-##    date = models.DateTimeField(auto_now_add=True)
-##    class Meta:
-##        db_table = u'user_ggroup'
+# ## for secondary groups
+# #class user_group(models.Model):
+# #    idx = models.AutoField(db_column="user_ggroup_idx", primary_key=True)
+# #    group = models.ForeignKey("group")
+# #    user = models.ForeignKey("user")
+# #    date = models.DateTimeField(auto_now_add=True)
+# #    class Meta:
+# #        db_table = u'user_ggroup'
 
 class user_variable(models.Model):
     idx = models.AutoField(primary_key=True)
@@ -3872,7 +3894,7 @@ class user_variable(models.Model):
         if type(cur_val) in [str, unicode]:
             self.var_type = "s"
         elif type(cur_val) in [int, long]:
-            self.var_type ="i"
+            self.var_type = "i"
             self.value = "%d" % (self.value)
         elif type(cur_val) in [bool]:
             self.var_type = "b"
@@ -3888,7 +3910,7 @@ class user_variable(models.Model):
         elif self.var_type == "n":
             self.value = None
     class Meta:
-        unique_together = [("name", "user"),]
+        unique_together = [("name", "user"), ]
 
 @receiver(signals.pre_save, sender=user_variable)
 def user_variable_pre_save(sender, **kwargs):
@@ -3908,7 +3930,7 @@ def user_variable_post_save(sender, **kwargs):
     if "instance" in kwargs:
         cur_inst = kwargs["instance"]
         cur_inst.from_db_format()
-        
+
 class tree_node(models.Model):
     idx = models.AutoField(primary_key=True)
     device = models.ForeignKey("device", default=None)
@@ -3934,14 +3956,14 @@ class tree_node(models.Model):
         return "dir" if self.is_dir else ("link" if self.is_link else "file")
     def __unicode__(self):
         return "tree_node, %s" % (self.get_type_str())
-        
+
 class wc_files(models.Model):
     idx = models.AutoField(db_column="wc_files_idx", primary_key=True)
     device = models.ForeignKey("device")
     tree_node = models.OneToOneField("tree_node", null=True, default=None)
     run_number = models.IntegerField(default=0)
     config = models.ManyToManyField("config")
-    #config = models.CharField(max_length=255, blank=True)
+    # config = models.CharField(max_length=255, blank=True)
     uid = models.IntegerField(default=0, blank=True)
     gid = models.IntegerField(default=0, blank=True)
     mode = models.IntegerField(default=0755, blank=True)
@@ -3982,7 +4004,7 @@ class wc_files(models.Model):
         )
     class Meta:
         db_table = u'wc_files'
-            
+
 def get_related_models(in_obj, m2m=False, detail=False):
     used_objs = [] if detail else 0
     for rel_obj in in_obj._meta.get_all_related_objects():
@@ -4065,7 +4087,7 @@ class domain_name_tree(object):
                     node_postfix="",
                     full_name="%s.%s" % (dom_part, cur_node.full_name),
                     intermediate=False,
-                    depth=cur_node.depth+1)
+                    depth=cur_node.depth + 1)
                 new_node.save()
                 self.__node_dict[new_node.pk] = new_node
                 cur_node._sub_tree.setdefault(dom_part, []).append(new_node)
@@ -4086,7 +4108,7 @@ class domain_name_tree(object):
         pk_list = self.get_sorted_pks()
         if no_intermediate:
             return E.domain_tree_nodes(
-                *[self.__node_dict[pk].get_xml() for pk in pk_list if self.__node_dict[pk].intermediate== False]
+                *[self.__node_dict[pk].get_xml() for pk in pk_list if self.__node_dict[pk].intermediate == False]
             )
         else:
             return E.domain_tree_nodes(
@@ -4096,7 +4118,7 @@ class domain_name_tree(object):
         # emulate queryset
         for pk in self.get_sorted_pks():
             yield self[pk]
-        
+
 # domain name models
 class domain_tree_node(models.Model):
     idx = models.AutoField(primary_key=True)
@@ -4119,7 +4141,7 @@ class domain_tree_node(models.Model):
     # create entry for clusternodes even when network not in list
     always_create_ip = models.BooleanField(default=False)
     # use for nameserver config
-    write_nameserver_config = models.BooleanField(default=False)	
+    write_nameserver_config = models.BooleanField(default=False)
     # comment
     comment = models.CharField(max_length=256, default="", blank=True)
     def get_sorted_pks(self):
@@ -4152,7 +4174,7 @@ class domain_tree_node(models.Model):
             r_xml.attrib["local_refcount"] = "%d" % (self.local_refcount)
             r_xml.attrib["total_refcount"] = "%d" % (self.total_refcount)
         return r_xml
-    
+
 @receiver(signals.pre_save, sender=domain_tree_node)
 def domain_tree_node_pre_save(sender, **kwargs):
     if "instance" in kwargs:
@@ -4164,7 +4186,7 @@ def domain_tree_node_pre_save(sender, **kwargs):
             raise ValidationError("illegal characters in name '%s'" % (cur_inst.name))
         if cur_inst.intermediate:
             if net_ip.objects.filter(Q(domain_tree_node=cur_inst)).count() + device.objects.filter(Q(domain_tree_node=cur_inst)).count():
-                #print "***", unicode(cur_inst)
+                # print "***", unicode(cur_inst)
                 raise ValidationError("cannot set used domain_tree_node as intermediate")
         cur_inst.node_postfix = cur_inst.node_postfix.strip()
         if not cur_inst.node_postfix and valid_domain_re.match(cur_inst.node_postfix):
@@ -4186,7 +4208,7 @@ def domain_tree_node_pre_save(sender, **kwargs):
         else:
             _check_non_empty_string(cur_inst, "name")
             _check_non_empty_string(cur_inst, "node_postfix")
-            
+
 
 @receiver(signals.post_save, sender=domain_tree_node)
 def domain_tree_node_post_save(sender, **kwargs):
@@ -4221,7 +4243,7 @@ def _migrate_location_type(cat_tree):
             cur_dev.categories.add(mig_dict[cur_dev.device_location_id])
             cur_dev.device_location = None
             cur_dev.save()
-    
+
 class category_tree(object):
     # helper structure
     def __init__(self):
@@ -4265,7 +4287,7 @@ class category_tree(object):
                     name=cat_part,
                     parent=cur_node,
                     full_name="%s/%s" % (cur_node.full_name, cat_part),
-                    depth=cur_node.depth+1)
+                    depth=cur_node.depth + 1)
                 new_node.save()
                 self.__node_dict[new_node.pk] = new_node
                 cur_node._sub_tree.setdefault(cat_part, []).append(new_node)
@@ -4302,13 +4324,13 @@ class category_tree(object):
                 del self[del_node.parent_id]._sub_tree[del_node.name]
                 del self.__node_dict[del_node.pk]
                 del_node.delete()
-            removed = len(del_nodes) > 0            
+            removed = len(del_nodes) > 0
     def get_xml(self):
         pk_list = self.get_sorted_pks()
         return E.categories(
             *[self.__node_dict[pk].get_xml() for pk in pk_list]
         )
-    
+
 # category
 class category(models.Model):
     idx = models.AutoField(primary_key=True)
@@ -4415,16 +4437,16 @@ KPMC_MAP = {
     "moncon"       : mon_contact,
     "nwdt"         : network_device_type,
     "nwt"          : network_type,
-    #"dc"           : device_class,
-    #"dl"           : device_location,
+    # "dc"           : device_class,
+    # "dl"           : device_location,
     "nw"           : network,
     "user"         : user,
     "ps"           : package_search,
     "group"        : group,
     "dv"           : device_variable,
     "ptable"       : partition_table,
-    #"rrdc"         : rrd_class,
-    #"rrdrra"       : rrd_rra,
+    # "rrdc"         : rrd_class,
+    # "rrdrra"       : rrd_rra,
     "lvm_vg"       : lvm_vg,
     "lvm_lv"       : lvm_lv,
     "package_repo" : package_repo,
