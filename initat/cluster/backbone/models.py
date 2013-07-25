@@ -2406,6 +2406,22 @@ def mon_service_cluster_pre_save(sender, **kwargs):
             ("error_value", 0, 128)]:
             _check_integer(cur_inst, attr_name, min_val=min_val, max_val=max_val)
 
+class host_check_command(models.Model):
+    idx = models.AutoField(db_column="ng_check_command_idx", primary_key=True)
+    name = models.CharField(max_length=64, unique=True, blank=False, null=False)
+    command_line = models.CharField(max_length=128, unique=True, blank=False, null=False)
+    date = models.DateTimeField(auto_now_add=True)
+    def get_xml(self):
+        return E.host_check_command(
+            self.name,
+            pk="%d" % (self.pk),
+            key="hcc__%d" % (self.pk),
+            name=self.name,
+            command_line=self.command_line,
+        )
+    def __unicode__(self):
+        return "mcc_%s" % (self.name)
+
 class mon_check_command(models.Model):
     idx = models.AutoField(db_column="ng_check_command_idx", primary_key=True)
     config_old = models.IntegerField(null=True, blank=True, db_column="config")
@@ -2596,12 +2612,7 @@ class mon_device_templ(models.Model):
     idx = models.AutoField(db_column="ng_device_templ_idx", primary_key=True)
     name = models.CharField(unique=True, max_length=192)
     mon_service_templ = models.ForeignKey("mon_service_templ")
-    ccommand = models.CharField(
-        max_length=192, blank=True, default="check-host-alive",
-        choices=[
-            ("check-host-alive"  , "check-host-alive"),
-            ("check-host-alive-2", "check-host-alive-2"),
-        ])
+    host_check_command = models.ForeignKey(host_check_command, null=True)
     max_attempts = models.IntegerField(null=True, blank=True, default=1)
     ninterval = models.IntegerField(null=True, blank=True, default=1)
     mon_period = models.ForeignKey("mon_period", null=True, blank=True)
@@ -2624,7 +2635,7 @@ class mon_device_templ(models.Model):
             pk="%d" % (self.pk),
             key="mondt__%d" % (self.pk),
             name=self.name,
-            ccommand=self.ccommand,
+            host_check_command="%d" % (self.host_check_command_id or 0),
             mon_service_templ="%d" % (self.mon_service_templ_id or 0),
             max_attempts="%d" % (self.max_attempts or 0),
             ninterval="%d" % (self.ninterval or 0),
@@ -4453,4 +4464,5 @@ KPMC_MAP = {
     "mdcds"        : md_check_data_store,
     "dtn"          : domain_tree_node,
     "cat"          : category,
+    "hcc"          : host_check_command,
 }
