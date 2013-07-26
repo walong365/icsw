@@ -166,7 +166,7 @@ class log_receiver(threading_tools.process_obj):
             self.__eg_dict.setdefault(in_dict["pid"], {
                 "last_update" : time.time(),
                 "errors"      : [],
-                "proc_dict"   : in_dict})["errors"].append(in_dict.get("exc_text", in_dict["error_str"]).rstrip())
+                "proc_dict"   : in_dict})["errors"].append(in_dict.get("exc_text", in_dict.get("error_str", "no error_str")).rstrip())
             # log to err_py
             try:
                 uname = pwd.getpwuid(in_dict.get("uid", -1))[0]
