@@ -1,7 +1,7 @@
 #!/usr/bin/python-init -Ot
 # -*- coding: utf-8 -*-
 #
-# Copyright (C) 2001,2002,2003,2004,2005,2012 Andreas Lang, init.at
+# Copyright (C) 2001,2002,2003,2004,2005,2012,2013 Andreas Lang, init.at
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -27,23 +27,23 @@ import os
 
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "initat.cluster.settings")
 
-import configfile
 import argparse
-import process_tools
-from django.db.models import Q
-from initat.cluster.backbone.models import image
 import config_tools
-import threading_tools
+import configfile
 import logging_tools
-import time
+import pprint
+import process_tools
 import shutil
 import subprocess
-from django.db import connection
-from lxml import etree
 import stat
 import statvfs
 import tempfile
-import pprint
+import threading_tools
+import time
+from lxml import etree
+from django.db import connection
+from django.db.models import Q
+from initat.cluster.backbone.models import image
 
 global_config = configfile.get_global_config(process_tools.get_programm_name())
 
@@ -234,7 +234,10 @@ class server_process(threading_tools.process_pool):
             self._check_dirs(cur_img)
             self._check_packages(cur_img)
             self._umount_dirs(cur_img)
-            self._check_size(cur_img)
+            if global_config["CHECK_SIZE"]:
+                self._check_size(cur_img)
+            else:
+                self.log("size checking disabled", logging_tools.LOG_LEVEL_WARN)
             if global_config["BUILD_IMAGE"]:
                 # get image from database (in case something has changed)
                 cur_img = self._get_image()
@@ -313,7 +316,8 @@ class server_process(threading_tools.process_pool):
                 s_files,
             )
         else:
-            self.log("no dirs or files pending")
+            self.log("no dirs or files pending, waiting for %s" % (
+                logging_tools.get_plural("compression job", len([True for value in self.__pending.itervalues() if value]))))
     def _copy_image(self, cur_img):
         """ copy image """
         self.log("copying %s" % (logging_tools.get_plural("directory", len(self.__dir_list))))
@@ -478,6 +482,7 @@ def main():
         ("BUILDERS"            , configfile.int_c_var(4, help_string="numbers of builders [%(default)i]", type=int)),
         ("OVERRIDE"            , configfile.bool_c_var(False, help_string="override build lock [%(default)s]", action="store_true")),
         ("BUILD_IMAGE"         , configfile.bool_c_var(False, help_string="build image [%(default)s]", action="store_true")),
+        ("CHECK_SIZE"          , configfile.bool_c_var(False, help_string="enabled size checking [%(default)s]", action="store_true")),
             ])
     global_config.parse_file()
     process_tools.kill_running_processes(exclude=configfile.get_manager_pid())
