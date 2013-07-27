@@ -178,6 +178,7 @@ class libvirt_connection(object):
         self.log_lines = []
         self.__conn = None
         self.__inst_dict = {}
+        self.__missing_logged = False
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
         self.log_lines.append((log_level, what))
         if self.log_com:
@@ -208,7 +209,9 @@ class libvirt_connection(object):
                         self.log("not running as root (%d != 0)" % (os.getuid()),
                                  logging_tools.LOG_LEVEL_ERROR)
             else:
-                self.log("no libvirt defined", logging_tools.LOG_LEVEL_ERROR)
+                if not self.__missing_logged:
+                    self.__missing_logged = True
+                    self.log("no libvirt defined", logging_tools.LOG_LEVEL_ERROR)
                 self.__conn = None
         return self.__conn
     def keys(self):
