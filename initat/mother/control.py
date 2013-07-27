@@ -861,6 +861,7 @@ class host(machine):
             logging_tools.get_plural("om_shell_command", len(om_shell_coms)),
             ", ".join(om_shell_coms),
             ip_to_write and "ip %s from %s" % (ip_to_write, ip_to_write_src) or "no ip"))
+        simple_command.process.set_check_freq(200)
         for om_shell_com in om_shell_coms:
             om_array = ['server 127.0.0.1',
                         'port 7911',
@@ -881,7 +882,6 @@ class host(machine):
                 om_array.extend(['open',
                                  'remove'])
             om_array.append("")
-            simple_command.process.set_check_freq(200)
             simple_command("echo -e '%s' | /usr/bin/omshell" % ("\n".join(om_array)),
                            done_func=self.omshell_done,
                            stream_id="mac",

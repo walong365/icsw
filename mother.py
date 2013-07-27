@@ -3331,11 +3331,19 @@ class server_process(threading_tools.process_pool):
                      logging_tools.LOG_LEVEL_ERROR)
         self._reload_syslog()
     def _reload_syslog(self):
-        for syslog_rc in ["/etc/init.d/syslog", "/etc/init.d/syslog-ng"]:
-            if os.path.isfile(syslog_rc):
+        syslog_rc = None
+        for c_syslog_rc in ["/etc/init.d/syslog", "/etc/init.d/syslog-ng"]:
+            if os.path.isfile(c_syslog_rc):
+                syslog_rc = c_syslog_rc
                 break
-        stat, out_f = process_tools.submit_at_command("%s reload" % (syslog_rc), 0)
-        self.log("reloading %s gave %d:" % (syslog_rc, stat))
+        if syslog_rc:
+            self.log("found syslog script at %s, restarting"  (syslog_rc))
+            restart_com = "%s restart" % (syslog_rc)
+        else:
+            self.log("no syslog script found, reloading via systemd")
+            restart_com = "/usr/bin/systemctl restart syslog.service"
+        stat, out_f = process_tools.submit_at_command(restart_com, 0)
+        self.log("submitting %s gave %d:" % (restart_com, stat))
         for line in out_f:
             self.log(line)
     def _check_netboot_functionality(self):
