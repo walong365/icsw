@@ -520,7 +520,10 @@ class device_with_config(dict):
         # print "*** %s=%s" % (self.__match_str, self.__m_config_name)
         exp_group = set()
         direct_list = device_config.objects.filter(
-            Q(**{"config__%s" % (self.__match_str) : self.__m_config_name})).select_related(
+            Q(**{"config__%s" % (self.__match_str) : self.__m_config_name,
+                "device__enabled" : True,
+                "device__device_group__enabled" : True,
+                })).select_related(
                 "device",
                 "config",
                 "device__device_group",
