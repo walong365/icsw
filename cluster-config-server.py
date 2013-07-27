@@ -657,6 +657,7 @@ class build_container(object):
                         "do_nets"         : do_nets,
                         "do_routes"       : do_routes,
                         "do_fstab"        : do_fstab,
+                        "do_uuid"         : do_uuid,
                         "partition_setup" : partition_setup})
                 except:
                     conf_dict["called"].setdefault(False, []).append(cur_conf.pk)
@@ -943,6 +944,20 @@ class new_config(object):
 # #                    self.log(" - scriptname %s (pri %d, %s) is disabled, skipping" % (script["name"], pri, logging_tools.get_plural("line", len(lines))))
 # #        del self.dev_dict
 # #        del self.__dc
+
+def do_uuid(conf):
+    conf_dict = conf.conf_dict
+    uuid_str = "urn:uuid:%s" % (conf_dict["device"].uuid)
+    cdf_file = conf.add_file_object("/etc/sysconfig/cluster/.cluster_device_uuid")
+    cdf_file.append(uuid_str)
+    hm_uuid = conf.add_file_object("/etc/sysconfig/host-monitoring.d/0mq_id")
+    hm_uuid.append(
+        etree.tostring(
+            E.bind_info(E.zmq_id(uuid_str, bind_address="*")),
+            pretty_print=True,
+            xml_declaration=True,
+        )
+    )
 
 def do_nets(conf):
     conf_dict = conf.conf_dict
