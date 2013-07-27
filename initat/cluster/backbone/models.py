@@ -3128,6 +3128,7 @@ class partition_table(models.Model):
     enabled = models.BooleanField(default=True)
     valid = models.BooleanField(default=False)
     modify_bootloader = models.IntegerField(default=0)
+    nodeboot = models.BooleanField(default=False)
     # non users-created partition tables can be deleted automatically
     user_created = models.BooleanField(default=True)
     date = models.DateTimeField(auto_now_add=True)
@@ -3156,6 +3157,7 @@ class partition_table(models.Model):
             description=unicode(self.description),
             valid="1" if self.valid else "0",
             enabled="1" if self.enabled else "0",
+            nodeboot="1" if self.nodeboot else "0",
         )
         if _validate:
             pt_xml.append(
