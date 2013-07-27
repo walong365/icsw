@@ -883,7 +883,8 @@ parse_xml_response = (xml, min_level) ->
             else
                 noty({"text" : cur_mes.text(), "type" : "error", "timeout" : false})
     else
-        noty({"text" : "error parsing response", "type" : "error", "timeout" : false})
+        if xml != null
+          noty({"text" : "error parsing response", "type" : "error", "timeout" : false})
     return success
 
 # lock all active input elements

@@ -25,6 +25,7 @@ class partition_table
         @top_div.children().remove()
         @error_div = $("<div>")
         @top_div.append(@error_div)
+        @top_div.append($("<h2>").text(@xml.attr("name")))
         if @xml.find("problems problem").length
             error_ul = $("<ul>")
             @error_div.append(error_ul)
@@ -69,7 +70,7 @@ class partition_table
             pd_pk = "new";
         else
             pd_pk = pd_xml.attr("pk")
-        line_prefix = line_prefix + "__pdisc__" + pd_pk
+        line_prefix = "#{line_prefix}__pdisc__#{pd_pk}"
         disc_tr = $("<tr>").attr({
             "id" : line_prefix
         }).append(
@@ -142,7 +143,7 @@ class partition_table
                 error_tr = $("<tr>")
                 error_tr.append($("<td>").text(part_xml.find("problems problem").text()))
                 dummy_div.append(error_tr)
-        line_prefix = line_prefix + "__part__" + part_pk
+        line_prefix = "#{line_prefix}__part__#{part_pk}"
         part_tr = $("<tr>").attr("id" , line_prefix)
         first_td = $("<td>")
         part_tr.append(first_td)
@@ -159,8 +160,7 @@ class partition_table
             )
             part_tr.append(
                 $("<td>").append(
-                    create_input_el(part_xml, "mountpoint", line_prefix, {"label" : "mountpoint", master_xml: @xml})
-                ).append(
+                    create_input_el(part_xml, "mountpoint", line_prefix, {"label" : "mountpoint", master_xml: @xml}),
                     create_input_el(part_xml, "mount_options", line_prefix, {"label" : "options", master_xml: @xml})
                 )
             )
@@ -236,7 +236,7 @@ class partition_table
 
 partition_detail = (event) ->
     pt_pk = $(event.target).attr("id").split("__")[1]
-    new partition_table(ALL_PARTITIONS.find("partition_table[pk='" + pt_pk + "']")).draw($("div#partition_table"))
+    new partition_table(ALL_PARTITIONS.find("partition_table[pk='#{pt_pk}']")).draw($("div#partition_table"))
 
 root.partition_detail = partition_detail
 
@@ -250,6 +250,7 @@ master_array = {
             new draw_info("description"),
             new draw_info("enabled", {boolean : true, default : true}),
             new draw_info("valid", {boolean : true, ro : true})
+            new draw_info("nodeboot", {boolean : true})
         ]
     )
 }

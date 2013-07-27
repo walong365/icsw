@@ -99,7 +99,7 @@ class get_addon_info(View):
                 for t_state in status.objects.filter(Q(prod_link=True)):
                     addon_list.append(t_state.get_xml(prod_net))
         if addon_type == "p":
-            for cur_part in partition_table.objects.filter(Q(enabled=True)).prefetch_related(
+            for cur_part in partition_table.objects.filter(Q(enabled=True) & Q(nodeboot=True)).prefetch_related(
                 "partition_disc_set",
                 "partition_disc_set__partition_set",
                 "partition_disc_set__partition_set__partition_fs",
