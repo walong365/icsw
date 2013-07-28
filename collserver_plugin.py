@@ -330,6 +330,7 @@ class receiver(object):
     def __init__(self):
         self.context = zmq.Context()
         self.recv_sock = None
+        self.__last_sent = {}
         self.lock = threading.Lock()
     def start_sub_proc(self):
         collectd.notice("start 0MQ process")
@@ -361,15 +362,26 @@ class receiver(object):
                         else:
                             self._handle_perfdata(data)
         self.lock.release()
+    def get_time(self, h_tuple, cur_time):
+        cur_time = int(cur_time)
+        if h_tuple in self.__last_sent:
+            if cur_time <= self.__last_sent[h_tuple]:
+                diff_time = self.__last_sent[h_tuple] + 1 - cur_time
+                cur_time += diff_time
+                collectd.notice("correcting time for %s (+%ds)" % (str(h_tuple), diff_time))
+        self.__last_sent[h_tuple] = cur_time
+        return self.__last_sent[h_tuple]
     def _handle_perfdata(self, data):
         _type, host_name, time_recv, v_list = data[1]
-        collectd.Values(plugin="perfdata", host=host_name, time=time_recv, type="ipd_%s" % (_type), interval=5*60).dispatch(values=v_list)
+        s_time = self.get_time((host_name, "ipd_%s" % (_type)), time_recv)
+        collectd.Values(plugin="perfdata", host=host_name, time=s_time, type="ipd_%s" % (_type), interval=5 * 60).dispatch(values=v_list)
     def _handle_tree(self, data):
         host_name, time_recv, values = data
+        s_time = self.get_time((host_name, "icval"), time_recv)
         for name, value in values:
             # name can be none for values with transform problems
             if name:
-                collectd.Values(plugin="collserver", host=host_name, time=time_recv, type="icval", type_instance=name).dispatch(values=[value])
+                collectd.Values(plugin="collserver", host=host_name, time=s_time, type="icval", type_instance=name).dispatch(values=[value])
         
 #== Our Own Functions go here: ==#
 def configer(ObjConfiguration):
