@@ -1,12 +1,14 @@
 # package views
 
+import datetime
 import os
+import logging
 import logging_tools
+import process_tools
 import pprint
 import re
 import server_command
-import process_tools
-import logging
+import time
 from lxml import etree
 from lxml.builder import E
 
@@ -24,7 +26,7 @@ from initat.core.render import render_me
 from initat.cluster.frontend.helper_functions import contact_server, xml_wrapper
 from initat.cluster.backbone.models import package_repo, package_search, user, \
      package_search_result, package, get_related_models, package_device_connection, \
-     device
+     device, device_variable, to_system_tz
 
 logger = logging.getLogger("cluster.package")
 
@@ -187,10 +189,17 @@ class refresh(View):
     @method_decorator(xml_wrapper)
     def post(self, request):
         _post = request.POST
+        # print time.mktime(datetime.datetime.now().timetuple()), int(float(_post["cur_time"]))
+        # pprint.pprint(_post)
         dev_list = [key.split("__")[1] for key in _post.getlist("sel_list[]")]
         xml_resp = E.response(
             E.package_device_connections(
                 *[cur_pdc.get_xml() for cur_pdc in package_device_connection.objects.filter(Q(device__in=dev_list))]
+            ),
+            E.last_contacts(
+                *[E.last_contact(device="%d" % (cur_var.device_id), when="%d" % (
+                    time.mktime(to_system_tz(cur_var.val_date).timetuple())))
+                    for cur_var in device_variable.objects.filter(Q(name="package_server_last_contact") & Q(device__pk__in=dev_list))]
             )
         )
         request.xml_response["response"] = xml_resp
