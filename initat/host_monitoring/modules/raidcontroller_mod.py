@@ -42,12 +42,14 @@ SAS_OK_KEYS = {
     "adp"  : set(),
     "virt" : set(
         ["virtual_drive", "raid_level", "name", "size", "state", "strip_size",
-         "number_of_drives"
+         "number_of_drives", "ongoing_progresses"
          ]),
     "pd"   : set(
         ["slot_number", "pd_type", "raw_size", "firmware_state"
          ])
 }
+# for which keys do we read the following line
+SAS_CONT_KEYS = set(["ongoing_progresses"])
 
 def get_size(in_str):
     try:
@@ -740,7 +742,7 @@ class ctrl_type_megaraid_sas(ctrl_type):
         com_line, ctrl_id, run_type = ccs.run_info["command"]
         ctrl_stuff = self._dict[ctrl_id]
         if run_type == "ld":
-            cur_mode, mode_sense, count_dict = (None, True, {})
+            cur_mode, mode_sense, count_dict, cont_mode = (None, True, {}, False)
             log_drive_num = None
             for line in [cur_line.rstrip() for cur_line in ccs.read().split("\n")]:
                 empty_line = not line.strip()
@@ -780,10 +782,19 @@ class ctrl_type_megaraid_sas(ctrl_type):
                     else:
                         if line.count(":"):
                             key, value = line.split(":", 1)
-                            key = key.lower().strip().replace(" ", "_")
-                            if key in SAS_OK_KEYS[cur_mode]:
-                                value = value.strip()
-                                cur_dict["lines"].append((key, value))
+                            if line.startswith(" "):
+                                if cont_mode:
+                                    cur_val = cur_dict["lines"][-1]
+                                    cur_dict["lines"][-1] = (cur_val[0], "%s%s%s" % (
+                                            cur_val[1],
+                                            ", " if cur_val[1] else "",
+                                            " ".join(line.strip().split())))
+                            else:
+                                key = key.lower().strip().replace(" ", "_")
+                                if key in SAS_OK_KEYS[cur_mode]:
+                                    value = value.strip()
+                                    cur_dict["lines"].append((key, value))
+                                cont_mode = key in SAS_CONT_KEYS
             # pprint.pprint(ctrl_stuff)
             # if line.lower().count("virtual disk:") or line.lower().count("virtual drive:"):
             #    log_drive_num = int(line.strip().split()[2])
@@ -873,6 +884,9 @@ class ctrl_type_megaraid_sas(ctrl_type):
                         log_dict.get("size", "???"),
                         logging_tools.get_plural("disc", num_drives),
                         status))
+                if "ongoing_progresses" in log_dict:
+                    num_w += 1
+                    drive_stats.append(log_dict["ongoing_progresses"])
                 drives_missing = []
                 if "pd" in log_stuff:
                     for pd_num in xrange(num_drives):
