@@ -475,6 +475,8 @@ class server_process(threading_tools.process_pool):
         srv_port = self.zmq_context.socket(zmq.DEALER)
         srv_port.setsockopt(zmq.LINGER, 1000)
         srv_port.setsockopt(zmq.IDENTITY, uuid_tools.get_uuid().get_urn())
+        srv_port.setsockopt(zmq.TCP_KEEPALIVE, 1)
+        srv_port.setsockopt(zmq.TCP_KEEPALIVE_IDLE, 300)
         #srv_port.setsockopt(zmq.SUBSCRIBE, "")
         self.conn_str = "tcp://%s:%d" % (
             global_config["PACKAGE_SERVER"],

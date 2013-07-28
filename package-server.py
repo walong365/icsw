@@ -331,6 +331,7 @@ class client(object):
         self.__version = ""
         self.device = device.objects.get(Q(name=self.name))
         self.__log_template = None
+        self.__last_contact = None
     def create_logger(self):
         if self.__log_template is None:
             self.__log_template = logging_tools.get_logger(
@@ -422,9 +423,14 @@ class client(object):
         srv_com["package_list"] = resp
     def _get_repo_list(self, srv_com):
         repo_list = package_repo.objects.filter(Q(publish_to_nodes=True))
+        send_ok = [cur_repo for cur_repo in repo_list if cur_repo.distributable]
+        self.log("%s, %d to send" % (
+            logging_tools.get_plural("publish repo", len(repo_list)),
+            len(send_ok),
+            ))
         resp = srv_com.builder(
             "repos",
-            *[cur_repo.get_xml() for cur_repo in repo_list if cur_repo.distributable]
+            *[cur_repo.get_xml() for cur_repo in send_ok]
         )
         srv_com["repo_list"] = resp
     def _package_info(self, srv_com):
@@ -442,6 +448,7 @@ class client(object):
             self.log("got package_info without result", logging_tools.LOG_LEVEL_WARN)
     def new_command(self, srv_com):
         s_time = time.time()
+        self.__last_contact = s_time
         cur_com = srv_com["command"].text
         if "package_client_version" in srv_com:
             self._set_version(srv_com["package_client_version"].text)
@@ -658,19 +665,24 @@ class server_process(threading_tools.process_pool):
             client.setsockopt(zmq.RCVHWM, 256)
             client.setsockopt(zmq.SNDHWM, 256)
             client.setsockopt(zmq.BACKLOG, 1)
+            client.setsockopt(zmq.TCP_KEEPALIVE, 1)
+            client.setsockopt(zmq.TCP_KEEPALIVE_IDLE, 300)
             conn_str = "tcp://*:%d" % (bind_port)
             try:
                 client.bind(conn_str)
             except zmq.core.error.ZMQError:
-                self.log("error binding to %s{%d}: %s" % (
-                    conn_str,
-                    sock_type, 
-                    process_tools.get_except_info()),
-                         logging_tools.LOG_LEVEL_CRITICAL)
+                self.log(
+                    "error binding to %s{%d}: %s" % (
+                        conn_str,
+                        sock_type,
+                        process_tools.get_except_info()
+                    ),
+                    logging_tools.LOG_LEVEL_CRITICAL)
                 client.close()
             else:
-                self.log("bind to port %s{%d}" % (conn_str,
-                                                  sock_type))
+                self.log("bind to port %s{%d}" % (
+                    conn_str,
+                    sock_type))
                 self.register_poller(client, zmq.POLLIN, target_func)
                 self.socket_dict[key] = client
     def send_reply(self, t_uid, srv_com):
