@@ -465,8 +465,9 @@ class configuration(object):
                                 else:
                                     # interpret using eval
                                     if cur_type == "s":
-                                        # escape strings
-                                        value = "\"%s\"" % (value)
+                                        if value not in ["\"\""]:
+                                            # escape strings
+                                            value = "\"%s\"" % (value)
                                     try:
                                         self[key] = (eval("%s" % (value)), "%s, sec %s" % (file_name, act_section))
                                     except KeyError:
