@@ -1734,6 +1734,8 @@ class user(models.Model):
     idx = models.AutoField(db_column="user_idx", primary_key=True)
     active = models.BooleanField()
     login = models.CharField(unique=True, max_length=255)
+    USERNAME_FIELD = "login"
+    REQUIRED_FIELDS = ["email", ]
     uid = models.IntegerField(unique=True)
     group = models.ForeignKey("group")
     aliases = models.TextField(blank=True, null=True)

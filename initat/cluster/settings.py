@@ -110,10 +110,6 @@ CACHES = {
     }
 }
 
-# my authentication backend
-AUTHENTICATION_BACKENDS = ("initat.cluster.backbone.cluster_auth.db_backend",)
-AUTH_USER_MODEL = "backbone.user"
-
 # Local time zone for this installation. Choices can be found here:
 # http://en.wikipedia.org/wiki/List_of_tz_zones_by_name
 # although not all choices may be available on all operating systems.
@@ -276,6 +272,10 @@ INSTALLED_APPS = list(INSTALLED_APPS)
 ADDITIONAL_MENU_FILES = []
 
 if not "NO_AUTO_ADD_APPLICATIONS" in os.environ:
+    # my authentication backend
+    AUTHENTICATION_BACKENDS = ("initat.cluster.backbone.cluster_auth.db_backend",)
+    AUTH_USER_MODEL = "backbone.user"
+
     # add everything below cluster
     dir_name = os.path.dirname(__file__)
     for sub_dir in os.listdir(dir_name):
