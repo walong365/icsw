@@ -85,9 +85,13 @@ class package_check(object):
     def check(self, pack_list):
         self.log("checking image at path %s" % (self.__image.source))
         res_str = self._call("zypper -x -R %s search -i | xmllint --recover - 2>/dev/null " % (self.__image.source))
-        #print type(res_str), res_str
-        res_xml = etree.fromstring(res_str)
-        all_packs = set(res_xml.xpath(".//solvable[@status='installed' and @kind='package']/@name"))
+        try:
+            res_xml = etree.fromstring(res_str)
+        except:
+            self.log("error interpreting zypper output '%s'" % (res_str), logging_tools.LOG_LEVEL_ERROR)
+            all_packs = set()
+        else:
+            all_packs = set(res_xml.xpath(".//solvable[@status='installed' and @kind='package']/@name"))
         missing_packages = set(pack_list) - all_packs
         return missing_packages
     def _call(self, cmd_string):
