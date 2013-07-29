@@ -3644,7 +3644,7 @@ class user(models.Model):
     last_login = models.DateTimeField(null=True)
     permissions = models.ManyToManyField(Permission, related_name="db_user_permissions")
     is_superuser = models.BooleanField(default=False)
-    db_is_auth_for_password = models.BooelanField(default=True)
+    db_is_auth_for_password = models.BooleanField(default=True)
     def is_authenticated(self):
         return True
     def has_perm(self, perm, obj=None):
