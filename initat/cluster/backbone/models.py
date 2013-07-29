@@ -3644,6 +3644,7 @@ class user(models.Model):
     last_login = models.DateTimeField(null=True)
     permissions = models.ManyToManyField(Permission, related_name="db_user_permissions")
     is_superuser = models.BooleanField(default=False)
+    db_is_auth_for_password = models.BooelanField(default=True)
     def is_authenticated(self):
         return True
     def has_perm(self, perm, obj=None):
@@ -3684,6 +3685,7 @@ class user(models.Model):
             comment=self.comment or "",
             is_superuser="1" if self.is_superuser else "0",
             secondary_groups="::".join(["%d" % (sec_group.pk) for sec_group in self.secondary_groups.all()]),
+            db_is_auth_for_password="1" if self.db_is_auth_for_password else "0"
         )
         if with_allowed_device_groups:
             if allowed_device_group_dict:
