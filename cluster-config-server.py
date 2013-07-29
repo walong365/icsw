@@ -987,6 +987,8 @@ def do_nets(conf):
         cur_nd = cur_ip.netdevice
         cur_net = cur_ip.network
         cur_dtn = cur_ip.domain_tree_node
+        if cur_dtn is None:
+            cur_dtn = domain_tree_node.objects.get(Q(depth=0))
         if cur_nd.pk == conf_dict["device"].bootnetdevice_id:
             if sys_dict["vendor"] == "suse":
                 new_co = conf.add_file_object("/etc/HOSTNAME")
@@ -1411,21 +1413,23 @@ def do_etc_hosts(conf):
     # ip addresses already written
     new_co = conf.add_file_object("/etc/hosts")
     # two iterations: at first the devices that match my local networks, than the rest
+    tl_dtn = domain_tree_node.objects.get(Q(depth=0))
     loc_dict, max_len = ({}, 0)
     for cur_nd, cur_ip in all_ips:
         out_names = []
+        cur_dtn = cur_ip.domain_tree_node or tl_dtn
         # override wrong settings for lo
         if not (cur_ip.alias.strip() and cur_ip.alias_excl):
-            out_names.append("%s%s" % (cur_nd.device.name, cur_ip.domain_tree_node.node_postfix))
+            out_names.append("%s%s" % (cur_nd.device.name, cur_dtn.node_postfix))
         out_names.extend(cur_ip.alias.strip().split())
         if "localhost" in [entry.split(".")[0] for entry in out_names]:
             out_names = [entry for entry in out_names if entry.split(".")[0] == "localhost"]
-        if cur_ip.domain_tree_node.create_short_names:
+        if cur_dtn.create_short_names:
             # also create short_names
-            out_names = (" ".join(["%s.%s %s" % (entry, cur_ip.domain_tree_node.full_name, entry) for entry in out_names])).split()
+            out_names = (" ".join(["%s.%s %s" % (entry, cur_dtn.full_name, entry) for entry in out_names])).split()
         else:
             # only print the long names
-            out_names = ["%s.%s" % (entry, cur_ip.domain_tree_node.full_name) for entry in out_names]
+            out_names = ["%s.%s" % (entry, cur_dtn.full_name) for entry in out_names]
         loc_dict.setdefault(cur_ip.value, []).append([cur_ip.ip] + out_names)
         max_len = max(max_len, len(out_names) + 1)
     for pen, stuff in loc_dict.iteritems():
@@ -1674,7 +1678,7 @@ class build_process(threading_tools.process_obj):
                     elif cur_ip.network.network_type.identifier == "l":
                         take_it, cause = (True, "network_type is loopback")
                     else:
-                        if cur_ip.domain_tree_node.always_create_ip:
+                        if cur_ip.domain_tree_node and cur_ip.domain_tree_node.always_create_ip:
                             take_it, cause = (True, "network_index not in list but always_create_ip set")
                         else:
                             take_it, cause = (False, "network_index not in list and always_create_ip not set")
