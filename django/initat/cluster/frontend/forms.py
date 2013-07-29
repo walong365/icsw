@@ -323,6 +323,7 @@ class user_detail_form(ModelForm):
                     ButtonHolder(
                         Field("active"),
                         Field("is_superuser"),
+                        Field("db_is_auth_for_password"),
                         ),
                     css_class="inlineLabels",
                     ),
@@ -349,5 +350,6 @@ class user_detail_form(ModelForm):
         model = user
         fields = ["login", "uid", "shell", "first_name", "last_name", "active",
                   "title", "email", "pager", "tel", "comment", "is_superuser",
-                  "allowed_device_groups", "secondary_groups", "permissions"]
+                  "allowed_device_groups", "secondary_groups", "permissions",
+                  "db_is_auth_for_password"]
     
