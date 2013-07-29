@@ -872,6 +872,8 @@ class main_config(object):
             # wsgi config
             if os.path.isfile("/etc/debian_version"):
                 www_user, www_group = ("www-data", "www-data")
+            elif os.path.isfile("/etc/redhat-release") or os.path.islink("/etc/redhat-release"):
+                www_user, www_group = ("apache", "apache")
             else:
                 www_user, www_group = ("wwwrun", "www")
             wsgi_config = base_config(
