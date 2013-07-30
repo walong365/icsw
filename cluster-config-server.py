@@ -186,7 +186,7 @@ class internal_object(new_config_object):
 class file_object(new_config_object):
     def __init__(self, destination, **kwargs):
         """ example from ba/ca:
-        a=config.add_file_object("/etc/services", from_image=True,dev_dict=dev_dict)
+        a=config.add_file_object("/etc/services", from_image=True, dev_dict=dev_dict)
         new_content = []
         print len(a.content)
         for line in a.content:
@@ -395,7 +395,7 @@ class tree_node_g(object):
             if self.is_dir == dir_node:
                 if self.content_node != c_node:
                     if not use_existing:
-                        raise ValueError, "content node already set but with different type"
+                        raise ValueError, "content node '%s' already set, missing append=True ?" % (path)
                 # match, return myself
                 if self.content_node.c_type == "l":
                     self.is_link = True
@@ -1264,12 +1264,6 @@ def do_fstab(conf):
 
 class partition_setup(object):
     def __init__(self, conf):
-        # sql_str = "SELECT pt.name, pt.partition_table_idx, pt.valid, pd.*, p.*, ps.name AS psname, d.partdev FROM partition_table pt " + \
-        #        "INNER JOIN device d LEFT JOIN partition_disc pd ON pd.partition_table=pt.partition_table_idx LEFT #JOIN " + \
-       #         "partition p ON p.partition_disc=pd.partition_disc_idx LEFT JOIN partition_fs ps ON #ps.partition_fs_idx=p.partition_fs " + \
-      #          "WHERE d.device_idx=%s AND d.partition_table=pt.partition_table_idx ORDER BY pd.priority, p.pnum"
-
-        # dc.execute(sql_str, (c_req["device_idx"]))
         root_dev = None
         part_valid = False
         part_list = partition.objects.filter(Q(partition_disc__partition_table=conf.conf_dict["device"].act_partition_table)).select_related("partition_disc", "partition_disc__partition_table", "partition_fs")
@@ -1411,7 +1405,7 @@ def do_etc_hosts(conf):
                 # also check network identifiers ? FIXME
                 all_ips.append((cur_nd, cur_ip))
     # ip addresses already written
-    new_co = conf.add_file_object("/etc/hosts")
+    new_co = conf.add_file_object("/etc/hosts", append=True)
     # two iterations: at first the devices that match my local networks, than the rest
     tl_dtn = domain_tree_node.objects.get(Q(depth=0))
     loc_dict, max_len = ({}, 0)
