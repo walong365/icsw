@@ -341,6 +341,7 @@ class copy_network(View):
                     "network_device_type",
                     "net_ip_set",
                     "net_ip_set__network",
+                    "net_ip_set__domain_tree_node",
                     "net_ip_set__network__network_type"):
                     new_nd = cur_nd.copy()
                     if new_nd.devname in mac_dict:
