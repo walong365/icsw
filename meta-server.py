@@ -148,7 +148,11 @@ class main_thread(threading_tools.process_pool):
                 full_name = "%s/%s" % (self.__glob_config["MAIN_DIR"], fname)
                 if fname == ".command":
                     try:
-                        act_commands = [y for y in [x.strip() for x in file(full_name, "r").read().split("\n")] if not y.startswith("#") and y]
+                        act_commands = [
+                            s_line for s_line in [
+                                line.strip() for line in file(full_name, "r").read().split("\n")
+                            ] if not s_line.startswith("#") and s_line
+                        ]
                     except:
                         self.log("error reading %s file %s: %s" % (fname, full_name, process_tools.get_except_info()), logging_tools.LOG_LEVEL_ERROR)
                         act_commands = []
