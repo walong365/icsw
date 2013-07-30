@@ -401,6 +401,8 @@ class generate_config(View):
             request.xml_response["result"] = E.devices()
             for dev_node in result.xpath(None, ".//ns:device"):
                 res_node = E.device(dev_node.text, **dev_node.attrib)
+                for sub_el in dev_node:
+                    res_node.append(sub_el)
                 if int(dev_node.attrib["state_level"]) < logging_tools.LOG_LEVEL_ERROR:
                     # if int(dev_node.attrib["state_level"]) == logging_tools.LOG_LEVEL_OK or True:
                     cur_dev = dev_dict[int(dev_node.attrib["pk"])]
