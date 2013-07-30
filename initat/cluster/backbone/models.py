@@ -1939,7 +1939,9 @@ class net_ip(models.Model):
             network=self.network,
             penalty=self.penalty,
             alias=self.alias,
-            alias_excl=self.alias_excl)
+            alias_excl=self.alias_excl,
+            domain_tree_node=self.domain_tree_node,
+            )
     def get_hex_ip(self):
         return "".join(["%02X" % (int(part)) for part in self.ip.split(".")])
     def get_xml(self):
@@ -2060,9 +2062,10 @@ class network(models.Model):
         )
         return log_str
     def __unicode__(self):
-        return u"%s (%s, %s)" % (
+        return u"%s (%s/%s, %s)" % (
             self.name,
             self.network,
+            self.netmask,
             self.network_type.identifier
         )
 
