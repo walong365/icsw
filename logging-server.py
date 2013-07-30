@@ -47,23 +47,22 @@ SEP_STR = "-" * 50
 class twisted_log_receiver(DatagramProtocol):
     def __init__(self, t_process):
         self.__process = t_process
-        
     def datagramReceived(self, in_str, addr):
         if in_str[0:8].isdigit():
             self.__process.log_recv(in_str[8:])
         else:
             self.__process.log("invalid header", logging_tools.LOG_LEVEL_ERROR)
-        
+
 
 class twisted_process(threading_tools.process_obj):
     def process_init(self):
         self.__log_socket = self.connect_to_socket("receiver")
         # init twisted reactor
-        #self._got_udp = udp_log_receiver()
-        #tcp_factory = Factory()
-        #tcp_factory.protocol = tcp_log_receiver
-        #reactor.listenUDP(8004, self._got_udp)
-        #reactor.listenTCP(8004, tcp_factory)
+        # self._got_udp = udp_log_receiver()
+        # tcp_factory = Factory()
+        # tcp_factory.protocol = tcp_log_receiver
+        # reactor.listenUDP(8004, self._got_udp)
+        # reactor.listenTCP(8004, tcp_factory)
         bind_errors = 0
         log_recv = twisted_log_receiver(self)
         for h_name in ["LOG", "ERR", "OUT"]:
@@ -108,7 +107,7 @@ class twisted_process(threading_tools.process_obj):
         self.__log_socket.close()
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
         self.send_to_socket(self.__log_socket, ["log", what, log_level])
-        
+
 class log_receiver(threading_tools.process_obj):
     def process_init(self):
         self.__log_cache = []
@@ -128,8 +127,6 @@ class log_receiver(threading_tools.process_obj):
         self.__last_stat_time = time.time()
         # error gather dict
         self.__eg_dict = {}
-        if global_config["SEND_INITIAL_MAIL"]:
-            self._send_mail("start mail from %s" % (process_tools.get_machine_name()), "")
         self.__stat_timer = global_config["STATISTICS_TIMER"]
     def log(self, what, level=logging_tools.LOG_LEVEL_OK, dst="log", **kwargs):
         if dst in self.__handles:
@@ -143,7 +140,7 @@ class log_receiver(threading_tools.process_obj):
                                 cur_handle.baseFilename,
                                 dst))
                         cur_handle.stream = cur_handle._open()
-            #print dir(cur_dst)
+            # print dir(cur_dst)
             if "src_thread" in kwargs or "src_process" in kwargs:
                 # build record to log src_thread
                 cur_record = logging.makeLogRecord({
@@ -154,7 +151,7 @@ class log_receiver(threading_tools.process_obj):
                     "levelname"  : logging_tools.get_log_level_str(level)})
                 cur_dst.handle(cur_record)
             else:
-                cur_dst.log(level, what)#, extra={"threadName" : kwargs.get("src_thread", "bla")})
+                cur_dst.log(level, what) # , extra={"threadName" : kwargs.get("src_thread", "bla")})
         else:
             self.__log_cache.append((dst, what, level))
     def _flush_log_cache(self):
@@ -269,8 +266,8 @@ class log_receiver(threading_tools.process_obj):
             self.log("temporarily closing %s: %s" % (logging_tools.get_plural("handle", len(c_handles)),
                                                      ", ".join(c_handles)))
         # check for close
-        #c_handles = []
-        #for key in self.__handles.iterkeys():
+        # c_handles = []
+        # for key in self.__handles.iterkeys():
         #    if not os.path.isdir("/proc/%d" % (self.__handles[key].process_id)):
         #        c_handles.append(key)
         for c_handle in c_handles:
@@ -283,7 +280,7 @@ class log_receiver(threading_tools.process_obj):
         except:
             in_dict = {}
         if in_dict:
-            #pprint.pprint(in_dict)
+            # pprint.pprint(in_dict)
             if in_dict.has_key("IOS_type"):
                 self.log("got error_dict (pid %d)" % (in_dict["pid"]),
                          logging_tools.LOG_LEVEL_ERROR)
@@ -336,7 +333,7 @@ class log_receiver(threading_tools.process_obj):
             logger_name = record_name
             h_name = "%s/%s" % (record.host, record_name)
         if h_name in self.__handles:
-            if not (set([record_process, record_parent_process]) & 
+            if not (set([record_process, record_parent_process]) &
                     set([self.__handles[h_name].process_id,
                          self.__handles[h_name].parent_process_id])) and not self.__handles[h_name].ignore_process_id:
                 self.remove_handle(h_name)
@@ -366,13 +363,13 @@ class log_receiver(threading_tools.process_obj):
                     else:
                         self.log("created directory %s" % (act_dir))
             # init logging config
-            #logging.config.fileConfig("logging.conf", {"file_name" : full_name})
-            #base_logger = logging.getLogger("init.at")
+            # logging.config.fileConfig("logging.conf", {"file_name" : full_name})
+            # base_logger = logging.getLogger("init.at")
             logger = logging.getLogger(logger_name)
             logger.propagate = 0
-            #print logging.root.manager.loggerDict.keys()
-            #print dir(base_logger)
-            #print "***", logger_name, base_logger, logger
+            # print logging.root.manager.loggerDict.keys()
+            # print dir(base_logger)
+            # print "***", logger_name, base_logger, logger
             form = logging_tools.my_formatter(global_config["LOG_FORMAT"],
                                               global_config["DATE_FORMAT"])
             logger.setLevel(logging.DEBUG)
@@ -399,8 +396,8 @@ class log_receiver(threading_tools.process_obj):
         return self.__handles[h_name]
     def _log_recv(self, in_str, **kwargs):
         self.any_message_received()
-        #print "received from %s: %s" % (str(addr), str(data))
-        #self.transport.write("ok")
+        # print "received from %s: %s" % (str(addr), str(data))
+        # self.transport.write("ok")
         try:
             log_com, in_str, python_log_com = self.decode_in_str(in_str)
         except:
@@ -487,7 +484,7 @@ class log_receiver(threading_tools.process_obj):
 class main_process(threading_tools.process_pool):
     def __init__(self, options):
         self.__options = options
-        threading_tools.process_pool.__init__(self, "main", stack_size=2*1024*1024, zmq=True, zmq_debug=global_config["ZMQ_DEBUG"])
+        threading_tools.process_pool.__init__(self, "main", stack_size=2 * 1024 * 1024, zmq=True, zmq_debug=global_config["ZMQ_DEBUG"])
         process_tools.delete_lockfile(global_config["LOCKFILE_NAME"])
         self.register_exception("int_error", self._int_error)
         self.register_exception("term_error", self._int_error)
@@ -503,7 +500,7 @@ class main_process(threading_tools.process_pool):
     def log(self, what, level=logging_tools.LOG_LEVEL_OK):
         if not self["exit_requested"]:
             pass
-            #self.send_to_process("receiver", "log", what, level)
+            # self.send_to_process("receiver", "log", what, level)
         else:
             logging_tools.my_syslog(what, level)
     def _startup_error(self, src_name, src_pid, num_errors):
@@ -549,7 +546,7 @@ class main_process(threading_tools.process_pool):
     def _update(self):
         self.send_to_process("receiver", "update")
     def _recv_data(self, zmq_socket):
-        #zmq_socket.recv()        
+        # zmq_socket.recv()
         in_data = zmq_socket.recv()
         self.send_to_process("receiver", "log_recv", in_data)
     def process_start(self, src_process, src_pid):
@@ -579,7 +576,7 @@ class main_process(threading_tools.process_pool):
         if self.__msi_block:
             self.__msi_block.remove_meta_block()
         self.std_client.close()
-        
+
 global_config = configfile.get_global_config("logging-server")
 
 def main():
@@ -605,7 +602,6 @@ def main():
         ("USER"                , configfile.str_c_var("idlog", help_string="run as user [%(default)s]", short_options="u")),
         ("GROUP"               , configfile.str_c_var("idg", help_string="run as group [%(default)s]", short_options="g")),
         ("TO_ADDR"             , configfile.str_c_var("lang-nevyjel@init.at", help_string="mail address to send error-mails [%(default)s]")),
-        ("SEND_INITIAL_MAIL"   , configfile.bool_c_var(False, help_string="send initial mail after start [%(default)s]")),
         ("LONG_HOST_NAME"      , configfile.str_c_var(long_host_name)),
         ("MAX_LINE_LENGTH"     , configfile.int_c_var(0))])
     global_config.parse_file()
@@ -622,7 +618,7 @@ def main():
     except:
         pass
     global_config.write_file()
-    #process_tools.renice()
+    # process_tools.renice()
     # not very beautiful ...
     configfile.enable_config_access(global_config["USER"], global_config["GROUP"])
     process_tools.change_user_group(global_config["USER"], global_config["GROUP"])
