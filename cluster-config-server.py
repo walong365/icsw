@@ -50,7 +50,7 @@ from lxml import etree
 from lxml.builder import E
 from initat.cluster.backbone.models import device, network, config, device_variable, net_ip, \
      boot_uuid, netdevice, partition, sys_partition, wc_files, tree_node, config_str, \
-     cached_log_status, cached_log_source, log_source, devicelog
+     cached_log_status, cached_log_source, log_source, devicelog, domain_tree_node
 from django.db.models import Q
 import module_dependency_tools
 import networkx
@@ -660,8 +660,8 @@ class build_container(object):
                         "do_uuid"         : do_uuid,
                         "partition_setup" : partition_setup})
                 except:
-                    conf_dict["called"].setdefault(False, []).append(cur_conf.pk)
                     exc_info = process_tools.exception_info()
+                    conf_dict["called"].setdefault(False, []).append((cur_conf.pk, [line for line in exc_info.log_lines]))
                     self.log("An Error occured during eval() after %s:" % (logging_tools.get_diff_time_str(time.time() - start_time)),
                              logging_tools.LOG_LEVEL_ERROR,
                              register=True)
@@ -1566,6 +1566,7 @@ class build_process(threading_tools.process_obj):
             cur_c.log("queries issued: %d" % (tot_query_count))
             for q_idx, act_sql in enumerate(connection.queries[cur_query_count:], 1):
                 cur_c.log(" %4d %s" % (q_idx, act_sql["sql"][:120]))
+        # pprint.pprint(cur_c.get_send_dict())
         self.send_pool_message("client_update", cur_c.get_send_dict())
     def _generate_config_step2(self, cur_c, b_dev, act_prod_net, boot_netdev, dev_sc):
         self.router_obj.check_for_update()
@@ -1717,9 +1718,11 @@ class build_process(threading_tools.process_obj):
             if False in conf_dict["called"]:
                 cur_c.log("error in scripts for %s: %s" % (
                     logging_tools.get_plural("config", len(conf_dict["called"][False])),
-                    ", ".join(sorted([unicode(config_dict[pk]) for pk in conf_dict["called"][False]]))),
+                    ", ".join(sorted([unicode(config_dict[pk]) for pk, err_lines in conf_dict["called"][False]]))),
                           logging_tools.LOG_LEVEL_ERROR,
                           state="done")
+                cur_c.add_set_keys("error_dict")
+                cur_c.error_dict = dict([(unicode(config_dict[pk]), err_lines) for pk, err_lines in conf_dict["called"][False]])
             else:
                 cur_c.log("config built", state="done")
             cur_bc.close()
@@ -1929,7 +1932,6 @@ class server_process(threading_tools.process_pool):
             config_control.complex_result(int(cur_com["command"].attrib["uuid"]), unicode(cur_com))
     def _send_simple_return(self, zmq_id, send_str):
         send_sock = self.socket_dict["router"]
-        print zmq_id, send_str
         send_sock.send_unicode(zmq_id, zmq.SNDMORE)
         send_sock.send_unicode(unicode(send_str))
     def _client_update(self, *args, **kwargs):
@@ -1939,10 +1941,17 @@ class server_process(threading_tools.process_pool):
             cur_com = self.__pending_commands[run_idx]
             cur_dev = cur_com.xpath(None, ".//ns:device[@name='%s']" % (upd_dict["name"]))[0]
             for key, value in upd_dict.iteritems():
-                if type(value) in [int, long]:
-                    cur_dev.attrib[key] = "%d" % (value)
+                if key.endswith("_dict"):
+                    new_dict = E.info_dict()
+                    for s_key, s_value in value.iteritems():
+                        # very hackish, fixme
+                        new_dict.append(E.entry("\n".join(s_value), key=s_key))
+                    cur_dev.append(new_dict)
                 else:
-                    cur_dev.attrib[key] = value
+                    if type(value) in [int, long]:
+                        cur_dev.attrib[key] = "%d" % (value)
+                    else:
+                        cur_dev.attrib[key] = value
             self._handle_command(run_idx)
         else:
             self.log("got client_update with unknown run_idx %d" % (upd_dict["run_idx"]),
