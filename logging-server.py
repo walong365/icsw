@@ -182,7 +182,7 @@ class log_receiver(threading_tools.process_obj):
                 uname,
                 in_dict.get("gid", 0),
                 gname)
-            for err_line in in_dict.get("exc_text", in_dict["error_str"]).rstrip().split("\n"):
+            for err_line in in_dict.get("exc_text", in_dict.get("error_str", "no error_str")).rstrip().split("\n"):
                 self.log("from pid %d (%s): %s" % (
                     in_dict.get("pid", 0),
                     pid_str,
