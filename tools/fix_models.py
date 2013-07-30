@@ -3,7 +3,7 @@
 # Copyright (C) 2013 Andreas Lang-Nevyjel
 #
 # Send feedback to: <lang-nevyjel@init.at>
-# 
+#
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License Version 2 as
 # published by the Free Software Foundation.
@@ -27,13 +27,13 @@ os.environ.setdefault("DJANGO_SETTINGS_MODULE", "initat.cluster.settings")
 import datetime
 import pprint
 from django.conf import settings
-from django.db.models import Q
+from django.db.models import Q, get_app, get_models
 from initat.cluster.backbone.models import device, device_group, \
      mon_contact, mon_contactgroup, mon_check_command_type, mon_check_command, \
      config, mon_service_templ, user, mon_period, mon_ext_host, mon_service_templ, \
      mon_device_templ, device_group, group, user
 from django.db.models.base import ModelBase
-     
+
 def _parse_value(in_str):
     esc = False
     cur_str, results = ("", [])
@@ -61,11 +61,37 @@ def _parse_value(in_str):
         new_results.append(new_val)
     return new_results
 
+def check_for_zero_fks():
+    # get all apps
+    checked, fixed = (0, 0)
+    for model in get_models(get_app("backbone")):
+        c_fields = [cur_f for cur_f in model._meta.fields if cur_f.get_internal_type() == "ForeignKey"]
+        print "checking model %s (%d)" % (
+            model._meta.object_name,
+            len(c_fields)
+            )
+        if c_fields:
+            for cur_obj in model.objects.all():
+                checked += 1
+                save_it = False
+                for c_field in c_fields:
+                    if getattr(cur_obj, "%s_id" % (c_field.name)) == 0:
+                        setattr(cur_obj, c_field.name, None)
+                        save_it = True
+                    if save_it:
+                        fixed += 1
+                        print "saving %s" % (unicode(cur_obj))
+                        cur_obj.save()
+    print "checked / fixed: %d / %d" % (checked, fixed)
+
 def main():
+    # check for zero foreign keys
+    check_for_zero_fks()
+    sys.exit(0)
     data_file = sys.argv[1]
     transfer_dict = {
         "ng_check_command_type" : (mon_check_command_type, ["pk", "name", None], [],),
-        "ng_check_command"      : (mon_check_command, ["pk", None, ("config", config), ("mon_check_command_type", mon_check_command_type), ("mon_service_templ", mon_service_templ), "name", "command_line", "description", None, None], ["name",],),
+        "ng_check_command"      : (mon_check_command, ["pk", None, ("config", config), ("mon_check_command_type", mon_check_command_type), ("mon_service_templ", mon_service_templ), "name", "command_line", "description", None, None], ["name", ],),
         "ng_contact"            : (mon_contact, ["pk", ("user", user), ("snperiod", mon_period), ("hnperiod", mon_period), "snrecovery", "sncritical", "snwarning", "snunknown", "hnrecovery", "hndown", "hnunreachable", "sncommand", "hncommand"], [],),
         "ng_contactgroup"       : (mon_contactgroup, ["pk", "name", "alias"], [],),
         "ng_service_templ"      : (mon_service_templ, ["pk", "name", "volatile", ("nsc_period", mon_period), "max_attempts", "check_interval", "retry_interval", "ninterval", ("nsn_period", mon_period), "nrecovery", "ncritical", "nwarning", "nunknown"], []),
@@ -127,7 +153,7 @@ def main():
                         new_obj = obj_class()
                         create = True
                         for cur_val, t_info in zip(value, t_list):
-                            #print cur_val, t_info
+                            # print cur_val, t_info
                             if t_info is not None:
                                 if type(t_info) == tuple:
                                     if cur_val == 0:
@@ -194,11 +220,11 @@ def main():
                 "act_partition_table", "new_state", "monitor_server", "nagvis_parent",
             ],
             "zero_to_value" : [
-                #("device_class", device_class.objects.all()[0]),
+                # ("device_class", device_class.objects.all()[0]),
             ]
         },
         "device_group" : {
-            "zero_to_null" : ["device",],
+            "zero_to_null" : ["device", ],
         }
     }
     for obj_name, f_dict in fix_dict.iteritems():
@@ -222,4 +248,4 @@ def main():
 
 if __name__ == "__main__":
     main()
-    
+
