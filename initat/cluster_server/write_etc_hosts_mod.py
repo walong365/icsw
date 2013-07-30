@@ -29,7 +29,7 @@ import logging_tools
 import server_command
 import cluster_location
 from django.db.models import Q
-from initat.cluster.backbone.models import net_ip, netdevice, device, device_variable
+from initat.cluster.backbone.models import net_ip, netdevice, device, device_variable, domain_tree_node
 from initat.cluster_server.rebuild_hopcount_mod import router_object
 import networkx
 
@@ -114,23 +114,25 @@ class write_etc_hosts(cs_base_class.server_com):
         # connection keys
         #con_keys = set(ref_table)
         # build dict, ip->[list of hosts]
+        tl_dtn = domain_tree_node.objects.get(Q(depth=0))
         for cur_path in all_paths:
             min_value = route_obj.get_penalty(cur_path)
             target_nd = nd_lut[cur_path[-1]]
             for cur_ip in nd_lut[cur_path[-1]].net_ip_set.all():
                 # get names
                 host_names = []
+                cur_dtn = cur_ip.domain_tree_node or tl_dtn
                 if not (cur_ip.alias.strip() and cur_ip.alias_excl):
-                    host_names.append("%s%s" % (target_nd.device.name, cur_ip.domain_tree_node.node_postfix))
+                    host_names.append("%s%s" % (target_nd.device.name, cur_dtn.node_postfix))
                 host_names.extend(cur_ip.alias.strip().split())
                 if "localhost" in [x.split(".")[0] for x in host_names]:
                     host_names = [host_name for host_name in host_names if host_name.split(".")[0] == "localhost"]
-                if cur_ip.domain_tree_node.create_short_names:
+                if cur_dtn.create_short_names:
                     # also create short_names
-                    out_names = (" ".join(["%s.%s %s" % (host_name, cur_ip.domain_tree_node.full_name, host_name) for host_name in host_names if not host_name.count(".")])).split()
+                    out_names = (" ".join(["%s.%s %s" % (host_name, cur_dtn.full_name, host_name) for host_name in host_names if not host_name.count(".")])).split()
                 else:
                     # only print the long names
-                    out_names = ["%s.%s" % (host_name, cur_ip.domain_tree_node.full_name) for host_name in host_names if not host_name.count(".")]
+                    out_names = ["%s.%s" % (host_name, cur_dtn.full_name) for host_name in host_names if not host_name.count(".")]
                 # add names with dot
                 out_names.extend([host_name for host_name in host_names if host_name.count(".")])
                 # name_dict without localhost
