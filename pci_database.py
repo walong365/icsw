@@ -1,6 +1,6 @@
 #!/usr/bin/python-init -Ot
 #
-# Copyright (C) 2001,2002,2003,2004,2005,2006,2011 Andreas Lang
+# Copyright (C) 2001,2002,2003,2004,2005,2006,2011,2013 Andreas Lang-Nevyjel
 #
 # this file is part of python-modules-base
 #
@@ -18,19 +18,19 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
 
+import os.path
 import re
 import struct
 import sys
-import os.path
 
 def get_pci_dicts(fname=None):
     vdict, cdict = ({}, {})
     if fname:
         search_names = [fname]
     else:
-        search_names = ["/opt/python-init/lib/python/site-packages/pci.ids",
-                        "/usr/lib/python/site-packages/pci.ids",
-                        "/usr/lib64/python/site-packages/pci.ids"]
+        search_names = [
+            "/opt/python-init/lib/python/site-packages/pci.ids",
+        ]
     lines = []
     for search_name in search_names:
         if os.path.isfile(search_name):
@@ -43,14 +43,14 @@ def get_pci_dicts(fname=None):
     sdevline     = re.compile("^\t\t(.*)$")
     actvendor = None
     actclass  = None
-    mode = 1
+    mode = True
     for pline in lines:
         line = pline.rstrip()
         if line and not line.startswith("#"):
             if mode:
                 classmatch = classline.match(line)
                 if classmatch:
-                    mode = 0
+                    mode = False
                 else:
                     vendormatch = vendorline.match(line)
                     if vendormatch:
@@ -127,12 +127,6 @@ def get_actual_pci_struct(vdict=None, cdict=None):
 def main():
     print "Loadable module, exiting..."
     sys.exit(0)
-    pdict = get_actual_pci_struct()
-    for k0 in pdict.keys():
-        for k1 in pdict[k0].keys():
-            for k2 in pdict[k0][k1].keys():
-                actd = pdict[k0][k1][k2]
-                print "%02d:%02x.%x %s: %s %s (rev %s)" % (k0, k1, k2, actd["subclassname"], actd["vendorname"], actd["devicename"], actd["revision"])
-            
+
 if __name__ == "__main__":
     main()

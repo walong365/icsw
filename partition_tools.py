@@ -19,17 +19,13 @@
 #
 """ partition stuff """
 
-import os
 import commands
-import sys
-import process_tools
 import logging_tools
+import os
 import pprint
+import process_tools
 import re
-try:
-    from lxml import etree
-except:
-    etree = None
+import sys
 
 class lvm_object(dict):
     def __init__(self, lv_type, in_dict):

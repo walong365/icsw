@@ -42,9 +42,9 @@ import time
 import traceback
 
 if sys.platform in ["linux2", "linux3"]:
-    import pwd
-    import grp
     import cpu_database
+    import grp
+    import pwd
     # helper function for proepilogue
     from io_stream_helper import io_stream
     from lxml import etree

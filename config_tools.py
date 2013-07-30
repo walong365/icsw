@@ -24,20 +24,20 @@ module to operate with config and ip relationsships in the database. This
 module gets included from configfile
 """
 
-import sys
-import re
+import array
+import configfile
+import logging_tools
+import networkx
 import os
 import pprint
-import configfile
-import array
 import process_tools
+import re
+import sys
 import time
-import logging_tools
 from initat.cluster.backbone.models import config, device, net_ip, device_config, \
      device_group, config_str, config_blob, config_int, config_bool, route_generation, netdevice, \
      peer_information
 from django.db.models import Q
-import networkx
 
 class router_object(object):
     def __init__(self, log_com):

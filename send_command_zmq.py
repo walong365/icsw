@@ -1,6 +1,6 @@
 #!/usr/bin/python-init -Ot
 #
-# Copyright (c) 2012 Andreas Lang-Nevyjel, lang-nevyjel@init.at
+# Copyright (c) 2012,2013 Andreas Lang-Nevyjel, lang-nevyjel@init.at
 #
 # this file is part of python-modules-base
 #
@@ -19,14 +19,14 @@
 #
 """ sends a command to one of the python-servers, 0MQ version"""
 
+import argparse
+import logging_tools
+import os
+import process_tools
+import server_command
 import sys
 import time
-import os
-import server_command
-import logging_tools
 import zmq
-import argparse
-import process_tools
 from lxml import etree
 
 def main():

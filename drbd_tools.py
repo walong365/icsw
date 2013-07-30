@@ -21,16 +21,16 @@
 #
 """ module to parse the drbd status """
 
-import sys
-import re
-import socket
-import commands
-import pprint
-import configfile
 import array
+import commands
+import configfile
 import os
-import stat
+import pprint
+import re
 import server_command
+import socket
+import stat
+import sys
 
 class drbd_config(object):
     def __init__(self, config_name="/etc/drbd.conf", status_name="/proc/drbd", **args):

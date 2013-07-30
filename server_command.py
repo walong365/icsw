@@ -3,7 +3,7 @@
 # Copyright (C) 2001,2002,2003,2004,2005,2006,2007,2008,2011,2012,2013 Andreas Lang-Nevyjel, init.at
 #
 # Send feedback to: <lang-nevyjel@init.at>
-# 
+#
 # This file is part of python-modules-base
 #
 # This program is free software; you can redistribute it and/or modify
@@ -21,22 +21,22 @@
 #
 """ server command structure definitions """
 
-import sys
-import marshal
-import socket
-import time
-import re
-import os
-from lxml import etree
-from lxml.builder import E, ElementMaker
 import base64
 import bz2
 import datetime
+import logging_tools
+import marshal
+import os
+import re
+import socket
+import sys
+import time
+from lxml import etree
+from lxml.builder import E, ElementMaker
 try:
     import cPickle as pickle
 except ImportError:
     import pickle
-import logging_tools
 
 XML_NS = "http://www.initat.org/lxml/ns"
 
@@ -53,11 +53,11 @@ def net_to_sys(in_val):
 def sys_to_net(in_val):
     return pickle.dumps(in_val)
 
-SRV_REPLY_STATE_OK       = 0
-SRV_REPLY_STATE_WARN     = 1
-SRV_REPLY_STATE_ERROR    = 2
+SRV_REPLY_STATE_OK = 0
+SRV_REPLY_STATE_WARN = 1
+SRV_REPLY_STATE_ERROR = 2
 SRV_REPLY_STATE_CRITICAL = 3
-SRV_REPLY_STATE_UNSET    = 4
+SRV_REPLY_STATE_UNSET = 4
 
 def srv_reply_to_log_level(srv_reply_state):
     return {
@@ -87,7 +87,7 @@ class srv_command(object):
         srv_command.srvc_open += 1
         self.__builder = ElementMaker(namespace=XML_NS)
         if "source" in kwargs:
-            #print len(kwargs["source"])
+            # print len(kwargs["source"])
             if type(kwargs["source"]) in [str, unicode]:
                 self.__tree = etree.fromstring(kwargs["source"])
             else:
@@ -266,8 +266,8 @@ class srv_command(object):
         else:
             raise ValueError, "_element: unknown value type '%s'" % (type(value))
         return cur_element
-##    def _escape_key(self, key_str):
-##        return key_str.replace("/", "r")
+# #    def _escape_key(self, key_str):
+# #        return key_str.replace("/", "r")
     def _escape_key(self, key_str):
         return key_str.replace("/", "__slash__").replace("@", "__atsign__")
     def _create_element(self, key):
@@ -281,7 +281,7 @@ class srv_command(object):
             if sub_el is not None:
                 cur_element = sub_el
             else:
-                sub_el = self.builder(cur_key)#getattr(self.__builder, cur_key)()
+                sub_el = self.builder(cur_key) # getattr(self.__builder, cur_key)()
                 cur_element.append(sub_el)
             cur_element = sub_el
         return cur_element
@@ -357,156 +357,7 @@ class srv_command(object):
         srv_command.srvc_open -= 1
     def __len__(self):
         return len(etree.tostring(self.tree))
-        
-class command_template(object):
-    def __init__(self, *rest_vals, **rest_dict):
-        self.invalidate_buffer()
-        self.init_time = time.time()
-        self.__get_calls = dict([(k, getattr(self, "get_%s" % (k))) for k in self.key_list])
-        self.__set_calls = dict([(k, getattr(self, "set_%s" % (k))) for k in self.key_list])
-        if rest_dict:
-            pass
-        elif rest_vals:
-            rest_dict = net_to_sys(rest_vals[0])
-        else:
-            rest_dict = {}
-        for what in self.key_list:
-            if what in rest_dict:
-                self.__set_calls[what](rest_dict[what])
-            else:
-                self.__set_calls[what]()
-        wrong_keys = [x for x in rest_dict.keys() if x not in self.key_list]
-        if wrong_keys:
-            raise IndexError, "undefined keys for command_template: %s" % (",".join(wrong_keys))
-    def get_init_time(self):
-        return self.init_time
-    def create_string(self):
-        if not self.buffer:
-            self.buffer = sys_to_net(dict([(k, self.__get_calls[k]()) for k in self.key_list]))
-        return self.buffer
-    def invalidate_buffer(self):
-        self.buffer = None
-    def __nonzero__(self):
-        return True
-    def __len__(self):
-        return len(self.create_string())
-    def __repr__(self):
-        return self.create_string()
-    
-class server_command(command_template):
-    def __init__(self, *rest_vals, **rest_dict):
-        # nodes ........... list of nodes
-        # uid/gid ......... uid/gid of caller
-        # host ............ calling host
-        # key ............. key for server-internal commands
-        # queue ........... queue for server-internal commands
-        # option_dict ..... option_dict for command
-        # node_commands ... node-specific command-dict
-        self.key_list = ["command", "nodes", "uid", "gid", "host", "key", "option_dict", "compat", "queue", "node_commands"]
-        command_template.__init__(self, *rest_vals, **rest_dict)
-    def set_nodes(self, nodes=[]):
-        self.nodes = nodes
-    def get_nodes(self):
-        return self.nodes
-    def set_node_commands(self, node_commands={}):
-        self.node_commands = node_commands
-    def get_node_commands(self):
-        return self.node_commands
-    def set_node_command(self, node, command=""):
-        self.node_commands[node] = command
-    def get_node_command(self, node, default=""):
-        return self.node_commands.get(node,"")
-    def set_key(self, key = 0):
-        self.key = key
-    def get_key(self):
-        return self.key
-    def set_option_dict(self, option_dict={}):
-        self.option_dict = option_dict
-    def get_option_dict(self):
-        return self.option_dict
-    def get_option_dict_info(self):
-        return ", ".join(["%s:%s" % (k, str(v)) for k, v in self.option_dict.iteritems()])
-    def set_compat(self, compat=0):
-        self.compat = compat
-    def get_compat(self):
-        return self.compat
-    def set_uid(self, uid=0):
-        self.uid = uid
-    def get_uid(self):
-        return self.uid
-    def set_gid(self, gid=0):
-        self.gid = gid
-    def get_gid(self):
-        return self.gid
-    def set_host(self, host=socket.gethostname()):
-        self.host = host
-    def get_host(self):
-        return self.host
-    def set_queue(self, queue=None):
-        self.queue = queue
-    def get_queue(self):
-        return self.queue
-    def set_command(self, command="<not set>"):
-        self.command = command
-    def get_command(self):
-        return self.command
-    
-class server_reply(command_template):
-    def __init__(self, *rest_vals, **rest_dict):
-        # node_results: on string per node
-        # node_dicts: on dict per node
-        self.key_list = ["node_results", "result", "state", "key", "node_dicts", "option_dict"]
-        command_template.__init__(self, *rest_vals, **rest_dict)
-    def set_node_results(self, node_results={}):
-        self.node_results = node_results
-    def get_node_results(self):
-        return self.node_results
-    def set_node_result(self, node, result):
-        self.node_results[node] = result
-    def get_node_result(self, node):
-        return self.node_results[node]
-    def set_node_dicts(self, node_dicts={}):
-        self.node_dicts = node_dicts
-    def get_node_dicts(self):
-        return self.node_dicts
-    def set_node_dict(self, node, in_dict):
-        self.node_dicts[node] = in_dict
-    def get_node_dict(self, node):
-        return self.node_dicts[node]
-    def set_result(self, result="not set"):
-        self.result = result
-    def get_result(self):
-        return self.result
-    def set_state(self, state=SRV_REPLY_STATE_UNSET):
-        if type(state) != type(0):
-            raise ValueError, "state '%s' is not of type Integer" % (state)
-        self.state = state
-    def get_state(self):
-        return self.state
-    def set_state_and_result(self, state=SRV_REPLY_STATE_UNSET, result="not set"):
-        self.set_state(state)
-        self.set_result(result)
-    def get_state_and_result(self):
-        return self.get_state(), self.get_result()
-    def set_option_dict(self, option_dict={}):
-        self.option_dict = option_dict
-    def get_option_dict(self):
-        return self.option_dict
-    def get_option_dict_info(self):
-        return ", ".join(["%s:%s" % (k, str(v)) for k, v in self.option_dict.iteritems()])
-    def set_ok_result(self, result):
-        self.set_state_and_result(SRV_REPLY_STATE_OK, result)
-    def set_warn_result(self, result):
-        self.set_state_and_result(SRV_REPLY_STATE_WARN, result)
-    def set_error_result(self, result):
-        self.set_state_and_result(SRV_REPLY_STATE_ERROR, result)
-    def set_critical_result(self, result):
-        self.set_state_and_result(SRV_REPLY_STATE_CRITICAL, result)
-    def set_key(self, key=0):
-        self.key = key
-    def get_key(self):
-        return self.key
-    
+
 def main():
     print "Loadable module, exiting..."
     sys.exit(0)

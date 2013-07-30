@@ -22,14 +22,14 @@
 #
 """ shows error recorded in the error file """
 
-import sys
-import os
-import logging_tools
 import argparse
-import time
-import datetime
 import commands
+import datetime
+import logging_tools
+import os
 import process_tools
+import sys
+import time
 
 class error_rec(object):
     def __init__(self, pid, s_name, uid, uname, gid, gname):
