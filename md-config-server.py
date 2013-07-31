@@ -1319,6 +1319,7 @@ class all_commands(host_type_config):
             )
             self.__obj_list.append(nag_conf)
     def _add_commands_from_db(self, gen_conf):
+        command_names = set()
         for hc_com in host_check_command.objects.all():
             cur_nc = nag_config(
                                 "command",
@@ -1326,6 +1327,7 @@ class all_commands(host_type_config):
                                 command_name=hc_com.name,
                                 command_line=hc_com.command_line)
             self.__obj_list.append(cur_nc)
+            command_names.add(hc_com.name)
         ngc_re1 = re.compile("^\@(?P<special>\S+)\@(?P<comname>\S+)$")
         check_coms = list(mon_check_command.objects.all()
                           .prefetch_related("categories")
@@ -1368,34 +1370,7 @@ class all_commands(host_type_config):
                         description="Process host performance data",
                         ),
                 ]
-        command_names = set()
         for ngc in check_coms + [
-#             mon_check_command(
-#                 name="check-host-alive",
-#                 command_line="$USER2$ -m localhost ping $HOSTADDRESS$ %d %.2f" % (
-#                     global_config["CHECK_HOST_ALIVE_PINGS"],
-#                     global_config["CHECK_HOST_ALIVE_TIMEOUT"]),
-#                 description="Check-host-alive command via ping",
-#                 enable_perfdata=enable_perfd,
-#                 ),
-#             mon_check_command(
-#                 name="check-host-ok",
-#                 command_line="$USER1$/check_dummy 0 up",
-#                 description="Check-host-ok, always up",
-#                 enable_perfdata=False,
-#                 ),
-#             mon_check_command(
-#                 name="check-host-down",
-#                 command_line="$USER1$/check_dummy 2 down",
-#                 description="Check-host-down, always down",
-#                 enable_perfdata=False,
-#                 ),
-#             mon_check_command(
-#                 name="check-host-alive-2",
-#                 command_line="$USER2$ -m $HOSTADDRESS$ version",
-#                 description="Check-host-alive command via collserver",
-#                 enable_perfdata=enable_perfd,
-#                 ),
             mon_check_command(
                 name="ochp-command",
                 command_line="$USER2$ -m DIRECT -s ochp-event \"$HOSTNAME$\" \"$HOSTSTATE$\" \"%s\"" % ("$HOSTOUTPUT$|$HOSTPERFDATA$" if enable_perfd else "$HOSTOUTPUT$"),
@@ -1455,7 +1430,6 @@ class all_commands(host_type_config):
             nag_conf = cc_s.get_nag_config()
             self.__obj_list.append(nag_conf)
             self.__dict[nag_conf["command_name"]] = cc_s
-            # self.__dict[nag_conf["command_name"]] = cc_s
     def get_object_list(self):
         return self.__obj_list
     def values(self):
@@ -3802,7 +3776,7 @@ def main():
         ("NAGVIS_URL"                  , configfile.str_c_var("/nagvis")),
         ("NONE_CONTACT_GROUP"          , configfile.str_c_var("none_group")),
         ("FROM_ADDR"                   , configfile.str_c_var(long_host_name)),
-        ("BUILD_CONFIG_ON_STARTUP"     , configfile.bool_c_var(True))
+        ("BUILD_CONFIG_ON_STARTUP"     , configfile.bool_c_var(True)),
         ("RETAIN_HOST_STATUS"          , configfile.int_c_var(1)),
         ("RETAIN_SERVICE_STATUS"       , configfile.int_c_var(1)),
         ("NDO_DATA_PROCESSING_OPTIONS" , configfile.int_c_var((2 ** 26 - 1) - (IDOMOD_PROCESS_TIMED_EVENT_DATA - IDOMOD_PROCESS_SERVICE_CHECK_DATA + IDOMOD_PROCESS_HOST_CHECK_DATA))),
