@@ -3267,8 +3267,8 @@ class server_process(threading_tools.process_pool):
         self.register_timer(self._check_db, 3600, instant=True)
         self.register_timer(self._check_for_redistribute, 30 if global_config["DEBUG"] else 300)
         self.register_timer(self._update, 30, instant=True)
-        # self.__last_update = time.time() - self.__glob_config["MAIN_LOOP_TIMEOUT"]
-        self.send_to_process("build", "rebuild_config", cache_mode="DYNAMIC")
+        if global_config["BUILD_CONFIG_ON_STARTUP"]:
+            self.send_to_process("build", "rebuild_config", cache_mode="DYNAMIC")
     def _check_db(self):
         self.send_to_process("db_verify", "validate")
     def _check_for_redistribute(self):
@@ -3802,7 +3802,7 @@ def main():
         ("NAGVIS_URL"                  , configfile.str_c_var("/nagvis")),
         ("NONE_CONTACT_GROUP"          , configfile.str_c_var("none_group")),
         ("FROM_ADDR"                   , configfile.str_c_var(long_host_name)),
-        ("MAIN_LOOP_TIMEOUT"           , configfile.int_c_var(30)),
+        ("BUILD_CONFIG_ON_STARTUP"     , configfile.bool_c_var(True))
         ("RETAIN_HOST_STATUS"          , configfile.int_c_var(1)),
         ("RETAIN_SERVICE_STATUS"       , configfile.int_c_var(1)),
         ("NDO_DATA_PROCESSING_OPTIONS" , configfile.int_c_var((2 ** 26 - 1) - (IDOMOD_PROCESS_TIMED_EVENT_DATA - IDOMOD_PROCESS_SERVICE_CHECK_DATA + IDOMOD_PROCESS_HOST_CHECK_DATA))),
