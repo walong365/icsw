@@ -477,18 +477,18 @@ class server_process(threading_tools.process_pool):
         ]
         slcn = "/etc/rsyslog.d/logcheck_server.conf"
         file(slcn, "w").write("\n".join(rsyslog_lines))
-        self._reload_syslog()
+        self._restart_syslog()
     def _disable_rsyslog(self):
         slcn = "/etc/rsyslog.d/logcheck_server.conf"
         if os.path.isfile(slcn):
             os.unlink(slcn)
-        self._reload_syslog()
-    def _reload_syslog(self):
+        self._restart_syslog()
+    def _restart_syslog(self):
         for syslog_rc in ["/etc/init.d/syslog", "/etc/init.d/syslog-ng"]:
             if os.path.isfile(syslog_rc):
                 break
-        stat, out_f = process_tools.submit_at_command("%s reload" % (syslog_rc), 0)
-        self.log("reloading %s gave %d:" % (syslog_rc, stat))
+        stat, out_f = process_tools.submit_at_command("%s restart" % (syslog_rc), 0)
+        self.log("restarting %s gave %d:" % (syslog_rc, stat))
         for line in out_f:
             self.log(line)
         
