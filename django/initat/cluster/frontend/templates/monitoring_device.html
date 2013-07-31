@@ -99,11 +99,17 @@ class config_table
                     "type" : "checkbox",
                     "id"   : "#{line_prefix}__sel"
                 }).bind("click", if d_el then @change_d_sel else @change_global_sel)
-            )
-        ).append(
+            ),
             $("<td>").attr({
-            }).text((if is_meta then "Meta device" else "device") + " " + (if d_el then d_el.text() else "global"))
-        ).append(
+            }).text((if is_meta then "Meta device" else "device") + " " + (if d_el then d_el.text() else "global")),
+            $("<td>").append(
+                create_input_el(d_el, "monitor_checks", line_prefix, {
+                    boolean    : true,
+                    change_cb  : if d_el then undefined else @change_monitor_checks,
+                    master_xml : @devices,
+                    title      : "checks enabled",
+                })
+            ),
             $("<td>").append(
                 create_input_el(d_el, "mon_device_templ", line_prefix, {
                     select_source   : "mon_device_templs mon_device_templ",
@@ -114,22 +120,6 @@ class config_table
                     title           : "device template"
                 })
             ),
-            $("<td>").append(
-                create_input_el(d_el, "monitor_checks", line_prefix, {
-                    boolean    : true,
-                    change_cb  : if d_el then undefined else @change_monitor_checks,
-                    master_xml : @devices,
-                    title      : "checks enabled",
-                })
-            ),
-            $("<td>").append(
-                create_input_el(d_el, "enable_flap_detection", line_prefix, {
-                    boolean    : true,
-                    change_cb  : if d_el then undefined else @change_flap_detection,
-                    master_xml : @devices,
-                    title      : "flap detection enabled",
-                })
-            )
         )
         if d_el
             new_tr.append(
@@ -183,24 +173,62 @@ class config_table
                     title          : "image for map",
                 })
             )
-        ).append(
-            $("<td>").append(
-                create_input_el(d_el, "enable_perfdata", line_prefix, {
-                    boolean    : true,
-                    change_cb  : if d_el then undefined else @change_enable_perfdata,
-                    master_xml : @devices,
-                    title      : "perfdata monitoring",
-                })
+        )
+        if d_el
+            new_tr.append(
+                $("<td>").addClass("center").append(
+                    create_input_el(d_el, "flap_detection_enabled", line_prefix, {
+                        boolean    : true,
+                        master_xml : @devices,
+                        title      : "flap detection enabled",
+                    })
+                ),
+                $("<td>").addClass("center").append(
+                    create_input_el(d_el, "enable_perfdata", line_prefix, {
+                        boolean    : true,
+                        master_xml : @devices,
+                        title      : "perfdata monitoring",
+                    })
+                ),
+                $("<td>").addClass("center").append(
+                    create_input_el(d_el, "automap_root_nagvis", line_prefix, {
+                        boolean    : true,
+                        master_xml : @devices,
+                        title      : "automap root (for NagVis)",
+                    })
+                )
             )
-        ).append(
-            $("<td>").append(
-                create_input_el(d_el, "automap_root_nagvis", line_prefix, {
-                    boolean    : true,
-                    change_cb  : if d_el then undefined else @change_automap_root_nagvis,
-                    master_xml : @devices,
-                    title      : "automap root (for NagVis)",
-                })
+        else
+            new_tr.append(
+                $("<td>").append(
+                    create_input_el(d_el, "flap_detection_enabled", line_prefix, {
+                        select_source  : @get_toggle_modes(),
+                        add_null_entry : "--keep--",
+                        change_cb      : @change_flap_detection,
+                        master_xml     : @devices,
+                        title          : "flap detection enabled",
+                    })
+                ),
+                $("<td>").append(
+                    create_input_el(d_el, "enable_perfdata", line_prefix, {
+                        select_source  : @get_toggle_modes(),
+                        add_null_entry : "--keep--",
+                        change_cb      : @change_enable_perfdata,
+                        master_xml     : @devices,
+                        title          : "perfdata monitoring",
+                    })
+                ),
+                $("<td>").append(
+                    create_input_el(d_el, "automap_root_nagvis", line_prefix, {
+                        select_source  : @get_toggle_modes(),
+                        add_null_entry : "--keep--",
+                        change_cb      : @change_automap_root_nagvis,
+                        master_xml     : @devices,
+                        title          : "automap root (for NagVis)",
+                    })
+                )
             )
+        new_tr.append(
             $("<td>").append(
                 create_input_el(d_el, "nagvis_parent", line_prefix, {
                     select_source  : @devices.find("device[automap_root_nagvis='1']"),
@@ -210,8 +238,7 @@ class config_table
                     master_xml     : @devices,
                     title          : "parent nagvis root",
                 })
-            )
-        ).append(
+            ),
             $("<td>").append(
                 create_input_el(d_el, "monitor_server", line_prefix, {
                     select_source  : @mon_srv.find("devices device"),
@@ -257,6 +284,12 @@ class config_table
     device_information: (event) =>
         dev_id = $(event.target).attr("id").split("__")[1]
         show_device_info(event, "dev__#{dev_id}")
+    get_toggle_modes: () =>
+        return $("<list>").append(
+            $("<entry>").attr("pk", "1").text("clear"),
+            $("<entry>").attr("pk", "2").text("set"),
+            $("<entry>").attr("pk", "3").text("toggle"),
+        ).children()
     get_md_cache_modes: () =>
         return $("<list>").append(
             $("<entry>").attr("pk", "1").text("automatic (server)"),
@@ -334,9 +367,6 @@ class config_table
     change_monitor_checks : (event) =>
         @c_table.find("tr td input[id^='dev__'][id$='__sel']:checked").each (idx, sel_el) =>
             $(sel_el).parents("tr:first").find("input[id$='__monitor_checks']").trigger("click")
-    change_flap_detection : (event) =>
-        @c_table.find("tr td input[id^='dev__'][id$='__sel']:checked").each (idx, sel_el) =>
-            $(sel_el).parents("tr:first").find("input[id$='__enable_flap_detection']").trigger("click")
     change_md_cache_mode : (event) =>
         mon_val = $(event.target).val()
         @c_table.find("tr td input[id^='dev__'][id$='__sel']:checked").each (idx, sel_el) =>
@@ -344,12 +374,19 @@ class config_table
             if sel_el.val() != mon_val
                 sel_el.val(mon_val).trigger("change")
         $(event.target).val(0)
+    change_flap_detection : (event) =>
+        @trigger_click("flap_detection_enabled", event)
     change_enable_perfdata : (event) =>
-        @c_table.find("tr td input[id^='dev__'][id$='__sel']:checked").each (idx, sel_el) =>
-            $(sel_el).parents("tr:first").find("input[id$='__enable_perfdata']").trigger("click")
+        @trigger_click("enable_perfdata", event)
     change_automap_root_nagvis : (event) =>
+        @trigger_click("automap_root_nagvis", event)
+    trigger_click: (var_name, cur_val) =>
+        cur_val = parseInt($(event.target).val())
+        $(event.target).val("0")
         @c_table.find("tr td input[id^='dev__'][id$='__sel']:checked").each (idx, sel_el) =>
-            $(sel_el).parents("tr:first").find("input[id$='__automap_root_nagvis']").trigger("click")
+            pd_el = $(sel_el).parents("tr:first").find("input[id$='__#{var_name}']")
+            if (pd_el.is(":checked") and (cur_val == 1 or cur_val == 3)) or (not pd_el.is(":checked") and (cur_val == 2 or cur_val == 3))
+                pd_el.trigger("click")
     change_automap_parent : (event) =>
         @c_table.find("tr td input[id^='dev__'][id$='__sel']:checked").each (idx, sel_el) =>
             $(sel_el).parents("tr:first").find("input[id$='__nagvis_parent']").trigger("click")
