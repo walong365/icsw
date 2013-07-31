@@ -997,7 +997,7 @@ def do_nets(conf):
                 new_co = conf.add_file_object("/etc/hostname")
                 new_co += "%s%s.%s" % (conf_dict["host"], cur_dtn.node_postfix, cur_dtn.full_name)
             else:
-                new_co = conf.add_file_object("/etc/sysconfig/network")
+                new_co = conf.add_file_object("/etc/sysconfig/network", append=True)
                 new_co += "HOSTNAME=%s" % (conf_dict["host"])
                 new_co += "NETWORKING=yes"
         log_str = "netdevice %10s (mac %s)" % (cur_nd.devname, cur_nd.macaddr)
@@ -1189,7 +1189,7 @@ def do_routes(conf):
                     new_co += "default %s - eth-id-%s" % (def_ip, boot_mac)
             elif sys_dict["vendor"] == "redhat" or sys_dict["vendor"].lower().startswith("centos"):
                 # redhat-mode
-                act_co = conf.add_file_object("/etc/sysconfig/network")
+                act_co = conf.add_file_object("/etc/sysconfig/network", append=True)
                 act_co += "# from %s" % (gw_source)
                 act_co += "GATEWAY=%s" % (def_ip)
 
@@ -1615,15 +1615,16 @@ class build_process(threading_tools.process_obj):
                             " (best of %d)" % (routes_found) if routes_found > 1 else ""))
                     else:
                         cur_c.log("  %20s: not found" % (server_type))
-            # populate config dict, FIXME
+            new_img = b_dev.new_image
             conf_dict["system"] = {
-                "vendor"  : "suse",
-                "version" : 12,
-                "release" : 0}
+                "vendor"  : new_img.sys_vendor,
+                "version" : new_img.sys_version,
+                "release" : new_img.sys_release,
+            }
             conf_dict["device"] = b_dev
             conf_dict["net"] = act_prod_net
             conf_dict["host"] = b_dev.name
-            conf_dict["hostfq"] = "%s%s" % (b_dev.name, full_postfix)
+            conf_dict["hostfq"] = b_dev.full_name
             conf_dict["device_idx"] = b_dev.pk
             # image is missing, FIXME
 # #                    dc.execute("SELECT * FROM image WHERE image_idx=%s", (self["new_image"]))
@@ -2691,3 +2692,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+
