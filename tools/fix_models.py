@@ -19,13 +19,14 @@
 #
 """ copy monitoring settings from old to new db schema """
 
-import sys
 import os
+import sys
 
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "initat.cluster.settings")
 
 import datetime
 import pprint
+import process_tools
 from django.conf import settings
 from django.db.models import Q, get_app, get_models
 from initat.cluster.backbone.models import device, device_group, \
@@ -63,7 +64,7 @@ def _parse_value(in_str):
 
 def check_for_zero_fks():
     # get all apps
-    checked, fixed = (0, 0)
+    checked, fixed, errors = (0, 0, 0)
     for model in get_models(get_app("backbone")):
         c_fields = [cur_f for cur_f in model._meta.fields if cur_f.get_internal_type() == "ForeignKey"]
         print "checking model %s (%d)" % (
@@ -71,18 +72,37 @@ def check_for_zero_fks():
             len(c_fields)
             )
         if c_fields:
-            for cur_obj in model.objects.all():
+            obj_count = model.objects.count()
+            for obj_idx, cur_obj in enumerate(model.objects.all()):
                 checked += 1
                 save_it = False
                 for c_field in c_fields:
                     if getattr(cur_obj, "%s_id" % (c_field.name)) == 0:
-                        setattr(cur_obj, c_field.name, None)
+                        try:
+                            setattr(cur_obj, c_field.name, None)
+                        except:
+                            errors += 1
+                            print "error setting %s of %s to None: %s" % (
+                                c_field.name,
+                                unicode(cur_obj),
+                                process_tools.get_except_info(),
+                                )
                         save_it = True
                     if save_it:
                         fixed += 1
-                        print "saving %s" % (unicode(cur_obj))
-                        cur_obj.save()
-    print "checked / fixed: %d / %d" % (checked, fixed)
+                        try:
+                            cur_obj.save()
+                        except:
+                            errors += 1
+                            print "error saving %s: %s" % (
+                                unicode(cur_obj),
+                                process_tools.get_except_info())
+                        else:
+                            print "saving (%d of %d) %s" % (
+                                obj_idx + 1,
+                                obj_count,
+                                unicode(cur_obj))
+    print "checked / fixed / errors: %d / %d / %d" % (checked, fixed, errors)
 
 def main():
     # check for zero foreign keys
