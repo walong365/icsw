@@ -125,11 +125,13 @@ class new_config_object(object):
             return False
     def set_config(self, conf):
         self.add_config(conf.get_name())
-    def add_config(self, conf):
-        self.source_configs.add(conf)
-    # compatibility calls
+    # compatibility calls (mode, uid and gid)
     def set_mode(self, mode):
         self.mode = mode
+    def set_uid(self, uid):
+        self.uid = uid
+    def set_gid(self, gid):
+        self.gid = gid
     def _set_mode(self, mode):
         if type(mode) == type(""):
             self.__mode = int(mode, 8)
@@ -169,19 +171,6 @@ class internal_object(new_config_object):
         self.gid = ref_config.gid
     def write_object(self, t_file):
         return ""
-# #    def write_object(self, dest, disk_int):
-# #        ret_state, ret_str = (0, "")
-# #        sql_tuples = (0,
-# #                      ", ".join(self.source_configs),
-# #                      self.get_uid(),
-# #                      self.get_gid(),
-# #                      int(self.get_mode()),
-# #                      self.get_type(),
-# #                      "",
-# #                      self.dest,
-# #                      self.get_error_flag(),
-# #                      "")
-# #        return ret_state, ret_str, sql_tuples
 
 class file_object(new_config_object):
     def __init__(self, destination, **kwargs):
@@ -201,84 +190,38 @@ class file_object(new_config_object):
                 s_content = file("%s/%s" % (s_dir, destination), "r").read()
                 self +=s_content.split("\n")
     def set_config(self, ref_config):
-        new_config_object.set_config(self, ref_config)
-        self.set_mode(ref_config.get_file_mode())
-        self.set_uid(ref_config.get_uid())
-        self.set_gid(ref_config.get_gid())
+        self.mode = ref_config.file_mode
+        self.uid = ref_config.uid
+        self.gid = ref_config.gid
     def write_object(self, t_file):
         file(t_file, "w").write("".join(self.content))
         return "%d %d %s %s" % (self.uid,
                                 self.gid,
                                 oct(self.mode),
                                 self.dest)
-# #    def write_object(self, dest, disk_int):
-# #        content = "".join(self.content)
-# #        file(dest, "w").write(content)
-# #        os.chmod(dest, 0644)
-# #        ret_state, ret_str = (0, "%d %d %d %s %s" % (disk_int, self.get_uid(), self.get_gid(), self.mode, self.dest))
-# #        sql_tuples = (disk_int,
-# #                      ", ".join(self.source_configs),
-# #                      self.get_uid(),
-# #                      self.get_gid(),
-# #                      int(self.get_mode()),
-# #                      self.get_type(),
-# #                      "",
-# #                      self.dest,
-# #                      self.get_error_flag(),
-# #                      content)
-# #        return ret_state, ret_str, sql_tuples
 
 class link_object(new_config_object):
     def __init__(self, destination, source, **kwargs):
         new_config_object.__init__(self, destination, "l", source=source, **kwargs)
     def set_config(self, ref_config):
-        new_config_object.set_config(self, ref_config)
-        self.set_mode(ref_config.get_file_mode())
-        self.set_uid(ref_config.get_uid())
-        self.set_gid(ref_config.get_gid())
+        self.mode = ref_config.file_mode
+        self.uid = ref_config.uid
+        self.gid = ref_config.gid
     def write_object(self, t_file):
         return "%s %s" % (self.source, self.dest)
-# #        file(t_file, "w").write("".join(self.content))
-# #    def write_object(self, dest, disk_int):
-# #        ret_state, ret_str = (0, "%s %s" % (self.dest, self.source))
-# #        sql_tuples = (disk_int,
-# #                      ", ".join(self.source_configs),
-# #                      self.get_uid(),
-# #                      self.get_gid(),
-# #                      int(self.get_mode()),
-# #                      self.get_type(),
-# #                      self.source,
-# #                      self.dest,
-# #                      self.get_error_flag(),
-# #                      "")
-# #        return ret_state, ret_str, sql_tuples
 
 class dir_object(new_config_object):
     def __init__(self, destination, **kwargs):
         new_config_object.__init__(self, destination, "d", **kwargs)
     def set_config(self, ref_config):
-        new_config_object.set_config(self, ref_config)
-        self.set_mode(ref_config.get_dir_mode())
-        self.set_uid(ref_config.get_uid())
-        self.set_gid(ref_config.get_gid())
+        self.mode = ref_config.dir_mode
+        self.uid = ref_config.uid
+        self.gid = ref_config.gid
     def write_object(self, t_file):
         return "%d %d %s %s" % (self.uid,
                                 self.gid,
                                 oct(self.mode),
                                 self.dest)
-# #    def write_object(self, dest, disk_int):
-# #        ret_state, ret_str = (0, "%d %d %d %s %s" % (disk_int, self.get_uid(), self.get_gid(), self.mode, self.dest))
-# #        sql_tuples = (disk_int,
-# #                      ", ".join(self.source_configs),
-# #                      self.get_uid(),
-# #                      self.get_gid(),
-# #                      int(self.get_mode()),
-# #                      self.get_type(),
-# #                      "",
-# #                      self.dest,
-# #                      self.get_error_flag(),
-# #                      "")
-# #        return ret_state, ret_str, sql_tuples
 
 class delete_object(new_config_object):
     def __init__(self, destination, **kwargs):
@@ -288,19 +231,6 @@ class delete_object(new_config_object):
         new_config_object.set_config(self, ref_config)
     def write_object(self, t_file):
         return "%d %s" % (self.recursive, self.dest)
-# #    def write_object(self, dest, disk_int):
-# #        ret_state, ret_str = (0, "%d %s" % (self.recursive, self.dest))
-# #        sql_tuples = (disk_int,
-# #                      ", ".join(self.source_configs),
-# #                      0,
-# #                      0,
-# #                      self.recursive,
-# #                      self.get_type(),
-# #                      "",
-# #                      self.dest,
-# #                      self.get_error_flag(),
-# #                      "")
-# #        return ret_state, ret_str, sql_tuples
 
 class copy_object(new_config_object):
     def __init__(self, destination, source, **kwargs):
@@ -324,36 +254,6 @@ class copy_object(new_config_object):
                                 self.gid,
                                 oct(self.mode),
                                 self.dest)
-# #    def write_object(self, dest, disk_int):
-# #        ret_state, ret_str = (1, "<UNKNOWN ERROR>")
-# #        if os.path.isfile(self.source):
-# #            orig_stat = os.stat(self.source)
-# #            o_uid, o_gid, o_mode = (orig_stat[stat.ST_UID] or self.get_uid(),
-# #                                    orig_stat[stat.ST_GID] or self.get_gid(),
-# #                                    stat.S_IMODE(orig_stat[stat.ST_MODE]))
-# #            try:
-# #                shutil.copyfile(self.source, dest)
-# #            except IOError:
-# #                ret_state, ret_str = (1, "*** cannot read sourcefile '%s'" % (self.source))
-# #            else:
-# #                os.chmod(dest, 0644)
-# #                ret_state, ret_str = (0, "%d %d %d %s %s" % (disk_int, o_uid, o_gid, oct(o_mode), self.dest))
-# #        else:
-# #            if self.show_error:
-# #                ret_state, ret_str = (1, "*** Sourcefile '%s' not found, skipping..." % (self.source))
-# #            else:
-# #                ret_state, ret_str = (1, "")
-# #        sql_tuples = (disk_int,
-# #                      ", ".join(self.source_configs),
-# #                      self.get_uid(),
-# #                      self.get_gid(),
-# #                      int(self.get_mode()),
-# #                      self.get_type(),
-# #                      self.source,
-# #                      self.dest,
-# #                      self.get_error_flag(),
-# #                      "")
-# #        return ret_state, ret_str, sql_tuples
 
 class tree_node_g(object):
     """ tree node representation for intermediate creation of tree_node structure """
@@ -522,6 +422,8 @@ class build_container(object):
         self.__s_time = time.time()
         self.file_mode, self.dir_mode, self.link_mode = ("0644", "0755", "0644")
         self.log("init build continer")
+    def init_uid_gid(self):
+        self.uid, self.gid = (0, 0)
     def log(self, what, level=logging_tools.LOG_LEVEL_OK, **kwargs):
         self.b_client.log("[bc] %s" % (what), level, **kwargs)
     def close(self):
@@ -566,6 +468,7 @@ class build_container(object):
         if not cur_node in self.__touched_objects:
             self.__touched_objects.append(cur_node)
         cur_node.add_config(self.cur_conf.pk)
+        f_obj.set_config(self)
         return cur_node.content_node
     def add_dir_object(self, don, **kwargs):
         return self._add_dir_object(dir_object(don, config=self, **kwargs))
@@ -574,6 +477,7 @@ class build_container(object):
         if not cur_node in self.__touched_objects:
             self.__touched_objects.append(cur_node)
         cur_node.add_config(self.cur_conf.pk)
+        d_obj.set_config(self)
         return cur_node.content_node
     def add_delete_object(self, don, **kwargs):
         return self._add_delete_object(delete_object(don, config=self, **kwargs))
@@ -589,6 +493,7 @@ class build_container(object):
         cur_node = self.g_tree.get_node(l_obj.dest, l_obj)
         if not cur_node in self.__touched_links:
             self.__touched_links.append(cur_node)
+        l_obj.set_config(self)
         cur_node.add_config(self.cur_conf.pk)
         return cur_node.content_node
     def process_scripts(self, conf_pk):
@@ -607,6 +512,7 @@ class build_container(object):
             logging_tools.get_plural("script", len([cur_scr for cur_scr in cur_conf.config_script_set.all() if cur_scr.enabled])),
             logging_tools.get_plural("local variable", len(local_vars.keys()))))
         for cur_script in [cur_scr for cur_scr in cur_conf.config_script_set.all() if cur_scr.enabled]:
+            self.init_uid_gid()
             lines = cur_script.value.split("\n")
             self.log(" - scriptname '%s' (pri %d) has %s" % (
                 cur_script.name,
@@ -658,7 +564,8 @@ class build_container(object):
                         "do_routes"       : do_routes,
                         "do_fstab"        : do_fstab,
                         "do_uuid"         : do_uuid,
-                        "partition_setup" : partition_setup})
+                        "partition_setup" : partition_setup,
+                        })
                 except:
                     exc_info = process_tools.exception_info()
                     conf_dict["called"].setdefault(False, []).append((cur_conf.pk, [line for line in exc_info.log_lines]))
@@ -721,229 +628,6 @@ class build_container(object):
             self.log("*** err: %s" % (log_line), logging_tools.LOG_LEVEL_ERROR)
             if kwargs.get("register_error", False):
                 self.log(kwargs.get("pre_str", "stderr"), logging_tools.LOG_LEVEL_ERROR, register=True)
-
-# deprecated
-class new_config(object):
-    def __init__(self, db_rec, c_req): # name, idx, pri, descr, identifier, node_name, log_queue, local_conf):
-        self.is_pseudo = False
-        self.__db_rec = db_rec
-        self.__c_req = c_req
-        self.local_conf = db_rec["device"] == c_req["device_idx"]
-        self.__allowed_var_types = ["int", "str", "blob", "script"]
-        self.var_dict, self.var_types, self.script_dict = ({},
-                                                           dict([(x, []) for x in self.__allowed_var_types]),
-                                                           {})
-        self.all_scripts = []
-        self.set_uid(0)
-        self.set_gid(0)
-        self.set_file_mode("0644")
-        self.set_dir_mode("0755")
-    def log(self, what, level=logging_tools.LOG_LEVEL_OK):
-        self.__c_req.log(what, level)
-    def add_variable(self, var_type, var):
-        if var_type in self.__allowed_var_types:
-            self.var_dict[var["name"].lower()] = var
-            self.var_types[var_type].append(var["name"].lower())
-            if var_type == "script":
-                self.script_dict.setdefault(var["priority"], []).append(var["name"].lower())
-                self.all_scripts.append(var["name"].lower())
-            added = True
-        else:
-            added = False
-        return added
-    def show_variables(self):
-        self.var_dict["IDENTIFIER".lower()] = {"name"   : "identifier",
-                                               "descr"  : "internal_variable",
-                                               "config" : self.__db_rec["new_config_idx"],
-                                               "value"  : self.get_name()}
-        self.var_types["str"].append("IDENTIFIER".lower())
-        self.log(" - %s config %-20s (priority %4d): %s" % (self.local_conf and "(l)" or "(g)",
-                                                            self.get_name(),
-                                                            self.get_pri(),
-                                                            ", ".join([logging_tools.get_plural(var_type, len(self.var_types[var_type])) for var_type in self.__allowed_var_types])))
-        if self.__c_req.get_loc_config()["VERBOSE"]:
-            for var_type in self.__allowed_var_types:
-                for name in self.var_types[var_type]:
-                    if var_type == "str":
-                        val_str = "'%s'" % (str(self.var_dict[name]["value"]))
-                    elif var_type == "int":
-                        val_str = "%d" % (self.var_dict[name]["value"])
-                    elif var_type == "blob":
-                        val_str = "len %s" % (logging_tools.get_plural("byte", len(self.var_dict[name]["value"])))
-                    else:
-                        val_str = "pri %d with %s" % (self.var_dict[name]["priority"], logging_tools.get_plural("line", len(self.var_dict[name]["value"].split("\n"))))
-                    self.log("    %8s %-24s: %s" % (var_type, name, val_str))
-    def __del__(self):
-        pass
-# #    def get_config_request(self):
-# #        return self.__c_req
-# #    def set_uid(self, uid):
-# #        self.uid = uid
-# #    def set_gid(self, gid):
-# #        self.gid = gid
-# #    def get_uid(self):
-# #        return self.uid
-# #    def get_gid(self):
-# #        return self.gid
-# #    def set_file_mode(self, mode):
-# #        self.file_mode = mode
-# #    def get_file_mode(self):
-# #        return self.file_mode
-# #    def set_dir_mode(self, mode):
-# #        self.dir_mode = mode
-# #    def get_dir_mode(self):
-# #        return self.dir_mode
-# #    def get_node_name(self):
-# #        return self.__c_req["name"]
-# #    def get_pri(self):
-# #        return self.__db_rec["priority"]
-# #    def get_identifier(self):
-# #        return self.__db_rec["identifier"]
-# #    def get_name(self):
-# #        return self.__db_rec["name"]
-# #    def add_dir_object(self, don):
-# #        if not self.__c_req.conf_dict.has_key(don):
-# #            self.__c_req.conf_dict[don] = dir_object(don)
-# #            self.__c_req.conf_dict[don].set_config(self)
-# #        if don not in self.__touched_objects:
-# #            self.__touched_objects.append(don)
-# #        return self.__c_req.conf_dict[don]
-# #    def add_delete_object(self, eon):
-# #        if not self.__c_req.erase_dict.has_key(eon):
-# #            self.__c_req.erase_dict[eon] = delete_object(eon)
-# #            self.__c_req.erase_dict[eon].set_config(self)
-# #        return self.__c_req.erase_dict[eon]
-# #    def add_copy_object(self, con, source):
-# #        if not self.__c_req.conf_dict.has_key(con):
-# #            self.__c_req.conf_dict[con] = copy_object(con)
-# #            self.__c_req.conf_dict[con].set_config(self)
-# #            self.__c_req.conf_dict[con].set_source(source)
-# #        if con not in self.__touched_objects:
-# #            self.__touched_objects.append(con)
-# #        return self.__c_req.conf_dict[con]
-# #    def add_file_object(self, fon, **kwargs):
-# #        if not self.__c_req.conf_dict.has_key(fon):
-# #            self.__c_req.conf_dict[fon] = file_object(fon, **kwargs)
-# #            self.__c_req.conf_dict[fon].set_config(self)
-# #        if fon not in self.__touched_objects:
-# #            self.__touched_objects.append(fon)
-# #        return self.__c_req.conf_dict[fon]
-# #    def add_link_object(self, lon, source):
-# #        if not self.__c_req.link_dict.has_key(lon):
-# #            self.__c_req.link_dict[lon] = link_object(lon)
-# #            self.__c_req.link_dict[lon].set_config(self)
-# #            self.__c_req.link_dict[lon].set_source(source)
-# #        if lon not in self.__touched_links:
-# #            self.__touched_links.append(lon)
-# #        return self.__c_req.link_dict[lon]
-    def del_config(self, cn):
-        if self.__c_req.conf_dict.has_key(cn):
-            del self.__c_req.conf_dict[cn]
-# #    def process_scripts(self, dev_dict, dc):
-# #        self.dev_dict = dev_dict
-# #        self.__dc = dc
-# #        self.log("processing script(s) for config %s" % (self.get_name()))
-# #        for pri in sorted(self.script_dict.keys()):
-# #            for script in [self.var_dict[s_name] for s_name in self.script_dict[pri]]:
-# #                lines = script["value"].split("\n")
-# #                if script["enabled"]:
-# #                    self.log(" - scriptname %s (pri %d, %s)" % (script["name"], pri, logging_tools.get_plural("line", len(lines))))
-# #                    #print "***", script["name"], script["value"].replace("\r", "")
-# #                    start_time = time.time()
-# #                    try:
-# #                        code_obj = compile(script["value"].replace("\r\n", "\n")+"\n", "<script %s>" % (script["name"]), "exec")
-# #                    except:
-# #                        exc_info = process_tools.exception_info()
-# #                        self.log("An Error occured during compile() after %s:" % (logging_tools.get_diff_time_str(time.time() - start_time)),
-# #                                 logging_tools.LOG_LEVEL_ERROR)
-# #                        for line in exc_info.log_lines:
-# #                            self.log(" *** %s" % (line), logging_tools.LOG_LEVEL_ERROR)
-# #                        self.__c_req.register_config_error("error during script compile of '%s'" % (self.get_name()))
-# #                    else:
-# #                        compile_time = time.time() - start_time
-# #                        local_vars = sorted([v0 for v0 in self.var_dict.keys() if v0 not in self.all_scripts])
-# #                        self.log(" - %s: %s" % (logging_tools.get_plural("local variable", len(local_vars)),
-# #                                                ", ".join(local_vars)))
-# #                        # add local vars
-# #                        for var_name in local_vars:
-# #                            dev_dict[var_name] = self.var_dict[var_name]["value"]
-# #                        start_time = time.time()
-# #                        stdout_c, stderr_c = (dummy_container(), dummy_container())
-# #                        old_stdout, old_stderr = (sys.stdout, sys.stderr)
-# #                        sys.stdout, sys.stderr = (stdout_c  , stderr_c  )
-# #                        self.__touched_objects, self.__touched_links, self.__deleted_files = ([], [], [])
-# #                        try:
-# #                            ret_code = eval(code_obj, {}, {"dev_dict"        : dev_dict,
-# #                                                           "config"          : self,
-# #                                                           "dir_object"      : dir_object,
-# #                                                           "delete_object"   : delete_object,
-# #                                                           "copy_object"     : copy_object,
-# #                                                           "link_object"     : link_object,
-# #                                                           "file_object"     : file_object,
-# #                                                           "do_ssh"          : do_ssh,
-# #                                                           "do_etc_hosts"    : do_etc_hosts,
-# #                                                           "do_hosts_equiv"  : do_hosts_equiv,
-# #                                                           "do_nets"         : do_nets,
-# #                                                           "do_routes"       : do_routes,
-# #                                                           "do_fstab"        : do_fstab,
-# #                                                           "partition_setup" : partition_setup})
-# #                        except:
-# #                            sys.stdout, sys.stderr = (old_stdout, old_stderr)
-# #                            # error call
-# #                            dev_dict["called"][self.get_name()] = 0
-# #                            exc_info = process_tools.exception_info()
-# #                            self.log("An Error occured during eval() after %s:" % (logging_tools.get_diff_time_str(time.time() - start_time)),
-# #                                     logging_tools.LOG_LEVEL_ERROR)
-# #                            for line in exc_info.log_lines:
-# #                                self.log(" *** %s" % (line), logging_tools.LOG_LEVEL_ERROR)
-# #                            sql_str, sql_tuple = ("UPDATE config_script SET error_text=%s WHERE config_script_idx=%s", ("\n".join(exc_info.log_lines), script["config_script_idx"]))
-# #                            self.__dc.execute(sql_str, sql_tuple)
-# #                            self.__c_req.register_config_error("error during script eval of '%s'" % (self.get_name()))
-# #                            if self.__touched_objects:
-# #                                self.log("%s touched : %s" % (logging_tools.get_plural("object", len(self.__touched_objects)),
-# #                                                              ", ".join(self.__touched_objects)))
-# #                                for to in self.__touched_objects:
-# #                                    self.__c_req.conf_dict[to].set_error_flag(1)
-# #                            if self.__touched_links:
-# #                                self.log("%s touched : %s" % (logging_tools.get_plural("link", len(self.__touched_links)),
-# #                                                              ", ".join(self.__touched_links)))
-# #                                for tl in self.__touched_links:
-# #                                    self.__c_req.link_dict[tl].set_error_flag(1)
-# #                            else:
-# #                                self.log("no objects touched")
-# #                            if self.__deleted_files:
-# #                                self.log("%s deleted : %s" % (logging_tools.get_plural("delete", len(self.__deleted_files)),
-# #                                                              ", ".join(self.__deleted_files)))
-# #                                for tl in self.__touched_links:
-# #                                    self.__c_req.erase_dict[tl].set_error_flag(1)
-# #                            else:
-# #                                self.log("no objects deleted")
-# #                        else:
-# #                            sys.stdout, sys.stderr = (old_stdout, old_stderr)
-# #                            # call successfull
-# #                            dev_dict["called"][self.get_name()] = 1
-# #                            if ret_code == None:
-# #                                ret_code = 0
-# #                            self.log("  exited after %s (%s compile time) with return code %d" % (logging_tools.get_diff_time_str(time.time() - start_time),
-# #                                                                                                  logging_tools.get_diff_time_str(compile_time),
-# #                                                                                                  ret_code))
-# #                            sql_str = "UPDATE config_script SET error_text='' WHERE config_script_idx=%d" % (script["config_script_idx"])
-# #                            self.__dc.execute(sql_str)
-# #                        # delete local vars
-# #                        for var_name in local_vars:
-# #                            del dev_dict[var_name]
-# #                        for log_line in [x.rstrip() for x in stdout_c.get_content().split("\n")]:
-# #                            if log_line:
-# #                                self.log("out: %s" % (log_line))
-# #                        for log_line in [x.rstrip() for x in stderr_c.get_content().split("\n")]:
-# #                            if log_line:
-# #                                self.log("*** err: %s" % (log_line), logging_tools.LOG_LEVEL_ERROR)
-# #                                self.__c_req.register_config_error("%s something received on stderr" % (self.get_name()))
-# #                        code_obj = None
-# #                else:
-# #                    self.log(" - scriptname %s (pri %d, %s) is disabled, skipping" % (script["name"], pri, logging_tools.get_plural("line", len(lines))))
-# #        del self.dev_dict
-# #        del self.__dc
 
 def do_uuid(conf):
     conf_dict = conf.conf_dict
@@ -1616,11 +1300,19 @@ class build_process(threading_tools.process_obj):
                     else:
                         cur_c.log("  %20s: not found" % (server_type))
             new_img = b_dev.new_image
-            conf_dict["system"] = {
-                "vendor"  : new_img.sys_vendor,
-                "version" : new_img.sys_version,
-                "release" : new_img.sys_release,
-            }
+            if new_img:
+                conf_dict["system"] = {
+                    "vendor"  : new_img.sys_vendor,
+                    "version" : new_img.sys_version,
+                    "release" : new_img.sys_release,
+                }
+            else:
+                self.log("no image defined, using defaults")
+                conf_dict["system"] = {
+                    "vendor"  : "suse",
+                    "version" : 12,
+                    "release" : 3,
+                    }
             conf_dict["device"] = b_dev
             conf_dict["net"] = act_prod_net
             conf_dict["host"] = b_dev.name
@@ -1699,7 +1391,7 @@ class build_process(threading_tools.process_obj):
                     cause))
             # create config
             config_obj = internal_object("CONFIG_VARS")
-            config_obj.add_config("config_vars")
+            # config_obj.add_config("config_vars")
             config_obj += pretty_print("", conf_dict, 0)
             # dict: which configg was called (sucessfully)
             conf_dict["called"] = {}
