@@ -1304,7 +1304,7 @@ def main():
     )
 
     process_tools.renice()
-    process_tools.fix_directories(global_config["USER"], global_config["GROUP"], ["/var/run/rrd-server"])
+    process_tools.fix_directories(global_config["USER"], global_config["GROUP"], ["/var/run/rrd-grapher"])
     global_config.set_uid_gid(global_config["USER"], global_config["GROUP"])
     process_tools.change_user_group(global_config["USER"], global_config["GROUP"], global_config["GROUPS"], global_config=global_config)
     if not global_config["DEBUG"]:
