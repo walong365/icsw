@@ -173,10 +173,17 @@ class save_layout_state(View):
                         user_vars[key].value = value
                         user_vars[key].save()
                 else:
-                    user_vars[key] = user_variable.objects.create(
-                        user=request.user,
-                        name=key,
-                        value=value)
+                    # try to get var from DB
+                    try:
+                        user_vars[key] = user_variable.objects.get(Q(name=key) & Q(user=request.user))
+                    except user_variables.DoesNotExist:
+                        user_vars[key] = user_variable.objects.create(
+                            user=request.user,
+                            name=key,
+                            value=value)
+                    else:
+                        user_vars[key].value = value
+                        user_vars[key].save()
         update_session_object(request)
         request.session.save()
 

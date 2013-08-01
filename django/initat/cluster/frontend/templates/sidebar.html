@@ -202,7 +202,7 @@ class sidebar_tree
                             url  : "{% url 'device:add_selection' %}"
                             data :
                                 "key"    : dtnode.data.key
-                                "add"    : if dtnode.isSelected() then  else 0
+                                "add"    : if dtnode.isSelected() then 1 else 0
                                 "double" : 1
             onClick : (dtnode, event) =>
                 if !@ADS_RUNNING

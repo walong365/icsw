@@ -32,14 +32,14 @@ from initat.cluster.backbone.models import device_group, device, \
 
 logger = logging.getLogger("cluster.base")
 
-HIDDEN_FIELDS = set(["password",])
+HIDDEN_FIELDS = set(["password", ])
 
 class change_xml_entry(View):
     @method_decorator(login_required)
     @method_decorator(xml_wrapper)
     def post(self, request):
         _post = request.POST
-        #pprint.pprint(_post)
+        # pprint.pprint(_post)
         # ignore no-operation runs
         ignore_nop = True if int(_post.get("ignore_nop", "0")) else False
         try:
@@ -325,9 +325,9 @@ class get_gauge_info(View):
                     value="%d" % (gauge_dv.val_int),
                 )
             )
-        #gauge_info.append(E.gauge_element("test", value="40"))
+        # gauge_info.append(E.gauge_element("test", value="40"))
         request.xml_response["response"] = gauge_info
-    
+
 class delete_object(View):
     @method_decorator(login_required)
     @method_decorator(xml_wrapper)
@@ -357,7 +357,7 @@ class delete_object(View):
                     min_ref = 1
             num_ref = get_related_models(del_obj)
             if num_ref > min_ref and not force_delete:
-                #pprint.pprint(get_related_models(del_obj, detail=True))
+                # pprint.pprint(get_related_models(del_obj, detail=True))
                 request.xml_response.error(
                     "cannot delete %s '%s': %s" % (
                         del_obj._meta.object_name,
@@ -385,7 +385,7 @@ class get_object(View):
             request.xml_response.error("object with type '%s' not found" % (key_type), logger)
         else:
             request.xml_response["result"] = mod_obj.objects.get(Q(pk=key_pk)).get_xml(**arg_dict)
-    
+
 class get_category_tree(View):
     @method_decorator(login_required)
     def get(self, request):
@@ -431,7 +431,7 @@ class delete_category(View):
             request.xml_response.error(
                 "category '%s' still referenced by %s" % (
                     unicode(cur_cat),
-                    logging_tools.get_plural("object", num_ref)), 
+                    logging_tools.get_plural("object", num_ref)),
                 logger)
         elif not cur_cat.depth:
             request.xml_response.error(
@@ -469,9 +469,9 @@ class create_category(View):
             else:
                 try:
                     new_cat = full_tree.add_category(cur_form.cleaned_data["full_name"])
-                    #print "**", cur_form.cleaned_data
+                    # print "**", cur_form.cleaned_data
                     # copy from cleaned_data
-                    for key in ["comment",]:
+                    for key in ["comment", ]:
                         setattr(new_cat, key, cur_form.cleaned_data[key])
                     new_cat.save()
                 except:
@@ -486,7 +486,7 @@ class create_category(View):
         else:
             line = ", ".join(cur_form.errors.as_text().split("\n"))
             request.xml_response.error(line, logger)
-    
+
 class move_category(View):
     @method_decorator(login_required)
     @method_decorator(xml_wrapper)

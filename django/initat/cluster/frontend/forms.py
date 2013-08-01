@@ -14,7 +14,7 @@ from crispy_forms.layout import Submit, Layout, Field, ButtonHolder, Button, Fie
 from crispy_forms.bootstrap import FormActions
 from django.core.urlresolvers import reverse
 from initat.cluster.backbone.models import domain_tree_node, device, category, mon_check_command, mon_service_templ, \
-     domain_name_tree, user, group, device_group
+     domain_name_tree, user, group, device_group, home_export_list, device_config
 #import PAM
 
 class authentication_form(Form):
@@ -271,6 +271,7 @@ class group_detail_form(ModelForm):
                     "Basic data",
                     Field("groupname"),
                     Field("gid"),
+                    Field("homestart"),
                     ButtonHolder(
                         Field("active"),
                         ),
@@ -294,11 +295,21 @@ class group_detail_form(ModelForm):
         Field("allowed_device_groups"),
         Field("permissions"),
     )
+    homestart = CharField(widget=TextInput())
     class Meta:
         model = group
-        fields = ["groupname", "gid", "active",
+        fields = ["groupname", "gid", "active", "homestart",
                   "title", "email", "pager", "tel", "comment",
                   "allowed_device_groups", "permissions"]
+
+class export_choice_field(ModelChoiceField):
+    def __init__(self, *args, **kwargs):
+        super(export_choice_field, self).__init__(self)
+        self.hel = home_export_list()
+        self.queryset = self.hel
+        print self.queryset
+    def label_from_instance(self, obj):
+        return self.hel.exp_dict[obj.pk]["info"]
     
 class user_detail_form(ModelForm):
     permissions = ModelMultipleChoiceField(
@@ -342,14 +353,18 @@ class user_detail_form(ModelForm):
                 css_class="inlineLabels col last",
             ),
         ),
+        Field("export"),
         Field("allowed_device_groups"),
         Field("secondary_groups"),
         Field("permissions"),
     )
+    export = export_choice_field(device_config.objects.none())
+    def __init__(self, *args, **kwargs):
+        super(user_detail_form, self).__init__(*args, **kwargs)
     class Meta:
         model = user
         fields = ["login", "uid", "shell", "first_name", "last_name", "active",
                   "title", "email", "pager", "tel", "comment", "is_superuser",
                   "allowed_device_groups", "secondary_groups", "permissions",
-                  "db_is_auth_for_password"]
+                  "db_is_auth_for_password", "export"]
     
