@@ -423,9 +423,9 @@ class ping_command(hm_classes.hm_command):
     info_str = "ping command"
     def __init__(self, name):
         hm_classes.hm_command.__init__(self, name, positional_arguments=True)
-        self.ping_match = re.compile("^(?P<rta>\d+),(?P<loss>\d+)%$")
-        self.parser.add_argument("-w", dest="warn", type=str)
-        self.parser.add_argument("-c", dest="crit", type=str)
+        self.ping_match = re.compile("^(?P<rta>\d+),(?P<loss>\d+)%{0,1}$")
+        self.parser.add_argument("-w", dest="warn", type=str, help="warning level, format is <RTA in ms>,<LOSS in %%>%%")
+        self.parser.add_argument("-c", dest="crit", type=str, help="critical level, format is <RTA in ms>,<LOSS in %%>%%")
     def __call__(self, srv_com, cur_ns):
         args = cur_ns.arguments
         if len(args) == 3:
