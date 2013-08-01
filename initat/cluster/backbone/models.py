@@ -3613,6 +3613,7 @@ class user_manager(models.Manager):
         return new_admin
 
 class home_export_list(object):
+    """ build home_export_list (dict) from DB, used in forms.py and ldap_modules.py """
     def __init__(self):
         exp_entries = device_config.objects.filter(
             Q(config__name__icontains="homedir") &
