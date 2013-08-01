@@ -3612,6 +3612,37 @@ class user_manager(models.Manager):
             is_superuser=True)
         return new_admin
 
+class home_export_list(object):
+    def __init__(self):
+        exp_entries = device_config.objects.filter(
+            Q(config__name__icontains="homedir") &
+            Q(config__name__icontains="export") &
+            Q(device__device_type__identifier="H")).prefetch_related("config__config_str_set").select_related("device")
+        home_exp_dict = {}
+        for entry in exp_entries:
+            dev_name, act_pk = (entry.device.name,
+                                entry.pk)
+            home_exp_dict[act_pk] = {
+                    "key"          : act_pk,
+                    "entry"        : entry,
+                    "name"         : dev_name,
+                    "homeexport"   : "",
+                    "node_postfix" : "",
+                    "options"      : "-soft"}
+            for c_str in entry.config.config_str_set.all():
+                if c_str.name in home_exp_dict[act_pk]:
+                    home_exp_dict[act_pk][c_str.name] = c_str.value
+        # remove invalid exports (with no homeexport-entry)
+        invalid_home_keys = [key for key, value in home_exp_dict.iteritems() if not value["homeexport"]]
+        for ihk in invalid_home_keys:
+            del home_exp_dict[ihk]
+        for key, value in home_exp_dict.iteritems():
+            value["info"] = "%s on %s" % (value["homeexport"], value["name"])
+        self.exp_dict = home_exp_dict
+    def all(self):
+        for pk in [s_pk for s_info, s_pk in sorted([(value["info"], key) for key, value in self.exp_dict.iteritems()])]:
+            yield self.exp_dict[pk]["entry"]
+
 class user(models.Model):
     objects = user_manager()
     USERNAME_FIELD = "login"
@@ -3623,9 +3654,7 @@ class user(models.Model):
     group = models.ForeignKey("group")
     aliases = models.TextField(blank=True, null=True)
     export = models.ForeignKey("device_config", null=True, related_name="export")
-    export_scr = models.ForeignKey("device_config", null=True, related_name="export_scr")
     home = models.TextField(blank=True, null=True)
-    scratch = models.TextField(blank=True, null=True)
     shell = models.CharField(max_length=765, blank=True, default="/bin/bash")
     # SHA encrypted
     password = models.CharField(max_length=48, blank=True)
@@ -3647,7 +3676,11 @@ class user(models.Model):
     last_login = models.DateTimeField(null=True)
     permissions = models.ManyToManyField(Permission, related_name="db_user_permissions")
     is_superuser = models.BooleanField(default=False)
-    db_is_auth_for_password = models.BooleanField(default=True)
+    db_is_auth_for_password = models.BooleanField(default=False)
+    def __setattr__(self, key, value):
+        if key == "export" and type(value) in [str, unicode]:
+            value = None
+        super(user, self).__setattr__(key, value)
     def is_authenticated(self):
         return True
     def has_perm(self, perm, obj=None):
@@ -3773,7 +3806,6 @@ class group(models.Model):
     groupname = models.CharField(db_column="ggroupname", unique=True, max_length=48, blank=False)
     gid = models.IntegerField(unique=True)
     homestart = models.TextField(blank=True)
-    scratchstart = models.TextField(blank=True)
     group_comment = models.CharField(max_length=765, blank=True)
     first_name = models.CharField(max_length=765, blank=True)
     last_name = models.CharField(max_length=765, blank=True)
