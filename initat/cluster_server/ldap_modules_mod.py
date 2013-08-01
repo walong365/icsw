@@ -3,7 +3,7 @@
 # Copyright (C) 2007,2008,2009,2010,2012,2013 Andreas Lang-Nevyjel
 #
 # Send feedback to: <lang-nevyjel@init.at>
-# 
+#
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License Version 2 as
 # published by the Free Software Foundation.
@@ -19,21 +19,22 @@
 #
 """ tools for modifying LDAP servers """
 
-import sys
-import cs_base_class
-import logging_tools
-import os
-import cs_tools
-import time
 import commands
-import pprint
-import process_tools
-import crypt
+import cs_base_class
+import cs_tools
 import ldap
 import ldap.modlist
+import logging_tools
+import os
+import pprint
+import process_tools
 import server_command
+import sys
+import time
+import crypt
 from django.db.models import Q
-from initat.cluster.backbone.models import user, group, device_config, device, config, config_str
+from initat.cluster.backbone.models import user, group, device_config, device, config, \
+    config_str, home_export_list
 from initat.cluster_server.config import global_config
 
 """ possible smb.conf:
@@ -103,9 +104,9 @@ class init_ldap_config(cs_base_class.server_com):
     def _call(self, cur_inst):
         # fetch configs
         par_dict = dict([(cur_var.name, cur_var.value) for cur_var in config_str.objects.filter(Q(config__name="ldap_server"))])
-        #self.dc.execute("SELECT cs.value, cs.name FROM new_config c INNER JOIN config_str cs INNER JOIN device_config dc INNER JOIN device d INNER JOIN device_group dg LEFT JOIN " + \
-                               #"device d2 ON d2.device_idx=dg.device WHERE d.device_group=dg.device_group_idx AND (dc.device=d2.device_idx OR dc.device=d.device_idx) AND dc.new_config=c.new_config_idx AND c.name='ldap_server' AND cs.new_config=c.new_config_idx")
-        #par_dict = dict([(x["name"], x["value"]) for x in self.dc.fetchall()])
+        # self.dc.execute("SELECT cs.value, cs.name FROM new_config c INNER JOIN config_str cs INNER JOIN device_config dc INNER JOIN device d INNER JOIN device_group dg LEFT JOIN " + \
+                               # "device d2 ON d2.device_idx=dg.device WHERE d.device_group=dg.device_group_idx AND (dc.device=d2.device_idx OR dc.device=d.device_idx) AND dc.new_config=c.new_config_idx AND c.name='ldap_server' AND cs.new_config=c.new_config_idx")
+        # par_dict = dict([(x["name"], x["value"]) for x in self.dc.fetchall()])
         errors = []
         needed_keys = set(["base_dn", "admin_cn", "root_passwd"])
         missed_keys = needed_keys - set(par_dict.keys())
@@ -127,13 +128,17 @@ class init_ldap_config(cs_base_class.server_com):
             else:
                 try:
                     ld_write = ldap.initialize("ldap://localhost")
-                    ld_write.simple_bind_s("cn=%s,%s" % (par_dict["admin_cn"],
-                                                         par_dict["base_dn"]),
-                                           par_dict["root_passwd"])
+                    ld_write.simple_bind_s(
+                        "cn=%s,%s" % (
+                            par_dict["admin_cn"],
+                            par_dict["base_dn"]),
+                        par_dict["root_passwd"]
+                    )
                 except ldap.LDAPError:
                     ldap_err_str = self._get_ldap_err_str()
-                    self.log("cannot initialize write_cursor: %s" % (ldap_err_str),
-                                    logging_tools.LOG_LEVEL_ERROR)
+                    self.log(
+                        "cannot initialize write_cursor: %s" % (ldap_err_str),
+                        logging_tools.LOG_LEVEL_ERROR)
                     errors.append(ldap_err_str)
                     ld_write = None
                     ld_read.unbind_s()
@@ -204,7 +209,7 @@ class init_ldap_config(cs_base_class.server_com):
                         ok, err_str = self._add_entry(ld_write,
                                                       samba_dn,
                                                       {"objectClass" : ["sambaDomain"],
-                                                       #"structuralObjectClass" : "sambaDomain",
+                                                       # "structuralObjectClass" : "sambaDomain",
                                                        "sambaDomainName"               : par_dict["sambadomain"],
                                                        "sambaSID"                      : local_sid,
                                                        "sambaAlgorithmicRidBase"       : "1000",
@@ -240,6 +245,8 @@ class sync_ldap_config(cs_base_class.server_com):
     class Meta:
         needed_configs = ["ldap_server"]
     def _add_entry(self, ld, dn, in_dict):
+        if self.dryrun:
+            return True, ""
         for key, value in in_dict.iteritems():
             if type(value) == list:
                 in_dict[key] = [str(sub_val) for sub_val in value]
@@ -251,6 +258,8 @@ class sync_ldap_config(cs_base_class.server_com):
             success, err_str = (True, "")
         return success, err_str
     def _modify_entry(self, ld, dn, change_list):
+        if self.dryrun:
+            return True, ""
         new_list = []
         for val_0, val_1, val_list in change_list:
             if type(val_list) == list:
@@ -264,6 +273,8 @@ class sync_ldap_config(cs_base_class.server_com):
             success, err_str = (True, "")
         return success, err_str
     def _delete_entry(self, ld, dn):
+        if self.dryrun:
+            return True, ""
         try:
             ld.delete_s(dn)
         except ldap.LDAPError:
@@ -278,6 +289,12 @@ class sync_ldap_config(cs_base_class.server_com):
         # fetch configs
         par_dict = dict([(cur_var.name, cur_var.value) for cur_var in config_str.objects.filter(Q(config__name="ldap_server"))])
         errors = []
+        dryrun_flag = "server_key:dryrun"
+        if dryrun_flag in cur_inst.srv_com:
+            self.dryrun = True
+        else:
+            self.dryrun = False
+        cur_inst.log("dryrun flag is '%s'" % (str(self.dryrun)))
         needed_keys = set(["base_dn", "admin_cn", "root_passwd"])
         missed_keys = needed_keys - set(par_dict.keys())
         if len(missed_keys):
@@ -311,25 +328,25 @@ class sync_ldap_config(cs_base_class.server_com):
                 self.log("using LDAP_SCHEMATA_VERSION %d" % (ldap_version))
                 # fetch user / group info
                 all_groups = dict([(cur_g.pk, cur_g) for cur_g in group.objects.all()])
-                #self.dc.execute("SELECT g.* FROM ggroup g")
-                #all_groups = dict([(x["ggroup_idx"], x) for x in self.dc.fetchall()])
+                # self.dc.execute("SELECT g.* FROM ggroup g")
+                # all_groups = dict([(x["ggroup_idx"], x) for x in self.dc.fetchall()])
                 all_users = dict([(cur_u.pk, cur_u) for cur_u in user.objects.all()])
-                #self.dc.execute("SELECT u.* FROM user u")
-                #all_users = dict([(x["user_idx"], x) for x in self.dc.fetchall() if x["ggroup"] in all_groups.keys()])
+                # self.dc.execute("SELECT u.* FROM user u")
+                # all_users = dict([(x["user_idx"], x) for x in self.dc.fetchall() if x["ggroup"] in all_groups.keys()])
                 # not supported right now, FIXME
-                #self.dc.execute("SELECT d.name, udl.user FROM device d, user_device_login udl WHERE udl.device=d.device_idx")
+                # self.dc.execute("SELECT d.name, udl.user FROM device d, user_device_login udl WHERE udl.device=d.device_idx")
                 devlog_dict = {}
-                #for db_rec in self.dc.fetchall():
-                    #devlog_dict.setdefault(db_rec["user"], []).append(db_rec["name"])
+                # for db_rec in self.dc.fetchall():
+                    # devlog_dict.setdefault(db_rec["user"], []).append(db_rec["name"])
                 # secondary groups, FIXME
-                #self.dc.execute("SELECT * FROM user_ggroup")
-                #for db_rec in self.dc.fetchall():
-                    #if all_users.has_key(db_rec["user"]) and all_groups.has_key(db_rec["ggroup"]):
-                        #all_users[db_rec["user"]].setdefault("secondary_groups", []).append(db_rec["ggroup"])
+                # self.dc.execute("SELECT * FROM user_ggroup")
+                # for db_rec in self.dc.fetchall():
+                    # if all_users.has_key(db_rec["user"]) and all_groups.has_key(db_rec["ggroup"]):
+                        # all_users[db_rec["user"]].setdefault("secondary_groups", []).append(db_rec["ggroup"])
                 # luts
                 group_lut = dict([(cur_g.groupname, cur_g.pk) for cur_g in all_groups.itervalues()])
-                user_lut  = dict([(cur_u.login, cur_u.pk) for cur_u in all_users.itervalues()])
-                #user_lut = dict([(x["login"], x["user_idx"]) for x in all_users.itervalues()])
+                user_lut = dict([(cur_u.login, cur_u.pk) for cur_u in all_users.itervalues()])
+                # user_lut = dict([(x["login"], x["user_idx"]) for x in all_users.itervalues()])
                 # get sub_ou
                 if par_dict.has_key("sub_ou"):
                     act_sub_ou = par_dict["sub_ou"]
@@ -351,8 +368,8 @@ class sync_ldap_config(cs_base_class.server_com):
                         g_stuff.groupname,
                         sub_ou_str,
                         par_dict["base_dn"])
-                    primary_users   = [cur_u.login for cur_u in all_users.itervalues() if cur_u.active and cur_u.group_id == g_idx]
-                    secondary_users = [cur_u.login for cur_u in all_users.itervalues() if cur_u.active and False]#g_idx in x.get("secondary_groups", []) and x["login"] not in primary_users]
+                    primary_users = [cur_u.login for cur_u in all_users.itervalues() if cur_u.active and cur_u.group_id == g_idx]
+                    secondary_users = [cur_u.login for cur_u in all_users.itervalues() if cur_u.active and False] # g_idx in x.get("secondary_groups", []) and x["login"] not in primary_users]
                     group_classes = ["posixGroup", "top", "clusterGroup"]
                     g_stuff.attributes = {
                         "objectClass" : group_classes,
@@ -477,7 +494,7 @@ class sync_ldap_config(cs_base_class.server_com):
                         "cn=%s,ou=Group,%s%s" % (group_to_remove,
                                                  sub_ou_str,
                                                  par_dict["base_dn"]))
-                    
+
                     if ok:
                         self.log("deleted group %s" % (group_to_remove))
                     else:
@@ -503,7 +520,7 @@ class sync_ldap_config(cs_base_class.server_com):
                                 user_struct.change_list = ldap.modlist.modifyModlist(
                                     user_struct.orig_attributes,
                                     user_struct.attributes,
-                                    [sub_key for sub_key in user_struct.attributes.keys() if sub_key.startswith("shadow") or sub_key.lower() in (["userpassword"] if ("do_not_sync_password" in par_dict) else [])])
+                                    [sub_key for sub_key in user_struct.attributes.keys() if sub_key.startswith("shadow") or sub_key.lower() in (["userpassword"] if ("do_not_sync_password" in par_dict or not user_struct.db_is_auth_for_password) else [])])
                                 if user_struct.change_list:
                                     # changing user
                                     self.log("changing user %s (content differs)" % (user_name))
@@ -525,7 +542,7 @@ class sync_ldap_config(cs_base_class.server_com):
                 users_to_add = [user_pk for user_pk in user_lut.keys() if user_pk not in users_ok and user_pk not in users_to_change and user_pk not in users_to_remove]
                 for user_to_add in users_to_add:
                     user_struct = all_users[user_lut[user_to_add]]
-                    if user_struct.active and all_groups[user_struct.group_id].active:
+                    if user_struct.active and all_groups[user_struct.group_id].active and all_groups[user_struct.group_id].homestart:
                         ok, err_str = self._add_entry(ld_write,
                                                       user_struct.dn,
                                                       user_struct.attributes)
@@ -536,7 +553,7 @@ class sync_ldap_config(cs_base_class.server_com):
                             self.log("cannot add user %s: %s" % (user_to_add, err_str),
                                      logging_tools.LOG_LEVEL_ERROR)
                     else:
-                        self.log("cannot add user %s: not active" % (user_to_add),
+                        self.log("cannot add user %s: user (or group) active or not homestart defined in group" % (user_to_add),
                                  logging_tools.LOG_LEVEL_WARN)
                 # modify users
                 for user_to_change in users_to_change:
@@ -556,7 +573,7 @@ class sync_ldap_config(cs_base_class.server_com):
                                                      "uid=%s,ou=People,%s%s" % (user_to_remove,
                                                                                 sub_ou_str,
                                                                                 par_dict["base_dn"]))
-                    
+
                     if ok:
                         self.log("deleted user %s" % (user_to_remove))
                     else:
@@ -565,11 +582,8 @@ class sync_ldap_config(cs_base_class.server_com):
                                  logging_tools.LOG_LEVEL_ERROR)
                 # normal exports
                 exp_entries = device_config.objects.filter(
-                    Q(config__name__icontains="export") & 
+                    Q(config__name__icontains="export") &
                     Q(device__device_type__identifier="H")).prefetch_related("config__config_str_set").select_related("device")
-                #self.dc.execute("SELECT d.name, cs.name AS csname, cs.value, cs.new_config FROM device d INNER JOIN new_config c INNER JOIN device_config dc INNER JOIN config_str cs INNER JOIN " + \
-                                       #"device_group dg INNER JOIN device_type dt LEFT JOIN device d2 ON d2.device_idx=dg.device WHERE d.device_type=dt.device_type_idx AND dt.identifier='H' AND d.device_group=dg.device_group_idx " + \
-                                       #"AND cs.new_config=c.new_config_idx AND dc.new_config=c.new_config_idx AND (dc.device=d.device_idx OR dc.device=d2.device_idx) AND (cs.name='export' OR cs.name='import' OR cs.name='options' or cs.name='node_postfix') ORDER BY d.name, cs.config")
                 export_dict = {}
                 ei_dict = {}
                 for entry in exp_entries:
@@ -591,85 +605,54 @@ class sync_ldap_config(cs_base_class.server_com):
                             aeid["import"] = cs_tools.hostname_expand(mach, aeid["import"])
                             export_dict[aeid["import"]] = (aeid["options"], "%s%s:%s" % (mach, aeid["node_postfix"], aeid["export"]))
                 # home-exports
-                exp_entries = device_config.objects.filter(
-                    Q(config__name__icontains="homedir") & 
-                    Q(config__name__icontains="export") &
-                    Q(device__device_type__identifier="H")).prefetch_related("config__config_str_set").select_related("device")
-                #self.dc.execute("SELECT d.name, cs.value, dc.device_config_idx, cs.name AS csname FROM device d, new_config c, device_config dc, config_str cs, device_type dt WHERE d.device_type=dt.device_type_idx AND " + \
-                                       #"dt.identifier='H' AND cs.new_config=c.new_config_idx AND dc.new_config=c.new_config_idx AND dc.device=d.device_idx AND (cs.name='homeexport' OR cs.name='options' OR cs.name='node_postfix') ORDER BY d.name")
-                home_exp_dict = {}
-                for entry in exp_entries:
-                    dev_name, act_pk = (entry.device.name,
-                                        entry.pk)
-                    home_exp_dict.setdefault(
-                        act_pk, {
-                            "name"         : dev_name,
-                            "homeexport"   : "",
-                            "node_postfix" : "",
-                            "options"      : "-soft"})
-                    for c_str in entry.config.config_str_set.all():
-                        if c_str.name in home_exp_dict[act_pk]:
-                            home_exp_dict[act_pk][c_str.name] = c_str.value
-                # remove invalid exports (with no homeexport-entry)
-                invalid_home_keys = [key for key, value in home_exp_dict.iteritems() if not value["homeexport"]]
-                for ihk in invalid_home_keys:
-                    del home_exp_dict[ihk]
-                # scratch-exports, not used right now, FIXME
-                #self.dc.execute("SELECT d.name, cs.value, dc.device_config_idx, cs.name AS csname FROM device d, new_config c, config_str cs, device_config dc, device_type dt WHERE d.device_type=dt.device_type_idx AND " + \
-                                       #"dt.identifier='H' AND cs.new_config=c.new_config_idx AND dc.new_config=c.new_config_idx AND dc.device=d.device_idx AND (cs.name='scratchexport' OR cs.name='options' OR cs.name='node_postfix') ORDER BY d.name")
-                scratch_exp_dict = {}
-                #for entry in self.dc.fetchall():
-                    #scratch_exp_dict.setdefault(entry["device_config_idx"], {"name"          : entry["name"],
-                                                                             #"options"       : "",
-                                                                             #"node_postfix"  : "",
-                                                                             #"scratchexport" : ""})[entry["csname"]] = entry["value"]
-                # remove invalid exports (with no scratchexport-entry)
-                #invalid_scratch_keys = [x for x in scratch_exp_dict.keys() if not scratch_exp_dict[x]["scratchexport"]]
-                #for isk in invalid_scratch_keys:
-                    #del scratch_exp_dict[isk]
-                for user_stuff in [cur_u for cur_u in all_users.itervalues() if cur_u.active and all_groups[cur_u.group_id].active]:
-                    group_stuff = all_groups[user_stuff.group_id]
-                    if user_stuff.export_id in home_exp_dict.keys():
-                        home_stuff = home_exp_dict[user_stuff.export_id]
-                        export_dict[os.path.normpath(
-                            "%s/%s" % (
-                                group_stuff.homestart,
-                                user_stuff.home or user_stuff.login))] = (
-                                    home_stuff["options"],
-                                    "%s%s:%s/%s" % (
-                                               home_stuff["name"],
-                                               home_stuff["node_postfix"],
-                                               home_stuff["homeexport"],
-                                               user_stuff.home or user_stuff.login))
-                    #if user_stuff["export_scr"] in scratch_exp_dict.keys():
-                        #scratch_stuff = scratch_exp_dict[user_stuff["export_scr"]]
-                        #export_dict[os.path.normpath("%s/%s" % (group_stuff["scratchstart"], user_stuff["scratch"]))] = (scratch_stuff["options"], "%s%s:%s/%s" % (scratch_stuff["name"], scratch_stuff["node_postfix"], scratch_stuff["scratchexport"], user_stuff["export"]))
-                #pprint.pprint(home_exp_dict)
-                #pprint.pprint(scratch_exp_dict)
+                home_exp_dict = home_export_list().exp_dict
+#                 exp_entries = device_config.objects.filter(
+#                     Q(config__name__icontains="homedir") &
+#                     Q(config__name__icontains="export") &
+#                     Q(device__device_type__identifier="H")).prefetch_related("config__config_str_set").select_related("device")
+#                 for entry in exp_entries:
+#                     dev_name, act_pk = (entry.device.name,
+#                                         entry.pk)
+#                     home_exp_dict.setdefault(
+#                         act_pk, {
+#                             "name"         : dev_name,
+#                             "homeexport"   : "",
+#                             "node_postfix" : "",
+#                             "options"      : "-soft"})
+#                     for c_str in entry.config.config_str_set.all():
+#                         if c_str.name in home_exp_dict[act_pk]:
+#                             home_exp_dict[act_pk][c_str.name] = c_str.value
+#                 # remove invalid exports (with no homeexport-entry)
+#                 invalid_home_keys = [key for key, value in home_exp_dict.iteritems() if not value["homeexport"]]
+#                 for ihk in invalid_home_keys:
+#                     del home_exp_dict[ihk]
                 # now we have all automount-maps in export_dict, form is mountpoint: (options, source)
                 # build mountmaps
                 # SUSE 10.1 mappings
                 if ldap_version > 0:
                     master_object_class = ["top", "nisMap", "clusterAutomount"]
-                    master_map_pfix     = "nisMapName"
-                    mount_info_name     = "nisMapName"
-                    mount_point_name    = "nisMapEntry"
-                    mount_point_class   = ["top", "nisObject", "clusterAutomount"]
+                    master_map_pfix = "nisMapName"
+                    mount_info_name = "nisMapName"
+                    mount_point_name = "nisMapEntry"
+                    mount_point_class = ["top", "nisObject", "clusterAutomount"]
                 # defaults ?
                 else:
                     master_object_class = ["top", "automountMap", "clusterAutomount"]
-                    master_map_pfix     = "ou"
-                    mount_info_name     = "automountInformation"
-                    mount_point_name    = "automountInformation"
-                    mount_point_class   = ["top", "automount", "clusterAutomount"]
+                    master_map_pfix = "ou"
+                    mount_info_name = "automountInformation"
+                    mount_point_name = "automountInformation"
+                    mount_point_class = ["top", "automount", "clusterAutomount"]
                 master_map_dn = "%s=auto.master" % (master_map_pfix)
                 auto_maps = []
                 # remove mount_points which would overwrite '/'
                 error_keys = sorted([key for key in export_dict.keys() if os.path.dirname(key) == "/"])
                 if error_keys:
-                    self.log("found %s: %s; ignoring them" % (logging_tools.get_plural("wrong key", len(error_keys)),
-                                                                     ", ".join(error_keys)),
-                                    logging_tools.LOG_LEVEL_ERROR)
+                    self.log(
+                        "found %s: %s; ignoring them" % (
+                            logging_tools.get_plural("wrong key", len(error_keys)),
+                            ", ".join(error_keys)),
+                        logging_tools.LOG_LEVEL_ERROR
+                    )
                 mount_points = dict([(os.path.dirname(x), 0) for x in export_dict.keys() if x not in error_keys]).keys()
                 if mount_points:
                     map_lut = dict([(k, k.replace("/", "").replace(".", "_")) for k in mount_points])
@@ -680,8 +663,8 @@ class sync_ldap_config(cs_base_class.server_com):
                                       "attrs"    : {"objectClass"   : master_object_class,
                                                     master_map_pfix : ["auto.master"]}})
                     if ldap_version > 0:
-                        ldap_add_list = [("nisMapName", "auto.master")]
-                        ldap_add_list_1 = [("nisMapName", "map_name")]
+                        ldap_add_list = [("nisMapName", ["auto.master"])]
+                        ldap_add_list_1 = [("nisMapName", ["map_name"])]
                     else:
                         ldap_add_list = []
                         ldap_add_list_1 = []
@@ -758,14 +741,14 @@ class sync_ldap_config(cs_base_class.server_com):
                 for map_to_remove in maps_to_remove:
                     ok, err_str = self._delete_entry(ld_write,
                                                      map_to_remove)
-                    
+
                     if ok:
                         self.log("deleted map %s" % (map_to_remove))
                     else:
                         errors.append(err_str)
                         self.log("cannot delete map %s: %s" % (map_to_remove, err_str),
                                         logging_tools.LOG_LEVEL_ERROR)
-                #pprint.pprint(export_dict)
+                # pprint.pprint(export_dict)
                 ld_read.unbind_s()
                 ld_write.unbind_s()
         if errors:

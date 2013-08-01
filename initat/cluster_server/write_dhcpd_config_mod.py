@@ -19,13 +19,13 @@
 #
 """ writes the dhcpd.conf in /etc """
 
-import sys
+import config_tools
 import cs_base_class
+import pprint
 import process_tools
 import os
 import server_command
-import config_tools
-import pprint
+import sys
 from django.db.models import Q
 from initat.cluster.backbone.models import net_ip, \
      network
