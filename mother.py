@@ -4,7 +4,7 @@
 # Copyright (C) 2001,2002,2003,2004,2005,2006,2007,2008,2009,2012,2013 Andreas Lang-Nevyjel, init.at
 #
 # Send feedback to: <lang-nevyjel@init.at>
-# 
+#
 # This file is part of mother
 #
 # This program is free software; you can redistribute it and/or modify
@@ -67,6 +67,11 @@ import initat.mother.command
 import initat.mother.control
 from initat.cluster.backbone.models import network, status
 
+try:
+    from mother_version import VERSION_STRING
+except ImportError:
+    VERSION_STRING = "??.??-??"
+
 SQL_ACCESS = "cluster_full_access"
 
 # definition of device state for
@@ -109,20 +114,20 @@ class all_devices(object):
             else:
                 self.log("Device %s already in internal dictionaries, checking network settings ..." % (name))
                 self.__lut[name].check_network_settings(dc)
-        
+
 class machine(object):
-    #def __init__(self, name, idx, ips={}, log_queue=None):
+    # def __init__(self, name, idx, ips={}, log_queue=None):
     def __init__(self, name, idx, dc, ad_struct):
         # set dicts
         # clear reachable flag
-        #self.set_reachable_flag(False)
+        # self.set_reachable_flag(False)
         # add to global devname_dict
-##        if not ad_struct.has_key(self.name):
-##            ad_struct[self.name] = self
-##            self.log("Added myself (%s) to ad_struct" % (self.name))
-##        # ip dictionary; ip->networktype
+# #        if not ad_struct.has_key(self.name):
+# #            ad_struct[self.name] = self
+# #            self.log("Added myself (%s) to ad_struct" % (self.name))
+# #        # ip dictionary; ip->networktype
         self.ip_dict = {}
-        #self.set_ip_dict(ips)
+        # self.set_ip_dict(ips)
         # actual net [(P)roduction, (M)aintenance, (T)est or (O)ther] / IP-address
         self.__act_net, self.__act_ip = ("?", "?")
         # usefull initial values
@@ -131,13 +136,13 @@ class machine(object):
         # boot netdevice, driver for boot netdevice and options
         self.bootnetdevice_name, self.boot_netdriver, self.ethtool_options, self.boot_netdriver_options = (None, None, 0, "")
         # maintenance ip address (and hex) (also sets the node-flag)
-        #self.set_maint_ip()
+        # self.set_maint_ip()
         # init hwi delay_counter
-        #self.clear_hwi_delay_counter()
-        #self.set_use_count()
-        #self.check_network_settings(dc)
+        # self.clear_hwi_delay_counter()
+        # self.set_use_count()
+        # self.check_network_settings(dc)
         self.set_recv_req_state()
-##        self.set_last_reset_time()
+# #        self.set_last_reset_time()
     def get_community_strings(self, dc):
         dc.execute("SELECT s.* FROM snmp_class s, device d WHERE s.snmp_class_idx=d.snmp_class AND d.device_idx=%d" % (self.device_idx))
         if dc.rowcount:
@@ -150,26 +155,26 @@ class machine(object):
             db_rec["write_community"] = "private"
         return {"read_community"  : db_rec["read_community"],
                 "write_community" : db_rec["write_community"]}
-##    def set_reachable_flag(self, reachable):
-##        self.__reachable = reachable
-##    def get_reachable_flag(self):
-##        return self.__reachable
-##    def get_name(self):
-##        return self.name
-##    def set_use_count(self, val=0):
-##        self.use_count = val
-##        if self.__loc_config["VERBOSE"]:
-##            self.log("Setting use_count to %d" % (self.use_count))
-##    def incr_use_count(self, why, incr=1):
-##        self.use_count += incr
-##        if self.__loc_config["VERBOSE"]:
-##            self.log("incrementing use_count to %d (%s)" % (self.use_count, why))
-##    def decr_use_count(self, why, decr=1):
-##        self.use_count -= decr
-##        if self.__loc_config["VERBOSE"]:
-##            self.log("decrementing use_count to %d (%s)" % (self.use_count, why))
-##    def get_use_count(self):
-##        return self.use_count
+# #    def set_reachable_flag(self, reachable):
+# #        self.__reachable = reachable
+# #    def get_reachable_flag(self):
+# #        return self.__reachable
+# #    def get_name(self):
+# #        return self.name
+# #    def set_use_count(self, val=0):
+# #        self.use_count = val
+# #        if self.__loc_config["VERBOSE"]:
+# #            self.log("Setting use_count to %d" % (self.use_count))
+# #    def incr_use_count(self, why, incr=1):
+# #        self.use_count += incr
+# #        if self.__loc_config["VERBOSE"]:
+# #            self.log("incrementing use_count to %d (%s)" % (self.use_count, why))
+# #    def decr_use_count(self, why, decr=1):
+# #        self.use_count -= decr
+# #        if self.__loc_config["VERBOSE"]:
+# #            self.log("decrementing use_count to %d (%s)" % (self.use_count, why))
+# #    def get_use_count(self):
+# #        return self.use_count
     def device_log_entry(self, user, status, what, sql_queue, log_src_idx):
         sql_str, sql_tuple = mysql_tools.get_device_log_entry_part(self.device_idx, log_src_idx, user, self.__loc_config["LOG_STATUS"][status]["log_status_idx"], what)
         sql_queue.put(("insert_value", ("devicelog", sql_str, sql_tuple)))
@@ -204,7 +209,7 @@ class machine(object):
                         kb_idx, kern_ver, kern_rel = (kb_stuff["kernel_build_idx"],
                                                       kb_stuff["version"],
                                                       kb_stuff["release"])
-                                                               
+
                 else:
                     dc.execute("SELECT kernel_build_idx FROM kernel_build WHERE kernel=%d AND version=%d and `release`=%d" % (kern_idx,
                                                                                                                               kern_ver,
@@ -217,14 +222,14 @@ class machine(object):
             if upd_list:
                 sql_queue.put(("update", ("device", "%s WHERE name=%%s" % (", ".join(["%s=%%s" % (x) for x, y in upd_list])),
                                           tuple([y for x, y in upd_list] + [self.name]))))
-##    def clear_hwi_delay_counter(self):
-##        self.hwi_delay_counter = 0
-##    def incr_hwi_delay_counter(self):
-##        self.hwi_delay_counter += 1
-##    def get_hwi_delay_counter(self):
-##        return self.hwi_delay_counter
-##    def set_log_queue(self, log_queue):
-##        self.log_queue = log_queue
+# #    def clear_hwi_delay_counter(self):
+# #        self.hwi_delay_counter = 0
+# #    def incr_hwi_delay_counter(self):
+# #        self.hwi_delay_counter += 1
+# #    def get_hwi_delay_counter(self):
+# #        return self.hwi_delay_counter
+# #    def set_log_queue(self, log_queue):
+# #        self.log_queue = log_queue
     def log(self, what, lev=logging_tools.LOG_LEVEL_OK, glob=0):
         if self.log_queue:
             if glob == 0 or glob == 2:
@@ -233,44 +238,44 @@ class machine(object):
                 self.log_queue.put(("log", (threading.currentThread().getName(), what, lev)))
         else:
             print "Log for machine %s: %s" % (self.name, what)
-##    def set_lock(self, why):
-##        # locks are mapped to lock-classes (for instance, a device can be locked by a refresh_hwi-lock AND a status-lock
-##        lock_class = self.lock_mapping.get(why, "general")
-##        self.lock[lock_class] = why
-##        if self.__loc_config["VERBOSE"]:
-##            self.log("Setting lock to %s (class %s)" % (str(why), lock_class))
-##        self.incr_use_count("lock %s" % (why))
-##    def init_lock(self):
-##        self.lock_mapping = {"refresh_hwi"        : "hwi_lock",
-##                             "fetch_network_info" : "hwi_lock",
-##                             "resync_config"      : "net_lock",
-##                             "restart_network"    : "net_lock",
-##                             "readdots"           : "readfile_lock",
-##                             "apc_com"            : "apc_lock",
-##                             "apc_dev"            : "apc_lock",
-##                             "apc_dev2"           : "apc_lock"}
-##        if self.__loc_config["VERBOSE"]:
-##            self.log("Init locking-structure")
-##        self.lock = {"general" : None}
-##        for lock_val in self.lock_mapping.values():
-##            self.lock.setdefault(lock_val, None)
-##    def get_lock(self, why):
-##        lock_class = self.lock_mapping.get(why, "general")
-##        return self.lock[lock_class]
-##    def release_lock(self, why):
-##        lock_class = self.lock_mapping.get(why, "general")
-##        if self.lock.has_key(lock_class):
-##            if not self.lock[lock_class]:
-##                self.log("lock-class %s (%s) already released" % (lock_class, str(why)),
-##                         logging_tools.LOG_LEVEL_ERROR)
-##            else:
-##                self.lock[lock_class] = None
-##                if self.__loc_config["VERBOSE"]:
-##                    self.log("Releasing lock (%s, lock_class %s)" % (str(why), lock_class))
-##        else:
-##            self.log("trying to release nonexistent lock-class %s (%s)" % (lock_class, str(why)),
-##                     logging_tools.LOG_LEVEL_ERROR)
-##        self.decr_use_count("lock %s" % (why))
+# #    def set_lock(self, why):
+# #        # locks are mapped to lock-classes (for instance, a device can be locked by a refresh_hwi-lock AND a status-lock
+# #        lock_class = self.lock_mapping.get(why, "general")
+# #        self.lock[lock_class] = why
+# #        if self.__loc_config["VERBOSE"]:
+# #            self.log("Setting lock to %s (class %s)" % (str(why), lock_class))
+# #        self.incr_use_count("lock %s" % (why))
+# #    def init_lock(self):
+# #        self.lock_mapping = {"refresh_hwi"        : "hwi_lock",
+# #                             "fetch_network_info" : "hwi_lock",
+# #                             "resync_config"      : "net_lock",
+# #                             "restart_network"    : "net_lock",
+# #                             "readdots"           : "readfile_lock",
+# #                             "apc_com"            : "apc_lock",
+# #                             "apc_dev"            : "apc_lock",
+# #                             "apc_dev2"           : "apc_lock"}
+# #        if self.__loc_config["VERBOSE"]:
+# #            self.log("Init locking-structure")
+# #        self.lock = {"general" : None}
+# #        for lock_val in self.lock_mapping.values():
+# #            self.lock.setdefault(lock_val, None)
+# #    def get_lock(self, why):
+# #        lock_class = self.lock_mapping.get(why, "general")
+# #        return self.lock[lock_class]
+# #    def release_lock(self, why):
+# #        lock_class = self.lock_mapping.get(why, "general")
+# #        if self.lock.has_key(lock_class):
+# #            if not self.lock[lock_class]:
+# #                self.log("lock-class %s (%s) already released" % (lock_class, str(why)),
+# #                         logging_tools.LOG_LEVEL_ERROR)
+# #            else:
+# #                self.lock[lock_class] = None
+# #                if self.__loc_config["VERBOSE"]:
+# #                    self.log("Releasing lock (%s, lock_class %s)" % (str(why), lock_class))
+# #        else:
+# #            self.log("trying to release nonexistent lock-class %s (%s)" % (lock_class, str(why)),
+# #                     logging_tools.LOG_LEVEL_ERROR)
+# #        self.decr_use_count("lock %s" % (why))
     def check_network_settings(self, dc):
         sql_str = "SELECT d.bootnetdevice, d.bootserver, d.reachable_via_bootserver, nd.macadr, nd.devname, nd.ethtool_options, nd.driver, nd.driver_options, ip.ip, ip.network, nt.identifier, nw.postfix, nw.identifier as netident, nw.network_type, nd.netdevice_idx FROM " + \
                   "device d, netip ip, netdevice nd, network nw, network_type nt WHERE " + \
@@ -285,7 +290,7 @@ class machine(object):
             self.set_reachable_flag(net_rec["reachable_via_bootserver"] and True or False)
             if net_rec["bootnetdevice"] == net_rec["netdevice_idx"]:
                 bootnetdevice, bootnetdevice_name = (net_rec["bootnetdevice"], net_rec["devname"].split(":", 1)[0])
-            #print "bs for %s : %d" % (self.name, net_rec["bootserver"]), loc_config["MOTHER_SERVER_IDX"]
+            # print "bs for %s : %d" % (self.name, net_rec["bootserver"]), loc_config["MOTHER_SERVER_IDX"]
             net_dict.setdefault(net_rec["netdevice_idx"], {"devname"         : net_rec["devname"],
                                                            "driver"          : net_rec["driver"],
                                                            "driver_options"  : net_rec["driver_options"],
@@ -305,7 +310,7 @@ class machine(object):
                 if net_dict.has_key(net_idx):
                     netok_list.append(net_idx)
             if netok_list:
-                link_array = []#("d", "%s/%s" % (g_config["SYSLOG_DIR"], self.name))]
+                link_array = [] # ("d", "%s/%s" % (g_config["SYSLOG_DIR"], self.name))]
                 server_ip_dict = {}
                 maint_ip, maint_mac = (None, None)
                 for ndev_idx in netok_list:
@@ -325,66 +330,66 @@ class machine(object):
                         if nt_ident == "b" and net_stuff["netdevice_idx"] == bootnetdevice:
                             maint_ip, maint_mac = (ip, mac)
                             driver, driver_ethtool_options, driver_options = (net_stuff["driver"], net_stuff["ethtool_options"], net_stuff["driver_options"])
-                        #if nw_postfix:
+                        # if nw_postfix:
                         #    link_array.append(("l", "%s/%s%s" % (g_config["SYSLOG_DIR"], self.name, nw_postfix)))
-                #print net_dict
+                # print net_dict
                 self.log("Found %s : %s" % (logging_tools.get_plural("ip-address", len(loc_ip_dict.keys())), ", ".join(loc_ip_dict.keys())))
                 # change maint_ip
                 self.set_maint_ip(maint_ip, maint_mac)
-##                if self.get_etherboot_dir():
-##                    link_array.extend([("d", self.get_etherboot_dir()),
-##                                       ("d", self.get_pxelinux_dir()),
-##                                       ("l", ("%s/%s" % (self.__glob_config["ETHERBOOT_DIR"], self.name), self.maint_ip))])
-##                    dev_upd_stuff.append("etherboot_valid=1")
-##                    dc.execute("UPDATE device SET etherboot_valid=1 WHERE name='%s'" % (self.name))
-##                else:
-##                    self.log("Error: etherboot-directory (maint_ip) not defined")
-##                    dev_upd_stuff.append("etherboot_valid=0")
+# #                if self.get_etherboot_dir():
+# #                    link_array.extend([("d", self.get_etherboot_dir()),
+# #                                       ("d", self.get_pxelinux_dir()),
+# #                                       ("l", ("%s/%s" % (self.__glob_config["ETHERBOOT_DIR"], self.name), self.maint_ip))])
+# #                    dev_upd_stuff.append("etherboot_valid=1")
+# #                    dc.execute("UPDATE device SET etherboot_valid=1 WHERE name='%s'" % (self.name))
+# #                else:
+# #                    self.log("Error: etherboot-directory (maint_ip) not defined")
+# #                    dev_upd_stuff.append("etherboot_valid=0")
                 # set bootnetdevice
                 # self.set_bootnetdevice_name(bootnetdevice_name)
-                #if maint_ip:
+                # if maint_ip:
                 #    self.set_boot_netdriver(driver, driver_ethtool_options, driver_options)
-##                self.process_link_array(link_array)
-##                self.set_ip_dict(loc_ip_dict)
-##                # set server_reverse_ip dict
-##                self.set_server_ip_dict(server_ip_dict)
-##                if not self.get_reachable_flag():
-##                    self.set_reachable_flag(True)
-##                    self.log("Setting reachable flag")
-##                    dev_upd_stuff.append("reachable_via_bootserver=1")
-##                dev_updated = True
-##            else:
-##                self.log("Cannot add device %s (empty ip_list -> cannot reach host)" % (self.name),
-##                         logging_tools.LOG_LEVEL_WARN)
-##        else:
-##            self.log("refuse to add device without netdevices")
-##        if not dev_updated:
-##            self.set_maint_ip(None, None)
-##            if self.get_reachable_flag():
-##                self.set_reachable_flag(False)
-##                self.log("Clearing reachable flag")
-##                dev_upd_stuff.append("reachable_via_bootserver=0")
-##            self.set_ip_dict(loc_ip_dict)
-##        if dev_upd_stuff:
-##            dc.execute("UPDATE device SET %s WHERE name='%s'" % (", ".join(dev_upd_stuff), self.name))
-##        self.log("actual settings: %s" % (self.get_reachable_flag() and "reachable" or "not reachable"))
+# #                self.process_link_array(link_array)
+# #                self.set_ip_dict(loc_ip_dict)
+# #                # set server_reverse_ip dict
+# #                self.set_server_ip_dict(server_ip_dict)
+# #                if not self.get_reachable_flag():
+# #                    self.set_reachable_flag(True)
+# #                    self.log("Setting reachable flag")
+# #                    dev_upd_stuff.append("reachable_via_bootserver=1")
+# #                dev_updated = True
+# #            else:
+# #                self.log("Cannot add device %s (empty ip_list -> cannot reach host)" % (self.name),
+# #                         logging_tools.LOG_LEVEL_WARN)
+# #        else:
+# #            self.log("refuse to add device without netdevices")
+# #        if not dev_updated:
+# #            self.set_maint_ip(None, None)
+# #            if self.get_reachable_flag():
+# #                self.set_reachable_flag(False)
+# #                self.log("Clearing reachable flag")
+# #                dev_upd_stuff.append("reachable_via_bootserver=0")
+# #            self.set_ip_dict(loc_ip_dict)
+# #        if dev_upd_stuff:
+# #            dc.execute("UPDATE device SET %s WHERE name='%s'" % (", ".join(dev_upd_stuff), self.name))
+# #        self.log("actual settings: %s" % (self.get_reachable_flag() and "reachable" or "not reachable"))
         # check for deleting of old ip-dicts
-##    def set_ip_dict(self, ips):
-##        for act_key in self.ip_dict.keys():
-##            if not ips.has_key(act_key):
-##                self.log("Removing IP %s from IP-dictionary" % (act_key))
-##                del self.__ad_struct[act_key]
-##        for act_key in ips.keys():
-##            if not self.ip_dict.has_key(act_key):
-##                self.log("Adding ip %s to IP-dictionary" % (act_key))
-##                self.__ad_struct[act_key] = self
-##        self.ip_dict = ips
+# #    def set_ip_dict(self, ips):
+# #        for act_key in self.ip_dict.keys():
+# #            if not ips.has_key(act_key):
+# #                self.log("Removing IP %s from IP-dictionary" % (act_key))
+# #                del self.__ad_struct[act_key]
+# #        for act_key in ips.keys():
+# #            if not self.ip_dict.has_key(act_key):
+# #                self.log("Adding ip %s to IP-dictionary" % (act_key))
+# #                self.__ad_struct[act_key] = self
+# #        self.ip_dict = ips
     def get_server_ip_addr(self, own_ip):
         return self.server_ip_dict.get(own_ip, None)
-##    def set_bootnetdevice_name(self, bdev=None):
-##        if self.bootnetdevice_name != bdev:
-##            self.log("Changing bootnetdevice_name from '%s' to '%s'" % (self.bootnetdevice_name, bdev))
-##            self.bootnetdevice_name = bdev
+# #    def set_bootnetdevice_name(self, bdev=None):
+# #        if self.bootnetdevice_name != bdev:
+# #            self.log("Changing bootnetdevice_name from '%s' to '%s'" % (self.bootnetdevice_name, bdev))
+# #            self.bootnetdevice_name = bdev
     def set_req_state(self, what, sql_queue):
         self.req_state = what
         sql_queue.put(("update", ("device", "reqstate=%s WHERE name=%s", (what.strip(), self.name))))
@@ -403,8 +408,8 @@ class machine(object):
         return self.__last_ip_ok_set
     def get_last_reset_time(self):
         return self.__last_reset_time
-##    def set_last_reset_time(self):
-##        self.__last_reset_time = time.time()
+# #    def set_last_reset_time(self):
+# #        self.__last_reset_time = time.time()
     def set_actual_ip(self, ip=None):
         self.__last_ip_set = time.time()
         if ip:
@@ -420,11 +425,11 @@ class machine(object):
         else:
             self.__act_ip, self.__act_net = ("?", "?")
             log_str = "Setting network properties to undefined ip %s (network: %s)" % (self.__act_ip, self.__act_net)
-        #self.log(log_str)
+        # self.log(log_str)
     def clear_hardware_info(self, dc):
         self.log("Clearing hardware-info ...")
         # do not clear cpu_info automatically
-        #dc.execute("UPDATE device SET cpu_info='' WHERE device_idx=%s", self.device_idx)
+        # dc.execute("UPDATE device SET cpu_info='' WHERE device_idx=%s", self.device_idx)
         # clear hw_entry
         for table, del_field in [("pci_entry", "device_idx"), ("hw_entry", "device")]:
             sql_str = "DELETE FROM %s WHERE %s=%d" % (table, del_field, self.device_idx)
@@ -540,7 +545,7 @@ class machine(object):
                             dc.execute("INSERT INTO peer_information SET s_netdevice=%d, d_netdevice=%d, penalty=1" % (act_nd_idx,
                                                                                                                        act_nd_idx))
                             num_dict["peers_added"] += 1
-                    #print net_name, net_stuff
+                    # print net_name, net_stuff
                     for new_ip in net_stuff["inet"]:
                         ip_addr, net_bits = new_ip.split()[0].split("/")
                         netdev_name = new_ip.split()[-1]
@@ -565,9 +570,9 @@ class machine(object):
                                                "ip"        : ip_addr,
                                                "penalty"   : 1,
                                                "network"   : network_idx}
-                                #"network"   : }
+                                # "network"   : }
                                 if is_loopback:
-                                    ip_set_dict["alias"]      = "localhost"
+                                    ip_set_dict["alias"] = "localhost"
                                     ip_set_dict["alias_excl"] = 1
                                 dc.execute("INSERT INTO netip SET %s" % (", ".join(["%s=%%s" % (key) for key in sorted(ip_set_dict.keys())])),
                                            tuple([ip_set_dict[key] for key in sorted(ip_set_dict.keys())]))
@@ -785,7 +790,7 @@ class machine(object):
                         self.log("Unparsed info from host (%s): %s" % (logging_tools.get_plural("entry", len(left_from_host)),
                                                                        ", ".join(["%s [%s]" % (value["devname"], key) for key, value in left_from_host])),
                                  logging_tools.LOG_LEVEL_ERROR)
-                    #for net_rec in dc.fetchall():
+                    # for net_rec in dc.fetchall():
                     #    # check for altered macadress (ignoring fake_macaddresses)
                     #    if mac_dict.has_key(net_rec["devname"]) and (net_rec["macadr"] != mac_dict[net_rec["devname"]] and net_rec["fake_macadr"] != mac_dict[net_rec["devname"]]):
                     #        nn_changed.append(net_rec["devname"])
@@ -823,7 +828,7 @@ class outlet(object):
         self.v_dict[key] = value
     def __getitem__(self, key):
         return self.v_dict[key]
-    
+
 class blade(object):
     def __init__(self, number=0):
         self.number = number
@@ -840,11 +845,11 @@ class blade(object):
         self.v_dict[key] = value
     def __getitem__(self, key):
         return self.v_dict[key]
-    
+
 class switch(machine):
     def __init__(self, name, idx, dc, ad_struct):
         machine.__init__(self, name, idx, dc, ad_struct)
-    
+
 class apc(machine):
     def __init__(self, name, idx, dc, ad_struct):
         machine.__init__(self, name, idx, dc, ad_struct)
@@ -856,8 +861,8 @@ class apc(machine):
         self._refresh_base_from_database(dc)
         # mib dict
         self.__mib_dict = {}
-        ## outlets, too early to initialize
-        #self.outlets = {}
+        # # outlets, too early to initialize
+        # self.outlets = {}
     def update(self, command_queue):
         self.__command_queue = command_queue
         if not self.__value_dict["apc_type"]:
@@ -927,7 +932,7 @@ class apc(machine):
                                "contact"           : (1, 3, 6, 1, 2, 1, 1, 4, 0),
                                "trap_mib"          : (1, 3, 6, 1, 4, 1, 318, 1, 1, 12, 3, 3, 1, 1, 1, 0),
                                "trap_receiver"     : (1, 3, 6, 1, 4, 1, 318, 2, 1, 2, 1, 2, 1)}
-            
+
         elif self.__apc_type == 2:
             # old masterswitch mib
             self.__mib_dict = {"number_of_outlets" : (1, 3, 6, 1, 4, 1, 318, 1, 1, 4, 4, 1, 0),
@@ -947,19 +952,19 @@ class apc(machine):
         if self.__apc_type == 1:
             # new rpdu mib
             for o_num in range(1, self.__value_dict["num_outlets"] + 1):
-                self.__mib_dict["state_%d" % (o_num)]           = (1, 3, 6, 1, 4, 1, 318, 1, 1, 12, 3, 3, 1, 1, 4, o_num)
-                self.__mib_dict["name_%d" % (o_num)]            = (1, 3, 6, 1, 4, 1, 318, 1, 1, 12, 3, 4, 1, 1, 2, o_num)
-                self.__mib_dict["power_on_delay_%d" % (o_num)]  = (1, 3, 6, 1, 4, 1, 318, 1, 1, 12, 3, 4, 1, 1, 4, o_num)
+                self.__mib_dict["state_%d" % (o_num)] = (1, 3, 6, 1, 4, 1, 318, 1, 1, 12, 3, 3, 1, 1, 4, o_num)
+                self.__mib_dict["name_%d" % (o_num)] = (1, 3, 6, 1, 4, 1, 318, 1, 1, 12, 3, 4, 1, 1, 2, o_num)
+                self.__mib_dict["power_on_delay_%d" % (o_num)] = (1, 3, 6, 1, 4, 1, 318, 1, 1, 12, 3, 4, 1, 1, 4, o_num)
                 self.__mib_dict["power_off_delay_%d" % (o_num)] = (1, 3, 6, 1, 4, 1, 318, 1, 1, 12, 3, 4, 1, 1, 5, o_num)
-                self.__mib_dict["reboot_delay_%d" % (o_num)]    = (1, 3, 6, 1, 4, 1, 318, 1, 1, 12, 3, 4, 1, 1, 6, o_num)
+                self.__mib_dict["reboot_delay_%d" % (o_num)] = (1, 3, 6, 1, 4, 1, 318, 1, 1, 12, 3, 4, 1, 1, 6, o_num)
         elif self.__apc_type == 2:
             # old masterswitch mib
             for o_num in range(1, self.__value_dict["num_outlets"] + 1):
-                self.__mib_dict["state_%d" % (o_num)]           = (1, 3, 6, 1, 4, 1, 318, 1, 1, 4, 4, 2, 1, 3, o_num)
-                self.__mib_dict["name_%d" % (o_num)]            = (1, 3, 6, 1, 4, 1, 318, 1, 1, 4, 5, 2, 1, 3, o_num)
-                self.__mib_dict["power_on_delay_%d" % (o_num)]  = (1, 3, 6, 1, 4, 1, 318, 1, 1, 4, 5, 2, 1, 2, o_num)
+                self.__mib_dict["state_%d" % (o_num)] = (1, 3, 6, 1, 4, 1, 318, 1, 1, 4, 4, 2, 1, 3, o_num)
+                self.__mib_dict["name_%d" % (o_num)] = (1, 3, 6, 1, 4, 1, 318, 1, 1, 4, 5, 2, 1, 3, o_num)
+                self.__mib_dict["power_on_delay_%d" % (o_num)] = (1, 3, 6, 1, 4, 1, 318, 1, 1, 4, 5, 2, 1, 2, o_num)
                 self.__mib_dict["power_off_delay_%d" % (o_num)] = (1, 3, 6, 1, 4, 1, 318, 1, 1, 4, 5, 2, 1, 4, o_num)
-                self.__mib_dict["reboot_delay_%d" % (o_num)]    = (1, 3, 6, 1, 4, 1, 318, 1, 1, 4, 5, 2, 1, 5, o_num)
+                self.__mib_dict["reboot_delay_%d" % (o_num)] = (1, 3, 6, 1, 4, 1, 318, 1, 1, 4, 5, 2, 1, 5, o_num)
         self._build_mib_lut()
     def _build_mib_lut(self):
         self.__mib_lut = dict([(value, key) for key, value in self.__mib_dict.iteritems()])
@@ -1036,8 +1041,8 @@ class apc(machine):
                 else:
                     self.__value_dict["apc_type"] = None
                 self.__value_dict["version_info"] = ":".join(vers_parts)
-                #print what, val_str
-                    #self.__value_dict[what] = val_str
+                # print what, val_str
+                    # self.__value_dict[what] = val_str
                 if self.__value_dict["apc_type"] and not prev_type:
                     self.log("apc_type is now valid (%s), performing update" % (self.__value_dict["apc_type"]))
                     self._set_apc_type(self.__value_dict["apc_type"], self.__value_dict["version_info"])
@@ -1106,18 +1111,18 @@ class apc(machine):
                                                                                                                                                                                act_out["power_on_delay"],
                                                                                                                                                                                act_out["power_off_delay"],
                                                                                                                                                                                act_out["reboot_delay"]))
-            #print sql_str
+            # print sql_str
             # commented out because of MySQLdb.Warning
-##            try:
-##                dc.execute(sql_str, sql_tuple)
-##            except MySQLdb.Warning, what:
-##                self.log("+++ MySQL Warning excpetion has been thrown for %s (%s): %s" % (sql_str,
-##                                                                                          str(sql_tuple),
-##                                                                                          process_tools.get_except_info()),
-##                         logging_tools.LOG_LEVEL_ERROR)
-##            else:
-##                if sql_str.startswith("INSERT"):
-##                    self.outlets[i]["idx"] = dc.insert_id()
+# #            try:
+# #                dc.execute(sql_str, sql_tuple)
+# #            except MySQLdb.Warning, what:
+# #                self.log("+++ MySQL Warning excpetion has been thrown for %s (%s): %s" % (sql_str,
+# #                                                                                          str(sql_tuple),
+# #                                                                                          process_tools.get_except_info()),
+# #                         logging_tools.LOG_LEVEL_ERROR)
+# #            else:
+# #                if sql_str.startswith("INSERT"):
+# #                    self.outlets[i]["idx"] = dc.insert_id()
         self.log("wrote APC and outlet info to database")
     # IBM Blade
     # ".1.3.6.1.4.1.2.3.51.2.22.1.6.1.1.8.(1-16)
@@ -1172,7 +1177,7 @@ class apc(machine):
         if self.ip_dict and self.__value_dict["apc_type"]:
             act_ip = self.ip_dict.keys()[0]
             set_args, get_args = ([], [])
-            #act_ip = "-1"
+            # act_ip = "-1"
             for com_str in com_strs:
                 for arg_parts in [x.split("=") for x in com_str.split(":")]:
                     com = arg_parts.pop(0)
@@ -1181,8 +1186,8 @@ class apc(machine):
                         self.read_names_from_database(dc)
                         server_ip = self.get_server_ip_addr(act_ip)
                         # not working right now, shit
-                        #if server_ip:
-                        #set_args.extend([(self.__mib_dict["trap_receiver"], rfc1902.IpAddress(server_ip))])
+                        # if server_ip:
+                        # set_args.extend([(self.__mib_dict["trap_receiver"], rfc1902.IpAddress(server_ip))])
                         set_args.extend([(self.__mib_dict["name"]         , rfc1902.OctetString(self.name)),
                                          (self.__mib_dict["contact"]      , rfc1902.OctetString("lang-nevyjel@init.at"))])
                         for i in range(1, self.__value_dict["num_outlets"] + 1):
@@ -1252,7 +1257,7 @@ class apc(machine):
                 raise KeyError
         else:
             self.log("trap_mib not set in mib_dict", logging_tools.LOG_LEVEL_ERROR)
-    
+
 class ibc(machine):
     def __init__(self, name, idx, dc, ad_struct):
         machine.__init__(self, name, idx, dc, ad_struct)
@@ -1363,7 +1368,7 @@ class ibc(machine):
             ret_str = "name"
         elif rfc1902.ObjectName((1, 3, 6, 1, 4, 1, 318, 1, 1, 4, 1, 4, 0)).isPrefixOf(mib):
         # novartis new apcs
-        #elif rfc1902.ObjectName((1, 3, 6, 1, 4, 1, 318, 1, 1, 12, 1, 5, 0)).isPrefixOf(mib):
+        # elif rfc1902.ObjectName((1, 3, 6, 1, 4, 1, 318, 1, 1, 12, 1, 5, 0)).isPrefixOf(mib):
             o_num, ret_str = (0, "apc_type")
         elif rfc1902.ObjectName((1, 3, 6, 1, 4, 1, 318, 2, 1, 2, 1, 2)).isPrefixOf(mib):
             ret_str = "trap receiver %d" % (mib[-1])
@@ -1419,7 +1424,7 @@ class ibc(machine):
         error, add_snmp_coms = (False, {})
         if self.ip_dict:
             act_ip = self.ip_dict.keys()[0]
-            #act_ip = "-1"
+            # act_ip = "-1"
             for com_str in com_strs:
                 for arg_parts in [x.split("=") for x in com_str.split(":")]:
                     com = arg_parts.pop(0)
@@ -1462,7 +1467,7 @@ class ibc(machine):
         else:
             error = True
         return error, add_snmp_coms
-    
+
 class snmp_trap(object):
     def __init__(self, transport_domain, transport_address, req_msg, pmod, msg_ver):
         if type(transport_address) == type(()):
@@ -1472,12 +1477,12 @@ class snmp_trap(object):
         req_pdu = pmod.apiMessage.getPDU(req_msg)
         if req_pdu.isSameTypeWith(pmod.TrapPDU()):
             if msg_ver == api.protoVersion1:
-                #print "Enterprise: %s" % (pmod.apiTrapPDU.getEnterprise(req_pdu).prettyPrint())
-                #print "Agent Address: %s" % (pmod.apiTrapPDU.getAgentAddr(req_pdu).prettyPrint())
+                # print "Enterprise: %s" % (pmod.apiTrapPDU.getEnterprise(req_pdu).prettyPrint())
+                # print "Agent Address: %s" % (pmod.apiTrapPDU.getAgentAddr(req_pdu).prettyPrint())
                 self.agent_address = pmod.apiTrapPDU.getAgentAddr(req_pdu).prettyPrint()
                 self.generic_trap = pmod.apiTrapPDU.getGenericTrap(req_pdu)
                 self.specific_trap = pmod.apiTrapPDU.getSpecificTrap(req_pdu)
-                #print "Uptime: %s" % (pmod.apiTrapPDU.getTimeStamp(req_pdu).prettyPrint())
+                # print "Uptime: %s" % (pmod.apiTrapPDU.getTimeStamp(req_pdu).prettyPrint())
                 self.var_binds = pmod.apiTrapPDU.getVarBindList(req_pdu)
             else:
                 self.var_binds = pmod.apiPDU.getVarBindList(req_pdu)
@@ -1499,11 +1504,11 @@ class snmp_trap(object):
                 self.device.handle_trap(self)
             except KeyError:
                 self.log("device does not know how to handle this trap", logging_tools.LOG_LEVEL_ERROR)
-            #snmp_queue.put(("snmp_trap", (transport_address[0], int(pmod.apiTrapPDU.getSpecificTrap(req_pdu)), var_binds)))
-            #print "Var-binds:"
-            #for oid, val in self.__var_binds:
+            # snmp_queue.put(("snmp_trap", (transport_address[0], int(pmod.apiTrapPDU.getSpecificTrap(req_pdu)), var_binds)))
+            # print "Var-binds:"
+            # for oid, val in self.__var_binds:
             #    print "%s = %s" % (oid, val)
-        
+
 class snmp_trap_thread(threading_tools.thread_obj):
     def __init__(self, glob_config, loc_config, db_con, log_queue):
         self.__db_con = db_con
@@ -1545,7 +1550,7 @@ class snmp_trap_thread(threading_tools.thread_obj):
                          logging_tools.LOG_LEVEL_WARN)
                 pmod = None
             if pmod:
-                #self.log("msg_ver is %s" % (msg_ver))
+                # self.log("msg_ver is %s" % (msg_ver))
                 try:
                     req_msg, whole_msg = pyasn1.codec.ber.decoder.decode(whole_msg, asn1Spec=pmod.Message())
                 except pyasn1.type.error.ValueConstraintError:
@@ -1648,7 +1653,7 @@ class snmp_result(object):
         self.state, self.result_str, self.error = ("e", result, error)
     def set_result(self, var_list):
         self.state, self.var_list = ("o", var_list)
-            
+
 class snmp_batch_class(object):
     def __init__(self, com_source, int_com, dev_struct):
         self.__com_source = com_source
@@ -1685,7 +1690,7 @@ class snmp_batch_class(object):
                         try:
                             # FIXME
                             acg.asyncSetCmd(cmdgen.CommunityData("localhost", self.set_community, 0),
-                                            cmdgen.UdpTransportTarget(("%s" % (dst), 161)), 
+                                            cmdgen.UdpTransportTarget(("%s" % (dst), 161)),
                                             tuple(act_set_list),
                                             (self.get_set_recv, self.__ticket_num))
                         except (socket.gaierror, socket.error):
@@ -1711,7 +1716,7 @@ class snmp_batch_class(object):
                         try:
                             # FIXME
                             acg.asyncGetCmd(cmdgen.CommunityData("localhost", self.get_community, 0),
-                                            cmdgen.UdpTransportTarget((dst, 161)), 
+                                            cmdgen.UdpTransportTarget((dst, 161)),
                                             tuple(act_get_list),
                                             (self.get_set_recv, self.__ticket_num))
                         except (socket.gaierror, socket.error):
@@ -1730,7 +1735,7 @@ class snmp_batch_class(object):
             self.log("got error: %s" % (str(error_indication).lower()),
                      logging_tools.LOG_LEVEL_ERROR)
             print error_indication, type(error_indication)
-            if True:#error_indication.lower() == "requesttimedout":
+            if True: # error_indication.lower() == "requesttimedout":
                 # timeout
                 self.log("deleting request with ticket_num %d" % (tick_num))
                 self.__pending[tick_num].set_error("timeout", error_indication)
@@ -1765,7 +1770,7 @@ class snmp_batch_class(object):
                                                         len(act_dict["w"]),
                                                         len(act_dict["e"])))
         return "\n".join(out_f)
-        
+
 class command_class(object):
     # defaults: port number is 0, no pre-ping, no command, real_command=command, no parallel-throttling
     def __init__(self, name, **args):
@@ -1870,7 +1875,7 @@ class command_class(object):
                 self.add_dev_mapping(mach_id, mach_name, ip_list)
                 if not basic_setup_ok:
                     self.__open_devs[mach_name] = ":".join(["e", "", "", "not reachable"])
-                #return ip_list, mach_name, mach_struct
+                # return ip_list, mach_name, mach_struct
                 if self.parallel_throttling:
                     if self.__devs_added == self.__glob_config["SIMULTANEOUS_REBOOTS"]:
                         self.__devs_added = 0
@@ -1934,7 +1939,7 @@ class command_class(object):
         ping_res = icmp_obj.get_result()
         ping_is_main_command = (self.com_name == "ping")
         change_ips = [ping_ip for ping_ip, res in ping_res.iteritems() if type(res) == type({})]
-        
+
         for change_ip in change_ips:
             self.__ip_results[change_ip]["icmp"] = (ping_res[change_ip]["received"] and "o" or "e", ping_res[change_ip])
         self._result_change(change_ips)
@@ -1980,14 +1985,14 @@ class command_class(object):
     def _result_change(self, ip_list):
         ids_to_check = frozenset(sum([self.__ip_mapping[ip] for ip in ip_list], []))
         devs_to_check = frozenset([self.__dev_id_mapping[id] for id in ids_to_check])
-        #print "-" * 20, ip_list, ids_to_check, devs_to_check, "-" * 40
+        # print "-" * 20, ip_list, ids_to_check, devs_to_check, "-" * 40
         for dev_name in [d_name for d_name in devs_to_check if not self.__open_devs[d_name]]:
             dev_struct = self.ad_struct[dev_name]
             num_ips = self.__num_ips[dev_name]
             ips_to_check = frozenset(sum([self.__inv_ip_mapping[id] for id in self.__inv_dev_mapping[dev_name]], []))
-            ok_port_results    = dict(sum([[(ip, res_stuff) for res_port, (res_state, res_stuff) in self.__ip_results[ip].iteritems() if res_state == "o" and type(res_port) == type(0)] for ip in ips_to_check], []))
+            ok_port_results = dict(sum([[(ip, res_stuff) for res_port, (res_state, res_stuff) in self.__ip_results[ip].iteritems() if res_state == "o" and type(res_port) == type(0)] for ip in ips_to_check], []))
             error_port_results = dict(sum([[(ip, res_stuff) for res_port, (res_state, res_stuff) in self.__ip_results[ip].iteritems() if res_state == "e" and type(res_port) == type(0)] for ip in ips_to_check], []))
-            ok_icmp_results    = dict(sum([[(ip, res_stuff) for res_port, (res_state, res_stuff) in self.__ip_results[ip].iteritems() if res_state == "o" and type(res_port) == type("")] for ip in ips_to_check], []))
+            ok_icmp_results = dict(sum([[(ip, res_stuff) for res_port, (res_state, res_stuff) in self.__ip_results[ip].iteritems() if res_state == "o" and type(res_port) == type("")] for ip in ips_to_check], []))
             error_icmp_results = dict(sum([[(ip, res_stuff) for res_port, (res_state, res_stuff) in self.__ip_results[ip].iteritems() if res_state == "e" and type(res_port) == type("")] for ip in ips_to_check], []))
             state_str = ""
             if self.port:
@@ -2035,7 +2040,7 @@ class command_class(object):
                 self._check_for_finished_req()
     def _check_for_finished_req(self):
         if not self.__setup and not [True for val in self.__open_devs.itervalues() if not val]:
-            #print "DONE", self
+            # print "DONE", self
             # finished, phew...
             for mach in self.__device_ids:
                 if self.__dev_id_mapping[mach] and self.ad_struct.has_key(self.__dev_id_mapping[mach]):
@@ -2045,7 +2050,7 @@ class command_class(object):
                     else:
                         self.set_node_result(mach, act_res["state"], {"recv_state" : act_res["recv_state"],
                                                                       "req_state"  : act_res["req_state"]})
-                        
+
                 else:
                     self.set_node_result(mach, "error Key not found")
     def set_node_result(self, n_name, node_result, node_opt=None):
@@ -2077,7 +2082,7 @@ class command_class(object):
             self.__ip_results[ip] = {}
         self.__inv_dev_mapping[dev_name].append(dev_id)
         self.__dev_id_mapping[dev_id] = dev_name
-    def set_dev_state(self, dev_name, state = "error not set"):
+    def set_dev_state(self, dev_name, state="error not set"):
         # sets the device state to a given string
         self.__dev_states[dev_name] = state
     def __repr__(self):
@@ -2086,7 +2091,7 @@ class command_class(object):
 class ping_command(command_class):
     def __init__(self):
         command_class.__init__(self, "ping", ping=True, broadcast=True)
-        
+
 class status_command(command_class):
     def __init__(self):
         command_class.__init__(self, "status", ping=True, port=2002, send_command=True)
@@ -2132,16 +2137,16 @@ class refresh_hwi_command(command_class):
         state_split = state_str.split(":")[:3]
         state_split.append(ret_str)
         return ":".join(state_split)
-##         self.set_dev_ip_state(dev_struct.name, ip, 1)
-##         if loc_error:
-##             self.set_dev_state(dev_struct.name, "error %s" % (ret_str))
-##         else:
-##             self.set_dev_state(dev_struct.name, "%s" % (ret_str))
-##         if loc_error:
-##         if mac_change:
-##             mach_struct.log("%s has been changed, trying to restart network on target node" % (logging_tools.get_plural("MAC Address", mac_change)))
-##             server_com = server_command.srv_com(command="resync_config", nodes=[mach_name])
-##             own_queue.put(("R", server_com))
+# #         self.set_dev_ip_state(dev_struct.name, ip, 1)
+# #         if loc_error:
+# #             self.set_dev_state(dev_struct.name, "error %s" % (ret_str))
+# #         else:
+# #             self.set_dev_state(dev_struct.name, "%s" % (ret_str))
+# #         if loc_error:
+# #         if mac_change:
+# #             mach_struct.log("%s has been changed, trying to restart network on target node" % (logging_tools.get_plural("MAC Address", mac_change)))
+# #             server_com = server_command.srv_com(command="resync_config", nodes=[mach_name])
+# #             own_queue.put(("R", server_com))
     def result_error(self, dev_struct, cause):
         dev_struct.log("connect error for refresh_hwi", logging_tools.LOG_LEVEL_WARN)
         if not self.srv_com.get_queue():
@@ -2251,8 +2256,8 @@ class apc_dev_command(command_class):
         if log_str:
             mach_struct.log(log_str)
             self.set_node_result(mach_struct.name, log_str)
-            #self.set_dev_ip_state(mach_struct.name, ip, 1)
-            #self.set_dev_state(mach_struct.name, log_str)
+            # self.set_dev_ip_state(mach_struct.name, ip, 1)
+            # self.set_dev_state(mach_struct.name, log_str)
             mach_struct.release_lock(self.get_name())
         else:
             self.set_node_result(mach_struct.name, "ok done")
@@ -2316,57 +2321,57 @@ class control_thread(threading_tools.thread_obj):
         self.__valid_commands.sort()
         self.__send_commands.sort()
         self.__no_send_commands.sort()
-        self.log("valid commands   (%2d) : %s" % (len(self.__valid_commands),   ", ".join(self.__valid_commands)  ))
+        self.log("valid commands   (%2d) : %s" % (len(self.__valid_commands), ", ".join(self.__valid_commands)))
         self.log("no_send_commands (%2d) : %s" % (len(self.__no_send_commands), ", ".join(self.__no_send_commands)))
-        self.log("send_commands    (%2d) : %s" % (len(self.__send_commands),    ", ".join(self.__send_commands)   ))
+        self.log("send_commands    (%2d) : %s" % (len(self.__send_commands), ", ".join(self.__send_commands)))
         self.__devices_to_monitor = []
         self.__dc.release()
     def _set_queue_dict(self, q_dict):
         self.__queue_dict = q_dict
     def _update(self):
         pass
-##        if self.__devices_to_monitor:
-##            act_time = time.time()
-##            # build accurate ping_list and reboot_dict
-##            ping_list, reboot_dict = ([], {})
-##            rb_type_dict = {1 : "reboot (software)",
-##                            2 : "reboot (hardware)"}
-##            for dev_name in self.__devices_to_monitor:
-##                if self.__ad_struct.has_key(dev_name):
-##                    dev_struct = self.__ad_struct[dev_name]
-##                    if dev_struct.get_device_mode():
-##                        if abs(dev_struct.get_last_ip_set() - act_time) >= self.__glob_config["DEVICE_MONITOR_TIME"]:
-##                            ping_list.append(dev_name)
-##                        if dev_struct.get_last_ip_ok_set() and \
-##                               abs(dev_struct.get_last_ip_ok_set() - act_time) >= self.__glob_config["DEVICE_REBOOT_TIME"] and \
-##                               abs(dev_struct.get_last_reset_time() - act_time) >= self.__glob_config["DEVICE_REBOOT_TIME"]:
-##                            dev_struct.set_last_reset_time()
-##                            reboot_dict.setdefault(dev_struct.get_device_mode(), []).append(dev_name)
-##                            dev_struct.device_log_entry(0,
-##                                                        "w",
-##                                                        "doing a %s (not reachable for %d seconds)" % (rb_type_dict[dev_struct.get_device_mode()],
-##                                                                                                       abs(dev_struct.get_last_ip_ok_set() - act_time)),
-##                                                        self.__queue_dict["sql_queue"],
-##                                                        self.__loc_config["LOG_SOURCE_IDX"])
-##            if ping_list:
-##                ping_list.sort()
-##                self.log("<devicemonitor> Sending ping to %s: %s" % (logging_tools.get_plural("device", len(ping_list)),
-##                                                                     logging_tools.compress_list(ping_list)))
-##                self.get_thread_queue().put(("server_com", server_command.server_command(command="ping", nodes=ping_list)))
-##            for rb_type, rb_list in reboot_dict.iteritems():
-##                self.log("<devicemonitor> Doing a %s on %s: %s" % (rb_type_dict[rb_type],
-##                                                                   logging_tools.get_plural("device", len(rb_list)),
-##                                                                   logging_tools.compress_list(rb_list)))
-##                if rb_type == 1:
-##                    self.get_thread_queue().put(("server_com", server_command.server_command(command="reboot", nodes=rb_list)))
-##                else:
-##                    self.get_thread_queue().put(("server_com", server_command.server_command(command="apc_dev", nodes=rb_list, node_commands=dict([(k, "reboot") for k in rb_list]))))
+# #        if self.__devices_to_monitor:
+# #            act_time = time.time()
+# #            # build accurate ping_list and reboot_dict
+# #            ping_list, reboot_dict = ([], {})
+# #            rb_type_dict = {1 : "reboot (software)",
+# #                            2 : "reboot (hardware)"}
+# #            for dev_name in self.__devices_to_monitor:
+# #                if self.__ad_struct.has_key(dev_name):
+# #                    dev_struct = self.__ad_struct[dev_name]
+# #                    if dev_struct.get_device_mode():
+# #                        if abs(dev_struct.get_last_ip_set() - act_time) >= self.__glob_config["DEVICE_MONITOR_TIME"]:
+# #                            ping_list.append(dev_name)
+# #                        if dev_struct.get_last_ip_ok_set() and \
+# #                               abs(dev_struct.get_last_ip_ok_set() - act_time) >= self.__glob_config["DEVICE_REBOOT_TIME"] and \
+# #                               abs(dev_struct.get_last_reset_time() - act_time) >= self.__glob_config["DEVICE_REBOOT_TIME"]:
+# #                            dev_struct.set_last_reset_time()
+# #                            reboot_dict.setdefault(dev_struct.get_device_mode(), []).append(dev_name)
+# #                            dev_struct.device_log_entry(0,
+# #                                                        "w",
+# #                                                        "doing a %s (not reachable for %d seconds)" % (rb_type_dict[dev_struct.get_device_mode()],
+# #                                                                                                       abs(dev_struct.get_last_ip_ok_set() - act_time)),
+# #                                                        self.__queue_dict["sql_queue"],
+# #                                                        self.__loc_config["LOG_SOURCE_IDX"])
+# #            if ping_list:
+# #                ping_list.sort()
+# #                self.log("<devicemonitor> Sending ping to %s: %s" % (logging_tools.get_plural("device", len(ping_list)),
+# #                                                                     logging_tools.compress_list(ping_list)))
+# #                self.get_thread_queue().put(("server_com", server_command.server_command(command="ping", nodes=ping_list)))
+# #            for rb_type, rb_list in reboot_dict.iteritems():
+# #                self.log("<devicemonitor> Doing a %s on %s: %s" % (rb_type_dict[rb_type],
+# #                                                                   logging_tools.get_plural("device", len(rb_list)),
+# #                                                                   logging_tools.compress_list(rb_list)))
+# #                if rb_type == 1:
+# #                    self.get_thread_queue().put(("server_com", server_command.server_command(command="reboot", nodes=rb_list)))
+# #                else:
+# #                    self.get_thread_queue().put(("server_com", server_command.server_command(command="apc_dev", nodes=rb_list, node_commands=dict([(k, "reboot") for k in rb_list]))))
     def _server_com(self, srv_com):
         command = srv_com.get_command()
         # check for delay
         if command in self.__valid_commands:
             # init pending request
-            #new_pr = pending_request(srv_com, command, self.__log_queue)
+            # new_pr = pending_request(srv_com, command, self.__log_queue)
             new_com = globals()["%s_command" % (command)]()
             # iterate over devices
             self.log("got command %s for %s: %s" % (command,
@@ -2374,15 +2379,15 @@ class control_thread(threading_tools.thread_obj):
                                                     logging_tools.compress_list(srv_com.get_nodes())))
             new_com.link_objects(srv_com, self.__net_server, self.__icmp_obj, self.__ad_struct, self.__queue_dict, self.__db_con, self.__glob_config, self.__loc_config)
             self._init_devices_to_monitor()
-##             new_devices_to_monitor = [k for k, v in devname_dict.iteritems() if v.get_device_mode()]
-##             new_devices_to_monitor.sort()
-##             if devices_to_monitor != new_devices_to_monitor:
-##                 devices_to_monitor = new_devices_to_monitor
-##                 if devices_to_monitor:
-##                     log_queue.put(("L", (my_name, "%s to monitor: %s" % (logging_tools.get_plural("device", len(devices_to_monitor)),
-##                                                                          logging_tools.compress_list(devices_to_monitor)))))
-##                 else:
-##                     log_queue.put(("L", (my_name, "no devices to monitor")))
+# #             new_devices_to_monitor = [k for k, v in devname_dict.iteritems() if v.get_device_mode()]
+# #             new_devices_to_monitor.sort()
+# #             if devices_to_monitor != new_devices_to_monitor:
+# #                 devices_to_monitor = new_devices_to_monitor
+# #                 if devices_to_monitor:
+# #                     log_queue.put(("L", (my_name, "%s to monitor: %s" % (logging_tools.get_plural("device", len(devices_to_monitor)),
+# #                                                                          logging_tools.compress_list(devices_to_monitor)))))
+# #                 else:
+# #                     log_queue.put(("L", (my_name, "no devices to monitor")))
             for delay, mach_list in new_com.delay_dict.iteritems():
                 self.log("Delaying reboot for %s for %d seconds: %s" % (logging_tools.get_plural("device", len(mach_list)),
                                                                         delay,
@@ -2539,20 +2544,20 @@ class logging_thread(threading_tools.thread_obj):
                                           s_thread,
                                           pre_str,
                                           what))
-##    def _build_regexp(self):
-##        sys.path.append("/usr/local/sbin")
-##        log_lines, sys_dict = process_tools.fetch_sysinfo()
-##        # determine correct regexp
-##        if sys_dict["version"] in ["8.0", "8.1"] and sys_dict["vendor"] != "redhat":
-##            self.log("System Version is < SUSE 8.2, using non-standard regexp for syslog-ng messages")
-##            self.__line_re = re.compile("^\<\d+\>(?P<time>\S+\s+\S+\s+\S+)\s+(?P<facility>\S+):\s+(?P<message>.*)$")
-##        else:
-##            self.log("System Version is >= SUSE 8.2 or RedHat, using standard regexp for syslog-ng messages")
-##            self.__line_re = re.compile("^\<\d+\>(?P<time>\S+\s+\S+\s+\S+)\s+(?P<host>\S+)\s+(?P<facility>\S+):\s+(?P<message>.*)$")
-##        self.__dhcp_discover = re.compile("^DHCPDISCOVER from (?P<macaddr>\S+) via .*$")
-##        self.__dhcp_offer    = re.compile("^DHCPOFFER on (?P<ip>\S+) to (?P<macaddr>\S+) via .*$")
-##        self.__dhcp_request  = re.compile("^DHCPREQUEST for (?P<ip>\S+) .*from (?P<macaddr>\S+) via .*$")
-##        self.__dhcp_answer   = re.compile("^DHCPACK on (?P<ip>\S+) to (?P<macaddr>\S+) via .*$")
+# #    def _build_regexp(self):
+# #        sys.path.append("/usr/local/sbin")
+# #        log_lines, sys_dict = process_tools.fetch_sysinfo()
+# #        # determine correct regexp
+# #        if sys_dict["version"] in ["8.0", "8.1"] and sys_dict["vendor"] != "redhat":
+# #            self.log("System Version is < SUSE 8.2, using non-standard regexp for syslog-ng messages")
+# #            self.__line_re = re.compile("^\<\d+\>(?P<time>\S+\s+\S+\s+\S+)\s+(?P<facility>\S+):\s+(?P<message>.*)$")
+# #        else:
+# #            self.log("System Version is >= SUSE 8.2 or RedHat, using standard regexp for syslog-ng messages")
+# #            self.__line_re = re.compile("^\<\d+\>(?P<time>\S+\s+\S+\s+\S+)\s+(?P<host>\S+)\s+(?P<facility>\S+):\s+(?P<message>.*)$")
+# #        self.__dhcp_discover = re.compile("^DHCPDISCOVER from (?P<macaddr>\S+) via .*$")
+# #        self.__dhcp_offer    = re.compile("^DHCPOFFER on (?P<ip>\S+) to (?P<macaddr>\S+) via .*$")
+# #        self.__dhcp_request  = re.compile("^DHCPREQUEST for (?P<ip>\S+) .*from (?P<macaddr>\S+) via .*$")
+# #        self.__dhcp_answer   = re.compile("^DHCPACK on (?P<ip>\S+) to (?P<macaddr>\S+) via .*$")
     def _remove_handle(self, name):
         self.log("Closing log for device %s" % (name))
         self._mach_log((self.name, "(%s) : Closing log" % (self.name), logging_tools.LOG_LEVEL_OK, name))
@@ -2573,47 +2578,47 @@ class logging_thread(threading_tools.thread_obj):
                 self.__machlogs[name] = logging_tools.logfile("%s/log" % (machdir))
                 self.__machlogs[name].write(self.__sep_str)
                 self.__machlogs[name].write("Opening log")
-                #glog.write("# of open machine logs: %d" % (len(self.__machlogs.keys())))
+                # glog.write("# of open machine logs: %d" % (len(self.__machlogs.keys())))
                 handle, pre_str = (self.__machlogs[name], "")
             else:
                 handle, pre_str = (self.__glob_log, "device %s: " % (name))
         return (handle, pre_str)
-##    def _syslog_dhcp(self, in_line):
-##        in_line = in_line.strip()
-##        line_m = self.__line_re.match(in_line)
-##        if line_m:
-##            mess_str = line_m.group("message").strip()
-##            if line_m.group("facility") == "dhcpd":
-##                for line in [y.strip() for y in in_line.split("\n") if y.strip()]:
-##                    self.log("got line %s from dhcp-server" % (line))
-##                for prefix, regexp in [("DISCOVER", self.__dhcp_discover),
-##                                       ("OFFER"   , self.__dhcp_offer),
-##                                       ("REQUEST" , self.__dhcp_request),
-##                                       ("ACK"     , self.__dhcp_answer)]:
-##                    dhcp_s = regexp.match(mess_str)
-##                    if dhcp_s:
-##                        if prefix == "DISCOVER":
-##                            ip = "---"
-##                        else:
-##                            ip = dhcp_s.group("ip")
-##                        server_com = server_command.server_command(command="syslog_line")
-##                        server_com.set_option_dict({"sm_type" : prefix,
-##                                                    "ip"      : ip,
-##                                                    "mac"     : dhcp_s.group("macaddr"),
-##                                                    "message" : mess_str})
-##                        self.__dhcp_queue.put(("server_com", server_com))
-##                        break
-##                else:
-##                    self.log("cannot parse line (match) '%s'" % (in_line), logging_tools.LOG_LEVEL_WARN)
-##            else:
-##                if in_line.count("syslog-thread-test"):
-##                    # string from logcheck-server, ignore
-##                    pass
-##                else:
-##                    self.log("cannot parse line (facility) '%s'" % (in_line), logging_tools.LOG_LEVEL_WARN)
-##        else:
-##            self.log("cannot parse line (general) '%s'" % (in_line), logging_tools.LOG_LEVEL_WARN)
-        
+# #    def _syslog_dhcp(self, in_line):
+# #        in_line = in_line.strip()
+# #        line_m = self.__line_re.match(in_line)
+# #        if line_m:
+# #            mess_str = line_m.group("message").strip()
+# #            if line_m.group("facility") == "dhcpd":
+# #                for line in [y.strip() for y in in_line.split("\n") if y.strip()]:
+# #                    self.log("got line %s from dhcp-server" % (line))
+# #                for prefix, regexp in [("DISCOVER", self.__dhcp_discover),
+# #                                       ("OFFER"   , self.__dhcp_offer),
+# #                                       ("REQUEST" , self.__dhcp_request),
+# #                                       ("ACK"     , self.__dhcp_answer)]:
+# #                    dhcp_s = regexp.match(mess_str)
+# #                    if dhcp_s:
+# #                        if prefix == "DISCOVER":
+# #                            ip = "---"
+# #                        else:
+# #                            ip = dhcp_s.group("ip")
+# #                        server_com = server_command.server_command(command="syslog_line")
+# #                        server_com.set_option_dict({"sm_type" : prefix,
+# #                                                    "ip"      : ip,
+# #                                                    "mac"     : dhcp_s.group("macaddr"),
+# #                                                    "message" : mess_str})
+# #                        self.__dhcp_queue.put(("server_com", server_com))
+# #                        break
+# #                else:
+# #                    self.log("cannot parse line (match) '%s'" % (in_line), logging_tools.LOG_LEVEL_WARN)
+# #            else:
+# #                if in_line.count("syslog-thread-test"):
+# #                    # string from logcheck-server, ignore
+# #                    pass
+# #                else:
+# #                    self.log("cannot parse line (facility) '%s'" % (in_line), logging_tools.LOG_LEVEL_WARN)
+# #        else:
+# #            self.log("cannot parse line (general) '%s'" % (in_line), logging_tools.LOG_LEVEL_WARN)
+
 def get_kernel_stuff(dc, glob_config, k_n, k_idx):
     if glob_config["PREFER_KERNEL_NAME"]:
         dc.execute("SELECT k.* FROM kernel k WHERE k.name=%s", (k_n))
@@ -2734,7 +2739,7 @@ class command_thread(threading_tools.thread_obj):
         srv_reply = server_command.server_reply()
         srv_reply.set_ok_result("ok ack")
         tcp_obj.add_to_out_buffer(srv_reply, "ack")
-        self.__queue_dict["control_queue"].put(("server_com", server_command.server_command(command = "ip_changed", nodes=all_nodes)))
+        self.__queue_dict["control_queue"].put(("server_com", server_command.server_command(command="ip_changed", nodes=all_nodes)))
     def _snmp_command(self, (com_source, int_com, srv_com)):
         dev_struct = self.__ad_struct[srv_com.get_nodes()[0]]
         snmp_com = srv_com.get_node_commands()[dev_struct.name]
@@ -2757,7 +2762,7 @@ class command_thread(threading_tools.thread_obj):
                     snmp_batch.add_set(snmp_ip, add_snmp_coms["S"])
                 if add_snmp_coms.has_key("G"):
                     snmp_batch.add_get(snmp_ip, add_snmp_coms["G"])
-                #self.log("init snmp_batch 1")
+                # self.log("init snmp_batch 1")
                 self.__queue_dict["snmp_send_queue"].put(("new_snmp_batch", snmp_batch))
             dc.release()
     def _snmp_command_low_level(self, (com_source, dev_struct, add_snmp_coms)):
@@ -2773,99 +2778,99 @@ class command_thread(threading_tools.thread_obj):
                 snmp_batch.add_set(snmp_ip, add_snmp_coms["S"])
             if add_snmp_coms.has_key("G"):
                 snmp_batch.add_get(snmp_ip, add_snmp_coms["G"])
-            #self.log("init snmp_batch 2")
+            # self.log("init snmp_batch 2")
             self.__queue_dict["snmp_send_queue"].put(("new_snmp_batch", snmp_batch))
         # send hello to sender_thread
 
-##class sql_thread(threading_tools.thread_obj):
-##    def __init__(self, glob_config, loc_config, db_con, log_queue):
-##        self.__db_con = db_con
-##        self.__log_queue = log_queue
-##        self.__glob_config, self.__loc_config = (glob_config, loc_config)
-##        threading_tools.thread_obj.__init__(self, "sql", queue_size=200)
-##        self.register_func("update"      , self._update_db)
-##        self.register_func("insert_value", self._insert_value_db)
-##        self.register_func("insert_set"  , self._insert_set_db)
-##    def log(self, what, lev=logging_tools.LOG_LEVEL_OK):
-##        self.__log_queue.put(("log", (self.name, what, lev)))
-##    def thread_running(self):
-##        self.send_pool_message(("new_pid", (self.name, self.pid)))
-##        self._init_start_time()
-##        self.__dc = self.__db_con.get_connection(SQL_ACCESS)
-##    def _init_start_time(self):
-##        self.__start_time = time.time()
-##        self.__num_written, self.__num_update, self.__num_ins_v, self.__num_ins_s = (0, 0, 0, 0)
-##    def _check_written(self, force=False):
-##        if not force:
-##            self.__num_written += 1
-##        if self.__num_written > 50 or force:
-##            act_time = time.time()
-##            self.log("wrote %d entries (%s, %s [with values], %s [with set]) in %s" % (self.__num_written,
-##                                                                                       logging_tools.get_plural("update", self.__num_update),
-##                                                                                       logging_tools.get_plural("insert", self.__num_ins_v),
-##                                                                                       logging_tools.get_plural("insert", self.__num_ins_s),
-##                                                                                       logging_tools.get_diff_time_str(act_time - self.__start_time)))
-##            self._init_start_time()
-##    def _update_db(self, args):
-##        if len(args) == 2:
-##            sql_table, sql_data = args
-##            sql_args = None
-##        else:
-##            sql_table, sql_data, sql_args = args
-##        self.__dc.execute("UPDATE %s SET %s" % (sql_table, sql_data), sql_args)
-##        self.__num_update += 1
-##        self._check_written()
-##    def _insert_value_db(self, args):
-##        if len(args) == 2:
-##            sql_table, sql_data = args
-##            sql_args = None
-##        else:
-##            sql_table, sql_data, sql_args = args
-##        self.__dc.execute("INSERT INTO %s VALUES(%s)" % (sql_table, sql_data), sql_args)
-##        self.__num_ins_v += 1
-##        self._check_written()
-##    def _insert_set_db(self, args):
-##        if len(args) == 2:
-##            sql_table, sql_data = args
-##            sql_args = None
-##        else:
-##            sql_table, sql_data, sql_args = args
-##        self.__dc.execute("INSERT INTO %s SET %s" % (sql_table, sql_data), sql_args)
-##        self.__num_ins_s += 1
-##        self._check_written()
-##    def loop_end(self):
-##        self._check_written(True)
-##        self.__dc.release()
+# #class sql_thread(threading_tools.thread_obj):
+# #    def __init__(self, glob_config, loc_config, db_con, log_queue):
+# #        self.__db_con = db_con
+# #        self.__log_queue = log_queue
+# #        self.__glob_config, self.__loc_config = (glob_config, loc_config)
+# #        threading_tools.thread_obj.__init__(self, "sql", queue_size=200)
+# #        self.register_func("update"      , self._update_db)
+# #        self.register_func("insert_value", self._insert_value_db)
+# #        self.register_func("insert_set"  , self._insert_set_db)
+# #    def log(self, what, lev=logging_tools.LOG_LEVEL_OK):
+# #        self.__log_queue.put(("log", (self.name, what, lev)))
+# #    def thread_running(self):
+# #        self.send_pool_message(("new_pid", (self.name, self.pid)))
+# #        self._init_start_time()
+# #        self.__dc = self.__db_con.get_connection(SQL_ACCESS)
+# #    def _init_start_time(self):
+# #        self.__start_time = time.time()
+# #        self.__num_written, self.__num_update, self.__num_ins_v, self.__num_ins_s = (0, 0, 0, 0)
+# #    def _check_written(self, force=False):
+# #        if not force:
+# #            self.__num_written += 1
+# #        if self.__num_written > 50 or force:
+# #            act_time = time.time()
+# #            self.log("wrote %d entries (%s, %s [with values], %s [with set]) in %s" % (self.__num_written,
+# #                                                                                       logging_tools.get_plural("update", self.__num_update),
+# #                                                                                       logging_tools.get_plural("insert", self.__num_ins_v),
+# #                                                                                       logging_tools.get_plural("insert", self.__num_ins_s),
+# #                                                                                       logging_tools.get_diff_time_str(act_time - self.__start_time)))
+# #            self._init_start_time()
+# #    def _update_db(self, args):
+# #        if len(args) == 2:
+# #            sql_table, sql_data = args
+# #            sql_args = None
+# #        else:
+# #            sql_table, sql_data, sql_args = args
+# #        self.__dc.execute("UPDATE %s SET %s" % (sql_table, sql_data), sql_args)
+# #        self.__num_update += 1
+# #        self._check_written()
+# #    def _insert_value_db(self, args):
+# #        if len(args) == 2:
+# #            sql_table, sql_data = args
+# #            sql_args = None
+# #        else:
+# #            sql_table, sql_data, sql_args = args
+# #        self.__dc.execute("INSERT INTO %s VALUES(%s)" % (sql_table, sql_data), sql_args)
+# #        self.__num_ins_v += 1
+# #        self._check_written()
+# #    def _insert_set_db(self, args):
+# #        if len(args) == 2:
+# #            sql_table, sql_data = args
+# #            sql_args = None
+# #        else:
+# #            sql_table, sql_data, sql_args = args
+# #        self.__dc.execute("INSERT INTO %s SET %s" % (sql_table, sql_data), sql_args)
+# #        self.__num_ins_s += 1
+# #        self._check_written()
+# #    def loop_end(self):
+# #        self._check_written(True)
+# #        self.__dc.release()
 
-##class dhcp_thread(threading_tools.thread_obj):
-##    def __init__(self, glob_config, loc_config, db_con, log_queue):
-##        self.__db_con = db_con
-##        self.__log_queue = log_queue
-##        self.__glob_config, self.__loc_config = (glob_config, loc_config)
-##        threading_tools.thread_obj.__init__(self, "dhcp", queue_size=100)
-##        self.register_func("server_com", self._server_com)
-##        self.register_func("set_ad_struct", self._set_ad_struct)
-##        self.register_func("set_queue_dict", self._set_queue_dict)
-##    def _set_queue_dict(self, q_dict):
-##        self.__queue_dict = q_dict
-##    def thread_running(self):
-##        self.send_pool_message(("new_pid", (self.name, self.pid)))
-##        self.__om_error_re = re.compile("^can't (.*) object: (.*)$")
-##        dc = self.__db_con.get_connection(SQL_ACCESS)
-##        dc.execute("SELECT i.ip,nw.netmask FROM netip i, netdevice n, network nw, device d, device_config dc, new_config c, network_type nt WHERE " + \
-##                   "dc.device=d.device_idx AND dc.new_config=c.new_config_idx AND c.name='mother_server' AND i.netdevice=n.netdevice_idx AND nw.network_idx=i.network AND " + \
-##                   "nt.identifier='b' AND nt.network_type_idx=nw.network_type AND n.device=d.device_idx AND d.device_idx=%d" % (self.__loc_config["MOTHER_SERVER_IDX"]))
-##        self.__server_ip = dc.fetchone()
-##        if self.__server_ip:
-##            self.log("IP-Address in bootnet is %s (netmask %s)" % (self.__server_ip["ip"], self.__server_ip["netmask"]))
-##        else:
-##            self.log("found no IP-Adress in bootnet", logging_tools.LOG_LEVEL_WARN)
-##        dc.release()
-##    def log(self, what, lev=logging_tools.LOG_LEVEL_OK):
-##        self.__log_queue.put(("log", (self.name, what, lev)))
-##    def _set_ad_struct(self, ad_struct):
-##        self.log("got ad_struct")
-##        self.__ad_struct = ad_struct
+# #class dhcp_thread(threading_tools.thread_obj):
+# #    def __init__(self, glob_config, loc_config, db_con, log_queue):
+# #        self.__db_con = db_con
+# #        self.__log_queue = log_queue
+# #        self.__glob_config, self.__loc_config = (glob_config, loc_config)
+# #        threading_tools.thread_obj.__init__(self, "dhcp", queue_size=100)
+# #        self.register_func("server_com", self._server_com)
+# #        self.register_func("set_ad_struct", self._set_ad_struct)
+# #        self.register_func("set_queue_dict", self._set_queue_dict)
+# #    def _set_queue_dict(self, q_dict):
+# #        self.__queue_dict = q_dict
+# #    def thread_running(self):
+# #        self.send_pool_message(("new_pid", (self.name, self.pid)))
+# #        self.__om_error_re = re.compile("^can't (.*) object: (.*)$")
+# #        dc = self.__db_con.get_connection(SQL_ACCESS)
+# #        dc.execute("SELECT i.ip,nw.netmask FROM netip i, netdevice n, network nw, device d, device_config dc, new_config c, network_type nt WHERE " + \
+# #                   "dc.device=d.device_idx AND dc.new_config=c.new_config_idx AND c.name='mother_server' AND i.netdevice=n.netdevice_idx AND nw.network_idx=i.network AND " + \
+# #                   "nt.identifier='b' AND nt.network_type_idx=nw.network_type AND n.device=d.device_idx AND d.device_idx=%d" % (self.__loc_config["MOTHER_SERVER_IDX"]))
+# #        self.__server_ip = dc.fetchone()
+# #        if self.__server_ip:
+# #            self.log("IP-Address in bootnet is %s (netmask %s)" % (self.__server_ip["ip"], self.__server_ip["netmask"]))
+# #        else:
+# #            self.log("found no IP-Adress in bootnet", logging_tools.LOG_LEVEL_WARN)
+# #        dc.release()
+# #    def log(self, what, lev=logging_tools.LOG_LEVEL_OK):
+# #        self.__log_queue.put(("log", (self.name, what, lev)))
+# #    def _set_ad_struct(self, ad_struct):
+# #        self.log("got ad_struct")
+# #        self.__ad_struct = ad_struct
 
 class server_process(threading_tools.process_pool):
     def __init__(self):
@@ -2900,8 +2905,8 @@ class server_process(threading_tools.process_pool):
             self.add_process(initat.mother.control.node_control_process("control"), start=True)
             self.add_process(initat.mother.control.twisted_process("twisted"), twisted=True, start=True)
             connection.close()
-            #self.add_process(build_process("build"), start=True)
-            #self.register_func("client_update", self._client_update)
+            # self.add_process(build_process("build"), start=True)
+            # self.register_func("client_update", self._client_update)
             # send initial commands
             self.send_to_process(
                 "kernel",
@@ -2912,7 +2917,7 @@ class server_process(threading_tools.process_pool):
             self.send_to_process("command", "delay_command", "/etc/init.d/hoststatus restart", delay_time=5)
             self.send_to_process("control", "refresh")
             self.send_to_process("control", "alter_macaddr")
-            #self.__log_queue.put(("delay_request", (self.get_own_queue(), "restart_hoststatus", 5)))
+            # self.__log_queue.put(("delay_request", (self.get_own_queue(), "restart_hoststatus", 5)))
         else:
             init_ok = False
         if not init_ok:
@@ -2964,7 +2969,7 @@ class server_process(threading_tools.process_pool):
         for conf in conf_info:
             self.log("Config : %s" % (conf))
     def loop_end(self):
-        #config_control.close_clients()
+        # config_control.close_clients()
         self._disable_syslog_config()
         process_tools.delete_pid(self.__pid_name)
         if self.__msi_block:
@@ -2996,7 +3001,7 @@ class server_process(threading_tools.process_pool):
             except zmq.core.error.ZMQError:
                 self.log("error binding to %s{%d}: %s" % (
                     conn_str,
-                    sock_type, 
+                    sock_type,
                     process_tools.get_except_info()),
                          logging_tools.LOG_LEVEL_CRITICAL)
                 client.close()
@@ -3013,7 +3018,7 @@ class server_process(threading_tools.process_pool):
         while zmq_sock.getsockopt(zmq.RCVMORE):
             data.append(zmq_sock.recv_unicode())
         if len(data) == 2:
-            #print "UUID", data[0]
+            # print "UUID", data[0]
             if data[0].endswith("syslog_scan"):
                 self.send_to_process("control", "syslog_line", data[1])
             else:
@@ -3036,7 +3041,7 @@ class server_process(threading_tools.process_pool):
                                 self.log("got command %s, sending to %s process" % (cur_com, t_proc))
                                 self.send_to_process(
                                     t_proc,
-                                    cur_com, 
+                                    cur_com,
                                     data[0],
                                     node_text)
                         if cur_com is None:
@@ -3083,8 +3088,8 @@ class server_process(threading_tools.process_pool):
             self.log("adding connection %s" % (dst_addr))
             self.connection_set.add(dst_addr)
             self.socket_dict["router"].connect(dst_addr)
-            #time.sleep(0.2)
-        #print "done"
+            # time.sleep(0.2)
+        # print "done"
         zmq_id = "%s:hoststatus:" % (zmq_id)
         self.log("sending '%s' to %s (%s)" % (com_str, zmq_id, dst_addr))
         self.socket_dict["router"].send_unicode(zmq_id, zmq.SNDMORE)
@@ -3408,7 +3413,6 @@ def main():
         ("SERVER_PULL_PORT"    , configfile.int_c_var(8001, help_string="server pull port [%(default)d]")),
     ])
     global_config.parse_file()
-    VERSION_STRING = "???"
     options = global_config.handle_commandline(
         description="%s, version is %s" % (
             prog_name,
@@ -3437,30 +3441,30 @@ def main():
         ("CONFIG_DIR"   , configfile.str_c_var("%s/%s" % (global_config["TFTP_DIR"], "config"))),
         ("ETHERBOOT_DIR", configfile.str_c_var("%s/%s" % (global_config["TFTP_DIR"], "etherboot"))),
         ("KERNEL_DIR"   , configfile.str_c_var("%s/%s" % (global_config["TFTP_DIR"], "kernels")))])
-##    if fixit:
-##        process_tools.fix_directories(user, group, [g_config["LOG_DIR"], "/var/lib/mother", "/var/run/mother"])
+# #    if fixit:
+# #        process_tools.fix_directories(user, group, [g_config["LOG_DIR"], "/var/lib/mother", "/var/run/mother"])
 #    if fixit:
 #        process_tools.fix_directories(user, group, [g_config["LOG_DIR"], "/var/lib/mother", "/var/run/mother", g_config["ETHERBOOT_DIR"], g_config["KERNEL_DIR"]])
-##    ret_state = 256
-##    if num_servers > 1:
-##        print "Database error for host %s (mother_server): too many entries found (%d)" % (loc_config["SERVER_SHORT_NAME"], num_servers)
-##        dc.release()
-##    else:
+# #    ret_state = 256
+# #    if num_servers > 1:
+# #        print "Database error for host %s (mother_server): too many entries found (%d)" % (loc_config["SERVER_SHORT_NAME"], num_servers)
+# #        dc.release()
+# #    else:
     global_config.add_config_entries([
         ("LOG_SOURCE_IDX", configfile.int_c_var(cluster_location.log_source.create_log_source_entry("mother", "Mother Server", device=sql_info.effective_device).pk)),
         ("NODE_SOURCE_IDX", configfile.int_c_var(cluster_location.log_source.create_log_source_entry("node", "Clusternode").pk)),
     ])
-##        loc_config["LOG_SOURCE_IDX"] = process_tools.create_log_source_entry(dc, loc_config["MOTHER_SERVER_IDX"], "mother", "Mother Server")
-##        if not loc_config["LOG_SOURCE_IDX"]:
-##            print "Too many log_sources with my id present, exiting..."
-##            dc.release()
-##        else:
-##            loc_config["NODE_SOURCE_IDX"] = process_tools.create_log_source_entry(dc, 0, "node", "Cluster node", "String written by one of the nodes")
-##            loc_config["LOG_STATUS"] = process_tools.get_all_log_status(dc)
+# #        loc_config["LOG_SOURCE_IDX"] = process_tools.create_log_source_entry(dc, loc_config["MOTHER_SERVER_IDX"], "mother", "Mother Server")
+# #        if not loc_config["LOG_SOURCE_IDX"]:
+# #            print "Too many log_sources with my id present, exiting..."
+# #            dc.release()
+# #        else:
+# #            loc_config["NODE_SOURCE_IDX"] = process_tools.create_log_source_entry(dc, 0, "node", "Cluster node", "String written by one of the nodes")
+# #            loc_config["LOG_STATUS"] = process_tools.get_all_log_status(dc)
     process_tools.renice()
     if not global_config["DEBUG"]:
         # become daemon and wait 2 seconds
-        process_tools.become_daemon(wait = 2)
+        process_tools.become_daemon(wait=2)
         process_tools.set_handles({"out" : (1, "mother.out"),
                                    "err" : (0, "/var/lib/logging-server/py_err")})
     else:
