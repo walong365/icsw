@@ -160,10 +160,16 @@ class log_receiver(threading_tools.process_obj):
         self.__log_cache = []
     def _feed_error(self, in_dict):
         try:
+            # get error string
+            error_f = [
+                in_dict.get("exc_text", "") or "", 
+                in_dict.get("error_str", "") or "",
+            ]
+            error_str = ("\n".join([line for line in error_f if line.rstrip()])) or "no error_str"
             self.__eg_dict.setdefault(in_dict["pid"], {
                 "last_update" : time.time(),
                 "errors"      : [],
-                "proc_dict"   : in_dict})["errors"].append((in_dict.get("exc_text", in_dict.get("error_str", "no error_str")) or "").rstrip())
+                "proc_dict"   : in_dict})["errors"].append(error_str)
             # log to err_py
             try:
                 uname = pwd.getpwuid(in_dict.get("uid", -1))[0]
@@ -179,7 +185,7 @@ class log_receiver(threading_tools.process_obj):
                 uname,
                 in_dict.get("gid", 0),
                 gname)
-            for err_line in in_dict.get("exc_text", in_dict.get("error_str", "no error_str")).rstrip().split("\n"):
+            for err_line in error_str.split("\n"):
                 self.log("from pid %d (%s): %s" % (
                     in_dict.get("pid", 0),
                     pid_str,
