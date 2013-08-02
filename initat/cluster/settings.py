@@ -252,6 +252,7 @@ INSTALLED_APPS = (
     "crispy_forms",
     # cluster
     "initat.core",
+    "guardian",
 )
 
 ZMQ_LOGGING = True
@@ -266,6 +267,9 @@ CRISPY_FAIL_SILENTLY = not DEBUG
 COFFEESCRIPT_EXECUTABLE = "/opt/cluster/bin/coffee"
 COFFEESCRIPT_USE_CACHE = False
 
+# for guardian
+ANONYMOUS_USER_ID = -1
+
 # add all applications, including backbone
 
 INSTALLED_APPS = list(INSTALLED_APPS)
@@ -273,7 +277,10 @@ ADDITIONAL_MENU_FILES = []
 
 if not "NO_AUTO_ADD_APPLICATIONS" in os.environ:
     # my authentication backend
-    AUTHENTICATION_BACKENDS = ("initat.cluster.backbone.cluster_auth.db_backend",)
+    AUTHENTICATION_BACKENDS = (
+        "initat.cluster.backbone.cluster_auth.db_backend",
+        'guardian.backends.ObjectPermissionBackend',
+        )
     AUTH_USER_MODEL = "backbone.user"
 
     # add everything below cluster
