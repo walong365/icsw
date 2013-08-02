@@ -50,7 +50,7 @@ import subprocess
 try:
     from package_server_version import VERSION_STRING
 except ImportError:
-    VERSION_STRING = "unknown.unknown"
+    VERSION_STRING = "??.??-??"
 
 P_SERVER_PUB_PORT   = 8007
 P_SERVER_PULL_PORT  = 8008
