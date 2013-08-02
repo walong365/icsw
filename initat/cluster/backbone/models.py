@@ -33,6 +33,12 @@ TOP_LOCATION_CATEGORY = "/location"
 TOP_CONFIG_CATEGORY = "/config"
 TOP_DEVICE_CATEGORY = "/device"
 
+TOP_LOCATIONS = set([
+    TOP_MONITORING_CATEGORY,
+    TOP_LOCATION_CATEGORY,
+    TOP_CONFIG_CATEGORY,
+    TOP_DEVICE_CATEGORY,
+    ])
 # validation REs
 valid_domain_re = re.compile("^[a-zA-Z0-9-_]+$")
 valid_category_re = re.compile("^[a-zA-Z0-9-_\.]+$")
