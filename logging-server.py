@@ -165,11 +165,25 @@ class log_receiver(threading_tools.process_obj):
                 in_dict.get("exc_text", "") or "", 
                 in_dict.get("error_str", "") or "",
             ]
-            error_str = ("\n".join([line for line in error_f if line.rstrip()])) or "no error_str"
+            error_str = ("\n".join([line for line in error_f if line.rstrip()]))
+            if error_str:
+                error_f = error_str.split("\n")
+            else:
+                self.log("cannot extract error_str, using dump of error_dict", logging_tools.LOG_LEVEL_ERROR)
+                error_f = []
+                for key in sorted(in_dict.iterkeys()):
+                    try:
+                        error_f.append(u"  %-20s : %s" % (key, unicode(in_dict[key])))
+                    except:
+                        error_f.append(u"  error logging key '%s' : %s" % (
+                            key,
+                            process_tools.get_except_info(),
+                            ))
+
             self.__eg_dict.setdefault(in_dict["pid"], {
                 "last_update" : time.time(),
                 "errors"      : [],
-                "proc_dict"   : in_dict})["errors"].append(error_str)
+                "proc_dict"   : in_dict})["errors"].extend(error_f)
             # log to err_py
             try:
                 uname = pwd.getpwuid(in_dict.get("uid", -1))[0]
@@ -185,7 +199,7 @@ class log_receiver(threading_tools.process_obj):
                 uname,
                 in_dict.get("gid", 0),
                 gname)
-            for err_line in error_str.split("\n"):
+            for err_line in error_f:
                 self.log("from pid %d (%s): %s" % (
                     in_dict.get("pid", 0),
                     pid_str,
