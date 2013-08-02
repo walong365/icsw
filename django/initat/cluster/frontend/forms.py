@@ -2,6 +2,7 @@
 
 """ simple formulars for django / clustersoftware """
 
+import re
 from django.forms.widgets import TextInput, PasswordInput, SelectMultiple
 from django.forms import Form, ModelForm, ValidationError, CharField, ModelChoiceField, ModelMultipleChoiceField
 from django.contrib.auth import authenticate
@@ -14,8 +15,8 @@ from crispy_forms.layout import Submit, Layout, Field, ButtonHolder, Button, Fie
 from crispy_forms.bootstrap import FormActions
 from django.core.urlresolvers import reverse
 from initat.cluster.backbone.models import domain_tree_node, device, category, mon_check_command, mon_service_templ, \
-     domain_name_tree, user, group, device_group, home_export_list, device_config
-#import PAM
+     domain_name_tree, user, group, device_group, home_export_list, device_config, TOP_LOCATIONS
+# import PAM
 
 class authentication_form(Form):
     username = CharField(label=_("Username"),
@@ -44,7 +45,7 @@ class authentication_form(Form):
                 Submit("submit", "Submit", css_class="primaryAction"),
             ),
         )
-        #self.helper.add_input(Submit("submit", "Submit"))
+        # self.helper.add_input(Submit("submit", "Submit"))
         self.helper.form_action = reverse("session:login")
         self.request = request
         self.user_cache = None
@@ -65,14 +66,14 @@ class authentication_form(Form):
     def clean(self):
         username = self.cleaned_data.get("username")
         password = self.cleaned_data.get("password")
-        #auth = PAM.pam()
-        #auth.start("passwd")
-        #auth.set_item(PAM.PAM_USER, username)
-        #auth.set_item(PAM.PAM_CONV, self.pam_conv)
-        #print username, password
-        #print auth.authenticate()
-        #print "-" * 20
-        #print pam.authenticate(username, password)
+        # auth = PAM.pam()
+        # auth.start("passwd")
+        # auth.set_item(PAM.PAM_USER, username)
+        # auth.set_item(PAM.PAM_CONV, self.pam_conv)
+        # print username, password
+        # print auth.authenticate()
+        # print "-" * 20
+        # print pam.authenticate(username, password)
         if username and password:
             self.user_cache = authenticate(username=username, password=password)
             if self.user_cache is None:
@@ -136,7 +137,7 @@ class dtn_new_form(ModelForm):
     class Meta:
         model = domain_tree_node
         fields = ["full_name", "node_postfix", "create_short_names", "always_create_ip", "write_nameserver_config", "comment"]
-    
+
 class device_general_form(ModelForm):
     domain_tree_node = ModelChoiceField(domain_tree_node.objects.all(), empty_label=None)
     helper = FormHelper()
@@ -231,6 +232,15 @@ class category_new_form(ModelForm):
             css_class="inlineLabels",
         )
     )
+    def clean_full_name(self):
+        cur_name = self.cleaned_data["full_name"]
+        loc_re = re.compile("^(?P<top_level>/[^/]+)/(?P<rest>.*)$")
+        name_m = loc_re.match(cur_name)
+        if not name_m:
+            raise ValidationError("wrong format")
+        if name_m.group("top_level") not in TOP_LOCATIONS:
+            raise ValidationError("wrong top-level category '%s'" % (name_m.group("top_level")))
+        return cur_name
     class Meta:
         model = category
         fields = ["full_name", "comment"]
@@ -252,7 +262,7 @@ class moncc_template_flags_form(ModelForm):
     )
     class Meta:
         model = mon_check_command
-        fields = ["mon_service_templ", "enable_perfdata", "volatile",]
+        fields = ["mon_service_templ", "enable_perfdata", "volatile", ]
 
 class group_detail_form(ModelForm):
     permissions = ModelMultipleChoiceField(
@@ -303,14 +313,11 @@ class group_detail_form(ModelForm):
                   "allowed_device_groups", "permissions"]
 
 class export_choice_field(ModelChoiceField):
-    def __init__(self, *args, **kwargs):
-        super(export_choice_field, self).__init__(self)
-        self.hel = home_export_list()
-        self.queryset = self.hel
-        print self.queryset
+    def reload(self):
+        self.queryset = home_export_list()
     def label_from_instance(self, obj):
-        return self.hel.exp_dict[obj.pk]["info"]
-    
+        return self.queryset.exp_dict[obj.pk]["info"]
+
 class user_detail_form(ModelForm):
     permissions = ModelMultipleChoiceField(
         queryset=Permission.objects.exclude(Q(codename__startswith="add") | Q(codename__startswith="change") | Q(codename__startswith="delete") | Q(codename__startswith="wf_")).select_related("content_type").order_by("codename"),
@@ -361,10 +368,11 @@ class user_detail_form(ModelForm):
     export = export_choice_field(device_config.objects.none())
     def __init__(self, *args, **kwargs):
         super(user_detail_form, self).__init__(*args, **kwargs)
+        self.fields["export"].reload()
     class Meta:
         model = user
         fields = ["login", "uid", "shell", "first_name", "last_name", "active",
                   "title", "email", "pager", "tel", "comment", "is_superuser",
                   "allowed_device_groups", "secondary_groups", "permissions",
                   "db_is_auth_for_password", "export"]
-    
+
