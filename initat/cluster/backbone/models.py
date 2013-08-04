@@ -655,6 +655,7 @@ class device(models.Model):
             " (%s)" % (self.comment) if self.comment else "")
     class CSW_Meta:
         permissions = (
+            ("all_devices", "access all devices"),
             ("show_graphs", "Access to device graphs"),
             # (""),
             # ("wf_apc" , "APC control"),
@@ -3820,7 +3821,6 @@ class user(models.Model):
         return user_xml
     class CSW_Meta:
         permissions = (
-            ("all_devices", "access all devices"),
             # ("test_right" , "Test right"),
             ("group_admin", "Group administrator"),
             ("admin"      , "Administrator"),

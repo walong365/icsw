@@ -85,6 +85,7 @@ class Command(BaseCommand):
                     app_list[app] = None
         present_perms = csw_permission.objects.all().select_related("content_type")
         p_dict = dict([((cur_perm.content_type.app_label, cur_perm.codename), cur_perm) for cur_perm in present_perms])
+        full_dict = dict([((cur_perm.content_type.app_label, cur_perm.codename, cur_perm.content_type.model), cur_perm) for cur_perm in present_perms])
         for app, models in app_list.items():
             if models is None:
                 models = get_models(app)
@@ -98,6 +99,10 @@ class Command(BaseCommand):
                     app_label = model._meta.app_label
                     cur_ct = ContentType.objects.get(app_label=app_label, model=model._meta.object_name)
                     for code_name, name in model.CSW_Meta.permissions:
+                        if (app_label, code_name) in p_dict and (app_label, code_name, cur_ct.model) not in full_dict:
+                            print "removing permission '%s' from old model %s" % (unicode(p_dict[(app_label, code_name)]), cur_ct.model)
+                            p_dict[(app_label, code_name)].delete()
+                            del p_dict[(app_label, code_name)]
                         if (app_label, code_name) not in p_dict:
                             new_perm = csw_permission.objects.create(
                                 codename=code_name,
@@ -105,8 +110,9 @@ class Command(BaseCommand):
                                 content_type=cur_ct,
                                 )
                             p_dict[(new_perm.content_type.app_label, new_perm.codename)] = new_perm
+                            full_dict[(new_perm.content_type.app_label, new_perm.codename, new_perm.content_type.model)] = new_perm
                             created += 1
-                            print "Created %s" % (unicode(new_perm))
+                            print "Created '%s' for model %s" % (unicode(new_perm), cur_ct.model)
                 if created:
                     print "creation of %d took %7.2f s" % (created, time.time() - start_time),
                     print "found %7s error(s)" % len(errors)
