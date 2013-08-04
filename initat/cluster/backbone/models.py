@@ -3620,9 +3620,24 @@ class csw_object_permission(models.Model):
     def __unicode__(self):
         return "%s | %d" % (unicode(self.csw_permission), self.object_pk)
 
+def get_label_codename(perm):
+    app_label, codename = (None, None)
+    if type(perm) in [str, unicode]:
+        if perm.count(".") == 1:
+            app_label, codename = perm.split(".")
+        else:
+            print "Unknown permission format '%s'" % (perm)
+    elif isinstance(perm, csw_permission):
+        app_label, codename = (perm.content_type.app_label, perm.codename)
+    elif isinstance(perm, csw_object_permission):
+        app_label, codename = (perm.csw_permission.content_type.app_label, perm.csw_permission.codename)
+    else:
+        print "Unknown perm '%s'" % (unicode(perm))
+    return (app_label, codename)
+
 def check_permissions(auth_obj, perm):
-    if perm.count(".") == 1:
-        app_label, codename = perm.split(".")
+    app_label, codename = get_label_codename(perm)
+    if app_label and codename:
         try:
             auth_obj.permissions.get(
                 Q(codename=codename) &
@@ -3633,12 +3648,11 @@ def check_permissions(auth_obj, perm):
         else:
             return True
     else:
-        print "Unknown permission format '%s'" % (perm)
         return False
 
 def check_object_permissions(auth_obj, perm, obj):
-    if perm.count(".") == 1:
-        app_label, codename = perm.split(".")
+    app_label, codename = get_label_codename(perm)
+    if app_label and codename:
         if app_label == obj._meta.app_label:
             try:
                 auth_obj.object_permissions.get(
@@ -3654,7 +3668,6 @@ def check_object_permissions(auth_obj, perm, obj):
         else:
             return False
     else:
-        print "Unknown permission format '%s'" % (perm)
         return False
 
 class user_manager(models.Manager):
