@@ -6,7 +6,6 @@ import re
 from django.forms.widgets import TextInput, PasswordInput, SelectMultiple
 from django.forms import Form, ModelForm, ValidationError, CharField, ModelChoiceField, ModelMultipleChoiceField
 from django.contrib.auth import authenticate
-from django.contrib.auth.models import Permission
 from django.db.models import Q
 from django.utils.translation import ugettext_lazy as _
 from crispy_forms.helper import FormHelper
@@ -15,7 +14,8 @@ from crispy_forms.layout import Submit, Layout, Field, ButtonHolder, Button, Fie
 from crispy_forms.bootstrap import FormActions
 from django.core.urlresolvers import reverse
 from initat.cluster.backbone.models import domain_tree_node, device, category, mon_check_command, mon_service_templ, \
-     domain_name_tree, user, group, device_group, home_export_list, device_config, TOP_LOCATIONS
+     domain_name_tree, user, group, device_group, home_export_list, device_config, TOP_LOCATIONS, \
+     csw_permission
 from initat.cluster.frontend.widgets import domain_name_tree_widget
 # import PAM
 
@@ -267,7 +267,7 @@ class moncc_template_flags_form(ModelForm):
 
 class group_detail_form(ModelForm):
     permissions = ModelMultipleChoiceField(
-        queryset=Permission.objects.exclude(Q(codename__startswith="add") | Q(codename__startswith="change") | Q(codename__startswith="delete") | Q(codename__startswith="wf_")).select_related("content_type").order_by("codename"),
+        queryset=csw_permission.objects.all().order_by("codename"),
         widget=SelectMultiple(attrs={"size" : "8"}),
     )
     allowed_device_groups = ModelMultipleChoiceField(
@@ -321,7 +321,7 @@ class export_choice_field(ModelChoiceField):
 
 class user_detail_form(ModelForm):
     permissions = ModelMultipleChoiceField(
-        queryset=Permission.objects.exclude(Q(codename__startswith="add") | Q(codename__startswith="change") | Q(codename__startswith="delete") | Q(codename__startswith="wf_")).select_related("content_type").order_by("codename"),
+        queryset=csw_permission.objects.all().select_related("content_type").order_by("codename"),
         widget=SelectMultiple(attrs={"size" : "8"}),
     )
     allowed_device_groups = ModelMultipleChoiceField(

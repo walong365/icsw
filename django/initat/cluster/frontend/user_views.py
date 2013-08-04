@@ -34,7 +34,6 @@ from lxml.builder import E
 
 from django.conf import settings
 from django.contrib.auth.decorators import login_required
-from django.contrib.auth.models import User, UserManager, Permission
 from django.core.exceptions import ValidationError
 from django.http import HttpResponse
 from django.db.models import Q
@@ -43,7 +42,7 @@ from django.utils.decorators import method_decorator
 
 from initat.cluster.backbone.models import partition_table, partition_disc, partition, \
      partition_fs, image, architecture, group, user, device_config, device_group, \
-     user_variable
+     user_variable, csw_permission
 from initat.core.render import render_me, render_string
 from initat.cluster.frontend.helper_functions import contact_server, xml_wrapper, update_session_object
 from initat.cluster.frontend.forms import dummy_password_form, group_detail_form, user_detail_form
@@ -78,7 +77,7 @@ class overview(View):
                                  pk="%d" % (cur_exp.pk))
             )
         # all permissions
-        all_perms = Permission.objects.all().select_related("content_type").order_by("codename")
+        all_perms = csw_permission.objects.all().select_related("content_type").order_by("codename")
         perm_list = E.permissions()
         for entry in all_perms:
             c_name, ctm = (entry.codename,
@@ -90,10 +89,10 @@ class overview(View):
                 perm_list.append(E.permission(entry.name, pk="%d" % (entry.pk)))
         # chaching for faster m2m lookup
         group_perm_dict, user_perm_dict = ({}, {})
-        for group_perm in Permission.objects.all().prefetch_related("db_group_permissions"):
+        for group_perm in csw_permission.objects.all().prefetch_related("db_group_permissions"):
             for cur_group in group_perm.db_group_permissions.all():
                 group_perm_dict.setdefault(cur_group.groupname, []).append(group_perm)
-        for user_perm in Permission.objects.all().prefetch_related("db_user_permissions"):
+        for user_perm in csw_permission.objects.all().prefetch_related("db_user_permissions"):
             for cur_user in user_perm.db_user_permissions.all():
                 user_perm_dict.setdefault(cur_user.login, []).append(user_perm)
         group_device_group_dict, user_device_group_dict = ({}, {})
