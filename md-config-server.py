@@ -2683,7 +2683,10 @@ class build_process(threading_tools.process_obj):
                             self.mach_log("IP address is '%s', host is assumed to be always up" % (unicode(host.valid_ip)))
                             act_host["check_command"] = "check-host-ok"
                         else:
-                            act_host["check_command"] = act_def_dev.host_check_command.name
+                            if act_def_dev.host_check_command:
+                                act_host["check_command"] = act_def_dev.host_check_command.name
+                            else:
+                                self.log("dev_template has no host_check_command set", logging_tools.LOG_LEVEL_ERROR)
                         # check for nagvis map
                         if host.automap_root_nagvis and cur_gc.master:
                             map_file = os.path.join(global_config["NAGVIS_DIR"], "etc", "maps", "%s.cfg" % (host.full_name.encode("ascii", errors="ignore")))
@@ -3178,13 +3181,13 @@ class build_process(threading_tools.process_obj):
             act_serv["servicegroups"] = ",".join(s_check.servicegroup_names)
             cur_gc["servicegroup"].add_host(host.name, act_serv["servicegroups"])
             act_serv["check_command"] = "!".join([s_check["command_name"]] + s_check.correct_argument_list(arg_temp, host.dev_variables))
-            if act_host["check_command"] == "check-host-alive-2" and s_check["command_name"].startswith("check_ping"):
-                self.mach_log(
-                    "   removing command %s because of %s" % (
-                        s_check["command_name"],
-                        act_host["check_command"]))
-            else:
-                ret_field.append(act_serv)
+            # if act_host["check_command"] == "check-host-alive-2" and s_check["command_name"].startswith("check_ping"):
+            #    self.mach_log(
+            #        "   removing command %s because of %s" % (
+            #            s_check["command_name"],
+            #            act_host["check_command"]))
+            # else:
+            ret_field.append(act_serv)
         return ret_field
     def _get_target_ip_info(self, my_net_idxs, net_devices, host, check_hosts):
         traces = []
