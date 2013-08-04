@@ -749,14 +749,15 @@ class draw_info
         "button", "change_cb", "trigger", "draw_result_cb", "draw_conditional", "text_source",
         "number", "manytomany", "add_null_entry", "newline", "cspan", "show_label", "group",
         "css", "select_source_attribute", "password", "keep_td", "clear_after_create", "callback",
-        "textarea"]
+        "textarea", "chosen"]
             @[attr_name] = @kwargs[attr_name] ? undefined
         @size = @kwargs.size or undefined
     get_kwargs: () ->
         kwargs = {new_default : @default}
         for attr_name in ["size", "select_source", "boolean", "min", "max", "ro", "button",
             "change_cb", "draw_result_cb", "trigger", "callback", "text_source", "textarea",
-            "number", "manytomany", "add_null_entry", "css", "select_source_attribute", "password",]
+            "number", "manytomany", "add_null_entry", "css", "select_source_attribute",
+            "password", "chosen"]
             kwargs[attr_name] = @[attr_name]
         kwargs.master_xml = @draw_setup.master_xml
         if @show_label
@@ -1072,14 +1073,24 @@ submit_change = (cur_el, callback, modify_data_dict, modify_data_dict_opts, mast
             else
                 # set back to previous value 
                 if is_textarea
-                    $(cur_el).text(get_xml_value(xml, "original_value"))
+                    cur_el.text(get_xml_value(xml, "original_value"))
                 else if $(cur_el).is(":checkbox")
                     if get_xml_value(xml, "original_value") == "False"
-                        $(cur_el).removeAttr("checked")
+                        cur_el.removeAttr("checked")
                     else
-                        $(cur_el).attr("checked", "checked")
+                        cur_el.attr("checked", "checked")
                 else
-                    $(cur_el).attr("value", get_xml_value(xml, "original_value"))
+                    orig_val = get_xml_value(xml, "original_value")
+                    if cur_el.is("select")
+                        if orig_val = "None"
+                            orig_val = "0"
+                        # check for chosen
+                        if cur_el.next().attr("id") == cur_el.attr("id") + "_chosen"
+                            cur_el.val(orig_val).trigger("chosen:updated")
+                        else
+                            cur_el.val(orig_val)
+                    else
+                        cur_el.val(orig_val)
                 if reset_value
                     cur_el.val("")
             if lock_list
@@ -1276,6 +1287,11 @@ create_input_el = (xml_el, attr_name, id_prefix, kwargs) ->
         # will not work when draw_result_cb is specified
         enc_td = $(kwargs.enclose_tag).append(dummy_div.children())
         dummy_div.append(enc_td)
+    if kwargs.chosen
+        new_el.chosen(
+            kwargs.chosen
+        )
+        #new_el.show()
     return dummy_div.children()
 
 root.get_value             = get_value

@@ -51,9 +51,9 @@ add_config_handlers = ->
                             new draw_info("gateway", {default : "192.168.1.1", size : 16, label : "Gateway", show_label : true, group : "network"}),
                             new draw_info("ip_count", {number : 1, ro : true}),
                             new draw_info("penalty", {number : 1, min : -100, max : 100, default : 1, newline : 1, cspan : 8, label : "penalty:", show_label : true}),
-                            new draw_info("network_type", {select_source : "network_types network_type", keep_td : 1, label : "type:", show_label : true, default : other_network_id} ),
-                            new draw_info("master_network", {select_source : root.get_master_networks, add_null_entry : "not set", keep_td : 1, label : "master:", show_label : true} ),
-                            new draw_info("network_device_type", {select_source : "network_device_types network_device_type", manytomany : 1, show_label : true, label : "DTs :", keep_td : 1, default : [ethernet_id]}),
+                            new draw_info("network_type", {select_source : "network_types network_type", keep_td : 1, label : "type:", show_label : true, default : other_network_id, chosen : { width : "20%",}, }),
+                            new draw_info("master_network", {select_source : root.get_master_networks, add_null_entry : "not set", keep_td : 1, label : "master:", show_label : true, chosen : { width : "20%",}, } ),
+                            new draw_info("network_device_type", {select_source : "network_device_types network_device_type", manytomany : 1, show_label : true, chosen : {width : "25%",}, label : "DTs :", keep_td : 1, default : [ethernet_id]}),
                         ],
                         {"lock_div" : "nw_tables"})
                 }

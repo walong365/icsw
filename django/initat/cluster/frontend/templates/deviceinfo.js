@@ -353,6 +353,36 @@ class rrd_config
                             onSelect  : @crop_select
                         )
         
+show_domain_name_tree = (event) ->
+    new domain_name_tree(event).show()
+
+class domain_name_tree
+    constructor: (@event) ->
+    show: () =>
+        $.ajax
+            url     : "{% url 'network:domain_name_tree' %}"
+            success : (xml) =>
+                if parse_xml_response(xml)
+                    @resp_xml = $(xml).find("domain_tree_nodes")
+                    @build_div()
+                    console.log @resp_xml[0]
+                    console.log @event
+                    @div.modal
+                        opacity      : 50 
+                        position     : [@event.pageY, @event.pageX]
+                        autoResize   : true
+                        autoPosition : true
+                        onShow: (dialog) -> 
+                            dialog.container.draggable()
+                        onClose: =>
+                            $.modal.close()
+    build_div: () =>
+        dnt_div = $("<div>")
+        dnt_div.append(
+            $("<h3>").text("Domain name tree")
+        )
+        @div = dnt_div
+    
 show_device_info = (event, dev_key, callback) ->
     new device_info(event, dev_key, callback).show()
 
@@ -611,7 +641,19 @@ class device_info
         general_div = $("<div>").attr("id", "general")
         # working :-)
         general_div.html(@resp_xml.find("forms general_form").text())
+        console.log(@resp_xml.find("forms general_form")[0])
         general_div.find("input, select").bind("change", @my_submitter.submit)
+        #general_div.find("select.select_chosen").chosen(
+        #    width : "50%"
+        #)
+        #general_div.find("div#dnt").jstree(
+        #    "plugins" : ["html_data", "themes",]            
+        #)
+        #general_div.find("div#dnt").dynatree(
+        #    autoFocus  : false
+        #    checkbox   : true
+        #)
+        #general_div.find("input[id$='_domain_tree_node']").on("click", show_domain_name_tree)
         return general_div
     category_div: (dev_xml) =>
         cat_div = $("<div>").attr("id", "category")
@@ -723,6 +765,7 @@ class device_info
         return mdcds_div
     
 root.show_device_info = show_device_info
+root.show_domain_name_tree = show_domain_name_tree
 root.device_info = device_info
 root.category_tree = category_tree
 

@@ -16,6 +16,7 @@ from crispy_forms.bootstrap import FormActions
 from django.core.urlresolvers import reverse
 from initat.cluster.backbone.models import domain_tree_node, device, category, mon_check_command, mon_service_templ, \
      domain_name_tree, user, group, device_group, home_export_list, device_config, TOP_LOCATIONS
+from initat.cluster.frontend.widgets import domain_name_tree_widget
 # import PAM
 
 class authentication_form(Form):
@@ -139,14 +140,14 @@ class dtn_new_form(ModelForm):
         fields = ["full_name", "node_postfix", "create_short_names", "always_create_ip", "write_nameserver_config", "comment"]
 
 class device_general_form(ModelForm):
-    domain_tree_node = ModelChoiceField(domain_tree_node.objects.all(), empty_label=None)
+    # domain_tree_node = ModelChoiceField(domain_tree_node.objects.none(), empty_label=None, widget=domain_name_tree_widget)
     helper = FormHelper()
     helper.form_id = "id_dtn_detail_form"
     helper.layout = Layout(
         Fieldset(
             "Device details",
             Field("name"),
-            Field("domain_tree_node"),
+            Field("domain_tree_node", css_class="select_chosen"),
             Field("comment"),
             Fieldset("Monitor settings",
                      Field("mon_device_templ"),

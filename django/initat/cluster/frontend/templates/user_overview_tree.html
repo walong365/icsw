@@ -129,6 +129,9 @@ class user_tree
                         @detail_div.children().remove()
                         @detail_div.append($(xml).find("value[name='form']").text())
                         @detail_div.find("input, select").on("change", @my_submitter.submit)
+                        @detail_div.find("select").chosen(
+                            width : "75%"
+                        )
                         cur_dtn = @UGX.find("*[key='#{key}']")
                         #@detail_div.find("input#button-id-delete").off("change").on("click", @delete_node)
 
