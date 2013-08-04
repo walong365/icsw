@@ -18,12 +18,12 @@ from lxml.builder import E
 from rest_framework import serializers
 
 from django.conf import settings
-from django.contrib.auth.models import Permission
 from django.core.exceptions import ValidationError
 from django.db import models
 from django.db.models import Q, signals
 from django.dispatch import receiver
 from django.utils.functional import memoize
+from django.contrib.contenttypes.models import ContentType
 
 ALLOWED_CFS = ["MAX", "MIN", "AVERAGE"]
 
@@ -653,6 +653,12 @@ class device(models.Model):
         return u"%s%s" % (
             self.name,
             " (%s)" % (self.comment) if self.comment else "")
+    class CSW_Meta:
+        permissions = (
+            ("show_graphs", "Access to device graphs"),
+            # (""),
+            # ("wf_apc" , "APC control"),
+        )
     class Meta:
         db_table = u'device'
         ordering = ("name",)
@@ -3585,15 +3591,68 @@ class sys_partition(models.Model):
     class Meta:
         db_table = u'sys_partition'
 
-def check_permissions(obj, perm):
+class csw_permission(models.Model):
+    idx = models.AutoField(primary_key=True)
+    name = models.CharField(max_length=150)
+    codename = models.CharField(max_length=150)
+    content_type = models.ForeignKey(ContentType)
+    class Meta:
+        unique_together = (("content_type", "codename"),)
+    @staticmethod
+    def get_permission(object, code_name):
+        ct = ContentType.objects.get_for_model(object)
+        cur_pk = object.pk
+        return csw_object_permission.objects.create(
+            csw_permission=csw_permission.objects.get(Q(content_type=ct) & Q(codename=code_name)),
+            object_pk=object.pk
+            )
+    def __unicode__(self):
+        return "%s | %s | %s" % (
+            self.content_type.app_label,
+            self.content_type,
+            self.name,
+            )
+
+class csw_object_permission(models.Model):
+    idx = models.AutoField(primary_key=True)
+    csw_permission = models.ForeignKey(csw_permission)
+    object_pk = models.IntegerField(default=0)
+    def __unicode__(self):
+        return "%s | %d" % (unicode(self.csw_permission), self.object_pk)
+
+def check_permissions(auth_obj, perm):
     if perm.count(".") == 1:
         app_label, codename = perm.split(".")
         try:
-            obj.permissions.get(Q(codename=codename) & Q(content_type__app_label=app_label))
-        except Permission.DoesNotExist:
+            auth_obj.permissions.get(
+                Q(codename=codename) &
+                Q(content_type__app_label=app_label)
+                )
+        except csw_permission.DoesNotExist:
             return False
         else:
             return True
+    else:
+        print "Unknown permission format '%s'" % (perm)
+        return False
+
+def check_object_permissions(auth_obj, perm, obj):
+    if perm.count(".") == 1:
+        app_label, codename = perm.split(".")
+        if app_label == obj._meta.app_label:
+            try:
+                auth_obj.object_permissions.get(
+                    Q(csw_permission__codename=codename) &
+                    Q(csw_permission__content_type__app_label=app_label) &
+                    Q(csw_permission__content_type__model=obj._meta.object_name) &
+                    Q(object_pk=obj.pk)
+                    )
+            except csw_object_permission.DoesNotExist:
+                return check_permissions(auth_obj, perm)
+            else:
+                return True
+        else:
+            return False
     else:
         print "Unknown permission format '%s'" % (perm)
         return False
@@ -3681,7 +3740,8 @@ class user(models.Model):
     home_dir_created = models.BooleanField(default=False)
     secondary_groups = models.ManyToManyField("group", related_name="secondary")
     last_login = models.DateTimeField(null=True)
-    permissions = models.ManyToManyField(Permission, related_name="db_user_permissions")
+    permissions = models.ManyToManyField(csw_permission, related_name="db_user_permissions")
+    object_permissions = models.ManyToManyField(csw_object_permission, related_name="db_user_permissions")
     is_superuser = models.BooleanField(default=False)
     db_is_auth_for_password = models.BooleanField(default=False)
     def __setattr__(self, key, value):
@@ -3691,17 +3751,18 @@ class user(models.Model):
     def is_authenticated(self):
         return True
     def has_perm(self, perm, obj=None):
-        if obj is not None:
-            c_obj = obj
-        else:
-            c_obj = self
-        if not (c_obj.active and c_obj.group.active):
+        if not (self.active and self.group.active):
             return False
-        elif c_obj.is_superuser:
+        elif self.is_superuser:
             return True
-        res = check_permissions(c_obj, perm)
-        if not res:
-            res = check_permissions(c_obj.group, perm)
+        if obj is not None:
+            res = check_object_permissions(self, perm, obj)
+            if not res:
+                res = check_object_permissions(self.group, perm, obj)
+        else:
+            res = check_permissions(self, perm)
+            if not res:
+                res = check_permissions(self.group, perm)
         return res
     def get_is_active(self):
         return self.active
@@ -3739,22 +3800,23 @@ class user(models.Model):
             if user_perm_dict:
                 user_xml.attrib["permissions"] = "::".join(["%d" % (cur_perm.pk) for cur_perm in user_perm_dict.get(self.login, [])])
             else:
-                user_xml.attrib["permissions"] = "::".join(["%d" % (cur_perm.pk) for cur_perm in Permission.objects.filter(Q(db_user_permissions=self))])
+                user_xml.attrib["permissions"] = "::".join(["%d" % (cur_perm.pk) for cur_perm in csw_permission.objects.filter(Q(db_user_permissions=self))])
         else:
             # empty field
             user_xml.attrib["permissions"] = ""
         return user_xml
-    class Meta:
-        db_table = u'user'
-        ordering = ("login",)
-        permissions = {
+    class CSW_Meta:
+        permissions = (
             ("all_devices", "access all devices"),
             # ("test_right" , "Test right"),
             ("group_admin", "Group administrator"),
             ("admin"      , "Administrator"),
             # (""),
             # ("wf_apc" , "APC control"),
-        }
+        )
+    class Meta:
+        db_table = u'user'
+        ordering = ("login",)
     def __unicode__(self):
         return u"%s (%d; %s, %s)" % (
             self.login,
@@ -3826,16 +3888,15 @@ class group(models.Model):
     allowed_device_groups = models.ManyToManyField(device_group)
     # parent group
     parent_group = models.ForeignKey("self", null=True)
-    permissions = models.ManyToManyField(Permission, related_name="db_group_permissions")
+    permissions = models.ManyToManyField(csw_permission, related_name="db_group_permissions")
+    object_permissions = models.ManyToManyField(csw_object_permission, related_name="db_group_permissions")
     def has_perm(self, perm, obj=None):
-        if obj is not None:
-            c_obj = obj
-        else:
-            c_obj = self
-        if not c_obj.active:
+        if not self.active:
             return False
+        if obj is not None:
+            return check_object_permissions(self, perm, c_obj)
         else:
-            return check_permissions(c_obj, perm)
+            return check_permissions(self, perm)
     def get_is_active(self):
         return self.active
     is_active = property(get_is_active)
@@ -3864,7 +3925,7 @@ class group(models.Model):
             if group_perm_dict is not None:
                 group_xml.attrib["permissions"] = "::".join(["%d" % (cur_perm.pk) for cur_perm in group_perm_dict.get(self.groupname, [])])
             else:
-                group_xml.attrib["permissions"] = "::".join(["%d" % (cur_perm.pk) for cur_perm in Permission.objects.filter(Q(db_group_permissions=self))])
+                group_xml.attrib["permissions"] = "::".join(["%d" % (cur_perm.pk) for cur_perm in csw_permission.objects.filter(Q(db_group_permissions=self))])
         else:
             # empty field
             group_xml.attrib["permissions"] = ""

@@ -27,7 +27,7 @@ else:
 TEMPLATE_DEBUG = DEBUG
 
 ADMINS = (
-    #("Andreas Lang-Nevyjel", "cluster@init.at"),
+    # ("Andreas Lang-Nevyjel", "cluster@init.at"),
     ("Andreas Lang-Nevyjel", "lang-nevyjel@init.at"),
 )
 
@@ -39,7 +39,7 @@ MAIL_SERVER = "localhost"
 
 DATABASES = {
     "default": {
-        "ENGINE"   : "django.db.backends.mysql", 
+        "ENGINE"   : "django.db.backends.mysql",
         "NAME"     : "",
         "USER"     : "",
         "PASSWORD" : "",
@@ -66,7 +66,7 @@ else:
             conf_content = file(OLD_CONF_FILE, "r").read()
         except IOError:
             raise ImproperlyConfigured("cannot read '%s', wrong permissions ?" % (OLD_CONF_FILE))
-    
+
 sql_dict = dict([(key.split("_")[1], value) for key, value in [
     line.strip().split("=", 1) for line in conf_content.split("\n") if line.count("=") and line.count("_") and not line.count("NAGIOS")]])
 
@@ -84,7 +84,7 @@ for src_key, dst_key in [
 
 if mon_dict:
     DATABASES["monitor"] = dict([(key, value) for key, value in DATABASES["default"].iteritems()])
-    for src_key ,dst_key in [
+    for src_key , dst_key in [
         ("DATABASE", "NAME"),
         ("USER"    , "USER"),
         ("PASSWD"  , "PASSWORD"),
@@ -96,7 +96,7 @@ if mon_dict:
 FILE_ROOT = os.path.normpath(os.path.dirname(__file__))
 
 # compress settings
-COMPRESS = False#not DEBUG
+COMPRESS = False # not DEBUG
 COMPRESS_ENABLED = COMPRESS
 COMPRESS_OFFLINE = COMPRESS
 # rebuild once a day
@@ -128,7 +128,7 @@ SITE_ID = 1
 REL_SITE_ROOT = "cluster"
 SITE_ROOT = "/%s" % (REL_SITE_ROOT)
 LOGIN_URL = "%s/session/login/" % (SITE_ROOT)
-                                   
+
 # If you set this to False, Django will make some optimizations so as not
 # to load the internationalization machinery.
 USE_I18N = True
@@ -142,7 +142,7 @@ USE_TZ = True
 
 # Absolute filesystem path to the directory that will hold user-uploaded files.
 # Example: "/home/media/media.lawrence.com/media/"
-#MEDIA_ROOT = "/usr/local/share/home/local/development/clustersoftware/build-extern/webfrontend/htdocs/static/"
+# MEDIA_ROOT = "/usr/local/share/home/local/development/clustersoftware/build-extern/webfrontend/htdocs/static/"
 
 # URL that handles the media served from MEDIA_ROOT. Make sure to use a
 # trailing slash.
@@ -151,7 +151,7 @@ MEDIA_ROOT = os.path.join(FILE_ROOT, "media")
 
 MEDIA_URL = "%s/media/" % (SITE_ROOT)
 
-#COMPRESS_URL = "%s/frontend/media/" % (SITE_ROOT)
+# COMPRESS_URL = "%s/frontend/media/" % (SITE_ROOT)
 
 COMPRESS_OFFLINE_CONTEXT = {
     "MEDIA_URL" : MEDIA_URL,
@@ -171,19 +171,19 @@ SESSION_ENGINE = "django.contrib.sessions.backends.cache"
 SESSION_COOKIE_HTTPONLY = True
 
 # Additional locations of static files
-##STATICFILES_DIRS = (
-##    # Put strings here, like "/home/html/static" or "C:/www/django/static".
-##    # Always use forward slashes, even on Windows.
-##    # Don't forget to use absolute paths, not relative paths.
-##)
+# #STATICFILES_DIRS = (
+# #    # Put strings here, like "/home/html/static" or "C:/www/django/static".
+# #    # Always use forward slashes, even on Windows.
+# #    # Don't forget to use absolute paths, not relative paths.
+# #)
 
 # List of finder classes that know how to find static files in
 # various locations.
-##STATICFILES_FINDERS = (
-##    'django.contrib.staticfiles.finders.FileSystemFinder',
-##    'django.contrib.staticfiles.finders.AppDirectoriesFinder',
-##    "compressor.finders.CompressorFinder",
-##)
+# #STATICFILES_FINDERS = (
+# #    'django.contrib.staticfiles.finders.FileSystemFinder',
+# #    'django.contrib.staticfiles.finders.AppDirectoriesFinder',
+# #    "compressor.finders.CompressorFinder",
+# #)
 
 # Make this unique, and don't share it with anybody.
 SECRET_KEY = "av^t8g^st(phckz=9u#68k6p&amp;%3@h*z!mt=mo@3t!!ls^+4%ic"
@@ -209,16 +209,16 @@ TEMPLATE_LOADERS = (
 MIDDLEWARE_CLASSES = (
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
-    
-    #'django.middleware.csrf.CsrfViewMiddleware',
+
+    # 'django.middleware.csrf.CsrfViewMiddleware',
 
     "django.middleware.transaction.TransactionMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
-    
+
     # Uncomment the next line for simple clickjacking protection:
     # 'django.middleware.clickjacking.XFrameOptionsMiddleware',
-    
+
     "backbone.middleware.database_debug",
 )
 
@@ -239,7 +239,7 @@ INSTALLED_APPS = (
     "django.contrib.sessions",
     "django.contrib.sites",
     "django.contrib.messages",
-    #"django.contrib.staticfiles",
+    # "django.contrib.staticfiles",
     # Uncomment the next line to enable the admin:
     "django.contrib.admin",
     # Uncomment the next line to enable admin documentation:
@@ -252,15 +252,14 @@ INSTALLED_APPS = (
     "crispy_forms",
     # cluster
     "initat.core",
-    "guardian",
+    # "guardian",
 )
 
-ZMQ_LOGGING = True
-IS_WINDOWS = False
+# ZMQ_LOGGING = True
 
 # crispy settings
 CRISPY_TEMPLATE_PACK = "uni_form"
-#CRISPY_TEMPLATE_PACK = "bootstrap"
+# CRISPY_TEMPLATE_PACK = "bootstrap"
 CRISPY_FAIL_SILENTLY = not DEBUG
 
 # coffee settings
@@ -302,7 +301,7 @@ if not "NO_AUTO_ADD_APPLICATIONS" in os.environ:
         add_app = os.environ[add_app_key]
         if add_app not in INSTALLED_APPS:
             INSTALLED_APPS.append(add_app)
-    #INSTALLED_APPS.append("initat.core")
+    # INSTALLED_APPS.append("initat.core")
 
 INSTALLED_APPS = tuple(INSTALLED_APPS)
 
@@ -333,7 +332,7 @@ if CLUSTER_LICENSE.get("rest", False):
         "rest_framework.renderers.JSONRenderer",
         "rest_framework.renderers.XMLRenderer",
     ]
-        
+
     REST_FRAMEWORK = {
         'DEFAULT_RENDERER_CLASSES' : tuple(rest_renderers),
         "DEFAULT_PARSER_CLASSES"   : (
