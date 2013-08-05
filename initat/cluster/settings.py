@@ -255,7 +255,8 @@ INSTALLED_APPS = (
     # "guardian",
 )
 
-# ZMQ_LOGGING = True
+# needed by some modules
+ZMQ_LOGGING = True
 
 # crispy settings
 CRISPY_TEMPLATE_PACK = "uni_form"

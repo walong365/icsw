@@ -4000,15 +4000,6 @@ class user_device_login(models.Model):
     class Meta:
         db_table = u'user_device_login'
 
-# ## for secondary groups
-# #class user_group(models.Model):
-# #    idx = models.AutoField(db_column="user_ggroup_idx", primary_key=True)
-# #    group = models.ForeignKey("group")
-# #    user = models.ForeignKey("user")
-# #    date = models.DateTimeField(auto_now_add=True)
-# #    class Meta:
-# #        db_table = u'user_ggroup'
-
 class user_variable(models.Model):
     idx = models.AutoField(primary_key=True)
     user = models.ForeignKey("user")
