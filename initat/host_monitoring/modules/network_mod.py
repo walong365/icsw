@@ -393,7 +393,7 @@ class netspeed(object):
 class ping_sp_struct(hm_classes.subprocess_struct):
     seq_num = 0
     class Meta:
-        max_usage = 128
+        max_usage = 512
         twisted = True
         use_popen = False
         id_str = "ping"

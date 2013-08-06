@@ -38,6 +38,7 @@ import netifaces
 import os
 import pprint
 import process_tools
+import resource
 import server_command
 import socket
 import sys
@@ -870,6 +871,7 @@ class relay_process(threading_tools.process_pool):
         self._init_filecache()
         self._init_master()
         self._init_msi_block()
+        self._change_rlimits()
         self._init_network_sockets()
         self._init_ipc_sockets()
         self.register_exception("int_error" , self._sigint)
@@ -902,6 +904,24 @@ class relay_process(threading_tools.process_pool):
                 self.__client_dict[t_host] = None
                 num_c += 1
         self.log("cleared %s" % (logging_tools.get_plural("state", num_c)))
+    def _change_rlimits(self):
+        for limit_name in ["OFILE"]:
+            res = getattr(resource, "RLIMIT_%s" % (limit_name))
+            soft, hard = resource.getrlimit(res)
+            if soft < hard:
+                self.log("changing ulimit of %s from %d to %d" % (
+                    limit_name,
+                    soft,
+                    hard,
+                    ))
+                try:
+                    resource.setrlimit(res, (hard, hard))
+                except:
+                    self.log("cannot alter ulimit: %s" % (process_tools.get_except_info()),
+                        logging_tools.LOG_LEVEL_CRITICAL,
+                        )
+        # try:
+        #    resource.setrlimit(resource.RLIMIT_OFILE, 4069)
     def _init_master(self):
         if os.path.isfile(MASTER_FILE_NAME):
             master_xml = etree.fromstring(file(MASTER_FILE_NAME, "r").read())
@@ -1222,16 +1242,6 @@ class relay_process(threading_tools.process_pool):
                 except:
                     self.log("error parsing %s" % (data), logging_tools.LOG_LEVEL_ERROR)
                     srv_com = None
-                # if all([com_part[idx].isdigit() and (len(com_part[idx + 1]) == int(com_part[idx])) for idx in xrange(0, len(com_part), 2)]):
-                    # # decode to utf-8 after parsing, otherwise the string lengths encoded in the data string would differ
-                    # arg_list = [com_part[idx + 1].decode("utf-8") for idx in xrange(0, len(com_part), 2)]
-                    # cur_com = arg_list.pop(0) if arg_list else ""
-                    # srv_com = server_command.srv_command(command=cur_com, identity=src_id)
-                    # srv_com["host"] = parts[0]
-                    # srv_com["port"] = parts[1]
-                    # for arg_index, arg in enumerate(arg_list):
-                        # srv_com["arguments:arg%d" % (arg_index)] = arg
-                    # srv_com["arg_list"] = " ".join(arg_list)
         if srv_com is not None:
             if self.__verbose:
                 self.log("got command '%s' for '%s' (XML: %s)" % (
