@@ -684,6 +684,7 @@ class hm_icmp_protocol(icmp_twisted.icmp_protocol):
         self.__log_template = log_template
         icmp_twisted.icmp_protocol.__init__(self)
         self.__work_dict, self.__seqno_dict = ({}, {})
+        self.__pings_in_flight = 0
         self.__twisted_process = tw_process
         self.__debug = global_config["DEBUG"]
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
@@ -706,6 +707,7 @@ class hm_icmp_protocol(icmp_twisted.icmp_protocol):
                          "timeout"    : timeout,
                          "start"      : cur_time,
                          "end"        : cur_time + timeout,
+                         "next_send"  : cur_time,
                          # time between pings
                          "slide_time" : 0.1,
                          "sent"       : 0,
@@ -714,20 +716,19 @@ class hm_icmp_protocol(icmp_twisted.icmp_protocol):
                          "error_list" : [],
                          "sent_list"  : {},
                          "recv_list"  : {}}
+        self.__pings_in_flight += 1
+        self.log("%s in flight" % (logging_tools.get_plural("ping", self.__pings_in_flight)))
         self._update()
     def _update(self):
         cur_time = time.time()
-        del_keys = []
+        del_keys = set()
+        # print cur_time
         # pprint.pprint(self.__work_dict)
         for key, value in self.__work_dict.iteritems():
             if value["sent"] < value["num"]:
-                if value["sent_list"]:
-                    # send if last send was at least slide_time ago
-                    to_send = max(value["sent_list"].values()) + value["slide_time"] < cur_time or value["recv_ok"] == value["sent"]
-                else:
-                    # always send
-                    to_send = True
-                if to_send:
+                # if value["sent_list"]:
+                # send if last send was at least slide_time ago
+                if value["next_send"] <= cur_time or value["recv_ok"] == value["sent"]:
                     value["sent"] += 1
                     try:
                         self.send_echo(value["host"])
@@ -740,6 +741,7 @@ class hm_icmp_protocol(icmp_twisted.icmp_protocol):
                             logging_tools.LOG_LEVEL_ERROR)
                     else:
                         value["sent_list"][self.echo_seqno] = cur_time
+                        value["next_send"] = cur_time + value["slide_time"]
                         self.__seqno_dict[self.echo_seqno] = key
                         reactor.callLater(value["slide_time"] + 0.001, self._update)
                         if value["sent"] == 1:
@@ -754,9 +756,10 @@ class hm_icmp_protocol(icmp_twisted.icmp_protocol):
             if value["error_list"] or (value["sent"] == value["num"] and value["recv_ok"] + value["recv_fail"] == value["num"]):
                 all_times = [value["recv_list"][s_key] - value["sent_list"][s_key] for s_key in value["sent_list"].iterkeys() if value["recv_list"].get(s_key, None) != None]
                 self.__twisted_process.send_ping_result(key, value["sent"], value["recv_ok"], all_times, ", ".join(value["error_list"]))
-                del_keys.append(key)
+                del_keys.add(key)
         for del_key in del_keys:
             del self[del_key]
+        self.__pings_in_flight -= len(del_keys)
         # pprint.pprint(self.__work_dict)
     def received(self, dgram):
         if dgram.packet_type == 0 and dgram.ident == self.__twisted_process.pid & 0x7fff:
