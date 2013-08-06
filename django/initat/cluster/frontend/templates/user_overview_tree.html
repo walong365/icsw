@@ -50,7 +50,7 @@ class user_tree
         $.ajax
             url     : "{% url 'user:sync_users' %}"
             title   : "syncing users"
-            success : (xml) ->
+            success : (xml) =>
                 @click_buttons.removeAttr("disabled")
                 parse_xml_response(xml)
 
