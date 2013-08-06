@@ -153,7 +153,7 @@ user_patterns = patterns(
     url("sync$"                     , user_views.sync_users.as_view()       , name="sync_users"       ),
     url("^save_layout_state$"       , user_views.save_layout_state.as_view(), name="save_layout_state"),
     url("^set_user_var$"            , user_views.set_user_var.as_view()     , name="set_user_var"     ),
-    url("^move_user$"               , user_views.move_user.as_view()        , name="move_user"        ),
+    url("^move_node$"               , user_views.move_node.as_view()        , name="move_node"),
     url("^group_detail$"            , user_views.group_detail.as_view()     , name="group_detail"),
     url("^user_detail$"             , user_views.user_detail.as_view()      , name="user_detail"),
 )

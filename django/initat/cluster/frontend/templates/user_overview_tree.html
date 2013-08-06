@@ -172,13 +172,13 @@ class user_tree
                         return false
                 onDrop: (dst_node, src_node, hit_mode, ui, draggable) =>
                     $.ajax
-                        url     : "{% url 'user:move_user' %}"
+                        url     : "{% url 'user:move_node' %}"
                         data    : {
                             "src_id" : src_node.data.key
                             "dst_id" : dst_node.data.key
                             "mode"   : hit_mode
                         }
-                        success : (xml) =>
+                        success :  (xml) =>
                             if parse_xml_response(xml)
                                 src_db_node = @UGX.find("users user[key='#{src_node.data.key}']")
                                 src_db_node.attr("parent", @UGX.find("groups group[key='#{dst_node.data.key}']").attr("pk"))

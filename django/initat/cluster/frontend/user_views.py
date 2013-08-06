@@ -208,18 +208,26 @@ class set_user_var(View):
         update_session_object(request)
         request.session.save()
 
-class move_user(View):
+class move_node(View):
     @method_decorator(login_required)
     @method_decorator(xml_wrapper)
     def post(self, request):
         _post = request.POST
-        cur_user = user.objects.get(Q(pk=_post["src_id"].split("__")[1]))
-        cur_group = group.objects.get(Q(pk=_post["dst_id"].split("__")[1]))
-        cur_user.group = cur_group
-        cur_user.save()
-        request.xml_response.info("user %s moved to group %s" % (
-            unicode(cur_user),
-            unicode(cur_group)), logger)
+        dst_group = group.objects.get(Q(pk=_post["dst_id"].split("__")[1]))
+        if _post["src_id"].startswith("user_"):
+            cur_user = user.objects.get(Q(pk=_post["src_id"].split("__")[1]))
+            cur_user.group = dst_group
+            cur_user.save()
+            request.xml_response.info("user %s moved to group %s" % (
+                unicode(cur_user),
+                unicode(dst_group)), logger)
+        else:
+            cur_group = group.objects.get(Q(pk=_post["src_id"].split("__")[1]))
+            cur_group.parent_group = dst_group
+            cur_group.save()
+            request.xml_response.info("group %s moved to group %s" % (
+                unicode(cur_group),
+                unicode(dst_group)), logger)
 
 class group_detail(View):
     @method_decorator(login_required)
