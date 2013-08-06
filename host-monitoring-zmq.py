@@ -6,7 +6,7 @@
 # Send feedback to: <lang-nevyjel@init.at>
 #
 # This file is part of host-monitoring
-# 
+#
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License Version 2 as
 # published by the Free Software Foundation.
@@ -58,25 +58,25 @@ try:
     from host_monitoring_version import VERSION_STRING
 except ImportError:
     VERSION_STRING = "?.?"
-    
+
 MAX_USED_MEM = 148
-TIME_FORMAT  = "%.3f"
+TIME_FORMAT = "%.3f"
 
 CONFIG_DIR = "/etc/sysconfig/host-monitoring.d"
-MAPPING_FILE_IDS   = os.path.join(CONFIG_DIR, "collrelay_0mq_mapping")
+MAPPING_FILE_IDS = os.path.join(CONFIG_DIR, "collrelay_0mq_mapping")
 MAPPING_FILE_TYPES = os.path.join(CONFIG_DIR, "0mq_clients")
-MASTER_FILE_NAME   = os.path.join(CONFIG_DIR, "monitor_master")
+MASTER_FILE_NAME = os.path.join(CONFIG_DIR, "monitor_master")
 
 def client_code():
     from initat.host_monitoring import modules
-    #log_template = logging_tools.get_logger(global_config["LOG_NAME"], global_config["LOG_DESTINATION"], zmq=True, context=)
+    # log_template = logging_tools.get_logger(global_config["LOG_NAME"], global_config["LOG_DESTINATION"], zmq=True, context=)
     conn_str = "tcp://%s:%d" % (global_config["HOST"],
                                 global_config["COM_PORT"])
     arg_stuff = global_config.get_argument_stuff()
     arg_list = arg_stuff["arg_list"]
     com_name = arg_list.pop(0)
     if com_name in modules.command_dict:
-        srv_com = server_command.srv_command(command=com_name)#" ".join(arg_list))
+        srv_com = server_command.srv_command(command=com_name) # " ".join(arg_list))
         for src_key, dst_key in [("HOST"    , "host"),
                                  ("COM_PORT", "port")]:
             srv_com[dst_key] = global_config[src_key]
@@ -148,7 +148,7 @@ class id_discovery(object):
             new_sock.setsockopt(zmq.TCP_KEEPALIVE_IDLE, 300)
             self.socket = new_sock
             id_discovery.relayer_process.register_poller(new_sock, zmq.POLLIN, self.get_result)
-            #id_discovery.relayer_process.register_poller(new_sock, zmq.POLLIN, self.error)
+            # id_discovery.relayer_process.register_poller(new_sock, zmq.POLLIN, self.error)
             dealer_message = server_command.srv_command(command="get_0mq_id")
             dealer_message["target_ip"] = self.host
             self.socket.connect(self.conn_str)
@@ -223,7 +223,7 @@ class id_discovery(object):
             for key, value in id_discovery.mapping.iteritems():
                 # only use ip-address / hostname from key
                 id_discovery.reverse_mapping.setdefault(value, []).append(key[6:].split(":")[0])
-            #pprint.pprint(id_discovery.reverse_mapping)
+            # pprint.pprint(id_discovery.reverse_mapping)
         else:
             id_discovery.mapping = {}
         id_discovery.pending = {}
@@ -256,7 +256,7 @@ class id_discovery(object):
             # set last try flag
             id_discovery.last_try[cur_ids.conn_str] = cur_time
             cur_ids.send_return("timeout triggered, closing")
-        
+
 class sr_probe(object):
     def __init__(self, host_con):
         self.host_con = host_con
@@ -288,7 +288,7 @@ class sr_probe(object):
     @recv.setter
     def recv(self, val):
         self.__val["recv"] += val
-        
+
 class host_connection(object):
     def __init__(self, conn_str, **kwargs):
         self.zmq_id = kwargs.get("zmq_id", "ms")
@@ -327,7 +327,7 @@ class host_connection(object):
         new_sock.setsockopt(zmq.TCP_KEEPALIVE_IDLE, 300)
         host_connection.zmq_socket = new_sock
         host_connection.relayer_process.register_poller(new_sock, zmq.POLLIN, host_connection.get_result)
-        #host_connection.relayer_process.register_poller(new_sock, zmq.POLLERR, host_connection.error)
+        # host_connection.relayer_process.register_poller(new_sock, zmq.POLLERR, host_connection.error)
     @staticmethod
     def get_hc_0mq(conn_str, target_id="ms", **kwargs):
         if (True, conn_str) not in host_connection.hc_dict:
@@ -359,7 +359,7 @@ class host_connection(object):
     def check_timeout(self, cur_time):
         to_messages = [cur_mes for cur_mes in self.messages.itervalues() if cur_mes.check_timeout(cur_time, host_connection.timeout)]
         if to_messages:
-            #print "TO", len(to_messages), self.__conn_str
+            # print "TO", len(to_messages), self.__conn_str
             for to_mes in to_messages:
                 if not self.tcp_con:
                     pass
@@ -410,10 +410,10 @@ class host_connection(object):
                                 self.__backlog_counter,
                                 host_connection.backlog_size,
                                 self.__conn_str))
-                        #self._close()
+                        # self._close()
                     else:
                         try:
-                            host_connection.zmq_socket.send_unicode(self.zmq_id, zmq.DONTWAIT|zmq.SNDMORE)
+                            host_connection.zmq_socket.send_unicode(self.zmq_id, zmq.DONTWAIT | zmq.SNDMORE)
                             send_str = unicode(host_mes.srv_com)
                             host_connection.zmq_socket.send_unicode(send_str, zmq.DONTWAIT)
                         except:
@@ -422,7 +422,7 @@ class host_connection(object):
                                 "connection error (%s)" % (process_tools.get_except_info()),
                             )
                         else:
-                            #self.__backlog_counter += 1
+                            # self.__backlog_counter += 1
                             self.sr_probe.send = len(send_str)
                             host_mes.sr_probe = self.sr_probe
                             host_mes.sent = True
@@ -452,8 +452,8 @@ class host_connection(object):
         print "**** _error", zmq_sock
         print dir(zmq_sock)
         print zmq_sock.getsockopt(zmq.EVENTS)
-        #self._close()
-        #raise zmq.ZMQError()
+        # self._close()
+        # raise zmq.ZMQError()
     @staticmethod
     def get_result(zmq_sock):
         src_id = zmq_sock.recv()
@@ -461,7 +461,7 @@ class host_connection(object):
         host_connection._handle_result(cur_reply)
     @staticmethod
     def _handle_result(result):
-        #print unicode(result)
+        # print unicode(result)
         mes_id = result["relayer_id"].text
         if mes_id in host_connection.messages:
             host_connection.relayer_process._new_client(result["host"].text, int(result["port"].text))
@@ -470,12 +470,12 @@ class host_connection(object):
             cur_mes = host_connection.messages[mes_id]
             if cur_mes.sent:
                 cur_mes.sent = False
-                #self.__backlog_counter -= 1
+                # self.__backlog_counter -= 1
             if len(result.xpath(None, ".//ns:raw")):
                 # raw response, no interpret
                 cur_mes.srv_com = result
                 host_connection._send_result(cur_mes, None)
-                #self.send_result(cur_mes, None)
+                # self.send_result(cur_mes, None)
             else:
                 try:
                     res_tuple = cur_mes.interpret(result)
@@ -488,11 +488,11 @@ class host_connection(object):
                     for line in exc_info.log_lines:
                         host_connection.relayer_process.log(line, logging_tools.LOG_LEVEL_CRITICAL)
                 host_connection._send_result(cur_mes, res_tuple)
-                #self.send_result(cur_mes, res_tuple)
+                # self.send_result(cur_mes, res_tuple)
         else:
             # FIXME
-            #print "ID", mes_id
-            #print self.log("unknown id '%s' in _handle_result" % (mes_id), logging_tools.LOG_LEVEL_ERROR)
+            # print "ID", mes_id
+            # print self.log("unknown id '%s' in _handle_result" % (mes_id), logging_tools.LOG_LEVEL_ERROR)
             pass
     def _handle_old_result(self, mes_id, result):
         if mes_id in host_connection.messages:
@@ -515,6 +515,7 @@ class host_message(object):
         self.src_id = src_id
         self.xml_input = xml_input
         self.srv_com = srv_com
+        self.timeout = int(srv_com.get("timeout", "10"))
         self.srv_com["relayer_id"] = self.src_id
         self.s_time = time.time()
         self.sent = False
@@ -527,7 +528,7 @@ class host_message(object):
         self.com_struct = com_struct
         if com_struct:
             cur_ns, rest = com_struct.handle_commandline((self.srv_com["arg_list"].text or "").split())
-            #print "***", cur_ns, rest
+            # print "***", cur_ns, rest
             self.srv_com["arg_list"] = " ".join(rest)
             self.srv_com.delete_subtree("arguments")
             for arg_idx, arg in enumerate(rest):
@@ -539,7 +540,7 @@ class host_message(object):
             self.srv_com["arguments:rest"] = self.srv_com["arg_list"].text
             self.ns = argparse.Namespace()
     def check_timeout(self, cur_time, to_value):
-        return abs(cur_time - self.s_time) > to_value
+        return abs(cur_time - self.s_time) > max(to_value, self.timeout - 2)
     def get_runtime(self, cur_time):
         return abs(cur_time - self.s_time)
     def get_result(self, result):
@@ -592,11 +593,11 @@ class host_message(object):
     def __del__(self):
         del self.srv_com
         pass
-        
+
 class tcp_send(Protocol):
-    #def __init__(self, log_recv):
-        #Protocol.__init__(self)
-        #self.__log_recv = log_recv
+    # def __init__(self, log_recv):
+        # Protocol.__init__(self)
+        # self.__log_recv = log_recv
     def __init__(self, factory, src_id, srv_com):
         self.factory = factory
         self.src_id = src_id
@@ -609,8 +610,8 @@ class tcp_send(Protocol):
             com = "%s %s" % (com, self.srv_com["arg_list"].text)
         self.transport.write("%08d%s" % (len(com), com))
     def dataReceived(self, data):
-        #print data
-        #self.log_recv.datagramReceived(data, None)
+        # print data
+        # self.log_recv.datagramReceived(data, None)
         if self.__header_size is None:
             if data[0:8].isdigit():
                 d_len = int(data[0:8])
@@ -632,7 +633,7 @@ class tcp_send(Protocol):
         else:
             self.__chunks += 1
     def __del__(self):
-        #print "del tcp_send"
+        # print "del tcp_send"
         pass
 
 class tcp_factory(ClientFactory):
@@ -703,6 +704,7 @@ class hm_icmp_protocol(icmp_twisted.icmp_protocol):
                          "num"        : num_pings,
                          "timeout"    : timeout,
                          "start"      : cur_time,
+                         "end"        : cur_time + timeout,
                          # time between pings
                          "slide_time" : 0.1,
                          "sent"       : 0,
@@ -715,7 +717,7 @@ class hm_icmp_protocol(icmp_twisted.icmp_protocol):
     def _update(self):
         cur_time = time.time()
         del_keys = []
-        #pprint.pprint(self.__work_dict)
+        # pprint.pprint(self.__work_dict)
         for key, value in self.__work_dict.iteritems():
             if value["sent"] < value["num"]:
                 if value["sent_list"]:
@@ -739,9 +741,12 @@ class hm_icmp_protocol(icmp_twisted.icmp_protocol):
                         value["sent_list"][self.echo_seqno] = cur_time
                         self.__seqno_dict[self.echo_seqno] = key
                         reactor.callLater(value["slide_time"] + 0.001, self._update)
-                        reactor.callLater(value["timeout"] + value["slide_time"] * value["num"] + 0.001, self._update)
+                        if value["sent"] == 1:
+                            # register final timeout
+                            reactor.callLater(value["timeout"], self._update)
             # check for timeout
-            for seq_to in [s_key for s_key, s_value in value["sent_list"].iteritems() if abs(s_value - cur_time) > value["timeout"] and s_key not in value["recv_list"]]:
+            # print value["sent_list"]
+            for seq_to in [s_key for s_key, s_value in value["sent_list"].iteritems() if cur_time >= value["end"] and s_key not in value["recv_list"]]:
                 value["recv_fail"] += 1
                 value["recv_list"][seq_to] = None
             # check for ping finish
@@ -751,7 +756,7 @@ class hm_icmp_protocol(icmp_twisted.icmp_protocol):
                 del_keys.append(key)
         for del_key in del_keys:
             del self[del_key]
-        #pprint.pprint(self.__work_dict)
+        # pprint.pprint(self.__work_dict)
     def received(self, dgram):
         if dgram.packet_type == 0 and dgram.ident == self.__twisted_process.pid & 0x7fff:
             seqno = dgram.seqno
@@ -764,7 +769,7 @@ class hm_icmp_protocol(icmp_twisted.icmp_protocol):
                     value["recv_list"][seqno] = time.time()
                     value["recv_ok"] += 1
             self._update()
-        
+
 class twisted_process(threading_tools.process_obj):
     def process_init(self):
         self.__log_template = logging_tools.get_logger(global_config["LOG_NAME"], global_config["LOG_DESTINATION"], zmq=True, context=self.zmq_context)
@@ -782,7 +787,7 @@ class twisted_process(threading_tools.process_obj):
         self.__extra_twisted_threads = 0
         if self.start_kwargs.get("icmp", True):
             self.icmp_protocol = hm_icmp_protocol(self, self.__log_template)
-            #reactor.listenWith(icmp_twisted.icmp_port, self.icmp_protocol)
+            # reactor.listenWith(icmp_twisted.icmp_port, self.icmp_protocol)
             reactor.listen_ICMP(self.icmp_protocol)
             self.register_func("ping", self._ping)
     def _connection(self, src_id, srv_com, *args, **kwargs):
@@ -804,7 +809,7 @@ class twisted_process(threading_tools.process_obj):
                         self.log("number of twisted threads changed from %d to %d" % (self.__extra_twisted_threads, cur_threads))
                         self.__extra_twisted_threads = cur_threads
                         self.send_pool_message("process_start")
-        #self.send_pool_message("pong", cur_idx)
+        # self.send_pool_message("pong", cur_idx)
     def _ping(self, *args, **kwargs):
         self.icmp_protocol.ping(*args)
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
@@ -830,7 +835,7 @@ class my_cached_file(process_tools.cached_file):
             self.hosts = set()
     def __contains__(self, h_name):
         return h_name in self.hosts
-        
+
 class relay_process(threading_tools.process_pool):
     def __init__(self):
         # monkey path process tools to allow consistent access
@@ -844,7 +849,7 @@ class relay_process(threading_tools.process_pool):
         self.__log_cache, self.__log_template = ([], None)
         threading_tools.process_pool.__init__(self, "main", zmq=True, zmq_debug=global_config["ZMQ_DEBUG"])
         self.renice(global_config["NICE_LEVEL"])
-        #pending_connection.init(self)
+        # pending_connection.init(self)
         self.__global_timeout = global_config["TIMEOUT"]
         host_connection.init(self, global_config["BACKLOG_SIZE"], self.__global_timeout, self.__verbose)
         # init lut
@@ -962,9 +967,9 @@ class relay_process(threading_tools.process_pool):
             msi_block.add_actual_pid(mult=3)
             msi_block.add_actual_pid(act_pid=configfile.get_manager_pid(), mult=3)
             msi_block.start_command = "/etc/init.d/host-relay start"
-            msi_block.stop_command  = "/etc/init.d/host-relay force-stop"
+            msi_block.stop_command = "/etc/init.d/host-relay force-stop"
             msi_block.kill_pids = True
-            #msi_block.heartbeat_timeout = 60
+            # msi_block.heartbeat_timeout = 60
             msi_block.save_block()
         else:
             msi_block = None
@@ -1008,7 +1013,7 @@ class relay_process(threading_tools.process_pool):
             for cur_del in self.__delayed:
                 if cur_del.Meta.use_popen:
                     if cur_del.finished():
-                        #print "finished delayed"
+                        # print "finished delayed"
                         cur_del.send_return()
                     elif abs(cur_time - cur_del._init_time) > cur_del.Meta.max_runtime:
                         self.log("delay_object runtime exceeded, stopping")
@@ -1037,7 +1042,7 @@ class relay_process(threading_tools.process_pool):
         # nhm (not host monitoring) dictionary for timeout
         self.__nhm_dict = {}
         self.__nhm_connections = set()
-        sock_list = [("ipc", "receiver", zmq.PULL, 2   ),
+        sock_list = [("ipc", "receiver", zmq.PULL, 2),
                      ("ipc", "sender"  , zmq.PUB , 1024)]
         [setattr(self, "%s_socket" % (short_sock_name), None) for sock_proto, short_sock_name, a0, b0 in sock_list]
         for sock_proto, short_sock_name, sock_type, hwm_size in sock_list:
@@ -1059,7 +1064,7 @@ class relay_process(threading_tools.process_pool):
             cur_socket = self.zmq_context.socket(sock_type)
             try:
                 process_tools.bind_zmq_socket(cur_socket, sock_name)
-                #client.bind("tcp://*:8888")
+                # client.bind("tcp://*:8888")
             except zmq.core.error.ZMQError:
                 self.log("error binding %s: %s" % (
                     short_sock_name,
@@ -1150,7 +1155,7 @@ class relay_process(threading_tools.process_pool):
                         ip_addr),
                              logging_tools.LOG_LEVEL_OK if new_ip_addr == ip_addr else logging_tools.LOG_LEVEL_ERROR)
                     # should we use the new ip_addr ? dangerous, FIXME
-                    #ip_addr = new_ip_addr
+                    # ip_addr = new_ip_addr
             if ip_addr not in self.__ip_lut:
                 self.log("resolved %s to %s" % (target, ip_addr))
                 self.__ip_lut[ip_addr] = target
@@ -1177,13 +1182,24 @@ class relay_process(threading_tools.process_pool):
                 srv_com["identity"] = src_id
         else:
             if data.count(";") > 1:
-                parts = data.split(";", 3)
+                if data.startswith(";"):
+                    # new format
+                    proto_version, data = data[1:].split(";", 1)
+                else:
+                    proto_version, data = ("0", data)
+                proto_version = int(proto_version)
+                if proto_version == 0:
+                    parts = data.split(";", 3)
+                    # insert default timeout of 10 seconds
+                    parts.insert(3, "10")
+                else:
+                    parts = data.split(";", 4)
                 src_id = parts.pop(0)
                 # parse new format
-                if parts[2].endswith(";"):
-                    com_part = parts[2][:-1]
+                if parts[3].endswith(";"):
+                    com_part = parts[3][:-1]
                 else:
-                    com_part = parts[2]
+                    com_part = parts[3]
                 # iterative parser
                 try:
                     arg_list = []
@@ -1199,22 +1215,23 @@ class relay_process(threading_tools.process_pool):
                         srv_com = server_command.srv_command(command=cur_com, identity=src_id)
                         srv_com["host"] = parts[0]
                         srv_com["port"] = parts[1]
+                        srv_com["timeout"] = parts[2]
                         for arg_index, arg in enumerate(arg_list):
                             srv_com["arguments:arg%d" % (arg_index)] = arg
                         srv_com["arg_list"] = " ".join(arg_list)
                 except:
                     self.log("error parsing %s" % (data), logging_tools.LOG_LEVEL_ERROR)
                     srv_com = None
-                #if all([com_part[idx].isdigit() and (len(com_part[idx + 1]) == int(com_part[idx])) for idx in xrange(0, len(com_part), 2)]):
-                    ## decode to utf-8 after parsing, otherwise the string lengths encoded in the data string would differ
-                    #arg_list = [com_part[idx + 1].decode("utf-8") for idx in xrange(0, len(com_part), 2)]
-                    #cur_com = arg_list.pop(0) if arg_list else ""
-                    #srv_com = server_command.srv_command(command=cur_com, identity=src_id)
-                    #srv_com["host"] = parts[0]
-                    #srv_com["port"] = parts[1]
-                    #for arg_index, arg in enumerate(arg_list):
-                        #srv_com["arguments:arg%d" % (arg_index)] = arg
-                    #srv_com["arg_list"] = " ".join(arg_list)
+                # if all([com_part[idx].isdigit() and (len(com_part[idx + 1]) == int(com_part[idx])) for idx in xrange(0, len(com_part), 2)]):
+                    # # decode to utf-8 after parsing, otherwise the string lengths encoded in the data string would differ
+                    # arg_list = [com_part[idx + 1].decode("utf-8") for idx in xrange(0, len(com_part), 2)]
+                    # cur_com = arg_list.pop(0) if arg_list else ""
+                    # srv_com = server_command.srv_command(command=cur_com, identity=src_id)
+                    # srv_com["host"] = parts[0]
+                    # srv_com["port"] = parts[1]
+                    # for arg_index, arg in enumerate(arg_list):
+                        # srv_com["arguments:arg%d" % (arg_index)] = arg
+                    # srv_com["arg_list"] = " ".join(arg_list)
         if srv_com is not None:
             if self.__verbose:
                 self.log("got command '%s' for '%s' (XML: %s)" % (
@@ -1242,7 +1259,7 @@ class relay_process(threading_tools.process_pool):
                             c_state = self.__client_dict.get(t_host, self.__client_dict.get(ip_addr, None))
                             if c_state is None:
                                 # not needed
-                                #host_connection.delete_hc(srv_com)
+                                # host_connection.delete_hc(srv_com)
                                 if t_host not in self.__last_tried:
                                     self.__last_tried[t_host] = "T" if self.__default_0mq else "0"
                                 self.__last_tried[t_host] = {
@@ -1250,7 +1267,7 @@ class relay_process(threading_tools.process_pool):
                                     "0" : "T"}[self.__last_tried[t_host]]
                                 c_state = self.__last_tried[t_host]
                             con_mode = c_state
-                            #con_mode = "0"
+                            # con_mode = "0"
                         else:
                             self.__old_clients.update()
                             self.__new_clients.update()
@@ -1306,7 +1323,7 @@ class relay_process(threading_tools.process_pool):
             return True
     def _handle_direct_command(self, src_id, srv_com):
         # only DIRECT command from ccollclientzmq
-        #print "*", src_id
+        # print "*", src_id
         cur_com = srv_com["command"].text
         send_return = False
         if self.__verbose:
@@ -1338,7 +1355,7 @@ class relay_process(threading_tools.process_pool):
                 except:
                     self.log("error creating file %s: %s" % (
                         t_file,
-                        process_tools.get_except_info()), 
+                        process_tools.get_except_info()),
                              logging_tools.LOG_LEVEL_ERROR)
                     ret_com["result"].attrib.update({
                         "reply" : "file not created: %s" % (process_tools.get_except_info()),
@@ -1377,9 +1394,9 @@ class relay_process(threading_tools.process_pool):
             srv_com["port"] = "%d" % (self.master_port)
             self._send_to_nhm_service(None, srv_com, None, register=False)
             # we nerver send dummy returns, usefull with -s flag in ccollclientzmq
-            #send_return = True
-        #if send_return:
-            #self._send_result(src_id, "processed direct command", server_command.SRV_REPLY_STATE_OK)
+            # send_return = True
+        # if send_return:
+            # self._send_result(src_id, "processed direct command", server_command.SRV_REPLY_STATE_OK)
     def _ext_com_result(self, sub_s):
         self.log("external command gave:")
         for line_num, line in enumerate(sub_s.read().split("\n")):
@@ -1424,7 +1441,7 @@ class relay_process(threading_tools.process_pool):
                     self.__nhm_connections.add(conn_str)
             if connected:
                 try:
-                    self.client_socket.send_unicode(id_discovery.get_mapping(conn_str), zmq.SNDMORE|zmq.DONTWAIT)
+                    self.client_socket.send_unicode(id_discovery.get_mapping(conn_str), zmq.SNDMORE | zmq.DONTWAIT)
                     self.client_socket.send_unicode(unicode(srv_com), zmq.DONTWAIT)
                 except:
                     self._send_result(src_id, "error sending to %s: %s" % (
@@ -1708,7 +1725,7 @@ class server_process(threading_tools.process_pool):
         self.__pid_name = global_config["PID_NAME"]
         process_tools.save_pids(global_config["PID_NAME"], mult=3)
         process_tools.append_pids(global_config["PID_NAME"], pid=configfile.get_manager_pid(), mult=3)
-        if True:#not self.__options.DEBUG:
+        if True: # not self.__options.DEBUG:
             self.log("Initialising meta-server-info block")
             msi_block = process_tools.meta_server_info("collserver")
             msi_block.add_actual_pid(mult=3)
@@ -1716,7 +1733,7 @@ class server_process(threading_tools.process_pool):
             msi_block.start_command = "/etc/init.d/host-monitoring start"
             msi_block.stop_command = "/etc/init.d/host-monitoring force-stop"
             msi_block.kill_pids = True
-            #msi_block.heartbeat_timeout = 60
+            # msi_block.heartbeat_timeout = 60
             msi_block.save_block()
         else:
             msi_block = None
@@ -1840,7 +1857,7 @@ class server_process(threading_tools.process_pool):
             cur_socket = self.zmq_context.socket(sock_type)
             try:
                 process_tools.bind_zmq_socket(cur_socket, sock_name)
-                #client.bind("tcp://*:8888")
+                # client.bind("tcp://*:8888")
             except zmq.core.error.ZMQError:
                 self.log("error binding %s: %s" % (short_sock_name,
                                                    process_tools.get_except_info()),
@@ -1864,7 +1881,7 @@ class server_process(threading_tools.process_pool):
             src_id = srv_com["identity"].text
         else:
             src_id = data.split(";")[0]
-        #print len(data), len(unicode(srv_com)), src_id
+        # print len(data), len(unicode(srv_com)), src_id
         self.result_socket.send_unicode(src_id, zmq.SNDMORE)
         self.result_socket.send_unicode("test")
     def _recv_command(self, zmq_sock):
@@ -1903,7 +1920,7 @@ class server_process(threading_tools.process_pool):
                 # delayed is a subprocess_struct
                 delayed.set_send_stuff(self, src_id, zmq_sock)
                 com_usage = len([True for cur_del in self.__delayed if cur_del.command == cur_com])
-                #print "CU", com_usage, [cur_del.target_host for cur_del in self.__delayed]
+                # print "CU", com_usage, [cur_del.target_host for cur_del in self.__delayed]
                 if com_usage > delayed.Meta.max_usage:
                     srv_com["result"].attrib.update(
                         {"reply" : "delay limit %d reached for '%s'" % (
@@ -1952,7 +1969,7 @@ class server_process(threading_tools.process_pool):
         for cur_del in self.__delayed:
             if cur_del.Meta.use_popen:
                 if cur_del.finished():
-                    #print "finished delayed"
+                    # print "finished delayed"
                     cur_del.send_return()
                 elif abs(cur_time - cur_del._init_time) > cur_del.Meta.max_runtime:
                     self.log("delay_object runtime exceeded, stopping")
@@ -2051,16 +2068,16 @@ def show_command_info():
     for com_name in sorted(modules.command_dict.keys()):
         cur_com = modules.command_dict[com_name]
         if isinstance(cur_com, hm_classes.hm_command):
-            #print "\n".join(["", "command %s" % (com_name), ""])
+            # print "\n".join(["", "command %s" % (com_name), ""])
             cur_com.parser.print_help()
     sys.exit(0)
-    
+
 global_config = configfile.get_global_config(process_tools.get_programm_name())
 
 def main():
     prog_name = global_config.name()
     global_config.add_config_entries([
-        #("MAILSERVER"          , configfile.str_c_var("localhost", info="Mail Server")),
+        # ("MAILSERVER"          , configfile.str_c_var("localhost", info="Mail Server")),
         ("DEBUG"               , configfile.bool_c_var(False, help_string="enable debug mode [%(default)s]", short_options="d", only_commandline=True)),
         ("ZMQ_DEBUG"           , configfile.bool_c_var(False, help_string="enable 0MQ debugging [%(default)s]", only_commandline=True)),
         ("LOG_DESTINATION"     , configfile.str_c_var("uds:/var/lib/logging-server/py_log_zmq")),

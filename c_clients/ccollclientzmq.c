@@ -157,7 +157,7 @@ int main(int argc, char **argv)
     char identity_str[64];
 
     sprintf(identity_str, "%s:%s:%d", myuts.nodename, SERVICE_NAME, getpid());
-    sprintf(sendbuff, "%s;%s;%d;", identity_str, host_b, port);
+    sprintf(sendbuff, ";1;%s;%s;%d;%d;", identity_str, host_b, port, timeout);
     act_pos = sendbuff;
     if (verbose) {
         printf("argument info (%d found)\n", argc);

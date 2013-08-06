@@ -442,7 +442,7 @@ class ping_command(hm_classes.hm_command):
                 "state" : "%d" % (server_command.SRV_REPLY_STATE_ERROR)})
             cur_sps, target_host = (None, None)
         if target_host:
-            num_pings, timeout = (min(32, max(1, int(num_pings))),
+            num_pings, timeout = (min(32, max(1, int(float(num_pings)))),
                                   max(0.1, float(timeout)))
             cur_sps = ping_sp_struct(srv_com, target_host, num_pings, timeout)
         return cur_sps
