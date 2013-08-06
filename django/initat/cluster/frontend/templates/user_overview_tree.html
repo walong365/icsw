@@ -10,6 +10,8 @@
 <h1 class="center">Users and Groups / Treeview</h1>
 
 <div id="ug_tables" class="leftfloat">
+    <div id="buttons"></div>
+    <div id="dynatree"></div>
 </div>
 <div id="ug_detail" class="leftfloat" style="width:800px; margin-left:auto; margin-right:auto;">
 </div>
@@ -21,23 +23,121 @@
 
 class user_tree
     constructor: (@top_div, @detail_div) ->
-        @add_sync_button()
+        @buttons_div = @top_div.find("div#buttons")
+        @dt_div = @top_div.find("div#dynatree")
+        @add_buttons()
         @load_users()
-    add_sync_button: () =>
+    add_buttons: () =>
         @sync_button = $("<input>").attr(
             "type"  : "button"
             "id"    : "sync_users"
             "value" : "Sync Users"
         ).on("click", @sync_users)
-        @top_div.append(@sync_button)
+        @create_group_button = $("<input>").attr(
+            "type"  : "button"
+            "id"    : "create_group"
+            "value" : "Create Group"
+        ).on("click", @create_group)
+        @create_user_button = $("<input>").attr(
+            "type"  : "button"
+            "id"    : "create_user"
+            "value" : "Create User"
+        ).on("click", @create_user)
+        @buttons_div.append(@sync_button, @create_group_button, @create_user_button)
+        @click_buttons = @buttons_div.find("input[type='button']")
     sync_users: (event) =>
-        @sync_button.attr("disabled", "disabled")
+        @click_buttons.attr("disabled", "disabled")
         $.ajax
             url     : "{% url 'user:sync_users' %}"
             title   : "syncing users"
             success : (xml) ->
-                @sync_button.removeAttr("disabled")
+                @click_buttons.removeAttr("disabled")
                 parse_xml_response(xml)
+
+    # user functions
+
+    create_user: (event) =>
+        @click_buttons.attr("disabled", "disabled")
+        $.ajax
+            url     : "{% url 'user:user_detail' %}"
+            type    : "GET"
+            success : (xml) =>
+                if parse_xml_response(xml)
+                    @click_buttons.removeAttr("disabled")
+                    @install_ug_form($(xml).find("value[name='form']").text())
+                    @detail_div.bind("submit", @submit_new_user)
+    submit_new_user: (event) =>
+        $.ajax
+            url     : "{% url 'user:user_detail' %}"
+            data    : create_dict($("div#ug_detail"), "user__new", true, true)
+            success : (xml) =>
+                if parse_xml_response(xml)
+                    window.location = "{% url 'user:overview' 'tree' %}"
+                else
+                    @install_ug_form($(xml).find("value[name='error_form']").text())
+                    @detail_div.bind("submit", @submit_new_user)
+        return false
+    delete_user: (event) =>
+        $.ajax
+            url     : "{% url 'user:user_detail' %}"
+            data    : {
+                key  : @active_node
+                mode : "delete" 
+            }
+            success : (xml) =>
+                if parse_xml_response(xml)
+                    # remove from tree
+                    window.location = "{% url 'user:overview' 'tree' %}"
+        return false
+     
+    # group functions
+    
+    create_group: (event) =>
+        @click_buttons.attr("disabled", "disabled")
+        @click_buttons.removeAttr("disabled")
+        $.ajax
+            url     : "{% url 'user:group_detail' %}"
+            type    : "GET"
+            success : (xml) =>
+                if parse_xml_response(xml)
+                    @click_buttons.removeAttr("disabled")
+                    @install_ug_form($(xml).find("value[name='form']").text())
+                    @detail_div.bind("submit", @submit_new_group)
+    submit_new_group: (event) =>
+        $.ajax
+            url     : "{% url 'user:group_detail' %}"
+            data    : create_dict($("div#ug_detail"), "group__new", true, true)
+            success : (xml) =>
+                if parse_xml_response(xml)
+                    window.location = "{% url 'user:overview' 'tree' %}"
+                else
+                    @install_ug_form($(xml).find("value[name='error_form']").text())
+                    @detail_div.bind("submit", @submit_new_group)
+        return false
+    delete_group: (event) =>
+        $.ajax
+            url     : "{% url 'user:group_detail' %}"
+            data    : {
+                key  : @active_node
+                mode : "delete" 
+            }
+            success : (xml) =>
+                if parse_xml_response(xml)
+                    # remove from tree
+                    window.location = "{% url 'user:overview' 'tree' %}"
+        return false
+
+    install_ug_form: (form_text) =>
+        @clear_ug_form()
+        @detail_div.append(form_text)
+        @detail_div.uniform()
+        @detail_div.find("select").chosen(
+            width : "75%"
+        )
+        @detail_div.find("input[name='password']").bind("focus", enter_password)
+    clear_ug_form: () =>
+        @detail_div.children().remove()
+        @detail_div.unbind("submit")
     load_users: () =>
         $.ajax
             url     : "{% url 'user:overview' 'table' %}"
@@ -54,7 +154,7 @@ class user_tree
         node_key = cur_el.attr("id").split("__")[1]
         #console.log c_type, node_key
     build_tree: () =>
-        @top_div.dynatree
+        @dt_div.dynatree
             autoFocus  : false
             debuglevel : {% if DEBUG %}0{% else %}0{% endif %}
             onExpand : (flag, dtnode) =>
@@ -84,7 +184,7 @@ class user_tree
                                 src_db_node.attr("parent", @UGX.find("groups group[key='#{dst_node.data.key}']").attr("pk"))
                                 src_node.move(dst_node, "over")
                 }
-        @root_node = @top_div.dynatree("getRoot")
+        @root_node = @dt_div.dynatree("getRoot")
         @build_group_node(@root_node)
     build_group_node: (dt_node, db_node) =>
         if db_node is undefined
@@ -118,22 +218,25 @@ class user_tree
         )
     show_details: (key) =>
         if key.match(/^(user|group)__/)
+            if key.match(/^(user)__/)
+                url = "{% url 'user:user_detail' %}"
+            else
+                url = "{% url 'user:group_detail' %}"
             $.ajax
-                url     : "{% url 'user:ug_detail_form' %}"
-                data     : {
-                    "key" : key
+                url     : url
+                data    : {
+                    "key"  : key
+                    "mode" : "show"
                 }
                 success : (xml) =>
                     if parse_xml_response(xml)
                         @active_node = key
-                        @detail_div.children().remove()
-                        @detail_div.append($(xml).find("value[name='form']").text())
+                        @install_ug_form($(xml).find("value[name='form']").text())
                         @detail_div.find("input, select").on("change", @my_submitter.submit)
-                        @detail_div.find("select").chosen(
-                            width : "75%"
-                        )
-                        cur_dtn = @UGX.find("*[key='#{key}']")
-                        #@detail_div.find("input#button-id-delete").off("change").on("click", @delete_node)
+                        if key.match(/^(user)__/)
+                            @detail_div.bind("submit", @delete_user)
+                        else
+                            @detail_div.bind("submit", @delete_group)
 
 $(document).ready(
     my_ugt = new user_tree($("div#ug_tables"), $("div#ug_detail"))

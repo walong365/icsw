@@ -154,7 +154,8 @@ user_patterns = patterns(
     url("^save_layout_state$"       , user_views.save_layout_state.as_view(), name="save_layout_state"),
     url("^set_user_var$"            , user_views.set_user_var.as_view()     , name="set_user_var"     ),
     url("^move_user$"               , user_views.move_user.as_view()        , name="move_user"        ),
-    url("^ug_detail_form$"          , user_views.ug_detail_form.as_view()   , name="ug_detail_form"   ),
+    url("^group_detail$"            , user_views.group_detail.as_view()     , name="group_detail"),
+    url("^user_detail$"             , user_views.user_detail.as_view()      , name="user_detail"),
 )
 
 pack_patterns = patterns(

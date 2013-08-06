@@ -457,6 +457,7 @@ class create_category(View):
             }
         )
         return request.xml_response.create_response()
+    @method_decorator(login_required)
     @method_decorator(xml_wrapper)
     def post(self, request):
         logger.info("creating new category")

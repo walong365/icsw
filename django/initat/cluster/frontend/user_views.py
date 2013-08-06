@@ -5,7 +5,7 @@
 # Copyright (C) 2012,2013 Andreas Lang-Nevyjel
 #
 # Send feedback to: <lang-nevyjel@init.at>
-# 
+#
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License Version 2 as
 # published by the Free Software Foundation.
@@ -32,9 +32,12 @@ import server_command
 from lxml import etree
 from lxml.builder import E
 
+from crispy_forms.layout import Submit, Layout, Field, ButtonHolder, Button
+
 from django.conf import settings
 from django.contrib.auth.decorators import login_required
 from django.core.exceptions import ValidationError
+from django.core.urlresolvers import reverse
 from django.http import HttpResponse
 from django.db.models import Q
 from django.views.generic import View
@@ -42,7 +45,7 @@ from django.utils.decorators import method_decorator
 
 from initat.cluster.backbone.models import partition_table, partition_disc, partition, \
      partition_fs, image, architecture, group, user, device_config, device_group, \
-     user_variable, csw_permission
+     user_variable, csw_permission, get_related_models
 from initat.core.render import render_me, render_string
 from initat.cluster.frontend.helper_functions import contact_server, xml_wrapper, update_session_object
 from initat.cluster.frontend.forms import dummy_password_form, group_detail_form, user_detail_form
@@ -89,10 +92,10 @@ class overview(View):
                 perm_list.append(E.permission(entry.name, pk="%d" % (entry.pk)))
         # chaching for faster m2m lookup
         group_perm_dict, user_perm_dict = ({}, {})
-        for group_perm in csw_permission.objects.all().prefetch_related("db_group_permissions"):
+        for group_perm in csw_permission.objects.all().prefetch_related("db_group_permissions").select_related("content_type"):
             for cur_group in group_perm.db_group_permissions.all():
                 group_perm_dict.setdefault(cur_group.groupname, []).append(group_perm)
-        for user_perm in csw_permission.objects.all().prefetch_related("db_user_permissions"):
+        for user_perm in csw_permission.objects.all().prefetch_related("db_user_permissions").select_related("content_type"):
             for cur_user in user_perm.db_user_permissions.all():
                 user_perm_dict.setdefault(cur_user.login, []).append(user_perm)
         group_device_group_dict, user_device_group_dict = ({}, {})
@@ -217,36 +220,149 @@ class move_user(View):
         request.xml_response.info("user %s moved to group %s" % (
             unicode(cur_user),
             unicode(cur_group)), logger)
-        
-class ug_detail_form(View):
+
+class group_detail(View):
+    @method_decorator(login_required)
+    @method_decorator(xml_wrapper)
+    def get(self, request):
+        new_form = group_detail_form(
+            auto_id="group__new__%s",
+        )
+        new_form.create_mode()
+        request.xml_response["form"] = render_string(
+            request,
+            "crispy_form.html",
+            {
+                "form" : new_form,
+            }
+        )
+        return request.xml_response.create_response()
     @method_decorator(login_required)
     @method_decorator(xml_wrapper)
     def post(self, request):
         _post = request.POST
-        key = _post["key"]
-        if key.startswith("group__"):
-            cur_group = group.objects.get(Q(pk=key.split("__")[1]))
-            request.xml_response["form"] = render_string(
-                request,
-                "crispy_form.html",
-                {
-                    "form" : group_detail_form(
-                        auto_id="group__%d__%%s" % (cur_group.pk),
-                        instance=cur_group,
-                    )
-                }
-            )
+        if "key" in _post:
+            key, mode = (_post["key"], _post["mode"])
+            if mode == "show":
+                cur_group = group.objects.get(Q(pk=key.split("__")[1]))
+                new_form = group_detail_form(
+                    auto_id="group__%d__%%s" % (cur_group.pk),
+                    instance=cur_group,
+                )
+                new_form.delete_mode()
+                request.xml_response["form"] = render_string(
+                    request,
+                    "crispy_form.html",
+                    {
+                        "form" : new_form
+                    }
+                )
+            else:
+                del_obj = group.objects.get(Q(pk=key.split("__")[1]))
+                num_ref = get_related_models(del_obj)
+                if num_ref:
+                    # pprint.pprint(get_related_models(del_obj, detail=True))
+                    request.xml_response.error(
+                        "cannot delete %s '%s': %s" % (
+                            del_obj._meta.object_name,
+                            unicode(del_obj),
+                            logging_tools.get_plural("reference", num_ref)), logger)
+                else:
+                    del_info = unicode(del_obj)
+                    del_obj.delete()
+                    request.xml_response.info("deleted %s '%s'" % (del_obj._meta.object_name, del_info), logger)
         else:
-            cur_user = user.objects.get(Q(pk=key.split("__")[1]))
-            request.xml_response["form"] = render_string(
-                request,
-                "crispy_form.html",
-                {
-                    "form" : user_detail_form(
-                        auto_id="user__%d__%%s" % (cur_user.pk),
-                        instance=cur_user,
-                    )
-                }
-            )
-            
-        
+            cur_form = group_detail_form(_post, auto_id="group__new__%s")
+            new_group = None
+            if cur_form.is_valid():
+                try:
+                    new_group = cur_form.save()
+                except:
+                    line = process_tools.get_except_info()
+                    request.xml_response.error(line, logger)
+                else:
+                    request.xml_response.info("created new group '%s'" % (unicode(new_group)))
+            else:
+                line = ", ".join(cur_form.errors.as_text().split("\n"))
+                request.xml_response.error(line, logger)
+            if not new_group:
+                request.xml_response["error_form"] = render_string(
+                    request,
+                    "crispy_form.html",
+                    {
+                        "form" : cur_form
+                    }
+                )
+
+class user_detail(View):
+    @method_decorator(login_required)
+    @method_decorator(xml_wrapper)
+    def get(self, request):
+        new_form = user_detail_form(
+            auto_id="user__new__%s",
+        )
+        new_form.create_mode()
+        request.xml_response["form"] = render_string(
+            request,
+            "crispy_form.html",
+            {
+                "form" : new_form,
+            }
+        )
+        return request.xml_response.create_response()
+    @method_decorator(login_required)
+    @method_decorator(xml_wrapper)
+    def post(self, request):
+        _post = request.POST
+        if "key" in _post:
+            key, mode = (_post["key"], _post["mode"])
+            if mode == "show":
+                cur_user = user.objects.get(Q(pk=key.split("__")[1]))
+                new_form = user_detail_form(
+                    auto_id="user__%d__%%s" % (cur_user.pk),
+                    instance=cur_user,
+                )
+                new_form.delete_mode()
+                request.xml_response["form"] = render_string(
+                    request,
+                    "crispy_form.html",
+                    {
+                        "form" : new_form
+                    }
+                )
+            else:
+                del_obj = user.objects.get(Q(pk=key.split("__")[1]))
+                num_ref = get_related_models(del_obj)
+                if num_ref:
+                    # pprint.pprint(get_related_models(del_obj, detail=True))
+                    request.xml_response.error(
+                        "cannot delete %s '%s': %s" % (
+                            del_obj._meta.object_name,
+                            unicode(del_obj),
+                            logging_tools.get_plural("reference", num_ref)), logger)
+                else:
+                    del_info = unicode(del_obj)
+                    del_obj.delete()
+                    request.xml_response.info("deleted %s '%s'" % (del_obj._meta.object_name, del_info), logger)
+        else:
+            cur_form = user_detail_form(_post, auto_id="user__new__%s")
+            new_user = None
+            if cur_form.is_valid():
+                try:
+                    new_user = cur_form.save()
+                except:
+                    line = process_tools.get_except_info()
+                    request.xml_response.error(line, logger)
+                else:
+                    request.xml_response.info("created new user '%s'" % (unicode(new_user)))
+            else:
+                line = ", ".join(cur_form.errors.as_text().split("\n"))
+                request.xml_response.error(line, logger)
+            if not new_user:
+                request.xml_response["error_form"] = render_string(
+                    request,
+                    "crispy_form.html",
+                    {
+                        "form" : cur_form
+                    }
+                )

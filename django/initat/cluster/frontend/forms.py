@@ -267,15 +267,18 @@ class moncc_template_flags_form(ModelForm):
 
 class group_detail_form(ModelForm):
     permissions = ModelMultipleChoiceField(
-        queryset=csw_permission.objects.all().order_by("codename"),
+        queryset=csw_permission.objects.all().select_related("content_type").order_by("codename"),
         widget=SelectMultiple(attrs={"size" : "8"}),
+        required=False,
     )
     allowed_device_groups = ModelMultipleChoiceField(
-        queryset=device_group.objects.exclude(Q(cluster_device_group=True)),
+        queryset=device_group.objects.exclude(Q(cluster_device_group=True)).filter(Q(enabled=True)),
+        required=False,
     )
     helper = FormHelper()
     helper.form_id = "form"
     helper.layout = Layout(
+        HTML("<h2>Group details</h2>"),
         Row(
             Column(
                 Fieldset(
@@ -303,6 +306,10 @@ class group_detail_form(ModelForm):
                 css_class="inlineLabels col last",
             ),
         ),
+        ButtonHolder(
+            Button("delete", "Delete", css_class="primaryAction"),
+        ),
+        Field("parent_group"),
         Field("allowed_device_groups"),
         Field("permissions"),
     )
@@ -311,7 +318,14 @@ class group_detail_form(ModelForm):
         model = group
         fields = ["groupname", "gid", "active", "homestart",
                   "title", "email", "pager", "tel", "comment",
-                  "allowed_device_groups", "permissions"]
+                  "allowed_device_groups", "permissions", "parent_group"]
+    def create_mode(self):
+        if "disabled" in self.helper.layout[3].attrs:
+            del self.helper.layout[3].attrs["disabled"]
+        self.helper.layout[2][0] = Submit("submit", "Create", css_class="primaryAction")
+    def delete_mode(self):
+        self.helper.layout[3].attrs["disabled"] = True
+        self.helper.layout[2][0] = Submit("delete", "Delete", css_class="primaryAction")
 
 class export_choice_field(ModelChoiceField):
     def reload(self):
@@ -323,13 +337,17 @@ class user_detail_form(ModelForm):
     permissions = ModelMultipleChoiceField(
         queryset=csw_permission.objects.all().select_related("content_type").order_by("codename"),
         widget=SelectMultiple(attrs={"size" : "8"}),
+        required=False,
     )
     allowed_device_groups = ModelMultipleChoiceField(
-        queryset=device_group.objects.exclude(Q(cluster_device_group=True)),
+        queryset=device_group.objects.exclude(Q(cluster_device_group=True)).filter(Q(enabled=True)),
+        required=False,
     )
+    password = CharField(widget=PasswordInput)
     helper = FormHelper()
     helper.form_id = "form"
     helper.layout = Layout(
+        HTML("<h2>User details</h2>"),
         Row(
             Column(
                 Fieldset(
@@ -339,11 +357,6 @@ class user_detail_form(ModelForm):
                     Field("first_name"),
                     Field("last_name"),
                     Field("shell"),
-                    ButtonHolder(
-                        Field("active"),
-                        Field("is_superuser"),
-                        Field("db_is_auth_for_password"),
-                        ),
                     css_class="inlineLabels",
                     ),
                 css_class="inlineLabels col first",
@@ -361,19 +374,33 @@ class user_detail_form(ModelForm):
                 css_class="inlineLabels col last",
             ),
         ),
+        Field("group"),
+        Field("password", css_class="passwordfields"),
+        ButtonHolder(
+            Field("active"),
+            Field("is_superuser"),
+            Field("db_is_auth_for_password"),
+            Button("delete", "Delete", css_class="primaryAction"),
+        ),
         Field("export"),
         Field("allowed_device_groups"),
         Field("secondary_groups"),
         Field("permissions"),
     )
-    export = export_choice_field(device_config.objects.none())
+    export = export_choice_field(device_config.objects.none(), required=False)
     def __init__(self, *args, **kwargs):
         super(user_detail_form, self).__init__(*args, **kwargs)
         self.fields["export"].reload()
+    def create_mode(self):
+        if "disabled" in self.helper.layout[2].attrs:
+            del self.helper.layout[2].attrs["disabled"]
+        self.helper.layout[4][3] = Submit("submit", "Create", css_class="primaryAction")
+    def delete_mode(self):
+        self.helper.layout[2].attrs["disabled"] = True
+        self.helper.layout[4][3] = Submit("delete", "Delete", css_class="primaryAction")
     class Meta:
         model = user
         fields = ["login", "uid", "shell", "first_name", "last_name", "active",
                   "title", "email", "pager", "tel", "comment", "is_superuser",
                   "allowed_device_groups", "secondary_groups", "permissions",
-                  "db_is_auth_for_password", "export"]
-
+                  "db_is_auth_for_password", "export", "password", "group"]

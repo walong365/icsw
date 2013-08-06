@@ -955,7 +955,7 @@ get_xml_value = (xml, key) ->
     return ret_value
 
 # create a dictionary from a list of elements
-create_dict = (top_el, id_prefix, use_name=false) ->
+create_dict = (top_el, id_prefix, use_name=false, django_save=false) ->
     in_list = top_el.find("input[id^='#{id_prefix}'], select[id^='#{id_prefix}'], textarea[id^='#{id_prefix}']")
     out_dict = {}
     in_list.each (idx, cur_el) ->
@@ -970,15 +970,22 @@ create_dict = (top_el, id_prefix, use_name=false) ->
             else
                 out_dict[key] = cur_el.text()
         else if cur_el.is(":checkbox")
-            out_dict[key] = if cur_el.is(":checked") then "1" else "0"
+            if django_save
+                if cur_el.is(":checked")
+                    out_dict[key] = "1"
+            else
+                out_dict[key] = if cur_el.is(":checked") then "1" else "0"
         else if cur_el.prop("tagName") == "SELECT" and cur_el.attr("multiple")
             sel_field = []
             cur_el.find("option:selected").each (idx, opt_field) ->
                 sel_field.push($(opt_field).attr("value"))
-            out_dict[key] = sel_field.join("::")
+            if django_save
+                out_dict[key] = sel_field
+            else
+                out_dict[key] = sel_field.join("::")
         else
             out_dict[key] = cur_el.attr("value")
-    return out_dict
+    return $.param(out_dict, traditional=true)
 
 replace_xml_element = (master_xml, xml) ->
     # replace element in master_xml
@@ -1313,6 +1320,7 @@ root.force_expansion_state = force_expansion_state
 root.create_input_el       = create_input_el
 root.submitter             = submitter
 root.config_table          = config_table
+root.enter_password        = enter_password
 
 {% endinlinecoffeescript %}
 
