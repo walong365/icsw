@@ -3733,7 +3733,7 @@ class user(models.Model):
     uid = models.IntegerField(unique=True)
     group = models.ForeignKey("group")
     aliases = models.TextField(blank=True, null=True)
-    export = models.ForeignKey("device_config", null=True, related_name="export")
+    export = models.ForeignKey("device_config", null=True, related_name="export", blank=True)
     home = models.TextField(blank=True, null=True)
     shell = models.CharField(max_length=765, blank=True, default="/bin/bash")
     # SHA encrypted
@@ -3752,10 +3752,10 @@ class user(models.Model):
     date = models.DateTimeField(auto_now_add=True)
     allowed_device_groups = models.ManyToManyField(device_group)
     home_dir_created = models.BooleanField(default=False)
-    secondary_groups = models.ManyToManyField("group", related_name="secondary")
+    secondary_groups = models.ManyToManyField("group", related_name="secondary", blank=True)
     last_login = models.DateTimeField(null=True)
-    permissions = models.ManyToManyField(csw_permission, related_name="db_user_permissions")
-    object_permissions = models.ManyToManyField(csw_object_permission, related_name="db_user_permissions")
+    permissions = models.ManyToManyField(csw_permission, related_name="db_user_permissions", blank=True)
+    object_permissions = models.ManyToManyField(csw_object_permission, related_name="db_user_permissions", blank=True)
     is_superuser = models.BooleanField(default=False)
     db_is_auth_for_password = models.BooleanField(default=False)
     def __setattr__(self, key, value):
