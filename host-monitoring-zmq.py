@@ -702,33 +702,41 @@ class hm_icmp_protocol(icmp_twisted.icmp_protocol):
         if self.__debug:
             self.log("ping to %s (%d, %.2f) [%s]" % (target, num_pings, timeout, seq_str))
         cur_time = time.time()
-        self[seq_str] = {"host"       : target,
-                         "num"        : num_pings,
-                         "timeout"    : timeout,
-                         "start"      : cur_time,
-                         "end"        : cur_time + timeout,
-                         "next_send"  : cur_time,
-                         # time between pings
-                         "slide_time" : 0.1,
-                         "sent"       : 0,
-                         "recv_ok"    : 0,
-                         "recv_fail"  : 0,
-                         "error_list" : [],
-                         "sent_list"  : {},
-                         "recv_list"  : {}}
+        self[seq_str] = {
+            "host"       : target,
+            "num"        : num_pings,
+            "timeout"    : timeout,
+            "start"      : cur_time,
+            "end"        : cur_time + timeout,
+            "next_send"  : cur_time,
+            # time between pings
+            "slide_time" : 0.1,
+            "sent"       : 0,
+            "recv_ok"    : 0,
+            "recv_fail"  : 0,
+            "error_list" : [],
+            "sent_list"  : {},
+            "recv_list"  : {}}
         self.__pings_in_flight += 1
-        self.log("%s in flight" % (logging_tools.get_plural("ping", self.__pings_in_flight)))
-        self._update()
-    def _update(self):
+        if self.__debug:
+            self.log(
+                "%s in flight: %s" % (
+                    logging_tools.get_plural("ping", self.__pings_in_flight),
+                    ", ".join(sorted([value["host"] for value in self.__work_dict.itervalues()]))
+                    )
+                )
+        self._update(seq_str)
+    def _update(self, key, from_reply=False):
         cur_time = time.time()
-        del_keys = set()
         # print cur_time
         # pprint.pprint(self.__work_dict)
-        for key, value in self.__work_dict.iteritems():
+        if key in self.__work_dict:
+            value = self.__work_dict[key]
             if value["sent"] < value["num"]:
                 # if value["sent_list"]:
                 # send if last send was at least slide_time ago
-                if value["next_send"] <= cur_time or value["recv_ok"] == value["sent"]:
+                if value["next_send"] <= cur_time: # or value["recv_ok"] == value["sent"]:
+                    # print key, value["recv_ok"], value["sent"], value["next_send"] <= cur_time
                     value["sent"] += 1
                     try:
                         self.send_echo(value["host"])
@@ -740,39 +748,47 @@ class hm_icmp_protocol(icmp_twisted.icmp_protocol):
                                 ", ".join(value["error_list"])),
                             logging_tools.LOG_LEVEL_ERROR)
                     else:
-                        value["sent_list"][self.echo_seqno] = cur_time
+                        value["sent_list"][self.echo_seqno] = time.time()
                         value["next_send"] = cur_time + value["slide_time"]
                         self.__seqno_dict[self.echo_seqno] = key
-                        reactor.callLater(value["slide_time"] + 0.001, self._update)
+                        if value["sent"] < value["num"]:
+                            reactor.callLater(value["slide_time"] + 0.001, self._update, key)
                         if value["sent"] == 1:
                             # register final timeout
-                            reactor.callLater(value["timeout"], self._update)
+                            reactor.callLater(value["timeout"], self._update, key)
             # check for timeout
             # print value["sent_list"]
-            for seq_to in [s_key for s_key, s_value in value["sent_list"].iteritems() if cur_time >= value["end"] and s_key not in value["recv_list"]]:
-                value["recv_fail"] += 1
-                value["recv_list"][seq_to] = None
+            if not from_reply:
+                # only check timeouts when called from reactor via callLater
+                for seq_to in [s_key for s_key, s_value in value["sent_list"].iteritems() if cur_time >= value["end"] and s_key not in value["recv_list"]]:
+                    value["recv_fail"] += 1
+                    value["recv_list"][seq_to] = None
             # check for ping finish
             if value["error_list"] or (value["sent"] == value["num"] and value["recv_ok"] + value["recv_fail"] == value["num"]):
                 all_times = [value["recv_list"][s_key] - value["sent_list"][s_key] for s_key in value["sent_list"].iterkeys() if value["recv_list"].get(s_key, None) != None]
                 self.__twisted_process.send_ping_result(key, value["sent"], value["recv_ok"], all_times, ", ".join(value["error_list"]))
-                del_keys.add(key)
-        for del_key in del_keys:
-            del self[del_key]
-        self.__pings_in_flight -= len(del_keys)
+                del self[key]
+                self.__pings_in_flight -= 1
+        else:
+            # should only happen for delayed pings or pings with error
+            self.log("got delayed ping reply (%s)" % (key), logging_tools.LOG_LEVEL_WARN)
         # pprint.pprint(self.__work_dict)
-    def received(self, dgram):
+    def received(self, dgram, recv_time=None):
         if dgram.packet_type == 0 and dgram.ident == self.__twisted_process.pid & 0x7fff:
             seqno = dgram.seqno
+            # if seqno % 3 == 10:
+            #    return
             if seqno not in self.__seqno_dict:
                 self.log("got result with unknown seqno %d" % (seqno),
                          logging_tools.LOG_LEVEL_ERROR)
             else:
                 value = self[self.__seqno_dict[seqno]]
                 if not seqno in value["recv_list"]:
-                    value["recv_list"][seqno] = time.time()
+                    value["recv_list"][seqno] = recv_time
+                    # if seqno in value["sent_list"]:
+                    #    print value["recv_list"][seqno] - value["sent_list"][seqno]
                     value["recv_ok"] += 1
-            self._update()
+                self._update(self.__seqno_dict[seqno], from_reply=True)
 
 class twisted_process(threading_tools.process_obj):
     def process_init(self):
