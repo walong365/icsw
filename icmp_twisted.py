@@ -6,7 +6,7 @@
 # Send feedback to: <lang-nevyjel@init.at>
 #
 # This file is part of host-monitoring
-# 
+#
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License Version 2 as
 # published by the Free Software Foundation.
@@ -23,15 +23,16 @@
 
 """ A raw ICMP library for twisted, based on seafelt lib/icmp.py """
 
-import socket
-import struct
-import os
 import array
 import errno
+import logging_tools
+import os
+import socket
+import struct
+import time
 from twisted.internet.selectreactor import SelectReactor
 from twisted.internet import protocol, base, interfaces, error, address, udp
 from zope.interface import implements, Interface
-import logging_tools
 
 class extended_select_reactor(SelectReactor):
     def listen_ICMP(self, protocol, interface="", maxPacketSize=8192):
@@ -67,11 +68,11 @@ class ip_packet(object):
                  frag_offset=0, ttl=64, protocol=1, options=""):
         self.ihl = 5 + len(options)
         self.ihlversion = self.ihl & 0xF0 + version
-        self.tos   = tos
+        self.tos = tos
         self.ident = ident
-        self.dont_fragment  = dont_fragment
+        self.dont_fragment = dont_fragment
         self.more_fragments = more_fragments
-        self.frag_offset    = frag_offset
+        self.frag_offset = frag_offset
 
         flags_fragment = 0x0000
         if dont_fragment:
@@ -92,20 +93,21 @@ class ip_packet(object):
         self.tot_len = self.ihl + len(payload)
         self.checksum = _checksum(self.packed())
     def packed(self):
-        """ return packed version """ 
+        """ return packed version """
         if len(self.options) > 0:
             raise NotImplementedError("Options packing is not implemented")
-        data = struct.pack("!BBHHHBBH4s4s",
-                           self.ihlversion,
-                           self.tos,
-                           self.tot_len,
-                           self.ident,
-                           self.flags_fragment,
-                           self.ttl,
-                           self.protocol,
-                           self.checksum,
-                           self.src_addr,
-                           self.dst_addr)
+        data = struct.pack(
+            "!BBHHHBBH4s4s",
+            self.ihlversion,
+            self.tos,
+            self.tot_len,
+            self.ident,
+            self.flags_fragment,
+            self.ttl,
+            self.protocol,
+            self.checksum,
+            self.src_addr,
+            self.dst_addr)
         data += self.payload
         return data
     def __repr__(self):
@@ -121,7 +123,7 @@ class ip_packet(object):
             self.src_addr,
             self.dst_addr,
             _octets_to_hex(self.payload))
-    
+
 def _parse_ip_packet(data):
     """ parse received data as IP packet """
     (ihlversion, tos, tot_len,
@@ -131,25 +133,27 @@ def _parse_ip_packet(data):
     src_addr = socket.inet_ntoa(src_addr)
     dst_addr = socket.inet_ntoa(dst_addr)
     version = ihlversion & 0xF0
-    ihl     = ihlversion & 0x0F
+    ihl = ihlversion & 0x0F
     fragment_offset = flags_fragment & 0x1FFF
-    dont_fragment   = (flags_fragment & 0x4000 != 0)
-    more_fragments  = (flags_fragment & 0x2000 != 0)
+    dont_fragment = (flags_fragment & 0x4000 != 0)
+    more_fragments = (flags_fragment & 0x2000 != 0)
     # If there are options, parse them
     if ihl > 20:
         raise NotImplementedError("Unable to handle packets with options!")
     payload = data[20:]
-    return ip_packet(src_addr,
-                     dst_addr,
-                     payload,
-                     version,
-                     tos,
-                     ident,
-                     dont_fragment,
-                     more_fragments,
-                     flags_fragment,
-                     ttl,
-                     protocol)
+    return ip_packet(
+        src_addr,
+        dst_addr,
+        payload,
+        version,
+        tos,
+        ident,
+        dont_fragment,
+        more_fragments,
+        flags_fragment,
+        ttl,
+        protocol,
+        )
 
 class icmp_datagram(object):
     """ base ICMP Datagram packet """
@@ -200,7 +204,7 @@ class icmp_echo(icmp_datagram):
         self.ident = ident
         self.seqno = seqno
         self.data = self.data[:8]
-        
+
 class icmp_echo_reply(icmp_datagram):
     """ ICMP echo eeply datagram """
     packet_type = 0
@@ -249,7 +253,7 @@ class icmp_port(udp.Port):
         base.BasePort.__init__(self, reactor)
         self.port = None
         self.protocol = proto
-        self.max_packet_size= max_packet_size
+        self.max_packet_size = max_packet_size
         self.interface = interface
         self.logstr = "icmp_port"
     def getHandle(self):
@@ -265,7 +269,7 @@ class icmp_port(udp.Port):
         self.socket = skt
         self.fileno = self.socket.fileno
     def create_internet_socket(self):
-        cur_s =  socket.socket(socket.AF_INET, socket.SOCK_RAW, socket.IPPROTO_ICMP)
+        cur_s = socket.socket(socket.AF_INET, socket.SOCK_RAW, socket.IPPROTO_ICMP)
         cur_s.setsockopt(socket.SOL_SOCKET, socket.SO_RCVBUF, 262144)
         return cur_s
     def _connect_to_protocol(self):
@@ -281,17 +285,17 @@ class icmp_port(udp.Port):
         try:
             return self.socket.sendto(datagram, addr)
         except socket.error:
-##            no = se.args[0]
-##            if no == errno.EINTR:
-##                return self.write(datagram)
-##            elif no == errno.EMSGSIZE:
-##                raise error.MessageLengthError, "message too long"
-##            else:
+# #            no = se.args[0]
+# #            if no == errno.EINTR:
+# #                return self.write(datagram)
+# #            elif no == errno.EMSGSIZE:
+# #                raise error.MessageLengthError, "message too long"
+# #            else:
             raise
     def writeSequence(self, seq, addr):
         self.write("".join(seq), addr)
     def stopListening(self):
-        self.stopReading()        
+        self.stopReading()
     def getHost(self):
         return address.IPv4Address("TCP", *(self.socket.getsockname() + ("INET_UDP",)))
 
@@ -300,11 +304,16 @@ class icmp_protocol(protocol.AbstractDatagramProtocol):
         # start at seqno 32
         self.echo_seqno = 32L
         self._log_errors = hasattr(self, "log")
+        self.t_dict = {}
     def datagram_received(self, datagram, addr):
+        recv_time = time.time()
         parsed_dgram = self.parse_datagram(datagram)
+        # if parsed_dgram.seqno in self.t_dict:
+        #    print "*", recv_time - self.t_dict[parsed_dgram.seqno]
+        # print time.time() - s_time
         # can be none because of error
         if parsed_dgram is not None:
-            self.received(parsed_dgram)
+            self.received(parsed_dgram, recv_time=recv_time)
     def received(self, dgram):
         """ to be overwritten """
         print "received datagram", dgram
@@ -343,5 +352,5 @@ class icmp_protocol(protocol.AbstractDatagramProtocol):
         if ident is None:
             ident = os.getpid() & 0x7FFF
         dgram = icmp_echo(data=data, ident=ident, seqno=self.echo_seqno)
+        # self.t_dict[self.echo_seqno] = time.time()
         return self.transport.write(dgram.packed(), (addr, 0))
-    
