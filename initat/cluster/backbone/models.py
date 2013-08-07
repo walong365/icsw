@@ -4127,14 +4127,21 @@ class wc_files(models.Model):
     class Meta:
         db_table = u'wc_files'
 
-def get_related_models(in_obj, m2m=False, detail=False):
+def get_related_models(in_obj, m2m=False, detail=False, all=False):
     used_objs = [] if detail else 0
+    if all:
+        ignore_list = []
+    else:
+        ignore_list = {
+            "user" : ["user_variable", "sge_user_con", "user_device_login"],
+            }.get(in_obj._meta.object_name)
     for rel_obj in in_obj._meta.get_all_related_objects():
         rel_field_name = rel_obj.field.name
-        if detail:
-            used_objs.extend(list(rel_obj.model.objects.filter(Q(**{rel_field_name : in_obj}))))
-        else:
-            used_objs += rel_obj.model.objects.filter(Q(**{rel_field_name : in_obj})).count()
+        if rel_obj.model._meta.object_name not in ignore_list:
+            if detail:
+                used_objs.extend(list(rel_obj.model.objects.filter(Q(**{rel_field_name : in_obj}))))
+            else:
+                used_objs += rel_obj.model.objects.filter(Q(**{rel_field_name : in_obj})).count()
     if m2m:
         for m2m_obj in in_obj._meta.get_all_related_many_to_many_objects():
             m2m_field_name = m2m_obj.field.name
