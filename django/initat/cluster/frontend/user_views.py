@@ -178,7 +178,7 @@ class save_layout_state(View):
                     # try to get var from DB
                     try:
                         user_vars[key] = user_variable.objects.get(Q(name=key) & Q(user=request.user))
-                    except user_variables.DoesNotExist:
+                    except user_variable.DoesNotExist:
                         user_vars[key] = user_variable.objects.create(
                             user=request.user,
                             name=key,
