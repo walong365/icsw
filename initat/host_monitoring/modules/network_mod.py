@@ -498,16 +498,20 @@ class ping_command(hm_classes.hm_command):
                         time_info = "%.2f ms mean time" % (1000 * mean_time)
                     else:
                         time_info = "%.4f s mean time" % (mean_time)
+                    timing_str = "rta=%.6f min=%.6f max=%.6f" % (
+                        mean_time,
+                        min_time,
+                        max_time,
+                        )
                 else:
                     time_info = "no time info"
-                return ret_state, "%s: %d of %d (%s) | rta=%.6f min=%.6f max=%.6f sent=%d loss=%d" % (
+                    timing_str = "rta=0.0 min=0.0 max=0.0"
+                return ret_state, "%s: %d of %d (%s) | %s sent=%d loss=%d" % (
                     target,
                     num_received,
                     num_sent,
                     time_info,
-                    mean_time,
-                    min_time,
-                    max_time,
+                    timing_str,
                     num_sent,
                     num_sent - num_received,
                 )
