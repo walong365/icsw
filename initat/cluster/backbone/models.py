@@ -4013,6 +4013,13 @@ def group_post_delete(sender, **kwargs):
     if "instance" in kwargs:
         cur_inst = kwargs["instance"]
 
+@receiver(signals.m2m_changed, sender=group.permissions.through)
+def group_permissions_changed(sender, *args, **kwargs):
+    if kwargs.get("action") == "pre_add" and "instance" in kwargs:
+        for add_pk in kwargs.get("pk_set"):
+            if csw_permission.objects.get(Q(pk=add_pk)).codename in ["admin", "group_admin"]:
+                raise ValidationError("right not allowed for group")
+
 class user_device_login(models.Model):
     idx = models.AutoField(db_column="user_device_login_idx", primary_key=True)
     user = models.ForeignKey("user")
