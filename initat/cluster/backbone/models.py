@@ -4134,7 +4134,7 @@ def get_related_models(in_obj, m2m=False, detail=False, all=False):
     else:
         ignore_list = {
             "user" : ["user_variable", "sge_user_con", "user_device_login"],
-            }.get(in_obj._meta.object_name)
+            }.get(in_obj._meta.object_name, [])
     for rel_obj in in_obj._meta.get_all_related_objects():
         rel_field_name = rel_obj.field.name
         if rel_obj.model._meta.object_name not in ignore_list:
