@@ -50,13 +50,15 @@
         </ul>
     </li>
     {% endif %}
+    {% if perms.backbone.administrator or perms.backbone.group_admin %}
     <li>
         <a>{% trans "Users" %}</a>
         <ul>
-            <li><a href="{% url 'user:overview' 'table' %}">{% trans "Overview / Table" %}</a></li>
+            {# }<li><a href="{% url 'user:overview' 'table' %}">{% trans "Overview / Table" %}</a></li> #}
             <li><a href="{% url 'user:overview' 'tree' %}">{% trans "Overview / Tree" %}</a></li>
         </ul>
     </li>
+    {% endif %}
     {% if settings.CLUSTER_LICENSE.monitor %}
     <li>
         <a>{% trans "Monitoring" %}</a>

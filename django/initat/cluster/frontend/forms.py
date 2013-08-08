@@ -389,8 +389,23 @@ class user_detail_form(ModelForm):
     )
     export = export_choice_field(device_config.objects.none(), required=False)
     def __init__(self, *args, **kwargs):
+        request = kwargs.pop("request")
         super(user_detail_form, self).__init__(*args, **kwargs)
         self.fields["export"].reload()
+        clear_perms = True
+        if request is not None:
+            if request.user:
+                if request.user.has_perm("backbone.admin"):
+                    clear_perms = False
+                elif request.user.has_perm("backbone.group_admin"):
+                    self.fields["group"].queryset = group.objects.filter(Q(pk=request.user.group_id))
+                    self.fields["group"].empty_label = None
+                    # disable superuser field
+                    self.fields["is_superuser"].widget.attrs["disabled"] = True
+                    clear_perms = False
+        if clear_perms:
+            self.fields["group"].queryset = group.objects.none()
+            self.fields["is_superuser"].widget.attrs["disabled"] = True
     def create_mode(self):
         if "disabled" in self.helper.layout[2].attrs:
             del self.helper.layout[2].attrs["disabled"]

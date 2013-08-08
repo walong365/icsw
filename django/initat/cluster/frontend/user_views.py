@@ -23,10 +23,10 @@
 """ user views """
 
 import os
-import net_tools
-import pprint
 import logging
 import logging_tools
+import net_tools
+import pprint
 import process_tools
 import server_command
 from lxml import etree
@@ -35,7 +35,7 @@ from lxml.builder import E
 from crispy_forms.layout import Submit, Layout, Field, ButtonHolder, Button
 
 from django.conf import settings
-from django.contrib.auth.decorators import login_required
+from django.contrib.auth.decorators import login_required, permission_required
 from django.core.exceptions import ValidationError
 from django.core.urlresolvers import reverse
 from django.http import HttpResponse
@@ -46,13 +46,17 @@ from django.utils.decorators import method_decorator
 from initat.cluster.backbone.models import partition_table, partition_disc, partition, \
      partition_fs, image, architecture, group, user, device_config, device_group, \
      user_variable, csw_permission, get_related_models
-from initat.core.render import render_me, render_string
+from initat.core.render import render_me, render_string, permission_required_mixin
 from initat.cluster.frontend.helper_functions import contact_server, xml_wrapper, update_session_object
 from initat.cluster.frontend.forms import dummy_password_form, group_detail_form, user_detail_form
 
 logger = logging.getLogger("cluster.user")
 
-class overview(View):
+class overview(permission_required_mixin, View):
+    any_required_permissions = (
+        "backbone.admin",
+        "backbone.group_admin"
+            )
     @method_decorator(login_required)
     def get(self, request, *args, **kwargs):
         if kwargs["mode"] == "table":
@@ -103,6 +107,12 @@ class overview(View):
             user_device_group_dict[cur_user.login] = list([dg.pk for dg in cur_user.allowed_device_groups.all()])
         for cur_group in group.objects.all().prefetch_related("allowed_device_groups"):
             group_device_group_dict[cur_group.groupname] = list([dg.pk for dg in cur_group.allowed_device_groups.all()])
+        if request.user.has_perm("backbone.admin"):
+            # allowed group pks
+            allowed_group_ids = set(list(group.objects.all().values_list("pk", flat=True)))
+        else:
+            allowed_group_ids = set([request.user.group_id])
+        print allowed_group_ids
         xml_resp = E.response(
             exp_list,
             perm_list,
@@ -123,6 +133,7 @@ class overview(View):
                         user_perm_dict=user_perm_dict,
                         with_allowed_device_groups=True,
                         allowed_device_group_dict=user_device_group_dict) for cur_u in user.objects.all().prefetch_related("secondary_groups", "allowed_device_groups")
+                        if cur_u.group_id in allowed_group_ids
                     ]
                 ),
             E.shells(*[E.shell(cur_shell, pk=cur_shell) for cur_shell in sorted(shell_names)]),
@@ -267,18 +278,21 @@ class group_detail(View):
                 )
             else:
                 del_obj = group.objects.get(Q(pk=key.split("__")[1]))
-                num_ref = get_related_models(del_obj)
-                if num_ref:
-                    # pprint.pprint(get_related_models(del_obj, detail=True))
-                    request.xml_response.error(
-                        "cannot delete %s '%s': %s" % (
-                            del_obj._meta.object_name,
-                            unicode(del_obj),
-                            logging_tools.get_plural("reference", num_ref)), logger)
+                if del_obj == request.user.group:
+                    request.xml_response.error("cannot delete your group", logger)
                 else:
-                    del_info = unicode(del_obj)
-                    del_obj.delete()
-                    request.xml_response.info("deleted %s '%s'" % (del_obj._meta.object_name, del_info), logger)
+                    num_ref = get_related_models(del_obj)
+                    if num_ref:
+                        # pprint.pprint(get_related_models(del_obj, detail=True))
+                        request.xml_response.error(
+                            "cannot delete %s '%s': %s" % (
+                                del_obj._meta.object_name,
+                                unicode(del_obj),
+                                logging_tools.get_plural("reference", num_ref)), logger)
+                    else:
+                        del_info = unicode(del_obj)
+                        del_obj.delete()
+                        request.xml_response.info("deleted %s '%s'" % (del_obj._meta.object_name, del_info), logger)
         else:
             cur_form = group_detail_form(_post, auto_id="group__new__%s")
             new_group = None
@@ -308,6 +322,7 @@ class user_detail(View):
     def get(self, request):
         new_form = user_detail_form(
             auto_id="user__new__%s",
+            request=request,
         )
         new_form.create_mode()
         request.xml_response["form"] = render_string(
@@ -329,6 +344,7 @@ class user_detail(View):
                 new_form = user_detail_form(
                     auto_id="user__%d__%%s" % (cur_user.pk),
                     instance=cur_user,
+                    request=request,
                 )
                 new_form.delete_mode()
                 request.xml_response["form"] = render_string(
@@ -340,20 +356,27 @@ class user_detail(View):
                 )
             else:
                 del_obj = user.objects.get(Q(pk=key.split("__")[1]))
-                num_ref = get_related_models(del_obj)
-                if num_ref:
-                    # pprint.pprint(get_related_models(del_obj, detail=True))
-                    request.xml_response.error(
-                        "cannot delete %s '%s': %s" % (
-                            del_obj._meta.object_name,
-                            unicode(del_obj),
-                            logging_tools.get_plural("reference", num_ref)), logger)
+                if del_obj == request.user:
+                    request.xml_response.error("cannot delete yourself", logger)
                 else:
-                    del_info = unicode(del_obj)
-                    del_obj.delete()
-                    request.xml_response.info("deleted %s '%s'" % (del_obj._meta.object_name, del_info), logger)
+                    num_ref = get_related_models(del_obj)
+                    if num_ref:
+                        # pprint.pprint(get_related_models(del_obj, detail=True))
+                        request.xml_response.error(
+                            "cannot delete %s '%s': %s" % (
+                                del_obj._meta.object_name,
+                                unicode(del_obj),
+                                logging_tools.get_plural("reference", num_ref)), logger)
+                    else:
+                        del_info = unicode(del_obj)
+                        del_obj.delete()
+                        request.xml_response.info("deleted %s '%s'" % (del_obj._meta.object_name, del_info), logger)
         else:
-            cur_form = user_detail_form(_post, auto_id="user__new__%s")
+            cur_form = user_detail_form(
+                _post,
+                auto_id="user__new__%s",
+                request=request,
+                )
             new_user = None
             if cur_form.is_valid():
                 try:

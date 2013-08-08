@@ -136,9 +136,15 @@ class change_xml_entry(View):
                                 rem_values = old_value - new_value
                                 add_values = new_value - old_value
                                 for rem_value in rem_values:
-                                    m2m_rel.remove(cur_obj._meta.get_field(attr_name).rel.to.objects.get(pk=rem_value))
+                                    try:
+                                        m2m_rel.remove(cur_obj._meta.get_field(attr_name).rel.to.objects.get(pk=rem_value))
+                                    except ValidationError, what:
+                                        request.xml_response.error("error modifying: %s" % (unicode(what.messages[0])), logger)
                                 for add_value in add_values:
-                                    m2m_rel.add(cur_obj._meta.get_field(attr_name).rel.to.objects.get(pk=add_value))
+                                    try:
+                                        m2m_rel.add(cur_obj._meta.get_field(attr_name).rel.to.objects.get(pk=add_value))
+                                    except ValidationError, what:
+                                        request.xml_response.error("error modifying: %s" % (unicode(what.messages[0])), logger)
                                 if (add_values or rem_values) or not (ignore_nop):
                                     request.xml_response.info("added %d, removed %d" % (len(add_values), len(rem_values)), logger)
                             else:

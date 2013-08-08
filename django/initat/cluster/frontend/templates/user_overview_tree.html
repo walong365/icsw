@@ -38,6 +38,10 @@ class user_tree
             "id"    : "create_group"
             "value" : "Create Group"
         ).on("click", @create_group)
+        {% if not perms.backbone.administrator %}
+        @create_group_button.hide()
+        @sync_button.hide()
+        {% endif %}
         @create_user_button = $("<input>").attr(
             "type"  : "button"
             "id"    : "create_user"
@@ -162,6 +166,8 @@ class user_tree
             onFocus  : (dtnode) =>
                 @show_details(dtnode.data.key)
                 return false
+            {% if perms.backbone.administrator %}
+            # node movement is not allowed for group admins
             dnd : {
                 onDragStart : (dtnode) =>
                     return true
@@ -184,6 +190,7 @@ class user_tree
                                 src_db_node.attr("parent", @UGX.find("groups group[key='#{dst_node.data.key}']").attr("pk"))
                                 src_node.move(dst_node, "over")
                 }
+            {% endif %}
         @root_node = @dt_div.dynatree("getRoot")
         @build_group_node(@root_node)
     build_group_node: (dt_node, db_node) =>
@@ -222,21 +229,32 @@ class user_tree
                 url = "{% url 'user:user_detail' %}"
             else
                 url = "{% url 'user:group_detail' %}"
-            $.ajax
-                url     : url
-                data    : {
-                    "key"  : key
-                    "mode" : "show"
-                }
-                success : (xml) =>
-                    if parse_xml_response(xml)
-                        @active_node = key
-                        @install_ug_form($(xml).find("value[name='form']").text())
-                        @detail_div.find("input, select").on("change", @my_submitter.submit)
-                        if key.match(/^(user)__/)
-                            @detail_div.bind("submit", @delete_user)
-                        else
-                            @detail_div.bind("submit", @delete_group)
+            {% if perms.backbone.admin %}
+            show_detail = true
+            {% else %}
+            if key.match(/^(user)__/)
+                show_detail = true
+            else
+                show_detail = "{{ user.group_id }}" == key.split("__")[1]
+            {% endif %}
+            if show_detail
+                $.ajax
+                    url     : url
+                    data    : {
+                        "key"  : key
+                        "mode" : "show"
+                    }
+                    success : (xml) =>
+                        if parse_xml_response(xml)
+                            @active_node = key
+                            @install_ug_form($(xml).find("value[name='form']").text())
+                            @detail_div.find("input, select").on("change", @my_submitter.submit)
+                            if key.match(/^(user)__/)
+                                @detail_div.bind("submit", @delete_user)
+                            else
+                                @detail_div.bind("submit", @delete_group)
+            else
+                @clear_ug_form()
 
 $(document).ready(
     my_ugt = new user_tree($("div#ug_tables"), $("div#ug_detail"))
