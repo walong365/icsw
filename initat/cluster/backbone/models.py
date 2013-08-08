@@ -3764,6 +3764,12 @@ class user(models.Model):
         super(user, self).__setattr__(key, value)
     def is_authenticated(self):
         return True
+    def has_perms(self, perms):
+        # check if user has all of the perms
+        return all([self.has_perm(perm) for perm in perms])
+    def has_any_perms(self, perms):
+        # check if user has any of the perms
+        return any([self.has_perm(perm) for perm in perms])
     def has_perm(self, perm, obj=None):
         if not (self.active and self.group.active):
             return False
@@ -3849,6 +3855,15 @@ class user_serializer(serializers.ModelSerializer):
         model = user
         fields = ("idx", "login", "uid", "group")
 
+@receiver(signals.m2m_changed, sender=user.permissions.through)
+def user_permissions_changed(sender, *args, **kwargs):
+    if kwargs.get("action") == "pre_add" and "instance" in kwargs:
+        cur_user = kwargs["instance"]
+        is_admin = cur_user.has_perm("backbone.admin")
+        for add_pk in kwargs.get("pk_set"):
+            if csw_permission.objects.get(Q(pk=add_pk)).codename in ["admin", "group_admin"] and not is_admin:
+                raise ValidationError("not enough rights")
+
 @receiver(signals.pre_save, sender=user)
 def user_pre_save(sender, **kwargs):
     if "instance" in kwargs:
@@ -3877,10 +3892,10 @@ def user_post_save(sender, **kwargs):
             cur_inst.password_ssha = "%s:%s" % ("SSHA", base64.b64encode(new_sh.digest() + salt))
             cur_inst.save()
 
-@receiver(signals.post_delete, sender=user)
-def user_post_delete(sender, **kwargs):
-    if "instance" in kwargs:
-        cur_inst = kwargs["instance"]
+# @receiver(signals.post_delete, sender=user)
+# def user_post_delete(sender, **kwargs):
+#    if "instance" in kwargs:
+#        cur_inst = kwargs["instance"]
 
 class group(models.Model):
     idx = models.AutoField(db_column="ggroup_idx", primary_key=True)
@@ -3903,6 +3918,12 @@ class group(models.Model):
     parent_group = models.ForeignKey("self", null=True)
     permissions = models.ManyToManyField(csw_permission, related_name="db_group_permissions")
     object_permissions = models.ManyToManyField(csw_object_permission, related_name="db_group_permissions")
+    def has_perms(self, perms):
+        # check if group has all of the perms
+        return all([self.has_perm(perm) for perm in perms])
+    def has_any_perms(self, perms):
+        # check if group has any of the perms
+        return any([self.has_perm(perm) for perm in perms])
     def has_perm(self, perm, obj=None):
         if not self.active:
             return False
