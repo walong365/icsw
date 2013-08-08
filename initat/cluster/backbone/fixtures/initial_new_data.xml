@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<django-objects version="1.0">
+    <object pk="1" model="backbone.host_check_command">
+    <field type="CharField" name="name">check-host-alive</field>
+    <field type="CharField" name="command_line">$USER2$ -m localhost ping $HOSTADDRESS$ 5 5.0</field>
+    <field type="DateTimeField" name="date">2013-07-25T10:07:27.040353+00:00</field>
+  </object>
+  <object pk="2" model="backbone.host_check_command">
+    <field type="CharField" name="name">check-host-alive-2</field>
+    <field type="CharField" name="command_line">$USER2$ -m $HOSTADDRESS$ version</field>
+    <field type="DateTimeField" name="date">2013-07-25T10:07:40.088334+00:00</field>
+  </object>
+  <object pk="3" model="backbone.host_check_command">
+    <field type="CharField" name="name">check-host-ok</field>
+    <field type="CharField" name="command_line">$USER1$/check_dummy 0 up</field>
+    <field type="DateTimeField" name="date">2013-07-25T10:07:50.131776+00:00</field>
+  </object>
+  <object pk="4" model="backbone.host_check_command">
+    <field type="CharField" name="name">check-host-down</field>
+    <field type="CharField" name="command_line">$USER1$/check_dummy 2 down</field>
+    <field type="DateTimeField" name="date">2013-07-25T10:07:58.040786+00:00</field>
+  </object>
+</django-objects>
