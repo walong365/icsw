@@ -3364,10 +3364,13 @@ class server_process(threading_tools.process_pool):
                 except:
                     self.log("Cannot read pxelinux.0 from %s" % (pxe_path), logging_tools.LOG_LEVEL_WARN)
                 else:
+                    pxe_dir = os.path.dirname(pxelinux_0)
                     global_config.add_config_entries([
                         ("PXEBOOT"   , configfile.bool_c_var(True, source="filesystem")),
-                        ("PXELINUX_0", configfile.blob_c_var(pxelinux_0, source="filesystem"))])
-                    self.log("Found pxelinux.0 in %s" % (pxe_path))
+                        ("PXELINUX_0", configfile.blob_c_var(pxelinux_0, source="filesystem")),
+                        ("LDLINUX"   , configfile.blob_c_var(os.path.join(pxe_dir, "ldlinux.c32"), source="filesystem"))
+                        ])
+                    self.log("Found pxelinux.0 and ldlinux.c32 in %s" % (pxe_path))
                     nb_ok = True
                     break
             else:

@@ -463,6 +463,8 @@ class host(machine):
             return None
     def get_pxe_file_name(self):
         return "%s/pxelinux.0" % (self.get_etherboot_dir())
+    def get_ldlinux_file_name(self):
+        return "%s/ldlinux.c32" % (self.get_etherboot_dir())
     def get_mboot_file_name(self):
         return "%s/mboot.c32" % (self.get_etherboot_dir())
     def get_net_file_name(self):
@@ -575,6 +577,7 @@ class host(machine):
                 if (os.path.isdir(self.get_etherboot_dir())):
                     if global_config["PXEBOOT"]:
                         open(self.get_pxe_file_name(), "w").write(global_config["PXELINUX_0"])
+                        open(self.get_ldlinux_file_name(), "w").write(global_config["LDLINUX"])
                     else:
                         self.log("not PXEBOOT capable (PXELINUX_0 not found)", logging_tools.LOG_LEVEL_ERROR)
         else:
@@ -592,6 +595,7 @@ class host(machine):
                                                      ""]))
                 if global_config["PXEBOOT"]:
                     open(self.get_pxe_file_name(), "w").write(global_config["PXELINUX_0"])
+                    open(self.get_ldlinux_file_name(), "w").write(global_config["LDLINUX"])
                 else:
                     self.log("not PXEBOOT capable (PXELINUX_0 not found)", logging_tools.LOG_LEVEL_ERROR)
     def write_kernel_config(self, new_kernel):
@@ -745,6 +749,7 @@ class host(machine):
                         self.log("not XENBOOT capable (MBOOT.C32 not found)", logging_tools.LOG_LEVEL_ERROR)
                 if global_config["PXEBOOT"]:
                     open(self.get_pxe_file_name(), "w").write(global_config["PXELINUX_0"])
+                    open(self.get_ldlinux_file_name(), "w").write(global_config["LDLINUX"])
                 else:
                     self.log("not PXEBOOT capable (PXELINUX_0 not found)", logging_tools.LOG_LEVEL_ERROR)
             else:
