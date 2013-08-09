@@ -267,7 +267,7 @@ class moncc_template_flags_form(ModelForm):
 
 class group_detail_form(ModelForm):
     permissions = ModelMultipleChoiceField(
-        queryset=csw_permission.objects.all().select_related("content_type").order_by("codename"),
+        queryset=csw_permission.objects.exclude(Q(codename__in=["admin", "group_admin"])).select_related("content_type").order_by("codename"),
         widget=SelectMultiple(attrs={"size" : "8"}),
         required=False,
     )
