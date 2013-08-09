@@ -1,28 +1,17 @@
 [uwsgi]
 
-plugin-dir=/opt/cluster/lib64
+exec-as-root = /opt/cluster/sbin/webfrontend_pre_start.sh
 
-cgi-mode=true
-master=true
-vacuum=true
-workers=16
+django_app_dir = /opt/python-init/lib/python/site-packages/initat/cluster/
+django_app = webfrontend
 
-buffer-size=32768
+ini=webfrontend-common.include
 
-harakiri-verbose=1
 socket=127.0.0.1:9002
-
-module=wsgi
-
-py-programname=python-init
 
 uid=apache
 gid=apache
 
-processes = 2
+env=USER=%(uid)
+env=GROUP=%(gid)
 
-pidfile=/var/run/django.webfrontend.pid
-logto=/var/log/webfrontend.uwsgi.log
-logfile-chown=apache
-
-pythonpath=/opt/python-init/lib/python/site-packages/initat/cluster/

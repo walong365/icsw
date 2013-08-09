@@ -3,14 +3,12 @@
 chdir=%(django_app_dir)
 pythonpath=%(django_app_dir)
 pidfile=/var/run/django.%(django_app).pid
-socket=/var/run/django-%(django_app)-uwsgi.sock
-daemonize=/var/log/django-%(django_app).log
+daemonize=/var/log/cluster/django-%(django_app).log
 
 env=DJANGO_SETTINGS_MODULE=settings
 ; needed for pre-start script
 env=DJANGO_APP_DIR=%(django_app_dir)
-; default ini-file for oekotex (override in your copy of the .skel file)
-env=OEKOTEX_INI=oekotex.ini
+env=DJANGO_APP=%(django_app)
 
 py-programname=python-init
 
@@ -21,7 +19,7 @@ master=True
 vacuum=False
 max-requests=500
 harakiri-verbose=1
-processes=1
+processes=2
 post-buffering=1
 workers=16
 show-config=1
@@ -30,10 +28,13 @@ worker-reload-mercy=10
 ; be lazy (workers load application, not the master)
 lazy=1
 
+# buffer size
+buffer-size=32768
+
 ; use chain reloading (workers are reloaded one after the other)
 ; create/touch the files in the reload/ subdir to trigger a reload
 touch-chain-reload=%d/reload/%(django_app).touch
 ; Statistics
 memory-report=1
 
-stats=/var/run/django-%(django_app)-stats.sock
+stats=/var/run/%(django_app)/stats.sock
