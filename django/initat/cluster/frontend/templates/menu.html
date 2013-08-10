@@ -50,11 +50,11 @@
         </ul>
     </li>
     {% endif %}
-    {% if perms.backbone.administrator or perms.backbone.group_admin %}
+    {% if csw_perms.backbone.admin or csw_perms.backbone.group_admin %}
     <li>
         <a>{% trans "Users" %}</a>
         <ul>
-            {# }<li><a href="{% url 'user:overview' 'table' %}">{% trans "Overview / Table" %}</a></li> #}
+            {# <li><a href="{% url 'user:overview' 'table' %}">{% trans "Overview / Table" %}</a></li> #}
             <li><a href="{% url 'user:overview' 'tree' %}">{% trans "Overview" %}</a></li>
         </ul>
     </li>

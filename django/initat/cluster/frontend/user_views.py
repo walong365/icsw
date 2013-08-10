@@ -111,8 +111,9 @@ class overview(permission_required_mixin, View):
             # allowed group pks
             allowed_group_ids = set(list(group.objects.all().values_list("pk", flat=True)))
         else:
+            # not correct, FIXME
             allowed_group_ids = set([request.user.group_id])
-        print allowed_group_ids
+        # print allowed_group_ids
         xml_resp = E.response(
             exp_list,
             perm_list,
