@@ -198,6 +198,7 @@ TEMPLATE_CONTEXT_PROCESSORS = (
     "django.core.context_processors.debug",
     "initat.core.context_processors.add_session",
     "initat.core.context_processors.add_settings",
+    "initat.core.context_processors.add_csw_permissions",
 )
 
 TEMPLATE_LOADERS = (
@@ -243,7 +244,7 @@ INSTALLED_APPS = (
     # Uncomment the next line to enable the admin:
     "django.contrib.admin",
     # Uncomment the next line to enable admin documentation:
-    "django.contrib.admindocs",
+    # "django.contrib.admindocs",
     "django_extensions",
     "reversion",
     "south",

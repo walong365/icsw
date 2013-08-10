@@ -4,6 +4,7 @@ import datetime
 import uuid
 import re
 import time
+import inspect
 import ipvx_tools
 import logging_tools
 import pprint
@@ -18,7 +19,8 @@ from lxml.builder import E
 from rest_framework import serializers
 
 from django.conf import settings
-from django.core.exceptions import ValidationError
+from django.core.cache import cache
+from django.core.exceptions import ValidationError, ImproperlyConfigured
 from django.db import models
 from django.db.models import Q, signals
 from django.dispatch import receiver
@@ -62,6 +64,35 @@ system_timezone = pytz.timezone(time.tzname[0])
 
 def to_system_tz(in_dt):
     return in_dt.astimezone(system_timezone)
+
+# auth_cache structure
+class auth_cache(object):
+    def __init__(self, auth_obj):
+        self.auth_obj = auth_obj
+        self.cache_key = u"auth_%s_%d" % (
+            auth_obj._meta.object_name,
+            auth_obj.pk,
+            )
+        self.__perms, self.__obj_perms = (set(), {})
+        # print self.cache_key
+        self._from_db()
+    def _from_db(self):
+        perms = self.auth_obj.permissions.all().select_related("content_type")
+        for perm in perms:
+            self.__perms.add(("%s.%s" % (perm.content_type.app_label, perm.codename)))
+        obj_perms = self.auth_obj.object_permissions.all().select_related("csw_permission__content_type")
+        for obj_perm in obj_perms:
+            perm_key = "%s.%s" % (obj_perm.csw_permission.content_type.app_label, obj_perm.csw_permissions.codename)
+            print unicode(obj_perm), "*******"
+    def has_permission(self, app_label, code_name):
+        return "%s.%s" % (app_label, code_name) in self.__perms
+    def has_object_permission(self, app_label, code_name, obj=None):
+        if "%s.%s" % (app_label, code_name) in self.__obj_perms:
+            print "fixme, has_object_permission"
+            return False
+        else:
+            return self.has_permission(app_label, code_name)
+
 
 # cluster_log_source
 cluster_log_source = None
@@ -3562,7 +3593,7 @@ class status(models.Model):
     allow_boolean_modify = models.BooleanField(default=True)
     date = models.DateTimeField(auto_now_add=True)
     def __unicode__(self):
-        print ".", self.status
+        # print ".", self.status
         return u"%s (%s)%s" % (
             self.status,
             ",".join([short for short, attr_name in [
@@ -3593,6 +3624,10 @@ class sys_partition(models.Model):
         db_table = u'sys_partition'
 
 class csw_permission(models.Model):
+    """
+    ClusterSoftware permissions
+    - global permissions
+    """
     idx = models.AutoField(primary_key=True)
     name = models.CharField(max_length=150)
     codename = models.CharField(max_length=150)
@@ -3608,13 +3643,18 @@ class csw_permission(models.Model):
             object_pk=object.pk
             )
     def __unicode__(self):
-        return "%s | %s | %s" % (
+        return u"%s | %s | %s" % (
             self.content_type.app_label,
             self.content_type,
             self.name,
             )
 
 class csw_object_permission(models.Model):
+    """
+    ClusterSoftware object permissions
+    - local permissions
+    - only allowed on the correct content_type
+    """
     idx = models.AutoField(primary_key=True)
     csw_permission = models.ForeignKey(csw_permission)
     object_pk = models.IntegerField(default=0)
@@ -3627,47 +3667,78 @@ def get_label_codename(perm):
         if perm.count(".") == 1:
             app_label, codename = perm.split(".")
         else:
-            print "Unknown permission format '%s'" % (perm)
+            raise ImproperlyConfigured("Unknown permission format '%s'" % (perm))
     elif isinstance(perm, csw_permission):
         app_label, codename = (perm.content_type.app_label, perm.codename)
     elif isinstance(perm, csw_object_permission):
         app_label, codename = (perm.csw_permission.content_type.app_label, perm.csw_permission.codename)
     else:
-        print "Unknown perm '%s'" % (unicode(perm))
+        raise ImproperlyConfigured("Unknown perm '%s'" % (unicode(perm)))
     return (app_label, codename)
 
-def check_permissions(auth_obj, perm):
-    app_label, codename = get_label_codename(perm)
-    if app_label and codename:
-        try:
-            auth_obj.permissions.get(
-                Q(codename=codename) &
-                Q(content_type__app_label=app_label)
-                )
-        except csw_permission.DoesNotExist:
-            return False
-        else:
-            return True
+def check_app_permission(auth_obj, app_label):
+    if auth_obj.permissions.filter(Q(content_type__app_label=app_label)).count():
+        return True
+    elif auth_obj.object_permissions.filter(Q(csw_permission__content_type__app_label=app_label)).count():
+        return True
     else:
         return False
 
-def check_object_permissions(auth_obj, perm, obj):
+def check_permission(auth_obj, perm):
+    if not hasattr(auth_obj, "_auth_cache"):
+        auth_obj._auth_cache = auth_cache(auth_obj)
     app_label, codename = get_label_codename(perm)
     if app_label and codename:
-        if app_label == obj._meta.app_label:
-            try:
-                auth_obj.object_permissions.get(
-                    Q(csw_permission__codename=codename) &
-                    Q(csw_permission__content_type__app_label=app_label) &
-                    Q(csw_permission__content_type__model=obj._meta.object_name) &
-                    Q(object_pk=obj.pk)
-                    )
-            except csw_object_permission.DoesNotExist:
-                return check_permissions(auth_obj, perm)
-            else:
-                return True
+        # caching code
+        return auth_obj._auth_cache.has_permission(app_label, codename)
+        # old code
+        # try:
+        #    auth_obj.permissions.get(
+        #        Q(codename=codename) &
+        #        Q(content_type__app_label=app_label)
+        #        )
+        # except csw_permission.DoesNotExist:
+        #    return False
+        # else:
+        #    return True
+    else:
+        return False
+
+def check_object_permission(auth_obj, perm, obj):
+    if not hasattr(auth_obj, "_auth_cache"):
+        auth_obj._auth_cache = auth_cache(auth_obj)
+    app_label, code_name = get_label_codename(perm)
+    # print "* cop", auth_obj, perm, obj, app_label, codename
+    if app_label and code_name:
+        if obj is None:
+            # caching code
+            return auth_obj._auth_cache.has_object_permission(app_label, code_name)
+            # old code
+            # "check for any_object permission '%s'" % (unicode(perm))
+            # if auth_obj.object_permissions.filter(Q(csw_permission__codename=codename)).count():
+            #    return True
+            # else:
+            #    # fallback to global permission check
+            #    return check_permission(auth_obj, perm)
         else:
-            return False
+            if app_label == obj._meta.app_label:
+                # caching code
+                return auth_obj._auth_cache.has_object_permission(app_label, code_name, obj)
+                # old code
+                # try:
+                #    auth_obj.object_permissions.get(
+                #        Q(csw_permission__codename=codename) &
+                #        Q(csw_permission__content_type__app_label=app_label) &
+                #        Q(csw_permission__content_type__model=obj._meta.object_name) &
+                #        Q(object_pk=obj.pk)
+                #        )
+                # except csw_object_permission.DoesNotExist:
+                #    # fallback to global permission check
+                #    return check_permission(auth_obj, perm)
+                # else:
+                #    return True
+            else:
+                return False
     else:
         return False
 
@@ -3759,6 +3830,7 @@ class user(models.Model):
     is_superuser = models.BooleanField(default=False)
     db_is_auth_for_password = models.BooleanField(default=False)
     def __setattr__(self, key, value):
+        # catch clearing of export entry via empty ("" or '') key
         if key == "export" and type(value) in [str, unicode]:
             value = None
         super(user, self).__setattr__(key, value)
@@ -3770,19 +3842,39 @@ class user(models.Model):
     def has_any_perms(self, perms):
         # check if user has any of the perms
         return any([self.has_perm(perm) for perm in perms])
-    def has_perm(self, perm, obj=None):
+    def has_perm(self, perm):
+        # only check global permissions
         if not (self.active and self.group.active):
             return False
         elif self.is_superuser:
             return True
-        if obj is not None:
-            res = check_object_permissions(self, perm, obj)
-            if not res:
-                res = check_object_permissions(self.group, perm, obj)
-        else:
-            res = check_permissions(self, perm)
-            if not res:
-                res = check_permissions(self.group, perm)
+        res = check_permission(self, perm)
+        if not res:
+            res = check_permission(self.group, perm)
+        return res
+    def has_object_perm(self, perm, obj=None):
+        if not (self.active and self.group.active):
+            return False
+        elif self.is_superuser:
+            return True
+        res = check_object_permission(self, perm, obj)
+        if not res:
+            res = check_object_permission(self.group, perm, obj)
+        return res
+    def has_object_perms(self, perms, obj=None):
+        # check if user has all of the object perms
+        return all([self.has_object_perm(perm, obj) for perm in perms])
+    def has_any_object_perms(self, perms, obj=None):
+        # check if user has any of the object perms
+        return any([self.has_object_perm(perm, obj) for perm in perms])
+    def has_module_perms(self, module_name):
+        if not (self.active and self.group.active):
+            return False
+        elif self.is_superuser:
+            return True
+        res = check_app_permission(self, module_name)
+        if not res:
+            res = self.group.has_module_perms(module_name)
         return res
     def get_is_active(self):
         return self.active
@@ -3827,11 +3919,7 @@ class user(models.Model):
         return user_xml
     class CSW_Meta:
         permissions = (
-            # ("test_right" , "Test right"),
-            ("group_admin", "Group administrator"),
             ("admin"      , "Administrator"),
-            # (""),
-            # ("wf_apc" , "APC control"),
         )
     class Meta:
         db_table = u'user'
@@ -3858,9 +3946,18 @@ class user_serializer(serializers.ModelSerializer):
 @receiver(signals.m2m_changed, sender=user.permissions.through)
 def user_permissions_changed(sender, *args, **kwargs):
     if kwargs.get("action") == "pre_add" and "instance" in kwargs:
-        cur_user = kwargs["instance"]
+        cur_user = None
+        try:
+            # hack to get the current logged in user
+            for frame_record in inspect.stack():
+                if frame_record[3] == "get_response":
+                    request = frame_record[0].f_locals["request"]
+                    cur_user = request.user
+        except:
+            cur_user = None
         is_admin = cur_user.has_perm("backbone.admin")
         for add_pk in kwargs.get("pk_set"):
+            # only admins can grant admin or group_admin rights
             if csw_permission.objects.get(Q(pk=add_pk)).codename in ["admin", "group_admin"] and not is_admin:
                 raise ValidationError("not enough rights")
 
@@ -3924,13 +4021,24 @@ class group(models.Model):
     def has_any_perms(self, perms):
         # check if group has any of the perms
         return any([self.has_perm(perm) for perm in perms])
-    def has_perm(self, perm, obj=None):
+    def has_perm(self, perm):
         if not self.active:
             return False
-        if obj is not None:
-            return check_object_permissions(self, perm, c_obj)
-        else:
-            return check_permissions(self, perm)
+        return check_permission(self, perm)
+    def has_object_perm(self, perm, obj=None):
+        if not self.active:
+            return False
+        return check_object_permission(self, perm, c_obj)
+    def has_object_perms(self, perms, obj=None):
+        # check if group has all of the object perms
+        return all([self.has_object_perm(perm, obj) for perm in perms])
+    def has_any_object_perms(self, perms, obj=None):
+        # check if group has any of the object perms
+        return any([self.has_object_perm(perm, obj) for perm in perms])
+    def has_module_perms(self, module_name):
+        if not (self.active):
+            return False
+        return check_app_permission(self, module_name)
     def get_is_active(self):
         return self.active
     is_active = property(get_is_active)
@@ -3964,6 +4072,10 @@ class group(models.Model):
             # empty field
             group_xml.attrib["permissions"] = ""
         return group_xml
+    class CSW_Meta:
+        permissions = (
+            ("group_admin", "Group administrator"),
+        )
     class Meta:
         db_table = u'ggroup'
         ordering = ("groupname",)
