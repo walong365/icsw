@@ -82,14 +82,18 @@ class auth_cache(object):
             self.__perms.add(("%s.%s" % (perm.content_type.app_label, perm.codename)))
         obj_perms = self.auth_obj.object_permissions.all().select_related("csw_permission__content_type")
         for obj_perm in obj_perms:
-            perm_key = "%s.%s" % (obj_perm.csw_permission.content_type.app_label, obj_perm.csw_permissions.codename)
-            print unicode(obj_perm), "*******"
+            perm_key = "%s.%s" % (obj_perm.csw_permission.content_type.app_label, obj_perm.csw_permission.codename)
+            self.__obj_perms.setdefault(perm_key, []).append(obj_perm.object_pk)
+        # pprint.pprint(self.__obj_perms)
     def has_permission(self, app_label, code_name):
         return "%s.%s" % (app_label, code_name) in self.__perms
     def has_object_permission(self, app_label, code_name, obj=None):
-        if "%s.%s" % (app_label, code_name) in self.__obj_perms:
-            print "fixme, has_object_permission"
-            return False
+        code_key = "%s.%s" % (app_label, code_name)
+        if code_key in self.__obj_perms and obj:
+            if app_label == obj._meta.app_label:
+                return obj.pk in self.__obj_perms.get(code_key, [])
+            else:
+                return False
         else:
             return self.has_permission(app_label, code_name)
 
@@ -746,30 +750,6 @@ def device_pre_save(sender, **kwargs):
         if dev_count > 0 and current_count >= dev_count:
             logger.warning("Device limit %d reached", dev_count)
             raise ValidationError("Device limit reached!")
-
-# class device_class(models.Model):
-    # idx = models.AutoField(db_column="device_class_idx", primary_key=True)
-    # classname = models.CharField(max_length=192, blank=False, unique=True)
-    # priority = models.IntegerField(null=True, blank=True)
-    # date = models.DateTimeField(auto_now_add=True)
-    # def get_xml(self):
-        # return E.device_class(
-            # unicode(self),
-            # pk="%d" % (self.pk),
-            # key="dc__%d" % (self.pk),
-            # classname=unicode(self.classname),
-            # priority="%d" % (self.priority)
-        # )
-    # def __unicode__(self):
-        # return u"%s (%d)" % (self.classname, self.priority)
-    # class Meta:
-        # db_table = u'device_class'
-
-# @receiver(signals.pre_save, sender=device_class)
-# def device_class_pre_save(sender, **kwargs):
-    # if "instance" in kwargs:
-        # cur_inst = kwargs["instance"]
-        # _check_integer(cur_inst, "priority")
 
 class device_config(models.Model):
     idx = models.AutoField(db_column="device_config_idx", primary_key=True)
@@ -3634,6 +3614,15 @@ class csw_permission(models.Model):
     content_type = models.ForeignKey(ContentType)
     class Meta:
         unique_together = (("content_type", "codename"),)
+    def get_xml(self):
+        r_xml = E.csw_permission(
+            pk="%d" % (self.pk),
+            key="cswp__%d" % (self.pk),
+            name=self.name or "",
+            codename=self.codename or "",
+            content_type="%d" % (self.content_type_id),
+            )
+        return r_xml
     @staticmethod
     def get_permission(object, code_name):
         ct = ContentType.objects.get_for_model(object)
@@ -3842,38 +3831,38 @@ class user(models.Model):
     def has_any_perms(self, perms):
         # check if user has any of the perms
         return any([self.has_perm(perm) for perm in perms])
-    def has_perm(self, perm):
+    def has_perm(self, perm, check_group_perms=True):
         # only check global permissions
         if not (self.active and self.group.active):
             return False
         elif self.is_superuser:
             return True
         res = check_permission(self, perm)
-        if not res:
+        if not res and check_group_perms:
             res = check_permission(self.group, perm)
         return res
-    def has_object_perm(self, perm, obj=None):
+    def has_object_perm(self, perm, obj=None, check_group_perms=True):
         if not (self.active and self.group.active):
             return False
         elif self.is_superuser:
             return True
         res = check_object_permission(self, perm, obj)
-        if not res:
+        if not res and check_group_perms:
             res = check_object_permission(self.group, perm, obj)
         return res
-    def has_object_perms(self, perms, obj=None):
+    def has_object_perms(self, perms, obj=None, check_group_perms=True):
         # check if user has all of the object perms
-        return all([self.has_object_perm(perm, obj) for perm in perms])
-    def has_any_object_perms(self, perms, obj=None):
+        return all([self.has_object_perm(perm, obj, check_group_perms=check_group_perms) for perm in perms])
+    def has_any_object_perms(self, perms, obj=None, check_group_perms=True):
         # check if user has any of the object perms
-        return any([self.has_object_perm(perm, obj) for perm in perms])
-    def has_module_perms(self, module_name):
+        return any([self.has_object_perm(perm, obj, check_group_perms=check_group_perms) for perm in perms])
+    def has_module_perms(self, module_name, check_group_perms=True):
         if not (self.active and self.group.active):
             return False
         elif self.is_superuser:
             return True
         res = check_app_permission(self, module_name)
-        if not res:
+        if not res and check_group_perms:
             res = self.group.has_module_perms(module_name)
         return res
     def get_is_active(self):
