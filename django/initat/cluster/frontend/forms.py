@@ -10,7 +10,7 @@ from django.db.models import Q
 from django.utils.translation import ugettext_lazy as _
 from crispy_forms.helper import FormHelper
 from crispy_forms.layout import Submit, Layout, Field, ButtonHolder, Button, Fieldset, Div, HTML, \
-     Row, Column
+     Row, Column, MultiField
 from crispy_forms.bootstrap import FormActions
 from django.core.urlresolvers import reverse
 from initat.cluster.backbone.models import domain_tree_node, device, category, mon_check_command, mon_service_templ, \
@@ -311,7 +311,9 @@ class group_detail_form(ModelForm):
         ),
         Field("parent_group"),
         Field("allowed_device_groups"),
-        Field("permissions"),
+        Div(
+            Field("permissions"),
+        )
     )
     homestart = CharField(widget=TextInput())
     class Meta:
@@ -323,9 +325,15 @@ class group_detail_form(ModelForm):
         if "disabled" in self.helper.layout[3].attrs:
             del self.helper.layout[3].attrs["disabled"]
         self.helper.layout[2][0] = Submit("submit", "Create", css_class="primaryAction")
+        if len(self.helper.layout[5]) == 2:
+            # remove object permission button
+            self.helper.layout[5].pop(1)
     def delete_mode(self):
         self.helper.layout[3].attrs["disabled"] = True
         self.helper.layout[2][0] = Submit("delete", "Delete", css_class="primaryAction")
+        if len(self.helper.layout[5]) == 1:
+            # add object permissions button
+            self.helper.layout[5].append(Button("object_perms", "Object Permissions"))
 
 class export_choice_field(ModelChoiceField):
     def reload(self):
@@ -385,7 +393,9 @@ class user_detail_form(ModelForm):
         Field("export"),
         Field("allowed_device_groups"),
         Field("secondary_groups"),
-        Field("permissions"),
+        Div(
+            Field("permissions"),
+        ),
     )
     export = export_choice_field(device_config.objects.none(), required=False)
     def __init__(self, *args, **kwargs):
@@ -410,9 +420,15 @@ class user_detail_form(ModelForm):
         if "disabled" in self.helper.layout[2].attrs:
             del self.helper.layout[2].attrs["disabled"]
         self.helper.layout[4][3] = Submit("submit", "Create", css_class="primaryAction")
+        if len(self.helper.layout[8]) == 2:
+            # remove object permission button
+            self.helper.layout[8].pop(1)
     def delete_mode(self):
         self.helper.layout[2].attrs["disabled"] = True
         self.helper.layout[4][3] = Submit("delete", "Delete", css_class="primaryAction")
+        if len(self.helper.layout[8]) == 1:
+            # add object permissions button
+            self.helper.layout[8].append(Button("object_perms", "Object Permissions"))
     class Meta:
         model = user
         fields = ["login", "uid", "shell", "first_name", "last_name", "active",

@@ -33,9 +33,10 @@ from lxml import etree
 from lxml.builder import E
 
 from crispy_forms.layout import Submit, Layout, Field, ButtonHolder, Button
-
 from django.conf import settings
 from django.contrib.auth.decorators import login_required, permission_required
+from django.contrib.contenttypes.models import ContentType
+from django.db.models import get_model
 from django.core.exceptions import ValidationError
 from django.core.urlresolvers import reverse
 from django.http import HttpResponse
@@ -45,7 +46,7 @@ from django.utils.decorators import method_decorator
 
 from initat.cluster.backbone.models import partition_table, partition_disc, partition, \
      partition_fs, image, architecture, group, user, device_config, device_group, \
-     user_variable, csw_permission, get_related_models
+     user_variable, csw_permission, get_related_models, csw_object_permission
 from initat.core.render import render_me, render_string, permission_required_mixin
 from initat.cluster.frontend.helper_functions import contact_server, xml_wrapper, update_session_object
 from initat.cluster.frontend.forms import dummy_password_form, group_detail_form, user_detail_form
@@ -398,3 +399,113 @@ class user_detail(View):
                         "form" : cur_form
                     }
                 )
+
+class get_object_permissions(View):
+    @method_decorator(login_required)
+    @method_decorator(xml_wrapper)
+    def post(self, request):
+        _post = request.POST
+        auth_type, auth_pk = _post["auth_key"].split("__")
+        if auth_type == "group":
+            auth_obj = group.objects.get(Q(pk=auth_pk))
+        else:
+            auth_obj = user.objects.get(Q(pk=auth_pk))
+        # pprint.pprint(_post)
+        all_db_perms = csw_permission.objects.all().select_related("content_type")
+        all_perms = E.csw_permissions(
+            *[cur_p.get_xml() for cur_p in all_db_perms])
+        perm_ct_pks = set([int(pk) for pk in all_perms.xpath(".//csw_permission/@content_type")])
+        perm_cts = ContentType.objects.filter(Q(pk__in=perm_ct_pks)).order_by("name")
+        request.xml_response["perms"] = all_perms
+        request.xml_response["content_types"] = E.content_types(
+            *[E.content_type(
+                unicode(cur_ct),
+                self._get_objects(cur_ct, auth_obj, [ct_perm for ct_perm in all_db_perms if ct_perm.content_type_id == cur_ct.pk]),
+                name=cur_ct.name,
+                app_label=cur_ct.app_label,
+                pk="%d" % (cur_ct.pk)
+                ) for cur_ct in perm_cts]
+            )
+    def _get_objects(self, cur_ct, auth_obj, perm_list):
+        cur_model = get_model(cur_ct.app_label, cur_ct.name)
+        # special handling of device ?
+        return E.objects(
+            *[E.object(
+                unicode(cur_obj),
+                perms=self._get_object_perms(
+                    auth_obj,
+                    cur_obj,
+                    perm_list),
+                    pk="%d" % (cur_obj.pk)
+                ) for cur_obj in cur_model.objects.all()]
+            )
+    def _get_object_perms(self, auth_obj, cur_obj, perm_list):
+        set_perms = ["%d" % (cur_perm.pk) for cur_perm in perm_list if auth_obj.has_object_perm(
+            cur_perm,
+            cur_obj,
+            check_group_perms=False,
+            )]
+        return "::".join(set_perms)
+
+class change_object_permission(View):
+    @method_decorator(login_required)
+    @method_decorator(xml_wrapper)
+    def post(self, request):
+        _post = request.POST
+        key = _post["key"]
+        obj_pk, perm_pk = key.split("__")[1:3]
+        auth_type, auth_pk = _post["auth_key"].split("__")
+        if auth_type == "group":
+            auth_obj = group.objects.get(Q(pk=auth_pk))
+        else:
+            auth_obj = user.objects.get(Q(pk=auth_pk))
+        set_perm = csw_permission.objects.select_related("content_type").get(Q(pk=perm_pk))
+        perm_model = get_model(set_perm.content_type.app_label, set_perm.content_type.name).objects.get(Q(pk=obj_pk))
+        add = True if int(_post["selected"]) else False
+        if add:
+            if not auth_obj.has_object_perm(set_perm, perm_model, check_group_perms=False):
+                # check if object_permission exists
+                try:
+                    csw_objp = csw_object_permission.objects.get(
+                        csw_permission=set_perm,
+                        object_pk=perm_model.pk,
+                        )
+                except csw_object_permission.DoesNotExist:
+                    csw_objp = csw_object_permission.objects.create(
+                        csw_permission=set_perm,
+                        object_pk=perm_model.pk,
+                        )
+                    logger.info("created new csw_object_permission %s" % (unicode(csw_objp)))
+                auth_obj.object_permissions.add(csw_objp)
+                logger.info("added csw_object_permission %s to %s" % (
+                    unicode(csw_objp),
+                    unicode(auth_obj),
+                    ))
+            else:
+                # print "there"
+                pass
+        else:
+            if auth_obj.has_object_perm(set_perm, perm_model, check_group_perms=False):
+                try:
+                    csw_objp = csw_object_permission.objects.get(Q(
+                        csw_permission=set_perm,
+                        object_pk=perm_model.pk
+                        ))
+                except csw_object_permission.MultipleObjectsReturned:
+                    logger.critical("multiple objects returned for csw_object_permission (perm=%s, pk=%d)" % (
+                        unicode(set_perm),
+                        perm_model.pk,
+                        ))
+                    csw_object_permission.objects.filter(Q(
+                        csw_permission=set_perm,
+                        object_pk=perm_model.pk
+                        )).delete()
+                else:
+                    auth_obj.object_permissions.remove(csw_objp)
+                    logger.info("removed csw_object_permission %s to %s" % (
+                        unicode(csw_objp),
+                        unicode(auth_obj),
+                        ))
+            else:
+                # print "not there"
+                pass

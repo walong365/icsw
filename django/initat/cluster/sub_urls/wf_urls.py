@@ -148,14 +148,16 @@ monitoring_patterns = patterns(
 
 user_patterns = patterns(
     "initat.cluster.frontend",
-    url("overview/(?P<mode>.*)$"    , user_views.overview.as_view()         , name="overview"),
-    url("passwd/xml$"               , user_views.get_password_form.as_view(), name="get_password_form"),
-    url("sync$"                     , user_views.sync_users.as_view()       , name="sync_users"),
-    url("^save_layout_state$"       , user_views.save_layout_state.as_view(), name="save_layout_state"),
-    url("^set_user_var$"            , user_views.set_user_var.as_view()     , name="set_user_var"),
-    url("^move_node$"               , user_views.move_node.as_view()        , name="move_node"),
-    url("^group_detail$"            , user_views.group_detail.as_view()     , name="group_detail"),
-    url("^user_detail$"             , user_views.user_detail.as_view()      , name="user_detail"),
+    url("overview/(?P<mode>.*)$"    , user_views.overview.as_view()              , name="overview"),
+    url("passwd/xml$"               , user_views.get_password_form.as_view()     , name="get_password_form"),
+    url("sync$"                     , user_views.sync_users.as_view()            , name="sync_users"),
+    url("^save_layout_state$"       , user_views.save_layout_state.as_view()     , name="save_layout_state"),
+    url("^set_user_var$"            , user_views.set_user_var.as_view()          , name="set_user_var"),
+    url("^move_node$"               , user_views.move_node.as_view()             , name="move_node"),
+    url("^group_detail$"            , user_views.group_detail.as_view()          , name="group_detail"),
+    url("^user_detail$"             , user_views.user_detail.as_view()           , name="user_detail"),
+    url("^get_object_permissions$"  , user_views.get_object_permissions.as_view(), name="get_object_permissions"),
+    url("^change_obj_perm$"         , user_views.change_object_permission.as_view(), name="change_object_permission"),
 )
 
 pack_patterns = patterns(
