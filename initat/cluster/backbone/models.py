@@ -89,11 +89,15 @@ class auth_cache(object):
         return "%s.%s" % (app_label, code_name) in self.__perms
     def has_object_permission(self, app_label, code_name, obj=None):
         code_key = "%s.%s" % (app_label, code_name)
-        if code_key in self.__obj_perms and obj:
-            if app_label == obj._meta.app_label:
-                return obj.pk in self.__obj_perms.get(code_key, [])
+        if code_key in self.__obj_perms:
+            if obj:
+                if app_label == obj._meta.app_label:
+                    return obj.pk in self.__obj_perms.get(code_key, [])
+                else:
+                    return False
             else:
-                return False
+                # no obj given so if the key is found in obj_perms it means that at least we have one object set
+                return True
         else:
             return self.has_permission(app_label, code_name)
 
@@ -3831,45 +3835,45 @@ class user(models.Model):
     def has_any_perms(self, perms):
         # check if user has any of the perms
         return any([self.has_perm(perm) for perm in perms])
-    def has_perm(self, perm, check_group_perms=True):
+    def has_perm(self, perm, ask_parent=True):
         # only check global permissions
         if not (self.active and self.group.active):
             return False
         elif self.is_superuser:
             return True
         res = check_permission(self, perm)
-        if not res and check_group_perms:
+        if not res and ask_parent:
             res = check_permission(self.group, perm)
         return res
-    def has_object_perm(self, perm, obj=None, check_group_perms=True):
+    def has_object_perm(self, perm, obj=None, ask_parent=True):
         if not (self.active and self.group.active):
             return False
         elif self.is_superuser:
             return True
         res = check_object_permission(self, perm, obj)
-        if not res and check_group_perms:
+        if not res and ask_parent:
             res = check_object_permission(self.group, perm, obj)
         return res
-    def has_object_perms(self, perms, obj=None, check_group_perms=True):
+    def has_object_perms(self, perms, obj=None, ask_parent=True):
         # check if user has all of the object perms
-        return all([self.has_object_perm(perm, obj, check_group_perms=check_group_perms) for perm in perms])
-    def has_any_object_perms(self, perms, obj=None, check_group_perms=True):
+        return all([self.has_object_perm(perm, obj, ask_parent=ask_parent) for perm in perms])
+    def has_any_object_perms(self, perms, obj=None, ask_parent=True):
         # check if user has any of the object perms
-        return any([self.has_object_perm(perm, obj, check_group_perms=check_group_perms) for perm in perms])
-    def has_module_perms(self, module_name, check_group_perms=True):
+        return any([self.has_object_perm(perm, obj, ask_parent=ask_parent) for perm in perms])
+    def has_module_perms(self, module_name, ask_parent=True):
         if not (self.active and self.group.active):
             return False
         elif self.is_superuser:
             return True
         res = check_app_permission(self, module_name)
-        if not res and check_group_perms:
+        if not res and ask_parent:
             res = self.group.has_module_perms(module_name)
         return res
     def get_is_active(self):
         return self.active
     is_active = property(get_is_active)
     def get_xml(self, with_permissions=False, with_allowed_device_groups=True, user_perm_dict=None,
-                allowed_device_group_dict=None):
+                allowed_device_group_dict=None, calling_user=None):
         user_xml = E.user(
             unicode(self),
             pk="%d" % (self.pk),
@@ -3905,6 +3909,10 @@ class user(models.Model):
         else:
             # empty field
             user_xml.attrib["permissions"] = ""
+        if calling_user is not None:
+            user_xml.attrib["show_detail"] = "1" if calling_user.has_object_perm("backbone.group_admin", self.group) else "0"
+        else:
+            user_xml.attrib["show_detail"] = "0"
         return user_xml
     class CSW_Meta:
         permissions = (
@@ -4014,14 +4022,14 @@ class group(models.Model):
         if not self.active:
             return False
         return check_permission(self, perm)
-    def has_object_perm(self, perm, obj=None):
+    def has_object_perm(self, perm, obj=None, ask_parent=True):
         if not self.active:
             return False
-        return check_object_permission(self, perm, c_obj)
-    def has_object_perms(self, perms, obj=None):
+        return check_object_permission(self, perm, obj)
+    def has_object_perms(self, perms, obj=None, ask_parent=True):
         # check if group has all of the object perms
         return all([self.has_object_perm(perm, obj) for perm in perms])
-    def has_any_object_perms(self, perms, obj=None):
+    def has_any_object_perms(self, perms, obj=None, ask_parent=True):
         # check if group has any of the object perms
         return any([self.has_object_perm(perm, obj) for perm in perms])
     def has_module_perms(self, module_name):
@@ -4032,7 +4040,7 @@ class group(models.Model):
         return self.active
     is_active = property(get_is_active)
     def get_xml(self, with_permissions=False, group_perm_dict=None, with_allowed_device_groups=False,
-                allowed_device_group_dict=None):
+                allowed_device_group_dict=None, calling_user=None):
         group_xml = E.group(
             unicode(self),
             pk="%d" % (self.pk),
@@ -4060,6 +4068,10 @@ class group(models.Model):
         else:
             # empty field
             group_xml.attrib["permissions"] = ""
+        if calling_user is not None:
+            group_xml.attrib["show_detail"] = "1" if calling_user.has_object_perm("backbone.group_admin", self) else "0"
+        else:
+            group_xml.attrib["show_detail"] = "0"
         return group_xml
     class CSW_Meta:
         permissions = (
