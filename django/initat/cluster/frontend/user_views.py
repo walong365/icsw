@@ -95,7 +95,7 @@ class overview(permission_required_mixin, View):
                 pass
             elif entry.content_type.app_label in ["backbone"]:
                 perm_list.append(E.permission(entry.name, pk="%d" % (entry.pk)))
-        # chaching for faster m2m lookup
+        # caching for faster m2m lookup
         group_perm_dict, user_perm_dict = ({}, {})
         for group_perm in csw_permission.objects.all().prefetch_related("db_group_permissions").select_related("content_type"):
             for cur_group in group_perm.db_group_permissions.all():
@@ -108,13 +108,6 @@ class overview(permission_required_mixin, View):
             user_device_group_dict[cur_user.login] = list([dg.pk for dg in cur_user.allowed_device_groups.all()])
         for cur_group in group.objects.all().prefetch_related("allowed_device_groups"):
             group_device_group_dict[cur_group.groupname] = list([dg.pk for dg in cur_group.allowed_device_groups.all()])
-        if request.user.has_perm("backbone.admin"):
-            # allowed group pks
-            allowed_group_ids = set(list(group.objects.all().values_list("pk", flat=True)))
-        else:
-            # not correct, FIXME
-            allowed_group_ids = set([request.user.group_id])
-        # print allowed_group_ids
         xml_resp = E.response(
             exp_list,
             perm_list,
@@ -125,6 +118,7 @@ class overview(permission_required_mixin, View):
                         group_perm_dict=group_perm_dict,
                         with_allowed_device_groups=True,
                         allowed_device_group_dict=group_device_group_dict,
+                        calling_user=request.user,
                         ) for cur_g in group.objects.all().prefetch_related("allowed_device_groups")
                     ]
                 ),
@@ -134,8 +128,10 @@ class overview(permission_required_mixin, View):
                         with_permissions=True,
                         user_perm_dict=user_perm_dict,
                         with_allowed_device_groups=True,
-                        allowed_device_group_dict=user_device_group_dict) for cur_u in user.objects.all().prefetch_related("secondary_groups", "allowed_device_groups")
-                        if cur_u.group_id in allowed_group_ids
+                        allowed_device_group_dict=user_device_group_dict,
+                        calling_user=request.user,
+                        ) for cur_u in user.objects.all().prefetch_related("secondary_groups", "allowed_device_groups")
+                        if request.user.has_object_perm("backbone.group_admin", cur_u.group)
                     ]
                 ),
             E.shells(*[E.shell(cur_shell, pk=cur_shell) for cur_shell in sorted(shell_names)]),
@@ -443,7 +439,7 @@ class get_object_permissions(View):
         set_perms = ["%d" % (cur_perm.pk) for cur_perm in perm_list if auth_obj.has_object_perm(
             cur_perm,
             cur_obj,
-            check_group_perms=False,
+            ask_parent=False,
             )]
         return "::".join(set_perms)
 
@@ -463,7 +459,7 @@ class change_object_permission(View):
         perm_model = get_model(set_perm.content_type.app_label, set_perm.content_type.name).objects.get(Q(pk=obj_pk))
         add = True if int(_post["selected"]) else False
         if add:
-            if not auth_obj.has_object_perm(set_perm, perm_model, check_group_perms=False):
+            if not auth_obj.has_object_perm(set_perm, perm_model, ask_parent=False):
                 # check if object_permission exists
                 try:
                     csw_objp = csw_object_permission.objects.get(
@@ -485,7 +481,7 @@ class change_object_permission(View):
                 # print "there"
                 pass
         else:
-            if auth_obj.has_object_perm(set_perm, perm_model, check_group_perms=False):
+            if auth_obj.has_object_perm(set_perm, perm_model, ask_parent=False):
                 try:
                     csw_objp = csw_object_permission.objects.get(Q(
                         csw_permission=set_perm,

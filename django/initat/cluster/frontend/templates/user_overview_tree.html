@@ -91,7 +91,8 @@ class object_permissions
                 cur_line.append($("<td>").text(cur_obj.text()))
                 csw_perms.each (csw_pk, cur_csw) =>
                     cur_csw = $(cur_csw)
-                    if cur_csw.attr("pk") in obj_perms 
+                    if cur_csw.attr("pk") in obj_perms
+                        # the X is not a typo ... FIXME
                         cur_line.append($("<td>").text("Xcsw_perm__" + cur_obj.attr("pk") + "__" + cur_csw.attr("pk")))
                     else
                         cur_line.append($("<td>").text("csw_perm__" + cur_obj.attr("pk") + "__" + cur_csw.attr("pk")))
@@ -147,7 +148,7 @@ class user_tree
             "id"    : "create_group"
             "value" : "Create Group"
         ).on("click", @create_group)
-        {% if not perms.backbone.administrator %}
+        {% if not csw_perms.backbone.administrator %}
         @create_group_button.hide()
         @sync_button.hide()
         {% endif %}
@@ -278,8 +279,8 @@ class user_tree
             onFocus  : (dtnode) =>
                 @show_details(dtnode.data.key)
                 return false
-            {% if perms.backbone.administrator %}
-            # node movement is not allowed for group admins
+            {% if csw_perms.backbone.admin %}
+            # node movement is not allowed for group admins, should be allowed for group admins between groups
             dnd : {
                 onDragStart : (dtnode) =>
                     return true
@@ -343,13 +344,13 @@ class user_tree
                     url = "{% url 'user:user_detail' %}"
                 else
                     url = "{% url 'user:group_detail' %}"
-                {% if perms.backbone.admin %}
+                {% if csw_perms.backbone.admin %}
                 show_detail = true
                 {% else %}
                 if key.match(/^(user)__/)
                     show_detail = true
                 else
-                    show_detail = "{{ user.group_id }}" == key.split("__")[1]
+                    show_detail = parseInt(@UGX.find("group[key='#{key}']").attr("show_detail"))
                 {% endif %}
                 if show_detail
                     $.ajax
