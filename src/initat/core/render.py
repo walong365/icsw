@@ -53,14 +53,14 @@ class permission_required_mixin(object):
     @method_decorator(login_required)
     def dispatch(self, request, *args, **kwargs):
         if self.all_required_permissions:
-            if not request.user.has_perms(self.all_required_permissions):
+            if not request.user.has_object_perms(self.all_required_permissions):
                 logger.error("user %s has not the required permissions %s" % (
                     unicode(request.user),
                     str(self.all_required_permissions),
                     ))
                 return redirect(settings.LOGIN_URL)
         if self.any_required_permissions:
-            if not request.user.has_any_perms(self.any_required_permissions):
+            if not request.user.has_any_object_perms(self.any_required_permissions):
                 logger.error("user %s has not any of the required permissions %s" % (
                     unicode(request.user),
                     str(self.any_required_permissions),
