@@ -407,8 +407,8 @@ class user_detail_form(ModelForm):
             if request.user:
                 if request.user.has_perm("backbone.admin"):
                     clear_perms = False
-                elif request.user.has_perm("backbone.group_admin"):
-                    self.fields["group"].queryset = group.objects.filter(Q(pk=request.user.group_id))
+                elif request.user.has_object_perm("backbone.group_admin"):
+                    self.fields["group"].queryset = group.objects.filter(Q(pk__in=request.user.get_allowed_object_list("backbone.group_admin")))
                     self.fields["group"].empty_label = None
                     # disable superuser field
                     self.fields["is_superuser"].widget.attrs["disabled"] = True

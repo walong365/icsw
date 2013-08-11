@@ -149,7 +149,7 @@ class user_tree
             "id"    : "create_group"
             "value" : "Create Group"
         ).on("click", @create_group)
-        {% if not csw_perms.backbone.administrator %}
+        {% if not csw_perms.backbone.admini %}
         @create_group_button.hide()
         @sync_button.hide()
         {% endif %}
