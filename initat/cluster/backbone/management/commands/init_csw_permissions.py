@@ -100,7 +100,7 @@ class Command(BaseCommand):
                 if hasattr(model, "CSW_Meta") and hasattr(model.CSW_Meta, "permissions"):
                     app_label = model._meta.app_label
                     cur_ct = ContentType.objects.get(app_label=app_label, model=model._meta.object_name)
-                    for code_name, name in model.CSW_Meta.permissions:
+                    for code_name, name, valid_for_object_level in model.CSW_Meta.permissions:
                         found_perms.add((app_label, code_name))
                         if (app_label, code_name) in p_dict and (app_label, code_name, cur_ct.model) not in full_dict:
                             print "removing permission '%s' from old model %s" % (unicode(p_dict[(app_label, code_name)]), cur_ct.model)
@@ -116,6 +116,14 @@ class Command(BaseCommand):
                             full_dict[(new_perm.content_type.app_label, new_perm.codename, new_perm.content_type.model)] = new_perm
                             created += 1
                             print "Created '%s' for model %s" % (unicode(new_perm), cur_ct.model)
+                        else:
+                            if valid_for_object_level != p_dict[(app_label, code_name)].valid_for_object_level:
+                                print "Change valid_for_object_level to %s for %s" % (
+                                    unicode(valid_for_object_level),
+                                    unicode(p_dict[(app_label, code_name)])
+                                    )
+                                p_dict[(app_label, code_name)].valid_for_object_level = valid_for_object_level
+                                p_dict[(app_label, code_name)].save()
                 if created:
                     print "creation of %d took %7.2f s" % (created, time.time() - start_time),
                     print "found %7s error(s)" % len(errors)

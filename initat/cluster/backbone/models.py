@@ -694,8 +694,8 @@ class device(models.Model):
             " (%s)" % (self.comment) if self.comment else "")
     class CSW_Meta:
         permissions = (
-            ("all_devices", "access all devices"),
-            ("show_graphs", "Access to device graphs"),
+            ("all_devices", "access all devices", False),
+            ("show_graphs", "Access to device graphs", True),
             # (""),
             # ("wf_apc" , "APC control"),
         )
@@ -3616,6 +3616,8 @@ class csw_permission(models.Model):
     name = models.CharField(max_length=150)
     codename = models.CharField(max_length=150)
     content_type = models.ForeignKey(ContentType)
+    # true if this right can be used for object-level permissions
+    valid_for_object_level = models.BooleanField(default=True)
     class Meta:
         unique_together = (("content_type", "codename"),)
     def get_xml(self):
@@ -3624,6 +3626,7 @@ class csw_permission(models.Model):
             key="cswp__%d" % (self.pk),
             name=self.name or "",
             codename=self.codename or "",
+            valid_for_object_level="1" if self.valid_for_object_level else "0",
             content_type="%d" % (self.content_type_id),
             )
         return r_xml
@@ -3636,10 +3639,11 @@ class csw_permission(models.Model):
             object_pk=object.pk
             )
     def __unicode__(self):
-        return u"%s | %s | %s" % (
+        return u"%s | %s | %s | %s" % (
             self.content_type.app_label,
             self.content_type,
             self.name,
+            "G/O" if self.valid_for_object_level else "G",
             )
 
 class csw_object_permission(models.Model):
@@ -3912,7 +3916,7 @@ class user(models.Model):
         return user_xml
     class CSW_Meta:
         permissions = (
-            ("admin"      , "Administrator"),
+            ("admin"      , "Administrator", True),
         )
     class Meta:
         db_table = u'user'
@@ -4067,7 +4071,7 @@ class group(models.Model):
         return group_xml
     class CSW_Meta:
         permissions = (
-            ("group_admin", "Group administrator"),
+            ("group_admin", "Group administrator", True),
         )
     class Meta:
         db_table = u'ggroup'
