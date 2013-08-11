@@ -412,7 +412,7 @@ class get_object_permissions(View):
         else:
             auth_obj = user.objects.get(Q(pk=auth_pk))
         # pprint.pprint(_post)
-        all_db_perms = csw_permission.objects.all().select_related("content_type")
+        all_db_perms = csw_permission.objects.filter(Q(valid_for_object_level=True)).select_related("content_type")
         all_perms = E.csw_permissions(
             *[cur_p.get_xml() for cur_p in all_db_perms])
         perm_ct_pks = set([int(pk) for pk in all_perms.xpath(".//csw_permission/@content_type")])
@@ -446,7 +446,7 @@ class get_object_permissions(View):
             cur_obj,
             ask_parent=False,
             )]
-        return "::".join(set_perms)
+        return ",".join(set_perms)
 
 class change_object_permission(View):
     @method_decorator(login_required)

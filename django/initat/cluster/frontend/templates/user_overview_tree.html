@@ -86,16 +86,15 @@ class object_permissions
             tab_body = $("<tbody>")
             cur_ct.find("objects object").each (idx, cur_obj) =>
                 cur_obj = $(cur_obj)
-                obj_perms = cur_obj.attr("perms").split("::")
+                obj_perms = cur_obj.attr("perms").split(",")
                 cur_line = $("<tr>")
                 cur_line.append($("<td>").text(cur_obj.text()))
                 csw_perms.each (csw_pk, cur_csw) =>
                     cur_csw = $(cur_csw)
                     if cur_csw.attr("pk") in obj_perms
-                        # the X is not a typo ... FIXME
-                        cur_line.append($("<td>").text("Xcsw_perm__" + cur_obj.attr("pk") + "__" + cur_csw.attr("pk")))
+                        cur_line.append($("<td>").text("1,csw_perm__" + cur_obj.attr("pk") + "__" + cur_csw.attr("pk")))
                     else
-                        cur_line.append($("<td>").text("csw_perm__" + cur_obj.attr("pk") + "__" + cur_csw.attr("pk")))
+                        cur_line.append($("<td>").text("0,csw_perm__" + cur_obj.attr("pk") + "__" + cur_csw.attr("pk")))
                 tab_body.append(cur_line)
             perm_table.append(tab_body)
             add_div.append(perm_table)
@@ -110,10 +109,12 @@ class object_permissions
                 "aoColumnDefs"    : [
                     aTargets : a_targets,
                     fnRender : (o, v) ->
-                        if v.match(/^X/)
-                            return "<input type='checkbox' id='" + v[1..] + "' checked='checked'/>"
+                        v_split = v.split(",")
+                        cur_id = v_split[1]
+                        if parseInt(v_split[0])
+                            return "<input type='checkbox' id='#{cur_id}' checked='checked'/>"
                         else
-                            return "<input type='checkbox' id='" + v + "'/>"
+                            return "<input type='checkbox' id='#{cur_id}'/>"
                     sClass   : "center"
                 ]
             )
