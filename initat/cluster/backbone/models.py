@@ -22,7 +22,7 @@ from django.conf import settings
 from django.core.cache import cache
 from django.core.exceptions import ValidationError, ImproperlyConfigured
 from django.db import models
-from django.db.models import Q, signals
+from django.db.models import Q, signals, get_model
 from django.dispatch import receiver
 from django.utils.functional import memoize
 from django.contrib.contenttypes.models import ContentType
@@ -77,6 +77,7 @@ class auth_cache(object):
         # print self.cache_key
         self._from_db()
     def _from_db(self):
+        self.__perm_dict = dict([("%s.%s" % (cur_perm.content_type.app_label, cur_perm.codename), cur_perm) for cur_perm in csw_permission.objects.all().select_related("content_type")])
         perms = self.auth_obj.permissions.all().select_related("content_type")
         for perm in perms:
             self.__perms.add(("%s.%s" % (perm.content_type.app_label, perm.codename)))
@@ -85,11 +86,20 @@ class auth_cache(object):
             perm_key = "%s.%s" % (obj_perm.csw_permission.content_type.app_label, obj_perm.csw_permission.codename)
             self.__obj_perms.setdefault(perm_key, []).append(obj_perm.object_pk)
         # pprint.pprint(self.__obj_perms)
-    def has_permission(self, app_label, code_name):
-        return "%s.%s" % (app_label, code_name) in self.__perms
-    def has_object_permission(self, app_label, code_name, obj=None):
+    def _get_code_key(self, app_label, code_name):
         code_key = "%s.%s" % (app_label, code_name)
-        if code_key in self.__obj_perms:
+        if code_key not in self.__perm_dict:
+            raise ValueError("wrong permission name %s" % (code_key))
+        return code_key
+    def has_permission(self, app_label, code_name):
+        code_key = self._get_code_key(app_label, code_name)
+        return code_key in self.__perms
+    def has_object_permission(self, app_label, code_name, obj=None):
+        code_key = self._get_code_key(app_label, code_name)
+        if self.has_permission(app_label, code_name):
+            # at fist check global permission
+            return True
+        elif code_key in self.__obj_perms:
             if obj:
                 if app_label == obj._meta.app_label:
                     return obj.pk in self.__obj_perms.get(code_key, [])
@@ -99,8 +109,16 @@ class auth_cache(object):
                 # no obj given so if the key is found in obj_perms it means that at least we have one object set
                 return True
         else:
-            return self.has_permission(app_label, code_name)
-
+            return False
+    def get_allowed_object_list(self, app_label, code_name):
+        code_key = self._get_code_key(app_label, code_name)
+        if self.has_permission(app_label, code_name) or getattr(self.auth_obj, "is_superuser", False):
+            # at fist check global permission
+            return set(get_model(app_label, self.__perm_dict[code_key].content_type.name).objects.all().values_list("pk", flat=True))
+        elif code_key in self.__obj_perms:
+            return set(self.__obj_perms[code_key])
+        else:
+            return set()
 
 # cluster_log_source
 cluster_log_source = None
@@ -3739,6 +3757,12 @@ def check_object_permission(auth_obj, perm, obj):
     else:
         return False
 
+def get_allowed_object_list(auth_obj, perm):
+    if not hasattr(auth_obj, "_auth_cache"):
+        auth_obj._auth_cache = auth_cache(auth_obj)
+    app_label, code_name = get_label_codename(perm)
+    return auth_obj._auth_cache.get_allowed_object_list(app_label, code_name)
+
 class user_manager(models.Manager):
     def get_by_natural_key(self, login):
         return super(user_manager, self).get(Q(login=login))
@@ -3858,6 +3882,12 @@ class user(models.Model):
         if not res and ask_parent:
             res = check_object_permission(self.group, perm, obj)
         return res
+    def get_allowed_object_list(self, perm, ask_parent=True):
+        # get all object pks we have an object permission for
+        if ask_parent:
+            return get_allowed_object_list(self, perm) | get_allowed_object_list(self.group, perm)
+        else:
+            return get_allowed_object_list(self, perm)
     def has_object_perms(self, perms, obj=None, ask_parent=True):
         # check if user has all of the object perms
         return all([self.has_object_perm(perm, obj, ask_parent=ask_parent) for perm in perms])
@@ -4032,6 +4062,9 @@ class group(models.Model):
     def has_any_object_perms(self, perms, obj=None, ask_parent=True):
         # check if group has any of the object perms
         return any([self.has_object_perm(perm, obj) for perm in perms])
+    def get_allowed_object_list(self, perm, ask_parent=True):
+        # get all object pks we have an object permission for
+        return get_allowed_object_list(self, perm)
     def has_module_perms(self, module_name):
         if not (self.active):
             return False
