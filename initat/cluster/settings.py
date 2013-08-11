@@ -198,7 +198,7 @@ TEMPLATE_CONTEXT_PROCESSORS = (
     "django.core.context_processors.debug",
     "initat.core.context_processors.add_session",
     "initat.core.context_processors.add_settings",
-    "initat.core.context_processors.add_csw_permissions",
+    "initat.cluster.backbone.context_processors.add_csw_permissions",
 )
 
 TEMPLATE_LOADERS = (

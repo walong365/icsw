@@ -3873,7 +3873,7 @@ class user(models.Model):
         return self.active
     is_active = property(get_is_active)
     def get_xml(self, with_permissions=False, with_allowed_device_groups=True, user_perm_dict=None,
-                allowed_device_group_dict=None, calling_user=None):
+                allowed_device_group_dict=None):
         user_xml = E.user(
             unicode(self),
             pk="%d" % (self.pk),
@@ -3909,10 +3909,6 @@ class user(models.Model):
         else:
             # empty field
             user_xml.attrib["permissions"] = ""
-        if calling_user is not None:
-            user_xml.attrib["show_detail"] = "1" if calling_user.has_object_perm("backbone.group_admin", self.group) else "0"
-        else:
-            user_xml.attrib["show_detail"] = "0"
         return user_xml
     class CSW_Meta:
         permissions = (
@@ -4040,7 +4036,7 @@ class group(models.Model):
         return self.active
     is_active = property(get_is_active)
     def get_xml(self, with_permissions=False, group_perm_dict=None, with_allowed_device_groups=False,
-                allowed_device_group_dict=None, calling_user=None):
+                allowed_device_group_dict=None):
         group_xml = E.group(
             unicode(self),
             pk="%d" % (self.pk),
@@ -4068,10 +4064,6 @@ class group(models.Model):
         else:
             # empty field
             group_xml.attrib["permissions"] = ""
-        if calling_user is not None:
-            group_xml.attrib["show_detail"] = "1" if calling_user.has_object_perm("backbone.group_admin", self) else "0"
-        else:
-            group_xml.attrib["show_detail"] = "0"
         return group_xml
     class CSW_Meta:
         permissions = (
