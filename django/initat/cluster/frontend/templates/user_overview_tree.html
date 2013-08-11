@@ -344,32 +344,23 @@ class user_tree
                     url = "{% url 'user:user_detail' %}"
                 else
                     url = "{% url 'user:group_detail' %}"
-                {% if csw_perms.backbone.admin %}
-                show_detail = true
-                {% else %}
-                if key.match(/^(user)__/)
-                    show_detail = true
-                else
-                    show_detail = parseInt(@UGX.find("group[key='#{key}']").attr("show_detail"))
-                {% endif %}
-                if show_detail
-                    $.ajax
-                        url     : url
-                        data    : {
-                            "key"  : key
-                            "mode" : "show"
-                        }
-                        success : (xml) =>
-                            if parse_xml_response(xml)
-                                @active_node = key
-                                @install_ug_form($(xml).find("value[name='form']").text())
-                                @detail_div.find("input, select").on("change", @my_submitter.submit)
-                                if key.match(/^(user)__/)
-                                    @detail_div.bind("submit", @delete_user)
-                                else
-                                    @detail_div.bind("submit", @delete_group)
-                else
-                    @clear_ug_form()
+                $.ajax
+                    url     : url
+                    data    : {
+                        "key"  : key
+                        "mode" : "show"
+                    }
+                    success : (xml) =>
+                        if parse_xml_response(xml)
+                            @active_node = key
+                            @install_ug_form($(xml).find("value[name='form']").text())
+                            @detail_div.find("input, select").on("change", @my_submitter.submit)
+                            if key.match(/^(user)__/)
+                                @detail_div.bind("submit", @delete_user)
+                            else
+                                @detail_div.bind("submit", @delete_group)
+                        else
+                            @clear_ug_form()
 
 $(document).ready(
     my_ugt = new user_tree($("div#ug_tables"), $("div#ug_detail"))

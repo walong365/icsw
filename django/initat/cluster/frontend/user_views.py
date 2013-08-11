@@ -47,7 +47,8 @@ from django.utils.decorators import method_decorator
 from initat.cluster.backbone.models import partition_table, partition_disc, partition, \
      partition_fs, image, architecture, group, user, device_config, device_group, \
      user_variable, csw_permission, get_related_models, csw_object_permission
-from initat.core.render import render_me, render_string, permission_required_mixin
+from initat.core.render import render_me, render_string
+from initat.cluster.backbone.render import permission_required_mixin
 from initat.cluster.frontend.helper_functions import contact_server, xml_wrapper, update_session_object
 from initat.cluster.frontend.forms import dummy_password_form, group_detail_form, user_detail_form
 
@@ -118,7 +119,6 @@ class overview(permission_required_mixin, View):
                         group_perm_dict=group_perm_dict,
                         with_allowed_device_groups=True,
                         allowed_device_group_dict=group_device_group_dict,
-                        calling_user=request.user,
                         ) for cur_g in group.objects.all().prefetch_related("allowed_device_groups")
                     ]
                 ),
@@ -129,7 +129,6 @@ class overview(permission_required_mixin, View):
                         user_perm_dict=user_perm_dict,
                         with_allowed_device_groups=True,
                         allowed_device_group_dict=user_device_group_dict,
-                        calling_user=request.user,
                         ) for cur_u in user.objects.all().prefetch_related("secondary_groups", "allowed_device_groups")
                         if request.user.has_object_perm("backbone.group_admin", cur_u.group)
                     ]
@@ -262,18 +261,21 @@ class group_detail(View):
             key, mode = (_post["key"], _post["mode"])
             if mode == "show":
                 cur_group = group.objects.get(Q(pk=key.split("__")[1]))
-                new_form = group_detail_form(
-                    auto_id="group__%d__%%s" % (cur_group.pk),
-                    instance=cur_group,
-                )
-                new_form.delete_mode()
-                request.xml_response["form"] = render_string(
-                    request,
-                    "crispy_form.html",
-                    {
-                        "form" : new_form
-                    }
-                )
+                if request.user.has_object_perm("backbone.group_admin", cur_group):
+                    new_form = group_detail_form(
+                        auto_id="group__%d__%%s" % (cur_group.pk),
+                        instance=cur_group,
+                    )
+                    new_form.delete_mode()
+                    request.xml_response["form"] = render_string(
+                        request,
+                        "crispy_form.html",
+                        {
+                            "form" : new_form
+                        }
+                    )
+                else:
+                    request.xml_response.error("not enough rights to show group", logger)
             else:
                 del_obj = group.objects.get(Q(pk=key.split("__")[1]))
                 if del_obj == request.user.group:
@@ -339,19 +341,22 @@ class user_detail(View):
             key, mode = (_post["key"], _post["mode"])
             if mode == "show":
                 cur_user = user.objects.get(Q(pk=key.split("__")[1]))
-                new_form = user_detail_form(
-                    auto_id="user__%d__%%s" % (cur_user.pk),
-                    instance=cur_user,
-                    request=request,
-                )
-                new_form.delete_mode()
-                request.xml_response["form"] = render_string(
-                    request,
-                    "crispy_form.html",
-                    {
-                        "form" : new_form
-                    }
-                )
+                if request.user.has_object_perm("backbone.group_admin", cur_user.group):
+                    new_form = user_detail_form(
+                        auto_id="user__%d__%%s" % (cur_user.pk),
+                        instance=cur_user,
+                        request=request,
+                    )
+                    new_form.delete_mode()
+                    request.xml_response["form"] = render_string(
+                        request,
+                        "crispy_form.html",
+                        {
+                            "form" : new_form
+                        }
+                    )
+                else:
+                    request.xml_response.error("not enough rights to show user", logger)
             else:
                 del_obj = user.objects.get(Q(pk=key.split("__")[1]))
                 if del_obj == request.user:
