@@ -167,7 +167,7 @@ class sidebar_tree
             # add all devices
             @device_groups.find("device[domain_tree_node='" + db_node.attr("pk") + "']").each (dev_id, cur_dev) =>
                 @add_device_node(add_node, $(cur_dev), true)
-            if not add_node.countChildren()
+            if not add_node.countChildren() and add_node.getLevel() > 1
                 add_node.remove()
             # hack, FIXME
             return false

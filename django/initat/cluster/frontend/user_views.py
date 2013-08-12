@@ -401,6 +401,68 @@ class user_detail(View):
                     }
                 )
 
+class object_emitter(object):
+    class Meta:
+        pass
+    def __init__(self, cur_model):
+        self.model = cur_model
+        self.model_name = self.model._meta.object_name
+        self.query = self.model.objects.all()
+    def update_query(self):
+        # add select_related
+        pass
+    def get_attrs(self, cur_obj):
+        return {}
+    def get_objects(self, auth_obj, perm_list):
+        self.update_query()
+        return E.objects(
+            *[
+                E.object(
+                unicode(cur_obj),
+                perms=self._get_object_perms(
+                    auth_obj,
+                    cur_obj,
+                    perm_list,
+                    ),
+                    pk="%d" % (cur_obj.pk),
+                    **self.get_attrs(cur_obj)
+                ) for cur_obj in self.query
+            ],
+            object_name=self.model_name,
+            has_group="1" if getattr(self.Meta, "has_group", False) else "0",
+            has_second_group="1" if getattr(self.Meta, "has_second_group", False) else "0"
+        )
+    def _get_object_perms(self, auth_obj, cur_obj, perm_list):
+        set_perms = ["%d" % (cur_perm.pk) for cur_perm in perm_list if auth_obj.has_object_perm(
+            cur_perm,
+            cur_obj,
+            ask_parent=False,
+            )]
+        return ",".join(set_perms)
+
+class device_object_emitter(object_emitter):
+    class Meta:
+        has_group = True
+        has_second_group = True
+    def update_query(self):
+        self.query = self.query.select_related("device_group", "device_type")
+    def get_attrs(self, cur_obj):
+        return {
+            "group" : unicode(cur_obj.device_group),
+            "second_group" : "meta (group)" if cur_obj.device_type.identifier == "MD" else "real"
+            }
+
+class user_object_emitter(object_emitter):
+    class Meta:
+        has_group = True
+    def update_query(self):
+        self.query = self.query.select_related("group")
+    def get_attrs(self, cur_obj):
+        return {"group" : unicode(cur_obj.group)}
+
+class group_object_emitter(object_emitter):
+    pass
+
 class get_object_permissions(View):
     @method_decorator(login_required)
     @method_decorator(xml_wrapper)
@@ -429,24 +491,12 @@ class get_object_permissions(View):
             )
     def _get_objects(self, cur_ct, auth_obj, perm_list):
         cur_model = get_model(cur_ct.app_label, cur_ct.name)
-        # special handling of device ?
-        return E.objects(
-            *[E.object(
-                unicode(cur_obj),
-                perms=self._get_object_perms(
-                    auth_obj,
-                    cur_obj,
-                    perm_list),
-                    pk="%d" % (cur_obj.pk)
-                ) for cur_obj in cur_model.objects.all()]
-            )
-    def _get_object_perms(self, auth_obj, cur_obj, perm_list):
-        set_perms = ["%d" % (cur_perm.pk) for cur_perm in perm_list if auth_obj.has_object_perm(
-            cur_perm,
-            cur_obj,
-            ask_parent=False,
-            )]
-        return ",".join(set_perms)
+        model_name = cur_model._meta.object_name
+        return {
+            "device" : device_object_emitter,
+            "group"  : group_object_emitter,
+            "user"   : user_object_emitter,
+            }[model_name](cur_model).get_objects(auth_obj, perm_list)
 
 class change_object_permission(View):
     @method_decorator(login_required)

@@ -70,15 +70,26 @@ class object_permissions
         @perm_div = perm_div
     build_ct_div: (cur_ct, add_div) =>
         add_div.append($("<h3>").text("Permissions for " + cur_ct.attr("name")))
+        has_group = parseInt(cur_ct.find("objects").attr("has_group"))
+        has_second_group = parseInt(cur_ct.find("objects").attr("has_second_group"))
         if cur_ct.find("objects object").length
-            perm_table = $("<table>").addClass("style2")
+            perm_table = $("<table>").addClass("device_objperm")
             header_line = $("<tr>").addClass("ui-widget ui-widget-header")
+            if has_second_group
+                perm_offset = 3
+                header_line.append($("<th>").text("Group"))
+                header_line.append($("<th>").text("sGroup"))
+            else if has_group
+                perm_offset = 2
+                header_line.append($("<th>").text("Group"))
+            else
+                perm_offset = 1
             header_line.append($("<th>").text("Name"))
+            a_targets = []
             csw_perms = @resp_xml.find("csw_permissions csw_permission[content_type='" + cur_ct.attr("pk") + "']")
-            a_targets = [] 
             csw_perms.each (csw_pk, cur_csw) =>
                 cur_csw = $(cur_csw)
-                a_targets.push(csw_pk + 1)
+                a_targets.push(csw_pk + perm_offset)
                 header_line.append($("<th>").text(cur_csw.attr("name")))
             perm_table.append(
                 $("<thead>").append(header_line)
@@ -88,36 +99,46 @@ class object_permissions
                 cur_obj = $(cur_obj)
                 obj_perms = cur_obj.attr("perms").split(",")
                 cur_line = $("<tr>")
+                if has_group
+                    cur_line.append($("<td>").text(cur_obj.attr("group")))
+                    if has_second_group
+                        cur_line.append($("<td>").text(cur_obj.attr("second_group")))
                 cur_line.append($("<td>").text(cur_obj.text()))
                 csw_perms.each (csw_pk, cur_csw) =>
                     cur_csw = $(cur_csw)
+                    cur_id = "csw_perm__" + cur_obj.attr("pk") + "__" + cur_csw.attr("pk")
                     if cur_csw.attr("pk") in obj_perms
-                        cur_line.append($("<td>").text("1,csw_perm__" + cur_obj.attr("pk") + "__" + cur_csw.attr("pk")))
+                        cur_line.append($("<td>").addClass("center").html("<input type='checkbox' id='#{cur_id}' checked='checked'/>"))
                     else
-                        cur_line.append($("<td>").text("0,csw_perm__" + cur_obj.attr("pk") + "__" + cur_csw.attr("pk")))
+                        cur_line.append($("<td>").addClass("center").html("<input type='checkbox' id='#{cur_id}'/>"))
                 tab_body.append(cur_line)
             perm_table.append(tab_body)
             add_div.append(perm_table)
+            if has_second_group
+                rg_dict =
+                    iGroupingColumnIndex2 : 1
+                    bSetGroupingClassOnTR : true
+                    fnGroupLabelFormat : (label) ->
+                        return "#{label} (device group)"
+            else if has_group
+                rg_dict = 
+                    sGroupBy              : "name"
+                    bSetGroupingClassOnTR : true
+                    bHideGroupingColumn   : true
+            else
+                rg_dict = 
+                    sGroupBy              : "letter"
+                    bSetGroupingClassOnTR : true
+                    bHideGroupingColumn   : false
             perm_table.dataTable(
                 "sPaginationType" : "full_numbers"
-                "iDisplayLength"  : 50
+                "iDisplayLength"  : 10
                 "bScrollCollapse" : true
                 "bScrollAutoCss"  : true
                 "bAutoWidth"      : false
                 "bJQueryUI"       : true
                 "bPaginate"       : true
-                "aoColumnDefs"    : [
-                    aTargets : a_targets,
-                    fnRender : (o, v) ->
-                        v_split = v.split(",")
-                        cur_id = v_split[1]
-                        if parseInt(v_split[0])
-                            return "<input type='checkbox' id='#{cur_id}' checked='checked'/>"
-                        else
-                            return "<input type='checkbox' id='#{cur_id}'/>"
-                    sClass   : "center"
-                ]
-            )
+            ).rowGrouping(rg_dict)
             perm_table.find("tbody input[type='checkbox']").on("change", @change_perm)
     change_perm: (event) =>
         cur_el = $(event.target)

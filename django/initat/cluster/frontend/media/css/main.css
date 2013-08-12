@@ -26,7 +26,7 @@ table.style3 {
     color:#000000 ;
     background-color:#ffffe2 ;
     border-width:1px 1px 1px 1px;
-    border-spacing:0px 1px;
+    border-spacing:1px 1px;
     border-style:solid ;
     padding:2px ;
 }
@@ -46,6 +46,16 @@ table.devicelist * th {
     padding: 3px;
     border: 1px solid #222222;
     font-weight: normal;
+}
+
+table.device_objperm {
+    color:#000000 ;
+    background-color:#a19b9e ;
+    border-width:1px 1px 1px 1px;
+    border-color:#000000;
+    border-spacing: 0px 0px;
+    border-style:solid;
+    padding:0px ;
 }
 
 table.devicelist * td.meta_device, th.meta_device {
@@ -255,6 +265,26 @@ ul.dynatree-container span.ip_ok {
 
 td.selectable {
     padding : 1px;
+}
+
+table.device_objperm tr.group {
+    background-color: #a19b9e;
+    font-size: 16px;
+}
+
+table.device_objperm tr.group td{
+    border-bottom: 2px solid black;
+    border-top: 2px solid black;
+}
+
+table.device_objperm tr.subgroup {
+    background-color: #d4dfd8;
+    font-size: 14px;
+}
+
+table.device_objperm tr.subgroup td {
+    border-bottom: 1px solid black;
+    border-top: 1px solid black;
 }
 
 td.meta_selected {
