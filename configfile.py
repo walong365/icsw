@@ -5,7 +5,7 @@
 # this file is part of python-modules-base
 #
 # Send feedback to: <lang-nevyjel@init.at>
-# 
+#
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License Version 2 as
 # published by the Free Software Foundation.
@@ -39,7 +39,7 @@ from multiprocessing.managers import BaseManager, BaseProxy, DictProxy, Server
 
 class config_proxy(BaseProxy):
     def add_config_entries(self, ce_list, **kwargs):
-        return self._callmethod("add_config_entries", (ce_list, ), kwargs)
+        return self._callmethod("add_config_entries", (ce_list,), kwargs)
     def handle_commandline(self, **kwargs):
         kwargs["proxy_call"] = True
         ret_value, exit_code = self._callmethod("handle_commandline", [], kwargs)
@@ -91,7 +91,7 @@ class config_proxy(BaseProxy):
         os.chown(addr_path, uid, gid)
         os.chown(cur_address, uid, gid)
         return self._callmethod("set_uid_gid", (uid, gid))
-        
+
 class _conf_var(object):
     argparse_type = None
     def __init__(self, def_val, **kwargs):
@@ -245,7 +245,7 @@ class blob_c_var(_conf_var):
         return type(val) == types.StringType
     def pretty_print(self):
         return "blob with len %d" % (len(self.act_val))
-    
+
 class bool_c_var(_conf_var):
     descr = "Bool"
     short_type = "b"
@@ -288,7 +288,7 @@ class datetime_c_var(_conf_var):
         _conf_var.__init__(self, def_val, **kwargs)
     def check_type(self, val):
         return type(val) == type(datetime.datetime.now())
-    
+
 class timedelta_c_var(_conf_var):
     descr = "Timedelta"
     short_type = "dtd"
@@ -317,7 +317,7 @@ class configuration(object):
         self.__log_array = []
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
         self.__log_array.append((what, log_level))
-    #def copy_flags(self, var_dict):
+    # def copy_flags(self, var_dict):
     #    # copy flags (right now only global / local) for given var_names
     #    for var_name, var_value in var_dict.iteritems():
     #        self.__c_dict[var_name].is_global = var_value.is_global()
@@ -490,7 +490,7 @@ class configuration(object):
         if (not os.path.isfile(file_name)) or (os.path.isfile(file_name) and self.__writeback_changes):
             all_keys = self.__c_dict.keys()
             try:
-                #file(file_name, "w").write("\n".join(["# %s \n%s\n%s = %s\n" % (self.__c_dict[k],
+                # file(file_name, "w").write("\n".join(["# %s \n%s\n%s = %s\n" % (self.__c_dict[k],
                 #                                                                self.__c_dict[k].get_info() and "# %s \n" % (self.__c_dict[k].get_info()) or "",
                 #                                                                k,
                 #                                                                self.__c_dict[k].get_value()) for k in all_keys] + [""]))
@@ -498,7 +498,7 @@ class configuration(object):
                     "# %s" % (self.__c_dict[key]),
                     "# %s" % (self.__c_dict[key].get_info() if self.__c_dict[key].get_info() else "no info"),
                     "# %s" % (self.__c_dict[key].get_commandline_info()),
-                    "%s=%s" % (key, 
+                    "%s=%s" % (key,
                                "\"\"" if self.__c_dict[key].value == "" else self.__c_dict[key].value),
                     ""] for key in all_keys if (self.get_cvar(key)._only_commandline == False and self.get_cvar(key)._writeback)],
                                                          [""])))
@@ -585,10 +585,10 @@ class my_server(Server):
                         t.daemon = True
                         t.start()
                 except (KeyboardInterrupt, SystemExit):
-                    #print "+++", process_tools.get_except_info()
+                    # print "+++", process_tools.get_except_info()
                     pass
         finally:
-            #print "***", process_tools.get_except_info()
+            # print "***", process_tools.get_except_info()
             self.stop = 999
             self.listener.close()
 
@@ -616,7 +616,7 @@ def enable_config_access(user_name, group_name):
 
 def get_manager_pid():
     return cur_manager._process.pid
-    
+
 # type:
 # 0 ... only read the file,  strip empty- and comment lines
 # 1 ... parse the lines according to VAR = ARG,  return dictionary
@@ -654,7 +654,7 @@ def check_str_config(in_dict, name, default):
         av = default
     in_dict[name] = av
     return in_dict
-    
+
 def check_flag_config(in_dict, name, default):
     if not in_dict:
         in_dict = {}
@@ -686,48 +686,48 @@ def check_int_config(in_dict, name, default, minv=None, maxv=None):
         av = default
     in_dict[name] = av
     return in_dict
-    
-##def reload_global_config(dc, gcd, server_type, host_name = ""):
-##    if not host_name:
-##        host_name = socket.gethostname().split(".")[0]
-##    num_serv, serv_idx, s_type, s_str, config_idx, real_config_name = is_server(dc, server_type, True, False, host_name.split(".")[0])
-##    # read global configs
-##    if num_serv:
-##        # dict of local vars without specified host
-##        l_var_wo_host = {}
-##        for short in ["str",
-##                      "int",
-##                      "blob",
-##                      "bool"]:
-##            # very similiar code appears in config_tools.py
-##            sql_str = "SELECT cv.* FROM new_config c INNER JOIN device_config dc LEFT JOIN config_%s cv ON cv.new_config=c.new_config_idx WHERE (cv.device=0 OR cv.device=%d) AND dc.device=%d AND dc.new_config=c.new_config_idx AND c.name='%s' ORDER BY cv.device, cv.name" % (short, config_idx, serv_idx, real_config_name)
-##            dc.execute(sql_str)
-##            for db_rec in [y for y in dc.fetchall() if y["name"]]:
-##                if db_rec["name"].count(":"):
-##                    var_global = False
-##                    local_host_name, var_name = db_rec["name"].split(":", 1)
-##                else:
-##                    var_global = True
-##                    local_host_name, var_name = (host_name, db_rec["name"])
-##                if type(db_rec["value"]) == type(array.array("b")):
-##                    new_val = str_c_var(db_rec["value"].tostring(), source="%s_table" % (short))
-##                elif short == "int":
-##                    new_val = int_c_var(int(db_rec["value"]), source="%s_table" % (short))
-##                elif short == "bool":
-##                    new_val = bool_c_var(bool(db_rec["value"]), source="%s_table" % (short))
-##                else:
-##                    new_val = str_c_var(db_rec["value"], source="%s_table" % (short))
-##                new_val.is_global = var_global
-##                if local_host_name == host_name:
-##                    if var_name.upper() in gcd and gcd.fixed(var_name.upper()):
-##                        # present value is fixed, keep value, only copy global / local status
-##                        gcd.copy_flags({var_name.upper() : new_val})
-##                    else:
-##                        gcd.add_config_dict({var_name.upper() : new_val})
-##                elif local_host_name == "":
-##                    l_var_wo_host[var_name.upper()] = new_val
-##        # check for vars to insert
-##        for wo_var_name, wo_var in l_var_wo_host.iteritems():
-##            if not wo_var_name in gcd or gcd.get_source(wo_var_name) == "default":
-##                gcd.add_config_dict({wo_var_name : wo_var})
-    
+
+# #def reload_global_config(dc, gcd, server_type, host_name = ""):
+# #    if not host_name:
+# #        host_name = socket.gethostname().split(".")[0]
+# #    num_serv, serv_idx, s_type, s_str, config_idx, real_config_name = is_server(dc, server_type, True, False, host_name.split(".")[0])
+# #    # read global configs
+# #    if num_serv:
+# #        # dict of local vars without specified host
+# #        l_var_wo_host = {}
+# #        for short in ["str",
+# #                      "int",
+# #                      "blob",
+# #                      "bool"]:
+# #            # very similiar code appears in config_tools.py
+# #            sql_str = "SELECT cv.* FROM new_config c INNER JOIN device_config dc LEFT JOIN config_%s cv ON cv.new_config=c.new_config_idx WHERE (cv.device=0 OR cv.device=%d) AND dc.device=%d AND dc.new_config=c.new_config_idx AND c.name='%s' ORDER BY cv.device, cv.name" % (short, config_idx, serv_idx, real_config_name)
+# #            dc.execute(sql_str)
+# #            for db_rec in [y for y in dc.fetchall() if y["name"]]:
+# #                if db_rec["name"].count(":"):
+# #                    var_global = False
+# #                    local_host_name, var_name = db_rec["name"].split(":", 1)
+# #                else:
+# #                    var_global = True
+# #                    local_host_name, var_name = (host_name, db_rec["name"])
+# #                if type(db_rec["value"]) == type(array.array("b")):
+# #                    new_val = str_c_var(db_rec["value"].tostring(), source="%s_table" % (short))
+# #                elif short == "int":
+# #                    new_val = int_c_var(int(db_rec["value"]), source="%s_table" % (short))
+# #                elif short == "bool":
+# #                    new_val = bool_c_var(bool(db_rec["value"]), source="%s_table" % (short))
+# #                else:
+# #                    new_val = str_c_var(db_rec["value"], source="%s_table" % (short))
+# #                new_val.is_global = var_global
+# #                if local_host_name == host_name:
+# #                    if var_name.upper() in gcd and gcd.fixed(var_name.upper()):
+# #                        # present value is fixed, keep value, only copy global / local status
+# #                        gcd.copy_flags({var_name.upper() : new_val})
+# #                    else:
+# #                        gcd.add_config_dict({var_name.upper() : new_val})
+# #                elif local_host_name == "":
+# #                    l_var_wo_host[var_name.upper()] = new_val
+# #        # check for vars to insert
+# #        for wo_var_name, wo_var in l_var_wo_host.iteritems():
+# #            if not wo_var_name in gcd or gcd.get_source(wo_var_name) == "default":
+# #                gcd.add_config_dict({wo_var_name : wo_var})
+
