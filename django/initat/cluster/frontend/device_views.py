@@ -35,7 +35,7 @@ logger = logging.getLogger("cluster.device")
 class device_tree(View):
     @method_decorator(login_required)
     def get(self, request):
-        return render_me(request ,"device_tree.html", hide_sidebar=True)()
+        return render_me(request , "device_tree.html", hide_sidebar=True)()
 
 class get_xml_tree(View):
     @method_decorator(login_required)
@@ -80,7 +80,7 @@ class set_selection(View):
         cur_list = [key for key in _post.getlist("key_list[]", []) if key.startswith("dev")]
         request.session["sel_list"] = cur_list
         request.session.save()
-        
+
 class get_selection(View):
     @method_decorator(login_required)
     @method_decorator(xml_wrapper)
@@ -88,7 +88,7 @@ class get_selection(View):
         request.xml_response["sel_list"] = E.selection(
             *[E.sel(cur_key) for cur_key in request.session.get("sel_list", [])]
         )
-        
+
 class add_selection(View):
     @method_decorator(login_required)
     @method_decorator(xml_wrapper)
@@ -122,7 +122,7 @@ class add_selection(View):
                         cur_list.remove(toggle_dev)
                     else:
                         cur_list.append(toggle_dev)
-        #pprint.pprint(cur_list)
+        # pprint.pprint(cur_list)
         request.session["sel_list"] = cur_list
         request.session.save()
         logger.info("%s in list" % (logging_tools.get_plural("selection", len(cur_list))))
@@ -136,17 +136,17 @@ class show_configs(View):
         )()
 
 def _get_group_tree(request, sel_list, **kwargs):
-    ignore_md       = kwargs.get("ignore_meta_devices", False)
-    ignore_cdg      = kwargs.get("ignore_cdg", True)
-    with_variables  = kwargs.get("with_variables", False)
+    ignore_md = kwargs.get("ignore_meta_devices", False)
+    ignore_cdg = kwargs.get("ignore_cdg", True)
+    with_variables = kwargs.get("with_variables", False)
     with_monitoring = kwargs.get("with_monitoring", False)
     # show only nodes where the user has permissions for
     permission_tree = kwargs.get("permission_tree", False)
     # use FQDNs
-    full_name       = kwargs.get("full_name", False)
+    full_name = kwargs.get("full_name", False)
     xml_resp = E.response()
     devg_resp = E.device_groups()
-    #sel_pks = [int(value.split("__")[1]) for value in sel_list]
+    # sel_pks = [int(value.split("__")[1]) for value in sel_list]
     all_dgs = device_group.objects
     if permission_tree:
         # rights
@@ -163,7 +163,7 @@ def _get_group_tree(request, sel_list, **kwargs):
         "device_group__netdevice_set",
         "device_group__bootnetdevice",
         "device_group__categories",
-        #"device_group__mon_host_cluster_set"
+        # "device_group__mon_host_cluster_set"
     )
     if with_monitoring:
         all_dgs = all_dgs.prefetch_related(
@@ -179,7 +179,7 @@ def _get_group_tree(request, sel_list, **kwargs):
     device_type_dict = dict([(cur_dt.pk, cur_dt) for cur_dt in device_type.objects.all()])
     meta_dev_type_id = [key for key, value in device_type_dict.iteritems() if value.identifier == "MD"][0]
     # selected ........ device or device_group selected
-    # tree_selected ... device is selected 
+    # tree_selected ... device is selected
     for cur_dg in all_dgs:
         cur_xml = cur_dg.get_xml(full=False, with_variables=with_variables, with_monitoring=with_monitoring, full_name=full_name)
         if cur_xml.attrib["key"] in sel_list:
@@ -201,7 +201,7 @@ def _get_group_tree(request, sel_list, **kwargs):
                 else:
                     cur_dev.attrib["meta_device"] = "0"
                 if cur_dev.attrib["key"] in sel_list or cur_xml.attrib["key"] in sel_list:
-                    #if permission_tree or (cur_dev.attrib["key"] in sel_list or cur_xml.attrib["key"] in sel_list):
+                    # if permission_tree or (cur_dev.attrib["key"] in sel_list or cur_xml.attrib["key"] in sel_list):
                     cur_dev.attrib["selected"] = "selected"
                     any_sel = True
                 if cur_dev.attrib["key"] in sel_list:
@@ -225,18 +225,18 @@ def get_post_boolean(_post, name, default):
             return False
     else:
         return default
-    
+
 class get_group_tree(View):
     @method_decorator(login_required)
     @method_decorator(xml_wrapper)
     def post(self, request):
         _post = request.POST
-        ignore_md       = get_post_boolean(_post, "ignore_meta_devices", False)
-        ignore_cdg      = get_post_boolean(_post, "ignore_cdg"         , True )
-        with_variables  = get_post_boolean(_post, "with_variables"     , False)
+        ignore_md = get_post_boolean(_post, "ignore_meta_devices", False)
+        ignore_cdg = get_post_boolean(_post, "ignore_cdg"         , True)
+        with_variables = get_post_boolean(_post, "with_variables"     , False)
         permission_tree = get_post_boolean(_post, "permission_tree"    , False)
         with_monitoring = get_post_boolean(_post, "with_monitoring"    , False)
-        full_name       = get_post_boolean(_post, "full_name"          , False)
+        full_name = get_post_boolean(_post, "full_name"          , False)
         if "sel_list[]" in _post:
             sel_list = _post.getlist("sel_list[]", [])
         else:
@@ -251,7 +251,7 @@ class get_group_tree(View):
             device_filter = True if "%s_device" % (extra_key) in _post else False
             kwargs = {"mon_ext_host" : {"with_images" : True}}.get(extra_name, {})
             select_rel_dict = {"cd_connection" : ["parent", "child"]}
-            #request.log("adding extra data %s (device filter : %s)" % (extra_name,
+            # request.log("adding extra data %s (device filter : %s)" % (extra_name,
             #                                                           str(device_filter)))
             extra_obj = globals()[extra_name]
             if device_filter:
@@ -287,7 +287,7 @@ class create_connection(View):
             t_type))
         new_cd = cd_connection(
             parent=target_dev if t_type == "master" else drag_dev,
-            child=drag_dev if t_type=="master" else target_dev,
+            child=drag_dev if t_type == "master" else target_dev,
             created_by=request.user,
             connection_info="webfrontend")
         try:
@@ -334,7 +334,7 @@ class manual_connection(View):
         cd_devices = device.objects.filter(Q(device_type__identifier='CD'))
         non_cd_devices = device.objects.exclude(Q(device_type__identifier='CD'))
         # iterate over non-cd-device
-        #pprint.pprint(re_dict)
+        # pprint.pprint(re_dict)
         match_dict = {}
         for key, dev_list in [("drag", non_cd_devices),
                               ("target", cd_devices)]:
@@ -384,7 +384,7 @@ class device_info(View):
     @method_decorator(login_required)
     @method_decorator(xml_wrapper)
     def post(self, request):
-        #request.xml_response.log(logging_tools.LOG_LEVEL_ERROR, "ok", logger)
+        # request.xml_response.log(logging_tools.LOG_LEVEL_ERROR, "ok", logger)
         dev_key = request.POST["key"].split("__")[1]
         cur_dev = device.objects.get(Q(pk=dev_key))
         request.xml_response["response"] = cur_dev.get_xml(
@@ -409,5 +409,3 @@ class device_info(View):
                 )
             )
         )
-
-        

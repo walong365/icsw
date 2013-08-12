@@ -161,11 +161,16 @@ class sidebar_tree
             )
             add_node = new_node
             # add all sub fqdns
+            #console.log
             @DNT.find("domain_tree_node[parent='" + db_node.attr("pk") + "']").each (idx, sub_db_node) =>
                 @build_fqdn_node(add_node, $(sub_db_node))
             # add all devices
             @device_groups.find("device[domain_tree_node='" + db_node.attr("pk") + "']").each (dev_id, cur_dev) =>
                 @add_device_node(add_node, $(cur_dev), true)
+            if not add_node.countChildren()
+                add_node.remove()
+            # hack, FIXME
+            return false
     add_device_node: (dt_node, cur_dev, add_meta) =>
         is_meta = cur_dev.attr("meta_device") == "1"
         if is_meta
