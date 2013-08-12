@@ -55,6 +55,8 @@ from lxml.builder import E
 
 from initat.md_config_server.config import global_config
 from initat.md_config_server import special_commands
+from initat.md_config_server.build import build_process
+from initat.md_config_server.status import status_process
 
 try:
     from md_config_server.version import VERSION_STRING

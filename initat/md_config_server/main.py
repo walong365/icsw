@@ -55,6 +55,10 @@ from lxml.builder import E
 
 from initat.md_config_server.config import global_config
 from initat.md_config_server import special_commands
+from initat.md_config_server.constants import SERVER_COM_PORT, IDOMOD_PROCESS_TIMED_EVENT_DATA, \
+    IDOMOD_PROCESS_SERVICE_CHECK_DATA, IDOMOD_PROCESS_HOST_CHECK_DATA, BROKER_TIMED_EVENTS, \
+    BROKER_SERVICE_CHECKS, BROKER_HOST_CHECKS
+from initat.md_config_server.server import server_process
 
 try:
     from md_config_server.version import VERSION_STRING

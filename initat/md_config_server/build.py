@@ -53,7 +53,9 @@ import zmq
 from lxml import etree
 from lxml.builder import E
 
-from initat.md_config_server.config import global_config
+from initat.md_config_server.config import global_config, main_config, var_cache, all_commands, \
+    all_service_groups, time_periods, all_contacts, all_contact_groups, all_host_groups, all_hosts, \
+    all_hosts_extinfo, all_services, config_dir, device_templates, service_templates, nag_config
 from initat.md_config_server import special_commands
 
 from django.conf import settings

@@ -5,7 +5,7 @@
 # this file is part of md-config-server
 #
 # Send feedback to: <lang-nevyjel@init.at>
-# 
+#
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License Version 2 as
 # published by the Free Software Foundation.
@@ -19,6 +19,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
+""" config part of md-config-server """
 
 import configfile
 import process_tools
@@ -31,20 +32,20 @@ import cluster_location
 import codecs
 import commands
 import config_tools
-import configfile
 import ConfigParser
 import hashlib
 import logging_tools
 import networkx
 import operator
+import os
 import pprint
-import process_tools
 import re
 import server_command
 import shutil
 import signal
 import sqlite3
 import stat
+import sys
 import threading_tools
 import time
 import uuid_tools
