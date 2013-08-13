@@ -43,7 +43,7 @@ from lxml.builder import E
 EXPECTED_FILE = "/etc/sysconfig/host-monitoring.d/openvpn_expected"
 
 """
-cache_modes, how to handle to chache for special commands
+cache_modes, how to handle to cache for special commands
 in case of connection problems always use the cache (if set, of course)
 ALWAYS   : always use value from cache, even if empty
 DYNAMIC  : use cache only when set and not too old, otherwise try to connect to device
