@@ -5,7 +5,7 @@
 # this file is part of package-server
 #
 # Send feedback to: <lang-nevyjel@init.at>
-# 
+#
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License Version 2 as
 # published by the Free Software Foundation.
@@ -52,16 +52,16 @@ try:
 except ImportError:
     VERSION_STRING = "??.??-??"
 
-P_SERVER_PUB_PORT   = 8007
-P_SERVER_PULL_PORT  = 8008
+P_SERVER_PUB_PORT = 8007
+P_SERVER_PULL_PORT = 8008
 PACKAGE_CLIENT_PORT = 2003
 
 ADD_PACK_PATH = "additional_packages"
 DEL_PACK_PATH = "deleted_packages"
 
-LAST_CONTACT_VAR_NAME    = "package_server_last_contact"
+LAST_CONTACT_VAR_NAME = "package_server_last_contact"
 PACKAGE_VERSION_VAR_NAME = "package_client_version"
-DIRECT_MODE_VAR_NAME     = "package_client_direct_mode"
+DIRECT_MODE_VAR_NAME = "package_client_direct_mode"
 
 SQL_ACCESS = "cluster_full_access"
 
@@ -70,7 +70,7 @@ CONFIG_NAME = "/etc/sysconfig/cluster/package_server_clients.xml"
 class repository(object):
     def __init__(self):
         pass
-    
+
 class rpm_repository(repository):
     pass
 
@@ -82,7 +82,101 @@ class repo_type(object):
                                                  self.REPO_SUBTYPE_STR))
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
         self.log_com("[rt] %s" % (what), log_level)
-    
+
+class repo_type_rpm_yum(repo_type):
+    REPO_TYPE_STR = "rpm"
+    REPO_SUBTYPE_STR = "yum"
+    SCAN_REPOS = "yum repolist all"
+    REPO_CLASS = rpm_repository
+    def search_package(self, s_string):
+        return "yum -q --showduplicates search %s" % (s_string)
+    def repo_scan_result(self, s_struct):
+        self.log("got repo scan result")
+        cur_mode = 0
+        new_repos = []
+        found_repos = []
+        old_repos = set(package_repo.objects.all().values_list("name", flat=True))
+        for line in s_struct.read().split("\n"):
+            if line.startswith("repo id"):
+                cur_mode = 1
+            elif line.startswith("repolist:"):
+                cur_mode = 0
+            else:
+                if cur_mode == 1:
+                    parts = line.strip().replace("enabled:", "enabled").split()
+                    while parts[-1] not in ["disabled", "enabled"]:
+                        parts.pop(-1)
+                    repo_name = parts.pop(0)
+                    repo_enabled = True if parts.pop(-1) == "enabled" else False
+                    repo_info = " ".join(parts)
+                    # print repo_name, repo_enabled, repo_info
+                    try:
+                        cur_repo = package_repo.objects.get(Q(name=repo_name))
+                    except package_repo.DoesNotExist:
+                        cur_repo = package_repo(name=repo_name)
+                        new_repos.append(cur_repo)
+                    found_repos.append(cur_repo)
+                    old_repos -= set([cur_repo.name])
+                    cur_repo.alias = repo_info
+                    cur_repo.enabled = repo_enabled
+                    cur_repo.gpg_check = False
+                    cur_repo.save()
+        self.log("found %s" % (logging_tools.get_plural("new repository", len(new_repos))))
+        if old_repos:
+            self.log("found %s: %s" % (logging_tools.get_plural("old repository", len(old_repos)),
+                                       ", ".join(sorted(old_repos))), logging_tools.LOG_LEVEL_ERROR)
+            if global_config["DELETE_MISSING_REPOS"]:
+                self.log(" ... removing them from DB", logging_tools.LOG_LEVEL_WARN)
+                package_repo.objects.filter(Q(name__in=old_repos)).delete()
+        # if s_struct.src_id:
+        #    self.master_process.send_pool_message(
+        #        "delayed_result",
+        #        s_struct.src_id,
+        #        "rescanned %s" % (logging_tools.get_plural("repository", len(found_repos))),
+        #        server_command.SRV_REPLY_STATE_OK)
+        self.master_process._reload_searches()
+    def init_search(self, s_struct):
+        cur_search = s_struct.run_info["stuff"]
+        cur_search.last_search_string = cur_search.search_string
+        cur_search.num_searches += 1
+        cur_search.current_state = "run"
+        cur_search.save(update_fields=["last_search_string", "current_state", "num_searches"])
+    def search_result(self, s_struct):
+        cur_mode = 0
+        found_packs = []
+        for line in s_struct.read().split("\n"):
+            if line.startswith("===="):
+                cur_mode = 1
+            elif not line.strip():
+                cur_mode = 2
+            else:
+                if cur_mode == 1:
+                    p_name = line.split()[0].strip()
+                    if p_name and p_name != ":":
+                        found_packs.append(p_name)
+        cur_search = s_struct.run_info["stuff"]
+        cur_search.current_state = "done"
+        cur_search.results = len(found_packs)
+        cur_search.last_search = cluster_timezone.localize(datetime.datetime.now())
+        cur_search.save(update_fields=["last_search", "current_state", "results"])
+        self.log("found for %s: %d" % (cur_search.search_string, cur_search.results))
+        for p_name in found_packs:
+            parts = p_name.split("-")
+            rel_arch = parts.pop(-1)
+            arch = rel_arch.split(".")[-1]
+            release = rel_arch[:-(len(arch) + 1)]
+            version = parts.pop(-1)
+            name = "-".join(parts)
+            new_sr = package_search_result(
+                name=name,
+
+                arch=arch,
+                version="%s-%s" % (version, release),
+                package_search=cur_search,
+                copied=False,
+                package_repo=None)
+            new_sr.save()
+
 class repo_type_rpm_zypper(repo_type):
     REPO_TYPE_STR = "rpm"
     REPO_SUBTYPE_STR = "zypper"
@@ -106,9 +200,9 @@ class repo_type_rpm_zypper(repo_type):
             old_repos -= set([cur_repo.name])
             cur_repo.alias = repo.attrib["alias"]
             cur_repo.repo_type = repo.attrib.get("type", "unknown")
-            cur_repo.enabled     = True if int(repo.attrib["enabled"]) else False
+            cur_repo.enabled = True if int(repo.attrib["enabled"]) else False
             cur_repo.autorefresh = True if int(repo.attrib["autorefresh"]) else False
-            cur_repo.gpg_check   = True if int(repo.attrib["gpgcheck"]) else False
+            cur_repo.gpg_check = True if int(repo.attrib["gpgcheck"]) else False
             cur_repo.url = repo.findtext("url")
             cur_repo.save()
         self.log("found %s" % (logging_tools.get_plural("new repository", len(new_repos))))
@@ -262,7 +356,10 @@ class repo_process(threading_tools.process_obj):
         self.__background_commands = []
         self.register_timer(self._check_delayed, 1)
         # set repository type
-        self.repo_type = repo_type_rpm_zypper(self)
+        if os.path.isfile("/etc/centos-release"):
+            self.repo_type = repo_type_rpm_yum(self)
+        else:
+            self.repo_type = repo_type_rpm_zypper(self)
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
         self.__log_template.log(log_level, what)
     def loop_post(self):
@@ -275,13 +372,13 @@ class repo_process(threading_tools.process_obj):
         for cur_del in self.__background_commands:
             if cur_del.Meta.use_popen:
                 if cur_del.finished():
-                    #print "finished delayed"
-                    #print "cur_del.send_return()"
+                    # print "finished delayed"
+                    # print "cur_del.send_return()"
                     pass
                 elif abs(cur_time - cur_del._init_time) > cur_del.Meta.max_runtime:
                     self.log("delay_object runtime exceeded, stopping")
                     cur_del.terminate()
-                    #cur_del.send_return()
+                    # cur_del.send_return()
                 else:
                     new_list.append(cur_del)
             else:
@@ -417,7 +514,7 @@ class client(object):
         return var.replace("%{ROOT_IMPORT_DIR}", global_config["ROOT_IMPORT_DIR"])
     def _get_package_list(self, srv_com):
         resp = srv_com.builder(
-            "packages", 
+            "packages",
             *[cur_pdc.get_xml(with_package=True) for cur_pdc in package_device_connection.objects.filter(Q(device=self.device)).select_related("package")]
         )
         srv_com["package_list"] = resp
@@ -612,7 +709,7 @@ class server_process(threading_tools.process_pool):
                 valid_devs = [name for name in all_devs if name in client.name_set]
             self.log("%s requested, %s found" % (
                 logging_tools.get_plural("device", len(all_devs)),
-                logging_tools.get_plural("device" ,len(valid_devs))))
+                logging_tools.get_plural("device" , len(valid_devs))))
             for cur_dev in all_devs:
                 srv_com.xpath(None, ".//ns:device_command[@name='%s']" % (cur_dev))[0].attrib["config_sent"] = "1" if cur_dev in valid_devs else "0"
             if valid_devs:
@@ -647,7 +744,7 @@ class server_process(threading_tools.process_pool):
             srv_com["result"].attrib.update({
                 "reply" : "command %s not known" % (in_com),
                 "state" : "%d" % (server_command.SRV_REPLY_STATE_ERROR)})
-        #print srv_com.pretty_print()
+        # print srv_com.pretty_print()
         if immediate_return:
             zmq_sock.send_unicode(unicode(in_uid), zmq.SNDMORE)
             zmq_sock.send_unicode(unicode(srv_com))
@@ -687,7 +784,7 @@ class server_process(threading_tools.process_pool):
                 self.socket_dict[key] = client
     def send_reply(self, t_uid, srv_com):
         send_sock = self.socket_dict["router"]
-        send_sock.send_unicode(t_uid, zmq.SNDMORE|zmq.NOBLOCK)
+        send_sock.send_unicode(t_uid, zmq.SNDMORE | zmq.NOBLOCK)
         send_sock.send_unicode(unicode(srv_com), zmq.NOBLOCK)
     def _send_update(self, command="send_info", dev_list=[]):
         send_list = dev_list or client.name_set

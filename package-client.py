@@ -227,6 +227,161 @@ class install_process(threading_tools.process_obj):
         else:
             # check for pending commands
             self.handle_pending_commands()
+    def _command_done(self, hc_sc):
+        cur_out = hc_sc.read()
+        self.log("hc_com '%s' finished with stat %d (%d bytes)" % (
+            hc_sc.com_str,
+            hc_sc.result,
+            len(cur_out)))
+        for line_num, line in enumerate(cur_out.split("\n")):
+            self.log(" %3d %s" % (line_num + 1, line))
+        hc_sc.terminate()
+        if cur_out.startswith("<?xml"):
+            xml_out = etree.fromstring(cur_out)
+        else:
+            # todo: transform output to XML for sending back to server
+            xml_out = E.stdout(cur_out)
+        send_return = True
+        if hc_sc.com_str.count("rpm -q"):
+            self.log("pre-command finished, deciding what to do")
+            send_return, xml_out = self._decide(hc_sc, cur_out.strip())
+        if send_return:
+            # remove from package_commands
+            self.pdc_done(hc_sc.data, xml_out)
+        del hc_sc
+    def pdc_done(self, cur_pdc, xml_info):
+        self.log("pdc done")
+        keep_pdc = False
+        if xml_info is not None:
+            cur_pdc.append(E.result(xml_info))
+            # check for out-of date repositories
+            # this code makes no sense for flat-text responses
+            warn_text = (" ".join([cur_el.text for cur_el in xml_info.findall(".//message[@type='warning']")])).strip().lower()
+            info_text = (" ".join([cur_el.text for cur_el in xml_info.findall(".//message[@type='info']")])).strip().lower()
+            if info_text.count("already installed"):
+                pass
+            elif warn_text.count("outdated") and not len(xml_info.findall(".//to-install")):
+                if int(cur_pdc.get("retry_count", "0")) > 2:
+                    self.log("retried too often, ingoring warning", logging_tools.LOG_LEVEL_WARN)
+                else:
+                    self.log("repository is outdated, forcing refresh and keeping pdc", logging_tools.LOG_LEVEL_WARN)
+                    keep_pdc = True
+                    cur_pdc.attrib["init"] = "0"
+                    cur_pdc.attrib["retry_count"] = "%d" % (int(cur_pdc.attrib["retry_count"]) + 1)
+                    self.package_commands.insert(0, E.special_command(send_return="0", command="refresh", init="0"))
+            cur_pdc.attrib["response_type"] = self.response_type
+        else:
+            cur_pdc.attrib["response_type"] = "unknown"
+        if int(cur_pdc.attrib["send_return"]):
+            srv_com = server_command.srv_command(
+                command="package_info",
+                info=cur_pdc)
+            self.send_to_server(srv_com)
+        if not keep_pdc:
+            # remove pdc
+            new_list = [cur_com for cur_com in self.package_commands if cur_com != cur_pdc]
+            self.package_commands = new_list
+        self._process_commands()
+    def handle_pending_commands(self):
+        while self.pending_commands and not self.package_commands:
+            # now the fun starts, we have a list of commands and a valid local package list
+            first_com = self.pending_commands.pop(0)
+            cur_com = first_com["command"].text
+            self.log("try to handle %s" % (cur_com))
+            if cur_com in ["send_info"]:
+                self.log("... ignoring", logging_tools.LOG_LEVEL_WARN)
+            elif cur_com in ["repo_list"]:
+                self._handle_repo_list(first_com)
+                self._process_commands()
+            elif cur_com in ["package_list"]:
+                if len(first_com.xpath(None, ".//ns:packages/package_device_connection")):
+                    # clever enqueue ? FIXME
+                    for cur_pdc in first_com.xpath(None, ".//ns:packages/package_device_connection"):
+                        # set flag to not init
+                        cur_pdc.attrib["init"] = "0"
+                        # flag to send return to server
+                        cur_pdc.attrib["send_return"] = "1"
+                        # retry count
+                        cur_pdc.attrib["retry_count"] = "0"
+                        self.package_commands.append(cur_pdc)
+                    self.log(logging_tools.get_plural("package command", len(self.package_commands)))
+                    self._process_commands()
+                else:
+                    self.log("empty package_list, removing")
+            else:
+                self.log("unknown command '%s', ignoring..." % (cur_com), logging_tools.LOG_LEVEL_CRITICAL)
+    
+class yum_install_process(install_process):
+    response_type = "yum_flat"
+    def build_command(self, cur_pdc):
+        #print etree.tostring(cur_pdc, pretty_print=True)
+        if cur_pdc.tag == "special_command":
+            if cur_pdc.attrib["command"] == "refresh":
+                yum_com = "/usr/bin/yum -y clean all ; /usr/bin/yum -y makecache"
+            else:
+                yum_com = None
+        else:
+            if cur_pdc.attrib["target_state"] == "keep":
+                # nothing to do
+                yum_com = None
+            else:
+                pack_xml = cur_pdc[0]
+                #yum_com = {"install" : "install",
+                #           "upgrade" : "update",
+                #           "erase"   : "erase"}.get(cur_pdc.attrib["target_state"])
+                #yum_com = "/usr/bin/yum -y %s %s-%s" % (
+                #    yum_com,
+                #    pack_xml.attrib["name"],
+                #    pack_xml.attrib["version"],
+                #)
+                yum_com = "/bin/rpm -q %s-%s" % (
+                    pack_xml.attrib["name"],
+                    pack_xml.attrib["version"],
+                    )
+                self.log("transformed pdc to '%s'" % (yum_com))
+        return yum_com
+    def _decide(self, hc_sc, cur_out):
+        cur_pdc = hc_sc.data
+        is_installed = False if cur_out.count("is not installed") else True
+        self.log(
+            "installed flag from '%s': %s" % (
+                cur_out,
+                str(is_installed),
+                )
+            )
+        pack_xml = cur_pdc[0]
+        yum_com = {"install" : "install",
+                   "upgrade" : "update",
+                   "erase"   : "erase"}.get(cur_pdc.attrib["target_state"])
+        package_name = "%s-%s" % (
+            pack_xml.attrib["name"],
+            pack_xml.attrib["version"],
+            )
+        if (is_installed and yum_com in ["install", "upgrade"]) or (not is_installed and yum_com in ["erase"]):
+            self.log("doing nothing")
+            if is_installed:
+                return True, E.stdout("package %s is installed" % (package_name))
+            else:
+                return True, E.stdout("package %s is not installed" % (package_name))
+        else:
+            self.log("starting action '%s'" % (yum_com))
+            yum_com = "/usr/bin/yum -y %s %s" % (
+                yum_com,
+                package_name,
+                )
+            simple_command(
+                yum_com,
+                short_info="package",
+                done_func=self._command_done,
+                log_com=self.log,
+                info="handle package",
+                data=cur_pdc)
+            return False, None
+    def _handle_repo_list(self, in_com):
+        self.log("repo_list handling for yum-based distributions not implemented, FIXME", logging_tools.LOG_LEVEL_ERROR)
+
+class zypper_install_process(install_process):
+    response_type = "zypper_xml"
     def build_command(self, cur_pdc):
         #print etree.tostring(cur_pdc, pretty_print=True)
         if cur_pdc.tag == "special_command":
@@ -250,55 +405,6 @@ class install_process(threading_tools.process_obj):
                 )
                 self.log("transformed pdc to '%s'" % (zypper_com))
         return zypper_com
-    def _command_done(self, hc_sc):
-        cur_out = hc_sc.read()
-        if cur_out.startswith("<?xml"):
-            xml_out = etree.fromstring(cur_out)
-        else:
-            # todo: transform output to XML for sending back to server
-            xml_out = None
-        self.log("hc_com '%s' finished with stat %d (%d bytes)" % (
-            hc_sc.com_str,
-            hc_sc.result,
-            len(cur_out)))
-        for line_num, line in enumerate(cur_out.split("\n")):
-            self.log(" %3d %s" % (line_num + 1, line))
-        hc_sc.terminate()
-        # remove from package_commands
-        self.pdc_done(hc_sc.data, xml_out)
-        del hc_sc
-    def pdc_done(self, cur_pdc, xml_info):
-        self.log("pdc done")
-        keep_pdc = False
-        if xml_info is not None:
-            cur_pdc.append(E.result(xml_info))
-            # check for out-of date repositories
-            warn_text = (" ".join([cur_el.text for cur_el in xml_info.findall(".//message[@type='warning']")])).strip().lower()
-            info_text = (" ".join([cur_el.text for cur_el in xml_info.findall(".//message[@type='info']")])).strip().lower()
-            if info_text.count("already installed"):
-                pass
-            elif warn_text.count("outdated") and not len(xml_info.findall(".//to-install")):
-                if int(cur_pdc.get("retry_count", "0")) > 2:
-                    self.log("retried too often, ingoring warning", logging_tools.LOG_LEVEL_WARN)
-                else:
-                    self.log("repository is outdated, forcing refresh and keeping pdc", logging_tools.LOG_LEVEL_WARN)
-                    keep_pdc = True
-                    cur_pdc.attrib["init"] = "0"
-                    cur_pdc.attrib["retry_count"] = "%d" % (int(cur_pdc.attrib["retry_count"]) + 1)
-                    self.package_commands.insert(0, E.special_command(send_return="0", command="refresh", init="0"))
-            cur_pdc.attrib["response_type"] = "zypper_xml"
-        else:
-            cur_pdc.attrib["response_type"] = "unknown"
-        if int(cur_pdc.attrib["send_return"]):
-            srv_com = server_command.srv_command(
-                command="package_info",
-                info=cur_pdc)
-            self.send_to_server(srv_com)
-        if not keep_pdc:
-            # remove pdc
-            new_list = [cur_com for cur_com in self.package_commands if cur_com != cur_pdc]
-            self.package_commands = new_list
-        self._process_commands()
     def _handle_repo_list(self, in_com):
         in_repos = in_com.xpath(None, ".//ns:repos")[0]
         self.log("handling repo_list (%s)" % (logging_tools.get_plural("entry", len(in_repos))))
@@ -338,35 +444,7 @@ class install_process(threading_tools.process_obj):
                 else:
                     self.log("created %s" % (f_name))
             self.package_commands.append(E.special_command(send_return="0", command="refresh", init="0"))
-    def handle_pending_commands(self):
-        while self.pending_commands and not self.package_commands:
-            # now the fun starts, we have a list of commands and a valid local package list
-            first_com = self.pending_commands.pop(0)
-            cur_com = first_com["command"].text
-            self.log("try to handle %s" % (cur_com))
-            if cur_com in ["send_info"]:
-                self.log("... ignoring", logging_tools.LOG_LEVEL_WARN)
-            elif cur_com in ["repo_list"]:
-                self._handle_repo_list(first_com)
-                self._process_commands()
-            elif cur_com in ["package_list"]:
-                if len(first_com.xpath(None, ".//ns:packages/package_device_connection")):
-                    # clever enqueue ? FIXME
-                    for cur_pdc in first_com.xpath(None, ".//ns:packages/package_device_connection"):
-                        # set flag to not init
-                        cur_pdc.attrib["init"] = "0"
-                        # flag to send return to server
-                        cur_pdc.attrib["send_return"] = "1"
-                        # retry count
-                        cur_pdc.attrib["retry_count"] = "0"
-                        self.package_commands.append(cur_pdc)
-                    self.log(logging_tools.get_plural("package command", len(self.package_commands)))
-                    self._process_commands()
-                else:
-                    self.log("empty package_list, removing")
-            else:
-                self.log("unknown command '%s', ignoring..." % (cur_com), logging_tools.LOG_LEVEL_CRITICAL)
-    
+
 class server_process(threading_tools.process_pool):
     def __init__(self):
         self.global_config = global_config
@@ -395,7 +473,10 @@ class server_process(threading_tools.process_pool):
         self._log_limits()
         self._init_network_sockets()
         self.register_func("send_to_server", self._send_to_server)
-        self.add_process(install_process("install"), start=True)
+        if os.path.isfile("/etc/centos-release"):
+            self.add_process(yum_install_process("install"), start=True)
+        else:
+            self.add_process(zypper_install_process("install"), start=True)
     def log(self, what, lev=logging_tools.LOG_LEVEL_OK):
         if self.__log_template:
             while self.__log_cache:
