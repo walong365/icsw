@@ -98,6 +98,7 @@ class retry_search(View):
             cur_search = package_search.objects.get(Q(pk=retry_pk))
         except package_search.DoesNotExist:
             request.xml_response.error("search does not exist", logger)
+            transaction.commit()
         else:
             if cur_search.current_state == "done":
                 cur_search.current_state = "wait"
@@ -105,7 +106,8 @@ class retry_search(View):
                 transaction.commit()
                 reload_searches(request)
             else:
-                request.xml_response.warn("search is in wrong state", logger)
+                request.xml_response.warn("search is in wrong state '%s'" % (cur_search.current_state), logger)
+                transaction.commit()
 
 class delete_search(View):
     @method_decorator(login_required)
