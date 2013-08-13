@@ -1442,7 +1442,7 @@ class package(models.Model):
             kind=self.kind,
             arch=self.arch,
             size="%d" % (self.size),
-            package_repo="%d" % (self.package_repo_id)
+            package_repo="%d" % (self.package_repo_id or 0)
         )
     def __unicode__(self):
         return "%s-%s" % (self.name, self.version)
@@ -1469,6 +1469,7 @@ class package_device_connection(models.Model):
     created = models.DateTimeField(auto_now_add=True)
     response_type = models.CharField(max_length=16, choices=(
         ("zypper_xml", "zypper_xml"),
+        ("yum_flat", "yum_flat"),
         ("unknown"   , "unknown"),
         ), default="zypper_xml")
     response_str = models.TextField(max_length=65535, default="")
@@ -1508,6 +1509,32 @@ class package_device_connection(models.Model):
                         self.installed = "n"
                     else:
                         self.installed = "u"
+        elif self.response_type == "yum_flat":
+            lines = etree.fromstring(self.response_str).findtext("stdout").strip().split("\n")
+            if len(lines) == 1:
+                line = lines[0]
+                if line.startswith("package") and line.endswith("installed"):
+                    if line.count("not installed"):
+                        self.installed = "n"
+                    else:
+                        self.installed = "y"
+                else:
+                    # unsure
+                    self.installed = "u"
+            else:
+                self.installed = "u"
+                cur_mode = 0
+                for line_num, line in enumerate(lines):
+                    if line.startswith("Installed:"):
+                        cur_mode = 1
+                    elif line.startswith("Removed:"):
+                        cur_mode = 2
+                    elif not line.strip():
+                        cur_mode = 0
+                    else:
+                        if cur_mode:
+                            if line.startswith(" ") and line.count(self.package.name):
+                                self.installed = "y" if cur_mode == 1 else "n"
         else:
             self.installed = "u"
     class Meta:
