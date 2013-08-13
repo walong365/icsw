@@ -1087,6 +1087,8 @@ class client(object):
         client.socket.setsockopt(zmq.SNDHWM, 100)
         client.socket.setsockopt(zmq.RCVHWM, 100)
         client.socket.setsockopt(zmq.BACKLOG, 100)
+        client.socket.setsockopt(zmq.TCP_KEEPALIVE, 1)
+        client.socket.setsockopt(zmq.TCP_KEEPALIVE_IDLE, 300)
         log_com("init client struct (%s, %s)" % (client.dsc_id,
                                                  client.router_id))
     @staticmethod
