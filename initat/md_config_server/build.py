@@ -1155,7 +1155,7 @@ class build_process(threading_tools.process_obj):
             act_serv["service_description"] = arg_temp.info.replace("(", "[").replace(")", "]")
             act_serv["host_name"] = host.full_name
             # volatile
-            act_serv["is_volatile"] = serv_temp.volatile
+            act_serv["is_volatile"] = "1" if serv_temp.volatile else "0"
             act_serv["check_period"] = cur_gc["timeperiod"][serv_temp.nsc_period_id]["name"]
             act_serv["max_check_attempts"] = serv_temp.max_attempts
             act_serv["normal_check_interval"] = serv_temp.check_interval
@@ -1188,8 +1188,9 @@ class build_process(threading_tools.process_obj):
                 act_serv["process_perf_data"] = 1 if (host.enable_perfdata and s_check.enable_perfdata) else 0
                 if host.enable_perfdata and s_check.enable_perfdata:
                     act_serv["action_url"] = "%s/index.php/graph?host=$HOSTNAME$&srv=$SERVICEDESC$" % (global_config["PNP_URL"])
-            act_serv["servicegroups"] = ",".join(s_check.servicegroup_names)
-            cur_gc["servicegroup"].add_host(host.name, act_serv["servicegroups"])
+            if s_check.servicegroup_names:
+                act_serv["servicegroups"] = ",".join(s_check.servicegroup_names)
+                cur_gc["servicegroup"].add_host(host.name, act_serv["servicegroups"])
             act_serv["check_command"] = "!".join([s_check["command_name"]] + s_check.correct_argument_list(arg_temp, host.dev_variables))
             # if act_host["check_command"] == "check-host-alive-2" and s_check["command_name"].startswith("check_ping"):
             #    self.mach_log(
