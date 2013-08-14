@@ -5,7 +5,7 @@
 # this file is part of nagios-config-server
 #
 # Send feedback to: <lang-nevyjel@init.at>
-# 
+#
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License Version 2 as
 # published by the Free Software Foundation.
@@ -22,7 +22,6 @@
 """ special tasks for generating md-config-server """
 
 import sys
-import pprint
 import re
 import logging_tools
 import os
@@ -30,15 +29,13 @@ import process_tools
 import server_command
 import time
 import copy
-import base64
-from initat.md_config_server.config import global_config
 from initat.host_monitoring import ipc_comtools
 from initat.host_monitoring.modules import supermicro_mod
 from initat.cluster.backbone.models import partition, partition_disc, partition_table, partition_fs, \
      netdevice, net_ip, network, lvm_vg, lvm_lv, device, device_variable, md_check_data_store
 from django.db.models import Q
-from lxml import etree
-from lxml.builder import E
+from lxml import etree # @UnresolvedImport
+from lxml.builder import E # @UnresolvedImport
 
 EXPECTED_FILE = "/etc/sysconfig/host-monitoring.d/openvpn_expected"
 
@@ -72,8 +69,8 @@ def parse_expected():
                         c_parts = inst_part.split(",")
                         client_name = c_parts.pop(0)
                         inst_dict[client_name] = True
-                        #inst_dict[client_name] = limits.nag_STATE_CRITICAL
-                        #if c_parts and c_parts[0].lower() in ["w"]:
+                        # inst_dict[client_name] = limits.nag_STATE_CRITICAL
+                        # if c_parts and c_parts[0].lower() in ["w"]:
                         #    inst_dict[client_name] = limits.nag_STATE_WARNING
     return ret_dict
 
@@ -127,7 +124,7 @@ class special_base(object):
             # new code for db
             try:
                 cur_ds = md_check_data_store.objects.get(
-                    Q(device=self.host) & 
+                    Q(device=self.host) &
                     Q(mon_check_command=self.s_check.mon_check_command) &
                     Q(name=self.ds_name))
             except md_check_data_store.DoesNotExist:
@@ -164,7 +161,7 @@ class special_base(object):
                     c_name)
                          )
                 self.__cache_created = int(c_tree.get("created", "0"))
-                self.__cache_age = abs(time.time()- self.__cache_created)
+                self.__cache_age = abs(time.time() - self.__cache_created)
                 self.__cache_valid = self.__cache_age < self.Meta.cache_timeout
                 # the copy.deepcopy is important to preserve the root element
                 self.__cache = [server_command.srv_command(source=copy.deepcopy(entry)) for entry in c_tree]
@@ -181,7 +178,7 @@ class special_base(object):
         else:
             try:
                 cur_ds = md_check_data_store.objects.get(
-                    Q(device=self.host) & 
+                    Q(device=self.host) &
                     Q(mon_check_command=self.s_check.mon_check_command) &
                     Q(name=self.ds_name))
             except md_check_data_store.DoesNotExist:
@@ -328,7 +325,7 @@ class special_base(object):
         except device_variable.DoesNotExist:
             srv_result = getattr(self, server_type)(command, *args)
             if srv_result is None:
-                self.log("no result, returning None vor parameter %s" % (para_name), 
+                self.log("no result, returning None vor parameter %s" % (para_name),
                          logging_tools.LOG_LEVEL_ERROR)
                 cur_var = None
             else:
@@ -397,7 +394,7 @@ class special_base(object):
         return cur_ret
     def get_arg_template(self, *args, **kwargs):
         return arg_template(self, *args, **kwargs)
-    
+
 class arg_template(dict):
     def __init__(self, s_base, *args, **kwargs):
         dict.__init__(self)
@@ -447,13 +444,13 @@ class special_openvpn(special_base):
         sc_array = []
         exp_dict = parse_expected()
         if exp_dict.has_key(self.host.name):
-            exp_dict = {}#exp_dict[host["name"]]
+            exp_dict = {} # exp_dict[host["name"]]
         else:
             exp_dict = {}
         if not exp_dict:
             # no expected_dict found, try to get the actual config from the server
             srv_result = self.collrelay("openvpn_status")
-            #print etree.tostring(srv_result.tree, pretty_print=True)
+            # print etree.tostring(srv_result.tree, pretty_print=True)
             if srv_result is not None:
                 if "openvpn_instances" in srv_result:
                     ovpn_dict = srv_result["openvpn_instances"]
@@ -532,7 +529,7 @@ class special_supermicro(special_base):
             )
                             )
         return sc_array
-    
+
 class special_disc_all(special_base):
     def _call(self):
         sc_array = [self.get_arg_template("All partitions", arg3="ALL")]
@@ -543,8 +540,8 @@ class special_disc(special_base):
         part_dev = self.host.partdev
         first_disc = None
         part_list = []
-        #print self.get_parameter("num_discs", "df", "/dev/sda1")
-        #print self.get_parameter("num_discs", ".//ns:load1", "load")
+        # print self.get_parameter("num_discs", "df", "/dev/sda1")
+        # print self.get_parameter("num_discs", ".//ns:load1", "load")
         for part_p in partition.objects.filter(Q(partition_disc__partition_table=self.host.act_partition_table)).select_related(
             "partition_fs").order_by(
                 "partition_disc__disc",
@@ -572,8 +569,8 @@ class special_disc(special_base):
                 # which partition to check
                 check_part = act_part
                 # check for lut_blob
-                lut_blob = None#part_p.get("lut_blob", None)
-                #if lut_blob:
+                # lut_blob = None # part_p.get("lut_blob", None)
+                # if lut_blob:
                 #    lut_blob = process_tools.net_to_sys(lut_blob)
                 #    if lut_blob:
                 #        if lut_blob.has_key("id"):
@@ -616,7 +613,7 @@ class special_disc(special_base):
                 c_lev or "N/S"))
             sc_array.append(self.get_arg_template(info_name, arg3=p_name, w=w_lev, c=c_lev))
         return sc_array
-    
+
 class special_net(special_base):
     def _call(self):
         sc_array = []
@@ -641,13 +638,13 @@ class special_net(special_base):
                 )
                 if eth_check:
                     cur_temp["duplex"] = net_dev.netdevice_speed.full_duplex and "full" or "half"
-                    cur_temp["s"]      = "%d" % (net_dev.netdevice_speed.speed_bps)
+                    cur_temp["s"] = "%d" % (net_dev.netdevice_speed.speed_bps)
                 self.log(" - netdevice %s with %s: %s" % (
                     name_with_descr,
                     logging_tools.get_plural("option", len(cur_temp.argument_names)),
                     ", ".join(cur_temp.argument_names)))
                 sc_array.append(cur_temp)
-                #sc_array.append((name_with_descr, eth_opts))
+                # sc_array.append((name_with_descr, eth_opts))
         return sc_array
 
 class special_libvirt(special_base):
@@ -670,7 +667,7 @@ class special_libvirt(special_base):
                             arg1=d_dict["name"])
                     )
         return sc_array
-        
+
 class special_eonstor(special_base):
     class Meta:
         retries = 4
@@ -739,11 +736,11 @@ class special_eonstor(special_base):
                             )
                         )
         # rewrite sc_array to include community and version
-        #sc_array = [(name, ["", ""] + var_list) for name, var_list in sc_array]
+        # sc_array = [(name, ["", ""] + var_list) for name, var_list in sc_array]
         self.log("sc_array has %s" % (logging_tools.get_plural("entry", len(sc_array))))
         return sc_array
-        
+
 if __name__ == "__main__":
     print "Loadable module, exiting"
     sys.exit(0)
-    
+

@@ -26,44 +26,30 @@ import os
 
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "initat.cluster.settings")
 
-import base64
-import binascii
 import cluster_location
 import codecs
 import commands
-import config_tools
 import configfile
-import ConfigParser
-import hashlib
 import logging_tools
-import networkx
-import operator
-import pprint
+import mk_livestatus
 import process_tools
 import re
 import server_command
-import shutil
-import signal
-import sqlite3
-import stat
 import threading_tools
 import time
 import uuid_tools
 import zmq
-from lxml import etree
-from lxml.builder import E
 
 from initat.md_config_server.config import global_config
-from initat.md_config_server import special_commands
 from initat.md_config_server.build import build_process
 from initat.md_config_server.status import status_process
+from initat.md_config_server import constants
 
 try:
     from md_config_server.version import VERSION_STRING
 except ImportError:
     VERSION_STRING = "?.?"
 
-from django.conf import settings
 from django.db.models import Q
 from django.db import connection, connections
 from initat.cluster.backbone.models import device, device_group, device_variable, mon_device_templ, \
@@ -146,9 +132,9 @@ class server_process(threading_tools.process_pool):
                 else:
                     q_list = [int(value["state"]) for value in query.get_list()]
                     res_dict = dict([(s_name, q_list.count(value)) for s_name, value in [
-                        ("unknown", NAG_HOST_UNKNOWN),
-                        ("up"     , NAG_HOST_UP),
-                        ("down"   , NAG_HOST_DOWN)]])
+                        ("unknown", constants.NAG_HOST_UNKNOWN),
+                        ("up"     , constants.NAG_HOST_UP),
+                        ("down"   , constants.NAG_HOST_DOWN)]])
                     res_dict["tot"] = sum(res_dict.values())
                 # cur_s.peer.close()
                 del cur_s
@@ -163,8 +149,8 @@ class server_process(threading_tools.process_pool):
             nag_suc = cursor.execute(sql_str)
             nag_dict = dict([(db_rec[1], db_rec[0]) for db_rec in cursor.fetchall()])
             res_dict = {"tot"  : len(nag_dict.keys()),
-                        "up"   : nag_dict.values().count(NAG_HOST_UP),
-                        "down" : nag_dict.values().count(NAG_HOST_DOWN)}
+                        "up"   : nag_dict.values().count(constants.NAG_HOST_UP),
+                        "down" : nag_dict.values().count(constants.NAG_HOST_DOWN)}
             res_dict["unknown"] = res_dict["tot"] - (res_dict["up"] + res_dict["down"])
             cursor.close()
         if res_dict:

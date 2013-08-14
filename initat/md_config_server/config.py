@@ -30,31 +30,19 @@ import base64
 import binascii
 import cluster_location
 import codecs
-import commands
 import config_tools
 import ConfigParser
-import hashlib
 import logging_tools
-import networkx
-import operator
 import os
-import pprint
 import re
 import server_command
 import shutil
-import signal
 import sqlite3
 import stat
-import sys
-import threading_tools
 import time
-import uuid_tools
-import zmq
-from lxml import etree
-from lxml.builder import E
+from lxml.builder import E # @UnresolvedImport
 
-from initat.md_config_server.config import global_config
-from initat.md_config_server import special_commands
+from initat.md_config_server import constants
 
 try:
     from md_config_server.version import VERSION_STRING
@@ -63,7 +51,6 @@ except ImportError:
 
 from django.conf import settings
 from django.db.models import Q
-from django.db import connection, connections
 from initat.cluster.backbone.models import device, device_group, device_variable, mon_device_templ, \
      mon_ext_host, mon_check_command, mon_period, mon_contact, \
      mon_contactgroup, mon_service_templ, netdevice, network, network_type, net_ip, \
@@ -221,7 +208,7 @@ class main_config(object):
                     host="DIRECT",
                     port="0",
                     master_ip=self.master_ip,
-                    master_port="%d" % (SERVER_COM_PORT))
+                    master_port="%d" % (constants.SERVER_COM_PORT))
                 time.sleep(0.2)
                 self.__build_process.send_command(self.monitor_server.uuid, unicode(srv_com))
                 # send content of /etc

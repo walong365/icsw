@@ -26,41 +26,28 @@ import os
 
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "initat.cluster.settings")
 
-import base64
-import binascii
-import cluster_location
 import codecs
 import commands
 import config_tools
-import configfile
-import ConfigParser
-import hashlib
 import logging_tools
 import networkx
 import operator
-import pprint
 import process_tools
-import re
 import server_command
-import shutil
 import signal
-import sqlite3
 import stat
 import threading_tools
 import time
-import uuid_tools
-import zmq
-from lxml import etree
-from lxml.builder import E
+from lxml.builder import E # @UnresolvedImport
 
 from initat.md_config_server.config import global_config, main_config, var_cache, all_commands, \
     all_service_groups, time_periods, all_contacts, all_contact_groups, all_host_groups, all_hosts, \
     all_hosts_extinfo, all_services, config_dir, device_templates, service_templates, nag_config
 from initat.md_config_server import special_commands
+from initat.md_config_server import constants
 
-from django.conf import settings
 from django.db.models import Q
-from django.db import connection, connections
+from django.db import connection
 from initat.cluster.backbone.models import device, device_group, device_variable, mon_device_templ, \
      mon_ext_host, mon_check_command, mon_period, mon_contact, \
      mon_contactgroup, mon_service_templ, netdevice, network, network_type, net_ip, \
@@ -306,7 +293,7 @@ class build_process(threading_tools.process_obj):
         if bc_valid:
             if single_build:
                 # clean device and service entries
-                for key in SINGLE_BUILD_MAPS:
+                for key in constants.SINGLE_BUILD_MAPS:
                     self.__gen_config[key].refresh(self.__gen_config)
             self.router_obj.check_for_update()
             # build distance map
@@ -340,7 +327,7 @@ class build_process(threading_tools.process_obj):
         else:
             cur_gc = self.__gen_config
             res_node = E.config(
-                *sum([cur_gc[key].get_xml() for key in SINGLE_BUILD_MAPS], [])
+                *sum([cur_gc[key].get_xml() for key in constants.SINGLE_BUILD_MAPS], [])
             )
         if global_config["DEBUG"]:
             tot_query_count = len(connection.queries) - cur_query_count
