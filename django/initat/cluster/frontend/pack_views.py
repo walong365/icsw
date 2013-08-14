@@ -9,8 +9,8 @@ import pprint
 import re
 import server_command
 import time
-from lxml import etree
-from lxml.builder import E
+from lxml import etree # @UnresolvedImports
+from lxml.builder import E # @UnresolvedImports
 
 from django.conf import settings
 from django.contrib.auth.decorators import login_required

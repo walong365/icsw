@@ -14,8 +14,8 @@ import server_command
 import net_tools
 import ipvx_tools
 import config_tools
-from lxml import etree
-from lxml.builder import E
+from lxml import etree # @UnresolvedImports
+from lxml.builder import E # @UnresolvedImports
 from networkx.readwrite import json_graph
 
 from django.contrib.auth.decorators import login_required

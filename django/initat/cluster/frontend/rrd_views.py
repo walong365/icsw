@@ -7,8 +7,8 @@ import datetime
 import logging
 import pprint
 import server_command
-from lxml import etree
-from lxml.builder import E
+from lxml import etree # @UnresolvedImports
+from lxml.builder import E # @UnresolvedImports
 
 from django.contrib.auth.decorators import login_required
 from django.utils.decorators import method_decorator

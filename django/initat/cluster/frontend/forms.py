@@ -54,15 +54,15 @@ class authentication_form(Form):
     def pam_conv(self, auth, query_list):
         print auth, query_list
         response = []
-        for idx, (cur_query, cur_type) in enumerate(query_list):
-            if cur_type in [PAM.PAM_PROMPT_ECHO_OFF, PAM.PAM_PROMPT_ECHO_ON]:
-                response.append(("hlMS975", 0))
-            elif cur_type in [PAM.PAM_ERROR_MSG]:
-                print "PAM_ERROR_MSG %s" % (cur_query)
-                response.append(("", 0))
-            else:
-                print "+", idx, cur_query, cur_type, PAM.PAM_PROMPT_ECHO_OFF, PAM.PAM_PROMPT_ECHO_ON
-                return None
+        # for idx, (cur_query, cur_type) in enumerate(query_list):
+        #    if cur_type in [PAM.PAM_PROMPT_ECHO_OFF, PAM.PAM_PROMPT_ECHO_ON]:
+        #        response.append(("hlMS975", 0))
+        #    elif cur_type in [PAM.PAM_ERROR_MSG]:
+        #        print "PAM_ERROR_MSG %s" % (cur_query)
+        #        response.append(("", 0))
+        #    else:
+        #        print "+", idx, cur_query, cur_type, PAM.PAM_PROMPT_ECHO_OFF, PAM.PAM_PROMPT_ECHO_ON
+        #        return None
         return response
     def clean(self):
         username = self.cleaned_data.get("username")

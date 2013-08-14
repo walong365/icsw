@@ -29,8 +29,8 @@ import logging_tools
 import logging
 import server_command
 import process_tools
-from lxml import etree
-from lxml.builder import E
+from lxml import etree # @UnresolvedImports
+from lxml.builder import E # @UnresolvedImports
 
 from django.contrib.auth.decorators import login_required
 from django.core.exceptions import ValidationError

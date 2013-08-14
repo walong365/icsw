@@ -15,8 +15,8 @@ from django.utils.encoding import force_unicode, smart_unicode
 from django.utils.safestring import mark_safe
 from django.utils.translation import ugettext_lazy as _
 from initat.cluster.backbone.models import domain_name_tree, domain_tree_node
-from lxml import etree
-from lxml.builder import E
+from lxml import etree # @UnresolvedImports
+from lxml.builder import E # @UnresolvedImports
 
 class domain_name_tree_widget(widgets.TextInput):
     def _iterate_tree(self, top_node):

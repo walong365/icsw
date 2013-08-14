@@ -29,8 +29,8 @@ import net_tools
 import pprint
 import process_tools
 import server_command
-from lxml import etree
-from lxml.builder import E
+from lxml import etree # @UnresolvedImports
+from lxml.builder import E # @UnresolvedImports
 
 from crispy_forms.layout import Submit, Layout, Field, ButtonHolder, Button
 from django.conf import settings

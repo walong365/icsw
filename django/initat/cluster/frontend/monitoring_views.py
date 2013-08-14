@@ -11,8 +11,8 @@ import server_command
 import net_tools
 import logging
 import urllib2
-from lxml import etree, objectify
-from lxml.builder import E
+from lxml import etree, objectify # @UnresolvedImports
+from lxml.builder import E # @UnresolvedImports
 
 from django.contrib.auth.decorators import login_required
 from django.core.exceptions import ValidationError

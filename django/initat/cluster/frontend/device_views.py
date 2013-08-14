@@ -10,8 +10,8 @@ import logging_tools
 import process_tools
 import re
 import time
-from lxml import etree
-from lxml.builder import E
+from lxml import etree # @UnresolvedImports
+from lxml.builder import E # @UnresolvedImports
 import config_tools
 
 from django.contrib.auth.decorators import login_required

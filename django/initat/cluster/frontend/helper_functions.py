@@ -11,8 +11,8 @@ import net_tools
 import email
 import email.mime
 import email.header
-from lxml import etree
-from lxml.builder import E
+from lxml import etree # @UnresolvedImports
+from lxml.builder import E # @UnresolvedImports
 
 from django.conf import settings
 from django.http import HttpResponse
