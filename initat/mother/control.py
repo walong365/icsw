@@ -38,7 +38,7 @@ import stat
 import datetime
 import re
 import ipvx_tools
-from lxml import etree
+from lxml import etree # @UnresolvedImport
 from django.db import connection
 from twisted.python import log
 from twisted.internet.error import CannotListenError

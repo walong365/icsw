@@ -22,14 +22,15 @@
 #
 """ kernel related parts of mother """
 
-import threading_tools
-import logging_tools
-from initat.mother.config import global_config
-import server_command
-import pprint
-import time
-import os
 import config_tools
+import logging_tools
+import os
+from initat.mother.config import global_config
+import pprint
+import process_tools
+import server_command
+import threading_tools
+import time
 from django.db import connection
 from kernel_sync_tools import kernel_helper
 from initat.cluster.backbone.models import kernel

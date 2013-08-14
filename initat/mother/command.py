@@ -4,7 +4,7 @@
 # Copyright (C) 2012,2013 Andreas Lang-Nevyjel, init.at
 #
 # Send feedback to: <lang-nevyjel@init.at>
-# 
+#
 # This file is part of mother
 #
 # This program is free software; you can redistribute it and/or modify
@@ -36,7 +36,7 @@ from initat.mother.command_tools import simple_command
 import re
 import server_command
 import process_tools
-from lxml import etree
+from lxml import etree # @UnresolvedImports
 
 class hc_command(object):
     def __init__(self, xml_struct, router_obj):
@@ -149,7 +149,7 @@ class hc_command(object):
         hc_command.process.log("init hc_command")
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
         hc_command.process.log("[hc] %s" % (what), log_level)
-                 
+
 class external_command_process(threading_tools.process_obj):
     def process_init(self):
         self.__log_template = logging_tools.get_logger(
@@ -177,10 +177,6 @@ class external_command_process(threading_tools.process_obj):
         self.__log_template.log(log_level, what)
     def loop_post(self):
         self.__log_template.close()
-    def _check_commands(self):
-        simple_command.check()
-        if simple_command.idle():
-            self.set_loop_timer(1000)
     def _delay_command(self, *args, **kwargs):
         if simple_command.idle():
             self.register_timer(self._check_commands, 1)
