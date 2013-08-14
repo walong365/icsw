@@ -14,8 +14,8 @@ import hashlib
 import base64
 import logging
 import os
-from lxml import etree
-from lxml.builder import E
+from lxml import etree # @UnresolvedImport
+from lxml.builder import E # @UnresolvedImport
 from rest_framework import serializers
 
 from django.conf import settings
