@@ -80,8 +80,10 @@ class config_table
             @filter_div.find("input#filter_assoc").on("click", @change_assoc_filter)
         if @device
             @load_device_configs([@device.attr("key")])
-    use_devs: (sel_list) =>
+    use_devs: (sel_list, sel_g_list) =>
         notify_generate_link(sel_list)
+        for cur_devg in sel_g_list
+            sel_list.push(cur_devg)
         $.ajax
             url     : "{% url 'device:get_group_tree' %}"
             data    : {
@@ -173,7 +175,7 @@ class config_table
             @meta_selected[dev_pk] = []
         else
             # multi device path
-            @devices.find("device[selected='selected']").each (dev_idx, cur_dev) =>
+            @devices.find("device[tree_selected='selected']").each (dev_idx, cur_dev) =>
                 dev_pk = $(cur_dev).attr("pk")
                 @selected[dev_pk] = []
                 @meta_selected[dev_pk] = []
@@ -202,10 +204,11 @@ class config_table
                     "colspan" : "5"
                 }).text("device group " + cur_dg.attr("name")))
                 c_table.append(new_tr)
-                # at first append metadevice
-                cur_dg.find("devices device[selected='selected'][meta_device='1']").each (meta_idx, meta_dev) =>
+                cur_dg.find("devices device[tree_selected='selected'][meta_device='1']").each (meta_idx, meta_dev) =>
+                    #console.log "meta", $(meta_dev)[0]
                     c_table.append(@draw_device($(meta_dev)))
-                cur_dg.find("devices device[selected='selected'][meta_device='0']").each (dev_idx, cur_dev) =>
+                cur_dg.find("devices device[tree_selected='selected'][meta_device='0']").each (dev_idx, cur_dev) =>
+                    #console.log "normal"
                     c_table.append(@draw_device($(cur_dev)))
         @top_div.append(c_table)
         @c_table = c_table
@@ -300,8 +303,8 @@ class config_table
             # multi device path
             cur_dev = @devices.find("device[pk='#{dev_pk}']")
         is_meta = cur_dev.attr("meta_device") == "1"
-        if is_meta
-            dev_th.addClass("meta_device")
+        #if is_meta
+        #    dev_th.addClass("meta_device")
         dev_str = (if is_meta then "[Meta] " else " ") + cur_dev.justtext()
         if selected
             dev_str = "#{dev_str}, #{selected} selected"
@@ -656,7 +659,6 @@ class draw_setup
     create_delete_element: (event) =>
         cur_el = $(event.target)
         el_id  = cur_el.attr("id")
-        # console.log cur_el, el_id
         lock_list = if @lock_div then lock_elements($("div#" + @lock_div)) else undefined
         if el_id.match(/new$/)
             send_data = create_dict(@table_div, el_id)

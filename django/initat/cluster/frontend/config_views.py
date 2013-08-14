@@ -198,15 +198,24 @@ class get_device_configs(View):
 def _get_device_configs(sel_list, **kwargs):
     dev_list = [key.split("__")[1] for key in sel_list if key.startswith("dev__")]
     devg_list = [key.split("__")[1] for key in sel_list if key.startswith("devg__")]
-    all_devs = device.objects.exclude(Q(device_type__identifier="MD")).filter(Q(pk__in=dev_list) | Q(device_group__in=devg_list))
+    all_devs = device.objects.exclude(Q(device_type__identifier="MD")).filter(
+        Q(enabled=True) & Q(device_group__enabled=True) & (
+            Q(pk__in=dev_list))) # | Q(device_group__in=devg_list)))
     # all meta devices
-    meta_devs = device.objects.filter(Q(device_type__identifier="MD") & Q(device_group__device_group__in=dev_list)).distinct()
-    meta_confs = device_config.objects.filter(Q(device__in=meta_devs)).select_related("device")
+    meta_devs = device.objects.filter(Q(enabled=True) & Q(device_group__enabled=True)
+        & (Q(device_type__identifier="MD") & (Q(device_group__in=devg_list) | Q(device_group__device_group__in=dev_list)))).distinct()
+    # print meta_devs, devg_list, device.objects.filter(Q(device__device_group__enabled=True)
+    #    & (Q(device_type__identifier="MD"))), "*"
+    meta_confs = device_config.objects.filter(Q(device__enabled=True) & Q(device__device_group__enabled=True) &
+        Q(device__in=meta_devs)).select_related("device")
+    # print len(meta_confs), len(meta_devs)
     if "conf" in kwargs:
-        all_confs = device_config.objects.filter(Q(config=kwargs["conf"]) & (Q(device__in=dev_list) | Q(device__device_group__in=devg_list)))
+        all_confs = device_config.objects.filter(Q(device__enabled=True) & Q(device__device_group__enabled=True) &
+            (Q(config=kwargs["conf"]) & (Q(device__in=dev_list)))) # | Q(device__device_group__in=devg_list))))
         meta_confs = meta_confs.filter(config=kwargs["conf"])
     else:
-        all_confs = device_config.objects.filter(Q(device__in=dev_list) | Q(device__device_group__in=devg_list))
+        all_confs = device_config.objects.filter(Q(device__enabled=True) & Q(device__device_group__enabled=True) &
+            (Q(device__in=dev_list) | (Q(device__device_group__in=devg_list) & Q(device__device_type__identifier="MD"))))
     xml_resp = E.device_configs()
     # build dict device_group -> conf_list
     dg_dict = {}
@@ -215,12 +224,17 @@ def _get_device_configs(sel_list, **kwargs):
     for cur_conf in all_confs:
         xml_resp.append(cur_conf.get_xml())
     # add meta device configs
+    # print "***", all_devs, dev_list, device.objects.get(Q(pk=284))
     for sbm_dev in all_devs:
+        # print unicode(all_devs)
+        # print sbm_dev.device_group_id, dg_dict.keys()
         for conf_id in dg_dict.get(sbm_dev.device_group_id, []):
+            # print unicode(sbm_dev)
             xml_resp.append(E.device_config(
                 device="%d" % (sbm_dev.pk),
                 config="%d" % (conf_id),
                 meta="1"))
+    # print etree.tostring(xml_resp, pretty_print=True)
     return xml_resp
 
 class alter_config_cb(View):

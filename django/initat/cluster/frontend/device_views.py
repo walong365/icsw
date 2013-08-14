@@ -196,7 +196,8 @@ def _get_group_tree(request, sel_list, **kwargs):
                     ", %s" % (cur_dev.attrib["comment"]) if cur_dev.attrib["comment"] else ""
                 )
                 if int(cur_dev.attrib["device_type"]) == meta_dev_type_id:
-                    cur_dev.attrib["tree_selected"] = "selected"
+                    if cur_xml.attrib["key"] in sel_list:
+                        cur_dev.attrib["tree_selected"] = "selected"
                     cur_dev.attrib["meta_device"] = "1"
                 else:
                     cur_dev.attrib["meta_device"] = "0"
