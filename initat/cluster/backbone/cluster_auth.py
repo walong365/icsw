@@ -3,13 +3,10 @@
 import base64
 import logging
 import hashlib
-import logging_tools
 
-from django.conf import settings
-from django.contrib.auth.models import User, check_password
 from django.db.models import Q
 
-from initat.cluster.backbone.models import user, group
+from initat.cluster.backbone.models import user
 
 logger = logging.getLogger("cluster.auth")
 

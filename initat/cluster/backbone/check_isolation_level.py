@@ -1,7 +1,6 @@
 #!/usr/bin/python-init -Otu
 
 import os
-import sys
 
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "initat.cluster.settings")
 
@@ -24,7 +23,6 @@ def main():
             print "transaction-isolation = READ-COMMITTED"
             print ""
             raise ImproperlyConfigured("wrong transaction-isolation level used (found: %s, need: %s)" % (global_tx, TARGET_IL))
-    
+
 if __name__ == "__main__":
     main()
-    

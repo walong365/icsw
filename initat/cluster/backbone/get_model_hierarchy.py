@@ -1,8 +1,6 @@
 #!/usr/bin/python-init -Otu
 
 import os
-import sys
-import pprint
 
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "initat.cluster.settings")
 
@@ -37,7 +35,7 @@ def sort_dependencies(app_list):
             for field in model._meta.fields:
                 if hasattr(field.rel, 'to'):
                     rel_model = field.rel.to
-                    #if hasattr(rel_model, 'natural_key'):
+                    # if hasattr(rel_model, 'natural_key'):
                     if rel_model._meta.object_name != model._meta.object_name:
                         deps.append(rel_model)
             for field in model._meta.many_to_many:
@@ -53,7 +51,7 @@ def sort_dependencies(app_list):
     # over the input models without promoting a model to the final list.
     # If we do a full iteration without a promotion, that means there are
     # circular dependencies in the list.
-    #pprint.pprint(model_dependencies)
+    # pprint.pprint(model_dependencies)
     model_list = []
     while model_dependencies:
         skipped = []
@@ -88,8 +86,7 @@ def main():
             print mod._meta.db_table
     print
     print " ".join([mod._meta.db_table for mod in mod_list if mod._meta.app_label == "backbone"])
-        #print mod._meta.app_label, mod._meta.object_name, mod._meta
-    
+        # print mod._meta.app_label, mod._meta.object_name, mod._meta
+
 if __name__ == "__main__":
     main()
-    

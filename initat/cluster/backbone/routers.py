@@ -1,3 +1,4 @@
+#!/usr/bin/python-init -Otu
 
 class db_router(object):
     def db_for_read(self, model, **hints):

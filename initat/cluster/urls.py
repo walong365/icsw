@@ -1,6 +1,5 @@
-from django.conf.urls import patterns, include, url
+from django.conf.urls import patterns, include
 from django.conf import settings
-import sys
 
 from django.contrib import admin
 admin.autodiscover()

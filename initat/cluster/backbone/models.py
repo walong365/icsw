@@ -7,9 +7,7 @@ import time
 import inspect
 import ipvx_tools
 import logging_tools
-import pprint
 import pytz
-import process_tools
 import hashlib
 import base64
 import logging
@@ -19,7 +17,6 @@ from lxml.builder import E # @UnresolvedImport
 from rest_framework import serializers
 
 from django.conf import settings
-from django.core.cache import cache
 from django.core.exceptions import ValidationError, ImproperlyConfigured
 from django.db import models
 from django.db.models import Q, signals, get_model
@@ -1524,7 +1521,7 @@ class package_device_connection(models.Model):
             else:
                 self.installed = "u"
                 cur_mode = 0
-                for line_num, line in enumerate(lines):
+                for _line_num, line in enumerate(lines):
                     if line.startswith("Installed:"):
                         cur_mode = 1
                     elif line.startswith("Removed:"):
@@ -1985,7 +1982,7 @@ class netdevice_speed(models.Model):
     class Meta:
         db_table = u'netdevice_speed'
     def __unicode__(self):
-        s_str, lut_idx = ("", 0)
+        _s_str, lut_idx = ("", 0)
         cur_s = self.speed_bps
         while cur_s > 999:
             cur_s = cur_s / 1000
@@ -2961,7 +2958,7 @@ def mon_service_templ_pre_save(sender, **kwargs):
             ("low_flap_threshold" , 0, 100),
             ("high_flap_threshold", 0, 100),
             ]:
-            cur_val = _check_integer(cur_inst, attr_name, min_val=min_val, max_val=max_val)
+            _cur_val = _check_integer(cur_inst, attr_name, min_val=min_val, max_val=max_val)
 
 class mon_service_esc_templ(models.Model):
     idx = models.AutoField(primary_key=True)
@@ -3676,12 +3673,12 @@ class csw_permission(models.Model):
             )
         return r_xml
     @staticmethod
-    def get_permission(object, code_name):
-        ct = ContentType.objects.get_for_model(object)
-        cur_pk = object.pk
+    def get_permission(in_object, code_name):
+        ct = ContentType.objects.get_for_model(in_object)
+        cur_pk = in_object.pk
         return csw_object_permission.objects.create(
             csw_permission=csw_permission.objects.get(Q(content_type=ct) & Q(codename=code_name)),
-            object_pk=object.pk
+            object_pk=cur_pk
             )
     def __unicode__(self):
         return u"%s | %s | %s | %s" % (
@@ -3839,7 +3836,7 @@ class home_export_list(object):
             value["info"] = "%s on %s" % (value["homeexport"], value["name"])
         self.exp_dict = home_exp_dict
     def all(self):
-        for pk in [s_pk for s_info, s_pk in sorted([(value["info"], key) for key, value in self.exp_dict.iteritems()])]:
+        for pk in [s_pk for _s_info, s_pk in sorted([(value["info"], key) for key, value in self.exp_dict.iteritems()])]:
             yield self.exp_dict[pk]["entry"]
 
 class user(models.Model):
@@ -4175,12 +4172,12 @@ def group_pre_save(sender, **kwargs):
 @receiver(signals.post_save, sender=group)
 def group_post_save(sender, **kwargs):
     if not kwargs["raw"] and "instance" in kwargs:
-        cur_inst = kwargs["instance"]
+        _cur_inst = kwargs["instance"]
 
 @receiver(signals.post_delete, sender=group)
 def group_post_delete(sender, **kwargs):
     if "instance" in kwargs:
-        cur_inst = kwargs["instance"]
+        _cur_inst = kwargs["instance"]
 
 @receiver(signals.m2m_changed, sender=group.permissions.through)
 def group_permissions_changed(sender, *args, **kwargs):
@@ -4324,9 +4321,9 @@ class wc_files(models.Model):
     class Meta:
         db_table = u'wc_files'
 
-def get_related_models(in_obj, m2m=False, detail=False, all=False):
+def get_related_models(in_obj, m2m=False, detail=False, check_all=False):
     used_objs = [] if detail else 0
-    if all:
+    if check_all:
         ignore_list = []
     else:
         ignore_list = {
@@ -4404,8 +4401,8 @@ class domain_name_tree(object):
     def add_domain(self, new_domain_name):
         dom_parts = list(reversed(new_domain_name.split(".")))
         cur_node = self._root_node
-        for part_num, dom_part in enumerate(dom_parts):
-            last_part = part_num == len(dom_parts) - 1
+        for _part_num, dom_part in enumerate(dom_parts):
+            # part_num == len(dom_parts) - 1
             if dom_part not in cur_node._sub_tree:
                 new_node = domain_tree_node(
                     name=dom_part,
@@ -4471,7 +4468,7 @@ class domain_tree_node(models.Model):
     # comment
     comment = models.CharField(max_length=256, default="", blank=True)
     def get_sorted_pks(self):
-        return [self.pk] + sum([pk_list for sub_name, pk_list in sorted([(key, sum([sub_value.get_sorted_pks() for sub_value in value], [])) for key, value in self._sub_tree.iteritems()])], [])
+        return [self.pk] + sum([pk_list for _sub_name, pk_list in sorted([(key, sum([sub_value.get_sorted_pks() for sub_value in value], [])) for key, value in self._sub_tree.iteritems()])], [])
     def __unicode__(self):
         if self.depth:
             if self.depth > 2:
@@ -4606,8 +4603,8 @@ class category_tree(object):
             new_category_name = new_category_name[1:]
         cat_parts = list(new_category_name.split("/"))
         cur_node = self._root_node
-        for part_num, cat_part in enumerate(cat_parts):
-            last_part = part_num == len(cat_parts) - 1
+        for _part_num, cat_part in enumerate(cat_parts):
+            # part_num == len(cat_parts) - 1
             if cat_part not in cur_node._sub_tree:
                 new_node = category(
                     name=cat_part,
@@ -4678,7 +4675,7 @@ class category(models.Model):
     # comment
     comment = models.CharField(max_length=256, default="", blank=True)
     def get_sorted_pks(self):
-        return [self.pk] + sum([pk_list for sub_name, pk_list in sorted([(key, sum([sub_value.get_sorted_pks() for sub_value in value], [])) for key, value in self._sub_tree.iteritems()])], [])
+        return [self.pk] + sum([pk_list for _sub_name, pk_list in sorted([(key, sum([sub_value.get_sorted_pks() for sub_value in value], [])) for key, value in self._sub_tree.iteritems()])], [])
     def __unicode__(self):
         return u"%s" % (self.full_name if self.depth else "[TLN]")
     def get_xml(self):

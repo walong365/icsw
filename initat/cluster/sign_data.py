@@ -4,8 +4,8 @@
 import argparse
 import base64
 
-from lxml import etree
-from lxml.builder import E
+from lxml import etree # @UnresolvedImports
+from lxml.builder import E # @UnresolvedImports
 from M2Crypto import EVP
 
 PRIVATE_KEY = \

@@ -1,8 +1,5 @@
 #!/usr/bin/python-init -Otu
 
-from django.conf import settings
-import sys
-
 class csw_perm_lut(object):
     def __init__(self, user, module_name):
         self.user = user

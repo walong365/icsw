@@ -5,7 +5,7 @@
 # this file is part of cluster-backbone-sql
 #
 # Send feedback to: <lang-nevyjel@init.at>
-# 
+#
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License Version 2 as
 # published by the Free Software Foundation.
@@ -25,15 +25,9 @@ import array
 import config_tools
 import configfile
 import datetime
-import logging_tools
 import netifaces
-import os
-import pprint
 import process_tools
-import re
 import socket
-import sys
-import types
 from django.db.models import Q
 from initat.cluster.backbone.models import device_variable, config, device, config_blob, config_bool, \
      config_int, config_str, net_ip, log_source, log_status
@@ -44,8 +38,8 @@ def read_config_from_db(g_config, server_type, init_list=[], host_name="", **kwa
         host_name = process_tools.get_machine_name()
     g_config.add_config_entries(init_list, database=True)
     if not kwargs.get("dummy_run", False):
-        num_serv, serv_idx, s_type, s_str, config_idx, real_config_name=is_server(server_type.replace("%", ""), True, False, host_name.split(".")[0])
-        #print num_serv, serv_idx, s_type, s_str, config_idx, real_config_name
+        num_serv, serv_idx, s_type, s_str, config_idx, real_config_name = is_server(server_type.replace("%", ""), True, False, host_name.split(".")[0])
+        # print num_serv, serv_idx, s_type, s_str, config_idx, real_config_name
         if num_serv:
             # dict of local vars without specified host
             l_var_wo_host = {}
@@ -54,8 +48,8 @@ def read_config_from_db(g_config, server_type, init_list=[], host_name="", **kwa
                           "blob",
                           "bool"]:
                 # very similiar code appears in config_tools.py
-                #sql_str = "SELECT cv.* FROM new_config c INNER JOIN device_config dc LEFT JOIN config_%s cv ON cv.new_config=c.new_config_idx WHERE (cv.device=0 OR cv.device=%d) AND dc.device=%d AND dc.new_config=c.new_config_idx AND c.name='%s' ORDER BY cv.device, cv.name" % (short, config_idx, serv_idx, real_config_name)
-                #dc.execute(sql_str)
+                # sql_str = "SELECT cv.* FROM new_config c INNER JOIN device_config dc LEFT JOIN config_%s cv ON cv.new_config=c.new_config_idx WHERE (cv.device=0 OR cv.device=%d) AND dc.device=%d AND dc.new_config=c.new_config_idx AND c.name='%s' ORDER BY cv.device, cv.name" % (short, config_idx, serv_idx, real_config_name)
+                # dc.execute(sql_str)
                 src_sql_obj = globals()["config_%s" % (short)].objects
                 if init_list and not kwargs.get("read_all", False):
                     src_sql_obj = src_sql_obj.filter(Q(name__in=[var_name for var_name, var_value in init_list]))
@@ -95,13 +89,13 @@ def read_config_from_db(g_config, server_type, init_list=[], host_name="", **kwa
             for wo_var_name, wo_var in l_var_wo_host.iteritems():
                 if not wo_var_name in g_config or g_config.get_source(wo_var_name) == "default":
                     g_config.add_config_entries([(wo_var_name, wo_var)])
-    
+
 def read_global_config(dc, server_type, init_dict=None, host_name=""):
     if init_dict is None:
         init_dict = {}
     gcd = configfile.configuration(server_type.replace("%", ""), init_dict)
     # FIXME
-    #reload_global_config(dc, gcd, server_type, host_name)
+    # reload_global_config(dc, gcd, server_type, host_name)
     return gcd
 
 class db_device_variable(object):
@@ -122,8 +116,8 @@ class db_device_variable(object):
             self.__var_value = None
         else:
             self.__act_dv = act_dv
-            self.set_stuff(var_type = act_dv.var_type,
-                           description = act_dv.description)
+            self.set_stuff(var_type=act_dv.var_type,
+                           description=act_dv.description)
             self.set_value(getattr(act_dv, "val_%s" % (self.__var_type_name)), type_ok=True)
         self.set_stuff(**kwargs)
         if "value" in kwargs:
@@ -175,7 +169,7 @@ class db_device_variable(object):
         self.__var_value = value
     def get_value(self):
         return self.__var_value
-        
+
 def write_config(server_type, g_config, **kwargs):
     log_lines = []
     full_host_name = socket.gethostname()
@@ -183,9 +177,9 @@ def write_config(server_type, g_config, **kwargs):
     srv_info = config_tools.server_check(server_type=server_type, short_host_name=host_name)
     if srv_info.device and srv_info.config:
         for key in g_config.keys():
-            #print k,config.get_source(k)
-            #print "write", k, config.get_source(k)
-            #if config.get_source(k) == "default":
+            # print k,config.get_source(k)
+            # print "write", k, config.get_source(k)
+            # if config.get_source(k) == "default":
             # only deal with int and str-variables
             tab_type = {"i" : "int",
                         "s" : "str",
@@ -203,7 +197,7 @@ def write_config(server_type, g_config, **kwargs):
                         Q(config=srv_info.config) &
                         (Q(device=0) | Q(device=None) | Q(device=srv_info.effective_device.pk))
                         # removed config via meta_device, AL 20121125
-                        #Q(config__device_config__device__device_group__device_group=srv_info.effective_device.pk)
+                        # Q(config__device_config__device__device_group__device_group=srv_info.effective_device.pk)
                     )
                 except var_obj.DoesNotExist:
                     var_obj(name=real_k_name,
@@ -219,7 +213,7 @@ def write_config(server_type, g_config, **kwargs):
                         cur_var.value = g_config[key]
                         cur_var.save()
             else:
-                #print "X", key
+                # print "X", key
                 pass
     return log_lines
 
@@ -270,7 +264,7 @@ def is_server(server_type, long_mode=False, report_real_idx=False, short_host_na
             "device_config__device", "pk", "name",
             "device_config__device__device_group__device_group__name")
     num_servers = len(my_confs)
-    #print "*", num_servers
+    # print "*", num_servers
     if num_servers == 1:
         my_conf = my_confs[0]
         if my_conf[0] == dev_pk:
@@ -296,26 +290,27 @@ def is_server(server_type, long_mode=False, report_real_idx=False, short_host_na
                 "device_config__device__device_group__device_group__name",
                 "device_config__device__device_group__device_group__netdevice__net_ip__ip")
         my_confs = [entry for entry in my_confs if entry[-1] and entry[-1] not in ["127.0.0.1"]]
-        #pprint.pprint(my_confs)
+        # pprint.pprint(my_confs)
         # check for virtual-device
         all_ips = {}
         # still to change, FIXME
-        if False:
-            for d_x in [y for y in dc.fetchall() if y["ip"] != "127.0.0.1"]:
-                if d_x["ip"] not in local_ips:
-                    all_ips[d_x["ip"]] = (d_x["device_idx"], d_x["device_idx"], d_x["name"])
-        if_names = netifaces.interfaces()
+        # if False:
+        #    for d_x in [y for y in dc.fetchall() if y["ip"] != "127.0.0.1"]:
+        #        if d_x["ip"] not in local_ips:
+        #            all_ips[d_x["ip"]] = (d_x["device_idx"], d_x["device_idx"], d_x["name"])
+        _if_names = netifaces.interfaces()
         ipv4_dict = dict([(cur_if_name, [ip_tuple["addr"] for ip_tuple in value[2]][0]) for cur_if_name, value in [(if_name, netifaces.ifaddresses(if_name)) for if_name in netifaces.interfaces()] if 2 in value])
         self_ips = ipv4_dict.values()
         for ai in all_ips.keys():
             if ai in self_ips:
-                #dc.execute("SELECT d.device_idx FROM device d WHERE d.name='%s'" % (short_host_name))
-                num_servers, server_idx, s_type, s_str, config_idx, real_server_name = (1,
-                                                                                        all_ips[ai][0],
-                                                                                        "virtual",
-                                                                                        "virtual '%s'-server via IP-address %s" % (server_info_str, ai),
-                                                                                        all_ips[ai][1],
-                                                                                        all_ips[ai][2])
+                # dc.execute("SELECT d.device_idx FROM device d WHERE d.name='%s'" % (short_host_name))
+                num_servers, server_idx, s_type, s_str, config_idx, real_server_name = (
+                    1,
+                    all_ips[ai][0],
+                    "virtual",
+                    "virtual '%s'-server via IP-address %s" % (server_info_str, ai),
+                    all_ips[ai][1],
+                    all_ips[ai][2])
     if long_mode:
         return num_servers, server_idx, s_type, s_str, config_idx, real_server_name
     else:
