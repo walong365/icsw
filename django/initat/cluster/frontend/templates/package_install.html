@@ -7,7 +7,7 @@
 
 {% block content %}
 
-<h1 class="center">Package Install</h1>
+<h1 class="center">Package Install, package filter: <input id='package_filter' type=text/></h1>
 
 <div id="device"></div>
 
@@ -25,6 +25,7 @@ class device
         @pdc_lut = {}
         @pdc_line_lut = {}
         @exp_state = false
+        @cur_filter = ""
     draw_device: (pdc_list) =>
         tstate_xml = @pack_xml.find("target_states target_state")
         dummy_div = $("<div>")
@@ -60,7 +61,7 @@ class device
         )
         dummy_div.append(new_tr)
         for pdc_xml in pdc_list
-            @append_pdc($(pdc_xml))
+            @append_pdc($(pdc_xml), false)
         return dummy_div.children()
     set_last: (last_xml) =>
         diff = parseInt(Math.abs(parseInt(last_xml) - new Date().getTime() / 1000))
@@ -77,8 +78,8 @@ class device
         else
             lc_td.addClass("ok")
         lc_td.text(diff)
-    append_pdc: (pdc_xml) =>
-        new_line = @draw_pdc(@pack_xml.find("target_states target_state"), pdc_xml)
+    append_pdc: (pdc_xml, selected) =>
+        new_line = @draw_pdc(@pack_xml.find("target_states target_state"), pdc_xml, selected)
         # DOM
         @header_line.after(new_line)
         @update_device_info()
@@ -123,13 +124,26 @@ class device
     expand_device: (line_prefix, state, name) =>
         for key, value of @pdc_line_lut
             if state
-                value.show()
+                if @check_visibility(key)
+                    value.show()
+                else
+                    value.hide()
             else
                 value.hide()
         @exp_state = state
+    check_visibility: (key) =>
+        cur_re = new RegExp(@cur_filter)
+        cur_pack = @pack_xml.find("packages package[pk='" + @pdc_lut[key].attr("package") + "']")
+        if cur_pack.text().match(cur_re)
+            return true
+        else
+            return false
+    set_filter: (cur_filter) =>
+        @cur_filter = cur_filter
+        @expand_device("bla", @exp_state, "bla")
     change_d_sel: (event) =>
         (line.find("input[id$='__sel']").trigger("click") for value, line of @pdc_line_lut)
-    draw_pdc: (tstate_xml, pdc_xml) =>
+    draw_pdc: (tstate_xml, pdc_xml, selected) =>
         line_prefix = pdc_xml.attr("key")
         pack_xml = @pack_xml.find("packages package[pk='" + pdc_xml.attr("package") + "']")
         new_tr = $("<tr>").attr({
@@ -162,6 +176,8 @@ class device
             $("<td>").append(@draw_pflag(pdc_xml, "force_flag")),
             $("<td>").append(@draw_pflag(pdc_xml, "nodeps_flag"))
         )
+        if selected
+            new_tr.find("input[id$='__sel']").attr("checked", "checked")
         @pdc_lut[pdc_xml.attr("key")] = pdc_xml
         @pdc_line_lut[pdc_xml.attr("key")] = new_tr
         if not @exp_state
@@ -231,8 +247,28 @@ class device
 
 class device_table
     constructor: (@top_div, @pack_div) ->
+        @install_filter()
         install_devsel_link(@use_devs, true)
+    install_filter: =>
+        @CUR_FILTER = ""
+        @filter_el = $("input#package_filter")
+        @filter_el.val("").on("keyup", @change_filter)
+    change_filter: (in_el) =>
+        cur_text = $(in_el.target).val()
+        @new_filter(cur_text, false)
+    new_filter: (cur_text, force) =>
+        if cur_text != @CUR_FILTER or force
+            @CUR_FILTER = cur_text
+            @xml.find("device_group").each (index, cur_dg) =>
+                cur_dg = $(cur_dg)
+                cur_dg.find("devices device[tree_selected='selected'][meta_device='0']").each (index, cur_dev) =>
+                    dev_struct = @devices[$(cur_dev).attr("key")]
+                    # to be optimised
+                    dev_struct.set_filter(@CUR_FILTER)
+                    # needed for coffeescript (sigh)
+                    true
     use_devs: (sel_list) =>
+        @CUR_FILTER = ""
         $.ajax
             url     : "{% url 'device:get_group_tree' %}"
             data    : {
@@ -248,6 +284,7 @@ class device_table
                     @xml.find("devices device").each (idx, cur_dev) =>
                         @devices[$(cur_dev).attr("key")] = new device(@, $(cur_dev))
                     @build_table(sel_list)
+                    @new_filter(@filter_el.val(), true)
     build_table: (@sel_list) =>
         $.ajax
             url     : "{% url 'pack:install' %}"
@@ -339,7 +376,8 @@ class device_table
             dev_xml = $(dev_xml)
             dev_key = dev_xml.attr("key")
             if @table.find("input[id='#{dev_key}__sel']").prop("checked")
-                if not @xml.find("package_device_connections package_device_connection[package='#{pack_pk}'][device='" + dev_xml.attr("pk") + "']").length
+                cur_dev = @devices[dev_key]
+                if pack_pk not in (value.attr("package") for key, value of cur_dev.pdc_lut)
                     @add_package_xml(dev_xml, @pack_xml.find("package[key='#{pack_key}']"))
     add_package_xml: (dev_xml, pack_xml) =>
         $.ajax
@@ -352,7 +390,7 @@ class device_table
                 if parse_xml_response(xml)
                     new_pdc = $(xml).find("value[name='new_entry'] package_device_connection")
                     @xml.find("package_device_connections").append(new_pdc)
-                    @devices[dev_xml.attr("key")].append_pdc($(new_pdc))
+                    @devices[dev_xml.attr("key")].append_pdc($(new_pdc), true)
     delete_package: (event) =>
         targ_el = $(event.target)
         if confirm("really delete package ?")
