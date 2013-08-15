@@ -47,7 +47,7 @@ class ipv4(object):
         else:
             # value is an integer
             self.inv_parts = []
-            for idx in range(4):
+            for _idx in range(4):
                 self.inv_parts.append(in_value & 255)
                 in_value = in_value >> 8
             self.parts = [x for x in self.inv_parts]

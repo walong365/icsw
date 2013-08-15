@@ -6,7 +6,7 @@
 # Send feedback to: <lang-nevyjel@init.at>
 #
 # this file is part of python-modules-base
-# 
+#
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License Version 2 as
 # published by the Free Software Foundation.
@@ -27,7 +27,6 @@ import logging_tools
 import multiprocessing
 import os
 import pickle
-import pprint
 import process_tools
 import Queue
 import signal
@@ -48,7 +47,7 @@ try:
 except ImportError:
     zmq = None
 from twisted.internet import reactor
-    
+
 # default stacksize
 DEFAULT_STACK_SIZE = 2 * 1024 * 1024
 
@@ -64,15 +63,15 @@ class my_error(Exception):
 class term_error(my_error):
     def __init__(self, args):
         my_error.__init__(self, args)
-    
+
 class alarm_error(my_error):
     def __init__(self, args):
         my_error.__init__(self, args)
-    
+
 class stop_error(my_error):
     def __init__(self, args):
         my_error.__init__(self, args)
-    
+
 class int_error(my_error):
     def __init__(self, args):
         my_error.__init__(self, args)
@@ -128,7 +127,7 @@ class thread_obj(threading.Thread):
         # verbose
         self.__verbose = kwargs.get("verbose", False)
         # wait for more messages if one processed (for gathering of messages)
-        self.__gather_timeout    = kwargs.get("gather_timeout"   , 0.)
+        self.__gather_timeout = kwargs.get("gather_timeout"   , 0.)
         self.__total_gather_wait = kwargs.get("total_gather_wait", 0.)
         # internal exit-function
         self.register_func("exit", self._exit_thread)
@@ -224,7 +223,7 @@ class thread_obj(threading.Thread):
     def _show_recv_messages(self, mes_list):
         for mes in mes_list:
             if type(mes) == type(()):
-                mes, in_stuff = mes
+                mes, _in_stuff = mes
                 self.log("SRM: received message %s (with options)" % (mes))
             else:
                 self.log("SRM: received message %s" % (mes))
@@ -235,10 +234,10 @@ class thread_obj(threading.Thread):
             src_thread = a.pop(0)
             mes_type = a.pop(0)
             self.__func_table[mes_type](*a, src_thread=src_thread)
-            #self.send_pool_message(["log_recv", "ok:::super"])
+            # self.send_pool_message(["log_recv", "ok:::super"])
     def inner_loop(self, force_wait=False):
         # to be called from busy-loop threads like snmp trap sinks
-        mes_list, mes, gather_messages, gather_waited = ([], True, self.__gather_timeout > 0, 0.)
+        mes_list, mes, gather_messages, _gather_waited = ([], True, self.__gather_timeout > 0, 0.)
         total_gather_wait = self.__total_gather_wait or self.__gather_timeout * 5
         while mes:
             mes = None
@@ -310,7 +309,7 @@ class thread_obj(threading.Thread):
                     self._busy_loop_function()
                 # clear message_list
                 mes_list = []
-                
+
 class thread_pool(object):
     def __init__(self, name, **kwargs):
         self.name = name
@@ -366,7 +365,7 @@ class thread_pool(object):
         if not kwargs.get("instant", False):
             s_time = s_time + timeout
         self.__timer_list.append((timeout, s_time, cb_func))
-        self.__next_timeout = min([last_to for cur_to, last_to, cb_func in self.__timer_list])
+        self.__next_timeout = min([last_to for _cur_to, last_to, cb_func in self.__timer_list])
     def _handle_timer(self, cur_time):
         new_tl, t_funcs = ([], [])
         for cur_to, t_time, cb_func in self.__timer_list:
@@ -529,9 +528,9 @@ class thread_pool(object):
                     out_lines.append(" - %d : %s" % (line_no, line))
             out_lines.append(except_info)
             # write to logging-server
-            #err_h = io_stream_helper.io_stream("/var/lib/logging-server/py_err_zmq", zmq_context=self.zmq_context)
-            #err_h.write("\n".join(out_lines))
-            #err_h.close()
+            # err_h = io_stream_helper.io_stream("/var/lib/logging-server/py_err_zmq", zmq_context=self.zmq_context)
+            # err_h.write("\n".join(out_lines))
+            # err_h.close()
             self.log("waiting for 1 second",
                      logging_tools.LOG_LEVEL_WARN)
             time.sleep(1)
@@ -584,12 +583,12 @@ class thread_pool(object):
     def _show_recv_messages(self, mes_list):
         for mes in mes_list:
             if type(mes) == type(()):
-                mes, in_stuff = mes
+                mes, _in_stuff = mes
                 self.log("SRM: received message %s (with options)" % (mes))
             else:
                 self.log("SRM: received message %s" % (mes))
     def _tp_message_received(self, zmq_socket):
-        mes_parts = zmq_socket.recv_pyobj() 
+        mes_parts = zmq_socket.recv_pyobj()
         src_thread = mes_parts.pop(0)
         msg_type = mes_parts.pop(0)
         if msg_type in self.__func_table:
@@ -711,7 +710,7 @@ class thread_pool(object):
         print "_dummy_loop_function(), sleeping for 10 seconds"
         time.sleep(10)
     def stop_running_threads(self):
-        int_queue = self.get_queue(self.__my_queue_name)
+        # int_queue = self.get_queue(self.__my_queue_name)
         pri_dict = {}
         for key, value in self.__threads.iteritems():
             pri_dict.setdefault(value["priority"], []).append(key)
@@ -762,13 +761,13 @@ class tz_factory(object):
         This is shutting down all created connections
         and terminating ZeroMQ context.
         """
-        #print "sd0"
+        # print "sd0"
         for connection in self.connections.copy():
             connection.shutdown()
-        #print "sd1"
+        # print "sd1"
         self.connections = None
         self.context.term()
-        #print "sd2"
+        # print "sd2"
         self.context = None
     def registerForShutdown(self):
         """
@@ -776,7 +775,7 @@ class tz_factory(object):
         on reactor shutdown.
         """
         reactor.addSystemEventTrigger('during', 'shutdown', self.shutdown)
-        
+
 class _timer_obj(object):
     def __init__(self, step, next_time, cb_func, **kwargs):
         # step value
@@ -795,7 +794,7 @@ class _timer_obj(object):
             self.cb_func()
         else:
             self.cb_func(self.data)
-    
+
 class timer_base(object):
     def __init__(self, **kwargs):
         # timer structure
@@ -888,7 +887,7 @@ class process_obj(multiprocessing.Process, timer_base):
         self.__process_pool = p_pool
     def getName(self):
         return self.name
-    #def has_key(self, key):
+    # def has_key(self, key):
     #    return key in self.__flags
     def __setitem__(self, fn, state):
         self.__flags[fn] = state
@@ -923,9 +922,9 @@ class process_obj(multiprocessing.Process, timer_base):
         else:
             new_q = self.zmq_context.socket(zmq.PULL)
             process_tools.bind_zmq_socket(new_q, process_tools.get_zmq_ipc_name(self.name))
-            #new_q.setsockopt(zmq.SNDBUF, 65536)
-            #new_q.setsockopt(zmq.RCVBUF, 65536)
-            #new_q.setsockopt(zmq.HWM, 10)
+            # new_q.setsockopt(zmq.SNDBUF, 65536)
+            # new_q.setsockopt(zmq.RCVBUF, 65536)
+            # new_q.setsockopt(zmq.HWM, 10)
         self.__process_queue = new_q
         pp_queue = self.zmq_context.socket(zmq.PUSH)
         pp_queue.connect(self.__process_pool.queue_name)
@@ -992,7 +991,7 @@ class process_obj(multiprocessing.Process, timer_base):
             reactor.stop()
     def process_exit(self):
         self.send_pool_message("process_exit")
-    #def optimize_message_list(self, in_list):
+    # def optimize_message_list(self, in_list):
     #    return in_list
     def process_init(self):
         self.log("process_init (%s, pid=%d)" % (self.name, self.pid))
@@ -1108,7 +1107,7 @@ class debug_zmq_sock(object):
         if self.ctx._sockets_open:
             self.ctx.log("    still open: %s" % (", ".join(["%d" % (cur_fd) for cur_fd in self.ctx._sockets_open])))
         return self._sock.close()
-        
+
 class debug_zmq_ctx(zmq.Context):
     ctx_idx = 0
     def __init__(self, *args, **kwargs):
@@ -1137,8 +1136,6 @@ class debug_zmq_ctx(zmq.Context):
     def term(self):
         self.log("term, %s open" % (logging_tools.get_plural("socket", len(self._sockets_open))))
         super(debug_zmq_ctx, self).term()
-
-import commands 
 
 class process_pool(timer_base):
     def __init__(self, name, **kwargs):
@@ -1212,9 +1209,9 @@ class process_pool(timer_base):
         else:
             zmq_socket = self.zmq_context.socket(zmq.PULL)
             process_tools.bind_zmq_socket(zmq_socket, q_name)
-            #zmq_socket.setsockopt(zmq.SNDBUF, 65536)
-            #zmq_socket.setsockopt(zmq.RCVBUF, 65536)
-            #zmq_socket.setsockopt(zmq.HWM, 10)
+            # zmq_socket.setsockopt(zmq.SNDBUF, 65536)
+            # zmq_socket.setsockopt(zmq.RCVBUF, 65536)
+            # zmq_socket.setsockopt(zmq.HWM, 10)
             self.poller_handler = {}
             self.fd_lookup = {}
             self.register_poller(zmq_socket, zmq.POLLIN, self._tp_message_received)
@@ -1267,7 +1264,7 @@ class process_pool(timer_base):
         else:
             self.log("setting stack_size to %s" % (logging_tools.get_size_str(s_size, long_version=True)))
     def _close_pp_sockets(self):
-        for sock_name, zmq_sock in self.__sockets.iteritems():
+        for _sock_name, zmq_sock in self.__sockets.iteritems():
             zmq_sock.close()
         self.zmq_context.term()
     def add_process(self, t_obj, **kwargs):
@@ -1279,13 +1276,13 @@ class process_pool(timer_base):
         else:
             t_obj.set_process_pool(self)
             self.__processes[t_obj.getName()] = t_obj
-            #process_queue.setsockopt(zmq.SNDBUF, 65536)
-            #process_queue.setsockopt(zmq.RCVBUF, 65536)
-            #process_queue.setsockopt(zmq.HWM, 10)
+            # process_queue.setsockopt(zmq.SNDBUF, 65536)
+            # process_queue.setsockopt(zmq.RCVBUF, 65536)
+            # process_queue.setsockopt(zmq.HWM, 10)
             t_obj.twisted = kwargs.get("twisted", False)
-##            if t_obj.twisted:
-##                process_queue = tz_push_connection(my_factory, ZmqEndpoint("bind", process_tools.get_zmq_ipc_name(t_obj.getName())))
-##            else:
+# #            if t_obj.twisted:
+# #                process_queue = tz_push_connection(my_factory, ZmqEndpoint("bind", process_tools.get_zmq_ipc_name(t_obj.getName())))
+# #            else:
             process_queue = self.zmq_context.socket(zmq.PUSH)
             process_queue.connect(process_tools.get_zmq_ipc_name(t_obj.getName()))
             self.__sockets[t_obj.getName()] = process_queue
@@ -1413,7 +1410,7 @@ class process_pool(timer_base):
     def _sig_handler(self, signum, frame):
         sig_str = "got signal %d" % (signum)
         self.log(sig_str)
-        #return self._handle_exception()
+        # return self._handle_exception()
         if signum == signal.SIGTERM:
             raise term_error, sig_str
         elif signum == signal.SIGINT:
@@ -1454,12 +1451,12 @@ class process_pool(timer_base):
     def _show_recv_messages(self, mes_list):
         for mes in mes_list:
             if type(mes) == type(()):
-                mes, in_stuff = mes
+                mes, _in_stuff = mes
                 self.log("SRM: received message %s (with options)" % (mes))
             else:
                 self.log("SRM: received message %s" % (mes))
     def _tp_message_received(self, zmq_socket):
-        mes_parts = zmq_socket.recv_pyobj() 
+        mes_parts = zmq_socket.recv_pyobj()
         src_process = mes_parts["name"]
         src_pid = mes_parts["pid"]
         msg_type = mes_parts["type"]
@@ -1640,7 +1637,7 @@ class twisted_main_thread(object):
     def install_signal_handlers(self):
         if not self["signal_handlers_installed"]:
             self["signal_handlers_installed"] = True
-            
+
             self.log("installing signal handlers")
             self.__orig_sig_handlers = {}
             for sig_num in [signal.SIGTERM,
@@ -1655,7 +1652,7 @@ class twisted_main_thread(object):
             self.log("uninstalling signal handlers")
             for sig_num, orig_h in self.__orig_sig_handlers.iteritems():
                 signal.signal(sig_num, orig_h)
-    
+
 if __name__ == "__main__":
     print "Loadable module, exiting..."
     sys.exit(-1)

@@ -3,7 +3,7 @@
 # Copyright (C) 2008,2009,2012,2013 Andreas Lang-Nevyjel, init.at
 #
 # Send feedback to: <lang-nevyjel@init.at>
-# 
+#
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License Version 2 as
 # published by the Free Software Foundation.
@@ -22,7 +22,6 @@
 import commands
 import logging_tools
 import os
-import pprint
 import process_tools
 import re
 import sys
@@ -70,7 +69,7 @@ class lvm_object(dict):
                           "--- name %s, type %s --- " % (self["name"], self.lv_type)] +
                          ["%-20s: (%s) %s" % (key, str(type(value)), str(value)) for key, value in self.iteritems()] +
                          ["}"])
-    
+
 class multipath_struct(object):
     def __init__(self, source, **kwargs):
         self.multi_present = False
@@ -119,7 +118,7 @@ class multipath_struct(object):
                             break
                 if all_parsed:
                     # for integer cleanup
-                    _int_set = ["hwhandler", "major" ,"minor", "prio"]
+                    _int_set = ["hwhandler", "major" , "minor", "prio"]
                     # build dict
                     for re_name, g_dict in result_list:
                         for key, value in g_dict.iteritems():
@@ -141,7 +140,7 @@ class multipath_struct(object):
                         else:
                             cur_entry.update(g_dict)
         self.dev_dict = dev_dict
-                        
+
 class lvm_struct(object):
     def __init__(self, source, **kwargs):
         # represents the LVM-information of a machine, source can be
@@ -187,13 +186,13 @@ class lvm_struct(object):
                     m_dict["lvtodm"][entry] = target
                     m_dict["lvtodm"][os.path.join("/dev", *entry.split("-"))] = target
                     m_dict["dmtolv"][target] = f_path
-                    #m_dict[os.path.basename(target)] = entry
-                    #m_dict[target] = entry
+                    # m_dict[os.path.basename(target)] = entry
+                    # m_dict[target] = entry
         return m_dict
     def update(self):
         # read all dm-links
         self.dm_dict = self._read_dm_links()
-        #pprint.pprint(self.dm_dict)
+        # pprint.pprint(self.dm_dict)
         self.lv_dict = {}
         if self.__source == "bin" and self.__lvm_bin_dict:
             self.lvm_present = True
@@ -242,7 +241,7 @@ class lvm_struct(object):
         for m_key, val_list in self.lv_dict.iteritems():
             sub_struct = builder("lvm_%s" % (m_key), lvm_type=m_key, entities="%d" % (len(val_list)))
             lvm_el.append(sub_struct)
-            for el_key, element in val_list.iteritems():
+            for _el_key, element in val_list.iteritems():
                 sub_struct.append(element.build_xml(builder))
         return lvm_el
     def _parse_xml(self, top_el):
@@ -269,8 +268,8 @@ class lvm_struct(object):
         vg_info = {}
         for vg_name in vg_names:
             vg_stuff = self.lv_dict.get("vg", {})[vg_name]
-            vg_extent_size = vg_stuff["extent_size"]
-            vg_extent_count = vg_stuff["extent_count"]
+            _vg_extent_size = vg_stuff["extent_size"]
+            _vg_extent_count = vg_stuff["extent_count"]
             vg_info[vg_name] = (self._get_size_str(vg_stuff["size"]),
                                 self._get_size_str(vg_stuff["free"]))
         lv_names = sorted(self.lv_dict.get("lv", {}).keys())
@@ -283,7 +282,7 @@ class lvm_struct(object):
                 lv_name,
                 lv_stuff["attr"][5] == "o" and "[open]" or "",
                 self._get_size_str(lv_size)))
-            #print "*", lv_name, vg_stuff["name"], vg_extent_size, vg_extent_count, vg_size, lv_extents
+            # print "*", lv_name, vg_stuff["name"], vg_extent_size, vg_extent_count, vg_size, lv_extents
         if short:
             ret_info = []
             for vg_name in vg_names:
@@ -339,9 +338,9 @@ class disk_lut(object):
                             cur_lut[entry] = target
                             self.__fw_lut[cur_path] = target
                             self.__rev_lut.setdefault(target, []).append(cur_path)
-        #pprint.pprint(self.__lut)
-        #pprint.pprint(self.__fw_lut)
-        #pprint.pprint(self.__rev_lut)
+        # pprint.pprint(self.__lut)
+        # pprint.pprint(self.__fw_lut)
+        # pprint.pprint(self.__rev_lut)
     def get_top_keys(self):
         return self.__lut.keys()
     def __getitem__(self, key):
@@ -361,6 +360,6 @@ def test_it():
     print my_lut[("id", "/dev/sda8")]
 
 if __name__ == "__main__":
-    #test_it()
+    # test_it()
     print "loadable module, exiting ..."
     sys.exit(-1)

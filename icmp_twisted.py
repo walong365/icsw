@@ -24,7 +24,7 @@
 """ A raw ICMP library for twisted, based on seafelt lib/icmp.py """
 
 import array
-import errno
+# import errno
 import logging_tools
 import os
 import socket
@@ -126,15 +126,15 @@ class ip_packet(object):
 
 def _parse_ip_packet(data):
     """ parse received data as IP packet """
-    (ihlversion, tos, tot_len,
+    (ihlversion, tos, _tot_len,
      ident, flags_fragment, ttl,
-     protocol, checksum,
+     protocol, _checksum,
      src_addr, dst_addr) = struct.unpack("!BBHHHBBH4s4s", data[:20])
     src_addr = socket.inet_ntoa(src_addr)
     dst_addr = socket.inet_ntoa(dst_addr)
     version = ihlversion & 0xF0
     ihl = ihlversion & 0x0F
-    fragment_offset = flags_fragment & 0x1FFF
+    _fragment_offset = flags_fragment & 0x1FFF
     dont_fragment = (flags_fragment & 0x4000 != 0)
     more_fragments = (flags_fragment & 0x2000 != 0)
     # If there are options, parse them
@@ -279,7 +279,7 @@ class icmp_port(udp.Port):
         try:
             data, addr = self.socket.recvfrom(self.max_packet_size)
         except socket.error, se:
-            no = se.args[0]
+            _no = se.args[0]
         self.protocol.datagram_received(data, addr)
     def write(self, datagram, addr):
         try:

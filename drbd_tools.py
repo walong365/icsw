@@ -1,11 +1,11 @@
- #!/usr/bin/python-init -Ot
+#!/usr/bin/python-init -Ot
 #
 # Copyright (C) 2008,2009,2010,2012 Andreas Lang-Nevyjel, init.at
 #
 # this file is part of python-modules-base
 #
 # Send feedback to: <lang-nevyjel@init.at>
-# 
+#
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License Version 2 as
 # published by the Free Software Foundation.
@@ -21,14 +21,8 @@
 #
 """ module to parse the drbd status """
 
-import array
-import commands
-import configfile
 import os
-import pprint
-import re
 import server_command
-import socket
 import stat
 import sys
 
@@ -158,7 +152,7 @@ class drbd_config(object):
                                 act_device["%s%s" % (pre_key, sub_key)] = tuple([int(sub_value) for sub_value in value.split("/")])
                             else:
                                 act_device["%s%s" % (pre_key, sub_key)] = int(value) if value.isdigit() else value
-                    #pprint.pprint(act_device)
+                    # pprint.pprint(act_device)
         else:
             self.__config_dict["status_present"] = True
     def _split_enhanced(self, in_str, split_char, escape_chars=['"']):
@@ -184,7 +178,7 @@ class drbd_config(object):
 def _test_code():
     dc = drbd_config()
     print len(dc.get_net_data())
-    #if dc:
+    # if dc:
     #    pprint.pprint(dc["devices"])
     #    pprint.pprint(dc["resources"])
 

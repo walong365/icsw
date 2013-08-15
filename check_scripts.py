@@ -5,7 +5,7 @@
 # this file is part of python-modules-base
 #
 # Send feedback to: <lang-nevyjel@init.at>
-# 
+#
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License Version 2 as
 # published by the Free Software Foundation.
@@ -38,7 +38,7 @@ try:
     import config_tools
 except:
     config_tools = None
-    
+
 def check_threads(name, pids, any_ok):
     ret_state = 7
     unique_pids = dict([(key, pids.count(key)) for key in set(pids)])
@@ -52,7 +52,7 @@ def check_threads(name, pids, any_ok):
             else:
                 pids_found[pid] += 1
     num_started = sum(unique_pids.values()) if unique_pids else 0
-    num_found   = sum(pids_found.values()) if pids_found else 0
+    num_found = sum(pids_found.values()) if pids_found else 0
     # check for extra Nagios2.x thread
     if any_ok and num_found:
         ret_state = 0
@@ -62,7 +62,7 @@ def check_threads(name, pids, any_ok):
 
 def check_system(opt_ns):
     if not opt_ns.server and not opt_ns.node:
-        set_default_nodes, set_default_servers = (True , True )
+        set_default_nodes, set_default_servers = (True , True)
     else:
         set_default_nodes, set_default_servers = (False, False)
     if opt_ns.server == ["ALL"]:
@@ -87,7 +87,7 @@ def check_system(opt_ns):
             "sge-server",
             "cluster-server",
             "cluster-config-server",
-            #"xen-server",
+            # "xen-server",
             "host-relay",
             "snmp-relay",
             "md-config-server"]
@@ -96,7 +96,7 @@ def check_system(opt_ns):
         elif os.path.isfile("/etc/init.d/nagios"):
             opt_ns.server.append("monitoring:threads_by_pid_file:/opt/nagios/var/nagios.lock:1")
         opt_ns.server.extend(extra_server_tools.extra_server_file().get_server_list())
-        
+
     check_dict, check_list = ({}, [])
     for c_type in ["node", "server"]:
         c_list = getattr(opt_ns, c_type)
@@ -131,7 +131,7 @@ def check_system(opt_ns):
             "meta-server"          : "meta-server.pid",
             "rrd-grapher"          : "rrd-grapher/rrd-grapher.pid",
             "host-relay"           : "collrelay/collrelay.pid",
-            #"xen-server"           : "xen-server.pid",
+            # "xen-server"           : "xen-server.pid",
             "cluster-server"       : "cluster-server.pid",
             "ansys"                : "ansys-server/ansys-server.pid",
             "cransys"              : "cransys-server/cransys-server.pid"}
@@ -163,7 +163,7 @@ def check_system(opt_ns):
                     stat_dict[check] = "Error getting config: %s" % (out)
                 else:
                     stat_dict[check] = [line.strip().split(None, 1) for line in out.split("\n")][-1][1].lower()
-                    stat_dict[check] = [int(k2) for k2, val in [part.split(":") for part in stat_dict[check].split()] if val == "on"]
+                    stat_dict[check] = [int(k2) for k2, _val in [part.split(":") for part in stat_dict[check].split()] if _val == "on"]
         ret_dict["check_list"] = []
         for name in check_list:
             ret_dict["check_list"].append(name)
@@ -226,7 +226,7 @@ def check_system(opt_ns):
             act_info_dict["state"] = act_state
             ret_dict[name] = act_info_dict
     return ret_dict
-    
+
 def get_default_ns():
     def_ns = argparse.Namespace(all=True, server=[], node=[], runlevel=True, memory=True, database=True, pid=True, time=True, thread=True)
     return def_ns
@@ -252,11 +252,11 @@ def main():
                     1 : "\033[1;33m",
                     2 : "\033[1;31m",
                     3 : "\033[m\017"}
-    rc_dict = {0 : (0, "running"    ),
-               1 : (2, "error"      ),
-               5 : (1, "skipped"    ),
+    rc_dict = {0 : (0, "running"),
+               1 : (2, "error"),
+               5 : (1, "skipped"),
                6 : (1, "not install"),
-               7 : (2, "dead"       )}
+               7 : (2, "dead")}
     rc_strs = dict([(key, "%s%s%s" % (col_str_dict[wc], value, col_str_dict[3]))
                     for key, (wc, value) in rc_dict.iteritems()])
     out_bl = logging_tools.form_list()
@@ -296,11 +296,11 @@ def main():
                 else:
                     ret_str = "the thread is running" if num_started == 1 else "all %d threads running" % (num_started)
                 if opt_ns.thread or opt_ns.all:
-                    diff_time  = max(0, time.mktime(time.localtime()) - pid_time)
-                    diff_days  = int(diff_time / (3600 * 24))
+                    diff_time = max(0, time.mktime(time.localtime()) - pid_time)
+                    diff_days = int(diff_time / (3600 * 24))
                     diff_hours = int((diff_time - 3600 * 24 * diff_days) / 3600)
-                    diff_mins  = int((diff_time - 3600 * (24 * diff_days + diff_hours)) / 60 )
-                    diff_secs  = int(diff_time - 60 * (60 * (24 * diff_days + diff_hours) + diff_mins))
+                    diff_mins = int((diff_time - 3600 * (24 * diff_days + diff_hours)) / 60)
+                    diff_secs = int(diff_time - 60 * (60 * (24 * diff_days + diff_hours) + diff_mins))
                     ret_str += ", pidfile unchanged since %s%02d:%02d:%02d (%s)" % (diff_days and "%s, " % (logging_tools.get_plural("day", diff_days)) or "",
                                                                                     diff_hours, diff_mins, diff_secs,
                                                                                     time.strftime("%a, %d. %b %Y, %H:%M:%S", time.localtime(pid_time)))
@@ -321,7 +321,7 @@ def main():
             if type(act_struct["sql"]) == type(""):
                 out_list.append(act_struct["sql"])
             else:
-                out_list.append("%s (%s)" %  (
+                out_list.append("%s (%s)" % (
                     act_struct["sql"].server_info_str,
                     act_struct["sql"].config_name))
         if opt_ns.runlevel or opt_ns.all:
@@ -340,7 +340,7 @@ def main():
         out_list.append(rc_strs[act_struct["state"]])
         out_bl.add_line(out_list)
     print out_bl
-        
+
 if __name__ == "__main__":
     main()
 

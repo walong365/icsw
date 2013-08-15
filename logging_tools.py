@@ -50,15 +50,15 @@ try:
 except ImportError:
     zmq = None
 
-LOG_LEVEL_OK       = 20
-LOG_LEVEL_WARN     = 30
-LOG_LEVEL_ERROR    = 40
+LOG_LEVEL_OK = 20
+LOG_LEVEL_WARN = 30
+LOG_LEVEL_ERROR = 40
 LOG_LEVEL_CRITICAL = 50
 
 # add the levels to the logging dict
-logging.addLevelName(LOG_LEVEL_OK      , "ok"  )
+logging.addLevelName(LOG_LEVEL_OK      , "ok")
 logging.addLevelName(LOG_LEVEL_WARN    , "warn")
-logging.addLevelName(LOG_LEVEL_ERROR   , "err" )
+logging.addLevelName(LOG_LEVEL_ERROR   , "err")
 logging.addLevelName(LOG_LEVEL_CRITICAL, "crit")
 
 # default unified name
@@ -130,9 +130,9 @@ def get_plural(in_str, num, show_int=1, fstr_len=0, **kwargs):
 
 def get_size_str(in_s, long_version=False, divider=1024, strip_spaces=False):
     if type(in_s) in [str, unicode]:
-        len_in_s = len(in_s)
+        _len_in_s = len(in_s)
     else:
-        len_in_s = in_s
+        _len_in_s = in_s
     b_str = long_version and "Byte" or "B"
     pf_f, pf_str = (["k", "M", "G", "T", "P", "E"], "")
     while in_s > divider:
@@ -249,7 +249,7 @@ def get_logger(name, destination, **kwargs):
     if kwargs.get("init_logger", False) and is_linux:
         # force init.at logger
         if not name.startswith("init.at."):
-            name ="init.at.%s" % (name)
+            name = "init.at.%s" % (name)
     # get unique logger for 0MQ send
     act_logger = logging.getLogger("%s.%d" % (name, cur_pid))
     act_logger.name = name
@@ -263,7 +263,7 @@ def get_logger(name, destination, **kwargs):
     # hack to make destination unique with respect to pid
     destination = [(cur_pid, cur_dest) for cur_dest in destination]
     for act_dest in destination:
-        #print name, act_dest
+        # print name, act_dest
         if (cur_pid, act_dest) not in act_logger.handler_strings:
             act_dest = act_dest[1]
             act_logger.handler_strings.append((cur_pid, act_dest))
@@ -372,13 +372,13 @@ class zmq_handler(logging.Handler):
         ei = record.exc_info
         if ei:
             dummy = self.format(record) # just to get traceback text into record.exc_text
-            record.exc_info = None  # to avoid Unpickleable error
+            record.exc_info = None # to avoid Unpickleable error
         _d = dict(record.__dict__)
-        _d["msg"]  = record.getMessage()
+        _d["msg"] = record.getMessage()
         _d["args"] = None
         p_str = cPickle.dumps(_d, 1)
         if ei:
-            record.exc_info = ei  # for next handler
+            record.exc_info = ei # for next handler
         return p_str
     def emit(self, record):
         self.__target.send(self.makePickle(record))
@@ -425,7 +425,7 @@ class initat_formatter(object):
                     ])
                     for s_num, s_key in enumerate(sorted(v_dict.keys())):
                         var_list.append("  %3d %s: %s" % (s_num + 1, s_key, v_dict[s_key]))
-            #print frame_info, var_list
+            # print frame_info, var_list
             record.exc_text = "\n".join(frame_info + var_list + info_lines)
         if hasattr(record, "request"):
             delattr(record, "request")
@@ -511,10 +511,10 @@ class udp_handler(logging.handlers.DatagramHandler):
         ei = record.exc_info
         if ei:
             dummy = self.format(record) # just to get traceback text into record.exc_text
-            record.exc_info = None  # to avoid Unpickleable error
+            record.exc_info = None # to avoid Unpickleable error
         out_str = cPickle.dumps(record.__dict__, 1)
         if ei:
-            record.exc_info = ei  # for next handler
+            record.exc_info = ei # for next handler
         return "%08d" % (len(out_str)) + out_str
 
 class local_uds_handler(logging.Handler):
@@ -552,10 +552,10 @@ class local_uds_handler(logging.Handler):
         ei = record.exc_info
         if ei:
             dummy = self.format(record) # just to get traceback text into record.exc_text
-            record.exc_info = None  # to avoid Unpickleable error
+            record.exc_info = None # to avoid Unpickleable error
         p_str = cPickle.dumps(record.__dict__, 1)
         if ei:
-            record.exc_info = ei  # for next handler
+            record.exc_info = ei # for next handler
         return "%08d%s" % (len(p_str), p_str)
     def handleError(self, record):
         my_syslog("%s:%s" % (record.threadName, record.msg), record.levelno)
@@ -571,7 +571,7 @@ class local_uds_handler(logging.Handler):
             to_send = 8000
             while msg:
                 try:
-                    just_sent = self.socket.send(msg[:to_send])
+                    _just_sent = self.socket.send(msg[:to_send])
                 except socket.error:
                     self._connect_unixsocket()
                 except (KeyboardInterrupt, SystemExit):
@@ -712,15 +712,15 @@ class form_list(object):
                 raise ValueError, "empty list (no lines)"
             # count number of rows
             num_rows = max([len(x) for x in self.lines])
-            min_rows = min([len(x) for x in self.lines])
-            #if num_rows != min_rows:
+            _min_rows = min([len(x) for x in self.lines])
+            # if num_rows != min_rows:
             #    print "Number of rows differ"
             row_lens = [0] * num_rows
             for l_p in self.lines:
                 l_p_l = len(l_p)
                 if l_p_l < num_rows:
                     if l_p_l > 1:
-                        row_lens = [max(x, y) for x, y in zip(row_lens[:l_p_l - 1], [len(str(y)) for y in list(l_p[:-1])])] + row_lens[l_p_l-1:]
+                        row_lens = [max(x, y) for x, y in zip(row_lens[:l_p_l - 1], [len(str(y)) for y in list(l_p[:-1])])] + row_lens[l_p_l - 1:]
                 else:
                     row_lens = [max(x, y) for x, y in zip(row_lens, [len(str(y)) for y in list(l_p)])]
             # body format parts, header format parts
@@ -806,8 +806,9 @@ class new_form_list(object):
                 return ""
         # count number of rows
         row_count = [len(line) for line in self.__content]
-        min_rows, max_rows = (min(row_count),
-                              max(row_count))
+        _min_rows, max_rows = (
+            min(row_count),
+            max(row_count))
         row_lens = [0] * max_rows
         for line in self.__content:
             line_rows = len(line)
@@ -947,9 +948,9 @@ def my_syslog(out_str, log_lev=LOG_LEVEL_OK, out=False):
     if log_lev >= LOG_LEVEL_WARN:
         log_type = syslog.LOG_WARNING | syslog.LOG_USER
     elif log_lev >= LOG_LEVEL_ERROR:
-        log_type = syslog.LOG_ERR     | syslog.LOG_USER
+        log_type = syslog.LOG_ERR | syslog.LOG_USER
     else:
-        log_type = syslog.LOG_INFO    | syslog.LOG_USER
+        log_type = syslog.LOG_INFO | syslog.LOG_USER
     try:
         if type(out_str) == unicode:
             syslog.syslog(log_type, out_str.encode("utf-8"))
@@ -1121,7 +1122,7 @@ class syslog_helper_obj(object):
                 else:
                     key_str = com
                 s_list.append((key_str, in_str.strip()))
-                #print "got struct %s(%s)" % (str(key_str), in_str)
+                # print "got struct %s(%s)" % (str(key_str), in_str)
                 need_semi = False
                 pre_str = ""
                 in_str = ""
@@ -1260,7 +1261,7 @@ class syslog_ng_config(syslog_helper_obj):
         pprint.pprint(self.__options)
     def get_multi_object(self, name):
         return self.__multi_objects[name]
-        #pprint.pprint(s_dict)
+        # pprint.pprint(s_dict)
 
 def main():
     a = new_form_list()
@@ -1268,9 +1269,9 @@ def main():
               form_entry(u"öäöü", header="test"),
               form_entry_right(89, header="num")])
     print unicode(a)
-    #a = syslog_ng_config()
-    #print a.get_dict_sort(a.get_multi_object("source"))
-    #print "\n".join(a.get_config_lines())
+    # a = syslog_ng_config()
+    # print a.get_dict_sort(a.get_multi_object("source"))
+    # print "\n".join(a.get_config_lines())
     sys.exit(0)
 
 if __name__ == "__main__":

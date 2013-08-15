@@ -19,7 +19,6 @@
 #
 
 import sys
-import logging_tools
 import process_tools
 import getopt
 import config_tools
@@ -35,8 +34,9 @@ def main():
     try:
         opts, args = getopt.getopt(sys.argv[1:], "hinv", ["help"])
     except getopt.GetoptError, bla:
-        print "Error parsing commandline %s: %s" % (" ".join(sys.argv[1:]),
-                                                    process_tools.get_except_info())
+        print "Error parsing commandline %s: %s" % (
+            " ".join(sys.argv[1:]),
+            process_tools.get_except_info())
         sys.exit(1)
     if len(args) != 1:
         print "Need server_type_name"

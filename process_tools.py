@@ -1,7 +1,7 @@
 #!/usr/bin/python-init -Ot
 # -*- coding: utf-8 -*-
 #
-# Copyright (c) 2001,2002,2003,2004,2005,2006,2007,2009,2010,2012 Andreas Lang-Nevyjel, init.at
+# Copyright (c) 2001,2002,2003,2004,2005,2006,2007,2009,2010,2012,2013 Andreas Lang-Nevyjel, init.at
 #
 # this file is part of python-modules-base
 #
@@ -30,7 +30,6 @@ import logging_tools
 import marshal
 import os
 import platform
-import pprint
 import random
 import re
 import signal
@@ -47,8 +46,8 @@ if sys.platform in ["linux2", "linux3"]:
     import pwd
     # helper function for proepilogue
     from io_stream_helper import io_stream
-    from lxml import etree
-    from lxml.builder import E
+    from lxml import etree # @UnresolvedImports
+    from lxml.builder import E # @UnresolvedImports
 
 try:
     ENCODING = locale.getpreferredencoding()
@@ -56,7 +55,7 @@ except locale.Error:
     ENCODING = "C"
 
 try:
-    import affinity_tools
+    import affinity_tools # @UnresolvedImports
 except:
     affinity_tools = None
 
@@ -98,7 +97,7 @@ def get_except_info(exc_info=None, **kwargs):
             ]
         except:
             frame_info = []
-    #print frame.f_lineno, frame.f_code.co_name
+    # print frame.f_lineno, frame.f_code.co_name
     return u"%s (%s, %s)" % (
         unicode(exc_info[0]),
         unicode(exc_info[1]),
@@ -127,7 +126,7 @@ def zmq_identity_str(id_string):
                          os.getpid())
 
 def remove_zmq_dirs(dir_name):
-    for cur_dir, dir_names, file_names in os.walk(dir_name, topdown=False):
+    for cur_dir, dir_names, _file_names in os.walk(dir_name, topdown=False):
         for c_dir in dir_names:
             try:
                 os.rmdir(os.path.join(cur_dir, c_dir))
@@ -158,7 +157,7 @@ def get_zmq_ipc_name(name, **kwargs):
             s_name = s_name[:-4]
     # flag: connect to root instance
     ctri = kwargs.get("connect_to_root_instance", False)
-    #print __name__, globals()
+    # print __name__, globals()
     if os.getuid() and not ctri:
         # non-root call
         root_dir = LOCAL_ZMQ_DIR
@@ -250,7 +249,7 @@ def get_mem_info(pid=0, **kwargs):
             except IOError:
                 pass
             if have_pss:
-                #print shared, pss - private
+                # print shared, pss - private
                 shared = pss - private
             tot_size = int((shared + private) * 1024)
         elif os.path.isfile(map_file_name):
@@ -262,16 +261,17 @@ def get_mem_info(pid=0, **kwargs):
                 pass
             else:
                 for map_p in map_lines:
-                    #print "map_p", map_p
+                    # print "map_p", map_p
                     try:
                         mem_start, mem_end = map_p[0].split("-")
                         mem_start, mem_end = (int(mem_start, 16),
                                               int(mem_end  , 16))
                         mem_size = mem_end - mem_start
-                        perm, offset, dev, inode = (map_p[1],
-                                                    int(map_p[2], 16),
-                                                    map_p[3],
-                                                    int(map_p[4]))
+                        _perm, _offset, _dev, inode = (
+                            map_p[1],
+                            int(map_p[2], 16),
+                            map_p[3],
+                            int(map_p[4]))
                         if not inode:
                             tot_size += mem_size
                     except:
@@ -330,7 +330,7 @@ def beautify_mem_info(mi=None, short=0):
 
 
 class error(Exception):
-    def __init__(self, value = None):
+    def __init__(self, value=None):
         Exception.__init__(self)
         self.value = value
     def __str__(self):
@@ -343,18 +343,18 @@ class int_error(error):
 class meta_server_info(object):
     def __init__(self, name):
         self.__prop_list = [
-            ("start_command"    , "s", None ),
-            ("stop_command"     , "s", None ),
+            ("start_command"    , "s", None),
+            ("stop_command"     , "s", None),
             ("kill_pids"        , "b", False),
-            ("check_memory"     , "b", True ),
-            ("exe_name"         , "s", None ),
-            ("need_any_pids"    , "b", 0    ),
+            ("check_memory"     , "b", True),
+            ("exe_name"         , "s", None),
+            ("need_any_pids"    , "b", 0),
             # how many pids can be too much
-            ("fuzzy_ceiling"    , "i", 0    ),
+            ("fuzzy_ceiling"    , "i", 0),
             # how many pids can be too less
-            ("fuzzy_floor"      , "i", 0    ),
+            ("fuzzy_floor"      , "i", 0),
             # heartbeat timeout, 0 means disabled
-            ("heartbeat_timeout", "i", 0    )]
+            ("heartbeat_timeout", "i", 0)]
         if name.startswith("/"):
             self.__file_name = name
             # try to read complete info from file
@@ -373,7 +373,7 @@ class meta_server_info(object):
                 self.__pids = []
                 for pid_struct in xml_struct.xpath(".//pid_list/pid"):
                     self.__pids.extend([int(pid_struct.text)] * int(pid_struct.get("mult", "1")))
-                #self.__pids = sorted([int(cur_pid) for cur_pid in xml_struct.xpath(".//pid_list/pid/text()")])
+                # self.__pids = sorted([int(cur_pid) for cur_pid in xml_struct.xpath(".//pid_list/pid/text()")])
                 for opt, val_type, def_val in self.__prop_list:
                     cur_prop = xml_struct.xpath(".//properties/prop[@type and @key='%s']" % (opt))
                     if cur_prop:
@@ -501,7 +501,7 @@ class meta_server_info(object):
         if not act_pid:
             act_pid = os.getpid()
         if mult:
-            for idx in xrange(mult):
+            for _idx in xrange(mult):
                 if act_pid in self.__pids:
                     self.__pids.remove(act_pid)
         else:
@@ -531,7 +531,7 @@ class meta_server_info(object):
                 E.pid_list(*[E.pid("%d" % (cur_pid), mult="%d" % (self.__pids.count(cur_pid))) for cur_pid in set(self.__pids)]),
                 E.properties()
                 )
-            for opt, val_type, dev_val in self.__prop_list:
+            for opt, val_type, _dev_val in self.__prop_list:
                 prop_val = getattr(self, opt)
                 if prop_val is not None:
                     xml_struct.find("properties").append(
@@ -545,7 +545,7 @@ class meta_server_info(object):
         else:
             file_content = ["NAME = %s" % (self.__name),
                             "PIDS = %s" % (" ".join(["%d" % (x) for x in self.__pids]))]
-            for opt, val_type, dev_val in self.__prop_list:
+            for opt, val_type, _dev_val in self.__prop_list:
                 prop_val = getattr(self, opt)
                 if prop_val is not None:
                     file_content.append("%s = %s" % (opt.upper(), str(prop_val)))
@@ -587,9 +587,9 @@ class meta_server_info(object):
             # search pids
             pids_found = [key for key, value in act_dict.iteritems() if value["name"] == self.__exe_name]
             self.__pids = sum([[key] * act_pids[key] for key in pids_found], [])
-        self.__pids_found    = dict([(cur_pid, act_pids[cur_pid]) for cur_pid in self.__pids if cur_pid in act_pids.keys()])
+        self.__pids_found = dict([(cur_pid, act_pids[cur_pid]) for cur_pid in self.__pids if cur_pid in act_pids.keys()])
         self.__pids_expected = dict([(cur_pid, len([True for s_pids in self.__pids if cur_pid == s_pids])) for cur_pid in self.__pids])
-        num_found    = sum([value for value in self.__pids_found.values()])
+        num_found = sum([value for value in self.__pids_found.values()])
         num_expected = sum([value for value in self.__pids_expected.values()])
         if num_found < (num_expected + self.fuzzy_floor):
             self.pid_checks_failed += 1
@@ -722,10 +722,10 @@ save_pids = save_pid
 
 RUN_DIR = "/var/run"
 # not needed right now
-##if os.path.isfile("/etc/SuSE-release"):
-##    suse_ver = [line.strip().split()[-1] for line in file("/etc/SuSE-release", "r").read().split("\n") if line.startswith("VERSION")]
-##    if suse_ver == ["12.1"]:
-##        RUN_DIR = "/run"
+# #if os.path.isfile("/etc/SuSE-release"):
+# #    suse_ver = [line.strip().split()[-1] for line in file("/etc/SuSE-release", "r").read().split("\n") if line.startswith("VERSION")]
+# #    if suse_ver == ["12.1"]:
+# #        RUN_DIR = "/run"
 
 def append_pids(name, pid=None, mult=1, mode="a"):
     if pid == None:
@@ -750,7 +750,7 @@ def append_pids(name, pid=None, mult=1, mode="a"):
     long_mode = {"a" : "appending",
                  "w" : "writing"}[mode]
     try:
-        pid_file = file(fname, mode).write("\n".join(mult * ["%d" % (cur_p) for cur_p in actp] + [""]))
+        file(fname, mode).write("\n".join(mult * ["%d" % (cur_p) for cur_p in actp] + [""]))
     except:
         logging_tools.my_syslog("error %s %s (%s) to %s: %s" % (
             long_mode,
@@ -1158,7 +1158,7 @@ def become_daemon(debug=None, wait=0, mother_hook=None, mother_hook_args=None, *
 
 def get_process_id_list(with_threadcount=True, with_dotprocs=False):
     max_try_count = 10
-    for i in range(max_try_count):
+    for _idx in xrange(max_try_count):
         try:
             if with_dotprocs:
                 pid_list, dotpid_list = (
@@ -1179,7 +1179,7 @@ def get_process_id_list(with_threadcount=True, with_dotprocs=False):
         for pid in pid_list:
             stat_f = "/proc/%d/status" % (pid)
             if os.path.isfile(stat_f):
-                for i in range(max_try_count):
+                for _idx in range(max_try_count):
                     try:
                         stat_dict = dict([(z[0].lower(), z[1].strip()) for z in [y.split(":", 1) for y in [x.strip() for x in file(stat_f, "r").read().replace("\t", " ").split("\n") if x.count(":")]]])
                     except:
@@ -1207,7 +1207,7 @@ def get_process_id_list(with_threadcount=True, with_dotprocs=False):
         return pid_list + [".%d" % (x) for x in dotpid_list]
 
 def get_proc_list(last_dict=None, **kwargs):
-    #s_time = time.time()
+    # s_time = time.time()
     s_fields = ["name", "state"]
     i_fields = ["pid", "uid", "gid", "ppid"]
     add_stat = kwargs.get("add_stat_info", False)
@@ -1259,7 +1259,7 @@ def get_proc_list(last_dict=None, **kwargs):
                             pass
                     if add_stat:
                         t_dict["stat_info"] = get_stat_info(pid)
-    #print time.time()-s_time
+    # print time.time()-s_time
     return p_dict
 
 def bpt_show_childs(in_dict, idx, start):
@@ -1280,7 +1280,7 @@ def build_ps_tree(pdict):
         return r_dict
     # find master process (with ppid == 0)
     ps_tree = bpt_get_childs(0)
-    #show_childs(ps_tree, 0,ps_tree.keys()[0])
+    # show_childs(ps_tree, 0,ps_tree.keys()[0])
     return ps_tree
 
 def build_ppid_list(p_dict, pid=None):
@@ -1592,7 +1592,7 @@ def fetch_sysinfo(root_dir="/"):
             # old code, uses installed CPU
             cpu_dict = cpu_database.correct_cpu_dict(cpu_database.get_cpu_basic_info())
             if "vendor_id" in cpu_dict and "cpu family" in cpu_dict and "model" in cpu_dict:
-                arch, long_type = cpu_database.get_cpu_info(cpu_dict["vendor_id"], cpu_dict["cpu family"], cpu_dict["model"])
+                arch, _long_type = cpu_database.get_cpu_info(cpu_dict["vendor_id"], cpu_dict["cpu family"], cpu_dict["model"])
                 sys_dict["arch"] = arch
         else:
             # new code, uses /bin/ls format
@@ -1664,13 +1664,13 @@ def fetch_sysinfo(root_dir="/"):
                     except:
                         pass
                     else:
-                        #sr_vers = None
+                        # sr_vers = None
                         for eml in isl:
                             if re.search("email server", eml):
                                 sr_ems = True
                                 ems_file = "/etc/IMAP-release"
-                                #m = re.match("^version\s*=\s*(.*)$", eml)
-                                #if m:
+                                # m = re.match("^version\s*=\s*(.*)$", eml)
+                                # if m:
                                 #    sr_vers = m.group(1)
                     try:
                         isl = [x.strip().lower() for x in file("/etc/SLOX-release", "r").read().split("\n")]

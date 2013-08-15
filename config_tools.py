@@ -28,10 +28,7 @@ import array
 import configfile
 import logging_tools
 import networkx
-import os
-import pprint
 import process_tools
-import re
 import sys
 import time
 
@@ -215,7 +212,7 @@ class topology_object(object):
 def get_config_var_list(config_obj, config_dev):
     r_dict = {}
     # dict of local vars without specified host
-    l_var_wo_host = {}
+    # l_var_wo_host = {}
     for short in ["str",
                   "int",
                   "blob",
@@ -227,10 +224,10 @@ def get_config_var_list(config_obj, config_dev):
             (Q(config__device_config__device=config_dev))):
             if db_rec.name.count(":"):
                 var_global = False
-                local_host_name, var_name = db_rec.name.split(":", 1)
+                _local_host_name, var_name = db_rec.name.split(":", 1)
             else:
                 var_global = True
-                local_host_name, var_name = (config_dev.name, db_rec.name)
+                _local_host_name, var_name = (config_dev.name, db_rec.name)
             if type(db_rec.value) == type(array.array("b")):
                 new_val = configfile.str_c_var(db_rec.value.tostring(), source="%s_table" % (short))
             elif short == "int":

@@ -36,13 +36,13 @@ def get_pci_dicts(fname=None):
         if os.path.isfile(search_name):
             lines = file(search_name, "r").readlines()
             break
-    classline    = re.compile("^C (..)\s+(.*)$")
+    classline = re.compile("^C (..)\s+(.*)$")
     subclassline = re.compile("^\t(..)\s+(.*)$")
-    vendorline   = re.compile("^(.{4})\s+(.*)$")
-    devline      = re.compile("^\t(.{4})\s+(.*)$")
-    sdevline     = re.compile("^\t\t(.*)$")
+    vendorline = re.compile("^(.{4})\s+(.*)$")
+    devline = re.compile("^\t(.{4})\s+(.*)$")
+    _sdevline = re.compile("^\t\t(.*)$")
     actvendor = None
-    actclass  = None
+    actclass = None
     mode = True
     for pline in lines:
         line = pline.rstrip()
@@ -85,7 +85,7 @@ def get_actual_pci_struct(vdict=None, cdict=None):
             line = tline.strip()
             okmatch = okline.match(line)
             if okmatch:
-                bus  = int(okmatch.group(1), 16)
+                bus = int(okmatch.group(1), 16)
                 bdev = int(okmatch.group(2), 16)
                 bdev0 = bdev >> 3
                 bdev1 = bdev - (bdev0 << 3)
@@ -96,13 +96,13 @@ def get_actual_pci_struct(vdict=None, cdict=None):
                 try:
                     fbytes = file(fname, "r").read(64)
                 except:
-                    pclass   = "0"
+                    pclass = "0"
                     subclass = "0"
                     revision = "0"
                 else:
-                    pclass   = "%02x" % (struct.unpack("B", fbytes[11]))
+                    pclass = "%02x" % (struct.unpack("B", fbytes[11]))
                     subclass = "%02x" % (struct.unpack("B", fbytes[10]))
-                    revision = "%02x" % (struct.unpack("B", fbytes[8] ))
+                    revision = "%02x" % (struct.unpack("B", fbytes[8]))
                 actd = {"domain"       : pcdomain,
                         "vendor"       : vendor,
                         "device"       : device,

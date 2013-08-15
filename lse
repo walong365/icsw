@@ -4,7 +4,7 @@
 # Copyright (C) 2001,2002,2003,2004,2005,2006,2007,2008,2009,2010,2013 Andreas Lang-Nevyjel
 #
 # Send feedback to: <lang-nevyjel@init.at>
-# 
+#
 # This file is part of cluster-backbone
 #
 # This program is free software; you can redistribute it and/or modify
@@ -90,12 +90,12 @@ class error_rec(object):
             self.__source_name,
             logging_tools.get_plural("line", len(self.__lines)))
     def show_lines(self):
-        f_str = "%%3d (%%%ds) : %%s" % (max([len(x) for x, y in self.__lines]))
+        f_str = "%%3d (%%%ds) : %%s" % (max([len(x) for x, _y in self.__lines]))
         return "\n".join([f_str % (l_idx, state, line) for (state, line), l_idx in zip(self.__lines, xrange(len(self.__lines)))])
     def __repr__(self):
         return "error from pid %d (%s)" % (self.__pid,
                                            logging_tools.get_plural("line", len(self.__lines)))
-        
+
 def main():
     my_parser = argparse.ArgumentParser()
     my_parser.add_argument("--stat", default=False, action="store_true", help="show statistis (error per UID, [%(default)s]")
@@ -103,7 +103,7 @@ def main():
     my_parser.add_argument("--noempty", default=False, action="store_true", help="suppress empty error lines [%(default)s]")
     my_parser.add_argument("-s", dest="index", action="append", help="show index at position [%(default)s]", default=[])
     my_parser.add_argument("-l", type=int, dest="num", help="show last [%(default)s] error", default=0)
-    options= my_parser.parse_args()
+    options = my_parser.parse_args()
     options.overview = True if (not options.stat and not options.index and not options.num) else False
     options.index = [int(cur_idx) for cur_idx in options.index]
     err_file_name = "/var/log/cluster/logging-server/err_py"
@@ -135,7 +135,7 @@ def main():
         # date is always the first 4 parts
         line_date = ":".join(line_parts[0:3]).strip()
         info_part = line_parts[3].strip()
-        err_line  = ":".join(line_parts[4:])
+        err_line = ":".join(line_parts[4:])
         # parse info_part
         try:
             if info_part.startswith("("):

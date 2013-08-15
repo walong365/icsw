@@ -28,11 +28,9 @@ import logging_tools
 import marshal
 import os
 import re
-import socket
 import sys
-import time
-from lxml import etree
-from lxml.builder import E, ElementMaker
+from lxml import etree # @UnresolvedImport
+from lxml.builder import ElementMaker # @UnresolvedImport
 try:
     import cPickle as pickle
 except ImportError:
