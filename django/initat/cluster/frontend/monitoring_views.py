@@ -4,20 +4,13 @@
 """ config views """
 
 import base64
-import logging_tools
-import process_tools
-import pprint
 import server_command
-import net_tools
 import logging
-import urllib2
-from lxml import etree, objectify # @UnresolvedImports
 from lxml.builder import E # @UnresolvedImports
 
 from django.contrib.auth.decorators import login_required
 from django.core.exceptions import ValidationError
 from django.db.models import Q
-from django.db.utils import IntegrityError
 from django.http import HttpResponseRedirect
 from django.utils.decorators import method_decorator
 from django.views.generic import View
@@ -25,11 +18,10 @@ from django.views.generic import View
 from initat.cluster.frontend import forms
 from initat.cluster.frontend.helper_functions import contact_server, xml_wrapper
 from initat.core.render import render_me, render_string
-from initat.cluster.backbone.models import config, device_group, device, netdevice, \
-     net_ip, peer_information, config_str, config_int, config_bool, config_blob, \
+from initat.cluster.backbone.models import config, device_group, device, \
      mon_check_command, mon_service_templ, mon_period, mon_contact, user, \
-     mon_contactgroup, get_related_models, network_type, network_device_type, mon_device_templ, \
-     mon_ext_host, mon_host_cluster, mon_service_cluster, mon_device_esc_templ, mon_service_esc_templ, \
+     mon_contactgroup, mon_device_templ, \
+     mon_host_cluster, mon_service_cluster, mon_device_esc_templ, mon_service_esc_templ, \
      partition_table, mon_notification, host_check_command
 
 logger = logging.getLogger("cluster.monitoring")
@@ -48,14 +40,14 @@ class create_command(View):
             config=config.objects.get(Q(pk=conf_pk)),
             mon_service_templ=mon_service_templ.objects.all()[0],
             **copy_dict)
-        #pprint.pprint(copy_dict)
+        # pprint.pprint(copy_dict)
         try:
             new_nc.save()
         except ValidationError, what:
             request.xml_response.error("error creating new monitoring_config: %s" % (unicode(what.messages[0])), logger)
         else:
             request.xml_response["new_monitoring_command"] = new_nc.get_xml()
-    
+
 class delete_command(View):
     @method_decorator(login_required)
     @method_decorator(xml_wrapper)
@@ -150,11 +142,11 @@ class create_config(View):
     @method_decorator(xml_wrapper)
     def post(self, request):
         srv_com = server_command.srv_command(command="rebuild_host_config", cache_mode="ALWAYS")
-        #srv_com["devices"] = srv_com.builder(
+        # srv_com["devices"] = srv_com.builder(
         #    "devices",
         #    *[srv_com.builder("device", pk="%d" % (cur_dev.pk)) for cur_dev in dev_list])
         result = contact_server(request, "tcp://localhost:8010", srv_com)
-        #result = net_tools.zmq_connection("config_webfrontend", timeout=5).add_connection("tcp://localhost:8010", srv_com)
+        # result = net_tools.zmq_connection("config_webfrontend", timeout=5).add_connection("tcp://localhost:8010", srv_com)
         if result:
             request.xml_response["result"] = E.devices()
 
@@ -163,7 +155,7 @@ class rebuild_config(View):
     @method_decorator(xml_wrapper)
     def post(self, request):
         srv_com = server_command.srv_command(command="rebuild_config")
-        result = contact_server(request, "tcp://localhost:8010", srv_com, timeout=30)
+        _result = contact_server(request, "tcp://localhost:8010", srv_com, timeout=30)
 
 class call_icinga(View):
     @method_decorator(login_required)
@@ -187,7 +179,7 @@ class fetch_partition(View):
         srv_com = server_command.srv_command(command="fetch_partition_info")
         srv_com["server_key:device_pk"] = "%d" % (part_dev.pk)
         srv_com["server_key:device_pk"] = "%d" % (part_dev.pk)
-        result = contact_server(request, "tcp://localhost:8004", srv_com, timeout=30)
+        _result = contact_server(request, "tcp://localhost:8004", srv_com, timeout=30)
 
 class moncc_info(View):
     @method_decorator(login_required)
@@ -254,4 +246,4 @@ class get_node_status(View):
                     request.xml_response.error("no node_results", logger=logger)
             else:
                 request.xml_response.error("no node_results", logger=logger)
-        
+

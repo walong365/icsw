@@ -14,7 +14,7 @@ beautify_seconds = (in_sec) ->
         return "#{in_sec} s"
         
 class category_tree
-    constructor: (@tree_div, @top_xml, @xml, @cat_tree, @top_node, @multi_sel=true) ->
+    constructor: (@tree_div, @top_xml, @xml, @cat_tree, @top_node, @multi_sel) ->
         @tree_div.dynatree
             autoFocus : false
             checkbox  : true
@@ -28,8 +28,8 @@ class category_tree
                 if flag
                     # deactivate other locations
                     @tree_div.dynatree("getTree").visit(
-                        (cur_node) ->
-                            if cur_node.isSelected() and cur_node.data.key != dtnode.data.key
+                        (cur_node) =>
+                            if cur_node.isSelected() and cur_node.data.key != dtnode.data.key and not @multi_sel
                                 cur_node.toggleSelect()
                     )
                 $.ajax
@@ -40,7 +40,8 @@ class category_tree
                         "flag"    : if flag then 1 else 0
                     success : (xml) =>
                         if parse_xml_response(xml)
-                            replace_xml_element(@top_xml, $(xml))
+                            if @top_xml
+                              replace_xml_element(@top_xml, $(xml))
                 #dtnode.toggleSelect()
         root_node = @tree_div.dynatree("getRoot")
         @select_cats = @xml.attr("categories").split("::")
@@ -365,8 +366,8 @@ class domain_name_tree
                 if parse_xml_response(xml)
                     @resp_xml = $(xml).find("domain_tree_nodes")
                     @build_div()
-                    console.log @resp_xml[0]
-                    console.log @event
+                    #console.log @resp_xml[0]
+                    #console.log @event
                     @div.modal
                         opacity      : 50 
                         position     : [@event.pageY, @event.pageX]
@@ -641,7 +642,7 @@ class device_info
         general_div = $("<div>").attr("id", "general")
         # working :-)
         general_div.html(@resp_xml.find("forms general_form").text())
-        console.log(@resp_xml.find("forms general_form")[0])
+        #console.log(@resp_xml.find("forms general_form")[0])
         general_div.find("input, select").bind("change", @my_submitter.submit)
         #general_div.find("select.select_chosen").chosen(
         #    width : "50%"
@@ -659,13 +660,13 @@ class device_info
         cat_div = $("<div>").attr("id", "category")
         tree_div = $("<div>").attr("id", "cat_tree")
         cat_div.append(tree_div)
-        new category_tree(tree_div, @configs_xml, dev_xml, @resp_xml, "/device")
+        new category_tree(tree_div, undefined, dev_xml, @resp_xml, "/device", true)
         return cat_div
     location_div: (dev_xml) =>
         loc_div = $("<div>").attr("id", "location")
         tree_div = $("<div>").attr("id", "loc_tree")
         loc_div.append(tree_div)
-        new category_tree(tree_div, @configs_xml, dev_xml, @resp_xml, "/location", false)
+        new category_tree(tree_div, undefined, dev_xml, @resp_xml, "/location", false)
         return loc_div
     network_div: (dev_xml) =>
         # network div

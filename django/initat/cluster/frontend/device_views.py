@@ -3,22 +3,14 @@
 
 """ device views """
 
-import json
-import pprint
 import logging
 import logging_tools
-import process_tools
 import re
-import time
-from lxml import etree # @UnresolvedImports
 from lxml.builder import E # @UnresolvedImports
 import config_tools
 
 from django.contrib.auth.decorators import login_required
-from django.contrib.auth.models import User, UserManager, Permission
-from django.http import HttpResponse
 from django.db.models import Q
-from django.core.urlresolvers import reverse
 from django.core.exceptions import ValidationError
 from django.views.generic import View
 from django.utils.decorators import method_decorator
@@ -26,8 +18,7 @@ from django.utils.decorators import method_decorator
 from initat.cluster.frontend.helper_functions import xml_wrapper
 from initat.core.render import render_me, render_string
 from initat.cluster.backbone.models import device_type, device_group, device, \
-     mon_device_templ, mon_ext_host, cd_connection, package_device_connection, \
-     mon_host_cluster, mon_service_cluster, domain_name_tree, category_tree, category
+     cd_connection, domain_name_tree, category_tree
 from initat.cluster.frontend import forms
 
 logger = logging.getLogger("cluster.device")
@@ -144,7 +135,6 @@ def _get_group_tree(request, sel_list, **kwargs):
     permission_tree = kwargs.get("permission_tree", False)
     # use FQDNs
     full_name = kwargs.get("full_name", False)
-    xml_resp = E.response()
     devg_resp = E.device_groups()
     # sel_pks = [int(value.split("__")[1]) for value in sel_list]
     all_dgs = device_group.objects

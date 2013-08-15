@@ -4,15 +4,6 @@
 from django import template
 from django.utils.safestring import mark_safe
 from django.template.defaultfilters import stringfilter
-import django.core.urlresolvers
-import django.utils.http
-import django.forms.forms
-from django.db.models import Q
-import datetime
-import logging_tools
-from django.conf import settings
-from django.utils.functional import memoize
-import lxml.etree
 
 register = template.Library()
 
@@ -38,12 +29,12 @@ def first_character(cur_str):
 @register.tag("render_rms_tag")
 def render_rms_tag(parser, token):
     try:
-        tag_name, cust_obj = token.split_contents()
+        _tag_name, cust_obj = token.split_contents()
     except:
         raise template.TemplateSyntaxError, "%r tag requires one argument" % (token.contents.split()[0])
     else:
         return rms_render_node(cust_obj)
-    
+
 class rms_render_node(template.Node):
     def __init__(self, cust_obj):
         self.cust_obj = template.Variable(cust_obj)
@@ -65,4 +56,4 @@ class rms_render_node(template.Node):
                     "</div>"]))
         else:
             return cust_obj.text
-        
+

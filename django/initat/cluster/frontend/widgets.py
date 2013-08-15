@@ -1,19 +1,9 @@
+#!/usr/bin/python-init -Otu
 """ widgets for django """
 
-import copy
-from itertools import chain
-import process_tools
-import pprint
-from django.conf import settings
 from django.db.models import Q
 from django.forms import widgets
-from django.forms.models import ModelChoiceIterator
-from django.forms.util import flatatt
-from django.forms.widgets import CheckboxInput
-from django.utils.datastructures import MultiValueDict, MergeDict
-from django.utils.encoding import force_unicode, smart_unicode
-from django.utils.safestring import mark_safe
-from django.utils.translation import ugettext_lazy as _
+from django.utils.encoding import smart_unicode
 from initat.cluster.backbone.models import domain_name_tree, domain_tree_node
 from lxml import etree # @UnresolvedImports
 from lxml.builder import E # @UnresolvedImports

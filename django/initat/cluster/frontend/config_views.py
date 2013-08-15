@@ -6,10 +6,8 @@
 import datetime
 import logging
 import logging_tools
-import pprint
 import process_tools
 import server_command
-import tempfile
 from lxml import etree # @UnresolvedImports
 from lxml.builder import E # @UnresolvedImports
 
@@ -22,11 +20,9 @@ from django.http import HttpResponse, HttpResponseRedirect
 from django.views.generic import View
 from django.utils.decorators import method_decorator
 
-from initat.cluster.backbone.models import config, device_group, device, netdevice, \
-     net_ip, peer_information, config_str, config_int, config_bool, config_blob, \
-     mon_check_command, mon_service_templ, config_script, device_config, \
-     tree_node, wc_files, partition_disc, partition, mon_period, mon_contact, mon_service_templ, \
-     mon_contactgroup, get_related_models, network_device_type, network_type, get_related_models, \
+from initat.cluster.backbone.models import config, device, \
+     config_str, config_int, config_bool, config_blob, \
+     config_script, device_config, tree_node, get_related_models, \
      mon_service_templ, category_tree
 from initat.cluster.frontend.helper_functions import contact_server, xml_wrapper
 from initat.core.render import render_me
@@ -152,7 +148,7 @@ class delete_var(View):
     def post(self, request):
         _post = request.POST
         main_key = [key for key in _post.keys() if key.endswith("__name")][0]
-        mother_name, conf_pk, var_type, var_pk, stuff = main_key.split("__", 4)
+        _mother_name, _conf_pk, var_type, var_pk, _stuff = main_key.split("__", 4)
         del_obj = {"str"  : config_str,
                    "int"  : config_int,
                    "bool" : config_bool,

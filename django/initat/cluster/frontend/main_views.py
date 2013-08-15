@@ -2,7 +2,6 @@
 
 from django.contrib.auth.decorators import login_required
 import logging
-import logging_tools
 """ main views """
 
 from initat.core.render import render_me

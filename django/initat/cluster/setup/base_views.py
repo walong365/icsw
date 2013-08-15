@@ -3,21 +3,17 @@
 
 """ base views """
 
-import pprint
 import re
 import logging_tools
 import process_tools
 import logging
-from lxml.builder import E
-from lxml import etree
+from lxml.builder import E # @UnresolvedImport
 
 from django.db.models import Q
 from django.db.utils import IntegrityError
 from django.contrib.auth.decorators import login_required
-from django.contrib.auth.models import Permission
 from django.core.exceptions import ValidationError
 from django.core.urlresolvers import reverse
-from django.http import HttpResponse, HttpResponseRedirect
 from django.utils.decorators import method_decorator
 from django.views.generic import View
 
@@ -26,7 +22,7 @@ from initat.core.render import render_me, render_string
 from initat.cluster.frontend.forms import category_detail_form, category_new_form, \
      location_detail_form
 from initat.cluster.frontend.helper_functions import xml_wrapper
-from initat.cluster.backbone.models import device_group, device, \
+from initat.cluster.backbone.models import device, \
      get_related_models, KPMC_MAP, device_variable, category, \
      category_tree
 
@@ -521,7 +517,7 @@ class move_category(View):
                 unicode(dst_node),
                 mode), logger)
         # cleanup category tree
-        cur_ct = category_tree()
+        _cur_ct = category_tree()
 
 class change_category(View):
     @method_decorator(login_required)

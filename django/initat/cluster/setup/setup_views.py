@@ -1,19 +1,15 @@
 # setup views
 
 import os
-import pprint
-import logging_tools
 import logging
 import process_tools
 import server_command
-from lxml import etree
-from lxml.builder import E
+# from lxml import etree # @UnresolvedImport
+from lxml.builder import E # @UnresolvedImport
 
-from django.conf import settings
 from django.db.models import Q
 from django.contrib.auth.decorators import login_required
 from django.core.exceptions import ValidationError
-from django.http import HttpResponse
 from django.utils.decorators import method_decorator
 from django.views.generic import View
 
@@ -88,7 +84,7 @@ class create_partition(View):
     @method_decorator(xml_wrapper)
     def post(self, request):
         _post = request.POST
-        cur_part = partition_table.objects.get(Q(pk=_post["pt_pk"]))
+        _cur_part = partition_table.objects.get(Q(pk=_post["pt_pk"]))
         cur_disc = partition_disc.objects.get(Q(pk=_post["pd_pk"]))
         cur_fstype = partition_fs.objects.get(Q(pk=_post["fstype"]))
         new_part = partition(
@@ -203,7 +199,7 @@ class use_image(View):
         img_name = _post["img_name"]
         logger.info("use_image called, image_name %s" % (img_name))
         try:
-            cur_img = image.objects.get(Q(name=img_name))
+            _cur_img = image.objects.get(Q(name=img_name))
         except image.DoesNotExist:
             srv_com = server_command.srv_command(command="get_image_list")
             srv_result = contact_server(request, "tcp://localhost:8004", srv_com, timeout=10, log_result=False)

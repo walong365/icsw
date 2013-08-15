@@ -5,15 +5,11 @@
 
 import datetime
 import logging
-import pprint
 import server_command
-from lxml import etree # @UnresolvedImports
 from lxml.builder import E # @UnresolvedImports
 
-from django.contrib.auth.decorators import login_required
 from django.utils.decorators import method_decorator
 from django.views.generic import View
-from initat.core.render import render_me
 from initat.cluster.frontend.helper_functions import xml_wrapper, contact_server
 
 logger = logging.getLogger("cluster.rrd")
@@ -58,7 +54,6 @@ class graph_rrds(View):
         srv_com["graph_key_list"] = E.graph_key_list(
             *[E.graph_key(graph_key) for graph_key in graph_keys if not graph_key.startswith("_")]
         )
-        dt_1970 = datetime.datetime(1970, 1, 1)
         if "start_time" in _post:
             start_time = datetime.datetime.strptime(_post["start_time"], "%Y-%m-%d %H:%M")
             end_time = datetime.datetime.strptime(_post["end_time"], "%Y-%m-%d %H:%M")

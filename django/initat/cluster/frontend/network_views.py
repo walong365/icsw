@@ -3,18 +3,11 @@
 
 """ network views """
 
-import json
-import pprint
-import time
-import json
 import logging
 import logging_tools
 import process_tools
-import server_command
-import net_tools
 import ipvx_tools
 import config_tools
-from lxml import etree # @UnresolvedImports
 from lxml.builder import E # @UnresolvedImports
 from networkx.readwrite import json_graph
 
@@ -28,8 +21,7 @@ from django.views.generic import View
 
 from initat.cluster.backbone.models import device, network, net_ip, \
      network_type, network_device_type, netdevice, peer_information, \
-     netdevice_speed, device_variable, device_group, to_system_tz, \
-     domain_tree_node, domain_name_tree, get_related_models
+     netdevice_speed, domain_tree_node, domain_name_tree, get_related_models
 from initat.cluster.frontend.forms import dtn_detail_form, dtn_new_form
 from initat.cluster.frontend.helper_functions import xml_wrapper
 from initat.core.render import render_me, render_string
@@ -216,7 +208,7 @@ class create_new_peer(View):
         s_netdevice=netdevice.objects.get(Q(pk=_post["id"].split("__")[2]))
         d_netdevice=netdevice.objects.get(Q(pk=_post["new_peer"]))
         try:
-            cur_peer = peer_information.objects.get(
+            _cur_peer = peer_information.objects.get(
                 (Q(s_netdevice=s_netdevice.pk) & Q(d_netdevice=d_netdevice.pk)) |
                 (Q(s_netdevice=d_netdevice.pk) & Q(d_netdevice=s_netdevice.pk)))
         except peer_information.DoesNotExist:
@@ -358,7 +350,7 @@ class copy_network(View):
                         if cur_ip.network.network_type.identifier != "l":
                             # increase IP for non-loopback addresses
                             ip_val = ipvx_tools.ipv4(cur_ip.ip)
-                            for seq in xrange(offset):
+                            for _seq in xrange(offset):
                                 ip_val += diff_ip
                             new_ip.ip = str(ip_val)
                         new_ip.save()
@@ -416,7 +408,7 @@ class move_domain_tree_node(View):
                 unicode(dst_node),
                 mode), logger)
         # cleanup domain_name_tree
-        cur_dnt = domain_name_tree()
+        _cur_dnt = domain_name_tree()
 
 class get_dtn_detail_form(View):
     @method_decorator(login_required)

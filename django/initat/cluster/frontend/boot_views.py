@@ -5,7 +5,7 @@
 # Copyright (C) 2012,2013 Andreas Lang-Nevyjel
 #
 # Send feedback to: <lang-nevyjel@init.at>
-# 
+#
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License Version 2 as
 # published by the Free Software Foundation.
@@ -22,43 +22,36 @@
 
 """ boot views """
 
-import pprint
-import re
-import time
 import logging_tools
 import logging
 import server_command
-import process_tools
-from lxml import etree # @UnresolvedImports
 from lxml.builder import E # @UnresolvedImports
 
 from django.contrib.auth.decorators import login_required
 from django.core.exceptions import ValidationError
 from django.db import transaction
 from django.db.models import Q
-from django.http import HttpResponse
 from django.views.generic import View
 from django.utils.decorators import method_decorator
 
 from initat.cluster.frontend.helper_functions import contact_server, xml_wrapper
 from initat.core.render import render_me
-from initat.cluster.backbone.models import device_type, device_group, device, \
-     kernel, image, partition_table, status, network, devicelog, \
-     cd_connection
+from initat.cluster.backbone.models import device, cd_connection, \
+     kernel, image, partition_table, status, network, devicelog
 
 logger = logging.getLogger("cluster.boot")
 
 
 # ordering is important
 OPTION_LIST = [
-    ("t", "target state", None  ),
-    ("s", "soft control", None  ),
-    ("h", "hard control", None  ),
-    ("b", "bootdevice"  , None  ),
+    ("t", "target state", None),
+    ("s", "soft control", None),
+    ("h", "hard control", None),
+    ("b", "bootdevice"  , None),
     ("k", "kernel"      , kernel),
-    ("i", "image"       , image ),
-    ("p", "partition"   , None  ),
-    ("l", "devicelog"   , None  ),
+    ("i", "image"       , image),
+    ("p", "partition"   , None),
+    ("l", "devicelog"   , None),
 ]
 
 class show_boot(View):
@@ -73,7 +66,7 @@ class get_html_options(View):
     @method_decorator(xml_wrapper)
     def post(self, request):
         xml_resp = E.options()
-        for short, long_opt, t_obj in OPTION_LIST:
+        for short, long_opt, _t_obj in OPTION_LIST:
             xml_resp.append(E.option(long_opt, short=short))
         request.xml_response["response"] = xml_resp
 
@@ -87,7 +80,7 @@ class get_addon_info(View):
         logger.info("requested addon dictionary '%s'" % (addon_long))
         addon_list = E.list()
         if addon_class:
-            for obj in addon_class.objects.all():#filter(Q(enabled=True)):
+            for obj in addon_class.objects.all(): # filter(Q(enabled=True)):
                 addon_list.append(obj.get_xml())
         if addon_type == "t":
             prod_nets = network.objects.filter(Q(network_type__identifier="p"))
@@ -122,7 +115,7 @@ class set_boot(View):
         boot_mac = _post["boot_dev_macaddr"]
         boot_driver = _post["boot_dev_driver"]
         dhcp_write = True if int(_post["write_dhcp"])  else False
-        dhcp_mac   = True if int(_post["greedy_mode"]) else False
+        dhcp_mac = True if int(_post["greedy_mode"]) else False
         any_error = False
         cur_dev.dhcp_mac = dhcp_mac
         cur_dev.dhcp_write = dhcp_write
@@ -182,7 +175,7 @@ class set_kernel(View):
         else:
             cur_dev.new_kernel = kernel.objects.get(Q(pk=_post["new_kernel"]))
         cur_dev.stage1_flavour = _post["kernel_flavour"]
-        cur_dev.kernel_append  = _post["kernel_append"]
+        cur_dev.kernel_append = _post["kernel_append"]
         cur_dev.save()
         # very important
         transaction.commit()
@@ -192,7 +185,7 @@ class set_kernel(View):
             srv_com.builder("device", pk="%d" % (cur_dev.pk)))
         contact_server(request, "tcp://localhost:8000", srv_com, timeout=10, connection_id="webfrontend_refresh")
         request.xml_response.info("updated kernel settings of %s" % (unicode(cur_dev)), logger)
-    
+
 class set_target_state(View):
     @method_decorator(transaction.commit_manually)
     @method_decorator(login_required)
@@ -225,7 +218,7 @@ class get_boot_info(View):
     @method_decorator(xml_wrapper)
     def post(self, request):
         _post = request.POST
-        option_dict = dict([(short, True if _post.get("opt_%s" % (short)) in ["true"] else False) for short, long_opt, t_class in OPTION_LIST])
+        option_dict = dict([(short, True if _post.get("opt_%s" % (short)) in ["true"] else False) for short, _long_opt, _t_class in OPTION_LIST])
         sel_list = _post.getlist("sel_list[]")
         dev_result = device.objects.filter(Q(pk__in=sel_list))
         call_mother = True if int(_post["call_mother"]) else False
@@ -237,7 +230,7 @@ class get_boot_info(View):
                 "devices",
                 *[srv_com.builder("device", pk="%d" % (cur_dev.pk)) for cur_dev in dev_result])
             result = contact_server(request, "tcp://localhost:8000", srv_com, timeout=10, log_result=False, connection_id="webfrontend_status")
-            #result = net_tools.zmq_connection("boot_full_webfrontend", timeout=10).add_connection("tcp://localhost:8000", srv_com)
+            # result = net_tools.zmq_connection("boot_full_webfrontend", timeout=10).add_connection("tcp://localhost:8000", srv_com)
         xml_resp = E.boot_info()
         # lut for connections
         dev_lut = {}
@@ -259,7 +252,7 @@ class get_boot_info(View):
             dev_lut[cur_dev.pk] = dev_info
             xml_resp.append(dev_info)
         # add option-dict related stuff
-        #print etree.tostring(xml_resp, pretty_print=True)
+        # print etree.tostring(xml_resp, pretty_print=True)
         if option_dict.get("h", False):
             # device connections
             for cur_cd in cd_connection.objects.filter(Q(child__in=dev_result)).select_related("child", "parent"):
@@ -309,7 +302,7 @@ class soft_control(View):
             "devices",
             srv_com.builder("device", soft_command=soft_state, pk="%d" % (cur_dev.pk)))
         result = contact_server(request, "tcp://localhost:8000", srv_com, timeout=10, log_result=False)
-        #result = net_tools.zmq_connection("boot_webfrontend", timeout=10).add_connection("tcp://localhost:8000", srv_com)
+        # result = net_tools.zmq_connection("boot_webfrontend", timeout=10).add_connection("tcp://localhost:8000", srv_com)
         if result:
             request.xml_response.info("sent %s to %s" % (soft_state, unicode(cur_dev)), logger)
 

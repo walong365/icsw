@@ -1,24 +1,18 @@
+#!/usr/bin/python-init -Otu
 # package views
 
-import datetime
-import os
 import logging
 import logging_tools
-import process_tools
-import pprint
 import re
 import server_command
 import time
-from lxml import etree # @UnresolvedImports
 from lxml.builder import E # @UnresolvedImports
 
-from django.conf import settings
 from django.contrib.auth.decorators import login_required
 from django.core.exceptions import ValidationError
 from django.db import transaction
 from django.db.models import Q
 from django.db.utils import IntegrityError
-from django.http import HttpResponse
 from django.views.generic import View
 from django.utils.decorators import method_decorator
 
@@ -39,10 +33,10 @@ class repo_overview(View):
         cur_mode = request.POST.get("mode", None)
         if cur_mode == "rescan":
             srv_com = server_command.srv_command(command="rescan_repos")
-            result = contact_server(request, "tcp://localhost:8007", srv_com, timeout=10, log_result=True)
+            _result = contact_server(request, "tcp://localhost:8007", srv_com, timeout=10, log_result=True)
         elif cur_mode == "sync":
             srv_com = server_command.srv_command(command="sync_repos")
-            result = contact_server(request, "tcp://localhost:8007", srv_com, timeout=10, log_result=True)
+            _result = contact_server(request, "tcp://localhost:8007", srv_com, timeout=10, log_result=True)
         xml_resp = E.response(
             E.package_repos(*[cur_r.get_xml() for cur_r in package_repo.objects.all()])
         )
@@ -80,7 +74,7 @@ class create_search(View):
         else:
             transaction.commit()
             srv_com = server_command.srv_command(command="reload_searches")
-            result = contact_server(request, "tcp://localhost:8007", srv_com, timeout=5, log_result=False)
+            _result = contact_server(request, "tcp://localhost:8007", srv_com, timeout=5, log_result=False)
             request.xml_response["new_entry"] = new_search.get_xml()
 
 def reload_searches(request):
@@ -147,7 +141,7 @@ class use_package(View):
         else:
             request.xml_response.info("copied package_result", logger)
             try:
-                new_p = cur_sr.create_package()
+                _new_p = cur_sr.create_package()
             except IntegrityError, what:
                 request.xml_response.error("error modifying: %s" % (unicode(what)), logger)
 
@@ -215,7 +209,7 @@ class add_package(View):
             int(_post["dev_key"].split("__")[1]),
             int(_post["pack_key"].split("__")[1]))
         try:
-            cur_pdc = package_device_connection.objects.get(Q(device=dev_pk) & Q(package=pack_pk))
+            _cur_pdc = package_device_connection.objects.get(Q(device=dev_pk) & Q(package=pack_pk))
         except package_device_connection.DoesNotExist:
             new_pdc = package_device_connection(
                 device=device.objects.get(Q(pk=dev_pk)),

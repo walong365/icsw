@@ -11,14 +11,14 @@
     <ul>
         <li><a href="#group_tree">Groups</a></li>
         <li><a href="#fqdn_tree">FQDN</a></li>
-        {# <li><a href="#category_tree">Category</a></li> #}
+        <li><a href="#category_tree">Category</a></li>
     </ul>
     <div id="group_tree">
     </div>
     <div id="fqdn_tree">
     </div>
-    {#<div id="category_tree">#}
-    {#</div>#}
+    <div id="category_tree">
+    </div>
 </div>
 <div id="ajax_info">
 </div>
@@ -46,7 +46,7 @@ class sidebar_tree
         # shortcuts to divs
         @group_div    = @tabs_div.find("div#group_tree")
         @fqdn_div     = @tabs_div.find("div#fqdn_tree")
-        #@category_div = @tabs_div.find("div#category_tree")
+        @category_div = @tabs_div.find("div#category_tree")
         @init_sidebar()
         $("input#device_selection").focus().on("keyup", @apply_device_selection)
         $("input#devsel_clear").on("click", @clear_selection)
@@ -99,6 +99,37 @@ class sidebar_tree
         #if @active_tab != tab_name
         #    @active_tab = tab_name
         #    @["activate_#{tab_name}"](@["#{tab_name}_div"])
+    activate_category: (tree_div) =>
+        $.ajax
+            url     : "{% url 'base:category_tree' %}"
+            success : (xml) =>
+                if parse_xml_response(xml)
+                    @CAT = $(xml).find("categories")
+                    #@my_submitter = new submitter({
+                    #    master_xml       : @DNT,
+                    #    success_callback : @change_cb
+                    #})
+                    tree_div.dynatree
+                        autoFocus  : false
+                        checkbox   : true
+                    @root_cat_node = tree_div.dynatree("getRoot")
+                    @build_cat_node(@root_cat_node, @CAT.find("category[parent='0']"))
+    build_cat_node: (dt_node, db_node) =>
+        if parseInt(db_node.attr("parent")) == 0
+            title_str = "TOP"
+            expand_flag = true
+        else
+            title_str = db_node.attr("name") + " (" + db_node.attr("full_name") + ")"
+            expand_flag = false
+        new_node = dt_node.addChild(
+            title    : title_str
+            expand   : expand_flag
+            key      : db_node.attr("pk")
+            #select   : if parseInt(db_node.attr("immutable")) then true else false
+            addClass : if db_node.attr("intermediate") == "1" then "intermediate" else "ip_ok"
+        )
+        @CAT.find("category[parent='" + db_node.attr("pk") + "']").each (idx, sub_db_node) =>
+            @build_cat_node(new_node, $(sub_db_node))
     activate_fqdn: (tree_div) =>
         $.ajax
             url     : "{% url 'network:domain_name_tree' %}"
@@ -161,11 +192,11 @@ class sidebar_tree
             )
             add_node = new_node
             # add all sub fqdns
-            #console.log
             @DNT.find("domain_tree_node[parent='" + db_node.attr("pk") + "']").each (idx, sub_db_node) =>
                 @build_fqdn_node(add_node, $(sub_db_node))
             # add all devices
             @device_groups.find("device[domain_tree_node='" + db_node.attr("pk") + "']").each (dev_id, cur_dev) =>
+                # we display META-devices in FQDN view
                 @add_device_node(add_node, $(cur_dev), true)
             if not add_node.countChildren() and add_node.getLevel() > 1
                 add_node.remove()

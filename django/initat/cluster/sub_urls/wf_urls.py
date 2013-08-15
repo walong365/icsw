@@ -1,8 +1,8 @@
+#!/usr/bin/python-init -Otu
+
 from django.conf.urls import patterns, include, url
 from django.conf import settings
-import sys
 import os
-import process_tools
 from initat.cluster.frontend import rest_views, device_views, main_views, network_views, monitoring_views, \
      user_views, pack_views, config_views, boot_views, session_views, rrd_views
 from initat.cluster.setup import base_views, setup_views

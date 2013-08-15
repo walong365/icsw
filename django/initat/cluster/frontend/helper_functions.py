@@ -8,9 +8,9 @@ import logging_tools
 import process_tools
 import smtplib
 import net_tools
-import email
+# import email
 import email.mime
-import email.header
+# import email.header
 from lxml import etree # @UnresolvedImports
 from lxml.builder import E # @UnresolvedImports
 
@@ -83,7 +83,7 @@ class xml_response(object):
         checks the logging status, if OK
         """
         if self.log_buffer:
-            return True if max([log_lev for log_lev, log_str in self.log_buffer]) == logging_tools.LOG_LEVEL_OK else False
+            return True if max([log_lev for log_lev, _log_str in self.log_buffer]) == logging_tools.LOG_LEVEL_OK else False
         else:
             return True
     def _get_value_xml(self, key, value):
@@ -93,7 +93,7 @@ class xml_response(object):
                 "num"  : "%d" % (len(value)),
                 "type"  :"list",
             })
-            for val_num, sub_val in enumerate(value):
+            for _val_num, sub_val in enumerate(value):
                 ret_val.append(self._get_value_xml(key, sub_val))
         else:
             ret_val = E.value(value if type(value) == etree._Element else unicode(value), **{
@@ -111,8 +111,8 @@ class xml_response(object):
         builds the xml response
         """
         num_errors, num_warnings = (
-            len([True for log_lev, log_str in self.log_buffer if log_lev == logging_tools.LOG_LEVEL_ERROR]),
-            len([True for log_lev, log_str in self.log_buffer if log_lev == logging_tools.LOG_LEVEL_WARN]))
+            len([True for log_lev, _log_str in self.log_buffer if log_lev == logging_tools.LOG_LEVEL_ERROR]),
+            len([True for log_lev, _log_str in self.log_buffer if log_lev == logging_tools.LOG_LEVEL_WARN]))
         return E.response(
             E.header(
                 E.messages(

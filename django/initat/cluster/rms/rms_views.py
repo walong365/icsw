@@ -5,15 +5,13 @@ import sge_tools
 import threading
 import logging
 import logging_tools
-from lxml import etree
+# from lxml import etree # @UnresolvedImport
 
 from django.conf import settings
 from django.http import HttpResponse
 from django.views.generic import View
-from django.utils.decorators import method_decorator
 
 from initat.core.render import render_me
-from initat.cluster.frontend.helper_functions import xml_wrapper
 
 logger = logging.getLogger("cluster.rms")
 
@@ -60,18 +58,18 @@ def _node_to_value(in_node):
         return float(in_node.text)
     else:
         return in_node.text
-    
+
 def _value_to_str(in_value):
     if type(in_value) == float:
         return "%.2f" % (in_value)
     else:
         return in_value
-    
+
 def _sort_list(in_list, _post):
-    #for key in sorted(_post):
+    # for key in sorted(_post):
     #    print key, _post[key]
     start_idx = int(_post["iDisplayStart"])
-    num_disp  = int(_post["iDisplayLength"])
+    num_disp = int(_post["iDisplayLength"])
     total_data_len = len(in_list)
     # interpet nodes according to optional type attribute, TODO: use format from attrib to reformat later
     in_list = [[_node_to_value(sub_node) for sub_node in row] for row in in_list]
@@ -83,9 +81,9 @@ def _sort_list(in_list, _post):
         sort_dir = _post[sort_key]
         sort_idx = int(_post["iSortCol_%s" % (sort_key.split("_")[-1])])
         if sort_dir == "asc":
-            in_list = sorted(in_list, cmp=lambda x,y: cmp(x[sort_idx], y[sort_idx]))
+            in_list = sorted(in_list, cmp=lambda x, y: cmp(x[sort_idx], y[sort_idx]))
         else:
-            in_list = sorted(in_list, cmp=lambda x,y: cmp(y[sort_idx], x[sort_idx]))
+            in_list = sorted(in_list, cmp=lambda x, y: cmp(y[sort_idx], x[sort_idx]))
     # reformat
     show_list = [[_value_to_str(value) for value in line] for line in in_list[start_idx : start_idx + num_disp]]
     return {"sEcho"                : int(_post["sEcho"]),
@@ -98,7 +96,7 @@ class get_run_jobs_xml(View):
         _post = request.POST
         my_sge_info.update()
         run_job_list = sge_tools.build_running_list(my_sge_info, get_job_options(request))
-        json_resp    = _sort_list(run_job_list, _post)
+        json_resp = _sort_list(run_job_list, _post)
         return HttpResponse(json.dumps(json_resp), mimetype="application/json")
 
 class get_wait_jobs_xml(View):
@@ -106,7 +104,7 @@ class get_wait_jobs_xml(View):
         _post = request.POST
         my_sge_info.update()
         wait_job_list = sge_tools.build_waiting_list(my_sge_info, get_job_options(request))
-        json_resp     = _sort_list(wait_job_list, _post)
+        json_resp = _sort_list(wait_job_list, _post)
         return HttpResponse(json.dumps(json_resp), mimetype="application/json")
 
 class get_node_xml(View):
