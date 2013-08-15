@@ -1065,7 +1065,7 @@ class hm_icmp_protocol(icmp_twisted.icmp_protocol):
         for del_key in del_keys:
             del self[del_key]
         # pprint.pprint(self.__work_dict)
-    def received(self, dgram):
+    def received(self, dgram, recv_time):
         if dgram.packet_type == 0 and dgram.ident == self.__twisted_process.pid & 0x7fff:
             seqno = dgram.seqno
             if seqno not in self.__seqno_dict:
