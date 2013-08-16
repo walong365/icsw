@@ -382,6 +382,7 @@ class device_table
         if confirm("really remove package ?")
             pack_key = cur_el.attr("id").split("__")[0...2].join("__")
             pack_pk = pack_key.split("__")[1]
+            rem_list = []
             # get all devices which have the current package not set
             @xml.find("device_group devices device[meta_device='0']").each (index, dev_xml) =>
                 dev_xml = $(dev_xml)
@@ -390,40 +391,42 @@ class device_table
                 if @table.find("input[id='#{dev_key}__sel']").prop("checked")
                     cur_pdc = @xml.find("package_device_connections package_device_connection[package='#{pack_pk}'][device='" + dev_xml.attr("pk") + "']")
                     if cur_pdc.length
-                        @remove_package_xml(cur_pdc)
-    remove_package_xml: (cur_pdc) =>
-        $.ajax
-            url     : "{% url 'pack:remove_package' %}"
-            data    : {
-                "pdc_key" : cur_pdc.attr("key")
-            }
-            success : (xml) =>
-                if parse_xml_response(xml)
-                    @xml.find("package_device_connections package_device_connection[key='" + cur_pdc.attr("key") + "']").remove()
-                    @devices["dev__" + cur_pdc.attr("device")].remove_pdc(cur_pdc)
+                        rem_list.push(cur_pdc.attr("key"))
+            if rem_list.length
+                $.ajax
+                    url     : "{% url 'pack:remove_package' %}"
+                    data    : {
+                        "rem_list" : rem_list
+                    }
+                    success : (xml) =>
+                        if parse_xml_response(xml)
+                            for pdc_key in rem_list
+                                cur_pdc = @xml.find("package_device_connection[key='#{pdc_key}']")
+                                @xml.find("package_device_connections package_device_connection[key='" + cur_pdc.attr("key") + "']").remove()
+                                @devices["dev__" + cur_pdc.attr("device")].remove_pdc(cur_pdc)
     add_package: (event) =>
         cur_el = $(event.target)
         pack_key = cur_el.attr("id").split("__")[0...2].join("__")
         pack_pk = pack_key.split("__")[1]
+        add_list = []
         @xml.find("device_group devices device[meta_device='0']").each (idx, dev_xml) =>
-            dev_xml = $(dev_xml)
-            dev_key = dev_xml.attr("key")
+            dev_key = $(dev_xml).attr("key")
             if @table.find("input[id='#{dev_key}__sel']").prop("checked")
                 cur_dev = @devices[dev_key]
                 if pack_pk not in (value.attr("package") for key, value of cur_dev.pdc_lut)
-                    @add_package_xml(dev_xml, @pack_xml.find("package[key='#{pack_key}']"))
-    add_package_xml: (dev_xml, pack_xml) =>
-        $.ajax
-            url     : "{% url 'pack:add_package' %}"
-            data    : {
-                "dev_key"  : dev_xml.attr("key")
-                "pack_key" : pack_xml.attr("key")
-            },
-            success : (xml) =>
-                if parse_xml_response(xml)
-                    new_pdc = $(xml).find("value[name='new_entry'] package_device_connection")
-                    @xml.find("package_device_connections").append(new_pdc)
-                    @devices[dev_xml.attr("key")].append_pdc($(new_pdc), true)
+                    add_list.push([dev_key, @pack_xml.find("package[key='#{pack_key}']").attr("key")])
+        if add_list.length
+            $.ajax
+                url     : "{% url 'pack:add_package' %}"
+                data    : {
+                    "add_list" : add_list,
+                },
+                success : (xml) =>
+                    if parse_xml_response(xml)
+                        $(xml).find("value[name='result'] entries package_device_connection").each (idx, new_pdc) =>
+                            new_pdc = $(new_pdc)
+                            @xml.find("package_device_connections").append(new_pdc)
+                            @devices["dev__" + new_pdc.attr("device")].append_pdc(new_pdc, true)
     delete_package: (event) =>
         targ_el = $(event.target)
         if confirm("really delete package ?")
