@@ -7,7 +7,7 @@
 
 {% block content %}
 
-<h1 class="center">Package Install, package filter: <input id='package_filter' type=text/></h1>
+<h1 class="center">Package Install, package filter: <input id='package_filter' type=text/><span id="package_filter_info"/></h1>
 
 <div id="device"></div>
 
@@ -25,7 +25,7 @@ class device
         @pdc_lut = {}
         @pdc_line_lut = {}
         @exp_state = false
-        @cur_filter = ""
+        @filter_re = undefined
     draw_device: (pdc_list) =>
         tstate_xml = @pack_xml.find("target_states target_state")
         dummy_div = $("<div>")
@@ -97,6 +97,7 @@ class device
         removed   = 0
         total     = 0
         unknown   = 0
+        pending   = 0
         for key, entry of @pdc_lut
             total++
             switch $(entry).attr("installed")
@@ -104,6 +105,8 @@ class device
                     installed++
                 when "n"
                     removed++
+                when "p"
+                    pending++
                 when "u"
                     unknown++
         info_str = ""
@@ -111,6 +114,7 @@ class device
             "total" : total,
             "installed" : installed,
             "removed" : removed,
+            "pending" : pending,
             "unknown" : unknown}
             if num
                 info_str = "#{info_str}, #{num} #{str}"
@@ -122,6 +126,9 @@ class device
         (line.addClass("even") for line in pdc_lines by 2)
         (line.addClass("odd") for line in pdc_lines[1..] by 2)
     expand_device: (line_prefix, state, name) =>
+        if @header_line
+            # @header_line is not always set here (first call)
+            force_expansion_state(@header_line, state)
         for key, value of @pdc_line_lut
             if state
                 if @check_visibility(key)
@@ -132,14 +139,15 @@ class device
                 value.hide()
         @exp_state = state
     check_visibility: (key) =>
-        cur_re = new RegExp(@cur_filter)
-        cur_pack = @pack_xml.find("packages package[pk='" + @pdc_lut[key].attr("package") + "']")
-        if cur_pack.text().match(cur_re)
-            return true
+        if @filter_re
+            cur_pack = @pack_xml.find("packages package[pk='" + @pdc_lut[key].attr("package") + "']")
+            if cur_pack.text().match(@filter_re)
+                return true
+            else
+                return false
         else
-            return false
-    set_filter: (cur_filter) =>
-        @cur_filter = cur_filter
+            return true
+    set_filter: (@filter_re) =>
         @expand_device("bla", @exp_state, "bla")
     change_d_sel: (event) =>
         (line.find("input[id$='__sel']").trigger("click") for value, line of @pdc_line_lut)
@@ -252,23 +260,46 @@ class device_table
     install_filter: =>
         @CUR_FILTER = ""
         @filter_el = $("input#package_filter")
+        @filter_info = $("span#package_filter_info")
         @filter_el.val("").on("keyup", @change_filter)
+        @update_filter_info()
     change_filter: (in_el) =>
         cur_text = $(in_el.target).val()
         @new_filter(cur_text, false)
     new_filter: (cur_text, force) =>
         if cur_text != @CUR_FILTER or force
             @CUR_FILTER = cur_text
+            @update_filter_info()
             @xml.find("device_group").each (index, cur_dg) =>
                 cur_dg = $(cur_dg)
                 cur_dg.find("devices device[tree_selected='selected'][meta_device='0']").each (index, cur_dev) =>
                     dev_struct = @devices[$(cur_dev).attr("key")]
                     # to be optimised
-                    dev_struct.set_filter(@CUR_FILTER)
+                    dev_struct.set_filter(@filter_re)
                     # needed for coffeescript (sigh)
                     true
+    update_filter_info: () =>
+        shown_pks = []
+        if not @CUR_FILTER
+            filter_re = undefined
+            f_text = "all packages shown"
+        else
+            try
+                filter_re = new RegExp(@CUR_FILTER)
+                f_text = "waiting for packages"
+            catch
+                filter_re = undefined
+                f_text = "error in filter string"
+        if filter_re and @pack_xml
+            @pack_xml.find("package").each (p_idx, cur_pack) =>
+                cur_pack = $(cur_pack)
+                if cur_pack.text().match(filter_re)
+                    shown_pks.push(cur_pack.attr("pk"))
+            total_pks = @pack_xml.find("package").length
+            f_text = "showing #{shown_pks.length} of #{total_pks}"
+        @filter_info.text(f_text)
+        @filter_re = filter_re
     use_devs: (sel_list) =>
-        @CUR_FILTER = ""
         $.ajax
             url     : "{% url 'device:get_group_tree' %}"
             data    : {
@@ -281,8 +312,9 @@ class device_table
                 if parse_xml_response(xml)
                     @devices = {}
                     @xml = $(xml)
-                    @xml.find("devices device").each (idx, cur_dev) =>
-                        @devices[$(cur_dev).attr("key")] = new device(@, $(cur_dev))
+                    @xml.find("devices device[selected='selected']").each (idx, cur_dev) =>
+                        cur_dev = $(cur_dev)
+                        @devices[cur_dev.attr("key")] = new device(@, cur_dev)
                     @build_table(sel_list)
                     @new_filter(@filter_el.val(), true)
     build_table: (@sel_list) =>
@@ -315,6 +347,7 @@ class device_table
                         dev_struct.pack_xml = @pack_xml
                     draw_ds_tables(@pack_div, master_array, @pack_xml)
                     @load_packages()
+                    @update_filter_info()
                     $(document).everyTime(5000, "refresh_package_info", @refresh_package_info)
     refresh_package_info: =>
         $.ajax
@@ -424,6 +457,15 @@ class device_table
                 "type"  : "button",
                 "value" : "all"
             }).bind("click", @set_all_sel),
+            $("<span>").text(", display: "),
+            $("<input>").attr({
+                "type"  : "button",
+                "value" : "expand"
+            }).bind("click", @expand_collapse_all),
+            $("<input>").attr({
+                "type"  : "button",
+                "value" : "collapse"
+            }).bind("click", @expand_collapse_all),
             $("<span>").text(", server: "),
             $("<input>").attr({
                 "type"  : "button",
@@ -473,6 +515,10 @@ class device_table
         # then all pdcs
         @table.find("input[id^='pdc__'][id$='__sel']:not(:checked)").each (index, cur_el) =>
             $(cur_el).trigger("click")
+    expand_collapse_all: (event) =>
+        expand = if $(event.target).attr("value") == "expand" then true else false
+        for key, cur_dev of @devices
+            cur_dev.expand_device("bla", expand, "bla")
     sync_server: (event) =>
         $.ajax
             url     : "{% url 'pack:synchronize' %}"
