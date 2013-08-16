@@ -18,7 +18,7 @@ from django.views.generic import View
 from django.utils.decorators import method_decorator
 
 from initat.core.render import render_me
-from initat.cluster.frontend.helper_functions import contact_server, xml_wrapper
+from initat.cluster.frontend.helper_functions import contact_server, xml_wrapper, get_listlist
 from initat.cluster.backbone.models import package_repo, package_search, user, \
      package_search_result, package, get_related_models, package_device_connection, \
      device, device_variable, to_system_tz
@@ -200,20 +200,6 @@ class refresh(View):
             )
         )
         request.xml_response["response"] = xml_resp
-
-def get_listlist(q_dict, key, default):
-    # f_keys = [key for key in q_dict.]
-    list_re = re.compile("^%s\[(?P<idx>\d+)\]\[\]$" % (key))
-    res_list = None
-    for l_name, l_values in q_dict.lists():
-        l_m = list_re.match(l_name)
-        if l_m:
-            if res_list is None:
-                res_list = []
-            res_list.insert(int(l_m.group("idx")), l_values)
-    if res_list is None:
-        res_list = default
-    return res_list
 
 class add_package(View):
     @method_decorator(login_required)

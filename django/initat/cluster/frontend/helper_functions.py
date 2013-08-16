@@ -3,12 +3,13 @@
 
 """ helper functions for the init.at clustersoftware """
 
-import sys
 import logging_tools
-import process_tools
-import smtplib
 import net_tools
+import process_tools
+import re
+import smtplib
 # import email
+import sys
 import email.mime
 # import email.header
 from lxml import etree # @UnresolvedImports
@@ -219,6 +220,20 @@ def contact_server(request, conn_str, send_com, **kwargs):
                 send_com["command"].text
                 ))
     return result
+
+def get_listlist(q_dict, key, default):
+    # f_keys = [key for key in q_dict.]
+    list_re = re.compile("^%s\[(?P<idx>\d+)\]\[\]$" % (key))
+    res_list = None
+    for l_name, l_values in q_dict.lists():
+        l_m = list_re.match(l_name)
+        if l_m:
+            if res_list is None:
+                res_list = []
+            res_list.insert(int(l_m.group("idx")), l_values)
+    if res_list is None:
+        res_list = default
+    return res_list
 
 if __name__ == "__main__":
     print "Loadable module, exiting..."
