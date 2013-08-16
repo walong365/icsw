@@ -1,6 +1,6 @@
 #!/usr/bin/python-init -Ot
 #
-# Copyright (C) 2001,2002,2003,2004,2005,2006,2007,2008,2012 Andreas Lang-Nevyjel, init.at
+# Copyright (C) 2001,2002,2003,2004,2005,2006,2007,2008,2012,2013 Andreas Lang-Nevyjel, init.at
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -25,15 +25,11 @@ import logging_tools
 import sys
 import argparse
 import os
-import os.path
 import time
-import datetime
 import sge_tools
-import pprint
 # from NH
 import urwid
-from lxml import etree
-    
+
 def check_environment():
     # set environment variables SGE_ROOT / SGE_CELL if not already set
     for v_name, v_src in [("SGE_ROOT", "/etc/sge_root"),
@@ -46,7 +42,7 @@ def check_environment():
                 sys.exit(1)
 
 def sjs(s_info, opt_dict):
-    #print etree.tostring(sge_tools.build_running_list(s_info, opt_dict), pretty_print=True)
+    # print etree.tostring(sge_tools.build_running_list(s_info, opt_dict), pretty_print=True)
     ret_list = [time.ctime()]
     s_info.build_luts()
     # running jobs
@@ -99,7 +95,7 @@ def sns(s_info, opt_dict):
         print "\n".join(ret_list)
 
 # following code from NH for interactive mode
-    
+
 class window(object):
     def __init__(self, **kwargs):
         self.start_time = time.time()
@@ -147,13 +143,16 @@ class window(object):
         self.tree.back_to_top()
         self.set_question_text(self.tree.get_cur_text())
     def _handler_data(self, in_char):
-        if self.tree:
-            handled = self.tree.handle_input(in_char, self)
-        else:
-            if in_char.lower() == "q":
-                self.close()
+        if type(in_char) in [str, unicode]:
+            if self.tree:
+                handled = self.tree.handle_input(in_char, self)
             else:
-                handled = False
+                if in_char.lower() == "q":
+                    self.close()
+                else:
+                    handled = False
+        else:
+            handled = False
         if not handled:
             self._update_screen()
     def _update_screen(self):
@@ -166,7 +165,7 @@ class window(object):
             return unicode(self.callback(*self.cb_args))
         else:
             return "no data"
-        
+
 class dt_tree(object):
     def __init__(self, head_node):
         self.head_node = head_node
@@ -192,7 +191,7 @@ class dt_tree(object):
         else:
             handled = False
         return handled
-        
+
 class dt_node(object):
     def __init__(self, question, action=None, edges=None):
         self.question = question
@@ -244,12 +243,12 @@ class my_opt_parser(argparse.ArgumentParser):
             self.add_argument("--pe", dest="show_pe", help="show pe information [%(default)s]", action="store_true", default=False)
             self.add_argument("-J", dest="merge_node_queue", help="merge node with queues in output [%(default)s]", action="store_true", default=False)
         elif run_mode == "sjs":
-            #self.add_argument("-s", dest="no_status", help="suppress status [%(default)s]", action="store_true", default=False)
+            # self.add_argument("-s", dest="no_status", help="suppress status [%(default)s]", action="store_true", default=False)
             self.add_argument("--valid", dest="only_valid_waiting", help="show only valid waiting jobs [%(default)s]", action="store_true", default=False)
             self.add_argument("-n", dest="suppress_nodelist", help="suppress nodelist [%(default)s]", action="store_true", default=False)
             self.add_argument("-t", dest="suppress_times", help="suppress the display of start/run/left times [%(default)s]", action="store_true", default=False)
         self.add_argument("-v", dest="verbose", help="set verbose mode [%(default)s]", action="store_true", default=False)
-        
+
 def log_com(what, level):
     print "%s [%s] %s" % (time.ctime(),
                           logging_tools.get_log_level_str(level),
@@ -332,6 +331,6 @@ def main():
         print "took %s / %s" % (
             logging_tools.get_diff_time_str(s_time - c_time),
             logging_tools.get_diff_time_str(e_time - s_time))
-    
+
 if __name__ == "__main__":
     main()
