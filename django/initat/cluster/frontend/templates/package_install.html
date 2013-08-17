@@ -4,7 +4,6 @@
 
 {% block title %}{% trans "Package Install" %}{% endblock %}
 
-
 {% block content %}
 
 <h1 class="center">Package Install, package filter: <input id='package_filter' type=text/><span id="package_filter_info"/></h1>
@@ -198,7 +197,7 @@ class device
             "value" : "remove"}).bind("click", (event) =>
                 rem_pack = @pack_xml.find("package[pk='" + pdc_xml.attr("package") + "']")
                 if confirm("really remove " + rem_pack.text() + " from " + @xml.attr("name") + " ?")
-                    @device_table.remove_package_xml(pdc_xml)
+                    @device_table.remove_package_list([pdc_xml.attr("key")])
             )
     draw_tstate: (pdc_xml, tstate_xml) =>
         cur_ts = $("<select>").attr({
@@ -392,18 +391,20 @@ class device_table
                     cur_pdc = @xml.find("package_device_connections package_device_connection[package='#{pack_pk}'][device='" + dev_xml.attr("pk") + "']")
                     if cur_pdc.length
                         rem_list.push(cur_pdc.attr("key"))
-            if rem_list.length
-                $.ajax
-                    url     : "{% url 'pack:remove_package' %}"
-                    data    : {
-                        "rem_list" : rem_list
-                    }
-                    success : (xml) =>
-                        if parse_xml_response(xml)
-                            for pdc_key in rem_list
-                                cur_pdc = @xml.find("package_device_connection[key='#{pdc_key}']")
-                                @xml.find("package_device_connections package_device_connection[key='" + cur_pdc.attr("key") + "']").remove()
-                                @devices["dev__" + cur_pdc.attr("device")].remove_pdc(cur_pdc)
+            @remove_package_list(rem_list)
+    remove_package_list: (rem_list) =>
+        if rem_list.length
+            $.ajax
+                url     : "{% url 'pack:remove_package' %}"
+                data    : {
+                    "rem_list" : rem_list
+                }
+                success : (xml) =>
+                    if parse_xml_response(xml)
+                        for pdc_key in rem_list
+                            cur_pdc = @xml.find("package_device_connection[key='#{pdc_key}']")
+                            @xml.find("package_device_connections package_device_connection[key='" + cur_pdc.attr("key") + "']").remove()
+                            @devices["dev__" + cur_pdc.attr("device")].remove_pdc(cur_pdc)
     add_package: (event) =>
         cur_el = $(event.target)
         pack_key = cur_el.attr("id").split("__")[0...2].join("__")
