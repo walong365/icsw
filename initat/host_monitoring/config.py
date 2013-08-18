@@ -21,7 +21,7 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
 
-""" host-monitoring, global_config """
+""" host-monitoring, config """
 
 import configfile
 import process_tools
