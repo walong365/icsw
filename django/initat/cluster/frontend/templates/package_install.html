@@ -41,7 +41,7 @@ class device
                     "id"   : "#{line_prefix}__sel"
                 })
                     
-            ).bind("change", (event) =>
+            ).on("change", (event) =>
                 @change_d_sel(event)
             ),
             get_expand_td(line_prefix, "pdc", undefined, @expand_device),
@@ -178,7 +178,7 @@ class device
                     "width"  : "16px"
                     "height" : "16px"
                     "src"    : "{{ MEDIA_URL }}frontend/images/information.png"
-                ).bind("click", @show_pdc_info)
+                ).on("click", @show_pdc_info)
             ),
             $("<td>").append(@draw_pflag(pdc_xml, "force_flag")),
             $("<td>").append(@draw_pflag(pdc_xml, "nodeps_flag"))
@@ -194,7 +194,7 @@ class device
         return $("<input>").attr({
             "id"    : pdc_xml.attr("key"),
             "type"  : "button",
-            "value" : "remove"}).bind("click", (event) =>
+            "value" : "remove"}).on("click", (event) =>
                 rem_pack = @pack_xml.find("package[pk='" + pdc_xml.attr("package") + "']")
                 if confirm("really remove " + rem_pack.text() + " from " + @xml.attr("name") + " ?")
                     @device_table.remove_package_list([pdc_xml.attr("key")])
@@ -209,7 +209,7 @@ class device
             if pdc_xml.attr("target_state") == value
                 cur_opt.attr("selected", "selected")
             cur_ts.append(cur_opt)
-        cur_ts.bind("change", (event) =>
+        cur_ts.on("change", (event) =>
             cur_el = $(event.target)
             $.ajax
                 url   : "{% url 'pack:change_target_state' %}"
@@ -228,7 +228,7 @@ class device
             "id"    : pdc_xml.attr("key") + "__#{flag_name}"})
         if pdc_xml.attr(flag_name) == "1"
             cur_ts.attr("checked", "checked")
-        cur_ts.bind("change", (event) =>
+        cur_ts.on("change", (event) =>
             cur_el = $(event.target)
             $.ajax
                 url   : "{% url 'pack:change_package_flag' %}"
@@ -452,29 +452,29 @@ class device_table
             $("<input>").attr({
                 "type"  : "button",
                 "value" : "toggle"
-            }).bind("click", @change_global_sel),
+            }).on("click", @change_global_sel),
             $("<input>").attr({
                 "type"  : "button",
                 "value" : "clear"
-            }).bind("click", @clear_all_sel),
+            }).on("click", @clear_all_sel),
             $("<input>").attr({
                 "type"  : "button",
                 "value" : "all"
-            }).bind("click", @set_all_sel),
+            }).on("click", @set_all_sel),
             $("<span>").text(", display: "),
             $("<input>").attr({
                 "type"  : "button",
                 "value" : "expand"
-            }).bind("click", @expand_collapse_all),
+            }).on("click", @expand_collapse_all),
             $("<input>").attr({
                 "type"  : "button",
                 "value" : "collapse"
-            }).bind("click", @expand_collapse_all),
+            }).on("click", @expand_collapse_all),
             $("<span>").text(", server: "),
             $("<input>").attr({
                 "type"  : "button",
                 "value" : "synchronize"
-            }).bind("click", @sync_server)
+            }).on("click", @sync_server)
         )
     draw_device_group: (cur_dg) =>
         dummy_div = $("<div>")
@@ -487,7 +487,7 @@ class device_table
                 $("<input>").attr({
                     "type" : "checkbox",
                     "id"   : "#{line_prefix}__sel"
-                }).bind("click", (event) =>
+                }).on("click", (event) =>
                     @change_dg_sel(event)
                 )
             )
