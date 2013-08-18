@@ -14,4 +14,9 @@ done
 
 source $conf
 
-mysql -u ${MYSQL_USER} -h ${MYSQL_HOST} -P ${MYSQL_PORT} -p${MYSQL_PASSWD} ${@:-${MYSQL_DATABASE}}
+if [ "$(basename $conf)"  == "db.cf" ] ; then
+    mysql -u ${DB_USER} -h ${DB_HOST} -P ${DB_PORT} -p${DB_PASSWD} ${@:-${DB_DATABASE}}
+else
+    mysql -u ${MYSQL_USER} -h ${MYSQL_HOST} -P ${MYSQL_PORT} -p${MYSQL_PASSWD} ${@:-${MYSQL_DATABASE}}
+fi
+
