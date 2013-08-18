@@ -45,6 +45,7 @@
 #define ERRSTR_SIZE 512
 #define HOSTB_SIZE 256
 #define SENDBUFF_SIZE 16384
+#define RECVBUFF_SIZE 65536
 #define IOBUFF_SIZE 16384
 
 int err_message(char *str)
@@ -92,7 +93,8 @@ int main(int argc, char **argv)
 
     struct hostent *h;
 
-    char *iobuff, *sendbuff, *host_b, *act_pos, *act_source, *act_bp;
+    char *iobuff, *send_buffer, *recv_buffer, *host_b, *act_pos, *act_source,
+        *act_bp;
 
     struct itimerval mytimer;
 
@@ -110,9 +112,9 @@ int main(int argc, char **argv)
     h = NULL;
     // get uts struct
     uname(&myuts);
-    sendbuff = (char *)malloc(SENDBUFF_SIZE);
+    send_buffer = (char *)malloc(SENDBUFF_SIZE);
     host_b = (char *)malloc(SENDBUFF_SIZE);
-    sendbuff[0] = 0;
+    send_buffer[0] = 0;
     host_b[0] = 0;
     only_send = 0;
     sprintf(host_b, "localhost");
@@ -157,8 +159,9 @@ int main(int argc, char **argv)
     char identity_str[64];
 
     sprintf(identity_str, "%s:%s:%d", myuts.nodename, SERVICE_NAME, getpid());
-    sprintf(sendbuff, ";1;%s;%s;%d;%d;", identity_str, host_b, port, timeout);
-    act_pos = sendbuff;
+    sprintf(send_buffer, ";1;%s;%s;%d;%d;", identity_str, host_b, port,
+            timeout);
+    act_pos = send_buffer;
     if (verbose) {
         printf("argument info (%d found)\n", argc);
     };
@@ -166,24 +169,24 @@ int main(int argc, char **argv)
         if (verbose) {
             printf("[%2d] %s\n", i, argv[i]);
         };
-        sprintf(sendbuff, "%s%d;%s;", sendbuff, strlen(argv[i]), argv[i]);
-//        if (act_pos != sendbuff) *act_pos++=' ';
+        sprintf(send_buffer, "%s%d;%s;", send_buffer, strlen(argv[i]), argv[i]);
+//        if (act_pos != send_buffer) *act_pos++=' ';
 //        act_source = argv[i];
 //        while (*act_source) *act_pos++=*act_source++;
 //        *act_pos = 0;
     }
-    sendbuff[SENDBUFF_SIZE] = '\0';     /* terminate optarg for secure use of strlen() */
-    if (!strlen(sendbuff))
+    send_buffer[SENDBUFF_SIZE] = '\0';  /* terminate optarg for secure use of strlen() */
+    if (!strlen(send_buffer))
         err_exit("Nothing to send!\n");
-    //printf("Send: %s %d\n", sendbuff, strlen(sendbuff));
+    //printf("Send: %s %d\n", send_buffer, strlen(send_buffer));
     int linger = 100, n_bytes;
 
-    char recv_buffer[1024];
-
+    recv_buffer = (char *)malloc(RECVBUFF_SIZE);
+    printf("%d -> 0x%x\n", RECVBUFF_SIZE, recv_buffer);
     alrmsigact = (struct sigaction *)malloc(sizeof(struct sigaction));
     if (!alrmsigact) {
         free(host_b);
-        free(sendbuff);
+        free(send_buffer);
         exit(ENOMEM);
     }
     alrmsigact->sa_handler = &mysigh;
@@ -219,12 +222,12 @@ int main(int argc, char **argv)
         if (verbose) {
             printf
                 ("send buffer has %d bytes, identity is '%s', nodename is '%s', servicename is '%s', only_send is %d, pid is %d\n",
-                 strlen(sendbuff), identity_str, myuts.nodename,
+                 strlen(send_buffer), identity_str, myuts.nodename,
                  SERVICE_NAME, only_send, getpid());
-            printf("%s\n", sendbuff);
+            printf("%s\n", send_buffer);
         };
-        zmq_msg_init_size(&request, strlen(sendbuff));
-        memcpy(zmq_msg_data(&request), sendbuff, strlen(sendbuff));
+        zmq_msg_init_size(&request, strlen(send_buffer));
+        memcpy(zmq_msg_data(&request), send_buffer, strlen(send_buffer));
         zmq_sendmsg(requester, &request, 0);
         if (verbose) {
             printf("send(), waiting for result\n");
@@ -234,7 +237,12 @@ int main(int argc, char **argv)
             int64_t more = 0;
             size_t more_size = sizeof(more);
 
-            zmq_recv(receiver, recv_buffer, 1024, 0);
+            // receive header
+            n_bytes = zmq_recv(receiver, recv_buffer, RECVBUFF_SIZE, 0);
+            if (verbose) {
+                printf("header size: %d\nheader content: %s\n", n_bytes,
+                       recv_buffer);
+            }
             zmq_getsockopt(receiver, ZMQ_RCVMORE, &more, &more_size);
             zmq_msg_close(&request);
             if (verbose) {
@@ -242,26 +250,36 @@ int main(int argc, char **argv)
             };
             if (more) {
                 // receive body
-                n_bytes = zmq_recv(receiver, recv_buffer, 1024, 0);
-                recv_buffer[n_bytes] = 0;
+                n_bytes = zmq_recv(receiver, recv_buffer, RECVBUFF_SIZE, 0);
+                if (verbose) {
+                    printf("body has %d bytes\n", n_bytes);
+                };
+                if (n_bytes > RECVBUFF_SIZE) {
+                    printf("message was truncated (%d > %d)\n", n_bytes,
+                           RECVBUFF_SIZE);
+                    retcode = 2;
+                } else {
+                    recv_buffer[n_bytes] = 0;
+                    retcode = strtol(recv_buffer, NULL, 10);
+                }
                 if (verbose) {
                     printf("rcv(): '%s'\n", recv_buffer + 2);
                 };
-                retcode = strtol(recv_buffer, NULL, 10);
                 printf("%s\n", recv_buffer + 2);
             } else {
                 retcode = 2;
                 printf("short message\n");
             }
         } else {
-            retcode = 0, printf("sent\n");
+            retcode = 0;
+            printf("sent\n");
         }
         zmq_close(receiver);
         zmq_close(requester);
         zmq_term(context);
     }
-
-    free(sendbuff);
+    free(recv_buffer);
+    free(send_buffer);
     free(host_b);
     exit(retcode);
 }
