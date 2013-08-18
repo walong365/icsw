@@ -1,7 +1,7 @@
-#!/usr/bin/python-init -Ot
+#!/usr/bin/python-init -Otu
 # -*- coding: utf-8 -*-
 #
-# Copyright (C) 2011,2012,2013 Andreas Lang-Nevyjel
+# Copyright (C) 2013 Andreas Lang-Nevyjel
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -21,9 +21,10 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
 
-""" host-monitoring, with 0MQ and twisted support """
+""" host-monitoring, global_config """
 
-import sys
-from initat.host_monitoring import main
+import configfile
+import process_tools
 
-sys.exit(main.main())
+global_config = configfile.get_global_config(process_tools.get_programm_name())
+

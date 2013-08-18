@@ -3,7 +3,7 @@
 # Copyright (C) 2001,2002,2003,2004,2005,2006,2007,2008,2010,2011,2012,2013 Andreas Lang-Nevyjel, init.at
 #
 # Send feedback to: <lang-nevyjel@init.at>
-# 
+#
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License Version 2 as
 # published by the Free Software Foundation.
@@ -28,7 +28,6 @@ import process_tools
 import argparse
 import subprocess
 import server_command
-import zmq
 
 def net_to_sys(in_val):
     try:
@@ -213,7 +212,7 @@ class hm_command(object):
         self.module.process_pool.log("[%s] %s" % (self.name, what), log_level)
     def _parser_exit(self, status=0, message=None):
         raise ValueError, (status, message)
-    #self.parser_exit, self.parser_message = (status, message)
+    # self.parser_exit, self.parser_message = (status, message)
     def _parser_error(self, message):
         raise ValueError, (2, message)
         self.parser_exit, self.parser_message = (2, message)
@@ -249,7 +248,7 @@ class hm_fileinfo(object):
         return (1, "ok", [])
     def needs_hourly_wakeup_call(self):
         return False
-    
+
 class hmb_command(object):
     def __init__(self, name, **args):
         self.name = name
@@ -310,7 +309,7 @@ class hmb_command(object):
         # cleanup
         self.thread_pool = None
         return result
-        
+
 class mvect_entry(object):
     __slots__ = ["name", "default", "info", "unit", "base", "value", "factor", "v_type", "valid_until"]
     def __init__(self, name, **kwargs):
@@ -417,8 +416,8 @@ class mvect_entry(object):
                   "v_type" : self.v_type,
                   "value"  : str(self.value)}
         for key, ns_value in [("valid_until", None),
-                              ("base"       , 1   ),
-                              ("factor"     , 1   )]:
+                              ("base"       , 1),
+                              ("factor"     , 1)]:
             if getattr(self, key) != ns_value:
                 kwargs[key] = "%d" % (getattr(self, key))
         return builder("mve", **kwargs)

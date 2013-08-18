@@ -21,9 +21,13 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
 
-""" host-monitoring, with 0MQ and twisted support """
+""" host-monitoring, with 0MQ and twisted support, constants """
 
-import sys
-from initat.host_monitoring import main
+import os
 
-sys.exit(main.main())
+TIME_FORMAT = "%.3f"
+
+CONFIG_DIR = "/etc/sysconfig/host-monitoring.d"
+MAPPING_FILE_IDS = os.path.join(CONFIG_DIR, "collrelay_0mq_mapping")
+MAPPING_FILE_TYPES = os.path.join(CONFIG_DIR, "0mq_clients")
+MASTER_FILE_NAME = os.path.join(CONFIG_DIR, "monitor_master")
