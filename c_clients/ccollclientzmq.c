@@ -182,7 +182,7 @@ int main(int argc, char **argv)
     int linger = 100, n_bytes;
 
     recv_buffer = (char *)malloc(RECVBUFF_SIZE);
-    printf("%d -> 0x%x\n", RECVBUFF_SIZE, recv_buffer);
+    //printf("%d -> 0x%x\n", RECVBUFF_SIZE, recv_buffer);
     alrmsigact = (struct sigaction *)malloc(sizeof(struct sigaction));
     if (!alrmsigact) {
         free(host_b);
