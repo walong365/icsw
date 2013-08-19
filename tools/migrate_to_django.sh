@@ -15,6 +15,14 @@ done
 
 . $conf
 
+if [ "$(basename $conf)" != "db.cf" ] ; then
+    export DB_PORT=${MYSQL_PORT}
+    export DB_DATABASE=${MYSQL_DATABASE}
+    export DB_USER=${MYSQL_USER}
+    export DB_HOST=${MYSQL_HOST}
+    export DB_PASSWD=${MYSQL_PASSWD}
+fi
+
 echo "Migrates current database to django, configfile is $conf"
 
 dump_name=$(mktemp /tmp/dbdump_XXXXXX)
@@ -40,7 +48,7 @@ if [ -d ${MIG_DIR} ] ; then
 else
     echo "dropping and recreating database"
     
-    echo "DROP DATABASE ${MYSQL_DATABASE}; CREATE DATABASE ${MYSQL_DATABASE}" |  mysql -u ${MYSQL_USER} -h ${MYSQL_HOST} -P ${MYSQL_PORT} -p${MYSQL_PASSWD} ${MYSQL_DATABASE}
+    echo "DROP DATABASE ${DB_DATABASE}; CREATE DATABASE ${DB_DATABASE}" |  mysql -u ${DB_USER} -h ${DB_HOST} -P ${DB_PORT} -p${DB_PASSWD} ${DB_DATABASE}
     
     echo "sync database via django"
 
@@ -64,7 +72,7 @@ else
 
     echo "reinsert data"
     
-    cat ${dump_name}.data | /opt/cluster/sbin/db_magic.py | mysql -u ${MYSQL_USER} -h ${MYSQL_HOST} -P ${MYSQL_PORT} -p${MYSQL_PASSWD} ${MYSQL_DATABASE}
+    cat ${dump_name}.data | /opt/cluster/sbin/db_magic.py | mysql -u ${DB_USER} -h ${DB_HOST} -P ${DB_PORT} -p${DB_PASSWD} ${DB_DATABASE}
 
     # restore new models file
     cp -a ${C_DIR}/backbone/models.py ${C_DIR}/backbone/models_old_csw.py

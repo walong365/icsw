@@ -752,7 +752,11 @@ def device_pre_save(sender, **kwargs):
                         pass
             # raise ValidationError("no dots allowed in device name '%s'" % (cur_inst.name))
         if not valid_domain_re.match(cur_inst.name):
-            raise ValidationError("illegal characters in name '%s'" % (cur_inst.name))
+            # check if we can simple fix it
+            if not valid_domain_re.match(cur_inst.name.replace(" ", "_")):
+                raise ValidationError("illegal characters in name '%s'" % (cur_inst.name))
+            else:
+                cur_inst.name = cur_inst.name.replace(" ", "_")
         if int(cur_inst.md_cache_mode) == 0:
             cur_inst.md_cache_mode = 1
         _check_integer(cur_inst, "md_cache_mode", min_val=1, max_val=3)

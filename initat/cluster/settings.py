@@ -346,6 +346,10 @@ if CLUSTER_LICENSE.get("rest", False):
         )
     }
 
+# SOUTH config
+SOUTH_LOGGING_ON = True
+SOUTH_LOGGING_FILE = "/var/log/cluster/south.log"
+
 LOGGING = {
     'version' : 1,
     'disable_existing_loggers' : True,
