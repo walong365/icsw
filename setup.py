@@ -1,7 +1,7 @@
 from distutils.core import setup
 
 setup(name="host-monitoring",
-      version="4.4",
+      version="4.7",
       description="The host-monitoring part of the INIT(c) cluster software.",
       url="http://www.init.at",
       author="Andreas Lang-Nevyjel",
