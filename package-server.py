@@ -792,7 +792,11 @@ class server_process(threading_tools.process_pool):
                                             logging_tools.get_plural("client", len(send_list))))
         send_com = server_command.srv_command(command=command)
         for target_name in send_list:
-            self.send_reply(client.get(target_name).uid, send_com)
+            cur_c = client.get(target_name)
+            if cur_c is not None:
+                self.send_reply(cur_c.uid, send_com)
+            else:
+                self.log("no client with name '%s' found" % (target_name), logging_tools.LOG_LEVEL_WARN)
 
 global_config = configfile.get_global_config(process_tools.get_programm_name())
 
