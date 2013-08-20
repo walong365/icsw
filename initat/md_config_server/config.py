@@ -1510,7 +1510,7 @@ class all_host_groups(host_type_config):
                         hostgroup_name=cur_cat.full_name,
                         alias=cur_cat.comment or cur_cat.full_name,
                         members="-")
-                    nag_conf["members"] = ",".join([cur_dev.full_name for cur_dev in cur_cat.device_set.filter(host_filter)])
+                    nag_conf["members"] = ",".join([cur_dev.full_name for cur_dev in cur_cat.device_set.filter(host_filter).filter(Q(pk__in=host_pks))])
                     if nag_conf["members"]:
                         self.__obj_list.append(nag_conf)
             else:
