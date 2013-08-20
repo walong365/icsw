@@ -54,6 +54,7 @@ class hc_command(object):
             "ipmi" : [
                 ("IPMI_USERNAME", "admin"),
                 ("IPMI_PASSWORD", "admin"),
+                ("IPMI_INTERFACE", ""),
                 ],
             "ilo4" : [
                 ("ILO_USERNAME", "Administrator"),
@@ -82,8 +83,10 @@ class hc_command(object):
                 self.log("com_str is None, strange...", logging_tools.LOG_LEVEL_ERROR)
     def _build_com_str(self, var_dict, com_ip, command):
         if self.curl_base == "ipmi":
-            com_str = "%s -H %s -U %s -P %s chassis power %s" % (
+            com_str = "%s %s -H %s -U %s -P %s chassis power %s" % (
                 process_tools.find_file("ipmitool"),
+                # add ipmi interface if defined
+                "-I %s" % (var_dict["IPMI_INTERFACE"]) if var_dict.get("IPMI_INTERFACE", "") else "",
                 com_ip,
                 var_dict["IPMI_USERNAME"],
                 var_dict["IPMI_PASSWORD"],

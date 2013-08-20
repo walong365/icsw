@@ -3342,7 +3342,7 @@ class server_process(threading_tools.process_pool):
                 syslog_rc = c_syslog_rc
                 break
         if syslog_rc:
-            self.log("found syslog script at %s, restarting"  (syslog_rc))
+            self.log("found syslog script at %s, restarting" % (syslog_rc))
             restart_com = "%s restart" % (syslog_rc)
         else:
             self.log("no syslog script found, reloading via systemd")
