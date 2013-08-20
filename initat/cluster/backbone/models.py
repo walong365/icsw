@@ -4224,7 +4224,12 @@ class user_variable(models.Model):
             self.value = "None"
     def from_db_format(self):
         if self.var_type == "b":
-            self.value = True if int(self.value) else False
+            if self.value.lower() in ["true", "t"]:
+                self.value = True
+            elif self.value.lower() in ["false", "f"]:
+                self.value = False
+            else:
+                self.value = True if int(self.value) else False
         elif self.var_type == "i":
             self.value = int(self.value)
         elif self.var_type == "n":
