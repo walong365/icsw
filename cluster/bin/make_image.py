@@ -84,7 +84,7 @@ class package_check(object):
         self.__log_com("[pc] %s" % (what), log_level)
     def check(self, pack_list):
         self.log("checking image at path %s" % (self.__image.source))
-        res_str = self._call("zypper -x -R %s search -i | xmllint --recover - 2>/dev/null " % (self.__image.source))
+        res_str = self._call("zypper -x -R %s --no-refresh search -i | xmllint --recover - 2>/dev/null " % (self.__image.source))
         try:
             res_xml = etree.fromstring(res_str)
         except:
