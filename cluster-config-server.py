@@ -1328,7 +1328,7 @@ class build_process(threading_tools.process_obj):
                 Q(device_config__device=b_dev) |
                 (Q(device_config__device__device_group=b_dev.device_group_id) &
                  Q(device_config__device__device_type__identifier="MD"))). \
-                              order_by("priority", "name").distinct().values_list("pk", flat=True))
+                              order_by("-priority", "name").distinct().values_list("pk", flat=True))
             parent_pks = []
             while True:
                 new_pks = set(config.objects.exclude(parent_config=None).filter(Q(pk__in=config_pks + parent_pks)).values_list("parent_config", flat=True)) - set(config_pks + parent_pks)
@@ -1338,7 +1338,7 @@ class build_process(threading_tools.process_obj):
                     break
             pseudo_config_list = config.objects.all(). \
                 prefetch_related("config_str_set", "config_int_set", "config_bool_set", "config_blob_set", "config_script_set"). \
-                order_by("priority", "name")
+                order_by("-priority", "name")
             config_dict = dict([(cur_pc.pk, cur_pc) for cur_pc in pseudo_config_list])
             # copy variables
             for p_config in pseudo_config_list:
@@ -1686,7 +1686,7 @@ class simple_request(object):
             Q(device_config__device=self.cc.device) |
             (Q(device_config__device__device_group=self.cc.device.device_group_id) &
              Q(device_config__device__device_type__identifier="MD"))). \
-            order_by("priority", "name").distinct().values_list("pk", flat=True)
+            order_by("-priority", "name").distinct().values_list("pk", flat=True)
         c_vars = config_str.objects.filter(Q(config__in=config_pks) & Q(name=cs_name))
         ent_list = []
         for c_var in c_vars:
