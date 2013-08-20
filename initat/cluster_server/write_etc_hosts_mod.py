@@ -124,7 +124,7 @@ class write_etc_hosts(cs_base_class.server_com):
                 cur_dtn = cur_ip.domain_tree_node or tl_dtn
                 if not (cur_ip.alias.strip() and cur_ip.alias_excl):
                     host_names.append("%s%s" % (target_nd.device.name, cur_dtn.node_postfix))
-                host_names.extend(cur_ip.alias.strip().split())
+                host_names.extend(["%s%s" % (cur_entry, cur_dtn.node_postfix) for cur_entry in cur_ip.alias.strip().split()])
                 if "localhost" in [x.split(".")[0] for x in host_names]:
                     host_names = [host_name for host_name in host_names if host_name.split(".")[0] == "localhost"]
                 if cur_dtn.create_short_names:
