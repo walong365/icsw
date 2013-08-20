@@ -143,6 +143,7 @@ class sync_users(View):
     @method_decorator(xml_wrapper)
     def post(self, request):
         # create homedirs
+        # FIXME: only create users for local server
         create_user_list = user.objects.filter(Q(home_dir_created=False) & Q(active=True) & Q(group__active=True))
         logger.info("user homes to create: %d" % (len(create_user_list)))
         for create_user in create_user_list:

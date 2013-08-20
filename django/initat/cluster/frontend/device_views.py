@@ -18,7 +18,8 @@ from django.utils.decorators import method_decorator
 from initat.cluster.frontend.helper_functions import xml_wrapper
 from initat.core.render import render_me, render_string
 from initat.cluster.backbone.models import device_type, device_group, device, \
-     cd_connection, domain_name_tree, category_tree, package_device_connection
+     cd_connection, domain_name_tree, category_tree, package_device_connection, \
+     mon_ext_host, mon_device_templ, mon_service_cluster, mon_host_cluster
 from initat.cluster.frontend import forms
 
 logger = logging.getLogger("cluster.device")
