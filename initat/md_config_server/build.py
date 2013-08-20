@@ -361,7 +361,7 @@ class build_process(threading_tools.process_obj):
                 logging_tools.get_plural("source node", len(src_nodes)),
                 logging_tools.get_plural("dest node", len(dst_nodes))))
             src_nds = reduce(operator.ior, [nd_dict[key] for key in src_nodes], set())
-            dst_nds = reduce(operator.ior, [nd_dict[key] for key in dst_nodes], set())
+            # dst_nds = reduce(operator.ior, [nd_dict[key] for key in dst_nodes], set())
             # build list of src_nd, dst_nd tuples
             nb_list = []
             for src_nd in src_nds:
@@ -929,8 +929,6 @@ class build_process(threading_tools.process_obj):
         server_idxs = [cur_gc.monitor_server.pk]
         # get netip-idxs of own host
         my_net_idxs = set(netdevice.objects.filter(Q(device__in=server_idxs)).values_list("pk", flat=True))
-        main_dir = global_config["MD_BASEDIR"]
-        etc_dir = os.path.normpath("%s/etc" % (main_dir))
         # get ext_hosts stuff
         ng_ext_hosts = self._get_mon_ext_hosts()
         # all hosts
@@ -1064,14 +1062,14 @@ class build_process(threading_tools.process_obj):
                 single_build,
             )
         host_names = host_nc.keys()
-        host_uuids = set([host_val.uuid for host_val in all_hosts_dict.itervalues() if host_val.full_name in host_names])
+        # host_uuids = set([host_val.uuid for host_val in all_hosts_dict.itervalues() if host_val.full_name in host_names])
         for host_name in sorted(host_names):
             host = host_nc[host_name][0]
             if host.has_key("possible_parents"):
                 parent_list = []
                 p_parents = host["possible_parents"]
                 # print "*", p_parents
-                for p_val, nd_val, p_list in p_parents:
+                for _p_val, _nd_val, p_list in p_parents:
                     # skip first host (is self)
                     host_pk = p_list.pop(0)
                     for parent_idx in p_list:
@@ -1202,7 +1200,6 @@ class build_process(threading_tools.process_obj):
         return ret_field
     def _get_target_ip_info(self, my_net_idxs, net_devices, host, check_hosts):
         traces = []
-        targ_netdev_idxs = None
         pathes = self.router_obj.get_ndl_ndl_pathes(my_net_idxs, net_devices.keys(), add_penalty=True)
         for penalty, cur_path in sorted(pathes):
             if net_devices.has_key(cur_path[-1]):
@@ -1215,7 +1212,6 @@ class build_process(threading_tools.process_obj):
                           logging_tools.LOG_LEVEL_ERROR)
             valid_ips = []
         else:
-            valid_ips = sum([net_devices[nd_pk] for val, nd_pk, loc_trace in traces], [])
-            # (",".join([",".join([y for y in net_devices[x]]) for x in targ_netdev_idxs])).split(",")
+            valid_ips = sum([net_devices[nd_pk] for _val, nd_pk, _loc_trace in traces], [])
         return valid_ips, traces
 
