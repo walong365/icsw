@@ -394,6 +394,11 @@ class sync_ldap_config(cs_base_class.server_com):
                         par_dict["base_dn"])
                     g_stuff = all_groups[u_stuff.group_id]
                     # ldap.conf filter: pam_filter      &(objectclass=posixAccount)(|(host=\*)(host=zephises))
+                    u_password = u_stuff.password
+                    if u_password.count(":"):
+                        u_password = "{SHA}%s" % (u_password.split(":", 1)[1])
+                    else:
+                        self.log("user_password for %s is not parseable, using value" % (unicode(u_stuff)))
                     u_stuff.attributes = {
                         "objectClass"      : ["account", "posixAccount", "shadowAccount", "top", "clusterAccount"],
                         "cn"               : [u_stuff.login],
@@ -406,7 +411,7 @@ class sync_ldap_config(cs_base_class.server_com):
                                 u_stuff.email)],
                         "gidNumber"        : [str(g_stuff.gid)],
                         "uidNumber"        : [str(u_stuff.uid)],
-                        "userPassword"     : ["{SHA}%s" % (u_stuff.password.split(":", 1)[1])],
+                        "userPassword"     : [u_password],
                         "homeDirectory"    : [os.path.normpath("%s/%s" % (g_stuff.homestart, u_stuff.home or u_stuff.login))],
                         "loginShell"       : [u_stuff.shell],
                         "shadowLastChange" : ["11192"],
@@ -627,6 +632,11 @@ class sync_ldap_config(cs_base_class.server_com):
 #                 for ihk in invalid_home_keys:
 #                     del home_exp_dict[ihk]
                 # now we have all automount-maps in export_dict, form is mountpoint: (options, source)
+                for user_stuff in [cur_u for cur_u in all_users.values() if cur_u.active and cur_u.group.active]:
+                    group_stuff = all_groups[user_stuff.group_id]
+                    if user_stuff.export_id in home_exp_dict.keys():
+                        home_stuff = home_exp_dict[user_stuff.export_id]
+                        export_dict[os.path.normpath("%s/%s" % (group_stuff.homestart, user_stuff.home))] = (home_stuff["options"], "%s%s:%s/%s" % (home_stuff["name"], home_stuff["node_postfix"], home_stuff["homeexport"], user_stuff.home))
                 # build mountmaps
                 # SUSE 10.1 mappings
                 if ldap_version > 0:
