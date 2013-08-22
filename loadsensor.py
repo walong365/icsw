@@ -4,7 +4,7 @@
 # Copyright (C) 2005,2007,2008,2009,2010,2012 Andreas Lang-Nevyjel, init.at
 #
 # Send feedback to: <lang-nevyjel@init.at>
-# 
+#
 # This file is part of rms-tools
 #
 # This program is free software; you can redistribute it and/or modify
@@ -22,21 +22,19 @@
 #
 """ python interface to emulate a loadsensor for SGE """
 
+import commands
+import license_tool
+import logging_tools
+import os
+import process_tools
+import re
+import server_command
+import sge_license_tools
+import stat
 import sys
 import time
-import os
-import os.path
-import commands
-import stat
-import re
-import sge_license_tools
-import logging_tools
-import process_tools
-import license_tool
-from lxml import etree
-
-EXT_WRITE_DIR  = "/tmp/.machvect_es"
-EXT_WRITE_NAME = "lic_ov"
+import zmq
+from initat.host_monitoring import hm_classes
 
 class error(Exception):
     def __init__(self, value):
@@ -47,15 +45,15 @@ class error(Exception):
 class term_error(error):
     def __init__(self):
         pass
-    
+
 class alarm_error(error):
     def __init__(self):
         pass
-    
+
 class stop_error(error):
     def __init__(self):
         pass
-    
+
 class int_error(error):
     def __init__(self):
         pass
@@ -77,8 +75,7 @@ def parse_actual_license_usage(log_template, actual_licenses, act_conf, lc_dict)
     else:
         # build different license-server calls
         all_server_addrs = dict([("%d@%s" % (act_lic.get_port(), act_lic.get_host()), True) for act_lic in actual_licenses.values() if act_lic.get_license_type() == "simple"]).keys()
-        all_out_lines = []
-        #print "asa:", all_server_addrs
+        # print "asa:", all_server_addrs
         q_s_time = time.time()
         for server_addr in all_server_addrs:
             if not server_addr in lc_dict:
@@ -90,59 +87,30 @@ def parse_actual_license_usage(log_template, actual_licenses, act_conf, lc_dict)
                     server=server_addr.split("@")[1],
                     log_com=log_template.log)
             srv_result = lc_dict[server_addr].check()
-            #lmstat_options = "lmstat -a -c %s" % (server_addr)
-            #lmstat_com = "%s/%s %s" % (
-                                       #lmstat_options)
-            #c_stat, out = sge_license_tools.call_command(lmstat_com)
-            #if not c_stat:
-                #all_out_lines.extend([line.strip() for line in out.split("\n") if line.strip()])
-            #else:
-                #log_template.error("error calling %s (%d): %s" % (lmstat_com,
-                                                                  #c_stat,
-                                                                  #out))
         q_e_time = time.time()
-        log_template.info("%s to query, took %s: %s" % (logging_tools.get_plural("license server", len(all_server_addrs)),
-                                                        logging_tools.get_diff_time_str(q_e_time - q_s_time),
-                                                        ", ".join(all_server_addrs)))
+        log_template.info(
+            "%s to query, took %s: %s" % (
+                logging_tools.get_plural("license server", len(all_server_addrs)),
+                logging_tools.get_diff_time_str(q_e_time - q_s_time),
+                ", ".join(all_server_addrs)))
         for cur_lic in srv_result.xpath(".//license[@name]"):
             name = cur_lic.attrib["name"]
             act_lic = actual_licenses.get(name, None)
             if act_lic and act_lic.get_is_used():
                 configured_lics.append(name)
-                total, used = (int(cur_lic.attrib["issued"]),
-                               int(cur_lic.attrib["used"]) - int(cur_lic.attrib.get("reserved", "0")))
+                _total, used = (
+                    int(cur_lic.attrib["issued"]),
+                    int(cur_lic.attrib["used"]) - int(cur_lic.attrib.get("reserved", "0")))
                 act_lic.clean_hosts()
                 if act_lic.get_used_num() != used:
-                    log_template.info("attribute %s: use_count changed from %d to %d" % (act_lic.get_attribute(),
-                                                                                         act_lic.get_used_num(),
-                                                                                         used))
+                    log_template.info(
+                        "attribute %s: use_count changed from %d to %d" % (
+                            act_lic.get_attribute(),
+                            act_lic.get_used_num(),
+                            used))
                     act_lic.set_used_num(int(used))
                     act_lic.set_changed()
     return configured_lics
-        #users_re = re.compile("^Users of (?P<attribute>\S+): .* of (?P<total>\d+) .* of (?P<used>\d+).*$")
-        #license_re = re.compile("^(?P<user>\S+)\s+(?P<long_host_name>\S+)\s+(?P<short_host_name>\S+)\s+\((?P<version>[^\)]+)\)\s+(?P<info>[^\)]+)\),\s+(?P<start_date>.*)$")
-        #for line in all_out_lines:
-            #users_mo = users_re.match(line)
-            #license_mo = license_re.match(line)
-            #if users_mo:
-                #attribute, total, used = (users_mo.group("attribute"),
-                                          #int(users_mo.group("total")),
-                                          #int(users_mo.group("used")))
-                #name = attribute.lower()
-                #act_lic = actual_licenses.get(name, None)
-                #if act_lic and act_lic.get_is_used():
-                    #configured_lics.append(name)
-                    #act_lic.clean_hosts()
-                    #if act_lic.get_used_num() != used:
-                        #log_template.info("attribute %s: use_count changed from %d to %d" % (act_lic.get_attribute(),
-                                                                                             #act_lic.get_used_num(),
-                                                                                             #used))
-                        #act_lic.set_used_num(int(used))
-                        #act_lic.set_changed()
-            #elif license_mo:
-                #if act_lic:
-                    #act_lic.add_host(license_mo.group("short_host_name").lower())
-    #return configured_lics
 
 def calculate_compound_licenses(log_template, actual_licenses, configured_lics):
     comp_keys = [key for key, value in actual_licenses.iteritems() if value.get_is_used() and value.get_license_type() == "compound"]
@@ -150,7 +118,7 @@ def calculate_compound_licenses(log_template, actual_licenses, configured_lics):
         configured_lics.append(comp_key)
         for log_line, log_level in actual_licenses[comp_key].handle_compound(actual_licenses):
             log_template.log(log_level, log_line)
-                
+
 def build_sge_report_lines(log_template, configured_lics, actual_lics):
     lines = ["start"]
     rep_dict = {"lics_in_use"   : [],
@@ -166,9 +134,10 @@ def build_sge_report_lines(log_template, configured_lics, actual_lics):
         if free_lics != act_lic.get_total_num():
             rep_dict["lics_in_use"].append(configured_lic)
         if act_lic.get_changed():
-            log_template.info("reporting %d free of %d for %s" % (free_lics,
-                                                                  act_lic.get_total_num(),
-                                                                  configured_lic))
+            log_template.info(
+                "reporting %d free of %d for %s" % (free_lics,
+                    act_lic.get_total_num(),
+                    configured_lic))
         lines.append("global:%s:%d" % (configured_lic, free_lics))
     lines.append("end")
     return lines, rep_dict
@@ -204,30 +173,24 @@ def get_used(log_template, qstat_bin):
                         act_dict[dict_name][res_name] += res_value
     return act_dict
 
-def init_ext_call(log_template, actual_licenses):
-    is_ok = False
-    if os.path.isdir(EXT_WRITE_DIR):
-        log_template.info("initialising external machvector_data (dir %s, file %s)" % (EXT_WRITE_DIR,
-                                                                                       EXT_WRITE_NAME))
-        try:
-            file("%s/%s.mvd" % (EXT_WRITE_DIR, EXT_WRITE_NAME), "w").write("\n".join(
-                sum([lic_stuff.get_info_lines() for lic_stuff in actual_licenses.itervalues()], []) + 
-                [""]))
-        except:
-            log_template.error(" ... error creating file: %s" % (process_tools.get_except_info()))
-        else:
-            is_ok = True
-    else:
-        log_template.warning("no directory %s found" % (EXT_WRITE_DIR))
-    return is_ok
-
-def write_ext_data(log_template, actual_licenses):
+def write_ext_data(vector_socket, log_template, actual_licenses):
+    drop_com = server_command.srv_command(command="set_vector")
+    add_obj = drop_com.builder("values")
+    cur_time = time.time()
+    for lic_stuff in actual_licenses.itervalues():
+        for cur_mve in lic_stuff.get_mvect_entries(hm_classes.mvect_entry):
+            cur_mve.valid_until = cur_time + 120
+            add_obj.append(cur_mve.build_xml(drop_com.builder))
+    drop_com["vector_loadsensor"] = add_obj
+    drop_com["vector_loadsensor"].attrib["type"] = "vector"
+    vector_socket.send_unicode(unicode(drop_com))
+    return
     if os.path.isdir(EXT_WRITE_DIR):
         try:
             file("%s/%s.mvv" % (EXT_WRITE_DIR, EXT_WRITE_NAME), "w").write("\n".join(
-                sum([lic_stuff.get_value_lines() for lic_stuff in actual_licenses.itervalues()], []) + 
+                sum([lic_stuff.get_value_lines() for lic_stuff in actual_licenses.itervalues()], []) +
                 [""]))
-            #["lic.%s.used:i:%d" % (lic_name, lic_stuff.get_used_num()) for lic_name, lic_stuff in actual_licenses.iteritems()] +
+            # ["lic.%s.used:i:%d" % (lic_name, lic_stuff.get_used_num()) for lic_name, lic_stuff in actual_licenses.iteritems()] +
             #    ["lic.%s.free:i:%d" % (lic_name, lic_stuff.get_free_num()) for lic_name, lic_stuff in actual_licenses.iteritems()] +
             #    [""]))
         except:
@@ -237,9 +200,14 @@ def write_ext_data(log_template, actual_licenses):
 
 def main():
     # change IO-descriptors
-    log_template = logging_tools.get_logger("loadsensor",
-                                            "uds:/var/lib/logging-server/py_log",
-                                            init_logger=True)
+    zmq_context = zmq.Context()
+    log_template = logging_tools.get_logger(
+        "loadsensor",
+        "uds:/var/lib/logging-server/py_log",
+        init_logger=True,
+        zmq=True,
+        context=zmq_context,
+        )
     base_dir = "/etc/sysconfig/licenses"
     my_pid = os.getpid()
     log_template.info("starting for pid %d, base_dir is %s" % (my_pid, base_dir))
@@ -267,7 +235,7 @@ def main():
     for key, value in act_conf.iteritems():
         log_template.info(" - %-20s : %s" % (key, value))
     call_num = 0
-    io_in_fd  = sys.stdin.fileno()
+    io_in_fd = sys.stdin.fileno()
     io_out_fd = sys.stdout.fileno()
     log_template.info("starting up, input handle is %d, output handle is %d" % (io_in_fd, io_out_fd))
     actual_licenses, lic_read_time = ([], time.time())
@@ -275,10 +243,13 @@ def main():
     ng_dict = sge_license_tools.read_ng_file(log_template)
     # license_check_dict
     lc_dict = {}
-    # ok to write license statistics
-    write_ext_ok = False
+    # vector socket
+    conn_str = process_tools.get_zmq_ipc_name("vector", s_name="collserver", connect_to_root_instance=True)
+    vector_socket = zmq_context.socket(zmq.PUSH)
+    vector_socket.setsockopt(zmq.LINGER, 0)
+    vector_socket.connect(conn_str)
     try:
-        while 1:
+        while True:
             in_lines = raw_read(io_in_fd)
             call_num += 1
             if in_lines == "quit":
@@ -295,8 +266,8 @@ def main():
                         actual_licenses = sge_license_tools.parse_license_lines(sge_license_tools.read_site_license_file(base_dir, act_site), act_site, ng_dict=ng_dict)
                         lic_read_time = file_time
                         write_ext_ok = False
-                    if not write_ext_ok:
-                        write_ext_ok = init_ext_call(log_template, actual_licenses)
+                    else:
+                        write_ext_ok = True
                     configured_licenses = parse_actual_license_usage(log_template, actual_licenses, act_conf, lc_dict)
                     [cur_lic.handle_node_grouping() for cur_lic in actual_licenses.itervalues()]
                     calculate_compound_licenses(log_template, actual_licenses, configured_licenses)
@@ -304,7 +275,7 @@ def main():
                     # report to SGE
                     print "\n".join(sge_lines)
                     if write_ext_ok:
-                        write_ext_data(log_template, actual_licenses)
+                        write_ext_data(vector_socket, log_template, actual_licenses)
                     end_time = time.time()
                     log_template.info("%s defined, %d configured, %d in use%s, (%d simple, %d compound), took %s" % (
                         logging_tools.get_plural("license", len(actual_licenses.keys())),
@@ -324,8 +295,10 @@ def main():
         log_template.warning("proc %d: got stop-signal, exiting ..." % (my_pid))
     except int_error:
         log_template.warning("proc %d: got int-signal, exiting ..." % (my_pid))
+    vector_socket.close()
+    zmq_context.term()
     sys.exit(0)
-    
+
 if __name__ == "__main__":
     main()
-    
+

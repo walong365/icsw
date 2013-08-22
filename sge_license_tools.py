@@ -4,7 +4,7 @@
 # Copyright (C) 2005,2007,2008,2010,2012 Andreas Lang-Nevyjel, init.at
 #
 # Send feedback to: <lang-nevyjel@init.at>
-# 
+#
 # This file is part of rms-tools
 #
 # This program is free software; you can redistribute it and/or modify
@@ -23,14 +23,13 @@
 
 import sys
 import os
-import os.path
 import re
 import commands
 import process_tools
 import logging_tools
 
 SITE_CONF_NAME = "lic_SITES.conf"
-ACT_SITE_NAME  = "actual_SITE"
+ACT_SITE_NAME = "actual_SITE"
 NG_FILE = "/etc/sysconfig/licenses/node_grouping"
 
 DEFAULT_CONFIG = {
@@ -80,6 +79,30 @@ class sge_license(object):
         c = self.__changed
         self.__changed = False
         return c
+    def get_mvect_entries(self, mvect_entry):
+        r_list = [
+            mvect_entry(
+                "lic.%s.used" % (self.get_name()),
+                info="Licenses used for %s (%s)" % (self.get_name(), self.get_info()),
+                default=0
+                ),
+            mvect_entry(
+                "lic.%s.used" % (self.get_name()),
+                info="Licenses free for %s (%s)" % (self.get_name(), self.get_info()),
+                default=0
+                ),
+            ]
+        r_list[0].update(self.get_used_num())
+        r_list[1].update(self.get_free_num())
+        for ng_key in self.__ng_dict.iterkeys():
+            add_entry = mvect_entry(
+                "lic.%s.%s.used" % (self.get_name(), ng_key),
+                info="Licenses free for %s on %s (%s)" % (self.get_name(), ng_key, self.get_info()),
+                default=0
+                )
+            add_entry.update(self.__lic_sub_dict[ng_key])
+            r_list.append(add_entry)
+        return r_list
     def get_info_lines(self):
         lic_lines = ["lic.%s.used:0:Licenses used for %s (%s):1:1:1" % (self.get_name(), self.get_name(), self.get_info()),
                      "lic.%s.free:0:Licenses free for %s (%s):1:1:1" % (self.get_name(), self.get_name(), self.get_info())]
@@ -138,7 +161,7 @@ class sge_license(object):
             if self.__operand == "add":
                 # only supported opperand
                 new_total = sum([lic_dict[key].get_total_num() * self.__mult_dict[key] for key in found_keys])
-                new_used  = sum([lic_dict[key].get_used_num()  * self.__mult_dict[key] for key in found_keys])
+                new_used = sum([lic_dict[key].get_used_num() * self.__mult_dict[key] for key in found_keys])
                 if new_total != self.get_total_num():
                     log_lines.append(("total for %s changed from %d to %d" % (self.__name,
                                                                               self.get_total_num(),
@@ -162,7 +185,7 @@ class sge_license(object):
 
 def get_site_license_file_name(base_dir, act_site):
     return os.path.normpath("%s/lic_%s.conf" % (base_dir, act_site))
-    
+
 def read_text_file(tf_name, ignore_hashes=False):
     tfr_name = os.path.normpath(tf_name)
     if not os.path.isfile(tfr_name):
@@ -181,7 +204,7 @@ def read_site_config_file(base_dir, cf_name):
         sys.exit(1)
     else:
         return lines
-        
+
 def read_default_site_file(base_dir, cf_name):
     act_site = ""
     try:
@@ -192,7 +215,7 @@ def read_default_site_file(base_dir, cf_name):
         if lines:
             act_site = lines[0].strip()
     return act_site
-        
+
 def read_site_license_file(base_dir, act_site):
     slf_name = get_site_license_file_name(base_dir, act_site)
     try:
@@ -202,7 +225,7 @@ def read_site_license_file(base_dir, act_site):
                                                                     process_tools.get_except_info())
         lines = []
     return lines
-    
+
 def parse_site_config_file(base_dir, act_site, act_conf):
     slf_name = os.path.normpath("%s/lic_%s.src_config" % (base_dir, act_site))
     try:
@@ -213,7 +236,7 @@ def parse_site_config_file(base_dir, act_site, act_conf):
         for key, value in [x for x in [y.split(None, 1) for y in lines] if len(x) == 2]:
             act_conf[key.upper()] = value
     return act_conf
-        
+
 def parse_license_lines(lines, act_site, **kwargs):
     new_dict = {}
     # simple license
@@ -266,8 +289,8 @@ def call_command(command, exit_on_fail=0, show_output=False):
             for line in out.split("\n"):
                 print " - %s" % (line)
     return stat, out
-    
+
 if __name__ == "__main__":
     print "Loadable module, exiting..."
     sys.exit(0)
-    
+
