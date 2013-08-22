@@ -3,7 +3,7 @@
 # Copyright (C) 2001,2002,2003,2004,2005,2006,2007,2008,2012,2013 Andreas Lang-Nevyjel
 #
 # Send feedback to: <lang-nevyjel@init.at>
-# 
+#
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License Version 2 as
 # published by the Free Software Foundation.
@@ -61,7 +61,7 @@ SERVER_PORT = 8004
 
 class dummy_file(file):
     ending = None
-    
+
 class backup_process(threading_tools.process_obj):
     def process_init(self):
         self.__log_template = logging_tools.get_logger(
@@ -95,7 +95,7 @@ class backup_process(threading_tools.process_obj):
         self.log("storing backup in %s" % (os.path.join(
             bu_dir,
             bu_name)))
-        # set BASE_OBJECT 
+        # set BASE_OBJECT
         dumpdatafast.BASE_OBJECT = self
         buf_com = dumpdatafast.Command()
         opts, args = OptionParser(option_list=buf_com.option_list).parse_args([
@@ -150,7 +150,7 @@ class bg_stuff(object):
         for key in dir(bg_stuff.Meta):
             if not key.startswith("__") and not hasattr(self.Meta, key):
                 setattr(self.Meta, key, getattr(bg_stuff.Meta, key))
-        #self.__name = name
+        # self.__name = name
         self.server_process = srv_process
         self.init_bg_stuff()
         self.__last_call = None
@@ -160,7 +160,7 @@ class bg_stuff(object):
         pass
     def __call__(self, cur_time, drop_com):
         if self.__last_call and abs(self.__last_call - cur_time) < self.Meta.min_time_between_runs:
-            #self.log("last call only %d seconds ago, skipping" % (abs(self.__last_call - cur_time)),
+            # self.log("last call only %d seconds ago, skipping" % (abs(self.__last_call - cur_time)),
             #         logging_tools.LOG_LEVEL_WARN)
             pass
         else:
@@ -329,9 +329,9 @@ class quota_stuff(bg_stuff):
             for db_rec in dc.fetchall():
                 if self.__user_dict.has_key(db_rec["uid"]):
                     # check for new settings
-                    for key, value in [("source"    , "SQL"              ),
-                                       ("uid"       , db_rec["uid"]      ),
-                                       ("login"     , db_rec["login"]    ),
+                    for key, value in [("source"    , "SQL"),
+                                       ("uid"       , db_rec["uid"]),
+                                       ("login"     , db_rec["login"]),
                                        ("email"     , db_rec["useremail"]),
                                        ("firstname" , db_rec["uservname"]),
                                        ("lastname"  , db_rec["usernname"])]:
@@ -434,7 +434,7 @@ class quota_stuff(bg_stuff):
                                                                    process_tools.get_except_info()),
                              logging_tools.LOG_LEVEL_ERROR)
                 else:
-                    #f_frsize = osres[statvfs.F_FRSIZE]
+                    # f_frsize = osres[statvfs.F_FRSIZE]
                     f_frsize = 1024
                     for uid, u_stuff in u_dict.iteritems():
                         if self.Meta.creates_machvector:
@@ -553,8 +553,6 @@ class quota_stuff(bg_stuff):
         self.log(sep_str)
         dc.release()
         return my_vector
-
-# --------- connection objects ------------------------------------
 
 class server_process(threading_tools.process_pool):
     def __init__(self, options):
@@ -798,7 +796,7 @@ class server_process(threading_tools.process_pool):
             self.log("checking the config gave: %s (%s) %s" % (str(do_it),
                                                                srv_origin,
                                                                err_str))
-            #print srv_com.pretty_print()
+            # print srv_com.pretty_print()
             if do_it:
                 try:
                     found_keys = [key for key in com_obj.Meta.needed_option_keys if "server_key:%s" % (key) in srv_com]
@@ -915,8 +913,8 @@ class server_process(threading_tools.process_pool):
                         # FIXME, send_broadcast not fully implemented, need 2nd server to test, AL 20120401
                         self.com_socket.send_unicode(send_id, zmq.SNDMORE)
                         self.com_socket.send_unicode(unicode(srv_com))
-                #pprint.pprint(serv_ip_dict)
-                #print unicode(srv_com)
+                # pprint.pprint(serv_ip_dict)
+                # print unicode(srv_com)
         else:
             self.log("no local netdevices found", logging_tools.LOG_LEVEL_ERROR)
         dc.release()
@@ -1040,7 +1038,7 @@ def main():
     cluster_location.read_config_from_db(global_config, "server", [
         ("COM_PORT"             , configfile.int_c_var(SERVER_PORT)),
         ("IMAGE_SOURCE_DIR"     , configfile.str_c_var("/usr/local/share/cluster/images")),
-        #("UPDATE_SITE"          , configfile.str_c_var("http://www.initat.org/cluster/RPMs/")),
+        # ("UPDATE_SITE"          , configfile.str_c_var("http://www.initat.org/cluster/RPMs/")),
         ("MAILSERVER"           , configfile.str_c_var("localhost")),
         ("FROM_NAME"            , configfile.str_c_var("quotawarning")),
         ("FROM_ADDR"            , configfile.str_c_var(long_host_name)),

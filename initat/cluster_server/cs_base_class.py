@@ -18,20 +18,20 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
 
-import sys
-import config_tools
-import time
-import os
-import logging_tools
 import cluster_location
+import config_tools
+import logging_tools
+import os
 import pprint
-import threading_tools
 import process_tools
+import sys
+import threading_tools
+import time
 import server_command
 import io_stream_helper
 from django.conf import settings
-from initat.cluster_server.config import global_config
 from django.db import connection
+from initat.cluster_server.config import global_config
 
 class bg_process(threading_tools.process_obj):
     class Meta:

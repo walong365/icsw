@@ -30,6 +30,7 @@ import server_command
 import cluster_location
 from django.db.models import Q
 from initat.cluster.backbone.models import net_ip, netdevice, device, device_variable, domain_tree_node
+from initat.cluster_server.config import global_config
 from initat.cluster_server.rebuild_hopcount_mod import router_object
 import networkx
 
