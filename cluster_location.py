@@ -219,7 +219,6 @@ def write_config(server_type, g_config, **kwargs):
 
 class device_recognition(object):
     def __init__(self, **kwargs):
-        dc = kwargs.get("dc", None)
         self.short_host_name = kwargs.get("short_host_name", process_tools.get_machine_name())
         try:
             self.device = device.objects.get(Q(name=self.short_host_name)).pk
