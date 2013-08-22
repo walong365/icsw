@@ -891,6 +891,8 @@ def build_node_list(s_info, options):
     else:
         for q_name, h_name in d_list:
             act_q, act_h = (s_info.get_queue(q_name), s_info.get_host(h_name))
+            if act_q is None or act_h is None:
+                continue
             s_name = act_h.get("short_name")
             m_queue = act_h.find("queue[@name='%s']" % (act_q.attrib["name"]))
             if options.suppress_empty and int(m_queue.findtext("queuevalue[@name='slots_used']")) == 0:
