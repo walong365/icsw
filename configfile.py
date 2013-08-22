@@ -22,7 +22,6 @@
 """ module for handling config files """
 
 import os
-import os.path
 import re
 import sys
 import process_tools
@@ -355,8 +354,6 @@ class configuration(object):
             del self.__c_dict[key]
         else:
             raise KeyError, "Key %s not found in c_dict" % (key)
-    def get(self, key, default):
-        return self.__c_dict.get(key, default)
     def __setitem__(self, key, value):
         if key in self.__c_dict:
             if type(value) == type(()):
