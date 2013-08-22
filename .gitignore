@@ -9,3 +9,8 @@ build
 MANIFEST
 
 documentation/build/
+
+# eclipse stuff
+.settings
+.project
+.pydevproject

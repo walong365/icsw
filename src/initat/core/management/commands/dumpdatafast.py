@@ -14,7 +14,7 @@ Some measurements:
   The same operation with dumpdatafast takes about ~30s, because of the rather expensive
   datetime operations and some conversion overhead.
 """
-
+import networkx as nx
 import array
 import base64
 import bz2
@@ -33,14 +33,15 @@ import time
 import zipfile
 import logging_tools
 from functools import partial
+from collections import Counter
 
-from django.core.exceptions import ImproperlyConfigured
+from django.core.exceptions import ImproperlyConfigured, ObjectDoesNotExist
 from django.core.management.base import BaseCommand, CommandError
 from django.db import DEFAULT_DB_ALIAS, connection
 from django.utils.datastructures import SortedDict
 from django.conf import settings
 from django.utils import datetime_safe
-from django.db.models import ForeignKey, OneToOneField, Model
+from django.db.models import ForeignKey, OneToOneField, Model, ManyToManyField
 from django.utils.encoding import smart_unicode
 
 from optparse import make_option
@@ -51,24 +52,29 @@ from initat.core.utils import init_base_object, sql_iterator, MemoryProfile
 BASE_OBJECT = None
 TIMEZONE = pytz.timezone(settings.TIME_ZONE)
 
+
 def _init_base_object():
-    global BASE_OBJECT
+    global BASE_OBJECT  # pylint: disable-msg=W0603
     if BASE_OBJECT is None:
         BASE_OBJECT = init_base_object("dumpdatafast_new")
-        
+
+
 def log(x):
     _init_base_object()
     BASE_OBJECT.log(logging_tools.LOG_LEVEL_OK, x)
+
 
 def error(x):
     _init_base_object()
     sys.stderr.write(x + "\n")
     BASE_OBJECT.log(logging_tools.LOG_LEVEL_ERROR, x)
 
+
 def critical(x):
     _init_base_object()
     sys.stderr.write(x + "\n")
     BASE_OBJECT.log(logging_tools.LOG_LEVEL_CRITICAL, x)
+
 
 class Command(BaseCommand):
     option_list = BaseCommand.option_list + (
@@ -92,7 +98,12 @@ class Command(BaseCommand):
                     " bar"),
         make_option("-z", "--step-size", action="store", type=int, default=2000,
                     help="Iterator step size (default %default)"),
-        make_option("--one-file", type=str, default="", help="generate one zip file (default '%default', relative to directory)")
+        make_option("--one-file", type=str, default="", help="generate one zip file (default '%default', relative to directory)"),
+        make_option("-r", "--validate", action="store_true", help="Dump "
+                    "only data with valid relations"),
+        make_option("-m", "--missing", action="store_true", help="Print missing "
+                    "foreign keys. Use with --validate")
+
     )
     help = "Output the contents of the database in PostgreSQL dump format. "
     args = '[appname appname.ModelName ...]'
@@ -119,6 +130,9 @@ class Command(BaseCommand):
         self.bz2 = options.get("bz2")
         self.progress = options.get("progress")
         self.one_file = options.get("one_file")
+        self.validate = options.get("validate")
+        self.validator = DatabaseValidator()
+        self.missing = options.get("missing")
 
         if iterator:
             #self.iterator = partial(sql_iterator, step=lambda x: max(x / 100, 2000))
@@ -202,19 +216,34 @@ class Command(BaseCommand):
         models = list(models)
 
         file_list = []
+        not_dumped = 0
         for model in models:
             if model in excluded_models:
                 continue
             deps.add_to_tree(model)
-            many_to_many, file_name = self.dump_model(model)
+            many_to_many, file_name, nd = self.dump_model(model)
             file_list.append(file_name)
+            not_dumped += nd
             for m2m in many_to_many:
                 if m2m not in models:
                     models.append(m2m)
 
         dep_file = os.path.join(self.directory, "DEPENDENCIES")
         file_list.append(dep_file)
-        with open(dep_file, "w") as f:
+        if self.missing and self.validator.missing_entries:
+            #print "The following database entries where found to be missing:"
+            #for entry in self.validator.missing_entries:
+            #    print "%s=%s" % entry
+            print "Not dumped: %d" % not_dumped
+            print "All missing entries are"
+            for entry in self.validator.missing_entries_count.most_common():
+                print "%s: %s times" % entry
+
+        if self.validate:
+            print "Writing dot file"
+            self.validator.write_dot()
+
+        with open(os.path.join(self.directory, "DEPENDENCIES"), "w") as f:
             f.writelines(["%s_%s" % (m._meta.app_label, m._meta.object_name) + "\n" for m in deps.tree])
         if self.one_file:
             if not self.one_file.endswith(".zip"):
@@ -240,10 +269,10 @@ class Command(BaseCommand):
                 value = getattr(obj, key)
 
                 if isinstance(value, bool):
-                    new_value = u"t" if value else u"f"
+                    value = u"t" if value else u"f"
                 # ForeignKey or OneToOne
                 elif isinstance(value, Model):
-                    new_value = smart_unicode(value.pk)
+                    value = smart_unicode(value.pk)
                 elif isinstance(value, datetime.datetime):
                     # Adding TZ info is costly, but we can't just append a fixed
                     # distance from UTC to our datestrings because of daylight
@@ -254,25 +283,27 @@ class Command(BaseCommand):
                     # Not much difference between formating a datetime or
                     # creating a datetime_safe and then formatting it.
                     # Each opertion is quite costly
-                    new_value = datetime_safe.new_datetime(value).strftime("%Y-%m-%d %H:%M:%S%z")
-                    new_value = smart_unicode(new_value)
+                    value = datetime_safe.new_datetime(value).strftime("%Y-%m-%d %H:%M:%S%z")
+                    value = smart_unicode(value)
                 elif isinstance(value, datetime.date):
-                    new_value = datetime_safe.new_date(value).strftime("%Y-%m-%d")
-                    new_value = smart_unicode(new_value)
+                    value = datetime_safe.new_date(value).strftime("%Y-%m-%d")
+                    value = smart_unicode(value)
                 elif isinstance(value, (int, float)):
-                    new_value = smart_unicode(value)
+                    value = smart_unicode(value)
                 # Handle binary_field
                 elif isinstance(value, array.array):
-                    new_value = smart_unicode(base64.b64encode(bz2.compress(value.tostring())))
+                    value = smart_unicode(base64.b64encode(bz2.compress(value.tostring())))
                 elif value is None:
-                    new_value = ur"\N"
+                    value = ur"\N"
+                elif value == "\x00":
+                    value = u""
                 else:
                     # Escape all backslashes, tab, newline and CR
                     value = smart_unicode(value)
                     value = value.replace("\\", ur"\\")
-                    new_value = value.replace("\t", ur"\t").replace("\n", ur"\n").replace("\r", ur"\r")
+                    value = value.replace("\t", ur"\t").replace("\n", ur"\n").replace("\r", ur"\r")
 
-                converted_values.append(new_value)
+                converted_values.append(value)
 
             return u"%s\n" % u"\t".join(converted_values)
 
@@ -286,10 +317,14 @@ class Command(BaseCommand):
 
         # We have to explicitly pass all ForeignKey and OneToOne fields, because
         # select_related() without params does not follow FKs with null=True
-        queryset = model.objects.select_related(*pg_copy.foreign_keys)
+        #queryset = model.objects.select_related(*pg_copy.foreign_keys)
+        queryset = model.objects.all()  # select_related(*pg_copy.foreign_keys)
         if self.count > 0:
             queryset = queryset[:self.count]
         obj_count = queryset.count()
+        #print "obj_count", obj_count
+        #print "len", len(queryset)
+        #assert obj_count == len(queryset)
 
         # The min is necessary to avoid 1 / 0 on small --count
         # arguments
@@ -300,11 +335,21 @@ class Command(BaseCommand):
         if self.progress:
             print msg
 
+        if self.validate:
+            #self.validator.clear()
+            self.validator.validate_model(model)
+
+        not_dumped = 0
         with codecs.open(model_file, "w", "utf-8") as f:
             f.write(pg_copy.header())
             loop_count = 0
             progress_string = ""
+            model_name = model._meta.object_name
             for obj in self.iterator(queryset):
+                if (model_name, obj.pk) in self.validator.invalid_entries:
+                    #print "Not dumping %s=%d because of data errors" % (model, obj.pk)
+                    not_dumped += 1
+                    continue
                 f.write(convert(obj))
                 mem_profile.measure()
                 loop_count += 1
@@ -332,7 +377,7 @@ class Command(BaseCommand):
                 print "    Time bz: %6.2f s" % (time.time() - time_bz_start)
             print "    RAM  : %6.2f MB" % (mem_profile.max_usage / 1024.0)
 
-        return pg_copy.many_to_many, "%s%s" % (model_file, ".bz2" if self.bz2 else "")
+        return pg_copy.many_to_many, "%s%s" % (model_file, ".bz2" if self.bz2 else ""), not_dumped
 
 
 class PostgresCommand(object):
@@ -413,3 +458,78 @@ c.handle("backend.customer", **opts)
         print s, "time", s
         p.sort_stats("time").print_stats(20)
 
+
+class DatabaseValidator(object):
+    """ Valdiate if the data in the Database is consistent. """
+    def __init__(self):
+        self.valid_entries = set()
+        self.invalid_entries = set()
+        self.missing_entries = set()
+        self.missing_entries_count = Counter()
+        self.graph = nx.DiGraph()
+
+    def clear(self):
+        self.valid_entries = set()
+        self.invalid_entries = set()
+        self.missing_entries = set()
+        self.missing_entries_count = Counter()
+        self.graph = nx.DiGraph()
+
+    def add_counting_edge(self, src, dst):
+        try:
+            data = self.graph[src][dst]
+        except KeyError:
+            data = {"label": 1}
+        else:
+            data["label"] += 1
+        self.graph.add_edge(src, dst, **data)
+
+    def validate_model(self, model):
+        """ Validate all objs in the model for FK violations """
+
+        def _is_valid(obj):
+            res = True
+            fields = obj._meta.fields
+
+            key = (obj._meta.object_name, obj.pk)
+            #print "checking", key
+            if key in self.valid_entries:
+                #print key, "already marked as valid"
+                return True
+
+            if key in self.invalid_entries:
+                #print key, "already marked as INVALID"
+                return False
+
+            for field in fields:
+                if isinstance(field, (ForeignKey, OneToOneField)):
+                    try:
+                        r_obj = getattr(obj, field.name)
+                    except ObjectDoesNotExist:
+                        res = False
+                        self.invalid_entries.add(key)
+                        self.add_counting_edge(field.rel.to._meta.object_name, obj._meta.object_name)
+                        missing_key = (field.rel.to._meta.object_name, field.value_from_object(obj))
+                        self.missing_entries.add(missing_key)
+                        self.missing_entries_count.update([missing_key])
+                    else:
+                        if r_obj is not None:
+                            new_res = _is_valid(r_obj)
+                            if not new_res:
+                                self.invalid_entries.add(key)
+                                self.add_counting_edge(r_obj._meta.object_name, obj._meta.object_name)
+                                res = new_res
+                elif isinstance(field, (ManyToManyField, )):
+                    #TODO
+                    pass
+
+            if res:
+                self.valid_entries.add(key)
+            return res
+
+        objs = model.objects.iterator()
+        for obj in objs:
+            _is_valid(obj)
+
+    def write_dot(self):
+        nx.write_dot(self.graph, "/tmp/file.dot")

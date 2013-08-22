@@ -2,7 +2,7 @@
 """
 Compare the data in the database with the Django models
 """
-from django.core.exceptions import ImproperlyConfigured
+from django.core.exceptions import ImproperlyConfigured, ObjectDoesNotExist
 from django.core.management.base import BaseCommand, CommandError
 from django.db import DEFAULT_DB_ALIAS
 from django.utils.datastructures import SortedDict
@@ -126,4 +126,9 @@ class CustomValidator(object):
                 if (field.max_length is not None) and (value not in (None, True, False)):
                     if field.max_length < len(getattr(obj, field.name)):
                         errors.setdefault(obj.pk, {}).setdefault(field.name, []).append("max_length")
+            else:
+                try:
+                    value = getattr(obj, field.name)
+                except ObjectDoesNotExist:
+                    print getattr(obj, field.name + "_id")
         return errors
