@@ -75,8 +75,8 @@ class router_object(object):
             all_peers = peer_information.objects.all().values_list("s_netdevice_id", "d_netdevice_id", "penalty")
             for s_nd_id, d_nd_id, penalty in all_peers:
                 if s_nd_id in self.nd_lut and d_nd_id in self.nd_lut:
-                    self.peer_dict[(s_nd_id, d_nd_id)] = penalty + self.nd_dict[s_nd_id][2] + self.nd_dict[d_nd_id][2]
-                    self.peer_dict[(d_nd_id, s_nd_id)] = penalty + self.nd_dict[s_nd_id][2] + self.nd_dict[d_nd_id][2]
+                    self.peer_dict[(s_nd_id, d_nd_id)] = penalty + self.nd_dict[s_nd_id][3] + self.nd_dict[d_nd_id][3]
+                    self.peer_dict[(d_nd_id, s_nd_id)] = penalty + self.nd_dict[s_nd_id][3] + self.nd_dict[d_nd_id][3]
                     self.simple_peer_dict[(s_nd_id, d_nd_id)] = penalty
             # add simple peers for device-internal networks
             for nd_list in self.dev_dict.itervalues():
@@ -109,7 +109,8 @@ class router_object(object):
     def check_for_update(self):
         self._update()
     def get_penalty(self, in_path):
-        return sum([self.peer_dict[(in_path[idx], in_path[idx + 1])] for idx in xrange(len(in_path) - 1)])
+        return sum([self.peer_dict[(in_path[idx], in_path[idx + 1])] for idx in xrange(len(in_path) - 1)]) + \
+            sum([self.nd_dict[entry][3] for entry in in_path])
     def add_penalty(self, in_path):
         return (self.get_penalty(in_path), in_path)
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
