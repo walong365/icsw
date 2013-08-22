@@ -1,7 +1,7 @@
 from distutils.core import setup
 
 setup(name="cbc-tools",
-      version="0.1",
+      version="1.0",
       description="cbc tools from the INIT(c) cluster software",
       url="http://www.init.at",
       author="Andreas Lang-Nevyjel",
