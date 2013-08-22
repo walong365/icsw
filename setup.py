@@ -13,7 +13,7 @@ for root, dirs, files in os.walk("src/initat/core/static"):
         static_files.append(os.path.join(stripped_root, i))
 
 setup(name="initat",
-      version="1.2.3",
+      version="2.0.0",
       package_dir={"initat": "src/initat"},
       packages=["initat", "initat.core", "initat.core.templatetags", "initat.core.alfresco",
                 "initat.core.management", "initat.core.management.commands"],
