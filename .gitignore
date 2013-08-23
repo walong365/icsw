@@ -7,3 +7,6 @@ c_progs/tell_mother.o
 c_progs/tell_mother_zmq
 c_progs/tell_mother_zmq.o
 
+*.pyc
+*.pyo
+
