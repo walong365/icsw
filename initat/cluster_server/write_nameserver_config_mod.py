@@ -59,6 +59,8 @@ class write_nameserver_config(cs_base_class.server_com):
             cur_config,
             device.objects.get(Q(pk=self.server_idx))
             )
+        # get domain of server (to be used in SOA records of reverse maps)
+        top_level_name = device.objects.get(Q(pk=self.server_idx)).domain_tree_node.full_name
         # get user/group id
         # print act_conf_dict.get("USER", "root")
         if "USER" in act_conf_dict:
@@ -86,7 +88,7 @@ class write_nameserver_config(cs_base_class.server_com):
                     "key key1 {",
                     "  algorithm hmac-md5;"]
         if act_conf_dict.has_key("SECRET"):
-            cf_lines.append("  secret \"%s\" ;" % (act_conf_dict["SECRET"]))
+            cf_lines.append("  secret \"%s\" ;" % (act_conf_dict["SECRET"].value))
         cf_lines.append("};")
         ncf_lines = ["options {",
                      "  directory \"%s\";\n" % (named_dir),
@@ -106,9 +108,14 @@ class write_nameserver_config(cs_base_class.server_com):
             ncf_lines.append("    %s;" % (my_ip))
         ncf_lines.extend(["  };",
                           "};",
+                          "",
                           "controls {",
                           "  inet * allow { any ; } keys { \"key1\"; };",
                           "};",
+                          "",
+                          # "include \"/etc/rndc.key\";",
+                          # "",
+                          # ])
                           "key key1 {",
                           "  algorithm hmac-md5;"])
         if act_conf_dict.has_key("SECRET"):
@@ -299,7 +306,7 @@ class write_nameserver_config(cs_base_class.server_com):
                 zname = "%s.in-addr.arpa." % (nw_flipped_ip)
                 _lines.extend(["$ORIGIN %s" % (zname),
                               "$TTL 30M",
-                              "%s  IN SOA init lang-nevyjel. (" % (zname)])
+                              "%s  IN SOA %s lang-nevyjel. (" % (zname, top_level_name)])
                 for what in [timef, "1H", "15M", "1W", "30M"]:
                     _lines.append("%s%s" % (" " * 10, what))
                 _lines.extend(["%s)" % (" " * 5),
@@ -328,7 +335,7 @@ class write_nameserver_config(cs_base_class.server_com):
                             host_part.reverse()
                             for idx in range(network_parts):
                                 host_part.pop(-1)
-                            fiand = ".".join(host_part)
+                            fiand = ".".join(reversed(host_part))
                             out_names = []
                             if ret.domain_tree_node_id:
                                 cur_dtn = ret.domain_tree_node
