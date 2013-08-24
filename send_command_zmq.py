@@ -27,7 +27,7 @@ import server_command
 import sys
 import time
 import zmq
-from lxml import etree
+from lxml import etree # @UnresolvedImports
 
 def main():
     parser = argparse.ArgumentParser("send command to servers of the init.at Clustersoftware")
@@ -43,15 +43,16 @@ def main():
     parser.add_argument("--raw", help="do not convert to server_command", default=False, action="store_true")
     parser.add_argument("--root", help="connect to root-socket [%(default)s]", default=False, action="store_true")
     parser.add_argument("--kv", help="key-value pair, colon-separated", action="append")
-    #parser.add_argument("arguments", nargs="+", help="additional arguments")
+    parser.add_argument("--split", help="set read socket (for split-socket command), [%(default)s]", default="")
+    # parser.add_argument("arguments", nargs="+", help="additional arguments")
     ret_state = 1
     args, other_args = parser.parse_known_args()
-    #print args.arguments, other_args
+    # print args.arguments, other_args
     command = args.arguments.pop(0)
     other_args = args.arguments + other_args
     identity_str = process_tools.zmq_identity_str(args.identity_string)
     zmq_context = zmq.Context(1)
-    client = zmq_context.socket(zmq.DEALER)#ROUTER)#DEALER)
+    client = zmq_context.socket(zmq.DEALER) # if not args.split else zmq.PUB) # ROUTER)#DEALER)
     client.setsockopt(zmq.IDENTITY, identity_str)
     client.setsockopt(zmq.LINGER, args.timeout)
     if args.protocoll == "ipc":
@@ -60,9 +61,20 @@ def main():
         conn_str = "%s" % (process_tools.get_zmq_ipc_name(args.host, s_name=args.server_name, connect_to_root_instance=args.root))
     else:
         conn_str = "%s://%s:%d" % (args.protocoll, args.host, args.port)
+    if args.split:
+        recv_conn_str = "%s" % (process_tools.get_zmq_ipc_name(args.split, s_name=args.server_name, connect_to_root_instance=args.root))
+        recv_sock = zmq_context.socket(zmq.ROUTER)
+        recv_sock.setsockopt(zmq.IDENTITY, identity_str)
+        recv_sock.setsockopt(zmq.LINGER, args.timeout)
+    else:
+        recv_sock = None
     if args.verbose:
         print "Identity_string is '%s', connection_string is '%s'" % (identity_str, conn_str)
+        if args.split:
+            print "receive connection string is '%s'" % (recv_conn_str)
     client.connect(conn_str)
+    if recv_sock:
+        recv_sock.connect(recv_conn_str)
     for cur_iter in xrange(args.iterations):
         if args.verbose:
             print "iteration %d" % (cur_iter)
@@ -70,6 +82,7 @@ def main():
             srv_com = command
         else:
             srv_com = server_command.srv_command(command=command)
+            srv_com["identity"] = identity_str
             if args.kv:
                 for kv_pair in args.kv:
                     key, value = kv_pair.split(":")
@@ -82,9 +95,17 @@ def main():
             srv_com["arg_list"] = " ".join(other_args)
         s_time = time.time()
         client.send_unicode(unicode(srv_com))
-        if client.poll(args.timeout * 1000):
-            recv_str = client.recv()
-            timeout  = False
+        if args.verbose:
+            print srv_com.pretty_print()
+        r_client = client if not recv_sock else recv_sock
+        if r_client.poll(args.timeout * 1000):
+            recv_str = r_client.recv()
+            if r_client.getsockopt(zmq.RCVMORE):
+                recv_id = recv_str
+                recv_str = r_client.recv()
+            else:
+                recv_id = ""
+            timeout = False
         else:
             print "error timeout"
             timeout = True
@@ -105,11 +126,11 @@ def main():
             except:
                 print "cannot interpret reply: %s" % (process_tools.get_except_info())
                 print "reply was: %s" % (recv_str)
-                eet_state = 1
+                ret_state = 1
             else:
                 if args.verbose:
                     print
-                    print "XML response:"
+                    print "XML response (id: '%s'):" % (recv_id)
                     print
                     print srv_reply.pretty_print()
                     print
@@ -123,6 +144,8 @@ def main():
                     print "no result tag found in reply"
                     ret_state = 2
     client.close()
+    if recv_sock:
+        recv_sock.close()
     sys.exit(ret_state)
 
 if __name__ == "__main__":

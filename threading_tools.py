@@ -1122,7 +1122,8 @@ class debug_zmq_ctx(zmq.Context):
         else:
             super(debug_zmq_ctx, self).__setattr__(key, value)
     def log(self, out_str):
-        print "[[%d]] %s" % (self.zmq_idx, out_str)
+        t_name = threading.currentThread().name
+        print "[[zmq_idx=%d, t_name=%-20s]] %s" % (self.zmq_idx, t_name, out_str)
     def socket(self, sock_type, *args, **kwargs):
         ret_socket = super(debug_zmq_ctx, self).socket(sock_type, *args, **kwargs)
         self._sockets_open.add(ret_socket.fd)
