@@ -812,13 +812,17 @@ class timer_base(object):
             self.log("set loop_timer to %d msecs" % (self.__loop_timer))
     def unregister_timer(self, ut_cb_func):
         self.__timer_list = [cur_to for cur_to in self.__timer_list if cur_to.cb_func != ut_cb_func]
-    def change_timer(self, ct_cb_func, timeout):
+    def change_timer(self, ct_cb_func, timeout, **kwargs):
+        instant = kwargs.get("instant", True)
         # timeout is here in milliseconds, just like the loop_timer
         for cur_to in self.__timer_list:
             if cur_to.cb_func == ct_cb_func:
                 cur_to.step = timeout / 1000.
                 self.set_loop_timer(min(self.__loop_timer, cur_to.step * 1000.))
-                cur_to.next_time = time.time() + cur_to.step
+                if instant:
+                    cur_to.next_time = time.time()
+                else:
+                    cur_to.next_time = time.time() + cur_to.step
         self.__next_timeout = min([cur_to.next_time for cur_to in self.__timer_list])
     def _handle_timer(self, cur_time):
         new_tl = []

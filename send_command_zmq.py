@@ -43,6 +43,7 @@ def main():
     parser.add_argument("--raw", help="do not convert to server_command", default=False, action="store_true")
     parser.add_argument("--root", help="connect to root-socket [%(default)s]", default=False, action="store_true")
     parser.add_argument("--kv", help="key-value pair, colon-separated", action="append")
+    parser.add_argument("--kv-path", help="path to store key-value pairs under", type=str, default="")
     parser.add_argument("--split", help="set read socket (for split-socket command), [%(default)s]", default="")
     # parser.add_argument("arguments", nargs="+", help="additional arguments")
     ret_state = 1
@@ -86,7 +87,10 @@ def main():
             if args.kv:
                 for kv_pair in args.kv:
                     key, value = kv_pair.split(":")
-                    srv_com[key] = value
+                    if args.kv_path:
+                        srv_com["%s:%s" % (args.kv_path, key)] = value
+                    else:
+                        srv_com[key] = value
         for arg_index, arg in enumerate(other_args):
             if args.verbose:
                 print " arg %2d: %s" % (arg_index, arg)
