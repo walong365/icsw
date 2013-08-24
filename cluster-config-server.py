@@ -1551,7 +1551,13 @@ class server_process(threading_tools.process_pool):
                 srv_com.update_source()
                 if cur_com == "register":
                     self._register_client(c_uid, srv_com)
-
+                elif cur_com == "get_0mq_id":
+                    srv_com["result"] = None
+                    srv_com["zmq_id"] = uuid_tools.get_uuid().get_urn()
+                    srv_com["result"].attrib.update({
+                        "reply" : "0MQ_ID is %s" % (uuid_tools.get_uuid().get_urn()),
+                        "state" : "%d" % (server_command.SRV_REPLY_STATE_OK)})
+                    self._send_simple_return(c_uid, unicode(srv_com))
                 else:
                     if c_uid.endswith("webfrontend"):
                         # special command from webfrontend, FIXME
@@ -1564,7 +1570,10 @@ class server_process(threading_tools.process_pool):
                             self.log("unknown uid %s, not known" % (c_uid),
                                      logging_tools.LOG_LEVEL_CRITICAL)
                         else:
-                            cur_client.new_command(srv_com)
+                            if cur_client is None:
+                                self.log("cur_client is None", logging_tools.LOG_LEVEL_WARN)
+                            else:
+                                cur_client.new_command(srv_com)
         else:
             self.log("wrong number of data chunks (%d != 2), data is '%s'" % (len(data), data[:20]),
                      logging_tools.LOG_LEVEL_ERROR)
