@@ -25,6 +25,7 @@
 
 import configfile
 import difflib
+import inotify_tools
 import logging_tools
 import netifaces
 import os
@@ -42,6 +43,7 @@ from lxml.builder import E # @UnresolvedImport
 from initat.host_monitoring.config import global_config
 from initat.host_monitoring.constants import TIME_FORMAT
 from initat.host_monitoring.hm_twisted import twisted_process
+from initat.host_monitoring.hm_inotify import inotify_process
 
 class server_code(threading_tools.process_pool):
     def __init__(self):
@@ -72,6 +74,8 @@ class server_code(threading_tools.process_pool):
         self.register_exception("int_error" , self._sigint)
         self.register_exception("term_error", self._sigint)
         self.register_func("twisted_ping_result", self._twisted_ping_result)
+        if not global_config["NO_INOTIFY"]:
+            self.add_process(inotify_process("inotify"), start=True)
         self._show_config()
         self.__debug = global_config["DEBUG"]
         if not self._init_commands():
@@ -191,7 +195,7 @@ class server_code(threading_tools.process_pool):
         # store pid name because global_config becomes unavailable after SIGTERM
         self.__pid_name = global_config["PID_NAME"]
         process_tools.save_pids(global_config["PID_NAME"], mult=3)
-        process_tools.append_pids(global_config["PID_NAME"], pid=configfile.get_manager_pid(), mult=3)
+        process_tools.append_pids(global_config["PID_NAME"], pid=configfile.get_manager_pid(), mult=3 if global_config["NO_INOTIFY"] else 4)
         if True: # not self.__options.DEBUG:
             self.log("Initialising meta-server-info block")
             msi_block = process_tools.meta_server_info("collserver")
@@ -302,10 +306,10 @@ class server_code(threading_tools.process_pool):
             else:
                 self.register_poller(client, zmq.POLLIN, self._recv_command)
                 self.socket_list.append(client)
-        sock_list = [("ipc", "vector" , zmq.PULL, 512, None),
-                     ("ipc", "command", zmq.PULL, 512, self._recv_ext_command),
-                     ("ipc", "result" , zmq.PUB , 512, None)]
-        for sock_proto, short_sock_name, sock_type, hwm_size, dst_func in sock_list:
+        sock_list = [("ipc", "vector" , zmq.PULL  , 512, None, ""),
+                     ("ipc", "command", zmq.PULL  , 512, self._recv_ext_command, ""),
+                     ("ipc", "result" , zmq.ROUTER, 512, None, process_tools.zmq_identity_str("host_monitor"))]
+        for sock_proto, short_sock_name, sock_type, hwm_size, dst_func, zmq_id in sock_list:
             sock_name = process_tools.get_zmq_ipc_name(short_sock_name)
             file_name = sock_name[5:]
             self.log("init %s ipc_socket '%s' (HWM: %d)" % (short_sock_name, sock_name,
@@ -322,6 +326,8 @@ class server_code(threading_tools.process_pool):
                 time.sleep(0.1)
                 wait_iter += 1
             cur_socket = self.zmq_context.socket(sock_type)
+            if zmq_id:
+                cur_socket.setsockopt(zmq.IDENTITY, zmq_id)
             try:
                 process_tools.bind_zmq_socket(cur_socket, sock_name)
                 # client.bind("tcp://*:8888")
@@ -348,9 +354,19 @@ class server_code(threading_tools.process_pool):
             src_id = srv_com["identity"].text
         else:
             src_id = data.split(";")[0]
+        # print "***", data, src_id
+        # fast return loop
+        srv_com.update_source()
+        srv_com["result"] = None
+        srv_com["result"].attrib.update({
+            "reply" : "ok got command %s" % (srv_com["command"].text),
+            "state" : "%d" % (server_command.SRV_REPLY_STATE_OK)
+            })
         # print len(data), len(unicode(srv_com)), src_id
+        # print unicode(srv_com)
         self.result_socket.send_unicode(src_id, zmq.SNDMORE)
-        self.result_socket.send_unicode("test")
+        self.result_socket.send_unicode(unicode(srv_com))
+        # print "."
     def _recv_command(self, zmq_sock):
         data = [zmq_sock.recv()]
         while zmq_sock.getsockopt(zmq.RCVMORE):

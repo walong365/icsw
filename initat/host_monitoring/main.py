@@ -74,7 +74,8 @@ def main():
             ("COM_PORT"   , configfile.int_c_var(2001, info="listening Port", help_string="port to communicate [%(default)i]", short_options="p")),
             ("ENABLE_KSM" , configfile.bool_c_var(False, info="enable KSM", help_string="enable KSM [%(default)s]")),
             ("ENABLE_HUGE", configfile.bool_c_var(False, info="enable hugepages", help_string="enable hugepages [%(default)s]")),
-            ("HUGEPAGES"  , configfile.int_c_var(50, info="percentage of memory to use for hugepages", help_string="hugepages percentage [%(default)d]"))
+            ("HUGEPAGES"  , configfile.int_c_var(50, info="percentage of memory to use for hugepages", help_string="hugepages percentage [%(default)d]")),
+            ("NO_INOTIFY" , configfile.bool_c_var(False, info="disable inotify process", help_string="disable inotify proces [%(default)s]", action="store_true")),
         ])
     elif prog_name == "collclient":
         global_config.add_config_entries([
