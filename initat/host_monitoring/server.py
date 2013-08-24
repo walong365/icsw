@@ -74,6 +74,9 @@ class server_code(threading_tools.process_pool):
         self.register_exception("int_error" , self._sigint)
         self.register_exception("term_error", self._sigint)
         self.register_func("twisted_ping_result", self._twisted_ping_result)
+        self.__callbacks, self.__callback_queue = ({}, {})
+        self.register_func("register_callback", self._register_callback)
+        self.register_func("callback_result", self._callback_result)
         if not global_config["NO_INOTIFY"]:
             self.add_process(inotify_process("inotify"), start=True)
         self._show_config()
@@ -108,6 +111,14 @@ class server_code(threading_tools.process_pool):
                 self.log("ksm_dir '%s' not found" % (ksm_dir), logging_tools.LOG_LEVEL_ERROR)
         else:
             self.log("KSM not touched")
+    def _register_callback(self, *args, **kwargs):
+        call_proc, call_pid, com_name, func_name = args
+        self.__callbacks[com_name] = (call_proc, func_name)
+        self.log("registered callback '%s' from process %s (func: %s)" % (
+            com_name,
+            call_proc,
+            func_name
+            ))
     def _check_huge(self):
         if global_config["ENABLE_HUGE"]:
             huge_dir = "/sys/kernel/mm/hugepages/"
@@ -354,19 +365,28 @@ class server_code(threading_tools.process_pool):
             src_id = srv_com["identity"].text
         else:
             src_id = data.split(";")[0]
-        # print "***", data, src_id
-        # fast return loop
+        cur_com = srv_com["command"].text
         srv_com.update_source()
-        srv_com["result"] = None
-        srv_com["result"].attrib.update({
-            "reply" : "ok got command %s" % (srv_com["command"].text),
-            "state" : "%d" % (server_command.SRV_REPLY_STATE_OK)
-            })
-        # print len(data), len(unicode(srv_com)), src_id
-        # print unicode(srv_com)
+        if cur_com in self.__callbacks.keys():
+            call_proc, func_name = self.__callbacks[cur_com]
+            self.send_to_process(
+                call_proc,
+                func_name,
+                src_id,
+                unicode(srv_com))
+        else:
+            srv_com["result"] = None
+            srv_com["result"].attrib.update({
+                "reply" : "got unknown command %s" % (srv_com["command"].text),
+                "state" : "%d" % (server_command.SRV_REPLY_STATE_ERROR)
+                })
+            self.result_socket.send_unicode(src_id, zmq.SNDMORE)
+            self.result_socket.send_unicode(unicode(srv_com))
+        # print "."
+    def _callback_result(self, *args, **kwargs):
+        _call_proc, _proc_pid, src_id, srv_com = args
         self.result_socket.send_unicode(src_id, zmq.SNDMORE)
         self.result_socket.send_unicode(unicode(srv_com))
-        # print "."
     def _recv_command(self, zmq_sock):
         data = [zmq_sock.recv()]
         while zmq_sock.getsockopt(zmq.RCVMORE):
