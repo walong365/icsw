@@ -43,23 +43,23 @@ except ImportError:
     VERSION_STRING = "?.?"
 import zmq
 
-#from sge_server_messages import *
+# from sge_server_messages import *
 
 # old
 SERVER_CHECK_PORT = 8009
-# new 
+# new
 COM_PORT = 8009
-SQL_ACCESS = "cluster_full_access"
 
 def call_command(command, log_com=None):
     start_time = time.time()
     stat, out = commands.getstatusoutput(command)
     end_time = time.time()
-    log_lines = ["calling '%s' took %s, result (stat %d) is %s (%s)" % (command,
-                                                                        logging_tools.get_diff_time_str(end_time - start_time),
-                                                                        stat,
-                                                                        logging_tools.get_plural("byte", len(out)),
-                                                                        logging_tools.get_plural("line", len(out.split("\n"))))]
+    log_lines = ["calling '%s' took %s, result (stat %d) is %s (%s)" % (
+        command,
+        logging_tools.get_diff_time_str(end_time - start_time),
+        stat,
+        logging_tools.get_plural("byte", len(out)),
+        logging_tools.get_plural("line", len(out.split("\n"))))]
     if log_com:
         for log_line in log_lines:
             log_com(" - %s" % (log_line))
@@ -82,11 +82,12 @@ class rms_mon_process(threading_tools.process_obj):
         self.register_func("full_reload", self._full_reload)
     def _init_sge_info(self):
         self.log("init sge_info")
-        self.__sge_info = sge_tools.sge_info(log_command=self.log,
-                                             run_initial_update=False,
-                                             verbose=True if global_config["DEBUG"] else False,
-                                             is_active=True,
-                                             sge_dict=dict([(key, global_config[key]) for key in ["SGE_ARCH", "SGE_ROOT", "SGE_CELL"]]))
+        self.__sge_info = sge_tools.sge_info(
+            log_command=self.log,
+            run_initial_update=False,
+            verbose=True if global_config["DEBUG"] else False,
+            is_active=True,
+            sge_dict=dict([(key, global_config[key]) for key in ["SGE_ARCH", "SGE_ROOT", "SGE_CELL"]]))
         self._update()
     def _update(self):
         self.__sge_info.update(no_file_cache=True, force_update=True)
@@ -96,13 +97,13 @@ class rms_mon_process(threading_tools.process_obj):
     def _get_config(self, *args, **kwargs):
         src_id, srv_com_str = args
         srv_com = server_command.srv_command(source=srv_com_str)
-        #needed_dicts = opt_dict.get("needed_dicts", ["hostgroup", "queueconf", "qhost", "complexes"])
-        #update_list = opt_dict.get("update_list", [])
+        # needed_dicts = opt_dict.get("needed_dicts", ["hostgroup", "queueconf", "qhost", "complexes"])
+        # update_list = opt_dict.get("update_list", [])
         self.__sge_info.update()
         srv_com["sge"] = self.__sge_info.get_tree()
-        #needed_dicts = ["hostgroup", "queueconf", "qhost"]#, "complexes"]
-        #update_list = []
-        #for key in needed_dicts:
+        # needed_dicts = ["hostgroup", "queueconf", "qhost"]#, "complexes"]
+        # update_list = []
+        # for key in needed_dicts:
         #    if key == "qhost":
         #        srv_com["sge:%s" % (key)] = dict([(sub_key, self.__sge_info[key][sub_key].get_value_dict()) for sub_key in self.__sge_info[key]])
         #    else:
@@ -128,16 +129,16 @@ class server_process(threading_tools.process_pool):
         self.register_exception("term_error", self._int_error)
         self.register_exception("hup_error", self._hup_error)
         self._log_config()
-        #dc.release()
+        # dc.release()
         self._init_network_sockets()
-        #self.add_process(db_verify_process("db_verify"), start=True)
+        # self.add_process(db_verify_process("db_verify"), start=True)
         self.add_process(rms_mon_process("rms_mon"), start=True)
         self.register_func("command_result", self._com_result)
-        #self._init_em()
-        #self.register_timer(self._check_db, 3600, instant=True)
-        #self.register_timer(self._update, 30, instant=True)
-        #self.__last_update = time.time() - self.__glob_config["MAIN_LOOP_TIMEOUT"]
-        #self.send_to_process("build", "rebuild_config", global_config["ALL_HOSTS_NAME"])
+        # self._init_em()
+        # self.register_timer(self._check_db, 3600, instant=True)
+        # self.register_timer(self._update, 30, instant=True)
+        # self.__last_update = time.time() - self.__glob_config["MAIN_LOOP_TIMEOUT"]
+        # self.send_to_process("build", "rebuild_config", global_config["ALL_HOSTS_NAME"])
     def log(self, what, lev=logging_tools.LOG_LEVEL_OK):
         if self.__log_template:
             while self.__log_cache:
@@ -236,7 +237,7 @@ class server_process(threading_tools.process_pool):
         if self.__msi_block:
             self.__msi_block.remove_meta_block()
         self.__log_template.close()
-        
+
 global_config = configfile.get_global_config(process_tools.get_programm_name())
 
 def main():
@@ -276,12 +277,12 @@ def main():
     if not global_config["DUMMY_RUN"]:
         global_config.add_config_entries([("SERVER_IDX", configfile.int_c_var(sql_s_info.effective_device.pk, database=False))])
         # FIXME
-        #global_config.add_config_entries([("LOG_SOURCE_IDX", configfile.int_c_var(process_tools.create_log_source_entry(dc, global_config["SERVER_IDX"], "sge_server", "RMS Server")))])
+        # global_config.add_config_entries([("LOG_SOURCE_IDX", configfile.int_c_var(process_tools.create_log_source_entry(dc, global_config["SERVER_IDX"], "sge_server", "RMS Server")))])
     if global_config["KILL_RUNNING"]:
         log_lines = process_tools.kill_running_processes(prog_name + ".py", exclude=configfile.get_manager_pid())
     sge_dict = {}
     for v_name, v_src, v_default in [("SGE_ROOT", "/etc/sge_root", "/opt/sge"),
-                                     ("SGE_CELL", "/etc/sge_cell", "default" )]:
+                                     ("SGE_CELL", "/etc/sge_cell", "default")]:
         if os.path.isfile(v_src):
             sge_dict[v_name] = file(v_src, "r").read().strip()
         else:
@@ -304,9 +305,9 @@ def main():
             ("RETRY_AFTER_CONNECTION_PROBLEMS", configfile.int_c_var(0)),
             ("FROM_ADDR"                      , configfile.str_c_var("sge_server")),
             ("TO_ADDR"                        , configfile.str_c_var("lang-nevyjel@init.at")),
-            ("SGE_ARCH"                       , configfile.str_c_var(sge_dict["SGE_ARCH"])),#, fixed=True)),
-            ("SGE_ROOT"                       , configfile.str_c_var(sge_dict["SGE_ROOT"])),#, fixed=True)),
-            ("SGE_CELL"                       , configfile.str_c_var(sge_dict["SGE_CELL"])),#, fixed=True)),
+            ("SGE_ARCH"                       , configfile.str_c_var(sge_dict["SGE_ARCH"])), # , fixed=True)),
+            ("SGE_ROOT"                       , configfile.str_c_var(sge_dict["SGE_ROOT"])), # , fixed=True)),
+            ("SGE_CELL"                       , configfile.str_c_var(sge_dict["SGE_CELL"])), # , fixed=True)),
             ("MONITOR_JOBS"                   , configfile.bool_c_var(True)),
             ("TRACE_FAIRSHARE"                , configfile.bool_c_var(False)),
             ("STRICT_MODE"                    , configfile.bool_c_var(False)),
@@ -321,9 +322,9 @@ def main():
             ("RETRY_AFTER_CONNECTION_PROBLEMS", configfile.int_c_var(0)),
             ("FROM_ADDR"                      , configfile.str_c_var("sge_server")),
             ("TO_ADDR"                        , configfile.str_c_var("lang-nevyjel@init.at")),
-            ("SGE_ARCH"                       , configfile.str_c_var(sge_dict["SGE_ARCH"])),#, fixed=True)),
-            ("SGE_ROOT"                       , configfile.str_c_var(sge_dict["SGE_ROOT"])),#, fixed=True)),
-            ("SGE_CELL"                       , configfile.str_c_var(sge_dict["SGE_CELL"])),#, fixed=True)),
+            ("SGE_ARCH"                       , configfile.str_c_var(sge_dict["SGE_ARCH"])), # , fixed=True)),
+            ("SGE_ROOT"                       , configfile.str_c_var(sge_dict["SGE_ROOT"])), # , fixed=True)),
+            ("SGE_CELL"                       , configfile.str_c_var(sge_dict["SGE_CELL"])), # , fixed=True)),
             ("MONITOR_JOBS"                   , configfile.bool_c_var(True)),
             ("TRACE_FAIRSHARE"                , configfile.bool_c_var(False)),
             ("STRICT_MODE"                    , configfile.bool_c_var(False)),
@@ -331,35 +332,35 @@ def main():
             ("CLEAR_ITERATIONS"               , configfile.int_c_var(1)),
             ("CHECK_ACCOUNTING_TIMEOUT"       , configfile.int_c_var(300))],
                                        dummy_run=global_config["DUMMY_RUN"])
-##    if os.path.isfile("/%s/%s/common/product_mode" % (g_config["SGE_ROOT"], g_config["SGE_CELL"])):
-##        g_config.add_config_dict({"SGE_VERSION"    : configfile.int_c_var(5),
-##                                  "SGE_RELEASE"    : configfile.int_c_var(3),
-##                                  "SGE_PATCHLEVEL" : configfile.int_c_var(0)})
-##    else:
-##        # try to get the actual version
-##        qs_com = "/%s/bin/%s/qconf" % (g_config["SGE_ROOT"],
-##                                       g_config["SGE_ARCH"])
-##        stat, vers_string, log_lines = call_command(qs_com)
-##        vers_line = vers_string.split("\n")[0].lower()
-##        if vers_line.startswith("ge") or vers_line.startswith("sge"):
-##            vers_part = vers_line.split()[1]
-##            major, minor = vers_part.split(".")
-##            minor, patchlevel = minor.split("u")
-##            patchlevel = patchlevel.split("_")[0]
-##            g_config.add_config_dict({"SGE_VERSION"    : configfile.int_c_var(int(major)),
-##                                      "SGE_RELEASE"    : configfile.int_c_var(int(minor)),
-##                                      "SGE_PATCHLEVEL" : configfile.int_c_var(int(patchlevel))})
-##        else:
-##            if g_config.has_key("SGE_VERSION") and g_config.has_key("SGE_RELEASE") and g_config.has_key("SGE_PATCHLEVEL"):
-##                pass
-##            else:
-##                print "Cannot determine GE Version via %s" % (qs_com)
-##                dc.release()
-##                sys.exit(-1)
+# #    if os.path.isfile("/%s/%s/common/product_mode" % (g_config["SGE_ROOT"], g_config["SGE_CELL"])):
+# #        g_config.add_config_dict({"SGE_VERSION"    : configfile.int_c_var(5),
+# #                                  "SGE_RELEASE"    : configfile.int_c_var(3),
+# #                                  "SGE_PATCHLEVEL" : configfile.int_c_var(0)})
+# #    else:
+# #        # try to get the actual version
+# #        qs_com = "/%s/bin/%s/qconf" % (g_config["SGE_ROOT"],
+# #                                       g_config["SGE_ARCH"])
+# #        stat, vers_string, log_lines = call_command(qs_com)
+# #        vers_line = vers_string.split("\n")[0].lower()
+# #        if vers_line.startswith("ge") or vers_line.startswith("sge"):
+# #            vers_part = vers_line.split()[1]
+# #            major, minor = vers_part.split(".")
+# #            minor, patchlevel = minor.split("u")
+# #            patchlevel = patchlevel.split("_")[0]
+# #            g_config.add_config_dict({"SGE_VERSION"    : configfile.int_c_var(int(major)),
+# #                                      "SGE_RELEASE"    : configfile.int_c_var(int(minor)),
+# #                                      "SGE_PATCHLEVEL" : configfile.int_c_var(int(patchlevel))})
+# #        else:
+# #            if g_config.has_key("SGE_VERSION") and g_config.has_key("SGE_RELEASE") and g_config.has_key("SGE_PATCHLEVEL"):
+# #                pass
+# #            else:
+# #                print "Cannot determine GE Version via %s" % (qs_com)
+# #                dc.release()
+# #                sys.exit(-1)
 
-        #log_sources = process_tools.get_all_log_sources(dc)
-        #log_status = process_tools.get_all_log_status(dc)
-        #process_tools.create_log_source_entry(dc, 0, "sgeflat", "SGE Message (unparsed)", "Info from the SunGridEngine")
+        # log_sources = process_tools.get_all_log_sources(dc)
+        # log_status = process_tools.get_all_log_status(dc)
+        # process_tools.create_log_source_entry(dc, 0, "sgeflat", "SGE Message (unparsed)", "Info from the SunGridEngine")
     pid_dir = "/var/run/%s" % (os.path.dirname(global_config["PID_NAME"]))
     if pid_dir not in ["/var/run", "/var/run/"]:
         process_tools.fix_directories(global_config["USER"], global_config["GROUP"], [pid_dir])
