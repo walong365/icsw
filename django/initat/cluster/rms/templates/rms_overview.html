@@ -151,7 +151,7 @@ addHandlers = ->
                 console.log cur_el.attr("href")
                 return false
             )
-            $("table#run_job_table").find("input[type='button'][id^='delete']").bind("click", (event) ->
+            $("table#run_job_table").find("input[type='button'][id^='jctrl:']").bind("click", (event) ->
                 cur_el = $(event.target)
                 control_job(cur_el.attr("id"))
                 return false
@@ -182,7 +182,7 @@ addHandlers = ->
             }
         ]
         "fnDrawCallback"   : (o_settings) ->
-            $("table#wait_job_table").find("input[type='button'][id^='delete']").bind("click", (event) ->
+            $("table#wait_job_table").find("input[type='button'][id^='jctrl:']").bind("click", (event) ->
                 cur_el = $(event.target)
                 control_job(cur_el.attr("id"))
                 return false
@@ -192,12 +192,20 @@ addHandlers = ->
 render_action = (o, val) ->
     cap_list = val.split(":")
     res_list = $("<div>")
-    if "del" in cap_list
+    if "delete" in cap_list
         res_list.append(
             $("<input>").attr(
                 "type"  : "button"
                 "value" : "delete"
-                "id"    : "delete:#{o.aData[0]}:#{o.aData[1]}" 
+                "id"    : "jctrl:delete:#{o.aData[0]}:#{o.aData[1]}" 
+            )
+        )
+    if "force_delete" in cap_list
+        res_list.append(
+            $("<input>").attr(
+                "type"  : "button"
+                "value" : "force delete"
+                "id"    : "jctrl:force_delete:#{o.aData[0]}:#{o.aData[1]}" 
             )
         )
     return $("<div>").append(res_list).html()
