@@ -691,7 +691,7 @@ def create_action_field(act_job, user):
     else:
         is_user = act_job.findtext(".//JB_owner") == user.login
         if is_user:
-            ret_el.text = "del"
+            ret_el.text = "delete:force_delete"
         else:
             ret_el.text = "---"
     return ret_el
