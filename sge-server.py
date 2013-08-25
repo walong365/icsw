@@ -214,12 +214,21 @@ class server_process(threading_tools.process_pool):
             srv_com = server_command.srv_command(source=xml_input)
             self.log("got command '%s' from %s" % (srv_com["command"].text, src_id))
             srv_com.update_source()
+            # set dummy result
+            srv_com["result"] = None
             cur_com = srv_com["command"].text
             if cur_com == "get_config":
                 self.send_to_process("rms_mon", "get_config", src_id, unicode(srv_com))
+            elif cur_com == "job_control":
+                self._job_control(srv_com)
+                self._send_result(src_id, srv_com)
             else:
-                srv_com["result"] = {"state" : server_command.SRV_REPLY_STATE_ERROR,
-                                     "reply" : "unknown command %s" % (cur_com)}
+                srv_com["result"].attrib.update(
+                    {
+                        "state" : "%d" % (server_command.SRV_REPLY_STATE_ERROR),
+                        "reply" : "unknown command %s" % (cur_com)
+                    }
+                )
                 self._send_result(src_id, srv_com)
         else:
             self.log("received wrong data (len() = %d != 2)" % (len(data)),
@@ -229,6 +238,27 @@ class server_process(threading_tools.process_pool):
         self.com_socket.send_unicode(unicode(srv_com))
     def _com_result(self, src_proc, proc_id, src_id, srv_com):
         self._send_result(src_id, srv_com)
+    def _job_control(self, srv_com):
+        job_action = srv_com["action"].text
+        job_id = srv_com.xpath(None, ".//ns:job_list/ns:job/@job_id")[0]
+        self.log("job action '%s' for job '%s'" % (job_action, job_id))
+        if job_action == "delete":
+            cur_stat, cur_out, log_lines = call_command("/opt/sge/bin/lx-amd64/qdel %s" % (job_id))
+            for log_line in log_lines:
+                self.log(log_line, logging_tools.LOG_LEVEL_OK if not cur_stat else logging_tools.LOG_LEVEL_ERROR)
+            srv_com["result"].attrib.update(
+                {
+                    "state" : "%d" % (server_command.SRV_REPLY_STATE_ERROR if cur_stat else server_command.SRV_REPLY_STATE_OK),
+                    "reply" : "%s gave: %s" % (job_action, cur_out),
+                }
+            )
+        else:
+            srv_com["result"].attrib.update(
+                {
+                    "state" : "%d" % (server_command.SRV_REPLY_STATE_ERROR),
+                    "reply" : "unknown job_action %s" % (job_action),
+                }
+            )
     def loop_post(self):
         if self.com_socket:
             self.log("closing socket")
