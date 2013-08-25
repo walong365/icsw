@@ -5,6 +5,7 @@ import sge_tools
 import threading
 import logging
 import logging_tools
+import pprint
 # from lxml import etree # @UnresolvedImport
 
 from django.conf import settings
@@ -116,3 +117,7 @@ class get_node_xml(View):
         json_resp = _sort_list(node_list, _post)
         return HttpResponse(json.dumps(json_resp), mimetype="application/json")
 
+class control_job(View):
+    def post(self, request):
+        _post = request.POST
+        pprint.pprint(_post)

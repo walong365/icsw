@@ -153,7 +153,7 @@ addHandlers = ->
             )
             $("table#run_job_table").find("input[type='button'][id^='delete']").bind("click", (event) ->
                 cur_el = $(event.target)
-                console.log cur_el.attr("id")
+                control_job(cur_el.attr("id"))
                 return false
             )
     $("table#wait_job_table").dataTable
@@ -184,7 +184,7 @@ addHandlers = ->
         "fnDrawCallback"   : (o_settings) ->
             $("table#wait_job_table").find("input[type='button'][id^='delete']").bind("click", (event) ->
                 cur_el = $(event.target)
-                console.log cur_el.attr("id")
+                control_job(cur_el.attr("id"))
                 return false
             )
     $("table").bind("draw", resize_grid)
@@ -201,6 +201,16 @@ render_action = (o, val) ->
             )
         )
     return $("<div>").append(res_list).html()
+
+control_job = (el_id) ->
+    $.ajax
+        url     : "{% url 'rms:control_job' %}"
+        data    : {
+            "control_id" : el_id
+        }
+        success : (xml) ->
+            if parse_xml_response(xml)
+                console.log "ok"
 
 root.reload_page = reload_page
     
