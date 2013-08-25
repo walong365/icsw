@@ -209,8 +209,7 @@ control_job = (el_id) ->
             "control_id" : el_id
         }
         success : (xml) ->
-            if parse_xml_response(xml)
-                console.log "ok"
+            parse_xml_response(xml)
 
 root.reload_page = reload_page
     

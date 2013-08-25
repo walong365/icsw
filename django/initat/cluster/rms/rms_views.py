@@ -6,12 +6,16 @@ import threading
 import logging
 import logging_tools
 import pprint
+import server_command
 # from lxml import etree # @UnresolvedImport
 
 from django.conf import settings
+from django.contrib.auth.decorators import login_required
 from django.http import HttpResponse
+from django.utils.decorators import method_decorator
 from django.views.generic import View
 
+from initat.cluster.frontend.helper_functions import contact_server, xml_wrapper
 from initat.core.render import render_me
 
 logger = logging.getLogger("cluster.rms")
@@ -47,6 +51,7 @@ def get_node_options(request):
     return sge_tools.get_empty_node_options(merge_node_queue=True)
 
 class overview(View):
+    @method_decorator(login_required)
     def get(self, request):
         return render_me(request, "rms_overview.html", {
             "run_job_headers"  : sge_tools.get_running_headers(get_job_options(request)),
@@ -94,6 +99,7 @@ def _sort_list(in_list, _post):
             "aaData"               : show_list}
 
 class get_run_jobs_xml(View):
+    @method_decorator(login_required)
     def post(self, request):
         _post = request.POST
         my_sge_info.update()
@@ -102,6 +108,7 @@ class get_run_jobs_xml(View):
         return HttpResponse(json.dumps(json_resp), mimetype="application/json")
 
 class get_wait_jobs_xml(View):
+    @method_decorator(login_required)
     def post(self, request):
         _post = request.POST
         my_sge_info.update()
@@ -110,6 +117,7 @@ class get_wait_jobs_xml(View):
         return HttpResponse(json.dumps(json_resp), mimetype="application/json")
 
 class get_node_xml(View):
+    @method_decorator(login_required)
     def post(self, request):
         _post = request.POST
         my_sge_info.update()
@@ -118,6 +126,15 @@ class get_node_xml(View):
         return HttpResponse(json.dumps(json_resp), mimetype="application/json")
 
 class control_job(View):
+    @method_decorator(login_required)
+    @method_decorator(xml_wrapper)
     def post(self, request):
         _post = request.POST
-        pprint.pprint(_post)
+        c_id = _post["control_id"]
+        c_action = c_id.split(":")[0]
+        job_id = ".".join(c_id.split(":")[1:])
+        srv_com = server_command.srv_command(command="job_control", action=c_action)
+        srv_com["job_list"] = srv_com.builder(
+            "job_list",
+            srv_com.builder("job", job_id=job_id))
+        contact_server(request, "tcp://localhost:8009", srv_com, timeout=10)
