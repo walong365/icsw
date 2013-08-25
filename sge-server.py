@@ -242,8 +242,13 @@ class server_process(threading_tools.process_pool):
         job_action = srv_com["action"].text
         job_id = srv_com.xpath(None, ".//ns:job_list/ns:job/@job_id")[0]
         self.log("job action '%s' for job '%s'" % (job_action, job_id))
-        if job_action == "delete":
-            cur_stat, cur_out, log_lines = call_command("/opt/sge/bin/lx-amd64/qdel %s" % (job_id))
+        if job_action in ["force_delete", "delete"]:
+            cur_stat, cur_out, log_lines = call_command(
+                "/opt/sge/bin/lx-amd64/qdel %s %s" % (
+                    "-f" if job_action == "force_delete" else "",
+                    job_id
+                )
+            )
             for log_line in log_lines:
                 self.log(log_line, logging_tools.LOG_LEVEL_OK if not cur_stat else logging_tools.LOG_LEVEL_ERROR)
             srv_com["result"].attrib.update(
