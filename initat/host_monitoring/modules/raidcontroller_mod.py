@@ -19,21 +19,20 @@
 #
 """ checks for various RAID controllers """
 
-import sys
-import re
+import base64
+import bz2
 import commands
-from initat.host_monitoring import limits, hm_classes
-import os
-import os.path
-import time
 import datetime
 import logging_tools
-import server_command
-import pprint
-import base64
 import marshal
-import bz2
+import os
+import pprint
+import re
+import server_command
 import stat
+import sys
+import time
+from initat.host_monitoring import limits, hm_classes
 
 TW_EXEC = "/sbin/tw_cli"
 ARCCONF_BIN = "/usr/sbin/arcconf"
@@ -100,7 +99,7 @@ class ctrl_type(object):
     @staticmethod
     def update(c_type, ctrl_ids=[]):
         if c_type is None:
-            c_type = self._all_types.keys()
+            c_type = ctrl_type._all_types.keys()
         elif type(c_type) != list:
             c_type = [c_type]
         for cur_type in c_type:
@@ -216,10 +215,11 @@ class ctrl_type_lsi(ctrl_type):
             if line.strip():
                 space_line = line[0] == " "
                 if line.count("information") and not space_line:
-                    cur_mode = {"con" : "c",
-                                "ir " : "v",
-                                "phy" : "p",
-                                "enc" : "e"}.get(line.lower()[0:3], None)
+                    cur_mode = {
+                        "con" : "c",
+                        "ir " : "v",
+                        "phy" : "p",
+                        "enc" : "e"}.get(line.lower()[0:3], None)
                 elif line.startswith("---"):
                     pass
                 else:
@@ -459,8 +459,8 @@ class ctrl_type_tw(ctrl_type):
 # #                ret_str = "ok %s" % (hm_classes.sys_to_net(ret_dict))
 # #        return ret_str
     def _interpret(self, tw_dict, cur_ns):
-        if tw_dict.has_key("units"):
-            tw_dict = {parsed_coms[0] : tw_dict}
+        # if tw_dict.has_key("units"):
+        #    tw_dict = {parsed_coms[0] : tw_dict}
         num_warn, num_error = (0, 0)
         ret_list = []
         if tw_dict:
@@ -1181,7 +1181,8 @@ class ctrl_type_hpacu(ctrl_type):
             return False
     def process(self, ccs):
         c_dict = {}
-        act_ctrl, act_array, act_log, act_phys, act_obj = (None, None, None, None, None)
+        act_ctrl, act_array, act_log, act_phys, act_obj, act_pmgroup = (
+            None, None, None, None, None, None)
         for c_line in ccs.read().split("\n"):
             l_line = c_line.lower().strip()
             if l_line.count("in slot"):
@@ -1192,37 +1193,70 @@ class ctrl_type_hpacu(ctrl_type):
                     "arrays" : {},
                     "config" : {}}
                 c_dict[c_num] = act_ctrl
-                act_array, act_log, act_phys = (None, None, None)
+                act_array, act_log, act_phys, act_pmgroup = (
+                    None, None, None, None)
                 act_obj = act_ctrl
                 continue
             if act_ctrl is not None:
                 if l_line.startswith("array:"):
-                    act_array = {"logicals"  : {},
-                                 "physicals" : {},
-                                 "config"    : {}}
+                    act_array = {
+                        "logicals"      : {},
+                        "physicals"     : {},
+                        "config"        : {},
+                    }
                     array_num = " ".join(c_line.split()[1:])
                     if not act_ctrl["arrays"].has_key(array_num):
                         act_ctrl["arrays"][array_num] = act_array
-                    act_phys, act_log = (None, None)
+                    act_phys, act_log, act_pmgroup = (None, None, None)
                     act_obj = act_array
                     continue
                 if act_array is not None:
                     if l_line.startswith("logical drive:"):
                         l_num = int(l_line.split()[-1])
-                        act_log = {"config" : {}}
+                        act_log = {
+                            "config"        : {},
+                            "parity_groups" : {},
+                            "mirror_groups" : {},
+                            }
                         act_array["logicals"][l_num] = act_log
                         act_phys = None
                         act_obj = act_log
                         continue
                     elif l_line.startswith("physicaldrive"):
-                        pos_info = c_line.split()[-1].replace(":", "_")
-                        act_phys = {"config" : {}}
-                        act_array["physicals"][pos_info] = act_phys
-                        act_log = None
-                        act_obj = act_phys
+                        if act_pmgroup:
+                            act_pmgroup["drives"].append(l_line.strip())
+                        else:
+                            pos_info = c_line.split()[-1].replace(":", "_")
+                            act_phys = {
+                                "config" : {},
+                            }
+                            act_array["physicals"][pos_info] = act_phys
+                            act_log = None
+                            act_obj = act_phys
                         continue
+                    elif l_line.startswith("parity group"):
+                        # parity and mirror groups are below logical drive, take care
+                        pos_info = c_line.split()[-1].replace(":", "")
+                        act_pmgroup = {"drives" : []}
+                        act_log["parity_groups"][pos_info] = act_pmgroup
+                        act_obj = act_pmgroup
+                        continue
+                    elif l_line.startswith("mirror group"):
+                        pos_info = c_line.split()[-1].replace(":", "")
+                        act_pmgroup = {"drives" : []}
+                        act_log["mirror_groups"][pos_info] = act_pmgroup
+                        act_obj = act_pmgroup
+                        continue
+            if not l_line.strip():
+                if act_pmgroup:
+                    # clear parity group
+                    act_pmgroup = None
             if l_line.count(":") and act_obj:
                 key, value = self._interpret_line(l_line)
+                if not "config" in act_obj and act_pmgroup:
+                    # data type tag after mirror / parity groups
+                    act_pmgroup = None
+                    act_obj = act_log
                 act_obj["config"][key] = value
             # else:
             #    if l_line.count("status"):
@@ -1237,7 +1271,7 @@ class ctrl_type_hpacu(ctrl_type):
             value = float(value)
         elif key == "logical_drive_label":
             # remove binary values from label, stupid HP
-            value = "".join([cur_c for cur_c in value if ord(cur_c) > 32])
+            value = "".join([cur_c for cur_c in value if ord(cur_c) > 32 and ord(cur_c) < 80])
         elif value.isdigit():
             value = int(value)
         if key.endswith("temperature_(c)"):
@@ -1530,8 +1564,6 @@ class tw_status_command(hm_classes.hm_command):
             ctrl_list = []
         if ctrl_type.ctrl("tw").update_ok(srv_com):
             return ctrl_check_struct(self.log, srv_com, ctrl_type.ctrl("tw"), ctrl_list)
-    def _interpret(self, ctrl_dict, cur_ns):
-        return ctrl_type.ctrl("tw")._interpret(ctrl_dict, cur_ns)
     def interpret(self, srv_com, cur_ns):
         return self._interpret(dict([(srv_com._interpret_tag(cur_el, cur_el.tag), srv_com._interpret_el(cur_el)) for cur_el in srv_com["result"]]), cur_ns)
     def interpret_old(self, result, parsed_coms):
@@ -1602,8 +1634,6 @@ class gdth_status_command(hm_classes.hm_command):
     def interpret_old(self, result, cur_ns):
         ctrl_dict = hm_classes.net_to_sys(result[3:])
         return self._interpret(ctrl_dict, cur_ns)
-    def _interpret(self, ctrl_dict, cur_ns):
-        return ctrl_type.ctrl("gdth")._interpret(ctrl_dict, cur_ns)
 
 class hpacu_status_command(hm_classes.hm_command):
     def __call__(self, srv_com, cur_ns):
