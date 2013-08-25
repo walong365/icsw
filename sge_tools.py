@@ -1,6 +1,6 @@
 #!/usr/bin/python-init -Ot
 #
-# Copyright (C) 2001,2002,2003,2004,2005,2006,2007,2008,2012 Andreas Lang-Nevyjel, init.at
+# Copyright (C) 2001,2002,2003,2004,2005,2006,2007,2008,2012,2013 Andreas Lang-Nevyjel, init.at
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -21,19 +21,24 @@
 #
 """ tools for the SGE """
 
+import argparse
 import commands
-import sys
-import re
-import time
-import os
 import datetime
 import logging_tools
-import server_command
+import os
 import process_tools
+import re
+import server_command
+import stat
+import sys
+import time
 import zmq
 from lxml import etree # @UnresolvedImport
 from lxml.builder import E # @UnresolvedImport
-import argparse
+try:
+    import memcache
+except:
+    memcache = None
 
 def get_empty_job_options(**kwargs):
     options = argparse.Namespace()
@@ -44,6 +49,7 @@ def get_empty_job_options(**kwargs):
     options.suppress_nodelist = False
     options.only_valid_waiting = False
     options.long_status = False
+    options.show_stdoutstderr = True
     for key, value in kwargs.iteritems():
         setattr(options, key, value)
     return options
@@ -184,6 +190,7 @@ class sge_info(object):
         self.__never_direct = kwargs.get("never_direct", False)
         self.__persistent_socket = kwargs.get("persistent_socket", True)
         self.__0mq_context, self.__0mq_socket = (None, None)
+        self._init_cache()
         # key : (relevance, call)
         setup_dict = {"hostgroup" : (0, self._check_hostgroup_dict),
                       "queueconf" : (1, self._check_queueconf_dict),
@@ -198,6 +205,7 @@ class sge_info(object):
                                             "qhost"     : 2}.get(key, 120)) for key in self.__valid_dicts])
         if self.__is_active:
             self._sanitize_sge_dict()
+        self.__job_dict = {}
         self._init_update(kwargs.get("init_dicts", {}))
         if kwargs.get("run_initial_update", True) and self.__is_active:
             self.update()
@@ -206,6 +214,22 @@ class sge_info(object):
             self.__0mq_socket.close()
         if self.__0mq_context:
             self.__0mq_context.term()
+        if self._cache_socket:
+            print "c"
+            self._cache_socket.close()
+    def _init_cache(self):
+        if memcache:
+            self._cache_socket = memcache.Client(["127.0.0.1:11211"], debug=0)
+        else:
+            self._cache_socket = None
+    def get_cache(self, key):
+        if self._cache_socket:
+            return self._cache_socket.get(key)
+        else:
+            return None
+    def set_cache(self, key, value):
+        if self._cache_socket:
+            self._cache_socket.set(key, value)
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
         if self.__log_com:
             self.__log_com("[si] %s" % (what), log_level)
@@ -215,6 +239,32 @@ class sge_info(object):
         return self.__tree
     def get(self, key, def_value):
         return self.__act_dicts.get(key, def_value)
+    # extended job id
+    def add_job_info(self, job_id, qstat_com):
+        # print "add", job_id
+        job_key = "sgeinfo:job:%s" % (job_id)
+        _cache = self.get_cache(job_key)
+        if _cache is None:
+            _c_stat, c_out = self._execute_command("%s -xml -j %s" % (qstat_com, job_id))
+            job_xml = etree.fromstring(c_out)
+            job_name = job_xml.findtext(".//JB_job_name")
+            pwd_var = job_xml.xpath(".//job_sublist/VA_variable[text() = 'PWD']")
+            if len(pwd_var):
+                cur_pwd = pwd_var[0].getnext().text
+            else:
+                # dummy pwd, FIXME
+                cur_pwd = "/tmp/"
+            ext_xml = E.job_ext_info(E.file_info())
+            ext_xml.append(E.stdout(os.path.join(cur_pwd, "%s.o%s" % (job_name, job_id))))
+            ext_xml.append(E.stderr(os.path.join(cur_pwd, "%s.e%s" % (job_name, job_id))))
+            self.set_cache(job_key, etree.tostring(ext_xml))
+        else:
+            ext_xml = etree.fromstring(_cache)
+        self.__job_dict[job_id] = ext_xml
+    def get_job_info(self, job_id):
+        return self.__job_dict.get(job_id, None)
+    def del_job_info(self, job_id):
+        del self.__job_dict[job_id]
     def get_run_time(self, cur_time):
         # returns time running
         run_time = abs(datetime.datetime.now() - cur_time)
@@ -479,6 +529,18 @@ class sge_info(object):
             cur_job.attrib["full_id"] = "%s%s" % (
                 cur_job.findtext("JB_job_number"),
                 ".%s" % (cur_job.findtext("tasks")) if cur_job.find("tasks") is not None else "")
+        cur_job_ids = set(all_jobs.xpath(".//job_list/@full_id"))
+        present_ids = set(self.__job_dict.keys())
+        for del_job_id in present_ids - cur_job_ids:
+            self.del_job_info(del_job_id)
+        for add_job_id in cur_job_ids - present_ids:
+            self.add_job_info(add_job_id, qstat_com)
+        for cur_job_id in cur_job_ids:
+            cur_job = all_jobs.find(".//job_list[@full_id='%s']" % (cur_job_id))
+            job_info = self.get_job_info(cur_job_id)
+            if job_info is not None:
+                cur_job.append(job_info)
+        self._add_stdout_stderr_info(all_jobs)
         for state_el in all_jobs.xpath(".//job_list/state"):
             state_el.addnext(E.state_long(",".join(["(%s)%s" % (
                 cur_state,
@@ -499,6 +561,18 @@ class sge_info(object):
             for time_el in all_jobs.findall(".//%s" % (node_name)):
                 time_el.getparent().attrib[attr_name] = datetime.datetime.strptime(time_el.text, "%Y-%m-%dT%H:%M:%S").strftime("%s")
         return all_jobs
+    def _add_stdout_stderr_info(self, all_jobs):
+        for entry in all_jobs.xpath(".//stdout|.//stderr"):
+            try:
+                cur_stat = os.stat(entry.text)
+            except:
+                entry.attrib["found"] = "0"
+                entry.attrib["error"] = process_tools.get_except_info()
+                entry.attrib["size"] = "0"
+            else:
+                entry.attrib["found"] = "1"
+                entry.attrib["error"] = ""
+                entry.attrib["size"] = "%d" % (cur_stat[stat.ST_SIZE])
     def _parse_sge_values(self, q_el, key_name, has_values):
         cur_el = q_el.find(key_name)
         if cur_el.text is None:
@@ -591,8 +665,16 @@ def get_running_headers(options):
             E.left_time()
         ])
     cur_job.append(E.load()),
+    if options.show_stdoutstderr:
+        cur_job.extend(
+            [
+                E.stdout(),
+                E.stderr()
+            ]
+        )
     if not options.suppress_nodelist:
         cur_job.append(E.nodelist())
+    cur_job.append(E.action())
     return cur_job
 
 def _load_to_float(in_value):
@@ -602,7 +684,33 @@ def _load_to_float(in_value):
         cur_load = 0.0
     return cur_load
 
-def build_running_list(s_info, options):
+def create_action_field(act_job, user):
+    ret_el = E.action()
+    if user is None:
+        ret_el.text = "---"
+    else:
+        is_user = act_job.findtext(".//JB_owner") == user.login
+        if is_user:
+            ret_el.text = "del"
+        else:
+            ret_el.text = "---"
+    return ret_el
+
+def create_stdout_stderr(act_job, info):
+    # add stdout  / stderr info
+    ret_el = getattr(E, info)()
+    stdoe_el = act_job.find(".//%s" % (info))
+    if stdoe_el is not None:
+        if int(stdoe_el.attrib["found"]):
+            ret_el.text = logging_tools.get_size_str(int(stdoe_el.attrib["size"]))
+        else:
+            ret_el.text = "error"
+    else:
+        ret_el.text = "---"
+    return ret_el
+
+def build_running_list(s_info, options, **kwargs):
+    user = kwargs.get("user", None)
     # build various local luts
     r_jobs = sorted(s_info.running_jobs, key=lambda x : x.get("full_id"))
     job_host_lut, job_host_pe_lut = ({}, {})
@@ -657,9 +765,13 @@ def build_running_list(s_info, options):
             else:
                 eff = 0
         cur_job.append(E.load("%.2f (%3d %%)" % (mean_load, eff)))
+        if options.show_stdoutstderr:
+            cur_job.append(create_stdout_stderr(act_job, "stdout"))
+            cur_job.append(create_stdout_stderr(act_job, "stderr"))
         if not options.suppress_nodelist:
             jh_pe_lut = job_host_pe_lut[act_job.get("full_id")]
             cur_job.append(E.nodelist(",".join([compress_list(sorted(jh_pe_lut[key]), postfix="(M)" if key == "MASTER" else "") for key in ["MASTER", "SLAVE"] if key in jh_pe_lut])))
+        cur_job.append(create_action_field(act_job, user))
         job_list.append(cur_job)
     return job_list
 
@@ -684,9 +796,11 @@ def get_waiting_headers(options):
         E.priority(),
         E.depends()
     ])
+    cur_job.append(E.action())
     return cur_job
 
-def build_waiting_list(s_info, options):
+def build_waiting_list(s_info, options, **kwargs):
+    user = kwargs.get("user", None)
     w_jobs = sorted(s_info.waiting_jobs, key=lambda x : x.get("full_id"))
     show_ids = []
     for act_job in w_jobs:
@@ -728,6 +842,7 @@ def build_waiting_list(s_info, options):
             E.priority(act_job.findtext("JAT_prio")),
             E.depends("%d: %s" % (len(dep_list), ",".join(dep_list)) if dep_list else ""),
         ])
+        cur_job.append(create_action_field(act_job, user))
         job_list.append(cur_job)
     return job_list
 

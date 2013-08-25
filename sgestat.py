@@ -247,6 +247,7 @@ class my_opt_parser(argparse.ArgumentParser):
             self.add_argument("--valid", dest="only_valid_waiting", help="show only valid waiting jobs [%(default)s]", action="store_true", default=False)
             self.add_argument("-n", dest="suppress_nodelist", help="suppress nodelist [%(default)s]", action="store_true", default=False)
             self.add_argument("-t", dest="suppress_times", help="suppress the display of start/run/left times [%(default)s]", action="store_true", default=False)
+            self.add_argument("--stdoe", dest="show_stdoutstderr", help="supress display of stdout / stderr [%(default)s]", action="store_false", default=True)
         self.add_argument("-v", dest="verbose", help="set verbose mode [%(default)s]", action="store_true", default=False)
 
 def log_com(what, level):
