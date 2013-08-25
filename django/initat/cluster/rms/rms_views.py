@@ -86,6 +86,7 @@ def _sort_list(in_list, _post):
             in_list = sorted(in_list, cmp=lambda x, y: cmp(y[sort_idx], x[sort_idx]))
     # reformat
     show_list = [[_value_to_str(value) for value in line] for line in in_list[start_idx : start_idx + num_disp]]
+    # print show_list
     return {"sEcho"                : int(_post["sEcho"]),
             "iTotalRecords"        : total_data_len,
             "iTotalDisplayRecords" : filter_data_len,
@@ -95,7 +96,7 @@ class get_run_jobs_xml(View):
     def post(self, request):
         _post = request.POST
         my_sge_info.update()
-        run_job_list = sge_tools.build_running_list(my_sge_info, get_job_options(request))
+        run_job_list = sge_tools.build_running_list(my_sge_info, get_job_options(request), user=request.user)
         json_resp = _sort_list(run_job_list, _post)
         return HttpResponse(json.dumps(json_resp), mimetype="application/json")
 
@@ -103,7 +104,7 @@ class get_wait_jobs_xml(View):
     def post(self, request):
         _post = request.POST
         my_sge_info.update()
-        wait_job_list = sge_tools.build_waiting_list(my_sge_info, get_job_options(request))
+        wait_job_list = sge_tools.build_waiting_list(my_sge_info, get_job_options(request), user=request.user)
         json_resp = _sort_list(wait_job_list, _post)
         return HttpResponse(json.dumps(json_resp), mimetype="application/json")
 
@@ -114,3 +115,4 @@ class get_node_xml(View):
         node_list = sge_tools.build_node_list(my_sge_info, get_node_options(request))
         json_resp = _sort_list(node_list, _post)
         return HttpResponse(json.dumps(json_resp), mimetype="application/json")
+
