@@ -248,6 +248,15 @@ class sge_info(object):
             _c_stat, c_out = self._execute_command("%s -xml -j %s" % (qstat_com, job_id))
             job_xml = etree.fromstring(c_out)
             job_name = job_xml.findtext(".//JB_job_name")
+            # check for non-standard path
+            # get home
+            home_var = job_xml.xpath(".//job_sublist/VA_variable[text() = 'HOME']")
+            if len(home_var):
+                home_dir = home_var[0].getnext().text
+            else:
+                # dummy pwd, FIXME
+                home_dir = "/tmp/"
+            # get pwd
             pwd_var = job_xml.xpath(".//job_sublist/VA_variable[text() = 'PWD']")
             if len(pwd_var):
                 cur_pwd = pwd_var[0].getnext().text
@@ -255,8 +264,22 @@ class sge_info(object):
                 # dummy pwd, FIXME
                 cur_pwd = "/tmp/"
             ext_xml = E.job_ext_info(E.file_info())
-            ext_xml.append(E.stdout(os.path.join(cur_pwd, "%s.o%s" % (job_name, job_id))))
-            ext_xml.append(E.stderr(os.path.join(cur_pwd, "%s.e%s" % (job_name, job_id))))
+            if job_xml.find(".//JB_stdout_path_list") is not None:
+                ext_xml.append(
+                    E.stdout(
+                        job_xml.findtext(".//JB_stdout_path_list/path_list/PN_path").replace("$HOME", home_dir).replace("$JOB_ID", job_id)
+                    )
+                )
+            else:
+                ext_xml.append(E.stdout(os.path.join(cur_pwd, "%s.o%s" % (job_name, job_id))))
+            if job_xml.find(".//JB_stderr_path_list") is not None:
+                ext_xml.append(
+                    E.stderr(
+                        job_xml.findtext(".//JB_stderr_path_list/path_list/PN_path").replace("$HOME", home_dir).replace("$JOB_ID", job_id)
+                    )
+                )
+            else:
+                ext_xml.append(E.stderr(os.path.join(cur_pwd, "%s.e%s" % (job_name, job_id))))
             self.set_cache(job_key, etree.tostring(ext_xml))
         else:
             ext_xml = etree.fromstring(_cache)
