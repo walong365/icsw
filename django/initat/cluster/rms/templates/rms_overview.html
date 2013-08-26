@@ -148,7 +148,8 @@ addHandlers = ->
         "fnDrawCallback"   : (o_settings) ->
             $("table#run_job_table").find("a[href^='file']").bind("click", (event) ->
                 cur_el = $(event.target)
-                console.log cur_el.attr("href")
+                cur_fi = new file_info(event, cur_el.attr("id"))
+                cur_fi.show()
                 return false
             )
             $("table#run_job_table").find("input[type='button'][id^='jctrl:']").bind("click", (event) ->
@@ -188,6 +189,45 @@ addHandlers = ->
                 return false
             )
     $("table").bind("draw", resize_grid)
+
+class file_info
+    constructor: (@event, @file_id) ->
+    show: () =>
+        $.ajax
+            url     : "{% url 'rms:get_file_content' %}"
+            data    :
+                "file_id" : @file_id
+            success : (xml) =>
+                if parse_xml_response(xml)
+                    @resp_xml = $(xml).find("response file_info")
+                    @build_div()
+                    @file_div.modal
+                        opacity      : 50
+                        position     : [@event.pageY, @event.pageX]
+                        autoResize   : true
+                        autoPosition : true
+                        minWidth     : "640px"
+                        onShow: (dialog) -> 
+                            dialog.container.draggable()
+                            $("#simplemodal-container").css("height", "auto")
+                            $("#simplemodal-container").css("width", "auto")
+                        onClose: =>
+                            $.modal.close()
+    build_div: () =>
+        file_div = $("<div>")
+        file_div.append(
+            $("<h3>").text("File '" + @resp_xml.attr("name") + "'")
+        )
+        file_ta = $("<textarea>").text(@resp_xml.find("content").text())
+        file_div.append(file_ta)
+        cur_ed = CodeMirror.fromTextArea(file_ta[0], {
+            "styleActiveLine" : true,
+            "lineNumbers"     : true,
+            "lineWrapping"    : true,
+            "indentUnit"      : 4,
+        })
+        cur_ed.setSize(1024, null)
+        @file_div = file_div
 
 render_action = (o, val) ->
     cap_list = val.split(":")

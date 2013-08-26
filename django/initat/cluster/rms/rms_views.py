@@ -1,12 +1,14 @@
 # rms views
 
+import codecs
 import json
-import sge_tools
-import threading
 import logging
 import logging_tools
 import pprint
 import server_command
+import sge_tools
+import threading
+from lxml.builder import E # @UnresolvedImport
 # from lxml import etree # @UnresolvedImport
 
 from django.conf import settings
@@ -138,3 +140,12 @@ class control_job(View):
             "job_list",
             srv_com.builder("job", job_id=job_id))
         contact_server(request, "tcp://localhost:8009", srv_com, timeout=10)
+
+class get_file_content(View):
+    @method_decorator(login_required)
+    @method_decorator(xml_wrapper)
+    def post(self, request):
+        _post = request.POST
+        file_resp = E.file_info(name="testfile")
+        file_resp.append(E.content(codecs.open("/etc/hosts", "r", "ascii").read()))
+        request.xml_response["response"] = file_resp

@@ -21,11 +21,12 @@ session_patterns = patterns(
 
 rms_patterns = patterns(
     "initat.cluster.rms",
-    url(r"overview"     , rms_views.overview.as_view()         , name="overview"),
-    url(r"get_node_xml" , rms_views.get_node_xml.as_view()     , name="get_node_xml"),
-    url(r"get_run_xml"  , rms_views.get_run_jobs_xml.as_view() , name="get_run_jobs_xml"),
-    url(r"get_wait_xml" , rms_views.get_wait_jobs_xml.as_view(), name="get_wait_jobs_xml"),
-    url(r"control_job"  , rms_views.control_job.as_view()      , name="control_job"),
+    url(r"overview"        , rms_views.overview.as_view()         , name="overview"),
+    url(r"get_node_xml"    , rms_views.get_node_xml.as_view()     , name="get_node_xml"),
+    url(r"get_run_xml"     , rms_views.get_run_jobs_xml.as_view() , name="get_run_jobs_xml"),
+    url(r"get_wait_xml"    , rms_views.get_wait_jobs_xml.as_view(), name="get_wait_jobs_xml"),
+    url(r"control_job"     , rms_views.control_job.as_view()      , name="control_job"),
+    url(r"get_file_content", rms_views.get_file_content.as_view() , name="get_file_content"),
 )
 
 base_patterns = patterns(
