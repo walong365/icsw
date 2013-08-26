@@ -190,6 +190,8 @@ class sge_info(object):
         self.__never_direct = kwargs.get("never_direct", False)
         self.__persistent_socket = kwargs.get("persistent_socket", True)
         self.__0mq_context, self.__0mq_socket = (None, None)
+        # empty lut
+        self.__job_lut = {}
         self._init_cache()
         # key : (relevance, call)
         setup_dict = {"hostgroup" : (0, self._check_hostgroup_dict),
