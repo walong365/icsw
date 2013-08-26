@@ -20,19 +20,18 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
 
-import sys
-import process_tools
 import commands
-import os
-import configfile
-import os.path
-import time
-import logging_tools
-import pprint
-import server_command
-import threading_tools
-import sge_tools
 import config_tools
+import configfile
+import logging_tools
+import os
+import pprint
+import process_tools
+import server_command
+import sge_tools
+import sys
+import threading_tools
+import time
 try:
     import cluster_location
 except ImportError:
@@ -43,11 +42,7 @@ except ImportError:
     VERSION_STRING = "?.?"
 import zmq
 
-# from sge_server_messages import *
-
-# old
-SERVER_CHECK_PORT = 8009
-# new
+# communication port
 COM_PORT = 8009
 
 def call_command(command, log_com=None):
@@ -80,6 +75,7 @@ class rms_mon_process(threading_tools.process_obj):
         self._init_sge_info()
         self.register_func("get_config", self._get_config)
         self.register_func("full_reload", self._full_reload)
+        # self.register_func("get_job_xml", self._get_job_xml)
     def _init_sge_info(self):
         self.log("init sge_info")
         self.__sge_info = sge_tools.sge_info(
