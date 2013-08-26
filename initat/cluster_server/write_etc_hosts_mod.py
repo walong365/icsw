@@ -18,21 +18,21 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
 
-import sys
-import cs_base_class
-import process_tools
-import os
-import ipvx_tools
-import pprint
-import codecs
-import logging_tools
-import server_command
 import cluster_location
+import codecs
+import cs_base_class
+import ipvx_tools
+import logging_tools
+import networkx
+import os
+import pprint
+import process_tools
+import server_command
+import sys
 from django.db.models import Q
 from initat.cluster.backbone.models import net_ip, netdevice, device, device_variable, domain_tree_node
 from initat.cluster_server.config import global_config
 from initat.cluster_server.rebuild_hopcount_mod import router_object
-import networkx
 
 SSH_KNOWN_HOSTS_FILENAME = "/etc/ssh/ssh_known_hosts"
 ETC_HOSTS_FILENAME       = "/etc/hosts"
