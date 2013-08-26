@@ -148,7 +148,7 @@ addHandlers = ->
         "fnDrawCallback"   : (o_settings) ->
             $("table#run_job_table").find("a[href^='file']").bind("click", (event) ->
                 cur_el = $(event.target)
-                cur_fi = new file_info(event, cur_el.attr("id"))
+                cur_fi = new file_info(event, cur_el.attr("href"))
                 cur_fi.show()
                 return false
             )
@@ -207,7 +207,9 @@ class file_info
                         autoResize   : true
                         autoPosition : true
                         minWidth     : "640px"
-                        onShow: (dialog) -> 
+                        minHeight    : "800px"
+                        onShow: (dialog) => 
+                            @activate_cm()
                             dialog.container.draggable()
                             $("#simplemodal-container").css("height", "auto")
                             $("#simplemodal-container").css("width", "auto")
@@ -216,18 +218,23 @@ class file_info
     build_div: () =>
         file_div = $("<div>")
         file_div.append(
-            $("<h3>").text("File '" + @resp_xml.attr("name") + "'")
+            $("<h3>").text("File '" + @resp_xml.attr("name") + "', " + @resp_xml.attr("lines") + " lines in " + @resp_xml.attr("size_str"))
         )
-        file_ta = $("<textarea>").text(@resp_xml.find("content").text())
+        file_ta = $("<textarea>").text(@resp_xml.text())
         file_div.append(file_ta)
-        cur_ed = CodeMirror.fromTextArea(file_ta[0], {
+        @file_div = file_div
+        @file_ta = file_ta
+    activate_cm: () =>
+        cur_ed = CodeMirror.fromTextArea(@file_ta[0], {
+            "mode"            : "shell",
             "styleActiveLine" : true,
             "lineNumbers"     : true,
             "lineWrapping"    : true,
             "indentUnit"      : 4,
         })
-        cur_ed.setSize(1024, null)
-        @file_div = file_div
+        cur_ed.setSize(1024, 600)
+        cur_ed.refresh()
+        cur_ed.focus()
 
 render_action = (o, val) ->
     cap_list = val.split(":")

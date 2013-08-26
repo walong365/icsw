@@ -9,7 +9,7 @@ import server_command
 import sge_tools
 import threading
 from lxml.builder import E # @UnresolvedImport
-# from lxml import etree # @UnresolvedImport
+from lxml import etree # @UnresolvedImport
 
 from django.conf import settings
 from django.contrib.auth.decorators import login_required
@@ -146,6 +146,38 @@ class get_file_content(View):
     @method_decorator(xml_wrapper)
     def post(self, request):
         _post = request.POST
-        file_resp = E.file_info(name="testfile")
-        file_resp.append(E.content(codecs.open("/etc/hosts", "r", "ascii").read()))
-        request.xml_response["response"] = file_resp
+        file_parts = _post["file_id"].split(":")
+        row_num = int(file_parts[1])
+        std_type = "stdout" if row_num == 12 else "stderr"
+        job_id = file_parts[2]
+        # my_sge_info.update()
+        job_info = my_sge_info.get_job(job_id)
+        if job_info is None:
+            my_sge_info.update()
+            job_info = my_sge_info.get_job(job_id)
+        # print "*", job_id, job_info
+        if job_info is not None:
+            io_element = job_info.find(".//%s" % (std_type))
+            if io_element is None or io_element.get("error", "0") == "1":
+                request.error("%s not defined for %s" % (std_type, job_id), logging_tools.LOG_LEVEL_ERROR, logger)
+            else:
+                srv_com = server_command.srv_command(command="get_file_content")
+                srv_com["file_list"] = srv_com.builder(
+                    "file_list",
+                    srv_com.builder("file", name=io_element.text),
+                    )
+                result = contact_server(request, "tcp://localhost:8004", srv_com, timeout=60)
+                for cur_file in result.xpath(None, ".//ns:file"):
+                    print etree.tostring(cur_file)
+                    if cur_file.attrib["error"] == "1":
+                        request.error("error reading %s: %s" % (cur_file.attrib["name"], cur_file.attrib["error_str"]), logging_tools.LOG_LEVEL_ERROR, logger)
+                    else:
+                        file_resp = E.file_info(
+                            cur_file.text or "",
+                            name=cur_file.attrib["name"],
+                            lines=cur_file.attrib["lines"],
+                            size_str=logging_tools.get_size_str(int(cur_file.attrib["size"]), True),
+                        )
+                        request.xml_response["response"] = file_resp
+        else:
+            request.error("%s not found for %s" % (std_type, job_id), logging_tools.LOG_LEVEL_ERROR, logger)

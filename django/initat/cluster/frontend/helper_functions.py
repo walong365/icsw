@@ -210,6 +210,7 @@ def contact_server(request, conn_str, send_com, **kwargs):
         kwargs.get("connection_id", "webfrontend"),
         timeout=kwargs.get("timeout", 10)).add_connection(conn_str, send_com)
     if result:
+        # TODO: check if result is et
         if kwargs.get("log_result", True):
             log_str, log_level = result.get_log_tuple()
             request.xml_response.log(log_level, log_str)
