@@ -217,7 +217,7 @@ class sge_info(object):
         if self.__0mq_context:
             self.__0mq_context.term()
         if self._cache_socket:
-            print "c"
+            # print "close cache socket"
             self._cache_socket.close()
     def _init_cache(self):
         if memcache:
@@ -247,7 +247,7 @@ class sge_info(object):
         job_key = "sgeinfo:job:%s" % (job_id)
         _cache = self.get_cache(job_key)
         if _cache is None:
-            _c_stat, c_out = self._execute_command("%s -xml -j %s" % (qstat_com, job_id))
+            _c_stat, c_out = self._execute_command("%s -u \* -xml -j %s" % (qstat_com, job_id))
             job_xml = etree.fromstring(c_out)
             job_name = job_xml.findtext(".//JB_job_name")
             # check for non-standard path
@@ -554,14 +554,17 @@ class sge_info(object):
             cur_job.attrib["full_id"] = "%s%s" % (
                 cur_job.findtext("JB_job_number"),
                 ".%s" % (cur_job.findtext("tasks")) if cur_job.find("tasks") is not None else "")
-        cur_job_ids = set(all_jobs.xpath(".//job_list/@full_id"))
+        # print etree.tostring(all_jobs, pretty_print=True)
+        cur_job_ids = set(all_jobs.xpath(".//job_list[master/text() = \"MASTER\"]/@full_id"))
+        # print cur_job_ids, set(all_jobs.xpath(".//job_list/@full_id"))
         present_ids = set(self.__job_dict.keys())
         for del_job_id in present_ids - cur_job_ids:
             self.del_job_info(del_job_id)
         for add_job_id in cur_job_ids - present_ids:
             self.add_job_info(add_job_id, qstat_com)
         for cur_job_id in cur_job_ids:
-            cur_job = all_jobs.find(".//job_list[@full_id='%s']" % (cur_job_id))
+            # print cur_job_id, all_jobs.xpath(".//job_list/@full_id")
+            cur_job = all_jobs.xpath(".//job_list[@full_id='%s' and master/text() = \"MASTER\"]" % (cur_job_id))[0]
             job_info = self.get_job_info(cur_job_id)
             if job_info is not None:
                 cur_job.append(job_info)
@@ -596,7 +599,7 @@ class sge_info(object):
                 entry.attrib["size"] = "0"
             else:
                 entry.attrib["found"] = "1"
-                entry.attrib["error"] = ""
+                entry.attrib["error"] = "0"
                 entry.attrib["size"] = "%d" % (cur_stat[stat.ST_SIZE])
     def _parse_sge_values(self, q_el, key_name, has_values):
         cur_el = q_el.find(key_name)
@@ -638,11 +641,12 @@ class sge_info(object):
         # build look up tables for fast processing
         self.__job_lut, self.running_jobs, self.waiting_jobs = ({}, [], [])
         for cur_job in self.__tree.findall("qstat//job_list"):
-            self.__job_lut[cur_job.get("full_id")] = cur_job
             if cur_job.get("state") == "running":
                 if cur_job.findtext("master") == "MASTER":
+                    self.__job_lut[cur_job.get("full_id")] = cur_job
                     self.running_jobs.append(cur_job)
             else:
+                self.__job_lut[cur_job.get("full_id")] = cur_job
                 self.waiting_jobs.append(cur_job)
         self.__queue_lut = {}
         for queue in self.__tree.findall("queueconf/queue"):
