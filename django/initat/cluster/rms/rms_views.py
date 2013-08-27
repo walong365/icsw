@@ -1,6 +1,5 @@
 # rms views
 
-import codecs
 import json
 import logging
 import logging_tools
@@ -157,9 +156,10 @@ class get_file_content(View):
             job_info = my_sge_info.get_job(job_id)
         # print "*", job_id, job_info
         if job_info is not None:
+            # print etree.tostring(job_info)
             io_element = job_info.find(".//%s" % (std_type))
             if io_element is None or io_element.get("error", "0") == "1":
-                request.error("%s not defined for %s" % (std_type, job_id), logging_tools.LOG_LEVEL_ERROR, logger)
+                request.xml_response.error("%s not defined for job %s" % (std_type, job_id), logger)
             else:
                 srv_com = server_command.srv_command(command="get_file_content")
                 srv_com["file_list"] = srv_com.builder(
@@ -168,9 +168,12 @@ class get_file_content(View):
                     )
                 result = contact_server(request, "tcp://localhost:8004", srv_com, timeout=60)
                 for cur_file in result.xpath(None, ".//ns:file"):
-                    print etree.tostring(cur_file)
+                    # print etree.tostring(cur_file)
                     if cur_file.attrib["error"] == "1":
-                        request.error("error reading %s: %s" % (cur_file.attrib["name"], cur_file.attrib["error_str"]), logging_tools.LOG_LEVEL_ERROR, logger)
+                        request.xml_response.error("error reading %s (job %s): %s" % (
+                            cur_file.attrib["name"],
+                            job_id,
+                            cur_file.attrib["error_str"]), logger)
                     else:
                         file_resp = E.file_info(
                             cur_file.text or "",
@@ -180,4 +183,4 @@ class get_file_content(View):
                         )
                         request.xml_response["response"] = file_resp
         else:
-            request.error("%s not found for %s" % (std_type, job_id), logging_tools.LOG_LEVEL_ERROR, logger)
+            request.xml_response.error("%s not found for job %s" % (std_type, job_id), logger)
