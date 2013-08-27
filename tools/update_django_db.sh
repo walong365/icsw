@@ -5,11 +5,13 @@ MIG_DIR="${C_DIR}/backbone/migrations/"
 
 if [ -d ${MIG_DIR} ] ; then
     echo "migration schema, migration directory is ${MIG_DIR}"
-    #sync_apps="guardian"
-    #for sync_app in ${sync_apps} ; do
-    #    echo "syncing app ${sync_app}"
-    #    ${C_DIR}/manage.py migrate ${sync_app}
-    #done
+    sync_apps="liebherr"
+    for sync_app in ${sync_apps} ; do
+	if [ -d "${C_DIR}${sync_app}" ] ; then
+            echo "syncing app ${sync_app}"
+            ${C_DIR}/manage.py migrate ${sync_app}
+	fi
+    done
     ${C_DIR}/manage.py schemamigration backbone --auto
     ${C_DIR}/manage.py migrate --no-initial-data backbone 
     ${C_DIR}/manage.py loaddata ${C_DIR}/backbone/fixtures/initial_new_data.xml
