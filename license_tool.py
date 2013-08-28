@@ -180,6 +180,7 @@ def main():
         if not ret_val:
             ret_code = 1
     elif opts.mode == "csv":
+        print ",".join(["name", "issued", "used", "free", "reserved"])
         for cur_lic in xml_res.findall(".//license"):
             print ",".join(
                 [
