@@ -745,9 +745,9 @@ class net_command(hm_classes.hm_command):
             cur_state = ibv_dict.get("state", "no state set")
             if cur_state.lower().count("port_active"):
                 add_oks.append("IB state: %s" % (cur_state))
-                ret_state = max(ret_state, limits.nag_STATE_CRITICAL)
             else:
                 add_errors.append("IB state: %s" % (cur_state))
+                ret_state = max(ret_state, limits.nag_STATE_CRITICAL)
         return ret_state, "%s, %s rx; %s tx%s%s | rx=%d tx=%d" % (
             dev_name,
             self.beautify_speed(value_dict["rx"]),
