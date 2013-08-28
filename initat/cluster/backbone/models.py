@@ -3839,6 +3839,9 @@ class home_export_list(object):
         for key, value in home_exp_dict.iteritems():
             value["info"] = "%s on %s" % (value["homeexport"], value["name"])
         self.exp_dict = home_exp_dict
+    def get(self, *args, **kwargs):
+        # hacky
+        return self.exp_dict[int(kwargs["pk"])][ "entry"]
     def all(self):
         for pk in [s_pk for _s_info, s_pk in sorted([(value["info"], key) for key, value in self.exp_dict.iteritems()])]:
             yield self.exp_dict[pk]["entry"]
