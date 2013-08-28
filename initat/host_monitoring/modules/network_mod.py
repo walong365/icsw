@@ -19,23 +19,20 @@
 #
 """ network througput and status information """
 
+import commands
+import logging_tools
+import os
+import pprint
+import process_tools
+import re
+import server_command
+import subprocess
 import sys
 import time
-import threading
 from initat.host_monitoring import limits
-import copy
 from initat.host_monitoring import hm_classes
-import net_tools
-import os.path
-import subprocess
-import commands
-import process_tools
-import server_command
-import re
-import logging_tools
-import pprint
-from lxml import etree
-from lxml.builder import E
+from lxml import etree # @UnresolvedImports
+from lxml.builder import E # @UnresolvedImports
 
 # name of total-device
 TOTAL_DEVICE_NAME = "all"
@@ -47,6 +44,8 @@ NET_DEVICES = ["eth", "lo", "myr", "ib", "xenbr", "vmnet", "tun", "tap", TOTAL_D
 DETAIL_DEVICES = ["eth", "tun", "tap"]
 # devices for ethtool
 ETHTOOL_DEVICES = ["eth", "peth", "tun", "tap"]
+# devices for ibv_devinfo
+IBV_DEVICES = ["ib"]
 # devices to check for xen-host
 XEN_DEVICES = ["vif"]
 # minimum update time
@@ -66,6 +65,12 @@ class _general(hm_classes.hm_module):
         else:
             self.log("no ethtool found", logging_tools.LOG_LEVEL_WARN)
         self.ethtool_path = ethtool_path
+        ibv_devinfo_path = process_tools.find_file("ibv_devinfo")
+        if ibv_devinfo_path:
+            self.log("ibv_devinfo found at %s" % (ibv_devinfo_path))
+        else:
+            self.log("no ibv_devinfo found", logging_tools.LOG_LEVEL_WARN)
+        self.ibv_devinfo_path = ibv_devinfo_path
         iptables_path = process_tools.find_file("iptables")
         if iptables_path:
             self.log("iptables found at %s" % (iptables_path))
@@ -73,7 +78,7 @@ class _general(hm_classes.hm_module):
             self.log("no iptables found", logging_tools.LOG_LEVEL_WARN)
         self.iptables_path = iptables_path
     def init_machine_vector(self, mv):
-        self.act_nds = netspeed(self.ethtool_path) # self.bonding_devices)
+        self.act_nds = netspeed(self.ethtool_path, self.ibv_devinfo_path) # self.bonding_devices)
     def update_machine_vector(self, mv):
         try:
             self._net_int(mv)
@@ -250,22 +255,53 @@ class _general(hm_classes.hm_module):
 ND_HIST_SIZE = 5
 
 class net_device(object):
-    def __init__(self, name, mapping, ethtool_path):
+    def __init__(self, name, mapping, ethtool_path, ibv_devinfo_path):
         self.name = name
         self.nd_mapping = mapping
         self.ethtool_path = ethtool_path
+        self.ibv_devinfo_path = ibv_devinfo_path
         self.nd_keys = set(self.nd_mapping) - set([None])
         self.invalidate()
         self.__history = []
         self.__driver_info = None
         self.__check_ethtool = any([self.name.startswith(check_name) for check_name in ETHTOOL_DEVICES])
+        self.__check_ibv_devinfo = any([self.name.startswith(check_name) for check_name in IBV_DEVICES])
         self.last_update = time.time() - 3600
-        self.update_ethtool()
+        # set defaults
+        self.perfquery_path = None
+        self.ethtool_results = {}
+        self.ibv_results = {}
+        if self.name.startswith("ib"):
+            self.update_ibv_devinfo()
+            self.ibv_map = {
+                "portrcvdata" : "rx",
+                # "portrcvpkts" : 1,
+                "portxmitdata" : "tx",
+                # "portxmitpkts" : 9,
+                }
+            self.perfquery_path = process_tools.find_file("perfquery")
+        else:
+            self.update_ethtool()
     def invalidate(self):
         self.found = False
     def feed(self, cur_line):
-        self.found = True
+        # print self.name, cur_line, self.ibv_results, self.perfquery_path
         line_dict = dict([(key, long(value)) for key, value in zip(self.nd_mapping, cur_line.split()) if key])
+        if self.ibv_results and self.perfquery_path:
+            if "port_lid" in self.ibv_results and "port_lid" in self.ibv_results:
+                p_stat, p_out = commands.getstatusoutput("%s -x %d %d" % (
+                    self.perfquery_path,
+                    self.ibv_results["port_lid"],
+                    self.ibv_results["port"]))
+                if not p_stat:
+                    for line in p_out.split("\n"):
+                        if line.count(":"):
+                            key, value = line.split(":", 1)
+                            key = key.strip().lower()
+                            value = value.replace(".", "").strip().lower()
+                            if key in self.ibv_map:
+                                line_dict[self.ibv_map[key]] += int(value)
+        self.found = True
         if len(self.__history) > ND_HIST_SIZE:
             self.__history = self.__history[1:]
         self.__history.append((time.time(), line_dict))
@@ -282,6 +318,31 @@ class net_device(object):
                 last_time, last_dict = (cur_time, cur_dict)
         res_dict = dict([(key, sum(value) / len(value) if len(value) else 0.) for key, value in res_dict.iteritems()])
         return res_dict
+    def update_ibv_devinfo(self):
+        cur_time = time.time()
+        if cur_time > self.last_update + 30:
+            res_dict = {}
+            if self.__check_ibv_devinfo and self.__check_ibv_devinfo:
+                ib_stat, ib_out = commands.getstatusoutput("%s" % (self.ibv_devinfo_path))
+                cur_port = None
+                if not ib_stat:
+                    for line in ib_out.split("\n"):
+                        line = line.strip()
+                        if line.count(":"):
+                            key, value = line.split(":", 1)
+                            key = key.strip()
+                            value = value.strip()
+                            if key == "port":
+                                cur_port = int(value)
+                                res_dict[cur_port] = {"port" : cur_port}
+                            elif cur_port:
+                                if value.isdigit():
+                                    value = int(value)
+                                res_dict[cur_port][key] = value
+            self.last_update = cur_time
+            # extract ib number (hacky stuff, FIXME)
+            port_num = int(self.name[2])
+            self.ibv_results = res_dict.get(port_num + 1)
     def update_ethtool(self):
         cur_time = time.time()
         if cur_time > self.last_update + 30:
@@ -314,6 +375,12 @@ class net_device(object):
                     *[srv_com.builder("value", value, name=key) for key, value in self.ethtool_results.iteritems()]
                 )
             )
+        if self.ibv_results:
+            result.append(
+                srv_com.builder("ibv",
+                    *[srv_com.builder("value", str(value), name=key) for key, value in self.ibv_results.iteritems()]
+                )
+            )
         if self.name.startswith("bond"):
             # add bonding info if present
             try:
@@ -325,8 +392,9 @@ class net_device(object):
         return result
 
 class netspeed(object):
-    def __init__(self, ethtool_path): # , bonding = None):
+    def __init__(self, ethtool_path, ibv_devinfo_path):
         self.ethtool_path = ethtool_path
+        self.ibv_devinfo_path = ibv_devinfo_path
         cur_head = sum([part.split() for part in file("/proc/net/dev", "r").readlines()[1].strip().split("|")], [])
         if len(cur_head) == 17:
             self.nd_mapping = [
@@ -376,7 +444,7 @@ class netspeed(object):
         if abs(ntime - self.__a_time) > 1:
             try:
                 line_list = [(dev_name.strip(), dev_stats) for dev_name, dev_stats in [line.split(":", 1) for line in file("/proc/net/dev", "r").read().split("\n") if line.count(":")]]
-                ndev_dict = dict([(dev_name.strip(), [long(cur_val) for cur_val in dev_stats.split()]) for dev_name, dev_stats in [line.split(":", 1) for line in file("/proc/net/dev", "r").read().split("\n") if line.count(":")]])
+                # ndev_dict = dict([(dev_name.strip(), [long(cur_val) for cur_val in dev_stats.split()]) for dev_name, dev_stats in [line.split(":", 1) for line in file("/proc/net/dev", "r").read().split("\n") if line.count(":")]])
             except:
                 pass
             else:
@@ -385,7 +453,7 @@ class netspeed(object):
                     self[key].invalidate()
                 for key, value in line_list:
                     if key not in self:
-                        self[key] = net_device(key, self.nd_mapping, self.ethtool_path)
+                        self[key] = net_device(key, self.nd_mapping, self.ethtool_path, self.ibv_devinfo_path)
                     self[key].feed(value)
                     self[key].update_ethtool()
             self.__a_time = ntime
@@ -406,16 +474,19 @@ class ping_sp_struct(hm_classes.subprocess_struct):
         self.tart_time = time.time()
         return ("ping", self.seq_str, self.target_host, self.num_pings, self.timeout)
     def process(self, *args):
-        id_str, num_sent, num_received, time_field, error_str = args
+        _id_str, num_sent, num_received, time_field, error_str = args
         self.terminated = True
         cur_b = self.srv_com.builder
-        self.srv_com["result"] = cur_b("ping_result",
-                                       error_str,
-                                       cur_b("times",
-                                             *[cur_b("time", "%.4f" % (cur_time)) for cur_time in time_field]),
-                                       target=self.target_host,
-                                       num_sent="%d" % (num_sent),
-                                       num_received="%d" % (num_received))
+        self.srv_com["result"] = cur_b(
+            "ping_result",
+            error_str,
+            cur_b(
+                "times",
+                *[cur_b("time", "%.4f" % (cur_time)) for cur_time in time_field]
+                ),
+                target=self.target_host,
+                num_sent="%d" % (num_sent),
+                num_received="%d" % (num_received))
         self.send_return()
         self.terminated = True
 
@@ -600,12 +671,17 @@ class net_command(hm_classes.hm_command):
             ethtool_tree = srv_com["device:device_%s:ethtool" % (dev_name)]
         except:
             ethtool_tree = []
+        try:
+            ibv_tree = srv_com["device:device_%s:ibv" % (dev_name)]
+        except:
+            ibv_tree = []
         value_dict = dict([(el.tag.split("}")[-1], float(el.text)) for el in value_tree])
         # build ethtool helper dict
         ethtool_dict = {"link detected" : "yes"}
         ethtool_dict.update(dict([(el.get("name"), el.text) for el in ethtool_tree]))
         ethtool_dict["duplex"] = self._parse_duplex_str(ethtool_dict.get("duplex", "unknown"))
         ethtool_dict["speed"] = self._parse_speed_str(ethtool_dict.get("speed", "unknown"))
+        ibv_dict = dict([(el.get("name"), el.text) for el in ibv_tree])
         if ethtool_dict.get("speed", -1) < 0 and ethtool_dict.get("driver", None) in ["virtio_net"]:
             # set ethtool speed/duplex to 10G/full
             ethtool_dict["speed"] = 10 * 1000 * 1000 * 1000
@@ -661,30 +737,17 @@ class net_command(hm_classes.hm_command):
                         ret_state = max(ret_state, limits.nag_STATE_CRITICAL)
             else:
                 if cur_ns.speed:
-                    # target_speed = self._parse_speed_str(cur_ns.speed)
-                    # if ethtool_dict.get("speed", -1) != -1:
-                    #    if target_speed == ethtool_dict["speed"]:
-                    #        add_oks.append("target_speed %s" % (self.beautify_speed(ethtool_dict["speed"])))
-                    #    else:
-                    #        add_errors.append("target_speed differ: %s (target) != %s (measured)" % (self.beautify_speed(target_speed), self.beautify_speed(ethtool_dict["speed"])))
-                    #        ret_state = max(ret_state, limits.nag_STATE_CRITICAL)
-                    # else:
-                    #    add_errors.append("Cannot check target_speed: no ethtool information")
-                    #    ret_state = max(ret_state, limits.nag_STATE_CRITICAL)
                     ret_state = self._check_speed(None, cur_ns, ethtool_dict.get("speed", -1), add_oks, add_errors, ret_state)
                 if cur_ns.duplex:
                     ret_state = self._check_duplex(None, cur_ns, ethtool_dict.get("duplex", None), add_oks, add_errors, ret_state)
-                    # if "duplex" in ethtool_dict:
-                    #    ethtool_duplex = self._parse_duplex_str(ethtool_dict["duplex"])
-                    #    target_duplex = self._parse_duplex_str(cur_ns.duplex)
-                    #    if target_duplex == ethtool_duplex:
-                    #        add_oks.append("duplex is %s" % (target_duplex))
-                    #    else:
-                    #        add_errors.append("duplex differs: %s (target) != %s (measured)" % (target_duplex, ethtool_duplex))
-                    #        ret_state = max(ret_state, limits.nag_STATE_CRITICAL)
-                    # else:
-                    #    add_errors.append("Cannot check duplex mode: not present in ethtool information")
-                    #    ret_state = max(ret_state, limits.nag_STATE_CRITICAL)
+        if ibv_dict:
+            # add ib info
+            cur_state = ibv_dict.get("state", "no state set")
+            if cur_state.lower().count("port_active"):
+                add_oks.append("IB state: %s" % (cur_state))
+                ret_state = max(ret_state, limits.nag_STATE_CRITICAL)
+            else:
+                add_errors.append("IB state: %s" % (cur_state))
         return ret_state, "%s, %s rx; %s tx%s%s | rx=%d tx=%d" % (
             dev_name,
             self.beautify_speed(value_dict["rx"]),
@@ -829,14 +892,14 @@ class net_command(hm_classes.hm_command):
                                     add_errors.append("target_speed differ: %s (target) != %s (measured)" % (bit_str(targ_speed_bit), ethtool_stuff["rate"]))
                             else:
                                 add_errors.append("no rate entry found")
-                                ret_state, state = (limits.nag_STATE_CRITICAL, "Error")
+                                ret_state = limits.nag_STATE_CRITICAL
                     else:
                         add_errors.append("Link has wrong state (%s)" % (ethtool_stuff["state"]))
-                        ret_state, state = (limits.nag_STATE_CRITICAL, "Error")
+                        ret_state = limits.nag_STATE_CRITICAL
                 else:
                     # no state, cannot check if up or down
                     add_errors.append("Cannot check target_speed: no state information")
-                    ret_state, state = (limits.nag_STATE_CRITICAL, "Error")
+                    ret_state = limits.nag_STATE_CRITICAL
                     connected = False
             else:
                 if connected:
@@ -854,10 +917,10 @@ class net_command(hm_classes.hm_command):
                                     connected = False
                                 else:
                                     add_errors.append("target_speed differ: %s (target) != %s (measured)" % (bit_str(targ_speed_bit), ethtool_stuff["speed"]))
-                                ret_state, state = (limits.nag_STATE_CRITICAL, "Error")
+                                ret_state = limits.nag_STATE_CRITICAL
                     else:
                         add_errors.append("Cannot check target_speed: no ethtool information")
-                        ret_state, state = (limits.nag_STATE_CRITICAL, "Error")
+                        ret_state = limits.nag_STATE_CRITICAL
         if parsed_coms.duplex and not device.startswith("ib"):
             if connected:
                 if ethtool_stuff.has_key("duplex"):
@@ -875,14 +938,13 @@ class net_command(hm_classes.hm_command):
                                     connected = False
                                 else:
                                     add_errors.append("duplex_mode differ: %s != %s" % (parsed_coms.duplex, ethtool_stuff["duplex"]))
-                                ret_state, state = (limits.nag_STATE_CRITICAL, "Error")
+                                ret_state = limits.nag_STATE_CRITICAL
                 else:
                     add_errors.append("Cannot check duplex mode: no ethtool information")
-                    ret_state, state = (limits.nag_STATE_CRITICAL, "Error")
+                    ret_state = limits.nag_STATE_CRITICAL
         if not connected:
             add_errors.append("No cable connected?")
             ret_state = max(ret_state, limits.nag_STATE_WARNING)
-            state = limits.get_state_str(ret_state)
         report_device = result.get("report_device", device)
         return ret_state, "%s, %s rx; %s tx%s%s%s" % (
             device,
@@ -919,7 +981,6 @@ class network_info_command(hm_classes.hm_command):
         bridge_dict = srv_com["bridges"]
         net_dict = srv_com["networks"]
         net_names = sorted(net_dict.keys())
-        out_f = []
         out_list = logging_tools.form_list()
         out_list.set_header_string(0, ["name", "bridge", "flags", "features"])
         for net_name in net_names:
@@ -953,7 +1014,7 @@ class iptables_info_command(hm_classes.hm_command):
         else:
             ret_state = limits.nag_STATE_OK
             all_chains = sum([c_dict.keys() for c_dict in res_dict.itervalues()], [])
-            num_lines = sum([sum([c_dict["lines"] for c_key, c_dict in t_dict.iteritems()], 0) for t_key, t_dict in res_dict.iteritems()], 0)
+            num_lines = sum([sum([c_dict["lines"] for _c_key, c_dict in t_dict.iteritems()], 0) for _t_key, t_dict in res_dict.iteritems()], 0)
             if cur_ns.crit is not None and num_lines < cur_ns.crit:
                 ret_state = max(ret_state, limits.nag_STATE_CRITICAL)
             elif cur_ns.warn is not None and num_lines < cur_ns.warn:
