@@ -22,10 +22,10 @@
 
 """ user views """
 
-import os
 import logging
 import logging_tools
 import net_tools
+import os
 import pprint
 import process_tools
 import server_command
@@ -36,13 +36,12 @@ from crispy_forms.layout import Submit, Layout, Field, ButtonHolder, Button
 from django.conf import settings
 from django.contrib.auth.decorators import login_required, permission_required
 from django.contrib.contenttypes.models import ContentType
-from django.db.models import get_model
 from django.core.exceptions import ValidationError
 from django.core.urlresolvers import reverse
+from django.db.models import get_model, Q
 from django.http import HttpResponse
-from django.db.models import Q
-from django.views.generic import View
 from django.utils.decorators import method_decorator
+from django.views.generic import View
 
 from initat.cluster.backbone.models import partition_table, partition_disc, partition, \
      partition_fs, image, architecture, group, user, device_config, device_group, \
