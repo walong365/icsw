@@ -77,10 +77,11 @@ def read_config_from_db(g_config, server_type, init_list=[], host_name="", **kwa
                     if present_in_config:
                         # copy settings from config
                         new_val.database = g_config.database(var_name)
+                        new_val.is_global = var_global
                     if local_host_name == host_name:
                         if var_name.upper() in g_config and g_config.fixed(var_name.upper()):
                             # present value is fixed, keep value, only copy global / local status
-                            g_config[var_name.upper()].is_global = new_val.is_global
+                            g_config.set_global(var_name.upper(), new_val.is_global)
                         else:
                             g_config.add_config_entries([(var_name.upper(), new_val)])
                     elif local_host_name == "":
