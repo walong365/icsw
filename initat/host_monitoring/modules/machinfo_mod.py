@@ -1104,7 +1104,7 @@ class mem_command(hm_classes.hm_command):
         all_total = mem_total + swap_total
         all_free = mem_free + swap_free
         mem_p = 100 * (1 if mem_total == 0 else float(mem_total - mem_free) / mem_total)
-        swap_p = 100 * (1 if swap_total == 0 else float(swap_total - swap_free) / swap_total)
+        # swap_p = 100 * (1 if swap_total == 0 else float(swap_total - swap_free) / swap_total)
         all_p = 100 * (1 if all_total == 0 else float(all_total - all_free) / all_total)
         ret_state = limits.check_ceiling(all_p, cur_ns.warn, cur_ns.crit)
         return ret_state, "meminfo: %d %% of %s phys, %d %% of %s tot (%s buffers, %s cached)" % (
@@ -1125,10 +1125,10 @@ class mem_command(hm_classes.hm_command):
             memp = 100 * (memtot - memfree) / memtot
         swaptot = int(result["swaptotal"])
         swapfree = int(result["swapfree"])
-        if swaptot == 0:
-            swapp = 100
-        else:
-            swapp = 100 * (swaptot - swapfree) / swaptot
+        # if swaptot == 0:
+        #    swapp = 100
+        # else:
+        #    swapp = 100 * (swaptot - swapfree) / swaptot
         alltot = memtot + swaptot
         allfree = memfree + swapfree
         if alltot == 0:
