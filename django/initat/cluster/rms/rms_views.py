@@ -133,7 +133,7 @@ class control_job(View):
         _post = request.POST
         c_id = _post["control_id"]
         c_action = c_id.split(":")[1]
-        job_id = ".".join(c_id.split(":")[2:])
+        job_id = ".".join([entry for entry in c_id.split(":")[2:] if entry.strip()])
         srv_com = server_command.srv_command(command="job_control", action=c_action)
         srv_com["job_list"] = srv_com.builder(
             "job_list",
