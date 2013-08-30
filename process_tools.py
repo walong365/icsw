@@ -1073,7 +1073,11 @@ def fix_sysconfig_rights():
     os.chown(conf_dir, 0, grp.getgrnam(target_group)[2])
     os.chmod(conf_dir, 0775)
 
-def change_user_group_path(path, user, group):
+def change_user_group_path(path, user, group, **kwargs):
+    if "log_com" in kwargs:
+        log_com = kwargs["log_com"]
+    else:
+        log_com = logging_tools.my_syslog
     try:
         if type(user) in [int, long]:
             uid_stuff = pwd.getpwuid(user)
@@ -1082,7 +1086,7 @@ def change_user_group_path(path, user, group):
         new_uid, new_uid_name = (uid_stuff[2], uid_stuff[0])
     except KeyError:
         new_uid, new_uid_name = (0, "root")
-        logging_tools.my_syslog("Cannot find user '%s', using %s (%d)" % (user, new_uid_name, new_uid))
+        log_com("Cannot find user '%s', using %s (%d)" % (user, new_uid_name, new_uid))
     try:
         if type(group) in [int, long]:
             gid_stuff = grp.getgrgid(group)
@@ -1091,7 +1095,7 @@ def change_user_group_path(path, user, group):
         new_gid, new_gid_name = (gid_stuff[2], gid_stuff[0])
     except KeyError:
         new_gid, new_gid_name = (0, "root")
-        logging_tools.my_syslog("Cannot find group '%s', using %s (%d)" % (group, new_gid_name, new_gid))
+        log_com("Cannot find group '%s', using %s (%d)" % (group, new_gid_name, new_gid))
     ok = False
     if os.path.exists(path):
         act_uid, act_gid = (os.stat(path)[stat.ST_UID], os.stat(path)[stat.ST_GID])
@@ -1103,7 +1107,7 @@ def change_user_group_path(path, user, group):
             act_gid_name = grp.getgrgid(act_gid)[0]
         except:
             act_gid_name = "<unknown>"
-        logging_tools.my_syslog("Trying to change path '%s' from [%s (%d), %s (%d)] to [%s (%d), %s (%d)] ..." % (
+        log_com("Trying to change path '%s' from [%s (%d), %s (%d)] to [%s (%d), %s (%d)] ..." % (
             path,
             act_uid_name,
             act_uid,
@@ -1119,9 +1123,9 @@ def change_user_group_path(path, user, group):
             pass
         else:
             ok = True
-        logging_tools.my_syslog("  ... actual uid/gid of %s is now (%d/%d) ..." % (path, new_uid, new_gid))
+        log_com("  ... actual uid/gid of %s is now (%d/%d) ..." % (path, new_uid, new_gid))
     else:
-        logging_tools.my_syslog("  ... path '%s' does not exist" % (path))
+        log_com("  ... path '%s' does not exist" % (path))
     return ok
 
 def become_daemon(debug=None, wait=0, mother_hook=None, mother_hook_args=None, **kwargs):

@@ -54,6 +54,8 @@ class config_proxy(BaseProxy):
         return self._callmethod("get_type", (key,))
     def is_global(self, key):
         return self._callmethod("is_global", (key,))
+    def set_global(self, key, value):
+        return self._callmethod("set_global", (key, value))
     def database(self, key):
         return self._callmethod("database", (key,))
     def keys(self):
@@ -193,10 +195,11 @@ class _conf_var(object):
             if source and (source != "default" or self.source == "default"):
                 self.source = source
     def __str__(self):
-        return "%s (source %s, %s) : %s" % (self.descr,
-                                            self.source,
-                                            "global" if self.__is_global else "local",
-                                            self.pretty_print())
+        return "%s (source %s, %s) : %s" % (
+            self.descr,
+            self.source,
+            "global" if self.__is_global else "local",
+            self.pretty_print())
     def get_info(self):
         return self.__info
 
@@ -412,6 +415,11 @@ class configuration(object):
             return self.__c_dict[key].is_global
         else:
             raise KeyError, "Key %s not found in c_dict" % (key)
+    def set_global(self, key, value):
+        if key in self.__c_dict:
+            self.__c_dict[key].is_global = value
+        else:
+            raise KeyError, "Key %s not found in c_dict" % (key)
     def database(self, key):
         if key in self.__c_dict:
             return self.__c_dict[key].database
@@ -596,7 +604,7 @@ class config_manager(BaseManager):
 config_manager.register("config", configuration, config_proxy, exposed=[
     "parse_file", "add_config_entries", "set_uid_gid",
     "get_log", "handle_commandline", "keys", "get_type", "get", "get_source",
-    "is_global", "database",
+    "is_global", "database", "is_global", "set_global",
     "__getitem__", "__setitem__", "__contains__", "__delitem__",
     "write_file", "get_config_info", "name", "get_argument_stuff", "fixed"])
 

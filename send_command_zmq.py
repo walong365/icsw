@@ -42,7 +42,8 @@ def main():
     parser.add_argument("-n", help="set number of iterations [%(default)d]", type=int, default=1, dest="iterations")
     parser.add_argument("--raw", help="do not convert to server_command", default=False, action="store_true")
     parser.add_argument("--root", help="connect to root-socket [%(default)s]", default=False, action="store_true")
-    parser.add_argument("--kv", help="key-value pair, colon-separated", action="append")
+    parser.add_argument("--kv", help="key-value pair, colon-separated [key:value]", action="append")
+    parser.add_argument("--kva", help="key-attribute pair, colon-separated [key:attribute:value]", action="append")
     parser.add_argument("--kv-path", help="path to store key-value pairs under", type=str, default="")
     parser.add_argument("--split", help="set read socket (for split-socket command), [%(default)s]", default="")
     # parser.add_argument("arguments", nargs="+", help="additional arguments")
@@ -91,6 +92,13 @@ def main():
                         srv_com["%s:%s" % (args.kv_path, key)] = value
                     else:
                         srv_com[key] = value
+            if args.kva:
+                for kva_pair in args.kva:
+                    key, attr, value = kva_pair.split(":")
+                    if args.kv_path:
+                        srv_com["%s:%s" % (args.kv_path, key)].attrib[attr] = value
+                    else:
+                        srv_com[key].attrib[attr] = value
         for arg_index, arg in enumerate(other_args):
             if args.verbose:
                 print " arg %2d: %s" % (arg_index, arg)
