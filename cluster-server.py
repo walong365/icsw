@@ -25,31 +25,31 @@ import sys
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "initat.cluster.settings")
 
 from django.conf import settings
-import time
-import net_tools
-import threading_tools
-import commands
-import pwd
-import logging_tools
-import process_tools
-import configfile
-import server_command
-import pprint
-import datetime
-import uuid_tools
-import mail_tools
-import config_tools
-import cluster_location
-import zmq
-import stat
-import initat.cluster_server
 import bz2
-from django.db.models import Q
+import commands
+import cluster_location
+import config_tools
+import configfile
+import datetime
+import logging_tools
+import mail_tools
+import net_tools
+import process_tools
+import pprint
+import pwd
+import server_command
+import stat
+import threading_tools
+import time
+import uuid_tools
+import zmq
+import initat.cluster_server
 from django.db import connection
-from initat.host_monitoring import hm_classes
+from django.db.models import Q
 from initat.cluster.backbone.models import device, device_variable, log_source
 from initat.cluster_server.config import global_config
 from initat.core.management.commands import dumpdatafast, dumpdataslow
+from initat.host_monitoring import hm_classes
 from optparse import OptionParser
 
 try:
@@ -830,9 +830,10 @@ class server_process(threading_tools.process_pool):
                 "reply" : "command %s not known" % (com_name),
                 "state" : "%d" % (server_command.SRV_REPLY_STATE_CRITICAL),
                 })
-        self.log("result for %s was (%d) %s" % (com_name,
-                                                int(srv_com["result"].attrib["state"]),
-                                                srv_com["result"].attrib["reply"]))
+        self.log("result for %s was (%d) %s" % (
+            com_name,
+            int(srv_com["result"].attrib["state"]),
+            srv_com["result"].attrib["reply"]))
     def _update(self):
         cur_time = time.time()
         cur_dt = datetime.datetime.now().replace(microsecond=0)
