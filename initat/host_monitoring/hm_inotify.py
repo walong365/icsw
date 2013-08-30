@@ -23,26 +23,20 @@
 
 """ host-monitoring, inotify thread """
 
-import configfile
-import difflib
 import fnmatch
 import inotify_tools
 import logging_tools
-import netifaces
 import os
 import process_tools
 import server_command
 import threading_tools
 import time
-import uuid
-import uuid_tools
 import zmq
 
 from lxml import etree # @UnresolvedImport
 from lxml.builder import E # @UnresolvedImport
 
 from initat.host_monitoring.config import global_config
-from initat.host_monitoring.constants import TIME_FORMAT
 
 class file_watcher(object):
     def __init__(self, process_obj, **args):
@@ -345,7 +339,7 @@ class inotify_process(threading_tools.process_obj):
         self.__relayer_socket = self.connect_to_socket("internal")
         self.__watcher = inotify_tools.inotify_watcher()
         self.__file_watcher_dict = {}
-        self.register_timer(self._check, 60)
+        self.register_timer(self._check, 10)
         self.__target_dict = {}
         # self.register_func("connection", self._connection)
         self.send_pool_message("register_callback", "register_file_watch", "fw_handle")
@@ -354,7 +348,7 @@ class inotify_process(threading_tools.process_obj):
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
         self.__log_template.log(log_level, what)
     def _check(self):
-        self.__watcher.check(1000)
+        self.__watcher.check(11 * 1000)
         remove_ids = []
         for fw_id, fw_struct in self.__file_watcher_dict.iteritems():
             if not fw_struct.inotify():
