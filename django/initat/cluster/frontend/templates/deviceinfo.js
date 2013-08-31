@@ -103,7 +103,7 @@ class rrd_config
         size_select =$("<select>").attr(
             "id"  : "rrd_size"
         ).on("change", @draw_rrd_el)
-        for cur_size in ["400x200", "640x300", "800x400"]
+        for cur_size in ["400x200", "640x300", "800x400", "1024x600", "1280x800"]
             size_select.append(
                 $("<option>").attr("value", cur_size).text(cur_size)
             )

@@ -50,6 +50,8 @@ class sess_login(View):
             login(request, db_user)
             request.session["password"] = base64.b64encode(login_form.cleaned_data.get("password").decode("utf-8"))
             request.session["user_vars"] = dict([(user_var.name, user_var) for user_var in db_user.user_variable_set.all()])
+            # for alias logins login_name != login
+            request.session["login_name"] = login_form.get_login_name()
             update_session_object(request)
             return HttpResponseRedirect(reverse("main:index"))
         return render_me(request, "login.html", {

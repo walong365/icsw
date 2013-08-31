@@ -76,10 +76,24 @@ class authentication_form(Form):
         # print "-" * 20
         # print pam.authenticate(username, password)
         if username and password:
-            self.user_cache = authenticate(username=username, password=password)
+            # get real user
+            all_aliases = [(login_name, al_list.strip().split()) for login_name, al_list in user.objects.all().values_list("login", "aliases") if al_list is not None and al_list.strip()]
+            rev_dict = {}
+            for pk, al_list in all_aliases:
+                for cur_al in al_list:
+                    if cur_al in rev_dict:
+                        raise ValidationError("Alias '%s' is not unique" % (cur_al))
+                    else:
+                        rev_dict[cur_al] = pk
+            if username in rev_dict:
+                self.user_cache = authenticate(username=rev_dict[username], password=password)
+            else:
+                self.user_cache = authenticate(username=username, password=password)
             if self.user_cache is None:
                 raise ValidationError(_("Please enter a correct username and password. Note that both fields are case-sensitive."))
-            elif not self.user_cache.is_active:
+            else:
+                self.login_name = username
+            if self.user_cache is not None and not self.user_cache.is_active:
                 raise ValidationError(_("This account is inactive."))
         else:
             raise ValidationError(_("Need username and password"))
@@ -90,6 +104,9 @@ class authentication_form(Form):
         return self.cleaned_data
     def get_user(self):
         return self.user_cache
+    def get_login_name(self):
+        # FIXME
+        return self.login_name
 
 class dtn_detail_form(ModelForm):
     helper = FormHelper()
@@ -384,6 +401,7 @@ class user_detail_form(ModelForm):
         ),
         Field("group"),
         Field("password", css_class="passwordfields"),
+        Field("aliases"),
         ButtonHolder(
             Field("active"),
             Field("is_superuser"),
@@ -419,19 +437,20 @@ class user_detail_form(ModelForm):
     def create_mode(self):
         if "disabled" in self.helper.layout[2].attrs:
             del self.helper.layout[2].attrs["disabled"]
-        self.helper.layout[4][3] = Submit("submit", "Create", css_class="primaryAction")
-        if len(self.helper.layout[8]) == 2:
+        self.helper.layout[5][3] = Submit("submit", "Create", css_class="primaryAction")
+        if len(self.helper.layout[9]) == 2:
             # remove object permission button
-            self.helper.layout[8].pop(1)
+            self.helper.layout[9].pop(1)
     def delete_mode(self):
         self.helper.layout[2].attrs["disabled"] = True
-        self.helper.layout[4][3] = Submit("delete", "Delete", css_class="primaryAction")
-        if len(self.helper.layout[8]) == 1:
+        self.helper.layout[5][3] = Submit("delete", "Delete", css_class="primaryAction")
+        if len(self.helper.layout[9]) == 1:
             # add object permissions button
-            self.helper.layout[8].append(Button("object_perms", "Object Permissions"))
+            self.helper.layout[9].append(Button("object_perms", "Object Permissions"))
     class Meta:
         model = user
         fields = ["login", "uid", "shell", "first_name", "last_name", "active",
                   "title", "email", "pager", "tel", "comment", "is_superuser",
                   "allowed_device_groups", "secondary_groups", "permissions",
+                  "aliases",
                   "db_is_auth_for_password", "export", "password", "group"]

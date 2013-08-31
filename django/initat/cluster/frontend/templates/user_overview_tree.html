@@ -376,7 +376,7 @@ class user_tree
                         if parse_xml_response(xml)
                             @active_node = key
                             @install_ug_form($(xml).find("value[name='form']").text())
-                            @detail_div.find("input, select").on("change", @my_submitter.submit)
+                            @detail_div.find("input, select, textarea").on("change", @my_submitter.submit)
                             if key.match(/^(user)__/)
                                 @detail_div.bind("submit", @delete_user)
                             else
