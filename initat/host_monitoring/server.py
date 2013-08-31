@@ -211,7 +211,7 @@ class server_code(threading_tools.process_pool):
             self.log("Initialising meta-server-info block")
             msi_block = process_tools.meta_server_info("collserver")
             msi_block.add_actual_pid(mult=3)
-            msi_block.add_actual_pid(act_pid=configfile.get_manager_pid(), mult=3)
+            msi_block.add_actual_pid(act_pid=configfile.get_manager_pid(), mult=3 if global_config["NO_INOTIFY"] else 4)
             msi_block.start_command = "/etc/init.d/host-monitoring start"
             msi_block.stop_command = "/etc/init.d/host-monitoring force-stop"
             msi_block.kill_pids = True
