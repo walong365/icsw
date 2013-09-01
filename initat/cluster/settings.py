@@ -59,7 +59,7 @@ if os.path.isfile(NEW_CONF_FILE):
         raise ImproperlyConfigured("cannot read '%s', wrong permissions ?" % (NEW_CONF_FILE))
 else:
     if not os.path.isfile(OLD_CONF_FILE):
-        raise ImproperlyConfigured("config '%s' not found" % (OLD_CONF_FILE))
+        raise ImproperlyConfigured("config '%s' and %s' not found" % (NEW_CONF_FILE, OLD_CONF_FILE))
     else:
         try:
             conf_content = file(OLD_CONF_FILE, "r").read()
