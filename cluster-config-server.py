@@ -879,7 +879,7 @@ def do_routes(conf):
 
 def do_ssh(conf):
     conf_dict = conf.conf_dict
-    ssh_types = [("rsa1", 1024), ("dsa", 1024), ("rsa", 1024), ("ecdsa", 512)]
+    ssh_types = [("rsa1", 1024), ("dsa", 1024), ("rsa", 1024), ("ecdsa", 521)]
     ssh_field_names = []
     for ssh_type, _size in ssh_types:
         ssh_field_names.extend(["ssh_host_%s_key" % (ssh_type), "ssh_host_%s_key_pub" % (ssh_type)])
