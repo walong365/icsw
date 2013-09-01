@@ -38,6 +38,8 @@ from lxml.builder import E # @UnresolvedImport
 
 from initat.host_monitoring.config import global_config
 
+IDLE_TIMEOUT = 1
+
 class file_watcher(object):
     def __init__(self, process_obj, **args):
         self.__process = process_obj
@@ -338,17 +340,20 @@ class inotify_process(threading_tools.process_obj):
         self.__log_template = logging_tools.get_logger(global_config["LOG_NAME"], global_config["LOG_DESTINATION"], zmq=True, context=self.zmq_context)
         self.__relayer_socket = self.connect_to_socket("internal")
         self.__watcher = inotify_tools.inotify_watcher()
+        # self.__watcher.add_watcher("internal", "/etc/sysconfig/host-monitoring.d", inotify_tools.IN_CREATE | inotify_tools.IN_MODIFY, self._trigger)
         self.__file_watcher_dict = {}
-        self.register_timer(self._check, 10)
         self.__target_dict = {}
         # self.register_func("connection", self._connection)
         self.send_pool_message("register_callback", "register_file_watch", "fw_handle")
         self.send_pool_message("register_callback", "unregister_file_watch", "fw_handle")
         self.register_func("fw_handle", self._fw_handle)
+        self.cb_func = self._check
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
         self.__log_template.log(log_level, what)
+    def _trigger(self, event):
+        print event, "*", dir(event)
     def _check(self):
-        self.__watcher.check(11 * 1000)
+        self.__watcher.check((IDLE_TIMEOUT) * 1000)
         remove_ids = []
         for fw_id, fw_struct in self.__file_watcher_dict.iteritems():
             if not fw_struct.inotify():
@@ -420,8 +425,6 @@ class inotify_process(threading_tools.process_obj):
                 "state" : "%d" % (server_command.SRV_REPLY_STATE_ERROR)
                 })
         self.send_pool_message("callback_result", src_id, unicode(srv_com))
-        if not had_keys and self.__file_watcher_dict:
-            self.change_timer(self._check, 1000, instant=True)
     def _register_file_watch(self, cur_com, kwargs):
         new_fw = file_watcher(self, **kwargs)
         if new_fw.fw_id in self.__file_watcher_dict:
@@ -459,8 +462,6 @@ class inotify_process(threading_tools.process_obj):
                 "reply" : "ID %s not found" % (fw_id),
                 "state" : "%d" % (server_command.SRV_REPLY_STATE_ERROR)
                 })
-        if not self.__file_watcher_dict:
-            self.change_timer(self._check, 60000)
     def send_to_server(self, target_server, target_port, srv_com):
         targ_str = "tcp://%s:%d" % (target_server, target_port)
         if targ_str not in self.__target_dict:
