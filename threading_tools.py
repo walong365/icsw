@@ -859,6 +859,8 @@ class process_obj(multiprocessing.Process, timer_base):
         self.__func_table = {}
         # ignore calls
         self.__ignore_funcs = []
+        # busy loop
+        self.__busy_loop = kwargs.get("busy_loop", False)
         # verbose
         self.__verbose = kwargs.get("verbose", False)
         # internal exit-function
@@ -1042,8 +1044,17 @@ class process_obj(multiprocessing.Process, timer_base):
                         while cur_q.poll(timeout=self.loop_timer):
                             self._handle_message(cur_q.recv_pyobj())
                     else:
-                        cur_mes = cur_q.recv_pyobj()
-                        self._handle_message(cur_mes)
+                        if self.__busy_loop:
+                            while True:
+                                try:
+                                    cur_mes = cur_q.recv_pyobj(zmq.NOBLOCK)
+                                except:
+                                    break
+                                else:
+                                    self._handle_message(cur_mes)
+                        else:
+                            cur_mes = cur_q.recv_pyobj()
+                            self._handle_message(cur_mes)
                 except:
                     exc_info = sys.exc_info()
                     self._exc_info = exc_info
