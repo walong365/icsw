@@ -79,10 +79,14 @@ class authentication_form(Form):
             # get real user
             all_aliases = [(login_name, al_list.strip().split()) for login_name, al_list in user.objects.all().values_list("login", "aliases") if al_list is not None and al_list.strip()]
             rev_dict = {}
+            all_logins = [login_name for login_name, al_list in all_aliases]
             for pk, al_list in all_aliases:
                 for cur_al in al_list:
                     if cur_al in rev_dict:
                         raise ValidationError("Alias '%s' is not unique" % (cur_al))
+                    elif cur_al in all_logins:
+                        # ignore aliases which are also logins
+                        pass
                     else:
                         rev_dict[cur_al] = pk
             if username in rev_dict:

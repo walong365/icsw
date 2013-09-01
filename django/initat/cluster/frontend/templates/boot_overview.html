@@ -340,7 +340,7 @@ class boot_device_option extends option_list
         boot_dev_macaddr = @cur_td.find("input#" + @dev_key + "__boot_dev_macaddr")
         boot_dev_greedy_mode = @cur_td.find("input#" + @dev_key + "__greedy_mode")
         if dev_xml.attr("boot_dev_macaddr") != boot_dev_macaddr.val()
-            $.jnotify("MAC address changed to " + dev_xml.attr("boot_dev_macaddr"))
+            noty({"text" : "MAC address changed to " + dev_xml.attr("boot_dev_macaddr")})
             boot_dev_macaddr.val(dev_xml.attr("boot_dev_macaddr"))
         if dev_xml.attr("greedy_mode") == 0 && boot_dev_greedy_mode.is(":checked")
             boot_dev_greedy_mode.removeAttr("checked")
