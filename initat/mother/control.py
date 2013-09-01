@@ -668,11 +668,11 @@ class host(machine):
                 else:
                     self.log("source_kernel_dir %s does not exist" % (kern_abs_base_dir),
                              logging_tools.LOG_LEVEL_ERROR)
-                    self.device_log_entry(0,
-                                          "e",
-                                          "error kernel_dir dir '%s' not found" % (kern_abs_base_dir),
-                                          sql_queue,
-                                          loc_config["LOG_SOURCE_IDX"])
+                    # self.device_log_entry(0,
+                    #                      "e",
+                    #                      "error kernel_dir dir '%s' not found" % (kern_abs_base_dir),
+                    #                      sql_queue,
+                    #                      loc_config["LOG_SOURCE_IDX"])
                 if unlink_field:
                     unlink_field = [l_path for l_path in unlink_field if os.path.islink(l_path) and not l_path in valid_links]
                     if unlink_field:
@@ -754,11 +754,11 @@ class host(machine):
                     self.log("not PXEBOOT capable (PXELINUX_0 not found)", logging_tools.LOG_LEVEL_ERROR)
             else:
                 self.log("Error: directory %s does not exist" % (kern_dst_dir))
-                self.device_log_entry(1,
-                                      "e",
-                                      "error etherboot dir '%s' not found" % (kern_dst_dir),
-                                      sql_queue,
-                                      self.__loc_config["NODE_SOURCE_IDX"])
+                # self.device_log_entry(1,
+                #                      "e",
+                #                      "error etherboot dir '%s' not found" % (kern_dst_dir),
+                #                      sql_queue,
+                #                      self.__loc_config["NODE_SOURCE_IDX"])
         else:
             self.log("Error: etherboot-dir not defined")
     def read_dot_files(self):
