@@ -1,4 +1,4 @@
 #!/bin/bash
 
-/usr/local/sbin/send_command.py -m localhost 2005 unregister_file_watcher $*
+/opt/cluster/bin/send_command_zmq.py -P ipc -S collserver -H command --root --split result unregister_file_watch $*
 
