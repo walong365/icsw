@@ -879,9 +879,9 @@ def do_routes(conf):
 
 def do_ssh(conf):
     conf_dict = conf.conf_dict
-    ssh_types = ["rsa1", "dsa", "rsa"]
+    ssh_types = [("rsa1", 1024), ("dsa", 1024), ("rsa", 1024), ("ecdsa", 512)]
     ssh_field_names = []
-    for ssh_type in ssh_types:
+    for ssh_type, _size in ssh_types:
         ssh_field_names.extend(["ssh_host_%s_key" % (ssh_type), "ssh_host_%s_key_pub" % (ssh_type)])
     found_keys_dict = dict([(key, None) for key in ssh_field_names])
     for cur_var in device_variable.objects.filter(Q(device=conf_dict["device"]) & Q(name__in=ssh_field_names)):
@@ -895,7 +895,7 @@ def do_ssh(conf):
         logging_tools.get_plural("key", len(found_keys_dict.keys())),
         ", ".join(sorted(found_keys_dict.keys())))
     new_keys = []
-    for ssh_type in ssh_types:
+    for ssh_type, key_size in ssh_types:
         privfn = "ssh_host_%s_key" % (ssh_type)
         pubfn = "ssh_host_%s_key_pub" % (ssh_type)
         if not found_keys_dict[privfn] or not found_keys_dict[pubfn]:
@@ -905,7 +905,7 @@ def do_ssh(conf):
             sshkn = tempfile.mktemp("sshgen")
             sshpn = "%s.pub" % (sshkn)
             if ssh_type:
-                os.system("ssh-keygen -t %s -q -b 1024 -f %s -N ''" % (ssh_type, sshkn))
+                os.system("ssh-keygen -t %s -q -b %d -f %s -N ''" % (ssh_type, key_size, sshkn))
             else:
                 os.system("ssh-keygen -q -b 1024 -f %s -N ''" % (sshkn))
             found_keys_dict[privfn] = file(sshkn, "rb").read()
@@ -925,7 +925,7 @@ def do_ssh(conf):
                 description="SSH key %s" % (new_key),
                 val_blob=base64.b64encode(found_keys_dict[new_key]))
             new_dv.save()
-    for ssh_type in ssh_types:
+    for ssh_type, key_size in ssh_types:
         privfn = "ssh_host_%s_key" % (ssh_type)
         pubfn = "ssh_host_%s_key_pub" % (ssh_type)
         pubfrn = "ssh_host_%s_key.pub" % (ssh_type)
