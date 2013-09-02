@@ -750,6 +750,17 @@ class data_store(object):
         else:
             # for pure-pde vectors no store name is set
             self.store_name = self.xml_vector.attrib.get("store_name", "")
+            all_mves = self.xml_vector.xpath(".//mve/@name")
+            if len(all_mves) != len(set(all_mves)):
+                self.log("found duplicate entries, removing them")
+                removed = 0
+                for cur_mve in all_mves:
+                    sub_list = self.xml_vector.xpath(".//mve[@name='%s']" % (cur_mve))
+                    for sub_entry in sub_list[:-1]:
+                        sub_entry.getparent().remove(sub_entry)
+                        removed += 1
+                self.log("removed %d entries" % (removed))
+                self.store_info()
         # send a copy to the grapher
         self.sync_to_grapher()
     def feed(self, in_vector):
@@ -764,8 +775,8 @@ class data_store(object):
         rrd_dir = global_config["RRD_DIR"]
         for entry in in_vector.findall("mve"):
             cur_name = entry.attrib["name"]
-            cur_entry = self.xml_vector.find("mve[@name='%s']" % (cur_name))
-            if not cur_entry:
+            cur_entry = self.xml_vector.find(".//mve[@name='%s']" % (cur_name))
+            if cur_entry is None:
                 cur_entry = E.mve(
                     name=cur_name,
                     sane_name=cur_name.replace("/", "_sl_"),
@@ -785,8 +796,8 @@ class data_store(object):
         old_keys = set(self.xml_vector.xpath(".//pde/@name"))
         rrd_dir = global_config["RRD_DIR"]
         # only one entry
-        cur_entry = self.xml_vector.find("pde[@name='%s']" % (pd_type))
-        if not cur_entry:
+        cur_entry = self.xml_vector.find(".//pde[@name='%s']" % (pd_type))
+        if cur_entry is None:
             # create new entry
             cur_entry = E.pde(
                 name=pd_type,
@@ -962,7 +973,9 @@ class data_store(object):
                         process_tools.get_except_info()), logging_tools.LOG_LEVEL_ERROR)
                 else:
                     data_store.__devices[pk] = new_ds
-                    data_store.g_log("recovered info for %s from disk" % (full_name))
+                    data_store.g_log("recovered info for %s from disk (%s)" % (
+                        full_name,
+                        logging_tools.get_size_str(process_tools.get_mem_info())))
     @staticmethod
     def g_log(what, log_level=logging_tools.LOG_LEVEL_OK):
         data_store.process.log("[ds] %s" % (what), log_level)
@@ -1110,13 +1123,16 @@ class server_process(threading_tools.process_pool):
         cur_time = time.time()
         graph_root = global_config["GRAPH_ROOT"]
         del_list = []
-        for entry in os.listdir(graph_root):
-            if entry.endswith(".png"):
-                full_name = os.path.join(graph_root, entry)
-                c_time = os.stat(full_name)[stat.ST_CTIME]
-                diff_time = abs(c_time - cur_time)
-                if diff_time > 5 * 60:
-                    del_list.append(full_name)
+        if os.path.isdir(graph_root):
+            for entry in os.listdir(graph_root):
+                if entry.endswith(".png"):
+                    full_name = os.path.join(graph_root, entry)
+                    c_time = os.stat(full_name)[stat.ST_CTIME]
+                    diff_time = abs(c_time - cur_time)
+                    if diff_time > 5 * 60:
+                        del_list.append(full_name)
+        else:
+            self.log("graph_root '%s' not found, strange" % (graph_root), logging_tools.LOG_LEVEL_ERROR)
         if del_list:
             self.log("clearing %s is %s" % (
                 logging_tools.get_plural("old graph", len(del_list)),
