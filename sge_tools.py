@@ -237,7 +237,18 @@ class sge_info(object):
             self.__log_com("[si] %s" % (what), log_level)
         else:
             logging_tools.my_syslog("[si] %s" % (what), log_level)
-    def get_tree(self):
+    def get_tree(self, **kwargs):
+        if "file_dict" in kwargs:
+            for job_id, file_dict in kwargs["file_dict"].iteritems():
+                job_el = self.__tree.xpath(".//job_list[@full_id='%s' and master/text() = \"MASTER\"]" % (job_id))
+                if len(job_el):
+                    job_el = job_el[0]
+                    file_info = job_el.find(".//file_info")
+                    if file_info is not None:
+                        for sub_el in file_info:
+                            file_info.remove(sub_el)
+                        for f_name, f_content in file_dict.iteritems():
+                            file_info.append(E.file_content(f_content, name=f_name))
         return self.__tree
     def get(self, key, def_value):
         return self.__act_dicts.get(key, def_value)
@@ -701,6 +712,7 @@ def get_running_headers(options):
                 E.stderr()
             ]
         )
+    cur_job.append(E.files())
     if not options.suppress_nodelist:
         cur_job.append(E.nodelist())
     cur_job.append(E.action())
@@ -737,6 +749,9 @@ def create_stdout_stderr(act_job, info):
     else:
         ret_el.text = "---"
     return ret_el
+
+def create_file_content(act_job):
+    return E.files("%d" % (len(act_job.xpath(".//file_info/file_content"))))
 
 def build_running_list(s_info, options, **kwargs):
     user = kwargs.get("user", None)
@@ -797,6 +812,7 @@ def build_running_list(s_info, options, **kwargs):
         if options.show_stdoutstderr:
             cur_job.append(create_stdout_stderr(act_job, "stdout"))
             cur_job.append(create_stdout_stderr(act_job, "stderr"))
+        cur_job.append(create_file_content(act_job))
         if not options.suppress_nodelist:
             jh_pe_lut = job_host_pe_lut[act_job.get("full_id")]
             cur_job.append(E.nodelist(",".join([compress_list(sorted(jh_pe_lut[key]), postfix="(M)" if key == "MASTER" else "") for key in ["MASTER", "SLAVE"] if key in jh_pe_lut])))
