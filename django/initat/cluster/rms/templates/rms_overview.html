@@ -116,7 +116,7 @@ addHandlers = ->
                 "sClass"   : "nowrap"
             }
          ]
-    $("table#run_job_table").dataTable
+    run_table = $("table#run_job_table").dataTable
         "bProcessing"     : true,
         "bServerSide"     : true,
         "sAjaxSource"     : "{% url 'rms:get_run_jobs_xml' %}",
@@ -141,8 +141,13 @@ addHandlers = ->
             }, {
                 "fnRender" : (o, val) ->
                     return render_action(o, val)
-                "aTargets" : [15],
+                "aTargets" : [16],
                 "sClass"   : "nowrap"
+            }, {
+                "aTargets" : [14],
+                "fnRender" : (o, val) ->
+                    return "#{val} <div class='ui-icon ui-icon-triangle-1-e' id='expand_#{o.aData[0]}_#{o.aData[1]}'>"
+                "sClass"   : "center nowrap"
             }
         ],
         "fnDrawCallback"   : (o_settings) ->
@@ -157,6 +162,11 @@ addHandlers = ->
                 control_job(cur_el.attr("id"))
                 return false
             )
+            #$("table#run_job_table tbody tr").each (tr_idx, cur_tr) =>
+            #    cur_tr = $(cur_tr)
+            #    console.log cur_tr.attr("id")
+            #first_line = $("table#run_job_table tbody tr:first")[0]
+            #console.log run_table.fnOpen(first_line, "<div><tr><td>ddd</td></tr><7div>", "details")#;, "close", "details")
     $("table#wait_job_table").dataTable
         "bProcessing"     : true,
         "bServerSide"     : true,
