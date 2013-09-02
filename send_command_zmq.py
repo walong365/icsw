@@ -87,11 +87,14 @@ def main():
             srv_com["identity"] = identity_str
             if args.kv:
                 for kv_pair in args.kv:
-                    key, value = kv_pair.split(":")
-                    if args.kv_path:
-                        srv_com["%s:%s" % (args.kv_path, key)] = value
+                    if kv_pair.count(":"):
+                        key, value = kv_pair.split(":", 1)
+                        if args.kv_path:
+                            srv_com["%s:%s" % (args.kv_path, key)] = value
+                        else:
+                            srv_com[key] = value
                     else:
-                        srv_com[key] = value
+                        print "cannot parse key '%s'" % (kv_pair)
             if args.kva:
                 for kva_pair in args.kva:
                     key, attr, value = kva_pair.split(":")
