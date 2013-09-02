@@ -31,6 +31,7 @@ import process_tools
 import server_command
 import threading_tools
 import time
+import uuid_tools
 import zmq
 
 from lxml import etree # @UnresolvedImport
@@ -319,21 +320,30 @@ class file_watcher(object):
                     logging_tools.get_plural("byte", len(new_content))))
                 self.__content_update = time.time()
                 self.content[f_name] = new_content
-            if self.target_port:
-                # send content
-                self.log("init sending of %s to %s (port %d)" % (
-                    logging_tools.get_plural("byte", len(self.content.get(f_name, ""))),
-                    self.target_server,
-                    self.target_port))
-                self.__process.send_to_server(
-                    self.target_server,
-                    self.target_port,
-                    server_command.srv_command(
-                        command="file_watch_content",
-                        name=f_name,
-                        content=self.content.get(f_name, ""),
-                        id=self.fw_id,
-                        update=self.__content_update))
+                if self.target_port:
+                    # send content
+                    self.log("init sending of %s to %s (port %d)" % (
+                        logging_tools.get_plural("byte", len(self.content.get(f_name, ""))),
+                        self.target_server,
+                        self.target_port))
+                    try:
+                        send_com = server_command.srv_command(
+                                command="file_watch_content",
+                                name=f_name,
+                                content=self.content.get(f_name, ""),
+                                id=self.fw_id,
+                                update=self.__content_update)
+                    except:
+                        self.log("cannot init file_content: %s" % (
+                            process_tools.get_except_info()
+                            ),
+                            logging_tools.LOG_LEVEL_ERROR
+                            )
+                    else:
+                        self.__process.send_to_server(
+                            self.target_server,
+                            self.target_port,
+                            send_com)
 
 class inotify_process(threading_tools.process_obj):
     def process_init(self):
@@ -467,6 +477,7 @@ class inotify_process(threading_tools.process_obj):
         if targ_str not in self.__target_dict:
             send_socket = self.zmq_context.socket(zmq.PUSH)
             send_socket.setsockopt(zmq.LINGER, 0)
+            send_socket.setsockopt(zmq.IDENTITY, "%s_csin" % (uuid_tools.get_uuid().get_urn()))
             send_socket.connect(targ_str)
             send_socket.setsockopt(zmq.SNDHWM, 16)
             send_socket.setsockopt(zmq.RCVHWM, 16)
