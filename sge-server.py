@@ -73,7 +73,9 @@ class rms_mon_process(threading_tools.process_obj):
         self.__log_template = logging_tools.get_logger(global_config["LOG_NAME"], global_config["LOG_DESTINATION"], zmq=True, context=self.zmq_context, init_logger=True)
         self.__main_socket = self.connect_to_socket("internal")
         self._init_sge_info()
+        self.__job_content_dict = {}
         self.register_func("get_config", self._get_config)
+        self.register_func("file_watch_content", self._file_watch_content)
         self.register_func("full_reload", self._full_reload)
         # self.register_func("get_job_xml", self._get_job_xml)
     def _init_sge_info(self):
@@ -96,7 +98,7 @@ class rms_mon_process(threading_tools.process_obj):
         # needed_dicts = opt_dict.get("needed_dicts", ["hostgroup", "queueconf", "qhost", "complexes"])
         # update_list = opt_dict.get("update_list", [])
         self.__sge_info.update()
-        srv_com["sge"] = self.__sge_info.get_tree()
+        srv_com["sge"] = self.__sge_info.get_tree(file_dict=self.__job_content_dict)
         # needed_dicts = ["hostgroup", "queueconf", "qhost"]#, "complexes"]
         # update_list = []
         # for key in needed_dicts:
@@ -105,6 +107,20 @@ class rms_mon_process(threading_tools.process_obj):
         #    else:
         #        srv_com["sge:%s" % (key)] = self.__sge_info[key]
         self.send_to_socket(self.__main_socket, ["command_result", src_id, unicode(srv_com)])
+    def _file_watch_content(self, *args , **kwargs):
+        srv_com = server_command.srv_command(source=args[0])
+        job_id = srv_com["id"].text.split(":")[0]
+        file_name = srv_com["name"].text
+        content = srv_com["content"].text
+        self.log("got content for '%s' (job %s), len %d bytes" % (
+            file_name,
+            job_id,
+            len(content)
+            ))
+        self.__job_content_dict.setdefault(job_id, {})[file_name] = content
+        tot_files = sum([len(value) for value in self.__job_content_dict.itervalues()], 0)
+        tot_length = sum([sum([len(content) for _name, content in _dict.iteritems()], 0) for job_id, _dict in self.__job_content_dict.iteritems()])
+        self.log("cached: %d files, %d bytes" % (tot_files, tot_length))
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
         self.__log_template.log(log_level, what)
     def loop_post(self):
@@ -218,6 +234,8 @@ class server_process(threading_tools.process_pool):
             elif cur_com == "job_control":
                 self._job_control(srv_com)
                 self._send_result(src_id, srv_com)
+            elif cur_com == "file_watch_content":
+                self.send_to_process("rms_mon", "file_watch_content", unicode(srv_com))
             else:
                 srv_com["result"].attrib.update(
                     {
