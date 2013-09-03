@@ -55,10 +55,24 @@ class overview(View):
     @method_decorator(login_required)
     def get(self, request):
         return render_me(request, "rms_overview.html", {
-            "run_job_headers"  : sge_tools.get_running_headers(get_job_options(request)),
-            "wait_job_headers" : sge_tools.get_waiting_headers(get_job_options(request)),
-            "node_headers"     : sge_tools.get_node_headers(get_node_options(request))
         })()
+
+class get_header_xml(View):
+    @method_decorator(login_required)
+    @method_decorator(xml_wrapper)
+    def post(self, request):
+        res = E.headers(
+            E.running_headers(
+                sge_tools.get_running_headers(get_job_options(request)),
+            ),
+            E.waiting_headers(
+                sge_tools.get_waiting_headers(get_job_options(request)),
+            ),
+            E.node_headers(
+                sge_tools.get_node_headers(get_node_options(request)),
+            )
+        )
+        request.xml_response["headers"] = res
 
 def _node_to_value(in_node):
     if in_node.get("type", "string") == "float":
@@ -75,14 +89,14 @@ def _value_to_str(in_value):
 def _sort_list(in_list, _post):
     # for key in sorted(_post):
     #    print key, _post[key]
-    start_idx = int(_post["iDisplayStart"])
-    num_disp = int(_post["iDisplayLength"])
+    start_idx = int(_post.get("iDisplayStart", "0"))
+    num_disp = int(_post.get("iDisplayLength", "10000"))
     total_data_len = len(in_list)
     # interpet nodes according to optional type attribute, TODO: use format from attrib to reformat later
     in_list = [[_node_to_value(sub_node) for sub_node in row] for row in in_list]
     s_str = _post.get("sSearch", "").strip()
     if s_str:
-        in_list = [row for row in in_list if any([cur_text.count(s_str) for cur_text in row])]
+        in_list = [row for row in in_list if any([str(cur_text).count(s_str) for cur_text in row])]
     filter_data_len = len(in_list)
     for sort_key in [key for key in _post.keys() if key.startswith("sSortDir_")]:
         sort_dir = _post[sort_key]
@@ -94,11 +108,38 @@ def _sort_list(in_list, _post):
     # reformat
     show_list = [[_value_to_str(value) for value in line] for line in in_list[start_idx : start_idx + num_disp]]
     # print show_list
-    return {"sEcho"                : int(_post["sEcho"]),
+    return {"sEcho"                : int(_post.get("sEcho", "28")),
             "iTotalRecords"        : total_data_len,
             "iTotalDisplayRecords" : filter_data_len,
             "aaData"               : show_list}
 
+class get_rms_json(View):
+    @method_decorator(login_required)
+    def post(self, request):
+        _post = request.POST
+        my_sge_info.update()
+        run_job_list = sge_tools.build_running_list(my_sge_info, get_job_options(request), user=request.user)
+        wait_job_list = sge_tools.build_waiting_list(my_sge_info, get_job_options(request), user=request.user)
+        node_list = sge_tools.build_node_list(my_sge_info, get_node_options(request))
+        fc_dict = {}
+        for file_el in my_sge_info.get_tree().xpath(".//job_list[master/text() = \"MASTER\"]"):
+            file_contents = file_el.findall(".//file_content")
+            if len(file_contents):
+                cur_fcd = []
+                for cur_fc in file_contents:
+                    file_name = cur_fc.attrib["name"]
+                    lines = cur_fc.text.replace(r"\r\n", r"\n").split("\n")
+                    content = "\n".join(reversed(lines))
+                    cur_fcd.append((file_name, content, len(content), min(10, len(lines) + 1)))
+                fc_dict[file_el.attrib["full_id"]] = list(reversed(sorted(cur_fcd)))
+        json_resp = {
+            "run_table"  : _sort_list(run_job_list, _post),
+            "wait_table" : _sort_list(wait_job_list, _post),
+            "node_table" : _sort_list(node_list, _post),
+            "files"      : fc_dict,
+        }
+        return HttpResponse(json.dumps(json_resp), mimetype="application/json")
+    
 class get_run_jobs_xml(View):
     @method_decorator(login_required)
     def post(self, request):
