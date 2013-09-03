@@ -87,7 +87,7 @@ class sge_license(object):
                 default=0
                 ),
             mvect_entry(
-                "lic.%s.used" % (self.get_name()),
+                "lic.%s.free" % (self.get_name()),
                 info="Licenses free for %s (%s)" % (self.get_name(), self.get_info()),
                 default=0
                 ),
@@ -97,7 +97,7 @@ class sge_license(object):
         for ng_key in self.__ng_dict.iterkeys():
             add_entry = mvect_entry(
                 "lic.%s.%s.used" % (self.get_name(), ng_key),
-                info="Licenses free for %s on %s (%s)" % (self.get_name(), ng_key, self.get_info()),
+                info="Licenses used for %s on %s (%s)" % (self.get_name(), ng_key, self.get_info()),
                 default=0
                 )
             add_entry.update(self.__lic_sub_dict[ng_key])

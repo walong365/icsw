@@ -183,20 +183,9 @@ def write_ext_data(vector_socket, log_template, actual_licenses):
             add_obj.append(cur_mve.build_xml(drop_com.builder))
     drop_com["vector_loadsensor"] = add_obj
     drop_com["vector_loadsensor"].attrib["type"] = "vector"
-    vector_socket.send_unicode(unicode(drop_com))
-    return
-    if os.path.isdir(EXT_WRITE_DIR):
-        try:
-            file("%s/%s.mvv" % (EXT_WRITE_DIR, EXT_WRITE_NAME), "w").write("\n".join(
-                sum([lic_stuff.get_value_lines() for lic_stuff in actual_licenses.itervalues()], []) +
-                [""]))
-            # ["lic.%s.used:i:%d" % (lic_name, lic_stuff.get_used_num()) for lic_name, lic_stuff in actual_licenses.iteritems()] +
-            #    ["lic.%s.free:i:%d" % (lic_name, lic_stuff.get_free_num()) for lic_name, lic_stuff in actual_licenses.iteritems()] +
-            #    [""]))
-        except:
-            log_template.error(" ... error creating file: %s" % (process_tools.get_except_info()))
-    else:
-        log_template.warning("no directory %s found" % (EXT_WRITE_DIR))
+    send_str = unicode(drop_com)
+    log_template.log("sending %d bytes to vector_socket" % (len(send_str)))
+    vector_socket.send_unicode(send_str)
 
 def main():
     # change IO-descriptors
