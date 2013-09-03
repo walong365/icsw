@@ -21,18 +21,18 @@
 #
 """ machine vector stuff """
 
-import sys
-import os
-import os.path
 import commands
-import time
-import shutil
-import struct
 import copy
-import zmq
+import os
+import re
+import shutil
 import socket
-from lxml import etree
-from lxml.builder import E
+import struct
+import sys
+import time
+import zmq
+from lxml import etree # @UnresolvedImports
+from lxml.builder import E # @UnresolvedImports
 
 import server_command
 import logging_tools
@@ -225,7 +225,7 @@ class get_mvector_stats_command(hm_classes.hmb_command):
                     host_stuff["port"],
                     host_stuff["num_con"],
                     host_stuff["num_ok"],
-                    host_stuff["num_fail"]) for h, host_stuff in cmp_s["hosts"].iteritems()]
+                    host_stuff["num_fail"]) for _h, host_stuff in cmp_s["hosts"].iteritems()]
                 ret_state = limits.nag_STATE_OK
                 ret_str = "\n".join([head_str] + [" - %s" % (x) for x in h_array])
         else:
@@ -450,7 +450,7 @@ class machine_vector(object):
         cur_xml.attrib["sent"] = "%d" % (cur_id)
         send_vector = self.build_xml(E, simple=not full)
         try:
-            fqdn, short_name = process_tools.get_fqdn()
+            fqdn, _short_name = process_tools.get_fqdn()
         except:
             fqdn = process_tools.get_machine_name()
         send_vector.attrib["name"] = (cur_xml.get("send_name", fqdn) or fqdn)
@@ -473,7 +473,7 @@ class machine_vector(object):
                     process_tools.get_except_info()), logging_tools.LOG_LEVEL_ERROR)
         #print etree.tostring(send_vector, pretty_print=True)
     def close(self):
-        for s_id, t_sock in self.__socket_dict.iteritems():
+        for _s_id, t_sock in self.__socket_dict.iteritems():
             t_sock.close()
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
         self.module.process_pool.log("[mvect] %s" % (what), log_level)
@@ -497,7 +497,7 @@ class machine_vector(object):
             self.__changed = True
         else:
             # only update value
-            self[mvec.name] = mvec.value
+            self[mvec.name].update_from_mvec(mvec)
     def register_entry(self, name, default, info, unit="1", base=1, factor=1, **kwargs):
         # name is the key (first.second.third.fourth)
         # default is a default value
@@ -667,7 +667,7 @@ def pretty_print2(value):
         val = "%10d   " % (act_v)
     else:
         val = "%13.2f" % (act_v)
-    return va, p_str, unit
+    return val, p_str, unit
     
 def build_info_string(ref, info):
     ret_str = info

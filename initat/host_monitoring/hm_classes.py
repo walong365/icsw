@@ -345,6 +345,9 @@ class mvect_entry(object):
         self.valid_until = kwargs.get("valid_until", None)
         if self.valid_until:
             self.valid_until = int(self.valid_until)
+    def update_from_mvec(self, in_mv):
+        self.value = in_mv.value
+        self.valid_until = in_mv.valid_until
     def update(self, value):
         if value is None:
             # unknown
