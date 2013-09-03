@@ -624,7 +624,8 @@ class server_process(threading_tools.process_pool):
         self.__server_cap_dict = {
             "usv_server" : usv_server_stuff(self),
             "quota"      : quota_stuff(self),
-            "dummy"      : dummy_stuff(self)}
+            # "dummy"      : dummy_stuff(self),
+            }
         self.__cap_list = []
         for key, value in self.__server_cap_dict.iteritems():
             sql_info = config_tools.server_check(server_type=key)
