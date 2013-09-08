@@ -120,7 +120,7 @@ class rms_mon_process(threading_tools.process_obj):
         self.__job_content_dict.setdefault(job_id, {})[file_name] = content
         tot_files = sum([len(value) for value in self.__job_content_dict.itervalues()], 0)
         tot_length = sum([sum([len(content) for _name, content in _dict.iteritems()], 0) for job_id, _dict in self.__job_content_dict.iteritems()])
-        self.log("cached: %d files, %d bytes" % (tot_files, tot_length))
+        self.log("cached: %d files, %s (%d bytes)" % (tot_files, logging_tools.get_size_str(tot_length), tot_length))
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
         self.__log_template.log(log_level, what)
     def loop_post(self):
