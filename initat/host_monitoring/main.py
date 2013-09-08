@@ -24,7 +24,7 @@
 """ host-monitoring, main part """
 
 # install reactor
-import initat.host_monitoring.hm_twisted
+import initat.host_monitoring.hm_twisted # @UnusedImport
 
 import configfile
 import process_tools
@@ -91,11 +91,13 @@ def main():
             ("AUTOSENSE", configfile.bool_c_var(True, help_string="enable autosensing of 0MQ/TCP Clients [%(default)s]")),
             ])
     global_config.parse_file()
-    options = global_config.handle_commandline(description="%s, version is %s" % (prog_name,
-                                                                                  VERSION_STRING),
-                                               add_writeback_option=prog_name in ["collserver", "collrelay"],
-                                               positional_arguments=prog_name in ["collclient"],
-                                               partial=prog_name in ["collclient"])
+    options = global_config.handle_commandline(
+        description="%s, version is %s" % (
+            prog_name,
+            VERSION_STRING),
+        add_writeback_option=prog_name in ["collserver", "collrelay"],
+        positional_arguments=prog_name in ["collclient"],
+        partial=prog_name in ["collclient"])
     global_config.write_file()
     if global_config["KILL_RUNNING"]:
         process_tools.kill_running_processes(exclude=configfile.get_manager_pid())

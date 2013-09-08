@@ -64,7 +64,11 @@ class server_code(threading_tools.process_pool):
                 "err" : (0, "/var/lib/logging-server/py_err")},
                                       zmq_context=self.zmq_context)
         self.add_process(twisted_process("twisted"), twisted=True, start=True)
-        self.__log_template = logging_tools.get_logger(global_config["LOG_NAME"], global_config["LOG_DESTINATION"], zmq=True, context=self.zmq_context)
+        self.__log_template = logging_tools.get_logger(
+            global_config["LOG_NAME"],
+            global_config["LOG_DESTINATION"],
+            zmq=True,
+            context=self.zmq_context)
         self.install_signal_handlers()
         self._check_ksm()
         self._check_huge()

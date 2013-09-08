@@ -1,6 +1,6 @@
 #!/usr/bin/python-init -Otu
 #
-# Copyright (C) 2009,2010,2011 Andreas Lang-Nevyjel
+# Copyright (C) 2009,2010,2011,2013 Andreas Lang-Nevyjel
 #
 # Send feedback to: <lang-nevyjel@init.at>
 # 
@@ -19,11 +19,12 @@
 #
 """ small script to verify TLS of openvpn """
 
-import sys
+import datetime
 import logging_tools
 import os
 import process_tools
-import datetime
+import sys
+import zmq
 
 class allowed_struct(object):
     def __init__(self, in_str):
@@ -44,17 +45,20 @@ class allowed_struct(object):
             try:
                 self._feed_part(part, logger)
             except:
-                logger.error("error parsing in_str '%s': %s" % (in_str, process_tools.get_except_info()))
+                logger.error("error parsing in_str '%s': %s" % (self.in_str, process_tools.get_except_info()))
     def _feed_part(self, part, logger):
         if part.count(";") == 1:
             p_type, p_info = part.split(";")
             if p_type == "T":
                 try:
                     from_time_str, to_time_str = p_info.split("-", 1)
-                    from_time, to_time = (datetime.time(int(from_time_str.split(":")[0]),
-                                                        int(from_time_str.split(":")[1])),
-                                          datetime.time(int(to_time_str.split(":")[0]),
-                                                        int(to_time_str.split(":")[1])))
+                    from_time, to_time = (
+                        datetime.time(
+                            int(from_time_str.split(":")[0]),
+                            int(from_time_str.split(":")[1])),
+                        datetime.time(
+                            int(to_time_str.split(":")[0]),
+                            int(to_time_str.split(":")[1])))
                 except:
                     logger.error("error parsing from/to: %s" % (process_tools.get_except_info()))
                 else:
@@ -81,9 +85,11 @@ class allowed_struct(object):
                         if now_time >= from_time and now_time <= to_time:
                             pass
                         else:
-                            logger.error("not allowed: %s not in [%s, %s]" % (str(now_time),
-                                                                              str(from_time),
-                                                                              str(to_time)))
+                            logger.error(
+                                "not allowed: %s not in [%s, %s]" % (
+                                    str(now_time),
+                                    str(from_time),
+                                    str(to_time)))
                             allowed = False
         return allowed
 
@@ -92,9 +98,12 @@ def parse_line(line):
     return (a_struct.key, a_struct)
 
 def main():
-    logger = logging_tools.get_logger("openvpn_tls_check",
-                                      "uds:/var/lib/logging-server/py_log",
-                                      init_logger=True)
+    zmq_context = zmq.Context()
+    logger = logging_tools.get_logger(
+        "openvpn_tls_check",
+        "uds:/var/lib/logging-server/py_log",
+        zmq=True,
+        context=zmq_context)
     #for key in sorted(os.environ):
     #    logger.info("%s: %s" % (key, str(os.environ[key])))
     ret_code = 1
@@ -103,9 +112,11 @@ def main():
             if os.environ.has_key("config"):
                 match_name = "%s.tls_match" % (os.environ["config"][:-5])
                 if os.path.isfile(match_name):
-                    logger.info("checking X_509_name '%s' against match_list '%s', remote_ip is %s" % (sys.argv[2],
-                                                                                                       match_name,
-                                                                                                       os.environ["untrusted_ip"]))
+                    logger.info(
+                        "checking X_509_name '%s' against match_list '%s', remote_ip is %s" % (
+                            sys.argv[2],
+                            match_name,
+                            os.environ["untrusted_ip"]))
                     # get CN (common name)
                     parts = [part.strip().split("=", 1) for part in sys.argv[2].split("/") if part.strip().count("=")]
                     value_dict = dict([(key, value) for key, value in parts])
@@ -114,8 +125,12 @@ def main():
                         try:
                             match_dict = dict([parse_line(line) for line in file(match_name, "r").read().split("\n") if line.strip() and not line.strip().startswith("#")])
                         except:
-                            logger.error("cannot read match-file %s: %s" % (match_name,
-                                                                            process_tools.get_except_info()))
+                            logger.error(
+                                "cannot read match-file %s: %s" % (
+                                    match_name,
+                                    process_tools.get_except_info()
+                                )
+                            )
                         else:
                             if cn in match_dict:
                                 logger.info("CN %s in match_list" % (cn))
@@ -141,6 +156,8 @@ def main():
             ret_code = 0
     else:
         logger.critical("Need 3 arguments, %d found" % (len(sys.argv)))
+    logger.close()
+    zmq_context.term()
     return ret_code
 
 if __name__ == "__main__":
