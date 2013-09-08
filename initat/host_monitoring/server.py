@@ -25,7 +25,7 @@
 
 import configfile
 import difflib
-import inotify_tools
+# import inotify_tools
 import logging_tools
 import netifaces
 import os

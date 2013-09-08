@@ -156,8 +156,8 @@ int main(int argc, char **argv)
     char identity_str[64];
 
     sprintf(identity_str, "%s:%s:%d", myuts.nodename, SERVICE_NAME, getpid());
-    sprintf(sendbuff, "%s;%s;%d;%s;", identity_str, host_b, snmp_version,
-            snmp_community);
+    sprintf(sendbuff, ";1;%s;%s;%d;%s;%d;", identity_str, host_b, snmp_version,
+            snmp_community, timeout);
     act_pos = sendbuff;
     if (verbose) {
         printf("sendbuffer before arguments: '%s'\n", sendbuff);

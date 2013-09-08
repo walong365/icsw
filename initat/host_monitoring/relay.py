@@ -26,13 +26,9 @@
 import argparse
 import base64
 import configfile
-import difflib
-import icmp_twisted
 import logging_tools
-import net_tools
-import netifaces
 import os
-import pprint
+# import pprint
 import process_tools
 import resource
 import server_command
