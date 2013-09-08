@@ -196,7 +196,7 @@ int main(int argc, char **argv)
         retcode = err_exit("sigaction");
     } else {
         getitimer(ITIMER_REAL, &mytimer);
-        mytimer.it_value.tv_sec = timeout;
+        mytimer.it_value.tv_sec = timeout + 2;
         mytimer.it_value.tv_usec = 0;
         setitimer(ITIMER_REAL, &mytimer, NULL);
         /* init 0MQ context */

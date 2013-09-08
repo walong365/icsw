@@ -43,41 +43,47 @@ class net_object(object):
         self.snmp_version = snmp_version
         self.__cache_tree = {}
         self.__pending_requests = set()
-        self.__oid_times = {}
-        self.__time_steps = {}
+        # self.__oid_times = {}
+        # self.__time_steps = {}
         self.__oid_cache_defaults = {}
-        log_com("init new host_object (%s, %s, %d)" % (self.name,
-                                                       self.snmp_community,
-                                                       self.snmp_version))
+        log_com(
+            "init new host_object (%s, %s, %d)" % (
+                self.name,
+                self.snmp_community,
+                self.snmp_version
+            )
+        )
     def register_oids(self, log_com, oid_list):
-        # to get a sense for the required cache-timing
-        act_time = time.time()
-        if self.__verbose_level > 1:
-            self.log(log_com, "need %s" % (logging_tools.get_plural("oid", len(oid_list))))
-        for oid in oid_list:
-            act_list = self.__oid_times.setdefault(oid, [])
-            act_list.append(act_time)
-            if len(act_list) > 10:
-                act_list.pop(0)
-            if len(act_list) > 2:
-                # 3 values are enough, calculate the mean time between different calls
-                self.__time_steps[oid] = sum([act_list[idx + 1] - act_list[idx] for idx in xrange(len(act_list) - 1)]) / (len(act_list) - 1)
-                if False:
-                    self.log(
-                        log_com,
-                        "timestream info (%d entries, oid %s, time_steps: %d): %s" % (
-                            len(act_list),
-                            str(oid),
-                            self.__time_steps[oid],
-                            ", ".join(["%d" % (cur_value - act_list[0]) for cur_value in act_list])))
-                if oid in self.__oid_cache_defaults and self.__time_steps[oid] > self.__oid_cache_defaults[oid]["timeout"]:
-                    # do we really need this ?
-                    # log and modify
-                    self.log(log_com, "modifying timeout for %s from %d to %d" % (
-                        str(oid),
-                        self.__oid_cache_defaults[oid]["timeout"],
-                        self.__time_steps[oid] + 10))
-                    self.__oid_cache_defaults[oid]["timeout"] = self.__time_steps[oid] + 10
+        # to get a sense for the required cache-timing, not used right now
+        return
+        # act_time = time.time()
+        # if self.__verbose_level > 1:
+        #    self.log(log_com, "need %s" % (logging_tools.get_plural("oid", len(oid_list))))
+        # for oid in oid_list:
+        #    act_list = self.__oid_times.setdefault(oid, [])
+        #    act_list.append(act_time)
+        #    if len(act_list) > 10:
+        #        act_list.pop(0)
+        #    print act_list
+        #    if len(act_list) > 2:
+        #        # 3 values are enough, calculate the mean time between different calls
+        #        self.__time_steps[oid] = sum([act_list[idx + 1] - act_list[idx] for idx in xrange(len(act_list) - 1)]) / (len(act_list) - 1)
+        #        if False:
+        #            self.log(
+        #                log_com,
+        #                "timestream info (%d entries, oid %s, time_steps: %d): %s" % (
+        #                    len(act_list),
+        #                    str(oid),
+        #                    self.__time_steps[oid],
+        #                    ", ".join(["%d" % (cur_value - act_list[0]) for cur_value in act_list])))
+        #        if oid in self.__oid_cache_defaults and self.__time_steps[oid] > self.__oid_cache_defaults[oid]["timeout"]:
+        #            # do we really need this ?
+        #            # log and modify
+        #            self.log(log_com, "modifying timeout for %s from %d to %d" % (
+        #                str(oid),
+        #                self.__oid_cache_defaults[oid]["timeout"],
+        #                self.__time_steps[oid] + 10))
+        #            self.__oid_cache_defaults[oid]["timeout"] = self.__time_steps[oid] + 10
     def log(self, log_com, what, log_level=logging_tools.LOG_LEVEL_OK):
         log_com("[%s] %s" % (self.name, what), log_level)
     def get_pending_requests(self, in_set, log_com):
@@ -173,8 +179,9 @@ class snmp_scheme(object):
         self.__info_tuple = ()
     def __del__(self):
         pass
+    @property
     def proc_data(self):
-        return [self.net_obj.snmp_version, self.net_obj.name, self.net_obj.snmp_community, self.envelope, self.transform_single_key] + self.snmp_start()
+        return [self.net_obj.snmp_version, self.net_obj.name, self.net_obj.snmp_community, self.envelope, self.transform_single_key, self.timeout] + self.snmp_start()
     def parse_options(self, options, **kwargs):
         old_stdout, old_stderr = (sys.stdout, sys.stderr)
         act_io = cStringIO.StringIO()
@@ -882,7 +889,11 @@ class eonstor_info_scheme(snmp_scheme):
             self.__th_disc = snmp_oid((1, 3, 6, 1, 4, 1, 1714, 1, 6, 1), cache=True, cache_timeout=EONSTOR_TIMEOUT)
         else:
             self.__th_system = snmp_oid((1, 3, 6, 1, 4, 1, 1714, 1, 1, 9, 1), cache=True, cache_timeout=EONSTOR_TIMEOUT)
-            self.__th_disc = snmp_oid((1, 3, 6, 1, 4, 1, 1714, 1, 1, 6, 1), cache=True, cache_timeout=EONSTOR_TIMEOUT, max_oid=(1, 3, 6, 1, 4, 1, 1714, 1, 1, 6, 1, 20))
+            self.__th_disc = snmp_oid(
+                (1, 3, 6, 1, 4, 1, 1714, 1, 1, 6, 1),
+                cache=True,
+                cache_timeout=EONSTOR_TIMEOUT,
+                max_oid=(1, 3, 6, 1, 4, 1, 1714, 1, 1, 6, 1, 20))
         self.requests = [self.__th_system,
                          self.__th_disc]
     def error(self):

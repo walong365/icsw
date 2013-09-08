@@ -62,11 +62,12 @@ class snmp_process(threading_tools.process_obj):
         self.__disp.registerRecvCbFun(self._recv_func)
         self.__disp.registerTimerCbFun(self._timer_func)
     def _fetch_snmp(self, *scheme_data, **kwargs):
-        snmp_ver, snmp_host, snmp_community, self.envelope, self.transform_single_key = scheme_data[0:5]
+        # print scheme_data[0:6]
+        snmp_ver, snmp_host, snmp_community, self.envelope, self.transform_single_key, self.__timeout = scheme_data[0:6]
         self._set_target(snmp_ver, snmp_host, snmp_community)
         self._clear_errors()
         # header value mapping mapping
-        for key, header_list in scheme_data[5:]:
+        for key, header_list in scheme_data[6:]:
             if self.run_ok() and header_list:
                 if key == "T":
                     if self.__verbose > 1:
@@ -88,7 +89,10 @@ class snmp_process(threading_tools.process_obj):
                             logging_tools.get_plural("table header", len(header_list)),
                             logging_tools.get_plural("result", self.num_result_values)))
                 else:
-                    self.__error_list.append("snmp timeout (OID is %s)" % (self.oid_pretty_print(header_list)))
+                    self.__error_list.append(
+                        "snmp timeout (%d secs, OID is %s)" % (
+                            self.__timeout,
+                            self.oid_pretty_print(header_list)))
                     self.log("(%s) run not ok for host %s (%s)" % (
                         key,
                         self.__snmp_host,
@@ -118,15 +122,19 @@ class snmp_process(threading_tools.process_obj):
     def _set_target(self, snmp_ver, snmp_host, snmp_community):
         self.__snmp_ver, self.__snmp_host, self.__snmp_community = (snmp_ver, snmp_host, snmp_community)
         try:
-            self.__p_mod = api.protoModules[{1 : api.protoVersion1,
-                                             2 : api.protoVersion2c}[self.__snmp_ver]]
+            self.__p_mod = api.protoModules[
+                {
+                    1 : api.protoVersion1,
+                    2 : api.protoVersion2c
+                }[self.__snmp_ver]
+            ]
         except KeyError:
             self.log("unknown snmp_version %d, using 1" % (self.__snmp_ver), logging_tools.LOG_LEVEL_ERROR)
             self.__p_mod = api.protoModules[api.protoVersion1]
     def _unlink(self):
         # remove links
         pass
-    def get_tables(self, base_oids, **args):
+    def get_tables(self, base_oids, **kwargs):
         # table header
         self.__head_vars = [self.__p_mod.ObjectIdentifier(base_oid) for base_oid in base_oids]
         self.__max_head_vars = [self.__p_mod.ObjectIdentifier(base_oid.get_max_oid()) if base_oid.has_max_oid() else None for base_oid in base_oids]
@@ -134,14 +142,14 @@ class snmp_process(threading_tools.process_obj):
         self.__act_head_vars = [(header, max_header) for header, max_header in zip(self.__head_vars, self.__max_head_vars)]
         # numer of result values
         self.num_result_values = 0
-        # 5 seconds default timeout
-        self.__timeout = args.get("timeout", 30)
+        # timeout is being set by snmp_scheme.scheme_data
+        # self.__timeout = kwargs.get("timeout", 30)
         # max items
-        self.__max_items = args.get("max_items", 0)
+        self.__max_items = kwargs.get("max_items", 0)
         self.__num_items = 0
         # who many times the timer_func was called
         self.__timer_idx = 0
-        self.__single_values = args.get("single_values", False)
+        self.__single_values = kwargs.get("single_values", False)
         if self.__single_values:
             # PDU for single values
             self.__req_pdu = self.__p_mod.GetRequestPDU()
@@ -162,8 +170,10 @@ class snmp_process(threading_tools.process_obj):
         self.__p_mod.apiMessage.setPDU(self.__req_msg, self.__req_pdu)
         # anything got ?
         self.__data_got = False
-        # init timer
+        # init timer, start of action
         self.__start_time = time.time()
+        # start of init get
+        self.__start_get_time = time.time()
         self.__single_value = self.__single_values
         # self.__act_scheme.set_single_value(self.__single_values)
         self.__disp.sendMessage(encoder.encode(self.__req_msg), self.__act_domain, self.__act_address)
@@ -190,9 +200,10 @@ class snmp_process(threading_tools.process_obj):
     def _timer_func(self, act_time):
         diff_time = act_time - self.__start_time
         trigger_timeout = False
+        # print "*", self.__timer_idx
         # no data received for a certain time (wait at least 3 seconds)
-        if not self.__data_got and self.__timer_idx and diff_time > 3:
-            if self.__timer_idx > 3 and not self.__num_items:
+        if not self.__data_got and self.__timer_idx: # and diff_time > self.__timeout / 2:
+            if not self.__num_items and diff_time > self.__timeout:
                 self.log("giving up for %s after %d items (%d seconds, timer_idx is %d)" % (
                     self.__snmp_host,
                     self.__num_items,
@@ -200,7 +211,9 @@ class snmp_process(threading_tools.process_obj):
                     self.__timer_idx),
                          logging_tools.LOG_LEVEL_ERROR)
                 trigger_timeout = True
-            else:
+            elif abs(act_time - self.__start_get_time) > self.__timeout / 2:
+                # trigger a re-get
+                self.__start_get_time = act_time
                 self.log("re-initiated get() for %s after %s (%d seconds, timer_idx is %d)" % (
                     self.__snmp_host,
                     logging_tools.get_plural("item", self.__num_items),
@@ -208,6 +221,7 @@ class snmp_process(threading_tools.process_obj):
                     self.__timer_idx),
                          logging_tools.LOG_LEVEL_WARN)
                 self._next_send()
+        # print self.__timer_idx
         self.__timer_idx += 1
         # reset trigger
         self.__data_got = False

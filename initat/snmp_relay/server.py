@@ -241,7 +241,7 @@ class server_process(threading_tools.process_pool):
         proc_struct = self.__process_dict[src_proc]
         proc_struct["in_use"] = False
         proc_struct["call_count"] += 1
-        envelope, error_list, received, snmp_dict = args
+        envelope, error_list, _received, snmp_dict = args
         cur_scheme = self.__pending_schemes[envelope]
         cur_scheme.snmp = snmp_dict
         for cur_error in error_list:
@@ -260,7 +260,7 @@ class server_process(threading_tools.process_pool):
             proc_struct["state"] = "stopping"
     def _start_snmp_fetch(self, scheme):
         free_processes = sorted([key for key, value in self.__process_dict.iteritems() if not value["in_use"] and value["state"] == "running"])
-        cache_ok, num_cached, num_refresh, num_pending, num_hot_enough = scheme.pre_snmp_start(self.log)
+        _cache_ok, num_cached, num_refresh, num_pending, num_hot_enough = scheme.pre_snmp_start(self.log)
         if self.__verbose:
             self.log("%sinfo for %s: %s" % (
                 "[F] " if num_refresh else "[I] ",
@@ -274,7 +274,7 @@ class server_process(threading_tools.process_pool):
             if free_processes:
                 proc_struct = self.__process_dict[free_processes[0]]
                 proc_struct["in_use"] = True
-                self.send_to_process(proc_struct["proc_name"], "fetch_snmp", *scheme.proc_data())
+                self.send_to_process(proc_struct["proc_name"], "fetch_snmp", *scheme.proc_data)
                 self.__pending_schemes[scheme.envelope] = scheme
             else:
                 self.__queued_requests.append(scheme)
@@ -380,12 +380,14 @@ class server_process(threading_tools.process_pool):
                     host = self._resolve_address(host)
                     host_obj = self._get_host_object(host, snmp_community, snmp_version)
                     if self.__verbose:
-                        self.log("got request for scheme %s (host %s, community %s, version %d, envelope %s)" % (
+                        self.log("got request for scheme %s (host %s, community %s, version %d, envelope %s, timeout %d)" % (
                             scheme,
                             host,
                             snmp_community,
                             snmp_version,
-                            envelope))
+                            envelope,
+                            timeout,
+                            ))
                     try:
                         act_scheme = act_scheme(
                             net_obj=host_obj,
