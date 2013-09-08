@@ -6,6 +6,6 @@ setup(name="host-monitoring",
       url="http://www.init.at",
       author="Andreas Lang-Nevyjel",
       author_email="lang@init.at",
-      py_modules=["initat.snmp_relay"],
-      packages=["initat.host_monitoring", "initat.host_monitoring.modules", "initat.host_monitoring.exe"],
+      py_modules=[],
+      packages=["initat.snmp_relay", "initat.host_monitoring", "initat.host_monitoring.modules", "initat.host_monitoring.exe"],
       )
