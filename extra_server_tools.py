@@ -1,9 +1,9 @@
 #!/usr/bin/python-init -Ot
 #
-# Copyright (C) 2007,2008 Andreas Lang-Nevyjel
+# Copyright (C) 2007,2008,2013 Andreas Lang-Nevyjel
 #
 # Send feedback to: <lang-nevyjel@init.at>
-# 
+#
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License Version 2 as
 # published by the Free Software Foundation.
@@ -19,11 +19,11 @@
 #
 """ handles extra servers (for instance liebherr) """
 
-import sys
+import logging_tools
 import optparse
 import os
-import logging_tools
 import process_tools
+import sys
 
 class extra_server_file(object):
     def __init__(self, name="/etc/sysconfig/cluster/extra_servers"):
@@ -35,9 +35,11 @@ class extra_server_file(object):
             try:
                 lines = file(self.__file_name, "r").read().split("\n")
             except:
-                logging_tools.my_syslog("error reading %s: %s" % (self.__file_name,
-                                                                  process_tools.get_except_info()),
-                                        logging_tools.LOG_LEVEL_ERROR)
+                logging_tools.my_syslog(
+                    "error reading %s: %s" % (
+                        self.__file_name,
+                        process_tools.get_except_info()),
+                    logging_tools.LOG_LEVEL_ERROR)
                 lines = []
         else:
             lines = []
@@ -46,9 +48,11 @@ class extra_server_file(object):
         try:
             file(self.__file_name, "w").write("\n".join(sorted(self.__lines) + [""]))
         except:
-            logging_tools.my_syslog("error writing %s: %s" % (self.__file_name,
-                                                              process_tools.get_except_info()),
-                                    logging_tools.LOG_LEVEL_ERROR)
+            logging_tools.my_syslog(
+                "error writing %s: %s" % (
+                    self.__file_name,
+                    process_tools.get_except_info()),
+                logging_tools.LOG_LEVEL_ERROR)
     def add_server(self, s_name):
         if s_name.strip() not in self.__lines:
             self.__lines.append(s_name.strip())
@@ -83,8 +87,9 @@ def main():
     if my_parser.options.list_servers:
         # list servers
         s_list = es_file.get_server_list()
-        print "%s in list%s" % (logging_tools.get_plural("extra server", len(s_list)),
-                                ": %s" % (", ".join(sorted(s_list))) if s_list else "")
+        print "%s in list%s" % (
+            logging_tools.get_plural("extra server", len(s_list)),
+            ": %s" % (", ".join(sorted(s_list))) if s_list else "")
     if my_parser.options.add_server or my_parser.options.remove_server:
         if my_parser.options.server_name:
             if my_parser.options.add_server:

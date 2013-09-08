@@ -22,18 +22,18 @@
 
 """ checks installed servers on system """
 
-import sys
 import os
+import sys
 
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "initat.cluster.settings")
 
+import argparse
 import commands
+import extra_server_tools
+import logging_tools
+import process_tools
 import stat
 import time
-import process_tools
-import logging_tools
-import extra_server_tools
-import argparse
 try:
     import config_tools
 except:
@@ -115,13 +115,14 @@ def check_system(opt_ns):
             else:
                 any_ok = False
             check_list.append(name)
-            check_dict[name] = {"type"          : c_type,
-                                "check_type"    : check_type,
-                                # pid_file_name or process_name for simple check
-                                "pid_file_name" : pid_file_name,
-                                # any number of threads OK
-                                "any_ok"        : any_ok,
-                                "init_script"   : "/etc/init.d/%s" % (name)}
+            check_dict[name] = {
+                "type"          : c_type,
+                "check_type"    : check_type,
+                # pid_file_name or process_name for simple check
+                "pid_file_name" : pid_file_name,
+                # any number of threads OK
+                "any_ok"        : any_ok,
+                "init_script"   : "/etc/init.d/%s" % (name)}
     ret_dict = {}
     if check_list:
     # pid-file mapping
@@ -168,6 +169,7 @@ def check_system(opt_ns):
         for name in check_list:
             ret_dict["check_list"].append(name)
             check_struct = check_dict[name]
+            # print name, check_struct
             act_info_dict = {"name" : name}
             act_pids = []
             if check_struct["check_type"] == "simple":
@@ -301,9 +303,10 @@ def main():
                     diff_hours = int((diff_time - 3600 * 24 * diff_days) / 3600)
                     diff_mins = int((diff_time - 3600 * (24 * diff_days + diff_hours)) / 60)
                     diff_secs = int(diff_time - 60 * (60 * (24 * diff_days + diff_hours) + diff_mins))
-                    ret_str += ", pidfile unchanged since %s%02d:%02d:%02d (%s)" % (diff_days and "%s, " % (logging_tools.get_plural("day", diff_days)) or "",
-                                                                                    diff_hours, diff_mins, diff_secs,
-                                                                                    time.strftime("%a, %d. %b %Y, %H:%M:%S", time.localtime(pid_time)))
+                    ret_str += ", pidfile unchanged since %s%02d:%02d:%02d (%s)" % (
+                        diff_days and "%s, " % (logging_tools.get_plural("day", diff_days)) or "",
+                        diff_hours, diff_mins, diff_secs,
+                        time.strftime("%a, %d. %b %Y, %H:%M:%S", time.localtime(pid_time)))
                 out_list.append(ret_str)
         if opt_ns.pid or opt_ns.all:
             pid_dict = act_struct["pids"]
