@@ -240,9 +240,6 @@ class server_process(threading_tools.process_pool):
         proc_struct = self.__process_dict[src_proc]
         proc_struct["in_use"] = False
         proc_struct["call_count"] += 1
-        if not self.__num_messages % 50:
-            # log thread usage
-            self.log("thread usage: %s" % (", ".join(["%d" % (self.__process_dict[key]["call_count"]) for key in sorted(self.__process_dict.iterkeys())])))
         envelope, error_list, _received, snmp_dict = args
         cur_scheme = self.__pending_schemes[envelope]
         cur_scheme.snmp = snmp_dict
@@ -424,11 +421,14 @@ class server_process(threading_tools.process_pool):
         self.__num_messages += 1
         if self.__verbose > 3:
             self.log("recv() done")
-        if self.__num_messages % 100 == 0:
+        if not self.__num_messages % 100:
             cur_mem = process_tools.get_mem_info(self.__msi_block.get_unique_pids() if self.__msi_block else 0)
             self.log("memory usage is %s after %s" % (
                 logging_tools.get_size_str(cur_mem),
                 logging_tools.get_plural("message", self.__num_messages)))
+        if not self.__num_messages % 50:
+            # log thread usage
+            self.log("thread usage: %s" % (", ".join(["%d" % (self.__process_dict[key]["call_count"]) for key in sorted(self.__process_dict.iterkeys())])))
     def _send_return(self, envelope, ret_state, ret_str):
         if self.__verbose > 3:
             self.log("_send_return, envelope is %s (%d, %s)" % (
