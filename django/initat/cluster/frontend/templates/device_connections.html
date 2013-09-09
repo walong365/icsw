@@ -29,6 +29,7 @@ class conn_table
     use_devs: (@sel_list) =>
         @load_devices()
     load_devices: () =>
+        @my_submitter = new submitter()
         $.ajax
             url     : "{% url 'device:get_group_tree' %}"
             data    : {
@@ -102,15 +103,31 @@ class conn_table
         parent_pk = cd_node.attr(if type == "master" then "parent" else "child")
         child_pk  = cd_node.attr(if type == "master" then "child" else "parent")
         add_table = $("table#dev__#{parent_pk}")
-        add_ul = add_table.find("td#" + type + " ul")
+        add_ul = add_table.find("td##{type} ul")
         add_ul.append($("<li>").attr({
             "id" : cd_node.attr("pk")
         }).append(
             $("<input>").attr({
                 "type"  : "button",
-                "value" : "del"
+                "value" : "delete"
             }).bind("click", @delete_cd)).append($("<span>").text(cd_node.attr(if type == "master" then "child_name" else "parent_name")))
         )
+        parameter_ul = $("<ul>")
+        for idx in [1..4]
+            parameter_ul.append(
+                $("<li>").append(
+                    $("<span>").text("parameter #{idx}:")
+                ).append(
+                    $("<input>").attr(
+                        "id"    : cd_node.attr("key") + "__parameter_i#{idx}"
+                        "type"  : "number"
+                        "min"   : 0
+                        "max"   : 100
+                        "value" : cd_node.attr("parameter_i#{idx}")
+                    ).on("change", @my_submitter.submit)
+                )
+            )
+        add_ul.append(parameter_ul)
     node_dropped: (event, ui) =>
         cur_drag = ui.draggable
         target_div   = $(event.target)

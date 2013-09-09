@@ -53,7 +53,7 @@ class file_info
         cur_ed.focus()
 
 class rms_view
-    constructor: (@top_div, @reload_button, @search={}) ->
+    constructor: (@top_div, @reload_button, @search={}, @collapse_run_wait=false) ->
         @divs = {}
         @tables = {}
         @expand_dict = {}
@@ -69,8 +69,16 @@ class rms_view
                     @divs["run_table"] = @build_table_div("run_table", @run_headers)
                     @divs["wait_table"] = @build_table_div("wait_table", @wait_headers)
                     @divs["node_table"] = @build_table_div("node_table", @node_headers)
-                    @top_div.append(@divs["run_table"])
-                    @top_div.append(@divs["wait_table"])
+                    if @collapse_run_wait
+                        @top_div.append($("<div>").attr("id", @divs["run_table"].attr("id")).append(
+                            $("<h4>").text("Running jobs"),
+                            @divs["run_table"],
+                            $("<h4>").text("Waiting jobs"),
+                            @divs["wait_table"]
+                        ))
+                    else
+                        @top_div.append(@divs["run_table"])
+                        @top_div.append(@divs["wait_table"])
                     @top_div.append(@divs["node_table"])
                     @top_div.tabs()
                     @init_tables()
@@ -85,7 +93,10 @@ class rms_view
         new_div.append(new_table)
         new_table.append($("<thead>").append(top_tr))
         new_table.append($("<tbody>"))
-        @top_div.find("ul").append($("<li>").append($("<a>").attr("href", "##{id_str}").text(id_str)))
+        if id_str == "wait_table" and @collapse_run_wait
+            true
+        else
+            @top_div.find("ul").append($("<li>").append($("<a>").attr("href", "##{id_str}").text(id_str)))
         return new_div
     init_timer: () =>
         $(document).everyTime(10000, "reload_page", =>
@@ -151,7 +162,7 @@ class rms_view
                 }, {
                     "aTargets" : [14],
                     "fnRender" : (o, val) ->
-                        return "#{val} <div class='ui-icon ui-icon-triangle-1-e' id='expand_#{o.aData[0]}_#{o.aData[1]}'>"
+                        return "<div class='ui-icon ui-icon-triangle-1-e leftfloat' id='expand_#{o.aData[0]}_#{o.aData[1]}'></div><span>#{val}</span>"
                     "sClass"   : "center nowrap"
                 }
             ],
@@ -160,6 +171,7 @@ class rms_view
                 @tables["run_table"].find("input[type='button'][id^='jctrl:']").on("click", @control_job)
                 @tables["run_table"].find("div[id^='expand_']").on("click", @toggle_file_expand)
         @init_redraw(cur_table)
+        @add_visibility_buttons(cur_table)
     init_wait_table: () =>
         cur_table = @tables["wait_table"] 
         cur_table.dataTable
@@ -189,6 +201,7 @@ class rms_view
             "fnDrawCallback"   : (o_settings) =>
                 @tables["wait_table"].find("input[type='button'][id^='jctrl:']").bind("click", @control_job)
         @init_redraw(cur_table)
+        @add_visibility_buttons(cur_table)
     init_node_table: () =>
         cur_table = @tables["node_table"] 
         cur_table.dataTable
@@ -228,11 +241,39 @@ class rms_view
                 }
              ]
         @init_redraw(cur_table)
+        @add_visibility_buttons(cur_table)
     init_redraw: (cur_table) =>
         cur_table.bind("draw", (event) =>
             table = $(event.target)
             #@divs[table.attr("id")].width(table.width())
         )
+    add_visibility_buttons: (cur_table) =>
+        num_cols = cur_table.dataTable().fnSettings().aoColumns.length
+        accord_div = $("<div>")
+        accord_div.append($("<h3>").text("Table settings"))
+        opt_div = $("<div>")
+        for idx in [0..num_cols - 1]
+            cur_col = cur_table.dataTable().fnSettings().aoColumns[idx]
+            opt_button = $("<input>").attr({
+                "type"       : "checkbox",
+                "data-label" : cur_col.sTitle,
+                "id"         : cur_table.attr("id") + "__" + idx
+                "checked"    : "checked"
+            }).on("change", @change_vis)
+            opt_div.append(opt_button)
+        opt_div.find("input").prettyCheckable()
+        accord_div.append(opt_div)
+        cur_table.parent("div:first").append(accord_div)
+        accord_div.accordion(
+            collapsible : true
+            active      : false
+            heightStyle : "content"
+        )
+    change_vis: (event) =>
+        cur_el = $(event.target)
+        cur_table = $("table#" + cur_el.attr("id").split("__")[0])
+        cur_table.dataTable().fnSetColumnVis(cur_el.attr("id").split("__")[1], cur_el.prop("checked"))
+        #console.log cur_el.attr("id")
     toggle_file_expand: (event) =>
         cur_el = $(event.target)
         cur_tr = cur_el.parents("tr:first")

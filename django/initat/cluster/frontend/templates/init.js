@@ -998,6 +998,7 @@ replace_xml_element = (master_xml, xml) ->
 
 class submitter
     constructor: (kwargs) ->
+        kwargs = kwargs ? {}
         @modify_data_dict = kwargs.modify_data_dict ? undefined
         @master_xml = kwargs.master_xml ? undefined
         @success_callback = kwargs.success_callback ? undefined
