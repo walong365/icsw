@@ -18,7 +18,7 @@ addHandlers = ->
     my_view = new rms_view(
         $("div#top_rms_div"),
         $("input#reload_button"),
-        {"run_table" : "cransys", "wait_table" : "cransys"})
+        {})
     my_view.setup()
 
 $(document).ready(addHandlers);
