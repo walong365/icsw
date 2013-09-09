@@ -827,6 +827,8 @@ class cd_connection(models.Model):
 def cd_connection_pre_save(sender, **kwargs):
     if "instance" in kwargs:
         cur_inst = kwargs["instance"]
+        for par_idx in xrange(1, 5):
+            _check_integer(cur_inst, "parameter_i%d" % (par_idx), min_val=0, max_val=100)
         try:
             cd_connection.objects.get(Q(parent=cur_inst.parent_id) & Q(child=cur_inst.child_id))
         except cd_connection.DoesNotExist:
@@ -834,7 +836,8 @@ def cd_connection_pre_save(sender, **kwargs):
         except cd_connection.MultipleObjectsReturned:
             raise ValidationError("connections already exist")
         else:
-            raise ValidationError("connection already exists")
+            if cur_inst.pk is None:
+                raise ValidationError("connection already exists")
 
 class device_selection(models.Model):
     idx = models.AutoField(db_column="device_selection_idx", primary_key=True)
@@ -4752,49 +4755,50 @@ def category_post_save(sender, **kwargs):
                 sub_node.save()
 
 KPMC_MAP = {
-    "devg"         : device_group,
-    "dev"          : device,
-    "nd"           : netdevice,
-    "ip"           : net_ip,
-    "routing"      : peer_information,
-    "conf"         : config,
-    "varstr"       : config_str,
-    "varint"       : config_int,
-    "varbool"      : config_bool,
-    "varblob"      : config_blob,
-    "cscript"      : config_script,
-    "image"        : image,
-    "kernel"       : kernel,
-    "pdisc"        : partition_disc,
-    "part"         : partition,
-    "monper"       : mon_period,
-    "mondt"        : mon_device_templ,
-    "monst"        : mon_service_templ,
-    "mondet"       : mon_device_esc_templ,
-    "monset"       : mon_service_esc_templ,
-    "moncg"        : mon_contactgroup,
-    "monhc"        : mon_host_cluster,
-    "monn"         : mon_notification,
-    "monsc"        : mon_service_cluster,
-    "moncc"        : mon_check_command,
-    "moncon"       : mon_contact,
-    "nwdt"         : network_device_type,
-    "nwt"          : network_type,
-    # "dc"           : device_class,
-    # "dl"           : device_location,
-    "nw"           : network,
-    "user"         : user,
-    "ps"           : package_search,
-    "group"        : group,
-    "dv"           : device_variable,
-    "ptable"       : partition_table,
-    # "rrdc"         : rrd_class,
-    # "rrdrra"       : rrd_rra,
-    "lvm_vg"       : lvm_vg,
-    "lvm_lv"       : lvm_lv,
-    "package_repo" : package_repo,
-    "mdcds"        : md_check_data_store,
-    "dtn"          : domain_tree_node,
-    "cat"          : category,
-    "hcc"          : host_check_command,
+    "devg"          : device_group,
+    "dev"           : device,
+    "nd"            : netdevice,
+    "ip"            : net_ip,
+    "routing"       : peer_information,
+    "conf"          : config,
+    "varstr"        : config_str,
+    "varint"        : config_int,
+    "varbool"       : config_bool,
+    "varblob"       : config_blob,
+    "cscript"       : config_script,
+    "image"         : image,
+    "kernel"        : kernel,
+    "pdisc"         : partition_disc,
+    "part"          : partition,
+    "monper"        : mon_period,
+    "mondt"         : mon_device_templ,
+    "monst"         : mon_service_templ,
+    "mondet"        : mon_device_esc_templ,
+    "monset"        : mon_service_esc_templ,
+    "moncg"         : mon_contactgroup,
+    "monhc"         : mon_host_cluster,
+    "monn"          : mon_notification,
+    "monsc"         : mon_service_cluster,
+    "moncc"         : mon_check_command,
+    "moncon"        : mon_contact,
+    "nwdt"          : network_device_type,
+    "nwt"           : network_type,
+    # "dc"            : device_class,
+    # "dl"            : device_location,
+    "nw"            : network,
+    "user"          : user,
+    "ps"            : package_search,
+    "group"         : group,
+    "dv"            : device_variable,
+    "ptable"        : partition_table,
+    # "rrdc"          : rrd_class,
+    # "rrdrra"        : rrd_rra,
+    "lvm_vg"        : lvm_vg,
+    "lvm_lv"        : lvm_lv,
+    "package_repo"  : package_repo,
+    "mdcds"         : md_check_data_store,
+    "dtn"           : domain_tree_node,
+    "cat"           : category,
+    "hcc"           : host_check_command,
+    "cd_connection" : cd_connection,
 }
