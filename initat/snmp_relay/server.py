@@ -61,7 +61,6 @@ class server_process(threading_tools.process_pool):
         self._log_config()
         # init luts
         self.__ip_lut, self.__forward_lut = ({}, {})
-        self.__last_log_time = time.time() - 3600
         self._check_schemes()
         self._init_host_objects()
         # dict to suppress too fast sending
@@ -241,6 +240,9 @@ class server_process(threading_tools.process_pool):
         proc_struct = self.__process_dict[src_proc]
         proc_struct["in_use"] = False
         proc_struct["call_count"] += 1
+        if not self.__num_messages % 50:
+            # log thread usage
+            self.log("thread usage: %s" % (", ".join(["%d" % (self.__process_dict[key]["call_count"]) for key in sorted(self.__process_dict.iterkeys())])))
         envelope, error_list, _received, snmp_dict = args
         cur_scheme = self.__pending_schemes[envelope]
         cur_scheme.snmp = snmp_dict
@@ -259,7 +261,7 @@ class server_process(threading_tools.process_pool):
             self.stop_process(src_proc)
             proc_struct["state"] = "stopping"
     def _start_snmp_fetch(self, scheme):
-        free_processes = sorted([key for key, value in self.__process_dict.iteritems() if not value["in_use"] and value["state"] == "running"])
+        free_processes = sorted([(value["call_count"], key) for key, value in self.__process_dict.iteritems() if not value["in_use"] and value["state"] == "running"])
         _cache_ok, num_cached, num_refresh, num_pending, num_hot_enough = scheme.pre_snmp_start(self.log)
         if self.__verbose:
             self.log("%sinfo for %s: %s" % (
@@ -272,7 +274,7 @@ class server_process(threading_tools.process_pool):
                     (num_hot_enough, "hot enough")] if cur_num])))
         if num_refresh:
             if free_processes:
-                proc_struct = self.__process_dict[free_processes[0]]
+                proc_struct = self.__process_dict[free_processes[0][1]]
                 proc_struct["in_use"] = True
                 self.send_to_process(proc_struct["proc_name"], "fetch_snmp", *scheme.proc_data)
                 self.__pending_schemes[scheme.envelope] = scheme
