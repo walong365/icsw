@@ -796,6 +796,10 @@ class cd_connection(models.Model):
     child = models.ForeignKey("device", related_name="child_device")
     created_by = models.ForeignKey("user", null=True)
     connection_info = models.CharField(max_length=256, default="not set")
+    parameter_i1 = models.IntegerField(default=0)
+    parameter_i2 = models.IntegerField(default=0)
+    parameter_i3 = models.IntegerField(default=0)
+    parameter_i4 = models.IntegerField(default=0)
     date = models.DateTimeField(auto_now_add=True)
     def get_xml(self):
         return E.cd_connection(
@@ -807,7 +811,11 @@ class cd_connection(models.Model):
             child="%d" % (self.child_id),
             child_name=unicode(self.child),
             created_by="%d" % (self.created_by_id or 0),
-            connection_info=self.connection_info
+            connection_info=self.connection_info,
+            parameter_i1="%d" % (self.parameter_i1),
+            parameter_i2="%d" % (self.parameter_i2),
+            parameter_i3="%d" % (self.parameter_i3),
+            parameter_i4="%d" % (self.parameter_i4),
             )
     def __unicode__(self):
         return "%s (via %s) %s" % (
