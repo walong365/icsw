@@ -366,7 +366,7 @@ LOGGING = {
     },
     'handlers' : {
         "init_unified" : {
-            "level"     : "WARN",
+            "level"     : "INFO" if DEBUG else "WARN",
             "class"     : "logging_tools.init_handler_unified",
             "formatter" : "initat",
         },
