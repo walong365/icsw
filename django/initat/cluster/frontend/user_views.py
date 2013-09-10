@@ -204,6 +204,20 @@ class set_user_var(View):
         _post = request.POST
         user_vars = request.session["user_vars"]
         key, value = (_post["key"], _post["value"])
+        v_type = _post.get("type", "unicode")
+        if v_type == "unicode":
+            value = unicode(value)
+        elif v_type == "str":
+            value = str(value)
+        elif v_type == "int":
+            value = int(value)
+        elif v_type == "bool":
+            value = True if value.lower() in ["true"] else False
+        logger.info("setting user_var '%s' to '%s' (type %s)" % (
+            key,
+            str(value),
+            v_type,
+            ))
         if key in user_vars:
             if user_vars[key].value != value:
                 user_vars[key].value = value
@@ -215,6 +229,24 @@ class set_user_var(View):
                 value=value)
         update_session_object(request)
         request.session.save()
+
+class get_user_var(View):
+    @method_decorator(login_required)
+    @method_decorator(xml_wrapper)
+    def post(self, request):
+        var_name = request.POST["var_name"]
+        if var_name.endswith("*"):
+            found_uv = [key for key in request.session["user_vars"] if key.startswith(var_name[:-1])]
+        else:
+            found_uv = [key for key in request.session["user_vars"] if key == var_name]
+        user_vars = [request.session["user_vars"][key] for key in found_uv]
+        request.xml_response["result"] = E.user_variables(
+            *[
+                E.user_variable(unicode(cur_var.value), name=cur_var.name, type=cur_var.var_type) for cur_var in user_vars
+                ]
+            )
+
+        print var_name, found_uv
 
 class move_node(View):
     @method_decorator(login_required)

@@ -57,6 +57,15 @@ class rms_view
         @divs = {}
         @tables = {}
         @expand_dict = {}
+        wrap_span = $("<span>").attr("id", "rms_reload_div")
+        @reload_button.wrap(wrap_span)
+        @reload_button.parents("span:first").append(
+            $("<span>").text(", active : "),
+            $("<input>").attr(
+                "type"    : "checkbox"
+                "checked" : "checked"
+            ).on("change", @change_reload)
+        )
     setup: () =>
         $.ajax
             url : "{% url 'rms:get_header_xml' %}"
@@ -98,6 +107,15 @@ class rms_view
         else
             @top_div.find("ul").append($("<li>").append($("<a>").attr("href", "##{id_str}").text(id_str)))
         return new_div
+    change_reload: (event) =>
+        cur_el = $(event.target)
+        reload = cur_el.is(":checked")
+        if reload
+            $(document).everyTime(10000, "reload_page", =>
+                @reload_tables()
+            )
+        else
+            $(document).stopTime("reload_page")
     init_timer: () =>
         $(document).everyTime(10000, "reload_page", =>
             @reload_tables()
@@ -106,10 +124,11 @@ class rms_view
             @reload_button.on("click", @reload_tables)
         @reload_tables()
     reload_tables: () =>
+        console.log "reload"
         $.ajax
-            url: "{% url 'rms:get_rms_json' %}"
+            url      : "{% url 'rms:get_rms_json' %}"
             dataType : "json"
-            success : (json) =>
+            success  : (json) =>
                 @file_dict = json["files"]
                 for key, cur_table of @tables
                     while cur_table.fnSettings().fnRecordsTotal()
@@ -223,14 +242,16 @@ class rms_view
                         if cur_m
                             max_load = 16.0
                             load = Math.min(cur_m[0], max_load)
-                            ret_el = $("<div>").addClass("leftfloat load_value").append(
-                                $("<b>").text($.sprintf("%3.2f", load))
-                            ).append(
+                            ret_el = $("<div>").append(
+                                $("<div>").addClass("leftfloat load_value").append(
+                                    $("<b>").text($.sprintf("%3.2f", load)),
+                                ),
                                 $("<div>").addClass("load_outer").append(
                                     $("<div>").addClass("load_inner").css("width", parseInt(98 * load / max_load) + "px")
                                 )
                             )
-                            return $("<div>").append(ret_el).html()
+                            console.log $("<div>").append(ret_el).html()
+                            return ret_el.html()
                         else
                             return "<b>#{val}</b>"
                     "aTargets" : [5],
@@ -251,15 +272,24 @@ class rms_view
         num_cols = cur_table.dataTable().fnSettings().aoColumns.length
         accord_div = $("<div>")
         accord_div.append($("<h3>").text("Table settings"))
+        user_pref = load_user_var("rms_" + cur_table.attr("id") + "*")
         opt_div = $("<div>")
         for idx in [0..num_cols - 1]
             cur_col = cur_table.dataTable().fnSettings().aoColumns[idx]
             opt_button = $("<input>").attr({
                 "type"       : "checkbox",
                 "data-label" : cur_col.sTitle,
-                "id"         : cur_table.attr("id") + "__" + idx
-                "checked"    : "checked"
+                "id"         : cur_table.attr("id") + "__#{idx}__" + cur_col.sTitle
             }).on("change", @change_vis)
+            pref_key = "rms_" + cur_table.attr("id") + "_" + cur_col.sTitle
+            if pref_key of user_pref
+                is_checked = user_pref[pref_key]
+            else
+                is_checked = true
+            if is_checked
+                opt_button.attr("checked", "checked")
+            else
+                cur_table.dataTable().fnSetColumnVis(idx, false)
             opt_div.append(opt_button)
         opt_div.find("input").prettyCheckable()
         accord_div.append(opt_div)
@@ -271,8 +301,13 @@ class rms_view
         )
     change_vis: (event) =>
         cur_el = $(event.target)
-        cur_table = $("table#" + cur_el.attr("id").split("__")[0])
-        cur_table.dataTable().fnSetColumnVis(cur_el.attr("id").split("__")[1], cur_el.prop("checked"))
+        t_id = cur_el.attr("id").split("__")[0]
+        cur_table = $("table##{t_id}")
+        row_num = cur_el.attr("id").split("__")[1]
+        row_name = cur_el.attr("id").split("__")[2]
+        is_checked = if cur_el.is(":checked") then true else false
+        cur_table.dataTable().fnSetColumnVis(row_num, is_checked)
+        store_user_var("rms_#{t_id}_#{row_name}", is_checked, "bool")
         #console.log cur_el.attr("id")
     toggle_file_expand: (event) =>
         cur_el = $(event.target)

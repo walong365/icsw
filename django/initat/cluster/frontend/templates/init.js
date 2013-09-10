@@ -1304,6 +1304,37 @@ create_input_el = (xml_el, attr_name, id_prefix, kwargs) ->
         #new_el.show()
     return dummy_div.children()
 
+store_user_var = (var_name, var_value, var_type="str") -> 
+    $.ajax
+        url  : "{% url 'user:set_user_var' %}"
+        data : 
+            key   : var_name
+            value : var_value
+            type  : var_type
+            
+load_user_var = (var_name) ->
+    ret_dict = {}
+    $.ajax
+        url     : "{% url 'user:get_user_var' %}"
+        data    :
+            var_name : var_name
+        async   : false
+        success : (xml) ->
+            if parse_xml_response(xml)
+                #console.log xml
+                $(xml).find("user_variables user_variable").each (idx, cur_var) ->
+                    cur_var = $(cur_var)
+                    var_name = cur_var.attr("name")
+                    var_type = cur_var.attr("type")
+                    switch var_type
+                        when "s"
+                            ret_dict[var_name] = cur_var.text()
+                        when "i"
+                            ret_dict[var_name] = parseInt(cur_var.text())
+                        when "b"
+                            ret_dict[var_name] = if cur_var.text() == "True" then true else false
+    return ret_dict
+
 root.get_value             = get_value
 root.set_value             = set_value
 root.draw_setup            = draw_setup
@@ -1324,6 +1355,8 @@ root.create_input_el       = create_input_el
 root.submitter             = submitter
 root.config_table          = config_table
 root.enter_password        = enter_password
+root.store_user_var        = store_user_var
+root.load_user_var         = load_user_var
 
 {% endinlinecoffeescript %}
 

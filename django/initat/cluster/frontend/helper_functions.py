@@ -5,6 +5,7 @@
 
 import logging_tools
 import net_tools
+import pprint
 import process_tools
 import re
 import smtplib
@@ -138,7 +139,7 @@ class xml_response(object):
         """
         return HttpResponse(unicode(self),
                             mimetype="application/xml")
-     
+
 def keyword_check(*kwarg_list):
     def decorator(func):
         def _wrapped_view(*args, **kwargs):
@@ -164,7 +165,7 @@ class xml_wrapper(object):
             return request.xml_response.create_response()
         else:
             return ret_value
-    
+
 def send_emergency_mail(**kwargs):
     """
     sends an emergency email to init-company
@@ -177,15 +178,16 @@ def send_emergency_mail(**kwargs):
     msg_lines = kwargs.get("log_lines", exc_info.log_lines)
     request = kwargs.get("request", None)
     if request:
-        msg_lines.extend(["",
-                          "djangouser: %s" % (unicode(request.user)),
-                          "PATH_INFO: %s" % (request.META.get("PATH_INFO", "nor found")),
-                          "USER_AGENT: %s" % (request.META.get("HTTP_USER_AGENT", "not found"))])
+        msg_lines.extend([
+            "",
+            "djangouser: %s" % (unicode(request.user)),
+            "PATH_INFO: %s" % (request.META.get("PATH_INFO", "nor found")),
+            "USER_AGENT: %s" % (request.META.get("HTTP_USER_AGENT", "not found"))])
     header_cs = "utf-8"
     mesg = email.mime.text.MIMEText("\n".join(msg_lines), _charset=header_cs)
     mesg["Subject"] = "Python error"
-    mesg["From"]    = "python-error@init.at"
-    mesg["To"]      = "oekotex@init.at"
+    mesg["From"] = "python-error@init.at"
+    mesg["To"] = "oekotex@init.at"
     srv = smtplib.SMTP()
     srv.connect(settings.MAIL_SERVER, 25)
     srv.sendmail(mesg["From"], mesg["To"].split(","), mesg.as_string())
@@ -193,18 +195,19 @@ def send_emergency_mail(**kwargs):
 
 def update_session_object(request):
     # update request.session_object with user_vars
-    if request.session:
+    if request.session and request.user is not None:
+        # request.session["user_vars"] = dict([(user_var.name, user_var) for user_var in request.user.user_variable_set.all()])
         # copy layout vars from user_vars
         for var_name, attr_name, default in [
-            ("east[isClosed]", "east_closed" , True   ),
-            ("west[isClosed]", "west_closed" , True   ),
+            ("east[isClosed]", "east_closed" , True),
+            ("west[isClosed]", "west_closed" , True),
             ("sidebar_mode"  , "sidebar_mode", "group"),
         ]:
             if var_name in request.session.get("user_vars", {}):
                 request.session[attr_name] = request.session["user_vars"][var_name].value
             else:
                 request.session[attr_name] = default
-    
+
 def contact_server(request, conn_str, send_com, **kwargs):
     result = net_tools.zmq_connection(
         kwargs.get("connection_id", "webfrontend"),

@@ -69,15 +69,12 @@ class sidebar_tree
             active   : {"group" : 0, "fqdn" : 1, "category" : 2}[@initial_mode],
             activate : @activate_tab_jq,
         )
-        @activate_tab(@initial_mode)
+        @activate_tab(@initial_mode, true)
     activate_tab_jq: (event, ui) =>
         @activate_tab(ui.newTab.find("a").attr("href").split("_")[0][1..])
-    activate_tab: (tab_name) =>
-        $.ajax
-            url  : "{% url 'user:set_user_var' %}"
-            data : 
-                key   : "sidebar_mode"
-                value : tab_name
+    activate_tab: (tab_name, first_call=false) =>
+        if not first_call
+            store_user_var("sidebar_mode", tab_name, "str")
         @active_div = @["#{tab_name}_div"]
         if not @active_tabs[tab_name]
             @active_tabs[tab_name] = 1
