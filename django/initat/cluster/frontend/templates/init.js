@@ -21,10 +21,14 @@ class ajax_struct
         if not @top_div.find("ul").length
             @top_div.append($("<ul>"))
         ai_ul = @top_div.find("ul")
+        title_str = settings.title or "pending..."
+        {% if debug %}
+        title_str = "(#{cur_id}) #{title_str}"
+        {% endif %}
         ai_ul.append(
             $("<li>").attr({
                 "id" : cur_id
-            }).text(settings.title or "pending...")
+            }).text(title_str)
         )
         @ajax_dict[cur_id] = {
             "state" : "pending"
@@ -887,7 +891,7 @@ parse_xml_response = (xml, min_level) ->
                 noty({"text" : cur_mes.text(), "type" : "error", "timeout" : false})
     else
         if xml != null
-          noty({"text" : "error parsing response", "type" : "error", "timeout" : false})
+            noty({"text" : "error parsing response", "type" : "error", "timeout" : false})
     return success
 
 # lock all active input elements
@@ -1326,7 +1330,7 @@ load_user_var = (var_name) ->
         success : (xml) ->
             if parse_xml_response(xml)
                 #console.log xml
-                $(xml).find("user_variables user_variable").each (idx, cur_var) ->
+                $(xml).find("user_variable").each (idx, cur_var) =>
                     cur_var = $(cur_var)
                     var_name = cur_var.attr("name")
                     var_type = cur_var.attr("type")
@@ -1337,6 +1341,8 @@ load_user_var = (var_name) ->
                             ret_dict[var_name] = parseInt(cur_var.text())
                         when "b"
                             ret_dict[var_name] = if cur_var.text() == "True" then true else false
+                    # very important for CS
+                    true
     return ret_dict
 
 root.get_value                = get_value
@@ -1362,6 +1368,7 @@ root.store_user_var           = store_user_var
 root.load_user_var            = load_user_var
 root.create_dict              = create_dict
 root.create_dict_unserialized = create_dict_unserialized
+root.my_ajax_struct           = my_ajax_struct
 
 {% endinlinecoffeescript %}
 

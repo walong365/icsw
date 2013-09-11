@@ -139,7 +139,7 @@ class get_rms_json(View):
             "files"      : fc_dict,
         }
         return HttpResponse(json.dumps(json_resp), mimetype="application/json")
-    
+
 class get_run_jobs_xml(View):
     @method_decorator(login_required)
     def post(self, request):
@@ -207,7 +207,7 @@ class get_file_content(View):
                     "file_list",
                     srv_com.builder("file", name=io_element.text),
                     )
-                result = contact_server(request, "tcp://localhost:8004", srv_com, timeout=60)
+                result = contact_server(request, "tcp://localhost:8004", srv_com, timeout=60, connection_id="file_fetch_%s" % (str(job_id)))
                 for cur_file in result.xpath(None, ".//ns:file"):
                     # print etree.tostring(cur_file)
                     if cur_file.attrib["error"] == "1":

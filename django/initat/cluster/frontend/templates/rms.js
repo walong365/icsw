@@ -8,31 +8,70 @@ root = exports ? this
 
 class int_file_info
     # internal file info
-    constructor: (@event, @file_id, @top_div) ->
+    constructor: (@event, @file_id, @top_div, @title_str) ->
     show: () =>
         file_id = @file_id
         @tabs_id = "tabs-#{file_id}"
         if "##{@tabs_id}" in ($(cur_el).attr("href") for cur_el in @top_div.find("ul > li >a"))
             return
+        @tab_index = @top_div.find("ul > li").length
         @tabs_li = $("<li>").append(
-            $("<a>").attr("href", "##{@tabs_id}").text(file_id),
+            $("<a>").attr("href", "##{@tabs_id}").text(@title_str),
             $("<span>").addClass("ui-icon ui-icon-close").text("Close tab").on("click", @close)
         )
          
         @top_div.find("ul").append(@tabs_li)
         @file_div = $("<div>").attr("id", @tabs_id)
-        @file_div.append("text")
+        @header_line = $("<h4>").text("waiting for content ...")
+        @file_div.append(@header_line)
         @top_div.append(@file_div)
         @top_div.tabs("refresh")
-        $(document).everyTime(10000, "reload_tab_#{file_id}", @reload)
+        @cur_cm = undefined
+        @timer_str = "reload_tab_#{file_id}"
+        $(document).everyTime(30000, @timer_str, @reload)
         @reload()
     close: (event) =>
-        $(document).stopTime("reload_tab_#{@file_id}")
+        $(document).stopTime(@timer_str)
         @tabs_li.remove()
         @file_div.remove()
         @top_div.tabs("refresh")
+    update_codemirror: (file_info) =>
+        if not @cur_cm
+            @file_ta = $("<textarea>").text(file_info.text()) 
+            @file_div.append(@file_ta)
+            @top_div.tabs("option", "active", @tab_index)
+            @cur_cm = CodeMirror.fromTextArea(@file_ta[0], {
+                "styleActiveLine" : true,
+                "lineNumbers"     : true,
+                "lineWrapping"    : true,
+                "indentUnit"      : 4,
+                "readOnly"        : true,
+            })
+            @cur_cm.setSize(1024, 600)
+            @cur_cm.refresh()
+            @cur_cm.focus()
+            line_count = @cur_cm.lineCount()
+            @cur_cm.setCursor({line :  line_count, ch : 1})
+        else
+            cur_line = @cur_cm.getCursor()
+            @cur_cm.setValue(file_info.text())
+            @cur_cm.setCursor(cur_line)
+        @header_line.text("File '" + file_info.attr("name") + "', " + file_info.attr("lines") + " lines in " + file_info.attr("size_str"))
     reload: () =>
-        console.log "reload"
+        $.ajax
+            url     : "{% url 'rms:get_file_content' %}"
+            data    :
+                "file_id" : @file_id
+            success : (xml) =>
+                if parse_xml_response(xml)
+                    @update_codemirror($(xml).find("response file_info"))
+                else
+                    $(document).stopTime(@timer_str)
+            error : (xhr, status, except) =>
+                my_ajax_struct.close_connection(xhr.inituuid)
+    activate: () =>
+        if @cur_cm
+            @cur_cm.focus()
 
 class ext_file_info
     # external file info
@@ -76,6 +115,7 @@ class ext_file_info
             "lineNumbers"     : true,
             "lineWrapping"    : true,
             "indentUnit"      : 4,
+            "readOnly"        : true,
         })
         cur_ed.setSize(1024, 600)
         cur_ed.refresh()
@@ -85,6 +125,7 @@ class rms_view
     constructor: (@top_div, @reload_button, @search={}, @collapse_run_wait=false) ->
         @divs = {}
         @tables = {}
+        @extra_tabs = {}
         @expand_dict = {}
         wrap_span = $("<span>").attr("id", "rms_reload_div")
         @reload_button.wrap(wrap_span)
@@ -118,7 +159,9 @@ class rms_view
                         @top_div.append(@divs["run_table"])
                         @top_div.append(@divs["wait_table"])
                     @top_div.append(@divs["node_table"])
-                    @top_div.tabs()
+                    @top_div.tabs(
+                        activate : @activate_tab
+                    )
                     @init_tables()
                     @init_timer()
     build_table_div: (id_str, headers) =>
@@ -136,6 +179,10 @@ class rms_view
         else
             @top_div.find("ul").append($("<li>").append($("<a>").attr("href", "##{id_str}").text(id_str)))
         return new_div
+    activate_tab: (event, ui) =>
+        cur_tab_id = ui.newTab.find("a:first").attr("href")[1..]
+        if cur_tab_id of @extra_tabs
+            @extra_tabs[cur_tab_id].activate()
     change_reload: (event) =>
         cur_el = $(event.target)
         reload = cur_el.is(":checked")
@@ -278,7 +325,7 @@ class rms_view
                         else
                             return "<b>#{val}</b>"
                     "aTargets" : [5],
-                    "sClass"   : "load"
+                    "sClass"   : "load nowrap"
                 }, {
                     "aTargets" : [9, 4],
                     "sClass"   : "nowrap"
@@ -292,10 +339,10 @@ class rms_view
             #@divs[table.attr("id")].width(table.width())
         )
     add_visibility_buttons: (cur_table) =>
+        user_pref = load_user_var("rms_" + cur_table.attr("id") + "*")
         num_cols = cur_table.dataTable().fnSettings().aoColumns.length
         accord_div = $("<div>")
         accord_div.append($("<h3>").text("Table settings"))
-        user_pref = load_user_var("rms_" + cur_table.attr("id") + "*")
         opt_div = $("<div>")
         for idx in [0..num_cols - 1]
             cur_col = cur_table.dataTable().fnSettings().aoColumns[idx]
@@ -386,9 +433,10 @@ class rms_view
         cur_el = $(event.target)
         cur_href = cur_el.attr("href")
         cur_col = @tables["run_table"].dataTable().fnSettings().aoColumns[cur_href.split(":")[1]]
-        console.log cur_col
+        #console.log cur_col
         if true
-            cur_fi = new int_file_info(event, cur_href, @top_div)
+            cur_fi = new int_file_info(event, cur_href, @top_div, cur_href.split(":")[2] + ", " + cur_col.sTitle)
+            @extra_tabs["tabs-#{cur_href}"] = cur_fi
         else
             cur_fi = new ext_file_info(event, cur_href)
         cur_fi.show()
