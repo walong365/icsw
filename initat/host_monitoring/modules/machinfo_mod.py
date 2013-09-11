@@ -304,7 +304,10 @@ class _general(hm_classes.hm_module):
                            extra_block_devs
                 for dl in set(dev_list):
                     try:
-                        cur_bs = int(file("/sys/block/%s/queue/hw_sector_size" % (os.path.basename(dl)), "r").read().strip())
+                        bname = os.path.basename(dl)
+                        if dl.startswith("cciss"):
+                            bname = "cciss!%s" % (bname)
+                        cur_bs = int(file("/sys/block/%s/queue/hw_sector_size" % (bname), "r").read().strip())
                     except:
                         cur_bs = 512
                         self.log("cannot get bs of %s (using %d): %s" % (
