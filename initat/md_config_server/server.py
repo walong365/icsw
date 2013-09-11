@@ -40,6 +40,7 @@ import time
 import uuid_tools
 import zmq
 
+from initat.host_monitoring.hm_classes import mvect_entry
 from initat.md_config_server.config import global_config
 from initat.md_config_server.build import build_process
 from initat.md_config_server.status import status_process
@@ -90,7 +91,6 @@ class server_process(threading_tools.process_pool):
         # self.add_process(db_verify_process("db_verify"), start=True)
         self.add_process(build_process("build"), start=True)
         self.add_process(status_process("status"), start=True)
-        self._init_em()
         self.register_timer(self._check_db, 3600, instant=True)
         self.register_timer(self._check_for_redistribute, 30 if global_config["DEBUG"] else 300)
         self.register_timer(self._update, 30, instant=True)
@@ -100,24 +100,6 @@ class server_process(threading_tools.process_pool):
         self.send_to_process("db_verify", "validate")
     def _check_for_redistribute(self):
         self.send_to_process("build", "check_for_redistribute")
-    def _init_em(self):
-        self.__esd, self.__nvn = ("/tmp/.machvect_es", "nagios_ov")
-        init_ok = False
-        if os.path.isdir(self.__esd):
-            ofile = "%s/%s.mvd" % (self.__esd, self.__nvn)
-            try:
-                file(ofile, "w").write("\n".join([
-                    "nag.tot:0:Number of devices monitored by %s:1:1:1" % (global_config["MD_TYPE"]),
-                    "nag.up:0:Number of devices up:1:1:1",
-                    "nag.down:0:Number of devices down:1:1:1",
-                    "nag.unknown:0:Number of devices unknown:1:1:1",
-                    ""]))
-            except:
-                self.log("cannot write %s: %s" % (ofile, process_tools.get_except_info()),
-                         logging_tools.LOG_LEVEL_ERROR)
-            else:
-                init_ok = True
-        self.__em_ok = init_ok
     def _update(self):
         res_dict = {}
         if self.__enable_livestatus:
@@ -160,22 +142,24 @@ class server_process(threading_tools.process_pool):
                 res_dict["down"],
                 res_dict["unknown"],
                 res_dict["tot"]))
-            if not self.__em_ok:
-                self._init_em()
-            if self.__em_ok:
-                ofile = "%s/%s.mvv" % (self.__esd, self.__nvn)
-                try:
-                    file(ofile, "w").write("\n".join(["nag.tot:i:%d" % (res_dict["tot"]),
-                                                      "nag.up:i:%d" % (res_dict["up"]),
-                                                      "nag.down:i:%d" % (res_dict["down"]),
-                                                      "nag.unknown:i:%d" % (res_dict["unknown"]),
-                                                      ""]))
-                except:
-                    self.log("cannot write to file %s: %s" % (ofile,
-                                                              process_tools.get_except_info()),
-                             logging_tools.LOG_LEVEL_ERROR)
-                else:
-                    pass
+            drop_com = server_command.srv_command(command="set_vector")
+            add_obj = drop_com.builder("values")
+            mv_list = [
+                mvect_entry("mon.devices.up", info="Devices up", default=0),
+                mvect_entry("mon.devices.down", info="Devices down", default=0),
+                mvect_entry("mon.devices.total", info="Devices total", default=0),
+                mvect_entry("mon.devices.unknown", info="Devices unknown", default=0),
+                ]
+            cur_time = time.time()
+            for mv_entry, key in zip(mv_list, ["up", "down", "tot", "unknown"]):
+                mv_entry.update(res_dict[key])
+                mv_entry.valid_until = cur_time + 120
+                add_obj.append(mv_entry.build_xml(drop_com.builder))
+            drop_com["vector_loadsensor"] = add_obj
+            drop_com["vector_loadsensor"].attrib["type"] = "vector"
+            send_str = unicode(drop_com)
+            self.log("sending %d bytes to vector_socket" % (len(send_str)))
+            self.vector_socket.send_unicode(send_str)
         else:
             self.log("empty result dict for _update()", logging_tools.LOG_LEVEL_WARN)
     def _log_config(self):
@@ -492,6 +476,11 @@ class server_process(threading_tools.process_pool):
             self.register_poller(client, zmq.POLLIN, self._recv_command)
             self.com_socket = client
             self.__slaves = {}
+        conn_str = process_tools.get_zmq_ipc_name("vector", s_name="collserver", connect_to_root_instance=True)
+        vector_socket = self.zmq_context.socket(zmq.PUSH)
+        vector_socket.setsockopt(zmq.LINGER, 0)
+        vector_socket.connect(conn_str)
+        self.vector_socket = vector_socket
     def _recv_command(self, zmq_sock):
         in_data = []
         while True:
@@ -553,18 +542,9 @@ class server_process(threading_tools.process_pool):
             self.__msi_block.remove_meta_block()
     def loop_post(self):
         self.com_socket.close()
+        self.vector_socket.close()
         self.__log_template.close()
     def thread_loop_post(self):
-        if self.__em_ok:
-            for f_name in ["%s/%s.mvd" % (self.__esd, self.__nvn),
-                           "%s/%s.mvv" % (self.__esd, self.__nvn)]:
-                if os.path.isfile(f_name):
-                    try:
-                        os.unlink(f_name)
-                    except:
-                        self.log("cannot delete file %s: %s" % (f_name,
-                                                                process_tools.get_except_info()),
-                                 logging_tools.LOG_LEVEL_ERROR)
         process_tools.delete_pid(self.__pid_name)
         if self.__msi_block:
             self.__msi_block.remove_meta_block()
