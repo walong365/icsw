@@ -4002,6 +4002,8 @@ class user(models.Model):
         permissions = (
             ("admin"      , "Administrator", True),
         )
+        # foreign keys to ignore
+        fk_ignore_list = ["user_variable"]
     class Meta:
         db_table = u'user'
         ordering = ("login",)
@@ -4358,12 +4360,14 @@ class wc_files(models.Model):
 
 def get_related_models(in_obj, m2m=False, detail=False, check_all=False):
     used_objs = [] if detail else 0
+    if hasattr(in_obj, "CSW_Meta"):
+        fk_ignore_list = getattr(in_obj.CSW_Meta, "fk_ignore_list", [])
+    else:
+        fk_ignore_list = []
     if check_all:
         ignore_list = []
     else:
-        ignore_list = {
-            "user" : ["user_variable", "sge_user_con", "user_device_login"],
-            }.get(in_obj._meta.object_name, [])
+        ignore_list = fk_ignore_list
     for rel_obj in in_obj._meta.get_all_related_objects():
         rel_field_name = rel_obj.field.name
         if rel_obj.model._meta.object_name not in ignore_list:
