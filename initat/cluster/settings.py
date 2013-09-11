@@ -32,6 +32,8 @@ ADMINS = (
 
 ALLOWED_HOSTS = ["*"]
 
+INTERNAL_IPS = ("127.0.0.1", "192.168.1.173",)
+
 MANAGERS = ADMINS
 
 MAIL_SERVER = "localhost"

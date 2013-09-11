@@ -6,6 +6,7 @@ import logging
 from django.conf import settings
 from django.contrib.auth.decorators import login_required
 from django.utils.decorators import method_decorator
+from django.shortcuts import redirect
 
 logger = logging.getLogger("cluster.render")
 
