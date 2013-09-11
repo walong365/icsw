@@ -209,12 +209,23 @@ class main_config(object):
                     port="0",
                     master_ip=self.master_ip,
                     master_port="%d" % (constants.SERVER_COM_PORT))
+                # Todo ?
                 time.sleep(0.2)
                 self.__build_process.send_command(self.monitor_server.uuid, unicode(srv_com))
                 # send content of /etc
                 dir_offset = len(self.__w_dir_dict["etc"])
-                for cur_dir, dir_names, file_names in os.walk(self.__w_dir_dict["etc"]):
+                for cur_dir, _dir_names, file_names in os.walk(self.__w_dir_dict["etc"]):
                     rel_dir = cur_dir[dir_offset + 1:]
+                    # send a clear_directory message
+                    srv_com = server_command.srv_command(
+                        command="clear_directory",
+                        host="DIRECT",
+                        slave_name=self.__slave_name,
+                        port="0",
+                        version="%d" % (send_version),
+                        directory=os.path.join(self.__r_dir_dict["etc"], rel_dir),
+                        )
+                    self.__build_process.send_command(self.monitor_server.uuid, unicode(srv_com))
                     for cur_file in file_names:
                         full_r_path = os.path.join(self.__w_dir_dict["etc"], rel_dir, cur_file)
                         full_w_path = os.path.join(self.__r_dir_dict["etc"], rel_dir, cur_file)

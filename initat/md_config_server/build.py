@@ -21,8 +21,8 @@
 #
 """ build process for md-config-server """
 
-import sys
 import os
+import sys
 
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "initat.cluster.settings")
 
@@ -656,6 +656,8 @@ class build_process(threading_tools.process_obj):
                         act_host["parents"] = ",".join(parents)
                     act_host["retain_status_information"] = global_config["RETAIN_HOST_STATUS"]
                     act_host["max_check_attempts"] = act_def_dev.max_attempts
+                    act_host["retry_interval"] = act_def_dev.retry_interval
+                    act_host["check_interval"] = act_def_dev.check_interval
                     act_host["notification_interval"] = act_def_dev.ninterval
                     act_host["notification_period"] = cur_gc["timeperiod"][act_def_dev.mon_period_id]["name"]
                     act_host["checks_enabled"] = 1
