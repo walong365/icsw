@@ -2701,12 +2701,20 @@ class mon_device_templ(models.Model):
     name = models.CharField(unique=True, max_length=192)
     mon_service_templ = models.ForeignKey("mon_service_templ")
     host_check_command = models.ForeignKey(host_check_command, null=True)
+    # check interval
+    check_interval = models.IntegerField(default=1)
+    # retry interval
+    retry_interval = models.IntegerField(default=1)
+    # max_check_attempts
     max_attempts = models.IntegerField(null=True, blank=True, default=1)
+    # notification interval
     ninterval = models.IntegerField(null=True, blank=True, default=1)
+    # monitoring period
     mon_period = models.ForeignKey("mon_period", null=True, blank=True)
-    nrecovery = models.BooleanField()
-    ndown = models.BooleanField()
-    nunreachable = models.BooleanField()
+    # Notificiation Flags
+    nrecovery = models.BooleanField(default=False)
+    ndown = models.BooleanField(default=False)
+    nunreachable = models.BooleanField(default=False)
     nflapping = models.BooleanField(default=False)
     nplanned_downtime = models.BooleanField(default=False)
     is_default = models.BooleanField()
@@ -2725,6 +2733,8 @@ class mon_device_templ(models.Model):
             name=self.name,
             host_check_command="%d" % (self.host_check_command_id or 0),
             mon_service_templ="%d" % (self.mon_service_templ_id or 0),
+            check_interval="%d" % (self.check_interval),
+            retry_interval="%d" % (self.retry_interval),
             max_attempts="%d" % (self.max_attempts or 0),
             ninterval="%d" % (self.ninterval or 0),
             mon_period="%d" % (self.mon_period_id or 0),
@@ -2752,10 +2762,12 @@ def mon_device_templ_pre_save(sender, **kwargs):
         if not cur_inst.name.strip():
             raise ValidationError("name must not be zero")
         for attr_name, min_val, max_val in [
-            ("max_attempts", 1, 10),
-            ("ninterval"   , 0, 60 * 24),
+            ("max_attempts"       , 1, 10),
+            ("ninterval"          , 0, 60 * 24),
             ("low_flap_threshold" , 0, 100),
             ("high_flap_threshold", 0, 100),
+            ("check_interval"     , 1, 60),
+            ("retry_interval"     , 1, 60),
             ]:
             _check_integer(cur_inst, attr_name, min_val=min_val, max_val=max_val)
 
