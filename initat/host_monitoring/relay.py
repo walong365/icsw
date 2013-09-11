@@ -1070,6 +1070,24 @@ class relay_code(threading_tools.process_pool):
             ret_com["host"] = self.master_ip
             ret_com["port"] = "%d" % (self.master_port)
             self._send_to_nhm_service(None, ret_com, None, register=False)
+        elif cur_com == "clear_directory":
+            t_dir = srv_com["directory"].text
+            self.log("clearing direcotory %s" % (t_dir))
+            num_rem = 0
+            for entry in os.listdir(t_dir):
+                f_path = os.path.join(t_dir, entry)
+                if os.path.isfile(f_path):
+                    try:
+                        os.unlink(f_path)
+                    except:
+                        self.log("cannot remove %s: %s" % (
+                            f_path,
+                            process_tools.get_except_info()
+                            ),
+                            logging_tools.LOG_LEVEL_ERROR)
+                    else:
+                        num_rem += 1
+            self.log("removed %s in %s" % (logging_tools.get_plural("file", num_rem), t_dir))
         elif cur_com == "call_command":
             # also check for version ? compare with file versions ? deleted files ? FIXME
             cmdline = srv_com["cmdline"].text

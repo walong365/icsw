@@ -1,6 +1,6 @@
 #!/usr/bin/python-init -Ot
 #
-# Copyright (C) 2011 lang-nevyjel@init.at
+# Copyright (C) 2011,2013 lang-nevyjel@init.at
 #
 # Send feedback to: <lang-nevyjel@init.at>
 # 
@@ -18,15 +18,14 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
 
-import sys
 import commands
+import logging_tools
+import os
+import pprint
+import sys
+import time
 from initat.host_monitoring import limits
 from initat.host_monitoring import hm_classes
-import os
-import os.path
-import logging_tools
-import pprint
-import time
 
 HPASM_BIN = "/sbin/hpasmcli"
 

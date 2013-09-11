@@ -322,8 +322,8 @@ class net_device(object):
         cur_time = time.time()
         if cur_time > self.last_update + 30:
             res_dict = {}
-            if self.__check_ibv_devinfo and self.__check_ibv_devinfo:
-                ib_stat, ib_out = commands.getstatusoutput("%s" % (self.ibv_devinfo_path))
+            if self.__check_ibv_devinfo and self.ibv_devinfo_path:
+                ib_stat, ib_out = commands.getstatusoutput("%s -v" % (self.ibv_devinfo_path))
                 cur_port = None
                 if not ib_stat:
                     for line in ib_out.split("\n"):
@@ -340,7 +340,7 @@ class net_device(object):
                                     value = int(value)
                                 res_dict[cur_port][key] = value
             self.last_update = cur_time
-            # extract ib number (hacky stuff, FIXME)
+            # Todo: extract ib number (hacky stuff, FIXME)
             port_num = int(self.name[2])
             self.ibv_results = res_dict.get(port_num + 1)
     def update_ethtool(self):
@@ -456,6 +456,7 @@ class netspeed(object):
                         self[key] = net_device(key, self.nd_mapping, self.ethtool_path, self.ibv_devinfo_path)
                     self[key].feed(value)
                     self[key].update_ethtool()
+                    self[key].update_ibv_devinfo()
             self.__a_time = ntime
 
 class ping_sp_struct(hm_classes.subprocess_struct):
