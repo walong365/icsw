@@ -194,17 +194,19 @@ class sge_info(object):
         self.__job_lut = {}
         self._init_cache()
         # key : (relevance, call)
-        setup_dict = {"hostgroup" : (0, self._check_hostgroup_dict),
-                      "queueconf" : (1, self._check_queueconf_dict),
-                      "complexes" : (2, self._check_complexes_dict),
-                      "qhost"     : (3, self._check_qhost_dict),
-                      "qstat"     : (4, self._check_qstat_dict)}
+        setup_dict = {
+            "hostgroup" : (0, self._check_hostgroup_dict),
+            "queueconf" : (1, self._check_queueconf_dict),
+            "complexes" : (2, self._check_complexes_dict),
+            "qhost"     : (3, self._check_qhost_dict),
+            "qstat"     : (4, self._check_qstat_dict)}
         self.__valid_dicts = [v_key for _bla, v_key in sorted([(rel, key) for key, (rel, _s_call) in setup_dict.iteritems()]) if v_key not in kwargs.get("ignore_dicts", [])]
         self.__update_call_dict = dict([(key, s_call) for key, (rel, s_call) in setup_dict.iteritems()])
         self.__update_pref_dict = dict([(key, kwargs.get("update_pref", {}).get(key, kwargs.get("default_pref", ["direct", "server"]))) for key in self.__valid_dicts])
-        self.__timeout_dicts = dict([(key, {"hostgroup" : 300,
-                                            "qstat"     : 2,
-                                            "qhost"     : 2}.get(key, 120)) for key in self.__valid_dicts])
+        self.__timeout_dicts = dict([(key, {
+            "hostgroup" : 300,
+            "qstat"     : 2,
+            "qhost"     : 2}.get(key, 120)) for key in self.__valid_dicts])
         if self.__is_active:
             self._sanitize_sge_dict()
         self.__job_dict = {}
@@ -1091,6 +1093,7 @@ def build_node_list(s_info, options):
                     E.virtual_tot(act_h.findtext("resourcevalue[@name='virtual_total']") or ""),
                     E.virtual_free(act_h.findtext("resourcevalue[@name='virtual_free']") or "")
                 ])
+            # print etree.tostring(act_h, pretty_print=True)
             cur_node.extend([
                 E.load("%.2f" % (_load_to_float(act_h.findtext("resourcevalue[@name='load_avg']")))),
                 E.slots_used(m_queue.findtext("queuevalue[@name='slots_used']")),
