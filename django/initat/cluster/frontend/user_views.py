@@ -246,7 +246,6 @@ class get_user_var(View):
                 ]
             )
 
-        print var_name, found_uv
 
 class move_node(View):
     @method_decorator(login_required)

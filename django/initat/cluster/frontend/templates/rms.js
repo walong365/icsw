@@ -6,7 +6,36 @@
 
 root = exports ? this
 
-class file_info
+class int_file_info
+    # internal file info
+    constructor: (@event, @file_id, @top_div) ->
+    show: () =>
+        file_id = @file_id
+        @tabs_id = "tabs-#{file_id}"
+        if "##{@tabs_id}" in ($(cur_el).attr("href") for cur_el in @top_div.find("ul > li >a"))
+            return
+        @tabs_li = $("<li>").append(
+            $("<a>").attr("href", "##{@tabs_id}").text(file_id),
+            $("<span>").addClass("ui-icon ui-icon-close").text("Close tab").on("click", @close)
+        )
+         
+        @top_div.find("ul").append(@tabs_li)
+        @file_div = $("<div>").attr("id", @tabs_id)
+        @file_div.append("text")
+        @top_div.append(@file_div)
+        @top_div.tabs("refresh")
+        $(document).everyTime(10000, "reload_tab_#{file_id}", @reload)
+        @reload()
+    close: (event) =>
+        $(document).stopTime("reload_tab_#{@file_id}")
+        @tabs_li.remove()
+        @file_div.remove()
+        @top_div.tabs("refresh")
+    reload: () =>
+        console.log "reload"
+
+class ext_file_info
+    # external file info
     constructor: (@event, @file_id) ->
     show: () =>
         $.ajax
@@ -111,20 +140,15 @@ class rms_view
         cur_el = $(event.target)
         reload = cur_el.is(":checked")
         if reload
-            $(document).everyTime(10000, "reload_page", =>
-                @reload_tables()
-            )
+            $(document).everyTime(10000, "reload_page", @reload_tables)
         else
             $(document).stopTime("reload_page")
     init_timer: () =>
-        $(document).everyTime(10000, "reload_page", =>
-            @reload_tables()
-        )
+        $(document).everyTime(10000, "reload_page", @reload_tables)
         if @reload_button
             @reload_button.on("click", @reload_tables)
         @reload_tables()
     reload_tables: () =>
-        console.log "reload"
         $.ajax
             url      : "{% url 'rms:get_rms_json' %}"
             dataType : "json"
@@ -250,7 +274,6 @@ class rms_view
                                     $("<div>").addClass("load_inner").css("width", parseInt(98 * load / max_load) + "px")
                                 )
                             )
-                            console.log $("<div>").append(ret_el).html()
                             return ret_el.html()
                         else
                             return "<b>#{val}</b>"
@@ -361,7 +384,13 @@ class rms_view
         return $("<div>").append(res_list).html()
     new_file_info: (event) =>
         cur_el = $(event.target)
-        cur_fi = new file_info(event, cur_el.attr("href"))
+        cur_href = cur_el.attr("href")
+        cur_col = @tables["run_table"].dataTable().fnSettings().aoColumns[cur_href.split(":")[1]]
+        console.log cur_col
+        if true
+            cur_fi = new int_file_info(event, cur_href, @top_div)
+        else
+            cur_fi = new ext_file_info(event, cur_href)
         cur_fi.show()
         return false
     control_job: (event) =>
