@@ -957,7 +957,7 @@ get_xml_value = (xml, key) ->
     return ret_value
 
 # create a dictionary from a list of elements
-create_dict = (top_el, id_prefix, use_name=false, django_save=false) ->
+create_dict_unserialized = (top_el, id_prefix, use_name=false, django_save=false) ->
     in_list = top_el.find("input[id^='#{id_prefix}'], select[id^='#{id_prefix}'], textarea[id^='#{id_prefix}']")
     out_dict = {}
     in_list.each (idx, cur_el) ->
@@ -987,6 +987,10 @@ create_dict = (top_el, id_prefix, use_name=false, django_save=false) ->
                 out_dict[key] = sel_field.join("::")
         else
             out_dict[key] = cur_el.attr("value")
+    return out_dict
+    
+create_dict = (top_el, id_prefix, use_name=false, django_save=false) ->
+    out_dict = create_dict_unserialized(top_el, id_prefix, use_name, django_save)
     return $.param(out_dict, traditional=true)
 
 replace_xml_element = (master_xml, xml) ->
@@ -1335,28 +1339,29 @@ load_user_var = (var_name) ->
                             ret_dict[var_name] = if cur_var.text() == "True" then true else false
     return ret_dict
 
-root.get_value             = get_value
-root.set_value             = set_value
-root.draw_setup            = draw_setup
-root.draw_info             = draw_info
-root.draw_link             = draw_link
-root.draw_collapse         = draw_collapse
-root.parse_xml_response    = parse_xml_response
-root.lock_elements         = lock_elements
-root.unlock_elements       = unlock_elements
-root.get_expand_td         = get_expand_td
-root.toggle_config_line_ev = toggle_config_line_ev
-root.get_xml_value         = get_xml_value
-root.create_dict           = create_dict
-root.replace_xml_element   = replace_xml_element
-root.submit_change         = submit_change
-root.force_expansion_state = force_expansion_state
-root.create_input_el       = create_input_el
-root.submitter             = submitter
-root.config_table          = config_table
-root.enter_password        = enter_password
-root.store_user_var        = store_user_var
-root.load_user_var         = load_user_var
+root.get_value                = get_value
+root.set_value                = set_value
+root.draw_setup               = draw_setup
+root.draw_info                = draw_info
+root.draw_link                = draw_link
+root.draw_collapse            = draw_collapse
+root.parse_xml_response       = parse_xml_response
+root.lock_elements            = lock_elements
+root.unlock_elements          = unlock_elements
+root.get_expand_td            = get_expand_td
+root.toggle_config_line_ev    = toggle_config_line_ev
+root.get_xml_value            = get_xml_value
+root.replace_xml_element      = replace_xml_element
+root.submit_change            = submit_change
+root.force_expansion_state    = force_expansion_state
+root.create_input_el          = create_input_el
+root.submitter                = submitter
+root.config_table             = config_table
+root.enter_password           = enter_password
+root.store_user_var           = store_user_var
+root.load_user_var            = load_user_var
+root.create_dict              = create_dict
+root.create_dict_unserialized = create_dict_unserialized
 
 {% endinlinecoffeescript %}
 
