@@ -106,12 +106,9 @@ class var_table
             if cs_com.attr("var_type") == "i"
                 val_kwargs.number = true
         cs_tr.append(
-            create_input_el(cs_com, "name", line_prefix, {master_xml : @DEVICES, enclose_tag : "<td>"})
-        ).append(
-            create_input_el(cs_com, "value", line_prefix, val_kwargs)
-        ).append(
-            create_input_el(cs_com, "is_public", line_prefix, {boolean : true, new_default : true, master_xml : @DEVICES, enclose_tag : "<td>"})
-        ).append(
+            create_input_el(cs_com, "name", line_prefix, {master_xml : @DEVICES, enclose_tag : "<td>"}),
+            create_input_el(cs_com, "value", line_prefix, val_kwargs),
+            create_input_el(cs_com, "is_public", line_prefix, {boolean : true, new_default : true, master_xml : @DEVICES, enclose_tag : "<td>"}),
             create_input_el(cs_com, "description", line_prefix, {master_xml : @DEVICES, enclose_tag : "<td>"})
         )
         cs_tr.append(
