@@ -8,10 +8,11 @@ endif
 
 INSTALL=install
 INSTALLOPTS=-p
+INDENT_OPTIONS=-linux --no-tabs --indent-level4
 
 .SUFFIXES:
 .SUFFIXES: .o .c
-.PHONY: clean all
+.PHONY: clean all indent
 
 comp=gcc
 progs=tell_mother hoststatus tell_mother_zmq hoststatus_zmq
@@ -22,6 +23,12 @@ clean:
 	rm -f *.o $(progs)
 
 all: $(progs)
+
+indent:
+	indent tell_mother.c $(INDENT_OPTIONS)
+	indent hoststatus.c $(INDENT_OPTIONS)
+	indent hoststatus_zmq.c $(INDENT_OPTIONS)
+	indent tell_mother_zmq.c $(INDENT_OPTIONS)
 
 tell_mother: tell_mother.o
 	$(comp) tell_mother.o -o tell_mother
