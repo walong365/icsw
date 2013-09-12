@@ -88,7 +88,7 @@ void try_second_socket(int dummy)
 int main(int argc, char **argv)
 {
     int ret, num, inlen, file, i /*, time */ , port, rchar, verbose, quiet,
-        retcode, timeout, host_written, only_send;
+      retcode, timeout, host_written, only_send, raw;
     struct in_addr sia;
 
     struct hostent *h;
@@ -108,6 +108,7 @@ int main(int argc, char **argv)
     port = 2001;
     verbose = 0;
     quiet = 0;
+    raw = 0;
     host_written = 0;
     h = NULL;
     // get uts struct
@@ -119,7 +120,7 @@ int main(int argc, char **argv)
     only_send = 0;
     sprintf(host_b, "localhost");
     while (1) {
-        rchar = getopt(argc, argv, "+vm:p:ht:qFs");
+        rchar = getopt(argc, argv, "+vm:p:ht:qFsr");
         //printf("%d %c\n", rchar, rchar);
         switch (rchar) {
         case 'p':
@@ -140,10 +141,13 @@ int main(int argc, char **argv)
         case 'q':
             quiet = 1;
             break;
+        case 'r':
+            raw = 1;
+            break;
         case 'h':
         case '?':
             printf
-                ("Usage: %s [-t TIMEOUT] [-m HOST] [-p PORT] [-h] [-v] [-q] command\n",
+                ("Usage: %s [-t TIMEOUT] [-m HOST] [-p PORT] [-h] [-v] [-q] [-r] [-s] command\n",
                  basename(argv[0]));
             printf("  defaults: port=%d, timeout=%d\n", port, timeout);
             free(host_b);
@@ -159,8 +163,8 @@ int main(int argc, char **argv)
     char identity_str[64];
 
     sprintf(identity_str, "%s:%s:%d", myuts.nodename, SERVICE_NAME, getpid());
-    sprintf(send_buffer, ";1;%s;%s;%d;%d;", identity_str, host_b, port,
-            timeout);
+    sprintf(send_buffer, ";2;%s;%s;%d;%d;%d;", identity_str, host_b, port,
+            timeout, raw);
     act_pos = send_buffer;
     if (verbose) {
         printf("argument info (%d found)\n", argc);

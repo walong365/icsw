@@ -52,8 +52,10 @@ class id_discovery(object):
     def __init__(self, srv_com, src_id, xml_input):
         self.port = int(srv_com["port"].text)
         self.host = srv_com["host"].text
-        self.conn_str = "tcp://%s:%d" % (self.host,
-                                         self.port)
+        self.raw_connect = True if int(srv_com.get("raw_connect", "0")) else False
+        self.conn_str = "tcp://%s:%d" % (
+            self.host,
+            self.port)
         self.init_time = time.time()
         self.srv_com = srv_com
         self.src_id = src_id
@@ -66,8 +68,9 @@ class id_discovery(object):
         else:
             id_discovery.pending[self.conn_str] = self
             new_sock = id_discovery.relayer_process.zmq_context.socket(zmq.DEALER)
-            id_str = "relayer_dlr_%s_%s" % (process_tools.get_machine_name(),
-                                            self.src_id)
+            id_str = "relayer_dlr_%s_%s" % (
+                process_tools.get_machine_name(),
+                self.src_id)
             new_sock.setsockopt(zmq.IDENTITY, id_str)
             new_sock.setsockopt(zmq.LINGER, 0)
             new_sock.setsockopt(zmq.SNDHWM, id_discovery.backlog_size)
@@ -78,11 +81,15 @@ class id_discovery(object):
             self.socket = new_sock
             id_discovery.relayer_process.register_poller(new_sock, zmq.POLLIN, self.get_result)
             # id_discovery.relayer_process.register_poller(new_sock, zmq.POLLIN, self.error)
-            dealer_message = server_command.srv_command(command="get_0mq_id")
-            dealer_message["target_ip"] = self.host
             self.socket.connect(self.conn_str)
-            self.log("send discovery message")
-            self.socket.send_unicode(unicode(dealer_message))
+            if self.raw_connect:
+                self.log("send raw discovery message")
+                self.socket.send_unicode("get_0mq_id")
+            else:
+                self.log("send discovery message")
+                dealer_message = server_command.srv_command(command="get_0mq_id")
+                dealer_message["target_ip"] = self.host
+                self.socket.send_unicode(unicode(dealer_message))
     def send_return(self, error_msg):
         self.log(error_msg, logging_tools.LOG_LEVEL_ERROR)
         dummy_mes = host_message(self.srv_com["command"].text, self.src_id, self.srv_com, self.xml_input)
@@ -96,13 +103,17 @@ class id_discovery(object):
         self.log("got error for socket", logging_tools.LOG_LEVEL_ERROR)
         time.sleep(1)
     def get_result(self, zmq_sock):
-        cur_reply = server_command.srv_command(source=zmq_sock.recv())
         if self.conn_str in id_discovery.last_try:
             del id_discovery.last_try[self.conn_str]
         try:
-            zmq_id = cur_reply["zmq_id"].text
+            if self.raw_connect:
+                # only valid for hoststatus, FIXME
+                zmq_id = etree.fromstring(zmq_sock.recv()).findtext("nodestatus")
+            else:
+                cur_reply = server_command.srv_command(source=zmq_sock.recv())
+                zmq_id = cur_reply["zmq_id"].text
         except:
-            self.send_return("error extracting 0MQ id: %s" % (process_tools.get_except_info()))
+            self.send_return("error extracting 0MQ id (discovery): %s" % (process_tools.get_except_info()))
         else:
             if zmq_id in id_discovery.reverse_mapping and self.host not in id_discovery.reverse_mapping[zmq_id]:
                 self.log("0MQ is %s but already used by %s: %s" % (
@@ -696,14 +707,14 @@ class relay_code(threading_tools.process_pool):
             self.__msi_block.save_block()
     def _check_timeout(self):
         host_connection.check_timeout_g()
-        # check nhm timeouts
         cur_time = time.time()
+        # check nhm timeouts
         del_list = []
         for key, value in self.__nhm_dict.iteritems():
             if abs(value[0] - cur_time) > self.__global_timeout:
                 del_list.append(key)
                 self._send_result(value[1]["identity"].text,
-                                  "error timeout",
+                                  "error timeout (cto)",
                                   server_command.SRV_REPLY_STATE_ERROR)
         if del_list:
             self.log("removing %s: %s" % (logging_tools.get_plural("nhm key", len(del_list)),
@@ -711,6 +722,20 @@ class relay_code(threading_tools.process_pool):
                      logging_tools.LOG_LEVEL_ERROR)
             for key in del_list:
                 del self.__nhm_dict[key]
+        # check raw_nhm timeouts
+        del_list = []
+        for key, value in self.__raw_nhm_dict.iteritems():
+            if abs(value[0] - cur_time) > self.__global_timeout:
+                del_list.append(key)
+                self._send_result(value[1]["identity"].text,
+                                  "error timeout (rcto)",
+                                  server_command.SRV_REPLY_STATE_ERROR)
+        if del_list:
+            self.log("removing %s: %s" % (logging_tools.get_plural("raw nhm key", len(del_list)),
+                                          ", ".join(sorted(del_list))),
+                     logging_tools.LOG_LEVEL_ERROR)
+            for key in del_list:
+                del self.__raw_nhm_dict[key]
         # check delayed
         cur_time = time.time()
         new_list = []
@@ -747,6 +772,8 @@ class relay_code(threading_tools.process_pool):
         self.__num_messages = 0
         # nhm (not host monitoring) dictionary for timeout
         self.__nhm_dict = {}
+        # raw_nhm (not host monitoring) dictionary for timeout, raw connections (no XML)
+        self.__raw_nhm_dict = {}
         self.__nhm_connections = set()
         sock_list = [("ipc", "receiver", zmq.PULL, 2),
                      ("ipc", "sender"  , zmq.PUB , 1024)]
@@ -898,14 +925,18 @@ class relay_code(threading_tools.process_pool):
                     parts = data.split(";", 3)
                     # insert default timeout of 10 seconds
                     parts.insert(3, "10")
-                else:
+                    parts.insert(4, "0")
+                elif proto_version == 1:
                     parts = data.split(";", 4)
+                    parts.insert(4, "0")
+                else:
+                    parts = data.split(";", 5)
                 src_id = parts.pop(0)
                 # parse new format
-                if parts[3].endswith(";"):
-                    com_part = parts[3][:-1]
+                if parts[4].endswith(";"):
+                    com_part = parts[4][:-1]
                 else:
-                    com_part = parts[3]
+                    com_part = parts[4]
                 # iterative parser
                 try:
                     arg_list = []
@@ -922,6 +953,7 @@ class relay_code(threading_tools.process_pool):
                         srv_com["host"] = parts[0]
                         srv_com["port"] = parts[1]
                         srv_com["timeout"] = parts[2]
+                        srv_com["raw_connect"] = parts[3]
                         for arg_index, arg in enumerate(arg_list):
                             srv_com["arguments:arg%d" % (arg_index)] = arg
                         srv_com["arg_list"] = " ".join(arg_list)
@@ -1155,14 +1187,20 @@ class relay_code(threading_tools.process_pool):
                     self.__nhm_connections.add(conn_str)
             if connected:
                 try:
-                    self.client_socket.send_unicode(id_discovery.get_mapping(conn_str), zmq.SNDMORE | zmq.DONTWAIT)
-                    self.client_socket.send_unicode(unicode(srv_com), zmq.DONTWAIT)
+                    if int(srv_com.get("raw_connect", "0")):
+                        self.client_socket.send_unicode(id_discovery.get_mapping(conn_str), zmq.SNDMORE | zmq.DONTWAIT)
+                        self.client_socket.send_unicode(srv_com["command"].text, zmq.DONTWAIT)
+                    else:
+                        self.client_socket.send_unicode(id_discovery.get_mapping(conn_str), zmq.SNDMORE | zmq.DONTWAIT)
+                        self.client_socket.send_unicode(unicode(srv_com), zmq.DONTWAIT)
                 except:
                     self._send_result(src_id, "error sending to %s: %s" % (
                         conn_str,
                         process_tools.get_except_info()), server_command.SRV_REPLY_STATE_CRITICAL)
                 else:
-                    if kwargs.get("register", True):
+                    if int(srv_com.get("raw_connect", "0")):
+                        self.__raw_nhm_dict[id_discovery.get_mapping(conn_str)] = (time.time(), srv_com)
+                    elif kwargs.get("register", True):
                         self.__nhm_dict[srv_com["identity"].text] = (time.time(), srv_com)
         elif id_discovery.is_pending(conn_str):
             self._send_result(src_id, "0mq discovery in progress", server_command.SRV_REPLY_STATE_CRITICAL)
@@ -1179,16 +1217,28 @@ class relay_code(threading_tools.process_pool):
             if not zmq_sock.getsockopt(zmq.RCVMORE):
                 break
         if len(data) == 2:
-            srv_result = server_command.srv_command(source=data[1])
-            cur_id = srv_result["identity"].text
-            if cur_id in self.__nhm_dict:
-                del self.__nhm_dict[cur_id]
-                self._send_result(cur_id,
-                                  srv_result["result"].attrib["reply"],
-                                  int(srv_result["result"].attrib["state"]))
+            if data[0] in self.__raw_nhm_dict:
+                srv_result = etree.fromstring(data[1])
+                srv_com = self.__raw_nhm_dict[data[0]][1]
+                cur_id = srv_com["identity"].text
+                self._send_result(cur_id, srv_result.findtext("nodestatus"), limits.nag_STATE_OK)
+                del self.__raw_nhm_dict[data[0]]
             else:
-                self.log("received nhm-result for unknown id '%s', ignoring" % (cur_id),
-                         logging_tools.LOG_LEVEL_ERROR)
+                srv_result = server_command.srv_command(source=data[1])
+                if "identity" in srv_result:
+                    cur_id = srv_result["identity"].text
+                    if cur_id in self.__nhm_dict:
+                        del self.__nhm_dict[cur_id]
+                        self._send_result(
+                            cur_id,
+                            srv_result["result"].attrib["reply"],
+                            int(srv_result["result"].attrib["state"]))
+                    else:
+                        self.log("received nhm-result for unknown id '%s', ignoring" % (cur_id),
+                                 logging_tools.LOG_LEVEL_ERROR)
+                else:
+                    self.log("no identity-tag found in result",
+                        logging_tools.LOG_LEVEL_ERROR)
     def _send_to_old_client(self, src_id, srv_com, xml_input):
         conn_str = "tcp://%s:%d" % (srv_com["host"].text,
                                     int(srv_com["port"].text))
