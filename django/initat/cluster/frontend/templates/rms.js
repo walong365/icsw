@@ -39,7 +39,7 @@ class int_file_info
         if not @cur_cm
             @file_ta = $("<textarea>").text(file_info.text()) 
             @file_div.append(@file_ta)
-            @top_div.tabs("option", "active", @tab_index)
+            @top_div.tabs("option", "reload active", @tab_index)
             @cur_cm = CodeMirror.fromTextArea(@file_ta[0], {
                 "styleActiveLine" : true,
                 "lineNumbers"     : true,
