@@ -95,6 +95,7 @@ class write_nameserver_config(cs_base_class.server_com):
                      "  datasize default;",
                      "  stacksize default;",
                      "  coresize default;",
+                     "  empty-zones-enable no;",
                      # "  files unlimited;",
                      "  auth-nxdomain no;"]
         forwarders = [act_conf_dict[key].value for key in act_conf_dict.iterkeys() if key.startswith("FORWARDER")]
