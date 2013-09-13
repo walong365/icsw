@@ -5,7 +5,7 @@
 # Send feedback to: <lang-nevyjel@init.at>
 #
 # this file belongs to host-monitoring
-# 
+#
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License Version 2 as
 # published by the Free Software Foundation.
@@ -43,31 +43,31 @@ from initat.host_monitoring import hm_classes
 MACHVECTOR_NAME = "machvector.xml"
 ALERT_NAME = "alert"
 COLLECTOR_PORT = 8002
-                            
+
 MONITOR_OBJECT_INFO_LIST = ["load", "mem", "net", "vms", "num"]
 MAX_MONITOR_OBJECTS = 10
 
 # collectd stuff, not needed
 
-MAX_PACKET_SIZE = 1024  # bytes
+MAX_PACKET_SIZE = 1024 # bytes
 PLUGIN_TYPE = "gauge"
 
-TYPE_HOST            = 0x0000
-TYPE_TIME            = 0x0001
-TYPE_PLUGIN          = 0x0002
+TYPE_HOST = 0x0000
+TYPE_TIME = 0x0001
+TYPE_PLUGIN = 0x0002
 TYPE_PLUGIN_INSTANCE = 0x0003
-TYPE_TYPE            = 0x0004
-TYPE_TYPE_INSTANCE   = 0x0005
-TYPE_VALUES          = 0x0006
-TYPE_INTERVAL        = 0x0007
+TYPE_TYPE = 0x0004
+TYPE_TYPE_INSTANCE = 0x0005
+TYPE_VALUES = 0x0006
+TYPE_INTERVAL = 0x0007
 
 LONG_INT_CODES = [TYPE_TIME, TYPE_INTERVAL]
 
 STRING_CODES = [TYPE_HOST, TYPE_PLUGIN, TYPE_PLUGIN_INSTANCE, TYPE_TYPE, TYPE_TYPE_INSTANCE]
 
-VALUE_COUNTER  = 0
-VALUE_GAUGE    = 1
-VALUE_DERIVE   = 2
+VALUE_COUNTER = 0
+VALUE_GAUGE = 1
+VALUE_DERIVE = 2
 VALUE_ABSOLUTE = 3
 
 VALUE_CODES = {
@@ -111,16 +111,16 @@ def message_start(when, host, plugin_name, interval):
 
 def messages(counts):
     packets = []
-    #print etree.tostring(counts, pretty_print=True)
+    # print etree.tostring(counts, pretty_print=True)
     start = message_start(int(counts.attrib["time"]), counts.attrib["name"], "collserver", int(counts.get("interval")) * 1.2)
     if int(counts.attrib["simple"]):
         parts = [pack(mve.attrib["n"], int(float(mve.attrib["v"]))) for mve in counts.findall(".//m")]
     else:
         parts = [pack("%s:info" % (mve.attrib["name"]), mve.attrib["info"]) for mve in counts.findall(".//mve")] + \
             [pack(mve.attrib["name"], int(float(mve.attrib["value"]))) for mve in counts.findall(".//mve")]
-    #print parts
-    #parts = [p for p in parts if len(start) + len(p) <= MAX_PACKET_SIZE]
-    #print len(parts)
+    # print parts
+    # parts = [p for p in parts if len(start) + len(p) <= MAX_PACKET_SIZE]
+    # print len(parts)
     if parts:
         curr, curr_len = ([start], len(start))
         for part in parts:
@@ -130,7 +130,7 @@ def messages(counts):
             curr.append(part)
             curr_len += len(part)
         packets.append("".join(curr))
-    #print len(packets), [len(x) for x in packets]
+    # print len(packets), [len(x) for x in packets]
     return packets
 
 def sanitize(s):
@@ -176,136 +176,6 @@ class get_mvector_command(hm_classes.hm_command):
             ret_array.extend(unicode(out_list).split("\n"))
             return limits.nag_STATE_OK, "\n".join(ret_array)
 
-class get_mvector_stats_command(hm_classes.hmb_command):
-    def __init__(self, **args):
-        hm_classes.hmb_command.__init__(self, "get_mvector_stats", **args)
-        self.help_str = "returns machine vector transferinformations"
-        self.net_only = True
-    def server_call(self, cm):
-        try:
-            return "ok %s" % (hm_classes.sys_to_net(self.module_info.send_thread("get_mvector_stats")))
-        except:
-            return "error %s" % (process_tools.get_except_info())
-    def client_call(self, result, parsed_coms):
-        ret_state = limits.nag_STATE_CRITICAL
-        if result.startswith("ok "):
-            cmp_s = hm_classes.net_to_sys(result[3:])
-            if cmp_s.has_key("num_con"):
-                # old client
-                num_con = cmp_s["num_con"]
-                num_fail = cmp_s["num_fail"]
-                num_ok = cmp_s["num_ok"]
-                dhost = cmp_s["host"]
-                dport = cmp_s["port"]
-                if num_con:
-                    if num_fail == 0:
-                        ret_state = limits.nag_STATE_OK
-                        ret_str = "OK: all %d connections to host %s (port %d) successful" % (num_con, dhost, dport)
-                    elif num_ok == 0:
-                        ret_state = limits.nag_STATE_CRITICAL
-                        ret_str = "Error: all %d connections to host %s (port %d) failed" % (num_con, dhost, dport)
-                    else:
-                        ret_state = limits.nag_STATE_WARNING
-                        ret_str = "Warning: of %d connections to host %s (port %d) %d were ok, %d failed" % (num_con, dhost, dport, num_ok, num_fail)
-                else:
-                    ret_state = limits.nag_STATE_OK
-                    if dhost == "None":
-                        ret_str = "No destination host given"
-                    else:
-                        ret_str = "Destination host is %s (port %d)" % (dhost, dport)
-                ret_str += ", %d updates, send interval is %d, update timestep is %.2f" % (
-                    cmp_s["num_updates"],
-                    cmp_s["send_iv"],
-                    cmp_s["up_step"])
-            else:
-                head_str = "# of iterations is %d, max. send_interval is %d, connecting to %d servers" % (cmp_s["num_updates"], cmp_s["send_interval"], len(cmp_s["hosts"].keys()))
-                h_array = ["to host %-20s, %3s port %5d, connections/ok/fail : %d / %d / %d" % (
-                    host_stuff["host"],
-                    host_stuff["mode"],
-                    host_stuff["port"],
-                    host_stuff["num_con"],
-                    host_stuff["num_ok"],
-                    host_stuff["num_fail"]) for _h, host_stuff in cmp_s["hosts"].iteritems()]
-                ret_state = limits.nag_STATE_OK
-                ret_str = "\n".join([head_str] + [" - %s" % (x) for x in h_array])
-        else:
-            ret_str = "error : %s" % (result)
-        return ret_state, ret_str
-
-class start_monitor_command(hm_classes.hmb_command):
-    def __init__(self, **args):
-        hm_classes.hmb_command.__init__(self, "start_monitor", **args)
-        self.help_str = "starts a monitor thread of device parameters"
-        self.net_only = True
-    def server_call(self, cm):
-        if not cm:
-            return "error need monitor_id"
-        else:
-            return self.module_info.send_thread(("start_monitor", cm[0]))
-    def client_call(self, result, parsed_coms):
-        if result.startswith("ok"):
-            return limits.nag_STATE_OK, result
-        else:
-            return limits.nag_STATE_CRITICAL, result
-
-class stop_monitor_command(hm_classes.hmb_command):
-    def __init__(self, **args):
-        hm_classes.hmb_command.__init__(self, "stop_monitor", **args)
-        self.help_str = "stops a monitor thread of device parameters"
-        self.net_only = True
-    def server_call(self, cm):
-        if not cm:
-            return "error need monitor_id"
-        else:
-            return self.module_info.send_thread(("stop_monitor", cm[0]))
-    def client_call(self, result, parsed_coms):
-        if result.startswith("ok"):
-            return limits.nag_STATE_OK, result
-        else:
-            return limits.nag_STATE_CRITICAL, result
-
-class monitor_info_command(hm_classes.hmb_command):
-    def __init__(self, **args):
-        hm_classes.hmb_command.__init__(self, "monitor_info", **args)
-        self.help_str = "returns info about a given monitor thread"
-        self.net_only = True
-    def server_call(self, cm):
-        if not cm:
-            return "error need monitor_id"
-        else:
-            return self.module_info.send_thread(("monitor_info", cm[0]))
-    def client_call(self, result, parsed_coms):
-        if result.startswith("ok") or result.startswith("cok"):
-            in_dict = hm_classes.net_to_sys(result[3:])
-            data_dict = in_dict["cache"]
-            in_keys = sorted(data_dict.keys())
-            # check for old or new-style monitor_info
-            if in_dict.has_key("cache") and type(in_dict["cache"].values()[0]) == type({}):
-                # old style
-                ret_f = ["ok got %s, collecting data since %s" % (logging_tools.get_plural("parameter", len(in_keys)), time.ctime(in_dict["start_time"]))]
-                ret_f.append("%-45s %6s %s" % ("Key", "count", " ".join(["%21s" % ("%s value" % (x.title())) for x in ["min", "mean", "max"]])))
-                for in_key in in_keys:
-                    in_val = data_dict[in_key]
-                    if in_val.get("num", 0):
-                        in_val["mean"] = in_val["tot"] / in_val["num"]
-                    else:
-                        in_val["mean"] = 0
-                    loc_f = []
-                    for v_t in ["min", "mean", "max"]:
-                        in_val["v"] = in_val[v_t]
-                        loc_f.append("%s %1s%-6s" % pretty_print2(in_val))
-                    ret_f.append("%-45s %6d %s" % (".".join(["%-10s" % (x) for x in in_key.split(".")]), in_val["num"], " ".join(loc_f)))
-                return limits.nag_STATE_OK, "\n".join(ret_f)
-            else:
-                # new style
-                ret_f = ["ok got %s, collecting data since %s" % (logging_tools.get_plural("parameter", len(in_keys)), time.ctime(in_dict["start_time"]))]
-                out_list = logging_tools.new_form_list()
-                for mv_key in in_keys:
-                    out_list.append(data_dict[mv_key].get_monitor_form_entry())
-                return limits.nag_STATE_OK, "\n".join(ret_f + str(out_list).split("\n"))
-        else:
-            return limits.nag_STATE_CRITICAL, result
-
 class alert_object(object):
     def __init__(self, key, logger, num_dp, th_class, th, command):
         self.__key = key
@@ -340,8 +210,8 @@ class alert_object(object):
                 lines = [x.rstrip() for x in out.split("\n") if x.rstrip()]
                 self.log("*** calling command '%s' returned %d (%s):" % (act_com, stat, logging_tools.get_plural("line", len(lines))))
                 for line in lines:
-                    self.log("*** - %s" %(line))
-        #print self.__key, self.__val_buffer
+                    self.log("*** - %s" % (line))
+        # print self.__key, self.__val_buffer
     def log(self, what):
         self.__logger.info("[mvect / ao %s, cl %s] %s" % (self.__key, self.__th_class, what))
 
@@ -353,7 +223,7 @@ class machine_vector(object):
         # actual keys, last keys
         self.__act_keys = set()
         # init external_sources
-        #self.__alert_dict, self.__alert_dict_time = ({}, time.time())
+        # self.__alert_dict, self.__alert_dict_time = ({}, time.time())
         # key is in fact the timestamp
         self.__act_key, self.__changed = (0, True)
         self.__verbosity = module.process_pool.global_config["VERBOSE"]
@@ -402,7 +272,7 @@ class machine_vector(object):
                 mv_target.attrib["sent"] = "0"
                 p_pool.register_timer(self._send_vector, int(mv_target.get("send_every", "30")), data=send_id, instant=int(mv_target.get("immediate", "0")) == 1)
                 # zmq sending, not needed any more (now using UDP/collectd)
-                if True:#False:
+                if True: # False:
                     t_sock = p_pool.zmq_context.socket(zmq.PUSH)
                     t_sock.setsockopt(zmq.LINGER, 0)
                     t_sock.setsockopt(zmq.SNDHWM, 16)
@@ -421,7 +291,7 @@ class machine_vector(object):
                 self.__socket_dict[send_id] = t_sock
         self.__xml_struct = xml_struct
         module.process_pool.register_vector_receiver(self._recv_vector)
-        #self.__module_dict = module_dict
+        # self.__module_dict = module_dict
         for module in module.process_pool.module_list:
             if hasattr(module, "init_machine_vector"):
                 if self.__verbosity:
@@ -471,7 +341,7 @@ class machine_vector(object):
                     t_host,
                     t_port,
                     process_tools.get_except_info()), logging_tools.LOG_LEVEL_ERROR)
-        #print etree.tostring(send_vector, pretty_print=True)
+        # print etree.tostring(send_vector, pretty_print=True)
     def close(self):
         for _s_id, t_sock in self.__socket_dict.iteritems():
             t_sock.close()
@@ -525,7 +395,7 @@ class machine_vector(object):
     def unregister_entry(self, name):
         self.__changed = True
         if self.__act_dict.has_key(name):
-            #print "Unregister "+name
+            # print "Unregister "+name
             del self.__act_dict[name]
         else:
             self.log("Error: entry %s not defined" % (name), logging_tools.LOG_LEVEL_ERROR)
@@ -563,17 +433,17 @@ class machine_vector(object):
             if new_key == self.__act_key:
                 new_key += 1
             self.__act_key = new_key
-            new_keys  = self.__act_keys - last_keys
+            new_keys = self.__act_keys - last_keys
             lost_keys = last_keys - self.__act_keys
             if new_keys:
                 self.log("%s:" % (logging_tools.get_plural("new key", len(new_keys))))
                 self.log(self.optimize_list(new_keys))
-                #for key_num, key in enumerate(sorted(new_keys)):
+                # for key_num, key in enumerate(sorted(new_keys)):
                 #    self.log(" %3d : %s" % (key_num, key))
             if lost_keys:
                 self.log("%s:" % (logging_tools.get_plural("lost key", len(lost_keys))))
                 self.log(self.optimize_list(lost_keys))
-                #for key_num, key in enumerate(sorted(lost_keys)):
+                # for key_num, key in enumerate(sorted(lost_keys)):
                 #    self.log(" %3d : %s" % (key_num, key))
             self.log("Machine_vector has changed, setting actual key to %d (%d keys)" % (self.__act_key, len(self.__act_dict)))
     def check_timeout(self):
@@ -602,25 +472,25 @@ class machine_vector(object):
         return mach_vect
     def get_send_mvector(self):
         return (time.time(), self.__act_key, [self.__act_dict[key].value for key in self.__act_keys])
-    #def flush_cache(self, name):
+    # def flush_cache(self, name):
     #    self.__dict_list[name] = []
     def get_actual_key(self):
         return self.__act_key
     def get_act_dict(self):
         return self.__act_dict
-    def update(self):#, esd=""):
+    def update(self): # , esd=""):
         self.check_changed()
         # copy ref_dict to act_dict
         [value.update_default() for value in self.__act_dict.itervalues()]
         self.check_timeout()
-        #if esd:
+        # if esd:
         #    self.check_external_sources(log_t, esd)
-        #self.check_for_alert_file_change(log_t)
+        # self.check_for_alert_file_change(log_t)
         for module in self.module.process_pool.module_list:
             if hasattr(module, "update_machine_vector"):
                 module.update_machine_vector(self)
         self.check_changed()
-        #self.check_for_alerts(log_t)
+        # self.check_for_alerts(log_t)
 
 class monitor_object(object):
     def __init__(self, name):
@@ -668,14 +538,14 @@ def pretty_print2(value):
     else:
         val = "%13.2f" % (act_v)
     return val, p_str, unit
-    
+
 def build_info_string(ref, info):
     ret_str = info
     refp = ref.split(".")
     for idx in range(len(refp)):
         ret_str = ret_str.replace("$%d" % (idx + 1), refp[idx])
     return ret_str
-    
+
 if __name__ == "__main__":
     print "Not an executable python script, exiting..."
     sys.exit(-2)

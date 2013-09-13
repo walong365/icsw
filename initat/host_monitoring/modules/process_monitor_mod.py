@@ -3,7 +3,7 @@
 # Copyright (C) 2001,2002,2003,2004,2005,2006,2007,2009,2010,2011,2012,2013 Andreas Lang-Nevyjel, init.at
 #
 # Send feedback to: <lang-nevyjel@init.at>
-# 
+#
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License Version 2 as
 # published by the Free Software Foundation.
@@ -18,22 +18,104 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
 
-import sys
+import affinity_tools
+import commands
+import logging_tools
 import os
+import pprint
+import process_tools
 import re
 import signal
-import commands
-import pprint
-import logging_tools
-import process_tools
-import threading_tools
+import sys
+import time
+
+from initat.host_monitoring.config import global_config
 from initat.host_monitoring import limits
 from initat.host_monitoring import hm_classes
-from lxml import etree
+from lxml import etree # @UnresolvedImport
 
 MIN_UPDATE_TIME = 10
 
+# for affinity
+AFFINITY_FILE = "/etc/sysconfig/host-monitoring.d/affinity_list"
+HZ = 100
+
+class affinity_struct(object):
+    def __init__(self, log_com, af_re):
+        self.log_com = log_com
+        self.affinity_re = af_re
+        self.log("init")
+        self.dict = {}
+        self.last_update = None
+    def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
+        self.log_com("[as] %s" % (what), log_level)
+    def feed(self, p_dict):
+        cur_time = time.time()
+        proc_keys = set([key for key, value in p_dict.iteritems() if self.affinity_re.match(value["name"])])
+        used_keys = set(self.dict.keys())
+        new_keys = proc_keys - used_keys
+        old_keys = used_keys - proc_keys
+        if new_keys:
+            self.log("%s: %s" % (logging_tools.get_plural("new key", len(new_keys)), ", ".join(["%d" % (new_key) for new_key in sorted(new_keys)])))
+            for new_key in new_keys:
+                self.dict[new_key] = affinity_tools.proc_struct(new_key, stat=p_dict[new_key]["stat_info"])
+                if self.dict[new_key].single_cpu_set:
+                    self.log("process %d is already pinned to cpu %d" % (new_key, self.dict[new_key].single_cpu_num))
+        if old_keys:
+            self.log("%s: %s" % (logging_tools.get_plural("old key", len(old_keys)), ", ".join(["%d" % (old_key) for old_key in sorted(old_keys)])))
+            for old_key in old_keys:
+                del self.dict[old_key]
+        if self.last_update:
+            diff_time = max(1, abs(cur_time - self.last_update))
+            # print diff_time, proc_keys, used_keys
+            sched_keys = set()
+            for key in proc_keys & used_keys:
+                try:
+                    self.dict[key].feed(p_dict[key]["stat_info"], diff_time * HZ)
+                except:
+                    self.log("error updating %d: %s" % (key, process_tools.get_except_info()), logging_tools.LOG_LEVEL_ERROR)
+                    self.dict[key].usage = None
+                else:
+                    sched_keys.add(key)
+            if sched_keys:
+                self._reschedule(sched_keys)
+        self.last_update = cur_time
+    def _reschedule(self, keys):
+        cpu_c = affinity_tools.cpu_container()
+        unsched = set()
+        for key in keys:
+            cur_s = self.dict[key]
+            if cur_s.single_cpu_set:
+                cpu_c.add_proc(cur_s)
+            else:
+                unsched.add(key)
+        # print unsched
+        for key in unsched:
+            cur_s = self.dict[key]
+            # print key, cur_s
+            targ_cpu = cpu_c.get_min_usage_cpu()
+            self.log("pinning process %d to cpu %d" % (key, targ_cpu))
+            if not cur_s.migrate(targ_cpu):
+                cur_s.read_mask()
+                if cur_s.single_cpu_set:
+                    cpu_c.add_proc(cur_s)
+
 class _general(hm_classes.hm_module):
+    def init_module(self):
+        self.check_affinity = global_config["AFFINITY"]
+        self.log("affinity check is %s" % ("enabled" if self.check_affinity else "disabled"))
+        self.__affinity_dict = {}
+        if self.check_affinity:
+            self.affinity_set = set()
+            if os.path.isfile(AFFINITY_FILE):
+                self.affinity_set = set([line.strip() for line in file(AFFINITY_FILE, "r").read().split("\n") if line.strip() and not line.strip().startswith("#")])
+            if self.affinity_set:
+                self.log("affinity_set (%d): %s" % (len(self.affinity_set), ",".join(self.affinity_set)))
+                affinity_re = re.compile("|".join(["(%s)" % (line) for line in self.affinity_set]))
+                self.af_struct = affinity_struct(self.log, affinity_re)
+            else:
+                self.log("affinity_set is empty (%s not present?)" % (AFFINITY_FILE), logging_tools.LOG_LEVEL_ERROR)
+                self.check_affinity = False
     def init_machine_vector(self, mv):
         mv.register_entry("proc.total"          , 0, "total number of processes")
         mv.register_entry("proc.run"            , 0, "number of running processes")
@@ -44,18 +126,20 @@ class _general(hm_classes.hm_module):
         mv.register_entry("proc.paging"         , 0, "processes paging")
         mv.register_entry("proc.dead"           , 0, "processes dead")
     def update_machine_vector(self, mv):
-        pdict = process_tools.get_proc_list()
+        pdict = process_tools.get_proc_list(add_stat_info=self.check_affinity)
+        if self.check_affinity:
+            self.af_struct.feed(pdict)
         pids = pdict.keys()
         sl_list = [
-            ("R", "run"            ),
-            ("Z", "zombie"         ),
+            ("R", "run"),
+            ("Z", "zombie"),
             ("D", "uninterruptible"),
-            ("T", "traced"         ),
-            ("S", "sleeping"       ),
-            ("W", "paging"         ),
-            ("X", "dead"           )]
+            ("T", "traced"),
+            ("S", "sleeping"),
+            ("W", "paging"),
+            ("X", "dead")]
         n_dict = dict([(key[0], 0) for key in sl_list])
-        mem_mon_procs = []#self.__short_mon_procs
+        mem_mon_procs = [] # self.__short_mon_procs
         mem_found_procs = {}
         for p_stuff in pdict.values():
             if n_dict.has_key(p_stuff["state"]):
@@ -69,11 +153,11 @@ class _general(hm_classes.hm_module):
                 logging_tools.LOG_LEVEL_ERROR)
             if p_stuff.get("name", "") in mem_mon_procs:
                 mem_found_procs.setdefault(p_stuff["name"], []).append(p_stuff["pid"])
-##         print "-"
-##         if new_mems or del_mems:
-##             print new_mems, del_mems
-##             print mem_found_dict["collserver"]
-##             print mem_found_procs["collserver"]
+# #         print "-"
+# #         if new_mems or del_mems:
+# #             print new_mems, del_mems
+# #             print mem_found_dict["collserver"]
+# #             print mem_found_procs["collserver"]
         for short, l_info in sl_list:
             mv["proc.%s" % (l_info)] = n_dict[short]
         mv["proc.total"] = len(pids)
@@ -93,7 +177,7 @@ class procstat_command(hm_classes.hm_command):
             srv_com["process_tree"] = p_dict
     def interpret(self, srv_com, cur_ns):
         result = srv_com["process_tree"]
-        #pprint.pprint(result)
+        # pprint.pprint(result)
         commands = cur_ns.arguments
         zombie_ok_list = ["cron"]
         res_dict = {
@@ -183,7 +267,7 @@ class procstat_command(hm_classes.hm_command):
                 r_name = proc["cmdline"][0].split()[0]
                 if r_name.startswith("/"):
                     r_name = os.path.basename(r_name)
-            if com == "all" or r_name  == pn:
+            if com == "all" or r_name == pn:
                 if com == "single":
                     copy_struct = proc
                 if proc["state"] == "Z":
@@ -240,24 +324,24 @@ class proclist_command(hm_classes.hm_command):
         self.parser.add_argument("-t", dest="tree", action="store_true", default=False)
         self.parser.add_argument("-c", dest="comline", action="store_true", default=False)
         self.parser.add_argument("-f", dest="filter", action="append", type=str, default=[])
-##        self.help_str = "get the actual list of processes"
-##        self.short_client_info = "-t -c -r --raw"
-##        self.long_client_info = "enables treeview and display of the full command line, raw_mode via -r or --raw, rest are regexps for the process name"
-##        self.short_client_opts = "tcr"
-##        self.long_client_opts = ["raw"]
-##        self.net_only = True
+# #        self.help_str = "get the actual list of processes"
+# #        self.short_client_info = "-t -c -r --raw"
+# #        self.long_client_info = "enables treeview and display of the full command line, raw_mode via -r or --raw, rest are regexps for the process name"
+# #        self.short_client_opts = "tcr"
+# #        self.long_client_opts = ["raw"]
+# #        self.net_only = True
     def __call__(self, srv_com, cur_ns):
         p_dict = process_tools.get_proc_list()
         # slow but very flexible
         srv_com["process_tree"] = p_dict
-##    def server_call(self, cm):
-##        re_list = [re.compile(".*%s.*" % (x)) for x in cm]
-##        if not re_list:
-##            re_list = [re.compile(".")]
-##        act_plist = self.module_info.send_thread("get_proc_list")
-##        return "ok %s" % (hm_classes.sys_to_net(dict([(pid, val_dict) for pid, val_dict in act_plist.iteritems() if [True for p_match in re_list if p_match.match(val_dict["name"])]])))
+# #    def server_call(self, cm):
+# #        re_list = [re.compile(".*%s.*" % (x)) for x in cm]
+# #        if not re_list:
+# #            re_list = [re.compile(".")]
+# #        act_plist = self.module_info.send_thread("get_proc_list")
+# #        return "ok %s" % (hm_classes.sys_to_net(dict([(pid, val_dict) for pid, val_dict in act_plist.iteritems() if [True for p_match in re_list if p_match.match(val_dict["name"])]])))
     def interpret(self, srv_com, cur_ns):
-        def draw_tree(m_pid, nest = 0):
+        def draw_tree(m_pid, nest=0):
             proc_stuff = result[m_pid]
             r_list = [
                 (
@@ -269,7 +353,7 @@ class proclist_command(hm_classes.hm_command):
                     result[m_pid].get("last_cpu", -1),
                     result[m_pid].get("affinity", "-"),
                     result[m_pid]["out_name"])]
-            for dt_entry in [draw_tree(y, nest+2) for y in result[m_pid]["childs"]]:
+            for dt_entry in [draw_tree(y, nest + 2) for y in result[m_pid]["childs"]]:
                 r_list.extend([z for z in dt_entry])
             return r_list
         tree_view = cur_ns.tree
@@ -280,7 +364,7 @@ class proclist_command(hm_classes.hm_command):
         else:
             name_re = re.compile(".*")
         result = srv_com["process_tree"]
-        #print etree.tostring(srv_com.tree, pretty_print=True)
+        # print etree.tostring(srv_com.tree, pretty_print=True)
         ret_str, ret_state = ("OK", limits.nag_STATE_CRITICAL)
         pids = sorted([key for key, value in result.iteritems() if name_re.match(value["name"])])
         for act_pid in pids:
@@ -317,7 +401,7 @@ class proclist_command(hm_classes.hm_command):
             ret_a.extend(str(form_list).split("\n"))
         return ret_state, "\n".join(ret_a)
     def interpret_old(self, result, parsed_coms):
-        def draw_tree(m_pid, nest = 0):
+        def draw_tree(m_pid, nest=0):
             proc_stuff = result[m_pid]
             r_list = [("%s%s" % (" " * nest, m_pid),
                        result[m_pid]["ppid"],
@@ -327,7 +411,7 @@ class proclist_command(hm_classes.hm_command):
                        result[m_pid].get("last_cpu", -1),
                        result[m_pid].get("affinity", "-"),
                        result[m_pid]["out_name"])]
-            for dt_entry in [draw_tree(y, nest+2) for y in result[m_pid]["childs"]]:
+            for dt_entry in [draw_tree(y, nest + 2) for y in result[m_pid]["childs"]]:
                 r_list.extend([z for z in dt_entry])
             return r_list
         lim = parsed_coms[0]
@@ -414,7 +498,7 @@ class ipckill_command(hm_classes.hm_command):
                             key = act_dict[ipc_dict["key_name"]]
                             rem_com = "/usr/bin/ipcrmx -%s %d" % (ipc_dict["ipcrm_opt"], key)
                             rem_stat, rem_out = commands.getstatusoutput(rem_com)
-                            #stat, out = (1, "???")
+                            # stat, out = (1, "???")
                             if rem_stat:
                                 rem_node.attrib.update({
                                     "error"  : "1",
@@ -432,7 +516,7 @@ class ipckill_command(hm_classes.hm_command):
         return limits.nag_STATE_CRITICAL if error_list else limits.nag_STATE_OK, "removed %s%s" % (
             logging_tools.get_plural("entry", len(ok_list)),
             ", error for %s" % (logging_tools.get_plural("entry", len(error_list))) if error_list else "")
-        
+
 class signal_command(hm_classes.hm_command):
     info_str = "send signal to processes"
     def __init__(self, name):
@@ -459,7 +543,7 @@ class signal_command(hm_classes.hm_command):
                 return -1
             else:
                 if what["uid"] >= cur_ns.min_uid and what["uid"] <= cur_ns.max_uid:
-                    # take it 
+                    # take it
                     return 1
                 else:
                     # do not take it
