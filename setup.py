@@ -15,6 +15,6 @@ setup(name="python-modules-base",
                   "rpm_build_tools", "ncurses_tools", "extra_server_tools",
                   "config_tools", "check_scripts", "drbd_tools",
                   "partition_tools", "rsync_tools", "io_stream_helper",
-                  "configfile_old", "libvirt_tools", "pyDes",
+                  "configfile_old", "libvirt_tools", "pyDes", "affinity_tools",
                   ],
       )

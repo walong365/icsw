@@ -782,15 +782,17 @@ class new_form_list(object):
                 self.__header_dict[row_idx] = item["header"]
             act_content = item["content"]
             if not row_idx in self.__format_dict:
-                self.__format_dict[row_idx] = {"left"      : True,
-                                               "format"    : {str               : "s",
-                                                              unicode           : "s",
-                                                              type(None)        : "s",
-                                                              int               : "d",
-                                                              long              : "d",
-                                                              datetime.date     : "s",
-                                                              datetime.datetime : "s"}.get(type(act_content), "f"),
-                                               "min_width" : 0}
+                self.__format_dict[row_idx] = {
+                    "left"      : True,
+                    "format"    : {
+                        str               : "s",
+                        unicode           : "s",
+                        type(None)        : "s",
+                        int               : "d",
+                        long              : "d",
+                        datetime.date     : "s",
+                        datetime.datetime : "s"}.get(type(act_content), "f"),
+                        "min_width" : 0}
             for key in self.__format_dict[row_idx].iterkeys():
                 if key in item:
                     self.__format_dict[row_idx][key] = item[key]
