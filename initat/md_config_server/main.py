@@ -122,6 +122,7 @@ def main():
         ("MAX_HOST_CHECK_SPREAD"       , configfile.int_c_var(5)),
         ("MAX_CONCURRENT_CHECKS"       , configfile.int_c_var(500)),
         ("SERVER_SHORT_NAME"           , configfile.str_c_var(mach_name)),
+        ("RETAIN_PROGRAM_STATE"        , configfile.bool_c_var(False)),
     ])
     process_tools.renice()
     process_tools.fix_directories(global_config["USER"], global_config["GROUP"], ["/var/run/md-config-server"])

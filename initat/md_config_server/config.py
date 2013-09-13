@@ -125,14 +125,15 @@ class main_config(object):
             self.__send_version = None
         else:
             self.__dir_offset = ""
-            # self.__main_dir = os.path.join(self.__main_dir, "slaves", self.__slave_name)
+            # self.__min_dir = os.path.join(self.__main_dir, "slaves", self.__slave_name)
         self.monitor_server = monitor_server
         self.master = True if not self.__slave_name else False
         self.__dict = {}
         self._create_directories()
         self._clear_etc_dir()
         self._create_base_config_entries()
-        self._write_entries()
+        if global_config["BUILD_CONFIG_ON_STARTUP"]:
+            self._write_entries()
     @property
     def slave_name(self):
         return self.__slave_name
@@ -295,7 +296,7 @@ class main_config(object):
         if self.master:
             self.log("not clearing %s dir (master)" % (self.__w_dir_dict["etc"]))
         else:
-            self.log("not clearing %s dir (slave)" % (self.__w_dir_dict["etc"]))
+            self.log("clearing %s dir (slave)" % (self.__w_dir_dict["etc"]))
             for dir_e in os.listdir(self.__w_dir_dict["etc"]):
                 full_path = "%s/%s" % (self.__w_dir_dict["etc"], dir_e)
                 if os.path.isfile(full_path):
@@ -631,7 +632,7 @@ class main_config(object):
             ("retain_state_information"         , global_config["RETAIN_SERVICE_STATUS"]), # if self.master else 0),
             ("state_retention_file"             , "%s/retention.dat" % (self.__r_dir_dict["var"])),
             ("retention_update_interval"        , 60),
-            ("use_retained_program_state"       , 0),
+            ("use_retained_program_state"       , global_config["RETAIN_PROGRAM_STATE"]),
             ("use_retained_scheduling_info"     , 0),
             ("interval_length"                  , 60 if not self.master else 60),
             ("use_aggressive_host_checking"     , 0),
