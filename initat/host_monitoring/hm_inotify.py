@@ -29,6 +29,7 @@ import logging_tools
 import os
 import process_tools
 import server_command
+import stat
 import threading_tools
 import time
 import uuid_tools
@@ -327,10 +328,15 @@ class file_watcher(object):
                         self.target_server,
                         self.target_port))
                     try:
+                        file_stat = os.stat(f_name)
                         send_com = server_command.srv_command(
                                 command="file_watch_content",
                                 name=f_name,
+                                uid="%d" % (file_stat[stat.ST_UID]),
+                                gid="%d" % (file_stat[stat.ST_GID]),
+                                mode="%d" % (file_stat[stat.ST_MODE]),
                                 content=self.content.get(f_name, ""),
+                                last_change="%d" % (int(file_stat[stat.ST_MTIME])),
                                 id=self.fw_id,
                                 update=self.__content_update)
                     except:
