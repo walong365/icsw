@@ -131,9 +131,10 @@ class main_config(object):
         self.__dict = {}
         self._create_directories()
         self._clear_etc_dir()
+        self.__allow_write_entries = global_config["BUILD_CONFIG_ON_STARTUP"]
         self._create_base_config_entries()
-        if global_config["BUILD_CONFIG_ON_STARTUP"]:
-            self._write_entries()
+        self._write_entries()
+        self.__allow_write_entries = True
     @property
     def slave_name(self):
         return self.__slave_name
@@ -932,6 +933,9 @@ class main_config(object):
                     conn.commit()
                     conn.close()
     def _write_entries(self):
+        if not self.__allow_write_entries:
+            self.log("writing entries not allowed", logging_tools.LOG_LEVEL_WARN)
+            return 0
         cfg_written, empty_cfg_written = ([], [])
         start_time = time.time()
         for key, stuff in self.__dict.iteritems():
