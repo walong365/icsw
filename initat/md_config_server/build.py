@@ -40,19 +40,20 @@ import threading_tools
 import time
 from lxml.builder import E # @UnresolvedImport
 
-from initat.md_config_server.config import global_config, main_config, var_cache, all_commands, \
-    all_service_groups, time_periods, all_contacts, all_contact_groups, all_host_groups, all_hosts, \
-    all_hosts_extinfo, all_services, config_dir, device_templates, service_templates, nag_config
-from initat.md_config_server import special_commands
-from initat.md_config_server import constants
-
 from django.db.models import Q
 from django.db import connection
+
 from initat.cluster.backbone.models import device, device_group, device_variable, mon_device_templ, \
      mon_ext_host, mon_check_command, mon_period, mon_contact, \
      mon_contactgroup, mon_service_templ, netdevice, network, network_type, net_ip, \
      user, mon_host_cluster, mon_service_cluster, config, md_check_data_store, category, \
      category_tree, TOP_MONITORING_CATEGORY, mon_notification, config_str, config_int, host_check_command
+
+from initat.md_config_server.config import global_config, main_config, var_cache, all_commands, \
+    all_service_groups, time_periods, all_contacts, all_contact_groups, all_host_groups, all_hosts, \
+    all_hosts_extinfo, all_services, config_dir, device_templates, service_templates, nag_config
+from initat.md_config_server import special_commands
+from initat.md_config_server import constants
 
 try:
     import mk_livestatus

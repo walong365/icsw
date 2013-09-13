@@ -21,19 +21,22 @@
 #
 """ special tasks for generating md-config-server """
 
-import sys
-import re
+import copy
 import logging_tools
 import os
 import process_tools
+import re
 import server_command
+import sys
 import time
-import copy
+
+from django.db.models import Q
+
 from initat.host_monitoring import ipc_comtools
 from initat.host_monitoring.modules import supermicro_mod
 from initat.cluster.backbone.models import partition, partition_disc, partition_table, partition_fs, \
      netdevice, net_ip, network, lvm_vg, lvm_lv, device, device_variable, md_check_data_store
-from django.db.models import Q
+
 from lxml import etree # @UnresolvedImport
 from lxml.builder import E # @UnresolvedImport
 

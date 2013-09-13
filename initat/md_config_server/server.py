@@ -41,6 +41,7 @@ import uuid_tools
 import zmq
 
 from initat.host_monitoring.hm_classes import mvect_entry
+
 from initat.md_config_server.config import global_config
 from initat.md_config_server.build import build_process
 from initat.md_config_server.status import status_process
