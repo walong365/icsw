@@ -632,7 +632,7 @@ class main_config(object):
             ("retain_state_information"         , global_config["RETAIN_SERVICE_STATUS"]), # if self.master else 0),
             ("state_retention_file"             , "%s/retention.dat" % (self.__r_dir_dict["var"])),
             ("retention_update_interval"        , 60),
-            ("use_retained_program_state"       , global_config["RETAIN_PROGRAM_STATE"]),
+            ("use_retained_program_state"       , 1 if global_config["RETAIN_PROGRAM_STATE"] else 0),
             ("use_retained_scheduling_info"     , 0),
             ("interval_length"                  , 60 if not self.master else 60),
             ("use_aggressive_host_checking"     , 0),
