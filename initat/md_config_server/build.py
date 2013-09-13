@@ -654,7 +654,7 @@ class build_process(threading_tools.process_obj):
                             logging_tools.get_plural("parent", len(parents)),
                             ", ".join(sorted(parents))))
                         act_host["parents"] = ",".join(parents)
-                    act_host["retain_status_information"] = global_config["RETAIN_HOST_STATUS"]
+                    act_host["retain_status_information"] = 1 if global_config["RETAIN_HOST_STATUS"] else 0
                     act_host["max_check_attempts"] = act_def_dev.max_attempts
                     act_host["retry_interval"] = act_def_dev.retry_interval
                     act_host["check_interval"] = act_def_dev.check_interval

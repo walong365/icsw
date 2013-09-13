@@ -630,7 +630,7 @@ class main_config(object):
             ("max_concurrent_checks"            , global_config["MAX_CONCURRENT_CHECKS"]),
             ("service_reaper_frequency"         , 12),
             ("sleep_time"                       , 1),
-            ("retain_state_information"         , global_config["RETAIN_SERVICE_STATUS"]), # if self.master else 0),
+            ("retain_state_information"         , 1 if global_config["RETAIN_SERVICE_STATUS"] else 0), # if self.master else 0),
             ("state_retention_file"             , "%s/retention.dat" % (self.__r_dir_dict["var"])),
             ("retention_update_interval"        , 60),
             ("use_retained_program_state"       , 1 if global_config["RETAIN_PROGRAM_STATE"] else 0),
