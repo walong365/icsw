@@ -21,18 +21,19 @@
 #
 """ module for handling config files """
 
+import argparse
+import datetime
+import grp
+import logging_tools
 import os
+import process_tools
+import pwd
 import re
 import sys
-import process_tools
-import logging_tools
-import datetime
-import types
-import argparse
-import pwd
-import grp
-from collections import OrderedDict
 import threading
+import traceback
+import types
+from collections import OrderedDict
 from multiprocessing import Manager, current_process
 from multiprocessing.managers import BaseManager, BaseProxy, DictProxy, Server
 
@@ -610,9 +611,15 @@ config_manager.register("config", configuration, config_proxy, exposed=[
 
 cur_manager = config_manager()
 
+CONFIG_INIT = False
+
 def get_global_config(c_name):
-    cur_manager.start()
-    return cur_manager.config(c_name)
+    # lock against double-init, for instance md-config-server includes process_monitor_mod whic
+    # in turn tries to start the global_config manager (but from a different module)
+    if not globals()["CONFIG_INIT"]:
+        globals()["CONFIG_INIT"] = True
+        cur_manager.start()
+        return cur_manager.config(c_name)
 
 def enable_config_access(user_name, group_name):
     address = cur_manager.address

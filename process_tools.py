@@ -121,9 +121,10 @@ class exception_info(object):
         self.log_lines.append(get_except_info(self.except_info))
 
 def zmq_identity_str(id_string):
-    return "%s:%s:%d" % (get_machine_name(),
-                         id_string,
-                         os.getpid())
+    return "%s:%s:%d" % (
+        get_machine_name(),
+        id_string,
+        os.getpid())
 
 def remove_zmq_dirs(dir_name):
     for cur_dir, dir_names, _file_names in os.walk(dir_name, topdown=False):
@@ -137,8 +138,9 @@ def remove_zmq_dirs(dir_name):
     except:
         pass
 
-LOCAL_ZMQ_DIR = "/tmp/.zmq_%d:%d" % (os.getuid(),
-                                     os.getpid())
+LOCAL_ZMQ_DIR = "/tmp/.zmq_%d:%d" % (
+    os.getuid(),
+    os.getpid())
 
 LOCAL_ROOT_ZMQ_DIR = "/var/log/cluster/sockets"
 INIT_ZMQ_DIR_PID = "%d" % (os.getpid())
