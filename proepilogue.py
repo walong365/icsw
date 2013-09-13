@@ -28,19 +28,19 @@ import sys
 # clean sys.path
 sys.path = [entry for entry in sys.path if entry.startswith("/opt")]
 
-import pwd, grp
-import time
+import configfile
+import grp
+import logging_tools
+import net_tools
+import os
+import pprint
+import process_tools
+import pwd
+import server_command
 import stat
 import socket
-import os
-import os.path
-import logging_tools
-import process_tools
-import configfile
-import pprint
-import server_command
-import net_tools
 import threading_tools
+import time
 import zmq
     
 SEP_LEN = 70
