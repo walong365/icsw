@@ -3454,7 +3454,7 @@ def main():
 # #        dc.release()
 # #    else:
     global_config.add_config_entries([
-        ("LOG_SOURCE_IDX", configfile.int_c_var(cluster_location.log_source.create_log_source_entry("mother", "Mother Server", device=sql_info.effective_device).pk)),
+        ("LOG_SOURCE_IDX", configfile.int_c_var(cluster_location.log_source.create_log_source_entry("mother", "Mother Server", device=sql_info.device).pk)),
         ("NODE_SOURCE_IDX", configfile.int_c_var(cluster_location.log_source.create_log_source_entry("node", "Clusternode").pk)),
     ])
 # #        loc_config["LOG_SOURCE_IDX"] = process_tools.create_log_source_entry(dc, loc_config["MOTHER_SERVER_IDX"], "mother", "Mother Server")
