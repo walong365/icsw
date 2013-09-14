@@ -1489,7 +1489,8 @@ class server_process(threading_tools.process_pool):
             open_sock.close()
         self.__log_template.close()
     def _init_network_sockets(self):
-        my_0mq_id = uuid_tools.get_uuid().get_urn()
+        my_0mq_id = "%s:ccserver:" % (uuid_tools.get_uuid().get_urn())
+        self.bind_id = my_0mq_id
         self.socket_dict = {}
         # get all ipv4 interfaces with their ip addresses, dict: interfacename -> IPv4
         for key, sock_type, bind_port, target_func in [
@@ -1553,9 +1554,15 @@ class server_process(threading_tools.process_pool):
                     self._register_client(c_uid, srv_com)
                 elif cur_com == "get_0mq_id":
                     srv_com["result"] = None
-                    srv_com["zmq_id"] = uuid_tools.get_uuid().get_urn()
+                    srv_com["zmq_id"] = self.bind_id
                     srv_com["result"].attrib.update({
-                        "reply" : "0MQ_ID is %s" % (uuid_tools.get_uuid().get_urn()),
+                        "reply" : "0MQ_ID is %s" % (self.bind_id),
+                        "state" : "%d" % (server_command.SRV_REPLY_STATE_OK)})
+                    self._send_simple_return(c_uid, unicode(srv_com))
+                elif cur_com == "status":
+                    srv_com["result"] = None
+                    srv_com["result"].attrib.update({
+                        "reply" : "up and running",
                         "state" : "%d" % (server_command.SRV_REPLY_STATE_OK)})
                     self._send_simple_return(c_uid, unicode(srv_com))
                 else:
@@ -1571,7 +1578,7 @@ class server_process(threading_tools.process_pool):
                                      logging_tools.LOG_LEVEL_CRITICAL)
                         else:
                             if cur_client is None:
-                                self.log("cur_client is None", logging_tools.LOG_LEVEL_WARN)
+                                self.log("cur_client is None (command: %s)" % (cur_com), logging_tools.LOG_LEVEL_WARN)
                             else:
                                 cur_client.new_command(srv_com)
         else:
