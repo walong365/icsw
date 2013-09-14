@@ -569,9 +569,10 @@ class server_process(threading_tools.process_pool):
         self.log("connected to %s" % (self.conn_str))
         self.srv_port = srv_port
         # client socket
+        self.bind_id = "%s:pclient:" % (uuid_tools.get_uuid().get_urn())
         client_sock = self.zmq_context.socket(zmq.ROUTER)
         client_sock.setsockopt(zmq.LINGER, 1000)
-        client_sock.setsockopt(zmq.IDENTITY, uuid_tools.get_uuid().get_urn())
+        client_sock.setsockopt(zmq.IDENTITY, self.bind_id)
         client_sock.setsockopt(zmq.TCP_KEEPALIVE, 1)
         client_sock.setsockopt(zmq.TCP_KEEPALIVE_IDLE, 300)
         client_sock.setsockopt(zmq.SNDHWM, 16)
@@ -581,7 +582,7 @@ class server_process(threading_tools.process_pool):
         bind_str = "tcp://0.0.0.0:%d" % (
                     global_config["COM_PORT"])
         client_sock.bind(bind_str)
-        self.log("bound to %s" % (bind_str))
+        self.log("bound to %s (ID %s)" % (bind_str, self.bind_id))
         self.client_socket = client_sock
         self.register_poller(client_sock, zmq.POLLIN, self._recv_client)
         # send commands
@@ -612,9 +613,9 @@ class server_process(threading_tools.process_pool):
             self.log("got %s (length: %d) from %s" % (cur_com, len(data), src_id))
             srv_com["result"] = None
             if cur_com == "get_0mq_id":
-                srv_com["zmq_id"] = uuid_tools.get_uuid().get_urn()
+                srv_com["zmq_id"] = self.bind_id
                 srv_com["result"].attrib.update({
-                    "reply" : "0MQ_ID is %s" % (uuid_tools.get_uuid().get_urn()),
+                    "reply" : "0MQ_ID is %s" % (self.bind_id),
                     "state" : "%d" % (server_command.SRV_REPLY_STATE_OK)})
             elif cur_com == "status":
                 # FIXME, Todo
