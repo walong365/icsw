@@ -32,6 +32,7 @@ import sge_tools
 import sys
 import threading_tools
 import time
+import uuid_tools
 try:
     import cluster_location
 except ImportError:
@@ -199,10 +200,16 @@ class server_process(threading_tools.process_pool):
             msi_block = None
         return msi_block
     def _init_network_sockets(self):
+        my_0mq_id = "%s:sgeserver:" % (uuid_tools.get_uuid().get_urn())
+        self.bind_id = my_0mq_id
         client = self.zmq_context.socket(zmq.ROUTER)
-        client.setsockopt(zmq.IDENTITY, "sgeserver")
+        client.setsockopt(zmq.IDENTITY, self.bind_id)
         client.setsockopt(zmq.RCVHWM, 256)
         client.setsockopt(zmq.SNDHWM, 256)
+        client.setsockopt(zmq.RECONNECT_IVL_MAX, 500)
+        client.setsockopt(zmq.RECONNECT_IVL, 200)
+        client.setsockopt(zmq.TCP_KEEPALIVE, 1)
+        client.setsockopt(zmq.TCP_KEEPALIVE_IDLE, 300)
         try:
             client.bind("tcp://*:%d" % (global_config["COM_PORT"]))
         except zmq.core.error.ZMQError:
@@ -211,7 +218,7 @@ class server_process(threading_tools.process_pool):
                      logging_tools.LOG_LEVEL_CRITICAL)
             raise
         else:
-            self.log("connected to tcp://*:%d" % (global_config["COM_PORT"]))
+            self.log("connected to tcp://*:%d (via ID %s)" % (global_config["COM_PORT"], self.bind_id))
             self.register_poller(client, zmq.POLLIN, self._recv_command)
             self.com_socket = client
     def _recv_command(self, zmq_sock):
@@ -233,6 +240,17 @@ class server_process(threading_tools.process_pool):
                 self.send_to_process("rms_mon", "get_config", src_id, unicode(srv_com))
             elif cur_com == "job_control":
                 self._job_control(srv_com)
+                self._send_result(src_id, srv_com)
+            elif cur_com == "get_0mq_id":
+                srv_com["zmq_id"] = self.bind_id
+                srv_com["result"].attrib.update({
+                    "reply" : "0MQ_ID is %s" % (self.bind_id),
+                    "state" : "%d" % (server_command.SRV_REPLY_STATE_OK)})
+                self._send_result(src_id, srv_com)
+            elif cur_com == "status":
+                srv_com["result"].attrib.update({
+                    "reply" : "up and running",
+                    "state" : "%d" % (server_command.SRV_REPLY_STATE_OK)})
                 self._send_result(src_id, srv_com)
             elif cur_com == "file_watch_content":
                 self.send_to_process("rms_mon", "file_watch_content", unicode(srv_com))
