@@ -21,31 +21,30 @@
 #
 """ package server """
 
-import sys
 import os
+import sys
 
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "initat.cluster.settings")
 
+import cluster_location
+import config_tools
 import configfile
-import time
 import datetime
-import configfile
-import uuid_tools
 import logging_tools
+import pprint
 import process_tools
 import server_command
+import subprocess
 import threading_tools
-import config_tools
-import pprint
+import time
+import uuid_tools
+import zmq
 from lxml import etree
 from lxml.builder import E
-import zmq
-import cluster_location
 from django.db import connection
 from django.db.models import Q
 from initat.cluster.backbone.models import package_repo, package_search, cluster_timezone, \
      package_search_result, device_variable, device, package, package_device_connection
-import subprocess
 
 try:
     from package_server_version import VERSION_STRING
@@ -673,8 +672,31 @@ class server_process(threading_tools.process_pool):
                     try:
                         cur_client = client.get(c_uid)
                     except KeyError:
-                        self.log("unknown uid %s, not known" % (c_uid),
-                                 logging_tools.LOG_LEVEL_CRITICAL)
+                        srv_com.update_source()
+                        srv_com["result"] = None
+                        self.log("got command '%s' from %s" % (cur_com, c_uid))
+                        # check for normal command
+                        if cur_com == "get_0mq_id":
+                            srv_com["zmq_id"] = self.bind_id
+                            srv_com["result"].attrib.update({
+                                "reply" : "0MQ_ID is %s" % (self.bind_id),
+                                "state" : "%d" % (server_command.SRV_REPLY_STATE_OK)})
+                        elif cur_com == "status":
+                            srv_com["result"].attrib.update({
+                                "reply" : "up and running",
+                                "state" : "%d" % (server_command.SRV_REPLY_STATE_OK)})
+                        else:
+                            self.log(
+                                "unknown uid %s (command %s), not known" % (
+                                    c_uid,
+                                    cur_com,
+                                    ),
+                                        logging_tools.LOG_LEVEL_CRITICAL)
+                            srv_com["result"].attrib.update({
+                                "reply" : "unknown command '%s'" % (cur_com),
+                                "state" : "%d" % (server_command.SRV_REPLY_STATE_ERROR)})
+                        zmq_sock.send_unicode(c_uid, zmq.SNDMORE)
+                        zmq_sock.send_unicode(unicode(srv_com))
                     else:
                         cur_client.new_command(srv_com)
         else:
@@ -749,7 +771,8 @@ class server_process(threading_tools.process_pool):
             zmq_sock.send_unicode(unicode(in_uid), zmq.SNDMORE)
             zmq_sock.send_unicode(unicode(srv_com))
     def _init_network_sockets(self):
-        my_0mq_id = uuid_tools.get_uuid().get_urn()
+        my_0mq_id = "%s:package-server:" % (uuid_tools.get_uuid().get_urn())
+        self.bind_id = my_0mq_id
         self.socket_dict = {}
         # get all ipv4 interfaces with their ip addresses, dict: interfacename -> IPv4
         for key, sock_type, bind_port, target_func in [
@@ -757,7 +780,7 @@ class server_process(threading_tools.process_pool):
             ("pull"  , zmq.PULL  , global_config["SERVER_PULL_PORT"], self._new_com),
             ]:
             client = self.zmq_context.socket(sock_type)
-            client.setsockopt(zmq.IDENTITY, my_0mq_id)
+            client.setsockopt(zmq.IDENTITY, self.bind_id)
             client.setsockopt(zmq.LINGER, 100)
             client.setsockopt(zmq.RCVHWM, 256)
             client.setsockopt(zmq.SNDHWM, 256)
@@ -777,9 +800,11 @@ class server_process(threading_tools.process_pool):
                     logging_tools.LOG_LEVEL_CRITICAL)
                 client.close()
             else:
-                self.log("bind to port %s{%d}" % (
+                self.log("bind to port %s{%d}, ID is %s" % (
                     conn_str,
-                    sock_type))
+                    sock_type,
+                    self.bind_id,
+                    ))
                 self.register_poller(client, zmq.POLLIN, target_func)
                 self.socket_dict[key] = client
     def send_reply(self, t_uid, srv_com):
