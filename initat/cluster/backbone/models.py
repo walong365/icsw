@@ -822,6 +822,8 @@ class cd_connection(models.Model):
             unicode(self.parent),
             self.connection_info,
             unicode(self.child))
+    class Meta:
+        ordering = ("parent__name", "child__name",)
 
 @receiver(signals.pre_save, sender=cd_connection)
 def cd_connection_pre_save(sender, **kwargs):
