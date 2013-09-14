@@ -728,6 +728,10 @@ class server_process(threading_tools.process_pool):
             client.setsockopt(zmq.IDENTITY, self.bind_id)
             client.setsockopt(zmq.SNDHWM, 256)
             client.setsockopt(zmq.RCVHWM, 256)
+            client.setsockopt(zmq.RECONNECT_IVL_MAX, 500)
+            client.setsockopt(zmq.RECONNECT_IVL, 200)
+            client.setsockopt(zmq.TCP_KEEPALIVE, 1)
+            client.setsockopt(zmq.TCP_KEEPALIVE_IDLE, 300)
             try:
                 client.bind("tcp://*:%d" % (global_config["COM_PORT"]))
             except zmq.core.error.ZMQError:
