@@ -81,7 +81,7 @@ def main():
         print "not a monitor_server"
         sys.exit(5)
     else:
-        global_config.add_config_entries([("SERVER_IDX", configfile.int_c_var(sql_info.effective_device.pk, database=False))])
+        global_config.add_config_entries([("SERVER_IDX", configfile.int_c_var(sql_info.device.pk, database=False))])
     if global_config["CHECK"]:
         sys.exit(0)
     if global_config["KILL_RUNNING"]:
@@ -90,7 +90,7 @@ def main():
             ignore_names=["nagios", "icinga"],
             exclude=configfile.get_manager_pid())
 
-    global_config.add_config_entries([("LOG_SOURCE_IDX", configfile.int_c_var(cluster_location.log_source.create_log_source_entry("mon-server", "Cluster MonitoringServer", device=sql_info.effective_device).pk))])
+    global_config.add_config_entries([("LOG_SOURCE_IDX", configfile.int_c_var(cluster_location.log_source.create_log_source_entry("mon-server", "Cluster MonitoringServer", device=sql_info.device).pk))])
 
     cluster_location.read_config_from_db(global_config, "monitor_server", [
         ("COM_PORT"                    , configfile.int_c_var(SERVER_COM_PORT)),
