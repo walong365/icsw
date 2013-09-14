@@ -338,11 +338,22 @@ class net_device(object):
                             elif cur_port:
                                 if value.isdigit():
                                     value = int(value)
+                                key = key.split("[")[0]
                                 res_dict[cur_port][key] = value
             self.last_update = cur_time
-            # Todo: extract ib number (hacky stuff, FIXME)
-            port_num = int(self.name[2])
-            self.ibv_results = res_dict.get(port_num + 1)
+            if res_dict:
+                port_num = None
+                # get address from sys to evaluate ib-port
+                addr_file = "/sys/class/net/%s/address" % (self.name)
+                if os.path.isfile(addr_file):
+                    ib_addr = file(addr_file, "r").read().strip().replace(":", "").lower()[-8:]
+                    for c_port, struct in res_dict.iteritems():
+                        if struct.get("gid", "").replace(":", "").lower()[-8:] == ib_addr:
+                            port_num = c_port
+                            break
+                self.ibv_results = res_dict.get(port_num, {})
+            else:
+                self.ibv_results = {}
     def update_ethtool(self):
         cur_time = time.time()
         if cur_time > self.last_update + 30:
