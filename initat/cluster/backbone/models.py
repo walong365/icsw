@@ -525,7 +525,7 @@ class device(models.Model):
     # not so clever here, better in extra table, FIXME
     # cpu_info = models.TextField(blank=True, null=True)
     # machine uuid
-    uuid = models.TextField(default="", max_length=64)
+    uuid = models.TextField(default="", max_length=64, unique=True)
     # cluster url
     curl = models.CharField(default="ssh://", max_length=512)
     date = models.DateTimeField(auto_now_add=True)
