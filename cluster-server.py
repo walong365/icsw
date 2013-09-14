@@ -720,11 +720,12 @@ class server_process(threading_tools.process_pool):
     def _init_network_sockets(self):
         self.__connection_dict = {}
         self.__discovery_dict = {}
+        self.bind_id = "%s:clusterserver:" % (uuid_tools.get_uuid().get_urn())
         if self.__run_command:
             client = None
         else:
             client = self.zmq_context.socket(zmq.ROUTER)
-            client.setsockopt(zmq.IDENTITY, uuid_tools.get_uuid().get_urn())
+            client.setsockopt(zmq.IDENTITY, self.bind_id)
             client.setsockopt(zmq.SNDHWM, 256)
             client.setsockopt(zmq.RCVHWM, 256)
             try:
