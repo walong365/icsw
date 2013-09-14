@@ -1996,6 +1996,7 @@ class netdevice_speed(models.Model):
         )
     class Meta:
         db_table = u'netdevice_speed'
+        ordering = ("speed_bps", "full_duplex")
     def __unicode__(self):
         _s_str, lut_idx = ("", 0)
         cur_s = self.speed_bps
