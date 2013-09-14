@@ -123,15 +123,18 @@ class id_discovery(object):
                          logging_tools.LOG_LEVEL_ERROR)
                 self.send_return("0MQ id not unique, virtual host setup found ?")
             else:
-                self.log("0MQ id is %s" % (zmq_id))
-                id_discovery.mapping[self.conn_str] = zmq_id
-                # reinject
-                if self.port == 2001:
-                    id_discovery.relayer_process._send_to_client(self.src_id, self.srv_com, self.xml_input)
+                if zmq_id.lower().count("unknown command"):
+                    self.log("received illegal zmq_id '%s'" % (zmq_id), logging_tools.LOG_LEVEL_ERROR)
                 else:
-                    id_discovery.relayer_process._send_to_nhm_service(self.src_id, self.srv_com, self.xml_input)
-                # save mapping
-                file(MAPPING_FILE_IDS, "w").write("\n".join(["%s=%s" % (key, self.mapping[key]) for key in sorted(self.mapping.iterkeys())]))
+                    self.log("0MQ id is %s" % (zmq_id))
+                    id_discovery.mapping[self.conn_str] = zmq_id
+                    # reinject
+                    if self.port == 2001:
+                        id_discovery.relayer_process._send_to_client(self.src_id, self.srv_com, self.xml_input)
+                    else:
+                        id_discovery.relayer_process._send_to_nhm_service(self.src_id, self.srv_com, self.xml_input)
+                    # save mapping
+                    file(MAPPING_FILE_IDS, "w").write("\n".join(["%s=%s" % (key, self.mapping[key]) for key in sorted(self.mapping.iterkeys())]))
                 self.close()
     def close(self):
         del self.srv_com
@@ -155,11 +158,15 @@ class id_discovery(object):
         id_discovery.reverse_mapping = {}
         # mapping connection string -> 0MQ id
         if os.path.isfile(MAPPING_FILE_IDS):
-            id_discovery.mapping = dict([line.strip().split("=", 1) for line in file(MAPPING_FILE_IDS, "r").read().split("\n") if line.strip() and line.count("=")])
+            map_lines = [line.strip().split("=", 1) for line in file(MAPPING_FILE_IDS, "r").read().split("\n") if line.strip() and line.count("=")]
+            valid_map_lines = [(key, value) for key, value in map_lines if not value.count("unknown command")]
+            id_discovery.mapping = dict([(key, value) for key, value in valid_map_lines])
             id_discovery.relayer_process.log(
-                "read %s from %s" % (
+                "read %s from %s (in file: %d)" % (
                     logging_tools.get_plural("mapping", len(id_discovery.mapping)),
-                    MAPPING_FILE_IDS))
+                    MAPPING_FILE_IDS,
+                    len(map_lines),
+                    ))
             for key, value in id_discovery.mapping.iteritems():
                 # only use ip-address / hostname from key
                 id_discovery.reverse_mapping.setdefault(value, []).append(key[6:].split(":")[0])
