@@ -103,7 +103,7 @@ class conn_table
         parent_pk = cd_node.attr(if type == "master" then "parent" else "child")
         child_pk  = cd_node.attr(if type == "master" then "child" else "parent")
         add_table = $("table#dev__#{parent_pk}")
-        add_ul = add_table.find("td##{type} ul")
+        add_ul = add_table.find("td##{type} ul##{type}")
         add_ul.append($("<li>").attr({
             "id" : cd_node.attr("pk")
         }).append(
@@ -178,11 +178,11 @@ class conn_table
             "border"  : "1pt dashed black"
         })
         data_tr = $("<tr>").append(
-            $("<td>").attr({"id" : "master"}).append($("<ul>"))
+            $("<td>").attr({"id" : "master"}).append($("<ul>").attr("id", "master"))
         ).append(
             $("<td>")
         ).append(
-            $("<td>").attr({"id" : "slave"}).append($("<ul>"))
+            $("<td>").attr({"id" : "slave"}).append($("<ul>").attr("id", "slave"))
         )
         data_tr.find("ul").css({
             "padding-left" : "20px",
