@@ -303,7 +303,7 @@ def main():
                     diff_hours = int((diff_time - 3600 * 24 * diff_days) / 3600)
                     diff_mins = int((diff_time - 3600 * (24 * diff_days + diff_hours)) / 60)
                     diff_secs = int(diff_time - 60 * (60 * (24 * diff_days + diff_hours) + diff_mins))
-                    ret_str += ", pidfile unchanged since %s%02d:%02d:%02d (%s)" % (
+                    ret_str += ", stable since %s%02d:%02d:%02d (%s)" % (
                         diff_days and "%s, " % (logging_tools.get_plural("day", diff_days)) or "",
                         diff_hours, diff_mins, diff_secs,
                         time.strftime("%a, %d. %b %Y, %H:%M:%S", time.localtime(pid_time)))
