@@ -5,7 +5,7 @@
 # this file is part of package-client
 #
 # Send feedback to: <lang-nevyjel@init.at>
-# 
+#
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License Version 2 as
 # published by the Free Software Foundation.
@@ -42,7 +42,7 @@ except ImportError:
     # instead of unknown-unknown
     VERSION_STRING = "0.0-0"
 
-P_SERVER_COM_PORT   = 8007
+P_SERVER_COM_PORT = 8007
 PACKAGE_CLIENT_PORT = 2003
 
 LF_NAME = "/var/lock/package_client.lock"
@@ -152,7 +152,7 @@ class simple_command(object):
     def call(self):
         self.start_time = time.time()
         self.popen = subprocess.Popen(self.com_str, shell=True, stderr=subprocess.STDOUT, stdout=subprocess.PIPE)
-            
+
 class install_process(threading_tools.process_obj):
     """ handles all install and external command stuff """
     def __init__(self, name):
@@ -310,11 +310,11 @@ class install_process(threading_tools.process_obj):
                     self.log("empty package_list, removing")
             else:
                 self.log("unknown command '%s', ignoring..." % (cur_com), logging_tools.LOG_LEVEL_CRITICAL)
-    
+
 class yum_install_process(install_process):
     response_type = "yum_flat"
     def build_command(self, cur_pdc):
-        #print etree.tostring(cur_pdc, pretty_print=True)
+        # print etree.tostring(cur_pdc, pretty_print=True)
         if cur_pdc.tag == "special_command":
             if cur_pdc.attrib["command"] == "refresh":
                 yum_com = "/usr/bin/yum -y clean all ; /usr/bin/yum -y makecache"
@@ -326,14 +326,14 @@ class yum_install_process(install_process):
                 yum_com = None
             else:
                 pack_xml = cur_pdc[0]
-                #yum_com = {"install" : "install",
+                # yum_com = {"install" : "install",
                 #           "upgrade" : "update",
                 #           "erase"   : "erase"}.get(cur_pdc.attrib["target_state"])
-                #yum_com = "/usr/bin/yum -y %s %s-%s" % (
+                # yum_com = "/usr/bin/yum -y %s %s-%s" % (
                 #    yum_com,
                 #    pack_xml.attrib["name"],
                 #    pack_xml.attrib["version"],
-                #)
+                # )
                 yum_com = "/bin/rpm -q %s-%s" % (
                     pack_xml.attrib["name"],
                     pack_xml.attrib["version"],
@@ -383,7 +383,7 @@ class yum_install_process(install_process):
 class zypper_install_process(install_process):
     response_type = "zypper_xml"
     def build_command(self, cur_pdc):
-        #print etree.tostring(cur_pdc, pretty_print=True)
+        # print etree.tostring(cur_pdc, pretty_print=True)
         if cur_pdc.tag == "special_command":
             if cur_pdc.attrib["command"] == "refresh":
                 zypper_com = "/usr/bin/zypper -q -x refresh"
@@ -493,7 +493,7 @@ class server_process(threading_tools.process_pool):
         self.__pid_name = global_config["PID_NAME"]
         process_tools.save_pids(global_config["PID_NAME"], mult=3)
         process_tools.append_pids(global_config["PID_NAME"], pid=configfile.get_manager_pid(), mult=3)
-        if True:#not self.__options.DEBUG:
+        if True: # not self.__options.DEBUG:
             self.log("Initialising meta-server-info block")
             msi_block = process_tools.meta_server_info("package-client")
             msi_block.add_actual_pid(mult=3)
@@ -501,7 +501,7 @@ class server_process(threading_tools.process_pool):
             msi_block.start_command = "/etc/init.d/package-client start"
             msi_block.stop_command = "/etc/init.d/package-client force-stop"
             msi_block.kill_pids = True
-            #msi_block.heartbeat_timeout = 60
+            # msi_block.heartbeat_timeout = 60
             msi_block.save_block()
         else:
             msi_block = None
@@ -558,16 +558,33 @@ class server_process(threading_tools.process_pool):
         srv_port.setsockopt(zmq.IDENTITY, uuid_tools.get_uuid().get_urn())
         srv_port.setsockopt(zmq.TCP_KEEPALIVE, 1)
         srv_port.setsockopt(zmq.TCP_KEEPALIVE_IDLE, 300)
-        #srv_port.setsockopt(zmq.SUBSCRIBE, "")
+        # srv_port.setsockopt(zmq.SUBSCRIBE, "")
         self.conn_str = "tcp://%s:%d" % (
             global_config["PACKAGE_SERVER"],
             global_config["SERVER_COM_PORT"])
         srv_port.connect(self.conn_str)
-        #pull_port = self.zmq_context.socket(zmq.PUSH)
-        #pull_port.setsockopt(zmq.IDENTITY, uuid_tools.get_uuid().get_urn())
+        # pull_port = self.zmq_context.socket(zmq.PUSH)
+        # pull_port.setsockopt(zmq.IDENTITY, uuid_tools.get_uuid().get_urn())
         self.register_poller(srv_port, zmq.POLLIN, self._recv)
         self.log("connected to %s" % (self.conn_str))
         self.srv_port = srv_port
+        # client socket
+        client_sock = self.zmq_context.socket(zmq.ROUTER)
+        client_sock.setsockopt(zmq.LINGER, 1000)
+        client_sock.setsockopt(zmq.IDENTITY, uuid_tools.get_uuid().get_urn())
+        client_sock.setsockopt(zmq.TCP_KEEPALIVE, 1)
+        client_sock.setsockopt(zmq.TCP_KEEPALIVE_IDLE, 300)
+        client_sock.setsockopt(zmq.SNDHWM, 16)
+        client_sock.setsockopt(zmq.RCVHWM, 16)
+        client_sock.setsockopt(zmq.RECONNECT_IVL_MAX, 500)
+        client_sock.setsockopt(zmq.RECONNECT_IVL, 200)
+        bind_str = "tcp://0.0.0.0:%d" % (
+                    global_config["COM_PORT"])
+        client_sock.bind(bind_str)
+        self.log("bound to %s" % (bind_str))
+        self.client_socket = client_sock
+        self.register_poller(client_sock, zmq.POLLIN, self._recv_client)
+        # send commands
         self._send_to_server_int(get_srv_command(command="register"))
         self._get_repos()
         self._get_new_config()
@@ -579,9 +596,41 @@ class server_process(threading_tools.process_pool):
         self.srv_port.send_unicode(send_com)
     def _get_new_config(self):
         self._send_to_server_int(get_srv_command(command="get_package_list"))
-        #self._send_to_server_int(get_srv_command(command="get_rsync_list"))
+        # self._send_to_server_int(get_srv_command(command="get_rsync_list"))
     def _get_repos(self):
         self._send_to_server_int(get_srv_command(command="get_repo_list"))
+    def _recv_client(self, zmq_sock):
+        data = [zmq_sock.recv()]
+        while zmq_sock.getsockopt(zmq.RCVMORE):
+            data.append(zmq_sock.recv())
+        if len(data) == 2:
+            src_id = data.pop(0)
+            data = data[0]
+            srv_com = server_command.srv_command(source=data)
+            srv_com.update_source()
+            cur_com = srv_com["command"].text
+            self.log("got %s (length: %d) from %s" % (cur_com, len(data), src_id))
+            srv_com["result"] = None
+            if cur_com == "get_0mq_id":
+                srv_com["zmq_id"] = uuid_tools.get_uuid().get_urn()
+                srv_com["result"].attrib.update({
+                    "reply" : "0MQ_ID is %s" % (uuid_tools.get_uuid().get_urn()),
+                    "state" : "%d" % (server_command.SRV_REPLY_STATE_OK)})
+            elif cur_com == "status":
+                # FIXME, Todo
+                srv_com["result"].attrib.update({
+                    "reply" : "everything OK :-)",
+                    "state" : "%d" % (server_command.SRV_REPLY_STATE_OK)})
+            else:
+                srv_com["result"].attrib.update(
+                    {"reply" : "unknown command '%s'" % (cur_com),
+                        "state" : "%d" % (server_command.SRV_REPLY_STATE_ERROR)})
+            zmq_sock.send_unicode(src_id, zmq.SNDMORE)
+            zmq_sock.send_unicode(unicode(srv_com))
+            del srv_com
+        else:
+            self.log("cannot receive more data, already got '%s'" % (", ".join(data)),
+                     logging_tools.LOG_LEVEL_ERROR)
     def _recv(self, zmq_sock):
         batch_list = []
         while True:
@@ -606,11 +655,11 @@ class server_process(threading_tools.process_pool):
             batch_list.extend(data)
             if not zmq_sock.poll(zmq.POLLIN):
                 break
-        #batch_list = self._optimize_list(batch_list)
+        # batch_list = self._optimize_list(batch_list)
         self.send_to_process("install",
                              "command_batch",
                              [unicode(cur_com) for cur_com in batch_list])
-    #def _optimize_list(self, in_list):
+    # def _optimize_list(self, in_list):
     #    return in_list
     def _int_error(self, err_cause):
         self.__exit_cause = err_cause
@@ -627,8 +676,9 @@ class server_process(threading_tools.process_pool):
             self.__msi_block.remove_meta_block()
     def loop_post(self):
         self.srv_port.close()
+        self.client_socket.close()
         self.__log_template.close()
-    
+
 global_config = configfile.get_global_config(process_tools.get_programm_name())
 
 def main():
@@ -679,11 +729,11 @@ def main():
     process_tools.fix_directories(0, 0, [global_config["VAR_DIR"]])
     process_tools.renice()
     if not global_config["DEBUG"]:
-        process_tools.become_daemon(mother_hook = process_tools.wait_for_lockfile, mother_hook_args = (LF_NAME, 5, 200))
+        process_tools.become_daemon(mother_hook=process_tools.wait_for_lockfile, mother_hook_args=(LF_NAME, 5, 200))
     else:
         print "Debugging %s on %s" % (prog_name, process_tools.get_machine_name())
         # no longer needed
-        #global_config["LOG_DESTINATION"] = "stdout"
+        # global_config["LOG_DESTINATION"] = "stdout"
     ret_code = server_process().loop()
     process_tools.delete_lockfile(LF_NAME, None, 0)
     sys.exit(ret_code)
