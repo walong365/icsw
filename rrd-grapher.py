@@ -1164,7 +1164,8 @@ class server_process(threading_tools.process_pool):
         self.com_socket.send_unicode(srv_com)
     def _init_network_sockets(self):
         client = self.zmq_context.socket(zmq.ROUTER)
-        client.setsockopt(zmq.IDENTITY, "%s:rrd_grapher" % (uuid_tools.get_uuid().get_urn()))
+        self.bind_id = "%s:rrd_grapher" % (uuid_tools.get_uuid().get_urn())
+        client.setsockopt(zmq.IDENTITY, self.bind_id)
         client.setsockopt(zmq.SNDHWM, 256)
         client.setsockopt(zmq.RCVHWM, 256)
         client.setsockopt(zmq.TCP_KEEPALIVE, 1)
@@ -1223,6 +1224,10 @@ class server_process(threading_tools.process_pool):
                         srv_com["source"].attrib["host"]))
                 srv_com.update_source()
                 send_return = True
+                srv_reply, srv_state = (
+                    "ok processed command %s" % (cur_com),
+                    server_command.SRV_REPLY_STATE_OK
+                    )
                 if cur_com in ["mv_info"]:
                     self._interpret_mv_info(srv_com["vector"])
                     send_return = False
@@ -1234,15 +1239,24 @@ class server_process(threading_tools.process_pool):
                 elif cur_com == "graph_rrd":
                     send_return = False
                     self.send_to_process("graph", "graph_rrd", src_id, unicode(srv_com))
+                elif cur_com == "get_0mq_id":
+                    srv_com["zmq_id"] = self.bind_id
+                    srv_reply = "0MQ_ID is %s" % (self.bind_id)
+                elif cur_com == "status":
+                    srv_reply = "up and running"
                 else:
                     self.log("got unknown command '%s'" % (cur_com), logging_tools.LOG_LEVEL_ERROR)
+                    srv_reply, srv_state = (
+                        "unknown command '%s'" % (cur_com),
+                        server_command.SRV_REPLY_STATE_ERROR,
+                        )
                 if send_return:
                     srv_com["result"] = None
                     # blabla
                     srv_com["result"].attrib.update(
                         {
-                            "reply" : "ok processed command %s" % (cur_com),
-                            "state" : "%d" % (server_command.SRV_REPLY_STATE_OK)
+                            "reply" : srv_reply,
+                            "state" : "%d" % (srv_state)
                         }
                     )
                     self.com_socket.send_unicode(src_id, zmq.SNDMORE)
