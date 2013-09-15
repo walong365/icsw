@@ -50,8 +50,8 @@ import threading_tools
 import net_tools
 import config_tools
 import kernel_sync_tools
-from lxml import etree
-from lxml.builder import E
+from lxml import etree # @UnresolvedImports
+from lxml.builder import E # @UnresolvedImports
 # SNMP imports
 import pyasn1.codec.ber
 from pysnmp.entity.rfc3413.oneliner import cmdgen
@@ -2980,7 +2980,8 @@ class server_process(threading_tools.process_pool):
         self.__log_template.close()
     def _init_network_sockets(self):
         success = True
-        my_0mq_id = uuid_tools.get_uuid().get_urn()
+        my_0mq_id = "%s:mother:" % (uuid_tools.get_uuid().get_urn())
+        self.bind_id = my_0mq_id
         self.socket_dict = {}
         # get all ipv4 interfaces with their ip addresses, dict: interfacename -> IPv4
         for key, sock_type, bind_port, target_func in [
@@ -2988,7 +2989,7 @@ class server_process(threading_tools.process_pool):
             ("pull"  , zmq.PULL  , global_config["SERVER_PULL_PORT"], self._new_com),
             ]:
             client = self.zmq_context.socket(sock_type)
-            client.setsockopt(zmq.IDENTITY, my_0mq_id)
+            client.setsockopt(zmq.IDENTITY, self.bind_id)
             client.setsockopt(zmq.LINGER, 100)
             client.setsockopt(zmq.SNDHWM, 256)
             client.setsockopt(zmq.RCVHWM, 256)
@@ -3057,6 +3058,15 @@ class server_process(threading_tools.process_pool):
                                 cur_com,
                                 data[0],
                                 unicode(srv_com))
+                        elif cur_com == "get_0mq_id":
+                            srv_com["zmq_id"] = self.bind_id
+                            srv_com.set_result("0MQ_ID is %s" % (self.bind_id), server_command.SRV_REPLY_STATE_OK)
+                            zmq_sock.send_unicode(data[0], zmq.SNDMORE)
+                            zmq_sock.send_unicode(unicode(srv_com))
+                        elif cur_com == "server_status":
+                            srv_com.set_result("up and running", server_command.SRV_REPLY_STATE_OK)
+                            zmq_sock.send_unicode(data[0], zmq.SNDMORE)
+                            zmq_sock.send_unicode(unicode(srv_com))
                         elif cur_com in ["hard_control"]:
                             srv_com.set_result("ok handled hc command", server_command.SRV_REPLY_STATE_OK)
                             t_proc = "command"
@@ -3183,10 +3193,11 @@ class server_process(threading_tools.process_pool):
                 act_exports = {}
             valid_nt_ids = ["p", "b"]
             valid_nets = network.objects.filter(Q(network_type__identifier__in=valid_nt_ids))
-            exp_dict = {"etherboot" : "ro",
-                        "kernels"   : "ro",
-                        "images"    : "ro",
-                        "config"    : "rw"}
+            exp_dict = {
+                "etherboot" : "ro",
+                "kernels"   : "ro",
+                "images"    : "ro",
+                "config"    : "rw"}
             new_exports = {}
             exp_nets = ["%s/%s" % (cur_net.network, cur_net.netmask) for cur_net in valid_nets]
             if exp_nets:
@@ -3277,20 +3288,23 @@ class server_process(threading_tools.process_pool):
                     mother_lines = []
                     if not opt_dict["dhcp_filter"]:
                         # message() instead of match() since syslog-ng 2.1
-                        mother_lines.extend(["",
-                                             'filter f_dhcp       { message("DHCP") ; };'])
+                        mother_lines.extend([
+                            "",
+                            'filter f_dhcp       { message("DHCP") ; };'])
                     if opt_dict["dhcp"]:
                         self.log("dhcp-source found, so it seems that the DHCPD is running chrooted() ...")
-                        mother_lines.extend(["",
-                                             'destination dhcpmother { unix-dgram("%s") ;};' % (self.__glob_config["SYSLOG_UDS_NAME"]),
-                                             "",
-                                             'log { source(dhcp); source(%s); filter(f_dhcp)    ; destination(dhcpmother); };' % (dev_log_source_name)])
+                        mother_lines.extend([
+                            "",
+                            'destination dhcpmother { unix-dgram("%s") ;};' % (self.__glob_config["SYSLOG_UDS_NAME"]),
+                            "",
+                            'log { source(dhcp); source(%s); filter(f_dhcp)    ; destination(dhcpmother); };' % (dev_log_source_name)])
                     else:
                         self.log("dhcp-source not found, so it seems that the DHCPD is NOT running chrooted() ...")
-                        mother_lines.extend(["",
-                                             'destination dhcpmother { unix-dgram("%s") ;};' % (self.__glob_config["SYSLOG_UDS_NAME"]),
-                                             "",
-                                             'log {               source(%s); filter(f_dhcp)    ; destination(dhcpmother);};' % (dev_log_source_name)])
+                        mother_lines.extend([
+                            "",
+                            'destination dhcpmother { unix-dgram("%s") ;};' % (self.__glob_config["SYSLOG_UDS_NAME"]),
+                            "",
+                            'log {               source(%s); filter(f_dhcp)    ; destination(dhcpmother);};' % (dev_log_source_name)])
                     for ml in mother_lines:
                         self.log("adding line to %s : %s" % (slcn, ml))
                     open(slcn, "w").write("\n".join(orig_conf + mother_lines + [""]))
