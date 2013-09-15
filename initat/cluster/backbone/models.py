@@ -524,8 +524,8 @@ class device(models.Model):
     show_in_bootcontrol = models.BooleanField()
     # not so clever here, better in extra table, FIXME
     # cpu_info = models.TextField(blank=True, null=True)
-    # machine uuid
-    uuid = models.TextField(default="", max_length=64, unique=True)
+    # machine uuid, cannot be unique due to MySQL problems with unique TextFields
+    uuid = models.TextField(default="", max_length=64) # , unique=True)
     # cluster url
     curl = models.CharField(default="ssh://", max_length=512)
     date = models.DateTimeField(auto_now_add=True)
@@ -762,7 +762,19 @@ def device_pre_save(sender, **kwargs):
         _check_integer(cur_inst, "md_cache_mode", min_val=1, max_val=3)
         if not cur_inst.uuid:
             cur_inst.uuid = str(uuid.uuid4())
-
+        # check for uniqueness of UUID
+        try:
+            present_dev = device.objects.get(Q(uuid=cur_inst.uuid))
+        except device.DoesNotExist:
+            pass
+        else:
+            if present_dev.pk != cur_inst.pk:
+                raise ValidationError("UUID clash (=%s for %s and %s)" % (
+                    cur_inst.uuid,
+                    unicode(cur_inst),
+                    unicode(present_dev),
+                    ))
+        all_uuids = device.objects.exclude(Q(pk=cur_inst.pk)).values_list("uuid", flat=True)
         # Check if the device limit is reached
         dev_count = settings.CLUSTER_LICENSE["device_count"]
 
