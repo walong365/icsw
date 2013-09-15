@@ -338,7 +338,7 @@ class net_device(object):
                             elif cur_port:
                                 if value.isdigit():
                                     value = int(value)
-                                key = key.split("[")[0]
+                                key = key.split("[")[0].lower()
                                 res_dict[cur_port][key] = value
             self.last_update = cur_time
             if res_dict:
@@ -631,9 +631,9 @@ class net_command(hm_classes.hm_command):
             raise ValueError, "Cannot parse duplex_string '%s'" % (in_dup)
     def _parse_speed_str(self, in_str):
         in_str_l = in_str.lower().strip()
-        in_p = re.match("^(?P<num>\d+)\s*(?P<post>\S*)$", in_str_l)
+        in_p = re.match("^(?P<num>[\d.]+)\s*(?P<post>\S*)$", in_str_l)
         if in_p:
-            num, post = (int(in_p.group("num")), in_p.group("post"))
+            num, post = (int(float(in_p.group("num"))), in_p.group("post"))
             pfix = ""
             for act_pfix in ["k", "m", "g", "t"]:
                 if post.startswith(act_pfix):
@@ -663,7 +663,7 @@ class net_command(hm_classes.hm_command):
         elif in_str_l.startswith("unkn"):
             return -1
         else:
-            raise ValueError, "Cannot parse target_speed"
+            raise ValueError, "Cannot parse target_speed '%s'" % (in_str)
     def beautify_speed(self, i_val):
         f_val = float(i_val)
         if f_val < 500.:
@@ -747,6 +747,21 @@ class net_command(hm_classes.hm_command):
                     else:
                         add_errors.append("no bonding info found")
                         ret_state = max(ret_state, limits.nag_STATE_CRITICAL)
+                elif dev_name.startswith("ib"):
+                    if cur_ns.speed:
+                        # get speed from ibv_dict
+                        if "active_speed" in ibv_dict and "active_width" in ibv_dict:
+                            target_speed = self._parse_speed_str(cur_ns.speed)
+                            ib_speed, ib_width = (
+                                self._parse_speed_str(ibv_dict["active_speed"].split("(")[0].strip()),
+                                int(ibv_dict["active_width"].lower().split("x")[0]))
+                            ib_speed *= ib_width
+                            ret_state = self._compare_speed("", add_oks, add_errors, ret_state, target_speed, ib_speed)
+                        else:
+                            add_errors.append("no speed info found")
+                            ret_state = max(ret_state, limits.nag_STATE_CRITICAL)
+                        # pprint.pprint(ibv_dict)
+                        # print ethtool_dict, dev_name, cur_ns
             else:
                 if cur_ns.speed:
                     ret_state = self._check_speed(None, cur_ns, ethtool_dict.get("speed", -1), add_oks, add_errors, ret_state)
@@ -773,13 +788,16 @@ class net_command(hm_classes.hm_command):
         str_prefix = "%s: " % (dev_name) if dev_name else ""
         target_speed = self._parse_speed_str(cur_ns.speed)
         if dev_str != -1:
-            if target_speed == dev_str:
-                add_oks.append("%starget_speed %s" % (str_prefix, self.beautify_speed(dev_str)))
-            else:
-                add_errors.append("%starget_speed differ: %s (target) != %s (measured)" % (str_prefix, self.beautify_speed(target_speed), self.beautify_speed(dev_str)))
-                ret_state = max(ret_state, limits.nag_STATE_CRITICAL)
+            ret_state = self._compare_speed(str_prefix, add_oks, add_errors, ret_state, target_speed, dev_str)
         else:
             add_errors.append("%sCannot check target_speed: no ethtool information" % (str_prefix))
+            ret_state = max(ret_state, limits.nag_STATE_CRITICAL)
+        return ret_state
+    def _compare_speed(self, str_prefix, add_oks, add_errors, ret_state, target_speed, dev_speed):
+        if target_speed == dev_speed:
+            add_oks.append("%starget_speed %s" % (str_prefix, self.beautify_speed(dev_speed)))
+        else:
+            add_errors.append("%starget_speed differ: %s (target) != %s (measured)" % (str_prefix, self.beautify_speed(target_speed), self.beautify_speed(dev_speed)))
             ret_state = max(ret_state, limits.nag_STATE_CRITICAL)
         return ret_state
     def _check_duplex(self, dev_name, cur_ns, duplex_str, add_oks, add_errors, ret_state):
