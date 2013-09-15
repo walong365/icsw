@@ -132,7 +132,7 @@ class hp_dimm_command(hm_classes.hm_command):
     def interpret(self, srv_com, cur_ns):
         return _dimm().interpret(srv_com, cur_ns)
 
-class hp_psu_command(hm_classes.hm_command):
+class hp_powersupply_command(hm_classes.hm_command):
     info_string = "check PSU state via hpasmcli"
     def __call__(self, srv_com, cur_ns):
         return hp_health_bg(self.log, srv_com, _psu())
