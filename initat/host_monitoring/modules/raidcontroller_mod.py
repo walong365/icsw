@@ -53,10 +53,11 @@ SAS_CONT_KEYS = set(["ongoing_progresses"])
 def get_size(in_str):
     try:
         s_p, p_p = in_str.split()
-        return float(s_p) * {"k" : 1000,
-                             "m" : 1000 * 1000,
-                             "g" : 1000 * 1000 * 1000,
-                             "t" : 1000 * 1000 * 1000 * 1000}.get(p_p[0].lower(), 1)
+        return float(s_p) * {
+            "k" : 1000,
+            "m" : 1000 * 1000,
+            "g" : 1000 * 1000 * 1000,
+            "t" : 1000 * 1000 * 1000 * 1000}.get(p_p[0].lower(), 1)
     except:
         return 0
 
@@ -210,6 +211,8 @@ class ctrl_type_lsi(ctrl_type):
         ctrl_id = "ioc%s" % (ccs.run_info["command"].split()[1])
         ctrl_dict = self._dict[ctrl_id]
         cur_mode = None
+        # pacify checker
+        vol_dict, phys_dict = ({}, {})
         to_int = set(["device", "function", "maximum_physical_devices", "size", "slot", "enclosure"])
         for line in ccs.read().split("\n"):
             if line.strip():
@@ -1458,99 +1461,6 @@ class ctrl_type_ibmbcraid(ctrl_type):
 class _general(hm_classes.hm_module):
     def init_module(self):
         ctrl_type.init(self)
-# #    def check_exec(self):
-# #        if os.path.isfile(TW_EXEC):
-# #            return "ok"
-# #        else:
-# #            return "error no %s found" % (TW_EXEC)
-    def check_controller(self, ctrl_id):
-        ctrl_dict = {
-            "type"  : self.ctrl_dict[ctrl_id]["type"],
-            "units" : {},
-            "ports" : {}}
-        if self.ctrl_dict[ctrl_id].has_key("info"):
-            ctrl_dict["info"] = self.ctrl_dict[ctrl_id]["info"]
-        else:
-            stat, out = commands.getstatusoutput("%s info %s" % (TW_EXEC, ctrl_id))
-            if stat:
-                ctrl_dict["info"] = "error calling %s (%d): %s" % (TW_EXEC, stat, str(out))
-            else:
-                ctrl_dict["info"] = "ok"
-                lines = [y for y in [x.rstrip() for x in out.strip().split("\n")] if y]
-                num_units, num_ports = (0, 0)
-                l_mode = "c"
-                if lines:
-                    if lines[0].lower().strip().startswith("unit"):
-                        # new format
-                        if lines[0].lower().count("rcmpl"):
-                            # new tw_cli
-                            u2_match = u2_1_match
-                        else:
-                            # old tw_cli
-                            u2_match = u2_0_match
-                        for line in lines:
-                            um = u2_match.match(line)
-                            pm = p2_match.match(line)
-                            bm = bbu_match.match(line)
-                            if um:
-                                ctrl_dict["units"][um.group("num")] = {
-                                    "raid"   : um.group("raid").strip(),
-                                    "size"   : "%s GB" % (um.group("size").strip()),
-                                    "ports"  : [],
-                                    "status" : um.group("status").strip(),
-                                    "cmpl"   : um.group("cmpl")}
-                            elif pm:
-                                ctrl_dict["ports"][pm.group("num")] = {
-                                    "status" : pm.group("status").strip(),
-                                    "unit"   : pm.group("unit")}
-                                if ctrl_dict["units"].has_key(pm.group("unit")):
-                                    ctrl_dict["units"][pm.group("unit")]["ports"].append(pm.group("num"))
-                            elif bm:
-                                ctrl_dict["bbu"] = dict([(key, bm.group(key)) for key in [
-                                            "onlinestate",
-                                            "ready",
-                                            "status",
-                                            "volt",
-                                            "temp"]])
-                    else:
-                        for line in lines:
-                            if line.startswith("# of unit"):
-                                uc_m = re.match("^# of units\s*:\s*(\d+).*$", line)
-                                if uc_m:
-                                    num_units = uc_m.group(1)
-                                l_mode = "u"
-                            elif line.startswith("# of port"):
-                                l_mode = "p"
-                                pc_m = re.match("^# of ports\s*:\s*(\d+).*$", line)
-                                if num_units and pc_m:
-                                    num_ports = pc_m.group(1)
-                            elif l_mode == "u":
-                                um = unit_match.match(line)
-                                if um:
-                                    cmpl_str, stat_str = ("???",
-                                                          um.group("status").strip())
-                                    if stat_str.lower().startswith("rebuil"):
-                                        # try to exctract rebuild_percentage
-                                        pc_m = re.match("^(?P<stat>\S+)\s+\((?P<perc>\d+)%\)$", stat_str)
-                                        if pc_m:
-                                            stat_str = pc_m.group("stat")
-                                            cmpl_str = pc_m.group("perc")
-                                    ctrl_dict["units"][um.group("num")] = {
-                                        "raid"   : um.group("raid").strip(),
-                                        "size"   : um.group("size").strip(),
-                                        "blocks" : um.group("blocks").strip(),
-                                        "ports"  : [],
-                                        "status" : stat_str,
-                                        "cmpl"   : cmpl_str}
-                            elif l_mode == "p":
-                                pm = port_match.match(line)
-                                if pm:
-                                    ctrl_dict["ports"][pm.group("num")] = {
-                                        "info"   : pm.group("info").strip(),
-                                        "status" : pm.group("status").strip()}
-                                    if ctrl_dict["units"].has_key(pm.group("unit")):
-                                        ctrl_dict["units"][pm.group("unit")]["ports"].append(pm.group("num"))
-        return ctrl_dict
 
 class tw_status_command(hm_classes.hm_command):
     info_string = "3ware controller information"

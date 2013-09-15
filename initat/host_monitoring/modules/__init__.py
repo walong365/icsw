@@ -6,7 +6,8 @@ import pprint
 from initat.host_monitoring import hm_classes
 import process_tools
 
-__all__ = [cur_entry for cur_entry in [entry.split(".")[0] for entry in os.listdir(os.path.dirname(__file__)) if entry.endswith(".py")] if cur_entry and not cur_entry.startswith("_")]
+__all__ = [cur_entry for cur_entry in [
+    entry.split(".")[0] for entry in os.listdir(os.path.dirname(__file__)) if entry.endswith(".py")] if cur_entry and not cur_entry.startswith("_")]
 
 module_list = []
 command_dict = {}
