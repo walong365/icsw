@@ -549,26 +549,26 @@ class special_disc(special_base):
             "partition_fs").order_by(
                 "partition_disc__disc",
                 "pnum"):
+            act_disc, act_pnum = (part_p.partition_disc.disc, part_p.pnum)
+            if not first_disc:
+                first_disc = act_disc
+            if act_disc == first_disc and part_dev:
+                act_disc = part_dev
+            if "dev/mapper" in act_disc:
+                part_pf = "-part"
+            elif "cciss" in act_disc or "ida" in act_disc:
+                part_pf = "p"
+            else:
+                part_pf = ""
+            if act_pnum:
+                act_part = "%s%s%d" % (act_disc, part_pf, act_pnum)
+            else:
+                # handle special case for unpartitioned disc
+                act_part = act_disc
             if part_p.partition_fs.hexid == "82":
                 # swap partiton
-                pass
+                self.log("ignoring %s (is swap)" % (act_part))
             else:
-                act_disc, act_pnum = (part_p.partition_disc.disc, part_p.pnum)
-                if not first_disc:
-                    first_disc = act_disc
-                if act_disc == first_disc and part_dev:
-                    act_disc = part_dev
-                if "dev/mapper" in act_disc:
-                    part_pf = "-part"
-                elif "cciss" in act_disc or "ida" in act_disc:
-                    part_pf = "p"
-                else:
-                    part_pf = ""
-                if act_pnum:
-                    act_part = "%s%s%d" % (act_disc, part_pf, act_pnum)
-                else:
-                    # handle special case for unpartitioned disc
-                    act_part = act_disc
                 # which partition to check
                 check_part = act_part
                 # check for lut_blob
