@@ -134,7 +134,7 @@
         <field type="CharField" name="name">xfs</field>
         <field type="CharField" name="identifier">f</field>
         <field type="CharField" name="descr">XFS Filesystem</field>
-        <field type="CharField" name="hexid">82</field>
+        <field type="CharField" name="hexid">83</field>
         <field type="DateTimeField" name="date">2012-11-16T11:50:19+00:00</field>
     </object>
     <object pk="9" model="backbone.partition_fs">
