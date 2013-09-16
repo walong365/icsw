@@ -22,6 +22,7 @@
 #
 """ meta-server, server process """
 
+import configfile
 import logging_tools
 import mail_tools
 import os
@@ -52,8 +53,8 @@ class main_process(threading_tools.process_pool):
         self.__log_template = logging_tools.get_logger(global_config["LOG_NAME"], global_config["LOG_DESTINATION"], zmq=True, context=self.zmq_context)
         # threading_tools.twisted_main_thread.__init__(self, "main")
         # self.install_signal_handlers()
-        process_tools.save_pid(global_config["PID_NAME"], mult=3)
         # self.add_thread(twisted_thread("twisted", global_config), start_thread=True)
+        self._init_msi_block()
         self._init_network_sockets()
         self.register_exception("int_error", self._sigint)
         self.register_exception("term_error", self._sigint)
@@ -74,6 +75,25 @@ class main_process(threading_tools.process_pool):
             self.__log_template.log(lev, what)
         else:
             self.__log_cache.append((lev, what))
+    def _init_msi_block(self):
+        # store pid name because global_config becomes unavailable after SIGTERM
+        self.__pid_name = global_config["PID_NAME"]
+        process_tools.save_pids(self.__pid_name, mult=3)
+        print self.__pid_name
+        process_tools.append_pids(self.__pid_name, pid=configfile.get_manager_pid(), mult=2)
+        if True: # not self.__options.DEBUG:
+            self.log("Initialising meta-server-info block")
+            msi_block = process_tools.meta_server_info("meta-server")
+            msi_block.add_actual_pid(mult=3)
+            msi_block.add_actual_pid(act_pid=configfile.get_manager_pid(), mult=2)
+            msi_block.start_command = "/etc/init.d/meta-server start"
+            msi_block.stop_command = "/etc/init.d/meta-server force-stop"
+            msi_block.kill_pids = True
+            # msi_block.heartbeat_timeout = 60
+            msi_block.save_block()
+        else:
+            msi_block = None
+        self.__msi_block = msi_block
     def _sigint(self, err_cause):
         if self["exit_requested"]:
             self.log("exit already requested, ignoring", logging_tools.LOG_LEVEL_WARN)
@@ -129,7 +149,9 @@ class main_process(threading_tools.process_pool):
         for conf in conf_info:
             self.log("Config : %s" % (conf))
     def loop_end(self):
-        process_tools.delete_pid(global_config["PID_NAME"])
+        process_tools.delete_pid(self.__pid_name)
+        if self.__msi_block:
+            self.__msi_block.remove_meta_block()
     def _do_commands(self, act_commands):
         for act_command in act_commands:
             self._submit_at_command(act_command, 1)
