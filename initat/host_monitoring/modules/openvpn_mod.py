@@ -18,19 +18,17 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
 
-import sys
 import commands
-from initat.host_monitoring import limits, hm_classes
-import os
-import os.path
-import logging_tools
-import process_tools
-import pprint
-import time
-import socket
 import datetime
 import glob
-import server_command
+import logging_tools
+import os
+import process_tools
+import pprint
+import socket
+import sys
+import time
+from initat.host_monitoring import limits, hm_classes
 
 OPENVPN_DIR = "/etc/openvpn"
 EXPECTED_FILE = "/etc/sysconfig/host-monitoring.d/openvpn_expected"
@@ -380,7 +378,7 @@ class certificate_status_command(hm_classes.hm_command):
                         key, value = l_parts
                         if key.lower() in ["ca", "cert"]:
                             map_dict[os.path.join(home_dir, value)] = file_name
-            for dir_name, dir_list, file_list in os.walk(home_dir):
+            for dir_name, _dir_list, file_list in os.walk(home_dir):
                 pem_files.extend([os.path.join(dir_name, file_name) for file_name in file_list if file_name.endswith(".pem")])
         for file_name in pem_files:
             #file_name = "%s/%s" % (dir_name, pem_file)

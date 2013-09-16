@@ -1,9 +1,9 @@
 #!/usr/bin/python-init -Ot
 #
-# Copyright (C) 2008,2009,2012 Andreas Lang-Nevyjel init.at
+# Copyright (C) 2008,2009,2012,2013 Andreas Lang-Nevyjel init.at
 #
 # Send feedback to: <lang-nevyjel@init.at>
-# 
+#
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License Version 2 as
 # published by the Free Software Foundation.
@@ -18,17 +18,12 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
 
-import sys
 import commands
-from initat.host_monitoring import limits, hm_classes
-import os
-import os.path
 import logging_tools
-import process_tools
+import os
 import pprint
-import time
-import socket
-import server_command
+import sys
+from initat.host_monitoring import limits, hm_classes
 
 class _general(hm_classes.hm_module):
     def init_module(self):
