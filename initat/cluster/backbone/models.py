@@ -4623,12 +4623,18 @@ def _migrate_location_type(cat_tree):
 
 class category_tree(object):
     # helper structure
-    def __init__(self):
+    def __init__(self, **kwargs):
+        self.with_device_count = kwargs.get("with_device_count", False)
         self.__node_dict = {}
         self.__category_lut = {}
         if not category.objects.all().count():
             category(name="", full_name="", comment="top node").save()
-        for cur_node in category.objects.all().order_by("depth"):
+        if self.with_device_count:
+            _sql = category.objects.all().prefetch_related("device_set", "config_set", "mon_check_command_set")
+        else:
+            _sql = category.objects.all()
+        for cur_node in _sql.order_by("depth"):
+            cur_node.device_count = cur_node.device_set.count() + cur_node.config_set.count() + cur_node.mon_check_command_set.count()
             self.__node_dict[cur_node.pk] = cur_node
             self.__category_lut.setdefault(cur_node.full_name, []).append(cur_node)
             cur_node._sub_tree = {}
@@ -4655,6 +4661,8 @@ class category_tree(object):
     def add_category(self, new_category_name):
         while new_category_name.startswith("/"):
             new_category_name = new_category_name[1:]
+        while new_category_name.endswith("/"):
+            new_category_name = new_category_name[:-1]
         cat_parts = list(new_category_name.split("/"))
         cur_node = self._root_node
         for _part_num, cat_part in enumerate(cat_parts):
@@ -4745,6 +4753,7 @@ class category(models.Model):
             immutable="1" if self.immutable else "0",
             latitude="%.6f" % (self.latitude),
             longitude="%.6f" % (self.longitude),
+            device_count="%d" % (getattr(self, "device_count", 0)),
         )
 
 @receiver(signals.pre_save, sender=category)
