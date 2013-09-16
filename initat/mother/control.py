@@ -701,11 +701,20 @@ class host(machine):
                         )])).strip().replace("  ", " ").replace("  ", " ")
                 self.clear_ip_mac_files([self.get_ip_mac_file_base_name()])
                 if new_kernel.xen_host_kernel:
-                    append_field = ["x dom0_mem=524288",
-                                    "k console=tty0 ip=%s:%s::%s %s" % (self.maint_ip, s_ip, ipvx_tools.get_network_name_from_mask(s_netmask), append_string),
-                                    "i"]
+                    append_field = [
+                        "x dom0_mem=524288",
+                        "k console=tty0 ip=%s:%s::%s %s" % (
+                            self.maint_ip.ip,
+                            machine.process.server_ip,
+                            ipvx_tools.get_network_name_from_mask(self.maint_ip.network.netmask),
+                            append_string),
+                        "i"]
                 else:
-                    total_append_string = "initrd=i ip=%s:%s::%s %s" % (self.maint_ip.ip, machine.process.server_ip, ipvx_tools.get_network_name_from_mask(self.maint_ip.network.netmask), append_string)
+                    total_append_string = "initrd=i ip=%s:%s::%s %s" % (
+                        self.maint_ip.ip,
+                        machine.process.server_ip,
+                        ipvx_tools.get_network_name_from_mask(self.maint_ip.network.netmask),
+                        append_string)
                 pxe_lines = []
                 if global_config["NODE_BOOT_DELAY"]:
                     pxe_lines.extend(["TIMEOUT %d" % (global_config["NODE_BOOT_DELAY"]),
