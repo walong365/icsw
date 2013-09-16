@@ -27,6 +27,8 @@ class category_tree
     load_ct: () =>
         $.ajax
             url     : "{% url 'base:category_tree' %}"
+            data    :
+                with_device_count : 1
             success : (xml) =>
                 if parse_xml_response(xml)
                     @DNT = $(xml).find("categories")
@@ -67,13 +69,16 @@ class category_tree
                             @build_node(@top_div.dynatree("getTree").getNodeByKey(new_node.attr("parent")), new_node)
         return false
     build_tree: () =>
+        @cur_key = 0
         @top_div.dynatree
             autoFocus  : false
             debuglevel : {% if DEBUG %}0{% else %}0{% endif %}
             onExpand : (flag, dtnode) =>
             onSelect : (flag, dtnode) =>
             onFocus  : (dtnode) =>
-                @show_details(dtnode.data.key)
+                if dtnode.data.key != @cur_key
+                    @cur_key = dtnode.data.key
+                    @show_details(dtnode.data.key)
                 return false
             dnd : {
                 onDragStart : (dtnode) =>
@@ -140,7 +145,10 @@ class category_tree
             title_str = "TOP"
             expand_flag = true
         else
-            title_str = db_node.attr("name") + " (" + db_node.attr("full_name") + ")"
+            info_str = db_node.attr("full_name")
+            if parseInt(db_node.attr("device_count"))
+                info_str = info_str + ", dc=" + db_node.attr("device_count")
+            title_str = db_node.attr("name") + " (" + info_str + ")"
             expand_flag = false
         new_node = dt_node.addChild(
             title    : title_str
@@ -173,6 +181,27 @@ class category_tree
                         detail_div.find("input#button-id-delete").off("change").on("click", @delete_node)
                         if db_node.attr("full_name").match("/location/")
                             @show_map_info(db_node)
+                        $.ajax
+                            url     : "{% url 'base:get_cat_references' %}"
+                            data    :
+                                "key" : key 
+                            success : (xml) =>
+                                if parse_xml_response(xml)
+                                    obj_div = $("<div>").attr("id", "ref_objects")
+                                    obj_div.dynatree()
+                                    $("div#ct_detail").append(obj_div)
+                                    root_node = obj_div.dynatree("getRoot")
+                                    ref_list = $(xml).find("references")
+                                    ref_list.find("> *").each (idx, sub_list) =>
+                                        sub_list = $(sub_list)
+                                        sub_node = root_node.addChild(
+                                            title    : sub_list.prop("tagName") + " (" + sub_list.attr("count") + ")"
+                                            isFolder : true
+                                        )
+                                        sub_list.find("*").each (sub_idx, entry) =>
+                                            sub_node.addChild(
+                                                title : $(entry).text()
+                                            )
         else
             detail_div = $("div#ct_detail")
             detail_div.children().remove()

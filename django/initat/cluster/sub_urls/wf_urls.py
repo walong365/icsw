@@ -43,6 +43,7 @@ base_patterns = patterns(
     url("^cat_delete$"                        , base_views.delete_category.as_view()    , name="delete_category"),
     url("^cat_create$"                        , base_views.create_category.as_view()    , name="create_category"),
     url("^cat_move$"                          , base_views.move_category.as_view()      , name="move_category"),
+    url("^cat_reference$"                     , base_views.get_cat_references.as_view() , name="get_cat_references"),
     url("^change_category"                    , base_views.change_category.as_view()    , name="change_category"),
     url("^prune_cat_tree"                     , base_views.prune_category_tree.as_view(), name="prune_categories"),
 )

@@ -399,7 +399,9 @@ class get_category_tree(View):
         return render_me(request, "category_tree.html")()
     @method_decorator(xml_wrapper)
     def post(self, request):
-        request.xml_response["response"] = category_tree().get_xml()
+        _post = request.POST
+        with_device_count = True if int(_post.get("with_device_count", "0")) else False
+        request.xml_response["response"] = category_tree(with_device_count=with_device_count).get_xml()
 
 class prune_category_tree(View):
     @method_decorator(login_required)
@@ -426,6 +428,22 @@ class category_detail(View):
                 )
             }
         )
+
+class get_cat_references(View):
+    @method_decorator(login_required)
+    @method_decorator(xml_wrapper)
+    def post(self, request):
+        cur_cat = category.objects.prefetch_related("device_set", "config_set", "mon_check_command_set", "device_set__domain_tree_node").get(Q(pk=request.POST["key"]))
+        res_list = E.references()
+        for entry in ["device", "config", "mon_check_command"]:
+            _getter = getattr(cur_cat, "%s_set" % (entry))
+            if _getter.count():
+                sub_list = getattr(E, entry)(count="%d" % (_getter.count()))
+                for sub_entry in _getter.all():
+                    info_str = sub_entry.full_name if entry == "device" else unicode(sub_entry)
+                    sub_list.append(E.entry(info_str, pk="%d" % (sub_entry.pk)))
+                res_list.append(sub_list)
+        request.xml_response["result"] = res_list
 
 class delete_category(View):
     @method_decorator(login_required)
