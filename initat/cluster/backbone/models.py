@@ -4634,7 +4634,8 @@ class category_tree(object):
         else:
             _sql = category.objects.all()
         for cur_node in _sql.order_by("depth"):
-            cur_node.device_count = cur_node.device_set.count() + cur_node.config_set.count() + cur_node.mon_check_command_set.count()
+            if self.with_device_count:
+                cur_node.device_count = cur_node.device_set.count() + cur_node.config_set.count() + cur_node.mon_check_command_set.count()
             self.__node_dict[cur_node.pk] = cur_node
             self.__category_lut.setdefault(cur_node.full_name, []).append(cur_node)
             cur_node._sub_tree = {}
@@ -4663,6 +4664,8 @@ class category_tree(object):
             new_category_name = new_category_name[1:]
         while new_category_name.endswith("/"):
             new_category_name = new_category_name[:-1]
+        while new_category_name.count("//"):
+            new_category_name = new_category_name.replace("//", "/")
         cat_parts = list(new_category_name.split("/"))
         cur_node = self._root_node
         for _part_num, cat_part in enumerate(cat_parts):
