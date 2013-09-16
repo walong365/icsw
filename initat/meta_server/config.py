@@ -1,9 +1,12 @@
-#!/usr/bin/python-init -Ot
+#!/usr/bin/python-init -Otu
+# -*- coding: utf-8 -*-
 #
-# Copyright (C) 2001,2002,2003,2004 Andreas Lang, init.at
+# Copyright (C) 2013 Andreas Lang-Nevyjel
 #
-# Send feedback to: <lang@init.at>
-# 
+# Send feedback to: <lang-nevyjel@init.at>
+#
+# This file is part of host-monitoring
+#
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License Version 2 as
 # published by the Free Software Foundation.
@@ -18,21 +21,9 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
 
-import threading
-import sys
-import time
+""" meta-server, config """
 
-class message:
-  def __init__(self, type="?", arg=()):
-    self.type = type
-    self.arg = arg
-    self.thread = threading.currentThread().getName()
-    self.time = time.time()
+import configfile
+import process_tools
 
-class internal_message(message):
-  def __init__(self, arg=""):
-    message.__init__(self, "I", arg=arg)
-    
-if __name__ =="__main__":
-    print "Loadable module, exiting..."
-    sys.exit(0)
+global_config = configfile.get_global_config(process_tools.get_programm_name())
