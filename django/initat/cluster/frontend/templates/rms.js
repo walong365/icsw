@@ -39,7 +39,7 @@ class int_file_info
         if not @cur_cm
             @file_ta = $("<textarea>").text(file_info.text()) 
             @file_div.append(@file_ta)
-            @top_div.tabs("option", "reload active", @tab_index)
+            @top_div.tabs("option", "active", @tab_index)
             @cur_cm = CodeMirror.fromTextArea(@file_ta[0], {
                 "styleActiveLine" : true,
                 "lineNumbers"     : true,
@@ -122,7 +122,7 @@ class ext_file_info
         cur_ed.focus()
 
 class rms_view
-    constructor: (@top_div, @reload_button, @search={}, @collapse_run_wait=false) ->
+    constructor: (@top_div, @reload_button, @search={}, @collapse_run_wait=false, @addon_files=0) ->
         @divs = {}
         @tables = {}
         @extra_tabs = {}
@@ -137,6 +137,8 @@ class rms_view
             ).on("change", @change_reload)
         )
     setup: () =>
+        # flag for first run :-)
+        @first_run = true
         $.ajax
             url : "{% url 'rms:get_header_xml' %}"
             success : (xml) =>
@@ -212,11 +214,13 @@ class rms_view
                     if cur_div.length
                         cur_div.removeClass("ui-icon-triangle-1-e").addClass("ui-icon-triangle-1-s")
                         @build_fileinfo_line(key, cur_table.dataTable(), cur_div.parents("tr:first")[0])
+                @first_run = false
     init_tables: () =>
         @init_run_table()
         @init_wait_table()
         @init_node_table()
     init_run_table: () =>
+        @auto_expand_list = []
         cur_table = @tables["run_table"]
         cur_table.dataTable
             "bProcessing"     : true,
@@ -225,7 +229,10 @@ class rms_view
             "sPaginationType" : "full_numbers",
             "bStateSave"      : true,
             "bAutoWidth"      : false
-            "oSearch"         : {"sSearch" : if "run_table" of @search then @search["run_table"] else ""}
+            "oSearch"         : {
+                "sSearch" : if "run_table" of @search then @search["run_table"] else "",
+                "bRegex"  : true
+            }
             "aoColumnDefs"    : [
                 {
                     "fnRender" : (o, val) ->
@@ -251,8 +258,11 @@ class rms_view
                     "sClass"   : "nowrap"
                 }, {
                     "aTargets" : [14],
-                    "fnRender" : (o, val) ->
-                        return "<div class='ui-icon ui-icon-triangle-1-e leftfloat' id='expand_#{o.aData[0]}_#{o.aData[1]}'></div><span>#{val}</span>"
+                    "fnRender" : (o, val) =>
+                        cur_id = "expand_#{o.aData[0]}_#{o.aData[1]}"
+                        if parseInt(val) > 0 and @first_run
+                            @auto_expand_list.push(cur_id)
+                        return "<div class='ui-icon ui-icon-triangle-1-e leftfloat' id='#{cur_id}'></div><span>#{val}</span>"
                     "sClass"   : "center nowrap"
                 }
             ],
@@ -260,6 +270,10 @@ class rms_view
                 @tables["run_table"].find("a[href^='file']").bind("click", @new_file_info)
                 @tables["run_table"].find("input[type='button'][id^='jctrl:']").on("click", @control_job)
                 @tables["run_table"].find("div[id^='expand_']").on("click", @toggle_file_expand)
+                if @addon_files and @first_run and @auto_expand_list
+                    # expand a given number of files
+                    for exp_id in @auto_expand_list
+                        @tables["run_table"].find("div[id='#{exp_id}']").trigger("click")
         @init_redraw(cur_table)
         @add_visibility_buttons(cur_table)
     init_wait_table: () =>
@@ -271,7 +285,10 @@ class rms_view
             "sPaginationType" : "full_numbers",
             "bStateSave"      : true,
             "bAutoWidth"      : false,
-            "oSearch"         : {"sSearch" : if "wait_table" of @search then @search["wait_table"] else ""}
+            "oSearch"         : {
+                "sSearch" : if "wait_table" of @search then @search["wait_table"] else "",
+                "bRegex"  : true
+                }
             "aoColumnDefs"    : [
                 {
                     "fnRender" : (o, val) ->
@@ -301,6 +318,10 @@ class rms_view
             "sPaginationType" : "full_numbers",
             "bStateSave"      : true,
             "bAutoWidth"      : true,
+            "oSearch"         : {
+                "sSearch" : if "node_table" of @search then @search["node_table"] else "",
+                "bRegex"  : true
+                }
             "aoColumnDefs"    : [
                 {
                     "fnRender" : (o, val) ->
