@@ -9,6 +9,7 @@ if [ -d ${MIG_DIR} ] ; then
     for sync_app in ${sync_apps} ; do
 	if [ -d "${C_DIR}${sync_app}" ] ; then
             echo "syncing app ${sync_app}"
+            ${C_DIR}/manage.py schemamigration ${sync_app} --auto
             ${C_DIR}/manage.py migrate ${sync_app}
 	fi
     done
