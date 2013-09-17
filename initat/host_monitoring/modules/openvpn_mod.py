@@ -25,8 +25,11 @@ import logging_tools
 import os
 import process_tools
 import pprint
+import re
+import shutil
 import socket
 import sys
+import tempfile
 import time
 from initat.host_monitoring import limits, hm_classes
 
@@ -127,14 +130,15 @@ class _general(hm_classes.hm_module):
         else:
             self.__expected = None
             try:
-                open(EXPECTED_FILE, "w").write("\n".join(["# Expected OpenVPN instances",
-                                                          "# Format:",
-                                                          "# DEVICE=<INSTANCE> <INSTANCE>",
-                                                          "# where INSTANCE has the form",
-                                                          "# instance_name:client1_name{,W|C}:client2_name,{W,C}",
-                                                          "",
-                                                          "#gatekeeper=lang-nevyjel:ehkcluster,W:test,E bla:x",
-                                                          ""]))
+                open(EXPECTED_FILE, "w").write("\n".join([
+                    "# Expected OpenVPN instances",
+                    "# Format:",
+                    "# DEVICE=<INSTANCE> <INSTANCE>",
+                    "# where INSTANCE has the form",
+                    "# instance_name:client1_name{,W|C}:client2_name,{W,C}",
+                    "",
+                    "#gatekeeper=lang-nevyjel:ehkcluster,W:test,E bla:x",
+                    ""]))
             except:
                 self.log("error creating %s: %s" % (EXPECTED_FILE,
                                                     process_tools.get_except_info()),
@@ -364,20 +368,43 @@ class certificate_status_command(hm_classes.hm_command):
             act_dict = None
         return act_dict
     def __call__(self, srv_com, cm):
+        temp_dir = tempfile.mkdtemp("_certcheck")
         pem_files = sum([glob.glob(s_glob) for s_glob in cm.arguments], [])
         home_dir = "/etc/openvpn"
+        inline_cert_re = re.compile(".*</*(?P<cert_type>[a-zA-Z]+)>.*")
         cert_dict, map_dict = ({}, {})
         if not pem_files:
             conf_files = [file_name for file_name in os.listdir(home_dir) if file_name.endswith(".conf")]
             for conf_file in conf_files:
                 file_name = "%s/%s" % (home_dir, conf_file)
                 lines = file(file_name, "r").read().split("\n")
+                is_inline = False
+                inline_pems = {}
                 for line in lines:
-                    l_parts = line.strip().split()
-                    if len(l_parts) == 2:
-                        key, value = l_parts
-                        if key.lower() in ["ca", "cert"]:
-                            map_dict[os.path.join(home_dir, value)] = file_name
+                    cr_match = inline_cert_re.match(line)
+                    if cr_match:
+                        is_inline = not is_inline
+                        cur_inline_name = cr_match.group("cert_type")
+                        if is_inline:
+                            if cur_inline_name in inline_pems:
+                                self.log("pem '%s' already present" % (cur_inline_name), logging_tools.LOG_LEVEL_ERROR)
+                            else:
+                                inline_pems[cur_inline_name] = []
+                    else:
+                        if is_inline:
+                            inline_pems[cur_inline_name].append(line)
+                        else:
+                            l_parts = line.strip().split()
+                            if len(l_parts) == 2:
+                                key, value = l_parts
+                                if key.lower() in ["ca", "cert"]:
+                                    map_dict[os.path.join(home_dir, value)] = file_name
+                for key, value in inline_pems.iteritems():
+                    if key not in ["key"]:
+                        full_name = os.path.join(temp_dir, "%s_%s.pem" % (conf_file.replace(".conf", ""), key))
+                        file(full_name, "w").write("\n".join(inline_pems[key]))
+                        pem_files.append(full_name)
+                # pprint.pprint(inline_pems)
             for dir_name, _dir_list, file_list in os.walk(home_dir):
                 pem_files.extend([os.path.join(dir_name, file_name) for file_name in file_list if file_name.endswith(".pem")])
         for file_name in pem_files:
@@ -387,6 +414,7 @@ class certificate_status_command(hm_classes.hm_command):
                 if map_dict.has_key(file_name):
                     act_dict["openvpn_config"] = map_dict[file_name]
                 cert_dict[file_name] = act_dict
+        shutil.rmtree(temp_dir)
         srv_com["certificates"] = cert_dict
     def interpret(self, srv_com, cur_ns):
         cert_dict = srv_com["certificates"]
