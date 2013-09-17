@@ -84,7 +84,19 @@ master_array = {
         ], {
             "required_xml" : ["mon_service_templ"]
         }
-    )
+    ),
+    "monhd" : new draw_setup("Host Dependencies", "monhd", "mon_host_dependency",
+        "{% url 'base:create_object' 'mon_host_dependency' %}",
+        "{% url 'base:delete_object' 'mon_host_dependency' %}",
+        [  
+            new draw_info("name"),
+            new draw_info("inherits_parent", {boolean : 1, default : 0, label : "inherit"}),
+            new draw_info("efc_up", {boolean : 1, default : 0, label : "EFC Up / Down / Unreachable / Pending", span : 4}),
+            new draw_info("efc_down", {boolean : 1, default : 1}),
+            new draw_info("efc_unreachable", {boolean : 1, default : 1}),
+            new draw_info("efc_pending", {boolean : 1, default : 0}),
+        ]
+    ),
 }
 
 load_config = ->

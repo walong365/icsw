@@ -4,9 +4,8 @@
 """ config views """
 
 import base64
-import server_command
 import logging
-from lxml.builder import E # @UnresolvedImports
+import server_command
 
 from django.contrib.auth.decorators import login_required
 from django.core.exceptions import ValidationError
@@ -17,12 +16,15 @@ from django.views.generic import View
 
 from initat.cluster.frontend import forms
 from initat.cluster.frontend.helper_functions import contact_server, xml_wrapper
-from initat.core.render import render_me, render_string
 from initat.cluster.backbone.models import config, device_group, device, \
      mon_check_command, mon_service_templ, mon_period, mon_contact, user, \
-     mon_contactgroup, mon_device_templ, \
+     mon_contactgroup, mon_device_templ, mon_host_dependency, \
      mon_host_cluster, mon_service_cluster, mon_device_esc_templ, mon_service_esc_templ, \
      partition_table, mon_notification, host_check_command
+from initat.core.render import render_me, render_string
+
+from lxml import etree # @UnresolvedImports
+from lxml.builder import E # @UnresolvedImports
 
 logger = logging.getLogger("cluster.monitoring")
 
@@ -83,7 +85,7 @@ class setup(View):
                 E.mon_contactgroups(*[cur_cg.get_xml() for cur_cg in mon_contactgroup.objects.all()]),
                 E.mon_device_templs(*[cur_dt.get_xml() for cur_dt in mon_device_templ.objects.all()]),
                 E.devices(*[cur_dev.get_simple_xml() for cur_dev in device.objects.exclude(Q(device_type__identifier="MD")).order_by("name")]),
-                E.mon_check_command(*[cur_mc.get_xml() for cur_mc in mon_check_command.objects.prefetch_related("categories").all()]),
+                E.mon_check_command(*[cur_mc.get_xml() for cur_mc in mon_check_command.objects.prefetch_related("categories__category").all()]),
                 E.mon_notifications(*[cur_mn.get_xml() for cur_mn in mon_notification.objects.all()]),
             ]
         )
@@ -112,7 +114,8 @@ class extended_setup(View):
                 E.mon_host_clusters(*[cur_mhc.get_xml() for cur_mhc in mon_host_cluster.objects.all()]),
                 E.mon_service_clusters(*[cur_msc.get_xml() for cur_msc in mon_service_cluster.objects.all()]),
                 E.devices(*[cur_dev.get_simple_xml() for cur_dev in device.objects.exclude(Q(device_type__identifier="MD")).order_by("name")]),
-                E.mon_check_Command(*[cur_mc.get_xml() for cur_mc in mon_check_command.objects.all()]),
+                E.mon_check_command(*[cur_mc.get_xml() for cur_mc in mon_check_command.objects.all()]),
+                E.mon_host_dependencies(*[cur_mhd.get_xml() for cur_mhd in mon_host_dependency.objects.all()]),
             ]
         )
 

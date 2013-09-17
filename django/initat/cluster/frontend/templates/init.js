@@ -491,7 +491,13 @@ root.draw_ds_tables = (t_div, master_array, master_xml=undefined) ->
 
 class draw_setup
     constructor: (@name, @postfix, @xml_name, @create_url, @delete_url, @draw_array, @kwargs={}) ->
-        @xml_name_plural = if @xml_name.match(///s$///) then @xml_name + "es" else @xml_name + "s"
+        if @xml_name.match(/s$/)
+            @xml_name_plural = "#{@xml_name}es"
+        else if @xml_name.match(/y$/)
+            @xml_name_plural = "#{@xml_name[..-2]}ies"
+        else
+            @xml_name_plural = "#{@xml_name}s"
+        console.log @xml_name, @xml_name_plural
         @required_xml = @kwargs.required_xml or []
         @lock_div = @kwargs.lock_div or ""
         @parent_class = @kwargs.parent_class or ""
