@@ -261,7 +261,10 @@ class sge_info(object):
         _cache = self.get_cache(job_key)
         if _cache is None:
             _c_stat, c_out = self._execute_command("%s -u \* -xml -j %s" % (qstat_com, job_id))
-            job_xml = etree.fromstring(c_out)
+            if _c_stat:
+                job_xml = E.call_error(c_out, stat="%d" % (_c_stat))
+            else:
+                job_xml = etree.fromstring(c_out)
             job_name = job_xml.findtext(".//JB_job_name")
             # check for non-standard path
             # get home
@@ -523,7 +526,10 @@ class sge_info(object):
     def _check_qhost_dict(self):
         qstat_com = self._get_com_name("qhost")
         _c_stat, c_out = self._execute_command("%s -F -q -xml -j" % (qstat_com))
-        all_qhosts = etree.fromstring(c_out)
+        if _c_stat:
+            all_qhosts = E.call_error(c_out, stat="%d" % (_c_stat))
+        else:
+            all_qhosts = etree.fromstring(c_out)
         for cur_host in all_qhosts.xpath(".//host"): # [not(@name='global')]"):
             cur_host.attrib["short_name"] = cur_host.attrib["name"].split(".")[0]
         for cur_job in all_qhosts.xpath(".//job"):
@@ -560,7 +566,10 @@ class sge_info(object):
         qstat_com = self._get_com_name("qstat")
         # -u * is important to get all jobs
         _c_stat, c_out = self._execute_command("%s -u \* -r -t -ext -urg -pri -xml" % (qstat_com))
-        all_jobs = etree.fromstring(c_out)
+        if _c_stat:
+            all_jobs = E.call_error(c_out, stat="%d" % (_c_stat))
+        else:
+            all_jobs = etree.fromstring(c_out)
         all_jobs.tag = "qstat"
         # modify job_ids
         for cur_job in all_jobs.findall(".//job_list"):
@@ -664,13 +673,14 @@ class sge_info(object):
         self.__queue_lut = {}
         for queue in self.__tree.findall("queueconf/queue"):
             self.__queue_lut[queue.get("name")] = queue
-            for exp_name, with_values in [("complex_values", True),
-                                          ("pe_list"       , False),
-                                          ("user_lists"    , False),
-                                          ("xuser_lists"   , False),
-                                          ("projects"      , False),
-                                          ("xprojects"     , False),
-                                          ("seq_no"        , False)]:
+            for exp_name, with_values in [
+                ("complex_values", True),
+                ("pe_list"       , False),
+                ("user_lists"    , False),
+                ("xuser_lists"   , False),
+                ("projects"      , False),
+                ("xprojects"     , False),
+                ("seq_no"        , False)]:
                 self._parse_sge_values(queue, exp_name, with_values)
         self.__host_lut = {}
         for cur_host in self.__tree.findall("qhost/host"):
