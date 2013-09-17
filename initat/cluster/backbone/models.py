@@ -2825,12 +2825,48 @@ def mon_device_esc_templ_pre_save(sender, **kwargs):
     if "instance" in kwargs:
         cur_inst = kwargs["instance"]
         if not cur_inst.name.strip():
-            raise ValidationError("name must not be zero")
+            raise ValidationError("name must not be empty")
         for attr_name, min_val, max_val in [
             ("first_notification", 1, 10),
             ("last_notification" , 1, 10),
             ("ninterval"         , 0, 60)]:
             _check_integer(cur_inst, attr_name, min_val=min_val, max_val=max_val)
+
+class mon_host_dependency(models.Model):
+    idx = models.AutoField(primary_key=True)
+    name = models.CharField(unique=True, max_length=192)
+    inherits_parent = models.BooleanField(default=False)
+    efc_up = models.BooleanField(default=False)
+    efc_down = models.BooleanField(default=True)
+    efc_unreachable = models.BooleanField(default=True)
+    efc_pending = models.BooleanField(default=False)
+    nfc_up = models.BooleanField(default=False)
+    nfc_down = models.BooleanField(default=True)
+    nfc_unreachable = models.BooleanField(default=True)
+    nfc_pending = models.BooleanField(default=False)
+    def get_xml(self):
+        r_xml = E.mon_host_dependency(
+            unicode(self),
+            pk="%d" % (self.pk),
+            key="monhd__%d" % (self.pk),
+            name=self.name,
+        )
+        for b_type in ["e", "n"]:
+            for c_type in ["up", "down", "unreachable", "pending"]:
+                attr_name = "%sfc_%s" % (b_type, c_type)
+                r_xml.attrib[attr_name] = "1" if getattr(self, attr_name) else "0"
+        return r_xml
+    def __unicode__(self):
+        return self.name
+    class Meta:
+        ordering = ("name",)
+
+@receiver(signals.pre_save, sender=mon_host_dependency)
+def mon_host_dependency_pre_save(sender, **kwargs):
+    if "instance" in kwargs:
+        cur_inst = kwargs["instance"]
+        if not cur_inst.name.strip():
+            raise ValidationError("name must not be empty")
 
 class mon_ext_host(models.Model):
     idx = models.AutoField(db_column="ng_ext_host_idx", primary_key=True)
@@ -4844,4 +4880,5 @@ KPMC_MAP = {
     "cat"           : category,
     "hcc"           : host_check_command,
     "cd_connection" : cd_connection,
+    "monhd"         : mon_host_dependency,
 }
