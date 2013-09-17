@@ -39,8 +39,14 @@ class cpu_container(object):
     def add_proc(self, cur_s):
         self.dict[cur_s.single_cpu_num].add_proc(cur_s)
         self.usage[cur_s.single_cpu_num] = self.dict[cur_s.single_cpu_num].usage["t"]
-    def get_min_usage_cpu(self):
-        return list(sorted([(value, key) for key, value in self.usage.iteritems()]))[0][1]
+    def get_min_usage_cpu(self, excl_list=[]):
+        free_list = list(sorted([(value, key) for key, value in self.usage.iteritems() if key not in excl_list]))
+        if free_list:
+            return free_list[0][1]
+        else:
+            return None
+    def get_usage_str(self):
+        return "|".join(["%d:%.2f" % (key, self.usage[key]) for key in sorted(self.usage.keys())])
 
 class cpu_struct(object):
     __slots__ = ("cpu_num", "procs", "usage")
