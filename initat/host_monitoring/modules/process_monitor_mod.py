@@ -92,15 +92,21 @@ class affinity_struct(object):
             else:
                 unsched.add(key)
         # print unsched
+        exclude_set = set()
         for key in unsched:
             cur_s = self.dict[key]
             # print key, cur_s
-            targ_cpu = cpu_c.get_min_usage_cpu()
-            self.log("pinning process %d to cpu %d" % (key, targ_cpu))
-            if not cur_s.migrate(targ_cpu):
-                cur_s.read_mask()
-                if cur_s.single_cpu_set:
-                    cpu_c.add_proc(cur_s)
+            self.log("usage pattern: %s" % (cpu_c.get_usage_str()))
+            targ_cpu = cpu_c.get_min_usage_cpu(exclude_set)
+            if targ_cpu is not None:
+                self.log("pinning process %d to cpu %d" % (key, targ_cpu))
+                exclude_set.add(targ_cpu)
+                if not cur_s.migrate(targ_cpu):
+                    cur_s.read_mask()
+                    if cur_s.single_cpu_set:
+                        cpu_c.add_proc(cur_s)
+            else:
+                self.log("no free CPU available, system oversubscribed ?", logging_tools.LOG_LEVEL_WARN)
 
 class _general(hm_classes.hm_module):
     def init_module(self):
