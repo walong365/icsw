@@ -285,7 +285,7 @@ class create_connection(View):
         try:
             new_cd.save()
         except ValidationError, what:
-            request.xml_response.log("error creating: %s" % (unicode(what.messages[0])), logging_tools.LOG_LEVEL_ERROR, logger)
+            request.xml_response.error("error creating: %s" % (unicode(what.messages[0])), logger)
         else:
             request.xml_response.info("added connection", logger=logger)
             request.xml_response["new_connection"] = new_cd.get_xml()

@@ -103,7 +103,7 @@ class rrd_config
         size_select =$("<select>").attr(
             "id"  : "rrd_size"
         ).on("change", @draw_rrd_el)
-        for cur_size in ["400x200", "640x300", "800x400", "1024x600", "1280x800"]
+        for cur_size in ["400x200", "640x300", "800x350", "1024x400", "1280x450"]
             size_select.append(
                 $("<option>").attr("value", cur_size).text(cur_size)
             )
@@ -159,6 +159,7 @@ class rrd_config
             min_dt = @get_date()
             min_dt.setFullYear(min_dt.getYear() - 10)
         new_tf = {"min" : min_dt, "max" : max_dt, "start" : start_dt, "end" : end_dt}
+        console.log new_tf["start"]
         # check for change
         add_new = true
         if @rrd_timeframes.length
@@ -216,8 +217,10 @@ class rrd_config
         @rrd_from_field.datetimepicker("setDate", from_date)
         @rrd_to_field.datetimepicker("setDate", to_date)
     set_to_field: (event) =>
+        # fix for IE
+        to_date = new Date(@rrd_from_field.val().replace(/-/g, "/"))
         cur_date = @get_date()
-        @append_rrd_timeframe(undefined, cur_date, new Date(@rrd_from_field.val()), cur_date) 
+        @append_rrd_timeframe(undefined, cur_date, to_date, cur_date) 
     load_rrd_tree: () =>
         $.ajax
             url  : "{% url 'rrd:device_rrds' %}"

@@ -103,8 +103,8 @@ class conn_table
         parent_pk = cd_node.attr(if type == "master" then "parent" else "child")
         child_pk  = cd_node.attr(if type == "master" then "child" else "parent")
         add_table = $("table#dev__#{parent_pk}")
-        add_ul = add_table.find("td##{type} ul##{type}")
-        add_ul.append($("<li>").attr({
+        add_div = add_table.find("td##{type} div##{type}")
+        add_div.append($("<h3>").attr({
             "id" : cd_node.attr("pk")
         }).append(
             $("<input>").attr({
@@ -127,7 +127,8 @@ class conn_table
                     ).on("change", @my_submitter.submit)
                 )
             )
-        add_ul.append(parameter_ul)
+        add_div.append(parameter_ul)
+        add_div.accordion("refresh") 
     node_dropped: (event, ui) =>
         cur_drag = ui.draggable
         target_div   = $(event.target)
@@ -145,8 +146,8 @@ class conn_table
                     @add_node(new_node, "master")
                     @add_node(new_node, "slave")
     delete_cd: (event) =>
-        dc_li = $(event.target).parent()
-        dc_id = dc_li.attr("id")
+        dc_el = $(event.target).parent()
+        dc_id = dc_el.attr("id")
         $.ajax
             url     : "{% url 'device:delete_connection' %}"
             data    : {
@@ -154,7 +155,8 @@ class conn_table
             }
             success : (xml) =>
                 if parse_xml_response(xml)
-                    dc_li.remove()
+                    dc_el.next().remove()
+                    dc_el.remove()
     draw_target_dev: (dev_el) =>
         res_table = $("<table>").attr({
             "id" : "dev__" + dev_el.attr("pk")
@@ -178,16 +180,18 @@ class conn_table
             "border"  : "1pt dashed black"
         })
         data_tr = $("<tr>").append(
-            $("<td>").attr({"id" : "master"}).append($("<ul>").attr("id", "master"))
-        ).append(
-            $("<td>")
-        ).append(
-            $("<td>").attr({"id" : "slave"}).append($("<ul>").attr("id", "slave"))
+            $("<td>").attr({"id" : "master"}).append($("<div>").attr("id", "master"))#.append($("<ul>").attr("id", "master"))),
+            $("<td>"),
+            $("<td>").attr({"id" : "slave"}).append($("<div>").attr("id", "slave"))#.append($("<ul>").attr("id", "slave")))
         )
         data_tr.find("ul").css({
             "padding-left" : "20px",
             "margin"       : "1px"
         })
+        data_tr.find("div").accordion(
+            "collapsible" : true
+            "active"      : false,
+        )
         res_table.append(header).append(drop_tr).append(data_tr)
         return res_table
     
