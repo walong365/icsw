@@ -118,7 +118,9 @@ class build_process(threading_tools.process_obj):
         self.__mach_loggers[mach_name].log(lev, what)
         if kwargs.get("global_flag", False):
             self.log(what, lev)
-    def close_mach_log(self):
+    def close_mach_log(self, mach_name=None):
+        if mach_name is not None:
+            self.__cached_mach_name = mach_name
         if self.__cached_mach_name:
             mach_name = self.__cached_mach_name
             self.__mach_loggers[mach_name].close()
@@ -907,7 +909,6 @@ class build_process(threading_tools.process_obj):
         glob_log_str = "%s, %s" % (glob_log_str, info_str)
         self.log(glob_log_str)
         self.mach_log(info_str)
-        self.close_mach_log()
     def _get_number_of_hosts(self, cur_gc, hosts):
         if hosts:
             h_filter = Q(name__in=hosts)
@@ -1074,8 +1075,8 @@ class build_process(threading_tools.process_obj):
                 # print "*", p_parents
                 for _p_val, _nd_val, p_list in p_parents:
                     # skip first host (is self)
-                    host_pk = p_list.pop(0)
-                    for parent_idx in p_list:
+                    host_pk = p_list[0]
+                    for parent_idx in p_list[1:]:
                         if d_map[host_pk] > d_map[parent_idx]:
                             parent = all_hosts_dict[parent_idx].full_name
                             if parent in host_names and parent != host["name"]:
@@ -1084,11 +1085,27 @@ class build_process(threading_tools.process_obj):
                                 break
                         else:
                             break
-                del host["possible_parents"]
                 if parent_list:
                     host["parents"] = ",".join(set(parent_list))
                     self.mach_log("Setting parent to %s" % (", ".join(parent_list)), logging_tools.LOG_LEVEL_OK, host["name"])
-                    self.close_mach_log()
+                else:
+                    self.mach_log("No parents found (albeit possible_parents was set)", logging_tools.LOG_LEVEL_WARN, host["name"])
+                    p_parents = host["possible_parents"]
+                    for t_num, (_p_val, _nd_val, p_list) in enumerate(p_parents):
+                        host_pk = p_list[0]
+                        self.mach_log("  trace %d, %s, host_distance is %d" % (
+                            t_num + 1,
+                            logging_tools.get_plural("entry", len(p_list) - 1),
+                            d_map[host_pk]))
+                        for parent_idx in p_list[1:]:
+                            parent = all_hosts_dict[parent_idx].full_name
+                            self.mach_log("    %s (distance is %d, %s)" % (
+                                unicode(parent),
+                                d_map[parent_idx],
+                                parent in host_names,
+                                ))
+                del host["possible_parents"]
+            self.close_mach_log(mach_name=host["name"])
         # remove old nagvis maps
         if cur_gc.master and not single_build:
             self.log("created %s" % (logging_tools.get_plural("nagvis map", len(nagvis_maps))))
