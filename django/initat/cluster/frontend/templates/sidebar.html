@@ -59,6 +59,8 @@ class sidebar_tree
     devsel_func: (event) =>
         # all nodes
         sel_keys = (value.data.key for value in @active_div.dynatree("getSelectedNodes"))
+        if @mode == "category"
+            sel_keys = (@cat_lookup[key] for key in sel_keys when key of @cat_lookup)
         # device nodes
         dev_keys  = (key for key in sel_keys when key.match(/^dev_/))
         # devgroup nodes
@@ -76,6 +78,7 @@ class sidebar_tree
         if not first_call
             store_user_var("sidebar_mode", tab_name, "str")
         @active_div = @["#{tab_name}_div"]
+        @mode = tab_name
         if not @active_tabs[tab_name]
             @active_tabs[tab_name] = 1
             @["activate_#{tab_name}"](@active_div)
@@ -88,10 +91,20 @@ class sidebar_tree
                         d_tree = @active_div.dynatree("getTree")
                         @DYN_DTS_LOCKCOUNT++
                         $(xml).find("selection sel").each (idx, cur_sel) =>
-                            cur_node = d_tree.getNodeByKey($(cur_sel).text())
-                            if cur_node
-                                cur_node.select(true)
-                                cur_node.makeVisible(true)
+                            dev_key = $(cur_sel).text()
+                            if tab_name == "category"
+                                # cat-lookup for category tree
+                                if dev_key of @cat_lookup
+                                    for cat_key in @cat_lookup[dev_key]
+                                        cur_node = d_tree.getNodeByKey(cat_key)
+                                        if cur_node
+                                            cur_node.select(true)
+                                            cur_node.makeVisible(true)
+                            else
+                                cur_node = d_tree.getNodeByKey(dev_key)
+                                if cur_node
+                                    cur_node.select(true)
+                                    cur_node.makeVisible(true)
                         @DYN_DTS_LOCKCOUNT--
         #if @active_tab != tab_name
         #    @active_tab = tab_name
@@ -99,18 +112,55 @@ class sidebar_tree
     activate_category: (tree_div) =>
         $.ajax
             url     : "{% url 'base:category_tree' %}"
+            data    :
+                with_devices : 1
             success : (xml) =>
                 if parse_xml_response(xml)
                     @CAT = $(xml).find("categories")
-                    #@my_submitter = new submitter({
-                    #    master_xml       : @DNT,
-                    #    success_callback : @change_cb
-                    #})
-                    tree_div.dynatree
-                        autoFocus  : false
-                        checkbox   : true
-                    @root_cat_node = tree_div.dynatree("getRoot")
-                    @build_cat_node(@root_cat_node, @CAT.find("category[parent='0']"))
+                    $.ajax
+                        url     : "{% url 'device:get_group_tree' %}"
+                        data    :
+                            "ignore_cdg"      : "0"
+                            "permission_tree" : "1"
+                            "full_name"       : "1"
+                        success : (xml) =>
+                            if parse_xml_response(xml)
+                                @device_groups = $(xml).find("device_groups device_group")
+                                tree_div.dynatree
+                                    autoFocus  : false
+                                    checkbox   : true
+                                    onClick : (dtnode, event) =>
+                                        dt_key = dtnode.data.key
+                                        if dt_key of @cat_lookup
+                                            dev_key = @cat_lookup[dt_key]
+                                            if dev_key.match(/^dev__/)
+                                                if !@ADS_RUNNING
+                                                    if dtnode.getEventTargetType(event) == "title"
+                                                        show_device_info(event, dev_key, @update_node)
+                                    onSelect : (flat, dtnode) =>
+                                        if !@ADS_RUNNING and !@DBL_HANDLING
+                                            if !dtnode.isExpanded()
+                                                dtnode.expand(true)
+                                            if !@DYN_DTS_LOCKCOUNT
+                                                @DYN_DTS_LOCKCOUNT++
+                                                dtnode.visit(
+                                                    (cur_node) ->
+                                                        cur_node.toggleSelect()
+                                                    false)
+                                                @DYN_DTS_LOCKCOUNT--
+                                                key_list = []
+                                                for cat_key in (node.data.key for node in tree_div.dynatree("getTree").getSelectedNodes() when cat_key.match(/cat__/))
+                                                    key_list.push(@cat_lookup[cat_key])
+                                                $.ajax
+                                                    url  : "{% url 'device:set_selection' %}"
+                                                    data :
+                                                        "key_list" : key_list
+                                @root_cat_node = tree_div.dynatree("getRoot")
+                                @cat_lookup = {}
+                                @cat_lut_counter = 0
+                                @build_cat_node(@root_cat_node, @CAT.find("category[parent='0']"))
+                                if @CALL_DEVSEL_LINK_WHEN_LOADED
+                                    $("input#devsel_button").trigger("click")
     build_cat_node: (dt_node, db_node) =>
         if parseInt(db_node.attr("parent")) == 0
             title_str = "TOP"
@@ -125,8 +175,33 @@ class sidebar_tree
             #select   : if parseInt(db_node.attr("immutable")) then true else false
             addClass : if db_node.attr("intermediate") == "1" then "intermediate" else "ip_ok"
         )
+        if db_node.attr("devices")
+            dev_list = db_node.attr("devices").split("::")
+            for dev_pk in dev_list
+                cur_dev = @device_groups.find("device[pk='#{dev_pk}']")
+                if cur_dev.length
+                    # may be zero for disabled devices
+                    @add_cat_dev_node(new_node, cur_dev)
         @CAT.find("category[parent='" + db_node.attr("pk") + "']").each (idx, sub_db_node) =>
             @build_cat_node(new_node, $(sub_db_node))
+    add_cat_dev_node: (dt_node, cur_dev) =>
+        dev_key = cur_dev.attr("key")
+        @cat_lut_counter++
+        cat_key = "cat__#{@cat_lut_counter}"
+        if dev_key of @cat_lookup
+            @cat_lookup[dev_key].push(cat_key)
+        else
+            @cat_lookup[dev_key] = [cat_key]
+        #    node_key 
+        @cat_lookup[cat_key] = dev_key
+        sel_flag = if cur_dev.attr("selected") == "selected" then true else false
+        dev_node = dt_node.addChild
+            title   : cur_dev.attr("title")
+            key     : cat_key
+            select  : sel_flag
+            tooltip : "UUID: " + cur_dev.attr("uuid")
+        if sel_flag
+            dev_node.makeVisible(true)
     activate_fqdn: (tree_div) =>
         $.ajax
             url     : "{% url 'network:domain_name_tree' %}"
@@ -197,8 +272,7 @@ class sidebar_tree
                 @add_device_node(add_node, $(cur_dev), true)
             if not add_node.countChildren() and add_node.getLevel() > 1
                 add_node.remove()
-            # hack, FIXME
-            return false
+        return true
     add_device_node: (dt_node, cur_dev, add_meta) =>
         is_meta = cur_dev.attr("meta_device") == "1"
         if is_meta
@@ -308,6 +382,11 @@ class sidebar_tree
             node.expand(false)
         )
         @DYN_DTS_LOCKCOUNT = false
+    get_key: (key) =>
+        if @mode == "category"
+            return @cat_lookup[key]
+        else
+            return key
     apply_device_selection: =>
         cur_text = $("input#device_selection").val()
         if cur_text != @CUR_DEVICE_SELECTION
@@ -317,16 +396,16 @@ class sidebar_tree
                 cur_re = new RegExp(@CUR_DEVICE_SELECTION)
                 key_list = []
                 # traverse tree
-                @active_div.dynatree("getRoot").visit((node) ->
+                @active_div.dynatree("getRoot").visit((node) =>
                     if node.data.title.match(cur_re)
                         node.makeVisible(true)
                         node.select(true)
-                        key_list.push(node.data.key)
+                        key_list.push(@get_key(node.data.key))
                     else
                         node.select(false)
                 )
                 # traverse tree, unexpand subtrees
-                @active_div.dynatree("getRoot").visit((node) ->
+                @active_div.dynatree("getRoot").visit((node) =>
                     if node.hasChildren()
                         any_selected = false
                         # count active
@@ -336,7 +415,7 @@ class sidebar_tree
                         )
                         if !any_selected
                             node.expand(false)
-                    return "skip"
+                    #return "skip"
                 )
                 $.ajax
                     url  : "{% url 'device:add_selection' %}"
@@ -363,12 +442,18 @@ class sidebar_tree
             success : (xml) =>
                 if parse_xml_response(xml)
                     dev_xml = $(xml).find("value[name='result'] device")
-                    cur_node = @active_div.dynatree("getTree").getNodeByKey(dev_xml.attr("key"))
                     title_str = dev_xml.attr("full_name")
                     if dev_xml.attr("comment")
                         title_str = "#{title_str} (" + dev_xml.attr("comment") + ")"
-                    cur_node.data.title = title_str
-                    cur_node.render()
+                    if @mode == "category"
+                        for node_key in @cat_lookup[dev_xml.attr("key")] 
+                            cur_node = @active_div.dynatree("getTree").getNodeByKey(node_key)
+                            cur_node.data.title = title_str
+                            cur_node.render()
+                    else
+                        cur_node = @active_div.dynatree("getTree").getNodeByKey(dev_xml.attr("key"))
+                        cur_node.data.title = title_str
+                        cur_node.render()
     init_gauge_info: =>
         @next_iters = []
         # defaults to 10 seconds

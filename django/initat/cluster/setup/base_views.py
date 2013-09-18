@@ -3,10 +3,11 @@
 
 """ base views """
 
-import re
-import logging_tools
-import process_tools
 import logging
+import logging_tools
+import pprint
+import process_tools
+import re
 from lxml.builder import E # @UnresolvedImport
 
 from django.db.models import Q
@@ -17,14 +18,14 @@ from django.core.urlresolvers import reverse
 from django.utils.decorators import method_decorator
 from django.views.generic import View
 
-import initat.cluster.backbone.models
 from initat.core.render import render_me, render_string
 from initat.cluster.frontend.forms import category_detail_form, category_new_form, \
      location_detail_form
-from initat.cluster.frontend.helper_functions import xml_wrapper
+import initat.cluster.backbone.models
 from initat.cluster.backbone.models import device, \
      get_related_models, KPMC_MAP, device_variable, category, \
      category_tree
+from initat.cluster.frontend.helper_functions import xml_wrapper
 
 logger = logging.getLogger("cluster.base")
 
@@ -400,8 +401,12 @@ class get_category_tree(View):
     @method_decorator(xml_wrapper)
     def post(self, request):
         _post = request.POST
+        with_devices = True if int(_post.get("with_devices", "0")) else False
         with_device_count = True if int(_post.get("with_device_count", "0")) else False
-        request.xml_response["response"] = category_tree(with_device_count=with_device_count).get_xml()
+        request.xml_response["response"] = category_tree(
+            with_device_count=with_device_count,
+            with_devices=with_devices,
+            ).get_xml()
 
 class prune_category_tree(View):
     @method_decorator(login_required)
