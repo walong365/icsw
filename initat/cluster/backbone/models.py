@@ -4661,16 +4661,17 @@ class category_tree(object):
     # helper structure
     def __init__(self, **kwargs):
         self.with_device_count = kwargs.get("with_device_count", False)
+        self.with_devices = kwargs.get("with_devices", False)
         self.__node_dict = {}
         self.__category_lut = {}
         if not category.objects.all().count():
             category(name="", full_name="", comment="top node").save()
-        if self.with_device_count:
+        if self.with_device_count or self.with_devices:
             _sql = category.objects.all().prefetch_related("device_set", "config_set", "mon_check_command_set")
         else:
             _sql = category.objects.all()
         for cur_node in _sql.order_by("depth"):
-            if self.with_device_count:
+            if self.with_device_count or self.with_devices:
                 cur_node.device_count = cur_node.device_set.count() + cur_node.config_set.count() + cur_node.mon_check_command_set.count()
             self.__node_dict[cur_node.pk] = cur_node
             self.__category_lut.setdefault(cur_node.full_name, []).append(cur_node)
@@ -4752,7 +4753,7 @@ class category_tree(object):
     def get_xml(self):
         pk_list = self.get_sorted_pks()
         return E.categories(
-            *[self.__node_dict[pk].get_xml() for pk in pk_list]
+            *[self.__node_dict[pk].get_xml(with_devices=self.with_devices) for pk in pk_list]
         )
 
 # category
@@ -4779,8 +4780,9 @@ class category(models.Model):
         return [self.pk] + sum([pk_list for _sub_name, pk_list in sorted([(key, sum([sub_value.get_sorted_pks() for sub_value in value], [])) for key, value in self._sub_tree.iteritems()])], [])
     def __unicode__(self):
         return u"%s" % (self.full_name if self.depth else "[TLN]")
-    def get_xml(self):
-        return E.category(
+    def get_xml(self, **kwargs):
+        with_devices = kwargs.get("with_devices", False)
+        r_xml = E.category(
             unicode(self),
             pk="%d" % (self.pk),
             key="dtn__%d" % (self.pk),
@@ -4794,6 +4796,9 @@ class category(models.Model):
             longitude="%.6f" % (self.longitude),
             device_count="%d" % (getattr(self, "device_count", 0)),
         )
+        if with_devices:
+            r_xml.attrib["devices"] = "::".join(["%d" % (cur_dev.pk) for cur_dev in self.device_set.all()])
+        return r_xml
 
 @receiver(signals.pre_save, sender=category)
 def category_pre_save(sender, **kwargs):
