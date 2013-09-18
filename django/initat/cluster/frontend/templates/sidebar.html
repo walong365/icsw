@@ -148,9 +148,7 @@ class sidebar_tree
                                                         cur_node.toggleSelect()
                                                     false)
                                                 @DYN_DTS_LOCKCOUNT--
-                                                key_list = []
-                                                for cat_key in (node.data.key for node in tree_div.dynatree("getTree").getSelectedNodes() when cat_key.match(/cat__/))
-                                                    key_list.push(@cat_lookup[cat_key])
+                                                key_list = [@cat_lookup[node.data.key] for node in tree_div.dynatree("getTree").getSelectedNodes() when node.data.key.match(/cat__/)]
                                                 $.ajax
                                                     url  : "{% url 'device:set_selection' %}"
                                                     data :
@@ -392,8 +390,12 @@ class sidebar_tree
         if cur_text != @CUR_DEVICE_SELECTION
             @CUR_DEVICE_SELECTION = cur_text
             if @CUR_DEVICE_SELECTION
+                if @mode == "category" and @CUR_DEVICE_SELECTION.match(/\//)
+                    sub_sel = true
+                else
+                    sub_sel = false
                 @ADS_RUNNING = true
-                cur_re = new RegExp(@CUR_DEVICE_SELECTION)
+                cur_re = new RegExp(@CUR_DEVICE_SELECTION, "gi")
                 key_list = []
                 # traverse tree
                 @active_div.dynatree("getRoot").visit((node) =>
@@ -401,6 +403,14 @@ class sidebar_tree
                         node.makeVisible(true)
                         node.select(true)
                         key_list.push(@get_key(node.data.key))
+                        if sub_sel
+                            node.visit((sub_node) =>
+                                sub_node.makeVisible(true)
+                                sub_node.select(true)
+                                key_list.push(@get_key(sub_node.data.key))
+                            )
+                            # important to skip deselect
+                            return "skip"
                     else
                         node.select(false)
                 )
@@ -409,7 +419,7 @@ class sidebar_tree
                     if node.hasChildren()
                         any_selected = false
                         # count active
-                        node.visit((sub_node) ->
+                        node.visit((sub_node) =>
                             if sub_node.isSelected()
                                 any_selected = true
                         )
@@ -428,7 +438,10 @@ class sidebar_tree
         ret_list = list_len + (if list_len == 1 then " device" else " devices")
         if list_len
             d_tree = @active_div.dynatree("getTree")
-            ret_list = "#{ret_list}: " + (d_tree.getNodeByKey(val).data.title for val in key_list).join(", ")
+            if @mode == "category"
+                ret_list = "#{ret_list}: " + (d_tree.getNodeByKey(@cat_lookup[val][0]).data.title for val in key_list).join(", ")
+            else
+                ret_list = "#{ret_list}: " + (d_tree.getNodeByKey(val).data.title for val in key_list).join(", ")
         return ret_list
     show_device_info: (dtnode, event) =>
         if dtnode.data.key.match(/^dev__/)
