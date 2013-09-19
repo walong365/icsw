@@ -28,25 +28,24 @@ TASKSET_BIN = process_tools.find_file("taskset")
 MAX_CORES = cpu_database.global_cpu_info(parse=True).num_cores()
 MAX_MASK = (1 << MAX_CORES) - 1
 
-class cpu_container(object):
-    __slots__ = ("dict", "usage")
+CPU_MASKS = dict([(1 << cpu_num, cpu_num) for cpu_num in xrange(MAX_CORES)])
+
+class cpu_container(dict):
     def __init__(self):
-        self.dict = {}
-        self.usage = {}
+        dict.__init__(self)
         for idx in xrange(MAX_CORES):
-            self.dict[idx] = cpu_struct(idx)
-            self.usage[idx] = 0.0
+            self[idx] = cpu_struct(idx)
     def add_proc(self, cur_s):
-        self.dict[cur_s.single_cpu_num].add_proc(cur_s)
-        self.usage[cur_s.single_cpu_num] = self.dict[cur_s.single_cpu_num].usage["t"]
+        self[cur_s.single_cpu_num].add_proc(cur_s)
+        # self.usage[cur_s.single_cpu_num] = self.dict[cur_s.single_cpu_num].usage["t"]
     def get_min_usage_cpu(self, excl_list=[]):
-        free_list = list(sorted([(value, key) for key, value in self.usage.iteritems() if key not in excl_list]))
+        free_list = list(sorted([(value.usage["t"], key) for key, value in self.iteritems() if key not in excl_list]))
         if free_list:
             return free_list[0][1]
         else:
             return None
     def get_usage_str(self):
-        return "|".join(["%d:%.2f" % (key, self.usage[key]) for key in sorted(self.usage.keys())])
+        return "|".join(["%d:%.2f" % (key, self[key].usage["t"]) for key in sorted(self.keys())])
 
 class cpu_struct(object):
     __slots__ = ("cpu_num", "procs", "usage")
@@ -64,9 +63,10 @@ class cpu_struct(object):
             self.usage[key] += p_struct.usage[key]
 
 class proc_struct(object):
-    __slots__ = ("pid", "act_mask", "single_cpu_num", "stat", "usage")
-    def __init__(self, pid, stat=None):
+    __slots__ = ("pid", "act_mask", "single_cpu_num", "stat", "usage", "name")
+    def __init__(self, pid, stat=None, name="not set"):
         self.pid = pid
+        self.name = name
         self.single_cpu_num = -1
         self.stat = stat
         self.usage = {}
@@ -86,21 +86,24 @@ class proc_struct(object):
         return self.act_mask != MAX_MASK
     @property
     def single_cpu_set(self):
-        for cpu_num in xrange(MAX_CORES):
-            if self.act_mask == 1 << cpu_num:
-                self.single_cpu_num = cpu_num
-                return True
-        return False
+        """
+        return True if a single cpu is set via the affinity mask
+        """
+        self.single_cpu_num = CPU_MASKS.get(self.act_mask, -1)
+        return True if self.single_cpu_num >= 0 else False
     @property
     def proc_nums(self):
-        p_nums = []
-        for cpu_num in xrange(MAX_CORES):
-            if self.act_mask & (1 << cpu_num):
-                p_nums.append(cpu_num)
-        return p_nums
+        """
+        return the cpus which are actually set in the affinity mask
+        """
+        return sorted([value for key, value in CPU_MASKS.iteritems() if self.act_mask & key])
     def migrate(self, target_cpu):
         self.act_mask = 1 << target_cpu
         c_stat, c_out = self._set_mask(target_cpu)
+        return c_stat
+    def clear_mask(self):
+        self.act_mask = MAX_MASK
+        c_stat, c_out = self._clear_mask()
         return c_stat
     def read_mask(self):
         self.act_mask = self._get_mask()
@@ -112,8 +115,12 @@ class proc_struct(object):
             return int(c_out.strip().split()[-1], 16)
     def _set_mask(self, t_cpu):
         return self._call("-pc %d %d" % (t_cpu, self.pid))
+    def _clear_mask(self):
+        return self._call("-p %x %d" % (MAX_MASK, self.pid))
     def _call(self, com_line):
         return commands.getstatusoutput("%s %s" % (TASKSET_BIN, com_line))
+    def __unicode__(self):
+        return "%s [%d]" % (self.name, self.pid)
 
 if __name__ == "__main__":
     print "Loadable module, exiting..."
