@@ -48,6 +48,8 @@
 #define RECVBUFF_SIZE 65536
 #define IOBUFF_SIZE 16384
 
+char *send_buffer;
+
 int err_message(char *str)
 {
     char *errstr;
@@ -56,10 +58,11 @@ int err_message(char *str)
     if (!errstr)
         return -ENOMEM;
     if (errno) {
-        sprintf(errstr, "An error occured (%d) : %s (%d) %s\n",
-                getpid(), str, errno, strerror(errno));
+        sprintf(errstr, "An error occured (%d) : %s (%d) %s for %s\n",
+                getpid(), str, errno, strerror(errno), send_buffer);
     } else {
-        sprintf(errstr, "An error occured (%d): %s\n", getpid(), str);
+        sprintf(errstr, "An error occured (%d): %s for %s\n", getpid(), str,
+                send_buffer);
     }
     syslog(LOG_DAEMON | LOG_ERR, errstr);
     fprintf(stderr, errstr);
@@ -88,13 +91,12 @@ void try_second_socket(int dummy)
 int main(int argc, char **argv)
 {
     int ret, num, inlen, file, i /*, time */ , port, rchar, verbose, quiet,
-      retcode, timeout, host_written, only_send, raw;
+        retcode, timeout, host_written, only_send, raw;
     struct in_addr sia;
 
     struct hostent *h;
 
-    char *iobuff, *send_buffer, *recv_buffer, *host_b, *act_pos, *act_source,
-        *act_bp;
+    char *iobuff, *recv_buffer, *host_b, *act_pos, *act_source, *act_bp;
 
     struct itimerval mytimer;
 
@@ -194,7 +196,6 @@ int main(int argc, char **argv)
         exit(ENOMEM);
     }
     alrmsigact->sa_handler = &mysigh;
-    // alrmsigact -> sa_handler = &try_second_socket;
     if ((ret = sigaction(SIGALRM, (struct sigaction *)alrmsigact, NULL)) < 0) {
         retcode = err_exit("sigaction");
     } else {

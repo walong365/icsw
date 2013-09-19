@@ -49,9 +49,11 @@ class affinity_struct(object):
         self.log("init")
         self.dict = {}
         self.last_update = None
+        self.__counter = 0
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
         self.log_com("[as] %s" % (what), log_level)
     def feed(self, p_dict):
+        self.__counter += 1
         cur_time = time.time()
         proc_keys = set([key for key, value in p_dict.iteritems() if self.affinity_re.match(value["name"])])
         used_keys = set(self.dict.keys())
@@ -72,6 +74,9 @@ class affinity_struct(object):
             # print diff_time, proc_keys, used_keys
             sched_keys = set()
             for key in proc_keys & used_keys:
+                if not self.__counter % 5:
+                    # re-read mask every 5 iterations
+                    self.dict[key].read_mask()
                 try:
                     self.dict[key].feed(p_dict[key]["stat_info"], diff_time * HZ)
                 except:
@@ -107,6 +112,8 @@ class affinity_struct(object):
                         cpu_c.add_proc(cur_s)
             else:
                 self.log("no free CPU available, system oversubscribed ?", logging_tools.LOG_LEVEL_WARN)
+        # log cpu usage
+        # self.log("usage pattern: %s" % (cpu_c.get_usage_str()))
 
 class _general(hm_classes.hm_module):
     def init_module(self):

@@ -47,6 +47,8 @@
 #define SENDBUFF_SIZE 16384
 #define IOBUFF_SIZE 16384
 
+char *send_buffer;
+
 int err_message(char *str)
 {
     char *errstr;
@@ -55,10 +57,11 @@ int err_message(char *str)
     if (!errstr)
         return -ENOMEM;
     if (errno) {
-        sprintf(errstr, "An error occured (%d) : %s (%d) %s\n",
-                getpid(), str, errno, strerror(errno));
+        sprintf(errstr, "An error occured (%d) : %s (%d) %s for %s\n",
+                getpid(), str, errno, strerror(errno), send_buffer);
     } else {
-        sprintf(errstr, "An error occured (%d): %s\n", getpid(), str);
+        sprintf(errstr, "An error occured (%d): %s for %s\n", getpid(), str,
+                send_buffer);
     }
     syslog(LOG_DAEMON | LOG_ERR, errstr);
     fprintf(stderr, errstr);
@@ -87,8 +90,7 @@ int main(int argc, char **argv)
 
     struct hostent *h;
 
-    char *iobuff, *sendbuff, *host_b, *act_pos, *act_source, *act_bp,
-        *snmp_community;
+    char *iobuff, *host_b, *act_pos, *act_source, *act_bp, *snmp_community;
     struct itimerval mytimer;
 
     struct sigaction *alrmsigact;
@@ -105,10 +107,10 @@ int main(int argc, char **argv)
     h = NULL;
     // get uts struct
     uname(&myuts);
-    sendbuff = (char *)malloc(SENDBUFF_SIZE);
+    send_buffer = (char *)malloc(SENDBUFF_SIZE);
     host_b = (char *)malloc(SENDBUFF_SIZE);
     snmp_community = (char *)malloc(2000);
-    sendbuff[0] = 0;
+    send_buffer[0] = 0;
     strcpy(host_b, "localhost");
     strcpy(snmp_community, "public");
     while (1) {
@@ -156,27 +158,27 @@ int main(int argc, char **argv)
     char identity_str[64];
 
     sprintf(identity_str, "%s:%s:%d", myuts.nodename, SERVICE_NAME, getpid());
-    sprintf(sendbuff, ";1;%s;%s;%d;%s;%d;", identity_str, host_b, snmp_version,
-            snmp_community, timeout);
-    act_pos = sendbuff;
+    sprintf(send_buffer, ";1;%s;%s;%d;%s;%d;", identity_str, host_b,
+            snmp_version, snmp_community, timeout);
+    act_pos = send_buffer;
     if (verbose) {
-        printf("sendbuffer before arguments: '%s'\n", sendbuff);
+        printf("sendbuffer before arguments: '%s'\n", send_buffer);
         printf("argument info (%d length)\n", argc);
     };
     for (i = optind; i < argc; i++) {
         if (verbose) {
             printf("[%2d] %s\n", i, argv[i]);
         };
-        sprintf(sendbuff, "%s%d;%s;", sendbuff, strlen(argv[i]), argv[i]);
-//        if (act_pos != sendbuff) *act_pos++=' ';
+        sprintf(send_buffer, "%s%d;%s;", send_buffer, strlen(argv[i]), argv[i]);
+//        if (act_pos != send_buffer) *act_pos++=' ';
 //        act_source = argv[i];
 //        while (*act_source) *act_pos++=*act_source++;
 //        *act_pos = 0;
     }
-    sendbuff[SENDBUFF_SIZE] = '\0';     /* terminate optarg for secure use of strlen() */
-    if (!strlen(sendbuff))
+    send_buffer[SENDBUFF_SIZE] = '\0';  /* terminate optarg for secure use of strlen() */
+    if (!strlen(send_buffer))
         err_exit("Nothing to send!\n");
-    //printf("Send: %s %d\n", sendbuff, strlen(sendbuff));
+    //printf("Send: %s %d\n", send_buffer, strlen(send_buffer));
     int linger = 100, n_bytes;
 
     int rcv_timeout = 200;
@@ -188,7 +190,7 @@ int main(int argc, char **argv)
     alrmsigact = (struct sigaction *)malloc(sizeof(struct sigaction));
     if (!alrmsigact) {
         free(host_b);
-        free(sendbuff);
+        free(send_buffer);
         exit(ENOMEM);
     }
     alrmsigact->sa_handler = &mysigh;
@@ -221,11 +223,11 @@ int main(int argc, char **argv)
         if (verbose) {
             printf
                 ("send buffer has %d bytes, identity is '%s', nodename is '%s', servicename is '%s', pid is %d\n",
-                 strlen(sendbuff), identity_str, myuts.nodename,
+                 strlen(send_buffer), identity_str, myuts.nodename,
                  SERVICE_NAME, getpid());
         };
-        zmq_msg_init_size(&request, strlen(sendbuff));
-        memcpy(zmq_msg_data(&request), sendbuff, strlen(sendbuff));
+        zmq_msg_init_size(&request, strlen(send_buffer));
+        memcpy(zmq_msg_data(&request), send_buffer, strlen(send_buffer));
         zmq_msg_init(&reply);
         zmq_sendmsg(requester, &request, 0);
         if (verbose) {
@@ -271,7 +273,7 @@ int main(int argc, char **argv)
         zmq_close(receiver);
         zmq_term(context);
     }
-    free(sendbuff);
+    free(send_buffer);
     free(host_b);
     exit(retcode);
 }
