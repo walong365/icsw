@@ -84,6 +84,8 @@ class proc_struct(object):
         self.stat = new_stat
         # usage dict is now populated with (u)ser, (s)ystem and (t)otal load in percent
         self.usage = usage_dict
+    def clear_usage(self):
+        self.usage = {}
     @property
     def mask_set(self):
         return self.act_mask != MAX_MASK
