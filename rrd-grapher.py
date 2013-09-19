@@ -63,7 +63,6 @@ except ImportError:
 from initat.cluster.backbone.models import device
 
 SERVER_COM_PORT = 8003
-MAX_INFO_WIDTH = 42
 
 class report_thread(threading_tools.thread_obj):
     def __init__(self, glob_config, loc_config, db_con, log_queue):
@@ -213,9 +212,11 @@ class report_thread(threading_tools.thread_obj):
         graph_width, graph_height = (opt_dict["width"],
                                      opt_dict["height"])
         draw_start_time = time.time()
-        self.log("drawing graphs for %s on %s: %s" % (logging_tools.get_plural("rrd_data", len(needed_rrds)),
-                                                      logging_tools.get_plural("device", len(report_devs)),
-                                                      logging_tools.compress_list(report_devs)))
+        self.log(
+            "drawing graphs for %s on %s: %s" % (
+                logging_tools.get_plural("rrd_data", len(needed_rrds)),
+                logging_tools.get_plural("device", len(report_devs)),
+                logging_tools.compress_list(report_devs)))
         compound_results = {}
         g_idx = 0
         for comp_name in rrd_compounds["compound_list"]:
@@ -502,9 +503,11 @@ class colorizer(object):
 
 class graph_var(object):
     var_idx = 0
-    def __init__(self, entry, dev_name=""):
+    def __init__(self, entry, dev_name="", graph_width=800):
         self.entry = entry
         self.dev_name = dev_name
+        self.width = graph_width
+        self.max_info_width = 60 + int((self.width - 800) / 8)
         graph_var.var_idx += 1
         self.name = "v%d" % (graph_var.var_idx)
     def __getitem__(self, key):
@@ -553,7 +556,7 @@ class graph_var(object):
                 self.style_dict.get("draw_type", "LINE1"),
                 draw_name,
                 self.color,
-                ("%%-%ds" % (MAX_INFO_WIDTH)) % (self.info)[:MAX_INFO_WIDTH]),
+                ("%%-%ds" % (self.max_info_width)) % (self.info)[:self.max_info_width]),
         )
         for rep_name, cf in [
             ("min"  , "MINIMUM"),
@@ -573,8 +576,8 @@ class graph_var(object):
         return c_lines
     @property
     def header_line(self):
-        return "COMMENT:<tt>%s%s</tt>" % (
-            ("%%-%ds" % (MAX_INFO_WIDTH + 2)) % ("value"),
+        return "COMMENT:<tt>%s%s</tt>\\n" % (
+            ("%%-%ds" % (self.max_info_width + 2)) % ("value"),
             "".join(["%9s" % (rep_name) for rep_name in ["min", "ave", "max", "latest", "total"]])
         )
 
@@ -660,6 +663,9 @@ class graph_process(threading_tools.process_obj):
             # cast to datetime
             para_dict[key] = datetime.datetime.strptime(para_dict[key], "%Y-%m-%d %H:%M")
         para_dict["timeframe"] = abs((para_dict["end_time"] - para_dict["start_time"]).total_seconds())
+        graph_size = para_dict["size"]
+        graph_width, graph_height = [int(value) for value in graph_size.split("x")]
+        self.log("width / height : %d x %d" % (graph_width, graph_height))
         graph_list = E.graph_list()
         multi_dev_mode = len(dev_pks) > 1
         for tlk in sorted(graph_key_dict):
@@ -678,8 +684,8 @@ class graph_process(threading_tools.process_obj):
                     "normal",
                     "-P",
                     # "-nDEFAULT:8:",
-                    "-w %d" % (int(para_dict["size"].split("x")[0])),
-                    "-h %d" % (int(para_dict["size"].split("x")[1])),
+                    "-w %d" % (graph_width),
+                    "-h %d" % (graph_height),
                     "-a"
                     "PNG",
                     "--daemon",
@@ -692,7 +698,7 @@ class graph_process(threading_tools.process_obj):
                     "%d" % ((para_dict["end_time"] - dt_1970).total_seconds() - 2 * 3600),
                     "--start",
                     "%d" % ((para_dict["start_time"] - dt_1970).total_seconds() - 2 * 3600),
-                    graph_var(None, "").header_line,
+                    graph_var(None, "", graph_width=graph_width).header_line,
             ]
             graph_var.init(self.colorizer)
             for graph_key in sorted(graph_keys):
@@ -700,10 +706,10 @@ class graph_process(threading_tools.process_obj):
                     dev_vector = self.vector_dict[cur_pk]
                     graph_mve = dev_vector.find(".//mve[@name='%s']" % (graph_key))
                     if graph_mve is not None:
-                        rrd_args.extend(graph_var(graph_mve, dev_dict[cur_pk]).config)
+                        rrd_args.extend(graph_var(graph_mve, dev_dict[cur_pk], graph_width=graph_width).config)
                     graph_pde = dev_vector.find(".//value[@full='%s']" % (graph_key))
                     if graph_pde is not None:
-                        rrd_args.extend(graph_var(graph_pde, dev_dict[cur_pk]).config)
+                        rrd_args.extend(graph_var(graph_pde, dev_dict[cur_pk], graph_width=graph_width).config)
             if graph_var.var_idx:
                 rrd_args.extend([
                     "--title",
@@ -1299,6 +1305,7 @@ def main():
         ("PID_NAME"            , configfile.str_c_var(os.path.join(prog_name,
                                                                    prog_name))),
         ("COM_PORT"            , configfile.int_c_var(SERVER_COM_PORT)),
+        ("SERVER_PATH"         , configfile.bool_c_var(False, help_string="set server_path to store RRDs [%(default)s]", only_commandline=True)),
         ("VERBOSE"             , configfile.int_c_var(0, help_string="set verbose level [%(default)d]", short_options="v", only_commandline=True)),
         ("RRD_DIR"             , configfile.str_c_var("/var/cache/rrd", help_string="directory of rrd-files on local disc")),
         ("COLORTABLE_FILE"     , configfile.str_c_var("/opt/cluster/share/colortables.xml", help_string="name of colortable file")),
@@ -1329,7 +1336,7 @@ def main():
     global_config.add_config_entries(
         [
             ("LOG_SOURCE_IDX", configfile.int_c_var(cluster_location.log_source.create_log_source_entry("rrd-server", "Cluster RRDServer", device=sql_info.effective_device).pk)),
-            ("GRAPH_ROOT"    , configfile.str_c_var(os.path.abspath(os.path.join(settings.FILE_ROOT if not global_config["DEBUG"] else os.path.join(cur_dir, "../webfrontend/django/initat/cluster"), "graphs"))))
+            ("GRAPH_ROOT"    , configfile.str_c_var(os.path.abspath(os.path.join(settings.FILE_ROOT if (not global_config["DEBUG"] or options.SERVER_PATH) else os.path.join(cur_dir, "../webfrontend/django/initat/cluster"), "graphs"))))
         ]
     )
 
