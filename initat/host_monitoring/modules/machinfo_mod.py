@@ -1169,7 +1169,7 @@ class sysinfo_command(hm_classes.hm_command):
                 srv_com["sysinfo:arch"].text)
             if "imageinfo" in srv_com:
                 if "imageinfo:image_name" in srv_com and "imageinfo:image_version" in srv_com:
-                    ret_str += ", image is %s (version %s)" % (srv_com["imageinfo:image_name"], srv_com["imageinfo:image_version"])
+                    ret_str += ", image is %s (version %s)" % (srv_com["imageinfo:image_name"].text, srv_com["imageinfo:image_version"].text)
                 else:
                     ret_str += ", no image info"
             return limits.nag_STATE_OK, ret_str

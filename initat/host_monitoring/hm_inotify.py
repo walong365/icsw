@@ -195,7 +195,7 @@ class file_watcher(object):
                 # not used right now, FIXME
                 pass
             else:
-                for dir_path, dir_names, file_names in os.walk(self.dir_name):
+                for dir_path, _dir_names, file_names in os.walk(self.dir_name):
                     if self.mode == "content":
                         for m_file in [os.path.join(dir_path, p_name) for p_name in fnmatch.filter(file_names, self.match_name)]:
                             self._register_file(m_file)
@@ -217,7 +217,7 @@ class file_watcher(object):
                                                          logging_tools.get_diff_time_str(self.__timeout)))
                 # if os.path.isfile
                 if os.path.isfile(self.__action.split()[0]):
-                    start_ok, log_lines = process_tools.submit_at_command(self.__action)
+                    _start_ok, log_lines = process_tools.submit_at_command(self.__action)
                     for line in log_lines:
                         self.log(line)
                 else:
@@ -409,7 +409,6 @@ class inotify_process(threading_tools.process_obj):
             logging_tools.get_plural("argument", len(args)),
             ", ".join(["%s='%s' (%s)" % (key, value, type(value)) for key, value in args.iteritems()])
             ))
-        had_keys = True if self.__file_watcher_dict else False
         found_keys = set(args.keys())
         needed_keys = {
             "register_file_watch" : set(["id", "mode", "target_server", "target_port", "dir", "match"]),

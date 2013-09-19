@@ -67,7 +67,7 @@ class affinity_struct(object):
                 self.dict[new_key] = new_ps
                 if new_ps.single_cpu_set:
                     # clear affinity mask on first run
-                    self.log("clearing affinty mask for %s (cpu was %d)" % (unicode(new_ps), new_ps.single_cpu_num))
+                    self.log("clearing affinity mask for %s (cpu was %d)" % (unicode(new_ps), new_ps.single_cpu_num))
                     new_ps.clear_mask()
                 if new_ps.single_cpu_set:
                     self.log("process %s is already pinned to cpu %d" % (unicode(new_ps), new_ps.single_cpu_num))
@@ -82,14 +82,15 @@ class affinity_struct(object):
             # print diff_time, proc_keys, used_keys
             sched_keys = set()
             for key in proc_keys & used_keys:
+                cur_ps = self.dict[key]
                 if not self.__counter % 5:
                     # re-read mask every 5 iterations
-                    self.dict[key].read_mask()
+                    cur_ps.read_mask()
                 try:
-                    self.dict[key].feed(p_dict[key]["stat_info"], diff_time * HZ)
+                    cur_ps.feed(p_dict[key]["stat_info"], diff_time * HZ)
                 except:
                     self.log("error updating %d: %s" % (key, process_tools.get_except_info()), logging_tools.LOG_LEVEL_ERROR)
-                    self.dict[key].usage = None
+                    cur_ps.clear_usage()
                 else:
                     sched_keys.add(key)
             if sched_keys:
@@ -125,7 +126,7 @@ class affinity_struct(object):
                     self.log("no free CPU available, too many processes to schedule (%d > %d)" % (len(key), affinity_tools.MAX_CORES), logging_tools.LOG_LEVEL_WARN)
             # log final usage pattern
             self.log("usage pattern: %s" % (cpu_c.get_usage_str()))
-        if self.__counter % 20 == 0:
+        if self.__counter % 50 == 0:
             # log cpu usage
             self.log("usage pattern: %s" % (cpu_c.get_usage_str()))
 
@@ -172,8 +173,8 @@ class _general(hm_classes.hm_module):
         mem_mon_procs = [] # self.__short_mon_procs
         mem_found_procs = {}
         for p_stuff in pdict.values():
-            if n_dict.has_key(p_stuff["state"]):
-                n_dict[p_stuff["state"]] += 1
+            if n_dict.has_key(p_stuff["state"].upper()):
+                n_dict[p_stuff["state"].upper()] += 1
             else:
                 self.log(
                     "*** unknown process state '%s' for process %s (pid %d)" % (
@@ -202,13 +203,17 @@ class procstat_command(hm_classes.hm_command):
     def __call__(self, srv_com, cur_ns):
         p_dict = process_tools.get_proc_list()
         if cur_ns.arguments:
-            srv_com["process_tree"] = dict([(key, value) for key, value in p_dict.iteritems() if value["name"] in cur_ns.arguments])
+            # try to be smart about cron
+            t_dict = dict([(key, value) for key, value in p_dict.iteritems() if value["name"] in cur_ns.arguments])
+            if not t_dict and cur_ns.arguments[0] == "cron":
+                t_dict = dict([(key, value) for key, value in p_dict.iteritems() if value["name"] in ["crond"]])
+            srv_com["process_tree"] = t_dict
         else:
             srv_com["process_tree"] = p_dict
     def interpret(self, srv_com, cur_ns):
         result = srv_com["process_tree"]
         # pprint.pprint(result)
-        commands = cur_ns.arguments
+        p_names = cur_ns.arguments
         zombie_ok_list = ["cron"]
         res_dict = {
             "ok"        : 0,
@@ -218,7 +223,7 @@ class procstat_command(hm_classes.hm_command):
             "zombie_ok" : 0,
         }
         zombie_list = []
-        for pid, value in result.iteritems():
+        for _pid, value in result.iteritems():
             if value["state"] == "Z":
                 zombie_list.append(value["name"])
                 if value["name"].lower() in zombie_ok_list:
@@ -239,11 +244,16 @@ class procstat_command(hm_classes.hm_command):
             ret_state = limits.nag_STATE_WARNING
         else:
             ret_state = limits.nag_STATE_OK
+        if len(p_names) == 1 and len(result) == 1:
+            found_name = result.values()[0]["name"]
+            if found_name != p_names[0]:
+                p_names[0] = "%s instead of %s" % (found_name, p_names[0])
+            # print p_names, result
         ret_state = max(ret_state, limits.check_floor(res_dict["ok"], cur_ns.warn, cur_ns.crit))
         ret_str = "%s running (%s%s%s)" % (
             " + ".join(
                 [logging_tools.get_plural("%s process" % (key), res_dict[key]) for key in ["userspace", "kernel"] if res_dict[key]]) or "nothing",
-            ", ".join(sorted(commands)) if commands else "all",
+            ", ".join(sorted(p_names)) if p_names else "all",
             ", %s [%s]" % (
                 logging_tools.get_plural("zombie", res_dict["fail"]),
                 ", ".join(sorted(zombie_list)),
