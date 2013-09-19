@@ -998,7 +998,6 @@ class main_config(object):
         self[config_dir.get_name()] = config_dir
     def __setitem__(self, key, value):
         self.__dict[key] = value
-        config_keys = self.__dict.keys()
         new_file_keys = sorted([
             "%s/%s.cfg" % (self.__r_dir_dict["etc"], key) for key, value in self.__dict.iteritems() if
             (not isinstance(value, base_config) or not (value.is_host_file or value.belongs_to_ndo)) and (not isinstance(value, config_dir))
@@ -1107,7 +1106,6 @@ class host_type_config(object):
     def log(self, what, level=logging_tools.LOG_LEVEL_OK):
         self.__build_proc.log(what, level)
     def get_content(self):
-        cn = self.get_name()
         act_list = self.get_object_list()
         dest_type = self.get_name()
         content = []
@@ -1175,7 +1173,7 @@ class all_service_groups(host_type_config):
             self.__dict[cur_cat.pk] = nag_conf
             self.__obj_list.append(nag_conf)
     def clear_host(self, host_name):
-        for key, value in self.__host_srv_lut.iteritems():
+        for _key, value in self.__host_srv_lut.iteritems():
             if host_name in value:
                 value.remove(host_name)
     def add_host(self, host_name, srv_groups):
