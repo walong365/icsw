@@ -85,7 +85,7 @@ class setup(View):
                 E.mon_contactgroups(*[cur_cg.get_xml() for cur_cg in mon_contactgroup.objects.all()]),
                 E.mon_device_templs(*[cur_dt.get_xml() for cur_dt in mon_device_templ.objects.all()]),
                 E.devices(*[cur_dev.get_simple_xml() for cur_dev in device.objects.exclude(Q(device_type__identifier="MD")).order_by("name")]),
-                E.mon_check_command(*[cur_mc.get_xml() for cur_mc in mon_check_command.objects.prefetch_related("categories__category").all()]),
+                E.mon_check_command(*[cur_mc.get_xml() for cur_mc in mon_check_command.objects.prefetch_related("categories").all()]),
                 E.mon_notifications(*[cur_mn.get_xml() for cur_mn in mon_notification.objects.all()]),
             ]
         )
