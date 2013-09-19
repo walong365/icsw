@@ -106,22 +106,28 @@ class affinity_struct(object):
                 unsched.add(key)
         # print unsched
         exclude_set = set()
-        for key in unsched:
-            cur_s = self.dict[key]
-            # print key, cur_s
+        if unsched:
+            self.log("distribute %s to %s" % (
+                logging_tools.get_plural("process", len(unsched)),
+                logging_tools.get_plural("core", affinity_tools.MAX_CORES)))
+            for key in unsched:
+                cur_s = self.dict[key]
+                targ_cpu = cpu_c.get_min_usage_cpu(exclude_set)
+                if targ_cpu is not None:
+                    self.log("usage pattern: %s" % (cpu_c.get_usage_str()))
+                    self.log("pinning process %d to cpu %d" % (key, targ_cpu))
+                    exclude_set.add(targ_cpu)
+                    if not cur_s.migrate(targ_cpu):
+                        cur_s.read_mask()
+                        if cur_s.single_cpu_set:
+                            cpu_c.add_proc(cur_s)
+                else:
+                    self.log("no free CPU available, too many processes to schedule (%d > %d)" % (len(key), affinity_tools.MAX_CORES), logging_tools.LOG_LEVEL_WARN)
+            # log final usage pattern
             self.log("usage pattern: %s" % (cpu_c.get_usage_str()))
-            targ_cpu = cpu_c.get_min_usage_cpu(exclude_set)
-            if targ_cpu is not None:
-                self.log("pinning process %d to cpu %d" % (key, targ_cpu))
-                exclude_set.add(targ_cpu)
-                if not cur_s.migrate(targ_cpu):
-                    cur_s.read_mask()
-                    if cur_s.single_cpu_set:
-                        cpu_c.add_proc(cur_s)
-            else:
-                self.log("no free CPU available, system oversubscribed ?", logging_tools.LOG_LEVEL_WARN)
-        # log cpu usage
-        # self.log("usage pattern: %s" % (cpu_c.get_usage_str()))
+        if self.__counter % 20 == 0:
+            # log cpu usage
+            self.log("usage pattern: %s" % (cpu_c.get_usage_str()))
 
 class _general(hm_classes.hm_module):
     def init_module(self):
