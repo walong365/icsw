@@ -45,7 +45,10 @@ class cpu_container(dict):
         else:
             return None
     def get_usage_str(self):
-        return "|".join(["%d:%.2f" % (key, self[key].usage["t"]) for key in sorted(self.keys())])
+        return "|".join(["%d:%.2f(%d)" % (
+            key,
+            self[key].usage["t"],
+            len(self[key].procs)) for key in sorted(self.keys())])
 
 class cpu_struct(object):
     __slots__ = ("cpu_num", "procs", "usage")
