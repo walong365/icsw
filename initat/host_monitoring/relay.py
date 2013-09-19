@@ -127,15 +127,18 @@ class id_discovery(object):
                     self.log("received illegal zmq_id '%s'" % (zmq_id), logging_tools.LOG_LEVEL_ERROR)
                 else:
                     self.log("0MQ id is %s" % (zmq_id))
-                    id_discovery.mapping[self.conn_str] = zmq_id
+                    id_discovery.set_mapping(self.conn_str, zmq_id) # mapping[self.conn_str] = zmq_id
                     # reinject
                     if self.port == 2001:
                         id_discovery.relayer_process._send_to_client(self.src_id, self.srv_com, self.xml_input)
                     else:
                         id_discovery.relayer_process._send_to_nhm_service(self.src_id, self.srv_com, self.xml_input)
-                    # save mapping
-                    file(MAPPING_FILE_IDS, "w").write("\n".join(["%s=%s" % (key, self.mapping[key]) for key in sorted(self.mapping.iterkeys())]))
                 self.close()
+    @staticmethod
+    def save_mapping():
+        if id_discovery.save_file:
+            id_discovery.relayer_process.log("saving mapping file")
+            file(MAPPING_FILE_IDS, "w").write(etree.tostring(id_discovery.mapping_xml, pretty_print=True))
     def close(self):
         del self.srv_com
         if self.socket:
@@ -157,15 +160,36 @@ class id_discovery(object):
         id_discovery.verbose = verbose
         id_discovery.reverse_mapping = {}
         # mapping connection string -> 0MQ id
+        id_discovery.save_file = True
         if os.path.isfile(MAPPING_FILE_IDS):
-            map_lines = [line.strip().split("=", 1) for line in file(MAPPING_FILE_IDS, "r").read().split("\n") if line.strip() and line.count("=")]
-            valid_map_lines = [(key, value) for key, value in map_lines if not value.count("unknown command")]
-            id_discovery.mapping = dict([(key, value) for key, value in valid_map_lines])
+            map_content = file(MAPPING_FILE_IDS, "r").read()
+            if map_content.startswith("<"):
+                # new format
+                id_discovery.mapping = {}
+                id_discovery.mapping_xml = etree.fromstring(map_content)
+                for host_el in id_discovery.mapping_xml.findall(".//host"):
+                    for uuid_el in host_el.findall(".//uuid"):
+                        conn_str = "%s://%s:%s" % (
+                            uuid_el.get("proto"),
+                            host_el.get("address"),
+                            uuid_el.get("port"),
+                            )
+                        id_discovery.set_mapping(conn_str, uuid_el.text)
+            else:
+                # old format
+                map_lines = [line.strip().split("=", 1) for line in map_content.split("\n") if line.strip() and line.count("=")]
+                id_discovery.mapping = {}
+                id_discovery.mapping_xml = E.zmq_mapping()
+                id_discovery.save_file = False
+                for key, value in map_lines:
+                    id_discovery.set_mapping(key, value)
+                id_discovery.save_file = True
+                id_discovery.save_mapping()
             id_discovery.relayer_process.log(
                 "read %s from %s (in file: %d)" % (
-                    logging_tools.get_plural("mapping", len(id_discovery.mapping)),
+                    logging_tools.get_plural("mapping", len(id_discovery.mapping_xml.findall(".//uuid"))),
                     MAPPING_FILE_IDS,
-                    len(map_lines),
+                    len(map_content.split("\n")),
                     ))
             for key, value in id_discovery.mapping.iteritems():
                 # only use ip-address / hostname from key
@@ -173,6 +197,7 @@ class id_discovery(object):
             # pprint.pprint(id_discovery.reverse_mapping)
         else:
             id_discovery.mapping = {}
+            id_discovery.mapping_xml = E.zmq_mapping()
         id_discovery.pending = {}
         # last discovery try
         id_discovery.last_try = {}
@@ -182,7 +207,25 @@ class id_discovery(object):
             value.close()
     @staticmethod
     def set_mapping(conn_str, uuid):
+        if uuid.lower().count("unknown command"):
+            return
         id_discovery.mapping[conn_str] = uuid
+        proto, addr, port = conn_str.split(":")
+        addr = addr[2:]
+        map_xml = id_discovery.mapping_xml
+        addr_el = map_xml.find(".//host[@address='%s']" % (addr))
+        if addr_el is None:
+            addr_el = E.host(address=addr)
+            map_xml.append(addr_el)
+        uuid_el = addr_el.xpath("uuid[@proto='%s' and @port='%s']" % (proto, port))
+        if not len(uuid_el):
+            uuid_el = E.uuid("", proto=proto, port=port)
+            addr_el.append(uuid_el)
+        else:
+            uuid_el = uuid_el[0]
+        if uuid_el.text != uuid:
+            uuid_el.text = uuid
+            id_discovery.save_mapping()
     @staticmethod
     def is_pending(conn_str):
         return conn_str in id_discovery.pending
