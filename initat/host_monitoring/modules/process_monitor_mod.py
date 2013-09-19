@@ -48,6 +48,7 @@ class affinity_struct(object):
         self.affinity_re = af_re
         self.log("init")
         self.dict = {}
+        # has to be None on first run to detect initial run
         self.last_update = None
         self.__counter = 0
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
@@ -62,9 +63,16 @@ class affinity_struct(object):
         if new_keys:
             self.log("%s: %s" % (logging_tools.get_plural("new key", len(new_keys)), ", ".join(["%d" % (new_key) for new_key in sorted(new_keys)])))
             for new_key in new_keys:
-                self.dict[new_key] = affinity_tools.proc_struct(new_key, stat=p_dict[new_key]["stat_info"])
-                if self.dict[new_key].single_cpu_set:
-                    self.log("process %d is already pinned to cpu %d" % (new_key, self.dict[new_key].single_cpu_num))
+                new_ps = affinity_tools.proc_struct(new_key, stat=p_dict[new_key]["stat_info"], name=p_dict[new_key]["name"])
+                self.dict[new_key] = new_ps
+                if not self.last_update and new_ps.single_cpu_set:
+                    # clear affinity mask on first run
+                    self.log("clearing affinty mask for %s (cpu was %d)" % (unicode(new_ps), new_ps.single_cpu_num))
+                    new_ps.clear_mask()
+                if new_ps.single_cpu_set:
+                    self.log("process %s is already pinned to cpu %d" % (unicode(new_ps), new_ps.single_cpu_num))
+                else:
+                    self.log("added %s" % (unicode(new_ps)))
         if old_keys:
             self.log("%s: %s" % (logging_tools.get_plural("old key", len(old_keys)), ", ".join(["%d" % (old_key) for old_key in sorted(old_keys)])))
             for old_key in old_keys:
