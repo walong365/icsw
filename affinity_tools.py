@@ -53,7 +53,11 @@ class cpu_struct(object):
     def __init__(self, cpu_num):
         self.cpu_num = cpu_num
         self.procs = []
-        self.usage = {"u": 0.0, "s" : 0.0, "t": 0.0}
+        self.usage = {
+            "u" : 0.0,
+            "s" : 0.0,
+            "t" : 0.0,
+        }
     def add_proc(self, p_struct):
         self.procs.append(p_struct)
         for key in set(["t", "u", "s"]):
