@@ -774,7 +774,6 @@ def device_pre_save(sender, **kwargs):
                     unicode(cur_inst),
                     unicode(present_dev),
                     ))
-        all_uuids = device.objects.exclude(Q(pk=cur_inst.pk)).values_list("uuid", flat=True)
         # Check if the device limit is reached
         dev_count = settings.CLUSTER_LICENSE["device_count"]
 
