@@ -33,6 +33,7 @@ import sys
 import threading_tools
 import time
 import uuid_tools
+from lxml.builder import E
 try:
     import cluster_location
 except ImportError:
@@ -108,20 +109,37 @@ class rms_mon_process(threading_tools.process_obj):
         #    else:
         #        srv_com["sge:%s" % (key)] = self.__sge_info[key]
         self.send_to_socket(self.__main_socket, ["command_result", src_id, unicode(srv_com)])
+        del srv_com
     def _file_watch_content(self, *args , **kwargs):
         srv_com = server_command.srv_command(source=args[0])
+        print srv_com.pretty_print()
         job_id = srv_com["id"].text.split(":")[0]
         file_name = srv_com["name"].text
         content = srv_com["content"].text
-        self.log("got content for '%s' (job %s), len %d bytes" % (
+        last_update = int(float(srv_com["update"].text))
+        self.log("got content for '%s' (job %s), len %d bytes, update_ts %d" % (
             file_name,
             job_id,
-            len(content)
+            len(content),
+            last_update,
             ))
-        self.__job_content_dict.setdefault(job_id, {})[file_name] = content
-        tot_files = sum([len(value) for value in self.__job_content_dict.itervalues()], 0)
-        tot_length = sum([sum([len(content) for _name, content in _dict.iteritems()], 0) for job_id, _dict in self.__job_content_dict.iteritems()])
-        self.log("cached: %d files, %s (%d bytes)" % (tot_files, logging_tools.get_size_str(tot_length), tot_length))
+        try:
+            self.__job_content_dict.setdefault(job_id, {})[file_name] = E.file_content(
+                content,
+                name=file_name,
+                last_update="%d" % (last_update),
+                size="%d" % (len(content)),
+                )
+        except:
+            self.log("error settings content of file %s: %s" % (
+                file_name,
+                process_tools.get_except_info()
+                ),
+                logging_tools.LOG_LEVEL_ERROR)
+        else:
+            tot_files = sum([len(value) for value in self.__job_content_dict.itervalues()], 0)
+            tot_length = sum([sum([len(cur_el.text) for _name, cur_el in _dict.iteritems()], 0) for job_id, _dict in self.__job_content_dict.iteritems()])
+            self.log("cached: %d files, %s (%d bytes)" % (tot_files, logging_tools.get_size_str(tot_length), tot_length))
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
         self.__log_template.log(log_level, what)
     def loop_post(self):
