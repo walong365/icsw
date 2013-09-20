@@ -23,6 +23,7 @@
 
 import argparse
 import commands
+import copy
 import datetime
 import logging_tools
 import os
@@ -241,17 +242,20 @@ class sge_info(object):
             logging_tools.my_syslog("[si] %s" % (what), log_level)
     def get_tree(self, **kwargs):
         if "file_dict" in kwargs:
+            r_tree = copy.deepcopy(self.__tree)
             for job_id, file_dict in kwargs["file_dict"].iteritems():
-                job_el = self.__tree.xpath(".//job_list[@full_id='%s' and master/text() = \"MASTER\"]" % (job_id))
+                job_el = r_tree.xpath(".//job_list[@full_id='%s' and master/text() = \"MASTER\"]" % (job_id))
                 if len(job_el):
                     job_el = job_el[0]
                     file_info = job_el.find(".//file_info")
                     if file_info is not None:
                         for sub_el in file_info:
                             file_info.remove(sub_el)
-                        for f_name, f_content in file_dict.iteritems():
-                            file_info.append(E.file_content(f_content, name=f_name))
-        return self.__tree
+                        for f_name, f_el in file_dict.iteritems():
+                            file_info.append(f_el)
+            return r_tree
+        else:
+            return self.__tree
     def get(self, key, def_value):
         return self.__act_dicts.get(key, def_value)
     # extended job id
