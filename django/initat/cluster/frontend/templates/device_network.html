@@ -7,7 +7,11 @@
 {% block tab_js %}
 
     <!--[if gt IE8]><!--><script type="text/javascript" src="{{ settings.STATIC_URL }}initat/core/static/js/libs/d3js/d3.v3.min.js"></script><!--<![endif]-->
-    <style></style>
+    <style>
+    circle.fixed {
+        fill : #ff8888;
+    }
+    </style>
     
 {% endblock %}
 
@@ -19,24 +23,24 @@
 <div id="network_table"></div>
 
 <div id="network_copy">
-Set all networks from <select id="network_copy"></select>
+    Set all networks from <select id="network_copy"></select>
 </div>
 <div id="network_graph_sel">
-Show network topology: <input type="button" id="redraw_graph" value="Redraw"/>
-<select id="nw_graph_sel">
-<option value="none">none</option>
-<option value="all">all</option>
-<option value="sel">selected</option>
-<option value="selp1">selected + 1 (next ring)</option>
-<option value="selp2">selected + 2</option>
-<option value="selp3">selected + 3</option>
-<option value="core">core (non-trivial)</option>
-</select>
+    Show network topology: <input type="button" id="redraw_graph" value="Redraw"/>
+    <select id="nw_graph_sel">
+        <option value="none">none</option>
+        <option value="all">all</option>
+        <option value="sel">selected</option>
+        <option value="selp1">selected + 1 (next ring)</option>
+        <option value="selp2">selected + 2</option>
+        <option value="selp3">selected + 3</option>
+        <option value="core">core (non-trivial)</option>
+    </select>
 </div>
 
 </div>
 
-<div id="network_graph_outer" style="border:1px solid black;">
+<div id="network_graph_outer" style="border: 1px solid black;">
 <div id="network_graph"></div>
 </div>
 
@@ -152,8 +156,7 @@ class network_table
         })
         cur_tr.append(
             $("<td>").append(
-                create_input_el(cur_nd, "devname", line_prefix, {master_xml: @DEVICE_NETWORKS, callback: @update_network_device_type_string})
-            ).append(
+                create_input_el(cur_nd, "devname", line_prefix, {master_xml: @DEVICE_NETWORKS, callback: @update_network_device_type_string}),
                 $("<span>").attr({
                     "id"    : "#{line_prefix}__devinfo"
                 })
@@ -218,14 +221,10 @@ class network_table
         }).hide()
         hw_tr.append(
             $("<td>").attr({"colspan" : "9"}).append(
-                create_input_el(cur_nd, "driver", line_prefix, {label : "driver", master_xml : @DEVICE_NETWORKS, new_default : "e1000e"})
-            ).append(
-                create_input_el(cur_nd, "driver_options", line_prefix, {label : "driver_options", master_xml : @DEVICE_NETWORKS})
-            ).append(
-                create_input_el(cur_nd, "ethtool_autoneg", line_prefix, {"select_source" : @autoneg_list, "label" : "autonegotiation", master_xml : @DEVICE_NETWORKS})
-            ).append(
-                create_input_el(cur_nd, "ethtool_duplex", line_prefix, {"select_source" : @duplex_list, label : "duplex", master_xml : @DEVICE_NETWORKS})
-            ).append(
+                create_input_el(cur_nd, "driver", line_prefix, {label : "driver", master_xml : @DEVICE_NETWORKS, new_default : "e1000e"}),
+                create_input_el(cur_nd, "driver_options", line_prefix, {label : "driver_options", master_xml : @DEVICE_NETWORKS}),
+                create_input_el(cur_nd, "ethtool_autoneg", line_prefix, {"select_source" : @autoneg_list, "label" : "autonegotiation", master_xml : @DEVICE_NETWORKS}),
+                create_input_el(cur_nd, "ethtool_duplex", line_prefix, {"select_source" : @duplex_list, label : "duplex", master_xml : @DEVICE_NETWORKS}),
                 create_input_el(cur_nd, "ethtool_speed", line_prefix, {"select_source" : @speed_list, label : "speed", master_xml : @DEVICE_NETWORKS})
             )
         )
@@ -237,10 +236,8 @@ class network_table
         }).hide()
         mac_tr.append(
             $("<td>").attr({"colspan" : "9"}).append(
-                create_input_el(cur_nd, "macaddr", line_prefix, {label : "MAC address", new_default : @DUMMY_MAC, master_xml : @DEVICE_NETWORKS})
-            ).append(
-                create_input_el(cur_nd, "fake_macaddr", line_prefix, {label : "fake MAC address", new_default : @DUMMY_MAC, master_xml : @DEVICE_NETWORKS})
-            ).append(
+                create_input_el(cur_nd, "macaddr", line_prefix, {label : "MAC address", new_default : @DUMMY_MAC, master_xml : @DEVICE_NETWORKS}),
+                create_input_el(cur_nd, "fake_macaddr", line_prefix, {label : "fake MAC address", new_default : @DUMMY_MAC, master_xml : @DEVICE_NETWORKS}),
                 create_input_el(cur_nd, "dhcp_device", line_prefix, {label : "force write DHCP address", "boolean" : true, master_xml : @DEVICE_NETWORKS})
             )
         )
@@ -262,8 +259,7 @@ class network_table
         route_tr_base.append(
             $("<td>").attr({"colspan" : "3"}).append(
                 create_input_el(cur_nd, "routing", line_prefix, {label : "Routing capable: ", boolean : true, callback : @redraw_possible_peers, master_xml : @DEVICE_NETWORKS})
-            )
-        ).append(
+            ),
             create_input_el(cur_nd, "penalty", line_prefix, {label : "Penalty", number: true, master_xml : @DEVICE_NETWORKS, enclose_tag: "<td>"})
         )
         peer_table = $("<table>").attr("id" : "#{line_prefix}__routing")
@@ -273,16 +269,13 @@ class network_table
         route_td = $("<th>").attr({"colspan" : "3"})
         route_tr_add.append(route_td)
         route_td.append(
-            $("<span>").text("add new peer: ")
-        ).append(
-            $("<span>").attr({"id" : "#{line_prefix}__routing__new_peer"})
-        ).append(
+            $("<span>").text("add new peer: "),
+            $("<span>").attr({"id" : "#{line_prefix}__routing__new_peer"}),
             $("<span>").text(" with")
         )
         route_tr_add.append(
             $("<th>").append(
-                $("<span>").text("penalty")
-            ).append(
+                $("<span>").text("penalty"),
                 $("<input>").attr({
                     "id"    : "#{line_prefix}__routing__new_peer__penalty",
                     "type"  : "number",
@@ -441,8 +434,7 @@ class network_table
                 $("<span>").text("from " + cur_peer.attr("#{sn}_devname") + " [" + cur_peer.attr("#{sn}_penalty") + "] on " + cur_peer.attr("#{sn}_device_full"))
             ),
             $("<td>").append(
-                $("<span>").text("with penalty")
-            ).append(
+                $("<span>").text("with penalty"),
                 create_input_el(cur_peer, "penalty", line_prefix, {number: true, master_xml : @DEVICE_NETWORKS, min: 1, max: 4096})
             ),
             $("<td>").append(
@@ -493,16 +485,11 @@ class network_table
         if cur_nd
             new_tag = if cur_ip then "<td>" else "<th>"
             ip_tr.append(
-                create_input_el(cur_ip, "ip", line_prefix, {label : "IP", callback : @set_network_after_change, master_xml : @DEVICE_NETWORKS, enclose_tag : new_tag})
-            ).append(
-                create_input_el(cur_ip, "network", line_prefix, {label : "NW", select_source : @network_list, callback : @set_network_after_change, master_xml : @DEVICE_NETWORKS, enclose_tag : new_tag})
-            ).append(
-                create_input_el(cur_ip, "domain_tree_node", line_prefix, {label : "Domain", master_xml : @DEVICE_NETWORKS, enclose_tag : new_tag, select_source : @domain_list, new_default: cur_dev.attr("domain_tree_node")})
-            ).append(
-                create_input_el(cur_ip, "alias", line_prefix, {label : "Alias", master_xml : @DEVICE_NETWORKS, enclose_tag : new_tag})
-            ).append(
-                create_input_el(cur_ip, "alias_excl", line_prefix, {label : "Exclusive", boolean : true, master_xml : @DEVICE_NETWORKS, enclose_tag : new_tag})
-            ).append(
+                create_input_el(cur_ip, "ip", line_prefix, {label : "IP", callback : @set_network_after_change, master_xml : @DEVICE_NETWORKS, enclose_tag : new_tag}),
+                create_input_el(cur_ip, "network", line_prefix, {label : "NW", select_source : @network_list, callback : @set_network_after_change, master_xml : @DEVICE_NETWORKS, enclose_tag : new_tag}),
+                create_input_el(cur_ip, "domain_tree_node", line_prefix, {label : "Domain", master_xml : @DEVICE_NETWORKS, enclose_tag : new_tag, select_source : @domain_list, new_default: cur_dev.attr("domain_tree_node")}),
+                create_input_el(cur_ip, "alias", line_prefix, {label : "Alias", master_xml : @DEVICE_NETWORKS, enclose_tag : new_tag}),
+                create_input_el(cur_ip, "alias_excl", line_prefix, {label : "Exclusive", boolean : true, master_xml : @DEVICE_NETWORKS, enclose_tag : new_tag}),
                 $(new_tag).append(
                     $("<input>").attr({
                         "type"  : "button",
@@ -603,6 +590,12 @@ class network_table
         # important to unbind to avoid cascades
         $("input#redraw_graph").unbind("click").bind("click", @redraw_graph)
         $("select#nw_graph_sel").unbind("change").bind("change", @redraw_graph)
+    rescale: () =>
+        trans = d3.event.translate
+        scale = d3.event.scale
+        @vis.attr("transform",
+            "translate(" + trans + ")" + " scale(" + scale + ")"
+        )
     draw_graph: (graph) =>
         # some DOM magic, FIXME
         div_width  = $("div#network_graph_outer").outerWidth(true)
@@ -615,71 +608,109 @@ class network_table
         height = 500
         if $("html").hasClass("ie8")
             return
-        # scale with 20 colors
-        color = d3.scale.category20()
-        #x = d3.scale.linear().domain([-width / 2, width / 2]).range([0, width])
-        #y = d3.scale.linear().domain([-height / 2, height / 2]).range([height, 0])
-        #x_axis = d3.svg.axis()
-        #    .scale(x)
-        #    .orient("bottom")
-        #    .ticks(5)
-        #    .tickSize(-height)
-        #y_axis = d3.svg.axis()
-        #    .scale(y)
-        #    .orient("left")
-        #    .ticks(5)
-        #    .tickSize(-width)
-        #zoom = () =>
-        #    @svg.select(".x.axis").call(x_axis)
-        #    @svg.select(".y.axis").call(y_axis)
-        @svg = d3.select("div#network_graph").append("svg:svg").attr(
-            "width"   : div_width,
-            "height"  : div_height,
-            "viewBox" : "0 0 #{width} #{height}",
-            "preserveAspectRatio" : "xMidYMid",
-        ).append("g")
-        #.attr("transform", "translate(4, 10)").call(d3.behavior.zoom().x(x).y(y).scaleExtent([1, 8]).on("zoom", zoom))
-        @svg.append("rect").attr(
+        @outer = d3.select("div#network_graph")
+            .append("svg:svg")
+                .attr(
+                    "width"   : div_width,
+                    "height"  : div_height,
+                    "viewBox" : "0 0 #{width} #{height}",
+                    "pointer-events"      : "all",
+                    "preserveAspectRatio" : "xMidYMid",
+                )
+        @vis = @outer
+            .append("svg:g")
+                .call(d3.behavior.zoom().on("zoom", @rescale))
+                .on("dblclick.zoom", null)
+            .append("svg:g")
+                #.on("mousemove", @mousemove)
+                #.on("mousedown", @mousedown)
+                #.on("mouseup", @mouseup)
+        # add a rectangle to move / zoom outside elements
+        @vis.append("rect").attr(
             "x"      : 0,
             "y"      : 0,
             "width"  : width,
             "height" : height,
-            
-        ).style(
-            "stroke"       : "#000000",
-            "fill"         : "none",
-            "stroke-width" : "1",
-        )
-        #@svg.append("g")
-        #    .attr("class", "x axis")
-        #    .attr("transform", "translate(0," + height + ")")
-        #    .call(x_axis)
-        #@svg.append("g")
-        #    .attr("class", "y axis")
-        #    .call(y_axis)
+            "fill"   : "white",
+        )    
+        @graph = graph
+        @mousedown_node = null
         @force = d3.layout.force().charge(-220).linkDistance(150).size([width, height])
-            .linkDistance((d) -> return 100)
-        @force.nodes(graph.nodes).links(graph.links).start()
-        link = @svg.selectAll(".link").data(graph.links).enter().append("line").attr("class", "link").style("stroke", (d) -> 
-            return color(d.networkidx)
-        ).style("stroke-opacity", "1").style("stroke-width", "3")
-        nodes = @svg.selectAll(".node").data(graph.nodes)
-        
-        centers = nodes.enter().append("g").call(@force.drag)
-        
-        centers.append("circle").attr("r", (n) -> return 18).attr("fill", "white").attr("stroke", "grey")
-      
-        centers.append("text").attr("text-anchor", "middle").text((d) -> return d.name )
-        #d_list = [1, 2, 4]
-        @force.on("tick", =>
-            link.attr("x1", (d) -> return d.source.x )
-                .attr("y1", (d) -> return d.source.y )
-                .attr("x2", (d) -> return d.target.x )
-                .attr("y2", (d) -> return d.target.y )
-            centers.attr("transform", (d) -> 
-                return "translate(#{d.x},#{d.y})"
+            .linkDistance((d) -> return 100).on("tick", @tick)
+        @force.nodes(@graph.nodes).links(@graph.links)
+        @links = @vis.selectAll(".link")
+        @nodes = @vis.selectAll(".node")
+        @redraw()
+        @force.start()
+    redraw: () =>
+        @links = @links.data(@graph.links)
+        @nodes = @nodes.data(@graph.nodes)
+        # scale with 20 colors
+        color = d3.scale.category20()
+
+        @links.enter().append("line")
+            .attr
+                "class" : "link"
+            .style
+                "stroke" : (d) -> 
+                    return color(d.networkidx)
+                "stroke-opacity" : "1"
+                "stroke-width"   : "3"
+        @links.exit().remove()
+                
+        drag = @force.drag()
+            .on("dragstart", (d) ->
+                d.fixed = true
+                d3.select(this).select("circle").classed("fixed", true)
             )
-        )
+        centers = @nodes.enter()
+            .append("g").call(drag)
+            .attr("class", "node")
+            .on("mouseenter", =>
+                @outer.call(d3.behavior.zoom().on("zoom", null))
+            )
+            .on("mouseleave", =>
+                @outer.call(d3.behavior.zoom().on("zoom", @rescale))
+            )
+        centers.append("circle")
+            .attr
+                "r"      : (n) -> return 18
+                "fill"   : "white"
+                "stroke" : "grey"
+                "cursor" : "crosshair"
+        centers.append("text")
+            .attr
+                "text-anchor" : "middle"
+                "cursor" : "crosshair"
+            .text((d) -> return d.name)
+    
+        @nodes.exit().remove()
+    # not in use right now
+    mousemove: () =>
+        if @mousedown_node
+            console.log d3.mouse(@outer[0][0])
+            @nodes.attr
+                "transform" : (d) -> 
+                    return "translate(#{d.x},#{d.y})"
+            #@mousedown_node.cx = d3.mouse(@outer[0][0])[0]
+            #@mousedown_node.cy = d3.mouse(@outer[0][0])[1]
+        else
+            return
+    # not in use right now
+    mousedown: () =>
+        console.log "down"
+    # not in use right now
+    mouseup: () =>
+        console.log "up"
+    tick: () =>
+        @links.attr
+            "x1" : (d) -> return d.source.x
+            "y1" : (d) -> return d.source.y
+            "x2" : (d) -> return d.target.x
+            "y2" : (d) -> return d.target.y
+        @nodes.attr
+            "transform" : (d) -> 
+                return "translate(#{d.x},#{d.y})"
     redraw_graph : =>
         $.ajax
             url      : "{% url 'network:json_network' %}"
