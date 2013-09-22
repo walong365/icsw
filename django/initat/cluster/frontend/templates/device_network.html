@@ -593,6 +593,8 @@ class network_table
     rescale: () =>
         trans = d3.event.translate
         scale = d3.event.scale
+        @cur_scale = d3.event.scale
+        @cur_trans = d3.event.translate
         @vis.attr("transform",
             "translate(" + trans + ")" + " scale(" + scale + ")"
         )
@@ -617,6 +619,8 @@ class network_table
                     "pointer-events"      : "all",
                     "preserveAspectRatio" : "xMidYMid",
                 )
+        @cur_scale = 1.0
+        @cur_trans = [0, 0]
         @vis = @outer
             .append("svg:g")
                 .call(d3.behavior.zoom().on("zoom", @rescale))
@@ -657,11 +661,21 @@ class network_table
                 "stroke-opacity" : "1"
                 "stroke-width"   : "3"
         @links.exit().remove()
-                
+        
         drag = @force.drag()
             .on("dragstart", (d) ->
+                _this.start_coords = [d.x, d.y]
                 d.fixed = true
-                d3.select(this).select("circle").classed("fixed", true)
+                d3.select(@).select("circle").classed("fixed", true)
+            )
+            .on("dragend", (d) ->
+                if d.x != _this.start_coords[0] or d.y != _this.start_coords[1]
+                    # node was moved, set fixed
+                    fixed = true
+                else
+                    fixed = false
+                d.fixed = fixed
+                d3.select(@).select("circle").classed("fixed", fixed)
             )
         centers = @nodes.enter()
             .append("g").call(drag)
@@ -670,7 +684,7 @@ class network_table
                 @outer.call(d3.behavior.zoom().on("zoom", null))
             )
             .on("mouseleave", =>
-                @outer.call(d3.behavior.zoom().on("zoom", @rescale))
+                @outer.call(d3.behavior.zoom().scale(@cur_scale).translate(@cur_trans).on("zoom", @rescale))
             )
         centers.append("circle")
             .attr
