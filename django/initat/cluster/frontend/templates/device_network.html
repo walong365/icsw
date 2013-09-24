@@ -11,6 +11,14 @@
     circle.fixed {
         fill : #ff8888;
     }
+    .connect_line {
+        stroke : #9999ff;
+        stroke-width : 4;
+        pointer-events : none;
+    }
+    .connect_line_hidden {
+        stroke-width : 0
+    }
     </style>
     
 {% endblock %}
@@ -638,19 +646,18 @@ class network_table
                 .call(d3.behavior.zoom().on("zoom", @rescale))
                 .on("dblclick.zoom", null)
             .append("svg:g")
-                #.on("mousemove", @mousemove)
-                #.on("mousedown", @mousedown)
-                #.on("mouseup", @mouseup)
-        # add a rectangle to move / zoom outside elements
+                .on("mousemove", @mousemove)
+                .on("mousedown", @mousedown)
+                .on("mouseup", @mouseup)
+        # add a rectangle to move / zoom outside elements, acts as a kind of backplane
         @vis.append("rect").attr(
-            "x"      : 0,
-            "y"      : 0,
-            "width"  : width,
-            "height" : height,
+            "x"      : -width,
+            "y"      : -height,
+            "width"  : 3 * width,
+            "height" : 3 * height,
             "fill"   : "white",
         )    
         @graph = graph
-        @mousedown_node = null
         @force = d3.layout.force().charge(-220).gravity(0.02).linkDistance(150).size([width, height])
             .linkDistance((d) -> return 100).on("tick", @tick)
         @force.nodes(@graph.nodes).links(@graph.links)
@@ -685,12 +692,29 @@ class network_table
                 d.fixed = fixed
                 d3.select(@).select("circle").classed("fixed", fixed)
             )
+        @connect_line = @vis.append("line").attr
+            "class" : "connect_line"
+            "x1"    : 0
+            "y1"    : 0
+            "x2"    : 0
+            "y2"    : 0
         @selected = undefined
+        @reset_graph_mode()
         @graph_mode()
         @redraw()
-        @force.start()
+    reset_connection_parameters: () =>
+        @mousedown_node = undefined
+        @mouseup_node = undefined
+        @mousedown_link = undefined
+        @connect_line.attr
+            "class" : "connect_line_hidden"
+            "x1"    : 0
+            "y1"    : 0
+            "x2"    : 0
+            "y2"    : 0
     redraw: () =>
         _this = this
+        @reset_connection_parameters()
         @links = @links.data(@graph.links)
         @nodes = @nodes.data(@graph.nodes)
         # scale with 20 colors
@@ -717,6 +741,34 @@ class network_table
                 _this.outer.call(d3.behavior.zoom().scale(_this.cur_scale).translate(_this.cur_trans).on("zoom", _this.rescale))
                 d3.select(@).select("circle").attr("stroke-width", 1)
             )
+            .on("mousedown", (d) ->
+                if _this.cur_graph_mode == "c"
+                    _this.mousedown_node = d
+                    _this.mousedown_link = null
+                    _this.connect_line.attr
+                        "class" : "connect_line"
+                        "x1" : _this.mousedown_node.x
+                        "y1" : _this.mousedown_node.y
+                        "x2" : _this.mousedown_node.x
+                        "y2" : _this.mousedown_node.y
+            )
+            .on("mouseup", (d) ->
+                if _this.mousedown_node
+                    _this.mouseup_node = d
+                    if _this.mouseup_node == _this.mousedown_node
+                        _this.reset_connection_parameters()
+                    else
+                        link = {
+                            source : _this.mousedown_node
+                            target : _this.mouseup_node
+                            networkidx : 1
+                        }
+                        line_idx = _this.graph.links.push(link)
+                        _this.redraw()
+                        cur_el = _this.vis.selectAll("line")[0][line_idx]
+                        # insert before first g element
+                        cur_el.parentNode.insertBefore(cur_el, cur_el.parentNode.firstChild.nextSibling.nextSibling)
+            )
         centers.append("circle")
             .attr
                 "r"      : (n) -> return 18
@@ -730,23 +782,23 @@ class network_table
             .text((d) -> return d.name)
     
         @nodes.exit().remove()
-    # not in use right now
+        @force.start()
     mousemove: () =>
         if @mousedown_node
-            console.log d3.mouse(@outer[0][0])
-            @nodes.attr
-                "transform" : (d) -> 
-                    return "translate(#{d.x},#{d.y})"
-            #@mousedown_node.cx = d3.mouse(@outer[0][0])[0]
-            #@mousedown_node.cy = d3.mouse(@outer[0][0])[1]
-        else
-            return
-    # not in use right now
+            @connect_line.attr
+                "x1" : @mousedown_node.x
+                "y1" : @mousedown_node.y
+                "x2" : d3.mouse(@vis[0][0])[0]
+                "y2" : d3.mouse(@vis[0][0])[1]
     mousedown: () =>
-        console.log "down"
-    # not in use right now
+        return
+        #if @cur_graph_mode == "c"
+        #    if not @mousedown_node and not @mousedown_link
+        #        return
     mouseup: () =>
-        console.log "up"
+        if @cur_graph_mode == "c"
+            if not @mouseup_node
+                @reset_connection_parameters()
     tick: () =>
         @links.attr
             "x1" : (d) -> return d.source.x
@@ -756,6 +808,8 @@ class network_table
         @nodes.attr
             "transform" : (d) -> 
                 return "translate(#{d.x},#{d.y})"
+    reset_graph_mode: (event) =>
+        $("select#nw_graph_mode").val("m")
     graph_mode : (event) =>
         @cur_graph_mode = $("select#nw_graph_mode").val()
         if @cur_graph_mode == "c"
