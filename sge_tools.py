@@ -251,7 +251,7 @@ class sge_info(object):
                     if file_info is not None:
                         for sub_el in file_info:
                             file_info.remove(sub_el)
-                        for f_name, f_el in file_dict.iteritems():
+                        for _f_name, f_el in file_dict.iteritems():
                             file_info.append(f_el)
             return r_tree
         else:
