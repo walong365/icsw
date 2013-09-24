@@ -36,12 +36,18 @@
         <option value="selp3">selected + 3</option>
         <option value="core">core (non-trivial)</option>
     </select>
+    , mode:
+    <select id="nw_graph_mode">
+        <option value="m">move</option>
+        <option value="c">connect</option>
+    </select>
+    , selected node: <span id='selected_node'></span>
 </div>
 
 </div>
 
 <div id="network_graph_outer" style="border: 1px solid black;">
-<div id="network_graph"></div>
+    <div id="network_graph"></div>
 </div>
 
 <script type="text/javascript">
@@ -135,11 +141,15 @@ class network_table
                 "class" : "ui-widget ui-widget-header"
             })
             num_nds = cur_dev.find("netdevices netdevice").length
+            if cur_dev.attr("comment")
+                info_str = ", (#{cur_dev.attr('comment')})"
+            else
+                info_str = ""
             cur_tr.append(
                 $("<th>").attr({
                     "id"      : "#{line_prefix}__devname",
                     "colspan" : 8}).append(
-                        $("<span>").text(cur_dev.attr("full_name"))
+                        $("<span>").text(cur_dev.attr("full_name") + info_str)
                 ),
                 get_expand_td(
                     line_prefix,
@@ -590,6 +600,7 @@ class network_table
         # important to unbind to avoid cascades
         $("input#redraw_graph").unbind("click").bind("click", @redraw_graph)
         $("select#nw_graph_sel").unbind("change").bind("change", @redraw_graph)
+        $("select#nw_graph_mode").off("change").on("change", @graph_mode)
     rescale: () =>
         trans = d3.event.translate
         scale = d3.event.scale
@@ -599,6 +610,7 @@ class network_table
             "translate(" + trans + ")" + " scale(" + scale + ")"
         )
     draw_graph: (graph) =>
+        _this = this
         # some DOM magic, FIXME
         div_width  = $("div#network_graph_outer").outerWidth(true)
         div_height = $("div#network_graph_outer").parent().height() - $("div#network_div").height() - 20
@@ -639,14 +651,46 @@ class network_table
         )    
         @graph = graph
         @mousedown_node = null
-        @force = d3.layout.force().charge(-220).linkDistance(150).size([width, height])
+        @force = d3.layout.force().charge(-220).gravity(0.02).linkDistance(150).size([width, height])
             .linkDistance((d) -> return 100).on("tick", @tick)
         @force.nodes(@graph.nodes).links(@graph.links)
         @links = @vis.selectAll(".link")
         @nodes = @vis.selectAll(".node")
+        @drag = @force.drag()
+            .on("dragstart", (d) ->
+                _this.start_coords = [d.x, d.y]
+                d.fixed = true
+                d3.select(@).select("circle").classed("fixed", true)
+                if _this.selected == d
+                    _this.selected = undefined
+                    $("span#selected_node").text("")
+                else
+                    _this.selected = d
+                    $("span#selected_node").text(_this.selected.name)
+                    fixed = true
+                    d.fixed = fixed
+                    d3.select(@).select("circle").classed("fixed", fixed)
+            )
+            .on("dragend", (d) ->
+                if d.x != _this.start_coords[0] or d.y != _this.start_coords[1]
+                    # node was moved, set fixed
+                    fixed = true
+                else
+                    if _this.selected
+                        # a node is selected, set fixed flag
+                        fixed = true
+                    else
+                        # no node is selected, clear fixed flag
+                        fixed = false
+                d.fixed = fixed
+                d3.select(@).select("circle").classed("fixed", fixed)
+            )
+        @selected = undefined
+        @graph_mode()
         @redraw()
         @force.start()
     redraw: () =>
+        _this = this
         @links = @links.data(@graph.links)
         @nodes = @nodes.data(@graph.nodes)
         # scale with 20 colors
@@ -662,29 +706,16 @@ class network_table
                 "stroke-width"   : "3"
         @links.exit().remove()
         
-        drag = @force.drag()
-            .on("dragstart", (d) ->
-                _this.start_coords = [d.x, d.y]
-                d.fixed = true
-                d3.select(@).select("circle").classed("fixed", true)
-            )
-            .on("dragend", (d) ->
-                if d.x != _this.start_coords[0] or d.y != _this.start_coords[1]
-                    # node was moved, set fixed
-                    fixed = true
-                else
-                    fixed = false
-                d.fixed = fixed
-                d3.select(@).select("circle").classed("fixed", fixed)
-            )
         centers = @nodes.enter()
-            .append("g").call(drag)
+            .append("g").call(@drag)
             .attr("class", "node")
-            .on("mouseenter", =>
-                @outer.call(d3.behavior.zoom().on("zoom", null))
+            .on("mouseenter", ->
+                _this.outer.call(d3.behavior.zoom().on("zoom", null))
+                d3.select(@).select("circle").attr("stroke-width", 3)
             )
-            .on("mouseleave", =>
-                @outer.call(d3.behavior.zoom().scale(@cur_scale).translate(@cur_trans).on("zoom", @rescale))
+            .on("mouseleave", ->
+                _this.outer.call(d3.behavior.zoom().scale(_this.cur_scale).translate(_this.cur_trans).on("zoom", _this.rescale))
+                d3.select(@).select("circle").attr("stroke-width", 1)
             )
         centers.append("circle")
             .attr
@@ -695,7 +726,7 @@ class network_table
         centers.append("text")
             .attr
                 "text-anchor" : "middle"
-                "cursor" : "crosshair"
+                "cursor"      : "crosshair"
             .text((d) -> return d.name)
     
         @nodes.exit().remove()
@@ -725,6 +756,14 @@ class network_table
         @nodes.attr
             "transform" : (d) -> 
                 return "translate(#{d.x},#{d.y})"
+    graph_mode : (event) =>
+        @cur_graph_mode = $("select#nw_graph_mode").val()
+        if @cur_graph_mode == "c"
+            # disable drag
+            @nodes.call(@drag).on("mousedown.drag", null)
+        else if @cur_graph_mode == "m"
+            # ensable drag
+            @nodes.call(@drag)
     redraw_graph : =>
         $.ajax
             url      : "{% url 'network:json_network' %}"
