@@ -150,7 +150,10 @@ class topology_object(object):
     def add_edges(self):
         for node_pair, network_idx_list in self.simple_peer_dict.iteritems():
             src_node, dst_node = node_pair
-            self.nx.add_edge(src_node, dst_node, networkidx=sum(network_idx_list))
+            if src_node == dst_node:
+                pass
+            else:
+                self.nx.add_edge(src_node, dst_node, networkidx=sum(network_idx_list))
     def _update(self):
         s_time = time.time()
         dev_sel = device.objects.exclude(Q(device_type__identifier="MD")).filter(Q(enabled=True) & Q(device_group__enabled=True))
