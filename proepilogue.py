@@ -42,10 +42,10 @@ import socket
 import threading_tools
 import time
 import zmq
-    
+
 SEP_LEN = 70
 LOCAL_IP = "127.0.0.1"
-#PROFILE_PREFIX = ".mon"
+# PROFILE_PREFIX = ".mon"
 CONFIG_FILE_NAME = "proepilogue.conf"
 
 def sec_to_str(in_sec):
@@ -55,9 +55,9 @@ def sec_to_str(in_sec):
     dt -= 3600 * diff_h
     diff_m = int(dt / 60)
     dt -= diff_m * 60
-    #if diff_d:
+    # if diff_d:
     out_f = "%2d:%02d:%02d:%02d" % (diff_d, diff_h, diff_m, dt)
-    #else:
+    # else:
     #    out_f = "%2d:%02d:%02d" % (diff_h, diff_m, dt)
     return out_f
 
@@ -89,17 +89,17 @@ class job_thread(threading_tools.thread_obj):
                              logging_tools.form_entry(self.__opt_dict[key], header="value")])
         for line in str(out_list).split("\n"):
             self.log(line)
-##    def _set_localhost_stuff(self):
-##        try:
-##            self.__opt_dict["HOST_IP"] = socket.gethostbyname(self.__opt_dict["HOST_SHORT"])
-##        except:
-##            self.log("cannot resolve host_name '%s': %s" % (self.__opt_dict["HOST_SHORT"],
-##                                                            process_tools.get_except_info()),
-##                     logging_tools.LOG_LEVEL_ERROR)
-##            self.__opt_dict["HOST_IP"] = "127.0.0.1"
-##    def _copy_environments(self):
-##        self.__env_dict = dict([(key, str(os.environ[key])) for key in os.environ.keys()])
-##        self.__env_int_dict = dict([(key, value) for key, value in [line.split("=", 1) for line in file("%s/config" % (self.__env_dict["SGE_JOB_SPOOL_DIR"]), "r").read().strip().split("\n") if line.count("=")]])
+# #    def _set_localhost_stuff(self):
+# #        try:
+# #            self.__opt_dict["HOST_IP"] = socket.gethostbyname(self.__opt_dict["HOST_SHORT"])
+# #        except:
+# #            self.log("cannot resolve host_name '%s': %s" % (self.__opt_dict["HOST_SHORT"],
+# #                                                            process_tools.get_except_info()),
+# #                     logging_tools.LOG_LEVEL_ERROR)
+# #            self.__opt_dict["HOST_IP"] = "127.0.0.1"
+# #    def _copy_environments(self):
+# #        self.__env_dict = dict([(key, str(os.environ[key])) for key in os.environ.keys()])
+# #        self.__env_int_dict = dict([(key, value) for key, value in [line.split("=", 1) for line in file("%s/config" % (self.__env_dict["SGE_JOB_SPOOL_DIR"]), "r").read().strip().split("\n") if line.count("=")]])
     # loop functions
     def loop_start(self):
         # OLD CODE, be aware
@@ -117,9 +117,9 @@ class job_thread(threading_tools.thread_obj):
         self._parse_job_script()
         self._log_arguments()
         self._read_config()
-        #self._log_config()
-        #self.write_file("aha", "/etc/hosts")
-        #self.write_file("aha", "/etc/services")
+        # self._log_config()
+        # self.write_file("aha", "/etc/hosts")
+        # self.write_file("aha", "/etc/services")
         if self.is_start_call():
             self._log_environments()
             self._log_limits()
@@ -287,119 +287,119 @@ class job_thread(threading_tools.thread_obj):
                                                              value,
                                                              var_file))
         file(var_file, "a").write("export %s=%s\n" % (key, value))
-##    def _parse_job_script(self):
-##        if os.environ.has_key("JOB_SCRIPT"):
-##            script_file = os.environ["JOB_SCRIPT"]
-##            try:
-##                lines = [line.strip() for line in file(script_file, "r").read().split("\n")]
-##            except:
-##                self.log("Cannot read Scriptfile '%s' (%s)" % (script_file,
-##                                                               process_tools.get_except_info()),
-##                         logging_tools.LOG_LEVEL_ERROR)
-##            else:
-##                if self.__opt_dict["CALLER_NAME_SHORT"] == "prologue":
-##                    s_list = logging_tools.new_form_list()
-##                else:
-##                    s_list = None
-##                num_lines, num_sge, num_init = (len(lines), 0, 0)
-##                init_dict = {}
-##                for line, line_num in zip(lines, xrange(len(lines))):
-##                    if s_list is not None:
-##                        s_list.append([logging_tools.form_entry(line_num + 1, header="line"),
-##                                       logging_tools.form_entry(line, header="content")])
-##                    if line.startswith("#$ "):
-##                        num_sge += 1
-##                    elif line.startswith("#init "):
-##                        # valid init-keys:
-##                        # MONITOR=<type>
-##                        # MONITOR_KEYS=<key_list;>
-##                        # MONITOR_FULL_KEY_LIST=<true>
-##                        # TRIGGER_ERROR (flag, triggers error)
-##                        # EXTRA_WAIT=x (waits for x seconds)
-##                        num_init += 1
-##                        line_parts = [x.split("=", 1) for x in line[5:].strip().split(",")]
-##                        self.log("found #init-line '%s'" % (line))
-##                        if line_parts:
-##                            for key, value in [x for x in line_parts if len(x) == 2]:
-##                                key, value = (key.strip().upper(), value.strip().lower())
-##                                if key and value:
-##                                    init_dict[key] = value
-##                                    self.log("recognised init option '%s' (value '%s')" % (key, value))
-##                                    self.__opt_dict.add_config_dict({key : configfile.str_c_var(value, source="jobscript")})
-##                            for key in [x[0].strip().upper() for x in line_parts if len(x) == 1]:
-##                                init_dict[key] = True
-##                                self.log("recognised init option '%s' (value '%s')" % (key, True))
-##                                self.__opt_dict.add_config_dict({key : configfile.bool_c_var(True, source="jobscript")})
-##                self.log("Scriptfile '%s' has %d lines (%s and %s)" % (script_file,
-##                                                                       num_lines,
-##                                                                       logging_tools.get_plural("SGE related line", num_sge),
-##                                                                       logging_tools.get_plural("init.at related line", num_init)))
-##                if s_list:
-##                    self.write_file("jobscript", str(s_list).split("\n"), linenumbers=False)
-##        else:
-##            self.log("environ has no JOB_SCRIPT key", logging_tools.LOG_LEVEL_WARN)
-##    def _parse_server_addresses(self):
-##        for src_file, key, default in [("/etc/motherserver", "MOTHER_SERVER", "localhost"),
-##                                       ("/etc/sge_server"  , "SGE_SERVER"   , "localhost")]:
-##            try:
-##                act_val = file(src_file, "r").read().split()[0]
-##            except:
-##                self.log("cannot read %s from %s: %s" % (key,
-##                                                         src_file,
-##                                                         process_tools.get_except_info()),
-##                         logging_tools.LOG_LEVEL_ERROR)
-##                act_val = default
-##            self.__glob_config.add_config_dict({key : configfile.str_c_var(act_val, source=src_file)})
-##    def _parse_sge_env(self):
-##        # pe name
-##        if os.environ.has_key("PE") and os.environ.has_key("PE_HOSTFILE"):
-##            self.__opt_dict["PE"] = os.environ["PE"]
-##        else:
-##            self.__opt_dict["PE"] = ""
-##        # TASK_ID
-##        if os.environ.has_key("SGE_TASK_FIRST") and os.environ.has_key("SGE_TASK_LAST") and os.environ.has_key("SGE_TASK_ID") and os.environ.has_key("SGE_TASK_STEPSIZE"):
-##            if os.environ["SGE_TASK_ID"] == "undefined":
-##                self.__opt_dict["TASK_ID"] = 0
-##            else:
-##                try:
-##                    self.__opt_dict["TASK_ID"] = int(os.environ["SGE_TASK_ID"])
-##                except:
-##                    self.log("error extracting SGE_TASK_ID: %s" % (process_tools.get_except_info()),
-##                             logging_tools.LOG_LEVEL_ERROR)
-##                    self.__opt_dict["TASK_ID"] = 0
-##                else:
-##                    pass
-##        else:
-##            self.__opt_dict["TASK_ID"] = 0
-##        self.__opt_dict["FULL_JOB_ID"] = "%s%s" % (self.__opt_dict["JOB_ID"],
-##                                                   ".%s" % (self.__opt_dict["TASK_ID"]) if self.__opt_dict["TASK_ID"] else "")
-##    def _check_user(self):
-##        try:
-##            pw_data = pwd.getpwnam(self.__opt_dict["JOB_OWNER"])
-##        except KeyError:
-##            pw_data = None
-##            uid, gid, group = (0, 0, "unknown")
-##            self.log("Unknown user '%s', using ('%s', %d, %d) as (group, uid, gid)" % (self.__opt_dict["JOB_OWNER"],
-##                                                                                       group,
-##                                                                                       uid,
-##                                                                                       gid),
-##                     logging_tools.LOG_LEVEL_ERROR)
-##        else:
-##            uid = pw_data[2]
-##            gid = pw_data[3]
-##            try:
-##                grp_data = grp.getgrgid(gid)
-##            except KeyError:
-##                group = "unknown"
-##                self.log("Unknown group-id %d for user '%s', using %s as group" % (gid,
-##                                                                                   user,
-##                                                                                   group),
-##                         logging_tools.LOG_LEVEL_ERROR)
-##            else:
-##                group = grp_data[0]
-##        self.__opt_dict["GROUP"] = group
-##        self.__opt_dict["UID"] = uid
-##        self.__opt_dict["GID"] = gid
+# #    def _parse_job_script(self):
+# #        if os.environ.has_key("JOB_SCRIPT"):
+# #            script_file = os.environ["JOB_SCRIPT"]
+# #            try:
+# #                lines = [line.strip() for line in file(script_file, "r").read().split("\n")]
+# #            except:
+# #                self.log("Cannot read Scriptfile '%s' (%s)" % (script_file,
+# #                                                               process_tools.get_except_info()),
+# #                         logging_tools.LOG_LEVEL_ERROR)
+# #            else:
+# #                if self.__opt_dict["CALLER_NAME_SHORT"] == "prologue":
+# #                    s_list = logging_tools.new_form_list()
+# #                else:
+# #                    s_list = None
+# #                num_lines, num_sge, num_init = (len(lines), 0, 0)
+# #                init_dict = {}
+# #                for line, line_num in zip(lines, xrange(len(lines))):
+# #                    if s_list is not None:
+# #                        s_list.append([logging_tools.form_entry(line_num + 1, header="line"),
+# #                                       logging_tools.form_entry(line, header="content")])
+# #                    if line.startswith("#$ "):
+# #                        num_sge += 1
+# #                    elif line.startswith("#init "):
+# #                        # valid init-keys:
+# #                        # MONITOR=<type>
+# #                        # MONITOR_KEYS=<key_list;>
+# #                        # MONITOR_FULL_KEY_LIST=<true>
+# #                        # TRIGGER_ERROR (flag, triggers error)
+# #                        # EXTRA_WAIT=x (waits for x seconds)
+# #                        num_init += 1
+# #                        line_parts = [x.split("=", 1) for x in line[5:].strip().split(",")]
+# #                        self.log("found #init-line '%s'" % (line))
+# #                        if line_parts:
+# #                            for key, value in [x for x in line_parts if len(x) == 2]:
+# #                                key, value = (key.strip().upper(), value.strip().lower())
+# #                                if key and value:
+# #                                    init_dict[key] = value
+# #                                    self.log("recognised init option '%s' (value '%s')" % (key, value))
+# #                                    self.__opt_dict.add_config_dict({key : configfile.str_c_var(value, source="jobscript")})
+# #                            for key in [x[0].strip().upper() for x in line_parts if len(x) == 1]:
+# #                                init_dict[key] = True
+# #                                self.log("recognised init option '%s' (value '%s')" % (key, True))
+# #                                self.__opt_dict.add_config_dict({key : configfile.bool_c_var(True, source="jobscript")})
+# #                self.log("Scriptfile '%s' has %d lines (%s and %s)" % (script_file,
+# #                                                                       num_lines,
+# #                                                                       logging_tools.get_plural("SGE related line", num_sge),
+# #                                                                       logging_tools.get_plural("init.at related line", num_init)))
+# #                if s_list:
+# #                    self.write_file("jobscript", str(s_list).split("\n"), linenumbers=False)
+# #        else:
+# #            self.log("environ has no JOB_SCRIPT key", logging_tools.LOG_LEVEL_WARN)
+# #    def _parse_server_addresses(self):
+# #        for src_file, key, default in [("/etc/motherserver", "MOTHER_SERVER", "localhost"),
+# #                                       ("/etc/sge_server"  , "SGE_SERVER"   , "localhost")]:
+# #            try:
+# #                act_val = file(src_file, "r").read().split()[0]
+# #            except:
+# #                self.log("cannot read %s from %s: %s" % (key,
+# #                                                         src_file,
+# #                                                         process_tools.get_except_info()),
+# #                         logging_tools.LOG_LEVEL_ERROR)
+# #                act_val = default
+# #            self.__glob_config.add_config_dict({key : configfile.str_c_var(act_val, source=src_file)})
+# #    def _parse_sge_env(self):
+# #        # pe name
+# #        if os.environ.has_key("PE") and os.environ.has_key("PE_HOSTFILE"):
+# #            self.__opt_dict["PE"] = os.environ["PE"]
+# #        else:
+# #            self.__opt_dict["PE"] = ""
+# #        # TASK_ID
+# #        if os.environ.has_key("SGE_TASK_FIRST") and os.environ.has_key("SGE_TASK_LAST") and os.environ.has_key("SGE_TASK_ID") and os.environ.has_key("SGE_TASK_STEPSIZE"):
+# #            if os.environ["SGE_TASK_ID"] == "undefined":
+# #                self.__opt_dict["TASK_ID"] = 0
+# #            else:
+# #                try:
+# #                    self.__opt_dict["TASK_ID"] = int(os.environ["SGE_TASK_ID"])
+# #                except:
+# #                    self.log("error extracting SGE_TASK_ID: %s" % (process_tools.get_except_info()),
+# #                             logging_tools.LOG_LEVEL_ERROR)
+# #                    self.__opt_dict["TASK_ID"] = 0
+# #                else:
+# #                    pass
+# #        else:
+# #            self.__opt_dict["TASK_ID"] = 0
+# #        self.__opt_dict["FULL_JOB_ID"] = "%s%s" % (self.__opt_dict["JOB_ID"],
+# #                                                   ".%s" % (self.__opt_dict["TASK_ID"]) if self.__opt_dict["TASK_ID"] else "")
+# #    def _check_user(self):
+# #        try:
+# #            pw_data = pwd.getpwnam(self.__opt_dict["JOB_OWNER"])
+# #        except KeyError:
+# #            pw_data = None
+# #            uid, gid, group = (0, 0, "unknown")
+# #            self.log("Unknown user '%s', using ('%s', %d, %d) as (group, uid, gid)" % (self.__opt_dict["JOB_OWNER"],
+# #                                                                                       group,
+# #                                                                                       uid,
+# #                                                                                       gid),
+# #                     logging_tools.LOG_LEVEL_ERROR)
+# #        else:
+# #            uid = pw_data[2]
+# #            gid = pw_data[3]
+# #            try:
+# #                grp_data = grp.getgrgid(gid)
+# #            except KeyError:
+# #                group = "unknown"
+# #                self.log("Unknown group-id %d for user '%s', using %s as group" % (gid,
+# #                                                                                   user,
+# #                                                                                   group),
+# #                         logging_tools.LOG_LEVEL_ERROR)
+# #            else:
+# #                group = grp_data[0]
+# #        self.__opt_dict["GROUP"] = group
+# #        self.__opt_dict["UID"] = uid
+# #        self.__opt_dict["GID"] = gid
     def _call_command(self, com_names, arg_form="%s", **args):
         # args: retries (default 2)
         max_retries = args.get("retries", 2)
@@ -617,7 +617,7 @@ class job_thread(threading_tools.thread_obj):
         ping_com = "ping_remote fast_mode=True"
         self.log("starting flight_check %s, ping_com is '%s'" % (flight_type,
                                                                  ping_com))
-        
+
         all_ips = sum([node_stuff["ip_list"] for node_stuff in self.__node_dict.itervalues()], [])
         all_nfs_ips = [node_stuff["ip"] for node_stuff in self.__node_dict.itervalues()]
         # build connection dict
@@ -640,14 +640,14 @@ class job_thread(threading_tools.thread_obj):
             to_send = [key for key, value in con_dict.iteritems() if (value["result"] is None) and (key not in nodes_waiting)]
             send_dict = {}
             while to_send and pings_pending < max_pending:
-                #print "sending", to_send, pings_pending, max_pending
+                # print "sending", to_send, pings_pending, max_pending
                 act_node_name = to_send.pop(0)
                 send_dict[act_node_name] = (ping_com, "%s %d %.2f" % (",".join(con_dict[act_node_name]["ips"]),
                                                                       ping_packets,
                                                                       ping_timeout))
                 pings_pending += ping_packets
             if send_dict:
-                act_pend_dict = self._collserver_command(send_dict, 
+                act_pend_dict = self._collserver_command(send_dict,
                                                          only_send=True,
                                                          timeout=ping_timeout + 5)
                 nodes_waiting.extend(act_pend_dict.values())
@@ -658,15 +658,15 @@ class job_thread(threading_tools.thread_obj):
             # step 2: wait for pings to return
             self.inner_loop(force_wait=True)
             act_finished = [p_id for p_id in pending_ids if self.__pending_dict[p_id]]
-            #print "done", act_finished
+            # print "done", act_finished
             for fin_id in act_finished:
                 pending_ids.remove(fin_id)
                 pings_pending -= ping_packets
                 ret_state, ret_value = self.__pending_dict[fin_id]
-                #print "id %d gave:" % (fin_id), ret_state, ret_value
+                # print "id %d gave:" % (fin_id), ret_state, ret_value
                 act_node_name = pending_dict[fin_id]
                 nodes_waiting.remove(act_node_name)
-                #self.log("got for %s: %s" % (act_node_name, str(self.__pending_dict[fin_id])))
+                # self.log("got for %s: %s" % (act_node_name, str(self.__pending_dict[fin_id])))
                 con_dict[act_node_name]["retries"] -= 1
                 con_dict[act_node_name]["result"] = (ret_state, ret_value)
                 if not ret_state and con_dict[act_node_name]["retries"]:
@@ -702,11 +702,11 @@ class job_thread(threading_tools.thread_obj):
                 self.log("unable to contact node %s: %s" % (key,
                                                             res_stuff),
                          logging_tools.LOG_LEVEL_ERROR)
-        # remove ip_failures 
-        #pprint.pprint(res_dict)
-        #pprint.pprint(con_dict)
-        #pprint.pprint(ip_fail_dict)
-        #pprint.pprint(reach_dict)
+        # remove ip_failures
+        # pprint.pprint(res_dict)
+        # pprint.pprint(con_dict)
+        # pprint.pprint(ip_fail_dict)
+        # pprint.pprint(reach_dict)
         # failed ips
         failed_ips = sorted([key for key, value in reach_dict.iteritems() if value["actual"] != value["total"]])
         error_hosts = set()
@@ -817,7 +817,7 @@ class job_thread(threading_tools.thread_obj):
             self.get_thread_queue().put(("result_error", (send_id, -1, "connect timeout")))
     def _new_tcp_con(self, sock):
         return None
-        #return simple_tcp_obj(self.get_thread_queue(), sock.get_add_data())
+        # return simple_tcp_obj(self.get_thread_queue(), sock.get_add_data())
     def _result_ok(self, (s_id, s_type, res_str)):
         if s_type == "s":
             # srv_command
@@ -850,7 +850,7 @@ class job_thread(threading_tools.thread_obj):
         self.__pending_dict[s_id] = (False, (e_flag, e_cause))
     # calls to determine the actual runmode
     # headers / footers
-        
+
 class my_thread_pool(threading_tools.thread_pool):
     def __init__(self, opt_dict):
         self.__opt_dict = opt_dict
@@ -883,70 +883,70 @@ class my_thread_pool(threading_tools.thread_pool):
         self.__start_time = time.time()
         self._init_netserver()
         self.__job_thread = self.add_thread(job_thread(self.__glob_config, self.__opt_dict, self.__netserver), start_thread=True).get_thread_queue()
-##    def log(self, what, log_level=logging_tools.LOG_LEVEL_OK, **args):
-##        if type(what) == type(()):
-##            what, log_level = what
-##        if self.__logger:
-##            self.__logger.log(log_level, what)
-##        else:
-##            self.__log_template.log(what, log_level)
-##        if args.get("do_print", False):
-##            self._print("%s%s" % ("[%s] " % (logging_tools.get_log_level_str(log_level)) if log_level != logging_tools.LOG_LEVEL_OK else "", what))
-##    def _print(self, what):
-##        try:
-##            print what
-##        except:
-##            self.log("cannot print '%s': %s" % (what,
-##                                                process_tools.get_except_info()),
-##                     logging_tools.LOG_LEVEL_ERROR)
-##    
-##    def set_exit_code(self, exit_code):
-##        self.__exit_code = exit_code
-##        self.log("exit_code set to %d" % (self.__exit_code))
-##    def get_exit_code(self):
-##        return self.__exit_code
-##    exit_code = property(get_exit_code, set_exit_code)
-##    def _set_exit_code(self, ex_code):
-##        self.exit_code = ex_code
-##    def _init_netserver(self):
-##        self.__netserver = net_tools.network_server(timeout=4, log_hook=self.log)
-##    def _read_config(self):
-##        # reading the config
-##        conf_dir = "%s/3rd_party" % (self.__glob_config["SGE_ROOT"])
-##        if not os.path.isdir(conf_dir):
-##            self.log("no config_dir %s found, using defaults" % (conf_dir),
-##                     logging_tools.LOG_LEVEL_ERROR,
-##                     do_print=True)
-##        else:
-##            conf_file = "%s/proepilogue.conf" % (conf_dir)
-##            if not os.path.isfile(conf_file):
-##                self.log("no config_file %s found, using defaults" % (conf_file),
-##                         logging_tools.LOG_LEVEL_ERROR,
-##                         do_print=True)
-##                self._print("Copy the following lines to %s :" % (conf_file))
-##                self._print("")
-##                self._print("[global]")
-##                for key in sorted(self.__glob_config.keys()):
-##                    if not key.startswith("SGE_"):
-##                        # don't write SGE_* stuff
-##                        self._print("%s = %s" % (key, str(self.__glob_config[key])))
-##                self._print("")
-##            else:
-##                self.__glob_config.add_config_dict({"CONFIG_FILE" : configfile.str_c_var(conf_file)})
-##                self.log("reading config from %s" % (conf_file))
-##                self.__glob_config.parse_file(conf_file)
-##    def _set_sge_environment(self):
-##        for v_name, v_src in [("SGE_ROOT", "/etc/sge_root"), ("SGE_CELL", "/etc/sge_cell")]:
-##            if os.path.isfile(v_src):
-##                v_val = file(v_src, "r").read().strip()
-##                self.log("Setting environment-variable '%s' to %s" % (v_name, v_val))
-##            else:
-##                self.log("Cannot assign environment-variable '%s', problems *ahead ..." % (v_name),
-##                         logging_tools.LOG_LEVEL_ERROR)
-##                #sys.exit(1)
-##            self.__glob_config.add_config_dict({v_name : configfile.str_c_var(v_val, source=v_src)})
-##        if self.__glob_config.has_key("SGE_ROOT") and self.__glob_config.has_key("SGE_CELL"):
-##            self.__glob_config.add_config_dict({"SGE_VERSION" : configfile.str_c_var("6", source="intern")})
+# #    def log(self, what, log_level=logging_tools.LOG_LEVEL_OK, **args):
+# #        if type(what) == type(()):
+# #            what, log_level = what
+# #        if self.__logger:
+# #            self.__logger.log(log_level, what)
+# #        else:
+# #            self.__log_template.log(what, log_level)
+# #        if args.get("do_print", False):
+# #            self._print("%s%s" % ("[%s] " % (logging_tools.get_log_level_str(log_level)) if log_level != logging_tools.LOG_LEVEL_OK else "", what))
+# #    def _print(self, what):
+# #        try:
+# #            print what
+# #        except:
+# #            self.log("cannot print '%s': %s" % (what,
+# #                                                process_tools.get_except_info()),
+# #                     logging_tools.LOG_LEVEL_ERROR)
+# #
+# #    def set_exit_code(self, exit_code):
+# #        self.__exit_code = exit_code
+# #        self.log("exit_code set to %d" % (self.__exit_code))
+# #    def get_exit_code(self):
+# #        return self.__exit_code
+# #    exit_code = property(get_exit_code, set_exit_code)
+# #    def _set_exit_code(self, ex_code):
+# #        self.exit_code = ex_code
+# #    def _init_netserver(self):
+# #        self.__netserver = net_tools.network_server(timeout=4, log_hook=self.log)
+# #    def _read_config(self):
+# #        # reading the config
+# #        conf_dir = "%s/3rd_party" % (self.__glob_config["SGE_ROOT"])
+# #        if not os.path.isdir(conf_dir):
+# #            self.log("no config_dir %s found, using defaults" % (conf_dir),
+# #                     logging_tools.LOG_LEVEL_ERROR,
+# #                     do_print=True)
+# #        else:
+# #            conf_file = "%s/proepilogue.conf" % (conf_dir)
+# #            if not os.path.isfile(conf_file):
+# #                self.log("no config_file %s found, using defaults" % (conf_file),
+# #                         logging_tools.LOG_LEVEL_ERROR,
+# #                         do_print=True)
+# #                self._print("Copy the following lines to %s :" % (conf_file))
+# #                self._print("")
+# #                self._print("[global]")
+# #                for key in sorted(self.__glob_config.keys()):
+# #                    if not key.startswith("SGE_"):
+# #                        # don't write SGE_* stuff
+# #                        self._print("%s = %s" % (key, str(self.__glob_config[key])))
+# #                self._print("")
+# #            else:
+# #                self.__glob_config.add_config_dict({"CONFIG_FILE" : configfile.str_c_var(conf_file)})
+# #                self.log("reading config from %s" % (conf_file))
+# #                self.__glob_config.parse_file(conf_file)
+# #    def _set_sge_environment(self):
+# #        for v_name, v_src in [("SGE_ROOT", "/etc/sge_root"), ("SGE_CELL", "/etc/sge_cell")]:
+# #            if os.path.isfile(v_src):
+# #                v_val = file(v_src, "r").read().strip()
+# #                self.log("Setting environment-variable '%s' to %s" % (v_name, v_val))
+# #            else:
+# #                self.log("Cannot assign environment-variable '%s', problems *ahead ..." % (v_name),
+# #                         logging_tools.LOG_LEVEL_ERROR)
+# #                #sys.exit(1)
+# #            self.__glob_config.add_config_dict({v_name : configfile.str_c_var(v_val, source=v_src)})
+# #        if self.__glob_config.has_key("SGE_ROOT") and self.__glob_config.has_key("SGE_CELL"):
+# #            self.__glob_config.add_config_dict({"SGE_VERSION" : configfile.str_c_var("6", source="intern")})
     def _log_arguments(self):
         out_list = logging_tools.new_form_list()
         for key in sorted(self.__opt_dict.keys()):
@@ -954,24 +954,24 @@ class my_thread_pool(threading_tools.thread_pool):
                              logging_tools.form_entry(self.__opt_dict[key], header="value")])
         for line in str(out_list).split("\n"):
             self.log(line)
-##    def _init_log_template(self):
-##        logger, log_template = (None, None)
-##        try:
-##            logger = logging_tools.get_logger(self.__glob_config["LOG_NAME"],
-##                                              self.__glob_config["LOG_DESINATION"],
-##                                              init_logger=True)
-##        except:
-##            log_template = net_logging_tools.log_command(self.__glob_config["LOG_NAME"], thread_safe=True, thread="proepilogue")
-##            log_template.set_destination(self.__glob_config["LOG_DESTINATION"])
-##            log_template.set_command_and_send("open_log")
-##            log_template.set_command("log")
-##        self.__log_template = log_template
-##        self.__logger = logger
-##    def _close_logs(self):
-##        if self.__log_template:
-##            self.__log_template.set_command_and_send("close_log")
-##        else:
-##            self.__logger.log_command("CLOSE")
+# #    def _init_log_template(self):
+# #        logger, log_template = (None, None)
+# #        try:
+# #            logger = logging_tools.get_logger(self.__glob_config["LOG_NAME"],
+# #                                              self.__glob_config["LOG_DESINATION"],
+# #                                              init_logger=True)
+# #        except:
+# #            log_template = net_logging_tools.log_command(self.__glob_config["LOG_NAME"], thread_safe=True, thread="proepilogue")
+# #            log_template.set_destination(self.__glob_config["LOG_DESTINATION"])
+# #            log_template.set_command_and_send("open_log")
+# #            log_template.set_command("log")
+# #        self.__log_template = log_template
+# #        self.__logger = logger
+# #    def _close_logs(self):
+# #        if self.__log_template:
+# #            self.__log_template.set_command_and_send("close_log")
+# #        else:
+# #            self.__logger.log_command("CLOSE")
     def _int_error(self, err_cause):
         self.log("_int_error() called, cause %s" % (str(err_cause)), logging_tools.LOG_LEVEL_WARN)
         if self["exit_requested"]:
@@ -983,10 +983,10 @@ class my_thread_pool(threading_tools.thread_pool):
     def _done(self, ret_value):
         self.exit_code = ret_value
         self._int_error("done")
-##    def _break_netserver(self):
-##        if self.__netserver:
-##            self.log("Sending break to netserver")
-##            self.__netserver.break_call()
+# #    def _break_netserver(self):
+# #        if self.__netserver:
+# #            self.log("Sending break to netserver")
+# #            self.__netserver.break_call()
     def loop_function(self):
         act_time = time.time()
         run_time = abs(act_time - self.__start_time)
@@ -1003,57 +1003,57 @@ class my_thread_pool(threading_tools.thread_pool):
                 self.exit_code = 2
                 self._int_error("runtime")
         self.__netserver.step()
-##    def thread_loop_post(self):
-##        del self.__netserver
-##        self.log("execution time: %s" % (logging_tools.get_diff_time_str(time.time() - self.__start_time)))
-##        self._close_logs()
-##        #process_tools.delete_pid("collserver/collserver")
-##        #if self.__msi_block:
-##        #    self.__msi_block.remove_meta_block()
-    
-##class my_opt_parser(optparse.OptionParser):
-##    def __init__(self):
-##        optparse.OptionParser.__init__(self)
-##        self.__error = False
-##    def parse(self):
-##        options, args = self.parse_args()
-##        if len(args) not in [5, 8]:
-##            print "Unable to determine execution mode, exiting (%s: %s)" % (logging_tools.get_plural("argument", len(sys.argv)),
-##                                                                            ", ".join(args))
-##            self.__error = True
-##        if self.__error:
-##            return None
-##        else:
-##            opt_dict = self._set_options(options, args)
-##            return opt_dict
-##    def _set_options(self, options, args):
-##        opt_dict = {"CALLER_NAME"       : os.path.basename(sys.argv[0]),
-##                    "CALLER_NAME_SHORT" : os.path.basename(sys.argv[0]).split(".")[0]}
-##        if len(args) == 5:
-##            opt_dict["PROLOGUE"] = True
-##            # copy pro/epilogue options
-##            opt_dict["HOST_LONG"] = args.pop(0)
-##            opt_dict["HOST_SHORT"] = opt_dict["HOST_LONG"].split(".")[0]
-##            opt_dict["JOB_OWNER"] = args.pop(0)
-##            opt_dict["JOB_ID"] = args.pop(0)
-##            opt_dict["JOB_NAME"] = args.pop(0)
-##            opt_dict["QUEUE"] = args.pop(0)
-##        elif len(args) == 8:
-##            opt_dict["PROLOGUE"] = False
-##            # copy pestart/stop options
-##            opt_dict["HOST_LONG"] = args.pop(0)
-##            opt_dict["HOST_SHORT"] = opt_dict["HOST_LONG"].split(".")[0]
-##            opt_dict["JOB_OWNER"] = args.pop(0)
-##            opt_dict["JOB_ID"] = args.pop(0)
-##            opt_dict["JOB_NAME"] = args.pop(0)
-##            opt_dict["QUEUE"] = args.pop(0)
-##            opt_dict["PE_HOSTFILE"] = args.pop(0)
-##            opt_dict["PE"] = args.pop(0)
-##            opt_dict["PE_SLOTS"] = args.pop(0)
-##        return opt_dict
-##    def error(self, what):
-##        print "Error parsing arguments: %s" % (what)
-##        self.__error = True
+# #    def thread_loop_post(self):
+# #        del self.__netserver
+# #        self.log("execution time: %s" % (logging_tools.get_diff_time_str(time.time() - self.__start_time)))
+# #        self._close_logs()
+# #        #process_tools.delete_pid("collserver/collserver")
+# #        #if self.__msi_block:
+# #        #    self.__msi_block.remove_meta_block()
+
+# #class my_opt_parser(optparse.OptionParser):
+# #    def __init__(self):
+# #        optparse.OptionParser.__init__(self)
+# #        self.__error = False
+# #    def parse(self):
+# #        options, args = self.parse_args()
+# #        if len(args) not in [5, 8]:
+# #            print "Unable to determine execution mode, exiting (%s: %s)" % (logging_tools.get_plural("argument", len(sys.argv)),
+# #                                                                            ", ".join(args))
+# #            self.__error = True
+# #        if self.__error:
+# #            return None
+# #        else:
+# #            opt_dict = self._set_options(options, args)
+# #            return opt_dict
+# #    def _set_options(self, options, args):
+# #        opt_dict = {"CALLER_NAME"       : os.path.basename(sys.argv[0]),
+# #                    "CALLER_NAME_SHORT" : os.path.basename(sys.argv[0]).split(".")[0]}
+# #        if len(args) == 5:
+# #            opt_dict["PROLOGUE"] = True
+# #            # copy pro/epilogue options
+# #            opt_dict["HOST_LONG"] = args.pop(0)
+# #            opt_dict["HOST_SHORT"] = opt_dict["HOST_LONG"].split(".")[0]
+# #            opt_dict["JOB_OWNER"] = args.pop(0)
+# #            opt_dict["JOB_ID"] = args.pop(0)
+# #            opt_dict["JOB_NAME"] = args.pop(0)
+# #            opt_dict["QUEUE"] = args.pop(0)
+# #        elif len(args) == 8:
+# #            opt_dict["PROLOGUE"] = False
+# #            # copy pestart/stop options
+# #            opt_dict["HOST_LONG"] = args.pop(0)
+# #            opt_dict["HOST_SHORT"] = opt_dict["HOST_LONG"].split(".")[0]
+# #            opt_dict["JOB_OWNER"] = args.pop(0)
+# #            opt_dict["JOB_ID"] = args.pop(0)
+# #            opt_dict["JOB_NAME"] = args.pop(0)
+# #            opt_dict["QUEUE"] = args.pop(0)
+# #            opt_dict["PE_HOSTFILE"] = args.pop(0)
+# #            opt_dict["PE"] = args.pop(0)
+# #            opt_dict["PE_SLOTS"] = args.pop(0)
+# #        return opt_dict
+# #    def error(self, what):
+# #        print "Error parsing arguments: %s" % (what)
+# #        self.__error = True
 
 class client(object):
     """ client to connect to, needed for 0MQ-related stuff """
@@ -1102,7 +1102,7 @@ class client(object):
         t_sock = client.zmq_context.socket(zmq.PUSH)
         r_sock = client.zmq_context.socket(zmq.SUB)
         r_sock.setsockopt(zmq.SUBSCRIBE, client.dsc_id)
-        #t_sock.setsockopt(zmq.IDENTITY, client.dsc_id)
+        # t_sock.setsockopt(zmq.IDENTITY, client.dsc_id)
         t_sock.connect(process_tools.get_zmq_ipc_name("command", s_name="collserver"))
         r_sock.connect(process_tools.get_zmq_ipc_name("result", s_name="collserver"))
         srv_com = server_command.srv_command(command="load", identity=client.dsc_id)
@@ -1133,7 +1133,7 @@ class client(object):
         while time.time() < abs(s_time + timeout):
             for cur_sock, cur_type in local_poller.poll(1000):
                 if cur_type == zmq.POLLIN:
-                    #print cur_sock, cur_type, dsc_lut, zmq.POLLIN, zmq.POLLOUT, zmq.POLLERR
+                    # print cur_sock, cur_type, dsc_lut, zmq.POLLIN, zmq.POLLOUT, zmq.POLLERR
                     c_struct = dsc_lut[cur_sock]
                     zmq_id = server_command.srv_command(source=cur_sock.recv_unicode())["zmq_id"].text
                     c_struct.zmq_id = zmq_id
@@ -1200,7 +1200,7 @@ class client(object):
                         t_struct.log("timeout triggered", logging_tools.LOG_LEVEL_ERROR)
                         pending -= 1
         return dict([(key, client.target_dict[key].result) for key in send_list])
-        
+
 class job_object(object):
     def __init__(self, p_pool):
         self.p_pool = p_pool
@@ -1258,7 +1258,7 @@ class job_object(object):
         cluster_queue_name = global_config["JOB_QUEUE"]
         self.log("shell_path is '%s', shell_start_mode is '%s'" % (shell_path,
                                                                    shell_start_mode))
-        #cpuset_dir_name = "%s/cpuset" % (g_config["SGE_ROOT"])
+        # cpuset_dir_name = "%s/cpuset" % (g_config["SGE_ROOT"])
         do_cpuset = False
         no_cpuset_cause = []
         if no_cpuset_cause:
@@ -1334,7 +1334,7 @@ class job_object(object):
                                                 "mvapich2stop"]
     def is_proepilogue_call(self):
         return global_config["CALLER_NAME"] in ["prologue",
-                                                      "epilogue"]
+                                                "epilogue"]
     def is_pe_call(self):
         return global_config["CALLER_NAME"] in ["lamstart",
                                                 "pestart",
@@ -1461,10 +1461,11 @@ class job_object(object):
                                 init_dict[key] = True
                                 self.log("recognised init option '%s' (value '%s')" % (key, True))
                                 global_config.add_config_entries([(key, configfile.bool_c_var(True, source="jobscript"))])
-                self.log("Scriptfile '%s' has %d lines (%s and %s)" % (script_file,
-                                                                       num_lines,
-                                                                       logging_tools.get_plural("SGE related line", num_sge),
-                                                                       logging_tools.get_plural("init.at related line", num_init)))
+                self.log("Scriptfile '%s' has %d lines (%s and %s)" % (
+                    script_file,
+                    num_lines,
+                    logging_tools.get_plural("SGE related line", num_sge),
+                    logging_tools.get_plural("init.at related line", num_init)))
                 if s_list:
                     try:
                         self.write_file("jobscript", str(s_list).split("\n"), linenumbers=False)
@@ -1584,13 +1585,16 @@ class job_object(object):
                                  spent_time))
         self._print(sep_str)
     def get_owner_str(self):
-        return "user %s (%d), group %s (%d)" % (global_config["JOB_OWNER"],
-                                                global_config["UID"],
-                                                global_config["GROUP"],
-                                                global_config["GID"])
+        return "user %s (%d), group %s (%d)" % (
+            global_config["JOB_OWNER"],
+            global_config["UID"],
+            global_config["GROUP"],
+            global_config["GID"]
+            )
     def _write_run_info(self):
-        self.log("running on host %s (IP %s)" % (global_config["HOST_SHORT"],
-                                                 global_config["HOST_IP"]),
+        self.log("running on host %s (IP %s)" % (
+            global_config["HOST_SHORT"],
+            global_config["HOST_IP"]),
                  do_print=True)
     def _log_environments(self):
         out_list = logging_tools.new_form_list()
@@ -1655,10 +1659,10 @@ class job_object(object):
                             res_used["time_user"] = sec_to_str(int(ufl["ru_utime"]))
                         if ufl.has_key("ru_stime"):
                             res_used["time_system"] = sec_to_str(int(ufl["ru_stime"]))
-    ##                     if ufl.has_key("ru_ixrss"):
-    ##                         res_used["shared memory size"] = str(ufl["ru_ixrss"])
-    ##                     if ufl.has_key("ru_isrss"):
-    ##                         res_used["memory size"] = str(ufl["ru_isrss"])
+    # #                     if ufl.has_key("ru_ixrss"):
+    # #                         res_used["shared memory size"] = str(ufl["ru_ixrss"])
+    # #                     if ufl.has_key("ru_isrss"):
+    # #                         res_used["memory size"] = str(ufl["ru_isrss"])
                     except:
                         pass
             else:
@@ -1671,7 +1675,7 @@ class job_object(object):
             self._print("Resources used:")
             log_res = []
             out_list = logging_tools.new_form_list()
-            #f_str = "%%%ds : %%s%%s" % (max([len(x) for x in res_used.keys()]))
+            # f_str = "%%%ds : %%s%%s" % (max([len(x) for x in res_used.keys()]))
             for key, value in [(key, res_used[key]) for key in sorted(res_used.keys())]:
                 ext_str = ""
                 if key == "exit_status":
@@ -1680,29 +1684,30 @@ class job_object(object):
                     except:
                         pass
                     else:
-                        ext_str = {0   : "no failure",
-                                   1   : "error before job",
-                                   2   : "before writing config",
-                                   3   : "before writing pid",
-                                   4   : "before writing pid",
-                                   5   : "reading config file",
-                                   6   : "setting processor set",
-                                   7   : "before prolog",
-                                   8   : "in prolog",
-                                   9   : "before pestart",
-                                   10  : "in pestart",
-                                   11  : "before job",
-                                   12  : "before pestop",
-                                   13  : "in pestop",
-                                   14  : "before epilogue",
-                                   15  : "in epilog",
-                                   16  : "releasing processor set",
-                                   24  : "migrating",
-                                   25  : "rescheduling",
-                                   26  : "opening output file",
-                                   27  : "searching requested shell",
-                                   28  : "changing to working directory",
-                                   100 : "assumedly after job"}.get(i_val, "")
+                        ext_str = {
+                            0   : "no failure",
+                            1   : "error before job",
+                            2   : "before writing config",
+                            3   : "before writing pid",
+                            4   : "before writing pid",
+                            5   : "reading config file",
+                            6   : "setting processor set",
+                            7   : "before prolog",
+                            8   : "in prolog",
+                            9   : "before pestart",
+                            10  : "in pestart",
+                            11  : "before job",
+                            12  : "before pestop",
+                            13  : "in pestop",
+                            14  : "before epilogue",
+                            15  : "in epilog",
+                            16  : "releasing processor set",
+                            24  : "migrating",
+                            25  : "rescheduling",
+                            26  : "opening output file",
+                            27  : "searching requested shell",
+                            28  : "changing to working directory",
+                            100 : "assumedly after job"}.get(i_val, "")
                         if i_val == 99:
                             self._set_exit_code("requeue requested", i_val)
                         ext_str = " (%s)" % (ext_str) if ext_str else ""
@@ -1748,22 +1753,34 @@ class job_object(object):
         else:
             self.log("no limits found, strange ...", logging_tools.LOG_LEVEL_WARN)
     def _generate_hosts_file(self):
-        orig_file, new_file = (self.__env_dict["PE_HOSTFILE"],
-                               "/tmp/%s_%s" % (os.path.basename(self.__env_dict["PE_HOSTFILE"]),
-                                                                global_config["FULL_JOB_ID"]))
+        if "PE_HOSTFILE" not in self.__env_dict:
+            self.log("no PE_HOSTFILE found in environment", logging_tools.LOG_LEVEL_ERROR)
+            self.__node_list, self.__node_dict = ([], {})
+            return
+        orig_file = self.__env_dict["PE_HOSTFILE"]
         # node_file ok
         nf_ok = False
         if os.path.isfile(orig_file):
             try:
                 node_list = [line.strip() for line in file(orig_file, "r").readlines() if line.strip()]
             except:
-                self.log("Cannot read node_file %s: %s" % (orig_file,
-                                                           process_tools.get_except_info()),
+                self.log("Cannot read node_file %s: %s" % (
+                    orig_file,
+                    process_tools.get_except_info()),
                          logging_tools.LOG_LEVEL_ERROR)
             else:
                 nf_ok = True
                 self.__node_list = [node_name.split(".")[0] for node_name in [line.split()[0] for line in node_list]]
-                node_dict = dict([(node_name.split(".")[0], {"num" : int(node_num)}) for node_name, node_num in [line.split()[0 : 2] for line in node_list]])
+                try:
+                    node_dict = dict([(node_name.split(".")[0], {"num" : int(node_num)}) for node_name, node_num in [line.split()[0 : 2] for line in node_list]])
+                except:
+                    self.log("cannot interpret node_file %s: %s" % (
+                        orig_file,
+                        process_tools.get_except_info()
+                        ),
+                        logging_tools.LOG_LEVEL_ERROR
+                        )
+                    node_dict = dict([(node_name.split(".")[0], {"num" : 1}) for node_name in node_list])
         else:
             self.log("No node_file name '%s' found" % (orig_file),
                      logging_tools.LOG_LEVEL_ERROR)
@@ -1804,26 +1821,26 @@ class job_object(object):
                     mpi_ip = node_stuff["mpi_name"]
                 node_stuff["mpi_ip"] = mpi_ip
                 node_stuff["ip_list"].append(mpi_ip)
-        self.log("content of node_list")
-        content = pprint.PrettyPrinter(indent=1, width=10).pformat(self.__node_list)
-        for line in content.split("\n"):
-            self.log(" - %s" % (line))
-        self.log("content of node_dict")
-        content = pprint.PrettyPrinter(indent=1, width=10).pformat(node_dict)
-        for line in content.split("\n"):
-            self.log(" - %s" % (line))
         self.__node_dict = node_dict
+        self._pprint(self.__node_list, "node_list")
+        self._pprint(self.__node_dict, "node_dict")
+    def _pprint(self, in_dict, in_name):
+        content = pprint.PrettyPrinter(indent=1, width=10).pformat(in_dict)
+        self.log("content of %s" % (in_name))
+        for line in content.split("\n"):
+            self.log(" - %s" % (line))
     def _write_hosts_file(self, action):
         # generate various versions of host-file
-        for var_name, file_name, generator in [# to be compatible
-                                               # short file without MPI/IB-Interfacepostfix
-                                               ("HOSTFILE_SHORT"     , "/tmp/pe_hostfile_s_%s" % (global_config["FULL_JOB_ID"])     , self._whf_short),
-                                               ("HOSTFILE_OLD"       , "/tmp/pe_hostfile_%s" % (global_config["FULL_JOB_ID"])       , self._whf_plain),
-                                               ("HOSTFILE_PLAIN_MPI" , "/tmp/hostfile_plain_mpi_%s" % (global_config["FULL_JOB_ID"]), self._whf_plain_mpi),
-                                               ("HOSTFILE_PLAIN"     , "/tmp/hostfile_plain_%s" % (global_config["FULL_JOB_ID"])    , self._whf_plain),
-                                               ("HOSTFILE_WITH_CPUS" , "/tmp/hostfile_wcpu_%s" % (global_config["FULL_JOB_ID"])     , self._whf_wcpu),
-                                               ("HOSTFILE_WITH_SLOTS", "/tmp/hostfile_wslot_%s" % (global_config["FULL_JOB_ID"])    , self._whf_wslot)]:
-            #("PE_HOSTFILE"        , "/tmp/hostfile_sge_%s" % (global_config["FULL_JOB_ID"]), self._whf_sge)]:
+        for var_name, file_name, generator in [
+            # to be compatible
+            # short file without MPI/IB-Interfacepostfix
+            ("HOSTFILE_SHORT"     , "/tmp/pe_hostfile_s_%s" % (global_config["FULL_JOB_ID"])     , self._whf_short),
+            ("HOSTFILE_OLD"       , "/tmp/pe_hostfile_%s" % (global_config["FULL_JOB_ID"])       , self._whf_plain),
+            ("HOSTFILE_PLAIN_MPI" , "/tmp/hostfile_plain_mpi_%s" % (global_config["FULL_JOB_ID"]), self._whf_plain_mpi),
+            ("HOSTFILE_PLAIN"     , "/tmp/hostfile_plain_%s" % (global_config["FULL_JOB_ID"])    , self._whf_plain),
+            ("HOSTFILE_WITH_CPUS" , "/tmp/hostfile_wcpu_%s" % (global_config["FULL_JOB_ID"])     , self._whf_wcpu),
+            ("HOSTFILE_WITH_SLOTS", "/tmp/hostfile_wslot_%s" % (global_config["FULL_JOB_ID"])    , self._whf_wslot)]:
+            # ("PE_HOSTFILE"        , "/tmp/hostfile_sge_%s" % (global_config["FULL_JOB_ID"]), self._whf_sge)]:
             global_config.add_config_entries([(var_name, configfile.str_c_var(file_name))])
             self._add_script_var(var_name, file_name)
             if action == "save":
@@ -1833,22 +1850,26 @@ class job_object(object):
                     try:
                         os.unlink(file_name)
                     except:
-                        self.log("cannot remove %s: %s" % (file_name,
-                                                           process_tools.get_except_info()),
+                        self.log(
+                            "cannot remove %s: %s" % (
+                                file_name,
+                                process_tools.get_except_info()),
                                  logging_tools.LOG_LEVEL_ERROR)
     def _show_pe_hosts(self):
         # show pe_hosts
-        self._print("  %s defined: %s" % (logging_tools.get_plural("NFS host", len(self.__node_list)),
-                                          ", ".join(["%s (%s, %d)" % (node_name,
-                                                                      self.__node_dict[node_name]["ip"],
-                                                                      self.__node_dict[node_name]["num"]) for node_name in self.__node_list])))
+        self._print("  %s defined: %s" % (
+            logging_tools.get_plural("NFS host", len(self.__node_list)),
+            ", ".join(["%s (%s x %d)" % (node_name,
+                self.__node_dict[node_name]["ip"],
+                self.__node_dict[node_name]["num"]) for node_name in self.__node_list]) or "---"))
         # mpi hosts
         mpi_nodes = [node_name for node_name in self.__node_list if self.__node_dict[node_name].has_key("mpi_name")]
-        self._print("  %s defined: %s" % (logging_tools.get_plural("MPI host", len(mpi_nodes)),
-                                          ", ".join(["%s (on %s, %s, %d)" % (self.__node_dict[node_name]["mpi_name"],
-                                                                             node_name,
-                                                                             self.__node_dict[node_name]["mpi_ip"],
-                                                                             self.__node_dict[node_name]["num"]) for node_name in mpi_nodes]) or "---"))
+        self._print(
+            "  %s defined: %s" % (logging_tools.get_plural("MPI host", len(mpi_nodes)),
+                ", ".join(["%s (on %s, %s x %d)" % (self.__node_dict[node_name]["mpi_name"],
+                    node_name,
+                    self.__node_dict[node_name]["mpi_ip"],
+                    self.__node_dict[node_name]["num"]) for node_name in mpi_nodes]) or "---"))
     def _get_mpi_name(self, n_name):
         return self.__node_dict[n_name].get("mpi_name", n_name)
     def _whf_short(self):
@@ -1867,20 +1888,90 @@ class job_object(object):
                                         self.__node_dict[node_name]["num"],
                                         global_config["JOB_QUEUE"],
                                         node_name) for node_name in self.__node_list]
+    def _flight_check(self, flight_type):
+        s_time = time.time()
+        all_ips = sorted(list(set(sum([node_stuff["ip_list"] for node_stuff in self.__node_dict.itervalues()], []))))
+        all_nfs_ips = [node_stuff["ip"] for node_stuff in self.__node_dict.itervalues()]
+        reach_dict = dict([(cur_ip, {"sent" : len(all_nfs_ips), "ok_from" : [], "error_from" : []}) for cur_ip in all_ips])
+        # build connection dict
+        self.log(" - %s %s: %s to check" % (
+            logging_tools.get_plural("node", len(self.__node_list)),
+            logging_tools.compress_list(self.__node_list),
+            logging_tools.get_plural("IP", len(all_ips))))
+        ping_packets = global_config["PING_PACKETS"]
+        ping_timeout = global_config["PING_TIMEOUT"]
+        arg_str = "%s %d %.2f" % (",".join(all_ips), ping_packets, float(ping_timeout))
+        self.log(
+            "starting flight_check %s, ping_arg is '%s'" % (
+                flight_type,
+                arg_str))
+        zmq_con = net_tools.zmq_connection("job_%s" % (global_config["FULL_JOB_ID"]))
+        for targ_ip in all_nfs_ips:
+            srv_com = server_command.srv_command(command="ping", init_ip="%s" % (targ_ip))
+            srv_com["arguments:rest"] = arg_str
+            for idx, cur_str in enumerate(arg_str.strip().split()):
+                srv_com["arguments:arg%d" % (idx)] = cur_str
+            zmq_con.add_connection("tcp://%s:2001" % (targ_ip), srv_com, multi=True)
+        result = zmq_con.loop()
+        failure_list = []
+        for targ_ip, cur_res in zip(all_nfs_ips, result):
+            if cur_res is not None:
+                for p_res in cur_res.xpath(None, ".//ns:ping_result"):
+                    was_ok = int(p_res.attrib["num_received"]) > 0
+                    dest_ip = p_res.attrib["target"]
+                    if was_ok:
+                        reach_dict[dest_ip]["ok_from"].append(targ_ip)
+                    else:
+                        reach_dict[dest_ip]["error_from"].append(targ_ip)
+            else:
+                # node not reachable
+                failure_list.append(targ_ip)
+        self._pprint(reach_dict, "reach_dict")
+        # simple rule: add all hosts which are not reachable from any other host to failure hosts
+        for key, value in reach_dict.iteritems():
+            if value["error_from"]:
+                failure_list.append(key)
+        failure_list = sorted(list(set(failure_list)))
+        if failure_list:
+            self.log("failure list has %s: %s" % (
+                logging_tools.get_plural("entry", len(failure_list)),
+                ", ".join(failure_list),
+            ))
+            if failure_list and False:
+                error_hosts = set([key for key, value in self.__node_dict.iteritems() if error_ips.intersection(set(value["ip_list"]))])
+                self.log("%s: %s (%s: %s)" % (logging_tools.get_plural("error host", len(error_hosts)),
+                                              ", ".join(error_hosts),
+                                              logging_tools.get_plural("error IP", len(error_ips)),
+                                              ", ".join(error_ips)),
+                         logging_tools.LOG_LEVEL_ERROR,
+                         do_print=True)
+                # disable the queues
+                self._send_tag("disable",
+                               error="connection problem",
+                               fail_objects=["%s@%s" % (self.__opt_dict["QUEUE"], failed_host) for failed_host in error_hosts])
+                # hold the job
+                self._send_tag("hold",
+                               error="connection problem",
+                               fail_objects=[self.__opt_dict["FULL_JOB_ID"]])
+                self._set_exit_code("connection problems", 1)
+        else:
+            self.log("failure list is empty, good")
+        e_time = time.time()
+        self.log("%s took %s" % (flight_type, logging_tools.get_diff_time_str(e_time - s_time)))
     def _prologue(self):
         client.setup(self.log, self.p_pool.zmq_context)
         self._create_wrapper_script()
-        #conn_str = process_tools.get_zmq_ipc_name("command", s_name="collserver")
-        #vector_socket = self.p_pool.zmq_context.socket(zmq.REQ)
-        #vector_socket.connect(conn_str)
-        #vector_socket.send_unicode(unicode(server_command.srv_command(command="load")))
-        #print vector_socket.recv_unicode()
-        #client("127.0.0.1", 2001)
-        #client("192.168.44.25", 2001)
+        # conn_str = process_tools.get_zmq_ipc_name("command", s_name="collserver")
+        # vector_socket = self.p_pool.zmq_context.socket(zmq.REQ)
+        # vector_socket.connect(conn_str)
+        # vector_socket.send_unicode(unicode(server_command.srv_command(command="load")))
+        # print vector_socket.recv_unicode()
+        # client("127.0.0.1", 2001)
+        # client("192.168.44.25", 2001)
         # discovery part
-        #client.discover_0mq()
+        # client.discover_0mq()
         # send command
-        #print client.send_srv_command(server_command.srv_command(command="load"), timeout=0.1, resend=5)
+        # print client.send_srv_command(server_command.srv_command(command="load"), timeout=0.1, resend=5)
         client.close()
         yield False
     def _epilogue(self):
@@ -1889,14 +1980,14 @@ class job_object(object):
     def _pe_start(self):
         self.log("pe_start called")
         self._generate_hosts_file()
-        #self._send_tag("pe_start", queue_list=self.__node_list)
+        # self._send_tag("pe_start", queue_list=self.__node_list)
         self._write_hosts_file("save")
         self._show_pe_hosts()
         # check reachability of user-homes
-        #self._check_homedir(self.__node_list)
-        #if not self.__return_value:
-        #    self._flight_check("preflight")
-        #if not self.__return_value:
+        # self._check_homedir(self.__node_list)
+        # if not self.__return_value:
+        self._flight_check("preflight")
+        # if not self.__return_value:
         #    # check if exit_code is still ok
         #    self._kill_foreign_pids(self.__node_list)
         #    self._remove_foreign_ipcs(self.__node_list)
@@ -1904,14 +1995,15 @@ class job_object(object):
     def _pe_stop(self):
         self.log("pe_stop called")
         self._generate_hosts_file()
-        #self._send_tag("pe_stop", queue_list=self.__node_list)
+        # self._send_tag("pe_stop", queue_list=self.__node_list)
         self._show_pe_hosts()
         self._write_hosts_file("keep")
-        #self._kill_foreign_pids(self.__node_list)
-        #self._remove_foreign_ipcs(self.__node_list)
-        #if self.__glob_config.get("UMOUNT_CALL", True):
+        self._flight_check("postflight")
+        # self._kill_foreign_pids(self.__node_list)
+        # self._remove_foreign_ipcs(self.__node_list)
+        # if self.__glob_config.get("UMOUNT_CALL", True):
         #    self._umount_nfs_mounts(self.__node_list)
-        #self._flight_check("postflight")
+        # self._flight_check("postflight")
         self._write_hosts_file("delete")
         yield False
     def loop_function(self):
@@ -1929,10 +2021,10 @@ class job_object(object):
         self._read_config()
         self._show_config()
         # just for testing
-        #self.write_file("aha", "/etc/hosts")
-##        for i in xrange(10):
-##            time.sleep(1)
-##            yield True
+        # self.write_file("aha", "/etc/hosts")
+# #        for i in xrange(10):
+# #            time.sleep(1)
+# #            yield True
         if self.is_start_call():
             self._log_environments()
             self._log_limits()
@@ -1973,27 +2065,30 @@ class job_object(object):
             self._write_pe_footer()
         self.log("took %s" % (logging_tools.get_diff_time_str(self.__end_time - self.__start_time)))
         yield None
-##        print "ce"
-##        a = 0
-##        for i in xrange(5):
-##            print "*", i, a
-##            a += i
-##            yield a + 1
-##            #yield 
+# #        print "ce"
+# #        a = 0
+# #        for i in xrange(5):
+# #            print "*", i, a
+# #            a += i
+# #            yield a + 1
+# #            #yield
     def close(self):
         self.__log_template.close()
-        
+
 class process_pool(threading_tools.process_pool):
     def __init__(self):
         self.start_time = time.time()
         self.global_config = global_config
         self.__log_cache, self.__log_template = ([], None)
         self.log("-" * SEP_LEN)
-        threading_tools.process_pool.__init__(self, "main", zmq=True,
-                                              blocking_loop=False,
-                                              #zmq_debug=True,
-                                              zmq_contexts=1,
-                                              loop_granularity=100)
+        threading_tools.process_pool.__init__(
+            self,
+            "main",
+            zmq=True,
+            blocking_loop=False,
+            # zmq_debug=True,
+            zmq_contexts=1,
+            loop_granularity=100)
         self.__log_template = logging_tools.get_logger(global_config["LOG_NAME"], global_config["LOG_DESTINATION"], zmq=True, context=self.zmq_context)
         self.install_signal_handlers()
         self.register_exception("int_error", self._sigint)
@@ -2003,7 +2098,7 @@ class process_pool(threading_tools.process_pool):
         self._show_config()
         self._job = job_object(p_pool=self)
         self.loop_function = self._job.loop_function
-        #self["return_value"] = "a"
+        # self["return_value"] = "a"
         self.register_timer(self._force_exit, global_config["MAX_RUN_TIME"])
     def log(self, what, lev=logging_tools.LOG_LEVEL_OK, **kwargs):
         if self.__log_template:
@@ -2020,8 +2115,9 @@ class process_pool(threading_tools.process_pool):
         try:
             print what
         except:
-            self.log("cannot print '%s': %s" % (what,
-                                                process_tools.get_except_info()),
+            self.log("cannot print '%s': %s" % (
+                what,
+                process_tools.get_except_info()),
                      logging_tools.LOG_LEVEL_ERROR)
     def _sigint(self, err_cause):
         if self["exit_requested"]:
@@ -2043,15 +2139,16 @@ class process_pool(threading_tools.process_pool):
         for conf in conf_info:
             self.log("Config : %s" % (conf))
     def _set_sge_environment(self):
-        for v_name, v_src in [("SGE_ROOT", "/etc/sge_root"),
-                              ("SGE_CELL", "/etc/sge_cell")]:
+        for v_name, v_src in [
+            ("SGE_ROOT", "/etc/sge_root"),
+            ("SGE_CELL", "/etc/sge_cell")]:
             if os.path.isfile(v_src):
                 v_val = file(v_src, "r").read().strip()
                 self.log("Setting environment-variable '%s' to %s" % (v_name, v_val))
             else:
                 self.log("Cannot assign environment-variable '%s', problems ahead ..." % (v_name),
                          logging_tools.LOG_LEVEL_ERROR)
-                #sys.exit(1)
+                # sys.exit(1)
             global_config.add_config_entries([
                 (v_name, configfile.str_c_var(v_val, source=v_src))])
         if "SGE_ROOT" in global_config and "SGE_CELL" in global_config:
@@ -2086,19 +2183,6 @@ class process_pool(threading_tools.process_pool):
     def loop_post(self):
         self._job.close()
         self.__log_template.close()
-        
-#for key in sorted(global_config.keys()):
-#    print key, type(global_config[key]), global_config[key]
-            
-def new_main_code():
-    ret_value = 1
-##    opt_dict = my_opt_parser().parse()
-##    if opt_dict:
-##        hs_ok = process_tools.set_handles({"err" : (0, "/var/lib/logging-server/py_err")}, error_only = True)
-##        my_tp = my_thread_pool(opt_dict)
-##        my_tp.thread_loop()
-##        ret_value = my_tp.exit_code
-    return ret_value
 
 global_config = configfile.get_global_config(process_tools.get_programm_name())
 
@@ -2157,6 +2241,6 @@ def zmq_main_code():
             return process_pool().loop()
     else:
         return -1
-    
+
 if __name__ == "__main__":
     sys.exit(zmq_main_code())
