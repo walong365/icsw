@@ -143,13 +143,21 @@ class rms_view
             url : "{% url 'rms:get_header_xml' %}"
             success : (xml) =>
                 if parse_xml_response(xml)
-                    @run_headers = $(xml).find("headers running_headers")[0]
-                    @wait_headers = $(xml).find("headers waiting_headers")[0]
-                    @node_headers = $(xml).find("headers node_headers")[0]
+                    @headers = {
+                        "run"  : $(xml).find("headers running_headers")[0],
+                        "wait" : $(xml).find("headers waiting_headers")[0],
+                        "node" : $(xml).find("headers node_headers")[0],
+                    }
+                    # add idx to headers
+                    for key, cur_header of @headers
+                        cur_idx = 0
+                        for head_el in $(cur_header).find("* > *").children()
+                            $(head_el).attr("idx", cur_idx)
+                            cur_idx++
                     @top_div.append($("<ul>"))
-                    @divs["run_table"] = @build_table_div("run_table", @run_headers)
-                    @divs["wait_table"] = @build_table_div("wait_table", @wait_headers)
-                    @divs["node_table"] = @build_table_div("node_table", @node_headers)
+                    @divs["run_table"] = @build_table_div("run_table", @headers["run"])
+                    @divs["wait_table"] = @build_table_div("wait_table", @headers["wait"])
+                    @divs["node_table"] = @build_table_div("node_table", @headers["node"])
                     if @collapse_run_wait
                         @top_div.append($("<div>").attr("id", @divs["run_table"].attr("id")).append(
                             $("<h4>").text("Running jobs"),
@@ -166,6 +174,12 @@ class rms_view
                     )
                     @init_tables()
                     @init_timer()
+    get_header_idx: (h_type, h_name) =>
+        _jq = $(@headers[h_type])
+        if typeof(h_name) == "string"
+            return parseInt(_jq.find(h_name).attr("idx"))
+        else
+            return (parseInt(_jq.find(sub_h).attr("idx")) for sub_h in h_name)
     build_table_div: (id_str, headers) =>
         new_div = $("<div>").attr("id", id_str)
         new_table = $("<table>").attr("id", id_str).css("width", "100%")
@@ -237,10 +251,10 @@ class rms_view
                 {
                     "fnRender" : (o, val) ->
                         return "<b>#{val}</b>"
-                    "aTargets" : [5],
+                    "aTargets" : [@get_header_idx("run", "state")],
                     "sClass" : "center"
                 }, {
-                    "aTargets" : [7, 8, 10, 11],
+                    "aTargets" : @get_header_idx("run", ["queue_name", "start_time", "run_time", "left_time", "load"]),
                     "sClass"   : "nowrap"
                 }, {
                     "fnRender" : (o, val) ->
@@ -249,15 +263,15 @@ class rms_view
                         else
                             a_el = $("<a>").attr("href", "file:#{o.mDataProp}:#{o.aData[0]}:#{o.aData[1]}").text(val)
                             return $("<div>").append(a_el).html()
-                    "aTargets" : [12, 13],
-                    "sClass"   : "nowrap"
+                    "aTargets" : @get_header_idx("run", ["stdout", "stderr"]),
+                    "sClass"   : "nowrap right"
                 }, {
                     "fnRender" : (o, val) =>
                         return @render_action(o, val)
-                    "aTargets" : [16],
+                    "aTargets" : [@get_header_idx("run", "action")],
                     "sClass"   : "nowrap"
                 }, {
-                    "aTargets" : [14],
+                    "aTargets" : [@get_header_idx("run", "files")],
                     "fnRender" : (o, val) =>
                         cur_id = "expand_#{o.aData[0]}_#{o.aData[1]}"
                         if parseInt(val) > 0 and @first_run
@@ -293,15 +307,15 @@ class rms_view
                 {
                     "fnRender" : (o, val) ->
                         return "<b>#{val}</b>"
-                    "aTargets" : [5],
+                    "aTargets" : [@get_header_idx("wait", "state")],
                     "sClass" : "center"
                 }, {
                     "fnRender" : (o, val) =>
                         return @render_action(o, val)
-                    "aTargets" : [13],
+                    "aTargets" : [@get_header_idx("wait", "action")],
                     "sClass"   : "nowrap"
                 }, {
-                    "aTargets" : [8, 9],
+                    "aTargets" : @get_header_idx("wait", ["queue_time", "wait_time"]),
                     "sClass"   : "nowrap"
                 }
             ]
@@ -326,8 +340,8 @@ class rms_view
                 {
                     "fnRender" : (o, val) ->
                         return "<b>#{val}</b>"
-                    "aTargets" : [6, 7, 8],
-                    "sClass" : "center slots_info"
+                    "aTargets" : @get_header_idx("node", ["slots_used", "slots_reserved", "slots_total"]),
+                    "sClass"   : "center slots_info"
                 }, {
                     "fnRender" : (o, val) ->
                         cur_m = val.match(/(\d+\.\d+).*/)
@@ -345,10 +359,10 @@ class rms_view
                             return ret_el.html()
                         else
                             return "<b>#{val}</b>"
-                    "aTargets" : [5],
+                    "aTargets" : [@get_header_idx("node", "load")],
                     "sClass"   : "load nowrap"
                 }, {
-                    "aTargets" : [9, 4],
+                    "aTargets" : @get_header_idx("node", ["jobs", "pe_list"]),
                     "sClass"   : "nowrap"
                 }
              ]

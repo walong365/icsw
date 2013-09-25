@@ -6,6 +6,7 @@ import logging_tools
 import pprint
 import server_command
 import sge_tools
+import sys
 import threading
 from lxml.builder import E # @UnresolvedImport
 from lxml import etree # @UnresolvedImport
@@ -18,6 +19,11 @@ from django.views.generic import View
 
 from initat.cluster.frontend.helper_functions import contact_server, xml_wrapper
 from initat.core.render import render_me
+
+from initat.cluster.rms.rms_addons import *
+
+RMS_ADDON_KEYS = [key for key in sys.modules.keys() if key.startswith("initat.cluster.rms.rms_addons.") and sys.modules[key]]
+RMS_ADDONS = [sys.modules[key].modify_rms() for key in RMS_ADDON_KEYS]
 
 logger = logging.getLogger("cluster.rms")
 
@@ -72,6 +78,8 @@ class get_header_xml(View):
                 sge_tools.get_node_headers(get_node_options(request)),
             )
         )
+        for change_obj in RMS_ADDONS:
+            change_obj.modify_headers(res)
         request.xml_response["headers"] = res
 
 def _node_to_value(in_node):
@@ -119,8 +127,14 @@ class get_rms_json(View):
         _post = request.POST
         my_sge_info.update()
         run_job_list = sge_tools.build_running_list(my_sge_info, get_job_options(request), user=request.user)
+
+        # print etree.tostring(run_job_list, pretty_print=True)
         wait_job_list = sge_tools.build_waiting_list(my_sge_info, get_job_options(request), user=request.user)
         node_list = sge_tools.build_node_list(my_sge_info, get_node_options(request))
+        for change_obj in RMS_ADDONS:
+            change_obj.modify_running_jobs(my_sge_info, run_job_list)
+            change_obj.modify_waiting_jobs(my_sge_info, wait_job_list)
+            change_obj.modify_nodes(my_sge_info, node_list)
         fc_dict = {}
         for file_el in my_sge_info.get_tree().xpath(".//job_list[master/text() = \"MASTER\"]"):
             file_contents = file_el.findall(".//file_content")

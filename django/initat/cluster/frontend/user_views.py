@@ -245,7 +245,6 @@ class get_user_var(View):
                 E.user_variable(unicode(cur_var.value), name=cur_var.name, type=cur_var.var_type) for cur_var in user_vars
                 ]
             )
-        print etree.tostring(request.xml_response["result"], pretty_print=True)
 
 
 class move_node(View):
