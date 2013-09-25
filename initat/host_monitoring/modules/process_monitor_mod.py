@@ -536,7 +536,7 @@ class ipckill_command(hm_classes.hm_command):
                         rem_node = srv_com.builder("rem_result", key="%d" % (act_dict[ipc_dict["key_name"]]))
                         if act_dict["uid"] >= cur_ns.min_uid and act_dict["uid"] <= cur_ns.max_uid:
                             key = act_dict[ipc_dict["key_name"]]
-                            rem_com = "/usr/bin/ipcrmx -%s %d" % (ipc_dict["ipcrm_opt"], key)
+                            rem_com = "/usr/bin/ipcrm -%s %d" % (ipc_dict["ipcrm_opt"], key)
                             rem_stat, rem_out = commands.getstatusoutput(rem_com)
                             # stat, out = (1, "???")
                             if rem_stat:

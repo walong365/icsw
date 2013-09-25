@@ -477,28 +477,47 @@ class ping_sp_struct(hm_classes.subprocess_struct):
         twisted = True
         use_popen = False
         id_str = "ping"
-    def __init__(self, srv_com, target_host, num_pings, timeout):
+    def __init__(self, srv_com, target_spec, num_pings, timeout):
         hm_classes.subprocess_struct.__init__(self, srv_com, "")
-        self.target_host, self.num_pings, self.timeout = (target_host, num_pings, timeout)
+        self.target_spec, self.num_pings, self.timeout = (target_spec, num_pings, timeout)
         ping_sp_struct.seq_num += 1
         self.seq_str = "ping_%d" % (ping_sp_struct.seq_num)
     def run(self):
         self.tart_time = time.time()
-        return ("ping", self.seq_str, self.target_host, self.num_pings, self.timeout)
+        return ("ping", self.seq_str, self.target_spec, self.num_pings, self.timeout)
     def process(self, *args):
-        _id_str, num_sent, num_received, time_field, error_str = args
         self.terminated = True
         cur_b = self.srv_com.builder
-        self.srv_com["result"] = cur_b(
-            "ping_result",
-            error_str,
-            cur_b(
-                "times",
-                *[cur_b("time", "%.4f" % (cur_time)) for cur_time in time_field]
-                ),
-                target=self.target_host,
-                num_sent="%d" % (num_sent),
-                num_received="%d" % (num_received))
+        if len(self.target_spec) == 1:
+            # single host ping
+            _id_str, num_sent, num_received, time_field, error_str = args
+            self.srv_com["result"] = cur_b(
+                "ping_result",
+                error_str,
+                cur_b(
+                    "times",
+                    *[cur_b("time", "%.4f" % (cur_time)) for cur_time in time_field]
+                    ),
+                    target=self.target_spec[0],
+                    num_sent="%d" % (num_sent),
+                    num_received="%d" % (num_received))
+        else:
+            # multi host ping
+            _id_str, res_list = args
+            res_el = cur_b("ping_results", num_hosts="%d" % (len(self.target_spec)))
+            for t_host, num_sent, num_received, time_field, error_str in res_list:
+                host_el = cur_b(
+                    "ping_result",
+                    error_str,
+                    cur_b(
+                        "times",
+                        *[cur_b("time", "%.4f" % (cur_time)) for cur_time in time_field]
+                        ),
+                        target=t_host,
+                        num_sent="%d" % (num_sent),
+                        num_received="%d" % (num_received))
+                res_el.append(host_el)
+            self.srv_com["result"] = res_el
         self.send_return()
         self.terminated = True
 
@@ -527,7 +546,7 @@ class ping_command(hm_classes.hm_command):
         if target_host:
             num_pings, timeout = (min(32, max(1, int(float(num_pings)))),
                                   max(0.1, float(timeout)))
-            cur_sps = ping_sp_struct(srv_com, target_host, num_pings, timeout)
+            cur_sps = ping_sp_struct(srv_com, [entry.strip() for entry in target_host.split(",")], num_pings, timeout)
         return cur_sps
     def _interpret_wc(self, in_str, def_value, num_sent):
         cur_m = self.ping_match.match(in_str or "")
@@ -536,68 +555,82 @@ class ping_command(hm_classes.hm_command):
         else:
             return def_value
     def interpret(self, srv_com, cur_ns):
-        ping_res = srv_com["result:ping_result"]
-        target = ping_res.attrib["target"]
-        if ping_res.text:
-            return limits.nag_STATE_CRITICAL, "%s: %s" % (target, ping_res.text)
+        if "result:ping_results" in srv_com:
+            ping_res_list = srv_com["result:ping_results"]
         else:
-            time_f = map(float, srv_com.xpath(ping_res, "ns:times/ns:time/text()"))
-            if time_f:
-                max_time, min_time, mean_time = (max(time_f),
-                                                 min(time_f),
-                                                 sum(time_f) / len(time_f))
+            ping_res_list = [srv_com["result:ping_result"]]
+        ret_state, ret_f = (limits.nag_STATE_OK, [])
+        multi_ping = len(ping_res_list) > 1
+        if multi_ping:
+            ret_f.append(logging_tools.get_plural("target", len(ping_res_list)))
+        for ping_res in ping_res_list:
+            target = ping_res.attrib["target"]
+            if ping_res.text:
+                ret_state = max(ret_state, limits.nag_STATE_CRITICAL)
+                ret_f.append("%s: %s" % (target, ping_res.text))
             else:
-                max_time, min_time, mean_time = (None, None, None)
-            num_sent, num_received = (int(ping_res.attrib["num_sent"]),
-                                      int(ping_res.attrib["num_received"]))
-            w_rta, w_loss = self._interpret_wc(cur_ns.warn, (100000, num_sent - 1), num_sent)
-            c_rta, c_loss = self._interpret_wc(cur_ns.crit, (100000, num_sent), num_sent)
-            num_loss = num_sent - num_received
-            if mean_time is not None:
-                rta_ms = mean_time * 1000
-                if num_loss >= c_loss or rta_ms > c_rta:
-                    ret_state = limits.nag_STATE_CRITICAL
-                elif num_loss >= w_loss or rta_ms > w_rta:
-                    ret_state = limits.nag_STATE_WARNING
+                time_f = map(float, srv_com.xpath(ping_res, "ns:times/ns:time/text()"))
+                if time_f:
+                    max_time, min_time, mean_time = (
+                        max(time_f),
+                        min(time_f),
+                        sum(time_f) / len(time_f))
                 else:
-                    ret_state = limits.nag_STATE_OK
-            else:
-                if num_loss >= c_loss:
-                    ret_state = limits.nag_STATE_CRITICAL
-                elif num_loss >= w_loss:
-                    ret_state = limits.nag_STATE_WARNING
-                else:
-                    ret_state = limits.nag_STATE_OK
-            if num_received == 0:
-                return ret_state, "%s: no reply (%s sent) | rta=0.0 min=0.0 max=0.0 sent=%d loss=%d" % (
-                    target,
-                    logging_tools.get_plural("packet", num_sent),
-                    num_sent,
-                    num_sent,
-                )
-            else:
+                    max_time, min_time, mean_time = (None, None, None)
+                num_sent, num_received = (int(ping_res.attrib["num_sent"]),
+                                          int(ping_res.attrib["num_received"]))
+                w_rta, w_loss = self._interpret_wc(cur_ns.warn, (100000, num_sent - 1), num_sent)
+                c_rta, c_loss = self._interpret_wc(cur_ns.crit, (100000, num_sent), num_sent)
+                num_loss = num_sent - num_received
                 if mean_time is not None:
-                    if mean_time < 0.01:
-                        time_info = "%.2f ms mean time" % (1000 * mean_time)
-                    else:
-                        time_info = "%.4f s mean time" % (mean_time)
-                    timing_str = "rta=%.6f min=%.6f max=%.6f" % (
-                        mean_time,
-                        min_time,
-                        max_time,
-                        )
+                    rta_ms = mean_time * 1000
+                    if num_loss >= c_loss or rta_ms > c_rta:
+                        ret_state = max(ret_state, limits.nag_STATE_CRITICAL)
+                    elif num_loss >= w_loss or rta_ms > w_rta:
+                        ret_state = max(ret_state, limits.nag_STATE_WARNING)
                 else:
-                    time_info = "no time info"
-                    timing_str = "rta=0.0 min=0.0 max=0.0"
-                return ret_state, "%s: %d of %d (%s) | %s sent=%d loss=%d" % (
-                    target,
-                    num_received,
-                    num_sent,
-                    time_info,
-                    timing_str,
-                    num_sent,
-                    num_sent - num_received,
-                )
+                    if num_loss >= c_loss:
+                        ret_state = max(ret_state, limits.nag_STATE_CRITICAL)
+                    elif num_loss >= w_loss:
+                        ret_state = max(ret_state, limits.nag_STATE_WARNING)
+                if num_received == 0:
+                    ret_f.append(
+                        "%s: no reply (%s sent) | rta=0.0 min=0.0 max=0.0 sent=%d loss=%d" % (
+                            target,
+                            logging_tools.get_plural("packet", num_sent),
+                            num_sent,
+                            num_sent,
+                        )
+                    )
+                else:
+                    if mean_time is not None:
+                        if mean_time < 0.01:
+                            time_info = "%.2f ms mean time" % (1000 * mean_time)
+                        else:
+                            time_info = "%.4f s mean time" % (mean_time)
+                        timing_str = "rta=%.6f min=%.6f max=%.6f" % (
+                            mean_time,
+                            min_time,
+                            max_time,
+                            )
+                    else:
+                        time_info = "no time info"
+                        timing_str = "rta=0.0 min=0.0 max=0.0"
+                    ret_f.append(
+                        "%s: %d of %d (%s) | %s sent=%d loss=%d" % (
+                            target,
+                            num_received,
+                            num_sent,
+                            time_info,
+                            timing_str,
+                            num_sent,
+                            num_sent - num_received,
+                        )
+                    )
+        if multi_ping:
+            # remove performance data for multi-ping
+            ret_f = [entry.split("|")[0].strip() for entry in ret_f]
+        return ret_state, ", ".join(ret_f)
 
 class net_command(hm_classes.hm_command):
     info_str = "network information"

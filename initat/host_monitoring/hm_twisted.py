@@ -132,6 +132,9 @@ class hm_icmp_protocol(icmp_twisted.icmp_protocol):
         self.__pings_in_flight = 0
         self.__twisted_process = tw_process
         self.__debug = global_config["DEBUG"]
+        # group dict for ping to multiple hosts
+        self.__group_dict = {}
+        self.__group_idx = 0
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
         self.__log_template.log(log_level, "[icmp] %s" % (what))
     def __setitem__(self, key, value):
@@ -143,26 +146,41 @@ class hm_icmp_protocol(icmp_twisted.icmp_protocol):
             if seq_key in self.__seqno_dict:
                 del self.__seqno_dict[seq_key]
         del self.__work_dict[key]
-    def ping(self, seq_str, target, num_pings, timeout):
+    def __contains__(self, key):
+        return key in self.__work_dict
+    def ping(self, seq_str, target_list, num_pings, timeout):
         if self.__debug:
-            self.log("ping to %s (%d, %.2f) [%s]" % (target, num_pings, timeout, seq_str))
+            self.log("ping to %s (%s; %d, %.2f) [%s]" % (
+                logging_tools.get_plural("target", len(target_list)),
+                ", ".join(target_list),
+                num_pings, timeout,
+                seq_str))
         cur_time = time.time()
-        self[seq_str] = {
-            "host"       : target,
-            "num"        : num_pings,
-            "timeout"    : timeout,
-            "start"      : cur_time,
-            "end"        : cur_time + timeout,
-            "next_send"  : cur_time,
-            # time between pings
-            "slide_time" : 0.1,
-            "sent"       : 0,
-            "recv_ok"    : 0,
-            "recv_fail"  : 0,
-            "error_list" : [],
-            "sent_list"  : {},
-            "recv_list"  : {}}
-        self.__pings_in_flight += 1
+        if len(target_list) > 1:
+            seq_list = ["group_%d" % (idx) for idx in xrange(self.__group_idx, self.__group_idx + len(target_list))]
+            self.__group_idx += len(target_list)
+            self.__group_dict[seq_str] = dict([(cur_seq_str, None) for cur_seq_str in seq_list])
+            for cur_seq_str in seq_list:
+                self.__group_dict[cur_seq_str] = seq_str
+        else:
+            seq_list = [seq_str]
+        for cur_seq_str, target in zip(seq_list, target_list):
+            self[cur_seq_str] = {
+                "host"       : target,
+                "num"        : num_pings,
+                "timeout"    : timeout,
+                "start"      : cur_time,
+                "end"        : cur_time + timeout,
+                "next_send"  : cur_time,
+                # time between pings
+                "slide_time" : 0.1,
+                "sent"       : 0,
+                "recv_ok"    : 0,
+                "recv_fail"  : 0,
+                "error_list" : [],
+                "sent_list"  : {},
+                "recv_list"  : {}}
+            self.__pings_in_flight += 1
         if self.__debug:
             self.log(
                 "%s in flight: %s" % (
@@ -170,13 +188,14 @@ class hm_icmp_protocol(icmp_twisted.icmp_protocol):
                     ", ".join(sorted([value["host"] for value in self.__work_dict.itervalues()]))
                     )
                 )
-        self._update(seq_str)
+        for key in seq_list:
+            self._update(key)
     def _update(self, key, from_reply=False):
         cur_time = time.time()
         # print cur_time
         # pprint.pprint(self.__work_dict)
-        if key in self.__work_dict:
-            value = self.__work_dict[key]
+        if key in self:
+            value = self[key]
             if value["sent"] < value["num"]:
                 # if value["sent_list"]:
                 # send if last send was at least slide_time ago
@@ -211,12 +230,23 @@ class hm_icmp_protocol(icmp_twisted.icmp_protocol):
             # check for ping finish
             if value["error_list"] or (value["sent"] == value["num"] and value["recv_ok"] + value["recv_fail"] == value["num"]):
                 all_times = [value["recv_list"][s_key] - value["sent_list"][s_key] for s_key in value["sent_list"].iterkeys() if value["recv_list"].get(s_key, None) != None]
-                self.__twisted_process.send_ping_result(key, value["sent"], value["recv_ok"], all_times, ", ".join(value["error_list"]))
+                import pprint
+                if key in self.__group_dict:
+                    t_seq_str = self.__group_dict[key]
+                    self.__group_dict[t_seq_str][key] = (value["host"], value["sent"], value["recv_ok"], all_times, ", ".join(value["error_list"]))
+                    if len([t_key for t_key, value in self.__group_dict[t_seq_str].iteritems() if value == None]) == 0:
+                        # group done
+                        self.__twisted_process.send_ping_result(t_seq_str, list(self.__group_dict[t_seq_str].itervalues()))
+                        del self.__group_dict[t_seq_str]
+                    del self.__group_dict[key]
+                else:
+                    self.__twisted_process.send_ping_result(key, value["sent"], value["recv_ok"], all_times, ", ".join(value["error_list"]))
                 del self[key]
                 self.__pings_in_flight -= 1
         else:
-            # should only happen for delayed pings or pings with error
-            self.log("got delayed ping reply (%s)" % (key), logging_tools.LOG_LEVEL_WARN)
+            if from_reply:
+                # should only happen for delayed pings or pings with error
+                self.log("got delayed ping reply (%s)" % (key), logging_tools.LOG_LEVEL_WARN)
         # pprint.pprint(self.__work_dict)
     def received(self, dgram, recv_time=None):
         if dgram.packet_type == 0 and dgram.ident == self.__twisted_process.pid & 0x7fff:

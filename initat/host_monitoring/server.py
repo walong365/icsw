@@ -392,6 +392,9 @@ class server_code(threading_tools.process_pool):
         self.result_socket.send_unicode(src_id, zmq.SNDMORE)
         self.result_socket.send_unicode(unicode(srv_com))
     def _recv_command(self, zmq_sock):
+        # from guppy import hpy
+        # hp = hpy()
+        # print hp.heap().get_rp()
         data = [zmq_sock.recv()]
         while zmq_sock.getsockopt(zmq.RCVMORE):
             data.append(zmq_sock.recv())
@@ -507,9 +510,13 @@ class server_code(threading_tools.process_pool):
         return sp_struct
     def _twisted_ping_result(self, src_proc, src_id, *args):
         ping_id = args[0]
+        found = False
         for cur_del in self.__delayed:
             if cur_del.Meta.id_str == "ping" and cur_del.seq_str == ping_id:
                 cur_del.process(*args)
+                found = True
+        if not found:
+            self.log("got ping_reply with unknown id '%s'" % (ping_id), logging_tools.LOG_LEVEL_WARN)
     def _show_config(self):
         try:
             for log_line, log_level in global_config.get_log():
