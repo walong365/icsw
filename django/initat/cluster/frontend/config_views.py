@@ -51,6 +51,7 @@ class show_configs(View):
                 "config_script_set",
                 "mon_check_command_set",
                 "mon_check_command_set__categories",
+                "mon_check_command_set__exclude_devices",
                 "device_config_set",
                 "device_config_set__device",
                 ).order_by("name")

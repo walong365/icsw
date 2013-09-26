@@ -409,6 +409,10 @@ class moncc_detail
         # parent div
         template_div = $("<div>").attr("id", "template")
         template_div.html(@ajax_xml.find("forms template_form").text())
+        template_div.uniform()
+        template_div.find("select").chosen(
+            width : "100%"
+        )
         template_div.find("input, select").bind("change", @my_submitter.submit)
         return template_div
     category_div: (moncc_xml) =>

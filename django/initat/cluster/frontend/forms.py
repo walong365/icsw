@@ -267,14 +267,27 @@ class category_new_form(ModelForm):
         model = category
         fields = ["full_name", "comment"]
 
+class device_fqdn(ModelMultipleChoiceField):
+    def label_from_instance(self, obj):
+        return obj.full_name
+
+class device_fqdn_comment(ModelMultipleChoiceField):
+    def label_from_instance(self, obj):
+        if obj.comment:
+            return u"%s (%s)" % (obj.full_name, obj.comment)
+        else:
+            return obj.full_name
+
 class moncc_template_flags_form(ModelForm):
     mon_service_templ = ModelChoiceField(queryset=mon_service_templ.objects.all(), empty_label=None)
+    exclude_devices = device_fqdn_comment(queryset=device.objects.filter(Q(enabled=True) & Q(device_group__enabled=True)))
     helper = FormHelper()
     helper.form_id = "form"
     helper.layout = Layout(
         Fieldset(
             "Templates and flags",
             Field("mon_service_templ"),
+            Field("exclude_devices"),
             ButtonHolder(
                 Field("enable_perfdata"),
                 Field("volatile"),
@@ -284,7 +297,7 @@ class moncc_template_flags_form(ModelForm):
     )
     class Meta:
         model = mon_check_command
-        fields = ["mon_service_templ", "enable_perfdata", "volatile", ]
+        fields = ["mon_service_templ", "enable_perfdata", "volatile", "exclude_devices", ]
 
 class group_detail_form(ModelForm):
     permissions = ModelMultipleChoiceField(

@@ -189,8 +189,8 @@ class moncc_info(View):
     @method_decorator(xml_wrapper)
     def post(self, request):
         dev_key = request.POST["key"].split("__")[1]
-        cur_moncc = mon_check_command.objects.get(Q(pk=dev_key))
-        request.xml_response["response"] = cur_moncc.get_xml()
+        cur_moncc = mon_check_command.objects.prefetch_related("exclude_devices").get(Q(pk=dev_key))
+        request.xml_response["response"] = cur_moncc.get_xml(with_exclude_devices=True)
         request.xml_response["response"] = E.forms(
             E.template_form(
                 render_string(
