@@ -777,7 +777,7 @@ class build_process(threading_tools.process_obj):
                         # build lut
                         conf_dict = dict([(
                             cur_c["command_name"], cur_c) for cur_c in cur_gc["command"].values() if
-                                          (cur_c.get_config() in conf_names and (not(cur_c.get_device()) or cur_c.get_device() == host.pk)) or
+                                          (cur_c.get_config() in conf_names and (host.pk not in cur_c.exclude_devices)) or
                                           cur_c["command_name"] in cconf_names])
                         # old code, use only_ping config
                         # if host["identifier"] == "NB" or host["identifier"] == "AM" or host["identifier"] == "S":

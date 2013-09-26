@@ -1265,7 +1265,7 @@ class all_commands(host_type_config):
             command_names.add(hc_com.name)
         ngc_re1 = re.compile("^\@(?P<special>\S+)\@(?P<comname>\S+)$")
         check_coms = list(mon_check_command.objects.all()
-                          .prefetch_related("categories")
+                          .prefetch_related("categories", "exclude_devices")
                           .select_related("mon_service_templ", "config"))
         enable_perfd = global_config["ENABLE_PNP"] or global_config["ENABLE_COLLECTD"]
         if enable_perfd and gen_conf.master:
@@ -1355,8 +1355,8 @@ class all_commands(host_type_config):
                 ngc.config.name if ngc.config_id else None,
                 ngc.mon_service_templ.name if ngc.mon_service_templ_id else None,
                 ngc.description,
-                ngc.device_id,
-                special,
+                exclude_devices=ngc.exclude_devices.all() if ngc.pk else [],
+                special=special,
                 servicegroup_names=cats,
                 enable_perfdata=ngc.enable_perfdata,
                 db_entry=ngc,
@@ -1671,12 +1671,12 @@ class all_services(host_type_config):
         return []
 
 class check_command(object):
-    def __init__(self, name, com_line, config, template, descr, device=0, special=None, **kwargs):
+    def __init__(self, name, com_line, config, template, descr, exclude_devices=None, special=None, **kwargs):
         self.__name = name
         self.__com_line = com_line
         self.config = config
         self.template = template
-        self.device = device
+        self.exclude_devices = [cur_dev.pk for cur_dev in exclude_devices] or []
         self.servicegroup_names = kwargs.get("servicegroup_names", [TOP_MONITORING_CATEGORY])
         self.__descr = descr.replace(",", ".")
         self.enable_perfdata = kwargs.get("enable_perfdata", False)
@@ -1804,8 +1804,6 @@ class check_command(object):
     def __getitem__(self, k):
         if k == "command_name":
             return self.__name
-    def get_device(self):
-        return self.device
     def get_special(self):
         return self.__special
     def get_config(self):
