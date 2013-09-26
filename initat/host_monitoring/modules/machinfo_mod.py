@@ -27,6 +27,7 @@ import logging_tools
 import os
 import partition_tools
 import pci_database
+import platform
 import pprint
 import process_tools
 import re
@@ -1759,6 +1760,16 @@ class mdstat_command(hm_classes.hm_command):
         else:
             ret_str = "no md-devices found"
         return ret_state, ret_str
+
+class uname_command(hm_classes.hm_command):
+    def __call__(self, srv_com, cur_ns):
+        for idx, sub_str in enumerate(platform.uname()):
+            srv_com["uname:part_%d" % (idx)] = sub_str
+    def interpret(self, srv_com, cur_ns):
+        uname_list = []
+        for _idx, sub_el in enumerate(srv_com["uname"]):
+            uname_list.append(sub_el.text)
+        return limits.nag_STATE_OK, "%s, kernel %s" % (uname_list[0], uname_list[2])
 
 class dmiinfo_command(hm_classes.hm_command):
     def __call__(self, srv_com, cur_ns):
