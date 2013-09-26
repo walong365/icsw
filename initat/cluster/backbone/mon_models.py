@@ -127,14 +127,16 @@ class mon_check_command(models.Model):
     name = models.CharField(max_length=192) # , unique=True)
     command_line = models.CharField(max_length=765)
     description = models.CharField(max_length=192, blank=True)
-    device = models.ForeignKey("device", null=True, blank=True)
+    # device = models.ForeignKey("device", null=True, blank=True)
     date = models.DateTimeField(auto_now_add=True)
     enable_perfdata = models.BooleanField(default=False)
     volatile = models.BooleanField(default=False)
     # categories for this device
     categories = models.ManyToManyField("category")
-    def get_xml(self):
-        return E.mon_check_command(
+    # device to exclude
+    exclude_devices = models.ManyToManyField("device", related_name="mcc_exclude_devices")
+    def get_xml(self, with_exclude_devices=False):
+        r_xml = E.mon_check_command(
             self.name,
             pk="%d" % (self.pk),
             key="moncc__%d" % (self.pk),
@@ -147,6 +149,9 @@ class mon_check_command(models.Model):
             volatile="1" if self.volatile else "0",
             categories="::".join(["%d" % (cur_cat.pk) for cur_cat in self.categories.all()]),
         )
+        if with_exclude_devices:
+            r_xml.attrib["exclude_devices"] = "::".join(["%d" % (cur_dev.pk) for cur_dev in self.exclude_devices.all()])
+        return r_xml
     class Meta:
         db_table = u'ng_check_command'
     def __unicode__(self):

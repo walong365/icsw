@@ -2236,7 +2236,7 @@ class config(models.Model):
                                 list(self.config_int_set.all()) + \
                                 list(self.config_bool_set.all()) + \
                                 list(self.config_blob_set.all())]),
-                E.mon_check_commands(*[cur_ngc.get_xml() for cur_ngc in list(self.mon_check_command_set.all())]),
+                E.mon_check_commands(*[cur_ngc.get_xml(with_exclude_devices=full) for cur_ngc in list(self.mon_check_command_set.all())]),
                 E.config_scripts(*[cur_cs.get_xml() for cur_cs in list(self.config_script_set.all())])
             ])
         return r_xml
