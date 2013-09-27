@@ -4,7 +4,7 @@
 from django.db.models import Q
 from django.forms import widgets
 from django.forms.util import flatatt, to_current_timezone
-from django.utils.encoding import smart_unicode, force_text, python_2_unicode_compatible
+from django.utils.encoding import smart_unicode, smart_text, force_text, python_2_unicode_compatible
 from django.utils.html import conditional_escape, format_html, format_html_join
 from django.utils.safestring import mark_safe
 
@@ -67,10 +67,10 @@ class device_tree_widget(widgets.SelectMultiple):
         else:
             selected_html = ""
         return format_html(
-            '<option value="{0}"{1}>{2}</option>',
+            u'<option value="{0}"{1}>{2}</option>',
                 option_value,
                 selected_html,
-                force_text(option_label)
+                smart_text(option_label)
         )
     def render(self, name, value, attrs=None):
         final_attrs = self.build_attrs(attrs, name=name)
