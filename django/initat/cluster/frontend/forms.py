@@ -16,7 +16,8 @@ from django.core.urlresolvers import reverse
 from initat.cluster.backbone.models import domain_tree_node, device, category, mon_check_command, mon_service_templ, \
      domain_name_tree, user, group, device_group, home_export_list, device_config, TOP_LOCATIONS, \
      csw_permission
-# from initat.cluster.frontend.widgets import domain_name_tree_widget
+from initat.cluster.frontend.widgets import device_tree_widget
+
 # import PAM
 
 class authentication_form(Form):
@@ -269,18 +270,26 @@ class category_new_form(ModelForm):
 
 class device_fqdn(ModelMultipleChoiceField):
     def label_from_instance(self, obj):
-        return obj.full_name
+        return (obj.device_group.name, obj.full_name)
 
 class device_fqdn_comment(ModelMultipleChoiceField):
     def label_from_instance(self, obj):
         if obj.comment:
-            return u"%s (%s)" % (obj.full_name, obj.comment)
+            dev_str = u"%s (%s)" % (obj.full_name, obj.comment)
         else:
-            return obj.full_name
+            dev_str = obj.full_name
+        return (obj.device_group.name, dev_str)
 
 class moncc_template_flags_form(ModelForm):
     mon_service_templ = ModelChoiceField(queryset=mon_service_templ.objects.all(), empty_label=None)
-    exclude_devices = device_fqdn_comment(queryset=device.objects.filter(Q(enabled=True) & Q(device_group__enabled=True)))
+    exclude_devices = device_fqdn_comment(
+        queryset=device.objects.exclude(
+            Q(device_type__identifier__in=["MD"])
+            ).filter(
+            Q(enabled=True) &
+            Q(device_group__enabled=True)).select_related("device_group", "domain_tree_node").order_by("device_group__name", "name"),
+        widget=device_tree_widget
+        )
     helper = FormHelper()
     helper.form_id = "form"
     helper.layout = Layout(

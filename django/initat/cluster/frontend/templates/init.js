@@ -410,7 +410,7 @@ class moncc_detail
         template_div = $("<div>").attr("id", "template")
         template_div.html(@ajax_xml.find("forms template_form").text())
         template_div.uniform()
-        template_div.find("select").chosen(
+        template_div.find("select").addClass("chosen-select").chosen(
             width : "100%"
         )
         template_div.find("input, select").bind("change", @my_submitter.submit)

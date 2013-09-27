@@ -7,8 +7,15 @@
 {% block content %}
 
 <h1 class="center">
-    Configurations, <span id="config_info">none defined</span>, filter: <input type="text" id="filter" value=""/>
+    Configurations, <span id="config_info">none defined</span>
 </h1>
+Filter: <input type="text" id="filter" value=""/>
+    <input type="image" id="filter_clear" src="{{ MEDIA_URL }}frontend/images/delete.png" width="22px" height="22px" style="vertical-align:middle;" title="clear selection"/>,
+    scope: <select id="filter_scope" class="chosen-select" multiple="multiple">
+    <option value="var">Variables</option>
+    <option value="script">Scripts</option>
+    <option value="mon">MonCommands</option>
+    </select>
 
 <h4>
     <form method="post" action="{% url 'config:upload_config' %}" enctype="multipart/form-data">
@@ -32,7 +39,11 @@ class config_table
         @cur_filter = ""
         @codemirror_dict = {}
         $("input#download_button").bind("click", @download_selected)
-        $("input#filter").bind("keyup", => @apply_filter())
+        $("input#filter").bind("keyup", @apply_filter)
+        $("input#filter_clear").on("click", @clear_filter)
+        $("select#filter_scope").chosen(
+            "width" : "320px"
+        ).on("change", @filter_changed)
     use_devs: (sel_list) =>
         notify_generate_link(sel_list)
     load_configs: =>
@@ -58,37 +69,62 @@ class config_table
     # filter function
     
     apply_filter: =>
-        cur_text = $("input#filter").attr("value")
+        cur_text = $("input#filter").val()
         if cur_text != @cur_filter
             @cur_filter = cur_text
-            cur_re = new RegExp("^.*#{@cur_filter}.*$")
-            disp_list = []
-            # get keys/pks for current filter
-            @configs.find("config").each (idx, c_config) =>
-                c_config = $(c_config)
-                if c_config.attr("name").match(cur_re)
-                    disp_list.push(c_config.attr("key"))
-            # collapse all expanded trs
-            @table.find("tr td div[id*='__expand__'].ui-icon-triangle-1-s").each (idx, cur_tr) =>
-                cur_tr = $(cur_tr).parents("tr:first")
-                @toggle_config_line(cur_tr.attr("id"), false, "var", cur_tr)
-                @toggle_config_line(cur_tr.attr("id"), false, "moncc", cur_tr)
-                @toggle_config_line(cur_tr.attr("id"), false, "cscript", cur_tr)
-                # collapse expansion marks
-                force_expansion_state(cur_tr, false)
-            # we start at -1 because of the new config
-            num_shown = -1
-            @table.find("tr[id^='conf__']").each (idx, cur_tr) =>
-                cur_tr = $(cur_tr)
-                if cur_tr.attr("id").split("__").length == 2
-                    show = cur_tr.attr("id").match(/^conf__new/) or cur_tr.attr("id") in disp_list
-                    if show and cur_tr.attr("id").split("__")[0...2].join("__") == cur_tr.attr("id")
-                        num_shown++
-                    if show and not cur_tr.is(":visible")
-                        cur_tr.show()
-                    else if not show and cur_tr.is(":visible")
-                        cur_tr.hide()
-            @update_config_info(num_shown)
+            @filter_changed()
+    filter_changed: =>
+        cur_re = new RegExp("^.*#{@cur_filter}.*$")
+        cur_scope = $("select#filter_scope").val()
+        disp_list = []
+        # get keys/pks for current filter
+        @configs.find("config").each (idx, c_config) =>
+            c_config = $(c_config)
+            add_config = false
+            if c_config.attr("name").match(cur_re)
+                add_config = true
+            else if cur_scope
+                for f_scope in cur_scope
+                    el_names = {
+                        "var"    : ["config_str", "config_int", "config_bool", "config_blob"],
+                        "mon"    : ["mon_check_command"],
+                        "script" : ["config_script"]}[f_scope]
+                    for el_name in el_names
+                        if c_config.find("#{el_name}:contains('#{@cur_filter}')").length > 0
+                            add_config = true
+                            break
+                        if c_config.find("#{el_name}[name*='#{@cur_filter}'],#{el_name}[value*='#{@cur_filter}'],#{el_name}[comment*='#{@cur_filter}']").length > 0
+                            add_config = true
+                            break
+                    if add_config
+                        break
+            if add_config
+                disp_list.push(c_config.attr("key"))
+        # collapse all expanded trs
+        @table.find("tr td div[id*='__expand__'].ui-icon-triangle-1-s").each (idx, cur_tr) =>
+            cur_tr = $(cur_tr).parents("tr:first")
+            @toggle_config_line(cur_tr.attr("id"), false, "var", cur_tr)
+            @toggle_config_line(cur_tr.attr("id"), false, "moncc", cur_tr)
+            @toggle_config_line(cur_tr.attr("id"), false, "cscript", cur_tr)
+            # collapse expansion marks
+            force_expansion_state(cur_tr, false)
+        # we start at -1 because of the new config
+        num_shown = -1
+        @table.find("tr[id^='conf__']").each (idx, cur_tr) =>
+            cur_tr = $(cur_tr)
+            if cur_tr.attr("id").split("__").length == 2
+                show = cur_tr.attr("id").match(/^conf__new/) or cur_tr.attr("id") in disp_list
+                if show and cur_tr.attr("id").split("__")[0...2].join("__") == cur_tr.attr("id")
+                    num_shown++
+                if show and not cur_tr.is(":visible")
+                    cur_tr.show()
+                else if not show and cur_tr.is(":visible")
+                    cur_tr.hide()
+        @update_config_info(num_shown)
+    clear_filter: =>
+        $("input#filter").val("")
+        @cur_filter = ""
+        @filter_changed()
     
     # donwload functions
     
