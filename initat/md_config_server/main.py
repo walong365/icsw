@@ -114,6 +114,7 @@ def main():
         ("BUILD_CONFIG_ON_STARTUP"     , configfile.bool_c_var(True)),
         ("RETAIN_HOST_STATUS"          , configfile.bool_c_var(True)),
         ("RETAIN_SERVICE_STATUS"       , configfile.bool_c_var(True)),
+        ("PASSIVE_HOST_CHECKS_ARE_SOFT", configfile.bool_c_var(True)),
         ("RETAIN_PROGRAM_STATE"        , configfile.bool_c_var(False)),
         ("USE_HOST_DEPENDENCIES"       , configfile.bool_c_var(False)),
         ("NDO_DATA_PROCESSING_OPTIONS" , configfile.int_c_var((2 ** 26 - 1) - (IDOMOD_PROCESS_TIMED_EVENT_DATA - IDOMOD_PROCESS_SERVICE_CHECK_DATA + IDOMOD_PROCESS_HOST_CHECK_DATA))),

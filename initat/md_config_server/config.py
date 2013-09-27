@@ -628,6 +628,7 @@ class main_config(object):
             ("service_inter_check_delay_method" , "s"),
             ("service_interleave_factor"        , "s"),
             ("max_concurrent_checks"            , global_config["MAX_CONCURRENT_CHECKS"]),
+            ("passive_host_checks_are_soft"     , 1 if global_config["PASSIVE_HOST_CHECKS_ARE_SOFT"] else 0),
             ("service_reaper_frequency"         , 12),
             ("sleep_time"                       , 1),
             ("retain_state_information"         , 1 if global_config["RETAIN_SERVICE_STATUS"] else 0), # if self.master else 0),
