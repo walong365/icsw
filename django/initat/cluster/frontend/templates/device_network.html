@@ -733,13 +733,13 @@ class network_table
         centers = @nodes.enter()
             .append("g").call(@drag)
             .attr("class", "node")
-            .on("mouseenter", ->
+            .on("mouseenter", (d) ->
                 _this.outer.call(d3.behavior.zoom().on("zoom", null))
-                d3.select(@).select("circle").attr("stroke-width", 3)
+                d3.select(@).select("circle").attr("stroke-width", d.num_nds + 3)
             )
-            .on("mouseleave", ->
+            .on("mouseleave", (d) ->
                 _this.outer.call(d3.behavior.zoom().scale(_this.cur_scale).translate(_this.cur_trans).on("zoom", _this.rescale))
-                d3.select(@).select("circle").attr("stroke-width", 1)
+                d3.select(@).select("circle").attr("stroke-width", d.num_nds)
             )
             .on("mousedown", (d) ->
                 if _this.cur_graph_mode == "c"
@@ -773,6 +773,7 @@ class network_table
             .attr
                 "r"      : (n) -> return 18
                 "fill"   : "white"
+                "stroke-width" : (n) -> return n.num_nds
                 "stroke" : "grey"
                 "cursor" : "crosshair"
         centers.append("text")
