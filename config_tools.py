@@ -156,27 +156,26 @@ class topology_object(object):
                 self.nx.add_edge(src_node, dst_node, networkidx=sum(network_idx_list))
     def _update(self):
         s_time = time.time()
-        dev_sel = device.objects.exclude(Q(device_type__identifier="MD")).filter(Q(enabled=True) & Q(device_group__enabled=True))
+        dev_sel = device.objects.exclude(Q(device_type__identifier="MD")).filter(Q(enabled=True) & Q(device_group__enabled=True)).select_related("domain_tree_node")
         if self.__graph_mode.startswith("sel"):
             dev_sel = dev_sel.filter(Q(pk__in=self.__dev_pks))
-        self.all_devs = dev_sel.values_list("idx", "name")
         if self.__graph_mode == "none":
             self.dev_dict = {}
         else:
-            self.dev_dict = dict([(cur_dev[0], cur_dev) for cur_dev in self.all_devs])
+            self.dev_dict = dict([(cur_dev.pk, cur_dev) for cur_dev in dev_sel])
             if self.__graph_mode.startswith("selp"):
                 # add further rings
                 for idx in range(int(self.__graph_mode[-1])):
                     new_dev_pks = set(device.objects.filter(Q(netdevice__peer_s_netdevice__d_netdevice__device__in=self.dev_dict.keys())).values_list("idx", flat=True)) | \
                         set(device.objects.filter(Q(netdevice__peer_d_netdevice__s_netdevice__device__in=self.dev_dict.keys())).values_list("idx", flat=True))
                     if new_dev_pks:
-                        self.dev_dict.update(dict([(value[0], value[1]) for value in device.objects.filter(Q(enabled=True) & Q(device_group__enabled=True) & Q(pk__in=new_dev_pks)).values_list("idx", "name")]))
+                        self.dev_dict.update(dict([(value.pk, value) for value in device.objects.filter(Q(enabled=True) & Q(device_group__enabled=True) & Q(pk__in=new_dev_pks)).select_related("domain_tree_node")]))
                     else:
                         break
             elif self.__graph_mode == "core":
                 p_list = set(sum([[(s_val, d_val), (d_val, s_val)] for s_val, d_val in peer_information.objects.all().values_list("s_netdevice_id", "d_netdevice_id") if s_val != d_val], []))
                 nd_dict = dict([(value[0], value[1]) for value in netdevice.objects.all().values_list("pk", "device")])
-                # remove all devices which have only a single selection to the currect dev_dict
+                # remove all devices which have only a single selection to the current dev_dict
                 while True:
                     dev_list = [nd_dict[s_val] for s_val, d_val in p_list]
                     rem_devs = set([key for key in dev_list if dev_list.count(key) == 1])
@@ -192,8 +191,9 @@ class topology_object(object):
         for net_ip_pk, (nd_pk, nw_pk) in ip_dict.iteritems():
             nd_lut.setdefault(nd_pk, []).append(nw_pk)
         self.log("init topology helper object, %s / %s" % (
-            logging_tools.get_plural("device", len(self.all_devs)),
+            logging_tools.get_plural("device", len(self.dev_dict)),
             logging_tools.get_plural("peer information", peer_information.objects.count())))
+        self.add_num_nds()
         # peer dict
         self.peer_dict, self.simple_peer_dict = ({}, {})
         all_peers = peer_information.objects.all().values_list("s_netdevice_id", "d_netdevice_id")
@@ -210,6 +210,22 @@ class topology_object(object):
         self.nx = networkx.Graph()
         self.add_nodes()
         self.add_edges()
+        # add num_nds / num_peers (only nds)
+        for dev_pk in self.nx.nodes():
+            self.nx.node[dev_pk]["num_nds"] = self.dev_dict[dev_pk].num_nds
+        e_time = time.time()
+        self.log("creation took %s" % (logging_tools.get_diff_time_str(e_time - s_time)))
+    def add_num_nds(self):
+        # init counters
+        for dev_pk, cur_dev in self.dev_dict.iteritems():
+            cur_dev.num_nds = 0
+        # add nd num, exclude lo
+        for used_pk in netdevice.objects.exclude(devname='lo').values_list("device", flat=True):
+            if used_pk in self.dev_dict:
+                self.dev_dict[used_pk].num_nds += 1
+    def add_full_names(self):
+        for dev_pk in self.nx.nodes():
+            self.nx.node[dev_pk]["name"] = unicode(self.dev_dict[dev_pk].full_name)
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
         self.__log_com("[topology] %s" % (what), log_level)
 
