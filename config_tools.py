@@ -148,12 +148,15 @@ class topology_object(object):
     def add_nodes(self):
         self.nx.add_nodes_from(self.dev_dict.keys())
     def add_edges(self):
-        for node_pair, network_idx_list in self.simple_peer_dict.iteritems():
+        # for node_pair, network_idx_list in self.simple_peer_dict.iteritems():
+        for node_pair, penalty_list in self.simple_peer_dict.iteritems():
             src_node, dst_node = node_pair
             if src_node == dst_node:
                 pass
             else:
-                self.nx.add_edge(src_node, dst_node, networkidx=sum(network_idx_list))
+                # print src_node, dst_node, penalty_list
+                # self.nx.add_edge(src_node, dst_node, networkidx=sum(network_idx_list))
+                self.nx.add_edge(src_node, dst_node, min_penalty=min(penalty_list), num_connections=len(penalty_list))
     def _update(self):
         s_time = time.time()
         dev_sel = device.objects.exclude(Q(device_type__identifier="MD")).filter(Q(enabled=True) & Q(device_group__enabled=True)).select_related("domain_tree_node")
@@ -165,7 +168,7 @@ class topology_object(object):
             self.dev_dict = dict([(cur_dev.pk, cur_dev) for cur_dev in dev_sel])
             if self.__graph_mode.startswith("selp"):
                 # add further rings
-                for idx in range(int(self.__graph_mode[-1])):
+                for _idx in range(int(self.__graph_mode[-1])):
                     new_dev_pks = set(device.objects.filter(Q(netdevice__peer_s_netdevice__d_netdevice__device__in=self.dev_dict.keys())).values_list("idx", flat=True)) | \
                         set(device.objects.filter(Q(netdevice__peer_d_netdevice__s_netdevice__device__in=self.dev_dict.keys())).values_list("idx", flat=True))
                     if new_dev_pks:
@@ -196,15 +199,17 @@ class topology_object(object):
         self.add_num_nds()
         # peer dict
         self.peer_dict, self.simple_peer_dict = ({}, {})
-        all_peers = peer_information.objects.all().values_list("s_netdevice_id", "d_netdevice_id")
-        for s_nd_id, d_nd_id in all_peers:
+        all_peers = peer_information.objects.all().values_list("s_netdevice_id", "d_netdevice_id", "penalty")
+        for s_nd_id, d_nd_id, penalty in all_peers:
             if nd_dict[s_nd_id] in self.dev_dict and nd_dict[d_nd_id] in self.dev_dict:
                 src_device_id = nd_dict[s_nd_id]
                 dst_device_id = nd_dict[d_nd_id]
                 src_device_id, dst_device_id = (
                     min(src_device_id, dst_device_id),
                     max(src_device_id, dst_device_id))
-                self.simple_peer_dict.setdefault((src_device_id, dst_device_id), set()).update(set(nd_lut.get(s_nd_id, [])) | set(nd_lut.get(d_nd_id, [])))
+                # print (src_device_id, dst_device_id), penalty
+                # self.simple_peer_dict.setdefault((src_device_id, dst_device_id), set()).update(set(nd_lut.get(s_nd_id, [])) | set(nd_lut.get(d_nd_id, [])))
+                self.simple_peer_dict.setdefault((src_device_id, dst_device_id), []).append(penalty) # set()).update(set(nd_lut.get(s_nd_id, [])) | set(nd_lut.get(d_nd_id, [])))
         if self.nx:
             del self.nx
         self.nx = networkx.Graph()
