@@ -9,7 +9,7 @@
     <!--[if gt IE8]><!--><script type="text/javascript" src="{{ settings.STATIC_URL }}initat/core/static/js/libs/d3js/d3.v3.min.js"></script><!--<![endif]-->
     <style>
     circle.fixed {
-        fill : #ff8888;
+        stroke-dasharray: 5,5;
     }
     .connect_line {
         stroke : #9999ff;
@@ -704,8 +704,7 @@ class network_table
         @redraw()
     reset_connection_parameters: () =>
         @mousedown_node = undefined
-        @mouseup_node = undefined
-        @mousedown_link = undefined
+        @mouseup_node   = undefined
         @connect_line.attr
             "class" : "connect_line_hidden"
             "x1"    : 0
@@ -724,27 +723,38 @@ class network_table
             .attr
                 "class" : "link"
             .style
-                "stroke" : (d) -> 
-                    return color(d.networkidx)
+                "stroke" : (d) ->
+                    if d.num_connections == 1
+                        return "#7788ff"
+                    else
+                        return "#2222ff"
                 "stroke-opacity" : "1"
-                "stroke-width"   : "3"
+                "stroke-width"   : (d) ->
+                    if d.min_penalty == 1
+                        return 3
+                    else
+                        return 1
         @links.exit().remove()
         
         centers = @nodes.enter()
             .append("g").call(@drag)
-            .attr("class", "node")
+            .attr
+                "class"   : "node"
+                "node_id" : (n) -> return n.id
             .on("mouseenter", (d) ->
                 _this.outer.call(d3.behavior.zoom().on("zoom", null))
                 d3.select(@).select("circle").attr("stroke-width", d.num_nds + 3)
             )
             .on("mouseleave", (d) ->
                 _this.outer.call(d3.behavior.zoom().scale(_this.cur_scale).translate(_this.cur_trans).on("zoom", _this.rescale))
+                #if _this.mousedown_node != d
                 d3.select(@).select("circle").attr("stroke-width", d.num_nds)
             )
             .on("mousedown", (d) ->
                 if _this.cur_graph_mode == "c"
                     _this.mousedown_node = d
-                    _this.mousedown_link = null
+                    cur_c = d3.select(@).select("circle")
+                    #cur_c.attr("stroke-width", 3)#parseInt(cur_c.attr("stroke-width")) + 3)
                     _this.connect_line.attr
                         "class" : "connect_line"
                         "x1" : _this.mousedown_node.x
@@ -761,7 +771,8 @@ class network_table
                         link = {
                             source : _this.mousedown_node
                             target : _this.mouseup_node
-                            networkidx : 1
+                            min_penalty : 1
+                            num_connections : 1
                         }
                         line_idx = _this.graph.links.push(link)
                         _this.redraw()
@@ -769,13 +780,20 @@ class network_table
                         # insert before first g element
                         cur_el.parentNode.insertBefore(cur_el, cur_el.parentNode.firstChild.nextSibling.nextSibling)
             )
+            .on("dblclick", (d) ->
+                cur_ev = d3.event
+                console.log cur_ev, d
+                cur_di = new device_info(cur_ev, "dev__" + d.id)
+                cur_di.show()
+                console.log "dbl"
+            )
         centers.append("circle")
             .attr
-                "r"      : (n) -> return 18
-                "fill"   : "white"
+                "r"       : (n) -> return 18
+                "fill"    : "white"
                 "stroke-width" : (n) -> return n.num_nds
-                "stroke" : "grey"
-                "cursor" : "crosshair"
+                "stroke"  : "grey"
+                "cursor"  : "crosshair"
         centers.append("text")
             .attr
                 "text-anchor" : "middle"
@@ -793,13 +811,9 @@ class network_table
                 "y2" : d3.mouse(@vis[0][0])[1]
     mousedown: () =>
         return
-        #if @cur_graph_mode == "c"
-        #    if not @mousedown_node and not @mousedown_link
-        #        return
     mouseup: () =>
-        if @cur_graph_mode == "c"
-            if not @mouseup_node
-                @reset_connection_parameters()
+        if @cur_graph_mode == "c" and not @mouseup_node
+            @reset_connection_parameters()
     tick: () =>
         @links.attr
             "x1" : (d) -> return d.source.x
@@ -820,12 +834,16 @@ class network_table
             # ensable drag
             @nodes.call(@drag)
     redraw_graph : =>
+        $.blockUI(
+            message : "loading, please wait..."
+        )
         $.ajax
             url      : "{% url 'network:json_network' %}"
             data     : 
                 "graph_mode" : $("select#nw_graph_sel").val()
             dataType : "json"
             success  : (json) =>
+                $.unblockUI()
                 @draw_graph(json)
     copy_network: (event) =>
         cur_el = $(event.target)

@@ -85,7 +85,7 @@ class device_network(View):
                 dnt_struct.get_xml(),
             ]
         )
-        #print etree.tostring(xml_resp, pretty_print=True)
+        # print etree.tostring(xml_resp, pretty_print=True)
         request.xml_response["response"] = xml_resp
 
 class show_network_dev_types(View):
@@ -165,7 +165,7 @@ class create_netdevice(View):
                 raise
             else:
                 request.xml_response["new_netdevice"] = new_nd.get_xml()
-    
+
 class delete_net_ip(View):
     @method_decorator(login_required)
     @method_decorator(xml_wrapper)
@@ -181,9 +181,14 @@ class create_net_ip(View):
     def post(self, request):
         _post = request.POST
         keys = _post.keys()
+        print keys
         main_key = [key for key in keys if key.endswith("__new")][0]
-        cur_nd = netdevice.objects.get(Q(pk=main_key.split("__")[2]))
-        value_dict = dict([(key.split("__", 4)[4], value) for key, value in _post.iteritems()])
+        # key_length, is 5 for device network settings and 3 for deviceinfo.js
+        key_length = len(main_key.split("__"))
+        cur_nd = netdevice.objects.get(Q(pk=main_key.split("__")[{5 : 2, 3 : 1}[key_length]]))
+        # transform constants, FIXME
+        split_idx = {5 : 4, 3 : 2}[key_length]
+        value_dict = dict([(key.split("__", split_idx)[split_idx], value) for key, value in _post.iteritems()])
         if "new" in value_dict:
             logger.info("create new net_ip for '%s'" % (unicode(cur_nd)))
             copy_dict = dict([(key, value_dict["new__%s" % (key)]) for key in ["ip"] if "new__%s" % (key) in value_dict])
@@ -205,8 +210,8 @@ class create_new_peer(View):
     @method_decorator(xml_wrapper)
     def post(self, request):
         _post = request.POST
-        s_netdevice=netdevice.objects.get(Q(pk=_post["id"].split("__")[2]))
-        d_netdevice=netdevice.objects.get(Q(pk=_post["new_peer"]))
+        s_netdevice = netdevice.objects.get(Q(pk=_post["id"].split("__")[2]))
+        d_netdevice = netdevice.objects.get(Q(pk=_post["new_peer"]))
         try:
             _cur_peer = peer_information.objects.get(
                 (Q(s_netdevice=s_netdevice.pk) & Q(d_netdevice=d_netdevice.pk)) |
@@ -273,9 +278,11 @@ class json_network(View):
         r_obj = config_tools.topology_object(self.log, graph_mode, dev_list=dev_list)
         r_obj.add_full_names()
         json_obj = json_graph.dumps(r_obj.nx)
-        #pprint.pprint(json_obj)
+        # import time
+        # time.sleep(10)
+        # pprint.pprint(json_obj)
         return HttpResponse(json_obj, mimetype="application/json")
-    
+
 class copy_network(View):
     @method_decorator(login_required)
     @method_decorator(xml_wrapper)
@@ -300,7 +307,7 @@ class copy_network(View):
             for peer_info in peer_information.objects.filter(Q(s_netdevice__in=src_nds) | Q(d_netdevice__in=src_nds)):
                 s_local, d_local = (peer_info.s_netdevice_id in src_nds,
                                     peer_info.d_netdevice_id in src_nds)
-                #print "*", s_local, d_local
+                # print "*", s_local, d_local
                 if s_local and d_local:
                     if peer_info.s_netdevice_id != peer_info.d_netdevice_id:
                         logger.critical("host peering detection, not handled")
@@ -449,7 +456,7 @@ class create_new_dtn(View):
         if cur_form.is_valid():
             full_tree = domain_name_tree()
             new_dnt = full_tree.add_domain(cur_form.cleaned_data["full_name"])
-            #print "**", cur_form.cleaned_data
+            # print "**", cur_form.cleaned_data
             # copy from cleaned_data
             for key in ["comment", "node_postfix", "create_short_names", "always_create_ip", "write_nameserver_config"]:
                 setattr(new_dnt, key, cur_form.cleaned_data[key])
@@ -470,7 +477,7 @@ class delete_dtn(View):
             request.xml_response.error(
                 "domain tree node '%s' still referenced by %s" % (
                     unicode(cur_dtn),
-                    logging_tools.get_plural("object", num_ref)), 
+                    logging_tools.get_plural("object", num_ref)),
                 logger)
         else:
             request.xml_response.info("removed domain tree node '%s'" % (unicode(cur_dtn)), logger)

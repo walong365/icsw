@@ -91,6 +91,7 @@
     <script type="text/javascript" src="{{ settings.STATIC_URL}}initat/core/static/js/libs/jquery.color.js"></script>
     <script type="text/javascript" src="{{ settings.STATIC_URL}}initat/core/static/js/libs/jquery-ui-timepicker-addon.js"></script>
     <script type="text/javascript" src="{{ settings.STATIC_URL}}initat/core/static/js/libs/chosen/chosen.jquery.min.js"></script>
+    <script type="text/javascript" src="{{ settings.STATIC_URL}}initat/core/static/js/libs/jquery.blockUI.js"></script>
 {% endcompress %}
 <script type="text/javascript" src="{{ settings.STATIC_URL}}initat/core/static/js/libs/jquery.Jcrop.min.js"></script>
 <!--<script type="text/javascript" src="{{ settings.STATIC_URL}}initat/core/static/js/libs/jstree/jquery.jstree.js"></script>-->
@@ -176,8 +177,14 @@ update_time = ->
     page_time = new Date()
     $("span#cur_time").text($.sprintf("%02d:%02d:%02d", page_time.getHours(), page_time.getMinutes(), page_time.getSeconds()))
 
+init_blockUI = ->
+    $.blockUI.defaults.fadeOut = 0
+    $.blockUI.defaults.fadeIn  = 0
+    $.blockUI.defaults.overlayCSS.opacity = 0.0
+    
 add_handlers_main = ->
     init_layout()
+    init_blockUI()
     update_time()
     try
         init_sidebar()

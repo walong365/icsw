@@ -402,6 +402,7 @@ class device_info
             success : (xml) =>
                 if parse_xml_response(xml)
                     @resp_xml = $(xml).find("response")
+                    @network_list = @resp_xml.find("network_list network")
                     @build_div()
                     if replace_div
                         $("div#center_content").children().remove().end().append(@dev_div)
@@ -444,6 +445,10 @@ class device_info
         @my_submitter = new submitter({
             master_xml       : dev_xml
             modify_data_dict : @fqdn_compound
+        })
+        @my_nd_submitter = new submitter({
+            master_xml       : dev_xml
+            callback         : @set_network_after_change
         })
         dev_div = $("<div>")
         dev_div.append(
@@ -676,20 +681,87 @@ class device_info
         nw_div = $("<div>").attr("id", "network")
         if dev_xml.find("netdevice").length
             nd_ul = $("<ul>")
+            nw_div.append(nd_ul)
             dev_xml.find("netdevice").each (nd_idx, nd_xml) =>
                 nd_xml = $(nd_xml)
-                nd_li = $("<li>").text(nd_xml.attr("devname"))
+                nd_li = $("<li>").append($("<a>").attr("href", "#nd__" + nd_xml.attr("devname")).text(nd_xml.attr("devname")))
                 nd_ul.append(nd_li)
-                ip_ul = $("<ul>")
-                nd_xml.find("net_ip").each (ip_idx, ip_xml) =>
-                    ip_xml = $(ip_xml)
-                    ip_li = $("<li>").text(ip_xml.attr("ip"))
-                    ip_ul.append(ip_li)
-                nd_li.append(ip_ul)
+                new_div = $("<div>").attr("id", "nd__" + nd_xml.attr("devname"))
+                nw_div.append(new_div)
+                new_div.append($("<h4>").text("IP-adresses"))
+                new_div.append(@build_net_ip_table(nd_xml))
+            nw_div.find("input[id^='ip__'], select[id^='ip__']").off("change").bind("change", @my_nd_submitter.submit)
+            @network_div = nw_div
+            nw_div.tabs()
         else
-            nd_ul = $("<span>").text("no netdevices found")
-        nw_div.append(nd_ul)
+            nw_div.append($("<span>").text("no netdevices found"))
         return nw_div
+    build_net_ip_table : (nd_xml) =>
+        ip_table = $("<table>").attr("id", nd_xml.attr("key"))
+        nd_xml.find("net_ip").each (ip_idx, ip_xml) =>
+            ip_xml = $(ip_xml)
+            ip_line = $("<tr>").append(
+                $("<td>").append(
+                    $("<input>").attr(
+                        "id"     : ip_xml.attr("key"),
+                        "type"   : "image"
+                        "src"    : "{{ MEDIA_URL }}frontend/images/list-remove.png"
+                        "width"  : "22px"
+                        "height" : "22px"
+                    ).on("click", @remove_net_ip),
+                ),
+                create_input_el(ip_xml, "ip", ip_xml.attr("key"), {master_xml : ip_xml, enclose_td : true})
+                create_input_el(ip_xml, "network", ip_xml.attr("key"), {select_source : @network_list, master_xml : ip_xml, enclose_td : true})
+                create_input_el(ip_xml, "domain_tree_node", ip_xml.attr("key"), {select_source : @resp_xml.find("domain_tree_nodes domain_tree_node"), master_xml : ip_xml, enclose_td : true})
+            )
+            ip_table.append(ip_line)
+        new_ip_key = nd_xml.attr("key") + "__new"
+        ip_table.append(
+            $("<tr>").attr("id", nd_xml.attr("key")).append(
+                $("<td>").append(
+                    $("<input>").attr(
+                        "id"     : new_ip_key,
+                        "type"   : "image"
+                        "src"    : "{{ MEDIA_URL }}frontend/images/list-add.png"
+                        "width"  : "22px"
+                        "height" : "22px"
+                    ).on("click", @create_net_ip),
+                ),
+                create_input_el(undefined, "ip", new_ip_key, {enclose_td : true, default : "0.0.0.0"})
+                create_input_el(undefined, "network", new_ip_key, {select_source : @network_list, enclose_td : true})
+                create_input_el(undefined, "domain_tree_node", new_ip_key, {select_source : @resp_xml.find("domain_tree_nodes domain_tree_node"), enclose_td : true})
+            )
+        )
+        return ip_table
+    remove_net_ip: (event) =>
+        cur_el = $(event.target)
+        send_data = {}
+        send_data[cur_el.attr("id")] = 1
+        $.ajax
+            url     : "{% url 'base:delete_object' 'net_ip' %}"
+            data    : send_data
+            success : (xml) =>
+                if parse_xml_response(xml)
+                    @resp_xml.find("net_ip[key='" + cur_el.attr("id") + "']").remove()
+                    cur_el.parents("tr:first").remove()
+    create_net_ip: (event) =>
+        cur_el = $(event.target)
+        c_dict = create_dict_unserialized(cur_el.parents("tr:first"), cur_el.attr("id"))
+        $.ajax
+            url   : "{% url 'network:create_net_ip' %}"
+            data  : c_dict
+            success : (xml) =>
+                if parse_xml_response(xml)
+                    new_net_ip = $(xml).find("value[name='new_net_ip'] > net_ip")
+                    add_nd = @resp_xml.find("netdevice[pk='" + new_net_ip.attr("netdevice") + "']") 
+                    add_nd.find("net_ips").append(new_net_ip)
+                    ip_table = @network_div.find("table[id='" + add_nd.attr("key") + "']")
+                    ip_table.replaceWith(@build_net_ip_table(add_nd))
+    set_network_after_change: (cur_el) =>
+        console.log cur_el
+        # get xml_el
+        net_ip_xml = @resp_xml.find("net_ip[pk='" + cur_el.attr("id").split("__")[1] + "']")
+        @network_div.find("select[id='ip__" + net_ip_xml.attr("pk") + "__network']").attr("value", net_ip_xml.attr("network"))
     config_div: (dev_xml) =>
         # configuration div
         conf_div = $("<div>").attr("id", "config")

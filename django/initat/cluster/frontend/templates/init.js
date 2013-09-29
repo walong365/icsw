@@ -1045,7 +1045,7 @@ class submitter
                 if parse_xml_response(xml)
                     replace_xml_element(@master_xml, $(xml))
                     if @callback
-                        callback(cur_el)
+                        @callback(cur_el)
                     else
                         # set values
                         $(xml).find("changes change").each (idx, cur_os) ->

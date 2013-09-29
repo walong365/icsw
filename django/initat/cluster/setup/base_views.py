@@ -344,37 +344,41 @@ class delete_object(View):
         obj_name = kwargs["obj_name"]
         force_delete = _post.get("force_delete", "false").lower() == "true"
         del_obj_class = getattr(initat.cluster.backbone.models, obj_name)
-        key_pf = min([(len(key), key) for key in _post.iterkeys() if key.count("__")])[1]
-        del_index = int(_post.get("delete_index", "1"))
-        logger.info("obj_name for delete_object is '%s' (delete_index is %d), force_delete flag is %s" % (
-            obj_name,
-            del_index,
-            str(force_delete),
-        ))
-        del_pk = int(key_pf.split("__")[del_index])
-        logger.info("removing item with pk %d" % (del_pk))
-        try:
-            del_obj = del_obj_class.objects.get(Q(pk=del_pk))
-        except:
-            request.xml_response.error("object not found for deletion: %s" % (process_tools.get_except_info()), logger)
-        else:
-            min_ref = 0
-            if obj_name == "device_group":
-                # remove associated meta_device
-                if del_obj.device_id:
-                    min_ref = 1
-            num_ref = get_related_models(del_obj)
-            if num_ref > min_ref and not force_delete:
-                # pprint.pprint(get_related_models(del_obj, detail=True))
-                request.xml_response.error(
-                    "cannot delete %s '%s': %s" % (
-                        del_obj._meta.object_name,
-                        unicode(del_obj),
-                        logging_tools.get_plural("reference", num_ref)), logger)
+        valid_keys = [key for key in _post.iterkeys() if key.count("__")]
+        if valid_keys:
+            key_pf = min([(len(key), key) for key in valid_keys])[1]
+            del_index = int(_post.get("delete_index", "1"))
+            logger.info("obj_name for delete_object is '%s' (delete_index is %d), force_delete flag is %s" % (
+                obj_name,
+                del_index,
+                str(force_delete),
+            ))
+            del_pk = int(key_pf.split("__")[del_index])
+            logger.info("removing item with pk %d" % (del_pk))
+            try:
+                del_obj = del_obj_class.objects.get(Q(pk=del_pk))
+            except:
+                request.xml_response.error("object not found for deletion: %s" % (process_tools.get_except_info()), logger)
             else:
-                del_info = unicode(del_obj)
-                del_obj.delete()
-                request.xml_response.info("deleted %s '%s'" % (del_obj._meta.object_name, del_info), logger)
+                min_ref = 0
+                if obj_name == "device_group":
+                    # remove associated meta_device
+                    if del_obj.device_id:
+                        min_ref = 1
+                num_ref = get_related_models(del_obj)
+                if num_ref > min_ref and not force_delete:
+                    # pprint.pprint(get_related_models(del_obj, detail=True))
+                    request.xml_response.error(
+                        "cannot delete %s '%s': %s" % (
+                            del_obj._meta.object_name,
+                            unicode(del_obj),
+                            logging_tools.get_plural("reference", num_ref)), logger)
+                else:
+                    del_info = unicode(del_obj)
+                    del_obj.delete()
+                    request.xml_response.info("deleted %s '%s'" % (del_obj._meta.object_name, del_info), logger)
+        else:
+            request.xml_response.error("no valid keys found", logger)
 
 class get_object(View):
     @method_decorator(login_required)

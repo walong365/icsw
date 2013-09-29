@@ -19,8 +19,10 @@ from initat.cluster.frontend.helper_functions import xml_wrapper
 from initat.core.render import render_me, render_string
 from initat.cluster.backbone.models import device_type, device_group, device, \
      cd_connection, domain_name_tree, category_tree, package_device_connection, \
-     mon_ext_host, mon_device_templ, mon_service_cluster, mon_host_cluster
+     mon_ext_host, mon_device_templ, mon_service_cluster, mon_host_cluster, network
 from initat.cluster.frontend import forms
+
+from lxml import etree # @UnresolvedImport
 
 logger = logging.getLogger("cluster.device")
 
@@ -386,7 +388,11 @@ class device_info(View):
             full_name=True,
         )
         request.xml_response["response"] = domain_name_tree().get_xml(no_intermediate=True)
+        request.xml_response["response"] = E.network_list(
+            *[cur_nw.get_xml() for cur_nw in network.objects.all().select_related("network_type").prefetch_related("network_device_type").order_by("name")]
+        )
         request.xml_response["response"] = category_tree().get_xml()
+        # print etree.tostring(request.xml_response["response"][1], pretty_print=True)
         request.xml_response["response"] = E.forms(
             E.general_form(
                 render_string(
