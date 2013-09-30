@@ -2648,6 +2648,8 @@ class peer_information(models.Model):
     def get_xml(self):
         return E.peer_information(
             pk="%d" % (self.pk),
+            # why routing and not pi ?
+            key="routing__%d" % (self.pk),
             from_devname=self.s_netdevice.devname,
             to_devname=self.d_netdevice.devname,
             from_device=self.s_netdevice.device.name,
@@ -2660,6 +2662,8 @@ class peer_information(models.Model):
             to_penalty="%d" % (self.d_netdevice.penalty),
             penalty="%d" % (self.penalty or 1)
         )
+    def __unicode__(self):
+        return u"%s [%d] %s" % (self.s_netdevice.devname, self.penalty, self.d_netdevice.devname)
     class Meta:
         db_table = u'peer_information'
 
