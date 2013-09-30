@@ -80,6 +80,15 @@ class auth_cache(object):
             return set(self.__obj_perms[code_key])
         else:
             return set()
+    def get_all_object_perms(self, obj):
+        obj_ct = ContentType.objects.get_for_model(obj)
+        # which permissions are valid for this object ?
+        obj_perms = set([key for key, value in self.__perm_dict.iteritems() if value.content_type == obj_ct])
+        # which permissions are global set ?
+        global_perms = obj_perms & self.__perms
+        # local permissions
+        local_perms = set([key for key in obj_perms if obj.pk in self.__obj_perms.get(key, [])])
+        return global_perms | local_perms
 
 class csw_permission(models.Model):
     """
@@ -213,7 +222,14 @@ def check_object_permission(auth_obj, perm, obj):
     else:
         return False
 
+def get_all_object_perms(auth_obj, obj):
+    # return all allowed permissions for a given object
+    if not hasattr(auth_obj, "_auth_cache"):
+        auth_obj._auth_cache = auth_cache(auth_obj)
+    return auth_obj._auth_cache.get_all_object_perms(obj)
+
 def get_allowed_object_list(auth_obj, perm):
+    # return all allowed objects for a given permissions
     if not hasattr(auth_obj, "_auth_cache"):
         auth_obj._auth_cache = auth_cache(auth_obj)
     app_label, code_name = get_label_codename(perm)
@@ -312,6 +328,17 @@ class user(models.Model):
         if not res and ask_parent:
             res = check_object_permission(self.group, perm, obj)
         return res
+    def get_all_object_perms(self, obj, ask_parent=True, format="set"):
+        # return all permissions we have for a given object
+        if ask_parent:
+            r_val = get_all_object_perms(self, obj) | get_all_object_perms(self.group, obj)
+        else:
+            r_val = get_all_object_perms(self, obj)
+        if format == "xml":
+            r_val = E.permissions(
+                *[E.permissions(cur_val, app=cur_val.split(".")[0], permission=cur_val.split(".")[1]) for cur_val in sorted(list(r_val))]
+                )
+        return r_val
     def get_allowed_object_list(self, perm, ask_parent=True):
         # get all object pks we have an object permission for
         if ask_parent:
