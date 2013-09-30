@@ -35,6 +35,10 @@ class auth_cache(object):
             auth_obj.pk,
             )
         self.__perms, self.__obj_perms = (set(), {})
+        if self.auth_obj.__class__.__name__ == "user":
+            self.has_all_perms = self.auth_obj.is_superuser
+        else:
+            self.has_all_perms = False
         # print self.cache_key
         self._from_db()
     def _from_db(self):
@@ -84,11 +88,14 @@ class auth_cache(object):
         obj_ct = ContentType.objects.get_for_model(obj)
         # which permissions are valid for this object ?
         obj_perms = set([key for key, value in self.__perm_dict.iteritems() if value.content_type == obj_ct])
-        # which permissions are global set ?
-        global_perms = obj_perms & self.__perms
-        # local permissions
-        local_perms = set([key for key in obj_perms if obj.pk in self.__obj_perms.get(key, [])])
-        return global_perms | local_perms
+        if self.has_all_perms:
+            return obj_perms
+        else:
+            # which permissions are global set ?
+            global_perms = obj_perms & self.__perms
+            # local permissions
+            local_perms = set([key for key in obj_perms if obj.pk in self.__obj_perms.get(key, [])])
+            return global_perms | local_perms
 
 class csw_permission(models.Model):
     """
@@ -330,10 +337,13 @@ class user(models.Model):
         return res
     def get_all_object_perms(self, obj, ask_parent=True, format="set"):
         # return all permissions we have for a given object
-        if ask_parent:
-            r_val = get_all_object_perms(self, obj) | get_all_object_perms(self.group, obj)
+        if not (self.active and self.group.active):
+            r_val = set()
         else:
-            r_val = get_all_object_perms(self, obj)
+            if ask_parent:
+                r_val = get_all_object_perms(self, obj) | get_all_object_perms(self.group, obj)
+            else:
+                r_val = get_all_object_perms(self, obj)
         if format == "xml":
             r_val = E.permissions(
                 *[E.permissions(cur_val, app=cur_val.split(".")[0], permission=cur_val.split(".")[1]) for cur_val in sorted(list(r_val))]
