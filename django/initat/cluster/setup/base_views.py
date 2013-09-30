@@ -378,7 +378,7 @@ class delete_object(View):
                     del_obj.delete()
                     request.xml_response.info("deleted %s '%s'" % (del_obj._meta.object_name, del_info), logger)
         else:
-            request.xml_response.error("no valid keys found", logger)
+            request.xml_response.error("no valid keys found (present: %s)" % (", ".join(sorted(_post.keys()))), logger)
 
 class get_object(View):
     @method_decorator(login_required)

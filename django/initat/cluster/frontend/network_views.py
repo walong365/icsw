@@ -181,13 +181,15 @@ class create_net_ip(View):
     def post(self, request):
         _post = request.POST
         keys = _post.keys()
-        print keys
+        # print keys
         main_key = [key for key in keys if key.endswith("__new")][0]
+        # print main_key
         # key_length, is 5 for device network settings and 3 for deviceinfo.js
         key_length = len(main_key.split("__"))
-        cur_nd = netdevice.objects.get(Q(pk=main_key.split("__")[{5 : 2, 3 : 1}[key_length]]))
+        # print key_length
+        cur_nd = netdevice.objects.get(Q(pk=main_key.split("__")[{5 : 2, 4 : 1, 3 : 1}[key_length]]))
         # transform constants, FIXME
-        split_idx = {5 : 4, 3 : 2}[key_length]
+        split_idx = {5 : 4, 4 : 3, 3 : 2}[key_length]
         value_dict = dict([(key.split("__", split_idx)[split_idx], value) for key, value in _post.iteritems()])
         if "new" in value_dict:
             logger.info("create new net_ip for '%s'" % (unicode(cur_nd)))
