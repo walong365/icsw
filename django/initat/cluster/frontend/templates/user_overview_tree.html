@@ -108,9 +108,9 @@ class object_permissions
                     cur_csw = $(cur_csw)
                     cur_id = "csw_perm__" + cur_obj.attr("pk") + "__" + cur_csw.attr("pk")
                     if cur_csw.attr("pk") in obj_perms
-                        cur_line.append($("<td>").addClass("center").html("<input type='checkbox' id='#{cur_id}' checked='checked'/>"))
+                        cur_line.append($("<td>").addClass("center").html("<input type='checkbox' id='#{cur_id}' checked='checked' title='" + cur_csw.attr("codename") + "'/>"))
                     else
-                        cur_line.append($("<td>").addClass("center").html("<input type='checkbox' id='#{cur_id}'/>"))
+                        cur_line.append($("<td>").addClass("center").html("<input type='checkbox' id='#{cur_id}' title='" + cur_csw.attr("codename") + "'/>"))
                 tab_body.append(cur_line)
             perm_table.append(tab_body)
             add_div.append(perm_table)

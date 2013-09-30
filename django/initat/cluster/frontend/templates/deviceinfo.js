@@ -403,6 +403,7 @@ class device_info
                 if parse_xml_response(xml)
                     @resp_xml = $(xml).find("response")
                     @network_list = @resp_xml.find("network_list network")
+                    @permissions = @resp_xml.find("permissions")
                     @build_div()
                     if replace_div
                         $("div#center_content").children().remove().end().append(@dev_div)
@@ -440,6 +441,8 @@ class device_info
         in_dict[other_id] = dev_xml.attr(other_name)
         other_list.push(other_id)
         in_dict.other_list = other_list.join("::")
+    has_perm: (perm_name) =>
+        return if @permissions.find("permissions[permission='#{perm_name}']").length then true else false 
     build_div: () =>
         dev_xml = @resp_xml.find("device")
         @my_submitter = new submitter({
@@ -466,26 +469,28 @@ class device_info
                 $("<li>").append($("<a>").attr("href", "#general").text("General")),
                 $("<li>").append($("<a>").attr("href", "#category").text("Category")),
                 $("<li>").append($("<a>").attr("href", "#location").text("Location")),
-                $("<li>").append($("<a>").attr("href", "#network").text("Network")),
+                if @has_perm("change_network") then $("<li>").append($("<a>").attr("href", "#network").text("Network")) else null,
                 $("<li>").append($("<a>").attr("href", "#config").text("Config")),
                 $("<li>").append($("<a>").attr("href", "#disk").text("Disk")),
                 $("<li>").append($("<a>").attr("href", "#mdcds").text("MD data store")),
                 $("<li>").append($("<a>").attr("href", "#livestatus").text("Livestatus#{addon_text}")),
                 $("<li>").append($("<a>").attr("href", "#monconfig").text("MonConfig#{addon_text}")),
-                $("<li>").append($("<a>").attr("href", "#rrd").text("Graphs#{addon_text}")),
+                if @has_perm("show_graphs") then $("<li>").append($("<a>").attr("href", "#rrd").text("Graphs#{addon_text}")) else null,
             )
         )
         @dev_div = dev_div
         tabs_div.append(@general_div(dev_xml))
         tabs_div.append(@category_div(dev_xml))
         tabs_div.append(@location_div(dev_xml))
-        tabs_div.append(@network_div(dev_xml))
+        if @has_perm("change_network")
+            tabs_div.append(@network_div(dev_xml))
         tabs_div.append(@config_div(dev_xml))
         tabs_div.append(@disk_div(dev_xml))
         tabs_div.append(@mdcds_div(dev_xml))
         tabs_div.append(@livestatus_div(dev_xml))
         tabs_div.append(@monconfig_div(dev_xml))
-        tabs_div.append(@rrd_div(dev_xml))
+        if @has_perm("show_graphs")
+            tabs_div.append(@rrd_div(dev_xml))
         tabs_div.tabs(
             activate : @activate_tab
         )

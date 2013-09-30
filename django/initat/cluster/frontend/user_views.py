@@ -476,7 +476,7 @@ class device_object_emitter(object_emitter):
         has_group = True
         has_second_group = True
     def update_query(self):
-        self.query = self.query.select_related("device_group", "device_type")
+        self.query = self.query.filter(Q(enabled=True) & Q(device_group__enabled=True)).select_related("device_group", "device_type")
     def get_attrs(self, cur_obj):
         return {
             "group" : unicode(cur_obj.device_group),
