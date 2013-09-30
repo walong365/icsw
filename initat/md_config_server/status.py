@@ -65,13 +65,16 @@ class status_process(threading_tools.process_obj):
     def _open(self):
         if self.__socket is None:
             sock_name = "/opt/%s/var/live" % (global_config["MD_TYPE"])
-            try:
-                self.__socket = mk_livestatus.Socket(sock_name)
-            except:
-                self.log("cannot open livestatus socket %s : %s" % (sock_name, process_tools.get_except_info()), logging_tools.LOG_LEVEL_ERROR)
-                self.__socket = None
+            if os.path.exists(sock_name):
+                try:
+                    self.__socket = mk_livestatus.Socket(sock_name)
+                except:
+                    self.log("cannot open livestatus socket %s : %s" % (sock_name, process_tools.get_except_info()), logging_tools.LOG_LEVEL_ERROR)
+                    self.__socket = None
+                else:
+                    self.log("reopened livestatus socket %s" % (sock_name))
             else:
-                self.log("reopened livestatus socket %s" % (sock_name))
+                self.log("socket '%s' does not exist" % (sock_name), logging_tools.LOG_LEVEL_ERROR)
         return self.__socket
     def _get_node_status(self, *args, **kwargs):
         src_id, srv_com = (args[0], server_command.srv_command(source=args[1]))
@@ -110,7 +113,7 @@ class status_process(threading_tools.process_obj):
                     )
                     # print srv_com.pretty_print()
                 else:
-                    srv_com.set_result("cannot connect", server_command.SRV_REPLY_STATE_CRITICAL)
+                    srv_com.set_result("cannot connect to socket", server_command.SRV_REPLY_STATE_CRITICAL)
             except:
                 self._close()
                 self.log("fetch exception: %s" % (process_tools.get_except_info()), logging_tools.LOG_LEVEL_ERROR)

@@ -74,6 +74,7 @@ class build_process(threading_tools.process_obj):
         master_server = device.objects.get(Q(pk=global_config["SERVER_IDX"]))
         self.router_obj = config_tools.router_object(self.log)
         self.__gen_config = main_config(self, master_server, distributed=True if len(slave_servers) else False)
+        self.__gen_config_built = False
         self.send_pool_message("external_cmd_file", self.__gen_config.get_command_name())
         self.__slave_configs, self.__slave_lut = ({}, {})
         if len(slave_servers):
@@ -295,9 +296,12 @@ class build_process(threading_tools.process_obj):
                 bc_valid = False
         if bc_valid:
             if single_build:
+                if not self.__gen_config_built:
+                    self._create_general_config(write_entries=False)
                 # clean device and service entries
                 for key in constants.SINGLE_BUILD_MAPS:
-                    self.__gen_config[key].refresh(self.__gen_config)
+                    if key in self.__gen_config:
+                        self.__gen_config[key].refresh(self.__gen_config)
             self.router_obj.check_for_update()
             # build distance map
             cur_dmap = self._build_distance_map(self.__gen_config.monitor_server, show_unroutable=not single_build)
@@ -407,11 +411,22 @@ class build_process(threading_tools.process_obj):
             )
                      )
         return dict([(key, value.md_dist_level) for key, value in dm_dict.iteritems()])
-    def _create_general_config(self):
+    def _create_general_config(self, write_entries=None):
+        self.__gen_config_built = True
+        config_list = [self.__gen_config] + self.__slave_configs.values()
+        if write_entries is not None:
+            prev_awc = self.__gen_config.allow_write_entries
+            for cur_conf in config_list:
+                # set actual value
+                cur_conf.allow_write_entries = write_entries
         start_time = time.time()
         self._check_image_maps()
-        self._create_gen_config_files([self.__gen_config] + self.__slave_configs.values())
+        self._create_gen_config_files(config_list)
         end_time = time.time()
+        if write_entries is not None:
+            for cur_conf in config_list:
+                # restore to previous value
+                cur_conf.allow_write_entries = prev_awc
         self.log("creating the total general config took %s" % (logging_tools.get_diff_time_str(end_time - start_time)))
     def _create_gen_config_files(self, gc_list):
         for cur_gc in gc_list:

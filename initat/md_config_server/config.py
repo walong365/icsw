@@ -131,10 +131,16 @@ class main_config(object):
         self.__dict = {}
         self._create_directories()
         self._clear_etc_dir()
-        self.__allow_write_entries = global_config["BUILD_CONFIG_ON_STARTUP"]
+        self.allow_write_entries = global_config["BUILD_CONFIG_ON_STARTUP"]
         self._create_base_config_entries()
         self._write_entries()
-        self.__allow_write_entries = True
+        self.allow_write_entries = True
+    @property
+    def allow_write_entries(self):
+        return self.__allow_write_entries
+    @allow_write_entries.setter
+    def allow_write_entries(self, val):
+        self.__allow_write_entries = val
     @property
     def slave_name(self):
         return self.__slave_name
@@ -1015,6 +1021,8 @@ class main_config(object):
             write_cfg = True
         if write_cfg:
             self._write_entries()
+    def __contains__(self, key):
+        return key in self.__dict
     def __getitem__(self, key):
         return self.__dict[key]
 
