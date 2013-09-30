@@ -380,7 +380,7 @@ class device_info(View):
     def post(self, request):
         # request.xml_response.log(logging_tools.LOG_LEVEL_ERROR, "ok", logger)
         dev_key = request.POST["key"].split("__")[1]
-        cur_dev = device.objects.get(Q(pk=dev_key))
+        cur_dev = device.objects.prefetch_related("netdevice_set", "netdevice_set__net_ip_set").get(Q(pk=dev_key))
         request.xml_response["response"] = cur_dev.get_xml(
             with_partition=True,
             with_variables=True,

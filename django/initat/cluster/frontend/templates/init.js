@@ -1298,7 +1298,7 @@ create_input_el = (xml_el, attr_name, id_prefix, kwargs) ->
                 new_el.bind("change", kwargs.submitter.submit)
             else
                 new_el.bind("change", (event) ->
-                    submit_change($(event.target), kwargs.callback, kwargs.modify_data_dict, kwargs.    modify_data_dict_opts, kwargs.master_xml)
+                    submit_change($(event.target), kwargs.callback, kwargs.modify_data_dict, kwargs.modify_data_dict_opts, kwargs.master_xml)
                 )
     else if kwargs.change_cb
         new_el.bind("change", kwargs.change_cb)

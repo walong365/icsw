@@ -700,6 +700,12 @@ class device_info
                         new_div.append(@build_net_ip_table(nd_xml))
                         new_div.append($("<h4>").text("Peer information"))
                         new_div.append(@build_peer_info_table(nd_xml))
+                        new_div.append($("<h4>").text("Device flags"))
+                        new_div.append(
+                            create_input_el(nd_xml, "routing", nd_xml.attr("key"), {master_xml : nd_xml, boolean : true, label : "routing capable:"}),
+                            "<span>,</span>",
+                            create_input_el(nd_xml, "penalty", nd_xml.attr("key"), {master_xml : nd_xml, number : true, min : 1, max : 128, label : "device penalty:"}),
+                        )
                     nw_div.find("input[id^='ip__'], select[id^='ip__']").off("change").bind("change", @my_nd_submitter.submit)
                     @network_div = nw_div
                     nw_div.tabs()
@@ -723,7 +729,7 @@ class device_info
                         "height" : "22px"
                     ).on("click", @remove_net_ip),
                 ),
-                create_input_el(ip_xml, "ip", ip_xml.attr("key"), {master_xml : ip_xml, enclose_td : true})
+                create_input_el(ip_xml, "ip", ip_xml.attr("key"), {master_xml : ip_xml, enclose_td : true, size : 16})
                 create_input_el(ip_xml, "network", ip_xml.attr("key"), {select_source : @network_list, master_xml : ip_xml, enclose_td : true})
                 create_input_el(ip_xml, "domain_tree_node", ip_xml.attr("key"), {select_source : @resp_xml.find("domain_tree_nodes domain_tree_node"), master_xml : ip_xml, enclose_td : true})
             )
@@ -740,7 +746,7 @@ class device_info
                         "height" : "22px"
                     ).on("click", @create_net_ip),
                 ),
-                create_input_el(undefined, "ip", new_ip_key, {enclose_td : true, default : "0.0.0.0"})
+                create_input_el(undefined, "ip", new_ip_key, {enclose_td : true, default : "0.0.0.0", size : 16})
                 create_input_el(undefined, "network", new_ip_key, {select_source : @network_list, enclose_td : true})
                 create_input_el(undefined, "domain_tree_node", new_ip_key, {select_source : @resp_xml.find("domain_tree_nodes domain_tree_node"), enclose_td : true})
             )
@@ -764,8 +770,8 @@ class device_info
                         "height" : "22px"
                     ).on("click", @remove_peer),
                 ),
-                create_input_el(p_xml, "penalty", p_xml.attr("key"), {enclose_td : true, default : 1, "0.0.0.0", number : true, min : 1}),
-                $("<td>").text("to " + p_xml.attr("#{other_side}_devname") + " on " + p_xml.attr("#{other_side}_device"))
+                create_input_el(p_xml, "penalty", p_xml.attr("key"), {enclose_td : true, default : 1, "0.0.0.0", number : true, min : 1, max : 256}),
+                $("<td>").text("to " + p_xml.attr("#{other_side}_devname") + " on " + p_xml.attr("#{other_side}_device_full"))
             )
             peer_table.append(peer_line)
         new_peer_key = nd_xml.attr("key") + "__peer__new"
@@ -780,7 +786,7 @@ class device_info
                         "height" : "22px"
                     ).on("click", @create_new_peer),
                 ),
-                create_input_el(undefined, "penalty", new_peer_key, {enclose_td : true, new_default : 1, number : true, min : 1})
+                create_input_el(undefined, "penalty", new_peer_key, {enclose_td : true, new_default : 1, number : true, min : 1, max : 256})
                 create_input_el(undefined, "d_netdevice", new_peer_key, {enclose_td : true, select_source : @valid_peers.find("valid_peer")})
             )
         )
