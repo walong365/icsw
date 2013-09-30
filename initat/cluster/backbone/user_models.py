@@ -335,7 +335,7 @@ class user(models.Model):
         if not res and ask_parent:
             res = check_object_permission(self.group, perm, obj)
         return res
-    def get_all_object_perms(self, obj, ask_parent=True, format="set"):
+    def get_all_object_perms(self, obj, ask_parent=True):
         # return all permissions we have for a given object
         if not (self.active and self.group.active):
             r_val = set()
@@ -344,11 +344,11 @@ class user(models.Model):
                 r_val = get_all_object_perms(self, obj) | get_all_object_perms(self.group, obj)
             else:
                 r_val = get_all_object_perms(self, obj)
-        if format == "xml":
-            r_val = E.permissions(
-                *[E.permissions(cur_val, app=cur_val.split(".")[0], permission=cur_val.split(".")[1]) for cur_val in sorted(list(r_val))]
-                )
         return r_val
+    def get_all_object_perms_xml(self, obj, ask_parent=True):
+        return E.permissions(
+            *[E.permissions(cur_val, app=cur_val.split(".")[0], permission=cur_val.split(".")[1]) for cur_val in sorted(list(self.get_all_object_perms(obj, ask_parent)))]
+        )
     def get_allowed_object_list(self, perm, ask_parent=True):
         # get all object pks we have an object permission for
         if ask_parent:
