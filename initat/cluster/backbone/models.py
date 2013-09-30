@@ -1838,7 +1838,15 @@ class netdevice(models.Model):
         return E.netdevice(
             self.devname,
             E.net_ips(*[cur_ip.get_xml() for cur_ip in self.net_ip_set.all()]),
-            E.peers(*[cur_peer.get_xml() for cur_peer in peer_information.objects.filter(Q(s_netdevice=self) | Q(d_netdevice=self)).distinct().select_related("s_netdevice", "s_netdevice__device", "d_netdevice", "d_netdevice__device", "s_netdevice__device__domain_tree_node", "d_netdevice__device__domain_tree_node")]),
+            E.peers(*[cur_peer.get_xml() for cur_peer in peer_information.objects.filter(
+                Q(s_netdevice=self) | Q(d_netdevice=self)
+                ).distinct().select_related(
+                    "s_netdevice",
+                    "s_netdevice__device",
+                    "d_netdevice",
+                    "d_netdevice__device",
+                    "s_netdevice__device__domain_tree_node",
+                    "d_netdevice__device__domain_tree_node")]),
             devname=self.devname,
             description=self.description or "",
             driver=self.driver or "",
