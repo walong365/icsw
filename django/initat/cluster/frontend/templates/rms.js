@@ -261,9 +261,18 @@ class rms_view
                         if val == "---" or val == "err"
                             return "<b>#{val}</b>"
                         else
-                            a_el = $("<a>").attr("href", "file:#{o.mDataProp}:#{o.aData[0]}:#{o.aData[1]}").text(val)
+                            a_el = $("<a>").attr("href", "file:stdout:#{o.aData[0]}:#{o.aData[1]}").text(val)
                             return $("<div>").append(a_el).html()
-                    "aTargets" : @get_header_idx("run", ["stdout", "stderr"]),
+                    "aTargets" : @get_header_idx("run", ["stdout"]),
+                    "sClass"   : "nowrap right"
+                }, {
+                    "fnRender" : (o, val) ->
+                        if val == "---" or val == "err"
+                            return "<b>#{val}</b>"
+                        else
+                            a_el = $("<a>").attr("href", "file:stderr:#{o.aData[0]}:#{o.aData[1]}").text(val)
+                            return $("<div>").append(a_el).html()
+                    "aTargets" : @get_header_idx("run", ["stderr"]),
                     "sClass"   : "nowrap right"
                 }, {
                     "fnRender" : (o, val) =>
@@ -467,8 +476,7 @@ class rms_view
     new_file_info: (event) =>
         cur_el = $(event.target)
         cur_href = cur_el.attr("href")
-        cur_col = @tables["run_table"].dataTable().fnSettings().aoColumns[cur_href.split(":")[1]]
-        #console.log cur_col
+        cur_col = @tables["run_table"].dataTable().fnSettings().aoColumns[@get_header_idx("run", cur_href.split(":")[1])]
         if true
             cur_fi = new int_file_info(event, cur_href, @top_div, cur_href.split(":")[2] + ", " + cur_col.sTitle)
             @extra_tabs["tabs-#{cur_href}"] = cur_fi

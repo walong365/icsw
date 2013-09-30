@@ -201,8 +201,7 @@ class get_file_content(View):
     def post(self, request):
         _post = request.POST
         file_parts = _post["file_id"].split(":")
-        row_num = int(file_parts[1])
-        std_type = "stdout" if row_num == 12 else "stderr"
+        std_type = file_parts[1]
         job_id = file_parts[2]
         # my_sge_info.update()
         job_info = my_sge_info.get_job(job_id)
