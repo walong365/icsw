@@ -297,6 +297,12 @@ class user(models.Model):
         if not res and ask_parent:
             res = check_permission(self.group, perm)
         return res
+    @property
+    def is_staff(self):
+        return self.is_superuser
+    @property
+    def id(self):
+        return self.pk
     def has_object_perm(self, perm, obj=None, ask_parent=True):
         if not (self.active and self.group.active):
             return False
