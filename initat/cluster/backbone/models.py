@@ -2013,6 +2013,8 @@ def net_ip_pre_save(sender, **kwargs):
             match_list = ipv_addr.find_matching_network(network.objects.all())
             if len(match_list):
                 cur_inst.network = match_list[0][1]
+        if not cur_inst.network_id:
+            raise ValidationError("no matching network found")
         if not ipv_addr.network_matches(cur_inst.network):
             match_list = ipv_addr.find_matching_network(network.objects.all())
             if match_list:
