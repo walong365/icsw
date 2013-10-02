@@ -307,7 +307,7 @@ class user_tree
                 onDragStart : (dtnode) =>
                     return true
                 onDragEnter : (dst_node, src_node) =>
-                    if dst_node.data.key.match(/^group__/)
+                    if dst_node.data.key.match(/^group__/) or (dst_node.data.key == "top" and src_node.data.key.match(/^group__/))
                         return true
                     else
                         return false
@@ -332,7 +332,7 @@ class user_tree
         if db_node is undefined
             title_str = "TOP"
             expand_flag = true
-            key         = 0
+            key         = "top"
             folder      = true
             next_list = @UGX.find("groups group[parent_group='0']")
         else
@@ -349,7 +349,7 @@ class user_tree
         )
         next_list.each (idx, sub_el) =>
             @build_group_node(new_node, $(sub_el))
-        if key
+        if key != "top"
             @UGX.find("users user[group='" + db_node.attr("pk") + "']").each (u_idx, user_el) =>
                 @build_user_node(new_node, $(user_el))
     build_user_node: (dt_node, db_node) =>

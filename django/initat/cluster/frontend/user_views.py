@@ -24,7 +24,6 @@
 
 import logging
 import logging_tools
-import net_tools
 import os
 import pprint
 import process_tools
@@ -33,13 +32,9 @@ from lxml import etree # @UnresolvedImports
 from lxml.builder import E # @UnresolvedImports
 
 from crispy_forms.layout import Submit, Layout, Field, ButtonHolder, Button
-from django.conf import settings
 from django.contrib.auth.decorators import login_required, permission_required
 from django.contrib.contenttypes.models import ContentType
-from django.core.exceptions import ValidationError
-from django.core.urlresolvers import reverse
 from django.db.models import get_model, Q
-from django.http import HttpResponse
 from django.utils.decorators import method_decorator
 from django.views.generic import View
 
@@ -252,7 +247,10 @@ class move_node(View):
     @method_decorator(xml_wrapper)
     def post(self, request):
         _post = request.POST
-        dst_group = group.objects.get(Q(pk=_post["dst_id"].split("__")[1]))
+        if _post["dst_id"] == "top":
+            dst_group = None
+        else:
+            dst_group = group.objects.get(Q(pk=_post["dst_id"].split("__")[1]))
         if _post["src_id"].startswith("user_"):
             cur_user = user.objects.get(Q(pk=_post["src_id"].split("__")[1]))
             cur_user.group = dst_group
@@ -264,9 +262,9 @@ class move_node(View):
             cur_group = group.objects.get(Q(pk=_post["src_id"].split("__")[1]))
             cur_group.parent_group = dst_group
             cur_group.save()
-            request.xml_response.info("group %s moved to group %s" % (
+            request.xml_response.info("group %s moved to %s" % (
                 unicode(cur_group),
-                unicode(dst_group)), logger)
+                u"group %s" % (unicode(dst_group)) if dst_group else "top"), logger)
 
 class group_detail(View):
     @method_decorator(login_required)
