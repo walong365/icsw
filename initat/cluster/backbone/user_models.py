@@ -508,7 +508,7 @@ class group(models.Model):
     # not implemented right now in md-config-server
     allowed_device_groups = models.ManyToManyField("device_group")
     # parent group
-    parent_group = models.ForeignKey("self", null=True)
+    parent_group = models.ForeignKey("self", null=True, blank=True)
     permissions = models.ManyToManyField(csw_permission, related_name="db_group_permissions")
     object_permissions = models.ManyToManyField(csw_object_permission, related_name="db_group_permissions")
     def has_perms(self, perms):
