@@ -328,13 +328,7 @@ class sync_ldap_config(cs_base_class.server_com):
                 self.log("using LDAP_SCHEMATA_VERSION %d" % (ldap_version))
                 # fetch user / group info
                 all_groups = dict([(cur_g.pk, cur_g) for cur_g in group.objects.all()])
-                # self.dc.execute("SELECT g.* FROM ggroup g")
-                # all_groups = dict([(x["ggroup_idx"], x) for x in self.dc.fetchall()])
-                all_users = dict([(cur_u.pk, cur_u) for cur_u in user.objects.all()])
-                # self.dc.execute("SELECT u.* FROM user u")
-                # all_users = dict([(x["user_idx"], x) for x in self.dc.fetchall() if x["ggroup"] in all_groups.keys()])
-                # not supported right now, FIXME
-                # self.dc.execute("SELECT d.name, udl.user FROM device d, user_device_login udl WHERE udl.device=d.device_idx")
+                all_users = dict([(cur_u.pk, cur_u) for cur_u in user.objects.prefetch_related("secondary_groups").all()])
                 devlog_dict = {}
                 # for db_rec in self.dc.fetchall():
                     # devlog_dict.setdefault(db_rec["user"], []).append(db_rec["name"])
@@ -369,7 +363,7 @@ class sync_ldap_config(cs_base_class.server_com):
                         sub_ou_str,
                         par_dict["base_dn"])
                     primary_users = [cur_u.login for cur_u in all_users.itervalues() if cur_u.active and cur_u.group_id == g_idx]
-                    secondary_users = [cur_u.login for cur_u in all_users.itervalues() if cur_u.active and False] # g_idx in x.get("secondary_groups", []) and x["login"] not in primary_users]
+                    secondary_users = [cur_u.login for cur_u in all_users.itervalues() if cur_u.active and cur_u.group_id != g_idx and any([sec_g.pk == g_idx for sec_g in cur_u.secondary_groups.all()])]
                     group_classes = ["posixGroup", "top", "clusterGroup"]
                     g_stuff.attributes = {
                         "objectClass" : group_classes,
