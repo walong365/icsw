@@ -3,6 +3,7 @@
 import collectd
 import logging_tools
 import multiprocessing
+import os
 import process_tools
 import re
 import server_command
@@ -11,11 +12,12 @@ import threading
 import time
 import uuid_tools
 import zmq
-from lxml import etree
-from lxml.builder import E
+from lxml import etree # @UnresolvedImports
+from lxml.builder import E # @UnresolvedImports
 
-IPC_SOCK = "ipc:///var/log/cluster/sockets/collect"
+IPC_SOCK = "ipc:///var/log/cluster/sockets/collectd/com"
 RECV_PORT = 8002
+COMMAND_PORT = 8008
 GRAPHER_PORT = 8003
 
 class perfdata_value(object):
@@ -26,7 +28,7 @@ class perfdata_value(object):
         self.v_type = v_type
     def get_xml(self):
         return E.value(name=self.name, unit=self.unit, info=self.info, v_type=self.v_type)
-    
+
 class perfdata_object(object):
     def _wrap(self, _xml, v_list):
         # add name, host and timestamp valus
@@ -36,7 +38,7 @@ class perfdata_object(object):
             int(_xml.get("time")),
             v_list
         ]
-    
+
 class load_pdata(perfdata_object):
     PD_RE = re.compile("^load1=(?P<load1>\S+)\s+load5=(?P<load5>\S+)\s+load15=(?P<load15>\S+)$")
     PD_NAME = "load"
@@ -83,10 +85,10 @@ class value(object):
         self.name = name
         self.sane_name = self.name.replace("/", "_sl_")
     def update(self, entry):
-        self.info   = entry.attrib["info"]
+        self.info = entry.attrib["info"]
         self.v_type = entry.attrib["v_type"]
-        self.unit   = entry.get("unit", "1")
-        self.base   = int(entry.get("base", "1"))
+        self.unit = entry.get("unit", "1")
+        self.base = int(entry.get("base", "1"))
         self.factor = int(entry.get("factor", "1"))
     def transform(self, value):
         return value * self.factor
@@ -134,12 +136,13 @@ class host_info(object):
             tag_name, name_name, value_name = ("mve", "name", "value")
         values = [self.transform(entry.attrib[name_name], float(entry.attrib[value_name])) for entry in _xml.findall(tag_name)]
         return values
-        
+
 class net_receiver(multiprocessing.Process):
     def __init__(self):
         multiprocessing.Process.__init__(self, target=self._code, name="0MQ_net_receiver")
         self.zmq_id = "%s:collserver_plugin" % (process_tools.get_machine_name())
         self.grapher_id = "%s:rrd_grapher" % (uuid_tools.get_uuid().get_urn())
+        self.poller = zmq.Poller()
     def _init(self):
         self._init_perfdata()
         self._init_vars()
@@ -157,8 +160,9 @@ class net_receiver(multiprocessing.Process):
     def _init_sockets(self):
         self.context = zmq.Context()
         self.receiver = self.context.socket(zmq.PULL)
-        self.sender   = self.context.socket(zmq.PUSH)
-        self.grapher  = self.context.socket(zmq.ROUTER)
+        self.sender = self.context.socket(zmq.PUSH)
+        self.grapher = self.context.socket(zmq.ROUTER)
+        self.command = self.context.socket(zmq.ROUTER)
         # set grapher flags
         for flag, value in [
             (zmq.IDENTITY, self.zmq_id),
@@ -167,10 +171,25 @@ class net_receiver(multiprocessing.Process):
             (zmq.TCP_KEEPALIVE, 1),
             (zmq.TCP_KEEPALIVE_IDLE, 300)]:
             self.grapher.setsockopt(flag, value)
+            self.command.setsockopt(flag, value)
         self.sender.connect(IPC_SOCK)
-        self.receiver.bind("tcp://*:%d" % (RECV_PORT))
-        self.grapher.connect("tcp://localhost:%d" % (GRAPHER_PORT))
-        collectd.notice("listening on port %d" % (RECV_PORT))
+        listener_url = "tcp://*:%d" % (RECV_PORT)
+        command_url = "tcp://*:%d" % (COMMAND_PORT)
+        grapher_url = "tcp://localhost:%d" % (GRAPHER_PORT)
+        self.receiver.bind(listener_url)
+        self.command.bind(command_url)
+        self.grapher.connect(grapher_url)
+        collectd.notice("listening on %s, connected to grapher on %s, command_url is %s" % (
+            listener_url,
+            grapher_url,
+            command_url,
+            ))
+        self.__poller_dict = {
+            self.receiver : self._recv_data,
+            self.command : self._recv_command,
+            }
+        self.poller.register(self.receiver, zmq.POLLIN)
+        self.poller.register(self.command, zmq.POLLIN)
     def _init_hosts(self):
         # init host and perfdata structs
         self.__hosts = {}
@@ -188,6 +207,7 @@ class net_receiver(multiprocessing.Process):
         self.sender.close()
         self.receiver.close()
         self.grapher.close()
+        self.command.close()
         self.context.term()
         collectd.notice("0MQ process finished")
     def _code(self):
@@ -227,11 +247,25 @@ class net_receiver(multiprocessing.Process):
         self.grapher.send_unicode(unicode(send_xml))
     def _loop(self):
         while True:
-            in_data = self.receiver.recv()
-            self._process_data(in_data)
-            if abs(time.time() - self.__start_time) > 300:
-                # periodic log stats
-                self._log_stats()
+            rcv_list = self.poller.poll(timeout=1000)
+            for in_sock, in_type in rcv_list:
+                self.__poller_dict[in_sock](in_sock)
+    def _recv_data(self, in_sock):
+        in_data = in_sock.recv()
+        self._process_data(in_data)
+        if abs(time.time() - self.__start_time) > 300:
+            # periodic log stats
+            self._log_stats()
+    def _recv_command(self, in_sock):
+        in_uuid = in_sock.recv_unicode()
+        in_xml = in_sock.recv_unicode()
+        in_com = server_command.srv_command(source=in_xml)
+        in_com.update_source()
+        com_text = in_com["command"].text
+        collectd.info("got command %s from %s" % (com_text, in_uuid))
+        in_com.set_result("got command %s" % (com_text))
+        in_sock.send_unicode(in_uuid, zmq.SNDMORE)
+        in_sock.send_unicode(unicode(in_com))
     def _feed_host_info(self, host_uuid, host_name, _xml):
         if host_uuid not in self.__hosts:
             self.__hosts[host_uuid] = host_info(host_uuid, host_name)
@@ -241,20 +275,19 @@ class net_receiver(multiprocessing.Process):
             new_com["vector"] = _xml
             self._send(new_com)
     def _process_data(self, in_tree):
-        r_data = None
         # adopt tree format for faster handling in collectd loop
         try:
             _xml = etree.fromstring(in_tree)
         except:
             collectd.error("cannot parse tree: %s" % (process_tools.get_except_info()))
         else:
+            xml_tag = _xml.tag.split("}")[-1]
+            # collectd.error(xml_tag)
             try:
-                for p_data in getattr(self, "_handle_%s" % (_xml.tag))(_xml, len(in_tree)):
+                for p_data in getattr(self, "_handle_%s" % (xml_tag))(_xml, len(in_tree)):
                     self.sender.send_pyobj(p_data)
             except:
                 collectd.error(process_tools.get_except_info())
-                r_data = None
-        return r_data
     def _check_for_ext_perfdata(self, mach_values):
         # unique tuple
         pd_tuple = (mach_values[0], mach_values[1])
@@ -306,8 +339,8 @@ class net_receiver(multiprocessing.Process):
                 if len(mach_values):
                     self._check_for_ext_perfdata(mach_values)
                     yield ("pdata", mach_values)
-                    #print etree.tostring(mach_vect, pretty_print=True)
-                    #yield mach_vect
+                    # print etree.tostring(mach_vect, pretty_print=True)
+                    # yield mach_vect
         raise StopIteration
     def _find_matching_pd_handler(self, p_data, perf_value):
         values = []
@@ -325,7 +358,7 @@ class net_receiver(multiprocessing.Process):
                 )
             )
         return values
-    
+
 class receiver(object):
     def __init__(self):
         self.context = zmq.Context()
@@ -339,6 +372,10 @@ class receiver(object):
     def init_receiver(self):
         collectd.notice("init 0MQ IPC receiver at %s" % (IPC_SOCK))
         self.recv_sock = self.context.socket(zmq.PULL)
+        sock_dir = os.path.dirname(IPC_SOCK[6:])
+        if not os.path.isdir(sock_dir):
+            collectd.notice("creating directory %s" % (sock_dir))
+            os.mkdir(sock_dir)
         self.recv_sock.bind(IPC_SOCK)
     def recv(self):
         self.lock.acquire()
@@ -368,7 +405,7 @@ class receiver(object):
             if cur_time <= self.__last_sent[h_tuple]:
                 diff_time = self.__last_sent[h_tuple] + 1 - cur_time
                 cur_time += diff_time
-                collectd.notice("correcting time for %s (+%ds)" % (str(h_tuple), diff_time))
+                collectd.notice("correcting time for %s (+%ds to %d)" % (str(h_tuple), diff_time, int(cur_time)))
         self.__last_sent[h_tuple] = cur_time
         return self.__last_sent[h_tuple]
     def _handle_perfdata(self, data):
@@ -382,18 +419,18 @@ class receiver(object):
             # name can be none for values with transform problems
             if name:
                 collectd.Values(plugin="collserver", host=host_name, time=s_time, type="icval", type_instance=name).dispatch(values=[value])
-        
-#== Our Own Functions go here: ==#
+
+# == Our Own Functions go here: ==#
 def configer(ObjConfiguration):
     pass
-    #collectd.debug('Configuring Stuff')
+    # collectd.debug('Configuring Stuff')
 
 def initer(my_recv):
     signal.signal(signal.SIGCHLD, signal.SIG_DFL)
     my_recv.init_receiver()
     my_recv.start_sub_proc()
 
-#== Hook Callbacks, Order is important! ==#
+# == Hook Callbacks, Order is important! ==#
 
 my_recv = receiver()
 
