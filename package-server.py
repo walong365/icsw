@@ -52,7 +52,6 @@ except ImportError:
     VERSION_STRING = "??.??-??"
 
 P_SERVER_PUB_PORT = 8007
-P_SERVER_PULL_PORT = 8008
 PACKAGE_CLIENT_PORT = 2003
 
 ADD_PACK_PATH = "additional_packages"
@@ -777,7 +776,6 @@ class server_process(threading_tools.process_pool):
         # get all ipv4 interfaces with their ip addresses, dict: interfacename -> IPv4
         for key, sock_type, bind_port, target_func in [
             ("router", zmq.ROUTER, global_config["SERVER_PUB_PORT"] , self._new_com),
-            ("pull"  , zmq.PULL  , global_config["SERVER_PULL_PORT"], self._new_com),
             ]:
             client = self.zmq_context.socket(sock_type)
             client.setsockopt(zmq.IDENTITY, self.bind_id)
@@ -842,7 +840,6 @@ def main():
         ("LOG_NAME"                 , configfile.str_c_var(prog_name)),
         ("VERBOSE"                  , configfile.int_c_var(0, help_string="set verbose level [%(default)d]", short_options="v", only_commandline=True)),
         ("SERVER_PUB_PORT"          , configfile.int_c_var(P_SERVER_PUB_PORT, help_string="server publish port [%(default)d]")),
-        ("SERVER_PULL_PORT"         , configfile.int_c_var(P_SERVER_PULL_PORT, help_string="server pull port [%(default)d]")),
         ("NODE_PORT"                , configfile.int_c_var(PACKAGE_CLIENT_PORT, help_string="port where the package-clients are listening [%(default)d]")),
         ("DELETE_MISSING_REPOS"     , configfile.bool_c_var(False, help_string="delete non-existing repos from DB")),
     ])
