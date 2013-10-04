@@ -278,7 +278,7 @@ def is_server(server_type, long_mode=False, report_real_idx=False, short_host_na
                                                                    my_conf[2])
     else:
         # get local devices
-        local_ips = net_ip.objects.filter(Q(netdevice__device__name=short_host_name)).values_list("ip", flat=True)
+        _local_ips = net_ip.objects.filter(Q(netdevice__device__name=short_host_name)).values_list("ip", flat=True)
         # get all ips for the given config
         my_confs = config.objects.filter(
             Q(**{dmatch_str : server_type})

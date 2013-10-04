@@ -10,8 +10,8 @@ import datetime
 from django.db.models import Q, signals
 from django.dispatch import receiver
 from django.core.exceptions import ValidationError
-from lxml import etree
-from lxml.builder import E
+from lxml import etree # @UnresolvedImports
+from lxml.builder import E # @UnresolvedImports
 import re
 import ipvx_tools
 import logging_tools

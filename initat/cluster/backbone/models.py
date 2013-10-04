@@ -1,31 +1,31 @@
 #!/usr/bin/python-init
 
+import base64
 import datetime
-import uuid
-import re
-import time
+import hashlib
 import inspect
 import ipvx_tools
+import logging
 import logging_tools
 import pytz
-import hashlib
-import base64
-import logging
+import re
+import time
+import uuid
 import os
 from lxml import etree # @UnresolvedImport
 from lxml.builder import E # @UnresolvedImport
 from rest_framework import serializers
 
 from django.conf import settings
+from django.contrib.contenttypes.models import ContentType
 from django.core.exceptions import ValidationError, ImproperlyConfigured
 from django.db import models
 from django.db.models import Q, signals, get_model
 from django.dispatch import receiver
 from django.utils.functional import memoize
-from django.contrib.contenttypes.models import ContentType
 
 from initat.cluster.backbone.model_functions import _check_empty_string, _check_float, _check_integer, _check_non_empty_string
-from initat.cluster.backbone.mon_models import * # @UnusedImport
+from initat.cluster.backbone.mon_models import *
 from initat.cluster.backbone.user_models import *
 
 ALLOWED_CFS = ["MAX", "MIN", "AVERAGE"]
@@ -42,6 +42,7 @@ TOP_LOCATIONS = set([
     TOP_CONFIG_CATEGORY,
     TOP_DEVICE_CATEGORY,
     ])
+
 # validation REs
 valid_domain_re = re.compile("^[a-zA-Z0-9-_]+$")
 valid_category_re = re.compile("^[a-zA-Z0-9-_\.]+$")

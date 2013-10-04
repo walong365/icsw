@@ -1,7 +1,7 @@
 #!/usr/bin/python-init -Otu
 
-import sys
 import os
+import sys
 
 IGNORE_TABLES = ["config_type"]
 

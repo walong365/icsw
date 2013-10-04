@@ -10,8 +10,9 @@ if not abs_path.startswith("/opt/python-init"):
         sys.path.insert(0, abs_path)
 
 import warnings
-warnings.filterwarnings("ignore", "No data .*")
-warnings.filterwarnings("ignore", "Data truncated.*")
+
+# warnings.filterwarnings("ignore", "No data .*")
+# warnings.filterwarnings("ignore", "Data truncated.*")
 
 if __name__ == "__main__":
     os.environ.setdefault("DJANGO_SETTINGS_MODULE", "initat.cluster.settings")
