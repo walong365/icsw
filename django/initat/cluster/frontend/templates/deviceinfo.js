@@ -455,7 +455,7 @@ class device_info
         })
         dev_div = $("<div>")
         dev_div.append(
-            $("<h3>").text("#{dev_xml.attr('name')}, UUID: #{dev_xml.attr('uuid')}")
+            $("<h3>").text("Device #{dev_xml.attr('full_name')}")
         )
         tabs_div = $("<div>").attr("id", "tabs")
         dev_div.append(tabs_div)
@@ -660,6 +660,8 @@ class device_info
         general_div.html(@resp_xml.find("forms general_form").text())
         #console.log(@resp_xml.find("forms general_form")[0])
         general_div.find("input, select").bind("change", @my_submitter.submit)
+        @uuid_div = null
+        general_div.find("input[name='uuid']").on("click", @show_uuid_info)
         #general_div.find("select.select_chosen").chosen(
         #    width : "50%"
         #)
@@ -672,6 +674,20 @@ class device_info
         #)
         #general_div.find("input[id$='_domain_tree_node']").on("click", show_domain_name_tree)
         return general_div
+    show_uuid_info: (event) => 
+        cur_el = $(event.target)
+        if @uuid_div
+            @uuid_div.remove()
+            @uuid_div = null
+        else
+            @uuid_div = $("<div>").
+                append($("<h4>").text("Copy the following snippet to /etc/sysconfig/host-monitoring.d/0mq_id :")).
+                append($("<pre>").
+                    css("font-family", "courier").
+                    css("font-size", "12pt").
+                    css("display", "block").
+                    text("<?xml version='1.0' encoding='utf-8'?>\n<bind_info>\n    <zmq_id bind_address='*'>urn:uuid:" + @resp_xml.find("device").attr("uuid") + "</zmq_id>\n</bind_info>"))
+            cur_el.after(@uuid_div)
     category_div: (dev_xml) =>
         cat_div = $("<div>").attr("id", "category")
         tree_div = $("<div>").attr("id", "cat_tree")

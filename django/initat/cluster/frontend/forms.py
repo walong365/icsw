@@ -169,14 +169,21 @@ class device_general_form(ModelForm):
         Fieldset(
             "Device details",
             Field("name"),
-            Field("domain_tree_node", css_class="select_chosen"),
+            Field("domain_tree_node"),
             Field("comment"),
-            Fieldset("Monitor settings",
-                     Field("mon_device_templ"),
-                     Field("monitor_checks"),
-                     Field("enable_perfdata"),
-                     Field("flap_detection_enabled"),
-                     ),
+            css_class="inlineLabels",
+        ),
+        Fieldset(
+            "Monitor settings",
+            Field("mon_device_templ"),
+            Field("monitor_checks"),
+            Field("enable_perfdata"),
+            Field("flap_detection_enabled"),
+            css_class="inlineLabels",
+        ),
+        Fieldset(
+            "Info",
+            Button("uuid", "show UUID info"),
             css_class="inlineLabels",
         )
     )
