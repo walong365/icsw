@@ -28,34 +28,33 @@ os.environ.setdefault("DJANGO_SETTINGS_MODULE", "initat.cluster.settings")
 
 from django.conf import settings
 
+import cluster_location
 import colorsys
 import commands
+import config_tools
+import configfile
 import copy
 import datetime
 import getopt
+import logging_tools
+import process_tools
+import pprint
 import re
+import rrdtool
+import server_command
 import socket
 import stat
-import pprint
+import threading_tools
 import time
+import uuid_tools
 import zmq
 from colour import Color
 from lxml import etree
 from lxml.builder import E
 
-# import rrdtool
-# import configfile
-import logging_tools
-import process_tools
-import config_tools
-import server_command
-import threading_tools
-import cluster_location
-import uuid_tools
-import configfile
-import rrdtool
 from django.db import connection, connections
 from django.db.models import Q
+
 try:
     from rrd_grapher.version import VERSION_STRING
 except ImportError:
