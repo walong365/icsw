@@ -234,28 +234,48 @@ TEMPLATE_DIRS = (
     # Always use forward slashes, even on Windows.
     # Don't forget to use absolute paths, not relative paths.
 )
-
-INSTALLED_APPS = (
-    "django.contrib.auth",
-    "django.contrib.contenttypes",
-    "django.contrib.sessions",
-    "django.contrib.sites",
-    "django.contrib.messages",
-    # "django.contrib.staticfiles",
-    # Uncomment the next line to enable the admin:
-    "django.contrib.admin",
-    # Uncomment the next line to enable admin documentation:
-    # "django.contrib.admindocs",
-    "django_extensions",
-    "reversion",
-    "south",
-    "compressor",
-    "coffeescript",
-    "crispy_forms",
-    # cluster
-    "initat.core",
-    # "guardian",
-)
+if "INITIAL_MIGRATION_RUN" in os.environ:
+    INSTALLED_APPS = (
+        # "django.contrib.auth",
+        "django.contrib.contenttypes",
+        "django.contrib.sessions",
+        "django.contrib.sites",
+        "django.contrib.messages",
+        # "django.contrib.staticfiles",
+        # Uncomment the next line to enable the admin:
+        # "django.contrib.admin",
+        # Uncomment the next line to enable admin documentation:
+        # "django.contrib.admindocs",
+        "django_extensions",
+        # "reversion",
+        "south",
+        "compressor",
+        "coffeescript",
+        "crispy_forms",
+        # cluster
+        # "initat.core",
+    )
+else:
+    INSTALLED_APPS = (
+        "django.contrib.auth",
+        "django.contrib.contenttypes",
+        "django.contrib.sessions",
+        "django.contrib.sites",
+        "django.contrib.messages",
+        # "django.contrib.staticfiles",
+        # Uncomment the next line to enable the admin:
+        "django.contrib.admin",
+        # Uncomment the next line to enable admin documentation:
+        # "django.contrib.admindocs",
+        "django_extensions",
+        "reversion",
+        "south",
+        "compressor",
+        "coffeescript",
+        "crispy_forms",
+        # cluster
+        "initat.core",
+    )
 
 # needed by some modules
 ZMQ_LOGGING = True
@@ -281,7 +301,6 @@ if not "NO_AUTO_ADD_APPLICATIONS" in os.environ:
     # my authentication backend
     AUTHENTICATION_BACKENDS = (
         "initat.cluster.backbone.cluster_auth.db_backend",
-        'guardian.backends.ObjectPermissionBackend',
         )
     AUTH_USER_MODEL = "backbone.user"
 

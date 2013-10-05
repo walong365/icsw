@@ -643,7 +643,7 @@ class device(models.Model):
         permissions = (
             ("all_devices", "access all devices", False),
             ("show_graphs", "Access to device graphs", True),
-            ("change_network", "Change network", False),
+            ("change_network", "Change network", True),
             # (""),
             # ("wf_apc" , "APC control"),
         )

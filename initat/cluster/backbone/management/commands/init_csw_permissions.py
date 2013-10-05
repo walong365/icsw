@@ -111,6 +111,7 @@ class Command(BaseCommand):
                                 codename=code_name,
                                 name=name,
                                 content_type=cur_ct,
+                                valid_for_object_level=valid_for_object_level,
                                 )
                             p_dict[(new_perm.content_type.app_label, new_perm.codename)] = new_perm
                             full_dict[(new_perm.content_type.app_label, new_perm.codename, new_perm.content_type.model)] = new_perm

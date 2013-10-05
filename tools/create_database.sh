@@ -12,9 +12,17 @@ if [ "${UID:-X}" = "0" ] ; then
     echo "migration_dir is ${MIG_DIR}, ID_FLAGS is '${ID_FLAGS}'"
     if [ ! -d ${MIG_DIR} ] ; then
         export NO_AUTO_ADD_APPLICATIONS=1
+        export INITIAL_MIGRATION_RUN=1
         ${C_DIR}/manage.py syncdb --noinput ${ID_FLAGS}
         unset NO_AUTO_ADD_APPLICATIONS
+        unset INITIAL_MIGRATION_RUN
+        ${C_DIR}/manage.py schemamigration django.contrib.auth --initial
+        ${C_DIR}/manage.py schemamigration reversion --initial
         ${C_DIR}/manage.py schemamigration backbone --initial
+        ${C_DIR}/manage.py migrate auth
+        ${C_DIR}/manage.py migrate reversion
+        ${C_DIR}/manage.py migrate backbone --no-initial-data
+        ${C_DIR}/manage.py syncdb --noinput ${ID_FLAGS}
         ${C_DIR}/manage.py migrate ${ID_FLAGS}
         if [ -z "$1" ]; then
             echo ""
