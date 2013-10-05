@@ -31,7 +31,7 @@ class perfdata_value(object):
 
 class perfdata_object(object):
     def _wrap(self, _xml, v_list):
-        # add name, host and timestamp valus
+        # add name, host and timestamp values
         return [
             self.PD_NAME,
             _xml.get("host"),
@@ -81,17 +81,45 @@ class ping_pdata(perfdata_object):
         )
 
 class value(object):
+    # somehow resembles mvect_entry from hm_classes
+    __slots__ = ["name", "sane_name", "info", "unit", "base", "value", "factor", "v_type", "last_update", "set_value"]
     def __init__(self, name):
         self.name = name
         self.sane_name = self.name.replace("/", "_sl_")
-    def update(self, entry):
+    def update(self, entry, cur_time):
         self.info = entry.attrib["info"]
         self.v_type = entry.attrib["v_type"]
         self.unit = entry.get("unit", "1")
         self.base = int(entry.get("base", "1"))
         self.factor = int(entry.get("factor", "1"))
-    def transform(self, value):
-        return value * self.factor
+        if self.v_type == "i":
+            self.set_value = self._set_value_int
+        elif self.v_type == "f":
+            self.set_value = self._set_value_float
+        else:
+            self.set_value = self._set_value_str
+        self.set_value(entry.attrib["value"], cur_time)
+    def _set_value_int(self, value, cur_time):
+        self.last_update = cur_time
+        self.value = int(value)
+    def _set_value_float(self, value, cur_time):
+        self.last_update = cur_time
+        self.value = float(value)
+    def _set_value_str(self, value, cur_time):
+        self.last_update = cur_time
+        self.value = value
+    def transform(self, value, cur_time):
+        self.set_value(value, cur_time)
+        return self.value * self.factor
+    def get_key_info(self):
+        return E.key(
+            value=str(self.value),
+            name=self.name,
+            v_type=self.v_type,
+            base="%d" % (self.base),
+            factor="%d" % (self.factor),
+            unit=self.unit,
+            )
 
 class host_info(object):
     def __init__(self, uuid, name):
@@ -99,16 +127,38 @@ class host_info(object):
         self.name = name
         self.uuid = uuid
         self.__dict = {}
+        self.last_update = None
+        self.updates = 0
+        self.stores = 0
+    def get_host_info(self):
+        return E.host_info(
+            name=self.name,
+            uuid=self.uuid,
+            last_update="%d" % (self.last_update or 0),
+            keys="%d" % (len(self.__dict)),
+            # update calls (full info)
+            updates="%d" % (self.updates),
+            # store calls (short info)
+            stores="%d" % (self.stores),
+            )
+    def get_key_list(self, value_filter):
+        h_info = self.get_host_info()
+        for key in sorted(self.__dict.keys()):
+            if value_filter.match(key):
+                h_info.append(self.__dict[key].get_key_info())
+        return h_info
     def update(self, _xml):
+        cur_time = time.time()
         old_keys = set(self.__dict.keys())
         for entry in _xml.findall("mve"):
             cur_name = entry.attrib["name"]
             if cur_name not in self.__dict:
                 self.__dict[cur_name] = value(cur_name)
-            self.__dict[cur_name].update(entry)
+            self.__dict[cur_name].update(entry, cur_time)
         new_keys = set(self.__dict.keys())
         c_keys = old_keys ^ new_keys
         if c_keys:
+            self.updates += 1
             del_keys = old_keys - new_keys
             for del_key in del_keys:
                 del self.__dict[del_key]
@@ -116,12 +166,13 @@ class host_info(object):
             return True
         else:
             return False
-    def transform(self, key, value):
+    def transform(self, key, value, cur_time):
+        self.last_update = cur_time
         if key in self.__dict:
             try:
                 return (
                     self.__dict[key].sane_name,
-                    self.__dict[key].transform(value),
+                    self.__dict[key].transform(value, cur_time),
                 )
             except:
                 collectd.error("error transforming %s: %s" % (key, process_tools.get_except_info()))
@@ -130,11 +181,13 @@ class host_info(object):
             # key not known, skip
             return (None, None)
     def get_values(self, _xml, simple):
+        self.stores += 1
         if simple:
             tag_name, name_name, value_name = ("m", "n", "v")
         else:
             tag_name, name_name, value_name = ("mve", "name", "value")
-        values = [self.transform(entry.attrib[name_name], float(entry.attrib[value_name])) for entry in _xml.findall(tag_name)]
+        cur_time = time.time()
+        values = [self.transform(entry.attrib[name_name], entry.attrib[value_name], cur_time) for entry in _xml.findall(tag_name)]
         return values
 
 class net_receiver(multiprocessing.Process):
@@ -193,7 +246,8 @@ class net_receiver(multiprocessing.Process):
     def _init_hosts(self):
         # init host and perfdata structs
         self.__hosts = {}
-        self.__perfdatas = {}
+        # counter when to send data to rrd-grapher
+        self.__perfdatas_cnt = {}
     def _init_vars(self):
         self.__start_time = time.time()
         self.__trees_read, self.__pds_read = (0, 0)
@@ -242,14 +296,19 @@ class net_receiver(multiprocessing.Process):
             logging_tools.get_diff_time_str(self.__end_time - self.__start_time),
         ))
         self._init_vars()
-    def _send(self, send_xml):
+    def _send_to_grapher(self, send_xml):
         self.grapher.send_unicode(self.grapher_id, zmq.SNDMORE)
         self.grapher.send_unicode(unicode(send_xml))
     def _loop(self):
         while True:
-            rcv_list = self.poller.poll(timeout=1000)
-            for in_sock, in_type in rcv_list:
-                self.__poller_dict[in_sock](in_sock)
+            try:
+                rcv_list = self.poller.poll(timeout=1000)
+            except zmq.error.ZMQError:
+                collectd.error("got ZMQError, exiting")
+                break
+            else:
+                for in_sock, in_type in rcv_list:
+                    self.__poller_dict[in_sock](in_sock)
     def _recv_data(self, in_sock):
         in_data = in_sock.recv()
         self._process_data(in_data)
@@ -262,7 +321,31 @@ class net_receiver(multiprocessing.Process):
         in_com = server_command.srv_command(source=in_xml)
         in_com.update_source()
         com_text = in_com["command"].text
-        collectd.info("got command %s from %s" % (com_text, in_uuid))
+        h_filter, v_filter = (
+            in_com.get("host_filter", ".*"),
+            in_com.get("value_filter", ".*")
+            )
+        collectd.info("got command %s from %s (host_filter: %s, value_filter: %s)" % (
+            com_text,
+            in_uuid,
+            h_filter,
+            v_filter,
+            ))
+        host_filter, value_filter = (
+            re.compile(h_filter),
+            re.compile(v_filter),
+        )
+        match_uuids = [cur_uuid for cur_uuid in self.__hosts.keys() if host_filter.match(self.__hosts[cur_uuid].name)]
+        if com_text == "host_list":
+            result = E.host_list(entries="%d" % (len(match_uuids)))
+            for cur_uuid in match_uuids:
+                result.append(self.__hosts[cur_uuid].get_host_info())
+            in_com["result"] = result
+        elif com_text == "key_list":
+            result = E.host_list(entries="%d" % (len(match_uuids)))
+            for cur_uuid in match_uuids:
+                result.append(self.__hosts[cur_uuid].get_key_list(value_filter))
+            in_com["result"] = result
         in_com.set_result("got command %s" % (com_text))
         in_sock.send_unicode(in_uuid, zmq.SNDMORE)
         in_sock.send_unicode(unicode(in_com))
@@ -273,7 +356,7 @@ class net_receiver(multiprocessing.Process):
             # something changed
             new_com = server_command.srv_command(command="mv_info")
             new_com["vector"] = _xml
-            self._send(new_com)
+            self._send_to_grapher(new_com)
     def _process_data(self, in_tree):
         # adopt tree format for faster handling in collectd loop
         try:
@@ -283,25 +366,31 @@ class net_receiver(multiprocessing.Process):
         else:
             xml_tag = _xml.tag.split("}")[-1]
             # collectd.error(xml_tag)
-            try:
-                for p_data in getattr(self, "_handle_%s" % (xml_tag))(_xml, len(in_tree)):
-                    self.sender.send_pyobj(p_data)
-            except:
-                collectd.error(process_tools.get_except_info())
+            handle_name = "_handle_%s" % (xml_tag)
+            if hasattr(self, handle_name):
+                try:
+                    # loop
+                    for p_data in getattr(self, handle_name)(_xml, len(in_tree)):
+                        # collectd.info(str(p_data))
+                        self.sender.send_pyobj(p_data)
+                except:
+                    collectd.error(process_tools.get_except_info())
+            else:
+                collectd.error("unknown handle_name '%s'" % (handle_name))
     def _check_for_ext_perfdata(self, mach_values):
         # unique tuple
         pd_tuple = (mach_values[0], mach_values[1])
-        if pd_tuple not in self.__perfdatas:
-            self.__perfdatas[pd_tuple] = 1
-        self.__perfdatas[pd_tuple] -= 1
-        if not self.__perfdatas[pd_tuple]:
-            self.__perfdatas[pd_tuple] = 10
+        if pd_tuple not in self.__perfdatas_cnt:
+            self.__perfdatas_cnt[pd_tuple] = 1
+        self.__perfdatas_cnt[pd_tuple] -= 1
+        if not self.__perfdatas_cnt[pd_tuple]:
+            self.__perfdatas_cnt[pd_tuple] = 10
             pd_obj = globals()["%s_pdata" % (mach_values[0])]()
             new_com = server_command.srv_command(command="perfdata_info")
             new_com["hostname"] = mach_values[1]
             new_com["pd_type"] = pd_obj.PD_NAME
             new_com["info"] = pd_obj.PD_XML_INFO
-            self._send(new_com)
+            self._send_to_grapher(new_com)
     def _handle_machine_vector(self, _xml, data_len):
         self.__trees_read += 1
         self.__total_size_trees += data_len
@@ -339,8 +428,6 @@ class net_receiver(multiprocessing.Process):
                 if len(mach_values):
                     self._check_for_ext_perfdata(mach_values)
                     yield ("pdata", mach_values)
-                    # print etree.tostring(mach_vect, pretty_print=True)
-                    # yield mach_vect
         raise StopIteration
     def _find_matching_pd_handler(self, p_data, perf_value):
         values = []
