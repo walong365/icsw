@@ -104,25 +104,28 @@ class server_process(threading_tools.process_pool):
     def _update(self):
         res_dict = {}
         if self.__enable_livestatus:
-            if mk_livestatus:
-                sock_name = "/opt/%s/var/live" % (global_config["MD_TYPE"])
-                cur_s = mk_livestatus.Socket(sock_name)
-                try:
-                    query = cur_s.query("GET hosts\nColumns: name state\n")
-                except:
-                    self.log("cannot query socket %s: %s" % (sock_name, process_tools.get_except_info()),
-                             logging_tools.LOG_LEVEL_CRITICAL)
+            if "MD_TYPE" in global_config:
+                if mk_livestatus:
+                    sock_name = "/opt/%s/var/live" % (global_config["MD_TYPE"])
+                    cur_s = mk_livestatus.Socket(sock_name)
+                    try:
+                        query = cur_s.query("GET hosts\nColumns: name state\n")
+                    except:
+                        self.log("cannot query socket %s: %s" % (sock_name, process_tools.get_except_info()),
+                                 logging_tools.LOG_LEVEL_CRITICAL)
+                    else:
+                        q_list = [int(value["state"]) for value in query.get_list()]
+                        res_dict = dict([(s_name, q_list.count(value)) for s_name, value in [
+                            ("unknown", constants.NAG_HOST_UNKNOWN),
+                            ("up"     , constants.NAG_HOST_UP),
+                            ("down"   , constants.NAG_HOST_DOWN)]])
+                        res_dict["tot"] = sum(res_dict.values())
+                    # cur_s.peer.close()
+                    del cur_s
                 else:
-                    q_list = [int(value["state"]) for value in query.get_list()]
-                    res_dict = dict([(s_name, q_list.count(value)) for s_name, value in [
-                        ("unknown", constants.NAG_HOST_UNKNOWN),
-                        ("up"     , constants.NAG_HOST_UP),
-                        ("down"   , constants.NAG_HOST_DOWN)]])
-                    res_dict["tot"] = sum(res_dict.values())
-                # cur_s.peer.close()
-                del cur_s
+                    self.log("mk_livestatus enabled but module not loaded", logging_tools.LOG_LEVEL_ERROR)
             else:
-                self.log("mk_livestatus enabled but module not loaded", logging_tools.LOG_LEVEL_ERROR)
+                self.log("no MD_TYPE set, skipping livecheck", logging_tools.LOG_LEVEL_WARN)
         else:
             # old code, ask SQL Server
             sql_str = "SELECT nhs.current_state AS host_status, nh.display_name AS host_name FROM %s_hoststatus nhs, %s_hosts nh WHERE nhs.host_object_id=nh.host_object_id" % (
@@ -175,6 +178,7 @@ class server_process(threading_tools.process_pool):
         cluster_location.write_config("monitor_server", global_config)
     def _check_nagios_version(self):
         start_time = time.time()
+        self.log("checking type and version of installed monitoring daemon")
         md_version, md_type = ("unknown", "unknown")
         for t_daemon in ["icinga", "icinga-init", "nagios", "nagios-init"]:
             if os.path.isfile("/etc/debian_version"):
