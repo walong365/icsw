@@ -83,6 +83,7 @@ def check_system(opt_ns):
             "logcheck-server",
             "package-server",
             "mother",
+            "collectd",
             "rrd-grapher",
             "sge-server",
             "cluster-server",
@@ -133,6 +134,7 @@ def check_system(opt_ns):
             "rrd-grapher"          : "rrd-grapher/rrd-grapher.pid",
             "host-relay"           : "collrelay/collrelay.pid",
             # "xen-server"           : "xen-server.pid",
+            "collectd"             : "collectd.pid",
             "cluster-server"       : "cluster-server.pid",
             "ansys"                : "ansys-server/ansys-server.pid",
             "cransys"              : "cransys-server/cransys-server.pid"}
