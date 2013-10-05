@@ -297,12 +297,13 @@ ANONYMOUS_USER_ID = -1
 INSTALLED_APPS = list(INSTALLED_APPS)
 ADDITIONAL_MENU_FILES = []
 
+AUTHENTICATION_BACKENDS = (
+    "initat.cluster.backbone.cluster_auth.db_backend",
+)
+AUTH_USER_MODEL = "backbone.user"
+
 if not "NO_AUTO_ADD_APPLICATIONS" in os.environ:
     # my authentication backend
-    AUTHENTICATION_BACKENDS = (
-        "initat.cluster.backbone.cluster_auth.db_backend",
-        )
-    AUTH_USER_MODEL = "backbone.user"
 
     # add everything below cluster
     dir_name = os.path.dirname(__file__)
