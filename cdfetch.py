@@ -137,6 +137,7 @@ class key_list_com(base_com):
         h_list = srv_com.xpath(None, ".//host_list")
         if len(h_list):
             h_list = h_list[0]
+            out_f = logging_tools.new_form_list()
             print "got result for %s:" % (logging_tools.get_plural("host", int(h_list.attrib["entries"])))
             for host in h_list:
                 print "%-30s (%-40s) : %4d keys, last update %s" % (
@@ -145,18 +146,19 @@ class key_list_com(base_com):
                     int(host.attrib["keys"]),
                     time.ctime(int(host.attrib["last_update"]))
                     )
-                out_f = logging_tools.new_form_list()
                 for num_key, key_el in enumerate(host):
                     cur_mv = mvect_entry(key_el.attrib.pop("name"), info="", **key_el.attrib)
-                    out_f.append(cur_mv.get_form_entry(num_key + 1))
-                print unicode(out_f)
+                    out_f.append([logging_tools.form_entry(host.attrib["name"], header="device")] + cur_mv.get_form_entry(num_key + 1))
+            print unicode(out_f)
         else:
             print "No host_list found in result"
             self.ret_state = 1
 
 def main():
     parser = argparse.ArgumentParser("query the datastore of collectd servers")
-    parser.add_argument("arguments", nargs="+", help="additional arguments, first one is command")
+    com_list = [key[:-4] for key in globals().keys() if key.endswith("_com") if key not in ["base_com"]]
+    parser.add_argument("arguments", nargs="+", help="additional arguments, first one is command (one of %s)" % (
+        ", ".join(sorted(com_list))))
     parser.add_argument("-t", help="set timeout [%(default)d]", default=10, type=int, dest="timeout")
     parser.add_argument("-p", help="port [%(default)d]", default=8008, dest="port", type=int)
     parser.add_argument("-H", help="host [%(default)s] or server", default="localhost", dest="host")
