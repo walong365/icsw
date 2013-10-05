@@ -161,6 +161,7 @@ def main():
     client.close()
     if recv_sock:
         recv_sock.close()
+    zmq_context.term()
     sys.exit(ret_state)
 
 if __name__ == "__main__":

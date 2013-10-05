@@ -318,7 +318,7 @@ class srv_command(object):
                 value = value or u""
             return value
         return result
-    def get(self, key, def_value):
+    def get(self, key, def_value=None):
         xpath_str = ".//%s" % ("/".join(["ns:%s" % (sub_arg) for sub_arg in key.split(":")]))
         xpath_res = self.__tree.xpath(xpath_str, namespaces={"ns" : XML_NS})
         if len(xpath_res) == 1:
