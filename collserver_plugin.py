@@ -141,10 +141,10 @@ class host_info(object):
             # store calls (short info)
             stores="%d" % (self.stores),
             )
-    def get_key_list(self, value_filter):
+    def get_key_list(self, key_filter):
         h_info = self.get_host_info()
         for key in sorted(self.__dict.keys()):
-            if value_filter.match(key):
+            if key_filter.match(key):
                 h_info.append(self.__dict[key].get_key_info())
         return h_info
     def update(self, _xml):
@@ -321,21 +321,21 @@ class net_receiver(multiprocessing.Process):
         in_com = server_command.srv_command(source=in_xml)
         in_com.update_source()
         com_text = in_com["command"].text
-        h_filter, v_filter = (
+        h_filter, k_filter = (
             in_com.get("host_filter", ".*"),
-            in_com.get("value_filter", ".*")
+            in_com.get("key_filter", ".*")
             )
-        collectd.info("got command %s from %s (host_filter: %s, value_filter: %s)" % (
+        collectd.info("got command %s from %s (host_filter: %s, key_filter: %s)" % (
             com_text,
             in_uuid,
             h_filter,
-            v_filter,
+            k_filter,
             ))
-        host_filter, value_filter = (
+        host_filter, key_filter = (
             re.compile(h_filter),
-            re.compile(v_filter),
+            re.compile(k_filter),
         )
-        match_uuids = [cur_uuid for cur_uuid in self.__hosts.keys() if host_filter.match(self.__hosts[cur_uuid].name)]
+        match_uuids = [_value[1] for _value in sorted([(self.__hosts[cur_uuid].name, cur_uuid) for cur_uuid in self.__hosts.keys() if host_filter.match(self.__hosts[cur_uuid].name)])]
         if com_text == "host_list":
             result = E.host_list(entries="%d" % (len(match_uuids)))
             for cur_uuid in match_uuids:
@@ -344,7 +344,7 @@ class net_receiver(multiprocessing.Process):
         elif com_text == "key_list":
             result = E.host_list(entries="%d" % (len(match_uuids)))
             for cur_uuid in match_uuids:
-                result.append(self.__hosts[cur_uuid].get_key_list(value_filter))
+                result.append(self.__hosts[cur_uuid].get_key_list(key_filter))
             in_com["result"] = result
         in_com.set_result("got command %s" % (com_text))
         in_sock.send_unicode(in_uuid, zmq.SNDMORE)

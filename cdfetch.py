@@ -41,7 +41,7 @@ class base_com(object):
                 srv_com["arguments:arg%d" % (arg_index)] = arg
         srv_com["arg_list"] = " ".join(args)
         srv_com["host_filter"] = self.options.host_filter
-        srv_com["value_filter"] = self.options.value_filter
+        srv_com["key_filter"] = self.options.key_filter
         self.srv_com = srv_com #
         self.ret_state = 1
     def __getitem__(self, key):
@@ -155,7 +155,7 @@ class key_list_com(base_com):
             self.ret_state = 1
 
 def main():
-    parser = argparse.ArgumentParser("send command to servers of the init.at Clustersoftware")
+    parser = argparse.ArgumentParser("query the datastore of collectd servers")
     parser.add_argument("arguments", nargs="+", help="additional arguments, first one is command")
     parser.add_argument("-t", help="set timeout [%(default)d]", default=10, type=int, dest="timeout")
     parser.add_argument("-p", help="port [%(default)d]", default=8008, dest="port", type=int)
@@ -163,7 +163,7 @@ def main():
     parser.add_argument("-v", help="verbose mode [%(default)s]", default=False, dest="verbose", action="store_true")
     parser.add_argument("-i", help="set identity substring [%(default)s]", type=str, default="cdf", dest="identity_string")
     parser.add_argument("--host-filter", help="set filter for host name [%(default)s]", type=str, default=".*", dest="host_filter")
-    parser.add_argument("--value-filter", help="set filter for value name [%(default)s]", type=str, default=".*", dest="value_filter")
+    parser.add_argument("--key-filter", help="set filter for key name [%(default)s]", type=str, default=".*", dest="key_filter")
     # parser.add_argument("arguments", nargs="+", help="additional arguments")
     ret_state = 1
     args, other_args = parser.parse_known_args()
