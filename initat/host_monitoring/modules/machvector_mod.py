@@ -23,6 +23,7 @@
 
 import commands
 import copy
+import json
 import os
 import re
 import shutil
@@ -46,95 +47,6 @@ COLLECTOR_PORT = 8002
 
 MONITOR_OBJECT_INFO_LIST = ["load", "mem", "net", "vms", "num"]
 MAX_MONITOR_OBJECTS = 10
-
-# collectd stuff, not needed
-
-MAX_PACKET_SIZE = 1024 # bytes
-PLUGIN_TYPE = "gauge"
-
-TYPE_HOST = 0x0000
-TYPE_TIME = 0x0001
-TYPE_PLUGIN = 0x0002
-TYPE_PLUGIN_INSTANCE = 0x0003
-TYPE_TYPE = 0x0004
-TYPE_TYPE_INSTANCE = 0x0005
-TYPE_VALUES = 0x0006
-TYPE_INTERVAL = 0x0007
-
-LONG_INT_CODES = [TYPE_TIME, TYPE_INTERVAL]
-
-STRING_CODES = [TYPE_HOST, TYPE_PLUGIN, TYPE_PLUGIN_INSTANCE, TYPE_TYPE, TYPE_TYPE_INSTANCE]
-
-VALUE_COUNTER = 0
-VALUE_GAUGE = 1
-VALUE_DERIVE = 2
-VALUE_ABSOLUTE = 3
-
-VALUE_CODES = {
-    VALUE_COUNTER:  "!Q",
-    VALUE_GAUGE:    "<d",
-    VALUE_DERIVE:   "!q",
-    VALUE_ABSOLUTE: "!Q"
-}
-
-def pack_numeric(type_code, number):
-    return struct.pack("!HHq", type_code, 12, number)
-
-def pack_string(type_code, string):
-    return struct.pack("!HH", type_code, 5 + len(string)) + string + "\0"
-
-def pack_value(name, value):
-    return "".join([
-        pack(TYPE_TYPE_INSTANCE, name),
-        struct.pack("!HHH", TYPE_VALUES, 15, 1),
-        struct.pack("<Bd", VALUE_GAUGE, value)
-    ])
-
-def pack(t_id, value):
-    if isinstance(t_id, basestring):
-        return pack_value(t_id, value)
-    elif t_id in LONG_INT_CODES:
-        return pack_numeric(t_id, value)
-    elif t_id in STRING_CODES:
-        return pack_string(t_id, value)
-    else:
-        raise AssertionError("invalid type code %d" % (t_id))
-
-def message_start(when, host, plugin_name, interval):
-    return "".join([
-        pack(TYPE_HOST, host),
-        pack(TYPE_TIME, when or time.time()),
-        pack(TYPE_PLUGIN, plugin_name),
-        pack(TYPE_TYPE, PLUGIN_TYPE),
-        pack(TYPE_INTERVAL, interval),
-    ])
-
-def messages(counts):
-    packets = []
-    # print etree.tostring(counts, pretty_print=True)
-    start = message_start(int(counts.attrib["time"]), counts.attrib["name"], "collserver", int(counts.get("interval")) * 1.2)
-    if int(counts.attrib["simple"]):
-        parts = [pack(mve.attrib["n"], int(float(mve.attrib["v"]))) for mve in counts.findall(".//m")]
-    else:
-        parts = [pack("%s:info" % (mve.attrib["name"]), mve.attrib["info"]) for mve in counts.findall(".//mve")] + \
-            [pack(mve.attrib["name"], int(float(mve.attrib["value"]))) for mve in counts.findall(".//mve")]
-    # print parts
-    # parts = [p for p in parts if len(start) + len(p) <= MAX_PACKET_SIZE]
-    # print len(parts)
-    if parts:
-        curr, curr_len = ([start], len(start))
-        for part in parts:
-            if curr_len + len(part) > MAX_PACKET_SIZE:
-                packets.append("".join(curr))
-                curr, curr_len = [start], len(start)
-            curr.append(part)
-            curr_len += len(part)
-        packets.append("".join(curr))
-    # print len(packets), [len(x) for x in packets]
-    return packets
-
-def sanitize(s):
-    return re.sub(r"[^a-zA-Z0-9]+", "_", s).strip("_")
 
 class _general(hm_classes.hm_module):
     class Meta:
@@ -250,11 +162,15 @@ class machine_vector(object):
                     full_info_every="10",
                     # send immediately
                     immediate="0",
+                    # format, json or xml
+                    format="xml",
                 )
             )
-            file(self.conf_name, "w").write(etree.tostring(def_xml,
-                                                           pretty_print=True,
-                                                           xml_declaration=True))
+            file(self.conf_name, "w").write(
+                etree.tostring(
+                    def_xml,
+                    pretty_print=True,
+                    xml_declaration=True))
         try:
             xml_struct = etree.fromstring(file(self.conf_name, "r").read())
         except:
@@ -318,14 +234,21 @@ class machine_vector(object):
         full = cur_id % int(cur_xml.attrib.get("full_info_every", "10")) == 0
         cur_id += 1
         cur_xml.attrib["sent"] = "%d" % (cur_id)
-        send_vector = self.build_xml(E, simple=not full)
         try:
             fqdn, _short_name = process_tools.get_fqdn()
         except:
             fqdn = process_tools.get_machine_name()
-        send_vector.attrib["name"] = (cur_xml.get("send_name", fqdn) or fqdn)
-        send_vector.attrib["interval"] = cur_xml.get("send_every")
-        send_vector.attrib["uuid"] = self.module.process_pool.zeromq_id
+        send_format = cur_xml.attrib.get("format", "xml")
+        if send_format == "xml":
+            send_vector = self.build_xml(E, simple=not full)
+            send_vector.attrib["name"] = (cur_xml.get("send_name", fqdn) or fqdn)
+            send_vector.attrib["interval"] = cur_xml.get("send_every")
+            send_vector.attrib["uuid"] = self.module.process_pool.zeromq_id
+        else:
+            send_vector = self.build_json(simple=not full)
+            send_vector[1]["name"] = cur_xml.get("send_name", fqdn) or fqdn
+            send_vector[1]["interval"] = int(cur_xml.get("send_every"))
+            send_vector[1]["uuid"] = self.module.process_pool.zeromq_id
         # send to server
         t_host, t_port = (
             cur_xml.get("target", "127.0.0.1"),
@@ -333,7 +256,11 @@ class machine_vector(object):
         )
         try:
             send_id = int(cur_xml.attrib["send_id"])
-            self.__socket_dict[send_id].send_unicode(unicode(etree.tostring(send_vector)))
+            if send_format == "xml":
+                self.__socket_dict[send_id].send_unicode(unicode(etree.tostring(send_vector)))
+            else:
+                print json.dumps(send_vector)
+                self.__socket_dict[send_id].send_unicode(json.dumps(send_vector))
         except:
             # ignore errors
             self.log(
@@ -458,6 +385,13 @@ class machine_vector(object):
             self.__changed = True
     def store_xml(self, srv_com):
         srv_com["data"] = self.build_xml(srv_com.builder)
+    def build_json(self, simple=False):
+        mach_vect = ["machine_vector", {"version" : self.__act_key, "time" : int(time.time()), "simple" : 1 if simple else 0}]
+        if simple:
+            mach_vect.extend([cur_mve.build_simple_json() for cur_mve in self.__act_dict.itervalues()])
+        else:
+            mach_vect.extend([cur_mve.build_json() for cur_mve in self.__act_dict.itervalues()])
+        return mach_vect
     def build_xml(self, builder, simple=False):
         mach_vect = builder(
             "machine_vector",

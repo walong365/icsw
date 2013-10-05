@@ -412,18 +412,29 @@ class mvect_entry(object):
         return ret_str
     def build_simple_xml(self, builder):
         return builder("m", n=self.name, v=str(self.value))
+    def build_simple_json(self):
+        return (self.name, str(self.value))
     def build_xml(self, builder):
-        kwargs = {"name"   : self.name,
-                  "info"   : self.info,
-                  "unit"   : self.unit,
-                  "v_type" : self.v_type,
-                  "value"  : str(self.value)}
-        for key, ns_value in [("valid_until", None),
-                              ("base"       , 1),
-                              ("factor"     , 1)]:
+        kwargs = {
+            "name"   : self.name,
+            "info"   : self.info,
+            "unit"   : self.unit,
+            "v_type" : self.v_type,
+            "value"  : str(self.value)}
+        for key, ns_value in [
+            ("valid_until", None),
+            ("base"       , 1),
+            ("factor"     , 1)]:
             if getattr(self, key) != ns_value:
                 kwargs[key] = "%d" % (getattr(self, key))
         return builder("mve", **kwargs)
+    def build_json(self):
+        return {
+            "name"   : self.name,
+            "info"   : self.info,
+            "unit"   : self.unit,
+            "v_type" : self.v_type,
+            "value"  : str(self.value)}
 
 if __name__ == "__main__":
     print "Loadable module, exiting..."
