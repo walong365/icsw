@@ -4,7 +4,7 @@
 # Copyright (C) 2001,2002,2003,2004,2005,2006,2007,2008,2011,2012,2013 Andreas Lang-Nevyjel
 #
 # Send feedback to: <lang-nevyjel@init.at>
-# 
+#
 # This file is part of logcheck-server
 #
 # This program is free software; you can redistribute it and/or modify
@@ -27,22 +27,22 @@ import sys
 
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "initat.cluster.settings")
 
-import time
-import datetime
-import re
-import shutil
-import configfile
-import commands
-import stat
-import process_tools
-import logging_tools
-import threading_tools
-import pprint
-import server_command
-import gzip
-import cluster_location
 import bz2
+import cluster_location
+import commands
 import config_tools
+import configfile
+import datetime
+import gzip
+import logging_tools
+import pprint
+import process_tools
+import re
+import server_command
+import shutil
+import stat
+import threading_tools
+import time
 from django.db import connection
 from django.db.models import Q
 from initat.cluster.backbone.models import device
@@ -52,19 +52,17 @@ try:
 except ImportError:
     VERSION_STRING = "?.?"
 
-SYSLOG_THREAD_STR = "syslog-thread-test"
-
 SERVER_PORT = 8014
 SCAN_TEXT_PREFIX = ".scan"
 
-LOGREADER_DATE_VARNAME   = "logsrv_logreader_date"
+LOGREADER_DATE_VARNAME = "logsrv_logreader_date"
 LOGREADER_OFFSET_VARNAME = "logsrv_logreader_offset"
 
 SQL_ACCESS = "cluster_full_access"
 
 class machine(object):
-    #def __init__(self, name, idx, ips={}, log_queue=None):
-    @staticmethod 
+    # def __init__(self, name, idx, ips={}, log_queue=None):
+    @staticmethod
     def g_log(what, log_level=logging_tools.LOG_LEVEL_OK):
         machine.srv_proc.log("[m] %s" % (what), log_level)
     @staticmethod
@@ -302,31 +300,31 @@ class machine(object):
                                 old_file = os.path.join(root_dir, file_name)
                                 new_file = os.path.join(root_dir, "%s.gz" % (file_name))
                                 ext_coms.append("compress %s %s")
-                                #try:
-                                    #old_f_size = os.stat(old_file)[stat.ST_SIZE]
-                                    #new_fh = gzip.open(new_file, "wb", 4)
-                                    #new_fh.write(file(old_file, "r").read())
-                                    #new_fh.close()
-                                    #new_f_size = os.stat(new_file)[stat.ST_SIZE]
-                                #except:
-                                    #err_files.append(file_name)
-                                #else:
-                                    #old_size += old_f_size
-                                    #new_size += new_f_size
-                                    #ok_files.append(file_name)
-                                    #os.unlink(old_file)
-                            #if err_files:
-                                #self.log("Had problems compressing %s %s: %s" % (logging_tools.get_plural("file", len(err_files)), host_info_str, ", ".join(err_files)))
-                                #files_error += len(err_files)
-                            #if ok_files:
-                                #self.log("Compressed %s %s: %s" % (logging_tools.get_plural("file", len(ok_files)), host_info_str, ", ".join(ok_files)))
-                                #files_proc += len(ok_files)
-                            #if err_files or ok_files:
-                                #self.log("Stats for directory %s: Saved %s (%.2f %%, new size: %s, orig size: %s)" % (root_dir,
-                                                                                                                      #logging_tools.get_size_str(old_size - new_size),
-                                                                                                                      #100. * (float(old_size - new_size) / float(max(1, old_size))),
-                                                                                                                      #logging_tools.get_size_str(new_size),
-                                                                                                                      #logging_tools.get_size_str(old_size)))
+                                # try:
+                                    # old_f_size = os.stat(old_file)[stat.ST_SIZE]
+                                    # new_fh = gzip.open(new_file, "wb", 4)
+                                    # new_fh.write(file(old_file, "r").read())
+                                    # new_fh.close()
+                                    # new_f_size = os.stat(new_file)[stat.ST_SIZE]
+                                # except:
+                                    # err_files.append(file_name)
+                                # else:
+                                    # old_size += old_f_size
+                                    # new_size += new_f_size
+                                    # ok_files.append(file_name)
+                                    # os.unlink(old_file)
+                            # if err_files:
+                                # self.log("Had problems compressing %s %s: %s" % (logging_tools.get_plural("file", len(err_files)), host_info_str, ", ".join(err_files)))
+                                # files_error += len(err_files)
+                            # if ok_files:
+                                # self.log("Compressed %s %s: %s" % (logging_tools.get_plural("file", len(ok_files)), host_info_str, ", ".join(ok_files)))
+                                # files_proc += len(ok_files)
+                            # if err_files or ok_files:
+                                # self.log("Stats for directory %s: Saved %s (%.2f %%, new size: %s, orig size: %s)" % (root_dir,
+                                                                                                                      # logging_tools.get_size_str(old_size - new_size),
+                                                                                                                      # 100. * (float(old_size - new_size) / float(max(1, old_size))),
+                                                                                                                      # logging_tools.get_size_str(new_size),
+                                                                                                                      # logging_tools.get_size_str(old_size)))
             self.log("Found %s, checked %s in %.2f seconds (%s ok, %s error)" % (
                 logging_tools.get_plural("directory", dirs_found),
                 logging_tools.get_plural("directory", dirs_proc),
@@ -467,7 +465,7 @@ class server_process(threading_tools.process_pool):
             '$FileCreateMode 0644',
             '*.* ?prog_log',
             '',
-            '$FileCreateMode 0644', 
+            '$FileCreateMode 0644',
             '*.* ?full_log',
             '',
             '$InputUDPServerBindRuleset remote',
@@ -491,7 +489,7 @@ class server_process(threading_tools.process_pool):
         self.log("restarting %s gave %d:" % (syslog_rc, stat))
         for line in out_f:
             self.log(line)
-        
+
 class server_thread_pool(threading_tools.thread_pool):
     def __init__(self, db_con, g_config, loc_config):
         self.__log_cache, self.__log_queue = ([], None)
@@ -524,7 +522,7 @@ class server_thread_pool(threading_tools.thread_pool):
         self._re_insert_config(dc)
         self.__ad_struct = all_devices(self.__log_queue, self.__glob_config, self.__loc_config, self.__db_con)
         self.__ad_struct.db_sync()
-        self.__com_queue  = self.add_thread(com_thread(self.__glob_config, self.__loc_config, self.__db_con, self.__log_queue), start_thread=True).get_thread_queue()
+        self.__com_queue = self.add_thread(com_thread(self.__glob_config, self.__loc_config, self.__db_con, self.__log_queue), start_thread=True).get_thread_queue()
         self.__queue_dict = {"logging_queue" : self.__log_queue,
                              "com_queue"     : self.__com_queue}
         self.__com_queue.put(("set_queue_dict", self.__queue_dict))
@@ -625,15 +623,15 @@ def main():
         ("INITIAL_LOGCHECK"       , configfile.bool_c_var(False)),
         ("LOGSCAN_TIME"           , configfile.int_c_var(60, info="time in minutes between two logscan iterations"))
     ])
-    #if fixit:
-        #process_tools.fix_directories(loc_config["USER"], loc_config["GROUP"], [g_config["LOG_DIR"], g_config["SYSLOG_SOCKET_DIR"], "/var/run/logcheck-server"])
+    # if fixit:
+        # process_tools.fix_directories(loc_config["USER"], loc_config["GROUP"], [g_config["LOG_DIR"], g_config["SYSLOG_SOCKET_DIR"], "/var/run/logcheck-server"])
     process_tools.renice()
     # need root rights to change syslog and log rotation
-    #global_config.set_uid_gid(global_config["USER"], global_config["GROUP"])
-    #process_tools.change_user_group(global_config["USER"], global_config["GROUP"])
+    # global_config.set_uid_gid(global_config["USER"], global_config["GROUP"])
+    # process_tools.change_user_group(global_config["USER"], global_config["GROUP"])
     if not global_config["DEBUG"]:
         # become daemon and wait 2 seconds
-        process_tools.become_daemon(wait = 2)
+        process_tools.become_daemon(wait=2)
         process_tools.set_handles({"out" : (1, "logcheck"),
                                    "err" : (0, "/var/lib/logging-server/py_err")})
     else:
