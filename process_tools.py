@@ -1717,7 +1717,10 @@ def fetch_sysinfo(root_dir="/"):
 
 def find_file(file_name, s_path=None):
     if not s_path:
-        s_path = ["/opt/cluster/sbin", "/opt/cluster/bin", "/bin", "/usr/bin", "/sbin", "/usr/sbin"]
+        s_path = []
+    elif type(s_path) != list:
+            s_path = [s_path]
+    s_path.extend(["/opt/cluster/sbin", "/opt/cluster/bin", "/bin", "/usr/bin", "/sbin", "/usr/sbin"])
     found = False
     for cur_path in s_path:
         if os.path.isfile(os.path.join(cur_path, file_name)):
