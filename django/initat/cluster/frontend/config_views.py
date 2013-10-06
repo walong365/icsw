@@ -20,10 +20,11 @@ from django.http import HttpResponse, HttpResponseRedirect
 from django.views.generic import View
 from django.utils.decorators import method_decorator
 
+# do not remove mon_check_command, is access via globals()
 from initat.cluster.backbone.models import config, device, \
      config_str, config_int, config_bool, config_blob, \
      config_script, device_config, tree_node, get_related_models, \
-     mon_service_templ, category_tree
+     mon_service_templ, category_tree, mon_check_command
 from initat.cluster.frontend.helper_functions import contact_server, xml_wrapper
 from initat.core.render import render_me
 
@@ -494,6 +495,9 @@ class upload_config(View):
                 try:
                     new_conf = config.objects.get(Q(name=cur_conf.attrib["name"]))
                 except config.DoesNotExist:
+                    for del_attr in ["categories"]:
+                        if del_attr in cur_conf.attrib:
+                            del cur_conf.attrib[del_attr]
                     new_conf = config(**cur_conf.attrib)
                     new_conf.create_default_entries = False
                     new_conf.save()
@@ -503,7 +507,7 @@ class upload_config(View):
                             new_sub_obj = globals()["config_%s" % (new_obj.attrib["type"])]
                         else:
                             new_sub_obj = globals()[new_obj.tag]
-                        for del_attr in ["config", "type", "mon_service_templ"]:
+                        for del_attr in ["config", "type", "mon_service_templ", "categories"]:
                             if del_attr in new_obj.attrib:
                                 del new_obj.attrib[del_attr]
                         new_sub_obj = new_sub_obj(config=new_conf, **new_obj.attrib)
