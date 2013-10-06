@@ -65,7 +65,10 @@ class _general(hm_classes.hm_module):
         else:
             self.log("no ethtool found", logging_tools.LOG_LEVEL_WARN)
         self.ethtool_path = ethtool_path
-        ibv_devinfo_path = process_tools.find_file("ibv_devinfo")
+        s_path = []
+        if os.path.isdir("/opt/ofed"):
+            s_path = s_path + ["/usr/ofed/sbin", "/opt/ofed/bin"]
+        ibv_devinfo_path = process_tools.find_file("ibv_devinfo", s_path=s_path)
         if ibv_devinfo_path:
             self.log("ibv_devinfo found at %s" % (ibv_devinfo_path))
         else:
