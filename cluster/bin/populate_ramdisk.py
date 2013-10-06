@@ -366,13 +366,19 @@ def populate_it(stage_num, temp_dir, in_dir_dict, in_file_dict, stage_add_dict, 
                     file_dict[p_name] = sev
     
     root_64bit = get_system_bitcount("/")
-    pam_dir = "/lib%s/security" % ({0 : "",
-                                    1 : "64"}[root_64bit])
-    rsyslog_dir = "/lib%s/rsyslog" % ({0 : "",
-                                       1 : "64"}[root_64bit])
-    rsyslog_dirs = [os.path.join("/usr", rsyslog_dir), rsyslog_dir]
-    main_lib_dir = "/lib%s" % ({0 : "",
-                                1 : "64"}[root_64bit])
+    pam_dir = "/lib%s/security" % (
+        {
+            0 : "",
+            1 : "64"}[root_64bit])
+    rsyslog_dir = "/lib%s/rsyslog" % (
+        {
+            0 : "",
+            1 : "64"}[root_64bit])
+    rsyslog_dirs = ["/usr%s" % (rsyslog_dir), rsyslog_dir]
+    main_lib_dir = "/lib%s" % (
+        {
+            0 : "",
+            1 : "64"}[root_64bit])
     dir_dict[pam_dir] = 1
     for syslog_dir in rsyslog_dirs:
         dir_dict[rsyslog_dir] = 0

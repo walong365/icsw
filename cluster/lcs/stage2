@@ -71,8 +71,8 @@ alias ls-l='ls -l'
 alias ..='cd ..'
 alias ...='cd ../..'
 
-RW_MOUNTOPTS="-o nolock,rw,udp,rsize=8192,wsize=8192,noac,vers=3"
-RO_MOUNTOPTS="-o nolock,ro,udp,rsize=8192,wsize=8192,noac,vers=3"
+RW_MOUNTOPTS="-o nolock,rw,tcp,rsize=8192,wsize=8192,noac,vers=3"
+RO_MOUNTOPTS="-o nolock,ro,tcp,rsize=8192,wsize=8192,noac,vers=3"
 MOUNT_RETRIES=10
 MOUNT_SLEEP=30
 
@@ -327,15 +327,15 @@ function do_sfdisk_call() {
             # try with-debian version
             size=$(parted -s $dev print | grep Disk | tr " " "\n" | grep -e "GB\|MB" )
         fi
-        echo "***$size"
+        #echo "***$size"
         echo $size | grep GB > /dev/null && {
             size=$(($(($(echo $(echo $size | cut -d "." -f 1) | tr -dc [:digit:] ) - 1 )) * 1000)) ;
         }
-        echo "***$size"
+        #echo "***$size"
         echo $size | grep MB > /dev/null && {
             size=$(($(($(echo $(echo $size | cut -d "." -f 1) | tr -dc [:digit:] ) - 1 )) )) ;
         }
-        echo "***$size"
+        #echo "***$size"
         if [ "${size:-0}" = "0" ] ; then
             err_exit "Unable to determine size of disk $dev"
         else
@@ -1003,7 +1003,7 @@ elif [ "$do_mount" = "1" ] ; then
         do_sfdisk_call $fdev
         echo ${pinfo} > /conf/.parttype
         set_hoststat ${FORM_MESG} $fdev
-        for type in swap ext2 reiserfs ext3 ext4 ; do
+        for type in swap ext2 reiserfs ext3 ext4 xfs btrfs ; do
             rm -f /conf/.output/format_${type}
         done
         rm -f /conf/.output/format_*
