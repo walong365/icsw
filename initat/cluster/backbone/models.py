@@ -2091,8 +2091,9 @@ class network(models.Model):
         return r_xml
     class Meta:
         db_table = u'network'
-    def get_full_postfix(self):
-        return "%s.%s" % (self.postfix, self.name)
+    # deprecated and removed
+    # def get_full_postfix(self):
+    #    return "%s" % (self.postfix, self.name)
     def get_info(self):
         all_slaves = self.rel_master_network.all()
         # return extended info
@@ -2334,6 +2335,25 @@ def config_post_save(sender, **kwargs):
                         name="root_passwd",
                         description="LDAP Admin passwd",
                         value="changeme"),
+                ]
+            elif cur_inst.name == "name_server":
+                add_list = [
+                    config_str(
+                        name="FORWARDER_1",
+                        description="first forward",
+                        value="192.168.1.1"),
+                    config_str(
+                        name="USER",
+                        description="named user",
+                        value="named"),
+                    config_str(
+                        name="GROUP",
+                        description="named group",
+                        value="named"),
+                    config_str(
+                        name="SECRET",
+                        description="ndc secret",
+                        value="h8DM8opPS3ThdswucAoUqQ=="),
                 ]
             for cur_var in add_list:
                 cur_var.config = cur_inst
