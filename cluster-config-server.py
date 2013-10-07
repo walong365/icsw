@@ -1249,11 +1249,10 @@ class build_process(threading_tools.process_obj):
     def _generate_config_step2(self, cur_c, b_dev, act_prod_net, boot_netdev, dev_sc):
         self.router_obj.check_for_update()
         running_ip = [ip.ip for ip in dev_sc.identifier_ip_lut["p"] if dev_sc.ip_netdevice_lut[ip.ip].pk == boot_netdev.pk][0]
-        full_postfix = act_prod_net.get_full_postfix()
-        cur_c.log("IP in production network '%s' is %s, full network_postfix is '%s'" % (
+        cur_c.log("IP in production network '%s' is %s, network_postfix is '%s'" % (
             act_prod_net.identifier,
             running_ip,
-            full_postfix))
+            act_prod_net.postfix))
         # multiple configs
         multiple_configs = ["server"]
         all_servers = config_tools.device_with_config("%server%")
@@ -1261,7 +1260,7 @@ class build_process(threading_tools.process_obj):
         if not def_servers:
             cur_c.log("no Servers found", logging_tools.LOG_LEVEL_ERROR, state="done")
         else:
-            srv_names = sorted(["%s%s" % (cur_srv.short_host_name, full_postfix) for cur_srv in def_servers])
+            srv_names = sorted(["%s%s" % (cur_srv.short_host_name, act_prod_net.postfix) for cur_srv in def_servers])
             cur_c.log("%s found: %s" % (
                 logging_tools.get_plural("server", len(def_servers)),
                 ", ".join(srv_names)
@@ -1277,7 +1276,9 @@ class build_process(threading_tools.process_obj):
                         if act_routing_info:
                             routes_found += 1
                             # store in some dict-like structure
-                            conf_dict["%s:%s" % (actual_server.short_host_name, server_type)] = "%s%s" % (actual_server.short_host_name, full_postfix)
+                            print "***", actual_server.short_host_name, dir(actual_server)
+                            # FIXME, postfix not handled
+                            conf_dict["%s:%s" % (actual_server.short_host_name, server_type)] = actual_server.device.full_name
                             conf_dict["%s:%s_ip" % (actual_server.short_host_name, server_type)] = act_routing_info[0][2][1][0]
                             if server_type in ["config_server", "mother_server"] and actual_server.device.pk == b_dev.bootserver_id:
                                 routing_info, act_server = (act_routing_info[0], actual_server)
@@ -1290,7 +1291,7 @@ class build_process(threading_tools.process_obj):
                                 actual_server.device.name), logging_tools.LOG_LEVEL_WARN)
                     if act_server:
                         server_ip = routing_info[2][1][0]
-                        conf_dict[server_type] = "%s%s" % (act_server.short_host_name, full_postfix)
+                        conf_dict[server_type] = act_server.device.full_name
                         conf_dict["%s_ip" % (server_type)] = server_ip
                         cur_c.log("  %20s: %-25s (IP %15s)%s" % (
                             server_type,
