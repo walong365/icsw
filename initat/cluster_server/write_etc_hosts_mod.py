@@ -36,7 +36,7 @@ from initat.cluster_server.rebuild_hopcount_mod import router_object
 
 SSH_KNOWN_HOSTS_FILENAME = "/etc/ssh/ssh_known_hosts"
 ETC_HOSTS_FILENAME       = "/etc/hosts"
-GROUP_DIR                = "/opt/cluster/pdsh/etc"
+GROUP_DIR = "/opt/cluster/etc/pdsh"
 
 class write_etc_hosts(cs_base_class.server_com):
     class Meta:
