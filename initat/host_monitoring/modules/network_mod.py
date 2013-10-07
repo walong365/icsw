@@ -275,7 +275,6 @@ class net_device(object):
         self.ethtool_results = {}
         self.ibv_results = {}
         if self.name.startswith("ib"):
-            self.update_ibv_devinfo()
             self.ibv_map = {
                 "portrcvdata" : "rx",
                 # "portrcvpkts" : 1,
@@ -283,6 +282,10 @@ class net_device(object):
                 # "portxmitpkts" : 9,
                 }
             self.perfquery_path = process_tools.find_file("perfquery")
+        self.update()
+    def update(self):
+        if self.name.startswith("ib"):
+            self.update_ibv_devinfo()
         else:
             self.update_ethtool()
     def invalidate(self):
@@ -469,8 +472,7 @@ class netspeed(object):
                     if key not in self:
                         self[key] = net_device(key, self.nd_mapping, self.ethtool_path, self.ibv_devinfo_path)
                     self[key].feed(value)
-                    self[key].update_ethtool()
-                    self[key].update_ibv_devinfo()
+                    self[key].update()
             self.__a_time = ntime
 
 class ping_sp_struct(hm_classes.subprocess_struct):
