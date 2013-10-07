@@ -388,7 +388,7 @@ class device_info(View):
             with_md_cache=True,
             full_name=True,
         )
-        request.xml_response["response"] = domain_name_tree().get_xml(no_intermediate=True)
+        request.xml_response["response"] = domain_name_tree().get_xml()
         request.xml_response["response"] = E.network_list(
             *[cur_nw.get_xml() for cur_nw in network.objects.all().select_related("network_type").prefetch_related("network_device_type").order_by("name")]
         )
