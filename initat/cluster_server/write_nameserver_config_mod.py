@@ -166,6 +166,20 @@ class write_nameserver_config(cs_base_class.server_com):
 
         # loop 1: forward maps
         all_dtns = domain_tree_node.objects.filter(Q(write_nameserver_config=True))
+        cur_serial = int(time.strftime("%Y%m%d%H", time.localtime(time.time())))
+        CS_FILENAME = "/tmp/.cs_serial"
+        if os.path.isfile(CS_FILENAME):
+            try:
+                last_serial = int(file(CS_FILENAME, "r").read().strip())
+            except:
+                pass
+            else:
+                while cur_serial <= last_serial:
+                    cur_serial += 1
+        try:
+            file(CS_FILENAME, "w").write("%d" % (cur_serial))
+        except:
+            pass
         for cur_dtn in all_dtns:
             nwname = cur_dtn.full_name
             write_zone_file = True
@@ -198,14 +212,12 @@ class write_nameserver_config(cs_base_class.server_com):
             ncf_lines.extend(["  file \"%s/%s\";" % (sub_dir, zonefile_name),
                               "};"])
             if write_zone_file:
-                timef = time.strftime("%Y%m%d%H", time.localtime(time.time()))
-
                 _lines = []
                 zname = "%s." % (nwname)
                 _lines.extend(["$ORIGIN %s" % (zname),
                               "$TTL 30M",
                               "%s  IN SOA %s lang-nevyjel.%s. (" % (zname, nwname, nwname)])
-                for what in [timef, "1H", "15M", "1W", "30M"]:
+                for what in [str(cur_serial), "1H", "15M", "1W", "30M"]:
                     _lines.append("%s%s" % (" " * 10, what))
                 _lines.extend(["%s)" % (" " * 5),
                               "; NS and MX-records"])
@@ -301,14 +313,12 @@ class write_nameserver_config(cs_base_class.server_com):
                                   "};"])
 
             if write_zone_file:
-                timef = time.strftime("%Y%m%d%H", time.localtime(time.time()))
-
                 _lines = []
                 zname = "%s.in-addr.arpa." % (nw_flipped_ip)
                 _lines.extend(["$ORIGIN %s" % (zname),
                               "$TTL 30M",
                               "%s  IN SOA %s lang-nevyjel. (" % (zname, top_level_name)])
-                for what in [timef, "1H", "15M", "1W", "30M"]:
+                for what in [str(cur_serial), "1H", "15M", "1W", "30M"]:
                     _lines.append("%s%s" % (" " * 10, what))
                 _lines.extend(["%s)" % (" " * 5),
                               "; NS and MX-records"])
