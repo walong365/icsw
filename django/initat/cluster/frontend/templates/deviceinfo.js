@@ -677,16 +677,21 @@ class device_info
     show_uuid_info: (event) => 
         cur_el = $(event.target)
         if @uuid_div
+            cur_el.val("show UUID info")
             @uuid_div.remove()
             @uuid_div = null
         else
+            cur_el.val("hide UUID info")
             @uuid_div = $("<div>").
-                append($("<h4>").text("Copy the following snippet to /etc/sysconfig/host-monitoring.d/0mq_id :")).
-                append($("<pre>").
-                    css("font-family", "courier").
-                    css("font-size", "12pt").
-                    css("display", "block").
-                    text("<?xml version='1.0' encoding='utf-8'?>\n<bind_info>\n    <zmq_id bind_address='*'>urn:uuid:" + @resp_xml.find("device").attr("uuid") + "</zmq_id>\n</bind_info>"))
+                append(
+                    $("<h4>").text("Copy the following snippet to /etc/sysconfig/cluster/.cluster_device_uuid :"),
+                    $("<pre>").
+                        css("font-family", "courier").
+                        css("font-size", "12pt").
+                        css("display", "block").
+                        text("urn:uuid:" + @resp_xml.find("device").attr("uuid")),
+                    $("<h4>").text("and restart host-monitoring .")
+                )
             cur_el.after(@uuid_div)
     category_div: (dev_xml) =>
         cat_div = $("<div>").attr("id", "category")
