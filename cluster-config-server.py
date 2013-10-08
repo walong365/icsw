@@ -21,39 +21,38 @@
 #
 """ cluster-config-server """
 
-import sys
 import os
+import sys
 
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "initat.cluster.settings")
 
-import re
-import tempfile
-import configfile
-import cluster_location
-import base64
-import os.path
-import time
-import pprint
-import stat
-import logging_tools
-import process_tools
 import array
-import server_command
+import base64
 import config_tools
-import threading_tools
+import configfile
+import crypt
+import cluster_location
+import logging_tools
+import module_dependency_tools
 import net_tools
+import networkx
+import pprint
+import process_tools
+import re
+import server_command
+import stat
+import tempfile
+import threading_tools
+import time
 import uuid_tools
 import zmq
-import crypt
 from django.db import connection
+from django.db.models import Q
 from lxml import etree
 from lxml.builder import E
 from initat.cluster.backbone.models import device, network, config, device_variable, net_ip, \
      boot_uuid, netdevice, partition, sys_partition, wc_files, tree_node, config_str, \
      cached_log_status, cached_log_source, log_source, devicelog, domain_tree_node
-from django.db.models import Q
-import module_dependency_tools
-import networkx
 
 try:
     from cluster_config_server_version import VERSION_STRING
@@ -2420,22 +2419,6 @@ def main():
         ("IMAGE_DIR"  , configfile.str_c_var("%s/%s" % (global_config["TFTP_DIR"], "images"))),
         ("KERNEL_DIR" , configfile.str_c_var("%s/%s" % (global_config["TFTP_DIR"], "kernels")))])
     global_config.add_config_entries([("LOG_SOURCE_IDX", configfile.int_c_var(cluster_location.log_source.create_log_source_entry("config-server", "Cluster ConfigServer", device=sql_info.effective_device).pk))])
-# #    loc_config["SERVER_IDX"] = sql_info.server_device_idx
-# #    log_lines = []
-# #    loc_config["LOG_SOURCE_IDX"] = process_tools.create_log_source_entry(dc, sql_info.server_device_idx, "config_server", "Cluster config Server")
-# #    nagios_master_list = config_tools.device_with_config("nagios_master", dc)
-# #    if nagios_master_list.keys():
-# #        nagios_master_name = nagios_master_list.keys()[0]
-# #        nagios_master = nagios_master_list[nagios_master_name]
-# #        # good stuff :-)
-# #        for routing_info in sql_info.get_route_to_other_device(dc, nagios_master):
-# #            if routing_info[1] in ["l", "p", "o"]:
-# #                loc_config["NAGIOS_IP"] = routing_info[3][1][0]
-# #                break
-# #    if loc_config["FIXIT"]:
-# #        process_tools.fix_directories(loc_config["USER_NAME"], loc_config["GROUP_NAME"], [glob_config["LOG_DIR"], "/var/run/cluster-config-server", glob_config["CONFIG_DIR"]])
-# #        process_tools.fix_files(loc_config["USER_NAME"], loc_config["GROUP_NAME"], ["/var/log/cluster-config-server.out", "/tmp/cluster-config-server.out"])
-# #    dc.release()
     process_tools.renice()
     process_tools.fix_directories(global_config["USER"], global_config["GROUP"], ["/var/run/cluster-config-server"])
     global_config.set_uid_gid(global_config["USER"], global_config["GROUP"])
