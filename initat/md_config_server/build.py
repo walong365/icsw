@@ -55,11 +55,6 @@ from initat.md_config_server.config import global_config, main_config, var_cache
 from initat.md_config_server import special_commands
 from initat.md_config_server import constants
 
-try:
-    import mk_livestatus
-except ImportError:
-    mk_livestatus = None
-
 class build_process(threading_tools.process_obj):
     def process_init(self):
         self.__log_template = logging_tools.get_logger(global_config["LOG_NAME"], global_config["LOG_DESTINATION"], zmq=True, context=self.zmq_context, init_logger=True)

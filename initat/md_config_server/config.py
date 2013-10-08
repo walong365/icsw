@@ -67,9 +67,10 @@ class var_cache(dict):
             "dg__%d" % (cur_dev.device_group_id),
             "dev__%d" % (cur_dev.pk))
         if global_key not in self:
-            def_dict = {"SNMP_VERSION"         : 2,
-                        "SNMP_READ_COMMUNITY"  : "public",
-                        "SNMP_WRITE_COMMUNITY" : "private"}
+            def_dict = {
+                "SNMP_VERSION"         : 2,
+                "SNMP_READ_COMMUNITY"  : "public",
+                "SNMP_WRITE_COMMUNITY" : "private"}
             # read global configs
             self[global_key] = dict([(cur_var.name, cur_var.get_value()) for cur_var in device_variable.objects.filter(Q(device=self.__cdg))])
             # update with def_dict
