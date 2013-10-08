@@ -122,7 +122,10 @@ class ext_file_info
         cur_ed.focus()
 
 class rms_view
-    constructor: (@top_div, @reload_button, @search={}, @collapse_run_wait=false, @addon_files=0) ->
+    constructor: (@top_div, @reload_button, @options={}) ->
+        @addon_files = @options.addon_files ? 0
+        @collapse_run_wait = @options.collapse_run_wait ? false
+        @search = @options.search ? false
         @divs = {}
         @tables = {}
         @extra_tabs = {}
@@ -447,8 +450,9 @@ class rms_view
             file_name = struct[0]
             file_content = struct[1]
             file_size = struct[2]
-            max_rows = struct[3]
-            new_table.append($("<tr>").append($("<td>").text("filename = #{file_name}, size = #{file_size} Bytes")))
+            last_update = struct[3]
+            max_rows = struct[4]
+            new_table.append($("<tr>").append($("<td>").text("filename = #{file_name}, size = #{file_size} Bytes, last_update = #{last_update}")))
             new_table.append($("<tr>").append($("<td>").append($("<textarea>").attr(
                 "cols" : "100",
                 "rows" : max_rows).val(file_content))))

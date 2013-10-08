@@ -8,6 +8,7 @@ import server_command
 import sge_tools
 import sys
 import threading
+import time
 from lxml.builder import E # @UnresolvedImport
 from lxml import etree # @UnresolvedImport
 
@@ -142,6 +143,7 @@ class get_rms_json(View):
                 change_obj.modify_waiting_jobs(my_sge_info, wait_job_list)
                 change_obj.modify_nodes(my_sge_info, node_list)
         fc_dict = {}
+        cur_time = time.time()
         for file_el in my_sge_info.get_tree().xpath(".//job_list[master/text() = \"MASTER\"]"):
             file_contents = file_el.findall(".//file_content")
             if len(file_contents):
@@ -150,8 +152,16 @@ class get_rms_json(View):
                     file_name = cur_fc.attrib["name"]
                     lines = cur_fc.text.replace(r"\r\n", r"\n").split("\n")
                     content = "\n".join(reversed(lines))
-                    cur_fcd.append((file_name, content, len(content), min(10, len(lines) + 1)))
-                fc_dict[file_el.attrib["full_id"]] = list(reversed(sorted(cur_fcd)))
+                    cur_fcd.append(
+                        (
+                            file_name,
+                            content,
+                            len(content),
+                            int(cur_fc.attrib.get("last_update", cur_time)),
+                            min(10, len(lines) + 1)
+                        )
+                    )
+                fc_dict[file_el.attrib["full_id"]] = list(reversed(sorted(cur_fcd, cmp=lambda x, y: cmp(x[3], y[3]))))
         json_resp = {
             "run_table"  : _sort_list(run_job_list, _post),
             "wait_table" : _sort_list(wait_job_list, _post),
