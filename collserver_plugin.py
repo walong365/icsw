@@ -331,10 +331,16 @@ class net_receiver(multiprocessing.Process):
             h_filter,
             k_filter,
             ))
-        host_filter, key_filter = (
-            re.compile(h_filter),
-            re.compile(k_filter),
-        )
+        try:
+            host_filter = re.compile(h_filter)
+        except:
+            host_filter = re.compile(".*")
+            collectd.error("error interpreting '%s' as host re: %s" % (h_filter, process_tools.get_except_info()))
+        try:
+            key_filter = re.compile(k_filter)
+        except:
+            key_filter = re.compile(".*")
+            collectd.error("error interpreting '%s' as key re: %s" % (k_filter, process_tools.get_except_info()))
         match_uuids = [_value[1] for _value in sorted([(self.__hosts[cur_uuid].name, cur_uuid) for cur_uuid in self.__hosts.keys() if host_filter.match(self.__hosts[cur_uuid].name)])]
         if com_text == "host_list":
             result = E.host_list(entries="%d" % (len(match_uuids)))
