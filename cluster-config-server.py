@@ -65,6 +65,43 @@ SERVER_PULL_PORT = 8006
 NCS_PORT = 8010
 GATEWAY_THRESHOLD = 1000
 
+# copy from md-config-server
+class var_cache(dict):
+    def __init__(self, cdg):
+        super(var_cache, self).__init__(self)
+        self.__cdg = cdg
+    def get_vars(self, cur_dev):
+        global_key, dg_key, dev_key = (
+            "GLOBAL",
+            "dg__%d" % (cur_dev.device_group_id),
+            "dev__%d" % (cur_dev.pk))
+        if global_key not in self:
+            def_dict = {
+                "SNMP_VERSION"         : 2,
+                "SNMP_READ_COMMUNITY"  : "public",
+                "SNMP_WRITE_COMMUNITY" : "private"}
+            # read global configs
+            self[global_key] = dict([(cur_var.name, cur_var.get_value()) for cur_var in device_variable.objects.filter(Q(device=self.__cdg))])
+            # update with def_dict
+            for key, value in def_dict.iteritems():
+                if key not in self[global_key]:
+                    self[global_key][key] = value
+        if dg_key not in self:
+            # read device_group configs
+            self[dg_key] = dict([(cur_var.name, cur_var.get_value()) for cur_var in device_variable.objects.filter(Q(device=cur_dev.device_group.device))])
+        if dev_key not in self:
+            # read device configs
+            self[dev_key] = dict([(cur_var.name, cur_var.get_value()) for cur_var in device_variable.objects.filter(Q(device=cur_dev))])
+        ret_dict, info_dict = ({}, {})
+        # for s_key in ret_dict.iterkeys():
+        for key, key_n in [(dev_key, "d"), (dg_key, "g"), (global_key, "c")]:
+            info_dict[key_n] = 0
+            for s_key, s_value in self.get(key, {}).iteritems():
+                if s_key not in ret_dict:
+                    ret_dict[s_key] = s_value
+                    info_dict[key_n] += 1
+        return ret_dict, info_dict
+
 def pretty_print(name, obj, offset):
     lines = []
     off_str = " " * offset
@@ -1898,8 +1935,15 @@ class config_control(object):
     def _handle_get_stop_scripts(self, s_req):
         return "ok %s" % (" ".join(s_req._get_config_str_vars("STOP_SCRIPTS")))
     def _handle_get_root_passwd(self, s_req):
-        # not very save, FIXME
-        return "ok %s" % (self.device.root_passwd.strip() or crypt.crypt("init4u", process_tools.get_machine_name()))
+        var_dict, var_info = var_cache(config_control.cdg).get_vars(self.device)
+        if self.device.root_passwd:
+            r_pwd, pwd_src = (self.device.root_passwd.strip(), "device struct")
+        elif "ROOT_PASSWORD" in var_dict:
+            r_pwd, pwd_src = (crypt.crypt(var_dict["ROOT_PASSWORD"], self.device.name), "var_dict")
+        else:
+            r_pwd, pwd_src = (crypt.crypt("init4u", self.device.name), "default")
+        self.log("got root password from %s" % (pwd_src))
+        return "ok %s" % (r_pwd)
     def _handle_get_additional_packages(self, s_req):
         return "ok %s" % (" ".join(s_req._get_config_str_vars("ADDITIONAL_PACKAGES")))
     def _handle_ack_config(self, s_req):
@@ -2066,6 +2110,8 @@ class config_control(object):
             cur_c.close()
     @staticmethod
     def init(srv_process):
+        # cluster device group
+        config_control.cdg = device.objects.get(Q(device_group__cluster_device_group=True))
         config_control.srv_process = srv_process
         config_control.cc_log("init config_control")
         config_control.__cc_dict = {}
