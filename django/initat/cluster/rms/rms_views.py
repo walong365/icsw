@@ -63,21 +63,25 @@ class overview(View):
         return render_me(request, "rms_overview.html", {
         })()
 
+def _rms_headers(request):
+    res = E.headers(
+        E.running_headers(
+            sge_tools.get_running_headers(get_job_options(request)),
+        ),
+        E.waiting_headers(
+            sge_tools.get_waiting_headers(get_job_options(request)),
+        ),
+        E.node_headers(
+            sge_tools.get_node_headers(get_node_options(request)),
+        )
+    )
+    return res
+
 class get_header_xml(View):
     @method_decorator(login_required)
     @method_decorator(xml_wrapper)
     def post(self, request):
-        res = E.headers(
-            E.running_headers(
-                sge_tools.get_running_headers(get_job_options(request)),
-            ),
-            E.waiting_headers(
-                sge_tools.get_waiting_headers(get_job_options(request)),
-            ),
-            E.node_headers(
-                sge_tools.get_node_headers(get_node_options(request)),
-            )
-        )
+        res = _rms_headers(request)
         for change_obj in RMS_ADDONS:
             change_obj.modify_headers(res)
         request.xml_response["headers"] = res
@@ -131,10 +135,12 @@ class get_rms_json(View):
         # print etree.tostring(run_job_list, pretty_print=True)
         wait_job_list = sge_tools.build_waiting_list(my_sge_info, get_job_options(request), user=request.user)
         node_list = sge_tools.build_node_list(my_sge_info, get_node_options(request))
-        for change_obj in RMS_ADDONS:
-            change_obj.modify_running_jobs(my_sge_info, run_job_list)
-            change_obj.modify_waiting_jobs(my_sge_info, wait_job_list)
-            change_obj.modify_nodes(my_sge_info, node_list)
+        if RMS_ADDONS:
+            for change_obj in RMS_ADDONS:
+                change_obj.set_headers(_rms_headers(request))
+                change_obj.modify_running_jobs(my_sge_info, run_job_list)
+                change_obj.modify_waiting_jobs(my_sge_info, wait_job_list)
+                change_obj.modify_nodes(my_sge_info, node_list)
         fc_dict = {}
         for file_el in my_sge_info.get_tree().xpath(".//job_list[master/text() = \"MASTER\"]"):
             file_contents = file_el.findall(".//file_content")
