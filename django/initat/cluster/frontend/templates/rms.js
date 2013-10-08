@@ -125,7 +125,7 @@ class rms_view
     constructor: (@top_div, @reload_button, @options={}) ->
         @addon_files = @options.addon_files ? 0
         @collapse_run_wait = @options.collapse_run_wait ? false
-        @search = @options.search ? false
+        @search = @options.search ? {}
         @divs = {}
         @tables = {}
         @extra_tabs = {}
@@ -446,16 +446,19 @@ class rms_view
                 @build_fileinfo_line(job_id, cur_dt, cur_tr)
     build_fileinfo_line: (job_id, cur_dt, cur_tr) =>
         new_table = $("<table>")
+        cur_idx = 0
         for struct in @file_dict[job_id]
-            file_name = struct[0]
-            file_content = struct[1]
-            file_size = struct[2]
-            last_update = struct[3]
-            max_rows = struct[4]
-            new_table.append($("<tr>").append($("<td>").text("filename = #{file_name}, size = #{file_size} Bytes, last_update = #{last_update}")))
-            new_table.append($("<tr>").append($("<td>").append($("<textarea>").attr(
-                "cols" : "100",
-                "rows" : max_rows).val(file_content))))
+            cur_idx++
+            if not @addon_files or (@addon_files >= cur_idx)
+                file_name    = struct[0]
+                file_content = struct[1]
+                file_size    = struct[2]
+                last_update  = new Date((struct[3] + 2 * 3600) * 1000)
+                max_rows     = struct[4]
+                new_table.append($("<tr>").append($("<td>").text("filename = #{file_name}, size = #{file_size} Bytes, last_update = #{last_update.toUTCString()}")))
+                new_table.append($("<tr>").append($("<td>").append($("<textarea>").attr(
+                    "cols" : "100",
+                    "rows" : max_rows).val(file_content))))
         cur_tr = cur_dt.fnOpen(cur_tr, $("<tr>").append($("<td>").append(new_table)))
     render_action: (o, val) =>
         cap_list = val.split(":")
