@@ -1,6 +1,6 @@
 #!/usr/bin/python-init -Ot
 #
-# Copyright (C) 2001,2002,2003,2004,2005,2007,2008,2009,2010,2011,2012 Andreas Lang-Nevyjel, init.at
+# Copyright (C) 2001,2002,2003,2004,2005,2007,2008,2009,2010,2011,2012,2013 Andreas Lang-Nevyjel, init.at
 #
 # this file is part of python-modules-base
 #
@@ -21,16 +21,16 @@
 #
 """ simple database for the most common CPUs  """
 
-import re
-import sys
-import commands
-import logging_tools
-import os
-import tempfile
-import server_command
 import base64
 import bz2
+import commands
+import logging_tools
 import marshal
+import os
+import re
+import server_command
+import sys
+import tempfile
 
 def get_cpu_basic_info():
     try:
@@ -469,11 +469,12 @@ class cpu_info(object):
             return "0 B"
     def __repr__(self):
         if self["online"]:
-            return "core info (idx %d), socket is %d, phys_core %d, %s, %s" % (self["core_num"],
-                                                                               self["socket_num"],
-                                                                               self["ht_core_num"],
-                                                                               self.get_cache_info_str(),
-                                                                               self["cpu_id"])
+            return "core info (idx %d), socket is %d, phys_core %d, %s, %s" % (
+                self["core_num"],
+                self["socket_num"],
+                self["ht_core_num"],
+                self.get_cache_info_str(),
+                self["cpu_id"])
         else:
             print "core info (idx %d), offline" % (self.core_num)
 

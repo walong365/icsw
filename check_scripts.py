@@ -137,7 +137,7 @@ def check_system(opt_ns):
             "collectd"             : "collectd.pid",
             "cluster-server"       : "cluster-server.pid",
             "ansys"                : "ansys-server/ansys-server.pid",
-            "cransys"              : "cransys-server/cransys-server.pid"}
+            "cransys"              : "cransys-server.pid"}
         # server-type mapping
         server_type_map = {
             "mother"                : "mother_server",
