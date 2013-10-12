@@ -45,7 +45,6 @@ class memcached_status_command(hm_classes.hm_command):
                 target_servers = ["localhost:11211"]
             cur_c = memcache.Client(target_servers)
             try:
-                cur_c.set("dddd2", "x" * 100000)
                 mc_stats = cur_c.get_stats()
             except:
                 srv_com.set_result("cannot get stats: %s" % (process_tools.get_except_info()), server_command.SRV_REPLY_STATE_ERROR)
@@ -62,14 +61,14 @@ class memcached_status_command(hm_classes.hm_command):
             ret_state = limits.nag_STATE_OK
             out_f = []
             for t_srv, cur_stats in mc_stats:
-                out_f.append("%s :" % (t_srv.strip()))
                 # pprint.pprint(mc_stats)
                 used_bytes, max_bytes = (
                     int(cur_stats["bytes"]),
                     int(cur_stats["limit_maxbytes"]),
                     )
-                cur_perc = used_bytes * 100 / max_bytes
-                out_f.append("%s of %s used (%.2f %%)" % (
+                cur_perc = used_bytes * 100. / max_bytes
+                out_f.append("%s: %s of %s used (%.2f %%)" % (
+                    t_srv.strip(),
                     logging_tools.get_size_str(used_bytes),
                     logging_tools.get_size_str(max_bytes),
                     cur_perc,
