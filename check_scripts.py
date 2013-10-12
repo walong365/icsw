@@ -40,6 +40,7 @@ except:
     config_tools = None
 
 def check_threads(name, pids, any_ok):
+    # print name, pids, any_ok
     ret_state = 7
     unique_pids = dict([(key, pids.count(key)) for key in set(pids)])
     pids_found = dict([(key, 0) for key in set(pids)])
@@ -78,25 +79,30 @@ def check_system(opt_ns):
             "package-client",
             "gmond:simple:gmond",
         ]
+    def_server = [
+        "logcheck-server",
+        "package-server",
+        "mother",
+        "collectd:threads_by_pid_file:/var/run/collectd.pid:1",
+        "memcached:threads_by_pid_file:/var/run/memcached/memcached.pid:1",
+        "rrd-grapher",
+        "sge-server",
+        "cluster-server",
+        "cluster-config-server",
+        # "xen-server",
+        "host-relay",
+        "snmp-relay",
+        "md-config-server"
+        ]
+    if os.path.isfile("/etc/init.d/icinga"):
+        def_server.append("monitoring:threads_by_pid_file:/opt/icinga/var/icinga.lock:1")
+    elif os.path.isfile("/etc/init.d/nagios"):
+        def_server.append("monitoring:threads_by_pid_file:/opt/nagios/var/nagios.lock:1")
+    def_server.extend(extra_server_tools.extra_server_file().get_server_list())
     if set_default_servers:
-        opt_ns.server = [
-            "logcheck-server",
-            "package-server",
-            "mother",
-            "collectd",
-            "rrd-grapher",
-            "sge-server",
-            "cluster-server",
-            "cluster-config-server",
-            # "xen-server",
-            "host-relay",
-            "snmp-relay",
-            "md-config-server"]
-        if os.path.isfile("/etc/init.d/icinga"):
-            opt_ns.server.append("monitoring:threads_by_pid_file:/opt/icinga/var/icinga.lock:1")
-        elif os.path.isfile("/etc/init.d/nagios"):
-            opt_ns.server.append("monitoring:threads_by_pid_file:/opt/nagios/var/nagios.lock:1")
-        opt_ns.server.extend(extra_server_tools.extra_server_file().get_server_list())
+        opt_ns.server = def_server
+    else:
+        opt_ns.server = [entry for entry in def_server if entry.split(":")[0] in opt_ns.server]
 
     check_dict, check_list = ({}, [])
     for c_type in ["node", "server"]:
@@ -135,6 +141,7 @@ def check_system(opt_ns):
             "host-relay"           : "collrelay/collrelay.pid",
             # "xen-server"           : "xen-server.pid",
             "collectd"             : "collectd.pid",
+            "memcached"            : "memcached/memcached.pid",
             "cluster-server"       : "cluster-server.pid",
             "ansys"                : "ansys-server/ansys-server.pid",
             "cransys"              : "cransys-server.pid"}
@@ -143,31 +150,37 @@ def check_system(opt_ns):
             "mother"                : "mother_server",
             "logcheck-server"       : "syslog_server",
             "cluster-server"        : "server",
-            "snmp-relay"            : "monitor_server",
+            "memcached"             : "server",
+            "snmp-relay"            : ["monitor_server", "monitor_master"],
             "cluster-config-server" : "config_server",
-            "host-relay"            : "monitor_server",
-            "monitoring"            : "monitor_server",
-            "md-config-server"      : "monitor_server",
+            "host-relay"            : ["monitor_server", "monitor_master"],
+            "monitoring"            : ["monitor_server", "monitor_master"],
+            "md-config-server"      : ["monitor_server", "monitor_master"],
             "cransys"               : "cransys_server",
             "rrd-grapher"           : "rrd_server",
+            "collectd"              : "rrd_server",
             "ansys"                 : "ansys_server"}
         # server-type to runlevel-name mapping
         runlevel_map = {
             "ansys"   : "ansys-server",
             "cransys" : "cransys-server"}
         act_proc_dict = process_tools.get_proc_list()
+        r_stat, out = commands.getstatusoutput("chkconfig --list")
         stat_dict = {}
+        if not r_stat:
+            for line in out.split("\n"):
+                if line.count("0:") and line.count("1:"):
+                    key, level_list = line.split(None, 1)
+                    level_list = [int(level) for level, _flag in [entry.split(":") for entry in level_list.strip().split()] if _flag == "on" and level.isdigit()]
+                    stat_dict[key.lower()] = level_list
         if opt_ns.runlevel or opt_ns.all:
             for check in check_list:
-                r_stat, out = commands.getstatusoutput("chkconfig --list %s" % (runlevel_map.get(check, check)))
-                if r_stat:
-                    stat_dict[check] = "Error getting config (%d): %s" % (r_stat, out)
-                elif out.count(":") < 5:
-                    stat_dict[check] = "Error getting config: %s" % (out)
-                else:
-                    stat_dict[check] = [line.strip().split(None, 1) for line in out.split("\n")][-1][1].lower()
-                    stat_dict[check] = [int(k2) for k2, _val in [part.split(":") for part in stat_dict[check].split()] if _val == "on"]
+                stat_dict[check] = stat_dict.get(runlevel_map.get(check, check), "Error getting RL-info for %s" % (check))
         ret_dict["check_list"] = []
+        if config_tools:
+            dev_config = config_tools.device_with_config("%")
+        else:
+            dev_config = None
         for name in check_list:
             ret_dict["check_list"].append(name)
             check_struct = check_dict[name]
@@ -195,7 +208,7 @@ def check_system(opt_ns):
                     pid_time = os.stat(pid_file_name)[stat.ST_CTIME]
                     act_pids = [int(line.strip()) for line in file(pid_file_name, "r").read().split("\n") if line.strip().isdigit()]
                     act_state, num_started, num_found = check_threads(name, act_pids, check_struct["any_ok"])
-                    act_info_dict["state_info"] = (num_started, num_found, pid_time)
+                    act_info_dict["state_info"] = (num_started, num_found, pid_time, check_struct["any_ok"])
                 else:
                     if os.path.isfile(check_struct["init_script"]):
                         act_state = 7
@@ -208,15 +221,20 @@ def check_system(opt_ns):
                 act_info_dict["state_info"] = "Unknown check_type '%s'" % (check_struct["check_type"])
             act_info_dict["pids"] = dict([(key, act_pids.count(key)) for key in set(act_pids)])
             if check_struct["type"] == "server":
-                if config_tools:
-                    srv_type = server_type_map.get(name, name.replace("-", "_"))
-                    try:
-                        sql_info = config_tools.server_check(server_type="%s" % (srv_type))
-                    except:
-                        sql_info = "no db_con"
-                    else:
-                        if not sql_info.effective_device:
-                            act_state = 5
+                if dev_config is not None:
+                    srv_type_list = server_type_map.get(name, name.replace("-", "_"))
+                    if type(srv_type_list) != list:
+                        srv_type_list = [srv_type_list]
+                    found = False
+                    for srv_type in srv_type_list:
+                        if srv_type in dev_config:
+                            found = True
+                            sql_info = dev_config[srv_type][0]
+                            if not sql_info.effective_device:
+                                act_state = 5
+                            break
+                    if not found:
+                        sql_info = "no db_con (%s)" % (", ".join(srv_type_list))
                 else:
                     sql_info = "no db_con"
             else:
@@ -247,6 +265,8 @@ def main():
     my_parser.add_argument("--node", type=str, nargs="+", default=[], help="node checks (%(default)s)")
     my_parser.add_argument("--server", type=str, nargs="+", default=[], help="server checks (%(default)s)")
     opt_ns = my_parser.parse_args()
+    if os.getuid():
+        print "Not running as UID, information may be incomplete"
     ret_dict = check_system(opt_ns)
     if not ret_dict:
         print "Nothing to check"
@@ -288,17 +308,20 @@ def main():
             if type(s_info) == type(""):
                 out_list.append(s_info)
             else:
-                num_started, num_found, pid_time = s_info
-                num_miss = num_started - num_found
-                if num_miss > 0:
-                    ret_str = "%s %s missing" % (
-                        logging_tools.get_plural("thread", num_miss),
-                        num_miss == 1 and "is" or "are")
-                elif num_miss < 0:
-                    ret_str = "%s too much" % (
-                        logging_tools.get_plural("thread", -num_miss))
+                num_started, num_found, pid_time, any_ok = s_info
+                if any_ok:
+                    ret_str = "%s running" % (logging_tools.get_plural("thread", num_found))
                 else:
-                    ret_str = "the thread is running" if num_started == 1 else "all %d threads running" % (num_started)
+                    num_miss = num_started - num_found
+                    if num_miss > 0:
+                        ret_str = "%s %s missing" % (
+                            logging_tools.get_plural("thread", num_miss),
+                            num_miss == 1 and "is" or "are")
+                    elif num_miss < 0:
+                        ret_str = "%s too much" % (
+                            logging_tools.get_plural("thread", -num_miss))
+                    else:
+                        ret_str = "the thread is running" if num_started == 1 else "all %d threads running" % (num_started)
                 if opt_ns.thread or opt_ns.all:
                     diff_time = max(0, time.mktime(time.localtime()) - pid_time)
                     diff_days = int(diff_time / (3600 * 24))

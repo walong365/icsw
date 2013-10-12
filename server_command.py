@@ -320,6 +320,7 @@ class srv_command(object):
         return result
     def get(self, key, def_value=None):
         xpath_str = ".//%s" % ("/".join(["ns:%s" % (sub_arg) for sub_arg in key.split(":")]))
+        print xpath_str
         xpath_res = self.__tree.xpath(xpath_str, namespaces={"ns" : XML_NS})
         if len(xpath_res) == 1:
             return xpath_res[0].text
