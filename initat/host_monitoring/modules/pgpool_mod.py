@@ -3,8 +3,8 @@
 Checks related to pgpool-II >= 3.0 via SQL interface.
 """
 
-import os
 import cPickle
+import os
 import psycopg2
 from ConfigParser import SafeConfigParser
 
