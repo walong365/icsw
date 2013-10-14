@@ -23,17 +23,18 @@
 """ logging server, central logging facility """
 
 import configfile
-import cPickle
 import grp
 import io_stream_helper
 import logging
 import logging_tools
 import mail_tools
 import os
+import pickle
 import pprint
 import process_tools
 import pwd
 import socket
+import stat
 import sys
 import threading_tools
 import time
@@ -296,7 +297,7 @@ class log_receiver(threading_tools.process_obj):
     def decode_in_str(self, in_str):
         python_log_com = False
         try:
-            in_dict = cPickle.loads(in_str)
+            in_dict = pickle.loads(in_str)
         except:
             in_dict = {}
         if in_dict:
@@ -312,7 +313,7 @@ class log_receiver(threading_tools.process_obj):
             if in_str == "meta-server-test":
                 log_com, ret_str, python_log_com = (None, "", False)
             else:
-                raise ValueError, "Unable to dePickle or deMarshal string (%s)" % (unicode(in_str[0:10]))
+                raise ValueError("Unable to dePickle or deMarshal string (%s)" % (unicode(in_str[0:10])))
         return log_com, ret_str, python_log_com
     def get_python_handle(self, record):
         if type(record) == type(""):
@@ -465,7 +466,7 @@ class log_receiver(threading_tools.process_obj):
                             try:
                                 line_length = int(log_msg.split()[1])
                             except:
-                                print "**"
+                                print("**")
                                 pass
                             else:
                                 for f_handle in handle.handlers:
@@ -556,7 +557,7 @@ class main_process(threading_tools.process_pool):
         client = self.zmq_context.socket(zmq.PULL)
         for h_name in ["LOG_HANDLE", "ERR_HANDLE", "OUT_HANDLE"]:
             client.bind(io_stream_helper.zmq_socket_name(global_config[h_name], check_ipc_prefix=True))
-            os.chmod(io_stream_helper.zmq_socket_name(global_config[h_name]), 0777)
+            os.chmod(io_stream_helper.zmq_socket_name(global_config[h_name]), stat.S_IRWXU | stat.S_IRWXG | stat.S_IRWXO)
         self.register_poller(client, zmq.POLLIN, self._recv_data)
         self.std_client = client
     def _heartbeat(self):
@@ -632,8 +633,8 @@ def main():
     # attention: global_config is not longer present after the TERM signal
     process_tools.delete_lockfile(lockfile_name, None, 0)
     try:
-        os.chmod("/var/lib/logging-server", 0777)
-        os.chmod("/var/log/cluster/sockets", 0777)
+        os.chmod("/var/lib/logging-server", stat.S_IRWXU | stat.S_IRWXG | stat.S_IRWXO)
+        os.chmod("/var/log/cluster/sockets", stat.S_IRWXU | stat.S_IRWXG | stat.S_IRWXO)
     except:
         pass
     global_config.write_file()
@@ -647,7 +648,7 @@ def main():
                                     mother_hook_args=(global_config["LOCKFILE_NAME"], 1))
         process_tools.set_handles("logging-server")
     else:
-        print "Debugging logging-server"
+        print("Debugging logging-server")
     main_process(options).loop()
     if not options.DEBUG:
         process_tools.handles_write_endline()
