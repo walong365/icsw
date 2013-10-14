@@ -411,7 +411,7 @@ class thread_pool(object):
         self.__ignore_funcs.extend(f_str)
     def set_stack_size(self, s_size):
         try:
-            thread.stack_size(s_size)
+            threading.stack_size(s_size)
         except:
             self.log("Error setting stack_size to %s: %s" % (logging_tools.get_size_str(s_size, long_version=True),
                                                              get_except_info()),
