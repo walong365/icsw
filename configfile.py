@@ -100,7 +100,7 @@ class _conf_var(object):
         self.__default_val = def_val
         self.__info = kwargs.get("info", "")
         if not self.check_type(def_val):
-            raise TypeError, "Type of Default-value differs from given type (%s, %s)" % (type(def_val), str(self.short_type))
+            raise TypeError("Type of Default-value differs from given type (%s, %s)" % (type(def_val), str(self.short_type)))
         self.source = kwargs.get("source", "default")
         self.fixed = kwargs.get("fixed", False)
         self.is_global = kwargs.get("is_global", True)
@@ -145,7 +145,7 @@ class _conf_var(object):
                 else:
                     arg_parser.add_argument(*opts, action="store_%s" % ("false" if self.value else "true"), default=self.value, **kwargs)
             else:
-                print "*? unknown short_type in _conf_var ?*", self.short_type, name, self.argparse_type
+                print("*? unknown short_type in _conf_var ?*", self.short_type, name, self.argparse_type)
         else:
             arg_parser.add_argument(*opts, type=self.argparse_type, default=self.value, **kwargs)
     @property
@@ -188,9 +188,9 @@ class _conf_var(object):
         try:
             r_val = self.str_to_val(val)
         except TypeError:
-            raise TypeError, "Type Error for value %s" % (str(val))
+            raise TypeError("Type Error for value %s" % (str(val)))
         except ValueError:
-            raise ValueError, "Value Error for value %s" % (str(val))
+            raise ValueError("Value Error for value %s" % (str(val)))
         else:
             self.value = r_val
             if source and (source != "default" or self.source == "default"):
@@ -347,17 +347,17 @@ class configuration(object):
         if key in self.__c_dict:
             return self.__c_dict[key].pretty_print()
         else:
-            raise KeyError, "Key %s not found in c_dict" % (key)
+            raise KeyError("Key %s not found in c_dict" % (key))
     def __getitem__(self, key):
         if key in self.__c_dict:
             return self.__c_dict[key].value
         else:
-            raise KeyError, "Key %s not found in c_dict" % (key)
+            raise KeyError("Key %s not found in c_dict" % (key))
     def __delitem__(self, key):
         if key in self.__c_dict:
             del self.__c_dict[key]
         else:
-            raise KeyError, "Key %s not found in c_dict" % (key)
+            raise KeyError("Key %s not found in c_dict" % (key))
     def __setitem__(self, key, value):
         if key in self.__c_dict:
             if type(value) == type(()):
@@ -366,7 +366,7 @@ class configuration(object):
                 source = None
             self.__c_dict[key].set_value(value, source)
         else:
-            raise KeyError, "Key %s not found in c_dict" % (key)
+            raise KeyError("Key %s not found in c_dict" % (key))
     def get_config_info(self):
         gk = sorted(self.keys())
         if gk:
@@ -405,32 +405,32 @@ class configuration(object):
         if key in self.__c_dict:
             return self.__c_dict[key].source
         else:
-            raise KeyError, "Key %s not found in c_dict" % (key)
+            raise KeyError("Key %s not found in c_dict" % (key))
     def fixed(self, key):
         if key in self.__c_dict:
             return self.__c_dict[key].fixed
         else:
-            raise KeyError, "Key %s not found in c_dict" % (key)
+            raise KeyError("Key %s not found in c_dict" % (key))
     def is_global(self, key):
         if key in self.__c_dict:
             return self.__c_dict[key].is_global
         else:
-            raise KeyError, "Key %s not found in c_dict" % (key)
+            raise KeyError("Key %s not found in c_dict" % (key))
     def set_global(self, key, value):
         if key in self.__c_dict:
             self.__c_dict[key].is_global = value
         else:
-            raise KeyError, "Key %s not found in c_dict" % (key)
+            raise KeyError("Key %s not found in c_dict" % (key))
     def database(self, key):
         if key in self.__c_dict:
             return self.__c_dict[key].database
         else:
-            raise KeyError, "Key %s not found in c_dict" % (key)
+            raise KeyError("Key %s not found in c_dict" % (key))
     def get_type(self, key):
         if key in self.__c_dict:
             return self.__c_dict[key].short_type
         else:
-            raise KeyError, "Key %s not found in c_dict" % (key)
+            raise KeyError("Key %s not found in c_dict" % (key))
     def parse_file(self, *args, **kwargs):
         if len(args):
             file_name = args[0]
@@ -514,11 +514,11 @@ class configuration(object):
                 pass
     def _argparse_exit(self, status=0, message=None):
         if message:
-            print message
+            print(message)
         self.exit_code = status
     def _argparse_error(self, message):
         if message:
-            print "_argparse_error:", message
+            print("_argparse_error:", message)
         self.exit_code = 2
     def get_argument_stuff(self):
         return {"positional_arguments" : self.positional_arguments,
@@ -654,7 +654,7 @@ def readconfig(name, c_type=0, in_array=[]):
                         cd[act_k] = arg
             ret_code, ret_array = (True, cd)
         else:
-            print "Unknown type %d for readconfig" % (c_type)
+            print("Unknown type %d for readconfig" % (c_type))
     return (ret_code, ret_array)
 
 def check_str_config(in_dict, name, default):

@@ -28,11 +28,14 @@ import multiprocessing
 import os
 import pickle
 import process_tools
-import Queue
+try:
+    import Queue
+except:
+    # python3
+    import queue as Queue # @ImportRedefinition, @UnresolvedImport
 import signal
 import sys
 import time
-import thread
 import threading
 import traceback
 try:
@@ -177,9 +180,9 @@ class thread_obj(threading.Thread):
     def get_thread_pool(self):
         return self.__thread_pool
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
-        print "thread %s %s: %s" % (self.getName(),
+        print("thread %s %s: %s" % (self.getName(),
                                     logging_tools.get_log_level_str(log_level),
-                                    what)
+                                    what))
     def register_func(self, f_str, f_call):
         self.__func_table[f_str] = f_call
     def add_ignore_func(self, f_str):
@@ -399,9 +402,9 @@ class thread_pool(object):
         self.poller_handler[(zmq_socket, sock_type)] = callback
         self.poller.register(zmq_socket, sock_type)
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
-        print "thread_pool %s %s: %s" % (self.get_name(),
+        print("thread_pool %s %s: %s" % (self.get_name(),
                                          logging_tools.get_log_level_str(log_level),
-                                         what)
+                                         what))
     def add_ignore_func(self, f_str):
         if type(f_str) != type([]):
             f_str = [f_str]
@@ -490,7 +493,8 @@ class thread_pool(object):
     def _thread_exit_zmq(self, t_name, t_pid):
         t_pid = int(t_pid[0])
         self._thread_exit((t_name, t_pid))
-    def _thread_exit(self, (t_name, t_pid)):
+    def _thread_exit(self, np_tuple):
+        t_name, t_pid = np_tuple
         self.__threads[t_name]["started"] = False
         self.__threads[t_name]["stopped"] = False
         self.__sub_threads_running -= 1
@@ -544,15 +548,15 @@ class thread_pool(object):
         sig_str = "got signal %d" % (signum)
         self.log(sig_str)
         if signum == signal.SIGTERM:
-            raise term_error, sig_str
+            raise term_error(sig_str)
         elif signum == signal.SIGINT:
-            raise int_error, sig_str
+            raise int_error(sig_str)
         elif signum == signal.SIGTSTP:
-            raise stop_error, sig_str
+            raise stop_error(sig_str)
         elif signum == signal.SIGALRM:
-            raise alarm_error, sig_str
+            raise alarm_error(sig_str)
         elif signum == signal.SIGHUP:
-            raise hup_error, sig_str
+            raise hup_error(sig_str)
         else:
             raise
     def install_signal_handlers(self):
@@ -617,7 +621,7 @@ class thread_pool(object):
                         if (sock, c_type) in self.poller_handler:
                             self.poller_handler[(sock, c_type)](sock)
                         else:
-                            print "???"
+                            print("???")
                     cur_time = time.time()
                     if self.__next_timeout and cur_time > self.__next_timeout:
                         self._handle_timer(cur_time)
@@ -707,7 +711,7 @@ class thread_pool(object):
         self.uninstall_signal_handlers()
         self.thread_loop_post()
     def loop_function(self):
-        print "_dummy_loop_function(), sleeping for 10 seconds"
+        print("_dummy_loop_function(), sleeping for 10 seconds")
         time.sleep(10)
     def stop_running_threads(self):
         # int_queue = self.get_queue(self.__my_queue_name)
@@ -947,10 +951,10 @@ class process_obj(multiprocessing.Process, timer_base):
             pass
         self.__pp_queue.close()
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
-        print "process %s (%d) %s: %s" % (self.name,
+        print("process %s (%d) %s: %s" % (self.name,
                                           self.pid,
                                           logging_tools.get_log_level_str(log_level),
-                                          what)
+                                          what))
     def register_func(self, f_str, f_call):
         self.__func_table[f_str] = f_call
     def add_ignore_func(self, f_str):
@@ -1078,8 +1082,8 @@ class process_obj(multiprocessing.Process, timer_base):
                     err_h = io_stream_helper.io_stream("/var/lib/logging-server/py_err_zmq", zmq_context=self.zmq_context)
                     err_h.write("\n".join(out_lines))
                     err_h.close()
-                    print "process_obj.loop() %s: %s" % (self.name,
-                                                         process_tools.get_except_info())
+                    print("process_obj.loop() %s: %s" % (self.name,
+                                                         process_tools.get_except_info()))
                     raise
                 if self.cb_func:
                     self.cb_func()
@@ -1138,7 +1142,7 @@ class debug_zmq_ctx(zmq.Context):
             super(debug_zmq_ctx, self).__setattr__(key, value)
     def log(self, out_str):
         t_name = threading.currentThread().name
-        print "[[zmq_idx=%d, t_name=%-20s]] %s" % (self.zmq_idx, t_name, out_str)
+        print("[[zmq_idx=%d, t_name=%-20s]] %s" % (self.zmq_idx, t_name, out_str))
     def socket(self, sock_type, *args, **kwargs):
         ret_socket = super(debug_zmq_ctx, self).socket(sock_type, *args, **kwargs)
         self._sockets_open.add(ret_socket.fd)
@@ -1262,17 +1266,17 @@ class process_pool(timer_base):
                 cur_mask |= mask
             self.poller.register(zmq_socket, cur_mask)
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
-        print "process_pool %s (%d) %s: %s" % (self.get_name(),
+        print("process_pool %s (%d) %s: %s" % (self.get_name(),
                                                os.getpid(),
                                                logging_tools.get_log_level_str(log_level),
-                                               what)
+                                               what))
     def add_ignore_func(self, f_str):
         if type(f_str) != type([]):
             f_str = [f_str]
         self.__ignore_funcs.extend(f_str)
     def set_stack_size(self, s_size):
         try:
-            thread.stack_size(s_size)
+            threading.stack_size(s_size)
         except:
             self.log("Error setting stack_size to %s: %s" % (logging_tools.get_size_str(s_size, long_version=True),
                                                              get_except_info()),
@@ -1428,15 +1432,15 @@ class process_pool(timer_base):
         self.log(sig_str)
         # return self._handle_exception()
         if signum == signal.SIGTERM:
-            raise term_error, sig_str
+            raise term_error(sig_str)
         elif signum == signal.SIGINT:
-            raise int_error, sig_str
+            raise int_error(sig_str)
         elif signum == signal.SIGTSTP:
-            raise stop_error, sig_str
+            raise stop_error(sig_str)
         elif signum == signal.SIGALRM:
-            raise alarm_error, sig_str
+            raise alarm_error(sig_str)
         elif signum == signal.SIGHUP:
-            raise hup_error, sig_str
+            raise hup_error(sig_str)
         else:
             raise
     def install_signal_handlers(self):
@@ -1552,14 +1556,14 @@ class process_pool(timer_base):
                                 # raise exception, important
                                 raise
                         else:
-                            print "???0", sock, c_type
+                            print("???0", sock, c_type)
                             time.sleep(1)
             else:
-                print "???1", sock, c_type, self.poller_handler.keys()
+                print("???1", sock, c_type, self.poller_handler.keys())
                 time.sleep(1)
     def loop_function(self):
         # generator
-        print "_dummy_loop_function(), sleeping for 10 seconds"
+        print("_dummy_loop_function(), sleeping for 10 seconds")
         time.sleep(10)
         yield None
     def stop_running_processes(self):
@@ -1608,12 +1612,12 @@ class twisted_main_thread(object):
     def __setitem__(self, fn, state):
         self.__flags[fn] = state
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
-        print "thread_pool %s %s: %s" % (self.name,
+        print("thread_pool %s %s: %s" % (self.name,
                                          logging_tools.get_log_level_str(log_level),
-                                         what)
+                                         what))
     def set_stack_size(self, s_size):
         try:
-            thread.stack_size(s_size)
+            threading.stack_size(s_size)
         except:
             self.log("Error setting stack_size to %s: %s" % (logging_tools.get_size_str(s_size, long_version=True),
                                                              get_except_info()),
@@ -1627,27 +1631,27 @@ class twisted_main_thread(object):
             if hasattr(self, "_sigterm"):
                 self._sigterm()
             else:
-                raise term_error, sig_str
+                raise term_error(sig_str)
         elif signum == signal.SIGINT:
             if hasattr(self, "_sigint"):
                 self._sigint()
             else:
-                raise int_error, sig_str
+                raise int_error(sig_str)
         elif signum == signal.SIGTSTP:
             if hasattr(self, "_sigtstp"):
                 self._sigtstp()
             else:
-                raise stop_error, sig_str
+                raise stop_error(sig_str)
         elif signum == signal.SIGALRM:
             if hasattr(self, "_sigalrm"):
                 self._sigalrm()
             else:
-                raise alarm_error, sig_str
+                raise alarm_error(sig_str)
         elif signum == signal.SIGHUP:
             if hasattr(self, "_sighup"):
                 self._sighup()
             else:
-                raise hup_error, sig_str
+                raise hup_error(sig_str)
         else:
             raise
     def install_signal_handlers(self):
@@ -1670,5 +1674,5 @@ class twisted_main_thread(object):
                 signal.signal(sig_num, orig_h)
 
 if __name__ == "__main__":
-    print "Loadable module, exiting..."
+    print("Loadable module, exiting...")
     sys.exit(-1)

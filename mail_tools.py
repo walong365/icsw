@@ -32,14 +32,22 @@ import socket
 import email
 from email.header import Header
 import email.mime
-import email.MIMEMultipart
-import email.MIMEImage
-import email.MIMEText
-import email.MIMEMessage
+try:
+    import email.MIMEMultipart
+    import email.MIMEImage
+    import email.MIMEText
+    import email.MIMEMessage
+except ImportError:
+    # not present for python3
+    pass
 import email.utils
 import mimetypes
 import quopri
-import email.Encoders
+try:
+    import email.Encoders
+except ImportError:
+    # not present for python3
+    pass
 import process_tools
 import logging_tools
 
@@ -77,7 +85,7 @@ class mail(object):
             for add_addr in trg:
                 self.to_addrs.append(add_addr)
         else:
-            print "unknown type for add_to_address: %s" % (str(type(trg)))
+            print("unknown type for add_to_address: %s" % (str(type(trg))))
     def init_text(self):
         self.text = []
     def add_bcc_address(self, addr):
@@ -234,5 +242,5 @@ def test_mail():
 
 if __name__ == "__main__":
     test_mail()
-    print "Loadable module, exiting..."
+    print("Loadable module, exiting...")
     sys.exit(0)

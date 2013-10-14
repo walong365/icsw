@@ -21,19 +21,19 @@
 """ various tools to handle processes and stuff """
 
 import atexit
-import commands
 import codecs
-import cPickle
 import inspect
 import locale
 import logging_tools
 import marshal
 import os
+import pickle
 import platform
 import random
 import re
 import signal
 import socket
+import subprocess
 import stat
 import sys
 import threading
@@ -62,7 +62,7 @@ except:
 # net to sys and reverse functions
 def net_to_sys(in_val):
     try:
-        result = cPickle.loads(in_val)
+        result = pickle.loads(in_val)
     except:
         try:
             result = marshal.loads(in_val)
@@ -71,7 +71,7 @@ def net_to_sys(in_val):
     return result
 
 def sys_to_net(in_val):
-    return cPickle.dumps(in_val)
+    return pickle.dumps(in_val)
 
 def get_except_info(exc_info=None, **kwargs):
     if not exc_info:
@@ -211,7 +211,7 @@ def submit_at_command(com, diff_time=0):
         pre_time_str = ""
     diff_time_str = diff_time and "+%d minutes" % (diff_time) or ""
     time_str = "%s%s" % (pre_time_str, diff_time_str)
-    cstat, cout = commands.getstatusoutput(
+    cstat, cout = subprocess.getstatusoutput(
         "echo %s | /usr/bin/at %s" % (
             com,
             time_str))
@@ -761,7 +761,7 @@ def append_pids(name, pid=None, mult=1, mode="a"):
             get_except_info()))
     else:
         try:
-            os.chmod(fname, 0644)
+            os.chmod(fname, stat.S_IRUSR | stat.S_IWUSR | stat.S_IRGRP | stat.S_IROTH)
         except:
             logging_tools.my_syslog("error changing mode of %s to 0644: %s" % (
                 fname,
@@ -800,7 +800,7 @@ def remove_pids(name, pid=None, mult=0):
             pid_lines = new_lines
         try:
             file(fname, "w").write("\n".join(pid_lines))
-            os.chmod(fname, 0644)
+            os.chmod(fname, stat.S_IRUSR | stat.S_IWUSR | stat.S_IRGRP | stat.S_IROTH)
         except:
             logging_tools.my_syslog("error removing %d pids (%s) to %s" % (
                 len(actp),
@@ -853,7 +853,7 @@ def wait_for_lockfile(lf_name, timeout=1, max_iter=10):
     while True:
         max_iter -= 1
         if not max_iter:
-            print "timeout"
+            print("timeout")
             break
         try:
             try:
@@ -879,7 +879,7 @@ def wait_for_lockfile(lf_name, timeout=1, max_iter=10):
                 break
             time.sleep(timeout)
         except int_error:
-            print "<got SIGINT>"
+            print("<got SIGINT>")
             break
     return
 
@@ -938,7 +938,7 @@ def set_handles(pfix, error_only=False, **kwargs):
                 else:
                     acth_t = "f"
                     try:
-                        os.chmod(f_name, 0640)
+                        os.chmod(f_name, stat.S_IRUSR | stat.S_IWUSR | stat.S_IRGRP)
                     except:
                         logging_tools.my_syslog("cannot chmod() '%s' to 0640" % (f_name))
             if act_h:
@@ -1073,7 +1073,7 @@ def fix_sysconfig_rights():
     conf_dir = "/etc/sysconfig/cluster"
     target_group = "idg"
     os.chown(conf_dir, 0, grp.getgrnam(target_group)[2])
-    os.chmod(conf_dir, 0775)
+    os.chmod(conf_dir, stat.S_IRWXU | stat.S_IRWXG | stat.S_IROTH | stat.S_IXITH)
 
 def change_user_group_path(path, user, group, **kwargs):
     if "log_com" in kwargs:
@@ -1269,7 +1269,7 @@ def get_proc_list(last_dict=None, **kwargs):
     return p_dict
 
 def bpt_show_childs(in_dict, idx, start):
-    print " " * idx, start, in_dict[start]["name"]
+    print(" " * idx, start, in_dict[start]["name"])
     if in_dict[start]["childs"]:
         p_list = in_dict[start]["childs"].keys()
         for pid in p_list:
@@ -1355,7 +1355,8 @@ def kill_running_processes(p_name=None, **kwargs):
         time.sleep(wait_time)
     return log_lines
 
-def fd_change((uid, gid), d_name, files):
+def fd_change(uid_gid_tuple, d_name, files):
+    uid, gid = uid_gid_tuple
     os.chown("%s" % (d_name), uid, gid)
     for f_name in files:
         try:
@@ -1385,13 +1386,13 @@ def fix_directories(user, group, f_list):
     for act_dir in f_list:
         if type(act_dir) == dict:
             dir_name = act_dir["name"]
-            dir_mode = act_dir.get("dir_mode", 0755)
+            dir_mode = act_dir.get("dir_mode", stat.S_IRWXU | stat.S_IRGRP | stat.S_IXGRP | stat.S_IROTH | stat.s_IXOTH)
             walk_dir = act_dir.get("walk_dir", True)
         elif type(act_dir) == set:
             dir_name, dir_mode = act_dir
             walk_dir = True
         else:
-            dir_name, dir_mode, walk_dir = (act_dir, 0755, True)
+            dir_name, dir_mode, walk_dir = (act_dir, 0o755, True)
         try_walk = True
         if not os.path.isdir(dir_name):
             try:
@@ -1508,7 +1509,7 @@ class automount_checker(object):
     def get_restart_command(self):
         return "%s restart" % (self.__autofs_path)
     def check(self):
-        stat, out = commands.getstatusoutput("%s status" % (self.__autofs_path))
+        stat, out = subprocess.getstatusoutput("%s status" % (self.__autofs_path))
         a_dict = {"c" : {},
                   "r" : {}}
         act_mode = None
@@ -1606,7 +1607,7 @@ def fetch_sysinfo(root_dir="/"):
             if os.path.islink(ls_path):
                 ls_path = os.path.join(root_dir, os.readlink(ls_path))
             arch_com = "file %s" % (ls_path)
-            c_stat, out = commands.getstatusoutput(arch_com)
+            c_stat, out = subprocess.getstatusoutput(arch_com)
             if c_stat:
                 log_lines.append(("Cannot execute %s (%d): %s" % (arch_com, c_stat, out), logging_tools.LOG_LEVEL_ERROR))
             else:
@@ -1746,5 +1747,5 @@ def get_sys_bits():
     return int(platform.architecture()[0][0:2])
 
 if __name__ == "__main__":
-    print "Loadable module, exiting..."
+    print("Loadable module, exiting...")
     sys.exit(0)

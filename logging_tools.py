@@ -26,7 +26,7 @@ try:
     import bz2
 except:
     bz2 = None
-import cPickle
+import pickle
 import datetime
 import gzip
 import inspect
@@ -283,7 +283,7 @@ def get_logger(name, destination, **kwargs):
                 act_logger.addHandler(zmq_handler(pub, act_logger))
             else:
                 if act_dest.count("zmq"):
-                    raise ValueError, "requested ZMQ-type destination '%s' without ZMQ-Protocol" % (act_dest)
+                    raise ValueError("requested ZMQ-type destination '%s' without ZMQ-Protocol" % (act_dest))
                 if act_dest.startswith("uds:"):
                     if is_linux:
                         # linux, ok
@@ -380,7 +380,7 @@ class zmq_handler(logging.Handler):
         _d = dict(record.__dict__)
         _d["msg"] = record.getMessage()
         _d["args"] = None
-        p_str = cPickle.dumps(_d, 1)
+        p_str = pickle.dumps(_d, 1)
         if ei:
             record.exc_info = ei # for next handler
         return p_str
@@ -516,7 +516,7 @@ class udp_handler(logging.handlers.DatagramHandler):
         if ei:
             dummy = self.format(record) # just to get traceback text into record.exc_text
             record.exc_info = None # to avoid Unpickleable error
-        out_str = cPickle.dumps(record.__dict__, 1)
+        out_str = pickle.dumps(record.__dict__, 1)
         if ei:
             record.exc_info = ei # for next handler
         return "%08d" % (len(out_str)) + out_str
@@ -557,7 +557,7 @@ class local_uds_handler(logging.Handler):
         if ei:
             dummy = self.format(record) # just to get traceback text into record.exc_text
             record.exc_info = None # to avoid Unpickleable error
-        p_str = cPickle.dumps(record.__dict__, 1)
+        p_str = pickle.dumps(record.__dict__, 1)
         if ei:
             record.exc_info = ei # for next handler
         return "%08d%s" % (len(p_str), p_str)
@@ -713,7 +713,7 @@ class form_list(object):
                 out_lines.append(";".join([str(x).strip() for x in l_p]))
         else:
             if not self.lines:
-                raise ValueError, "empty list (no lines)"
+                raise ValueError("empty list (no lines)")
             # count number of rows
             num_rows = max([len(x) for x in self.lines])
             _min_rows = min([len(x) for x in self.lines])
@@ -807,7 +807,7 @@ class new_form_list(object):
     def __unicode__(self):
         if not self.__content:
             if self.__strict_mode:
-                raise ValueError, "empty list (no lines)"
+                raise ValueError("empty list (no lines)")
             else:
                 return ""
         # count number of rows
@@ -972,7 +972,7 @@ def my_syslog(out_str, log_lev=LOG_LEVEL_OK, out=False):
                 len(str(out_str)),
                 log_type))
     if out:
-        print out_str
+        print(out_str)
 
 def get_log_level_str(level):
     return {LOG_LEVEL_OK       : "ok",
@@ -1064,11 +1064,11 @@ class new_logfile(logging.handlers.BaseRotatingHandler):
         else:
             act_z.write(open(self.baseFilename, "r").read())
             act_z.close()
-            os.chmod(gz_file_name, 0640)
+            os.chmod(gz_file_name, stat.S_IRUSR | stat.S_IWUSR | stat.S_IRGRP)
             self.stream.close()
             os.unlink(self.baseFilename)
             self.stream = self._open()
-            os.chmod(self.baseFilename, 0640)
+            os.chmod(self.baseFilename, stat.S_IRUSR | stat.S_IWUSR | stat.S_IRGRP)
             self.mode = "w"
             self.stream = self._open()
 
@@ -1091,13 +1091,13 @@ class syslog_helper_obj(object):
             else:
                 if in_c == "(":
                     if in_count == max_count:
-                        raise ValueError, "already in parentheses_mode (%s) ..." % (in_str)
+                        raise ValueError("already in parentheses_mode (%s) ..." % (in_str))
                     if in_count > 1:
                         act_str = "%s%s" % (act_str, in_c)
                     in_count += 1
                 elif in_c == ")":
                     if not in_count:
-                        raise ValueError, "not in parentheses_mode ..."
+                        raise ValueError("not in parentheses_mode ...")
                     in_count -= 1
                     if not in_count:
                         act_str = "%s%s" % (act_str, in_c)
@@ -1118,7 +1118,7 @@ class syslog_helper_obj(object):
         need_semi = False
         for in_c in in_stream:
             if in_c not in [" ", ";"] and need_semi:
-                raise ValueError, "need semikolon, error ..."
+                raise ValueError("need semikolon, error ...")
             elif in_c == ";" and not struct_count and need_semi:
                 pre_parts = pre_str.split()
                 com = pre_parts.pop(0)
@@ -1135,13 +1135,13 @@ class syslog_helper_obj(object):
             else:
                 if in_c == str_start:
                     if struct_count == max_struct:
-                        raise ValueError, "already in structure, error ..."
+                        raise ValueError("already in structure, error ...")
                     struct_count += 1
                     if struct_count > 1:
                         in_str = "%s%s" % (in_str, in_c)
                 elif in_c == str_end:
                     if not struct_count:
-                        raise ValueError, "not in structure, error ..."
+                        raise ValueError("not in structure, error ...")
                     # now we need a semikolon
                     struct_count -= 1
                     if not struct_count:
@@ -1177,7 +1177,7 @@ class syslog_ng_destination(syslog_helper_obj):
         syslog_helper_obj.__init__(self)
         d_list = self._parse_stream(in_str, [], "(")
         if len(d_list) > 1:
-            raise ValueError, "__destination to long (%d)" % (len(d_list))
+            raise ValueError("__destination to long (%d)" % (len(d_list)))
         elif d_list:
             self.__type, self.__args = d_list[0]
             self.__args = self._split_str(self.__args)
@@ -1215,11 +1215,11 @@ class syslog_ng_log(syslog_helper_obj):
             if key in o_dict.keys():
                 o_dict[key].append(value)
             else:
-                raise KeyError, "unknown key %s" % (key)
+                raise KeyError("unknown key %s" % (key))
         if not o_dict["source"]:
-            raise ValueError, "need at least one source"
+            raise ValueError("need at least one source")
         elif not o_dict["destination"]:
-            raise ValueError, "need at least one destination"
+            raise ValueError("need at least one destination")
         self.__obj_dict = o_dict
     def __repr__(self):
         return "log from (%s)%s to (%s)%s" % (", ".join(self.__obj_dict["source"]),
@@ -1248,7 +1248,7 @@ class syslog_ng_config(syslog_helper_obj):
             elif key == "options":
                 self.__options = dict([(k, value) for k, value in self._parse_stream(value, [], "(")])
             else:
-                raise KeyError, "unknown key %s (%s)" % (key, str(value))
+                raise KeyError("unknown key %s (%s)" % (key, str(value)))
     def get_config_lines(self):
         # return lines with the config
         r_lines = ["# auto-generated syslog-ng.conf", ""]
@@ -1274,7 +1274,7 @@ def main():
     a.append([form_entry("xxx", header="a"),
               form_entry(u"öäöü", header="test"),
               form_entry_right(89, header="num")])
-    print unicode(a)
+    print(unicode(a))
     # a = syslog_ng_config()
     # print a.get_dict_sort(a.get_multi_object("source"))
     # print "\n".join(a.get_config_lines())
@@ -1282,5 +1282,5 @@ def main():
 
 if __name__ == "__main__":
     main()
-    print "Loadable module, exiting..."
+    print("Loadable module, exiting...")
     sys.exit(0)

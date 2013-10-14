@@ -20,8 +20,8 @@
 #
 """ sends everything to the local logging-server """
 
-import cPickle
 import os
+import pickle
 import sys
 try:
     import zmq
@@ -47,7 +47,7 @@ class error_protocol(ConnectedDatagramProtocol):
         while self.out_buffer:
             self.transport.write(self.out_buffer.pop(0))
     def connectionFailed(self, why):
-        print "conn refused", why
+        print("conn refused:", why)
     
 class io_stream(object):
     def __init__(self, sock_name="/tmp/py_log", **kwargs):
@@ -81,10 +81,10 @@ class io_stream(object):
                     else:
                         t_dict[r_what] = rest
         if self.__protocol:
-            self.__protocol.out_buffer.append(cPickle.dumps(t_dict))
+            self.__protocol.out_buffer.append(pickle.dumps(t_dict))
             reactor.connectUNIXDatagram(self.__sock_name, self.__protocol)
         else:
-            self.__zmq_sock.send(cPickle.dumps(t_dict))
+            self.__zmq_sock.send(pickle.dumps(t_dict))
     def close(self):
         if self.__zmq_sock:
             self.__zmq_sock.close()
@@ -95,5 +95,5 @@ class io_stream(object):
         pass
 
 if __name__ == "__main__":
-    print "Loadable module, exiting ..."
+    print("Loadable module, exiting ...")
     sys.exit(0)
