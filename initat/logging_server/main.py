@@ -27,7 +27,6 @@ import cPickle
 import grp
 import io_stream_helper
 import logging
-import logging_server_version
 import logging_tools
 import mail_tools
 import os
@@ -39,6 +38,7 @@ import sys
 import threading_tools
 import time
 import zmq
+from initat.logging_server import version
 from twisted.internet import reactor
 from twisted.internet.protocol import DatagramProtocol
 
@@ -624,7 +624,7 @@ def main():
         ("LONG_HOST_NAME"      , configfile.str_c_var(long_host_name)),
         ("MAX_LINE_LENGTH"     , configfile.int_c_var(0))])
     global_config.parse_file()
-    options = global_config.handle_commandline(description="logging server, version is %s" % (logging_server_version.VERSION_STRING))
+    options = global_config.handle_commandline(description="logging server, version is %s" % (version.VERSION_STRING))
     if global_config["KILL_RUNNING"]:
         process_tools.kill_running_processes(exclude=configfile.get_manager_pid())
     # daemon has to be a local variable, otherwise system startup can be severly damaged
