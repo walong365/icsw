@@ -1,4 +1,4 @@
-#!/usr/bin/python-init -Ot
+#!/usr/bin/python-init -OtB
 # -*- coding: utf-8 -*-
 #
 # Copyright (C) 2009,2010,2011,2012,2013 Andreas Lang-Nevyjel (lang-nevyjel@init.at)
@@ -30,7 +30,7 @@ import logging_tools
 import mail_tools
 import os
 import pickle
-import pprint
+# import pprint
 import process_tools
 import pwd
 import socket
@@ -40,74 +40,76 @@ import threading_tools
 import time
 import zmq
 from initat.logging_server import version
-from twisted.internet import reactor
-from twisted.internet.protocol import DatagramProtocol
+# from twisted.internet import reactor
+# from twisted.internet.protocol import DatagramProtocol
+if sys.version_info[0] == 3:
+    unicode = str
 
 SEP_STR = "-" * 50
 
-class twisted_log_receiver(DatagramProtocol):
-    def __init__(self, t_process):
-        self.__process = t_process
-    def datagramReceived(self, in_str, addr):
-        if in_str[0:8].isdigit():
-            self.__process.log_recv(in_str[8:])
-        else:
-            self.__process.log("invalid header", logging_tools.LOG_LEVEL_ERROR)
+if False:
+    class twisted_log_receiver(DatagramProtocol):
+        def __init__(self, t_process):
+            self.__process = t_process
+        def datagramReceived(self, in_str, addr):
+            if in_str[0:8].isdigit():
+                self.__process.log_recv(in_str[8:])
+            else:
+                self.__process.log("invalid header", logging_tools.LOG_LEVEL_ERROR)
 
-
-class twisted_process(threading_tools.process_obj):
-    def process_init(self):
-        self.__log_socket = self.connect_to_socket("receiver")
-        # init twisted reactor
-        # self._got_udp = udp_log_receiver()
-        # tcp_factory = Factory()
-        # tcp_factory.protocol = tcp_log_receiver
-        # reactor.listenUDP(8004, self._got_udp)
-        # reactor.listenTCP(8004, tcp_factory)
-        bind_errors = 0
-        log_recv = twisted_log_receiver(self)
-        for h_name in ["LOG", "ERR", "OUT"]:
-            h_name = global_config["%s_HANDLE" % (h_name)]
-            if os.path.isfile(h_name):
+    class twisted_process(threading_tools.process_obj):
+        def process_init(self):
+            self.__log_socket = self.connect_to_socket("receiver")
+            # init twisted reactor
+            # self._got_udp = udp_log_receiver()
+            # tcp_factory = Factory()
+            # tcp_factory.protocol = tcp_log_receiver
+            # reactor.listenUDP(8004, self._got_udp)
+            # reactor.listenTCP(8004, tcp_factory)
+            bind_errors = 0
+            log_recv = twisted_log_receiver(self)
+            for h_name in ["LOG", "ERR", "OUT"]:
+                h_name = global_config["%s_HANDLE" % (h_name)]
+                if os.path.isfile(h_name):
+                    try:
+                        os.unlink(h_name)
+                    except:
+                        self.log(
+                            "error removing (stale) UDS-handle %s: %s" % (
+                                h_name,
+                                process_tools.get_except_info()),
+                            logging_tools.LOG_LEVEL_ERROR)
+                    else:
+                        self.log("remove stale UDS-handle %s" % (h_name))
                 try:
-                    os.unlink(h_name)
+                    reactor.listenUNIXDatagram(h_name, log_recv)
                 except:
                     self.log(
-                        "error removing (stale) UDS-handle %s: %s" % (
+                        "cannot listen to UDS %s: %s" % (
                             h_name,
                             process_tools.get_except_info()),
                         logging_tools.LOG_LEVEL_ERROR)
+                    bind_errors += 1
                 else:
-                    self.log("remove stale UDS-handle %s" % (h_name))
+                    self.log("listening on UDS %s" % (h_name))
             try:
-                reactor.listenUNIXDatagram(h_name, log_recv)
+                reactor.listenUDP(global_config["LISTEN_PORT"], log_recv)
             except:
                 self.log(
-                    "cannot listen to UDS %s: %s" % (
-                        h_name,
+                    "cannot listen to UDP port %d: %s" % (
+                        global_config["LISTEN_PORT"],
                         process_tools.get_except_info()),
                     logging_tools.LOG_LEVEL_ERROR)
                 bind_errors += 1
-            else:
-                self.log("listening on UDS %s" % (h_name))
-        try:
-            reactor.listenUDP(global_config["LISTEN_PORT"], log_recv)
-        except:
-            self.log(
-                "cannot listen to UDP port %d: %s" % (
-                    global_config["LISTEN_PORT"],
-                    process_tools.get_except_info()),
-                logging_tools.LOG_LEVEL_ERROR)
-            bind_errors += 1
-        if bind_errors:
-            self.send_pool_message("startup_error", bind_errors)
-    def log_recv(self, raw_data):
-        self.send_to_socket(self.__log_socket, ["log_recv", raw_data])
-    def loop_post(self):
-        self.log("closing receiver socket")
-        self.__log_socket.close()
-    def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
-        self.send_to_socket(self.__log_socket, ["log", what, log_level])
+            if bind_errors:
+                self.send_pool_message("startup_error", bind_errors)
+        def log_recv(self, raw_data):
+            self.send_to_socket(self.__log_socket, ["log_recv", raw_data])
+        def loop_post(self):
+            self.log("closing receiver socket")
+            self.__log_socket.close()
+        def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
+            self.send_to_socket(self.__log_socket, ["log", what, log_level])
 
 class log_receiver(threading_tools.process_obj):
     def process_init(self):
@@ -172,7 +174,7 @@ class log_receiver(threading_tools.process_obj):
             else:
                 self.log("cannot extract error_str, using dump of error_dict", logging_tools.LOG_LEVEL_ERROR)
                 error_f = []
-                for key in sorted(in_dict.iterkeys()):
+                for key in sorted(in_dict.keys()):
                     try:
                         error_f.append(u"  %-20s : %s" % (key, unicode(in_dict[key])))
                     except:
@@ -222,7 +224,7 @@ class log_receiver(threading_tools.process_obj):
         mails_sent = 0
         s_time = time.time()
         ep_dels = []
-        for ep, es in self.__eg_dict.iteritems():
+        for ep, es in self.__eg_dict.items():
             t_diff = s_time - es["last_update"]
             if force or (t_diff < 0 or t_diff > 60):
                 subject = "Python error for pid %d on %s@%s (%s)" % (
@@ -282,13 +284,13 @@ class log_receiver(threading_tools.process_obj):
             handle.close()
         del self.__handles[h_name]
     def _update(self, **kwargs):
-        c_handles = sorted([key for key, value in self.__handles.iteritems() if isinstance(value, logging_tools.new_logfile) and value.check_for_temp_close()])
+        c_handles = sorted([key for key, value in self.__handles.items() if isinstance(value, logging_tools.new_logfile) and value.check_for_temp_close()])
         if c_handles:
             self.log("temporarily closing %s: %s" % (logging_tools.get_plural("handle", len(c_handles)),
                                                      ", ".join(c_handles)))
         # check for close
         # c_handles = []
-        # for key in self.__handles.iterkeys():
+        # for key in self.__handles.keys():
         #    if not os.path.isdir("/proc/%d" % (self.__handles[key].process_id)):
         #        c_handles.append(key)
         for c_handle in c_handles:
@@ -302,7 +304,7 @@ class log_receiver(threading_tools.process_obj):
             in_dict = {}
         if in_dict:
             # pprint.pprint(in_dict)
-            if in_dict.has_key("IOS_type"):
+            if "IOS_type" in in_dict:
                 self.log("got error_dict (pid %d)" % (in_dict["pid"]),
                          logging_tools.LOG_LEVEL_ERROR)
                 self._feed_error(in_dict)
@@ -498,7 +500,8 @@ class log_receiver(threading_tools.process_obj):
         self.log("closing %d handles" % (len(self.__handles.keys())))
         self.log("logging process exiting (pid %d)" % (self.pid))
         self.log("statistics (open/close/written): %d / %d / %d" % (self.__num_open, self.__num_close, self.__num_write))
-        for close_key in self.__handles.keys():
+        key_list = list(self.__handles.keys())
+        for close_key in key_list:
             self.remove_handle(close_key)
 
 class main_process(threading_tools.process_pool):
@@ -514,7 +517,7 @@ class main_process(threading_tools.process_pool):
         self.add_process(log_receiver("receiver", priority=50), start=True)
         self._log_config()
         self._init_network_sockets()
-        self.add_process(twisted_process("twisted"), twisted=True, start=True)
+        # self.add_process(twisted_process("twisted"), twisted=True, start=True)
         self.register_timer(self._heartbeat, 30, instant=True)
         self.register_timer(self._update, 60)
     def log(self, what, level=logging_tools.LOG_LEVEL_OK):
