@@ -39,8 +39,11 @@ import sys
 import threading
 import time
 import traceback
+if sys.version_info[0] == 3:
+    unicode = str
+    long = int
 
-if sys.platform in ["linux2", "linux3"]:
+if sys.platform in ["linux2", "linux3", "linux"]:
     import cpu_database
     import grp
     import pwd
@@ -257,8 +260,9 @@ def get_mem_info(pid=0, **kwargs):
         elif os.path.isfile(map_file_name):
             # not always correct ...
             try:
-                map_lines = [[y.strip() for y in x.strip().split()] for x in
-                             file(map_file_name, "r").read().split("\n") if x.strip()]
+                map_lines = [
+                    [y.strip() for y in x.strip().split()] for x in
+                    open(map_file_name, "r").read().split("\n") if x.strip()]
             except:
                 pass
             else:
@@ -365,7 +369,7 @@ class meta_server_info(object):
             parsed = False
             if etree:
                 try:
-                    xml_struct = etree.fromstring(file(name, "r").read())
+                    xml_struct = etree.fromstring(open(name, "r").read())
                 except:
                     logging_tools.my_syslog("error parsing XML file %s (meta_server_info): %s" % (
                         name, get_except_info()))
@@ -391,7 +395,7 @@ class meta_server_info(object):
                 parsed = True
             else:
                 try:
-                    lines = [line.strip() for line in file(name, "r").read().split("\n")]
+                    lines = [line.strip() for line in open(name, "r").read().split("\n")]
                 except:
                     logging_tools.my_syslog("error reading file %s (meta_server_info): %s" % (
                         name,
@@ -523,7 +527,7 @@ class meta_server_info(object):
             all_pids and ", ".join(["%d%s" % (pid, pid_dict[pid] and " (x %d)" % (pid_dict[pid]) or "") for pid in all_pids]) or "---")
     def heartbeat(self):
         try:
-            file(self.get_heartbeat_file_name(), "wb").write("%d" % (os.getpid()))
+            open(self.get_heartbeat_file_name(), "wb").write("%d" % (os.getpid()))
         except:
             logging_tools.my_syslog("error writing file %s (meta_server_info for %s)" % (self.get_heartbeat_file_name(), self.__name))
     def save_block(self):
@@ -555,7 +559,7 @@ class meta_server_info(object):
         if not self.__file_name:
             self.__file_name = "%s/%s" % (self.__meta_server_dir, self.__name)
         try:
-            file(self.__file_name, "w").write(file_content)
+            open(self.__file_name, "w").write(file_content)
         except:
             logging_tools.my_syslog("error writing file %s (meta_server_info for %s)" % (self.__file_name, self.__name))
     def __eq__(self, other):
@@ -587,7 +591,7 @@ class meta_server_info(object):
             if not act_dict:
                 act_dict = get_proc_list()
             # search pids
-            pids_found = [key for key, value in act_dict.iteritems() if value["name"] == self.__exe_name]
+            pids_found = [key for key, value in act_dict.items() if value["name"] == self.__exe_name]
             self.__pids = sum([[key] * act_pids[key] for key in pids_found], [])
         self.__pids_found = dict([(cur_pid, act_pids[cur_pid]) for cur_pid in self.__pids if cur_pid in act_pids.keys()])
         self.__pids_expected = dict([(cur_pid, len([True for s_pids in self.__pids if cur_pid == s_pids])) for cur_pid in self.__pids])
@@ -703,7 +707,7 @@ class cached_file(object):
                 if update:
                     self.__last_stat, self.__last_update = (act_stat, act_time)
                     try:
-                        content = file(self.__name, "r").read()
+                        content = open(self.__name, "r").read()
                     except:
                         self.log("error reading from %s: %s" % (self.__name,
                                                                 get_except_info()),
@@ -752,7 +756,7 @@ def append_pids(name, pid=None, mult=1, mode="a"):
     long_mode = {"a" : "appending",
                  "w" : "writing"}[mode]
     try:
-        file(fname, mode).write("\n".join(mult * ["%d" % (cur_p) for cur_p in actp] + [""]))
+        open(fname, mode).write("\n".join(mult * ["%d" % (cur_p) for cur_p in actp] + [""]))
     except:
         logging_tools.my_syslog("error %s %s (%s) to %s: %s" % (
             long_mode,
@@ -785,7 +789,7 @@ def remove_pids(name, pid=None, mult=0):
     else:
         fname = "%s.pid" % (os.path.join(RUN_DIR, name))
     try:
-        pid_lines = [entry.strip() for entry in file(fname, "r").read().split("\n")]
+        pid_lines = [entry.strip() for entry in open(fname, "r").read().split("\n")]
     except:
         logging_tools.my_syslog("error interpreting file: %s" % (get_except_info()))
     else:
@@ -799,7 +803,7 @@ def remove_pids(name, pid=None, mult=0):
                     new_lines.append(line)
             pid_lines = new_lines
         try:
-            file(fname, "w").write("\n".join(pid_lines))
+            open(fname, "w").write("\n".join(pid_lines))
             os.chmod(fname, stat.S_IRUSR | stat.S_IWUSR | stat.S_IRGRP | stat.S_IROTH)
         except:
             logging_tools.my_syslog("error removing %d pids (%s) to %s" % (
@@ -818,7 +822,7 @@ def delete_pid(name):
             pass
 
 def create_lockfile(lf_name):
-    file(lf_name, "w").write(".")
+    open(lf_name, "w").write(".")
     try:
         os.unlink(get_msg_file_name(lf_name))
     except:
@@ -831,7 +835,7 @@ def set_lockfile_msg(lf_name, msg):
     if msg and os.path.isfile(lf_name):
         lf_msg_name = get_msg_file_name(lf_name)
         try:
-            file(lf_msg_name, "w").write(msg.strip())
+            open(lf_msg_name, "w").write(msg.strip())
         except:
             pass
 
@@ -858,7 +862,7 @@ def wait_for_lockfile(lf_name, timeout=1, max_iter=10):
         try:
             try:
                 if os.path.isfile(lf_msg_name):
-                    out = file(lf_msg_name, "r").read().strip()
+                    out = open(lf_msg_name, "r").read().strip()
                 else:
                     out = "."
             except:
@@ -917,7 +921,7 @@ def set_handles(pfix, error_only=False, **kwargs):
             create_new, f_name = pf_dict[cv]
             new_name = f_name.startswith("/") and f_name or os.path.normpath("%s/%s" % (act_dir, f_name))
             h_names[cv] = (create_new, new_name)
-        for name, (c_new, f_name) in h_names.iteritems():
+        for name, (c_new, f_name) in h_names.items():
             act_h = None
             if os.path.exists(f_name):
                 n_stat = os.stat(f_name)
@@ -931,7 +935,7 @@ def set_handles(pfix, error_only=False, **kwargs):
                     break
             if not act_h:
                 try:
-                    act_h = file(f_name, "a", 0)
+                    act_h = open(f_name, "a", 0)
                 except:
                     act_h = None
                     break
@@ -957,7 +961,7 @@ def set_handles(pfix, error_only=False, **kwargs):
             for c_handle in close_num:
                 os.close(c_handle)
             if not error_only:
-                sys.stdin = file("/dev/null", "r")
+                sys.stdin = open("/dev/null", "r")
                 sys.stdout = new_h_struct["out"]["handle"]
                 if new_h_struct["out"]["type"] == "f":
                     sys.stdout.write("starting at %s\n" % (act_time))
@@ -1135,7 +1139,7 @@ def become_daemon(debug=None, wait=0, mother_hook=None, mother_hook_args=None, *
     debug_f = None
     if debug:
         try:
-            debug_f = file(debug, "A")
+            debug_f = open(debug, "A")
         except:
             pass
     npid = os.fork()
@@ -1187,7 +1191,7 @@ def get_process_id_list(with_threadcount=True, with_dotprocs=False):
             if os.path.isfile(stat_f):
                 for _idx in range(max_try_count):
                     try:
-                        stat_dict = dict([(z[0].lower(), z[1].strip()) for z in [y.split(":", 1) for y in [x.strip() for x in file(stat_f, "r").read().replace("\t", " ").split("\n") if x.count(":")]]])
+                        stat_dict = dict([(z[0].lower(), z[1].strip()) for z in [y.split(":", 1) for y in [x.strip() for x in open(stat_f, "r").read().replace("\t", " ").split("\n") if x.count(":")]]])
                     except:
                         stat_dict = {}
                     else:
@@ -1200,7 +1204,7 @@ def get_process_id_list(with_threadcount=True, with_dotprocs=False):
             stat_f = "/proc/.%d/status" % (pid)
             if os.path.isfile(stat_f):
                 try:
-                    stat_dict = dict([(z[0].lower(), z[1].strip()) for z in [y.split(":", 1) for y in [x.strip() for x in file(stat_f, "r").read().replace("\t", " ").split("\n") if x.count(":")]]])
+                    stat_dict = dict([(z[0].lower(), z[1].strip()) for z in [y.split(":", 1) for y in [x.strip() for x in open(stat_f, "r").read().replace("\t", " ").split("\n") if x.count(":")]]])
                 except:
                     pass
                 else:
@@ -1307,7 +1311,7 @@ def build_kill_dict(name, exclude_list=[]):
     # list of parent pids (up to init)
     ppl = build_ppid_list(pdict, os.getpid())
     kill_dict = {}
-    for pid, p_struct in pdict.iteritems():
+    for pid, p_struct in pdict.items():
         if name.startswith(p_struct["name"]) and pid not in ppl and pid not in exclude_list:
             kill_dict[pid] = p_struct["name"]
     return kill_dict
@@ -1319,7 +1323,7 @@ def kill_running_processes(p_name=None, **kwargs):
     if type(exclude_pids) != list:
         exclude_pids = [exclude_pids]
     if p_name is None:
-        p_name = file("/proc/%d/status" % (my_pid), "r").readline().strip().split()[1]
+        p_name = open("/proc/%d/status" % (my_pid), "r").readline().strip().split()[1]
     log_lines = ["my_pid is %d, searching for process '%s' to kill, kill_signal is %d, exclude_list is %s" % (
         my_pid,
         p_name,
@@ -1328,7 +1332,7 @@ def kill_running_processes(p_name=None, **kwargs):
     kill_dict = build_kill_dict(p_name, exclude_pids)
     any_killed = False
     if kill_dict:
-        for pid, name in kill_dict.iteritems():
+        for pid, name in kill_dict.items():
             if name not in kwargs.get("ignore_names", []):
                 log_str = "%s (%d): Trying to kill pid %d (%s) with signal %d ..." % (
                     p_name,
@@ -1433,7 +1437,7 @@ def fix_files(user, group, f_dict):
                 pass
 
 def is_linux():
-    return sys.platform in ["linux2", "linux3"]
+    return sys.platform in ["linux2", "linux3", "linux"]
 
 def is_windows():
     return not is_linux()
@@ -1458,7 +1462,7 @@ def get_programm_name():
     return p_name
 
 def get_machine_name(short=True):
-    if sys.platform in ["linux2", "linux3"]:
+    if sys.platform in ["linux2", "linux3", "linux"]:
         # for linux
         m_name = os.uname()[1]
     else:
@@ -1472,7 +1476,7 @@ def get_machine_name(short=True):
 def get_cluster_name(f_name="/etc/sysconfig/cluster/cluster_name"):
     if os.path.isfile(f_name):
         try:
-            c_name = file(f_name, "r").read().strip().split()[0]
+            c_name = open(f_name, "r").read().strip().split()[0]
         except:
             c_name = "error reading: %s" % (get_except_info())
     else:
@@ -1550,7 +1554,7 @@ class automount_checker(object):
 
 def get_arp_dict():
     try:
-        arp_dict = dict([(line_p[3].lower(), line_p[0]) for line_p in [line.strip().split() for line in file("/proc/net/arp", "r").read().split("\n")[1:]] if line_p])
+        arp_dict = dict([(line_p[3].lower(), line_p[0]) for line_p in [line.strip().split() for line in open("/proc/net/arp", "r").read().split("\n")[1:]] if line_p])
     except:
         arp_dict = {}
     return arp_dict
@@ -1559,7 +1563,7 @@ def get_char_block_device_dict():
     # parses /proc/devices and returns two dicts
     char_dict, block_dict = ({}, {})
     try:
-        lines = [line.strip().lower() for line in file("/proc/devices", "r").read().split("\n") if line.strip()]
+        lines = [line.strip().lower() for line in open("/proc/devices", "r").read().split("\n") if line.strip()]
     except:
         pass
     else:
@@ -1577,17 +1581,17 @@ def get_char_block_device_dict():
 def _read_issue_file(f_name):
     ret_dict = {}
     if os.path.isfile(f_name):
-        ret_dict = dict([(c_line[0].strip(), c_line[1].strip()) for c_line in [line.strip().lower().split("=", 1) for line in file(f_name, "r").read().split("\n") if line.strip() and not line.strip().startswith("#") and line.count("=")]])
+        ret_dict = dict([(c_line[0].strip(), c_line[1].strip()) for c_line in [line.strip().lower().split("=", 1) for line in open(f_name, "r").read().split("\n") if line.strip() and not line.strip().startswith("#") and line.count("=")]])
     return ret_dict
 
 def fetch_sysinfo(root_dir="/"):
     log_lines, sys_dict = ([], {})
     try:
-        isl = [x.strip().lower() for x in file("%s/etc/issue" % (root_dir), "r").read().split("\n")]
+        isl = [x.strip().lower() for x in open("%s/etc/issue" % (root_dir), "r").read().split("\n")]
         if os.path.isfile("%s/etc/redhat-release" % (root_dir)):
-            isl.extend([x.strip().lower() for x in file("%s/etc/redhat-release" % (root_dir), "r").read().split("\n")])
+            isl.extend([x.strip().lower() for x in open("%s/etc/redhat-release" % (root_dir), "r").read().split("\n")])
         if os.path.isfile("%s/etc/fedora-release" % (root_dir)):
-            isl.extend([x.strip().lower() for x in file("%s/etc/fedora-release" % (root_dir), "r").read().split("\n")])
+            isl.extend([x.strip().lower() for x in open("%s/etc/fedora-release" % (root_dir), "r").read().split("\n")])
     except:
         log_lines.append(("error invalid root_path '%s' ?" % (root_dir), logging_tools.LOG_LEVEL_CRITICAL))
     else:
@@ -1667,7 +1671,7 @@ def fetch_sysinfo(root_dir="/"):
                 elif sys_dict["vendor"] == "suse":
                     sr_ems = False
                     try:
-                        isl = [y for y in [x.strip().lower() for x in file("/etc/SuSE-release", "r").read().split("\n")] if y]
+                        isl = [y for y in [x.strip().lower() for x in open("/etc/SuSE-release", "r").read().split("\n")] if y]
                     except:
                         pass
                     else:
@@ -1680,7 +1684,7 @@ def fetch_sysinfo(root_dir="/"):
                                 # if m:
                                 #    sr_vers = m.group(1)
                     try:
-                        isl = [x.strip().lower() for x in file("/etc/SLOX-release", "r").read().split("\n")]
+                        isl = [x.strip().lower() for x in open("/etc/SLOX-release", "r").read().split("\n")]
                     except:
                         pass
                     else:
@@ -1688,7 +1692,7 @@ def fetch_sysinfo(root_dir="/"):
                         ems_file = "/etc/SLOX-release"
                     if sr_ems:
                         try:
-                            isl = [x.strip().lower() for x in file(ems_file, "r").read().split("\n")]
+                            isl = [x.strip().lower() for x in open(ems_file, "r").read().split("\n")]
                         except:
                             pass
                         else:
@@ -1706,7 +1710,7 @@ def fetch_sysinfo(root_dir="/"):
                 elif sys_dict["vendor"] == "debian" and os.path.isdir("/etc/apt"):
                     # try to get info from /etc/apt
                     try:
-                        s_list = [z[2].split("/")[0] for z in [y.split() for y in [x.strip() for x in file("/etc/apt/sources.list", "r").read().split("\n")] if y and not y.startswith("#")] if len(z) > 3]
+                        s_list = [z[2].split("/")[0] for z in [y.split() for y in [x.strip() for x in open("/etc/apt/sources.list", "r").read().split("\n")] if y and not y.startswith("#")] if len(z) > 3]
                     except:
                         pass
                     else:

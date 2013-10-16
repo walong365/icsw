@@ -115,7 +115,7 @@ class srv_command(object):
     def builder(self, tag_name=None, *args, **kwargs):
         if tag_name is None:
             return self.__builder
-        if type(tag_name) == type(0):
+        if type(tag_name) == int:
             tag_name = "__int__%d" % (tag_name)
         elif tag_name == None:
             tag_name = "__none__"
@@ -198,11 +198,11 @@ class srv_command(object):
             else:
                 return [cur_res for cur_res in xpath_res]
         else:
-            raise KeyError, "key %s not found in srv_command" % (key)
+            raise KeyError("key %s not found in srv_command" % (key))
     def _to_unicode(self, value):
         if type(value) == bool:
             return ("True" if value else "False", "bool")
-        elif type(value) in [type(0), type(0L)]:
+        elif type(value) in [int, long]:
             return ("%d" % (value), "int")
         else:
             return (value, "str")
@@ -222,10 +222,10 @@ class srv_command(object):
         if type(value) in [type(""), type(u"")]:
             cur_element.text = value
             cur_element.attrib["type"] = "str"
-        elif type(value) in [type(0), type(0L)]:
+        elif type(value) in [int, long]:
             cur_element.text = "%d" % (value)
             cur_element.attrib["type"] = "int"
-        elif type(value) in [type(0.0)]:
+        elif type(value) in [float]:
             cur_element.text = "%f" % (value)
             cur_element.attrib["type"] = "float"
         elif type(value) == type(None):
@@ -262,7 +262,7 @@ class srv_command(object):
                 sub_el = self._element(sub_value)
                 cur_element.append(sub_el)
         else:
-            raise ValueError, "_element: unknown value type '%s'" % (type(value))
+            raise ValueError("_element: unknown value type '%s'" % (type(value)))
         return cur_element
 # #    def _escape_key(self, key_str):
 # #        return key_str.replace("/", "r")
@@ -320,7 +320,6 @@ class srv_command(object):
         return result
     def get(self, key, def_value=None):
         xpath_str = ".//%s" % ("/".join(["ns:%s" % (sub_arg) for sub_arg in key.split(":")]))
-        print xpath_str
         xpath_res = self.__tree.xpath(xpath_str, namespaces={"ns" : XML_NS})
         if len(xpath_res) == 1:
             return xpath_res[0].text
@@ -358,5 +357,5 @@ class srv_command(object):
         return len(etree.tostring(self.tree))
 
 def main():
-    print "Loadable module, exiting..."
+    print("Loadable module, exiting...")
     sys.exit(0)

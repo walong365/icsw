@@ -32,10 +32,13 @@ import re
 import sys
 import threading
 import traceback
-import types
 from collections import OrderedDict
 from multiprocessing import Manager, current_process
 from multiprocessing.managers import BaseManager, BaseProxy, DictProxy, Server
+# hack for python3
+if sys.version_info[0] == 3:
+    unicode = str
+    long = int
 
 class config_proxy(BaseProxy):
     def add_config_entries(self, ce_list, **kwargs):
@@ -213,7 +216,7 @@ class int_c_var(_conf_var):
     def str_to_val(self, val):
         return int(val)
     def check_type(self, val):
-        return type(val) in [types.IntType, types.LongType]
+        return type(val) in [int, long]
 
 class float_c_var(_conf_var):
     descr = "Float"
@@ -224,7 +227,7 @@ class float_c_var(_conf_var):
     def str_to_val(self, val):
         return float(val)
     def check_type(self, val):
-        return type(val) == types.FloatType
+        return type(val) == float
 
 class str_c_var(_conf_var):
     descr = "String"
@@ -235,7 +238,7 @@ class str_c_var(_conf_var):
     def str_to_val(self, val):
         return str(val)
     def check_type(self, val):
-        return type(val) in [types.StringType, types.UnicodeType]
+        return type(val) in [str, unicode]
 
 class blob_c_var(_conf_var):
     descr = "Blob"
@@ -245,7 +248,7 @@ class blob_c_var(_conf_var):
     def str_to_val(self, val):
         return str(val)
     def check_type(self, val):
-        return type(val) == types.StringType
+        return type(val) == str
     def pretty_print(self):
         return "blob with len %d" % (len(self.act_val))
 
@@ -263,7 +266,7 @@ class bool_c_var(_conf_var):
         else:
             return bool(val)
     def check_type(self, val):
-        return type(val) == types.BooleanType
+        return type(val) == bool
     def pretty_print(self):
         return "True" if self.act_val else "False"
 
@@ -274,7 +277,7 @@ class array_c_var(_conf_var):
     def __init__(self, def_val, **kwargs):
         _conf_var.__init__(self, def_val, **kwargs)
     def check_type(self, val):
-        return type(val) == types.ListType
+        return type(val) == list
 
 class dict_c_var(_conf_var):
     descr = "Dict"
@@ -282,7 +285,7 @@ class dict_c_var(_conf_var):
     def __init__(self, def_val, **kwargs):
         _conf_var.__init__(self, def_val, **kwargs)
     def check_type(self, val):
-        return type(val) == types.DictionaryType
+        return type(val) == dict
 
 class datetime_c_var(_conf_var):
     descr = "Datetime"
@@ -445,11 +448,13 @@ class configuration(object):
         sec_re = re.compile("^\[(?P<section>\S+)\]$")
         if os.path.isfile(file_name):
             try:
-                lines = [line.strip() for line in file(file_name, "r").read().split("\n") if line.strip() and not line.strip().startswith("#")]
+                lines = [line.strip() for line in open(file_name, "r").read().split("\n") if line.strip() and not line.strip().startswith("#")]
             except:
-                self.log("Error while reading file %s: %s" % (file_name,
-                                                              process_tools.get_except_info()),
-                         logging_tools.LOG_LEVEL_ERROR)
+                self.log(
+                    "Error while reading file %s: %s" % (
+                        file_name,
+                        process_tools.get_except_info()),
+                    logging_tools.LOG_LEVEL_ERROR)
             else:
                 for line in lines:
                     sec_m = sec_re.match(line)
@@ -500,7 +505,7 @@ class configuration(object):
                 #                                                                self.__c_dict[k].get_info() and "# %s \n" % (self.__c_dict[k].get_info()) or "",
                 #                                                                k,
                 #                                                                self.__c_dict[k].get_value()) for k in all_keys] + [""]))
-                file(file_name, "w").write("\n".join(sum([[
+                open(file_name, "w").write("\n".join(sum([[
                     "# %s" % (self.__c_dict[key]),
                     "# %s" % (self.__c_dict[key].get_info() if self.__c_dict[key].get_info() else "no info"),
                     "# %s" % (self.__c_dict[key].get_commandline_info()),
@@ -574,9 +579,11 @@ class configuration(object):
 
 class my_server(Server):
     def serve_forever(self):
-        '''
+        """
         Run the server forever, modified version to prevent early exit.
-        '''
+        """
+        if sys.version_info[0] == 3:
+            self.stop_event = threading.Event()
         current_process()._manager_server = self
         _run = True
         try:

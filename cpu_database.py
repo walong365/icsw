@@ -23,7 +23,7 @@
 
 import base64
 import bz2
-import commands
+import subprocess
 import logging_tools
 import marshal
 import os
@@ -125,7 +125,7 @@ class cpu_value(object):
     int_re = re.compile("^(?P<pre_str>.*)\s+\((?P<int>\d+)\)")
     def __init__(self, in_str):
         self.add_value = ""
-        if type(in_str) in [type(0), type(0L)]:
+        if type(in_str) in [int, long]:
             self.v_type = "i"
             self.value = in_str
         else:
@@ -476,7 +476,7 @@ class cpu_info(object):
                 self.get_cache_info_str(),
                 self["cpu_id"])
         else:
-            print "core info (idx %d), offline" % (self.core_num)
+            print("core info (idx %d), offline" % (self.core_num))
 
 class global_cpu_info(object):
     def __init__(self, **kwargs):
@@ -493,12 +493,12 @@ class global_cpu_info(object):
             proc_dict = _xml.xpath(".//ns0:cpu_info/ns0:proc_dict", namespaces={"ns0" : server_command.XML_NS})[0]
             self.__proc_dict = marshal.loads(bz2.decompress(base64.b64decode(proc_dict.text)))
         else:
-            self.c_stat_kernel, self.c_out_kernel = commands.getstatusoutput("%s -k -r" % (self.__cpuid_binary))
+            self.c_stat_kernel, self.c_out_kernel = subprocess.getstatusoutput("%s -k -r" % (self.__cpuid_binary))
             if self.c_stat_kernel:
                 # try to load cpuid
-                commands.getstatusoutput("/sbin/modprobe cpuid")
-                self.c_stat_kernel, self.c_out_kernel = commands.getstatusoutput("%s -k -r" % (self.__cpuid_binary))
-            self.c_stat_cpuid, self.c_out_cpuid = commands.getstatusoutput("%s -r" % (self.__cpuid_binary))
+                subprocess.getstatusoutput("/sbin/modprobe cpuid")
+                self.c_stat_kernel, self.c_out_kernel = subprocess.getstatusoutput("%s -k -r" % (self.__cpuid_binary))
+            self.c_stat_cpuid, self.c_out_cpuid = subprocess.getstatusoutput("%s -r" % (self.__cpuid_binary))
             self.__proc_dict = self._read_proc_info()
         if kwargs.get("parse", False):
             self.parse_info()
@@ -514,14 +514,16 @@ class global_cpu_info(object):
             # only parse if hex_dump is found
             os_h, tmp_f_name = tempfile.mkstemp("cpuid")
             open(tmp_f_name, "w").write(self.c_out_kernel)
-            self.c_stat_kernel, self.c_out_kernel = commands.getstatusoutput("%s -f %s" % (self.__cpuid_binary, tmp_f_name))
+            self.c_stat_kernel, self.c_out_kernel = subprocess.getstatusoutput("%s -f %s" % (self.__cpuid_binary, tmp_f_name))
             open(tmp_f_name, "w").write(self.c_out_cpuid)
-            self.c_stat_cpuid, self.c_out_cpuid = commands.getstatusoutput("%s -f %s" % (self.__cpuid_binary, tmp_f_name))
+            self.c_stat_cpuid, self.c_out_cpuid = subprocess.getstatusoutput("%s -f %s" % (self.__cpuid_binary, tmp_f_name))
             os.close(os_h)
             os.unlink(tmp_f_name)
             if self.c_stat_kernel and self.c_stat_cpuid:
-                raise ValueError, "error calling cpuid with and without -k flag ('%s', '%s')" % (self.c_out_kernel,
-                                                                                                 self.c_out_cpuid)
+                raise ValueError("error calling cpuid with and without -k flag ('%s', '%s')" % (
+                    self.c_out_kernel,
+                    self.c_out_cpuid)
+                )
         if not self.c_stat_kernel:
             source_kernel = True
             c_out = self.c_out_kernel
@@ -721,7 +723,7 @@ class global_cpu_info(object):
                     act_cpu_dict["sys_info"] = sys_dict
                     cpu_dict[act_cpu_dict["processor"]] = act_cpu_dict
         else:
-            raise IOError, "cannot find %s" % (cpu_info_file)
+            raise IOError("cannot find %s" % (cpu_info_file))
         # check for disabled cpus
         dis_cpus = [cpu_idx for cpu_idx in sys_cpus if not cpu_idx in cpu_dict]
         for dis_cpu in dis_cpus:
@@ -756,7 +758,7 @@ def get_cpuid():
                         first_cpu["cpu_id"])
 
 def main():
-    print "Loadable module, exiting..."
+    print("Loadable module, exiting...")
     sys.exit(0)
 
 if __name__ == "__main__":

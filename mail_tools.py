@@ -50,6 +50,9 @@ except ImportError:
     pass
 import process_tools
 import logging_tools
+if sys.version_info[0] == 3:
+    unicode = str
+    long = int
 
 class mail(object):
     def __init__(self, subject=None, from_addr=None, to_addr=None, txt=None, **args):

@@ -42,8 +42,12 @@ import threading
 import time
 import traceback
 
-if sys.platform in ["linux2", "linux3"]:
+if sys.platform in ["linux2", "linux3", "linux"]:
     import syslog
+
+if sys.version_info[0] == 3:
+    unicode = str
+    long = int
 
 try:
     import zmq
@@ -248,7 +252,7 @@ class twisted_log_observer(object):
 def get_logger(name, destination, **kwargs):
     """ specify init_logger=True to prepend init.at to the logname """
     is_linux, cur_pid = (
-        sys.platform in ["linux2", "linux3"],
+        sys.platform in ["linux2", "linux3", "linux"],
         os.getpid())
     if kwargs.get("init_logger", False) and is_linux:
         # force init.at logger
@@ -330,7 +334,7 @@ try:
             logging.LoggerAdapter.__init__(self, logger, extra)
         def process(self, msg, kwargs):
             # add hostname and parent process id (to handle multiprocessing logging)
-            if sys.platform in ["linux2", "linux3"]:
+            if sys.platform in ["linux2", "linux3", "linux"]:
                 kwargs.setdefault("extra", {})
                 kwargs["extra"].setdefault("host", os.uname()[1].split(".")[0])
                 kwargs["extra"].setdefault("ppid", os.getppid())

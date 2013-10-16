@@ -40,13 +40,15 @@ import threading
 import traceback
 try:
     import zmq
-    try:
-        from txZMQ import ZmqSubConnection, ZmqEndpoint
-    except ImportError:
+    if sys.version_info[0] == 2:
+        # only load txZMQ if python 2.7
         try:
-            from txzmq import ZmqSubConnection, ZmqEndpoint
+            from txZMQ import ZmqSubConnection, ZmqEndpoint
         except ImportError:
-            raise
+            try:
+                from txzmq import ZmqSubConnection, ZmqEndpoint
+            except ImportError:
+                raise
 except ImportError:
     zmq = None
 from twisted.internet import reactor
@@ -471,7 +473,7 @@ class thread_pool(object):
             self.__threads[t_name].start()
             self.__sub_threads_running += 1
     def get_thread_queue_info(self):
-        return dict([(q_n, (q_q.maxsize, q_q.qsize())) for q_n, q_q in self.__queues.iteritems()])
+        return dict([(q_n, (q_q.maxsize, q_q.qsize())) for q_n, q_q in self.__queues.items()])
     def stop_thread(self, t_name):
         if not self.__threads[t_name]["stopped"]:
             self.log("sending exit to thread %s" % (t_name))
@@ -574,7 +576,7 @@ class thread_pool(object):
         if self["signal_handlers_installed"]:
             self["signal_handlers_installed"] = False
             self.log("uninstalling signal handlers")
-            for sig_num, orig_h in self.__orig_sig_handlers.iteritems():
+            for sig_num, orig_h in self.__orig_sig_handlers.items():
                 signal.signal(sig_num, orig_h)
     def thread_init(self):
         self.log("thread_init %d" % (os.getpid()))
@@ -617,7 +619,7 @@ class thread_pool(object):
                         socks = dict(self.poller.poll(timeout=self.__loop_granularity))
                     except:
                         raise
-                    for sock, c_type in socks.iteritems():
+                    for sock, c_type in socks.items():
                         if (sock, c_type) in self.poller_handler:
                             self.poller_handler[(sock, c_type)](sock)
                         else:
@@ -716,7 +718,7 @@ class thread_pool(object):
     def stop_running_threads(self):
         # int_queue = self.get_queue(self.__my_queue_name)
         pri_dict = {}
-        for key, value in self.__threads.iteritems():
+        for key, value in self.__threads.items():
             pri_dict.setdefault(value["priority"], []).append(key)
         # flag: any threads stopped in previous priorities, all threads deads in previous priorities
         act_threads_stopped, prev_threads_dead = (False, True)
@@ -1242,7 +1244,7 @@ class process_pool(timer_base):
             self.fd_lookup[zmq_socket._sock] = zmq_socket
         self.poller_handler.setdefault(zmq_socket, {})[sock_type] = callback
         cur_mask = 0
-        for mask in self.poller_handler[zmq_socket].iterkeys():
+        for mask in self.poller_handler[zmq_socket].keys():
             cur_mask |= mask
         if self.debug_zmq:
             self.poller.register(zmq_socket._sock, cur_mask)
@@ -1262,7 +1264,7 @@ class process_pool(timer_base):
                 zmq_socket.close()
         else:
             cur_mask = 0
-            for mask in self.poller_handler[zmq_socket].iterkeys():
+            for mask in self.poller_handler[zmq_socket].keys():
                 cur_mask |= mask
             self.poller.register(zmq_socket, cur_mask)
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
@@ -1284,7 +1286,7 @@ class process_pool(timer_base):
         else:
             self.log("setting stack_size to %s" % (logging_tools.get_size_str(s_size, long_version=True)))
     def _close_pp_sockets(self):
-        for _sock_name, zmq_sock in self.__sockets.iteritems():
+        for _sock_name, zmq_sock in self.__sockets.items():
             zmq_sock.close()
         self.zmq_context.term()
     def add_process(self, t_obj, **kwargs):
@@ -1458,7 +1460,7 @@ class process_pool(timer_base):
         if self["signal_handlers_installed"]:
             self["signal_handlers_installed"] = False
             self.log("uninstalling signal handlers")
-            for sig_num, orig_h in self.__orig_sig_handlers.iteritems():
+            for sig_num, orig_h in self.__orig_sig_handlers.items():
                 signal.signal(sig_num, orig_h)
     def process_init(self):
         self.log("process_init %d" % (os.getpid()))
@@ -1568,7 +1570,7 @@ class process_pool(timer_base):
         yield None
     def stop_running_processes(self):
         pri_dict = {}
-        for key, value in self.__processes.iteritems():
+        for key, value in self.__processes.items():
             if key not in self.__processes_stopped:
                 pri_dict.setdefault(value["priority"], []).append(key)
         # flag: any processes stopped in previous priorities, all processes deads in previous priorities
@@ -1670,7 +1672,7 @@ class twisted_main_thread(object):
         if self["signal_handlers_installed"]:
             self["signal_handlers_installed"] = False
             self.log("uninstalling signal handlers")
-            for sig_num, orig_h in self.__orig_sig_handlers.iteritems():
+            for sig_num, orig_h in self.__orig_sig_handlers.items():
                 signal.signal(sig_num, orig_h)
 
 if __name__ == "__main__":
