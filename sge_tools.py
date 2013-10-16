@@ -813,7 +813,11 @@ def build_running_list(s_info, options, **kwargs):
                 E.run_time(s_info.get_run_time(start_time)),
                 E.left_time(s_info.get_left_time(start_time, act_job.findtext("hard_request[@name='h_rt']")))
             ])
-        load_list = [host_loads[h_name] for h_name in job_host_lut[act_job.attrib["full_id"]]]
+        if act_job.attrib["full_id"] in job_host_lut:
+            load_list = [host_loads[h_name] for h_name in job_host_lut[act_job.attrib["full_id"]]]
+        else:
+            # due to dynamic updates the full_id may be missing in the job_host_lut
+            load_list = [0.0]
         mean_load = sum(load_list) / len(load_list)
         num_nodes = len(load_list)
         if num_nodes == 1:
