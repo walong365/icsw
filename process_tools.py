@@ -62,6 +62,13 @@ try:
 except:
     affinity_tools = None
 
+def getstatusoutput(cmd):
+    if sys.version_info[0] == 3:
+        return subprocess.getstatusoutput(cmd)
+    else:
+        import commands
+        return commands.getstatusoutput(cmd)
+
 # net to sys and reverse functions
 def net_to_sys(in_val):
     try:
@@ -214,7 +221,7 @@ def submit_at_command(com, diff_time=0):
         pre_time_str = ""
     diff_time_str = diff_time and "+%d minutes" % (diff_time) or ""
     time_str = "%s%s" % (pre_time_str, diff_time_str)
-    cstat, cout = subprocess.getstatusoutput(
+    cstat, cout = getstatusoutput(
         "echo %s | /usr/bin/at %s" % (
             com,
             time_str))
@@ -1513,7 +1520,7 @@ class automount_checker(object):
     def get_restart_command(self):
         return "%s restart" % (self.__autofs_path)
     def check(self):
-        stat, out = subprocess.getstatusoutput("%s status" % (self.__autofs_path))
+        stat, out = getstatusoutput("%s status" % (self.__autofs_path))
         a_dict = {"c" : {},
                   "r" : {}}
         act_mode = None
@@ -1611,7 +1618,7 @@ def fetch_sysinfo(root_dir="/"):
             if os.path.islink(ls_path):
                 ls_path = os.path.join(root_dir, os.readlink(ls_path))
             arch_com = "file %s" % (ls_path)
-            c_stat, out = subprocess.getstatusoutput(arch_com)
+            c_stat, out = getstatusoutput(arch_com)
             if c_stat:
                 log_lines.append(("Cannot execute %s (%d): %s" % (arch_com, c_stat, out), logging_tools.LOG_LEVEL_ERROR))
             else:

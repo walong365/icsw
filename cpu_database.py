@@ -23,10 +23,10 @@
 
 import base64
 import bz2
-import subprocess
 import logging_tools
 import marshal
 import os
+import process_tools
 import re
 import server_command
 import sys
@@ -493,12 +493,12 @@ class global_cpu_info(object):
             proc_dict = _xml.xpath(".//ns0:cpu_info/ns0:proc_dict", namespaces={"ns0" : server_command.XML_NS})[0]
             self.__proc_dict = marshal.loads(bz2.decompress(base64.b64decode(proc_dict.text)))
         else:
-            self.c_stat_kernel, self.c_out_kernel = subprocess.getstatusoutput("%s -k -r" % (self.__cpuid_binary))
+            self.c_stat_kernel, self.c_out_kernel = process_tools.getstatusoutput("%s -k -r" % (self.__cpuid_binary))
             if self.c_stat_kernel:
                 # try to load cpuid
-                subprocess.getstatusoutput("/sbin/modprobe cpuid")
-                self.c_stat_kernel, self.c_out_kernel = subprocess.getstatusoutput("%s -k -r" % (self.__cpuid_binary))
-            self.c_stat_cpuid, self.c_out_cpuid = subprocess.getstatusoutput("%s -r" % (self.__cpuid_binary))
+                process_tools.getstatusoutput("/sbin/modprobe cpuid")
+                self.c_stat_kernel, self.c_out_kernel = process_tools.getstatusoutput("%s -k -r" % (self.__cpuid_binary))
+            self.c_stat_cpuid, self.c_out_cpuid = process_tools.getstatusoutput("%s -r" % (self.__cpuid_binary))
             self.__proc_dict = self._read_proc_info()
         if kwargs.get("parse", False):
             self.parse_info()
@@ -514,9 +514,9 @@ class global_cpu_info(object):
             # only parse if hex_dump is found
             os_h, tmp_f_name = tempfile.mkstemp("cpuid")
             open(tmp_f_name, "w").write(self.c_out_kernel)
-            self.c_stat_kernel, self.c_out_kernel = subprocess.getstatusoutput("%s -f %s" % (self.__cpuid_binary, tmp_f_name))
+            self.c_stat_kernel, self.c_out_kernel = process_tools.getstatusoutput("%s -f %s" % (self.__cpuid_binary, tmp_f_name))
             open(tmp_f_name, "w").write(self.c_out_cpuid)
-            self.c_stat_cpuid, self.c_out_cpuid = subprocess.getstatusoutput("%s -f %s" % (self.__cpuid_binary, tmp_f_name))
+            self.c_stat_cpuid, self.c_out_cpuid = process_tools.getstatusoutput("%s -f %s" % (self.__cpuid_binary, tmp_f_name))
             os.close(os_h)
             os.unlink(tmp_f_name)
             if self.c_stat_kernel and self.c_stat_cpuid:
