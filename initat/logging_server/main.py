@@ -518,7 +518,8 @@ class main_process(threading_tools.process_pool):
         self.add_process(log_receiver("receiver", priority=50), start=True)
         self._log_config()
         self._init_network_sockets()
-        # self.add_process(twisted_process("twisted"), twisted=True, start=True)
+        if sys.version_info[0] == 2:
+            self.add_process(twisted_process("twisted"), twisted=True, start=True)
         self.register_timer(self._heartbeat, 30, instant=True)
         self.register_timer(self._update, 60)
     def log(self, what, level=logging_tools.LOG_LEVEL_OK):
