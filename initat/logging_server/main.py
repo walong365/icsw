@@ -40,14 +40,15 @@ import threading_tools
 import time
 import zmq
 from initat.logging_server import version
-# from twisted.internet import reactor
-# from twisted.internet.protocol import DatagramProtocol
 if sys.version_info[0] == 3:
     unicode = str
+else:
+    from twisted.internet import reactor
+    from twisted.internet.protocol import DatagramProtocol
 
 SEP_STR = "-" * 50
 
-if False:
+if sys.version_info[0] == 2:
     class twisted_log_receiver(DatagramProtocol):
         def __init__(self, t_process):
             self.__process = t_process
