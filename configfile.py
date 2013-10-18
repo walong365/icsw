@@ -585,6 +585,7 @@ class my_server(Server):
         if sys.version_info[0] == 3:
             self.stop_event = threading.Event()
         current_process()._manager_server = self
+        # print("*", os.getpid(), os.getuid())
         _run = True
         try:
             while _run:

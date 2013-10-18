@@ -250,7 +250,7 @@ def get_mem_info(pid=0, **kwargs):
             have_pss = False
             shared, private, pss = (0, 0, 0.)
             try:
-                for line in open(smap_file_name, "rb").readlines():
+                for line in open(smap_file_name, "r").readlines():
                     if line.startswith("Shared"):
                         shared += int(line.split()[1])
                     elif line.startswith("Private"):
@@ -1397,7 +1397,7 @@ def fix_directories(user, group, f_list):
     for act_dir in f_list:
         if type(act_dir) == dict:
             dir_name = act_dir["name"]
-            dir_mode = act_dir.get("dir_mode", stat.S_IRWXU | stat.S_IRGRP | stat.S_IXGRP | stat.S_IROTH | stat.s_IXOTH)
+            dir_mode = act_dir.get("dir_mode", stat.S_IRWXU | stat.S_IRGRP | stat.S_IXGRP | stat.S_IROTH | stat.S_IXOTH)
             walk_dir = act_dir.get("walk_dir", True)
         elif type(act_dir) == set:
             dir_name, dir_mode = act_dir
