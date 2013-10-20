@@ -355,6 +355,7 @@ try:
                 try:
                     logging.LoggerAdapter.log(self, what, level, *args, **kwargs)
                 except:
+                    my_syslog(what)
                     print(what, self)
                     raise
             else:
@@ -363,6 +364,7 @@ try:
                 try:
                     logging.LoggerAdapter.log(self, level, what, *args, **kwargs)
                 except:
+                    my_syslog(what)
                     print(what, self)
                     raise
             self.__lock.release()
@@ -420,8 +422,9 @@ class initat_formatter(object):
                 frame_info.append("File '%s', line %d, in %s" % (file_name, line_no, name))
                 if line:
                     frame_info.append(u" - %d : %s" % (line_no, line))
-            frame_info.append(u"%s (%s)" % (unicode(record.exc_info[0]),
-                                            unicode(record.exc_info[1])))
+            frame_info.append(u"%s (%s)" % (
+                unicode(record.exc_info[0]),
+                unicode(record.exc_info[1])))
             record.error_str = record.message + "\n" + "\n".join(frame_info)
             var_list, info_lines = ([], [])
             request = inspect.trace()[-1][0].f_locals.get("request", None)
@@ -970,17 +973,24 @@ def my_syslog(out_str, log_lev=LOG_LEVEL_OK, out=False):
     else:
         log_type = syslog.LOG_INFO | syslog.LOG_USER
     try:
-        if type(out_str) == unicode:
-            syslog.syslog(log_type, out_str.encode("utf-8"))
-        else:
+        if type(out_str) == str:
             syslog.syslog(log_type, str(out_str))
+        else:
+            syslog.syslog(log_type, out_str.encode("utf-8"))
     except:
+        exc_info = sys.exc_info()
+        error_str = "(%s, %s)" % (
+            unicode(exc_info[0]),
+            unicode(exc_info[1]),
+        )
         if type(out_str) == unicode:
-            syslog.syslog(syslog.LOG_ERR | syslog.LOG_USER, "error logging string (len %d, log_type %d)" % (
+            syslog.syslog(syslog.LOG_ERR | syslog.LOG_USER, "error logging unicode (%s, len %d, log_type %d)" % (
+                error_str,
                 len(out_str),
                 log_type))
         else:
-            syslog.syslog(syslog.LOG_ERR | syslog.LOG_USER, "error logging string (len %d, log_type %d)" % (
+            syslog.syslog(syslog.LOG_ERR | syslog.LOG_USER, "error logging string (%s, len %d, log_type %d)" % (
+                error_str,
                 len(str(out_str)),
                 log_type))
     if out:
