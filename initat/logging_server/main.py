@@ -40,7 +40,8 @@ import threading_tools
 import time
 import zmq
 from initat.logging_server import version
-if sys.version_info[0] == 3:
+PYTHON3 = sys.version_info[0] == 3
+if PYTHON3:
     unicode = str
 else:
     from twisted.internet import reactor
@@ -48,7 +49,7 @@ else:
 
 SEP_STR = "-" * 50
 
-if sys.version_info[0] == 2:
+if not PYTHON3:
     class twisted_log_receiver(DatagramProtocol):
         def __init__(self, t_process):
             self.__process = t_process
@@ -518,7 +519,7 @@ class main_process(threading_tools.process_pool):
         self.add_process(log_receiver("receiver", priority=50), start=True)
         self._log_config()
         self._init_network_sockets()
-        if sys.version_info[0] == 2:
+        if not PYTHON3:
             self.add_process(twisted_process("twisted"), twisted=True, start=True)
         self.register_timer(self._heartbeat, 30, instant=True)
         self.register_timer(self._update, 60)
@@ -581,12 +582,12 @@ class main_process(threading_tools.process_pool):
             self.__msi_block.save_block()
     def _init_msi_block(self):
         process_tools.save_pids("logserver/logserver", mult=3)
-        process_tools.append_pids("logserver/logserver", pid=configfile.get_manager_pid(), mult=4)
+        process_tools.append_pids("logserver/logserver", pid=configfile.get_manager_pid(), mult=3 if PYTHON3 else 4)
         if not self.__options.DEBUG:
             self.log("Initialising meta-server-info block")
             msi_block = process_tools.meta_server_info("logserver")
             msi_block.add_actual_pid(mult=3)
-            msi_block.add_actual_pid(act_pid=configfile.get_manager_pid(), mult=4)
+            msi_block.add_actual_pid(act_pid=configfile.get_manager_pid(), mult=3 if PYTHON3 else 4)
             msi_block.start_command = "/etc/init.d/logging-server start"
             msi_block.stop_command = "/etc/init.d/logging-server force-stop"
             msi_block.kill_pids = True
@@ -647,6 +648,7 @@ def main():
     # not very beautiful ...
     configfile.enable_config_access(global_config["USER"], global_config["GROUP"])
     process_tools.change_user_group(global_config["USER"], global_config["GROUP"])
+    global_config.set_uid_gid(global_config["USER"], global_config["GROUP"])
     process_tools.create_lockfile(global_config["LOCKFILE_NAME"])
     if not options.DEBUG:
         process_tools.become_daemon(mother_hook=process_tools.wait_for_lockfile,
