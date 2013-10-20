@@ -352,11 +352,19 @@ try:
             if type(level) in [str, unicode]:
                 if self.__prefix:
                     level = "%s%s" % (self.__prefix, level)
-                logging.LoggerAdapter.log(self, what, level, *args, **kwargs)
+                try:
+                    logging.LoggerAdapter.log(self, what, level, *args, **kwargs)
+                except:
+                    print(what, self)
+                    raise
             else:
                 if self.__prefix:
                     what = "%s%s" % (self.__prefix, what)
-                logging.LoggerAdapter.log(self, level, what, *args, **kwargs)
+                try:
+                    logging.LoggerAdapter.log(self, level, what, *args, **kwargs)
+                except:
+                    print(what, self)
+                    raise
             self.__lock.release()
         def close(self):
             self.log_command("close")
