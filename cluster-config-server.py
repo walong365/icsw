@@ -763,15 +763,21 @@ def do_nets(conf):
                         "STARTMODE" : "onboot"
                     }
                     if cur_nd.vlan_id:
-                        act_file["ETHERDEVICE"] = cur_nd.devname
+                        if cur_nd.master_device:
+                            act_file["ETHERDEVICE"] = cur_nd.master_device.devname
+                            act_file["VLAN_ID"] = "%d" % (cur_nd.vlan_id)
+                        else:
+                            print "VLAN ID set but no master_device, skipping %s" % (cur_nd.devname)
+                            act_filename = None
                     if not cur_nd.fake_macaddr:
                         pass
                     elif int(cur_nd.fake_macaddr.replace(":", ""), 16) != 0:
                         log_str += ", with fake_macaddr"
                         act_file["LLADDR"] = cur_nd.fake_macaddr
                         conf.add_link_object("/etc/sysconfig/network/ifcfg-eth-id-%s" % (cur_nd.fake_macaddr), act_filename)
-                    new_co = conf.add_file_object("/etc/sysconfig/network/%s" % (act_filename))
-                    new_co += act_file
+                    if act_filename:
+                        new_co = conf.add_file_object("/etc/sysconfig/network/%s" % (act_filename))
+                        new_co += act_file
             else:
                 act_filename = "ifcfg-%s" % (cur_nd.devname)
                 act_file = {
@@ -1312,7 +1318,7 @@ class build_process(threading_tools.process_obj):
                         if act_routing_info:
                             routes_found += 1
                             # store in some dict-like structure
-                            print "***", actual_server.short_host_name, dir(actual_server)
+                            # print "***", actual_server.short_host_name, dir(actual_server)
                             # FIXME, postfix not handled
                             conf_dict["%s:%s" % (actual_server.short_host_name, server_type)] = actual_server.device.full_name
                             conf_dict["%s:%s_ip" % (actual_server.short_host_name, server_type)] = act_routing_info[0][2][1][0]
