@@ -1771,6 +1771,8 @@ class netdevice(models.Model):
     is_bridge = models.BooleanField(default=False)
     bridge_name = models.CharField(max_length=765, blank=True)
     vlan_id = models.IntegerField(null=True, blank=True)
+    # for VLAN devices
+    master_device = models.ForeignKey("self", null=True, related_name="vlan_slaves")
     date = models.DateTimeField(auto_now_add=True)
     def __init__(self, *args, **kwargs):
         models.Model.__init__(self, *args, **kwargs)
@@ -1795,7 +1797,8 @@ class netdevice(models.Model):
             description=self.description,
             is_bridge=self.is_bridge,
             bridge_name=self.bridge_name,
-            vlan_id=self.vlan_id)
+            vlan_id=self.vlan_id,
+            )
     def find_matching_network_device_type(self):
         # remove digits
         name = self.devname.split(":")[0].strip("0123456789")
@@ -1867,8 +1870,9 @@ class netdevice(models.Model):
             vlan_id="%d" % (self.vlan_id),
             netdevice_speed="%d" % (self.netdevice_speed_id),
             network_device_type="%d" % (self.network_device_type_id),
-            nd_type="%d" % (self.network_device_type_id))
-
+            nd_type="%d" % (self.network_device_type_id),
+            master_device="%d" % (self.master_device_id or 0),
+            )
 @receiver(signals.pre_delete, sender=netdevice)
 def netdevice_pre_delete(sender, **kwargs):
     # too late here, handled by delete_netdevice in network_views

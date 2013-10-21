@@ -347,6 +347,12 @@
     <field type="IntegerField" name="mac_bytes">6</field>
     <field type="DateTimeField" name="date">2013-05-23T08:50:00</field>
   </object>
+  <object pk="8" model="backbone.network_device_type">
+    <field type="CharField" name="identifier">vlan</field>
+    <field type="CharField" name="description">VLAN device</field>
+    <field type="IntegerField" name="mac_bytes">6</field>
+    <field type="DateTimeField" name="date">2013-10-21T08:50:00</field>
+  </object>
   <object pk="1" model="backbone.network_type">
     <field type="CharField" name="identifier">b</field>
     <field type="CharField" name="description">boot network</field>

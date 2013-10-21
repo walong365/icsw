@@ -176,17 +176,20 @@ def write_config(server_type, g_config, **kwargs):
     full_host_name = socket.gethostname()
     host_name = full_host_name.split(".")[0]
     srv_info = config_tools.server_check(server_type=server_type, short_host_name=host_name)
+    type_dict = {
+        "i" : "int",
+        "s" : "str",
+        "b" : "bool",
+        "B" : "blob"}
     if srv_info.device and srv_info.config:
         for key in g_config.keys():
             # print k,config.get_source(k)
             # print "write", k, config.get_source(k)
             # if config.get_source(k) == "default":
             # only deal with int and str-variables
-            tab_type = {"i" : "int",
-                        "s" : "str",
-                        "b" : "bool",
-                        "B" : "blob"}.get(g_config.get_type(key), None)
+            tab_type = type_dict.get(g_config.get_type(key), None)
             if tab_type and g_config.database(key):
+                other_types = set([value for _key, value in type_dict.items() if _key != g_config.get_type(key)])
                 # var global / local
                 var_range_name = g_config.is_global(key) and "global" or "local"
                 # build real var name
@@ -201,6 +204,24 @@ def write_config(server_type, g_config, **kwargs):
                         # Q(config__device_config__device__device_group__device_group=srv_info.effective_device.pk)
                     )
                 except var_obj.DoesNotExist:
+                    # check other types
+                    other_var = None
+                    for other_type in other_types:
+                        other_var_obj = globals()["config_%s" % (other_type)]
+                        try:
+                            other_var = other_var_obj.objects.get(
+                                Q(name=real_k_name) &
+                                Q(config=srv_info.config) &
+                                (Q(device=0) | Q(device=None) | Q(device=srv_info.effective_device.pk))
+                                )
+                        except var_obj.DoesNotExist:
+                            pass
+                        else:
+                            break
+                    if other_var is not None:
+                        # other var found, delete
+                        other_var.delete()
+                        # print(other_var, other_type)
                     var_obj(name=real_k_name,
                             description="%s default value from %s on %s" % (
                                 var_range_name,
