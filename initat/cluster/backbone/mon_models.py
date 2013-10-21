@@ -432,6 +432,7 @@ class mon_host_dependency(models.Model):
     idx = models.AutoField(primary_key=True)
     name = models.CharField(unique=True, max_length=192)
     inherits_parent = models.BooleanField(default=False)
+    priority = models.IntegerField(default=0)
     efc_up = models.BooleanField(default=False)
     efc_down = models.BooleanField(default=True)
     efc_unreachable = models.BooleanField(default=True)
@@ -440,12 +441,15 @@ class mon_host_dependency(models.Model):
     nfc_down = models.BooleanField(default=True)
     nfc_unreachable = models.BooleanField(default=True)
     nfc_pending = models.BooleanField(default=False)
+    dependency_period = models.ForeignKey("mon_period")
     def get_xml(self):
         r_xml = E.mon_host_dependency(
             unicode(self),
             pk="%d" % (self.pk),
+            priority="%d" % (self.priority),
             key="monhd__%d" % (self.pk),
             name=self.name,
+            dependency_period="%d" % (self.dependency_period_id),
         )
         for b_type in ["e", "n"]:
             for c_type in ["up", "down", "unreachable", "pending"]:
@@ -461,6 +465,7 @@ class mon_host_dependency(models.Model):
 def mon_host_dependency_pre_save(sender, **kwargs):
     if "instance" in kwargs:
         cur_inst = kwargs["instance"]
+        _check_integer(cur_inst, "priority", min_val= -128, max_val=128)
         if not cur_inst.name.strip():
             raise ValidationError("name must not be empty")
 
