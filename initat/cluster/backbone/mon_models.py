@@ -442,6 +442,12 @@ class mon_host_dependency(models.Model):
     nfc_unreachable = models.BooleanField(default=True)
     nfc_pending = models.BooleanField(default=False)
     dependency_period = models.ForeignKey("mon_period")
+    @property
+    def execution_failure_criteria(self):
+        return ",".join([short for short, long in [("o", "up"), ("d", "down"), ("u", "unreachable"), ("p", "pending")] if getattr(self, "efc_%s" % (long))]) or "n"
+    @property
+    def notification_failure_criteria(self):
+        return ",".join([short for short, long in [("o", "up"), ("d", "down"), ("u", "unreachable"), ("p", "pending")] if getattr(self, "nfc_%s" % (long))]) or "n"
     def get_xml(self):
         r_xml = E.mon_host_dependency(
             unicode(self),

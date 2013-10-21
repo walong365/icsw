@@ -52,7 +52,7 @@ def read_config_from_db(g_config, server_type, init_list=[], host_name="", **kwa
                 # dc.execute(sql_str)
                 src_sql_obj = globals()["config_%s" % (short)].objects
                 if init_list and not kwargs.get("read_all", False):
-                    src_sql_obj = src_sql_obj.filter(Q(name__in=[var_name for var_name, var_value in init_list]))
+                    src_sql_obj = src_sql_obj.filter(Q(name__in=[var_name for var_name, _var_value in init_list]))
                 for db_rec in src_sql_obj.filter(
                     (Q(device=0) | Q(device=None) | Q(device=serv_idx)) &
                     (Q(config__name=real_config_name)) &
@@ -214,7 +214,7 @@ def write_config(server_type, g_config, **kwargs):
                                 Q(config=srv_info.config) &
                                 (Q(device=0) | Q(device=None) | Q(device=srv_info.effective_device.pk))
                                 )
-                        except var_obj.DoesNotExist:
+                        except other_var_obj.DoesNotExist:
                             pass
                         else:
                             break
@@ -250,7 +250,6 @@ class device_recognition(object):
         # get IP-adresses (from IP)
         self.local_ips = net_ip.objects.filter(Q(netdevice__device__name=self.short_host_name)).values_list("ip", flat=True)
         # get configured IP-Adresses
-        if_names = netifaces.interfaces()
         ipv4_dict = dict([(
             cur_if_name,
             [ip_tuple["addr"] for ip_tuple in value[2]
@@ -264,11 +263,9 @@ class device_recognition(object):
 def is_server(server_type, long_mode=False, report_real_idx=False, short_host_name="", **kwargs):
     server_idx, s_type, s_str, config_idx, real_server_name = (0, "unknown", "not configured", 0, server_type)
     if server_type.count("%"):
-        match_str = " LIKE('%s')" % (server_type)
         dmatch_str = "name__icontains"
         server_info_str = "%s (with wildcard)" % (server_type.replace("%", ""))
     else:
-        match_str = "='%s'" % (server_type)
         dmatch_str = "name"
         server_info_str = server_type
     if not short_host_name:
