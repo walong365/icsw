@@ -47,11 +47,13 @@ from initat.cluster.backbone.models import device, device_group, device_variable
      mon_ext_host, mon_check_command, mon_period, mon_contact, \
      mon_contactgroup, mon_service_templ, netdevice, network, network_type, net_ip, \
      user, mon_host_cluster, mon_service_cluster, config, md_check_data_store, category, \
-     category_tree, TOP_MONITORING_CATEGORY, mon_notification, config_str, config_int, host_check_command
+     category_tree, TOP_MONITORING_CATEGORY, mon_notification, config_str, config_int, host_check_command, \
+     mon_host_dependency
 
 from initat.md_config_server.config import global_config, main_config, var_cache, all_commands, \
     all_service_groups, time_periods, all_contacts, all_contact_groups, all_host_groups, all_hosts, \
-    all_hosts_extinfo, all_services, config_dir, device_templates, service_templates, nag_config
+    all_hosts_extinfo, all_services, config_dir, device_templates, service_templates, nag_config, \
+    all_host_dependencies
 from initat.md_config_server import special_commands
 from initat.md_config_server import constants
 
@@ -225,15 +227,25 @@ class build_process(threading_tools.process_obj):
         srv_com.set_result("rebuilt config for %s" % (", ".join(dev_names)), server_command.SRV_REPLY_STATE_OK)
         self.send_pool_message("send_command", src_id, unicode(srv_com))
     def _rebuild_config(self, *args, **kwargs):
+        hdep_from_topo = global_config["USE_HOST_DEPENDENCIES"] and global_config["HOST_DEPENDENCIES_FROM_TOPOLOGY"]
+        if hdep_from_topo:
+            host_deps = mon_host_dependency.objects.all().order_by("-priority")
+            if len(host_deps):
+                self.mon_host_dep = host_deps[0]
+            else:
+                self.log("not mon_host_dependencies found", logging_tools.LOG_LEVEL_ERROR)
+                hdep_from_topo = False
         h_list = list(args)
         single_build = True if len(args) > 0 else False
         cache_mode = kwargs.get("cache_mode", "???")
         if cache_mode not in special_commands.CACHE_MODES:
             # take first cache mode
             cache_mode = special_commands.DEFAULT_CACHE_MODE
-        self.log("rebuild_config called, single_build is %s, cache_mode is %s" % (
+        self.log("rebuild_config called, single_build is %s, cache_mode is %s, hdep_from_topo is %s" % (
             str(single_build),
-            cache_mode))
+            cache_mode,
+            str(hdep_from_topo),
+            ))
         if not single_build:
             self.version += 1
             self.log("config_version for full build is %d" % (self.version))
@@ -312,7 +324,7 @@ class build_process(threading_tools.process_obj):
                 if cur_gc.master and not single_build:
                     # recreate access files
                     cur_gc._create_access_entries()
-                self._create_host_config_files(build_dv, cur_gc, h_list, dev_templates, serv_templates, var_stack, cur_dmap, single_build)
+                self._create_host_config_files(build_dv, cur_gc, h_list, dev_templates, serv_templates, var_stack, cur_dmap, single_build, hdep_from_topo)
                 if not single_build:
                     # refresh implies _write_entries
                     cur_gc.refresh()
@@ -446,6 +458,8 @@ class build_process(threading_tools.process_obj):
             cur_gc.add_config(all_services(cur_gc, self))
             # device dir
             cur_gc.add_config_dir(config_dir("device", cur_gc, self))
+            # host_dependencies
+            cur_gc.add_config(all_host_dependencies(cur_gc, self))
             end_time = time.time()
             cur_gc.log("created host_configs in %s" % (logging_tools.get_diff_time_str(end_time - start_time)))
     def _get_mon_ext_hosts(self):
@@ -765,7 +779,7 @@ class build_process(threading_tools.process_obj):
                         # check for hostextinfo
                         if host.mon_ext_host_id and ng_ext_hosts.has_key(host.mon_ext_host_id):
                             if (global_config["MD_TYPE"] == "nagios" and global_config["MD_VERSION"] > 1) or (global_config["MD_TYPE"] == "icinga"):
-                                # handle for nagios 2
+                                # handle for nagios 2, icinga
                                 act_hostext_info = nag_config("hostextinfo", host.full_name)
                                 act_hostext_info["host_name"] = host.full_name
                                 for key in ["icon_image", "statusmap_image"]:
@@ -933,7 +947,7 @@ class build_process(threading_tools.process_obj):
             h_filter &= Q(monitor_server=cur_gc.monitor_server)
         h_filter &= Q(enabled=True) & Q(device_group__enabled=True)
         return device.objects.exclude(Q(device_type__identifier="MD")).filter(h_filter).count()
-    def _create_host_config_files(self, build_dv, cur_gc, hosts, dev_templates, serv_templates, var_stack, d_map, single_build):
+    def _create_host_config_files(self, build_dv, cur_gc, hosts, dev_templates, serv_templates, var_stack, d_map, single_build, hdep_from_topo):
         """
         d_map : distance map
         """
@@ -1078,6 +1092,7 @@ class build_process(threading_tools.process_obj):
             )
         host_names = host_nc.keys()
         self.log("start parenting run")
+        p_dict = {}
         # host_uuids = set([host_val.uuid for host_val in all_hosts_dict.itervalues() if host_val.full_name in host_names])
         for host_name in sorted(host_names):
             host = host_nc[host_name][0]
@@ -1099,6 +1114,8 @@ class build_process(threading_tools.process_obj):
                             break
                 if parent_list:
                     host["parents"] = ",".join(set(parent_list))
+                    for cur_parent in set(parent_list):
+                        p_dict.setdefault(cur_parent, []).append(host_name)
                     self.log("Setting parent of '%s' to %s" % (host_name, ", ".join(parent_list)), logging_tools.LOG_LEVEL_OK)
                 else:
                     self.log("No parents found for '%s' (albeit possible_parents was set)" % (host_name), logging_tools.LOG_LEVEL_WARN)
@@ -1120,6 +1137,18 @@ class build_process(threading_tools.process_obj):
         self.log("end parenting run")
         # remove old nagvis maps
         if cur_gc.master and not single_build:
+            if hdep_from_topo:
+                # import pprint
+                # pprint.pprint(p_dict)
+                for parent, clients in p_dict.iteritems():
+                    new_hd = nag_config("hostdependency", "")
+                    new_hd["dependent_host_name"] = ",".join(clients)
+                    new_hd["host_name"] = parent
+                    new_hd["dependency_period"] = self.mon_host_dep.dependency_period.name
+                    new_hd["execution_failure_criteria"] = self.mon_host_dep.execution_failure_criteria
+                    new_hd["notification_failure_criteria"] = self.mon_host_dep.notification_failure_criteria
+                    new_hd["inherits_parent"] = "1" if self.mon_host_dep.inherits_parent else "0"
+                    cur_gc["hostdependency"].add_host_dependency(new_hd)
             self.log("created %s" % (logging_tools.get_plural("nagvis map", len(nagvis_maps))))
             nagvis_map_dir = os.path.join(global_config["NAGVIS_DIR"], "etc", "maps")
             if os.path.isdir(nagvis_map_dir):
@@ -1130,9 +1159,11 @@ class build_process(threading_tools.process_obj):
                         try:
                             os.unlink(full_name)
                         except:
-                            self.log("error removing %s: %s" % (full_name,
-                                                                process_tools.get_except_info()),
-                                     logging_tools.LOG_LEVEL_ERROR)
+                            self.log(
+                                "error removing %s: %s" % (
+                                    full_name,
+                                    process_tools.get_except_info()),
+                                logging_tools.LOG_LEVEL_ERROR)
                 # create group maps
                 dev_groups = device_group.objects.filter(
                     Q(enabled=True) &

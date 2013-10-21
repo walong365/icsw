@@ -634,6 +634,8 @@ class main_config(object):
             ("host_inter_check_delay_method"    , "s"),
             ("service_inter_check_delay_method" , "s"),
             ("service_interleave_factor"        , "s"),
+            # ("enable_predictive_service_dependency_checks", 1 if global_config["USE_HOST_DEPENDENCIES"] else 0),
+            ("enable_predictive_host_dependency_checks", 1 if global_config["USE_HOST_DEPENDENCIES"] else 0),
             ("max_concurrent_checks"            , global_config["MAX_CONCURRENT_CHECKS"]),
             ("passive_host_checks_are_soft"     , 1 if global_config["PASSIVE_HOST_CHECKS_ARE_SOFT"] else 0),
             ("service_reaper_frequency"         , 12),
@@ -1135,6 +1137,17 @@ class host_type_config(object):
         for act_le in self.get_object_list():
             res_xml.append(getattr(E, self.get_name())(**dict([(key, unicode(value)) for key, value in act_le.iteritems()])))
         return [res_xml]
+
+class all_host_dependencies(host_type_config):
+    def __init__(self, gen_conf, build_proc):
+        host_type_config.__init__(self, build_proc)
+        self.__obj_list = []
+    def get_name(self):
+        return "hostdependency"
+    def add_host_dependency(self, new_hd):
+        self.__obj_list.append(new_hd)
+    def get_object_list(self):
+        return self.__obj_list
 
 class time_periods(host_type_config):
     def __init__(self, gen_conf, build_proc):

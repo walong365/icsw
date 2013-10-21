@@ -117,14 +117,15 @@ def main():
         ("PASSIVE_HOST_CHECKS_ARE_SOFT", configfile.bool_c_var(True)),
         ("RETAIN_PROGRAM_STATE"        , configfile.bool_c_var(False)),
         ("USE_HOST_DEPENDENCIES"       , configfile.bool_c_var(False)),
-        ("NDO_DATA_PROCESSING_OPTIONS" , configfile.int_c_var((2 ** 26 - 1) - (IDOMOD_PROCESS_TIMED_EVENT_DATA - IDOMOD_PROCESS_SERVICE_CHECK_DATA + IDOMOD_PROCESS_HOST_CHECK_DATA))),
-        ("EVENT_BROKER_OPTIONS"        , configfile.int_c_var((2 ** 20 - 1) - (BROKER_TIMED_EVENTS + BROKER_SERVICE_CHECKS + BROKER_HOST_CHECKS))),
-        ("CCOLLCLIENT_TIMEOUT"         , configfile.int_c_var(6)),
-        ("CSNMPCLIENT_TIMEOUT"         , configfile.int_c_var(20)),
-        ("MAX_SERVICE_CHECK_SPREAD"    , configfile.int_c_var(5)),
-        ("MAX_HOST_CHECK_SPREAD"       , configfile.int_c_var(5)),
-        ("MAX_CONCURRENT_CHECKS"       , configfile.int_c_var(500)),
-        ("SERVER_SHORT_NAME"           , configfile.str_c_var(mach_name)),
+        ("HOST_DEPENDENCIES_FROM_TOPOLOGY", configfile.bool_c_var(False)),
+        ("NDO_DATA_PROCESSING_OPTIONS"    , configfile.int_c_var((2 ** 26 - 1) - (IDOMOD_PROCESS_TIMED_EVENT_DATA - IDOMOD_PROCESS_SERVICE_CHECK_DATA + IDOMOD_PROCESS_HOST_CHECK_DATA))),
+        ("EVENT_BROKER_OPTIONS"           , configfile.int_c_var((2 ** 20 - 1) - (BROKER_TIMED_EVENTS + BROKER_SERVICE_CHECKS + BROKER_HOST_CHECKS))),
+        ("CCOLLCLIENT_TIMEOUT"            , configfile.int_c_var(6)),
+        ("CSNMPCLIENT_TIMEOUT"            , configfile.int_c_var(20)),
+        ("MAX_SERVICE_CHECK_SPREAD"       , configfile.int_c_var(5)),
+        ("MAX_HOST_CHECK_SPREAD"          , configfile.int_c_var(5)),
+        ("MAX_CONCURRENT_CHECKS"          , configfile.int_c_var(500)),
+        ("SERVER_SHORT_NAME"              , configfile.str_c_var(mach_name)),
     ])
     process_tools.renice()
     process_tools.fix_directories(global_config["USER"], global_config["GROUP"], ["/var/run/md-config-server"])
