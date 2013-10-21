@@ -103,7 +103,7 @@ class extended_setup(View):
         xml_resp.extend(
             [
                 E.device_groups(*[cur_dg.get_xml(full=False, with_devices=False) for cur_dg in device_group.objects.exclude(Q(cluster_device_group=True))]),
-                E.users(*[cur_u.get_xml() for cur_u in user.objects.filter(Q(active=True))]),
+                E.users(*[cur_u.get_xml() for cur_u in user.objects.select_related("group").prefetch_related("secondary_groups").filter(Q(active=True))]),
                 E.mon_periods(*[cur_p.get_xml() for cur_p in mon_period.objects.all()]),
                 E.mon_contacts(*[cur_c.get_xml() for cur_c in mon_contact.objects.all()]),
                 E.mon_service_templs(*[cur_st.get_xml() for cur_st in mon_service_templ.objects.all()]),
@@ -111,7 +111,7 @@ class extended_setup(View):
                 E.mon_contactgroups(*[cur_cg.get_xml() for cur_cg in mon_contactgroup.objects.all()]),
                 E.mon_device_templs(*[cur_dt.get_xml() for cur_dt in mon_device_templ.objects.all()]),
                 E.mon_device_esc_templs(*[cur_det.get_xml() for cur_det in mon_device_esc_templ.objects.all()]),
-                E.mon_host_clusters(*[cur_mhc.get_xml() for cur_mhc in mon_host_cluster.objects.all()]),
+                E.mon_host_clusters(*[cur_mhc.get_xml() for cur_mhc in mon_host_cluster.objects.prefetch_related("devices").all()]),
                 E.mon_service_clusters(*[cur_msc.get_xml() for cur_msc in mon_service_cluster.objects.all()]),
                 E.devices(*[cur_dev.get_simple_xml() for cur_dev in device.objects.exclude(Q(device_type__identifier="MD")).order_by("name")]),
                 E.mon_check_command(*[cur_mc.get_xml() for cur_mc in mon_check_command.objects.prefetch_related("categories").all()]),
