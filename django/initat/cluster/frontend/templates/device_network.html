@@ -186,21 +186,16 @@ class network_table
         cur_tr.append(get_expand_td(line_prefix, "hw", undefined, @toggle_netdevice_line))
         cur_tr.append(get_expand_td(line_prefix, "mac", undefined, @toggle_netdevice_line))
         if nd_pk == "new"
-            cur_tr.append($("<td>").attr("colspan", "2").html("&nbsp;"))
+            cur_tr.append($("<td>").attr("colspan", "3").html("&nbsp;"))
         else
             # IP
+            cur_tr.append(get_expand_td(line_prefix, "vlan", undefined, @toggle_netdevice_line))
             cur_tr.append(get_expand_td(line_prefix, "ip", undefined, @toggle_netdevice_line))
             cur_tr.append(get_expand_td(line_prefix, "routing", undefined, @toggle_netdevice_line))
         # description
         cur_tr.append(
             $("<td>").append(
                 create_input_el(cur_nd, "description", line_prefix, {master_xml: @DEVICE_NETWORKS})
-            )
-        )
-        # vlan_id
-        cur_tr.append(
-            $("<td>").append(
-                create_input_el(cur_nd, "vlan_id", line_prefix, {master_xml: @DEVICE_NETWORKS, number: true, min: 0, max: 4096})
             )
         )
         if nd_pk != "new"
@@ -225,6 +220,9 @@ class network_table
             @create_mac_line(line_prefix, cur_nd),
         )
         if cur_nd
+            vlan_tr = $("<tr>").attr("id", "#{line_prefix}__vlan").hide()
+            vlan_tr.append($("<td>").attr("colspan", "9"))
+            dummy_div.append(vlan_tr)
             ip_tr = $("<tr>").attr("id", "#{line_prefix}__ip").hide()
             ip_tr.append($("<td>").attr("colspan", "9"))
             dummy_div.append(ip_tr)
@@ -307,6 +305,33 @@ class network_table
             peer_table.append(@create_peer_line(cur_nd, $(cur_peer), "#{line_prefix}__routing"))
         @recolor_table(peer_table)
         return peer_table
+    create_vlan_table: (line_prefix, cur_dev, cur_nd) =>
+        # vlan line
+        vlan_table = $("<table>").attr("id" : "#{line_prefix}__vlan")
+        # vlan_id
+        vlan_tr = $("<tr>")
+        vlan_tr.append(
+            $("<td>").append(
+                create_input_el(cur_nd, "vlan_id", line_prefix, {master_xml: @DEVICE_NETWORKS, number: true, min: 0, max: 4096, label : "VLAN ID:"}),
+                create_input_el(cur_nd, "master_device", line_prefix, {master_xml : @DEVICE_NETWORKS, select_source : @get_vlan_masters, add_null_entry : "not set", label : "master device:"}),
+            )
+        )
+        vlan_table.append(vlan_tr)
+        @recolor_table(vlan_table)
+        return vlan_table
+    get_vlan_masters: (cur_nd, kwargs) =>
+        cur_dev = @DEVICE_NETWORKS.find("device[pk='" + cur_nd.attr("device") + "']")
+        ret_field = $("<master>")
+        cur_dev.find("netdevice[vlan_id='0']").each (index, other_nd) =>
+            other_nd = $(other_nd)
+            if other_nd.attr("pk") != cur_nd.attr("pk")
+                ret_field.append(
+                    $("<netdevice>").attr({
+                        "pk"  : other_nd.attr("pk"),
+                        "key" : other_nd.attr("key")
+                    }).text(other_nd.attr("devname"))
+                )
+        return ret_field.find("netdevice")
     create_delete_new_netdevice: (event) =>
         cur_el = $(event.target)
         cur_dev = @DEVICE_NETWORKS.find("device[pk='" + cur_el.attr("id").split("__")[1] + "']")
@@ -575,13 +600,15 @@ class network_table
     toggle_netdevice_line: (line_prefix, state, line_spec) =>
         cur_dev = @DEVICE_NETWORKS.find("device[pk='" + line_prefix.split("__")[1] + "']")
         cur_nd = cur_dev.find("netdevice[pk='" + line_prefix.split("__")[2] + "']")
-        if line_spec in ["ip", "routing"]
+        if line_spec in ["ip", "routing", "vlan"]
             targ_el = @new_table.find("tr##{line_prefix}__#{line_spec} > td")
             if targ_el.children().length == 0
                 if line_spec == "ip"
                     targ_el.append(@create_ip_line(line_prefix, cur_dev, cur_nd))
-                else
+                else if line_spec == "routing"
                     targ_el.append(@create_routing_table(line_prefix, cur_dev, cur_nd))
+                else if line_spec == "vlan"
+                    targ_el.append(@create_vlan_table(line_prefix, cur_dev, cur_nd))
         exp_line = @new_table.find("tr[id^='#{line_prefix}__#{line_spec}']")
         if state
             exp_line.show()
@@ -782,10 +809,10 @@ class network_table
             )
             .on("dblclick", (d) ->
                 cur_ev = d3.event
-                console.log cur_ev, d
+                #console.log cur_ev, d
                 cur_di = new device_info(cur_ev, "dev__" + d.id)
                 cur_di.show()
-                console.log "dbl"
+                #console.log "dbl"
             )
         centers.append("circle")
             .attr

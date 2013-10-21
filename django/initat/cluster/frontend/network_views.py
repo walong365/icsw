@@ -134,10 +134,15 @@ class delete_netdevice(View):
         removed_peers = peer_information.objects.filter(Q(s_netdevice=nd_pk) | Q(d_netdevice=nd_pk))
         request.xml_response["removed_peers"] = E.peers(*[rem_peer.get_xml() for rem_peer in removed_peers])
         nd_dev = device.objects.get(Q(pk=dev_pk))
+        to_del = netdevice.objects.get(Q(pk=nd_pk) & Q(device=dev_pk))
+        for vlan_slave in to_del.vlan_slaves.all():
+            # unseet master for vlan_slaves
+            vlan_slave.master_device = None
+            vlan_slave.save()
         if nd_dev.bootnetdevice_id == nd_pk:
             nd_dev.bootnetdevice = None
             nd_dev.save()
-        netdevice.objects.get(Q(pk=nd_pk) & Q(device=dev_pk)).delete()
+        to_del.delete()
 
 class create_netdevice(View):
     @method_decorator(login_required)
@@ -335,6 +340,8 @@ class copy_network(View):
                         fmac_dict[cur_nd.devname] = cur_nd.fake_macaddr
                     # remove all netdevices
                     cur_nd.delete()
+                vlan_master_dict = {}
+                src_dict, dst_dict = ({}, {})
                 # copy from source
                 for cur_nd in source_dev.netdevice_set.all().prefetch_related(
                     "netdevice_speed",
@@ -343,7 +350,11 @@ class copy_network(View):
                     "net_ip_set__network",
                     "net_ip_set__domain_tree_node",
                     "net_ip_set__network__network_type"):
+                    src_dict[cur_nd.devname] = cur_nd
+                    if cur_nd.master_device_id:
+                        vlan_master_dict[cur_nd.devname] = cur_nd.master_device.devname
                     new_nd = cur_nd.copy()
+                    dst_dict[new_nd.devname] = new_nd
                     if new_nd.devname in mac_dict:
                         new_nd.macaddr = mac_dict[new_nd.devname]
                     if new_nd.devname in fmac_dict:
@@ -377,6 +388,10 @@ class copy_network(View):
                                     s_netdevice=new_nd,
                                     d_netdevice=target_nd,
                                     penalty=penalty).save()
+                # vlan masters
+                for dst_name, src_name in vlan_master_dict.items():
+                    dst_dict[dst_name].master_device = dst_dict[src_name]
+                    dst_dict[dst_name].save()
             request.xml_response.info("copied network settings", logger)
         else:
             request.xml_response.error("no target_devices", logger)

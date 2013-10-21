@@ -166,7 +166,14 @@ class change_xml_entry(View):
                                     # in case of meta-fields like ethtool_autoneg,speed,duplex
                                     pass
                                 cur_obj.change_attribute = attr_name
-                                setattr(cur_obj, attr_name, new_value)
+                                try:
+                                    setattr(cur_obj, attr_name, new_value)
+                                except:
+                                    request.xml_response.error("cannot set %s to %s: %s" % (
+                                        attr_name,
+                                        unicode(new_value),
+                                        process_tools.get_except_info(),
+                                        ))
                                 try:
                                     cur_obj.save()
                                 except ValidationError, what:
