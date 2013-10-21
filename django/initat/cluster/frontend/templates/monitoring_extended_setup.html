@@ -91,11 +91,19 @@ master_array = {
         [  
             new draw_info("name"),
             new draw_info("inherits_parent", {boolean : 1, default : 0, label : "inherit"}),
+            new draw_info("priority", {min: - 128, max: 128, number : true, default : 0}),
             new draw_info("efc_up", {boolean : 1, default : 0, label : "EFC Up / Down / Unreachable / Pending", span : 4}),
             new draw_info("efc_down", {boolean : 1, default : 1}),
             new draw_info("efc_unreachable", {boolean : 1, default : 1}),
             new draw_info("efc_pending", {boolean : 1, default : 0}),
-        ]
+            new draw_info("nfc_up", {boolean : 1, default : 0, label : "NFC Up / Down / Unreachable / Pending", span : 4}),
+            new draw_info("nfc_down", {boolean : 1, default : 1}),
+            new draw_info("nfc_unreachable", {boolean : 1, default : 1}),
+            new draw_info("nfc_pending", {boolean : 1, default : 0}),
+            new draw_info("dependency_period", {select_source : "mon_period", label : "Dependency Period"}),
+        ], {
+            "required_xml" : ["mon_period"]
+        }
     ),
 }
 

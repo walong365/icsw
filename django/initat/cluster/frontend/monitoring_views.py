@@ -114,7 +114,7 @@ class extended_setup(View):
                 E.mon_host_clusters(*[cur_mhc.get_xml() for cur_mhc in mon_host_cluster.objects.all()]),
                 E.mon_service_clusters(*[cur_msc.get_xml() for cur_msc in mon_service_cluster.objects.all()]),
                 E.devices(*[cur_dev.get_simple_xml() for cur_dev in device.objects.exclude(Q(device_type__identifier="MD")).order_by("name")]),
-                E.mon_check_command(*[cur_mc.get_xml() for cur_mc in mon_check_command.objects.all()]),
+                E.mon_check_command(*[cur_mc.get_xml() for cur_mc in mon_check_command.objects.prefetch_related("categories").all()]),
                 E.mon_host_dependencies(*[cur_mhd.get_xml() for cur_mhd in mon_host_dependency.objects.all()]),
             ]
         )
