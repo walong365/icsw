@@ -524,6 +524,7 @@ class main_process(threading_tools.process_pool):
         self.register_timer(self._heartbeat, 30, instant=True)
         self.register_timer(self._update, 60)
     def log(self, what, level=logging_tools.LOG_LEVEL_OK):
+        # print(what)
         if not self["exit_requested"]:
             pass
             # self.send_to_process("receiver", "log", what, level)
