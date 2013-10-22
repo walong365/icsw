@@ -155,13 +155,16 @@ init_layout = ->
     if $("div.ui-layout-center").length
         my_layout = $("body").layout
             applyDefaultStyles  : true
+            slidable            : false
             spacing_open        : 6
+            spacing_closed      : 6
             west__size          : 340
             west__maxSize       : 480
             west__minSize       : 100
             east__size          : 300
             east__maxSize       : 600
             east__minSize       : 300
+            center_minWidth     : 200
             north__spacing_open : 0
             south__initClosed   : true
             west__initClosed    : {% if request.session.west_closed %}true{% else %}false{% endif %}
