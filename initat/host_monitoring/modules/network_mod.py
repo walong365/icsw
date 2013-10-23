@@ -330,7 +330,7 @@ class net_device(object):
             res_dict = {}
             if self.__check_ibv_devinfo and self.ibv_devinfo_path:
                 ib_stat, ib_out = commands.getstatusoutput("%s -v" % (self.ibv_devinfo_path))
-                cur_port = None
+                cur_port, hca_id = (None, None)
                 if not ib_stat:
                     for line in ib_out.split("\n"):
                         line = line.strip()
@@ -338,26 +338,39 @@ class net_device(object):
                             key, value = line.split(":", 1)
                             key = key.strip()
                             value = value.strip()
-                            if key == "port":
+                            if key == "hca_id":
+                                hca_id = value
+                                cur_port = None
+                            elif key == "port":
                                 cur_port = int(value)
-                                res_dict[cur_port] = {"port" : cur_port}
-                            elif cur_port:
+                                res_dict[(hca_id, cur_port)] = {
+                                    "port"   : cur_port,
+                                    "hca_id" : hca_id,
+                                    }
+                            elif cur_port and hca_id:
                                 if value.isdigit():
                                     value = int(value)
-                                key = key.split("[")[0].lower()
-                                res_dict[cur_port][key] = value
+                                if key.count("["):
+                                    key = key.split("[")[0].lower()
+                                    res_dict[(hca_id, cur_port)].setdefault(key, []).append(value)
+                                else:
+                                    res_dict[(hca_id, cur_port)][key] = value
             self.last_update = cur_time
             if res_dict:
-                port_num = None
+                port_spec = None
                 # get address from sys to evaluate ib-port
                 addr_file = "/sys/class/net/%s/address" % (self.name)
                 if os.path.isfile(addr_file):
                     ib_addr = file(addr_file, "r").read().strip().replace(":", "").lower()[-8:]
-                    for c_port, struct in res_dict.iteritems():
-                        if struct.get("gid", "").replace(":", "").lower()[-8:] == ib_addr:
-                            port_num = c_port
+                    for ref_spec, struct in res_dict.iteritems():
+                        gid_list = struct.get("gid", "")
+                        if type(gid_list) != list:
+                            gid_list = [gid_list]
+                        gid_list = [entry.replace(":", "").lower()[-8:] for entry in gid_list]
+                        if ib_addr in gid_list:
+                            port_spec = ref_spec
                             break
-                self.ibv_results = res_dict.get(port_num, {})
+                self.ibv_results = res_dict.get(port_spec, {})
             else:
                 self.ibv_results = {}
     def update_ethtool(self):
