@@ -1800,6 +1800,7 @@ class simple_request(object):
                 filter_ip=self.src_ip,
                 allow_route_to_other_networks=False)
             if not srv_routing:
+                # check for updated network ?
                 self.log("found valid_server_struct %s but no route" % (
                     valid_server_struct.server_info_str),
                          logging_tools.LOG_LEVEL_ERROR)
