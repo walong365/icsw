@@ -35,19 +35,23 @@ from lxml.builder import E
 class get_file_content(cs_base_class.server_com):
     def _call(self, cur_inst):
         for file_entry in cur_inst.srv_com.xpath(None, ".//ns:file"):
-            try:
-                if "encoding" in file_entry.attrib:
-                    content = codecs.open(file_entry.attrib["name"], "r", file_entry.attrib["encoding"]).read()
+            if os.path.isfile(file_entry.attrib["name"]):
+                try:
+                    if "encoding" in file_entry.attrib:
+                        content = codecs.open(file_entry.attrib["name"], "r", file_entry.attrib["encoding"]).read()
+                    else:
+                        content = open(file_entry.attrib["name"], "r").read()
+                except:
+                    file_entry.attrib["error"] = "1"
+                    file_entry.attrib["error_str"] = process_tools.get_except_info()
                 else:
-                    content = open(file_entry.attrib["name"], "r").read()
-            except:
-                file_entry.attrib["error"] = "1"
-                file_entry.attrib["error_str"] = process_tools.get_except_info()
+                    file_entry.attrib["error"] = "0"
+                    file_entry.attrib["size"] = "%d" % (len(content))
+                    file_entry.attrib["lines"] = "%d" % (content.count("\n") + 1)
+                    file_entry.text = content
             else:
-                file_entry.attrib["error"] = "0"
-                file_entry.attrib["size"] = "%d" % (len(content))
-                file_entry.attrib["lines"] = "%d" % (content.count("\n") + 1)
-                file_entry.text = content
+                file_entry.attrib["error"] = "1"
+                file_entry.attrib["error_str"] = "file does not exist"
         cur_inst.srv_com["result"].attrib.update({
             "reply" : "read file contents",
             "state" : "%d" % (server_command.SRV_REPLY_STATE_OK)
