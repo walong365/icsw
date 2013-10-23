@@ -17,8 +17,9 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
-import sys
+
 import re
+import sys
 
 def hostname_expand(hname, in_str):
     host_re = re.compile("^(?P<pre>.*)(?P<type>%h)(?P<post>.*)$")
@@ -29,7 +30,3 @@ def hostname_expand(hname, in_str):
             in_str = "%s%s%s" % (hre.group("pre"), hname, hre.group("post"))
     return in_str
         
-if __name__ == "__main__":
-    print "Loadable module, exiting ..."
-    sys.exit(0)
-    

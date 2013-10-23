@@ -3,7 +3,7 @@
 # Copyright (C) 2007 Andreas Lang-Nevyjel
 #
 # Send feedback to: <lang-nevyjel@init.at>
-# 
+#
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License Version 2 as
 # published by the Free Software Foundation.
@@ -18,10 +18,10 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
 
-import sys
 import cs_base_class
-import os
 import cs_tools
+import os
+import sys
 
 class modify_user_dir(cs_base_class.server_com):
     def __init__(self):
@@ -66,7 +66,7 @@ class modify_user_dir(cs_base_class.server_com):
             else:
                 ret_str = "error cannot find user '%s'" % (user)
         return ret_str
-            
+
 class modify_user_uid_gid(cs_base_class.server_com):
     def __init__(self):
         cs_base_class.server_com.__init__(self)
@@ -105,7 +105,3 @@ class modify_user_uid_gid(cs_base_class.server_com):
                 ret_str = "error cannot find user '%s'" % (user)
         return ret_str
 
-if __name__ == "__main__":
-    print "Loadable module, exiting ..."
-    sys.exit(0)
-    

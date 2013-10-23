@@ -20,6 +20,7 @@
 """ tools for modifying LDAP servers """
 
 import commands
+import crypt
 import cs_base_class
 import cs_tools
 import ldap
@@ -31,7 +32,6 @@ import process_tools
 import server_command
 import sys
 import time
-import crypt
 from django.db.models import Q
 from initat.cluster.backbone.models import user, group, device_config, device, config, \
     config_str, home_export_list

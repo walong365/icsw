@@ -3,7 +3,7 @@
 # Copyright (C) 2007,2008,2012,2013 Andreas Lang-Nevyjel
 #
 # Send feedback to: <lang-nevyjel@init.at>
-# 
+#
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License Version 2 as
 # published by the Free Software Foundation.
@@ -67,13 +67,13 @@ class write_dhcpd_config(cs_base_class.server_com):
             for act_net in [boot_net] + add_nets:
                 if act_net.gw_pri > gw_pri:
                     gw_pri, gateway = (act_net.gw_pri, act_net.gateway)
-                
+
                 for key, configs, add_dict in [("domain-name-servers", ["name_server", "name_slave"], {}),
                                                ("ntp-servers", ["xntp_server"], {}),
                                                ("nis-servers", ["yp_server"], {"domainname" : "nis-domain"})]:
-##                    dc.execute("SELECT d.name, i.ip FROM device d INNER JOIN netip i INNER JOIN netdevice n INNER JOIN device_config dc INNER JOIN new_config c INNER JOIN " + \
-##                                           "device_group dg LEFT JOIN device d2 ON d2.device_idx=dg.device WHERE d.device_group=dg.device_group_idx AND n.device = d.device_idx AND i.netdevice=n.netdevice_idx AND " + \
-##                                           "i.network=%d AND (dc.device=d.device_idx OR dc.device=d2.device_idx) AND dc.new_config=c.new_config_idx AND (%s)" % (act_net["network_idx"], " OR ".join(["c.name='%s'" % (x) for x in configs])))
+# #                    dc.execute("SELECT d.name, i.ip FROM device d INNER JOIN netip i INNER JOIN netdevice n INNER JOIN device_config dc INNER JOIN new_config c INNER JOIN " + \
+# #                                           "device_group dg LEFT JOIN device d2 ON d2.device_idx=dg.device WHERE d.device_group=dg.device_group_idx AND n.device = d.device_idx AND i.netdevice=n.netdevice_idx AND " + \
+# #                                           "i.network=%d AND (dc.device=d.device_idx OR dc.device=d2.device_idx) AND dc.new_config=c.new_config_idx AND (%s)" % (act_net["network_idx"], " OR ".join(["c.name='%s'" % (x) for x in configs])))
                     found_confs = set(cur_dc.keys()) & set(configs)
                     if found_confs:
                         # some configs found
@@ -82,20 +82,20 @@ class write_dhcpd_config(cs_base_class.server_com):
                                 match_list = [cur_ip for cur_ip in cur_srv.ip_list if cur_ip.network.pk == act_net.pk]
                                 if match_list:
                                     # FIXME: honor add_dict
-                                    #print cur_srv.config.config_str_set.all()
-##                        for sql_key, dhcp_key in add_dict.iteritems():
-##                            for tname in ["int", "str"]:
-##                                sql_str = "SELECT cs.value FROM config_%s cs INNER JOIN new_config c INNER JOIN device_config dc INNER JOIN device d INNER JOIN device_group dg LEFT JOIN device d2 ON d2.device_idx=dg.device WHERE d.device_group=dg.device_group_idx AND cs.name='%s' AND cs.new_config=c.new_config_idx AND
-## (%s) AND dc.new_config=c.new_config_idx AND (dc.device=d.device_idx OR dc.device=d2.device_idx) AND (%s)" % (tname, sql_key, " OR ".join(["c.name='%s'" % (x) for x in configs]), " OR ".join(["d.name='%s'" % (x) for x in [y[1] for y in hosts]]))
-##                                dc.execute(sql_str)
-##                                if dc.rowcount:
-##                                    opts[dhcp_key] = dc.fetchone()["value"]
+                                    # print cur_srv.config.config_str_set.all()
+# #                        for sql_key, dhcp_key in add_dict.iteritems():
+# #                            for tname in ["int", "str"]:
+# #                                sql_str = "SELECT cs.value FROM config_%s cs INNER JOIN new_config c INNER JOIN device_config dc INNER JOIN device d INNER JOIN device_group dg LEFT JOIN device d2 ON d2.device_idx=dg.device WHERE d.device_group=dg.device_group_idx AND cs.name='%s' AND cs.new_config=c.new_config_idx AND
+# # (%s) AND dc.new_config=c.new_config_idx AND (dc.device=d.device_idx OR dc.device=d2.device_idx) AND (%s)" % (tname, sql_key, " OR ".join(["c.name='%s'" % (x) for x in configs]), " OR ".join(["d.name='%s'" % (x) for x in [y[1] for y in hosts]]))
+# #                                dc.execute(sql_str)
+# #                                if dc.rowcount:
+# #                                    opts[dhcp_key] = dc.fetchone()["value"]
                                     found_dict.setdefault(act_net.pk, {}).setdefault(key, []).append((cur_srv.device, match_list))
-            #pprint.pprint(found_dict)
-##                    if dc.rowcount:
-##                        hosts, opts = ([(x["ip"], x["name"]) for x in dc.fetchall()], {})
-##                        act_net[key] = {"hosts" : hosts, "opts" : opts}
-                #act_net["dns"] = 
+            # pprint.pprint(found_dict)
+# #                    if dc.rowcount:
+# #                        hosts, opts = ([(x["ip"], x["name"]) for x in dc.fetchall()], {})
+# #                        act_net[key] = {"hosts" : hosts, "opts" : opts}
+                # act_net["dns"] =
             dhcpd_f.write("shared-network %s {\n" % (global_config["SERVER_SHORT_NAME"]))
             dhcpd_f.write("  option routers %s;\n" % (gateway))
             for act_net in [boot_net] + add_nets:
@@ -109,7 +109,7 @@ class write_dhcpd_config(cs_base_class.server_com):
                     if key in local_found_dict:
                         dhcpd_f.write("    option %s %s;\n" % (key, ", ".join(["%s" % (cur_dev.name) for cur_dev, ip_list in local_found_dict[key]])))
                         # FIXME
-                        #for o_key, o_value in act_net[key]["opts"].iteritems():
+                        # for o_key, o_value in act_net[key]["opts"].iteritems():
                         #    dhcpd_f.write("    option %s %s;\n" % (o_key, o_value))
                 dhcpd_f.write("    server-identifier %s;\n" % (my_c.identifier_ip_lut[act_net.network_type.identifier][0].ip))
                 dhcpd_f.write("    option domain-name \"%s\";\n" % (act_net.name))
@@ -147,8 +147,4 @@ class write_dhcpd_config(cs_base_class.server_com):
             cur_inst.srv_com["result"].attrib.update({
                 "reply" : ret_str,
                 "state" : "%d" % (ret_state)})
-            
-if __name__ == "__main__":
-    print "Loadable module, exiting ..."
-    sys.exit(0)
-    
+

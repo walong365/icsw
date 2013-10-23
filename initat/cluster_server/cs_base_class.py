@@ -20,6 +20,7 @@
 
 import cluster_location
 import config_tools
+import io_stream_helper
 import logging_tools
 import os
 import pprint
@@ -28,7 +29,6 @@ import sys
 import threading_tools
 import time
 import server_command
-import io_stream_helper
 from django.conf import settings
 from django.db import connection
 from initat.cluster_server.config import global_config

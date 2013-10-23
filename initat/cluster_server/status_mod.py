@@ -3,7 +3,7 @@
 # Copyright (C) 2007,2012,2013 Andreas Lang-Nevyjel
 #
 # Send feedback to: <lang-nevyjel@init.at>
-# 
+#
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License Version 2 as
 # published by the Free Software Foundation.
@@ -19,17 +19,17 @@
 #
 """ returns status of the cluster and updates the cluster_name if necessary """
 
-import sys
-import cs_base_class
+import cluster_location
 import configfile
+import cs_base_class
+import logging_tools
 import os
 import pprint
 import server_command
-import logging_tools
+import sys
 from initat.cluster_server.config import global_config
 from initat.cluster.backbone.models import device, device_group
 from django.db.models import Q
-import cluster_location
 
 CLUSTER_NAME_FILE = "/etc/sysconfig/cluster/cluster_name"
 
@@ -52,8 +52,3 @@ class status(cs_base_class.server_com):
                 cluster_name,
                 global_config["VERSION"]),
             "state" : "%d" % (server_command.SRV_REPLY_STATE_OK if all_running else server_command.SRV_REPLY_STATE_ERROR)})
-    
-if __name__ == "__main__":
-    print "Loadable module, exiting ..."
-    sys.exit(0)
-    

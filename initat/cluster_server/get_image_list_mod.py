@@ -1,9 +1,9 @@
 #!/usr/bin/python -Ot
 #
-# Copyright (C) 2007,2008,2012 Andreas Lang-Nevyjel
+# Copyright (C) 2007,2008,2012,2013 Andreas Lang-Nevyjel
 #
 # Send feedback to: <lang-nevyjel@init.at>
-# 
+#
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License Version 2 as
 # published by the Free Software Foundation.
@@ -18,12 +18,12 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
 
-import sys
 import cs_base_class
-import server_command
-import os
 import logging_tools
+import os
 import process_tools
+import server_command
+import sys
 from initat.cluster_server.config import global_config
 
 NEEDED_IMAGE_DIRS = ["usr", "etc", "bin", "sbin", "var"]
@@ -33,7 +33,7 @@ class get_image_list(cs_base_class.server_com):
         needed_configs = ["image_server"]
         needed_config_keys = ["IMAGE_SOURCE_DIR"]
     def _call(self, cur_inst):
-        #sys.path.append("/usr/local/sbin/modules")
+        # sys.path.append("/usr/local/sbin/modules")
         source_dir = global_config["IMAGE_SOURCE_DIR"]
         if os.path.isdir(source_dir):
             t_dirs = ["%s/%s" % (source_dir, sub_dir) for sub_dir in os.listdir(source_dir) if os.path.isdir("%s/%s" % (source_dir, sub_dir))]
@@ -72,8 +72,3 @@ class get_image_list(cs_base_class.server_com):
             cur_inst.srv_com["result"].attrib.update({
                 "reply" : "error image-source-dir '%s' not found" % (source_dir),
                 "state" : "%d" % (server_command.SRV_REPLY_STATE_ERROR)})
-    
-if __name__ == "__main__":
-    print "Loadable module, exiting ..."
-    sys.exit(0)
-    

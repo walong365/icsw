@@ -18,11 +18,11 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
 
-import sys
 import cs_base_class
 import os
-import server_command
 import process_tools
+import server_command
+import sys
 
 class modify_service(cs_base_class.server_com):
     class Meta:

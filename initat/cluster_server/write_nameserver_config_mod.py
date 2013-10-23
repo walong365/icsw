@@ -1,6 +1,6 @@
 #!/usr/bin/python-init -Ot
 #
-# Copyright (C) 2007,2009 Andreas Lang-Nevyjel
+# Copyright (C) 2007,2009,2013 Andreas Lang-Nevyjel
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -25,6 +25,7 @@ import cs_base_class
 import grp
 import ipvx_tools
 import logging_tools
+import networkx
 import os
 import process_tools
 import pwd
@@ -36,7 +37,6 @@ from initat.cluster.backbone.models import net_ip, netdevice, device, device_var
     domain_tree_node, config, network, device_type
 from initat.cluster_server.config import global_config
 from initat.cluster_server.rebuild_hopcount_mod import router_object
-import networkx
 
 class write_nameserver_config(cs_base_class.server_com):
     class Meta:
@@ -380,8 +380,4 @@ class write_nameserver_config(cs_base_class.server_com):
                 "reply" : "ok wrote nameserver-config (%d networks) and successfully reloaded configuration" % (len(nets)),
                 "state" : "%d" % (server_command.SRV_REPLY_STATE_OK)
                 })
-
-if __name__ == "__main__":
-    print "Loadable module, exiting ..."
-    sys.exit(0)
 

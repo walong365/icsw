@@ -3,7 +3,7 @@
 # Copyright (C) 2007,2013 Andreas Lang-Nevyjel
 #
 # Send feedback to: <lang-nevyjel@init.at>
-# 
+#
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License Version 2 as
 # published by the Free Software Foundation.
@@ -20,14 +20,14 @@
 
 """ create rsync config """
 
-import sys
 import cs_base_class
 import process_tools
 import logging_tools
-import re
 import os
-from django.db.models import Q
+import re
 import server_command
+import sys
+from django.db.models import Q
 from initat.cluster.backbone.models import image
 from initat.cluster_server.config import global_config
 
@@ -36,8 +36,8 @@ class write_rsyncd_config(cs_base_class.server_com):
         needed_configs = ["rsync_server"]
     def _call(self, cur_inst):
         rsyncd_cf_name = "/etc/rsyncd.conf"
-        #print cur_inst.srv_com.pretty_print()
-        #not_full = opt_dict.get("not_full", 0)
+        # print cur_inst.srv_com.pretty_print()
+        # not_full = opt_dict.get("not_full", 0)
         def_lines = [
             "uid = 0",
             "gid = 0",
@@ -65,7 +65,7 @@ class write_rsyncd_config(cs_base_class.server_com):
                         ae_post_lines.append(line)
         # empty image list
         im_list = []
-        if False:#not_full:
+        if False: # not_full:
             if os.path.isfile(rsyncd_cf_name):
                 im_re = re.compile("^.*\[(?P<image_name>.*)\].*$")
                 com_re = re.compile("^\s*(?P<key>\S+)\s*=\s*(?P<value>.*)$")
@@ -88,15 +88,15 @@ class write_rsyncd_config(cs_base_class.server_com):
                     im_list = [("root", im_dict["root"].get("path", "/"), im_dict["root"]["exclude"] and im_dict["root"]["exclude"].split() or ["/proc/", "/sys/"])]
         num_images, num_rsync = (0, 0)
         if not im_list:
-            im_list = [("root", "/", ["/proc/", "/sys/"]),]# + opt_dict.get("exclude_dirs", "").split(":"))]
+            im_list = [("root", "/", ["/proc/", "/sys/"]), ] # + opt_dict.get("exclude_dirs", "").split(":"))]
             extra_info = ""
         else:
             extra_info = " (root kept)"
         server_idxs = [global_config["SERVER_IDX"]]
         # check for rsync
-        #call_params.dc.execute("SELECT cs.value, cs.name, c.name AS config_name FROM device_config dc LEFT JOIN new_config c ON dc.new_config=c.new_config_idx INNER JOIN config_str cs ON cs.new_config=c.new_config_idx AND c.name LIKE('%%rsync%%') AND (%s)" % (" OR ".join(["dc.device=%d" % (x) for x in server_idxs])))
+        # call_params.dc.execute("SELECT cs.value, cs.name, c.name AS config_name FROM device_config dc LEFT JOIN new_config c ON dc.new_config=c.new_config_idx INNER JOIN config_str cs ON cs.new_config=c.new_config_idx AND c.name LIKE('%%rsync%%') AND (%s)" % (" OR ".join(["dc.device=%d" % (x) for x in server_idxs])))
         rsync_dict = {}
-        #for db_rec in call_params.dc.fetchall():
+        # for db_rec in call_params.dc.fetchall():
         #    rsync_dict.setdefault(db_rec["config_name"], {})[db_rec["name"]] = db_rec["value"]
         rsync_keys = sorted(rsync_dict.keys())
         self.log("found %s: %s" % (logging_tools.get_plural("rsync entry", len(rsync_keys)),
@@ -113,7 +113,7 @@ class write_rsyncd_config(cs_base_class.server_com):
                                                                   ", ".join(rsync_del_keys)),
                      logging_tools.LOG_LEVEL_WARN)
             rsync_keys = [x for x in rsync_keys if x not in rsync_del_keys]
-        #self.dc.execute("SELECT * FROM image")
+        # self.dc.execute("SELECT * FROM image")
         im_list.extend([(cur_img.name, cur_img.source, []) for cur_img in image.objects.filter(Q(enabled=True))])
         for im_name, im_source, im_exclude in im_list:
             num_images += 1
@@ -158,8 +158,3 @@ class write_rsyncd_config(cs_base_class.server_com):
         cur_inst.srv_com["result"].attrib.update({
             "reply" : ret_str,
             "state" : "%d" % (ret_state)})
-
-if __name__ == "__main__":
-    print "Loadable module, exiting ..."
-    sys.exit(0)
-    

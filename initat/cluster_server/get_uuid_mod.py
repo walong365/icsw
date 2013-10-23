@@ -1,6 +1,6 @@
 #!/usr/bin/python -Ot
 #
-# Copyright (C) 2007,2012 Andreas Lang-Nevyjel
+# Copyright (C) 2007,2012,2013 Andreas Lang-Nevyjel
 #
 # Send feedback to: <lang-nevyjel@init.at>
 # 
@@ -18,10 +18,10 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
 
-import sys
 import cs_base_class
-import uuid_tools
 import server_command
+import sys
+import uuid_tools
 
 class get_uuid(cs_base_class.server_com):
     class Meta:
@@ -42,7 +42,4 @@ class get_0mq_id(cs_base_class.server_com):
             "reply" : "0MQ_ID is %s" % (zmq_id),
             "state" : "%d" % (server_command.SRV_REPLY_STATE_OK)})
         
-if __name__ == "__main__":
-    print "Loadable module, exiting ..."
-    sys.exit(0)
     

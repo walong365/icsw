@@ -3,7 +3,7 @@
 # Copyright (C) 2007,2012,2013 Andreas Lang-Nevyjel
 #
 # Send feedback to: <lang-nevyjel@init.at>
-# 
+#
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License Version 2 as
 # published by the Free Software Foundation.
@@ -18,10 +18,10 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
 
-import sys
 import cs_base_class
 import process_tools
 import server_command
+import sys
 
 class reload_nscd(cs_base_class.server_com):
     def _call(self, cur_inst):
@@ -36,8 +36,4 @@ class reload_nscd(cs_base_class.server_com):
             cur_inst.srv_com["result"].attrib.update({
                 "reply" : "ok successfully restarted nscd",
                 "state" : "%d" % (server_command.SRV_REPLY_STATE_OK)})
-    
-if __name__ == "__main__":
-    print "Loadable module, exiting ..."
-    sys.exit(0)
-    
+

@@ -3,7 +3,7 @@
 # Copyright (C) 2007,2012,2013 Andreas Lang-Nevyjel
 #
 # Send feedback to: <lang-nevyjel@init.at>
-# 
+#
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License Version 2 as
 # published by the Free Software Foundation.
@@ -20,9 +20,9 @@
 
 """ simple one: returns the version string """
 
-import sys
 import cs_base_class
 import server_command
+import sys
 from initat.cluster_server.config import global_config
 
 class version(cs_base_class.server_com):
@@ -34,7 +34,3 @@ class version(cs_base_class.server_com):
             "reply" : "version is %s" % (global_config["VERSION"]),
             "state" : "%d" % (server_command.SRV_REPLY_STATE_OK)})
 
-if __name__ == "__main__":
-    print "Loadable module, exiting ..."
-    sys.exit(0)
-    

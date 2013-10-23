@@ -3,7 +3,7 @@
 # Copyright (C) 2007,2012,2013 Andreas Lang-Nevyjel
 #
 # Send feedback to: <lang-nevyjel@init.at>
-# 
+#
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License Version 2 as
 # published by the Free Software Foundation.
@@ -19,22 +19,22 @@
 #
 """ modifies yp-databases """
 
-import sys
+import commands
 import cs_base_class
 import cs_tools
-import os
 import mysql_tools
+import os
 import re
-import shutil
-import time
-import commands
 import server_command
+import shutil
+import sys
+import time
 from initat.cluster_server.config import global_config
 
 class write_yp_config(cs_base_class.server_com):
     class Meta:
         needed_configs = ["yp_server"]
-    def _call(self, cur_inst):#call_it(self, opt_dict, call_params):
+    def _call(self, cur_inst): # call_it(self, opt_dict, call_params):
         try:
             import gdbm
         except ImportError:
@@ -60,12 +60,12 @@ class write_yp_config(cs_base_class.server_com):
             for aeid_idx, aeid in aeid_d.iteritems():
                 if aeid["export"] and aeid["import"]:
                     aeid["import"] = cs_tools.hostname_expand(mach, aeid["import"])
-                    #print ei_dict
+                    # print ei_dict
                     export_dict[aeid["import"]] = "%s %s:%s" % (aeid["options"], mach, aeid["export"])
-        #print export_dict
+        # print export_dict
         # auto.master map
         auto_master = []
-        #print export_dict
+        # print export_dict
         ext_keys = {}
         for ext_k in export_dict.keys():
             splits = ext_k.split("/")
@@ -215,7 +215,7 @@ class write_yp_config(cs_base_class.server_com):
             for mapname in map_keys:
                 self.log("creating map named %s ..." % (mapname))
                 map_name = "%s/%s" % (temp_map_dir, mapname)
-                #print map_name
+                # print map_name
                 gdbf = gdbm.open(map_name, "n", 0600)
                 gdbf["YP_INPUT_NAME"] = "%s.mysql" % (mapname)
                 gdbf["YP_OUTPUT_NAME"] = map_name
@@ -223,7 +223,7 @@ class write_yp_config(cs_base_class.server_com):
                 gdbf["YP_LAST_MODIFIED"] = str(int(time.time()))
                 for key, value in ext_keys[mapname]:
                     gdbf[key] = value
-                    #print "%s --> %s" % (a, b)
+                    # print "%s --> %s" % (a, b)
                 gdbf.close()
             # rename temporary name to new name
             map_dir = "/var/yp/%s" % (nis_name)
@@ -244,6 +244,3 @@ class write_yp_config(cs_base_class.server_com):
                     "reply" : "ok wrote %d yp-maps and successfully reloaded configuration" % (num_maps),
                     "state" : "%d" % (server_command.SRV_REPLY_STATE_OK)})
 
-if __name__ == "__main__":
-    print "Loadable module, exiting ..."
-    sys.exit(0)

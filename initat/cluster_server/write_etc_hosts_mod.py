@@ -3,7 +3,7 @@
 # Copyright (C) 2007,2008,2011,2012,2013 Andreas Lang-Nevyjel
 #
 # Send feedback to: <lang-nevyjel@init.at>
-# 
+#
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License Version 2 as
 # published by the Free Software Foundation.
@@ -35,7 +35,7 @@ from initat.cluster_server.config import global_config
 from initat.cluster_server.rebuild_hopcount_mod import router_object
 
 SSH_KNOWN_HOSTS_FILENAME = "/etc/ssh/ssh_known_hosts"
-ETC_HOSTS_FILENAME       = "/etc/hosts"
+ETC_HOSTS_FILENAME = "/etc/hosts"
 GROUP_DIR = "/opt/cluster/etc/pdsh"
 
 class write_etc_hosts(cs_base_class.server_com):
@@ -45,8 +45,8 @@ class write_etc_hosts(cs_base_class.server_com):
         file_list = []
         server_idxs = [self.server_idx]
         # get additional idx if host is virtual server
-        #is_server, serv_idx, server_type, server_str, config_idx, real_server_name = cluster_location.is_server(self.dc, self.Meta.actual_configs[0], True, False)
-        
+        # is_server, serv_idx, server_type, server_str, config_idx, real_server_name = cluster_location.is_server(self.dc, self.Meta.actual_configs[0], True, False)
+
         is_server, serv_idx, server_type, server_str, config_idx, real_server_name = cluster_location.is_server("server", True, False)
         if is_server and serv_idx != self.server_idx:
             server_idxs.append(serv_idx)
@@ -60,7 +60,7 @@ class write_etc_hosts(cs_base_class.server_com):
         all_paths = []
         for s_ndev in my_idxs:
             all_paths.extend(networkx.shortest_path(route_obj.nx, s_ndev, weight="weight").values())
-        #pprint.pprint(all_paths)
+        # pprint.pprint(all_paths)
         nd_lut = dict([(cur_nd.pk, cur_nd) for cur_nd in netdevice.objects.all().select_related("device").prefetch_related("net_ip_set", "net_ip_set__network", "net_ip_set__domain_tree_node")])
         # fetch key-information
         ssh_vars = device_variable.objects.filter(Q(name="ssh_host_rsa_key_pub")).select_related("device")
@@ -68,13 +68,13 @@ class write_etc_hosts(cs_base_class.server_com):
         for db_rec in ssh_vars:
             pass
             # not handled FIXME
-            #print "* ssh_var *", db_rec
-            #if db_rec["val_blob"] and db_rec["dvname"] == "ssh_host_rsa_key_pub":
-                #if type(db_rec["val_blob"]) == type(array.array("b")):
-                    #key_str = db_rec["val_blob"].tostring().split()
-                #else:
-                    #key_str = db_rec["val_blob"].split()
-                #rsa_key_dict[db_rec["name"]] = " ".join(key_str)
+            # print "* ssh_var *", db_rec
+            # if db_rec["val_blob"] and db_rec["dvname"] == "ssh_host_rsa_key_pub":
+                # if type(db_rec["val_blob"]) == type(array.array("b")):
+                    # key_str = db_rec["val_blob"].tostring().split()
+                # else:
+                    # key_str = db_rec["val_blob"].split()
+                # rsa_key_dict[db_rec["name"]] = " ".join(key_str)
         # read pre/post lines from /etc/hosts
         pre_host_lines, post_host_lines = ([], [])
         # parse pre/post host_lines
@@ -103,7 +103,7 @@ class write_etc_hosts(cs_base_class.server_com):
                     ETC_HOSTS_FILENAME, ETC_HOSTS_FILENAME))
                 try:
                     pass
-                    #file("%s.orig" % (ETC_HOSTS_FILENAME), "w").write("\n".join(host_lines + [""]))
+                    # file("%s.orig" % (ETC_HOSTS_FILENAME), "w").write("\n".join(host_lines + [""]))
                 except:
                     self.log("error writing %s.orig: %s" % (
                         ETC_HOSTS_FILENAME,
@@ -113,7 +113,7 @@ class write_etc_hosts(cs_base_class.server_com):
         # ip dictionary
         ip_dict = {}
         # connection keys
-        #con_keys = set(ref_table)
+        # con_keys = set(ref_table)
         # build dict, ip->[list of hosts]
         tl_dtn = domain_tree_node.objects.get(Q(depth=0))
         for cur_path in all_paths:
@@ -152,7 +152,7 @@ class write_etc_hosts(cs_base_class.server_com):
                 for val in all_values:
                     for act_val, act_list in [(x_value, x_list) for x_value, x_list in h_list if x_value == val]:
                         out_names.extend([value for value in act_list if value not in out_names])
-                #print min_value, ip, out_names
+                # print min_value, ip, out_names
                 loc_dict.setdefault(min_value, []).append([ipvx_tools.ipv4(ip)] + out_names)
         pen_list = sorted(loc_dict.keys())
         out_file = []
@@ -205,7 +205,3 @@ class write_etc_hosts(cs_base_class.server_com):
         cur_inst.srv_com["result"].attrib.update({
             "reply" : "ok wrote %s" % (", ".join(sorted(file_list))),
             "state" : "%d" % (server_command.SRV_REPLY_STATE_OK)})
-
-if __name__ == "__main__":
-    print "Loadable module, exiting ..."
-    sys.exit(0)

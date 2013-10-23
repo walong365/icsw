@@ -18,12 +18,12 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
 
-import sys
 import cs_base_class
-import server_command
 import check_scripts
-import uuid_tools
 import pprint
+import server_command
+import sys
+import uuid_tools
 import initat.cluster_server
 from initat.cluster_server.config import global_config
 

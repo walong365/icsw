@@ -18,15 +18,15 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
 
-import sys
-import cs_base_class
-import os
 import commands
+import cs_base_class
 import cs_tools
-import tempfile
+import os
+import process_tools
 import shutil
 import server_command
-import process_tools
+import sys
+import tempfile
 from django.db.models import Q
 from initat.cluster.backbone.models import user, group, config, device_config, config_str
 from initat.cluster_server.config import global_config
