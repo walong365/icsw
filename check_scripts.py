@@ -38,6 +38,8 @@ try:
     import config_tools
 except:
     config_tools = None
+from lxml import etree # @UnresolvedImport
+from lxml.builder import E # @UnresolvedImport
 
 def check_threads(name, pids, any_ok):
     # print name, pids, any_ok
@@ -61,6 +63,96 @@ def check_threads(name, pids, any_ok):
         ret_state = 0
     return ret_state, num_started, num_found
 
+INSTANCE_XML = """
+<instances>
+    <instance name="hoststatus" check_type="simple" pid_file_name="hoststatus_zmq" process_name="hoststatus_zmq" runs_on="node">
+    </instance>
+    <instance name="logging-server" runs_on="node" pid_file_name="logserver/logserver.pid">
+    </instance>
+    <instance name="meta-server" runs_on="node">
+    </instance>
+    <instance name="host-monitoring" runs_on="node" pid_file_name="collserver/collserver.pid">
+    </instance>
+    <instance name="package-client" runs_on="node">
+    </instance>
+    <instance name="gmond" runs_on="node">
+    </instance>
+    <instance name="logcheck-server">
+        <config_names>
+            <config_name>syslog_server</config_name>
+        </config_names>
+    </instance>
+    <instance name="package-server" pid_file_name="package-server/package-server.pid">
+        <config_names>
+            <config_name>package_server</config_name>
+        </config_names>
+    </instance>
+    <instance name="mother" pid_file_name="mother/mother.pid">
+        <config_names>
+            <config_name>mother_server</config_name>
+        </config_names>
+    </instance>
+    <instance name="collectd" check_type="threads_by_pid_file" any_threads_ok="1">
+        <config_names>
+            <config_name>rrd_server</config_name>
+        </config_names>
+    </instance>
+    <instance name="memcached" check_type="threads_by_pid_file" pid_file_name="memcached/memcached.pid" any_threads_ok="1">
+        <config_names>
+            <config_name>server</config_name>
+        </config_names>
+    </instance>
+    <instance name="rrdcached" check_type="threads_by_pid_file" any_threads_ok="1">
+        <config_names>
+            <config_name>rrd_server</config_name>
+        </config_names>
+    </instance>
+    <instance name="rrd-grapher" pid_file_name="rrd-grapher/rrd-grapher.pid">
+        <config_names>
+            <config_name>rrd_server</config_name>
+        </config_names>
+    </instance>
+    <instance name="sge-server">
+        <config_names>
+            <config_name>sge_server</config_name>
+        </config_names>
+    </instance>
+    <instance name="cluster-server">
+        <config_names>
+            <config_name>server</config_name>
+        </config_names>
+    </instance>
+    <instance name="cluster-config-server" pid_file_name="cluster-config-server/cluster-config-server.pid">
+        <config_names>
+            <config_name>config_server</config_name>
+        </config_names>
+    </instance>
+    <instance name="host-relay" pid_file_name="collrelay/collrelay.pid">
+        <config_names>
+            <config_name>monitor_server</config_name>
+            <config_name>monitor_master</config_name>
+        </config_names>
+    </instance>
+    <instance name="snmp-relay" pid_file_name="snmp-relay/snmp-relay.pid">
+        <config_names>
+            <config_name>monitor_server</config_name>
+            <config_name>monitor_master</config_name>
+        </config_names>
+    </instance>
+    <instance name="md-config-server" pid_file_name="md-config-server/md-config-server.pid">
+        <config_names>
+            <config_name>monitor_server</config_name>
+            <config_name>monitor_master</config_name>
+        </config_names>
+    </instance>
+    <instance name="cransys" pid_file_name="cransys-server.pid" init_script_name="cransys">
+        <config_names>
+            <config_name>cransys_server</config_name>
+        </config_names>
+    </instance>
+</instances>
+"""
+
 def check_system(opt_ns):
     if not opt_ns.server and not opt_ns.node:
         set_default_nodes, set_default_servers = (True , True)
@@ -70,184 +162,122 @@ def check_system(opt_ns):
         set_default_servers = True
     if opt_ns.node == ["ALL"]:
         set_default_nodes = True
-    if set_default_nodes:
-        opt_ns.node = [
-            "hoststatus:simple:hoststatus_zmq",
-            "logging-server",
-            "meta-server",
-            "host-monitoring",
-            "package-client",
-            "gmond:simple:gmond",
-        ]
-    def_server = [
-        "logcheck-server",
-        "package-server",
-        "mother",
-        "collectd:threads_by_pid_file:/var/run/collectd.pid:1",
-        "memcached:threads_by_pid_file:/var/run/memcached/memcached.pid:1",
-        "rrd-grapher",
-        "sge-server",
-        "cluster-server",
-        "cluster-config-server",
-        # "xen-server",
-        "host-relay",
-        "snmp-relay",
-        "md-config-server"
-        ]
-    if os.path.isfile("/etc/init.d/icinga"):
-        def_server.append("monitoring:threads_by_pid_file:/opt/icinga/var/icinga.lock:1")
-    elif os.path.isfile("/etc/init.d/nagios"):
-        def_server.append("monitoring:threads_by_pid_file:/opt/nagios/var/nagios.lock:1")
-    def_server.extend(extra_server_tools.extra_server_file().get_server_list())
-    if set_default_servers:
-        opt_ns.server = def_server
+    instance_xml = etree.fromstring(INSTANCE_XML)
+    for cur_el in instance_xml.findall("instance"):
+        name = cur_el.attrib["name"]
+        for key, def_value in [
+            ("runs_on", "server"),
+            ("check_type", "threads_by_pid_file"),
+            ("any_threads_ok", "0"),
+            ("pid_file_name", "%s.pid" % (name)),
+            ("init_script_name", name),
+            ("checked", "0"),
+            ("to_check", "1"),
+            ("process_name", name),
+            ]:
+            if not key in cur_el.attrib:
+                cur_el.attrib[key] = def_value
+    if not set_default_servers:
+        for server_el in instance_xml.xpath(".//*[@runs_on='server']"):
+            if server_el.attrib["name"] not in opt_ns.server:
+                server_el.attrib["to_check"] = "0"
+    if not set_default_nodes:
+        for node_el in instance_xml.xpath(".//*[@runs_on='node']"):
+            if node_el.attrib["name"] not in opt_ns.node:
+                node_el.attrib["to_check"] = "0"
+    act_proc_dict = process_tools.get_proc_list()
+    r_stat, out = commands.getstatusoutput("chkconfig --list")
+    stat_dict = {}
+    if not r_stat:
+        for line in out.split("\n"):
+            if line.count("0:") and line.count("1:"):
+                key, level_list = line.split(None, 1)
+                level_list = [int(level) for level, _flag in [entry.split(":") for entry in level_list.strip().split()] if _flag == "on" and level.isdigit()]
+                stat_dict[key.lower()] = level_list
+    if config_tools:
+        dev_config = config_tools.device_with_config("%")
     else:
-        opt_ns.server = [entry for entry in def_server if entry.split(":")[0] in opt_ns.server]
-
-    check_dict, check_list = ({}, [])
-    for c_type in ["node", "server"]:
-        c_list = getattr(opt_ns, c_type)
-        for name in c_list:
-            if name.count(":"):
-                name, check_type = name.split(":", 1)
+        dev_config = None
+    for entry in instance_xml.findall("instance[@to_check='1']"):
+        entry.attrib["checked"] = "1"
+        if entry.attrib["init_script_name"] in stat_dict:
+            entry.append(
+                E.runlevels(
+                    *[E.runlevel("%d" % (cur_rl)) for cur_rl in stat_dict.get(entry.attrib["init_script_name"], [])]
+                )
+            )
+        # print name, check_struct
+        # act_info_dict = {"name" : name}
+        act_pids = []
+        init_script_name = os.path.join("/etc/init.d/%s" % (entry.attrib["init_script_name"]))
+        if entry.attrib["check_type"] == "simple":
+            if os.path.isfile(init_script_name):
+                running_procs = [pid for pid in act_proc_dict.values() if pid["name"] == entry.attrib["process_name"]]
+                if running_procs:
+                    act_state, act_str = (0, "running")
+                    act_pids = [p_struct["pid"] for p_struct in running_procs]
+                else:
+                    act_state, act_str = (7, "not running")
             else:
-                check_type = "threads_by_pid_file"
-            if check_type.count(":"):
-                check_type, pid_file_name = check_type.split(":", 1)
+                act_state, act_str = (5, "not installed")
+            entry.append(E.state_info(act_str, state="%d" % (act_state)))
+        elif entry.attrib["check_type"] == "threads_by_pid_file":
+            pid_file_name = entry.attrib["pid_file_name"]
+            if not pid_file_name.startswith("/"):
+                pid_file_name = "/var/run/%s" % (pid_file_name)
+            if os.path.isfile(pid_file_name):
+                pid_time = os.stat(pid_file_name)[stat.ST_CTIME]
+                act_pids = [int(line.strip()) for line in file(pid_file_name, "r").read().split("\n") if line.strip().isdigit()]
+                act_state, num_started, num_found = check_threads(name, act_pids, True if int(entry.attrib["any_threads_ok"]) else False)
+                entry.append(E.state_info(num_started="%d" % (num_started), num_found="%d" % (num_found), pid_time="%d" % (pid_time), state="%d" % (act_state)))
             else:
-                pid_file_name = ""
-            if pid_file_name.count(":"):
-                pid_file_name, any_ok = pid_file_name.split(":", 1)
-                any_ok = True if int(any_ok) else False
-            else:
-                any_ok = False
-            check_list.append(name)
-            check_dict[name] = {
-                "type"          : c_type,
-                "check_type"    : check_type,
-                # pid_file_name or process_name for simple check
-                "pid_file_name" : pid_file_name,
-                # any number of threads OK
-                "any_ok"        : any_ok,
-                "init_script"   : "/etc/init.d/%s" % (name)}
-    ret_dict = {}
-    if check_list:
-    # pid-file mapping
-        pid_file_map = {
-            "host-monitoring"      : "collserver/collserver.pid",
-            "logging-server"       : "logserver/logserver.pid",
-            "meta-server"          : "meta-server.pid",
-            "rrd-grapher"          : "rrd-grapher/rrd-grapher.pid",
-            "host-relay"           : "collrelay/collrelay.pid",
-            # "xen-server"           : "xen-server.pid",
-            "collectd"             : "collectd.pid",
-            "memcached"            : "memcached/memcached.pid",
-            "cluster-server"       : "cluster-server.pid",
-            "ansys"                : "ansys-server/ansys-server.pid",
-            "cransys"              : "cransys-server.pid"}
-        # server-type mapping
-        server_type_map = {
-            "mother"                : "mother_server",
-            "logcheck-server"       : "syslog_server",
-            "cluster-server"        : "server",
-            "memcached"             : "server",
-            "snmp-relay"            : ["monitor_server", "monitor_master"],
-            "cluster-config-server" : "config_server",
-            "host-relay"            : ["monitor_server", "monitor_master"],
-            "monitoring"            : ["monitor_server", "monitor_master"],
-            "md-config-server"      : ["monitor_server", "monitor_master"],
-            "cransys"               : "cransys_server",
-            "rrd-grapher"           : "rrd_server",
-            "collectd"              : "rrd_server",
-            "ansys"                 : "ansys_server"}
-        # server-type to runlevel-name mapping
-        runlevel_map = {
-            "ansys"   : "ansys-server",
-            "cransys" : "cransys-server"}
-        act_proc_dict = process_tools.get_proc_list()
-        r_stat, out = commands.getstatusoutput("chkconfig --list")
-        stat_dict = {}
-        if not r_stat:
-            for line in out.split("\n"):
-                if line.count("0:") and line.count("1:"):
-                    key, level_list = line.split(None, 1)
-                    level_list = [int(level) for level, _flag in [entry.split(":") for entry in level_list.strip().split()] if _flag == "on" and level.isdigit()]
-                    stat_dict[key.lower()] = level_list
-        if opt_ns.runlevel or opt_ns.all:
-            for check in check_list:
-                stat_dict[check] = stat_dict.get(runlevel_map.get(check, check), "Error getting RL-info for %s" % (check))
-        ret_dict["check_list"] = []
-        if config_tools:
-            dev_config = config_tools.device_with_config("%")
+                if os.path.isfile(init_script_name):
+                    entry.append(E.state_info("no threads", state="7"))
+                else:
+                    entry.append(E.state_info("not installed", state="5"))
         else:
-            dev_config = None
-        for name in check_list:
-            ret_dict["check_list"].append(name)
-            check_struct = check_dict[name]
-            # print name, check_struct
-            act_info_dict = {"name" : name}
-            act_pids = []
-            if check_struct["check_type"] == "simple":
-                if os.path.isfile(check_struct["init_script"]):
-                    running_procs = [pid for pid in act_proc_dict.values() if pid["name"] == check_struct["pid_file_name"]]
-                    if running_procs:
-                        act_state, act_str = (0, "running")
-                        act_pids = [p_struct["pid"] for p_struct in running_procs]
-                    else:
-                        act_state, act_str = (7, "not running")
-                else:
-                    act_state, act_str = (5, "not installed")
-                act_info_dict["state_info"] = act_str
-            elif check_struct["check_type"] == "threads_by_pid_file":
-                pid_file_name = check_struct["pid_file_name"]
-                if not pid_file_name:
-                    pid_file_name = pid_file_map.get(name, "%s/%s.pid" % (name, name))
-                if not pid_file_name.startswith("/"):
-                    pid_file_name = "/var/run/%s" % (pid_file_name)
-                if os.path.isfile(pid_file_name):
-                    pid_time = os.stat(pid_file_name)[stat.ST_CTIME]
-                    act_pids = [int(line.strip()) for line in file(pid_file_name, "r").read().split("\n") if line.strip().isdigit()]
-                    act_state, num_started, num_found = check_threads(name, act_pids, check_struct["any_ok"])
-                    act_info_dict["state_info"] = (num_started, num_found, pid_time, check_struct["any_ok"])
-                else:
-                    if os.path.isfile(check_struct["init_script"]):
-                        act_state = 7
-                        act_info_dict["state_info"] = "no threads"
-                    else:
-                        act_state = 5
-                        act_info_dict["state_info"] = "not installed"
+            entry.append(E.state_info("unknown check_type '%s'" % (entry.attrib["check_type"]), state="1"))
+        entry.append(
+            E.pids(
+                *[E.pid("%d" % (cur_pid), count="%d" % (act_pids.count(cur_pid))) for cur_pid in set(act_pids)]
+                )
+            )
+        # act_info_dict["pids"] = dict([(key, act_pids.count(key)) for key in set(act_pids)])
+        if entry.attrib["runs_on"] == "server":
+            if dev_config is not None:
+                srv_type_list = [_e.replace("-", "_") for _e in entry.xpath(".//config_names/config_name/text()")]
+                found = False
+                for srv_type in srv_type_list:
+                    if srv_type in dev_config:
+                        found = True
+                        sql_info = dev_config[srv_type][0]
+                        if not sql_info.effective_device:
+                            # FIXME ?
+                            act_state = 5
+                        break
+                if not found:
+                    sql_info = "not set (%s)" % (", ".join(srv_type_list))
             else:
-                act_state = 1
-                act_info_dict["state_info"] = "Unknown check_type '%s'" % (check_struct["check_type"])
-            act_info_dict["pids"] = dict([(key, act_pids.count(key)) for key in set(act_pids)])
-            if check_struct["type"] == "server":
-                if dev_config is not None:
-                    srv_type_list = server_type_map.get(name, name.replace("-", "_"))
-                    if type(srv_type_list) != list:
-                        srv_type_list = [srv_type_list]
-                    found = False
-                    for srv_type in srv_type_list:
-                        if srv_type in dev_config:
-                            found = True
-                            sql_info = dev_config[srv_type][0]
-                            if not sql_info.effective_device:
-                                act_state = 5
-                            break
-                    if not found:
-                        sql_info = "no db_con (%s)" % (", ".join(srv_type_list))
-                else:
-                    sql_info = "no db_con"
-            else:
-                sql_info = "node"
-            act_info_dict["sql"] = sql_info
-            if name in stat_dict:
-                act_info_dict["runlevels"] = stat_dict[name]
-            else:
-                act_info_dict["runlevels"] = None
-            act_info_dict["mem"] = act_pids and sum(process_tools.get_mem_info(cur_pid) for cur_pid in set(act_pids)) or None
-            act_info_dict["state"] = act_state
-            ret_dict[name] = act_info_dict
-    return ret_dict
+                sql_info = "no db_con"
+        else:
+            sql_info = "node"
+        if type(sql_info) == str:
+            entry.append(
+                E.sql_info(str(sql_info))
+                )
+        else:
+            entry.append(
+                E.sql_info("%s (%s)" % (
+                    sql_info.server_info_str,
+                    sql_info.config_name),
+                )
+            )
+        entry.append(
+            E.memory_info(
+                "%d" % (sum(process_tools.get_mem_info(cur_pid) for cur_pid in set(act_pids))) if act_pids else "",
+                )
+            )
+    return instance_xml
 
 def get_default_ns():
     def_ns = argparse.Namespace(all=True, server=[], node=[], runlevel=True, memory=True, database=True, pid=True, time=True, thread=True)
@@ -267,8 +297,8 @@ def main():
     opt_ns = my_parser.parse_args()
     if os.getuid():
         print "Not running as UID, information may be incomplete"
-    ret_dict = check_system(opt_ns)
-    if not ret_dict:
+    ret_xml = check_system(opt_ns)
+    if not len(ret_xml.findall("instance[@checked='1']")):
         print "Nothing to check"
         sys.exit(1)
     # color strings (green / yellow / red / normal)
@@ -300,15 +330,20 @@ def main():
         head_l.append("Memory")
     head_l.append("state")
     out_bl.set_header_string(0, head_l)
-    for name in ret_dict["check_list"]:
-        act_struct = ret_dict[name]
-        out_list = [name]
+    # import pprint
+    # pprint.pprint(ret_dict)
+    for act_struct in ret_xml.findall("instance[@checked='1']"):
+        out_list = [act_struct.attrib["name"]]
         if opt_ns.time or opt_ns.all:
-            s_info = act_struct["state_info"]
-            if type(s_info) == type(""):
-                out_list.append(s_info)
+            s_info = act_struct.find("state_info")
+            if "num_started" not in s_info.attrib:
+                out_list.append(s_info.text)
             else:
-                num_started, num_found, pid_time, any_ok = s_info
+                num_started, num_found, pid_time, any_ok = (
+                    int(s_info.get("num_started")),
+                    int(s_info.get("num_found")),
+                    int(s_info.get("pid_time")),
+                    True if int(act_struct.attrib["any_threads_ok"]) else False)
                 if any_ok:
                     ret_str = "%s running" % (logging_tools.get_plural("thread", num_found))
                 else:
@@ -334,7 +369,9 @@ def main():
                         time.strftime("%a, %d. %b %Y, %H:%M:%S", time.localtime(pid_time)))
                 out_list.append(ret_str)
         if opt_ns.pid or opt_ns.all:
-            pid_dict = act_struct["pids"]
+            pid_dict = {}
+            for cur_pid in act_struct.findall(".//pids/pid"):
+                pid_dict[int(cur_pid.text)] = int(cur_pid.get("count", "1"))
             if pid_dict:
                 p_list = sorted(pid_dict.keys())
                 if max(pid_dict.values()) == 1:
@@ -346,26 +383,26 @@ def main():
             else:
                 out_list.append("no PIDs")
         if opt_ns.database or opt_ns.all:
-            if type(act_struct["sql"]) == type(""):
-                out_list.append(act_struct["sql"])
-            else:
-                out_list.append("%s (%s)" % (
-                    act_struct["sql"].server_info_str,
-                    act_struct["sql"].config_name))
+            out_list.append(act_struct.findtext("sql_info"))
         if opt_ns.runlevel or opt_ns.all:
-            rlevs = act_struct["runlevels"]
-            if type(rlevs) == type([]):
-                if rlevs:
+            if act_struct.find("runlevels") is not None:
+                rlevs = act_struct.xpath("runlevels/runlevel/text()")
+                if len(rlevs):
                     out_list.append("%s %s" % (
                         logging_tools.get_plural("level", rlevs, 0),
-                        ", ".join(["%d" % (r_lev) for r_lev in rlevs])))
+                        ", ".join([r_lev for r_lev in rlevs])))
                 else:
-                    out_list.append("no levels")
+                    out_list.append("no runlevels")
             else:
                 out_list.append("<no runlevel info>")
         if opt_ns.memory or opt_ns.all:
-            out_list.append(act_struct["mem"] and process_tools.beautify_mem_info(act_struct["mem"]) or "no pids")
-        out_list.append(rc_strs[act_struct["state"]])
+            cur_mem = act_struct.find("memory_info").text
+            if cur_mem.isdigit():
+                mem_str = process_tools.beautify_mem_info(int(cur_mem))
+            else:
+                mem_str = "no pids"
+            out_list.append(mem_str)
+        out_list.append(rc_strs[int(act_struct.find("state_info").get("state", "1"))])
         out_bl.add_line(out_list)
     print out_bl
 
