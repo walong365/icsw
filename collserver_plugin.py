@@ -507,13 +507,14 @@ class receiver(object):
         collectd.Values(plugin="perfdata", host=host_name, time=s_time, type="ipd_%s" % (_type), interval=5 * 60).dispatch(values=v_list)
     def _handle_tree(self, data):
         host_name, time_recv, values = data
+        # print host_name, time_recv
         s_time = self.get_time((host_name, "icval"), time_recv)
         for name, value in values:
             # name can be none for values with transform problems
             if name:
                 collectd.Values(plugin="collserver", host=host_name, time=s_time, type="icval", type_instance=name).dispatch(values=[value])
 
-# == Our Own Functions go here: ==#
+# Our Own Functions go here
 def configer(ObjConfiguration):
     pass
     # collectd.debug('Configuring Stuff')
