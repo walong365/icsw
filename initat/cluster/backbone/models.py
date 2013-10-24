@@ -707,16 +707,17 @@ def device_pre_save(sender, **kwargs):
                     unicode(cur_inst),
                     unicode(present_dev),
                     ))
-        # Check if the device limit is reached
-        dev_count = settings.CLUSTER_LICENSE["device_count"]
+        # Check if the device limit is reached, disabled as of 2013-10-14 (AL)
+        if False:
+            dev_count = settings.CLUSTER_LICENSE["device_count"]
 
-        # Exclude special meta devices
-        md_type = device_type.objects.get(identifier="MD")
-        current_count = device.objects.exclude(device_type=md_type).count()
+            # Exclude special meta devices
+            md_type = device_type.objects.get(identifier="MD")
+            current_count = device.objects.exclude(device_type=md_type).count()
 
-        if dev_count > 0 and current_count >= dev_count:
-            logger.warning("Device limit %d reached", dev_count)
-            raise ValidationError("Device limit reached!")
+            if dev_count > 0 and current_count >= dev_count:
+                logger.warning("Device limit %d reached", dev_count)
+                raise ValidationError("Device limit reached!")
 
 class device_config(models.Model):
     idx = models.AutoField(db_column="device_config_idx", primary_key=True)
