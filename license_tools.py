@@ -4,7 +4,7 @@
 # Copyright (C) 2012,2013 Andreas Lang-Nevyjel, init.at
 #
 # Send feedback to: <lang-nevyjel@init.at>
-# 
+#
 # This file is part of cluster-backbone-tools
 #
 # This program is free software; you can redistribute it and/or modify
@@ -33,7 +33,7 @@ from lxml.builder import E
 
 logger = logging.getLogger(__name__)
 
-LICENSE_FILE="/etc/sysconfig/cluster/cluster_license"
+LICENSE_FILE = "/etc/sysconfig/cluster/cluster_license"
 
 LICENSE_CAPS = [
     ("monitor", "Monitoring services"),
@@ -56,7 +56,7 @@ def check_license(lic_name):
         return False
     else:
         raise BadLicenseXML("license for '%s' found more than once" % (lic_name))
-    
+
 def get_all_licenses():
     lic_xml = etree.fromstring(
         open(LICENSE_FILE, "r").read())
@@ -141,18 +141,23 @@ GwIDAQAB
         The signature must be base64 encoded.
         """
         data = element.xpath("./data/text()")[0]
-        signature = base64.decodestring(element.xpath("./signature/text()")[0])
-        logger.info("Checking signature for data: %s", data)
+        signatures = element.xpath("./signature/text()")
+        if len(signatures):
+            signature = base64.decodestring(signatures[0])
+            logger.info("Checking signature for data: %s", data)
 
-        self.key.verify_init()
-        self.key.verify_update(data)
-        # Only 1 means success
-        if self.key.verify_final(signature) != 1:
-            logger.error("Signature for data '%s' not correct", data)
-            raise SignatureNotCorrect("%s has invalid signature" % element.tag)
+            self.key.verify_init()
+            self.key.verify_update(data)
+            # Only 1 means success
+            if self.key.verify_final(signature) != 1:
+                logger.error("Signature for data '%s' not correct", data)
+                raise SignatureNotCorrect("%s has invalid signature" % element.tag)
+            else:
+                logger.info("Signature for data '%s' is correct")
+                return data
         else:
-            logger.info("Signature for data '%s' is correct")
-            return data
+            logger.warn("no Signature found")
+            return 0
 
     def get_device_count(self):
         """ Validate signature and return the device count.
