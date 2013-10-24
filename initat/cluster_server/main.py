@@ -608,15 +608,6 @@ class server_process(threading_tools.process_pool):
         self.log("setting %s backup-time to %s" % (
             "first" if first else "next",
             self.__next_backup_dt))
-    def set_target(self, t_host, t_port):
-        # not needed, fixme
-        self.__target_host, self.__target_port = (t_host, t_port)
-        self.__ns = net_tools.network_send(timeout=10, log_hook=self.log, verbose=False)
-        self.__ns.add_object(net_tools.tcp_con_object(self._new_client_tcp_con, connect_state_call=self._client_connect_state_call, connect_timeout_call=self._client_connect_timeout, target_host=self.__target_host, target_port=self.__target_port, timeout=10, bind_retries=1, rebind_wait_time=2))
-        self.log("Contacting cluster-server on %s (port %d) for command: %s" % (self.__target_host,
-                                                                                self.__target_port,
-                                                                                self.__server_com.get_command()))
-        self.__first_step = True
     def _bg_finished(self, *args, **kwargs):
         func_name = args[2]
         self.log("background task for '%s' finished" % (func_name))
