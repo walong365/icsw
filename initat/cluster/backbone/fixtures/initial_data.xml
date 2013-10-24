@@ -464,6 +464,10 @@
     <field type="BooleanField" name="full_duplex">True</field>
     <field type="DateTimeField" name="date">2012-10-25T16:29:58.741529+00:00</field>
   </object>
+  <object pk="1" model="backbone.domain_tree_node">
+    <field type="CharField" name="name"></field>
+    <field type="IntegerField" name="depth">0</field>
+  </object>
     <!--object pk="1" model="backbone.rrd_class">
     <field type="CharField" name="name">normal</field>
     <field type="IntegerField" name="step">30</field>
