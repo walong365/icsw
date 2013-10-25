@@ -21,32 +21,32 @@
 #
 """ generates the inital ramdisk for clusterboot """
 
-import sys
 import os
+import sys
 
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "initat.cluster.settings")
 
 import argparse
 import commands
-import re
-import tempfile
-import shutil
+import config_tools
 import copy
+import datetime
+import fnmatch
+import gzip
+import logging_tools
+import module_dependency_tools
+import pprint
+import process_tools
+import re
+import server_command
+import shutil
 import stat
 import statvfs
-import pprint
-import logging_tools
-import process_tools
-import server_command
-import uuid_tools
-import config_tools
+import tempfile
 import time
-import datetime
-import gzip
-import fnmatch
+import uuid_tools
 from django.db.models import Q
 from initat.cluster.backbone.models import kernel
-import module_dependency_tools
 
 MOD_REFUSE_LIST = [
     "3w-9xxx", "3w-xxxx", "af_packet", "ata_piix",
