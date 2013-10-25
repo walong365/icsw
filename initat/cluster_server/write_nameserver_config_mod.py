@@ -36,7 +36,6 @@ from django.db.models import Q
 from initat.cluster.backbone.models import net_ip, netdevice, device, device_variable, \
     domain_tree_node, config, network, device_type
 from initat.cluster_server.config import global_config
-from initat.cluster_server.rebuild_hopcount_mod import router_object
 
 class write_nameserver_config(cs_base_class.server_com):
     class Meta:
