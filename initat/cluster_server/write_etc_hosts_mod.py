@@ -157,9 +157,9 @@ class write_etc_hosts(cs_base_class.server_com):
         pen_list = sorted(loc_dict.keys())
         out_file = []
         for pen_value in pen_list:
-            act_out_list = logging_tools.form_list()
+            act_out_list = logging_tools.new_form_list()
             for entry in sorted(loc_dict[pen_value]):
-                act_out_list.add_line([entry[0]] + entry[1:])
+                act_out_list.append([logging_tools.form_entry(entry[0])] + [logging_tools.form_entry(cur_e) for cur_e in entry[1:]])
             host_lines = str(act_out_list).split("\n")
             out_file.extend(["# penalty %d, %s" % (
                 pen_value,
