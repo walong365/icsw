@@ -295,6 +295,13 @@ def main():
     my_parser.add_argument("--node", type=str, nargs="+", default=[], help="node checks (%(default)s)")
     my_parser.add_argument("--server", type=str, nargs="+", default=[], help="server checks (%(default)s)")
     opt_ns = my_parser.parse_args()
+    if opt_ns.all:
+        opt_ns.thread = True
+        opt_ns.time = True
+        opt_ns.pid = True
+        opt_ns.database = True
+        opt_ns.runlevel = True
+        opt_ns.memory = True
     if os.getuid():
         print "Not running as UID, information may be incomplete"
     ret_xml = check_system(opt_ns)
@@ -313,31 +320,13 @@ def main():
                7 : (2, "dead")}
     rc_strs = dict([(key, "%s%s%s" % (col_str_dict[wc], value, col_str_dict[3]))
                     for key, (wc, value) in rc_dict.iteritems()])
-    out_bl = logging_tools.form_list()
-    head_l = ["Name"]
-    if opt_ns.time or opt_ns.all:
-        if opt_ns.thread or opt_ns.all:
-            head_l.append("Thread and time info")
-        else:
-            head_l.append("Thread info")
-    if opt_ns.pid or opt_ns.all:
-        head_l.append("PIDs")
-    if opt_ns.database or opt_ns.all:
-        head_l.append("DB Info")
-    if opt_ns.runlevel or opt_ns.all:
-        head_l.append("runlevel(s)")
-    if opt_ns.memory or opt_ns.all:
-        head_l.append("Memory")
-    head_l.append("state")
-    out_bl.set_header_string(0, head_l)
-    # import pprint
-    # pprint.pprint(ret_dict)
+    out_bl = logging_tools.new_form_list()
     for act_struct in ret_xml.findall("instance[@checked='1']"):
-        out_list = [act_struct.attrib["name"]]
-        if opt_ns.time or opt_ns.all:
+        cur_line = [logging_tools.form_entry(act_struct.attrib["name"], header="Name")]
+        if opt_ns.time or opt_ns.thread:
             s_info = act_struct.find("state_info")
             if "num_started" not in s_info.attrib:
-                out_list.append(s_info.text)
+                cur_line.append(logging_tools.form_entry(s_info.text))
             else:
                 num_started, num_found, pid_time, any_ok = (
                     int(s_info.get("num_started")),
@@ -357,7 +346,7 @@ def main():
                             logging_tools.get_plural("thread", -num_miss))
                     else:
                         ret_str = "the thread is running" if num_started == 1 else "all %d threads running" % (num_started)
-                if opt_ns.thread or opt_ns.all:
+                if opt_ns.time:
                     diff_time = max(0, time.mktime(time.localtime()) - pid_time)
                     diff_days = int(diff_time / (3600 * 24))
                     diff_hours = int((diff_time - 3600 * 24 * diff_days) / 3600)
@@ -367,44 +356,51 @@ def main():
                         diff_days and "%s, " % (logging_tools.get_plural("day", diff_days)) or "",
                         diff_hours, diff_mins, diff_secs,
                         time.strftime("%a, %d. %b %Y, %H:%M:%S", time.localtime(pid_time)))
-                out_list.append(ret_str)
-        if opt_ns.pid or opt_ns.all:
+                cur_line.append(logging_tools.form_entry(ret_str, header="Thread and time info" if opt_ns.time else "Thread info"))
+        if opt_ns.pid:
             pid_dict = {}
             for cur_pid in act_struct.findall(".//pids/pid"):
                 pid_dict[int(cur_pid.text)] = int(cur_pid.get("count", "1"))
             if pid_dict:
                 p_list = sorted(pid_dict.keys())
                 if max(pid_dict.values()) == 1:
-                    out_list.append(logging_tools.compress_num_list(p_list))
+                    cur_line.append(logging_tools.form_entry(logging_tools.compress_num_list(p_list)))
                 else:
-                    out_list.append(",".join(["%d%s" % (
-                        key,
-                        " (%d)" % (pid_dict[key]) if pid_dict[key] > 1 else "") for key in p_list]))
+                    cur_line.append(
+                        logging_tools.form_entry(
+                            ",".join(["%d%s" % (
+                                key,
+                                " (%d)" % (pid_dict[key]) if pid_dict[key] > 1 else "") for key in p_list])
+                            )
+                        )
             else:
-                out_list.append("no PIDs")
-        if opt_ns.database or opt_ns.all:
-            out_list.append(act_struct.findtext("sql_info"))
-        if opt_ns.runlevel or opt_ns.all:
+                cur_line.append(logging_tools.form_entry("no PIDs"))
+        if opt_ns.database:
+                cur_line.append(logging_tools.form_entry(act_struct.findtext("sql_info")))
+        if opt_ns.runlevel:
             if act_struct.find("runlevels") is not None:
                 rlevs = act_struct.xpath("runlevels/runlevel/text()")
                 if len(rlevs):
-                    out_list.append("%s %s" % (
-                        logging_tools.get_plural("level", rlevs, 0),
-                        ", ".join([r_lev for r_lev in rlevs])))
+                    cur_line.append(
+                        logging_tools.form_entry(
+                            "%s %s" % (
+                                logging_tools.get_plural("level", rlevs, 0),
+                                ", ".join([r_lev for r_lev in rlevs]))
+                            ))
                 else:
-                    out_list.append("no runlevels")
+                    cur_line.append(logging_tools.form_entry("no runlevels"))
             else:
-                out_list.append("<no runlevel info>")
-        if opt_ns.memory or opt_ns.all:
+                cur_line.append(logging_tools.form_entry("<no runlevel info>"))
+        if opt_ns.memory:
             cur_mem = act_struct.find("memory_info").text
             if cur_mem.isdigit():
                 mem_str = process_tools.beautify_mem_info(int(cur_mem))
             else:
                 mem_str = "no pids"
-            out_list.append(mem_str)
-        out_list.append(rc_strs[int(act_struct.find("state_info").get("state", "1"))])
-        out_bl.add_line(out_list)
-    print out_bl
+            cur_line.append(logging_tools.form_entry(mem_str))
+        cur_line.append(logging_tools.form_entry(rc_strs[int(act_struct.find("state_info").get("state", "1"))]))
+        out_bl.append(cur_line)
+    print str(out_bl)
 
 if __name__ == "__main__":
     main()

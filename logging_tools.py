@@ -773,14 +773,49 @@ class form_list(object):
 class form_entry(object):
     def __init__(self, content, **kwargs):
         self.content = content
+        self.left = True
+        self.min_width = 0
+        self.pre_str = ""
+        self.post_str = ""
         for key, value in kwargs.iteritems():
             setattr(self, key, value)
+        setattr(self, "content_type", {
+            str               : "s",
+            unicode           : "s",
+            type(None)        : "s",
+            int               : "d",
+            long              : "d",
+            float             : "f",
+            datetime.date     : "s",
+            datetime.datetime : "s"}.get(type(self.content), "s"))
     def has_key(self, key):
         return hasattr(self, key)
     def __contains__(self, key):
         return hasattr(self, key)
     def __getitem__(self, key):
         return getattr(self, key)
+    def min_len(self):
+        return max(len(str(self)), self.min_width)
+    def __str__(self):
+        return self.form_str() % (self.content)
+    def form_str(self, max_len=None):
+        if self.content_type == "d":
+            form_str = "d"
+        elif self.content_type == "f":
+            form_str = "f"
+        else:
+            form_str = "s"
+        if max_len is None:
+            form_str = "%%%s" % (form_str)
+        else:
+            form_str = "%%%s%d%s" % (
+                "-" if self.left else "",
+                max_len,
+                form_str,
+                )
+        return "%s%s%s" % (self.pre_str, form_str, self.post_str)
+    def format(self, max_len):
+        return self.form_str(max_len) % (self.content)
 
 class form_entry_right(form_entry):
     def __init__(self, content, **kwargs):
@@ -792,31 +827,13 @@ class new_form_list(object):
         self.__header_dict = {}
         self.__col_sep = kwargs.get("column_separator", " ")
         self.__strict_mode = kwargs.get("strict_mode", False)
-        self.__format_dict = {}
+        # self.__format_dict = {}
     def append(self, add_list):
         # add list is a list of dicts
-        line_content = []
         for row_idx, item in enumerate(add_list):
             if "header" in item:
-                self.__header_dict[row_idx] = item["header"]
-            act_content = item["content"]
-            if not row_idx in self.__format_dict:
-                self.__format_dict[row_idx] = {
-                    "left"      : True,
-                    "format"    : {
-                        str               : "s",
-                        unicode           : "s",
-                        type(None)        : "s",
-                        int               : "d",
-                        long              : "d",
-                        datetime.date     : "s",
-                        datetime.datetime : "s"}.get(type(act_content), "f"),
-                        "min_width" : 0}
-            for key in self.__format_dict[row_idx].iterkeys():
-                if key in item:
-                    self.__format_dict[row_idx][key] = item[key]
-            line_content.append(act_content)
-        self.__content.append(line_content)
+                self.__header_dict[row_idx] = (item["left"], item["header"])
+        self.__content.append(add_list)
     def __str__(self):
         return unicode(self)
     def __unicode__(self):
@@ -836,16 +853,7 @@ class new_form_list(object):
             # hack because part has to be casted to a string
             line_lens = []
             for part in line:
-                try:
-                    if type(part) in [unicode, str]:
-                        line_lens.append(len(part))
-                    elif type(part) in [int, long]:
-                        line_lens.append(len(str(part)))
-                    else:
-                        line_lens.append(0)
-                except:
-                    # in case of unicode problems
-                    line_lens.append(0)
+                line_lens.append(part.min_len())
             if line_rows < max_rows:
                 if line_rows > 1:
                     # only count the first (line_rows - 1) rows
@@ -855,40 +863,17 @@ class new_form_list(object):
             else:
                 # count all rows
                 row_lens = [max(old_len, new_len) for old_len, new_len in zip(row_lens, line_lens)]
-        # body formats, header formats
-        body_forms, header_forms = ([], [])
-        for idx in xrange(max_rows):
-            f_info = self.__format_dict[idx]
-            # actual width row
-            act_width = max(row_lens[idx], f_info["min_width"], len(self.__header_dict.get(idx, "")))
-            if f_info["format"] == "f":
-                # float format
-                body_forms.append("".join(["%",
-                                           "-" if f_info["left"] else "",
-                                           "%d" % (act_width),
-                                           f_info["format"]]))
-            else:
-                # int / str format
-                body_forms.append("".join(["%",
-                                           "-" if f_info["left"] else "",
-                                           "%d" % (act_width),
-                                           f_info["format"]]))
-            header_forms.append("".join(["%",
-                                         "-" if f_info["left"] else "",
-                                         "%ds" % (act_width)]))
+        # take header into account
+        row_lens = [max(old_len, len(self.__header_dict.get(idx, (True, ""))[1])) for idx, old_len in enumerate(row_lens)]
         out_lines = []
         if self.__header_dict:
-            header = [self.__header_dict.get(idx, "H%d" % (idx)) for idx in xrange(max_rows)]
-            form_str = self.__col_sep.join(header_forms[0 : len(header)])
-            out_lines.append((form_str % tuple(header)).strip())
+            # header = [self.__header_dict.get(idx, "header%d" % (idx)) for idx in xrange(max_rows)]
+            header_list = [self.__header_dict.get(idx, (True, "")) for idx in xrange(max_rows)]
+            form_str = self.__col_sep.join(["%%%s%ds" % ("-" if header_list[idx][0] else "", row_len) for idx, row_len in enumerate(row_lens)])
+            out_lines.append((form_str % tuple([_e[1] for _e in header_list])).strip())
             out_lines.append("-" * len(out_lines[-1]))
         for line in self.__content:
-            if len(line) < max_rows:
-                form_str = self.__col_sep.join(body_forms[0 : len(line)])
-            else:
-                form_str = self.__col_sep.join(body_forms)
-
-            out_lines.append((form_str % tuple(line)).rstrip())
+            out_lines.append(self.__col_sep.join([entry.format(max_len) for entry, max_len in zip(line, row_lens[:len(line)])]))
         return "\n".join(out_lines)
     def __len__(self):
         return len(self.__content)

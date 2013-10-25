@@ -373,20 +373,38 @@ class configuration(object):
     def get_config_info(self):
         gk = sorted(self.keys())
         if gk:
-            f_obj = logging_tools.form_list()
-            f_obj.set_format_string(2, "s", "-", " : ")
-            f_obj.set_format_string(3, "s", "-", " , (")
-            f_obj.set_format_string(4, "s", "", "from ", ")")
+            f_obj = logging_tools.new_form_list()
+            # f_obj.set_format_string(2, "s", "-", " : ")
+            # f_obj.set_format_string(3, "s", "-", " , (")
+            # f_obj.set_format_string(4, "s", "", "from ", ")")
             for key in gk:
                 if self.get_type(key) in ["a", "d"]:
                     pv = self.pretty_print(key)
-                    f_obj.add_line((key, "list with %s:" % (logging_tools.get_plural("entry", len(pv))), self.get_type(key), self.get_source(key)))
-                    idx = 0
-                    for entry in pv:
-                        f_obj.add_line(("", "", entry, str(idx), "---"))
-                        idx += 1
+                    f_obj.append([
+                        logging_tools.form_entry(key),
+                        logging_tools.form_entry("list with %s:" % (logging_tools.get_plural("entry", len(pv)))),
+                        logging_tools.form_entry(self.get_type(key)),
+                        logging_tools.form_entry(self.get_source(key)),
+                        ])
+                    # f_obj.add_line((key, "list with %s:" % (logging_tools.get_plural("entry", len(pv))), self.get_type(key), self.get_source(key)))
+                    for idx, entry in enumerate(pv):
+                        f_obj.append([
+                            logging_tools.form_entry(""),
+                            logging_tools.form_entry(""),
+                            logging_tools.form_entry(entry),
+                            logging_tools.form_entry(str(idx)),
+                            logging_tools.form_entry("---"),
+                            ])
+                        # f_obj.add_line(("", "", entry, str(idx), "---"))
                 else:
-                    f_obj.add_line((key, self.is_global(key) and "global" or "local", str(self.pretty_print(key)), self.get_type(key), self.get_source(key)))
+                    f_obj.append([
+                        logging_tools.form_entry(key, header="bla"),
+                        logging_tools.form_entry(self.is_global(key) and "global" or "local", post_str=" : "),
+                        logging_tools.form_entry(self.pretty_print(key)),
+                        logging_tools.form_entry(self.get_type(key), pre_str=", (", post_str=" from "),
+                        logging_tools.form_entry(self.get_source(key), post_str=")"),
+                        ])
+                    # f_obj.add_line((key, self.is_global(key) and "global" or "local", str(self.pretty_print(key)), self.get_type(key), self.get_source(key)))
             ret_str = str(f_obj).split("\n")
         else:
             ret_str = []
