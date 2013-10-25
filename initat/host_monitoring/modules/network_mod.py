@@ -1062,16 +1062,19 @@ class network_info_command(hm_classes.hm_command):
         bridge_dict = srv_com["bridges"]
         net_dict = srv_com["networks"]
         net_names = sorted(net_dict.keys())
-        out_list = logging_tools.form_list()
-        out_list.set_header_string(0, ["name", "bridge", "flags", "features"])
+        out_list = logging_tools.new_form_list()
         for net_name in net_names:
             net_stuff = net_dict[net_name]
-            out_list.add_line((net_name,
-                               "yes" if net_name in bridge_dict.keys() else "no",
-                               ",".join(net_stuff["flags"]),
-                               ", ".join(["%s=%s" % (key, str(net_stuff["features"][key])) for key in sorted(net_stuff["features"].keys())]) if net_stuff["features"] else "none"))
+            out_list.append(
+                [
+                    logging_tools.form_entry(net_name, header="name"),
+                    logging_tools.form_entry("yes" if net_name in bridge_dict.keys() else "no", header="bridge"),
+                    logging_tools.form_entry(",".join(net_stuff["flags"]), header="flags"),
+                    logging_tools.form_entry(", ".join(["%s=%s" % (key, str(net_stuff["features"][key])) for key in sorted(net_stuff["features"].keys())]) if net_stuff["features"] else "none", header="features")
+                    ]
+                )
             for net in net_stuff["inet"]:
-                out_list.add_line(("  - %s" % (net)))
+                out_list.append([logging_tools.form_entry("  - %s" % (net))])
         return limits.nag_STATE_OK, "found %s:\n%s" % (logging_tools.get_plural("network device", len(net_names)),
                                                        str(out_list))
 

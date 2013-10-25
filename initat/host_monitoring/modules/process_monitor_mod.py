@@ -364,35 +364,25 @@ class proclist_command(hm_classes.hm_command):
         self.parser.add_argument("-t", dest="tree", action="store_true", default=False)
         self.parser.add_argument("-c", dest="comline", action="store_true", default=False)
         self.parser.add_argument("-f", dest="filter", action="append", type=str, default=[])
-# #        self.help_str = "get the actual list of processes"
-# #        self.short_client_info = "-t -c -r --raw"
-# #        self.long_client_info = "enables treeview and display of the full command line, raw_mode via -r or --raw, rest are regexps for the process name"
-# #        self.short_client_opts = "tcr"
-# #        self.long_client_opts = ["raw"]
-# #        self.net_only = True
     def __call__(self, srv_com, cur_ns):
         p_dict = process_tools.get_proc_list()
         # slow but very flexible
         srv_com["process_tree"] = p_dict
-# #    def server_call(self, cm):
-# #        re_list = [re.compile(".*%s.*" % (x)) for x in cm]
-# #        if not re_list:
-# #            re_list = [re.compile(".")]
-# #        act_plist = self.module_info.send_thread("get_proc_list")
-# #        return "ok %s" % (hm_classes.sys_to_net(dict([(pid, val_dict) for pid, val_dict in act_plist.iteritems() if [True for p_match in re_list if p_match.match(val_dict["name"])]])))
     def interpret(self, srv_com, cur_ns):
+        _fe = logging_tools.form_entry
         def draw_tree(m_pid, nest=0):
             proc_stuff = result[m_pid]
-            r_list = [
-                (
-                    "%s%s" % (" " * nest, m_pid),
-                    result[m_pid]["ppid"],
-                    result[m_pid]["uid"],
-                    result[m_pid]["gid"],
-                    result[m_pid]["state"],
-                    result[m_pid].get("last_cpu", -1),
-                    result[m_pid].get("affinity", "-"),
-                    result[m_pid]["out_name"])]
+            r_list = [[
+                _fe("%s%s" % (" " * nest, m_pid), header="pid"),
+                _fe(result[m_pid]["ppid"], header="ppid"),
+                _fe(result[m_pid]["uid"], header="uid"),
+                _fe(result[m_pid]["gid"], header="gid"),
+                _fe(result[m_pid]["state"], header="state"),
+                _fe(result[m_pid].get("last_cpu", -1), header="cpu"),
+                _fe(result[m_pid].get("affinity", "-"), header="aff"),
+                _fe(result[m_pid]["out_name"], header="process"),
+                ]
+                ]
             for dt_entry in [draw_tree(y, nest + 2) for y in result[m_pid]["childs"]]:
                 r_list.extend([z for z in dt_entry])
             return r_list
@@ -415,85 +405,32 @@ class proclist_command(hm_classes.hm_command):
             proc_stuff["out_name"] = proc_name
         ret_a = ["found %s matching %s" % (logging_tools.get_plural("process", len(pids)),
                                            name_re.pattern)]
-        form_list = logging_tools.form_list()
-        form_list.set_header_string(0, ["pid", "ppid", "uid", "gid", "state", "cpu", "aff", "process"])
-        form_list.set_format_string(1, "d", "")
-        form_list.set_format_string(2, "d", "-")
+        form_list = logging_tools.new_form_list()
+        # form_list.set_header_string(0, ["pid", "ppid", "uid", "gid", "state", "cpu", "aff", "process"])
+        # form_list.set_format_string(1, "d", "")
+        # form_list.set_format_string(2, "d", "-")
         if tree_view:
             for act_pid in pids:
                 result[act_pid]["childs"] = [pid for pid in pids if result[pid]["ppid"] == act_pid]
             for init_pid in [pid for pid in pids if not result[pid]["ppid"]]:
                 for add_line in draw_tree(init_pid):
-                    form_list.add_line(add_line)
+                    form_list.append(add_line)
         else:
             for act_pid in pids:
                 proc_stuff = result[act_pid]
-                form_list.add_line((
-                    act_pid,
-                    proc_stuff["ppid"],
-                    proc_stuff["uid"],
-                    proc_stuff["gid"],
-                    proc_stuff["state"],
-                    proc_stuff.get("last_cpu", -1),
-                    proc_stuff.get("affinity", "-"),
-                    proc_stuff["out_name"]))
+                form_list.append([
+                    _fe(act_pid, header="pid"),
+                    _fe(proc_stuff["ppid"], header="ppid"),
+                    _fe(proc_stuff["uid"], header="uid"),
+                    _fe(proc_stuff["gid"], header="gid"),
+                    _fe(proc_stuff["state"], header="state"),
+                    _fe(proc_stuff.get("last_cpu", -1), header="cpu"),
+                    _fe(proc_stuff.get("affinity", "-"), header="aff"),
+                    _fe(proc_stuff["out_name"], header="process"),
+                    ])
         if form_list:
             ret_a.extend(str(form_list).split("\n"))
         return ret_state, "\n".join(ret_a)
-    def interpret_old(self, result, parsed_coms):
-        def draw_tree(m_pid, nest=0):
-            proc_stuff = result[m_pid]
-            r_list = [("%s%s" % (" " * nest, m_pid),
-                       result[m_pid]["ppid"],
-                       result[m_pid]["uid"],
-                       result[m_pid]["gid"],
-                       result[m_pid]["state"],
-                       result[m_pid].get("last_cpu", -1),
-                       result[m_pid].get("affinity", "-"),
-                       result[m_pid]["out_name"])]
-            for dt_entry in [draw_tree(y, nest + 2) for y in result[m_pid]["childs"]]:
-                r_list.extend([z for z in dt_entry])
-            return r_list
-        lim = parsed_coms[0]
-        result = hm_classes.net_to_sys(result[3:])
-        raw_output = lim.get_add_flag("R")
-        ret_str, ret_state = ("OK", limits.nag_STATE_CRITICAL)
-        if raw_output:
-            return ret_state, result
-        else:
-            tree_view = lim.get_add_flag("t")
-            comline_view = lim.get_add_flag("c")
-            pids = sorted(result.keys())
-            for act_pid in pids:
-                proc_stuff = result[act_pid]
-                proc_name = proc_stuff["name"] if proc_stuff["exe"] else "[%s]" % (proc_stuff["name"])
-                if comline_view:
-                    proc_name = " ".join(proc_stuff.get("cmdline")) or proc_name
-                proc_stuff["out_name"] = proc_name
-            ret_a = ["found %d processes" % (len(pids))]
-            form_list = logging_tools.form_list()
-            form_list.set_header_string(0, ["pid", "ppid", "uid", "gid", "state", "cpu", "aff", "process"])
-            form_list.set_format_string(1, "d", "")
-            form_list.set_format_string(2, "d", "-")
-            if tree_view:
-                for act_pid in pids:
-                    result[act_pid]["childs"] = [pid for pid in pids if result[pid]["ppid"] == act_pid]
-                for init_pid in [pid for pid in pids if not result[pid]["ppid"]]:
-                    for add_line in draw_tree(init_pid):
-                        form_list.add_line(add_line)
-            else:
-                for act_pid in pids:
-                    proc_stuff = result[act_pid]
-                    form_list.add_line((act_pid,
-                                        proc_stuff["ppid"],
-                                        proc_stuff["uid"],
-                                        proc_stuff["gid"],
-                                        proc_stuff["state"],
-                                        proc_stuff.get("last_cpu", -1),
-                                        proc_stuff.get("affinity", "-"),
-                                        proc_stuff["out_name"]))
-            ret_a.extend(str(form_list).split("\n"))
-            return ret_state, "\n".join(ret_a)
 
 class ipckill_command(hm_classes.hm_command):
     def __init__(self, name):
