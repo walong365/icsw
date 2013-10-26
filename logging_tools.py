@@ -827,10 +827,13 @@ class new_form_list(object):
         self.__header_dict = {}
         self.__col_sep = kwargs.get("column_separator", " ")
         self.__strict_mode = kwargs.get("strict_mode", False)
+        self.__none_string = kwargs.get("none_string", "None")
         # self.__format_dict = {}
     def append(self, add_list):
         # add list is a list of dicts
         for row_idx, item in enumerate(add_list):
+            if item.content is None:
+                item.content = self.__none_string
             if "header" in item:
                 self.__header_dict[row_idx] = (item["left"], item["header"])
         self.__content.append(add_list)
