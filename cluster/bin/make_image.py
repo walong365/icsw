@@ -6,7 +6,7 @@
 # Send feedback to: <lang-nevyjel@init.at>
 #
 # this file is part of cluster-backbone
-# 
+#
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License Version 2 as
 # published by the Free Software Foundation.
@@ -27,7 +27,6 @@ import os
 
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "initat.cluster.settings")
 
-import argparse
 import config_tools
 import configfile
 import logging_tools
@@ -40,7 +39,7 @@ import statvfs
 import tempfile
 import threading_tools
 import time
-from lxml import etree
+from lxml import etree # @UnresolvedImports
 from django.db import connection
 from django.db.models import Q
 from initat.cluster.backbone.models import image
@@ -75,7 +74,7 @@ COMPRESS_MAP = {
     "gz"  : "z",
     "bz2" : "j",
     "xz"  : "J"}
-    
+
 class package_check(object):
     def __init__(self, log_com, img_obj):
         self.__log_com = log_com
@@ -117,7 +116,6 @@ class build_process(threading_tools.process_obj):
         self.__log_template.close()
     def _compress(self, *args, **kwargs):
         s_time = time.time()
-        cur_img = image.objects.get(Q(name=global_config["IMAGE_NAME"]))
         target_dir, system_dir, image_dir = args[0:3]
         if target_dir == SLASH_NAME:
             file_list = args[3]
@@ -227,7 +225,7 @@ class server_process(threading_tools.process_pool):
         self.log("build took %s" % (logging_tools.get_diff_time_str(e_time - self.__start_time)))
         self.__log_template.close()
     def init_build(self):
-        exit = True
+        do_exit = True
         try:
             cur_img = self.check_build_lock()
             if not cur_img.builds:
@@ -250,14 +248,14 @@ class server_process(threading_tools.process_pool):
                 self._copy_image(cur_img)
                 self._clean_image(cur_img)
                 self._init_compress_image()
-                exit = False
+                do_exit = False
         except:
             self._int_error("build failed: %s" % (process_tools.get_except_info()))
         else:
-            if exit:
+            if do_exit:
                 self._int_error("done")
     def _compress_done(self, *args, **kwargs):
-        b_name, b_pid, dir_name = args
+        b_name, _b_pid, dir_name = args
         self.__pending[b_name] = False
         self.log("compression of %s finished" % (dir_name))
         self._next_compress()
@@ -298,7 +296,7 @@ class server_process(threading_tools.process_pool):
         self.__pending_dirs = [entry for entry in self.__dir_list]
         self.__pending_files = [entry for entry in self.__file_list]
         self.__pending = dict([(builder_name, False) for builder_name in self.__builder_names])
-        for idx in xrange(global_config["BUILDERS"]):
+        for _idx in xrange(global_config["BUILDERS"]):
             self._next_compress()
     def _next_compress(self):
         if self.__pending_dirs or self.__pending_files:
@@ -352,7 +350,7 @@ class server_process(threading_tools.process_pool):
                 full_path = os.path.join(self.__system_dir, "boot", cur_entry)
                 self.log("removing %s" % (full_path))
                 os.unlink(full_path)
-        self._clean_directory(os.path.join(self.__system_dir, "etc", "zypp", "repos.d"), )
+        self._clean_directory(os.path.join(self.__system_dir, "etc", "zypp", "repos.d"),)
         # call SuSEconfig, FIXME
         # check init-scripts, FIXME
     def _check_size(self, cur_img):
@@ -463,21 +461,16 @@ class server_process(threading_tools.process_pool):
             if line.rstrip():
                 self.log("  line %2d: %s" % (line_num, line.rstrip()))
         return result
-        
+
 def main():
-    long_host_name, mach_name = process_tools.get_fqdn()
     prog_name = global_config.name()
     all_imgs = sorted(image.objects.all().values_list("name", flat=True))
-    if not all_imgs:
-        print "No images found"
-        sys.exit(1)
     global_config.add_config_entries([
         ("DEBUG"               , configfile.bool_c_var(False, help_string="enable debug mode [%(default)s]", short_options="d", only_commandline=True)),
         ("ZMQ_DEBUG"           , configfile.bool_c_var(False, help_string="enable 0MQ debugging [%(default)s]", only_commandline=True)),
         ("COMPRESSION"         , configfile.str_c_var("xz", help_string="compression method [%(default)s]", choices=["bz2", "gz", "xz"])),
         ("COMPRESSION_OPTION"  , configfile.str_c_var("", help_string="options for compressor [%(default)s]")),
         ("VERBOSE"             , configfile.bool_c_var(False, help_string="be verbose [%(default)s]", action="store_true", only_commandline=True, short_options="v")),
-        ("IMAGE_NAME"          , configfile.str_c_var(all_imgs[0], help_string="image to build [%(default)s]", choices=all_imgs)),
         ("MODIFY_IMAGE"        , configfile.bool_c_var(True, short_options="m", help_string="do not modify image (no chroot calls) [%(default)s]", action="store_false")),
         ("IGNORE_ERRORS"       , configfile.bool_c_var(False, short_options="i", help_string="ignore image errors [%(default)s]", action="store_true")),
         ("FORCE_SERVER"        , configfile.bool_c_var(False, short_options="f", help_string="force being an image server [%(default)s]", action="store_true")),
@@ -488,15 +481,21 @@ def main():
         ("BUILD_IMAGE"         , configfile.bool_c_var(False, help_string="build image [%(default)s]", action="store_true")),
         ("CHECK_SIZE"          , configfile.bool_c_var(False, help_string="enabled size checking [%(default)s]", action="store_true")),
             ])
+    if all_imgs:
+        global_config.add_config_entries([
+            ("IMAGE_NAME"          , configfile.str_c_var(all_imgs[0], help_string="image to build [%(default)s]", choices=all_imgs)),
+            ])
     global_config.parse_file()
     process_tools.kill_running_processes(exclude=configfile.get_manager_pid())
-    options = global_config.handle_commandline(
+    _options = global_config.handle_commandline(
         description="%s, version is %s" % (
             prog_name,
             VERSION_STRING),
         add_writeback_option=True,
         positional_arguments=False)
     global_config.write_file()
+    if not all_imgs:
+        sys.exit(1)
     ret_state = server_process().loop()
     sys.exit(ret_state)
 
