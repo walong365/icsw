@@ -1506,9 +1506,9 @@ class kernel(models.Model):
     major = models.CharField(max_length=192, blank=True)
     minor = models.CharField(max_length=192, blank=True)
     patchlevel = models.CharField(max_length=192, blank=True)
-    version = models.IntegerField(null=True, blank=True)
-    release = models.IntegerField(null=True, blank=True)
-    builds = models.IntegerField(null=True, blank=True)
+    version = models.IntegerField(null=True, blank=True, default=1)
+    release = models.IntegerField(null=True, blank=True, default=1)
+    builds = models.IntegerField(null=True, blank=True, default=0)
     build_machine = models.CharField(max_length=192, blank=True)
     # not a foreignkey to break cyclic dependencies
     # master_server = models.ForeignKey("device", null=True, related_name="master_server")
