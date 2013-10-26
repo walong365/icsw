@@ -24,7 +24,11 @@
 if [ "$#" -lt "2" ] ; then
     echo "Need at least two parameters (kernel_name and local kernel_dir, optional the xen-version)"
     echo "Local kernels found:"
-    echo "$(ls -1 ${IMAGE_ROOT}/lib/modules/)"
+    for cur_kern in $(ls -1 ${IMAGE_ROOT}/lib/modules/) ; do
+        if [ -d ${IMAGE_ROOT}/lib/modules/${cur_kern}/kernel ] ; then
+            echo "$cur_kern (at ${IMAGE_ROOT}/lib/modules/${cur_kern})"
+        fi
+    done
     echo ""
     echo "Xen versions found:"
     echo "$(find ${IMAGE_ROOT}/boot -type f -name "xen*gz" -printf '%f\n')"
@@ -108,12 +112,6 @@ mkdir -p ${targ_dir}/lib/firmware
 cp -a ${firm_dir} ${targ_dir}/lib/firmware/${k_name}
 echo "Copying local firmware (${firm_dir_local} -> ${targ_dir}/lib/firmware/${k_name})"
 cp -a ${firm_dir_local}/* ${targ_dir}/lib/firmware/${k_name}
-
-echo "Compressing modules"
-pushd . > /dev/null
-cd ${targ_dir}
-tar cpsjf modules.tar.bz2 lib
-popd > /dev/null
 
 echo "Generating dummy initrd_lo.gz"
 touch ${targ_dir}/initrd_lo.gz
