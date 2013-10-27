@@ -1135,7 +1135,6 @@ class build_process(threading_tools.process_obj):
                                 ))
                 del host["possible_parents"]
         self.log("end parenting run")
-        # remove old nagvis maps
         if cur_gc.master and not single_build:
             if hdep_from_topo:
                 # import pprint
@@ -1150,20 +1149,27 @@ class build_process(threading_tools.process_obj):
                     new_hd["inherits_parent"] = "1" if self.mon_host_dep.inherits_parent else "0"
                     cur_gc["hostdependency"].add_host_dependency(new_hd)
             self.log("created %s" % (logging_tools.get_plural("nagvis map", len(nagvis_maps))))
+            # remove old nagvis maps
             nagvis_map_dir = os.path.join(global_config["NAGVIS_DIR"], "etc", "maps")
             if os.path.isdir(nagvis_map_dir):
+                skipped_customs = 0
                 for entry in os.listdir(nagvis_map_dir):
-                    full_name = os.path.join(nagvis_map_dir, entry)
-                    if full_name not in nagvis_maps:
-                        self.log("removing old nagvis mapfile %s" % (full_name))
-                        try:
-                            os.unlink(full_name)
-                        except:
-                            self.log(
-                                "error removing %s: %s" % (
-                                    full_name,
-                                    process_tools.get_except_info()),
-                                logging_tools.LOG_LEVEL_ERROR)
+                    if entry.startswith("custom_"):
+                        skipped_customs += 1
+                    else:
+                        full_name = os.path.join(nagvis_map_dir, entry)
+                        if full_name not in nagvis_maps:
+                            self.log("removing old nagvis mapfile %s" % (full_name))
+                            try:
+                                os.unlink(full_name)
+                            except:
+                                self.log(
+                                    "error removing %s: %s" % (
+                                        full_name,
+                                        process_tools.get_except_info()),
+                                    logging_tools.LOG_LEVEL_ERROR)
+                if skipped_customs:
+                    self.log("skipped removing of %s" % (logging_tools.get_plural("custom map", skipped_customs)))
                 # create group maps
                 dev_groups = device_group.objects.filter(
                     Q(enabled=True) &
