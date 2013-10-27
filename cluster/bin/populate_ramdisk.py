@@ -46,7 +46,7 @@ import tempfile
 import time
 import uuid_tools
 from django.db.models import Q
-from initat.cluster.backbone.models import kernel
+from initat.cluster.backbone.models import kernel, initrd_build
 
 MOD_REFUSE_LIST = [
     "3w-9xxx", "3w-xxxx", "af_packet", "ata_piix",
@@ -925,6 +925,7 @@ class arg_parser(argparse.ArgumentParser):
 
 def main_normal():
     global verbose
+    start_time = time.time()
     my_args = arg_parser().parse()
     verbose = my_args.verbose
     script = sys.argv[0]
@@ -1013,6 +1014,13 @@ def main_normal():
         else:
             print "*** Cannot find a kernel at path '%s' (%s at %s) in database" % (my_args.kernel_dir, kernel_name, target_path)
         my_kernel = None
+    if my_kernel:
+        my_build = initrd_build(
+            kernel=my_kernel
+            )
+        my_build.save()
+    else:
+        my_build = None
     if my_kernel:
         print "Found kernel at path '%s' (%s at %s) in database (kernel_idx is %d)" % (my_args.kernel_dir, kernel_name, target_path, my_kernel.pk)
         if my_kernel.xen_host_kernel:
@@ -1398,6 +1406,11 @@ def main_normal():
     if not my_args.supress_transfer:
         uuid_connected = [my_uuid]
         print "command_stack is not longer available, please copy from hand"
+    end_time = time.time()
+    if my_build:
+        my_build.run_time = int(end_time - start_time)
+        my_build.success = True if stage_dirs_ok else False
+        my_build.save()
 # #         send_list = command_stack.send_list([command_stack.send_data(stage1_file),
 # #                                              command_stack.send_data(stage2_file),
 # #                                              command_stack.send_str("quit")], log_it, CS_BLOCK_SIZE)
