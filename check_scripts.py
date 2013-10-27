@@ -77,7 +77,7 @@ INSTANCE_XML = """
     </instance>
     <instance name="gmond" runs_on="node">
     </instance>
-    <instance name="logcheck-server">
+    <instance name="logcheck-server" pid_file_name="logcheck-server/logcheck-server.pid">
         <config_names>
             <config_name>syslog_server</config_name>
         </config_names>
@@ -112,7 +112,7 @@ INSTANCE_XML = """
             <config_name>rrd_server</config_name>
         </config_names>
     </instance>
-    <instance name="sge-server">
+    <instance name="sge-server" pid_file_name="sge-server/sge-server.pid">
         <config_names>
             <config_name>sge_server</config_name>
         </config_names>
@@ -364,19 +364,21 @@ def main():
             if pid_dict:
                 p_list = sorted(pid_dict.keys())
                 if max(pid_dict.values()) == 1:
-                    cur_line.append(logging_tools.form_entry(logging_tools.compress_num_list(p_list)))
+                    cur_line.append(logging_tools.form_entry(logging_tools.compress_num_list(p_list), header="pids"))
                 else:
                     cur_line.append(
                         logging_tools.form_entry(
                             ",".join(["%d%s" % (
                                 key,
-                                " (%d)" % (pid_dict[key]) if pid_dict[key] > 1 else "") for key in p_list])
-                            )
+                                " (%d)" % (pid_dict[key]) if pid_dict[key] > 1 else "") for key in p_list]
+                            ),
+                            header="pids"
                         )
+                    )
             else:
-                cur_line.append(logging_tools.form_entry("no PIDs"))
+                cur_line.append(logging_tools.form_entry("no PIDs", header="pids"))
         if opt_ns.database:
-                cur_line.append(logging_tools.form_entry(act_struct.findtext("sql_info")))
+            cur_line.append(logging_tools.form_entry(act_struct.findtext("sql_info"), header="DB info"))
         if opt_ns.runlevel:
             if act_struct.find("runlevels") is not None:
                 rlevs = act_struct.xpath("runlevels/runlevel/text()")
@@ -385,20 +387,21 @@ def main():
                         logging_tools.form_entry(
                             "%s %s" % (
                                 logging_tools.get_plural("level", rlevs, 0),
-                                ", ".join([r_lev for r_lev in rlevs]))
+                                ", ".join([r_lev for r_lev in rlevs])),
+                                header="runlevels"
                             ))
                 else:
-                    cur_line.append(logging_tools.form_entry("no runlevels"))
+                    cur_line.append(logging_tools.form_entry("no runlevels", header="runlevels"))
             else:
-                cur_line.append(logging_tools.form_entry("<no runlevel info>"))
+                cur_line.append(logging_tools.form_entry("<no runlevel info>", header="runlevels"))
         if opt_ns.memory:
             cur_mem = act_struct.find("memory_info").text
             if cur_mem.isdigit():
                 mem_str = process_tools.beautify_mem_info(int(cur_mem))
             else:
                 mem_str = "no pids"
-            cur_line.append(logging_tools.form_entry(mem_str))
-        cur_line.append(logging_tools.form_entry(rc_strs[int(act_struct.find("state_info").get("state", "1"))]))
+            cur_line.append(logging_tools.form_entry(mem_str, header="Memory"))
+        cur_line.append(logging_tools.form_entry(rc_strs[int(act_struct.find("state_info").get("state", "1"))], header="status"))
         out_bl.append(cur_line)
     print str(out_bl)
 
