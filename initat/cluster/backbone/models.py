@@ -1553,6 +1553,15 @@ class kernel(models.Model):
     class Meta:
         db_table = u'kernel'
 
+class initrd_build(models.Model):
+    idx = models.AutoField(primary_key=True)
+    kernel = models.ForeignKey("kernel")
+    user_name = models.CharField(max_length=128, default="root")
+    # run_time in seconds
+    run_time = models.IntegerField(default=0)
+    success = models.BooleanField(default=False)
+    date = models.DateTimeField(auto_now_add=True)
+
 class kernel_build(models.Model):
     idx = models.AutoField(db_column="kernel_build_idx", primary_key=True)
     kernel = models.ForeignKey("kernel")
