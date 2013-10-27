@@ -39,10 +39,10 @@ import statvfs
 import tempfile
 import threading_tools
 import time
-from lxml import etree # @UnresolvedImports
 from django.db import connection
 from django.db.models import Q
 from initat.cluster.backbone.models import image
+from lxml import etree # @UnresolvedImports
 
 global_config = configfile.get_global_config(process_tools.get_programm_name())
 
@@ -220,6 +220,11 @@ class server_process(threading_tools.process_pool):
             cur_img = self._get_image()
             cur_img.build_lock = False
             cur_img.release += 1
+            if not cur_img.builds:
+                cur_img.builds = 1
+            else:
+                cur_img.builds += 1
+            cur_img.build_machine = process_tools.get_machine_name(short=False)
             cur_img.save()
         e_time = time.time()
         self.log("build took %s" % (logging_tools.get_diff_time_str(e_time - self.__start_time)))
@@ -479,7 +484,7 @@ def main():
         ("BUILDERS"            , configfile.int_c_var(4, help_string="numbers of builders [%(default)i]", type=int)),
         ("OVERRIDE"            , configfile.bool_c_var(False, help_string="override build lock [%(default)s]", action="store_true")),
         ("BUILD_IMAGE"         , configfile.bool_c_var(False, help_string="build image [%(default)s]", action="store_true")),
-        ("CHECK_SIZE"          , configfile.bool_c_var(False, help_string="enabled size checking [%(default)s]", action="store_true")),
+        ("CHECK_SIZE"          , configfile.bool_c_var(True, help_string="enabled size checking [%(default)s]", action="store_false")),
             ])
     if all_imgs:
         global_config.add_config_entries([
