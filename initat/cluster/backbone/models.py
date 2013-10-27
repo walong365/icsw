@@ -1196,7 +1196,7 @@ class image(models.Model):
     # device = models.ForeignKey("device", null=True)
     device = models.IntegerField(null=True)
     build_lock = models.BooleanField(default=False)
-    # size in mbyte
+    # size in MByte
     size = models.IntegerField(default=0)
     size_string = models.TextField(blank=True, default="")
     sys_vendor = models.CharField(max_length=192, blank=True)
@@ -1208,6 +1208,9 @@ class image(models.Model):
     date = models.DateTimeField(auto_now_add=True)
     enabled = models.BooleanField(default=True)
     def get_xml(self):
+        if self.size_string and self.size_string.count(";"):
+            self.size_string = logging_tools.get_size_str(self.size or 0)
+            self.save()
         cur_img = E.image(
             unicode(self),
             pk="%d" % (self.pk),
@@ -1225,8 +1228,9 @@ class image(models.Model):
         )
         return cur_img
     def __unicode__(self):
-        return "%s (arch %s)" % (self.name,
-                                 unicode(self.architecture))
+        return "%s (arch %s)" % (
+            self.name,
+            unicode(self.architecture))
     class Meta:
         db_table = u'image'
         ordering = ("name",)
