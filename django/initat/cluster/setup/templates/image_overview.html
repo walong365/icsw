@@ -46,7 +46,7 @@ class image_tree
                     new draw_info("sys_vendor", {ro : true, label : "Vendor"}),
                     new draw_info("sys_version", {ro : true, label : "version"}),
                     new draw_info("sys_release", {ro : true}),
-                    new draw_info("size", {ro : true}),
+                    new draw_info("size", {ro : true, label : "Size (MB)"}),
                     new draw_info("size_string", {ro : true}),
                     new draw_info("delete", {button : true, trigger : true, change_cb : @delete_image}),
                     new draw_info("details", {button : true, trigger : true, change_cb : @choose_image}),

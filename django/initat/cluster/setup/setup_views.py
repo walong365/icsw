@@ -115,8 +115,9 @@ class image_overview(View):
         img_list = E.images()
         for cur_img in image.objects.all().prefetch_related("new_image"):
             img_xml = cur_img.get_xml()
-            img_xml.attrib["usecount"] = "%d" % (len(cur_img.new_image.all()))
+            img_xml.attrib["usecount"] = "%d" % (cur_img.new_image.count())
             img_list.append(img_xml)
+            print img_xml.attrib
         xml_resp = E.response(
             img_list,
             E.architectures(
