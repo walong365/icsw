@@ -133,8 +133,9 @@ class kernel_overview(View):
     @method_decorator(xml_wrapper)
     def post(self, request):
         kernel_list = E.kernels()
-        for cur_kernel in kernel.objects.all():
+        for cur_kernel in kernel.objects.prefetch_related("new_kernel", "act_kernel").all():
             kernel_xml = cur_kernel.get_xml()
+            kernel_xml.attrib["usecount"] = "%d" % (cur_kernel.new_kernel.count() + cur_kernel.act_kernel.count())
             kernel_list.append(kernel_xml)
         xml_resp = E.response(
             kernel_list,
@@ -236,3 +237,19 @@ class use_image(View):
         else:
             request.xml_response.error("image already exists", logger)
     
+class rescan_kernels(View):
+    @method_decorator(login_required)
+    @method_decorator(xml_wrapper)
+    def post(self, request):
+        _post = request.POST
+        srv_com = server_command.srv_command(command="rescan_kernels")
+        srv_result = contact_server(request, "tcp://localhost:8000", srv_com, timeout=180, log_result=True)
+
+class delete_kernel(View):
+    @method_decorator(login_required)
+    @method_decorator(xml_wrapper)
+    def post(self, request):
+        _post = request.POST
+        cur_k = kernel.objects.get(Q(pk=_post["pk"]))
+        request.xml_response.info("removed kernel '%s'" % (unicode(cur_k)), logger)
+        cur_k.delete()

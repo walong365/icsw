@@ -501,7 +501,7 @@ class draw_setup
             @xml_name_plural = "#{@xml_name[..-2]}ies"
         else
             @xml_name_plural = "#{@xml_name}s"
-        console.log @xml_name, @xml_name_plural
+        #console.log @xml_name, @xml_name_plural
         @required_xml = @kwargs.required_xml or []
         @lock_div = @kwargs.lock_div or ""
         @parent_class = @kwargs.parent_class or ""

@@ -6,7 +6,7 @@
 
 {% block content %}
 
-<h1 class="center">Kernels (<span id="num_kernels">???</span> defined)</h1>
+<h1 class="center">Kernels (<span id="num_kernels">???</span> defined), <input type="button" value="rescan" id="rescan_kernels"/></h1>
 <div id="kernel_list"></div>
 
 <div id="found_kernels"></div>
@@ -20,7 +20,13 @@
 class kernel_tree
     constructor: (@list_div, @found_div, @detail_div) ->
         @kernels = undefined
+        $("input#rescan_kernels").on("click", @rescan_kernels)
         @load_kernels()
+    rescan_kernels: () =>
+        $.ajax
+            url     : "{% url 'setup:rescan_kernels' %}"
+            success : (xml) =>
+                parse_xml_response(xml)
     load_kernels: () =>
         $.ajax
             url     : "{% url 'setup:kernel_overview' %}"
@@ -47,70 +53,27 @@ class kernel_tree
                     new draw_info("major", {ro : true}),
                     new draw_info("minor", {ro : true}),
                     new draw_info("bitcount", {ro : true}),
-                    new draw_info("delete", {button : true, trigger : true, change_cb : @delete_image}),
-                    new draw_info("details", {button : true, trigger : true, change_cb : @choose_image}),
+                    new draw_info("delete", {button : true, trigger : true, change_cb : @delete_kernel}),
                 ],
                 {change : true},
             )
         }
         draw_ds_tables(@list_div, kernel_ma, @kernels)
-        #@scan_button = $("<input>").attr({
-        #    "type"   : "button",
-        #    "id"     : "scan_for_images",
-        #    "value"  : "scan for images"}).bind("click", @scan_for_images)
-        #@list_div.append(@scan_button)
-    scan_for_images: () =>
-        @found_div.children().remove()
-        @scan_button.attr("disabled", "disabled")
-        $.ajax
-            url     : "{% url 'setup:scan_for_images' %}"
-            success : (xml) =>
-                @scan_button.removeAttr("disabled")
-                if parse_xml_response(xml)
-                    @found_images = $(xml).find("found_images")
-                    found_ma = {
-                        "image" : new draw_setup("Found Images", "found_image", "found_image",
-                            undefined,
-                            undefined,
-                            [
-                                new draw_info("name", {size : 40, ro : true}),
-                                new draw_info("vendor", {ro : true}),
-                                new draw_info("present", {boolean : true, ro : true}),
-                                new draw_info("use", {button : true, trigger : true, change_cb : @use_image}),
-                            ]
-                        )
-                    }
-                    draw_ds_tables(@found_div, found_ma, @found_images)
-    delete_image : (event) =>
-        img_pk = $(event.target).attr("id").split("__")[1]
-        cur_img = @images.find("images image[pk='#{img_pk}']")
-        if not parseInt(cur_img.attr("usecount"))
-            if confirm("Really delete image #{cur_img.attr['name']} ?")
+    delete_kernel : (event) =>
+        kern_pk = $(event.target).attr("id").split("__")[1]
+        cur_kern = @kernels.find("kernels kernel[pk='#{kern_pk}']")
+        if not parseInt(cur_kern.attr("usecount"))
+            if confirm("Really delete kernel #{cur_kern.attr('name')} ?")
                 $.ajax
-                    url     : "{% url 'setup:delete_image' %}"
+                    url     : "{% url 'setup:delete_kernel' %}"
                     data    : {
-                        "img_name" : cur_img.attr("name")
+                        "pk" : kern_pk
                     }
                     success : (xml) =>
                         if parse_xml_response(xml)
-                            @load_images()
-    choose_image : (event) =>
-        img_sel = $(event.target)
-        console.log img_sel.attr("id")
-    use_image: () =>
-        button_el = $(event.target)
-        use_id = button_el.attr("id").split("__")[1]
-        button_el.attr("disabled", "disabled")
-        $.ajax
-            url     : "{% url 'setup:use_image' %}"
-            data    : {
-                "img_name" : @found_images.find("found_image[pk='#{use_id}']").attr("name")
-            }
-            success : (xml) =>
-                button_el.removeAttr("disabled")
-                if parse_xml_response(xml)
-                    button_el.parents("tr:first").remove()
-                    @load_images()
+                            @load_kernels()
+        else
+            alert("kernel #{cur_kern.attr('name')} has an usecount of #{cur_kern.attr('usecount')}")
 
 add_handlers = ->
     my_it = new kernel_tree($("div#kernel_list"), $("div#found_kernels"), $("div#kernel_detail"))
