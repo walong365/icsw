@@ -33,6 +33,7 @@ import extra_server_tools
 import logging_tools
 import process_tools
 import stat
+import subprocess
 import time
 try:
     import config_tools
@@ -67,27 +68,27 @@ INSTANCE_XML = """
 <instances>
     <instance name="hoststatus" check_type="simple" pid_file_name="hoststatus_zmq" process_name="hoststatus_zmq" runs_on="node">
     </instance>
-    <instance name="logging-server" runs_on="node" pid_file_name="logserver/logserver.pid">
+    <instance name="logging-server" runs_on="node" pid_file_name="logserver/logserver.pid"  has_force_stop="1">
     </instance>
-    <instance name="meta-server" runs_on="node">
+    <instance name="meta-server" runs_on="node"  has_force_stop="1">
     </instance>
-    <instance name="host-monitoring" runs_on="node" pid_file_name="collserver/collserver.pid">
+    <instance name="host-monitoring" runs_on="node" pid_file_name="collserver/collserver.pid"  has_force_stop="1">
     </instance>
-    <instance name="package-client" runs_on="node">
+    <instance name="package-client" runs_on="node"  has_force_stop="1">
     </instance>
     <instance name="gmond" runs_on="node">
     </instance>
-    <instance name="logcheck-server" pid_file_name="logcheck-server/logcheck-server.pid">
+    <instance name="logcheck-server" pid_file_name="logcheck-server/logcheck-server.pid" has_force_stop="1">
         <config_names>
             <config_name>syslog_server</config_name>
         </config_names>
     </instance>
-    <instance name="package-server" pid_file_name="package-server/package-server.pid">
+    <instance name="package-server" pid_file_name="package-server/package-server.pid" has_force_stop="1">
         <config_names>
             <config_name>package_server</config_name>
         </config_names>
     </instance>
-    <instance name="mother" pid_file_name="mother/mother.pid">
+    <instance name="mother" pid_file_name="mother/mother.pid" has_force_stop="1">
         <config_names>
             <config_name>mother_server</config_name>
         </config_names>
@@ -107,45 +108,45 @@ INSTANCE_XML = """
             <config_name>rrd_server</config_name>
         </config_names>
     </instance>
-    <instance name="rrd-grapher" pid_file_name="rrd-grapher/rrd-grapher.pid">
+    <instance name="rrd-grapher" pid_file_name="rrd-grapher/rrd-grapher.pid" has_force_stop="1">
         <config_names>
             <config_name>rrd_server</config_name>
         </config_names>
     </instance>
-    <instance name="sge-server" pid_file_name="sge-server/sge-server.pid">
+    <instance name="sge-server" pid_file_name="sge-server/sge-server.pid" has_force_stop="1">
         <config_names>
             <config_name>sge_server</config_name>
         </config_names>
     </instance>
-    <instance name="cluster-server">
+    <instance name="cluster-server" has_force_stop="1">
         <config_names>
             <config_name>server</config_name>
         </config_names>
     </instance>
-    <instance name="cluster-config-server" pid_file_name="cluster-config-server/cluster-config-server.pid">
+    <instance name="cluster-config-server" pid_file_name="cluster-config-server/cluster-config-server.pid" has_force_stop="1">
         <config_names>
             <config_name>config_server</config_name>
         </config_names>
     </instance>
-    <instance name="host-relay" pid_file_name="collrelay/collrelay.pid">
+    <instance name="host-relay" pid_file_name="collrelay/collrelay.pid" has_force_stop="1">
         <config_names>
             <config_name>monitor_server</config_name>
             <config_name>monitor_master</config_name>
         </config_names>
     </instance>
-    <instance name="snmp-relay" pid_file_name="snmp-relay/snmp-relay.pid">
+    <instance name="snmp-relay" pid_file_name="snmp-relay/snmp-relay.pid" has_force_stop="1">
         <config_names>
             <config_name>monitor_server</config_name>
             <config_name>monitor_master</config_name>
         </config_names>
     </instance>
-    <instance name="md-config-server" pid_file_name="md-config-server/md-config-server.pid">
+    <instance name="md-config-server" pid_file_name="md-config-server/md-config-server.pid" has_force_stop="1">
         <config_names>
             <config_name>monitor_server</config_name>
             <config_name>monitor_master</config_name>
         </config_names>
     </instance>
-    <instance name="cransys" pid_file_name="cransys-server.pid" init_script_name="cransys">
+    <instance name="cransys" pid_file_name="cransys-server.pid" init_script_name="cransys" has_force_stop="1">
         <config_names>
             <config_name>cransys_server</config_name>
         </config_names>
@@ -154,14 +155,6 @@ INSTANCE_XML = """
 """
 
 def check_system(opt_ns):
-    if not opt_ns.server and not opt_ns.node:
-        set_default_nodes, set_default_servers = (True , True)
-    else:
-        set_default_nodes, set_default_servers = (False, False)
-    if opt_ns.server == ["ALL"]:
-        set_default_servers = True
-    if opt_ns.node == ["ALL"]:
-        set_default_nodes = True
     instance_xml = etree.fromstring(INSTANCE_XML)
     for cur_el in instance_xml.findall("instance"):
         name = cur_el.attrib["name"]
@@ -172,19 +165,20 @@ def check_system(opt_ns):
             ("pid_file_name", "%s.pid" % (name)),
             ("init_script_name", name),
             ("checked", "0"),
-            ("to_check", "1"),
+            ("to_check", "0"),
             ("process_name", name),
             ]:
             if not key in cur_el.attrib:
                 cur_el.attrib[key] = def_value
-    if not set_default_servers:
-        for server_el in instance_xml.xpath(".//*[@runs_on='server']"):
-            if server_el.attrib["name"] not in opt_ns.server:
-                server_el.attrib["to_check"] = "0"
-    if not set_default_nodes:
-        for node_el in instance_xml.xpath(".//*[@runs_on='node']"):
-            if node_el.attrib["name"] not in opt_ns.node:
-                node_el.attrib["to_check"] = "0"
+    set_all_servers = True if (opt_ns.server == ["ALL"] or opt_ns.instance == ["ALL"]) else False
+    set_all_nodes = True if (opt_ns.node == ["ALL"] or opt_ns.instance == ["ALL"]) else False
+    if set_all_servers:
+        opt_ns.server = instance_xml.xpath(".//*[@runs_on='server']/@name")
+    if set_all_nodes:
+        opt_ns.node = instance_xml.xpath(".//*[@runs_on='node']/@name")
+    for cur_el in instance_xml.xpath(".//instance[@runs_on]"):
+        if cur_el.attrib["name"] in getattr(opt_ns, cur_el.attrib["runs_on"]) or cur_el.attrib["name"] in opt_ns.instance:
+            cur_el.attrib["to_check"] = "1"
     act_proc_dict = process_tools.get_proc_list()
     r_stat, out = commands.getstatusoutput("chkconfig --list")
     stat_dict = {}
@@ -283,31 +277,7 @@ def get_default_ns():
     def_ns = argparse.Namespace(all=True, server=[], node=[], runlevel=True, memory=True, database=True, pid=True, time=True, thread=True)
     return def_ns
 
-def main():
-    my_parser = argparse.ArgumentParser()
-    my_parser.add_argument("-t", dest="thread", action="store_true", default=False, help="thread overview (%(default)s)")
-    my_parser.add_argument("-T", dest="time", action="store_true", default=False, help="full time info (implies -t,  %(default)s)")
-    my_parser.add_argument("-p", dest="pid", action="store_true", default=False, help="show pid info (%(default)s)")
-    my_parser.add_argument("-d", dest="database", action="store_true", default=False, help="show database info (%(default)s)")
-    my_parser.add_argument("-r", dest="runlevel", action="store_true", default=False, help="runlevel info (%(default)s)")
-    my_parser.add_argument("-m", dest="memory", action="store_true", default=False, help="memory consumption (%(default)s)")
-    my_parser.add_argument("-a", dest="all", action="store_true", default=False, help="all of the above (%(default)s)")
-    my_parser.add_argument("--node", type=str, nargs="+", default=[], help="node checks (%(default)s)")
-    my_parser.add_argument("--server", type=str, nargs="+", default=[], help="server checks (%(default)s)")
-    opt_ns = my_parser.parse_args()
-    if opt_ns.all:
-        opt_ns.thread = True
-        opt_ns.time = True
-        opt_ns.pid = True
-        opt_ns.database = True
-        opt_ns.runlevel = True
-        opt_ns.memory = True
-    if os.getuid():
-        print "Not running as UID, information may be incomplete"
-    ret_xml = check_system(opt_ns)
-    if not len(ret_xml.findall("instance[@checked='1']")):
-        print "Nothing to check"
-        sys.exit(1)
+def show_xml(opt_ns, res_xml):
     # color strings (green / yellow / red / normal)
     col_str_dict = {0 : "\033[1;32m",
                     1 : "\033[1;33m",
@@ -321,7 +291,7 @@ def main():
     rc_strs = dict([(key, "%s%s%s" % (col_str_dict[wc], value, col_str_dict[3]))
                     for key, (wc, value) in rc_dict.iteritems()])
     out_bl = logging_tools.new_form_list()
-    for act_struct in ret_xml.findall("instance[@checked='1']"):
+    for act_struct in res_xml.findall("instance[@checked='1']"):
         cur_line = [logging_tools.form_entry(act_struct.attrib["name"], header="Name")]
         if opt_ns.time or opt_ns.thread:
             s_info = act_struct.find("state_info")
@@ -404,6 +374,67 @@ def main():
         cur_line.append(logging_tools.form_entry(rc_strs[int(act_struct.find("state_info").get("state", "1"))], header="status"))
         out_bl.append(cur_line)
     print str(out_bl)
+
+def do_action_xml(opt_ns, res_xml, mode):
+    structs = res_xml.findall("instance[@checked='1']")
+    print "%sing %s: %s" % (
+        mode,
+        logging_tools.get_plural("instance", len(structs)),
+        ", ".join([cur_el.attrib["name"] for cur_el in structs])
+        )
+    for cur_el in structs:
+        cur_name = cur_el.attrib["name"]
+        init_script = os.path.join("/", "etc", "init.d", cur_el.get("init_script_name", cur_name))
+        if os.path.exists(init_script):
+            op_mode = "start" if mode == "start" else ("force-%s" % (mode) if opt_ns.force and int(cur_el.get("has_force_stop", "0")) else mode)
+            cur_com = "%s %s" % (
+                init_script, op_mode
+            )
+            print "calling %s" % (cur_com)
+            _ret_val = subprocess.call(cur_com, shell=True)
+        else:
+            print "init-script '%s' for %s does not exist" % (
+                init_script,
+                cur_name,
+                )
+
+def start_xml(opt_ns, res_xml):
+    pass
+
+
+def main():
+    my_parser = argparse.ArgumentParser()
+    my_parser.add_argument("-t", dest="thread", action="store_true", default=False, help="thread overview (%(default)s)")
+    my_parser.add_argument("-T", dest="time", action="store_true", default=False, help="full time info (implies -t,  %(default)s)")
+    my_parser.add_argument("-p", dest="pid", action="store_true", default=False, help="show pid info (%(default)s)")
+    my_parser.add_argument("-d", dest="database", action="store_true", default=False, help="show database info (%(default)s)")
+    my_parser.add_argument("-r", dest="runlevel", action="store_true", default=False, help="runlevel info (%(default)s)")
+    my_parser.add_argument("-m", dest="memory", action="store_true", default=False, help="memory consumption (%(default)s)")
+    my_parser.add_argument("-a", dest="all", action="store_true", default=False, help="all of the above (%(default)s)")
+    my_parser.add_argument("--instance", type=str, nargs="+", default=[], help="general instance names (%(default)s)")
+    my_parser.add_argument("--node", type=str, nargs="+", default=[], help="node entity names (%(default)s)")
+    my_parser.add_argument("--server", type=str, nargs="+", default=[], help="server entity names (%(default)s)")
+    my_parser.add_argument("--mode", type=str, default="show", choices=["show", "stop", "start", "restart"], help="operation mode [%(default)s]")
+    my_parser.add_argument("--force", default=False, action="store_true", help="call force-stop if available [%(default)s]")
+    opt_ns = my_parser.parse_args()
+    if opt_ns.all:
+        opt_ns.thread = True
+        opt_ns.time = True
+        opt_ns.pid = True
+        opt_ns.database = True
+        opt_ns.runlevel = True
+        opt_ns.memory = True
+    if os.getuid():
+        print "Not running as root, information may be incomplete"
+    ret_xml = check_system(opt_ns)
+    if not len(ret_xml.findall("instance[@checked='1']")):
+        print "Nothing to do"
+        sys.exit(1)
+
+    if opt_ns.mode == "show":
+        show_xml(opt_ns, ret_xml)
+    elif opt_ns.mode in ["start", "stop", "restart"]:
+        do_action_xml(opt_ns, ret_xml, opt_ns.mode)
 
 if __name__ == "__main__":
     main()
