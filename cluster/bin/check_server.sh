@@ -21,3 +21,4 @@
 #
 
 /opt/cluster/sbin/check_scripts.py --server ALL $*
+
