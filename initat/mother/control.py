@@ -128,10 +128,19 @@ class machine(object):
             machine.set_device(cur_dev)
     @staticmethod
     def add_lut_key(obj, key):
-        machine.__lut[key] = obj
-        obj.additional_lut_keys.add(key)
+        if key in machine.__lut:
+            machine.g_log("key '%s' already set in machine.__lut (%s set, obj is %s)" % (
+                key,
+                machine.__lut[key].name,
+                obj.name,
+                ), logging_tools.LOG_LEVEL_ERROR)
+        else:
+            machine.__lut[key] = obj
+            obj.additional_lut_keys.add(key)
     @staticmethod
     def del_lut_key(obj, key):
+        # if key == "172.16.1.56":
+        #    print "+", key
         del machine.__lut[key]
         obj.additional_lut_keys.remove(key)
     @staticmethod

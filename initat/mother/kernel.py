@@ -4,7 +4,7 @@
 # Copyright (C) 2012,2013 Andreas Lang-Nevyjel, init.at
 #
 # Send feedback to: <lang-nevyjel@init.at>
-# 
+#
 # This file is part of mother
 #
 # This program is free software; you can redistribute it and/or modify
@@ -37,7 +37,7 @@ from initat.cluster.backbone.models import kernel
 
 class kernel_sync_process(threading_tools.process_obj):
     def process_init(self):
-        #, config, db_con, **args):
+        # , config, db_con, **args):
         # needed keys in config:
         # TMP_DIR ....................... directory to create temporary files
         # SET_DEFAULT_BUILD_MACHINE ..... flag, if true sets the build_machine to local machine name
@@ -57,11 +57,15 @@ class kernel_sync_process(threading_tools.process_obj):
         # close database connection
         connection.close()
         self.register_func("srv_command", self._srv_command)
+        self.register_func("rescan_kernels", self._rescan_kernels)
         self.kernel_dev = config_tools.server_check(server_type="kernel_server")
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
         self.__log_template.log(log_level, what)
     def loop_post(self):
         self.__log_template.close()
+    def _rescan_kernels(self, *args, **kwargs):
+        srv_com = server_command.srv_command(source=args[1])
+        self._check_kernel_dir(srv_com)
     def _srv_command(self, srv_com, **kwargs):
         srv_com = server_command.srv_command(source=srv_com)
         if srv_com["command"].text == "check_kernel_dir":
@@ -83,7 +87,7 @@ class kernel_sync_process(threading_tools.process_obj):
             else:
                 cur_val = def_value
             opt_dict[key] = cur_val
-        #self.__ks_check._check(dc)
+        # self.__ks_check._check(dc)
         self.log("option_dict has %s: %s" % (
             logging_tools.get_plural("key", len(opt_dict.keys())),
             ", ".join(["%s (%s, %s)" % (key, str(type(value)), str(value)) for key, value in opt_dict.iteritems()])))
@@ -94,14 +98,14 @@ class kernel_sync_process(threading_tools.process_obj):
         # problems are global problems, not kernel local
         kernels_found = []
         problems = []
-        #print srv_com.pretty_print()
-        #srv_reply.set_option_dict({"problems"      : problems,
+        # print srv_com.pretty_print()
+        # srv_reply.set_option_dict({"problems"      : problems,
         #                           "kernels_found" : kernels_found})
         if reply_now:
             srv_com.set_result("starting check of kernel_dir '%s'" % (global_config["KERNEL_DIR"]))
             # send return, FIXME
-        #print srv_com.pretty_print()
-        #if reply_now:
+        # print srv_com.pretty_print()
+        # if reply_now:
         #    srv_reply.set_ok_result("starting check of kernel_dir")
         #    if srv_com.get_queue():
         #        srv_com.get_queue().put(("result_ready", (srv_com, srv_reply)))
@@ -152,13 +156,13 @@ class kernel_sync_process(threading_tools.process_obj):
                                 act_kernel.db_kernel = all_kernels[act_kernel.name]
                                 act_kernel.check_md5_sums()
                                 act_kernel.check_kernel_dir()
-##                                act_kernel.check_initrd()
-##                                # always check comment
-##                                act_kernel.check_comment()
-##                                # always check for xen
-##                                act_kernel.check_xen()
-##                                # check config
-##                                act_kernel.check_config()
+# #                                act_kernel.check_initrd()
+# #                                # always check comment
+# #                                act_kernel.check_comment()
+# #                                # always check for xen
+# #                                act_kernel.check_xen()
+# #                                # check config
+# #                                act_kernel.check_config()
                             else:
                                 act_kernel.check_md5_sums()
                                 act_kernel.check_kernel_dir()
@@ -175,9 +179,9 @@ class kernel_sync_process(threading_tools.process_obj):
             self.log("checking of kernel_dir took %s" % (logging_tools.get_diff_time_str(kct_end - kct_start)))
             srv_com.set_result("check of kernel_dir took %s" % (logging_tools.get_diff_time_str(kct_end - kct_start)))
         # send reply after term-message
-        #if srv_com.get_queue() and not reply_now:
+        # if srv_com.get_queue() and not reply_now:
         #    srv_com.get_queue().put(("result_ready", (srv_com, srv_reply)))
-        #print srv_com.pretty_print()
+        # print srv_com.pretty_print()
     def thread_running(self):
         self.log("my role is %s" % (self.__config["SYNCER_ROLE"]))
         # dicts for sync info
@@ -276,7 +280,7 @@ class kernel_sync_process(threading_tools.process_obj):
                 t_list = ks_struct.get_route_to_other_device(dc, self.__ks_check)
                 if t_list:
                     k_target_dict[ks_name] = t_list[0][2][1][0]
-            #pprint.pprint(k_target_dict)
+            # pprint.pprint(k_target_dict)
             dc.execute("SELECT k.* FROM kernel k WHERE %s" % (" OR ".join(["k.name='%s'" % (k_name) for k_name in sync_dict.iterkeys()])))
             kern_dir = self.__config["KERNEL_DIR"]
             for db_rec in dc.fetchall():
@@ -370,8 +374,6 @@ class kernel_sync_process(threading_tools.process_obj):
                               logging_tools.LOG_LEVEL_ERROR,
                               db_write=True)
         self._remove_pending_sync(in_dict["kernel"], in_dict["server_name"], in_dict["server_role"])
-    def _new_tcp_con(self, sock):
-        return srv_con_obj(self.get_thread_queue(), sock.get_target_host(), sock.get_add_data())
     def _connect_timeout(self, sock):
         self.log("error connecting to %s" % (sock.get_target_host()),
                  logging_tools.LOG_LEVEL_ERROR)
@@ -382,7 +384,7 @@ class kernel_sync_process(threading_tools.process_obj):
         if args["state"] == "error":
             self.log("connect error to %s" % (args["host"]),
                      logging_tools.LOG_LEVEL_ERROR)
-            #self._result_error(args["socket"].get_add_data()[1], args["host"], "connect error")
+            # self._result_error(args["socket"].get_add_data()[1], args["host"], "connect error")
             # remove references to command_class
             in_dict = args["socket"].get_add_data()
             in_dict["kernel"].log("cannot connect to %s:%s" % (in_dict["server_name"],

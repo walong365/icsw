@@ -3078,6 +3078,17 @@ class server_process(threading_tools.process_pool):
                                 unicode(srv_com))
                             zmq_sock.send_unicode(data[0], zmq.SNDMORE)
                             zmq_sock.send_unicode(unicode(srv_com))
+                        elif cur_com in ["rescan_kernels"]:
+                            t_proc = "kernel"
+                            self.send_to_process(
+                                t_proc,
+                                cur_com,
+                                data[0],
+                                unicode(srv_com),
+                                )
+                            srv_com.set_result("sent %s to kernel process" % (cur_com))
+                            zmq_sock.send_unicode(data[0], zmq.SNDMORE)
+                            zmq_sock.send_unicode(unicode(srv_com))
                         else:
                             srv_com.set_result("unknown command '%s'" % (cur_com), server_command.SRV_REPLY_STATE_ERROR)
                             zmq_sock.send_unicode(data[0], zmq.SNDMORE)
