@@ -1036,6 +1036,16 @@ class process_obj(multiprocessing.Process, timer_base):
                 src_process,
                 src_pid),
                      logging_tools.LOG_LEVEL_ERROR)
+    def step(self):
+        # process all pending messages
+        cur_q = self.__process_queue
+        while True:
+            try:
+                cur_mes = cur_q.recv_pyobj(zmq.NOBLOCK)
+            except:
+                break
+            else:
+                self._handle_message(cur_mes)
     def loop(self):
         if self.__twisted:
             reactor.run(installSignalHandlers=False)
@@ -1051,13 +1061,7 @@ class process_obj(multiprocessing.Process, timer_base):
                             self._handle_message(cur_q.recv_pyobj())
                     else:
                         if self.__busy_loop:
-                            while True:
-                                try:
-                                    cur_mes = cur_q.recv_pyobj(zmq.NOBLOCK)
-                                except:
-                                    break
-                                else:
-                                    self._handle_message(cur_mes)
+                            self.step()
                         else:
                             cur_mes = cur_q.recv_pyobj()
                             self._handle_message(cur_mes)
