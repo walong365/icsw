@@ -4,7 +4,8 @@
 
 import re
 from django.forms.widgets import TextInput, PasswordInput, SelectMultiple
-from django.forms import Form, ModelForm, ValidationError, CharField, ModelChoiceField, ModelMultipleChoiceField
+from django.forms import Form, ModelForm, ValidationError, CharField, ModelChoiceField, \
+    ModelMultipleChoiceField, Textarea
 from django.contrib.auth import authenticate
 from django.db.models import Q
 from django.utils.translation import ugettext_lazy as _

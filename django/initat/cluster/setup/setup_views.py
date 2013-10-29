@@ -209,30 +209,37 @@ class use_image(View):
             img_xml = srv_result.xpath(None, ".//ns:image[text() = '%s']" % (img_name))
             if len(img_xml):
                 img_xml = img_xml[0]
-                try:
-                    img_arch = architecture.objects.get(Q(architecture=img_xml.attrib["arch"]))
-                except architecture.DoesNotExist:
-                    img_arch = architecture(
-                        architecture=img_xml.attrib["arch"])
-                    img_arch.save()
-                img_source = srv_result.xpath(None, ".//ns:image_list/@image_dir")[0]
-                new_img = image(
-                    name=img_xml.text,
-                    source=os.path.join(img_source, img_xml.text),
-                    sys_vendor=img_xml.attrib["vendor"],
-                    sys_version=img_xml.attrib["version"].split(".", 1)[0],
-                    sys_release=img_xml.attrib["version"].split(".", 1)[1],
-                    bitcount=img_xml.attrib["bitcount"],
-                    architecture=img_arch,
-                )
-                try:
-                    new_img.save()
-                except:
+                print img_xml.attrib
+                if "arch" not in img_xml.attrib:
                     request.xml_response.error(
-                        "cannot create image: %s" % (process_tools.get_except_info()),
-                        logger)
+                        "no architecture-attribute found in image",
+                        logger
+                        )
                 else:
-                    request.xml_response.info("image taken", logger)
+                    try:
+                        img_arch = architecture.objects.get(Q(architecture=img_xml.attrib["arch"]))
+                    except architecture.DoesNotExist:
+                        img_arch = architecture(
+                            architecture=img_xml.attrib["arch"])
+                        img_arch.save()
+                    img_source = srv_result.xpath(None, ".//ns:image_list/@image_dir")[0]
+                    new_img = image(
+                        name=img_xml.text,
+                        source=os.path.join(img_source, img_xml.text),
+                        sys_vendor=img_xml.attrib["vendor"],
+                        sys_version=img_xml.attrib["version"].split(".", 1)[0],
+                        sys_release=img_xml.attrib["version"].split(".", 1)[1],
+                        bitcount=img_xml.attrib["bitcount"],
+                        architecture=img_arch,
+                    )
+                    try:
+                        new_img.save()
+                    except:
+                        request.xml_response.error(
+                            "cannot create image: %s" % (process_tools.get_except_info()),
+                            logger)
+                    else:
+                        request.xml_response.info("image taken", logger)
             else:
                 request.xml_response.error("image has vanished ?", logger)
         else:

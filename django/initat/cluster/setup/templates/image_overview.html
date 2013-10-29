@@ -98,7 +98,7 @@ class image_tree
     choose_image : (event) =>
         img_sel = $(event.target)
         console.log img_sel.attr("id")
-    use_image: () =>
+    use_image: (event) =>
         button_el = $(event.target)
         use_id = button_el.attr("id").split("__")[1]
         button_el.attr("disabled", "disabled")
