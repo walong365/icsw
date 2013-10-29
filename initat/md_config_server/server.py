@@ -466,8 +466,8 @@ class server_process(threading_tools.process_pool):
     def _init_network_sockets(self):
         client = self.zmq_context.socket(zmq.ROUTER)
         client.setsockopt(zmq.IDENTITY, "%s:monitor_master" % (uuid_tools.get_uuid().get_urn()))
-        client.setsockopt(zmq.SNDHWM, 256)
-        client.setsockopt(zmq.RCVHWM, 256)
+        client.setsockopt(zmq.SNDHWM, 1024)
+        client.setsockopt(zmq.RCVHWM, 1024)
         client.setsockopt(zmq.TCP_KEEPALIVE, 1)
         client.setsockopt(zmq.TCP_KEEPALIVE_IDLE, 300)
         try:

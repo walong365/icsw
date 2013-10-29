@@ -235,7 +235,7 @@ class main_config(object):
                         directory=os.path.join(self.__r_dir_dict["etc"], rel_dir),
                         )
                     self.__build_process.send_command(self.monitor_server.uuid, unicode(srv_com))
-                    for cur_file in file_names:
+                    for cur_file in sorted(file_names):
                         full_r_path = os.path.join(self.__w_dir_dict["etc"], rel_dir, cur_file)
                         full_w_path = os.path.join(self.__r_dir_dict["etc"], rel_dir, cur_file)
                         if os.path.isfile(full_r_path):
@@ -252,6 +252,7 @@ class main_config(object):
                                 content=base64.b64encode(file(full_r_path, "r").read())
                             )
                             self.__build_process.send_command(self.monitor_server.uuid, unicode(srv_com))
+                            self.__build_process.step()
                 srv_com = server_command.srv_command(
                     command="call_command",
                     host="DIRECT",
