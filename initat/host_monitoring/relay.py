@@ -1099,6 +1099,9 @@ class relay_code(threading_tools.process_pool):
             self.log("newer version for %s (%d -> %d)" % (key, self.version_dict.get(key, 0), new_vers))
             self.version_dict[key] = new_vers
             return True
+    def _clear_version(self, key):
+        if key in self.version_dict:
+            del self.version_dict[key]
     def _handle_direct_command(self, src_id, srv_com):
         # only DIRECT command from ccollclientzmq
         # print "*", src_id
@@ -1154,10 +1157,12 @@ class relay_code(threading_tools.process_pool):
             self._send_to_nhm_service(None, ret_com, None, register=False)
         elif cur_com == "clear_directory":
             t_dir = srv_com["directory"].text
-            self.log("clearing direcotory %s" % (t_dir))
+            self.log("clearing directory %s" % (t_dir))
             num_rem = 0
             for entry in os.listdir(t_dir):
                 f_path = os.path.join(t_dir, entry)
+                # remove from version_dict
+                self._clear_version(f_path)
                 if os.path.isfile(f_path):
                     try:
                         os.unlink(f_path)
