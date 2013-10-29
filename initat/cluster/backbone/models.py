@@ -22,6 +22,7 @@ from django.core.exceptions import ValidationError, ImproperlyConfigured
 from django.db import models
 from django.db.models import Q, signals, get_model
 from django.dispatch import receiver
+from django.forms import Textarea
 from django.utils.functional import memoize
 
 from initat.cluster.backbone.model_functions import _check_empty_string, _check_float, _check_integer, _check_non_empty_string
@@ -1530,8 +1531,10 @@ class kernel(models.Model):
     enabled = models.BooleanField()
     initrd_version = models.IntegerField(null=True, blank=True)
     initrd_built = models.DateTimeField(null=True, blank=True)
+    # which modules are actually built into initrd
     module_list = models.TextField(blank=True)
-    target_module_list = models.TextField(blank=True)
+    # which modules are requested
+    target_module_list = models.TextField(blank=True, default="")
     xen_host_kernel = models.BooleanField()
     xen_guest_kernel = models.BooleanField()
     bitcount = models.IntegerField(null=True, blank=True)
