@@ -13,7 +13,8 @@ from django.core.exceptions import ValidationError
 from django.utils.decorators import method_decorator
 from django.views.generic import View
 
-from initat.core.render import render_me
+from initat.core.render import render_me, render_string
+from initat.cluster.frontend.forms import kernel_detail_form
 from initat.cluster.frontend.helper_functions import contact_server, xml_wrapper
 from initat.cluster.backbone.models import partition_table, partition_disc, partition, \
      partition_fs, image, architecture, get_related_models, kernel
@@ -105,7 +106,7 @@ class delete_partition(View):
         _post = request.POST
         cur_part = partition.objects.get(Q(pk=_post["part_pk"]))
         cur_part.delete()
-    
+
 class image_overview(View):
     @method_decorator(login_required)
     def get(self, request):
@@ -154,7 +155,7 @@ class scan_for_images(View):
         srv_result = contact_server(request, "tcp://localhost:8004", srv_com, timeout=10, log_result=True)
         if srv_result:
             present_img_names = image.objects.all().values_list("name", flat=True)
-            #print srv_result.pretty_print()
+            # print srv_result.pretty_print()
             if int(srv_result["result"].attrib["state"]) == server_command.SRV_REPLY_STATE_OK:
                 img_list = srv_result.xpath(None, ".//ns:image_list")
                 if len(img_list):
@@ -236,7 +237,7 @@ class use_image(View):
                 request.xml_response.error("image has vanished ?", logger)
         else:
             request.xml_response.error("image already exists", logger)
-    
+
 class rescan_kernels(View):
     @method_decorator(login_required)
     @method_decorator(xml_wrapper)
@@ -253,3 +254,19 @@ class delete_kernel(View):
         cur_k = kernel.objects.get(Q(pk=_post["pk"]))
         request.xml_response.info("removed kernel '%s'" % (unicode(cur_k)), logger)
         cur_k.delete()
+
+class kernel_detail(View):
+    @method_decorator(login_required)
+    @method_decorator(xml_wrapper)
+    def post(self, request):
+        cur_kern = kernel.objects.get(Q(pk=request.POST["pk"]))
+        request.xml_response["form"] = render_string(
+            request,
+            "crispy_form.html",
+            {
+                "form" : kernel_detail_form(
+                    auto_id="kernel__%d__%%s" % (cur_kern.pk),
+                    instance=cur_kern,
+                )
+            }
+        )

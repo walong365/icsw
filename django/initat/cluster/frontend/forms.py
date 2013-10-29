@@ -15,7 +15,7 @@ from crispy_forms.layout import Submit, Layout, Field, ButtonHolder, Button, Fie
 from django.core.urlresolvers import reverse
 from initat.cluster.backbone.models import domain_tree_node, device, category, mon_check_command, mon_service_templ, \
      domain_name_tree, user, group, device_group, home_export_list, device_config, TOP_LOCATIONS, \
-     csw_permission
+     csw_permission, kernel
 from initat.cluster.frontend.widgets import device_tree_widget
 
 # import PAM
@@ -390,6 +390,45 @@ class export_choice_field(ModelChoiceField):
         self.queryset = home_export_list()
     def label_from_instance(self, obj):
         return self.queryset.exp_dict[obj.pk]["info"]
+
+class kernel_detail_form(ModelForm):
+    helper = FormHelper()
+    helper.form_id = "form"
+    helper.layout = Layout(
+        HTML("<h2>Kernel details</h2>"),
+            Fieldset(
+                "Basic data",
+                Field("name", readonly=True),
+                Field("initrd_built", readonly=True),
+                Field("comment"),
+                Field("target_module_list"),
+                Field("module_list", readonly=True),
+                css_class="inlineLabels",
+                ),
+            Column(
+                ButtonHolder(
+                    Field("stage1_lo_present", disabled=True),
+                    Field("stage1_cpio_present", disabled=True),
+                ),
+                css_class="col first",
+            ),
+            Column(
+                ButtonHolder(
+                    Field("stage1_cramfs_present", disabled=True),
+                    Field("stage2_present", disabled=True),
+                ),
+                css_class="col second",
+            ),
+            ButtonHolder(
+                Submit("submit", "Submit", css_class="primaryAction"),
+            ),
+        )
+    class Meta:
+        model = kernel
+        fields = ["name", "comment",
+            "stage1_lo_present", "stage1_cpio_present", "stage1_cramfs_present", "stage2_present",
+            "module_list", "target_module_list", "initrd_built",
+            ]
 
 class user_detail_form(ModelForm):
     permissions = ModelMultipleChoiceField(

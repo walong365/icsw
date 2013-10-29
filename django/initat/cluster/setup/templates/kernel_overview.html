@@ -34,6 +34,9 @@ class kernel_tree
                 if parse_xml_response(xml)
                     @kernels = $(xml).find("response")
                     @show_all_kernels()
+                    @my_submitter = new submitter({
+                        master_xml       : @kernels,
+                    })
     show_all_kernels: () =>
         # clear divs
         @detail_div.children().remove()
@@ -53,9 +56,10 @@ class kernel_tree
                     new draw_info("major", {ro : true}),
                     new draw_info("minor", {ro : true}),
                     new draw_info("bitcount", {ro : true}),
+                    new draw_info("usecount", {ro : true}),
                     new draw_info("delete", {button : true, trigger : true, change_cb : @delete_kernel}),
+                    new draw_info("detail", {button : true, trigger : true, change_cb : @detail_kernel}),
                 ],
-                {change : true},
             )
         }
         draw_ds_tables(@list_div, kernel_ma, @kernels)
@@ -74,6 +78,23 @@ class kernel_tree
                             @load_kernels()
         else
             alert("kernel #{cur_kern.attr('name')} has an usecount of #{cur_kern.attr('usecount')}")
+    detail_kernel : (event) =>
+        kern_pk = $(event.target).attr("id").split("__")[1]
+        $.ajax
+            url     : "{% url 'setup:kernel_detail' %}"
+            data     : {
+                "pk" : kern_pk
+            }
+            success : (xml) =>
+                if parse_xml_response(xml)
+                    detail_div = $("div#kernel_detail")
+                    detail_div.children().remove()
+                    detail_div.append($(xml).find("value[name='form']").text())
+                    detail_div.find("input, textarea").on("change", @my_submitter.submit)
+                    detail_div.find("input#submit-id-submit").off("change").on("click", @sccb)
+    sccb: () =>
+        #console.log "OK"
+        return false
 
 add_handlers = ->
     my_it = new kernel_tree($("div#kernel_list"), $("div#found_kernels"), $("div#kernel_detail"))

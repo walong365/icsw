@@ -63,6 +63,7 @@ setup_patterns = patterns(
     url(r"xml/delete_image"   , setup_views.delete_image.as_view()              , name="delete_image"),
     url(r"xml/rescan_kernels" , setup_views.rescan_kernels.as_view()            , name="rescan_kernels"),
     url(r"xml/delete_kernel"  , setup_views.delete_kernel.as_view()             , name="delete_kernel"),
+    url(r"xml/kernel_detail"  , setup_views.kernel_detail.as_view()             , name="kernel_detail"),
 )
 
 config_patterns = patterns(
