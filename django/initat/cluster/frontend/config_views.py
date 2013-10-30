@@ -522,3 +522,23 @@ class upload_config(View):
                             new_sub_obj.mon_service_templ = default_mst
                         new_sub_obj.save()
         return HttpResponseRedirect(reverse("config:show_configs"))
+
+class get_device_cvars(View):
+    @method_decorator(login_required)
+    @method_decorator(xml_wrapper)
+    def post(self, request):
+        _post = request.POST
+        import pprint
+        srv_com = server_command.srv_command(command="get_config_vars")
+        srv_com["devices"] = srv_com.builder(
+            "devices",
+            *[srv_com.builder("device", pk="%d" % (int(cur_pk))) for cur_pk in [_post["key"]]])
+        result = contact_server(request, "tcp://localhost:8005", srv_com, timeout=30, log_result=False)
+        if result:
+            request.xml_response["result"] = E.devices()
+            for dev_node in result.xpath(None, ".//ns:device"):
+                res_node = E.device(dev_node.text, **dev_node.attrib)
+                for sub_el in dev_node:
+                    res_node.append(sub_el)
+                request.xml_response["result"].append(res_node)
+                request.xml_response.log(int(dev_node.attrib["state_level"]), dev_node.attrib["info_str"], logger=logger)

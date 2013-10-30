@@ -242,8 +242,7 @@ class rrd_config
                                     sel_list = (entry.data.key for entry in @key_tree_div.dynatree("getSelectedNodes"))
                                     sel_list.push(dtnode.data.key)
                                     @draw_rrd(sel_list)
-                        root_node = @key_tree_div.dynatree("getRoot")
-                        @build_rrd_node(root_node, @vector)
+                        @build_rrd_node(@key_tree_div.dynatree("getRoot"), @vector)
                     else
                         @key_tree_div.append($("<h2>").text("No graphs found"))
     build_rrd_node: (dt_node, db_node) =>
@@ -494,12 +493,77 @@ class device_info
         tabs_div.tabs(
             activate : @activate_tab
         )
+    show_config_vars: () =>
+        $.ajax
+            url     : "{% url 'config:get_device_cvars' %}"
+            data    :
+                "key"    : @resp_xml.find("device").attr("pk")
+            success : (xml) =>
+                if parse_xml_response(xml)
+                    vtl = $(xml).find("var_tuple_list")
+                    if vtl.length
+                        dt_div = $("<div>").attr("id", "var_tree")
+                        dt_div.dynatree
+                            autoFocus : false
+                            checkbox  : false
+                            clickFolderMode : 2
+                        @build_vtl_node(dt_div.dynatree("getRoot"), vtl)
+                        @dev_div.find("div#config").append(dt_div)
+    build_vtl_node: (root_node, vtl_node) =>
+        if vtl_node.prop("tagName") == "var"
+            title_str = vtl_node.attr("key")
+            if vtl_node.attr("value")?
+                title_str = title_str + " = " + vtl_node.attr("value")
+        else
+            title_str = vtl_node.prop("tagName")
+        if vtl_node.find("*").length
+            is_folder = true
+        else
+            is_folder = false
+        new_node = root_node.addChild(
+            title    : title_str
+            isFolder : is_folder
+        )
+        vtl_node.find("> *").each (idx, sub_node) =>
+            @build_vtl_node(new_node, $(sub_node))
+    build_rrd_noxde: (dt_node, db_node) =>
+        if db_node.prop("tagName") == "machine_vector"
+            title_str = "vector"
+            key         = ""
+            expand_flag = true
+            hide_cb     = true
+            tooltip     = "Device vector"
+        else if db_node.prop("tagName") == "entry"
+            title_str   = db_node.attr("part")
+            expand_flag = false
+            key         = ""
+            hide_cb     = true
+            tooltip     = ""
+        else
+            title_str   = db_node.attr("info")
+            expand_flag = false
+            key         = db_node.attr("name")
+            hide_cb     = false
+            tooltip     = "key: " + db_node.attr("name")
+        if db_node.attr("devices") and parseInt(db_node.attr("devices")) > 1
+            title_str = "#{title_str} (" + db_node.attr("devices") + ")"
+        new_node = dt_node.addChild(
+            title        : title_str
+            expand       : expand_flag
+            key          : key
+            hideCheckbox : hide_cb
+            isFolder     : hide_cb
+            tooltip      : tooltip
+            #select       : selected
+        )
+        db_node.find("> *").each (idx, sub_node) =>
+            @build_rrd_node(new_node, $(sub_node))
     activate_tab: (event, ui) =>
         t_href = ui.newTab.find("a").attr("href")
         if t_href == "#config"
             if not ui.newPanel.html()
                 # lazy load config
-                new config_table(ui.newPanel, undefined, @resp_xml.find("device"))
+                new config_table(ui.newPanel, undefined, @resp_xml.find("device"), @show_config_vars)
         else if t_href == "#livestatus"
             if not ui.newPanel.html()
                 # lazy load status

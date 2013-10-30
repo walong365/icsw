@@ -74,7 +74,7 @@ class display_config
         @title = "#{@num_vars} variables, #{@num_scripts} scripts, #{@num_checks} check commands"
         
 class config_table
-    constructor: (@top_div, @filter_div=undefined, @device=undefined) ->
+    constructor: (@top_div, @filter_div=undefined, @device=undefined, @callback=undefined) ->
         @cur_filter = ""
         @show_list = ""
         @only_associated = false
@@ -118,6 +118,8 @@ class config_table
                 if parse_xml_response(xml)
                     @configs = $(xml).find("value[name='response']")
                     @apply_filter(true)
+                    if @callback
+                        @callback()
     change_assoc_filter: (event) =>
         cur_el = $(event.target)
         @only_associated = cur_el.is(":checked")
