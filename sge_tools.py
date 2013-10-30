@@ -834,8 +834,11 @@ def build_running_list(s_info, options, **kwargs):
             cur_job.append(create_stdout_stderr(act_job, "stderr"))
         cur_job.append(create_file_content(act_job))
         if not options.suppress_nodelist:
-            jh_pe_lut = job_host_pe_lut[act_job.get("full_id")]
-            cur_job.append(E.nodelist(",".join([compress_list(sorted(jh_pe_lut[key]), postfix="(M)" if key == "MASTER" else "") for key in ["MASTER", "SLAVE"] if key in jh_pe_lut])))
+            if act_job.get("full_id") in job_host_pe_lut:
+                jh_pe_lut = job_host_pe_lut[act_job.get("full_id")]
+                cur_job.append(E.nodelist(",".join([compress_list(sorted(jh_pe_lut[key]), postfix="(M)" if key == "MASTER" else "") for key in ["MASTER", "SLAVE"] if key in jh_pe_lut])))
+            else:
+                cur_job.append(E.nodelist("not found"))
         cur_job.append(create_action_field(act_job, user))
         job_list.append(cur_job)
     return job_list
@@ -1063,7 +1066,7 @@ def build_node_list(s_info, options):
                             s_key) for
                         s_key in ["MASTER", "SLAVE"] if s_key in type_dict[key]]) + ".").replace("MASTER.", "SINGLE.")[:-1],
                     "]" if "s" in cur_dict[key].findtext("state").lower() else "",
-                ) for key in sorted(type_dict.keys())])
+                ) for key in sorted(type_dict.keys()) if key in cur_dict])
                 if qstat_info.strip():
                     job_list.append("%s::%s" % (q_name, qstat_info))
             cur_node.append(E.jobs("/".join(job_list)))
