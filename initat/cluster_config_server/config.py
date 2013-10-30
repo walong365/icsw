@@ -19,9 +19,23 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
-""" cluster-config-server, executable script """
+""" cluster-config-server, configuration """
 
-import sys
-from initat.cluster_config_server import main
+import os
 
-sys.exit(main.main())
+os.environ.setdefault("DJANGO_SETTINGS_MODULE", "initat.cluster.settings")
+
+import configfile
+import process_tools
+
+try:
+    from initat.cluster_config_server.cluster_config_server_version import VERSION_STRING
+except ImportError:
+    VERSION_STRING = "?.?"
+
+SERVER_PUB_PORT = 8005
+SERVER_PULL_PORT = 8006
+NCS_PORT = 8010
+GATEWAY_THRESHOLD = 1000
+
+global_config = configfile.get_global_config(process_tools.get_programm_name())
