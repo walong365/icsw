@@ -31,10 +31,8 @@ import logging_tools
 import module_dependency_tools
 import time
 from django.db.models import Q
-# from lxml import etree
-# from lxml.builder import E
-from initat.cluster.backbone.models import device
 
+from initat.cluster.backbone.models import device
 from initat.cluster_config_server.config import global_config
 from initat.cluster_config_server.simple_request import simple_request, var_cache
 

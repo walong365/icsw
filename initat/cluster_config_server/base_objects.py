@@ -35,8 +35,7 @@ class new_config_object(object):
         self.source = kwargs.get("source", "")
         self.uid, self.gid = (0, 0)
         if self.c_type not in ["i", "?"]:
-            # use keyword arg if present, otherwise take global CONFIG
-            cur_config = kwargs.get("config", globals()["CONFIG"])
+            cur_config = kwargs["config"]
             self.mode = cur_config.dir_mode if self.c_type == "d" else (cur_config.link_mode if self.c_type == "l" else cur_config.file_mode)
             if "config" not in kwargs:
                 cur_config._add_object(self)

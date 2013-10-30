@@ -204,6 +204,7 @@ class build_process(threading_tools.process_obj):
         multiple_configs = ["server"]
         all_servers = config_tools.device_with_config("%server%")
         def_servers = all_servers.get("server", [])
+        # def_servers = []
         if not def_servers:
             cur_c.log("no Servers found", logging_tools.LOG_LEVEL_ERROR, state="done")
         else:
@@ -337,28 +338,38 @@ class build_process(threading_tools.process_obj):
                     entry.ip,
                     unicode(entry.network),
                     cause))
-            # create config
-            config_obj = internal_object("CONFIG_VARS")
-            # config_obj.add_config("config_vars")
-            config_obj += pretty_print("", conf_dict, 0)
-            # dict: which configg was called (sucessfully)
-            conf_dict["called"] = {}
-            cur_c.conf_dict, cur_c.link_dict, cur_c.erase_dict = ({}, {}, {})
-            cur_c.conf_dict[config_obj.dest] = config_obj
-            new_tree = generated_tree()
-            cur_bc = build_container(cur_c, config_dict, conf_dict, new_tree, self.router_obj)
-            for pk in config_pks:
-                cur_bc.process_scripts(pk)
-            new_tree.write_config(cur_c, cur_bc)
-            if False in conf_dict["called"]:
-                cur_c.log("error in scripts for %s: %s" % (
-                    logging_tools.get_plural("config", len(conf_dict["called"][False])),
-                    ", ".join(sorted([unicode(config_dict[pk]) for pk, err_lines in conf_dict["called"][False]]))),
-                          logging_tools.LOG_LEVEL_ERROR,
-                          state="done")
-                cur_c.add_set_keys("error_dict")
-                cur_c.error_dict = dict([(unicode(config_dict[pk]), err_lines) for pk, err_lines in conf_dict["called"][False]])
+            if cur_c.command == "get_config_vars":
+                import pprint
+                # pprint.pprint(conf_dict)
+                cur_c.var_tuple_list = [(key, str(conf_dict[key])) for key in sorted(conf_dict.keys())]
+                cur_c.add_set_keys("var_tuple_list")
+                cur_c.log("vars created", state="done")
+            elif cur_c.command == "build_config":
+                # create config
+                # config_obj = internal_object("CONFIG_VARS")
+                # config_obj.add_config("config_vars")
+                # config_obj += pretty_print("", conf_dict, 0)
+                # print "\n".join(config_obj.content)
+                # dict: which config was called (sucessfully)
+                conf_dict["called"] = {}
+                cur_c.conf_dict, cur_c.link_dict, cur_c.erase_dict = ({}, {}, {})
+                # cur_c.conf_dict[config_obj.dest] = config_obj
+                new_tree = generated_tree()
+                cur_bc = build_container(cur_c, config_dict, conf_dict, new_tree, self.router_obj)
+                for pk in config_pks:
+                    cur_bc.process_scripts(pk)
+                new_tree.write_config(cur_c, cur_bc)
+                if False in conf_dict["called"]:
+                    cur_c.log("error in scripts for %s: %s" % (
+                        logging_tools.get_plural("config", len(conf_dict["called"][False])),
+                        ", ".join(sorted([unicode(config_dict[pk]) for pk, err_lines in conf_dict["called"][False]]))),
+                              logging_tools.LOG_LEVEL_ERROR,
+                              state="done")
+                    cur_c.add_set_keys("error_dict")
+                    cur_c.error_dict = dict([(unicode(config_dict[pk]), err_lines) for pk, err_lines in conf_dict["called"][False]])
+                else:
+                    cur_c.log("config built", state="done")
+                cur_bc.close()
             else:
-                cur_c.log("config built", state="done")
-            cur_bc.close()
+                cur_c.log("unknown action '%s'" % (cur_c.command), logging_tools.LOG_LEVEL_ERROR, state="done")
 

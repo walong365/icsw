@@ -324,9 +324,6 @@ class build_container(object):
                 sys.stdout, sys.stderr = (stdout_c  , stderr_c)
                 self.__touched_objects, self.__touched_links, self.__deleted_files = ([], [], [])
                 try:
-                    # FIXME, not threadsafe (thread safety needed here ?)
-                    global CONFIG
-                    CONFIG = self
                     ret_code = eval(code_obj, {}, {
                         # old version
                         "dev_dict"        : conf_dict,
@@ -395,7 +392,6 @@ class build_container(object):
                         ret_code))
                     self._show_logs(stdout_c, stderr_c, register_error=True, pre_str="%s wrote something to stderr" % (cur_conf.name))
                 finally:
-                    del CONFIG
                     sys.stdout, sys.stderr = (old_stdout, old_stderr)
                     code_obj = None
         # print unicode(self.g_tree)

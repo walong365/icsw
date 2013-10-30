@@ -232,6 +232,7 @@ class server_process(threading_tools.process_pool):
         dev_dict = dict([(cur_dev.pk, cur_dev) for cur_dev in device_list])
         # set device state
         for cur_dev in srv_com["devices:devices"]:
+            cur_dev.attrib["command"] = cur_com
             cur_dev.attrib["internal_state"] = "pre_init"
             cur_dev.attrib["run_idx"] = "%d" % (self.__run_idx)
             cur_dev.text = unicode(dev_dict[int(cur_dev.attrib["pk"])])
@@ -283,6 +284,22 @@ class server_process(threading_tools.process_pool):
                         # very hackish, fixme
                         new_dict.append(E.entry("\n".join(s_value), key=s_key))
                     cur_dev.append(new_dict)
+                elif key.endswith("_tuple_list"):
+                    new_tl = getattr(E, key)()
+                    parent_value, parent_key = (None, None)
+                    for s_key, s_value in value:
+                        key_parts = s_key.split(".", 1)
+                        if len(key_parts) == 1:
+                            new_value = E.var(value=s_value, key=s_key)
+                            new_tl.append(new_value)
+                            parent_value, parent_key = (new_value, key_parts[0]) # equal to s_key
+                        else:
+                            if key_parts[0] != parent_key:
+                                new_value = E.var(key=key_parts[0])
+                                new_tl.append(new_value)
+                                parent_value, parent_key = (new_value, key_parts[0])
+                            parent_value.append(E.var(value=s_value, key=key_parts[1]))
+                    cur_dev.append(new_tl)
                 else:
                     if type(value) in [int, long]:
                         cur_dev.attrib[key] = "%d" % (value)
