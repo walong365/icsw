@@ -1846,7 +1846,7 @@ class config_control(object):
         self.__log_template = None
         self.device = cur_dev
         self.create_logger()
-        config_control.router_obj.check_for_update()
+        config_control.update_router()
         self.__com_dict = {
             "get_kernel"              : self._handle_get_kernel,
             "get_kernel_name"         : self._handle_get_kernel,
@@ -1913,6 +1913,7 @@ class config_control(object):
         s_req = simple_request(self, src_id, node_text)
         com_call = self.__com_dict.get(s_req.command, None)
         if com_call:
+            config_control.update_router()
             ret_str = com_call(s_req)
         else:
             ret_str = "error unknown command '%s'" % (node_text)
@@ -2126,7 +2127,14 @@ class config_control(object):
         config_control.__queue_num = 0
         config_control.pending_config_requests = {}
         config_control.done_config_requests = {}
+        config_control.router_last_update = time.time() - 3600
         config_control.router_obj = config_tools.router_object(config_control.cc_log)
+    @staticmethod
+    def update_router():
+        cur_time = time.time()
+        if abs(cur_time - config_control.router_last_update) > 5:
+            config_control.router_last_update = cur_time
+            config_control.router_obj.check_for_update()
     @staticmethod
     def queue(cc_obj, s_req, req_name):
         config_control.__queue_num += 1
