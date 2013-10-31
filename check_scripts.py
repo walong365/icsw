@@ -41,6 +41,8 @@ except:
 from lxml import etree # @UnresolvedImport
 from lxml.builder import E # @UnresolvedImport
 
+EXTRA_SERVER_DIR = "/etc/sysconfig/cluster/extra_servers.d"
+
 def check_threads(name, pids, any_ok):
     # print name, pids, any_ok
     ret_state = 7
@@ -145,16 +147,26 @@ INSTANCE_XML = """
             <config_name>monitor_master</config_name>
         </config_names>
     </instance>
-    <instance name="cransys" pid_file_name="cransys-server.pid" init_script_name="cransys-server" has_force_stop="1">
-        <config_names>
-            <config_name>cransys_server</config_name>
-        </config_names>
-    </instance>
 </instances>
 """
 
 def check_system(opt_ns):
     instance_xml = etree.fromstring(INSTANCE_XML)
+    # check for additional instances
+    if os.path.isdir(EXTRA_SERVER_DIR):
+        for entry in os.listdir(EXTRA_SERVER_DIR):
+            if entry.endswith(".xml"):
+                try:
+                    add_inst_list = etree.fromstring(open(os.path.join(EXTRA_SERVER_DIR, entry), "r").read())
+                except:
+                    print "cannot read entry '%s' from %s: %s" % (
+                        entry,
+                        EXTRA_SERVER_DIR,
+                        process_tools.get_except_info(),
+                        )
+                else:
+                    for sub_inst in add_inst_list.findall("instance"):
+                        instance_xml.append(sub_inst)
     for cur_el in instance_xml.findall("instance"):
         name = cur_el.attrib["name"]
         for key, def_value in [
