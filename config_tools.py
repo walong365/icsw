@@ -272,7 +272,15 @@ class server_check(object):
         self.__server_type = kwargs["server_type"]
         if self.__server_type.count("%"):
             raise SyntaxError, "no wildcards supported in server_check, use device_with_config"
-        self.short_host_name = kwargs.get("short_host_name", process_tools.get_machine_name())
+        if "host_name" in kwargs:
+            self.host_name = kwargs["host_name"]
+            self.short_host_name = self.host_name.split(".")[0]
+            if not self.host_name.count("."):
+                # host_name is a short_host_name, clear host_name
+                self.host_name = None
+        else:
+            self.host_name = None
+            self.short_host_name = kwargs.get("short_host_name", process_tools.get_machine_name())
         self.__fetch_network_info = kwargs.get("fetch_network_info", True)
         self.__network_info_fetched = False
         # self.set_hopcount_cache()
@@ -322,12 +330,25 @@ class server_check(object):
             self.effective_device = kwargs.get("effective_device", kwargs["device"])
         else:
             try:
-                self.device = device.objects.prefetch_related(
-                    # intermediate sets not needed
-                    # "netdevice_set",
-                    # "netdevice_set__net_ip_set",
-                    # "netdevice_set__net_ip_set__network",
-                    "netdevice_set__net_ip_set__network__network_type").get(Q(name=self.short_host_name))
+                if self.host_name:
+                    # search with full host name
+                    self.device = device.objects.prefetch_related(
+                        # intermediate sets not needed
+                        # "netdevice_set",
+                        # "netdevice_set__net_ip_set",
+                        # "netdevice_set__net_ip_set__network",
+                        "netdevice_set__net_ip_set__network__network_type").get(
+                            Q(name=self.short_host_name) &
+                            Q(domain_tree_node__full_name=self.host_name.split(".", 1)[1]))
+                else:
+                    # search with short host name
+                    self.device = device.objects.prefetch_related(
+                        # intermediate sets not needed
+                        # "netdevice_set",
+                        # "netdevice_set__net_ip_set",
+                        # "netdevice_set__net_ip_set__network",
+                        "netdevice_set__net_ip_set__network__network_type").get(
+                            Q(name=self.short_host_name))
             except device.DoesNotExist:
                 self.device = None
             else:

@@ -146,7 +146,7 @@ INSTANCE_XML = """
             <config_name>monitor_master</config_name>
         </config_names>
     </instance>
-    <instance name="cransys" pid_file_name="cransys-server.pid" init_script_name="cransys" has_force_stop="1">
+    <instance name="cransys" pid_file_name="cransys-server.pid" init_script_name="cransys-server" has_force_stop="1">
         <config_names>
             <config_name>cransys_server</config_name>
         </config_names>
