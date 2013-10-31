@@ -58,13 +58,16 @@ def main():
         add_writeback_option=True,
         positional_arguments=False)
     global_config.write_file()
-    sql_s_info = config_tools.server_check(server_type="sge_server")
+    # check for newer rms-server
+    sql_s_info = config_tools.server_check(server_type="rms_server")
     if not sql_s_info.effective_device:
-        if global_config["FORCE"]:
-            global_config.add_config_entries([("DUMMY_RUN", configfile.bool_c_var(True))])
-        else:
-            sys.stderr.write(" %s is no sge-server, exiting..." % (long_host_name))
-            sys.exit(5)
+        sql_s_info = config_tools.server_check(server_type="sge_server")
+        if not sql_s_info.effective_device:
+            if global_config["FORCE"]:
+                global_config.add_config_entries([("DUMMY_RUN", configfile.bool_c_var(True))])
+            else:
+                sys.stderr.write(" %s is no sge-server, exiting..." % (long_host_name))
+                sys.exit(5)
     else:
         global_config.add_config_entries([("DUMMY_RUN", configfile.bool_c_var(False))])
     if global_config["CHECK"]:
