@@ -350,11 +350,13 @@ class server_process(threading_tools.process_pool):
         """ clean system after copy """
         self.log("cleaning image")
         self._clean_directory(os.path.join(self.__system_dir, "lib", "modules"))
-        for cur_entry in os.listdir(os.path.join(self.__system_dir, "boot")):
-            if any([cur_entry.lower().startswith(prefix) for prefix in ["system", "vmlinu", "init"]]):
-                full_path = os.path.join(self.__system_dir, "boot", cur_entry)
-                self.log("removing %s" % (full_path))
-                os.unlink(full_path)
+        boot_dir = os.path.join(self.__system_dir, "boot")
+        if os.path.isdir(boot_dir):
+            for cur_entry in os.listdir(boot_dir):
+                if any([cur_entry.lower().startswith(prefix) for prefix in ["system", "vmlinu", "init"]]):
+                    full_path = os.path.join(self.__system_dir, "boot", cur_entry)
+                    self.log("removing %s" % (full_path))
+                    os.unlink(full_path)
         self._clean_directory(os.path.join(self.__system_dir, "etc", "zypp", "repos.d"),)
         # call SuSEconfig, FIXME
         # check init-scripts, FIXME
@@ -367,7 +369,8 @@ class server_process(threading_tools.process_pool):
             logging_tools.get_size_str(target_free_size),
             self.__image_dir,
         ))
-        cur_img.size = orig_size / (1024 * 1024)
+        cur_img.size = orig_size
+        # size_string is automatically set in pre_save handler
         cur_img.save()
         if orig_size * 1.2 > target_free_size:
             raise ValueError, "not enough free space (%s, image has %s)" % (
@@ -483,8 +486,8 @@ def main():
         ("LOG_NAME"            , configfile.str_c_var(prog_name)),
         ("BUILDERS"            , configfile.int_c_var(4, help_string="numbers of builders [%(default)i]", type=int)),
         ("OVERRIDE"            , configfile.bool_c_var(False, help_string="override build lock [%(default)s]", action="store_true")),
-        ("BUILD_IMAGE"         , configfile.bool_c_var(False, help_string="build image [%(default)s]", action="store_true")),
-        ("CHECK_SIZE"          , configfile.bool_c_var(True, help_string="enabled size checking [%(default)s]", action="store_false")),
+        ("BUILD_IMAGE"         , configfile.bool_c_var(False, help_string="build (compress) image [%(default)s]", action="store_true")),
+        ("CHECK_SIZE"          , configfile.bool_c_var(True, help_string="image size check [%(default)s]", action="store_false")),
             ])
     if all_imgs:
         global_config.add_config_entries([
