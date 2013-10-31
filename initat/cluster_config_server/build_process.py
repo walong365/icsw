@@ -19,7 +19,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
-""" cluster-config-server """
+""" cluster-config-server, build process """
 
 import os
 
@@ -36,7 +36,6 @@ from initat.cluster.backbone.models import device, network, config, cached_log_s
 from initat.cluster_config_server.config import global_config
 from initat.cluster_config_server.build_client import build_client
 from initat.cluster_config_server.build_container import generated_tree, build_container
-from initat.cluster_config_server.base_objects import internal_object
 
 def pretty_print(name, obj, offset):
     lines = []
@@ -372,10 +371,6 @@ class build_process(threading_tools.process_obj):
                 cur_c.log("vars created", state="done")
             elif cur_c.command == "build_config":
                 # create config
-                # config_obj = internal_object("CONFIG_VARS")
-                # config_obj.add_config("config_vars")
-                # config_obj += pretty_print("", conf_dict, 0)
-                # print "\n".join(config_obj.content)
                 # dict: which config was called (sucessfully)
                 conf_dict["called"] = {}
                 cur_c.conf_dict, cur_c.link_dict, cur_c.erase_dict = ({}, {}, {})

@@ -31,9 +31,6 @@ import configfile
 import cluster_location
 import process_tools
 
-# from initat.cluster.backbone.models import device, network, config, device_variable, net_ip, \
-#     boot_uuid, netdevice, partition, sys_partition, wc_files, tree_node, config_str, \
-#     cached_log_status, cached_log_source, log_source, devicelog, domain_tree_node
 from initat.cluster_config_server.config import global_config, SERVER_PUB_PORT, SERVER_PULL_PORT, NCS_PORT
 from initat.cluster_config_server.cluster_config_server_version import VERSION_STRING
 from initat.cluster_config_server.server import server_process
