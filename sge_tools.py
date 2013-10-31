@@ -477,16 +477,23 @@ class sge_info(object):
         os.environ["SGE_ROOT"] = self.__sge_dict["SGE_ROOT"]
         os.environ["SGE_CELL"] = self.__sge_dict["SGE_CELL"]
         os.environ["SGE_SINGLE_LINE"] = "1"
-        s_time = time.time()
-        c_stat, c_out = commands.getstatusoutput(command)
-        e_time = time.time()
-        if c_stat:
-            self.log("command '%s' gave (%d) in %s: %s" % (command,
-                                                           c_stat,
-                                                           logging_tools.get_diff_time_str(e_time - s_time),
-                                                           c_out))
-        if kwargs.get("simple_split", False) and not c_stat:
-            c_out = [line.split(None, 1) for line in c_out.split("\n") if len(line.split(None, 1)) == 2]
+        base_com = command.split()[0]
+        if os.path.exists(base_com):
+            s_time = time.time()
+            c_stat, c_out = commands.getstatusoutput(command)
+            e_time = time.time()
+            if c_stat:
+                self.log(
+                    "command '%s' gave (%d) in %s: %s" % (
+                        command,
+                        c_stat,
+                        logging_tools.get_diff_time_str(e_time - s_time),
+                        c_out), logging_tools.LOG_LEVEL_ERROR)
+            if kwargs.get("simple_split", False) and not c_stat:
+                c_out = [line.split(None, 1) for line in c_out.split("\n") if len(line.split(None, 1)) == 2]
+        else:
+            c_stat, c_out = (1, "%s does not exist" % (base_com))
+            self.log(c_out, logging_tools.LOG_LEVEL_ERROR)
         return c_stat, c_out
     def _check_queueconf_dict(self):
         all_queues = E.queueconf()
