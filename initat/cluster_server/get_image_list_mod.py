@@ -46,19 +46,21 @@ class get_image_list(cs_base_class.server_com):
                     except:
                         sys_dict = {}
                     else:
-                        sys_dict["bitcount"] = {"i386"   : 32,
-                                                "i486"   : 32,
-                                                "i586"   : 32,
-                                                "i686"   : 32,
-                                                "x86_64" : 64,
-                                                "alpha"  : 64,
-                                                "ia64"   : 64}.get(sys_dict.get("arch", "???"), 0)
+                        sys_dict["bitcount"] = {
+                            "i386"   : 32,
+                            "i486"   : 32,
+                            "i586"   : 32,
+                            "i686"   : 32,
+                            "x86_64" : 64,
+                            "alpha"  : 64,
+                            "ia64"   : 64}.get(sys_dict.get("arch", "???"), 0)
                     valid_sys[os.path.basename(t_dir)] = sys_dict
                 else:
                     dirs_missing = [x for x in NEEDED_IMAGE_DIRS if x not in dirs_found]
-                    self.log("  ... skipping %s (%s [%s] missing)" % (t_dir,
-                                                                      logging_tools.get_plural("subdirectory", len(dirs_missing)),
-                                                                      ", ".join(dirs_missing)))
+                    self.log("  ... skipping %s (%s [%s] missing)" % (
+                        t_dir,
+                        logging_tools.get_plural("subdirectory", len(dirs_missing)),
+                        ", ".join(dirs_missing)))
             cur_inst.srv_com["result"].attrib.update({
                 "reply" : "found %s" % (logging_tools.get_plural("image", len(valid_sys.keys()))),
                 "state" : "%d" % (server_command.SRV_REPLY_STATE_OK)})
