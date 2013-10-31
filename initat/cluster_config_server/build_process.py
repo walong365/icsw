@@ -121,14 +121,21 @@ class build_process(threading_tools.process_obj):
         dev_sc = None
         # get device by name
         try:
-            b_dev = device.objects.select_related("device_type", "device_group").prefetch_related("netdevice_set", "netdevice_set__net_ip_set").get(Q(name=cur_c.name))
+            if cur_c.name.count("."):
+                b_dev = device.objects.select_related("device_type", "device_group").prefetch_related("netdevice_set", "netdevice_set__net_ip_set").get(
+                    Q(name=cur_c.name.split(".")[0]) &
+                    Q(domain_tree_node__full_name=cur_c.name.split(".", 1)[1])
+                    )
+            else:
+                b_dev = device.objects.select_related("device_type", "device_group").prefetch_related("netdevice_set", "netdevice_set__net_ip_set").get(
+                    Q(name=cur_c.name))
         except device.DoesNotExist:
             cur_c.log("device not found by name", logging_tools.LOG_LEVEL_ERROR, state="done")
         except device.MultipleObjectsReturned:
             cur_c.log("more than one device with name '%s' found" % (cur_c.name), logging_tools.LOG_LEVEL_ERROR, state="done")
         else:
             dev_sc = config_tools.server_check(
-                short_host_name=cur_c.name,
+                host_name=cur_c.name,
                 server_type="node",
                 fetch_network_info=True)
             cur_c.log("server_check report(): %s" % (dev_sc.report()))

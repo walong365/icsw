@@ -224,7 +224,7 @@ class server_process(threading_tools.process_pool):
         srv_com["command"].attrib["uuid"] = c_uid
         self.__pending_commands[self.__run_idx] = srv_com
         # get device names
-        device_list = device.objects.filter(Q(pk__in=[cur_dev.attrib["pk"] for cur_dev in srv_com["devices:devices"]]))
+        device_list = device.objects.select_related("domain_tree_node").filter(Q(pk__in=[cur_dev.attrib["pk"] for cur_dev in srv_com["devices:devices"]]))
         self.log("got command %s for %s: %s" % (
             cur_com,
             logging_tools.get_plural("device", len(device_list)),
@@ -236,7 +236,8 @@ class server_process(threading_tools.process_pool):
             cur_dev.attrib["internal_state"] = "pre_init"
             cur_dev.attrib["run_idx"] = "%d" % (self.__run_idx)
             cur_dev.text = unicode(dev_dict[int(cur_dev.attrib["pk"])])
-            cur_dev.attrib["name"] = dev_dict[int(cur_dev.attrib["pk"])].name
+            cur_dev.attrib["short_name"] = dev_dict[int(cur_dev.attrib["pk"])].name
+            cur_dev.attrib["name"] = dev_dict[int(cur_dev.attrib["pk"])].full_name
         self._handle_command(self.__run_idx)
     def create_config(self, queue_id, s_req):
         # create a build_config request

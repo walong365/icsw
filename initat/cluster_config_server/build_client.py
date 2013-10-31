@@ -35,7 +35,14 @@ class build_client(object):
     """ holds all the necessary data for a complex config request """
     def __init__(self, **kwargs):
         self.name = kwargs["name"]
-        self.pk = int(kwargs.get("pk", device.objects.values("pk").get(Q(name=self.name))["pk"]))
+        if self.name.count("."):
+            # fqdn
+            self.pk = int(kwargs.get("pk", device.objects.values("pk").get(
+                Q(name=self.name.split(".")[0]) &
+                Q(domain_tree_node__full_name=self.name.split(".", 1)[1]))["pk"]))
+        else:
+            # short name
+            self.pk = int(kwargs.get("pk", device.objects.values("pk").get(Q(name=self.name))["pk"]))
         self.create_logger()
         self.set_keys, self.logged_keys = ([], [])
     def cleanup(self):
