@@ -20,34 +20,21 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
 
-""" old sge-server, now called rms-server """
+""" rms-server, process definitions """
 
 import commands
-import config_tools
 import configfile
 import logging_tools
-import os
-import pprint
 import process_tools
 import server_command
 import sge_tools
-import sys
 import threading_tools
 import time
 import uuid_tools
-from lxml.builder import E
-try:
-    import cluster_location
-except ImportError:
-    cluster_location = None
-try:
-    from sge_server_version import VERSION_STRING
-except ImportError:
-    VERSION_STRING = "?.?"
 import zmq
-
-# communication port
-COM_PORT = 8009
+from lxml.builder import E # @UnresolvedImports
+import cluster_location
+from initat.rms.config import global_config
 
 def call_command(command, log_com=None):
     start_time = time.time()
@@ -197,7 +184,7 @@ class server_process(threading_tools.process_pool):
         self.send_to_process("rms_mon", "full_reload")
     def _re_insert_config(self):
         self.log("re-insert config")
-        cluster_location.write_config("sge_server", global_config)
+        cluster_location.write_config("rms_server", global_config)
     def process_start(self, src_process, src_pid):
         mult = 3
         process_tools.append_pids(self.__pid_name, src_pid, mult=mult)
@@ -209,18 +196,18 @@ class server_process(threading_tools.process_pool):
         process_tools.append_pids(self.__pid_name, pid=configfile.get_manager_pid(), mult=3)
         if not global_config["DEBUG"] or True:
             self.log("Initialising meta-server-info block")
-            msi_block = process_tools.meta_server_info("sge_server")
+            msi_block = process_tools.meta_server_info("rms_server")
             msi_block.add_actual_pid(mult=3)
             msi_block.add_actual_pid(act_pid=configfile.get_manager_pid(), mult=3)
-            msi_block.start_command = "/etc/init.d/sge-server start"
-            msi_block.stop_command = "/etc/init.d/sge-server force-stop"
+            msi_block.start_command = "/etc/init.d/rms-server start"
+            msi_block.stop_command = "/etc/init.d/rms-server force-stop"
             msi_block.kill_pids = True
             msi_block.save_block()
         else:
             msi_block = None
         return msi_block
     def _init_network_sockets(self):
-        my_0mq_id = "%s:sgeserver:" % (uuid_tools.get_uuid().get_urn())
+        my_0mq_id = "%s:rmsserver:" % (uuid_tools.get_uuid().get_urn())
         self.bind_id = my_0mq_id
         client = self.zmq_context.socket(zmq.ROUTER)
         client.setsockopt(zmq.IDENTITY, self.bind_id)
@@ -325,142 +312,3 @@ class server_process(threading_tools.process_pool):
             self.__msi_block.remove_meta_block()
         self.__log_template.close()
 
-global_config = configfile.get_global_config(process_tools.get_programm_name())
-
-def main():
-    long_host_name, mach_name = process_tools.get_fqdn()
-    prog_name = global_config.name()
-    global_config.add_config_entries([
-        ("DEBUG"               , configfile.bool_c_var(False, help_string="enable debug mode [%(default)s]", short_options="d", only_commandline=True)),
-        ("ZMQ_DEBUG"           , configfile.bool_c_var(False, help_string="enable 0MQ debugging [%(default)s]", only_commandline=True)),
-        ("PID_NAME"            , configfile.str_c_var(os.path.join(prog_name, prog_name))),
-        ("KILL_RUNNING"        , configfile.bool_c_var(True, help_string="kill running instances [%(default)s]")),
-        ("CHECK"               , configfile.bool_c_var(False, short_options="C", help_string="only check for server status", action="store_true", writeback=False)),
-        ("USER"                , configfile.str_c_var("sge", help_string="user to run as [%(default)s")),
-        ("GROUP"               , configfile.str_c_var("sge", help_string="group to run as [%(default)s]")),
-        ("GROUPS"              , configfile.array_c_var(["idg"])),
-        ("FORCE"               , configfile.bool_c_var(False, help_string="force running ", action="store_true", only_commandline=True)),
-        ("LOG_DESTINATION"     , configfile.str_c_var("uds:/var/lib/logging-server/py_log_zmq")),
-        ("LOG_NAME"            , configfile.str_c_var(prog_name)),
-        ("VERBOSE"             , configfile.int_c_var(0, help_string="set verbose level [%(default)d]", short_options="v", only_commandline=True)),
-    ])
-    global_config.parse_file()
-    options = global_config.handle_commandline(description="%s, version is %s" % (prog_name,
-                                                                                  VERSION_STRING),
-                                               add_writeback_option=True,
-                                               positional_arguments=False)
-    global_config.write_file()
-    sql_s_info = config_tools.server_check(server_type="sge_server")
-    if not sql_s_info.effective_device:
-        if global_config["FORCE"]:
-            global_config.add_config_entries([("DUMMY_RUN", configfile.bool_c_var(True))])
-        else:
-            sys.stderr.write(" %s is no sge-server, exiting..." % (long_host_name))
-            sys.exit(5)
-    else:
-        global_config.add_config_entries([("DUMMY_RUN", configfile.bool_c_var(False))])
-    if global_config["CHECK"]:
-        sys.exit(0)
-    if not global_config["DUMMY_RUN"]:
-        global_config.add_config_entries([("SERVER_IDX", configfile.int_c_var(sql_s_info.effective_device.pk, database=False))])
-        # FIXME
-        # global_config.add_config_entries([("LOG_SOURCE_IDX", configfile.int_c_var(process_tools.create_log_source_entry(dc, global_config["SERVER_IDX"], "sge_server", "RMS Server")))])
-    if global_config["KILL_RUNNING"]:
-        log_lines = process_tools.kill_running_processes(prog_name + ".py", exclude=configfile.get_manager_pid())
-    sge_dict = {}
-    for v_name, v_src, v_default in [("SGE_ROOT", "/etc/sge_root", "/opt/sge"),
-                                     ("SGE_CELL", "/etc/sge_cell", "default")]:
-        if os.path.isfile(v_src):
-            sge_dict[v_name] = file(v_src, "r").read().strip()
-        else:
-            if global_config["FORCE"]:
-                sge_dict[v_name] = v_default
-            else:
-                print "error: Cannot read %s from file %s, exiting..." % (v_name, v_src)
-                sys.exit(2)
-    stat, sge_dict["SGE_ARCH"], log_lines = call_command("/%s/util/arch" % (sge_dict["SGE_ROOT"]))
-    if stat:
-        if global_config["FORCE"]:
-            sge_dict["SGE_ARCH"] = "lx26_amd64"
-        else:
-            print "error Cannot evaluate SGE_ARCH"
-            sys.exit(1)
-    if cluster_location:
-        cluster_location.read_config_from_db(global_config, "sge_server", [
-            ("CHECK_ITERATIONS"               , configfile.int_c_var(3)),
-            ("COM_PORT"                       , configfile.int_c_var(COM_PORT)),
-            ("RETRY_AFTER_CONNECTION_PROBLEMS", configfile.int_c_var(0)),
-            ("FROM_ADDR"                      , configfile.str_c_var("sge_server")),
-            ("TO_ADDR"                        , configfile.str_c_var("lang-nevyjel@init.at")),
-            ("SGE_ARCH"                       , configfile.str_c_var(sge_dict["SGE_ARCH"])), # , fixed=True)),
-            ("SGE_ROOT"                       , configfile.str_c_var(sge_dict["SGE_ROOT"])), # , fixed=True)),
-            ("SGE_CELL"                       , configfile.str_c_var(sge_dict["SGE_CELL"])), # , fixed=True)),
-            ("MONITOR_JOBS"                   , configfile.bool_c_var(True)),
-            ("TRACE_FAIRSHARE"                , configfile.bool_c_var(False)),
-            ("STRICT_MODE"                    , configfile.bool_c_var(False)),
-            ("APPEND_SERIAL_COMPLEX"          , configfile.bool_c_var(True)),
-            ("CLEAR_ITERATIONS"               , configfile.int_c_var(1)),
-            ("CHECK_ACCOUNTING_TIMEOUT"       , configfile.int_c_var(300))],
-                                             dummy_run=global_config["DUMMY_RUN"])
-    else:
-        configfile.read_config_from_db(global_config, None, "sge_server", [
-            ("CHECK_ITERATIONS"               , configfile.int_c_var(3)),
-            ("COM_PORT"                       , configfile.int_c_var(COM_PORT)),
-            ("RETRY_AFTER_CONNECTION_PROBLEMS", configfile.int_c_var(0)),
-            ("FROM_ADDR"                      , configfile.str_c_var("sge_server")),
-            ("TO_ADDR"                        , configfile.str_c_var("lang-nevyjel@init.at")),
-            ("SGE_ARCH"                       , configfile.str_c_var(sge_dict["SGE_ARCH"])), # , fixed=True)),
-            ("SGE_ROOT"                       , configfile.str_c_var(sge_dict["SGE_ROOT"])), # , fixed=True)),
-            ("SGE_CELL"                       , configfile.str_c_var(sge_dict["SGE_CELL"])), # , fixed=True)),
-            ("MONITOR_JOBS"                   , configfile.bool_c_var(True)),
-            ("TRACE_FAIRSHARE"                , configfile.bool_c_var(False)),
-            ("STRICT_MODE"                    , configfile.bool_c_var(False)),
-            ("APPEND_SERIAL_COMPLEX"          , configfile.bool_c_var(True)),
-            ("CLEAR_ITERATIONS"               , configfile.int_c_var(1)),
-            ("CHECK_ACCOUNTING_TIMEOUT"       , configfile.int_c_var(300))],
-                                       dummy_run=global_config["DUMMY_RUN"])
-# #    if os.path.isfile("/%s/%s/common/product_mode" % (g_config["SGE_ROOT"], g_config["SGE_CELL"])):
-# #        g_config.add_config_dict({"SGE_VERSION"    : configfile.int_c_var(5),
-# #                                  "SGE_RELEASE"    : configfile.int_c_var(3),
-# #                                  "SGE_PATCHLEVEL" : configfile.int_c_var(0)})
-# #    else:
-# #        # try to get the actual version
-# #        qs_com = "/%s/bin/%s/qconf" % (g_config["SGE_ROOT"],
-# #                                       g_config["SGE_ARCH"])
-# #        stat, vers_string, log_lines = call_command(qs_com)
-# #        vers_line = vers_string.split("\n")[0].lower()
-# #        if vers_line.startswith("ge") or vers_line.startswith("sge"):
-# #            vers_part = vers_line.split()[1]
-# #            major, minor = vers_part.split(".")
-# #            minor, patchlevel = minor.split("u")
-# #            patchlevel = patchlevel.split("_")[0]
-# #            g_config.add_config_dict({"SGE_VERSION"    : configfile.int_c_var(int(major)),
-# #                                      "SGE_RELEASE"    : configfile.int_c_var(int(minor)),
-# #                                      "SGE_PATCHLEVEL" : configfile.int_c_var(int(patchlevel))})
-# #        else:
-# #            if g_config.has_key("SGE_VERSION") and g_config.has_key("SGE_RELEASE") and g_config.has_key("SGE_PATCHLEVEL"):
-# #                pass
-# #            else:
-# #                print "Cannot determine GE Version via %s" % (qs_com)
-# #                dc.release()
-# #                sys.exit(-1)
-
-        # log_sources = process_tools.get_all_log_sources(dc)
-        # log_status = process_tools.get_all_log_status(dc)
-        # process_tools.create_log_source_entry(dc, 0, "sgeflat", "SGE Message (unparsed)", "Info from the SunGridEngine")
-    pid_dir = "/var/run/%s" % (os.path.dirname(global_config["PID_NAME"]))
-    if pid_dir not in ["/var/run", "/var/run/"]:
-        process_tools.fix_directories(global_config["USER"], global_config["GROUP"], [pid_dir])
-    process_tools.change_user_group(global_config["USER"], global_config["GROUP"], global_config["GROUPS"], global_config=global_config)
-    if not global_config["DEBUG"]:
-        process_tools.become_daemon()
-        process_tools.set_handles({"out" : (1, "sge-server.out"),
-                                   "err" : (0, "/var/lib/logging-server/py_err")})
-    else:
-        print "Debugging SGE-server"
-    ret_state = server_process().loop()
-    sys.exit(ret_state)
-
-if __name__ == "__main__":
-    print "please use rms-server"
-    sys.exit(-1)
