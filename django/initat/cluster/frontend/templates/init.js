@@ -235,8 +235,12 @@ class config_table
         dummy_div.append(new_tr)
         cur_entries = 0
         run_idx = 1
-        for cur_conf in @display_list
-            conf_pk = cur_conf.pk
+        NUM_ROWS = 4
+        NUM_LINES = parseInt((@display_list.length + NUM_ROWS - 1) / NUM_ROWS)
+        MATR_SIZE = NUM_ROWS * NUM_LINES
+        cur_ref_idx = 0
+        for cur_idx in [0..MATR_SIZE - 1]
+            cur_conf = @display_list[cur_ref_idx]
             if !cur_entries
                 cur_tr = $("<tr>").attr({
                     "id" : "#{line_prefix}__config__#{run_idx}"
@@ -244,35 +248,40 @@ class config_table
                 cur_tr.append(
                     $("<td>")
                 )
-            num_vars    = cur_conf.num_vars
-            num_scripts = cur_conf.num_scripts
-            num_checks  = cur_conf.num_checks
-            text_td = $("<td>").attr(
-                "id" : "#{line_prefix}__config__#{conf_pk}"
-            ).on(
-                "hover", @hover
-            ).on(
-                "click", @change_config
-            ).attr(
-                "title", cur_conf.title
-            ).text(
-                cur_conf.name + (if @device then "" else " (#{num_vars}, #{num_scripts}, #{num_checks})")
-            )
-            if conf_pk in @meta_selected[dev_pk]
-                text_td.addClass("meta_selected")
-            else if conf_pk in @selected[dev_pk]
-                text_td.addClass("selected")
+            if cur_conf
+                conf_pk = cur_conf.pk
+                num_vars    = cur_conf.num_vars
+                num_scripts = cur_conf.num_scripts
+                num_checks  = cur_conf.num_checks
+                text_td = $("<td>").attr(
+                    "id" : "#{line_prefix}__config__#{conf_pk}"
+                ).on(
+                    "hover", @hover
+                ).on(
+                    "click", @change_config
+                ).attr(
+                    "title", cur_conf.title
+                ).text(
+                    #cur_conf.name + (if @device then "" else " (#{num_vars}, #{num_scripts}, #{num_checks})")
+                    cur_conf.name + (" (#{num_vars}, #{num_scripts}, #{num_checks})")
+                )
+                if conf_pk in @meta_selected[dev_pk]
+                    text_td.addClass("meta_selected")
+                else if conf_pk in @selected[dev_pk]
+                    text_td.addClass("selected")
+            else
+                text_td = $("<td>").text(".")
             cur_tr.append(text_td)
+            # increase cur_ref_idx
+            cur_ref_idx += NUM_LINES
             cur_entries++
             if cur_entries == 4
+                cur_ref_idx += 1 - MATR_SIZE 
                 dummy_div.append(cur_tr)
                 cur_entries = 0
                 run_idx += 1
+            
         @update_device_info(dev_pk, new_tr.find("th"))
-        if cur_entries
-            # add dummy entries for colorization
-            cur_tr.append($("<td>").attr("colspan", (4 - cur_entries)))
-            dummy_div.append(cur_tr)
         # hide if in multi-device mode
         if not @device
             dummy_div.find("tr[id*='__config__']").hide()
