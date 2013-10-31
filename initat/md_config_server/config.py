@@ -1236,7 +1236,9 @@ class all_commands(host_type_config):
             cluster_name = dv.get_value()
         md_vers = global_config["MD_VERSION_STRING"]
         md_type = global_config["MD_TYPE"]
-        if os.path.isfile("/usr/local/sbin/send_mail.py"):
+        if os.path.isfile("/opt/cluster/bin/send_mail.py"):
+            send_mail_prog = "/opt/cluster/bin/send_mail.py"
+        elif os.path.isfile("/usr/local/sbin/send_mail.py"):
             send_mail_prog = "/usr/local/sbin/send_mail.py"
         else:
             send_mail_prog = "/usr/local/bin/send_mail.py"
