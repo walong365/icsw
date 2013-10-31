@@ -326,32 +326,91 @@ class device_table
             success : (xml) =>
                 if parse_xml_response(xml)
                     @pack_xml = $(xml).find("value[name='response']")
-                    master_array = {
-                        "pack" : new draw_setup("Packages", "pack", "package",
-                            undefined,
-                            undefined,
-                            [
-                                new draw_info("name", {size : 40}),
-                                new draw_info("version", {size : 40}),
-                                new draw_info("kind", {size : 20}),
-                                new draw_info("arch", {size : 20}),
-                                new draw_info("package_repo", {select_source : "package_repos package_repo"}),
-                                new draw_info("tstate", {change_cb : @change_target_state, select_source : "target_states target_state", trigger : true, add_null_entry : "---"}),
-                                new draw_info("add", {change_cb : @add_package, button : true, trigger : true}),
-                                new draw_info("remove", {change_cb : @remove_package, button : true, trigger : true}),
-                                new draw_info("delete", {change_cb : @delete_package, button : true, trigger : true}),
-                            ], {
-                                lock_div : "package"
+                    # rewrite packages to aaData for datatable
+                    aa_data = []
+                    @pack_xml.find("package").each (idx, cur_pack) =>
+                        cur_pack = $(cur_pack)
+                        aa_data.push([
+                            cur_pack.attr("name"),
+                            cur_pack.attr("version"),
+                            cur_pack.attr("kind"),
+                            cur_pack.attr("arch"),
+                            @pack_xml.find("package_repos package_repo[pk='" + cur_pack.attr("package_repo") + "']").text(),
+                            cur_pack.attr("key"),
+                            cur_pack.attr("key"),
+                            cur_pack.attr("key"),
+                            cur_pack.attr("key"),
+                        ])
+                    new_t = $("<table>").attr("id", "package_table")
+                    @pack_div.children().remove()
+                    @pack_div.append(new_t)
+                    new_t.dataTable
+                        "aaData"          : aa_data
+                        "bJQueryUI"       : true
+                        "bAutoWidth"      : true
+                        "aoColumns"       : [
+                            {"sTitle" : "Name"},
+                            {"sTitle" : "Version", "sClass" : "center"},
+                            {"sTitle" : "kind", "sClass" : "center"},
+                            {"sTitle" : "arch", "sClass" : "center"},
+                            {"sTitle" : "Repo", "sClass" : "right"},
+                            {"sTitle" : "tstate", "sClass" : "center"},
+                            {"sTitle" : "add", "sClass" : "center"},
+                            {"sTitle" : "remove", "sClass" : "center"},
+                            {"sTitle" : "delete", "sClass" : "center"},
+                        ]
+                        "aoColumnDefs" : [
+                            {
+                                "fnRender" : (o, val) =>
+                                    return $("<div>").append(@render_change_target_state(val)).html()
+                                "aTargets" : [5],
                             }
-                        )
-                    }
+                            {
+                                "fnRender" : (o, val) =>
+                                    return $("<input>").attr(
+                                        "type" : "button"
+                                        "value" : "add"
+                                        "id"    : "add__#{val}"
+                                    )[0].outerHTML
+                                "aTargets" : [6],
+                            }
+                            {
+                                "fnRender" : (o, val) =>
+                                    return $("<input>").attr(
+                                        "type" : "button"
+                                        "value" : "remove"
+                                        "id"    : "remove__#{val}"
+                                    )[0].outerHTML
+                                "aTargets" : [7],
+                            }
+                            {
+                                "fnRender" : (o, val) =>
+                                    return $("<input>").attr(
+                                        "type" : "button"
+                                        "value" : "delete"
+                                        "id"    : "delete__#{val}"
+                                    )[0].outerHTML
+                                "aTargets" : [8],
+                            }
+                        ]
+                        "fnDrawCallback" : (o_settings) =>
+                            new_t.find("select[id^='tstate__']").on("change", @change_target_state)
+                            new_t.find("input[id^='add__']").on("click", @add_package)
+                            new_t.find("input[id^='remove__']").on("click", @remove_package)
+                            new_t.find("input[id^='delete__']").on("click", @delete_package)
                     for dev_key, dev_struct of @devices
                         # set pack xml
                         dev_struct.pack_xml = @pack_xml
-                    draw_ds_tables(@pack_div, master_array, @pack_xml)
                     @load_packages()
                     @update_filter_info()
                     $(document).everyTime(5000, "refresh_package_info", @refresh_package_info)
+    render_change_target_state: (cur_key) =>
+        r_val = $("<select>").attr("id", "tstate__#{cur_key}")
+        r_val.append($("<option>").attr("value", "0").text("---"))
+        @pack_xml.find("target_state").each (idx, cur_ts) =>
+            cur_ts = $(cur_ts)
+            r_val.append($("<option>").attr("value", cur_ts.attr("pk")).text(cur_ts.text()))
+        return r_val
     refresh_package_info: =>
         $.ajax
             url     : "{% url 'pack:refresh' %}"
@@ -369,7 +428,7 @@ class device_table
                         
     change_target_state: (event) =>
         cur_el = $(event.target)
-        pack_key = cur_el.attr("id").split("__")[0...2].join("__")
+        pack_key = cur_el.attr("id").split("__")[1...3].join("__")
         pack_pk = pack_key.split("__")[1]
         t_state = cur_el.val()
         if t_state != "0"
@@ -383,7 +442,7 @@ class device_table
     remove_package: (event) =>
         cur_el = $(event.target)
         if confirm("really remove package ?")
-            pack_key = cur_el.attr("id").split("__")[0...2].join("__")
+            pack_key = cur_el.attr("id").split("__")[1...3].join("__")
             pack_pk = pack_key.split("__")[1]
             rem_list = []
             # get all devices which have the current package not set
@@ -411,7 +470,7 @@ class device_table
                             @devices["dev__" + cur_pdc.attr("device")].remove_pdc(cur_pdc)
     add_package: (event) =>
         cur_el = $(event.target)
-        pack_key = cur_el.attr("id").split("__")[0...2].join("__")
+        pack_key = cur_el.attr("id").split("__")[1...3].join("__")
         pack_pk = pack_key.split("__")[1]
         add_list = []
         @xml.find("device_group devices device[meta_device='0']").each (idx, dev_xml) =>
@@ -438,7 +497,7 @@ class device_table
             $.ajax
                 url     : "{% url 'pack:unuse_package' %}"
                 data    : {
-                    "pk" : targ_el.attr("id").split("__")[1]
+                    "pk" : targ_el.attr("id").split("__")[2]
                 }
                 success : (xml) =>
                     if parse_xml_response(xml)
