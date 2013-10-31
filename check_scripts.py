@@ -114,9 +114,10 @@ INSTANCE_XML = """
             <config_name>rrd_server</config_name>
         </config_names>
     </instance>
-    <instance name="sge-server" pid_file_name="sge-server/sge-server.pid" has_force_stop="1">
+    <instance name="rms-server" pid_file_name="rms-server/rms-server.pid" has_force_stop="1">
         <config_names>
             <config_name>sge_server</config_name>
+            <config_name>rms_server</config_name>
         </config_names>
     </instance>
     <instance name="cluster-server" has_force_stop="1">
