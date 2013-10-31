@@ -253,4 +253,3 @@ class build_client(object):
                 prod_key))
         else:
             self.log("config on disk for key '%s' was empty" % (prod_key))
-

@@ -200,6 +200,27 @@ class build_process(threading_tools.process_obj):
                 cur_c.log(" %4d %s" % (q_idx, act_sql["sql"][:120]))
         # pprint.pprint(cur_c.get_send_dict())
         self.send_pool_message("client_update", cur_c.get_send_dict())
+    def _generate_vtl(self, conf_dict):
+        vtl = []
+        for key in sorted(conf_dict.keys()):
+            value = self._to_unicode(conf_dict[key])
+            vtl.append((key, value))
+        return vtl
+    def _to_unicode(self, value):
+        if type(value) in [str, unicode]:
+            value = unicode(value)
+        elif type(value) in [long, int]:
+            value = "%d" % (value)
+        elif type(value) in [list]:
+            value = u"{LIST} [%s]" % (", ".join([self._to_unicode(s_value) for s_value in value]))
+        elif type(value) in [dict]:
+            value = u"{DICT} %s" % (unicode(value))
+        else:
+            value = u"{CLASS %s} '%s'" % (
+                value.__class__.__name__,
+                unicode(value),
+                )
+        return value
     def _generate_config_step2(self, cur_c, b_dev, act_prod_net, boot_netdev, dev_sc):
         self.router_obj.check_for_update()
         running_ip = [ip.ip for ip in dev_sc.identifier_ip_lut["p"] if dev_sc.ip_netdevice_lut[ip.ip].pk == boot_netdev.pk][0]
@@ -346,9 +367,7 @@ class build_process(threading_tools.process_obj):
                     unicode(entry.network),
                     cause))
             if cur_c.command == "get_config_vars":
-                import pprint
-                # pprint.pprint(conf_dict)
-                cur_c.var_tuple_list = [(key, str(conf_dict[key])) for key in sorted(conf_dict.keys())]
+                cur_c.var_tuple_list = self._generate_vtl(conf_dict)
                 cur_c.add_set_keys("var_tuple_list")
                 cur_c.log("vars created", state="done")
             elif cur_c.command == "build_config":
