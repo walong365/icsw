@@ -112,6 +112,7 @@ class delete_search(View):
         pk_re = re.compile("^ps__(?P<pk>\d+)$")
         ps_pk = [key for key in _post.keys() if pk_re.match(key.strip())][0].split("__")[1]
         cur_search = package_search.objects.get(Q(pk=ps_pk))
+        package_search_result.objects.filter(Q(package_search=cur_search)).delete()
         cur_search.deleted = True
         request.xml_response.info("removed package_search %s" % (unicode(cur_search)), logger)
         cur_search.save()
