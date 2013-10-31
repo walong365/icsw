@@ -29,7 +29,6 @@ os.environ.setdefault("DJANGO_SETTINGS_MODULE", "initat.cluster.settings")
 
 import argparse
 import commands
-import extra_server_tools
 import logging_tools
 import process_tools
 import stat

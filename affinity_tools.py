@@ -104,11 +104,11 @@ class proc_struct(object):
         return sorted([value for key, value in CPU_MASKS.iteritems() if self.act_mask & key])
     def migrate(self, target_cpu):
         self.act_mask = 1 << target_cpu
-        c_stat, c_out = self._set_mask(target_cpu)
+        c_stat, _c_out = self._set_mask(target_cpu)
         return c_stat
     def clear_mask(self):
         self.act_mask = MAX_MASK
-        c_stat, c_out = self._clear_mask()
+        c_stat, _c_out = self._clear_mask()
         return c_stat
     def read_mask(self):
         self.act_mask = self._get_mask()
