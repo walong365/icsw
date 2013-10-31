@@ -377,11 +377,12 @@ def show_xml(opt_ns, res_xml):
 
 def do_action_xml(opt_ns, res_xml, mode):
     structs = res_xml.findall("instance[@checked='1']")
-    print "%sing %s: %s" % (
-        mode,
-        logging_tools.get_plural("instance", len(structs)),
-        ", ".join([cur_el.attrib["name"] for cur_el in structs])
-        )
+    if not opt_ns.quiet:
+        print "%sing %s: %s" % (
+            mode,
+            logging_tools.get_plural("instance", len(structs)),
+            ", ".join([cur_el.attrib["name"] for cur_el in structs])
+            )
     for cur_el in structs:
         cur_name = cur_el.attrib["name"]
         init_script = os.path.join("/", "etc", "init.d", cur_el.get("init_script_name", cur_name))
@@ -390,13 +391,15 @@ def do_action_xml(opt_ns, res_xml, mode):
             cur_com = "%s %s" % (
                 init_script, op_mode
             )
-            print "calling %s" % (cur_com)
+            if not opt_ns.quiet:
+                print "calling %s" % (cur_com)
             _ret_val = subprocess.call(cur_com, shell=True)
         else:
-            print "init-script '%s' for %s does not exist" % (
-                init_script,
-                cur_name,
-                )
+            if not opt_ns.quiet:
+                print "init-script '%s' for %s does not exist" % (
+                    init_script,
+                    cur_name,
+                    )
 
 def start_xml(opt_ns, res_xml):
     pass
@@ -411,6 +414,7 @@ def main():
     my_parser.add_argument("-r", dest="runlevel", action="store_true", default=False, help="runlevel info (%(default)s)")
     my_parser.add_argument("-m", dest="memory", action="store_true", default=False, help="memory consumption (%(default)s)")
     my_parser.add_argument("-a", dest="all", action="store_true", default=False, help="all of the above (%(default)s)")
+    my_parser.add_argument("-q", dest="quiet", default=False, action="store_true", help="be quiet [%(default)s]")
     my_parser.add_argument("--instance", type=str, nargs="+", default=[], help="general instance names (%(default)s)")
     my_parser.add_argument("--node", type=str, nargs="+", default=[], help="node entity names (%(default)s)")
     my_parser.add_argument("--server", type=str, nargs="+", default=[], help="server entity names (%(default)s)")
