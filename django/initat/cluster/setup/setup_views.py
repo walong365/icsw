@@ -118,7 +118,6 @@ class image_overview(View):
             img_xml = cur_img.get_xml()
             img_xml.attrib["usecount"] = "%d" % (cur_img.new_image.count())
             img_list.append(img_xml)
-            print img_xml.attrib
         xml_resp = E.response(
             img_list,
             E.architectures(
