@@ -208,7 +208,7 @@ class build_process(threading_tools.process_obj):
         return vtl
     def _to_unicode(self, value):
         if type(value) in [str, unicode]:
-            value = unicode(value)
+            value = u"'%s'" % (unicode(value))
         elif type(value) in [long, int]:
             value = "%d" % (value)
         elif type(value) in [list]:
