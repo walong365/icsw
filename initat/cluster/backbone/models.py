@@ -1459,20 +1459,25 @@ class package_device_connection(models.Model):
                 self.installed = "u"
             else:
                 # full stream
-                install_summary = xml.xpath(".//install-summary")[0]
-                if not len(install_summary):
-                    # nohting to do, set according to target state
-                    self.installed = {"keep"    : "u",
-                                      "install" : "y",
-                                      "upgrade" : "y",
-                                      "erase"   : "n"}[self.target_state]
-                else:
-                    if len(install_summary.xpath(".//to-install")):
-                        self.installed = "y"
-                    elif len(install_summary.xpath(".//to-remove")):
-                        self.installed = "n"
+                install_summary = xml.xpath(".//install-summary")
+                if len(install_summary):
+                    install_summary = install_summary[0]
+                    if not len(install_summary):
+                        # nohting to do, set according to target state
+                        self.installed = {"keep"    : "u",
+                                          "install" : "y",
+                                          "upgrade" : "y",
+                                          "erase"   : "n"}[self.target_state]
                     else:
-                        self.installed = "u"
+                        if len(install_summary.xpath(".//to-install")):
+                            self.installed = "y"
+                        elif len(install_summary.xpath(".//to-remove")):
+                            self.installed = "n"
+                        else:
+                            self.installed = "u"
+                else:
+                    self.installed = "u"
+                    print "*** interpret_response (package) ***", etree.tostring(xml, pretty_print=True)
         elif self.response_type == "yum_flat":
             lines = etree.fromstring(self.response_str).findtext("stdout").strip().split("\n")
             if len(lines) == 1:
