@@ -31,7 +31,7 @@ import server_command
 from lxml import etree # @UnresolvedImports
 from lxml.builder import E # @UnresolvedImports
 
-from crispy_forms.layout import Submit, Layout, Field, ButtonHolder, Button
+# from crispy_forms.layout import Submit, Layout, Field, ButtonHolder, Button
 from django.contrib.auth.decorators import login_required, permission_required
 from django.contrib.contenttypes.models import ContentType
 from django.db.models import get_model, Q
@@ -55,10 +55,7 @@ class overview(permission_required_mixin, View):
             )
     @method_decorator(login_required)
     def get(self, request, *args, **kwargs):
-        if kwargs["mode"] == "table":
-            return render_me(request, "user_overview_table.html", {})()
-        elif kwargs["mode"] == "tree":
-            return render_me(request, "user_overview_tree.html", {})()
+        return render_me(request, "user_overview_tree.html", {})()
     @method_decorator(login_required)
     @method_decorator(xml_wrapper)
     def post(self, request, *args, **kwargs):

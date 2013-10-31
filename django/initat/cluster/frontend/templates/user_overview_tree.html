@@ -208,7 +208,7 @@ class user_tree
             data    : create_dict($("div#ug_detail"), "user__new", true, true)
             success : (xml) =>
                 if parse_xml_response(xml)
-                    window.location = "{% url 'user:overview' 'tree' %}"
+                    window.location = "{% url 'user:overview' %}"
                 else
                     @install_ug_form($(xml).find("value[name='error_form']").text())
                     @detail_div.bind("submit", @submit_new_user)
@@ -223,7 +223,7 @@ class user_tree
             success : (xml) =>
                 if parse_xml_response(xml)
                     # remove from tree
-                    window.location = "{% url 'user:overview' 'tree' %}"
+                    window.location = "{% url 'user:overview' %}"
         return false
      
     # group functions
@@ -245,7 +245,7 @@ class user_tree
             data    : create_dict($("div#ug_detail"), "group__new", true, true)
             success : (xml) =>
                 if parse_xml_response(xml)
-                    window.location = "{% url 'user:overview' 'tree' %}"
+                    window.location = "{% url 'user:overview' %}"
                 else
                     @install_ug_form($(xml).find("value[name='error_form']").text())
                     @detail_div.bind("submit", @submit_new_group)
@@ -260,7 +260,7 @@ class user_tree
             success : (xml) =>
                 if parse_xml_response(xml)
                     # remove from tree
-                    window.location = "{% url 'user:overview' 'tree' %}"
+                    window.location = "{% url 'user:overview' %}"
         return false
 
     install_ug_form: (form_text) =>
@@ -279,7 +279,7 @@ class user_tree
         @detail_div.unbind("submit")
     load_users: () =>
         $.ajax
-            url     : "{% url 'user:overview' 'table' %}"
+            url     : "{% url 'user:overview' %}"
             success : (xml) =>
                 if parse_xml_response(xml)
                     @UGX = $(xml).find("value[name='response']")
