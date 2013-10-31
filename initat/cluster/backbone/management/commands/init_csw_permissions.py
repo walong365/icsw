@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-scan all apps in backbone for new rights
+scan all apps in backbone for new CSW rights
 """
 
 import logging_tools
@@ -12,7 +12,7 @@ from django.contrib.contenttypes.models import ContentType
 from django.core.exceptions import ImproperlyConfigured
 from django.core.management.base import BaseCommand, CommandError
 from django.db import DEFAULT_DB_ALIAS
-from django.db.models import ForeignKey, ManyToManyField, OneToOneField, Q
+from django.db.models import Q
 from django.utils.datastructures import SortedDict
 
 from initat.cluster.backbone.models import csw_permission
@@ -32,7 +32,6 @@ class Command(BaseCommand):
     def handle(self, *app_labels, **options):
         from django.db.models import get_app, get_apps, get_model, get_models
 
-        using = options.get('database')
         excludes = options.get('exclude')
         verbosity = int(options.get("verbosity"))
 
@@ -140,21 +139,3 @@ class Command(BaseCommand):
             for app_label, code_name in old_perms:
                 csw_permission.objects.get(Q(codename=code_name)).delete()
 
-class CustomValidator(object):
-    def __init__(self, model):
-        self.model = model
-
-    def validate(self, obj):
-        errors = {}
-        for field in self.model._meta.fields:
-            if not isinstance(field, (ForeignKey, OneToOneField, ManyToManyField)):
-                value = getattr(obj, field.name)
-                # Check null value
-                if not field.null:
-                    if value is None:
-                        errors.setdefault(obj.pk, {}).setdefault(field.name, []).append("null")
-                # Check max_length
-                if (field.max_length is not None) and (value not in (None, True, False)):
-                    if field.max_length < len(getattr(obj, field.name)):
-                        errors.setdefault(obj.pk, {}).setdefault(field.name, []).append("max_length")
-        return errors

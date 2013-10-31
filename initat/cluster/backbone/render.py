@@ -1,12 +1,11 @@
 #!/usr/bin/python -Otu
 
-import django.template
 import logging
 
 from django.conf import settings
 from django.contrib.auth.decorators import login_required
-from django.utils.decorators import method_decorator
 from django.shortcuts import redirect
+from django.utils.decorators import method_decorator
 
 logger = logging.getLogger("cluster.render")
 

@@ -4,8 +4,8 @@ import os
 
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "initat.cluster.settings")
 
-from django.utils.datastructures import SortedDict
 from django.db.models import get_apps
+from django.utils.datastructures import SortedDict
 
 def sort_dependencies(app_list):
     """Sort a list of app,modellist pairs into a single list of models.
