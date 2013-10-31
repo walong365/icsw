@@ -1197,7 +1197,7 @@ class image(models.Model):
     # device = models.ForeignKey("device", null=True)
     device = models.IntegerField(null=True)
     build_lock = models.BooleanField(default=False)
-    # size in MByte
+    # size in Byte
     size = models.IntegerField(default=0)
     size_string = models.TextField(blank=True, default="")
     sys_vendor = models.CharField(max_length=192, blank=True)
@@ -1224,7 +1224,7 @@ class image(models.Model):
             sys_version="%s" % (self.sys_version),
             sys_release="%s" % (self.sys_release),
             size_string="%s" % (self.size_string),
-            size="%d" % (self.size),
+            size="%d" % (self.size or 0),
             architecture="%d" % (self.architecture_id or 0),
         )
         return cur_img
@@ -1240,7 +1240,7 @@ class image(models.Model):
 def image_pre_save(sender, **kwargs):
     if "instance" in kwargs:
         cur_inst = kwargs["instance"]
-        cur_inst.size_string = logging_tools.get_size_str(cur_inst.size * 1024 * 1024)
+        cur_inst.size_string = logging_tools.get_size_str(cur_inst.size)
 
 # package related models
 class package_repo(models.Model):
