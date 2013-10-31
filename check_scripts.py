@@ -41,7 +41,7 @@ except:
 from lxml import etree # @UnresolvedImport
 from lxml.builder import E # @UnresolvedImport
 
-EXTRA_SERVER_DIR = "/etc/sysconfig/cluster/extra_servers.d"
+EXTRA_SERVER_DIR = "/opt/cluster/etc/extra_servers.d"
 
 def check_threads(name, pids, any_ok):
     # print name, pids, any_ok
