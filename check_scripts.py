@@ -94,17 +94,17 @@ INSTANCE_XML = """
             <config_name>mother_server</config_name>
         </config_names>
     </instance>
-    <instance name="collectd" check_type="threads_by_pid_file" any_threads_ok="1">
+    <instance name="collectd" check_type="threads_by_pid_file" any_threads_ok="1" runs_on="system">
         <config_names>
             <config_name>rrd_server</config_name>
         </config_names>
     </instance>
-    <instance name="memcached" check_type="threads_by_pid_file" pid_file_name="memcached/memcached.pid" any_threads_ok="1">
+    <instance name="memcached" check_type="threads_by_pid_file" pid_file_name="memcached/memcached.pid" any_threads_ok="1" runs_on="system">
         <config_names>
             <config_name>server</config_name>
         </config_names>
     </instance>
-    <instance name="rrdcached" check_type="threads_by_pid_file" any_threads_ok="1">
+    <instance name="rrdcached" check_type="threads_by_pid_file" any_threads_ok="1" runs_on="system">
         <config_names>
             <config_name>rrd_server</config_name>
         </config_names>
@@ -184,10 +184,13 @@ def check_system(opt_ns):
                 cur_el.attrib[key] = def_value
     set_all_servers = True if (opt_ns.server == ["ALL"] or opt_ns.instance == ["ALL"]) else False
     set_all_nodes = True if (opt_ns.node == ["ALL"] or opt_ns.instance == ["ALL"]) else False
+    set_all_system = True if (opt_ns.system == ["ALL"] or opt_ns.instance == ["ALL"]) else False
     if set_all_servers:
         opt_ns.server = instance_xml.xpath(".//*[@runs_on='server']/@name")
     if set_all_nodes:
         opt_ns.node = instance_xml.xpath(".//*[@runs_on='node']/@name")
+    if set_all_system:
+        opt_ns.system = instance_xml.xpath(".//*[@runs_on='system']/@name")
     for cur_el in instance_xml.xpath(".//instance[@runs_on]"):
         if cur_el.attrib["name"] in getattr(opt_ns, cur_el.attrib["runs_on"]) or cur_el.attrib["name"] in opt_ns.instance:
             cur_el.attrib["to_check"] = "1"
@@ -305,6 +308,7 @@ def show_xml(opt_ns, res_xml):
     out_bl = logging_tools.new_form_list()
     for act_struct in res_xml.findall("instance[@checked='1']"):
         cur_line = [logging_tools.form_entry(act_struct.attrib["name"], header="Name")]
+        cur_line.append(logging_tools.form_entry(act_struct.attrib["runs_on"], header="type"))
         if opt_ns.time or opt_ns.thread:
             s_info = act_struct.find("state_info")
             if "num_started" not in s_info.attrib:
@@ -430,6 +434,7 @@ def main():
     my_parser.add_argument("--instance", type=str, nargs="+", default=[], help="general instance names (%(default)s)")
     my_parser.add_argument("--node", type=str, nargs="+", default=[], help="node entity names (%(default)s)")
     my_parser.add_argument("--server", type=str, nargs="+", default=[], help="server entity names (%(default)s)")
+    my_parser.add_argument("--system", type=str, nargs="+", default=[], help="system entity names (%(default)s)")
     my_parser.add_argument("--mode", type=str, default="show", choices=["show", "stop", "start", "restart"], help="operation mode [%(default)s]")
     my_parser.add_argument("--force", default=False, action="store_true", help="call force-stop if available [%(default)s]")
     opt_ns = my_parser.parse_args()
