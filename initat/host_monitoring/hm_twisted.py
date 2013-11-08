@@ -230,7 +230,6 @@ class hm_icmp_protocol(icmp_twisted.icmp_protocol):
             # check for ping finish
             if value["error_list"] or (value["sent"] == value["num"] and value["recv_ok"] + value["recv_fail"] == value["num"]):
                 all_times = [value["recv_list"][s_key] - value["sent_list"][s_key] for s_key in value["sent_list"].iterkeys() if value["recv_list"].get(s_key, None) != None]
-                import pprint
                 if key in self.__group_dict:
                     t_seq_str = self.__group_dict[key]
                     self.__group_dict[t_seq_str][key] = (value["host"], value["sent"], value["recv_ok"], all_times, ", ".join(value["error_list"]))
