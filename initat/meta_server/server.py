@@ -79,7 +79,6 @@ class main_process(threading_tools.process_pool):
         # store pid name because global_config becomes unavailable after SIGTERM
         self.__pid_name = global_config["PID_NAME"]
         process_tools.save_pids(self.__pid_name, mult=3)
-        print self.__pid_name
         process_tools.append_pids(self.__pid_name, pid=configfile.get_manager_pid(), mult=2)
         if True: # not self.__options.DEBUG:
             self.log("Initialising meta-server-info block")
@@ -89,7 +88,6 @@ class main_process(threading_tools.process_pool):
             msi_block.start_command = "/etc/init.d/meta-server start"
             msi_block.stop_command = "/etc/init.d/meta-server force-stop"
             msi_block.kill_pids = True
-            # msi_block.heartbeat_timeout = 60
             msi_block.save_block()
         else:
             msi_block = None
@@ -190,7 +188,6 @@ class main_process(threading_tools.process_pool):
                 elif fname.startswith(".command_"):
                     pass
                 elif fname.endswith(".hb"):
-                    # ignore heartbeat files
                     pass
                 else:
                     fn_dict = dict([(m_block.get_file_name(), m_block) for m_block in self.__check_dict.itervalues()])
@@ -246,25 +243,20 @@ class main_process(threading_tools.process_pool):
             problem_list = []
             for key, struct in self.__check_dict.iteritems():
                 struct.check_block(act_pid_list, act_pid_dict)
-                if struct.pid_checks_failed or struct.heartbeat_checks_failed:
+                if struct.pid_checks_failed:
                     problem_list.append(key)
                     pids_failed_time = abs(struct.get_last_pid_check_ok_time() - act_time)
-                    heartbeat_failed_time = abs(struct.get_last_heartbeat_check_ok_time() - act_time)
                     do_sthg_pids = (struct.pid_checks_failed >= 2 and pids_failed_time > global_config["FAILED_CHECK_TIME"])
-                    do_sthg_hb = (struct.heartbeat_checks_failed >= 2 and heartbeat_failed_time > global_config["FAILED_CHECK_TIME"])
-                    do_sthg = do_sthg_pids or do_sthg_hb
+                    do_sthg = do_sthg_pids
                     if do_sthg_pids:
-                        self.log("*** pid check failed for %s: %s" % (key, struct.get_problem_str_pids()),
+                        self.log("*** pid check failed for %s: %s" % (key, struct.pid_check_string),
                                  logging_tools.LOG_LEVEL_WARN)
-                    if do_sthg_hb:
-                        self.log("*** heartbeat check failed for %s: %s" % (key, struct.get_problem_str_hb()),
-                                 logging_tools.LOG_LEVEL_WARN)
-                    self.log("*** %s (pid: %d, hb: %d): %s remaining, grace time %s, %s" % (
+                    self.log("*** %s (pid failed %s, %s): %s remaining, grace time %s, %s" % (
                         key,
-                        struct.pid_checks_failed,
-                        struct.heartbeat_checks_failed,
-                        logging_tools.get_plural("grace_period", max(0, 2 - max(struct.pid_checks_failed, struct.heartbeat_checks_failed))),
-                        logging_tools.get_plural("second", global_config["FAILED_CHECK_TIME"] - max(pids_failed_time, heartbeat_failed_time)),
+                        logging_tools.get_plural("time", struct.pid_checks_failed),
+                        struct.pid_check_string,
+                        logging_tools.get_plural("grace_period", max(0, 2 - struct.pid_checks_failed)),
+                        logging_tools.get_plural("second", global_config["FAILED_CHECK_TIME"] - pids_failed_time),
                         do_sthg and "starting countermeasures" or "still waiting..."),
                              logging_tools.LOG_LEVEL_WARN)
                     if do_sthg:
@@ -275,10 +267,9 @@ class main_process(threading_tools.process_pool):
                             self._submit_at_command(struct.start_command, 2)
                         self.__new_mail.init_text()
                         self.__new_mail.set_subject("problem with %s on %s (meta-server)" % (key, global_config["SERVER_FULL_NAME"]))
-                        self.__new_mail.append_text(["check failed for %s: %s, %s" % (
+                        self.__new_mail.append_text(["check failed for %s: %s" % (
                             key,
-                            struct.get_problem_str_pids() if do_sthg_pids else "pids OK",
-                            struct.get_problem_str_hb() if do_sthg_hb else "HB ok"),
+                            struct.pid_check_string),
                                                      "starting repair sequence",
                                                      ""])
                         self.log("*** starting repair sequence",
