@@ -668,7 +668,7 @@ class server_process(threading_tools.process_pool):
         if not global_config["COMMAND"]:
             self.log("Initialising meta-server-info block")
             msi_block = process_tools.meta_server_info(self.__pid_name)
-            msi_block.add_actual_pid(mult=3)
+            msi_block.add_actual_pid(mult=3, fuzzy_ceiling=3)
             msi_block.add_actual_pid(act_pid=configfile.get_manager_pid(), mult=2)
             msi_block.start_command = "/etc/init.d/cluster-server start"
             msi_block.stop_command = "/etc/init.d/cluster-server force-stop"
