@@ -535,8 +535,8 @@ class sge_info(object):
                 all_complexes.append(E.complex(line_parts[0], short=line_parts[1]))
         return all_complexes
     def _check_qhost_dict(self):
-        qstat_com = self._get_com_name("qhost")
-        _c_stat, c_out = self._execute_command("%s -F -q -xml -j" % (qstat_com))
+        qhost_com = self._get_com_name("qhost")
+        _c_stat, c_out = self._execute_command("%s -F -q -xml -j" % (qhost_com))
         if _c_stat:
             all_qhosts = E.call_error(c_out, stat="%d" % (_c_stat))
         else:
@@ -1005,7 +1005,7 @@ def build_node_list(s_info, options):
                     continue
             # check for complex filters
             if options.complexes:
-                q_job_complexes = set(sum([act_q.xpath("complex_values/conf_var[not(@node_name) or @node_name='%s']/@name" % (act_h.get("short_name"))) for act_q in act_q_list], []))
+                q_job_complexes = set(sum([act_q.xpath("complex_values/conf_var[not(@host) or @host='%s']/@name" % (act_h.get("short_name"))) for act_q in act_q_list], []))
                 if not q_job_complexes & set(options.complexes):
                     continue
             cur_node = E.node(
@@ -1013,7 +1013,7 @@ def build_node_list(s_info, options):
                 E.queues(shorten_list(q_list))
             )
             if options.show_seq:
-                seq_list = [str(act_q.xpath("seq_no/conf_var[not(@node_name) or @node_name='%s']/@name")[0]) for act_q in act_q_list]
+                seq_list = [str(act_q.xpath("seq_no/conf_var[not(@host) or @host='%s']/@name" % (act_h.get("short_name")))[-1]) for act_q in act_q_list]
                 cur_node.append(E.seqno(shorten_list(seq_list)))
             if not options.suppress_status:
                 cur_node.append(E.state(shorten_list([m_queue.findtext("queuevalue[@name='%sstate_string']" % (
@@ -1022,9 +1022,9 @@ def build_node_list(s_info, options):
                 cur_node.append(E.type(shorten_list([m_queue.findtext("queuevalue[@name='%sqtype_string']" % (
                     "long_" if options.show_long_type else "")) for m_queue in m_queue_list])))
             if options.show_complexes:
-                cur_node.append(E.complex(shorten_list([",".join(sorted(set(act_q.xpath("complex_values/conf_var[not(@node_name) or @node_name='%s']/@name" % (act_h.get("short_name")))))) for act_q in act_q_list], empty_str="-")))
+                cur_node.append(E.complex(shorten_list([",".join(sorted(set(act_q.xpath("complex_values/conf_var[not(@host) or @host='%s']/@name" % (act_h.get("short_name")))))) for act_q in act_q_list], empty_str="-")))
             if options.show_pe:
-                cur_node.append(E.pe_list(shorten_list([",".join(sorted(set(act_q.xpath("pe_list/conf_var[not(@node_name) or @node_name='%s']/@name" % (act_h.get("short_name")))))) for act_q in act_q_list], empty_str="-")))
+                cur_node.append(E.pe_list(shorten_list([",".join(sorted(set(act_q.xpath("pe_list/conf_var[not(@host) or @host='%s']/@name" % (act_h.get("short_name")))))) for act_q in act_q_list], empty_str="-")))
             if options.show_memory:
                 cur_node.extend([
                     E.virtual_tot(act_h.findtext("resourcevalue[@name='virtual_total']") or ""),
@@ -1041,10 +1041,10 @@ def build_node_list(s_info, options):
                 for act_q in act_q_list:
                     for ref_name, header_name in [("user_list", "userlists"),
                                                   ("project"  , "projects")]:
-                        pos_list = " or ".join(act_q.xpath(".//%ss/conf_var[not(@node_name) or @node_name='%s']/@name" % (
+                        pos_list = " or ".join(act_q.xpath(".//%ss/conf_var[not(@host) or @host='%s']/@name" % (
                             ref_name,
                             act_h.get("short_name"))))
-                        neg_list = " or ".join(act_q.xpath(".//x%ss/conf_var[not(@node_name) or @node_name='%s']/@name" % (
+                        neg_list = " or ".join(act_q.xpath(".//x%ss/conf_var[not(@host) or @host='%s']/@name" % (
                             ref_name,
                             act_h.get("short_name"))))
                         if not pos_list and not neg_list:
@@ -1098,14 +1098,14 @@ def build_node_list(s_info, options):
                     continue
             # check for complex filters
             if options.complexes:
-                q_job_complexes = set(act_q.xpath("complex_values/conf_var[not(@node_name) or @node_name='%s']/@name" % (act_h.get("short_name"))))
+                q_job_complexes = set(act_q.xpath("complex_values/conf_var[not(@host) or @host='%s']/@name" % (act_h.get("short_name"))))
                 if not q_job_complexes & set(options.complexes):
                     continue
             cur_node = E.node(
                 E.queue(q_name),
                 E.host(s_name))
             if options.show_seq:
-                cur_node.append(E.seqno(str(act_q.xpath("seq_no/conf_var[not(@node_name) or @node_name='%s']/@name")[0])))
+                cur_node.append(E.seqno(str(act_q.xpath("seq_no/conf_var[not(@host) or @host='%s']/@name" % (act_h.get("short_name")))[-1])))
             if not options.suppress_status:
                 cur_node.append(E.state(m_queue.findtext("queuevalue[@name='%sstate_string']" % (
                     "long_" if options.long_status else "")) or "-"))
@@ -1113,9 +1113,9 @@ def build_node_list(s_info, options):
                 cur_node.append(E.type(m_queue.findtext("queuevalue[@name='%sqtype_string']" % (
                     "long_" if options.show_long_type else ""))))
             if options.show_complexes:
-                cur_node.append(E.complex(",".join(sorted(set(act_q.xpath("complex_values/conf_var[not(@node_name) or @node_name='%s']/@name" % (act_h.get("short_name"))))))))
+                cur_node.append(E.complex(",".join(sorted(set(act_q.xpath("complex_values/conf_var[not(@host) or @host='%s']/@name" % (act_h.get("short_name"))))))))
             if options.show_pe:
-                cur_node.append(E.pe_list(",".join(sorted(set(act_q.xpath("pe_list/conf_var[not(@node_name) or @node_name='%s']/@name" % (act_h.get("short_name"))))))))
+                cur_node.append(E.pe_list(",".join(sorted(set(act_q.xpath("pe_list/conf_var[not(@host) or @host='%s']/@name" % (act_h.get("short_name"))))))))
             if options.show_memory:
                 cur_node.extend([
                     E.virtual_tot(act_h.findtext("resourcevalue[@name='virtual_total']") or ""),
@@ -1131,10 +1131,10 @@ def build_node_list(s_info, options):
             if options.show_acl:
                 for ref_name, header_name in [("user_list", "userlists"),
                                               ("project"  , "projects")]:
-                    pos_list = " or ".join(act_q.xpath(".//%ss/conf_var[not(@node_name) or @node_name='%s']/@name" % (
+                    pos_list = " or ".join(act_q.xpath(".//%ss/conf_var[not(@host) or @host='%s']/@name" % (
                         ref_name,
                         act_h.get("short_name"))))
-                    neg_list = " or ".join(act_q.xpath(".//x%ss/conf_var[not(@node_name) or @node_name='%s']/@name" % (
+                    neg_list = " or ".join(act_q.xpath(".//x%ss/conf_var[not(@host) or @host='%s']/@name" % (
                         ref_name,
                         act_h.get("short_name"))))
                     if not pos_list and not neg_list:
