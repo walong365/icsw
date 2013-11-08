@@ -1937,23 +1937,23 @@ class job_object(object):
                 logging_tools.get_plural("entry", len(failure_list)),
                 ", ".join(failure_list),
             ))
-            if failure_list and False:
-                error_hosts = set([key for key, value in self.__node_dict.iteritems() if error_ips.intersection(set(value["ip_list"]))])
-                self.log("%s: %s (%s: %s)" % (logging_tools.get_plural("error host", len(error_hosts)),
-                                              ", ".join(error_hosts),
-                                              logging_tools.get_plural("error IP", len(error_ips)),
-                                              ", ".join(error_ips)),
-                         logging_tools.LOG_LEVEL_ERROR,
-                         do_print=True)
-                # disable the queues
-                self._send_tag("disable",
-                               error="connection problem",
-                               fail_objects=["%s@%s" % (self.__opt_dict["QUEUE"], failed_host) for failed_host in error_hosts])
-                # hold the job
-                self._send_tag("hold",
-                               error="connection problem",
-                               fail_objects=[self.__opt_dict["FULL_JOB_ID"]])
-                self._set_exit_code("connection problems", 1)
+#             if failure_list and False:
+#                 error_hosts = set([key for key, value in self.__node_dict.iteritems() if error_ips.intersection(set(value["ip_list"]))])
+#                 self.log("%s: %s (%s: %s)" % (logging_tools.get_plural("error host", len(error_hosts)),
+#                                               ", ".join(error_hosts),
+#                                               logging_tools.get_plural("error IP", len(error_ips)),
+#                                               ", ".join(error_ips)),
+#                          logging_tools.LOG_LEVEL_ERROR,
+#                          do_print=True)
+#                 # disable the queues
+#                 self._send_tag("disable",
+#                                error="connection problem",
+#                                fail_objects=["%s@%s" % (self.__opt_dict["QUEUE"], failed_host) for failed_host in error_hosts])
+#                 # hold the job
+#                 self._send_tag("hold",
+#                                error="connection problem",
+#                                fail_objects=[self.__opt_dict["FULL_JOB_ID"]])
+#                 self._set_exit_code("connection problems", 1)
         else:
             self.log("failure list is empty, good")
         e_time = time.time()
