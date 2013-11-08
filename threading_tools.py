@@ -1600,9 +1600,10 @@ class process_pool(timer_base):
                     else:
                         self.log("process '%s' already got exit message" % (p_name), logging_tools.LOG_LEVEL_WARN)
     def __repr__(self):
-        return "process_pool %s, %s, %s" % (self.name,
-                                            logging_tools.get_plural("process", len(self.__processes.keys())),
-                                            logging_tools.get_plural("0MQ socket", len(self.__sockets.keys())))
+        return "process_pool %s, %s, %s" % (
+            self.name,
+            logging_tools.get_plural("process", len(self.__processes.keys())),
+            logging_tools.get_plural("0MQ socket", len(self.__sockets.keys())))
 
 class twisted_main_thread(object):
     def __init__(self, name, **kwargs):

@@ -362,12 +362,7 @@ class meta_server_info(object):
             ("check_memory"     , "b", True),
             ("exe_name"         , "s", None),
             ("need_any_pids"    , "b", 0),
-            # how many pids can be too much
-            ("fuzzy_ceiling"    , "i", 0),
-            # how many pids can be too less
-            ("fuzzy_floor"      , "i", 0),
-            # heartbeat timeout, 0 means disabled
-            ("heartbeat_timeout", "i", 0)]
+            ]
         if name.startswith("/"):
             self.__file_name = name
             # try to read complete info from file
@@ -384,9 +379,13 @@ class meta_server_info(object):
                 self.__name = xml_struct.xpath(".//name/text()")[0]
                 # reads pids
                 self.__pids = []
+                self.__pid_fuzzy = {}
                 for pid_struct in xml_struct.xpath(".//pid_list/pid"):
                     self.__pids.extend([int(pid_struct.text)] * int(pid_struct.get("mult", "1")))
-                # self.__pids = sorted([int(cur_pid) for cur_pid in xml_struct.xpath(".//pid_list/pid/text()")])
+                    self.__pid_fuzzy[int(pid_struct.text)] = (
+                        int(pid_struct.get("fuzzy_floor", "0")),
+                        int(pid_struct.get("fuzzy_ceiling", "0")),
+                        )
                 for opt, val_type, def_val in self.__prop_list:
                     cur_prop = xml_struct.xpath(".//properties/prop[@type and @key='%s']" % (opt))
                     if cur_prop:
@@ -398,7 +397,11 @@ class meta_server_info(object):
                             cur_value = bool(cur_value)
                     else:
                         cur_value = def_val
-                    setattr(self, opt, cur_value)
+                    if opt.startswith("fuzzy"):
+                        # ignore fuzzy*
+                        pass
+                    else:
+                        setattr(self, opt, cur_value)
                 parsed = True
             else:
                 try:
@@ -411,6 +414,7 @@ class meta_server_info(object):
                     act_dict = dict([(line[0].strip().lower(), line[1].strip()) for line in [lp.split("=", 1) for lp in lines if lp.count("=")] if len(line) > 1])
                     self.__name = act_dict.get("name", None)
                     self.__pids = sorted([int(cur_pid) for cur_pid in act_dict.get("pids", "").split() if cur_pid.isdigit()])
+                    self.__pid_fuzzy = dict([(cur_pid, (0, 0)) for cur_pid in set(self.__pids)])
                     for opt, val_type, def_val in self.__prop_list:
                         if opt in act_dict:
                             cur_value = act_dict[opt]
@@ -424,32 +428,25 @@ class meta_server_info(object):
                     parsed = True
             if parsed:
                 self.__meta_server_dir = os.path.dirname(name)
-                self.pid_checks_ok, self.pid_checks_failed, self.heartbeat_checks_ok, self.heartbeat_checks_failed = (0, 0, 0, 0)
+                self.pid_checks_ok, self.pid_checks_failed = (0, 0)
                 self.set_last_pid_check_ok_time()
-                self.set_last_heartbeat_check_ok_time()
         else:
             self.__file_name = None
             self.set_meta_server_dir("/var/lib/meta-server")
             self.__name = name
             self.__pids = []
+            self.__pid_fuzzy = {}
             for opt, val_type, def_val in self.__prop_list:
                 setattr(self, opt, def_val)
         self.file_init_time = time.time()
-        self.heartbeat_time = time.time()
     def get_file_name(self):
         return self.__file_name
-    def get_heartbeat_file_name(self):
-        return "%s.hb" % (self.__file_name)
     def get_name(self):
         return self.__name
     def get_last_pid_check_ok_time(self):
         return self.__last_check_ok
-    def get_last_heartbeat_check_ok_time(self):
-        return self.__last_heartbeat_check_ok
     def set_last_pid_check_ok_time(self, last_t=None):
         self.__last_check_ok = last_t or time.time()
-    def set_last_heartbeat_check_ok_time(self, last_t=None):
-        self.__last_heartbeat_check_ok = last_t or time.time()
     def set_meta_server_dir(self, msd):
         self.__meta_server_dir = msd
     def file_init_time_get(self):
@@ -467,16 +464,6 @@ class meta_server_info(object):
     def start_command_set(self, start_com):
         self._start_command = start_com
     start_command = property(start_command_get, start_command_set)
-    def fuzzy_ceiling_get(self):
-        return self._fuzzy_ceiling
-    def fuzzy_ceiling_set(self, fc):
-        self._fuzzy_ceiling = int(fc)
-    fuzzy_ceiling = property(fuzzy_ceiling_get, fuzzy_ceiling_set)
-    def fuzzy_floor_get(self):
-        return self._fuzzy_floor
-    def fuzzy_floor_set(self, ff):
-        self._fuzzy_floor = int(ff)
-    fuzzy_floor = property(fuzzy_floor_get, fuzzy_floor_set)
     def exe_name_get(self):
         return self.__exe_name
     def exe_name_set(self, en):
@@ -497,15 +484,11 @@ class meta_server_info(object):
     def check_memory_set(self, cm=1):
         self.__check_memory = cm
     check_memory = property(check_memory_get, check_memory_set)
-    def heartbeat_timeout_get(self):
-        return self.__heartbeat_timeout
-    def heartbeat_timeout_set(self, hb_to=0):
-        self.__heartbeat_timeout = hb_to
-    heartbeat_timeout = property(heartbeat_timeout_get, heartbeat_timeout_set)
-    def add_actual_pid(self, act_pid=None, mult=1):
+    def add_actual_pid(self, act_pid=None, mult=1, fuzzy_floor=0, fuzzy_ceiling=0):
         if not act_pid:
             act_pid = os.getpid()
         self.__pids.extend(mult * [act_pid])
+        self.__pid_fuzzy[act_pid] = (fuzzy_floor, fuzzy_ceiling)
         self.__pids.sort()
     def remove_actual_pid(self, act_pid=None, mult=0):
         """
@@ -523,6 +506,9 @@ class meta_server_info(object):
         self.__pids.sort()
     def get_pids(self):
         return self.__pids
+    def set_pids(self, in_pids):
+        self.__pids = in_pids
+    pids = property(get_pids, set_pids)
     def get_unique_pids(self):
         return set(self.__pids)
     def get_info(self):
@@ -532,16 +518,20 @@ class meta_server_info(object):
             logging_tools.get_plural("different pid", len(all_pids)),
             logging_tools.get_plural("total pid", len(self.__pids)),
             all_pids and ", ".join(["%d%s" % (pid, pid_dict[pid] and " (x %d)" % (pid_dict[pid]) or "") for pid in all_pids]) or "---")
-    def heartbeat(self):
-        try:
-            open(self.get_heartbeat_file_name(), "wb").write("%d" % (os.getpid()))
-        except:
-            logging_tools.my_syslog("error writing file %s (meta_server_info for %s)" % (self.get_heartbeat_file_name(), self.__name))
     def save_block(self):
         if etree:
+            pid_list = E.pid_list()
+            for cur_pid in sorted(set(self.__pids)):
+                cur_pid_el = E.pid("%d" % (cur_pid), mult="%d" % (self.__pids.count(cur_pid)))
+                f_f, f_c = self.__pid_fuzzy[cur_pid]
+                if f_f:
+                    cur_pid_el.attrib["fuzzy_floor"] = "%d" % (f_f)
+                if f_c:
+                    cur_pid_el.attrib["fuzzy_ceiling"] = "%d" % (f_c)
+                pid_list.append(cur_pid_el)
             xml_struct = E.meta_info(
                 E.name(self.__name),
-                E.pid_list(*[E.pid("%d" % (cur_pid), mult="%d" % (self.__pids.count(cur_pid))) for cur_pid in set(self.__pids)]),
+                pid_list,
                 E.properties()
                 )
             for opt, val_type, _dev_val in self.__prop_list:
@@ -583,14 +573,6 @@ class meta_server_info(object):
                 self.__file_name,
                 self.__name,
                 get_except_info()))
-        if os.path.isfile(self.get_heartbeat_file_name()):
-            try:
-                os.unlink(self.get_heartbeat_file_name())
-            except:
-                logging_tools.my_syslog("error removing heartbeat file %s (meta_server_info for %s): %s" % (
-                    self.get_heartbeat_file_name(),
-                    self.__name,
-                    get_except_info()))
     def check_block(self, act_pids=[], act_dict={}):
         if not act_pids:
             act_pids = get_process_id_list(True, True)
@@ -599,62 +581,52 @@ class meta_server_info(object):
                 act_dict = get_proc_list()
             # search pids
             pids_found = [key for key, value in act_dict.items() if value["name"] == self.__exe_name]
-            self.__pids = sum([[key] * act_pids[key] for key in pids_found], [])
+            self.__pids = sum([[key] * act_pids.get(key, 1) for key in pids_found], [])
         self.__pids_found = dict([(cur_pid, act_pids[cur_pid]) for cur_pid in self.__pids if cur_pid in act_pids.keys()])
-        self.__pids_expected = dict([(cur_pid, len([True for s_pids in self.__pids if cur_pid == s_pids])) for cur_pid in self.__pids])
-        num_found = sum([value for value in self.__pids_found.values()])
-        num_expected = sum([value for value in self.__pids_expected.values()])
-        if num_found < (num_expected + self.fuzzy_floor):
+        # structure for check_scripts
+        self.pids_found = sum([[cur_pid] * act_pids.get(cur_pid, 0) for cur_pid in self.__pids_found.iterkeys()], [])
+        self.__pids_expected = dict([(cur_pid, (
+            self.__pids.count(cur_pid) + self.__pid_fuzzy[cur_pid][0],
+            self.__pids.count(cur_pid) + self.__pid_fuzzy[cur_pid][1])
+            ) for cur_pid in self.__pids])
+        # print self.__name, self.__pids_found, self.__pids_expected, self.__pid_fuzzy
+        bound_dict = {}
+        for unique_pid in set(self.__pids_found.keys()) | set(self.__pids_expected.keys()):
+            p_f = self.__pids_found.get(unique_pid, 0)
+            l_c, u_c = self.__pids_expected[unique_pid]
+            if unique_pid not in self.__pids_found:
+                bound_dict[unique_pid] = -l_c
+            elif unique_pid not in self.__pids_expected:
+                bound_dict[unique_pid] = p_f
+            else:
+                if p_f < l_c:
+                    bound_dict[unique_pid] = p_f - l_c
+                elif p_f > u_c:
+                    bound_dict[unique_pid] = p_f - u_c
+                else:
+                    bound_dict[unique_pid] = 0
+        self.bound_dict = bound_dict
+        # num_found = sum([value for value in self.__pids_found.values()])
+        # num_expected = sum([value for value in self.__pids_expected.values()])
+        self.pid_check_string = ", ".join(["%d: %s" % (
+            cur_pid,
+            "%d %s" % (
+                abs(bound_dict[cur_pid]),
+                "missing" if bound_dict[cur_pid] < 0 else "too many",
+            ) if bound_dict[cur_pid] else "OK",
+            ) for cur_pid in sorted(bound_dict.iterkeys())]) or "no PIDs"
+        if any([value != 0 for value in bound_dict.itervalues()]):
             self.pid_checks_failed += 1
         else:
-            if not num_found and self.__need_any_pids:
+            if not self.__pids_found and self.__need_any_pids:
                 self.pid_checks_failed += 1
-            elif num_found > (num_expected + self.fuzzy_ceiling):
+            elif any([value > 0 for value in bound_dict.itervalues()]):
                 self.pid_checks_failed += 1
             else:
                 # clear failed_checks
                 self.pid_checks_failed = 0
                 self.pid_checks_ok += 1
                 self.__last_check_ok = time.time()
-        if self.heartbeat_timeout:
-            hb_fname = self.get_heartbeat_file_name()
-            if os.path.isfile(hb_fname):
-                hb_time = os.stat(hb_fname)[stat.ST_MTIME]
-                if hb_time >= abs(time.time() - int(self.heartbeat_timeout)):
-                    self.__last_heartbeat_check_ok = time.time()
-                    self.heartbeat_checks_failed = 0
-                    self.heartbeat_checks_ok += 1
-                else:
-                    self.heartbeat_checks_failed += 1
-            else:
-                self.heartbeat_checks_failed += 1
-    def get_problem_str_hb(self):
-        return "heartbeat failed for %d times" % (self.heartbeat_checks_failed)
-    def get_problem_str_pids(self):
-        pid_f = []
-        too_much, missing = (0, 0)
-        for pid in self.__pids_expected:
-            p_w, p_f = (self.__pids_expected[pid], self.__pids_found.get(pid, 0))
-            if p_w == p_f:
-                pid_f.append("pid %d: ok (%d)" % (
-                    pid,
-                    p_w))
-            elif p_f < p_w:
-                pid_f.append("pid %d: %d of %d missing" % (
-                    pid,
-                    p_w - p_f,
-                    p_w))
-                missing += p_w - p_f
-            else:
-                pid_f.append("pid %d: %d too mouch (should be %d)" % (
-                    pid,
-                    p_f - p_w,
-                    p_w))
-                too_much += p_f - p_w
-        return "%s missing, %s too much: %s" % (
-            logging_tools.get_plural("process", missing),
-            logging_tools.get_plural("process", too_much),
-            ", ".join(pid_f))
     def kill_all_found_pids(self):
         all_pids = sorted(self.__pids_found.keys())
         if all_pids:

@@ -43,19 +43,11 @@ from lxml.builder import E # @UnresolvedImport
 
 EXTRA_SERVER_DIR = "/opt/cluster/etc/extra_servers.d"
 
-def check_threads(name, pids, any_ok):
+def check_processes(name, pids, pid_thread_dict, any_ok):
     # print name, pids, any_ok
     ret_state = 7
     unique_pids = dict([(key, pids.count(key)) for key in set(pids)])
-    pids_found = dict([(key, 0) for key in set(pids)])
-    for pid in unique_pids.keys():
-        stat_f = "/proc/%d/status" % (pid)
-        if os.path.isfile(stat_f):
-            stat_dict = dict([line.strip().lower().split(":", 1) for line in file(stat_f, "r").read().replace("\t", " ").split("\n") if line.count(":") and line.strip()])
-            if "threads" in stat_dict:
-                pids_found[pid] += int(stat_dict.get("threads", "1"))
-            else:
-                pids_found[pid] += 1
+    pids_found = dict([(key, pid_thread_dict.get(key, 1)) for key in set(pids)])
     num_started = sum(unique_pids.values()) if unique_pids else 0
     num_found = sum(pids_found.values()) if pids_found else 0
     # check for extra Nagios2.x thread
@@ -69,11 +61,11 @@ INSTANCE_XML = """
 <instances>
     <instance name="hoststatus" check_type="simple" pid_file_name="hoststatus_zmq" process_name="hoststatus_zmq" runs_on="node">
     </instance>
-    <instance name="logging-server" runs_on="node" pid_file_name="logserver/logserver.pid"  has_force_stop="1">
+    <instance name="logging-server" runs_on="node" pid_file_name="logserver/logserver.pid"  has_force_stop="1" meta_server_name="logserver">
     </instance>
     <instance name="meta-server" runs_on="node"  has_force_stop="1">
     </instance>
-    <instance name="host-monitoring" runs_on="node" pid_file_name="collserver/collserver.pid"  has_force_stop="1">
+    <instance name="host-monitoring" runs_on="node" pid_file_name="collserver/collserver.pid"  has_force_stop="1" meta_server_name="collserver">
     </instance>
     <instance name="package-client" runs_on="node"  has_force_stop="1">
     </instance>
@@ -179,6 +171,7 @@ def check_system(opt_ns):
             ("checked", "0"),
             ("to_check", "0"),
             ("process_name", name),
+            ("meta_server_name", name)
             ]:
             if not key in cur_el.attrib:
                 cur_el.attrib[key] = def_value
@@ -195,6 +188,7 @@ def check_system(opt_ns):
         if cur_el.attrib["name"] in getattr(opt_ns, cur_el.attrib["runs_on"]) or cur_el.attrib["name"] in opt_ns.instance:
             cur_el.attrib["to_check"] = "1"
     act_proc_dict = process_tools.get_proc_list()
+    pid_thread_dict = process_tools.get_process_id_list(True, True)
     r_stat, out = commands.getstatusoutput("chkconfig --list")
     stat_dict = {}
     if not r_stat:
@@ -215,8 +209,6 @@ def check_system(opt_ns):
                     *[E.runlevel("%d" % (cur_rl)) for cur_rl in stat_dict.get(entry.attrib["init_script_name"], [])]
                 )
             )
-        # print name, check_struct
-        # act_info_dict = {"name" : name}
         act_pids = []
         init_script_name = os.path.join("/etc/init.d/%s" % (entry.attrib["init_script_name"]))
         if entry.attrib["check_type"] == "simple":
@@ -235,9 +227,32 @@ def check_system(opt_ns):
             if not pid_file_name.startswith("/"):
                 pid_file_name = "/var/run/%s" % (pid_file_name)
             if os.path.isfile(pid_file_name):
-                pid_time = os.stat(pid_file_name)[stat.ST_CTIME]
-                act_pids = [int(line.strip()) for line in file(pid_file_name, "r").read().split("\n") if line.strip().isdigit()]
-                act_state, num_started, num_found = check_threads(name, act_pids, True if int(entry.attrib["any_threads_ok"]) else False)
+                ms_name = None
+                # do we need a loop here ?
+                for c_name in set([entry.attrib["meta_server_name"]]):
+                    cur_ms_name = os.path.join("/var/lib/meta-server", c_name)
+                    if os.path.exists(cur_ms_name):
+                        ms_name = cur_ms_name
+                        break
+                if ms_name:
+                    # check according to meta-serer block
+                    pid_time = os.stat(ms_name)[stat.ST_CTIME]
+                    ms_block = process_tools.meta_server_info(ms_name)
+                    ms_block.check_block(pid_thread_dict, act_proc_dict)
+                    diff_threads = sum(ms_block.bound_dict.values())
+                    act_pids = ms_block.pids_found
+                    num_started = len(act_pids)
+                    if diff_threads:
+                        act_state = 7
+                        num_found = num_started + diff_threads
+                    else:
+                        act_state = 0
+                        num_found = num_started
+                    # print ms_block.pids, ms_block.pid_check_string
+                else:
+                    pid_time = os.stat(pid_file_name)[stat.ST_CTIME]
+                    act_pids = [int(line.strip()) for line in file(pid_file_name, "r").read().split("\n") if line.strip().isdigit()]
+                    act_state, num_started, num_found = check_processes(name, act_pids, pid_thread_dict, True if int(entry.attrib["any_threads_ok"]) else False)
                 entry.append(E.state_info(num_started="%d" % (num_started), num_found="%d" % (num_found), pid_time="%d" % (pid_time), state="%d" % (act_state)))
             else:
                 if os.path.isfile(init_script_name):
@@ -251,7 +266,6 @@ def check_system(opt_ns):
                 *[E.pid("%d" % (cur_pid), count="%d" % (act_pids.count(cur_pid))) for cur_pid in set(act_pids)]
                 )
             )
-        # act_info_dict["pids"] = dict([(key, act_pids.count(key)) for key in set(act_pids)])
         if entry.attrib["runs_on"] == "server":
             if dev_config is not None:
                 srv_type_list = [_e.replace("-", "_") for _e in entry.xpath(".//config_names/config_name/text()")]
@@ -385,6 +399,7 @@ def show_xml(opt_ns, res_xml):
             if cur_mem.isdigit():
                 mem_str = process_tools.beautify_mem_info(int(cur_mem))
             else:
+                # no pids hence no memory info
                 mem_str = "no pids"
             cur_line.append(logging_tools.form_entry(mem_str, header="Memory"))
         cur_line.append(logging_tools.form_entry(rc_strs[int(act_struct.find("state_info").get("state", "1"))], header="status"))
