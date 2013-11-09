@@ -521,7 +521,6 @@ class main_process(threading_tools.process_pool):
         self._init_network_sockets()
         if not PYTHON3:
             self.add_process(twisted_process("twisted"), twisted=True, start=True)
-        self.register_timer(self._heartbeat, 30, instant=True)
         self.register_timer(self._update, 60)
     def log(self, what, level=logging_tools.LOG_LEVEL_OK):
         # print(what)
@@ -567,9 +566,6 @@ class main_process(threading_tools.process_pool):
             os.chmod(io_stream_helper.zmq_socket_name(global_config[h_name]), stat.S_IRWXU | stat.S_IRWXG | stat.S_IRWXO)
         self.register_poller(client, zmq.POLLIN, self._recv_data)
         self.std_client = client
-    def _heartbeat(self):
-        if self.__msi_block:
-            self.__msi_block.heartbeat()
     def _update(self):
         self.send_to_process("receiver", "update")
     def _recv_data(self, zmq_socket):
@@ -592,7 +588,6 @@ class main_process(threading_tools.process_pool):
             msi_block.start_command = "/etc/init.d/logging-server start"
             msi_block.stop_command = "/etc/init.d/logging-server force-stop"
             msi_block.kill_pids = True
-            msi_block.heartbeat_timeout = 60
             msi_block.save_block()
         else:
             msi_block = None
