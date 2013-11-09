@@ -67,7 +67,7 @@ INSTANCE_XML = """
     </instance>
     <instance name="host-monitoring" runs_on="node" pid_file_name="collserver/collserver.pid"  has_force_stop="1" meta_server_name="collserver">
     </instance>
-    <instance name="package-client" runs_on="node"  has_force_stop="1">
+    <instance name="package-client" runs_on="node"  has_force_stop="1" pid_file_name="package-client/package-client.pid">
     </instance>
     <instance name="gmond" runs_on="node">
     </instance>
