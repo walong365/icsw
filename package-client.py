@@ -21,7 +21,6 @@
 #
 """ daemon to automatically install packages (.rpm, .deb) """
 
-import sys
 import os
 import configfile
 import zmq
@@ -33,6 +32,8 @@ import logging_tools
 import process_tools
 import threading_tools
 import subprocess
+import sys
+
 from lxml import etree
 from lxml.builder import E
 
@@ -496,7 +497,7 @@ class server_process(threading_tools.process_pool):
         if True: # not self.__options.DEBUG:
             self.log("Initialising meta-server-info block")
             msi_block = process_tools.meta_server_info("package-client")
-            msi_block.add_actual_pid(mult=3)
+            msi_block.add_actual_pid(mult=3, fuzzy_ceiling=3)
             msi_block.add_actual_pid(act_pid=configfile.get_manager_pid(), mult=3)
             msi_block.start_command = "/etc/init.d/package-client start"
             msi_block.stop_command = "/etc/init.d/package-client force-stop"
