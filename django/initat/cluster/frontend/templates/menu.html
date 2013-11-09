@@ -106,6 +106,7 @@
     <li>
         <a>{% trans "Session" %}</a>
         <ul>
+            <li><a href="{% url 'user:account_info' %}">{% trans "Account Info" %}</a></li>
             <li><a href="{% url 'session:logout' %}">{% trans "Logout" %}</a></li>
             <li><a href="{% url 'admin:index' %}">{% trans "Admin" %}</a></li>
         </ul>

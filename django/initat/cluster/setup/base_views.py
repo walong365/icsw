@@ -393,17 +393,20 @@ class get_object(View):
     def post(self, request, *args, **kwargs):
         _post = request.POST
         key_type, key_pk = _post["key"].split("__")
-        arg_dict = {}
-        for key, value in _post.iteritems():
-            if key.startswith("true_flag"):
-                arg_dict[value] = True
-            elif key.startswith("false_flag"):
-                arg_dict[value] = False
-        mod_obj = KPMC_MAP.get(key_type, None)
-        if not mod_obj:
-            request.xml_response.error("object with type '%s' not found" % (key_type), logger)
+        if not key_pk.isdigit():
+            request.xml_response.error("PK is not an integer", logger)
         else:
-            request.xml_response["result"] = mod_obj.objects.get(Q(pk=key_pk)).get_xml(**arg_dict)
+            arg_dict = {}
+            for key, value in _post.iteritems():
+                if key.startswith("true_flag"):
+                    arg_dict[value] = True
+                elif key.startswith("false_flag"):
+                    arg_dict[value] = False
+            mod_obj = KPMC_MAP.get(key_type, None)
+            if not mod_obj:
+                request.xml_response.error("object with type '%s' not found" % (key_type), logger)
+            else:
+                request.xml_response["result"] = mod_obj.objects.get(Q(pk=key_pk)).get_xml(**arg_dict)
 
 class get_category_tree(View):
     @method_decorator(login_required)

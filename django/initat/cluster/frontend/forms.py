@@ -203,6 +203,9 @@ class dummy_password_form(Form):
             "please enter the new password",
             Field("password1"),
             Field("password2"),
+            ButtonHolder(
+                Button("check", "Check"),
+            ),
             css_class="inlineLabels",
         )
     )
@@ -527,3 +530,44 @@ class user_detail_form(ModelForm):
                   "allowed_device_groups", "secondary_groups", "permissions",
                   "aliases",
                   "db_is_auth_for_password", "export", "password", "group"]
+
+class account_detail_form(ModelForm):
+    password = CharField(widget=PasswordInput)
+    helper = FormHelper()
+    helper.form_id = "form"
+    helper.layout = Layout(
+        HTML("<h2>Account info</h2>"),
+        Row(
+            Column(
+                Fieldset(
+                    "Basic data",
+                    Field("first_name"),
+                    Field("last_name"),
+                    Field("shell"),
+                    css_class="inlineLabels",
+                    ),
+                css_class="inlineLabels col first",
+            ),
+            Column(
+                Fieldset(
+                    "Additional data",
+                    Field("title"),
+                    Field("email"),
+                    Field("pager"),
+                    Field("tel"),
+                    Field("comment"),
+                    css_class="inlineLabels",
+                    ),
+                css_class="inlineLabels col last",
+            ),
+        ),
+        Field("password", css_class="passwordfields"),
+    )
+    def __init__(self, *args, **kwargs):
+        request = kwargs.pop("request")
+        super(account_detail_form, self).__init__(*args, **kwargs)
+    class Meta:
+        model = user
+        fields = ["shell", "first_name", "last_name",
+                  "title", "email", "pager", "tel", "comment",
+                  "password"]

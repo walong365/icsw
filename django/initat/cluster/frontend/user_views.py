@@ -44,7 +44,8 @@ from initat.cluster.backbone.models import partition_table, partition_disc, part
 from initat.core.render import render_me, render_string
 from initat.cluster.backbone.render import permission_required_mixin
 from initat.cluster.frontend.helper_functions import contact_server, xml_wrapper, update_session_object
-from initat.cluster.frontend.forms import dummy_password_form, group_detail_form, user_detail_form
+from initat.cluster.frontend.forms import dummy_password_form, group_detail_form, user_detail_form, \
+    account_detail_form
 
 logger = logging.getLogger("cluster.user")
 
@@ -586,3 +587,18 @@ class change_object_permission(View):
             else:
                 # print "not there"
                 pass
+
+class account_info(View):
+    @method_decorator(login_required)
+    @method_decorator(xml_wrapper)
+    def get(self, request):
+        cur_user = request.user
+        cur_form = account_detail_form(
+            instance=cur_user,
+            request=request,
+            auto_id="user__%d__%%s" % (cur_user.pk),
+        )
+        return render_me(request, "account_info.html", {
+            "form" : cur_form,
+            "user" : cur_user,
+            })()
