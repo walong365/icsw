@@ -73,10 +73,10 @@ case "$1" in
             rc_status -v ; 
         } || {
             if ${SERVER_BIN} -C ; then
-            check_threads || rc_failed 
-            rc_status -v
+                check_threads || rc_failed 
+                rc_status -v
             else
-            rc_status -s
+                rc_status -s
             fi
         } 
     ;;
