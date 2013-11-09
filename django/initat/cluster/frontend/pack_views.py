@@ -51,12 +51,11 @@ class search_package(View):
     def post(self, request):
         xml_resp = E.response(
             E.package_searchs(*[cur_r.get_xml() for cur_r in package_search.objects.filter(Q(deleted=False))]),
-            E.users(*[cur_u.get_xml(with_allowed_device_groups=False) for cur_u in user.objects.all()])
+            E.users(*[cur_u.get_xml(with_allowed_device_groups=False) for cur_u in user.objects.prefetch_related("group", "secondary_groups").all()])
         )
         request.xml_response["response"] = xml_resp
 
 class create_search(View):
-    @method_decorator(transaction.commit_manually)
     @method_decorator(login_required)
     @method_decorator(xml_wrapper)
     def post(self, request):
@@ -68,12 +67,13 @@ class create_search(View):
             search_string=in_dict["search_string"],
             user=request.user,
         )
-        try:
-            new_search.save()
-        except ValidationError, what:
-            request.xml_response.error("error creating: %s" % (unicode(what.messages[0])), logger)
-        else:
-            transaction.commit()
+        with transaction.atomic():
+            try:
+                new_search.save()
+            except ValidationError, what:
+                request.xml_response.error("error creating: %s" % (unicode(what.messages[0])), logger)
+                new_search = None
+        if new_search:
             srv_com = server_command.srv_command(command="reload_searches")
             _result = contact_server(request, "tcp://localhost:8007", srv_com, timeout=5, log_result=False)
             request.xml_response["new_entry"] = new_search.get_xml()
@@ -83,7 +83,6 @@ def reload_searches(request):
     return contact_server(request, "tcp://localhost:8007", srv_com, timeout=5, log_result=False)
 
 class retry_search(View):
-    @method_decorator(transaction.commit_manually)
     @method_decorator(login_required)
     @method_decorator(xml_wrapper)
     def post(self, request):
@@ -93,16 +92,15 @@ class retry_search(View):
             cur_search = package_search.objects.get(Q(pk=retry_pk))
         except package_search.DoesNotExist:
             request.xml_response.error("search does not exist", logger)
-            transaction.commit()
-        else:
+            cur_search = None
+        if cur_search is not None:
             if cur_search.current_state == "done":
-                cur_search.current_state = "wait"
-                cur_search.save(update_fields=["current_state"])
-                transaction.commit()
+                with transaction.atomic():
+                    cur_search.current_state = "wait"
+                    cur_search.save(update_fields=["current_state"])
                 reload_searches(request)
             else:
                 request.xml_response.warn("search is in wrong state '%s'" % (cur_search.current_state), logger)
-                transaction.commit()
 
 class delete_search(View):
     @method_decorator(login_required)

@@ -105,31 +105,30 @@ def strip_dict(in_dict):
     return in_dict.keys()[0].split("__")[1], dict([("__".join(key.split("__")[2:]), value) for key, value in in_dict.iteritems()])
 
 class set_boot(View):
-    @method_decorator(transaction.commit_manually)
     @method_decorator(login_required)
     @method_decorator(xml_wrapper)
     def post(self, request):
         _post = request.POST
         dev_id, _post = strip_dict(_post)
-        cur_dev = device.objects.get(Q(pk=dev_id))
-        boot_mac = _post["boot_dev_macaddr"]
-        boot_driver = _post["boot_dev_driver"]
-        dhcp_write = True if int(_post["write_dhcp"])  else False
-        dhcp_mac = True if int(_post["greedy_mode"]) else False
-        any_error = False
-        cur_dev.dhcp_mac = dhcp_mac
-        cur_dev.dhcp_write = dhcp_write
-        if cur_dev.bootnetdevice:
-            bnd = cur_dev.bootnetdevice
-            bnd.driver = boot_driver
-            bnd.macaddr = boot_mac
-            try:
-                bnd.save()
-            except ValidationError:
-                any_error = True
-                request.xml_response.error("cannot save boot settings", logger)
-        cur_dev.save()
-        transaction.commit()
+        with transaction.atomic():
+            cur_dev = device.objects.get(Q(pk=dev_id))
+            boot_mac = _post["boot_dev_macaddr"]
+            boot_driver = _post["boot_dev_driver"]
+            dhcp_write = True if int(_post["write_dhcp"])  else False
+            dhcp_mac = True if int(_post["greedy_mode"]) else False
+            any_error = False
+            cur_dev.dhcp_mac = dhcp_mac
+            cur_dev.dhcp_write = dhcp_write
+            if cur_dev.bootnetdevice:
+                bnd = cur_dev.bootnetdevice
+                bnd.driver = boot_driver
+                bnd.macaddr = boot_mac
+                try:
+                    bnd.save()
+                except ValidationError:
+                    any_error = True
+                    request.xml_response.error("cannot save boot settings", logger)
+            cur_dev.save()
         if not any_error:
             request.xml_response.info("updated bootdevice settings of %s" % (unicode(cur_dev)), logger)
         srv_com = server_command.srv_command(command="alter_macaddr")
@@ -163,22 +162,21 @@ class set_image(View):
         cur_dev.save()
 
 class set_kernel(View):
-    @method_decorator(transaction.commit_manually)
     @method_decorator(login_required)
     @method_decorator(xml_wrapper)
     def post(self, request):
         _post = request.POST
         dev_id, _post = strip_dict(_post)
-        cur_dev = device.objects.get(Q(pk=dev_id))
-        if int(_post["new_kernel"]) == 0:
-            cur_dev.new_kernel = None
-        else:
-            cur_dev.new_kernel = kernel.objects.get(Q(pk=_post["new_kernel"]))
-        cur_dev.stage1_flavour = _post["kernel_flavour"]
-        cur_dev.kernel_append = _post["kernel_append"]
-        cur_dev.save()
+        with transaction.atomic():
+            cur_dev = device.objects.get(Q(pk=dev_id))
+            if int(_post["new_kernel"]) == 0:
+                cur_dev.new_kernel = None
+            else:
+                cur_dev.new_kernel = kernel.objects.get(Q(pk=_post["new_kernel"]))
+            cur_dev.stage1_flavour = _post["kernel_flavour"]
+            cur_dev.kernel_append = _post["kernel_append"]
+            cur_dev.save()
         # very important
-        transaction.commit()
         srv_com = server_command.srv_command(command="refresh")
         srv_com["devices"] = srv_com.builder(
             "devices",
@@ -187,25 +185,23 @@ class set_kernel(View):
         request.xml_response.info("updated kernel settings of %s" % (unicode(cur_dev)), logger)
 
 class set_target_state(View):
-    @method_decorator(transaction.commit_manually)
     @method_decorator(login_required)
     @method_decorator(xml_wrapper)
     def post(self, request):
         _post = request.POST
-        cur_dev = device.objects.get(Q(pk=_post["dev_id"].split("__")[1]))
-        t_state, t_prod_net = [int(value) for value in _post["new_state"].split("__")]
-        if t_state == 0:
-            cur_dev.new_state = None
-            cur_dev.prod_link = None
-        else:
-            cur_dev.new_state = status.objects.get(Q(pk=t_state))
-            if t_prod_net:
-                cur_dev.prod_link = network.objects.get(Q(pk=t_prod_net))
-            else:
+        with transaction.atomic():
+            cur_dev = device.objects.get(Q(pk=_post["dev_id"].split("__")[1]))
+            t_state, t_prod_net = [int(value) for value in _post["new_state"].split("__")]
+            if t_state == 0:
+                cur_dev.new_state = None
                 cur_dev.prod_link = None
-        cur_dev.save()
-        # very important
-        transaction.commit()
+            else:
+                cur_dev.new_state = status.objects.get(Q(pk=t_state))
+                if t_prod_net:
+                    cur_dev.prod_link = network.objects.get(Q(pk=t_prod_net))
+                else:
+                    cur_dev.prod_link = None
+            cur_dev.save()
         srv_com = server_command.srv_command(command="refresh")
         srv_com["devices"] = srv_com.builder(
             "devices",
