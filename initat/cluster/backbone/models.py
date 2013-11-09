@@ -1302,7 +1302,7 @@ class package_search(models.Model):
         ("wait", "waiting"),
         ("run" , "search running"),
         ("done", "search done")), default="ini")
-    deleted = models.BooleanField()
+    deleted = models.BooleanField(default=False)
     # number of results for the last search
     results = models.IntegerField(default=0)
     last_search = models.DateTimeField(null=True)
