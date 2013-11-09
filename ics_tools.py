@@ -40,7 +40,8 @@ def check_threads(pid_file, options): # overview_mode, full_status):
             if os.path.exists(ms_filename):
                 ms_block = process_tools.meta_server_info(ms_filename)
                 ms_block.check_block()
-                num_miss = sum(ms_block.bound_dict.values())
+                bound_dict = ms_block.bound_dict
+                num_miss = sum([abs(val) for val in bound_dict.values()])
                 pids = ms_block.pids_found
                 pid_time = os.stat(ms_filename)[stat.ST_CTIME]
                 num_started = len(pids)
@@ -49,7 +50,6 @@ def check_threads(pid_file, options): # overview_mode, full_status):
                 else:
                     num_found = num_started
             else:
-                print pid_base_name
                 pid_time = os.stat(pid_file)[stat.ST_CTIME]
                 pids = [int(pid_int) for pid_int in [pid_part.strip() for pid_part in file(pid_file, "r").read().split()] if pid_int and pid_int.isdigit()]
                 unique_pids, pids_found = (
@@ -69,20 +69,21 @@ def check_threads(pid_file, options): # overview_mode, full_status):
                             pids_found[pid] = int(stat_dict["threads"])
                         else:
                             pids_found[pid] = 1
+                bound_dict = {}
+                for key in set(unique_pids):
+                    bound_dict[key] = unique_pids[key] - pids_found[key]
                 num_started = unique_pids and reduce(lambda x, y : x + y, unique_pids.values()) or 0
                 num_found = pids_found and reduce(lambda x, y : x + y, pids_found.values()) or 0
                 num_miss = num_started - num_found
-            if num_miss > 0:
+            if num_miss:
                 if not options.overview_mode:
-                    ret_str = "%s %s missing (from %s)" % (
-                        logging_tools.get_plural("thread", num_miss),
-                        num_miss == 1 and "is" or "are",
-                        ",".join(["pid %d" % (p) for p in unique_pids.keys() if unique_pids[p] != pids_found[p]]))
-            elif num_miss < 0:
-                if not options.overview_mode:
-                    ret_str = "%s too much (from %s)" % (
-                        logging_tools.get_plural("thread", -num_miss),
-                        ",".join(["pid %d" % (p) for p in unique_pids.keys() if unique_pids[p] != pids_found[p]]))
+                    ret_str = ", ".join(["%d: %s" % (
+                        cur_pid,
+                        "%d %s" % (
+                            abs(bound_dict[cur_pid]),
+                            "missing" if bound_dict[cur_pid] < 0 else "too many",
+                        ) if bound_dict[cur_pid] else "OK",
+                        ) for cur_pid in sorted(bound_dict.iterkeys())]) or "no PIDs"
             else:
                 if options.overview_mode:
                     if num_started == 1:
