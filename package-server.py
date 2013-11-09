@@ -647,7 +647,11 @@ class server_process(threading_tools.process_pool):
             self.__msi_block.save_block()
     def loop_end(self):
         for c_name in client.name_set:
-            client.get(c_name).close()
+            cur_c = client.get(c_name)
+            if cur_c is None:
+                self.log("no client found for '%s'" % (c_name), logging_tools.LOG_LEVEL_ERROR)
+            else:
+                cur_c.close()
         process_tools.delete_pid(self.__pid_name)
         if self.__msi_block:
             self.__msi_block.remove_meta_block()
