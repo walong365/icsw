@@ -28,7 +28,7 @@ fi
 . /etc/init.d/ics_tools.sh
 
 SERVER_BIN=/opt/cluster/sbin/rms-server.py
-SERVER_PID=/var/run/sge-server/rms-server.pid
+SERVER_PID=/var/run/rms-server/rms-server.pid
 PYTHON_BIN=/usr/bin/python-init
 SERVER_DIRS="/var/run/rms-server"
 SERVER_ARGS=""

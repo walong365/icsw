@@ -68,7 +68,11 @@ def main():
             else:
                 sys.stderr.write(" %s is no sge-server, exiting..." % (long_host_name))
                 sys.exit(5)
+        else:
+            # config is sge_server
+            global_config.add_config_entries([("DUMMY_RUN", configfile.bool_c_var(False))])
     else:
+        # config is rms_server
         global_config.add_config_entries([("DUMMY_RUN", configfile.bool_c_var(False))])
     if global_config["CHECK"]:
         sys.exit(0)
