@@ -54,6 +54,13 @@
 
 #include "parse_uuid.c"
 
+static volatile loop = 1;
+
+void sig_handler(int sig)
+{
+    loop = 0;
+};
+
 err_exit(char *str)
 {
     char *errstr;
@@ -95,6 +102,7 @@ int main(int argc, char **argv)
 
     int verbose = 0;
     int daemon = 1;
+    signal(SIGTERM, sig_handler);
     src_ip = (char *)malloc(HOSTB_SIZE);
     src_ip[0] = 0;
     while (1) {
@@ -183,7 +191,6 @@ int main(int argc, char **argv)
     char *outbuff = malloc(SENDBUFF_SIZE + 1);
     char *sendbuff = malloc(SENDBUFF_SIZE + 1);
     char *answ_file_name;
-    int loop = 1;
     while (loop) {
         int msg_part = 0;
         while (1) {
@@ -210,91 +217,94 @@ int main(int argc, char **argv)
                 break;          //  Last message part
             };
         }
-        // get uptime
-        sysinfo(&s_info);
-        int cur_uptime = s_info.uptime;
-        syslog(LOG_DAEMON | LOG_INFO, "got '%s' (%d) from '%s'", msg_text,
-	       strlen(msg_text),
-               client_uuid);
-        // handle command
-        if (!strncmp(msg_text, "status", 6) && strlen(msg_text) == 6) {
-            //printf ("%d ,  %s %d\n", num, inbuff, sizeof(inbuff));
-            // recreate FNAME according to current runlevel, not beautifull but working
-            if (!stat(FNAME_BOOT, &my_stat)) {
-                answ_file_name = FNAME_BOOT;
-                file = open(FNAME_BOOT, 0);
-            } else {
-                system
-                    ("echo 'up to runlevel' $(/sbin/runlevel | cut -d ' ' -f 2) >"
-                     FNAME);
-                answ_file_name = FNAME;
-                file = open(FNAME, 0);
-            };
-            if (file < 0) {
-                fprintf(stderr, "File not found");
-                sprintf(outbuff, "error: statfile not found");
-            } else {
-                fread = read(file, filebuff, (size_t) 255);
-                filebuff[fread] = 0;
-                //printf ("%d from %d (%d): %s\n", fread, file, strlen(filebuff), filebuff);
-                for (cp = filebuff; *cp; cp++) {
-                    if (*cp == '\n')
-                        *cp = 0;
+        // loop can be zero in case of a catched SIGTERM
+        if (loop) {
+            // get uptime
+            sysinfo(&s_info);
+            int cur_uptime = s_info.uptime;
+            syslog(LOG_DAEMON | LOG_INFO, "got '%s' (%d) from '%s'", msg_text,
+                   strlen(msg_text), client_uuid);
+            // handle command
+            if (!strncmp(msg_text, "status", 6) && strlen(msg_text) == 6) {
+                //printf ("%d ,  %s %d\n", num, inbuff, sizeof(inbuff));
+                // recreate FNAME according to current runlevel, not beautifull but working
+                if (!stat(FNAME_BOOT, &my_stat)) {
+                    answ_file_name = FNAME_BOOT;
+                    file = open(FNAME_BOOT, 0);
+                } else {
+                    system
+                        ("echo 'up to runlevel' $(/sbin/runlevel | cut -d ' ' -f 2) >"
+                         FNAME);
+                    answ_file_name = FNAME;
+                    file = open(FNAME, 0);
+                };
+                if (file < 0) {
+                    fprintf(stderr, "File not found");
+                    sprintf(outbuff, "error: statfile not found");
+                } else {
+                    fread = read(file, filebuff, (size_t) 255);
+                    filebuff[fread] = 0;
+                    //printf ("%d from %d (%d): %s\n", fread, file, strlen(filebuff), filebuff);
+                    for (cp = filebuff; *cp; cp++) {
+                        if (*cp == '\n')
+                            *cp = 0;
+                    }
+                    //printf("%d\n", strlen(filebuff));
+                    close(file);
+                    sprintf(outbuff, "%s", filebuff);
                 }
-                //printf("%d\n", strlen(filebuff));
-                close(file);
-                sprintf(outbuff, "%s", filebuff);
+                syslog(LOG_DAEMON | LOG_INFO,
+                       "got status-request, answering '%s' from %s", outbuff,
+                       answ_file_name);
+            } else if (!strncmp(msg_text, "get_0mq_id", 10)
+                       && strlen(msg_text) == 10) {
+                sprintf(outbuff, identity_str);
+                syslog(LOG_DAEMON | LOG_INFO, "got get_0mq_id, answering %s",
+                       outbuff);
+            } else if (!strncmp(msg_text, "reboot", 6) && strlen(msg_text) == 6) {
+                sprintf(outbuff, "rebooting");
+                postcom = 1;
+                loop = 0;
+                syslog(LOG_DAEMON | LOG_INFO,
+                       "got reboot-request, answering %s", outbuff);
+            } else if (!strncmp(msg_text, "halt", 4) && strlen(msg_text) == 4) {
+                sprintf(outbuff, "halting");
+                postcom = 2;
+                loop = 0;
+                syslog(LOG_DAEMON | LOG_INFO, "got halt-request, answering %s",
+                       outbuff);
+            } else if (!strncmp(msg_text, "poweroff", 8)
+                       && strlen(msg_text) == 8) {
+                sprintf(outbuff, "poweroff");
+                postcom = 3;
+                loop = 0;
+                syslog(LOG_DAEMON | LOG_INFO,
+                       "got poweroff-request, answering %s", outbuff);
+            } else if (!strncmp(msg_text, "exit", 4) && strlen(msg_text) == 4) {
+                sprintf(outbuff, "exiting");
+                loop = 0;
+                syslog(LOG_DAEMON | LOG_INFO, "got exit-request, answering %s",
+                       outbuff);
+            } else {
+                sprintf(outbuff, "unknown command %s", msg_text);
+                syslog(LOG_DAEMON | LOG_INFO, "unknown command, answering %s",
+                       outbuff);
             }
-            syslog(LOG_DAEMON | LOG_INFO,
-                   "got status-request, answering '%s' from %s", outbuff,
-                   answ_file_name);
-        } else if (!strncmp(msg_text, "get_0mq_id", 10)
-                   && strlen(msg_text) == 10) {
-            sprintf(outbuff, identity_str);
-            syslog(LOG_DAEMON | LOG_INFO, "got get_0mq_id, answering %s",
-                   outbuff);
-        } else if (!strncmp(msg_text, "reboot", 6) && strlen(msg_text) == 6) {
-            sprintf(outbuff, "rebooting");
-            postcom = 1;
-            loop = 0;
-            syslog(LOG_DAEMON | LOG_INFO, "got reboot-request, answering %s",
-                   outbuff);
-        } else if (!strncmp(msg_text, "halt", 4) && strlen(msg_text) == 4) {
-            sprintf(outbuff, "halting");
-            postcom = 2;
-            loop = 0;
-            syslog(LOG_DAEMON | LOG_INFO, "got halt-request, answering %s",
-                   outbuff);
-        } else if (!strncmp(msg_text, "poweroff", 8) && strlen(msg_text) == 8) {
-            sprintf(outbuff, "poweroff");
-            postcom = 3;
-            loop = 0;
-            syslog(LOG_DAEMON | LOG_INFO, "got poweroff-request, answering %s",
-                   outbuff);
-        } else if (!strncmp(msg_text, "exit", 4) && strlen(msg_text) == 4) {
-            sprintf(outbuff, "exiting");
-            loop = 0;
-            syslog(LOG_DAEMON | LOG_INFO, "got exit-request, answering %s",
-                   outbuff);
-        } else {
-            sprintf(outbuff, "unknown command %s", msg_text);
-            syslog(LOG_DAEMON | LOG_INFO, "unknown command, answering %s",
-                   outbuff);
+            syslog(LOG_DAEMON | LOG_INFO, "uuid / buffer : %d / %d",
+                   strlen(client_uuid), strlen(outbuff));
+            sprintf(sendbuff,
+                    "<?xml version='1.0'?><ics_batch><nodestatus>%s</nodestatus><uptime>%d</uptime></ics_batch>",
+                    outbuff, cur_uptime);
+            sendbuff[SENDBUFF_SIZE] = '\0';
+            zmq_msg_t reply;
+            zmq_msg_init_size(&reply, strlen(client_uuid));
+            memcpy(zmq_msg_data(&reply), client_uuid, strlen(client_uuid));
+            zmq_sendmsg(responder, &reply, ZMQ_SNDMORE);
+            zmq_msg_init_size(&reply, strlen(sendbuff));
+            memcpy(zmq_msg_data(&reply), sendbuff, strlen(sendbuff));
+            zmq_sendmsg(responder, &reply, 0);
+            zmq_msg_close(&reply);
         }
-        syslog(LOG_DAEMON | LOG_INFO, "uuid / buffer : %d / %d",
-               strlen(client_uuid), strlen(outbuff));
-        sprintf(sendbuff,
-                "<?xml version='1.0'?><ics_batch><nodestatus>%s</nodestatus><uptime>%d</uptime></ics_batch>",
-                outbuff, cur_uptime);
-        sendbuff[SENDBUFF_SIZE] = '\0';
-        zmq_msg_t reply;
-        zmq_msg_init_size(&reply, strlen(client_uuid));
-        memcpy(zmq_msg_data(&reply), client_uuid, strlen(client_uuid));
-        zmq_sendmsg(responder, &reply, ZMQ_SNDMORE);
-        zmq_msg_init_size(&reply, strlen(sendbuff));
-        memcpy(zmq_msg_data(&reply), sendbuff, strlen(sendbuff));
-        zmq_sendmsg(responder, &reply, 0);
-        zmq_msg_close(&reply);
     }
     zmq_close(responder);
     zmq_term(context);
