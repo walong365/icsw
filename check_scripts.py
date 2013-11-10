@@ -401,7 +401,7 @@ def show_xml(opt_ns, res_xml):
             else:
                 # no pids hence no memory info
                 mem_str = "no pids"
-            cur_line.append(logging_tools.form_entry(mem_str, header="Memory"))
+            cur_line.append(logging_tools.form_entry_right(mem_str, header="Memory"))
         cur_state = int(act_struct.find("state_info").get("state", "1"))
         cur_line.append(logging_tools.form_entry(rc_strs[cur_state], header="status"))
         if not opt_ns.failed or (opt_ns.failed and cur_state in [1, 7]):
