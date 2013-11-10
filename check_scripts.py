@@ -91,7 +91,7 @@ INSTANCE_XML = """
             <config_name>rrd_server</config_name>
         </config_names>
     </instance>
-    <instance name="memcached" check_type="threads_by_pid_file" pid_file_name="memcached/memcached.pid" any_threads_ok="1" runs_on="system">
+    <instance name="memcached" check_type="simple" pid_file_name="memcached/memcached.pid" any_threads_ok="1" runs_on="system">
         <config_names>
             <config_name>server</config_name>
         </config_names>
@@ -402,8 +402,10 @@ def show_xml(opt_ns, res_xml):
                 # no pids hence no memory info
                 mem_str = "no pids"
             cur_line.append(logging_tools.form_entry(mem_str, header="Memory"))
-        cur_line.append(logging_tools.form_entry(rc_strs[int(act_struct.find("state_info").get("state", "1"))], header="status"))
-        out_bl.append(cur_line)
+        cur_state = int(act_struct.find("state_info").get("state", "1"))
+        cur_line.append(logging_tools.form_entry(rc_strs[cur_state], header="status"))
+        if not opt_ns.failed or (opt_ns.failed and cur_state in [1, 7]):
+            out_bl.append(cur_line)
     print str(out_bl)
 
 def do_action_xml(opt_ns, res_xml, mode):
@@ -432,10 +434,6 @@ def do_action_xml(opt_ns, res_xml, mode):
                     cur_name,
                     )
 
-def start_xml(opt_ns, res_xml):
-    pass
-
-
 def main():
     my_parser = argparse.ArgumentParser()
     my_parser.add_argument("-t", dest="thread", action="store_true", default=False, help="thread overview (%(default)s)")
@@ -452,6 +450,7 @@ def main():
     my_parser.add_argument("--system", type=str, nargs="+", default=[], help="system entity names (%(default)s)")
     my_parser.add_argument("--mode", type=str, default="show", choices=["show", "stop", "start", "restart"], help="operation mode [%(default)s]")
     my_parser.add_argument("--force", default=False, action="store_true", help="call force-stop if available [%(default)s]")
+    my_parser.add_argument("--failed", default=False, action="store_true", help="show only instances in failed state [%(default)s]")
     opt_ns = my_parser.parse_args()
     if opt_ns.all:
         opt_ns.thread = True
