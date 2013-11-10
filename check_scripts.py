@@ -106,7 +106,7 @@ INSTANCE_XML = """
             <config_name>rrd_server</config_name>
         </config_names>
     </instance>
-    <instance name="rms-server" pid_file_name="rms-server/rms-server.pid" has_force_stop="1">
+    <instance name="rms-server" pid_file_name="rms-server/rms-server.pid" has_force_stop="1" meta_server_name="rms_server">
         <config_names>
             <config_name>sge_server</config_name>
             <config_name>rms_server</config_name>
@@ -122,7 +122,7 @@ INSTANCE_XML = """
             <config_name>config_server</config_name>
         </config_names>
     </instance>
-    <instance name="host-relay" pid_file_name="collrelay/collrelay.pid" has_force_stop="1">
+    <instance name="host-relay" pid_file_name="collrelay/collrelay.pid" has_force_stop="1" meta_server_name="collrelay">
         <config_names>
             <config_name>monitor_server</config_name>
             <config_name>monitor_master</config_name>
