@@ -469,11 +469,15 @@ def user_pre_save(sender, **kwargs):
 def user_post_save(sender, **kwargs):
     if not kwargs["raw"] and "instance" in kwargs:
         cur_inst = kwargs["instance"]
-        pw_gen_1 = "SHA1"
-        if cur_inst.password.startswith(pw_gen_1):
+        cur_pw = cur_inst.password
+        if cur_pw.count(":"):
+            cur_method, passwd = cur_pw.split(":", 1)
+        else:
+            cur_method, passwd = ("", cur_pw)
+        if cur_method in ["SHA1", "CRYPT"]:
             pass
         else:
-            passwd = cur_inst.password
+            pw_gen_1 = "SHA1"
             new_sh = hashlib.new(pw_gen_1)
             new_sh.update(passwd)
             cur_pw = "%s:%s" % (pw_gen_1, base64.b64encode(new_sh.digest()))

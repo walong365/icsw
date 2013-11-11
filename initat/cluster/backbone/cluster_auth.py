@@ -1,11 +1,11 @@
 #!/usr/bin/python-init
 
 import base64
-import logging
+import crypt
 import hashlib
+import logging
 
 from django.db.models import Q
-
 from initat.cluster.backbone.models import user
 
 logger = logging.getLogger("cluster.auth")
@@ -20,17 +20,26 @@ class db_backend(object):
         else:
             # check password
             cur_pw = cur_user.password
-            if cur_pw.startswith("SHA1:"):
-                new_h = hashlib.new(cur_pw.split(":")[0])
+            if cur_pw.count(":"):
+                pw_hash, db_password = cur_pw.split(":", 1)
+            else:
+                pw_hash, db_password = ("", cur_pw)
+            if pw_hash in ["SHA1"]:
+                new_h = hashlib.new(pw_hash)
                 new_h.update(password)
-                if base64.b64encode(new_h.digest()) == cur_pw.split(":")[1]:
+                if base64.b64encode(new_h.digest()) == db_password:
                     # match
+                    return cur_user
+                else:
+                    logger.warn("password mismatch for %s" % (username))
+            elif pw_hash in ["CRYPT"]:
+                if crypt.crypt(password, db_password) == db_password:
                     return cur_user
                 else:
                     logger.warn("password mismatch for %s" % (username))
             else:
                 logger.error("unknown password hash '%s' for %s" % (
-                    cur_pw,
+                    pw_hash,
                     username))
                 return None
     def get_user(self, user_id):
@@ -38,4 +47,4 @@ class db_backend(object):
             return user.objects.get(Q(pk=user_id))
         except user.DoesNotExist:
             return None
-        
+

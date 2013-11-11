@@ -423,8 +423,8 @@ class device(models.Model):
     fixed_partdev = models.IntegerField(null=True, blank=True)
     bz2_capable = models.IntegerField(null=True, blank=True)
     new_state = models.ForeignKey("status", null=True, db_column="newstate_id")
-    rsync = models.BooleanField()
-    rsync_compressed = models.BooleanField()
+    rsync = models.BooleanField(default=False)
+    rsync_compressed = models.BooleanField(default=False)
     prod_link = models.ForeignKey("network", db_column="prod_link", null=True)
     # states (with timestamp)
     recvstate = models.TextField(blank=True, default="not set")
@@ -454,7 +454,7 @@ class device(models.Model):
     # performance data tracking
     enable_perfdata = models.BooleanField(default=False)
     flap_detection_enabled = models.BooleanField(default=False)
-    show_in_bootcontrol = models.BooleanField()
+    show_in_bootcontrol = models.BooleanField(True)
     # not so clever here, better in extra table, FIXME
     # cpu_info = models.TextField(blank=True, null=True)
     # machine uuid, cannot be unique due to MySQL problems with unique TextFields
@@ -812,7 +812,7 @@ class device_group(models.Model):
     # device = models.IntegerField(null=True, blank=True)
     device = models.ForeignKey("device", db_column="device", null=True, blank=True, related_name="group_device")
     # flag
-    cluster_device_group = models.BooleanField()
+    cluster_device_group = models.BooleanField(default=False)
     enabled = models.BooleanField(default=True)
     date = models.DateTimeField(auto_now_add=True)
     def _add_meta_device(self):
