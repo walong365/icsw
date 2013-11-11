@@ -840,6 +840,7 @@ class main_config(object):
                     ("gid"             , www_group),
                     ("cgi"             , self.__r_dir_dict["sbin"]),
                     ("no-default-app"  , "true"),
+                    ("cgi-timeout"     , 3600),
                     ("pidfile"         , os.path.join(self.__r_dir_dict["var"], "wsgi.pid")),
                     ("daemonize"       , os.path.join(self.__r_dir_dict["var"], "wsgi.log")),
                     ("chown-socket"    , www_user),
