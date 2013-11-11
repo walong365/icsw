@@ -3,7 +3,7 @@
 # Copyright (C) 2013 Andreas Lang-Nevyjel
 #
 # Send feedback to: <lang-nevyjel@init.at>
-# 
+#
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License Version 2 as
 # published by the Free Software Foundation.
@@ -26,7 +26,7 @@ os.environ.setdefault("DJANGO_SETTINGS_MODULE", "initat.cluster.settings")
 
 import pprint
 import logging_tools
-from lxml import etree
+from lxml import etree # @UnresolvedImport
 from django.conf import settings
 from django.db.models import Q
 from initat.cluster.backbone.models import domain_tree_node, network, net_ip, domain_name_tree, device
@@ -82,7 +82,7 @@ class tree_node(object):
         [value.create_db_entries(top_node=self) for value in self.sub_nodes.itervalues()]
     def __unicode__(self):
         return "%s (PF '%s', %d)" % (self.name or "TOP NODE", self.postfix, self.depth)
-            
+
 def main():
     cur_dns = domain_tree_node.objects.all()
     if len(cur_dns):
@@ -99,15 +99,15 @@ def main():
     # check for intermediate nodes
     for key in cur_dnt.keys():
         cur_node = cur_dnt[key]
-##        # only used once
-##        if False:
-##            cur_nets = network.objects.filter(Q(name=cur_node.full_name))
-##            if len(cur_nets):
-##                cur_net = cur_nets[0]
-##                cur_node.create_short_names = cur_net.short_names
-##                cur_node.write_nameserver_config = cur_net.write_bind_config
-##                cur_node.always_create_ip = cur_net.write_other_network_config
-##                cur_node.save()
+# #        # only used once
+# #        if False:
+# #            cur_nets = network.objects.filter(Q(name=cur_node.full_name))
+# #            if len(cur_nets):
+# #                cur_net = cur_nets[0]
+# #                cur_node.create_short_names = cur_net.short_names
+# #                cur_node.write_nameserver_config = cur_net.write_bind_config
+# #                cur_node.always_create_ip = cur_net.write_other_network_config
+# #                cur_node.save()
         if cur_node == cur_dnt._root_node:
             im_state = False
         else:
@@ -115,7 +115,7 @@ def main():
         if cur_node.intermediate != im_state:
             cur_node.intermediate = im_state
             cur_node.save()
-                 #pprint.pprint(net_dict)
+                 # pprint.pprint(net_dict)
     # read network dict
     net_dict = {}
     for nw_obj in network.objects.all():
@@ -157,6 +157,6 @@ def main():
             cur_dev.save()
     print "Tree structure:"
     print etree.tostring(cur_dnt.get_xml(), pretty_print=True)
-    
+
 if __name__ == "__main__":
     main()
