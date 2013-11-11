@@ -174,6 +174,7 @@ class build_client(object):
         node_dir, node_link = (
             os.path.join(base_dir, self.__source_host),
             os.path.join(base_dir, self.name))
+        self.log("node_dir is %s, node_link is %s" % (node_dir, node_link))
         self.set_kwargs(node_dir=node_dir)
         self.node_dir = node_dir
         success = True
