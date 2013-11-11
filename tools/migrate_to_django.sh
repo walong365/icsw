@@ -61,12 +61,17 @@ else
     cp -a ${C_DIR}/backbone/fixtures/initial_data.xml ${C_DIR}/backbone/fixtures/initial_data_new.xml
     cp -a ${C_DIR}/backbone/fixtures/initial_data_old_csw.xml ${C_DIR}/backbone/fixtures/initial_data.xml
     export NO_AUTO_ADD_APPLICATIONS=1
+    export INITIAL_MIGRATION_RUN=1
     ${C_DIR}/manage.py syncdb --noinput
+    unset INITIAL_MIGRATION_RUN
     unset NO_AUTO_ADD_APPLICATIONS
     
     echo "create initial south information"
     
+    ${C_DIR}/manage.py schemamigration django.contrib.auth --initial
     ${C_DIR}/manage.py schemamigration backbone --initial
+    ${C_DIR}/manage.py schemamigration reversion --initial
+    ${C_DIR}/manage.py migrate auth
     ${C_DIR}/manage.py migrate backbone --no-initial-data
     ${C_DIR}/manage.py migrate reversion
 
