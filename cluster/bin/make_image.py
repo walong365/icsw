@@ -486,7 +486,7 @@ def main():
         ("LOG_NAME"            , configfile.str_c_var(prog_name)),
         ("BUILDERS"            , configfile.int_c_var(4, help_string="numbers of builders [%(default)i]", type=int)),
         ("OVERRIDE"            , configfile.bool_c_var(False, help_string="override build lock [%(default)s]", action="store_true")),
-        ("BUILD_IMAGE"         , configfile.bool_c_var(False, help_string="build (compress) image [%(default)s]", action="store_true")),
+        ("BUILD_IMAGE"         , configfile.bool_c_var(False, help_string="build (compress) image [%(default)s]", action="store_true", only_commandline=True)),
         ("CHECK_SIZE"          , configfile.bool_c_var(True, help_string="image size check [%(default)s]", action="store_false")),
             ])
     if all_imgs:
