@@ -454,7 +454,7 @@ class device(models.Model):
     # performance data tracking
     enable_perfdata = models.BooleanField(default=False)
     flap_detection_enabled = models.BooleanField(default=False)
-    show_in_bootcontrol = models.BooleanField(True)
+    show_in_bootcontrol = models.BooleanField(default=True)
     # not so clever here, better in extra table, FIXME
     # cpu_info = models.TextField(blank=True, null=True)
     # machine uuid, cannot be unique due to MySQL problems with unique TextFields
@@ -1471,13 +1471,27 @@ class package_device_connection(models.Model):
                     else:
                         if len(install_summary.xpath(".//to-install")):
                             self.installed = "y"
+                        elif len(install_summary.xpath(".//to-reinstall")):
+                            self.installed = "y"
                         elif len(install_summary.xpath(".//to-remove")):
                             self.installed = "n"
                         else:
                             self.installed = "u"
                 else:
-                    self.installed = "u"
-                    print "*** interpret_response (package) ***", etree.tostring(xml, pretty_print=True)
+                    stdout_el = xml.xpath(".//stdout")
+                    if len(stdout_el):
+                        line = stdout_el[0].text.strip()
+                        if line.startswith("package") and line.endswith("installed"):
+                            if line.count("not installed"):
+                                self.installed = "n"
+                            else:
+                                self.installed = "y"
+                        else:
+                            # unsure
+                            self.installed = "u"
+                    else:
+                        self.installed = "u"
+                        print "*** interpret_response (package) ***", etree.tostring(xml, pretty_print=True)
         elif self.response_type == "yum_flat":
             lines = etree.fromstring(self.response_str).findtext("stdout").strip().split("\n")
             if len(lines) == 1:
