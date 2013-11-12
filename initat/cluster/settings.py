@@ -332,6 +332,8 @@ AUTO_CREATE_NEW_DOMAINS = True
 
 LOCAL_CONFIG = "/etc/sysconfig/cluster/local_settings.py"
 
+PASSWORD_HASH_FUNCTION = "SHA1"
+
 if os.path.isfile(LOCAL_CONFIG):
     local_dir = os.path.dirname(LOCAL_CONFIG)
     sys.path.append(local_dir)

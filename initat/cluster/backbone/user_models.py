@@ -1,18 +1,10 @@
 #!/usr/bin/python-init
 
-import datetime
-import uuid
-import re
-import time
+import crypt
 import inspect
-import ipvx_tools
-import logging_tools
-import pytz
 import hashlib
 import base64
-import logging
 import os
-from lxml import etree # @UnresolvedImport
 from lxml.builder import E # @UnresolvedImport
 from rest_framework import serializers
 
@@ -21,7 +13,6 @@ from django.core.exceptions import ValidationError, ImproperlyConfigured
 from django.db import models
 from django.db.models import Q, signals, get_model
 from django.dispatch import receiver
-from django.utils.functional import memoize
 from django.contrib.contenttypes.models import ContentType
 
 from initat.cluster.backbone.model_functions import _check_empty_string, _check_float, _check_integer, _check_non_empty_string
@@ -477,16 +468,22 @@ def user_post_save(sender, **kwargs):
         if cur_method in ["SHA1", "CRYPT"]:
             pass
         else:
-            pw_gen_1 = "SHA1"
-            new_sh = hashlib.new(pw_gen_1)
-            new_sh.update(passwd)
-            cur_pw = "%s:%s" % (pw_gen_1, base64.b64encode(new_sh.digest()))
-            cur_inst.password = cur_pw
-            # ssha1
             salt = os.urandom(4)
-            new_sh.update(salt)
-            # print base64.b64encode(new_sh.digest() +  salt)
-            cur_inst.password_ssha = "%s:%s" % ("SSHA", base64.b64encode(new_sh.digest() + salt))
+            pw_gen_1 = settings.PASSWORD_HASH_FUNCTION
+            if pw_gen_1 == "CRYPT":
+                cur_pw = "%s:%s" % (pw_gen_1, crypt.crypt(passwd, salt))
+                cur_inst.password = cur_pw
+                cur_inst.password_ssha = ""
+                cur_inst.save()
+            else:
+                new_sh = hashlib.new(pw_gen_1)
+                new_sh.update(passwd)
+                cur_pw = "%s:%s" % (pw_gen_1, base64.b64encode(new_sh.digest()))
+                cur_inst.password = cur_pw
+                # ssha1
+                new_sh.update(salt)
+                # print base64.b64encode(new_sh.digest() +  salt)
+                cur_inst.password_ssha = "%s:%s" % ("SSHA", base64.b64encode(new_sh.digest() + salt))
             cur_inst.save()
 
 # @receiver(signals.post_delete, sender=user)
