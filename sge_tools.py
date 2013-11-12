@@ -1073,7 +1073,7 @@ def build_node_list(s_info, options):
                             s_key) for
                         s_key in ["MASTER", "SLAVE"] if s_key in type_dict[key]]) + ".").replace("MASTER.", "SINGLE.")[:-1],
                     "]" if "s" in cur_dict[key].findtext("state").lower() else "",
-                ) for key in sorted(type_dict.keys()) if key in cur_dict])
+                ) for key in sorted(type_dict.keys()) if cur_dict.get(key, None) != None])
                 if qstat_info.strip():
                     job_list.append("%s::%s" % (q_name, qstat_info))
             cur_node.append(E.jobs("/".join(job_list)))

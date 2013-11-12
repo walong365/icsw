@@ -21,13 +21,12 @@
 #
 """ frontend for SGE qstat """
 
-import logging_tools
-import sys
 import argparse
+import logging_tools
 import os
-import time
 import sge_tools
-# from NH
+import sys
+import time
 import urwid
 
 def check_environment():
@@ -80,7 +79,7 @@ def sns(s_info, opt_dict):
     ret_list = [time.ctime()]
     s_info.build_luts()
     node_list = sge_tools.build_node_list(s_info, opt_dict)
-    left_justified = set(["queue", "queues", "node", "seqno", "state", "type", "complex", "pe_list", "userlists", "projects", "jobs"])
+    left_justified = set(["host", "queue", "queues", "node", "seqno", "state", "type", "complex", "pe_list", "userlists", "projects", "jobs"])
     short_dict = {"slots_used"     : "su",
                   "slots_reserved" : "sr",
                   "slots_total"    : "st"}
