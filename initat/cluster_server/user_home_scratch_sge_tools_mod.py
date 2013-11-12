@@ -27,6 +27,7 @@ import shutil
 import server_command
 import sys
 import tempfile
+
 from django.db.models import Q
 from initat.cluster.backbone.models import user, group, config, device_config, config_str
 from initat.cluster_server.config import global_config
@@ -91,17 +92,21 @@ class create_user_home(cs_base_class.server_com):
                         pass
                 if os.path.isdir(home_start):
                     full_home = os.path.normpath("%s/%s" % (home_start, cur_user.home or cur_user.login))
-                    hdir_ok = 1
+                    create_hdir, hdir_exists = (True, False)
                     if os.path.exists(full_home):
-                        hdir_ok, hdir_err_str = (0, "path %s already exists" % (full_home))
+                        create_hdir, hdir_exists, hdir_err_str = (
+                            False,
+                            True,
+                            "path %s already exists" % (full_home))
                     else:
                         if skel_dir:
                             try:
                                 shutil.copytree(skel_dir, full_home, 1)
                             except:
                                 exc_info = sys.exc_info()
-                                hdir_ok, hdir_err_str = (
-                                    0,
+                                create_hdir, hdir_exists, hdir_err_str = (
+                                    False,
+                                    False,
                                     "cannot create home-directory %s from skeleton '%s': %s" % (
                                         full_home,
                                         skel_dir,
@@ -115,8 +120,9 @@ class create_user_home(cs_base_class.server_com):
                                 os.mkdir(full_home)
                             except:
                                 exc_info = sys.exc_info()
-                                hdir_ok, hdir_err_str = (
-                                    0,
+                                create_hdir, hdir_exists, hdir_err_str = (
+                                    False,
+                                    False,
                                     "cannot create home-directory %s: %s" % (
                                         full_home,
                                         process_tools.get_except_info()
@@ -124,13 +130,14 @@ class create_user_home(cs_base_class.server_com):
                                 )
                             else:
                                 pass
-                    if hdir_ok:
+                    if create_hdir:
                         os.chown(full_home, uid, gid)
                         os.path.walk(full_home, change_own, (uid, gid))
                         try:
                             os.chmod(full_home, 0755)
                         except:
                             pass
+                        hdir_exists = True
                         post_create_user_command = "/etc/sysconfig/post_create_user"
                         if os.path.isfile(post_create_user_command):
                             pcun_args = "0 %d %d %s %s" % (uid, gid, user, full_home)
@@ -147,10 +154,16 @@ class create_user_home(cs_base_class.server_com):
                             "reply" : "ok created homedirectory '%s' for user '%s" % (full_home, user)
                             })
                     else:
-                        cur_inst.srv_com["result"].attrib.update({
-                            "state" : "%d" % (server_command.SRV_REPLY_STATE_ERROR),
-                            "reply" : "error %s" % (hdir_err_str)
-                            })
+                        if hdir_exists:
+                            cur_inst.srv_com["result"].attrib.update({
+                                "state" : "%d" % (server_command.SRV_REPLY_STATE_OK),
+                                "reply" : hdir_err_str,
+                                })
+                        else:
+                            cur_inst.srv_com["result"].attrib.update({
+                                "state" : "%d" % (server_command.SRV_REPLY_STATE_ERROR),
+                                "reply" : "error %s" % (hdir_err_str)
+                                })
                 else:
                     cur_inst.srv_com["result"].attrib.update({
                         "state" : "%d" % (server_command.SRV_REPLY_STATE_ERROR),
@@ -201,11 +214,11 @@ class create_user_scratch(cs_base_class.server_com):
             gid = dset["gid"]
             if os.path.isdir(scratch_start):
                 full_scratch = os.path.normpath("%s/%s" % (scratch_start, dset["scratch"]))
-                hdir_ok = 1
+                hdir_ok = True
                 try:
                     os.mkdir(full_scratch)
                 except:
-                    hdir_ok = 0
+                    hdir_ok = False
                     hdir_err_str = "cannot create scratch-directory : %s" % (sys.exc_info()[0])
                 else:
                     pass

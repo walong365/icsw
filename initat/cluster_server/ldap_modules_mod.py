@@ -20,11 +20,9 @@
 """ tools for modifying LDAP servers """
 
 import commands
-import crypt
 import cs_base_class
 import cs_tools
 import ldap
-import ldap.modlist
 import logging_tools
 import os
 import pprint
