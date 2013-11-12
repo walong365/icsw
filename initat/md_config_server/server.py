@@ -31,7 +31,10 @@ import codecs
 import commands
 import configfile
 import logging_tools
-import mk_livestatus
+try:
+    import mk_livestatus
+except ImportError:
+    mk_livestatus = None
 import process_tools
 import re
 import server_command
