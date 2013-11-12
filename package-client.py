@@ -396,16 +396,59 @@ class zypper_install_process(install_process):
                 zypper_com = None
             else:
                 pack_xml = cur_pdc[0]
-                zypper_com = {"install" : "in",
-                              "upgrade" : "up",
-                              "erase"   : "rm"}.get(cur_pdc.attrib["target_state"])
-                zypper_com = "/usr/bin/zypper -x -n %s %s-%s" % (
-                    zypper_com,
+                # yum_com = {"install" : "install",
+                #           "upgrade" : "update",
+                #           "erase"   : "erase"}.get(cur_pdc.attrib["target_state"])
+                # yum_com = "/usr/bin/yum -y %s %s-%s" % (
+                #    yum_com,
+                #    pack_xml.attrib["name"],
+                #    pack_xml.attrib["version"],
+                # )
+                zypper_com = "/bin/rpm -q %s-%s" % (
                     pack_xml.attrib["name"],
                     pack_xml.attrib["version"],
-                )
+                    )
                 self.log("transformed pdc to '%s'" % (zypper_com))
         return zypper_com
+    def _decide(self, hc_sc, cur_out):
+        cur_pdc = hc_sc.data
+        is_installed = False if cur_out.count("is not installed") else True
+        self.log(
+            "installed flag from '%s': %s" % (
+                cur_out,
+                str(is_installed),
+                )
+            )
+        pack_xml = cur_pdc[0]
+        zypper_com = {"install" : "in",
+                      "upgrade" : "up",
+                      "erase"   : "rm"}.get(cur_pdc.attrib["target_state"])
+        package_name = "%s-%s" % (
+            pack_xml.attrib["name"],
+            pack_xml.attrib["version"],
+            )
+        if (is_installed and zypper_com in ["in", "up"]) or (not is_installed and zypper_com in ["rm"]):
+            self.log("doing nothing")
+            if is_installed:
+                return True, E.stdout("package %s is installed" % (package_name))
+            else:
+                return True, E.stdout("package %s is not installed" % (package_name))
+        else:
+            self.log("starting action %s" % (zypper_com))
+            # flags: xml output, non-interactive
+            zypper_com = "/usr/bin/zypper -x -n %s %s %s" % (
+                zypper_com,
+                "-f" if int(cur_pdc.attrib["force_flag"]) else "",
+                package_name,
+            )
+            simple_command(
+                zypper_com,
+                short_info="package",
+                done_func=self._command_done,
+                log_com=self.log,
+                info="handle package",
+                data=cur_pdc)
+            return False, None
     def _handle_repo_list(self, in_com):
         in_repos = in_com.xpath(None, ".//ns:repos")[0]
         self.log("handling repo_list (%s)" % (logging_tools.get_plural("entry", len(in_repos))))
