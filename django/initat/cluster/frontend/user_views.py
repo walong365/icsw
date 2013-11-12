@@ -22,6 +22,7 @@
 
 """ user views """
 
+import config_tools
 import logging
 import logging_tools
 import os
@@ -136,15 +137,20 @@ class sync_users(View):
     def post(self, request):
         # create homedirs
         # FIXME: only create users for local server
-        create_user_list = user.objects.filter(Q(home_dir_created=False) & Q(active=True) & Q(group__active=True))
+        create_user_list = user.objects.exclude(Q(export=None)).filter(Q(home_dir_created=False) & Q(active=True) & Q(group__active=True))
         logger.info("user homes to create: %d" % (len(create_user_list)))
         for create_user in create_user_list:
             logger.info("trying to create user_home for '%s'" % (unicode(create_user)))
             srv_com = server_command.srv_command(command="create_user_home")
             srv_com["server_key:username"] = create_user.login
             result = contact_server(request, "tcp://localhost:8004", srv_com, timeout=30)
-        srv_com = server_command.srv_command(command="sync_ldap_config")
-        result = contact_server(request, "tcp://localhost:8004", srv_com, timeout=30)
+        # check for configs, can be optimised ?
+        if config_tools.server_check(server_type="ldap_server").effective_device:
+            srv_com = server_command.srv_command(command="sync_ldap_config")
+            result = contact_server(request, "tcp://localhost:8004", srv_com, timeout=30)
+        if config_tools.server_check(server_type="yp_server").effective_device:
+            srv_com = server_command.srv_command(command="write_yp_config")
+            result = contact_server(request, "tcp://localhost:8004", srv_com, timeout=30)
         srv_com = server_command.srv_command(command="sync_http_users")
         result = contact_server(request, "tcp://localhost:8010", srv_com)
 
