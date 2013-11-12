@@ -434,7 +434,7 @@ class zypper_install_process(install_process):
             else:
                 return True, E.stdout("package %s is not installed" % (package_name))
         else:
-            self.log("starting action %s" % (zypper_com))
+            self.log("starting action '%s'" % (zypper_com))
             # flags: xml output, non-interactive
             zypper_com = "/usr/bin/zypper -x -n %s %s %s" % (
                 zypper_com,
