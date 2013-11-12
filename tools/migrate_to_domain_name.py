@@ -27,7 +27,6 @@ os.environ.setdefault("DJANGO_SETTINGS_MODULE", "initat.cluster.settings")
 import pprint
 import logging_tools
 from lxml import etree # @UnresolvedImport
-from django.conf import settings
 from django.db.models import Q
 from initat.cluster.backbone.models import domain_tree_node, network, net_ip, domain_name_tree, device
 
@@ -54,7 +53,7 @@ class tree_node(object):
                 self.sub_nodes[last_part] = tree_node(last_part, depth=self.depth + 1)
             return self.sub_nodes[last_part].feed_name(".".join(name_parts[:-1]), cur_net)
     def show_tree(self):
-        return "\n".join(["%s%s" % ("    " * self.depth, unicode(self))] + [value.show_tree() for key, value in self.sub_nodes.iteritems()])
+        return "\n".join(["%s%s" % ("    " * self.depth, unicode(self))] + [value.show_tree() for _key, value in self.sub_nodes.iteritems()])
     def create_db_entries(self, top_node=None):
         full_name = self.name
         if top_node and top_node.name:
@@ -91,7 +90,7 @@ def main():
         print "Migrating to domain_tree_node system"
         net_tree = tree_node()
         for cur_net in network.objects.all():
-            dns_node = net_tree.feed_name(cur_net.name, cur_net)
+            _dns_node = net_tree.feed_name(cur_net.name, cur_net)
         net_tree.create_db_entries()
     if len(sys.argv) > 1:
         sys.exit(0)
@@ -115,7 +114,7 @@ def main():
         if cur_node.intermediate != im_state:
             cur_node.intermediate = im_state
             cur_node.save()
-                 # pprint.pprint(net_dict)
+            # pprint.pprint(net_dict)
     # read network dict
     net_dict = {}
     for nw_obj in network.objects.all():

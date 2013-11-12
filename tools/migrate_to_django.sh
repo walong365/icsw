@@ -93,5 +93,7 @@ else
     echo " - ${CLUSTER_DIR}/sbin/restore_user_group.py ${group_xml} ${user_xml}   to restore the users"
     echo " - ${CLUSTER_DIR}/sbin/update_django_db.sh                              to update to the latest database schema, then"
     echo " - ${CLUSTER_DIR}/sbin/fix_models.py ${dump_name}.data                  to fix wrong foreign keys (from 0 to None)"
+    echo " - ${CLUSTER_DIR}/bin/migrate_to_domain_name.py --init                  to init the domain name system"
+    echo " - ${CLUSTER_DIR}/bin/migrate_to_domain_name.py                         to migrate existing network names to the new domain name system"
 fi
 
