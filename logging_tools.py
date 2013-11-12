@@ -873,7 +873,7 @@ class new_form_list(object):
             # header = [self.__header_dict.get(idx, "header%d" % (idx)) for idx in xrange(max_rows)]
             header_list = [self.__header_dict.get(idx, (True, "")) for idx in xrange(max_rows)]
             form_str = self.__col_sep.join(["%%%s%ds" % ("-" if header_list[idx][0] else "", row_len) for idx, row_len in enumerate(row_lens)])
-            out_lines.append((form_str % tuple([_e[1] for _e in header_list])).strip())
+            out_lines.append((form_str % tuple([_e[1] for _e in header_list])).rstrip())
             out_lines.append("-" * len(out_lines[-1]))
         for line in self.__content:
             out_lines.append(self.__col_sep.join([entry.format(max_len) for entry, max_len in zip(line, row_lens[:len(line)])]))
