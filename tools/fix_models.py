@@ -25,15 +25,14 @@ import sys
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "initat.cluster.settings")
 
 import datetime
-import pprint
+import logging_tools
 import process_tools
-from django.conf import settings
 from django.db.models import Q, get_app, get_models
 from initat.cluster.backbone.models import device, device_group, \
      mon_contact, mon_contactgroup, mon_check_command_type, mon_check_command, \
      config, mon_service_templ, user, mon_period, mon_ext_host, mon_service_templ, \
-     mon_device_templ, device_group, group, user
-from django.db.models.base import ModelBase
+     mon_device_templ, device_group, group, user, config_str, config_int, config_bool, \
+     config_blob
 
 def _parse_value(in_str):
     esc = False
@@ -66,10 +65,13 @@ def check_for_zero_fks():
     # get all apps
     checked, fixed, errors = (0, 0, 0)
     for model in get_models(get_app("backbone")):
+        del_pks = set()
         c_fields = [cur_f for cur_f in model._meta.fields if cur_f.get_internal_type() == "ForeignKey"]
-        print "checking model %s (%d)" % (
+        print "checking model %s (%s: %s; %s)" % (
             model._meta.object_name,
-            len(c_fields)
+            logging_tools.get_plural("check_field", len(c_fields)),
+            ", ".join([cur_c.name for cur_c in c_fields]),
+            logging_tools.get_plural("entry", model.objects.all().count()),
             )
         if c_fields:
             obj_count = model.objects.count()
@@ -88,6 +90,14 @@ def check_for_zero_fks():
                                 process_tools.get_except_info(),
                                 )
                         save_it = True
+                    else:
+                        try:
+                            ref_obj = getattr(cur_obj, c_field.name)
+                        except:
+                            print "    %s with pk %d references %s with pk %d" % (
+                                model._meta.object_name, cur_obj.pk,
+                                c_field.name, getattr(cur_obj, "%s_id" % (c_field.name)))
+                            del_pks.add(cur_obj.pk)
                     if save_it:
                         fixed += 1
                         try:
@@ -102,9 +112,35 @@ def check_for_zero_fks():
                                 obj_idx + 1,
                                 obj_count,
                                 unicode(cur_obj))
+        if del_pks:
+            print "from initat.cluster.backbone.models import %s" % (model._meta.object_name)
+            print "%s.objects.filter(Q(pk__in=[%s])).delete()" % (
+                model._meta.object_name,
+                ", ".join(["%d" % (cur_pk) for cur_pk in del_pks]))
     print "checked / fixed / errors: %d / %d / %d" % (checked, fixed, errors)
 
+def remove_duplicate_config_sibs():
+    for e_name in [config_str, config_int, config_bool, config_blob]:
+        cur_num = e_name.objects.all().count()
+        print "%s has %s" % (e_name._meta.object_name, logging_tools.get_plural("entry", cur_num))
+        ref_dict = {}
+        for entry in e_name.objects.all():
+            if entry.device_id == 0:
+                entry.device_id = None
+            key = (entry.name, entry.config_id, entry.device_id)
+            ref_dict.setdefault(key, []).append((entry.pk, entry.value))
+        mult_keys = [key for key, value in ref_dict.iteritems() if len(value) > 1]
+        if mult_keys:
+            print "Found %s" % (logging_tools.get_plural("multiple key", len(mult_keys)))
+            for mult_key in sorted(mult_keys):
+                print "    %s : %s" % (mult_key, ref_dict[mult_key])
+                for del_pk, del_value in ref_dict[mult_key][:-1]:
+                    e_name.objects.get(Q(pk=del_pk)).delete()
+            # print key
+
 def main():
+    # remove duplicate config str/int/blob
+    remove_duplicate_config_sibs()
     # check for zero foreign keys
     check_for_zero_fks()
     sys.exit(0)

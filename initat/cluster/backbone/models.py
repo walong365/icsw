@@ -298,7 +298,7 @@ def config_int_pre_save(sender, **kwargs):
             list(cur_inst.config.config_bool_set.all().values_list("name", flat=True)) + \
             list(cur_inst.config.config_blob_set.all().values_list("name", flat=True))
         if cur_inst.name in all_var_names:
-            raise ValidationError("name already used")
+            raise ValidationError("name '%s' already used" % (cur_inst.name))
         _check_integer(cur_inst, "value")
 
 class config_script(models.Model):
