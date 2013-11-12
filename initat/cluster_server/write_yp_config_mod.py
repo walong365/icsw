@@ -101,7 +101,8 @@ class write_yp_config(cs_base_class.server_com):
             if user_stuff.export_id in home_exp_dict.keys():
                 home_stuff = home_exp_dict[user_stuff.export_id]
                 export_dict[os.path.normpath("%s/%s" % (group_stuff.homestart, user_stuff.home))] = (home_stuff["options"], "%s%s:%s/%s" % (home_stuff["name"], home_stuff["node_postfix"], home_stuff["homeexport"], user_stuff.home))
-
+            else:
+                self.log("skipping user %s (no valid export entry)" % (unicode(user_stuff)), logging_tools.LOG_LEVEL_WARN)
         # print export_dict
         # auto.master map
         auto_master = []

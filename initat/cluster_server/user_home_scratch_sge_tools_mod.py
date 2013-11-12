@@ -155,6 +155,8 @@ class create_user_home(cs_base_class.server_com):
                             })
                     else:
                         if hdir_exists:
+                            cur_user.home_dir_created = True
+                            cur_user.save()
                             cur_inst.srv_com["result"].attrib.update({
                                 "state" : "%d" % (server_command.SRV_REPLY_STATE_OK),
                                 "reply" : hdir_err_str,
