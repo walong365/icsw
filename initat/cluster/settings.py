@@ -340,6 +340,10 @@ if os.path.isfile(LOCAL_CONFIG):
     from local_settings import *
     sys.path.remove(local_dir)
 
+# validate settings
+if PASSWORD_HASH_FUNCTION not in ["SHA1", "CRYPT"]:
+    raise ImproperlyConfigured("password hash function '%s' not known" % (PASSWORD_HASH_FUNCTION))
+
 c_license = License()
 # check licenses
 all_lics = get_all_licenses()
