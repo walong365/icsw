@@ -1,5 +1,6 @@
 #!/usr/bin/python-init
 
+import logging_tools
 import re
 from lxml.builder import E # @UnresolvedImport
 
@@ -115,6 +116,8 @@ class mon_check_command(models.Model):
     mon_service_templ = models.ForeignKey("mon_service_templ", null=True)
     # only unique per config
     name = models.CharField(max_length=192) # , unique=True)
+    # flag for special commands (@<SREF>@command)
+    is_special_command = models.BooleanField(default=False)
     command_line = models.CharField(max_length=765)
     description = models.CharField(max_length=192, blank=True)
     # device = models.ForeignKey("device", null=True, blank=True)
@@ -125,6 +128,10 @@ class mon_check_command(models.Model):
     categories = models.ManyToManyField("category")
     # device to exclude
     exclude_devices = models.ManyToManyField("device", related_name="mcc_exclude_devices")
+    # event handler settings
+    is_event_handler = models.BooleanField(default=False)
+    event_handler = models.ForeignKey("self", null=True, default=None)
+    event_handler_enabled = models.BooleanField(default=True)
     def get_xml(self, with_exclude_devices=False):
         r_xml = E.mon_check_command(
             self.name,
@@ -151,12 +158,26 @@ class mon_check_command(models.Model):
 def mon_check_command_pre_save(sender, **kwargs):
     if "instance" in kwargs:
         cur_inst = kwargs["instance"]
+        special_re = re.compile("^@.+@.+$")
+        cur_inst.is_special_command = True if special_re.match(cur_inst.name) else False
         if not cur_inst.name:
             raise ValidationError("name is empty")
         if not cur_inst.command_line:
             raise ValidationError("command_line is empty")
         if cur_inst.name in cur_inst.config.mon_check_command_set.exclude(Q(pk=cur_inst.pk)).values_list("name", flat=True):
             raise ValidationError("name already used")
+        if not cur_inst.is_event_handler:
+            mc_refs = cur_inst.mon_check_command_set.all()
+            if len(mc_refs):
+                raise ValidationError("still referenced by %s" % (logging_tools.get_plural("check_command", len(mc_refs))))
+        if cur_inst.is_special_command and cur_inst.is_event_handler:
+            cur_inst.is_event_handler = False
+            cur_inst.save()
+            raise ValidationError("special command not allowed as event handler")
+        if cur_inst.is_event_handler and cur_inst.event_handler_id:
+            cur_inst.event_handler = None
+            cur_inst.save()
+            raise ValidationError("cannot be an event handler and reference to another event handler")
 
 class mon_check_command_type(models.Model):
     idx = models.AutoField(db_column="ng_check_command_type_idx", primary_key=True)
@@ -231,7 +252,7 @@ class mon_notification(models.Model):
         ("host"   , "Host"),
         ("service", "Service")])
     subject = models.CharField(max_length=140, blank=False)
-    content = models.CharField(max_length=512, blank=False)
+    content = models.CharField(max_length=4096, blank=False)
     enabled = models.BooleanField(default=True)
     created = models.DateTimeField(auto_now_add=True)
     def get_xml(self):
@@ -252,6 +273,11 @@ class mon_notification(models.Model):
             self.not_type,
             self.channel,
         )
+
+@receiver(signals.pre_save, sender=mon_notification)
+def mon_notification_pre_save(sender, **kwargs):
+    if "instance" in kwargs:
+        _cur_inst = kwargs["instance"]
 
 
 """
