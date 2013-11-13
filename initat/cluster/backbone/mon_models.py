@@ -1,28 +1,12 @@
 #!/usr/bin/python-init
 
-import datetime
-import uuid
 import re
-import time
-import inspect
-import ipvx_tools
-import logging_tools
-import pytz
-import hashlib
-import base64
-import logging
-import os
-from lxml import etree # @UnresolvedImport
 from lxml.builder import E # @UnresolvedImport
-from rest_framework import serializers
 
-from django.conf import settings
-from django.core.exceptions import ValidationError, ImproperlyConfigured
+from django.core.exceptions import ValidationError
 from django.db import models
-from django.db.models import Q, signals, get_model
+from django.db.models import Q, signals
 from django.dispatch import receiver
-from django.utils.functional import memoize
-from django.contrib.contenttypes.models import ContentType
 
 from initat.cluster.backbone.model_functions import _check_empty_string, _check_float, _check_integer, _check_non_empty_string
 
@@ -35,6 +19,8 @@ class mon_host_cluster(models.Model):
     devices = models.ManyToManyField("device", related_name="devs_mon_host_cluster")
     warn_value = models.IntegerField(default=0)
     error_value = models.IntegerField(default=1)
+    # True for user editable (user created) clusters
+    user_editable = models.BooleanField(default=True)
     date = models.DateTimeField(auto_now_add=True)
     def get_xml(self):
         return E.mon_host_cluster(
@@ -47,6 +33,7 @@ class mon_host_cluster(models.Model):
             devices="::".join(["%d" % (cur_pk) for cur_pk in self.devices.all().values_list("pk", flat=True)]),
             warn_value="%d" % (self.warn_value),
             error_value="%d" % (self.error_value),
+            user_editable="1" if self.user_editable else "0",
             description=self.description,
         )
     def __unicode__(self):
@@ -72,6 +59,8 @@ class mon_service_cluster(models.Model):
     mon_check_command = models.ForeignKey("mon_check_command")
     warn_value = models.IntegerField(default=0)
     error_value = models.IntegerField(default=1)
+    # True for user editable (user created) clusters
+    user_editable = models.BooleanField(default=True)
     date = models.DateTimeField(auto_now_add=True)
     def get_xml(self):
         return E.mon_service_cluster(
@@ -85,6 +74,7 @@ class mon_service_cluster(models.Model):
             devices="::".join(["%d" % (cur_pk) for cur_pk in self.devices.all().values_list("pk", flat=True)]),
             warn_value="%d" % (self.warn_value),
             error_value="%d" % (self.error_value),
+            user_editable="1" if self.user_editable else "0",
             description=self.description,
         )
     def __unicode__(self):

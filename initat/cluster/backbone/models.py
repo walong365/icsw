@@ -385,13 +385,8 @@ class device(models.Model):
     # FIXME
     device_group = models.ForeignKey("device_group", related_name="device_group")
     device_type = models.ForeignKey("device_type")
-    # removed, ancient NDS stuff
-    # axnumber = models.CharField(max_length=192, blank=True)
     alias = models.CharField(max_length=384, blank=True)
     comment = models.CharField(max_length=384, blank=True)
-    # better suited in a n:m model, removed
-    # switch = models.ForeignKey("device", null=True, related_name="switch_device")
-    # switchport = models.IntegerField(null=True, blank=True)
     mon_device_templ = models.ForeignKey("mon_device_templ", null=True)
     mon_device_esc_templ = models.ForeignKey("mon_device_esc_templ", null=True)
     mon_ext_host = models.ForeignKey("mon_ext_host", null=True, blank=True)
