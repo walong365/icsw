@@ -11,7 +11,7 @@ import re
 from lxml.builder import E # @UnresolvedImport
 
 from django.db.models import Q
-from django.db.utils import IntegrityError
+from django.db.utils import IntegrityError, DataError
 from django.contrib.auth.decorators import login_required
 from django.core.exceptions import ValidationError
 from django.core.urlresolvers import reverse
@@ -158,7 +158,7 @@ class change_xml_entry(View):
                                 try:
                                     if cur_obj._meta.get_field(attr_name).get_internal_type() == "ForeignKey":
                                         # follow foreign key the django way
-                                        if int(new_value) == 0:
+                                        if int(new_value) in [0, ""]:
                                             new_value = None
                                         else:
                                             new_value = cur_obj._meta.get_field(attr_name).rel.to.objects.get(pk=new_value)
@@ -183,6 +183,9 @@ class change_xml_entry(View):
                                 except IntegrityError, what:
                                     request.xml_response.error("error modifying: %s" % (unicode(what)), logger)
                                     # not safe to use in case of multi-object modification, FIXME
+                                    request.xml_response["original_value"] = old_value
+                                except DataError, what:
+                                    request.xml_response.error("data error: %s" % (unicode(what)), logger)
                                     request.xml_response["original_value"] = old_value
                                 except:
                                     raise

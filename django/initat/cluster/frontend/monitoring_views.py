@@ -111,10 +111,10 @@ class extended_setup(View):
                 E.mon_contactgroups(*[cur_cg.get_xml() for cur_cg in mon_contactgroup.objects.all()]),
                 E.mon_device_templs(*[cur_dt.get_xml() for cur_dt in mon_device_templ.objects.all()]),
                 E.mon_device_esc_templs(*[cur_det.get_xml() for cur_det in mon_device_esc_templ.objects.all()]),
-                E.mon_host_clusters(*[cur_mhc.get_xml() for cur_mhc in mon_host_cluster.objects.prefetch_related("devices").all()]),
-                E.mon_service_clusters(*[cur_msc.get_xml() for cur_msc in mon_service_cluster.objects.all()]),
+                E.mon_host_clusters(*[cur_mhc.get_xml() for cur_mhc in mon_host_cluster.objects.prefetch_related("devices").filter(Q(user_editable=True))]),
+                E.mon_service_clusters(*[cur_msc.get_xml() for cur_msc in mon_service_cluster.objects.filter(Q(user_editable=True))]),
                 E.devices(*[cur_dev.get_simple_xml() for cur_dev in device.objects.exclude(Q(device_type__identifier="MD")).order_by("name")]),
-                E.mon_check_command(*[cur_mc.get_xml() for cur_mc in mon_check_command.objects.prefetch_related("categories").all()]),
+                E.mon_check_commands(*[cur_mc.get_xml() for cur_mc in mon_check_command.objects.prefetch_related("categories").filter(Q(is_event_handler=False) & Q(is_special_command=False)).order_by("name")]),
                 E.mon_host_dependencies(*[cur_mhd.get_xml() for cur_mhd in mon_host_dependency.objects.all()]),
             ]
         )

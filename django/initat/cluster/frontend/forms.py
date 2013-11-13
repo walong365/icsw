@@ -291,8 +291,15 @@ class device_fqdn_comment(ModelMultipleChoiceField):
             dev_str = obj.full_name
         return (obj.device_group.name, dev_str)
 
+class event_handler_list(ModelChoiceField):
+    def label_from_instance(self, obj):
+        return u"%s on %s" % (obj.name, obj.config.name)
+
 class moncc_template_flags_form(ModelForm):
     mon_service_templ = ModelChoiceField(queryset=mon_service_templ.objects.all(), empty_label=None)
+    event_handler = event_handler_list(
+        queryset=mon_check_command.objects.filter(Q(is_event_handler=True)).select_related("config")
+    )
     exclude_devices = device_fqdn_comment(
         queryset=device.objects.exclude(
             Q(device_type__identifier__in=["MD"])
@@ -311,13 +318,16 @@ class moncc_template_flags_form(ModelForm):
             ButtonHolder(
                 Field("enable_perfdata"),
                 Field("volatile"),
+                Field("is_event_handler"),
+                Field("event_handler_enabled"),
                 ),
             css_class="inlineLabels",
         )
     )
     class Meta:
         model = mon_check_command
-        fields = ["mon_service_templ", "enable_perfdata", "volatile", "exclude_devices", ]
+        fields = ["mon_service_templ", "enable_perfdata", "volatile", "exclude_devices",
+            "event_handler", "event_handler_enabled", "is_event_handler"]
 
 class group_detail_form(ModelForm):
     permissions = ModelMultipleChoiceField(
