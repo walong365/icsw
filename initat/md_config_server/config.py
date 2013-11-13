@@ -132,7 +132,7 @@ class main_config(object):
         self.__dict = {}
         self._create_directories()
         self._clear_etc_dir()
-        self.allow_write_entries = global_config["BUILD_CONFIG_ON_STARTUP"]
+        self.allow_write_entries = global_config["BUILD_CONFIG_ON_STARTUP"] or global_config["INITIAL_CONFIG_RUN"]
         self._create_base_config_entries()
         self._write_entries()
         self.allow_write_entries = True
@@ -1284,16 +1284,17 @@ class all_commands(host_type_config):
         command_names = set()
         for hc_com in host_check_command.objects.all():
             cur_nc = nag_config(
-                                "command",
-                                hc_com.name,
-                                command_name=hc_com.name,
-                                command_line=hc_com.command_line)
+                "command",
+                hc_com.name,
+                command_name=hc_com.name,
+                command_line=hc_com.command_line
+            )
             self.__obj_list.append(cur_nc)
             command_names.add(hc_com.name)
         ngc_re1 = re.compile("^\@(?P<special>\S+)\@(?P<comname>\S+)$")
         check_coms = list(mon_check_command.objects.all()
                           .prefetch_related("categories", "exclude_devices")
-                          .select_related("mon_service_templ", "config"))
+                          .select_related("mon_service_templ", "config", "event_handler"))
         enable_perfd = global_config["ENABLE_PNP"] or global_config["ENABLE_COLLECTD"]
         if enable_perfd and gen_conf.master:
             if global_config["ENABLE_COLLECTD"]:
@@ -1386,6 +1387,9 @@ class all_commands(host_type_config):
                 special=special,
                 servicegroup_names=cats,
                 enable_perfdata=ngc.enable_perfdata,
+                is_event_handler=ngc.is_event_handler,
+                event_handler=ngc.event_handler,
+                event_handler_enabled=ngc.event_handler_enabled,
                 db_entry=ngc,
                 volatile=ngc.volatile,
             )
@@ -1705,6 +1709,9 @@ class check_command(object):
         self.template = template
         self.exclude_devices = [cur_dev.pk for cur_dev in exclude_devices] or []
         self.servicegroup_names = kwargs.get("servicegroup_names", [TOP_MONITORING_CATEGORY])
+        self.is_event_handler = kwargs.get("is_event_handler", False)
+        self.event_handler = kwargs.get("event_handler", None)
+        self.event_handler_enabled = kwargs.get("event_handler_enabled", True)
         self.__descr = descr.replace(",", ".")
         self.enable_perfdata = kwargs.get("enable_perfdata", False)
         self.volatile = kwargs.get("volatile", False)
@@ -1828,9 +1835,11 @@ class check_command(object):
             self.__name,
             command_name=self.__name,
             command_line=self.md_command_line)
-    def __getitem__(self, k):
-        if k == "command_name":
+    def __getitem__(self, key):
+        if key == "command_name":
             return self.__name
+        else:
+            raise SyntaxError("illegal call to __getitem__ of check_command (key='%s')" % (key))
     def get_special(self):
         return self.__special
     def get_config(self):

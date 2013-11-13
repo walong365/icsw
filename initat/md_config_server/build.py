@@ -728,6 +728,8 @@ class build_process(threading_tools.process_obj):
                                 self.log("dev_template has no host_check_command set", logging_tools.LOG_LEVEL_ERROR)
                         # check for nagvis map
                         if host.automap_root_nagvis and cur_gc.master:
+                            # with or without .cfg ? full path ?
+                            act_host["_nagvis_map"] = "%s" % (host.full_name.encode("ascii", errors="ignore"))
                             map_file = os.path.join(global_config["NAGVIS_DIR"], "etc", "maps", "%s.cfg" % (host.full_name.encode("ascii", errors="ignore")))
                             map_dict = {
                                 "sources"      : "automap",
@@ -801,8 +803,10 @@ class build_process(threading_tools.process_obj):
                         # build lut
                         conf_dict = dict([(
                             cur_c["command_name"], cur_c) for cur_c in cur_gc["command"].values() if
-                                          (cur_c.get_config() in conf_names and (host.pk not in cur_c.exclude_devices)) or
-                                          cur_c["command_name"] in cconf_names])
+                                not cur_c.is_event_handler and (
+                                    ((cur_c.get_config() in conf_names) and (host.pk not in cur_c.exclude_devices)) or
+                                          cur_c["command_name"] in cconf_names
+                                )])
                         # old code, use only_ping config
                         # if host["identifier"] == "NB" or host["identifier"] == "AM" or host["identifier"] == "S":
                         #    # set config-dict for netbotzes, APC Masterswitches and switches to ping
@@ -1097,9 +1101,11 @@ class build_process(threading_tools.process_obj):
         for host_name in sorted(host_names):
             host = host_nc[host_name][0]
             if host.has_key("possible_parents"):
+                # parent list
                 parent_list = []
+                # check for nagvis_maps
+                nagvis_maps = []
                 p_parents = host["possible_parents"]
-                # print "*", p_parents
                 for _p_val, _nd_val, p_list in p_parents:
                     # skip first host (is self)
                     host_pk = p_list[0]
@@ -1111,7 +1117,18 @@ class build_process(threading_tools.process_obj):
                                 # exit inner loop
                                 break
                         else:
+                            # exit inner loop
                             break
+                    if "_nagvis_map" not in host:
+                        # loop again to scan for nagvis_map
+                        for parent_idx in p_list[1:]:
+                            if d_map[host_pk] > d_map[parent_idx]:
+                                parent = all_hosts_dict[parent_idx].full_name
+                                if parent in host_names and parent != host["name"]:
+                                    if "_nagvis_map" in host_nc[parent][0]:
+                                        nagvis_maps.append(host_nc[parent][0]["_nagvis_map"])
+                if "_nagvis_map" not in host and nagvis_maps:
+                    host["_nagvis_map"] = nagvis_maps[0]
                 if parent_list:
                     host["parents"] = ",".join(set(parent_list))
                     for cur_parent in set(parent_list):
@@ -1208,15 +1225,22 @@ class build_process(threading_tools.process_obj):
             host_info_str,
             logging_tools.get_diff_time_str(end_time - start_time)))
     def get_service(self, host, act_host, s_check, sc_array, act_def_serv, serv_cgs, checks_are_active, serv_temp, cur_gc):
-        self.mach_log("  adding check %-30s (%2d p), template %s, %s" % (
+        ev_defined = True if s_check.event_handler else False
+        self.mach_log("  adding check %-30s (%2d p), template %s, %s, %s" % (
             s_check["command_name"],
             len(sc_array),
             s_check.get_template(act_def_serv.name),
-            "cg: %s" % (", ".join(sorted(serv_cgs))) if serv_cgs else "no cgs"))
+            "cg: %s" % (", ".join(sorted(serv_cgs))) if serv_cgs else "no cgs",
+            "no evh" if not ev_defined else "evh is %s (%s)" % (s_check.event_handler.name, "enabled" if s_check.event_handler_enabled else "disabled"),
+            ))
         ret_field = []
         # for sc_name, sc in sc_array:
         for arg_temp in sc_array:
             act_serv = nag_config("service", arg_temp.info)
+            # event handlers
+            if s_check.event_handler:
+                act_serv["event_handler"] = s_check.event_handler.name
+                act_serv["event_handler_enabled"] = "1" if s_check.event_handler_enabled else "0"
             act_serv["%s_checks_enabled" % ("active" if checks_are_active else "passive")] = 1
             act_serv["%s_checks_enabled" % ("passive" if checks_are_active else "active")] = 0
             act_serv["service_description"] = arg_temp.info.replace("(", "[").replace(")", "]")

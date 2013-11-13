@@ -98,7 +98,7 @@ class server_process(threading_tools.process_pool):
         self.register_timer(self._check_db, 3600, instant=True)
         self.register_timer(self._check_for_redistribute, 30 if global_config["DEBUG"] else 300)
         self.register_timer(self._update, 30, instant=True)
-        if global_config["BUILD_CONFIG_ON_STARTUP"]:
+        if global_config["BUILD_CONFIG_ON_STARTUP"] or global_config["INITIAL_CONFIG_RUN"]:
             self.send_to_process("build", "rebuild_config", cache_mode="DYNAMIC")
     def _check_db(self):
         self.send_to_process("db_verify", "validate")

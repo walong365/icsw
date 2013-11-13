@@ -42,15 +42,6 @@ try:
 except ImportError:
     VERSION_STRING = "?.?"
 
-from django.conf import settings
-from django.db.models import Q
-from django.db import connection, connections
-from initat.cluster.backbone.models import device, device_group, device_variable, mon_device_templ, \
-     mon_ext_host, mon_check_command, mon_period, mon_contact, \
-     mon_contactgroup, mon_service_templ, netdevice, network, network_type, net_ip, \
-     user, mon_host_cluster, mon_service_cluster, config, md_check_data_store, category, \
-     category_tree, TOP_MONITORING_CATEGORY, mon_notification, config_str, config_int, host_check_command
-
 def main():
     long_host_name, mach_name = process_tools.get_fqdn()
     prog_name = global_config.name()
@@ -68,9 +59,10 @@ def main():
                                                                    prog_name))),
         ("COM_PORT"            , configfile.int_c_var(SERVER_COM_PORT)),
         ("VERBOSE"             , configfile.int_c_var(0, help_string="set verbose level [%(default)d]", short_options="v", only_commandline=True)),
+        ("INITIAL_CONFIG_RUN"  , configfile.bool_c_var(False, help_string="make an config build run on startup [%(default)s]", only_commandline=True)),
     ])
     global_config.parse_file()
-    options = global_config.handle_commandline(
+    _options = global_config.handle_commandline(
         description="%s, version is %s" % (prog_name,
                                            VERSION_STRING),
         add_writeback_option=True,
@@ -85,7 +77,7 @@ def main():
     if global_config["CHECK"]:
         sys.exit(0)
     if global_config["KILL_RUNNING"]:
-        log_lines = process_tools.kill_running_processes(
+        _log_lines = process_tools.kill_running_processes(
             "%s.py" % (prog_name),
             ignore_names=["nagios", "icinga"],
             exclude=configfile.get_manager_pid())
