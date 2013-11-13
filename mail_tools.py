@@ -7,7 +7,7 @@
 # this file is part of python-modules-base
 #
 # Send feedback to: <lang-nevyjel@init.at>
-# 
+#
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License Version 2 as
 # published by the Free Software Foundation.
@@ -22,16 +22,9 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
 
-import smtplib
-import sys
-import time
-import os
-import os.path
-import gzip
-import socket
 import email
-from email.header import Header
 import email.mime
+from email.header import Header
 try:
     import email.MIMEMultipart
     import email.MIMEImage
@@ -41,15 +34,19 @@ except ImportError:
     # not present for python3
     pass
 import email.utils
+import logging_tools
 import mimetypes
-import quopri
+import os
+import process_tools
+import socket
 try:
     import email.Encoders
 except ImportError:
     # not present for python3
     pass
-import process_tools
-import logging_tools
+import smtplib
+import sys
+
 if sys.version_info[0] == 3:
     unicode = str
     long = int
@@ -124,7 +121,7 @@ class mail(object):
         else:
             server.helo(self.server_helo)
             try:
-                #print self.msg.as_string()
+                # print self.msg.as_string()
                 server.sendmail(self.from_addr, self.to_addrs + self.bcc_list, self.msg.as_string())
             except smtplib.SMTPSenderRefused:
                 stat, err_str = (1, "SMTPError: Sender '%s' refused (%s)" % (self.from_addr, sys.exc_info()[0]))
@@ -196,7 +193,7 @@ class mail(object):
             else:
                 msgs.append("error file '%s' not found" % (obj))
         return msgs
-        #self.msg = "Subject: %s\r\nFrom: %s\r\nTo: %s\r\n\r\n%s" % (self.subject,
+        # self.msg = "Subject: %s\r\nFrom: %s\r\nTo: %s\r\n\r\n%s" % (self.subject,
         #                                                            self.from_addr,
         #                                                            ",".join(self.to_addrs),
         #                                                            "\n".join(self.text + [""]))
@@ -219,31 +216,7 @@ def expand_html_body(body_str, **args):
             new_lines.append(line)
     new_text = "\n".join(new_lines)
     return new_text
-    
-def test_mail():
-    sys.exit(0)
-    # needed on 2010-03-25 by AL
-    str_from = "info@oeko-tex.com"
-    str_from = "lang-nevyjel@init.at"
-    str_to = ["lang-nevyjel@init.at",
-              #"atest@iw.lodz.pl"
-              ]
-    msg_root = email.MIMEMultipart.MIMEMultipart('alternative')
-    msg_root['Subject'] = "2. Auditor Training, 2010-05-03"
-    msg_root['From'] = str_from
-    msg_root['To'] = ", ".join(str_to)
-    msg_root.add_header("content-transfer-encoding", "quoted-printable")
-    msg_root.preamble = 'This is a multi-part message in MIME format.'
-    msg_str = quopri.decodestring(file("00000959.eml", "r").read())
-    msg_text = email.MIMEText.MIMEText(msg_str, "html", "iso-8859-1")
-    msg_root.attach(msg_text)
-    smtp = smtplib.SMTP()
-    smtp.connect("mri2.init.at")
-    smtp.sendmail(str_from, str_to, msg_root.as_string())
-    smtp.quit()
-    #print msg_root.as_string()
 
 if __name__ == "__main__":
-    test_mail()
     print("Loadable module, exiting...")
     sys.exit(0)

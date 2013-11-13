@@ -28,10 +28,10 @@ import sys
 
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "initat.cluster.settings")
 
-import zmq
 import argparse
 import mail_tools
 import logging_tools
+import zmq
 
 def main():
     my_parser = argparse.ArgumentParser()
