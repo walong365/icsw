@@ -5,6 +5,8 @@ import inspect
 import hashlib
 import base64
 import os
+import random
+import string
 from lxml.builder import E # @UnresolvedImport
 from rest_framework import serializers
 
@@ -463,16 +465,17 @@ def user_pre_save(sender, **kwargs):
         else:
             cur_method, passwd = ("", cur_pw)
         if cur_method in ["SHA1", "CRYPT"]:
+            # known hash, pass
             pass
         else:
-            salt = os.urandom(4)
             pw_gen_1 = settings.PASSWORD_HASH_FUNCTION
             if pw_gen_1 == "CRYPT":
+                salt = "".join(random.choice(string.ascii_uppercase + string.digits) for _x in xrange(4))
                 cur_pw = "%s:%s" % (pw_gen_1, crypt.crypt(passwd, salt))
                 cur_inst.password = cur_pw
                 cur_inst.password_ssha = ""
-                cur_inst.save()
             else:
+                salt = os.urandom(4)
                 new_sh = hashlib.new(pw_gen_1)
                 new_sh.update(passwd)
                 cur_pw = "%s:%s" % (pw_gen_1, base64.b64encode(new_sh.digest()))
