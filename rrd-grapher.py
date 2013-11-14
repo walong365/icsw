@@ -694,9 +694,9 @@ class graph_process(threading_tools.process_obj):
                     "-cBACK#ffffff",
                     "--end",
                     # offset to fix UTC, FIXME
-                    "%d" % ((para_dict["end_time"] - dt_1970).total_seconds() - 2 * 3600),
+                    "%d" % ((para_dict["end_time"] - dt_1970).total_seconds() - 1 * 3600),
                     "--start",
-                    "%d" % ((para_dict["start_time"] - dt_1970).total_seconds() - 2 * 3600),
+                    "%d" % ((para_dict["start_time"] - dt_1970).total_seconds() - 1 * 3600),
                     graph_var(None, "", graph_width=graph_width).header_line,
             ]
             graph_var.init(self.colorizer)
