@@ -51,7 +51,7 @@ try:
                 raise
 except ImportError:
     zmq = None
-from twisted.internet import reactor
+from twisted.internet import reactor # @UnresolvedImport
 
 # default stacksize
 DEFAULT_STACK_SIZE = 2 * 1024 * 1024
