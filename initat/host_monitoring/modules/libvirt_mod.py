@@ -22,12 +22,9 @@ import sys
 import commands
 from initat.host_monitoring import limits, hm_classes
 import os
-import os.path
 import logging_tools
-import pprint
 import server_command
-import process_tools
-from lxml import etree
+from lxml import etree # @UnresolvedImport
 try:
     import libvirt_tools
 except:
