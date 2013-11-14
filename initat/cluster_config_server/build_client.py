@@ -21,12 +21,14 @@
 #
 """ cluster-config-server, build client """
 
-import os
 import logging_tools
+import os
 import process_tools
-from django.db.models import Q
-from initat.cluster.backbone.models import device
+import shutil
 
+from django.db.models import Q
+
+from initat.cluster.backbone.models import device
 from initat.cluster_config_server.build_container import build_container, generated_tree
 from initat.cluster_config_server.config import global_config
 from initat.cluster_config_server.partition_setup import partition_setup
@@ -34,15 +36,17 @@ from initat.cluster_config_server.partition_setup import partition_setup
 class build_client(object):
     """ holds all the necessary data for a complex config request """
     def __init__(self, **kwargs):
-        self.name = kwargs["name"]
-        if self.name.count("."):
+        name = kwargs["name"]
+        if name.count("."):
             # fqdn
             self.pk = int(kwargs.get("pk", device.objects.values("pk").get(
-                Q(name=self.name.split(".")[0]) &
-                Q(domain_tree_node__full_name=self.name.split(".", 1)[1]))["pk"]))
+                Q(name=name.split(".")[0]) &
+                Q(domain_tree_node__full_name=name.split(".", 1)[1]))["pk"]))
         else:
             # short name
-            self.pk = int(kwargs.get("pk", device.objects.values("pk").get(Q(name=self.name))["pk"]))
+            self.pk = int(kwargs.get("pk", device.objects.values("pk").get(Q(name=name))["pk"]))
+        self.name = device.objects.get(Q(pk=self.pk)).full_name
+        self.name_list = set([self.name, self.name.split(".")[0]])
         self.create_logger()
         self.set_keys, self.logged_keys = ([], [])
     def cleanup(self):
@@ -109,19 +113,22 @@ class build_client(object):
     @staticmethod
     def init(srv_process):
         build_client.__bc_dict = {}
+        build_client.__bc_list = []
         build_client.srv_process = srv_process
         build_client.bc_log("init build_client")
     @staticmethod
     def close_clients():
-        for cur_c in build_client.__bc_dict.itervalues():
+        for cur_c in build_client.__bc_list:
             cur_c.close()
     @staticmethod
     def get_client(**kwargs):
         name = kwargs["name"]
         if name not in build_client.__bc_dict:
             new_c = build_client(**kwargs)
-            build_client.__bc_dict[name] = new_c
-            build_client.bc_log("added client %s" % (name))
+            for new_name in new_c.name_list:
+                build_client.__bc_dict[new_name] = new_c
+            build_client.bc_log("added client %s" % (", ".join(new_c.name_list)))
+            build_client.__bc_list.append(new_c)
         else:
             new_c = build_client.__bc_dict[name]
         new_c.cleanup()
@@ -169,49 +176,63 @@ class build_client(object):
         return success
     def create_config_dir(self, *args):
         base_dir = global_config["CONFIG_DIR"]
-        # FIXME
-        self.__source_host = self.name
         node_dir, node_link = (
-            os.path.join(base_dir, self.__source_host),
-            os.path.join(base_dir, self.name))
+            os.path.join(base_dir, self.name),
+            os.path.join(base_dir, self.name.split(".")[0]),
+        )
         self.log("node_dir is %s, node_link is %s" % (node_dir, node_link))
         self.set_kwargs(node_dir=node_dir)
         self.node_dir = node_dir
         success = True
-        if not os.path.isdir(node_dir):
-            try:
-                os.mkdir(node_dir)
-            except OSError:
-                self.log("cannot create config_directory %s: %s" % (node_dir,
-                                                                    process_tools.get_except_info()),
-                         logging_tools.LOG_LEVEL_ERROR)
-                success = False
-            else:
-                self.log("created config directory %s" % (node_dir))
-        if os.path.isdir(node_dir):
-            if os.path.islink(node_link):
-                if os.readlink(node_dir) != self.__source_host:
-                    try:
-                        os.unlink(node_link)
-                    except:
-                        self.log("cannot delete wrong link %s: %s" % (node_link,
-                                                                      process_tools.get_except_info()),
-                                 logging_tools.LOG_LEVEL_ERROR)
-                        success = False
-                    else:
-                        self.log("Removed wrong link %s" % (node_link))
-            if not os.path.islink(node_link) and node_link != node_dir:
+        if node_dir != node_link:
+            if not os.path.isdir(node_dir):
                 try:
-                    os.symlink(self.__source_host, node_link)
-                except:
-                    self.log("cannot create link from %s to %s: %s" % (node_link,
-                                                                       self.__source_host,
-                                                                       process_tools.get_except_info()),
+                    os.mkdir(node_dir)
+                except OSError:
+                    self.log("cannot create config_directory %s: %s" % (node_dir,
+                                                                        process_tools.get_except_info()),
                              logging_tools.LOG_LEVEL_ERROR)
                     success = False
                 else:
-                    self.log("Created link from %s to %s" % (node_link,
-                                                             self.__source_host))
+                    self.log("created config directory %s" % (node_dir))
+            if os.path.isdir(node_dir):
+                if os.path.isdir(node_link) and not os.path.islink(node_link):
+                    try:
+                        shutil.rmtree(node_link)
+                    except:
+                        self.log(
+                            "cannot rmtree '%s': %s" % (
+                                node_link,
+                                process_tools.get_except_info()
+                            ),
+                            logging_tools.LOG_LEVEL_ERROR)
+                    else:
+                        self.log("removed tree '%s'" % (node_link))
+                if os.path.islink(node_link):
+                    if os.readlink(node_link) != self.name:
+                        try:
+                            os.unlink(node_link)
+                        except:
+                            self.log(
+                                "cannot delete wrong link %s: %s" % (
+                                    node_link,
+                                    process_tools.get_except_info()),
+                                 logging_tools.LOG_LEVEL_ERROR)
+                            success = False
+                        else:
+                            self.log("Removed wrong link %s" % (node_link))
+                if not os.path.islink(node_link) and node_link != node_dir:
+                    try:
+                        os.symlink(self.name, node_link)
+                    except:
+                        self.log("cannot create link from %s to %s: %s" % (node_link,
+                                                                           self.name,
+                                                                           process_tools.get_except_info()),
+                                 logging_tools.LOG_LEVEL_ERROR)
+                        success = False
+                    else:
+                        self.log("Created link from %s to %s" % (node_link,
+                                                                 self.name))
         return success
     def clean_directory(self, prod_key):
         # cleans directory of network_key
@@ -254,3 +275,4 @@ class build_client(object):
                 prod_key))
         else:
             self.log("config on disk for key '%s' was empty" % (prod_key))
+
