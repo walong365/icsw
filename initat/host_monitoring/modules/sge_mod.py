@@ -39,7 +39,6 @@ class _general(hm_classes.hm_module):
         if set(sge_dict.keys()) == set(["SGE_ROOT", "SGE_CELL"]):
             sge_dict["SGE_ARCH"] = commands.getoutput(os.path.join(sge_dict["SGE_ROOT"], "util", "arch")).strip()
         self.sge_dict = sge_dict
-        print self.sge_dict
 
 class queue_status_command(hm_classes.hm_command):
     def __init__(self, name):
@@ -75,9 +74,8 @@ class queue_status_command(hm_classes.hm_command):
         return
     def interpret(self, srv_com, cur_ns):
         if "queue_result" in srv_com:
-            q_result = srv_com["queue_result"]
-            qv_dict = dict([(cur_el.attrib["name"], cur_el.text or "") for cur_el in q_result[0]])
-            qv_dict["state_string"] = "ES"
+            q_result = srv_com["queue_result"][0]
+            qv_dict = dict([(cur_el.attrib["name"], cur_el.text or "") for cur_el in q_result])
             ret_state = limits.nag_STATE_OK
             for cur_c in qv_dict["state_string"]:
                 ret_state = max(ret_state, {
@@ -90,12 +88,13 @@ class queue_status_command(hm_classes.hm_command):
                     "d" : limits.nag_STATE_WARNING,
                     "D" : limits.nag_STATE_WARNING,
                     "E" : limits.nag_STATE_CRITICAL,
-                })
-            print qv_dict
-            print cur_ns
-            return ret_state, "queue %s@%s" % (
-                cur_ns.sge_queue,
-                cur_ns.sge_host,
+                }[cur_c])
+            return ret_state, "queue %s@%s, %d of %d used, state is %s" % (
+                q_result.attrib["sge_queue"],
+                q_result.attrib["sge_host"],
+                int(qv_dict["slots_used"]),
+                int(qv_dict["slots"]),
+                qv_dict["state_string"] or "ok"
                 )
         else:
             return limits.nag_STATE_CRITICAL, "no stats found"
