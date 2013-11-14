@@ -184,18 +184,18 @@ class build_client(object):
         self.set_kwargs(node_dir=node_dir)
         self.node_dir = node_dir
         success = True
-        if node_dir != node_link:
-            if not os.path.isdir(node_dir):
-                try:
-                    os.mkdir(node_dir)
-                except OSError:
-                    self.log("cannot create config_directory %s: %s" % (node_dir,
-                                                                        process_tools.get_except_info()),
-                             logging_tools.LOG_LEVEL_ERROR)
-                    success = False
-                else:
-                    self.log("created config directory %s" % (node_dir))
-            if os.path.isdir(node_dir):
+        if not os.path.isdir(node_dir):
+            try:
+                os.mkdir(node_dir)
+            except OSError:
+                self.log("cannot create config_directory %s: %s" % (node_dir,
+                                                                    process_tools.get_except_info()),
+                         logging_tools.LOG_LEVEL_ERROR)
+                success = False
+            else:
+                self.log("created config directory %s" % (node_dir))
+        if os.path.isdir(node_dir):
+            if node_dir != node_link:
                 if os.path.isdir(node_link) and not os.path.islink(node_link):
                     try:
                         shutil.rmtree(node_link)
@@ -221,7 +221,7 @@ class build_client(object):
                             success = False
                         else:
                             self.log("Removed wrong link %s" % (node_link))
-                if not os.path.islink(node_link) and node_link != node_dir:
+                if not os.path.islink(node_link):
                     try:
                         os.symlink(self.name, node_link)
                     except:
