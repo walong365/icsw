@@ -179,14 +179,56 @@ class user_tree
             "id"    : "create_user"
             "value" : "Create User"
         ).on("click", @create_user)
-        @buttons_div.append(@sync_button, @create_group_button, @create_user_button)
         @click_buttons = @buttons_div.find("input[type='button']")
+        @filter_field = $("<input>").attr(
+            "type"  : "text",
+            "id"    : "filter_str",
+            "value" : ""
+        ).on("keyup", @change_filter).on("change", @change_filter)
+        @latest_filter = ""
+        @buttons_div.append(@sync_button, @create_group_button, @create_user_button, ", filter : ", @filter_field)
+    change_filter: (event) =>
+        cur_val = $(event.target).val()
+        if cur_val != @latest_filter
+            @latest_filter = cur_val
+            if not @latest_filter
+                @dt_div.dynatree("getRoot").visit((node) ->
+                    node.makeVisible(true)
+                    node.select(false)
+                )
+            else
+                try
+                    cur_login_re = new RegExp(cur_val)
+                catch
+                    cur_login_re = new RegExp(".*")
+                # traverse tree
+                @dt_div.dynatree("getRoot").visit((node) ->
+                    if node.data.title.match(cur_login_re)
+                        node.makeVisible(true)
+                        node.select(true)
+                    else
+                        node.select(false)
+                )
+                # traverse tree, unexpand subtrees
+                @dt_div.dynatree("getRoot").visit((node) ->
+                    if node.hasChildren()
+                        any_selected = false
+                        # count active
+                        node.visit((sub_node) =>
+                            if sub_node.isSelected()
+                                any_selected = true
+                        )
+                        if !any_selected
+                            node.expand(false)
+                )
     sync_users: (event) =>
         @click_buttons.attr("disabled", "disabled")
+        $.blockUI()
         $.ajax
             url     : "{% url 'user:sync_users' %}"
             title   : "syncing users"
             success : (xml) =>
+                $.unblockUI()
                 @click_buttons.removeAttr("disabled")
                 parse_xml_response(xml)
 
@@ -214,16 +256,20 @@ class user_tree
                     @detail_div.bind("submit", @submit_new_user)
         return false
     delete_user: (event) =>
-        $.ajax
-            url     : "{% url 'user:user_detail' %}"
-            data    : {
-                key  : @active_node
-                mode : "delete" 
-            }
-            success : (xml) =>
-                if parse_xml_response(xml)
-                    # remove from tree
-                    window.location = "{% url 'user:overview' %}"
+        if confirm("Really delete user ?")
+            $.blockUI()
+            $.ajax
+                url     : "{% url 'user:user_detail' %}"
+                data    : {
+                    key  : @active_node
+                    mode : "delete" 
+                }
+                success : (xml) =>
+                    if parse_xml_response(xml)
+                        # remove from tree
+                        window.location = "{% url 'user:overview' %}"
+                    else
+                        $.unblockUI()
         return false
      
     # group functions
@@ -240,6 +286,7 @@ class user_tree
                     @install_ug_form($(xml).find("value[name='form']").text())
                     @detail_div.bind("submit", @submit_new_group)
     submit_new_group: (event) =>
+        $.blockUI()
         $.ajax
             url     : "{% url 'user:group_detail' %}"
             data    : create_dict($("div#ug_detail"), "group__new", true, true)
@@ -247,20 +294,25 @@ class user_tree
                 if parse_xml_response(xml)
                     window.location = "{% url 'user:overview' %}"
                 else
+                    $.unblockUI()
                     @install_ug_form($(xml).find("value[name='error_form']").text())
                     @detail_div.bind("submit", @submit_new_group)
         return false
     delete_group: (event) =>
-        $.ajax
-            url     : "{% url 'user:group_detail' %}"
-            data    : {
-                key  : @active_node
-                mode : "delete" 
-            }
-            success : (xml) =>
-                if parse_xml_response(xml)
-                    # remove from tree
-                    window.location = "{% url 'user:overview' %}"
+        if confirm("Really delete group ?")
+            $.blockUI()
+            $.ajax
+                url     : "{% url 'user:group_detail' %}"
+                data    : {
+                    key  : @active_node
+                    mode : "delete" 
+                }
+                success : (xml) =>
+                    if parse_xml_response(xml)
+                        # remove from tree
+                        window.location = "{% url 'user:overview' %}"
+                    else
+                        $.unblockUI()
         return false
 
     install_ug_form: (form_text) =>
