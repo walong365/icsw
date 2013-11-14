@@ -21,16 +21,13 @@
 
 import cs_base_class
 import codecs
-import grp
 import logging_tools
 import os
 import process_tools
-import pwd
 import server_command
 import shutil
 import stat
-import sys
-from lxml.builder import E
+from lxml.builder import E # @UnresolvedImport
 
 class get_file_content(cs_base_class.server_com):
     def _call(self, cur_inst):
@@ -43,12 +40,17 @@ class get_file_content(cs_base_class.server_com):
                         content = open(file_entry.attrib["name"], "r").read()
                 except:
                     file_entry.attrib["error"] = "1"
-                    file_entry.attrib["error_str"] = process_tools.get_except_info()
+                    file_entry.attrib["error_str"] = "error reading: %s" % (process_tools.get_except_info())
                 else:
-                    file_entry.attrib["error"] = "0"
-                    file_entry.attrib["size"] = "%d" % (len(content))
-                    file_entry.attrib["lines"] = "%d" % (content.count("\n") + 1)
-                    file_entry.text = content
+                    try:
+                        file_entry.text = content
+                    except:
+                        file_entry.attrib["error"] = "1"
+                        file_entry.attrib["error_str"] = "error setting content: %s" % (process_tools.get_except_info())
+                    else:
+                        file_entry.attrib["error"] = "0"
+                        file_entry.attrib["size"] = "%d" % (len(content))
+                        file_entry.attrib["lines"] = "%d" % (content.count("\n") + 1)
             else:
                 file_entry.attrib["error"] = "1"
                 file_entry.attrib["error_str"] = "file does not exist"
@@ -62,9 +64,9 @@ class set_file_content(cs_base_class.server_com):
         for file_entry in cur_inst.srv_com.xpath(None, ".//ns:file"):
             try:
                 if "encoding" in file_entry.attrib:
-                    content = codecs.open(file_entry.attrib["name"], "w", file_entry.attrib["encoding"]).write(file_entry.text)
+                    codecs.open(file_entry.attrib["name"], "w", file_entry.attrib["encoding"]).write(file_entry.text)
                 else:
-                    content = open(file_entry.attrib["name"], "r").write(file_entry.text)
+                    open(file_entry.attrib["name"], "r").write(file_entry.text)
             except:
                 file_entry.attrib["error"] = "1"
                 file_entry.attrib["error_str"] = process_tools.get_except_info()
