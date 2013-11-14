@@ -31,6 +31,8 @@ try:
 except:
     libvirt = None
 
+LIBVIRT_RO_SOCK_NAME = "/var/run/libvirt/libvirt-sock-ro"
+
 class base_stats(object):
     def __init__(self):
         self.__first_run = True
@@ -199,7 +201,7 @@ class libvirt_connection(object):
     @property
     def connection(self):
         if not self.__conn:
-            if libvirt:
+            if libvirt and os.path.exists(LIBVIRT_RO_SOCK_NAME):
                 try:
                     self.__conn = libvirt.openReadOnly(None)
                 except:
@@ -213,7 +215,7 @@ class libvirt_connection(object):
             else:
                 if not self.__missing_logged:
                     self.__missing_logged = True
-                    self.log("no libvirt defined", logging_tools.LOG_LEVEL_ERROR)
+                    self.log("no libvirt defined or socket %s not found" % (LIBVIRT_RO_SOCK_NAME), logging_tools.LOG_LEVEL_ERROR)
                 self.__conn = None
         return self.__conn
     def keys(self):
@@ -238,6 +240,7 @@ class libvirt_connection(object):
     def update(self):
         conn = self.connection
         if conn is not None:
+            print os.path.exists("/var/run/libvirt/libvirt-sock-ro")
             try:
                 id_list = self.conn_call(conn, "listDomainsID")
             except:
