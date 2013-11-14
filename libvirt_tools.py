@@ -18,14 +18,13 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
 
+import logging_tools
+import os
+import process_tools
 import sys
 import time
-import os
-import pprint
-import logging_tools
-import process_tools
 
-from lxml import etree
+from lxml import etree # @UnresolvedImport
 
 try:
     import libvirt
@@ -191,7 +190,10 @@ class libvirt_connection(object):
             self.log_lines = []
     def _close_con(self):
         if self.__conn:
-            self.__conn.close()
+            try:
+                self.__conn.close()
+            except:
+                self.log("error closing connection: %s" % (process_tools.get_except_info()), logging_tools.LOG_LEVEL_ERROR)
             del self.__conn
             self.__conn = None
     @property
@@ -236,26 +238,31 @@ class libvirt_connection(object):
     def update(self):
         conn = self.connection
         if conn is not None:
-            id_list = self.conn_call(conn, "listDomainsID")
-            cur_ids, present_ids = (set(id_list), set(self.__inst_dict.keys()))
-            new_ids = cur_ids - present_ids
-            old_ids = present_ids - cur_ids
-            if new_ids:
-                self.log(
-                    "%s found: %s" % (
-                        logging_tools.get_plural("ID", len(new_ids)),
-                        ", ".join(["%d" % (cur_id) for cur_id in sorted(new_ids)])))
-                for new_id in new_ids:
-                    self.add_domain(virt_instance(new_id, self.log, conn))
-            if old_ids:
-                self.log(
-                    "%s lost: %s" % (
-                        logging_tools.get_plural("ID", len(old_ids)),
-                        ", ".join(["%d" % (cur_id) for cur_id in sorted(old_ids)])))
-                for old_id in old_ids:
-                    self.remove_domain(old_id)
-            for same_id in cur_ids & present_ids:
-                self[same_id].update()
+            try:
+                id_list = self.conn_call(conn, "listDomainsID")
+            except:
+                # connection gone ?
+                self._close_con()
+            else:
+                cur_ids, present_ids = (set(id_list), set(self.__inst_dict.keys()))
+                new_ids = cur_ids - present_ids
+                old_ids = present_ids - cur_ids
+                if new_ids:
+                    self.log(
+                        "%s found: %s" % (
+                            logging_tools.get_plural("ID", len(new_ids)),
+                            ", ".join(["%d" % (cur_id) for cur_id in sorted(new_ids)])))
+                    for new_id in new_ids:
+                        self.add_domain(virt_instance(new_id, self.log, conn))
+                if old_ids:
+                    self.log(
+                        "%s lost: %s" % (
+                            logging_tools.get_plural("ID", len(old_ids)),
+                            ", ".join(["%d" % (cur_id) for cur_id in sorted(old_ids)])))
+                    for old_id in old_ids:
+                        self.remove_domain(old_id)
+                for same_id in cur_ids & present_ids:
+                    self[same_id].update()
     def add_domain(self, new_inst):
         self.__inst_dict[new_inst.inst_id] = new_inst
     def remove_domain(self, inst_id):
