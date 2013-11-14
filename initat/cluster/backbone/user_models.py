@@ -455,11 +455,8 @@ def user_pre_save(sender, **kwargs):
         _check_integer(cur_inst, "uid", min_val=100, max_val=65535)
         _check_empty_string(cur_inst, "login")
         _check_empty_string(cur_inst, "password")
-
-@receiver(signals.post_save, sender=user)
-def user_post_save(sender, **kwargs):
-    if not kwargs["raw"] and "instance" in kwargs:
-        cur_inst = kwargs["instance"]
+        if not cur_inst.home:
+            cur_inst.home = cur_inst.login
         cur_pw = cur_inst.password
         if cur_pw.count(":"):
             cur_method, passwd = cur_pw.split(":", 1)
@@ -484,7 +481,11 @@ def user_post_save(sender, **kwargs):
                 new_sh.update(salt)
                 # print base64.b64encode(new_sh.digest() +  salt)
                 cur_inst.password_ssha = "%s:%s" % ("SSHA", base64.b64encode(new_sh.digest() + salt))
-            cur_inst.save()
+
+@receiver(signals.post_save, sender=user)
+def user_post_save(sender, **kwargs):
+    if not kwargs["raw"] and "instance" in kwargs:
+        _cur_inst = kwargs["instance"]
 
 # @receiver(signals.post_delete, sender=user)
 # def user_post_delete(sender, **kwargs):
