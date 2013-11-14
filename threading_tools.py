@@ -1036,16 +1036,20 @@ class process_obj(multiprocessing.Process, timer_base):
                 src_process,
                 src_pid),
                      logging_tools.LOG_LEVEL_ERROR)
-    def step(self):
+    def step(self, blocking=False):
         # process all pending messages
         cur_q = self.__process_queue
-        while True:
-            try:
-                cur_mes = cur_q.recv_pyobj(zmq.NOBLOCK)
-            except:
-                break
-            else:
-                self._handle_message(cur_mes)
+        if blocking:
+            cur_mes = cur_q.recv_pyobj()
+            self._handle_message(cur_mes)
+        else:
+            while True:
+                try:
+                    cur_mes = cur_q.recv_pyobj(zmq.NOBLOCK)
+                except:
+                    break
+                else:
+                    self._handle_message(cur_mes)
     def loop(self):
         if self.__twisted:
             reactor.run(installSignalHandlers=False)
@@ -1063,8 +1067,9 @@ class process_obj(multiprocessing.Process, timer_base):
                         if self.__busy_loop:
                             self.step()
                         else:
-                            cur_mes = cur_q.recv_pyobj()
-                            self._handle_message(cur_mes)
+                            self.step(blocking=True)
+                            # cur_mes = cur_q.recv_pyobj()
+                            # self._handle_message(cur_mes)
                 except:
                     exc_info = sys.exc_info()
                     self._exc_info = exc_info
