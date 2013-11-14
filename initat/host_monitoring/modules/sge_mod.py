@@ -18,63 +18,85 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
 
+import commands
 import logging_tools
+import os
 # import pprint
 import process_tools
 import server_command
 import sys
 from initat.host_monitoring import limits, hm_classes
-try:
-    import memcache
-except ImportError:
-    memcache = None
+from lxml import etree # @UnresolvedImport
 
 class _general(hm_classes.hm_module):
-    pass
+    def init_module(self):
+        sge_dict = {}
+        for v_name, v_src, v_default in [("SGE_ROOT", "/etc/sge_root", "/opt/sge"),
+                                         ("SGE_CELL", "/etc/sge_cell", "default")]:
+            if os.path.isfile(v_src):
+                sge_dict[v_name] = file(v_src, "r").read().strip()
+                os.environ[v_name] = sge_dict[v_name]
+        if set(sge_dict.keys()) == set(["SGE_ROOT", "SGE_CELL"]):
+            sge_dict["SGE_ARCH"] = commands.getoutput(os.path.join(sge_dict["SGE_ROOT"], "util", "arch")).strip()
+        self.sge_dict = sge_dict
+        print self.sge_dict
 
-class memcached_status_command(hm_classes.hm_command):
+class queue_status_command(hm_classes.hm_command):
     def __init__(self, name):
-        super(memcached_status_command, self).__init__(name, positional_arguments=True)
-        self.parser.add_argument("-w", dest="warn", type=float)
-        self.parser.add_argument("-c", dest="crit", type=float)
+        super(queue_status_command, self).__init__(name, server_arguments=True)
+        self.server_parser.add_argument("--sge-queue", dest="sge_queue", type=str)
+        self.server_parser.add_argument("--sge-host", dest="sge_host", type=str)
     def __call__(self, srv_com, cur_ns):
-        if memcache:
-            if cur_ns.arguments:
-                target_servers = cur_ns.arguments
-            else:
-                target_servers = ["localhost:11211"]
-            cur_c = memcache.Client(target_servers)
-            try:
-                mc_stats = cur_c.get_stats()
-            except:
-                srv_com.set_result("cannot get stats: %s" % (process_tools.get_except_info()), server_command.SRV_REPLY_STATE_ERROR)
-            else:
-                if mc_stats:
-                    srv_com["memcache_stats"] = mc_stats
-                else:
-                    srv_com.set_result("no stats from %s" % (", ".join(target_servers)), server_command.SRV_REPLY_STATE_ERROR)
+        sge_dict = self.module.sge_dict
+        if not cur_ns.sge_queue or not cur_ns.sge_host:
+            srv_com.set_result("need queue and host value", server_command.SRV_REPLY_STATE_ERROR)
         else:
-            srv_com.set_result("no memcached module found", server_command.SRV_REPLY_STATE_ERROR)
+            cur_stat, cur_out = commands.getstatusoutput(os.path.join(sge_dict["SGE_ROOT"], "bin", sge_dict["SGE_ARCH"], "qhost -q -xml"))
+            if cur_stat:
+                srv_com.set_result("error getting qhost info (%d): %s" % (
+                    cur_stat,
+                    cur_out), server_command.SRV_REPLY_STATE_ERROR)
+            else:
+                try:
+                    cur_xml = etree.fromstring(cur_out)
+                except:
+                    srv_com.set_result("error building xml: %s" % (process_tools.get_except_info()), server_command.SRV_REPLY_STATE_ERROR)
+                else:
+                    q_el = cur_xml.xpath(".//host[@name='%s']/queue[@name='%s']" % (cur_ns.sge_host, cur_ns.sge_queue))
+                    if q_el:
+                        q_el = q_el[0]
+                        q_el.attrib["sge_host"] = cur_ns.sge_host
+                        q_el.attrib["sge_queue"] = cur_ns.sge_queue
+                        srv_com["queue_result"] = q_el
+                    else:
+                        srv_com.set_result("no queue element found for '%s'/'%s'" % (
+                            cur_ns.sge_host,
+                            cur_ns.sge_queue), server_command.SRV_REPLY_STATE_ERROR)
+        return
     def interpret(self, srv_com, cur_ns):
-        if "memcache_stats" in srv_com:
-            mc_stats = srv_com["*memcache_stats"]
+        if "queue_result" in srv_com:
+            q_result = srv_com["queue_result"]
+            qv_dict = dict([(cur_el.attrib["name"], cur_el.text or "") for cur_el in q_result[0]])
+            qv_dict["state_string"] = "ES"
             ret_state = limits.nag_STATE_OK
-            out_f = []
-            for t_srv, cur_stats in mc_stats:
-                # pprint.pprint(mc_stats)
-                used_bytes, max_bytes = (
-                    int(cur_stats["bytes"]),
-                    int(cur_stats["limit_maxbytes"]),
-                    )
-                cur_perc = used_bytes * 100. / max_bytes
-                out_f.append("%s: %s of %s used (%.2f %%)" % (
-                    t_srv.strip(),
-                    logging_tools.get_size_str(used_bytes),
-                    logging_tools.get_size_str(max_bytes),
-                    cur_perc,
-                    ))
-                ret_state = max(ret_state, limits.check_ceiling(cur_perc, cur_ns.warn, cur_ns.crit))
-            return ret_state, ", ".join(out_f)
+            for cur_c in qv_dict["state_string"]:
+                ret_state = max(ret_state, {
+                    "u" : limits.nag_STATE_CRITICAL,
+                    "a" : limits.nag_STATE_CRITICAL,
+                    "A" : limits.nag_STATE_CRITICAL,
+                    "C" : limits.nag_STATE_OK,
+                    "s" : limits.nag_STATE_OK,
+                    "S" : limits.nag_STATE_OK,
+                    "d" : limits.nag_STATE_WARNING,
+                    "D" : limits.nag_STATE_WARNING,
+                    "E" : limits.nag_STATE_CRITICAL,
+                })
+            print qv_dict
+            print cur_ns
+            return ret_state, "queue %s@%s" % (
+                cur_ns.sge_queue,
+                cur_ns.sge_host,
+                )
         else:
             return limits.nag_STATE_CRITICAL, "no stats found"
 

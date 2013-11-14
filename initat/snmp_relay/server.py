@@ -258,7 +258,8 @@ class server_process(threading_tools.process_pool):
             self.stop_process(src_proc)
             proc_struct["state"] = "stopping"
     def _start_snmp_fetch(self, scheme):
-        free_processes = sorted([(value["call_count"], key) for key, value in self.__process_dict.iteritems() if not value["in_use"] and value["state"] == "running"])
+        # free_processes = sorted([(value["call_count"], key) for key, value in self.__process_dict.iteritems() if not value["in_use"] and value["state"] == "running"])
+        free_processes = sorted([(value["call_count"], key) for key, value in self.__process_dict.iteritems() if value["state"] == "running"])
         _cache_ok, num_cached, num_refresh, num_pending, num_hot_enough = scheme.pre_snmp_start(self.log)
         if self.__verbose:
             self.log("%sinfo for %s: %s" % (

@@ -4,7 +4,7 @@
 # (C) 2010 SK, IMS Nanofabrication AG
 #
 # Send feedback to: <lang-nevyjel@init.at>
-# 
+#
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License Version 2 as
 # published by the Free Software Foundation.
@@ -19,15 +19,13 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
 
-import sys
-import os
-import os.path
-import time
-from initat.host_monitoring import limits, hm_classes
-import logging_tools
 import commands
+import logging_tools
+import os
 import process_tools
 import pprint
+import sys
+from initat.host_monitoring import limits, hm_classes
 
 class my_modclass(hm_classes.hm_fileinfo):
     def __init__(self, **args):
@@ -69,20 +67,20 @@ class my_modclass(hm_classes.hm_fileinfo):
             cmd = "%s -client %s" % (self.__exe_dict[com_name], jobargs[0])
             if len(jobargs) > 1:
                 print "got 2nd arg"
-                cmd+=" -warningAge=%s" % (jobargs[1])
+                cmd += " -warningAge=%s" % (jobargs[1])
             if len(jobargs) > 2:
                 print "got 3rd arg"
-                cmd+=" -criticalAge=%s" % (jobargs[2])
+                cmd += " -criticalAge=%s" % (jobargs[2])
 #            print "command= %s" % (cmd)
-            cstat, result = commands.getstatusoutput( cmd )
+            cstat, result = commands.getstatusoutput(cmd)
 #            print "result:", cstat, result
-            j_dict=dict([("status",0),("message",result)])
-            if cstat==256: #got warning message
-                j_dict["status"]=cstat
-                cstat=0
-            if cstat==512: #got critical message
-                j_dict["status"]=cstat
-                cstat=0				
+            j_dict = dict([("status", 0), ("message", result)])
+            if cstat == 256: # got warning message
+                j_dict["status"] = cstat
+                cstat = 0
+            if cstat == 512: # got critical message
+                j_dict["status"] = cstat
+                cstat = 0
             if cstat:
                 return "error %s gave (%d) %s" % (com_name, cstat, result)
             else:
@@ -91,7 +89,7 @@ class my_modclass(hm_classes.hm_fileinfo):
             return "error calling %s: %s" % (self.__exe_dict[com_name], process_tools.get_except_info())
         else:
             return "error %s command not found" % (com_name)
-#dummy
+# dummy
     def get_user_list(self):
         com_name = "omshowu"
         if self.__exe_dict[com_name]:
@@ -107,7 +105,7 @@ class my_modclass(hm_classes.hm_fileinfo):
                                                  process_tools.get_except_info())
         else:
             return "error %s command not found" % (com_name)
-#dummy
+# dummy
     def get_user_info(self, user_name):
         com_name = "omshowu"
         if self.__exe_dict[com_name]:
@@ -148,7 +146,7 @@ class my_modclass(hm_classes.hm_fileinfo):
                                                  process_tools.get_except_info())
         else:
             return "error %s command not found" % (com_name)
-#dummy
+# dummy
     def get_service_info(self, service_name):
         com_name = "omstat"
         if self.__exe_dict[com_name]:
@@ -178,7 +176,7 @@ class my_modclass(hm_classes.hm_fileinfo):
                 return "error calling %s: %s" % (self.__exe_dict[com_name],
                                                  process_tools.get_except_info())
 
-#get job status and info using perl script and bconsole
+# get job status and info using perl script and bconsole
 class bacula_jobinfo_command(hm_classes.hmb_command):
     def __init__(self, **args):
         hm_classes.hmb_command.__init__(self, "bacula_jobinfo", **args)
@@ -192,15 +190,15 @@ class bacula_jobinfo_command(hm_classes.hmb_command):
         lim = parsed_coms[0]
 #        pprint.pprint(result)
         j_dict = hm_classes.net_to_sys(result[3:])
-        ret_state=limits.nag_STATE_OK
-        if j_dict["status"]==256:
-            ret_state=limits.nag_STATE_WARNING
-        if j_dict["status"]==512:
-            ret_state=limits.nag_STATE_CRITICAL
-		
-        return ret_state, "%s" % (j_dict["message"]) 
+        ret_state = limits.nag_STATE_OK
+        if j_dict["status"] == 256:
+            ret_state = limits.nag_STATE_WARNING
+        if j_dict["status"] == 512:
+            ret_state = limits.nag_STATE_CRITICAL
 
-#dummy
+        return ret_state, "%s" % (j_dict["message"])
+
+# dummy
 class bacula_media_command(hm_classes.hmb_command):
     def __init__(self, **args):
         hm_classes.hmb_command.__init__(self, "bacula_media", **args)
@@ -211,7 +209,7 @@ class bacula_media_command(hm_classes.hmb_command):
         u_list = hm_classes.net_to_sys(result[3:])
         return limits.nag_STATE_OK, "OK: %s" % (logging_tools.get_plural("user", len(u_list)))
 
-#dummy
+# dummy
 class bacula_userlist_command(hm_classes.hmb_command):
     def __init__(self, **args):
         hm_classes.hmb_command.__init__(self, "bacula_userlist", **args)
@@ -222,7 +220,7 @@ class bacula_userlist_command(hm_classes.hmb_command):
         u_list = sorted(hm_classes.net_to_sys(result[3:]))
         return limits.nag_STATE_OK, "OK: %s\n%s" % (logging_tools.get_plural("user", len(u_list)),
                                                     "\n".join(u_list))
-#dummy
+# dummy
 class bacula_userinfo_command(hm_classes.hmb_command):
     def __init__(self, **args):
         hm_classes.hmb_command.__init__(self, "bacula_userinfo", **args)
@@ -231,7 +229,7 @@ class bacula_userinfo_command(hm_classes.hmb_command):
         return self.module_info.get_user_info(" ".join(cm))
     def client_call(self, result, parsed_coms):
         u_dict = hm_classes.net_to_sys(result[3:])
-        #pprint.pprint(u_dict)
+        # pprint.pprint(u_dict)
         ret_state = limits.nag_STATE_OK
         used = u_dict["total_size"]
         if u_dict.has_key("max_size"):
@@ -257,7 +255,7 @@ class bacula_userinfo_command(hm_classes.hmb_command):
                                                                account_stat,
                                                                used and logging_tools.get_size_str(used, long_version=True).strip() or "not known",
                                                                used_info)
-#dummy
+# dummy
 class bacula_serviceinfo_command(hm_classes.hmb_command):
     def __init__(self, **args):
         hm_classes.hmb_command.__init__(self, "bacula_serviceinfo", **args)
@@ -266,7 +264,7 @@ class bacula_serviceinfo_command(hm_classes.hmb_command):
         return self.module_info.get_service_info(" ".join(cm))
     def client_call(self, result, parsed_coms):
         s_dict = hm_classes.net_to_sys(result[3:])
-        #pprint.pprint(s_dict)
+        # pprint.pprint(s_dict)
         if s_dict:
             ret_state = limits.nag_STATE_OK
             if s_dict["act_state"].lower() not in ["enabled", "started"]:

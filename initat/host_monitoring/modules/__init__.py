@@ -24,7 +24,7 @@ for mod_name in __all__:
             new_hm_mod = new_mod._general(mod_name, new_mod)
             _new_hm_list.append((new_hm_mod.Meta().priority, new_hm_mod))
     except:
-        IMPORT_ERRORS.append(("system", "import", process_tools.get_except_info()))
+        IMPORT_ERRORS.append((mod_name, "import", process_tools.get_except_info()))
 
 _new_hm_list.sort(reverse=True)
 
