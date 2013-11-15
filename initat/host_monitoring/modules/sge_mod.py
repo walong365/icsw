@@ -31,8 +31,9 @@ from lxml import etree # @UnresolvedImport
 class _general(hm_classes.hm_module):
     def init_module(self):
         sge_dict = {}
-        for v_name, v_src, v_default in [("SGE_ROOT", "/etc/sge_root", "/opt/sge"),
-                                         ("SGE_CELL", "/etc/sge_cell", "default")]:
+        for v_name, v_src in [
+            ("SGE_ROOT", "/etc/sge_root"),
+            ("SGE_CELL", "/etc/sge_cell")]:
             if os.path.isfile(v_src):
                 sge_dict[v_name] = file(v_src, "r").read().strip()
                 os.environ[v_name] = sge_dict[v_name]
@@ -40,14 +41,14 @@ class _general(hm_classes.hm_module):
             sge_dict["SGE_ARCH"] = commands.getoutput(os.path.join(sge_dict["SGE_ROOT"], "util", "arch")).strip()
         self.sge_dict = sge_dict
 
-class queue_status_command(hm_classes.hm_command):
+class sge_queue_status_command(hm_classes.hm_command):
     def __init__(self, name):
-        super(queue_status_command, self).__init__(name, server_arguments=True)
+        super(sge_queue_status_command, self).__init__(name, server_arguments=True)
         self.server_parser.add_argument("--sge-queue", dest="sge_queue", type=str)
         self.server_parser.add_argument("--sge-host", dest="sge_host", type=str)
     def __call__(self, srv_com, cur_ns):
         sge_dict = self.module.sge_dict
-        if not cur_ns.sge_queue or not cur_ns.sge_host:
+        if not cur_ns.sge_host:
             srv_com.set_result("need queue and host value", server_command.SRV_REPLY_STATE_ERROR)
         else:
             cur_stat, cur_out = commands.getstatusoutput(os.path.join(sge_dict["SGE_ROOT"], "bin", sge_dict["SGE_ARCH"], "qhost -q -xml"))
@@ -61,41 +62,63 @@ class queue_status_command(hm_classes.hm_command):
                 except:
                     srv_com.set_result("error building xml: %s" % (process_tools.get_except_info()), server_command.SRV_REPLY_STATE_ERROR)
                 else:
-                    q_el = cur_xml.xpath(".//host[@name='%s']/queue[@name='%s']" % (cur_ns.sge_host, cur_ns.sge_queue))
+                    q_el = cur_xml.xpath(".//host[@name='%s']" % (cur_ns.sge_host))
+                    if not q_el and not cur_ns.sge_host.count("."):
+                        # try with short name if no FQDN is given
+                        q_el = cur_xml.xpath(".//host[starts-with(@name, '%s.')]" % (cur_ns.sge_host))
+                        if not q_el:
+                            # last try, only with short name
+                            q_el = cur_xml.xpath(".//host[@name='%s')]" % (cur_ns.sge_host))
                     if q_el:
                         q_el = q_el[0]
                         q_el.attrib["sge_host"] = cur_ns.sge_host
-                        q_el.attrib["sge_queue"] = cur_ns.sge_queue
+                        if cur_ns.sge_queue:
+                            q_el.attrib["sge_queue"] = cur_ns.sge_queue
                         srv_com["queue_result"] = q_el
                     else:
-                        srv_com.set_result("no queue element found for '%s'/'%s'" % (
+                        srv_com.set_result("no host/queue element found for '%s'/'%s'" % (
                             cur_ns.sge_host,
                             cur_ns.sge_queue), server_command.SRV_REPLY_STATE_ERROR)
         return
     def interpret(self, srv_com, cur_ns):
         if "queue_result" in srv_com:
-            q_result = srv_com["queue_result"][0]
-            qv_dict = dict([(cur_el.attrib["name"], cur_el.text or "") for cur_el in q_result])
-            ret_state = limits.nag_STATE_OK
-            for cur_c in qv_dict["state_string"]:
-                ret_state = max(ret_state, {
-                    "u" : limits.nag_STATE_CRITICAL,
-                    "a" : limits.nag_STATE_CRITICAL,
-                    "A" : limits.nag_STATE_CRITICAL,
-                    "C" : limits.nag_STATE_OK,
-                    "s" : limits.nag_STATE_OK,
-                    "S" : limits.nag_STATE_OK,
-                    "d" : limits.nag_STATE_WARNING,
-                    "D" : limits.nag_STATE_WARNING,
-                    "E" : limits.nag_STATE_CRITICAL,
-                }[cur_c])
-            return ret_state, "queue %s@%s, %d of %d used, state is %s" % (
-                q_result.attrib["sge_queue"],
-                q_result.attrib["sge_host"],
-                int(qv_dict["slots_used"]),
-                int(qv_dict["slots"]),
-                qv_dict["state_string"] or "ok"
-                )
+            q_host = srv_com["queue_result"][0]
+            q_name = q_host.get("sge_queue", "")
+            q_list = [q_name] if q_name else q_host.xpath(".//queue/@name")
+            host_name = q_host.attrib["name"]
+            ret_state, out_f = (
+                limits.nag_STATE_OK,
+                []
+            )
+            # iterate over all queues
+            for s_queue in q_host.findall("queue"):
+                queue_name = s_queue.attrib["name"]
+                if queue_name in q_list:
+                    qv_dict = dict([(cur_el.attrib["name"], cur_el.text or "") for cur_el in s_queue])
+                    for cur_c in qv_dict["state_string"]:
+                        ret_state = max(ret_state, {
+                            "u" : limits.nag_STATE_CRITICAL,
+                            "a" : limits.nag_STATE_CRITICAL,
+                            "A" : limits.nag_STATE_CRITICAL,
+                            "C" : limits.nag_STATE_OK,
+                            "s" : limits.nag_STATE_OK,
+                            "S" : limits.nag_STATE_OK,
+                            "d" : limits.nag_STATE_WARNING,
+                            "D" : limits.nag_STATE_WARNING,
+                            "E" : limits.nag_STATE_CRITICAL,
+                        }[cur_c])
+                    out_f.append(
+                        "queue %s@%s, %d of %d used, state is %s" % (
+                            queue_name,
+                            host_name,
+                            int(qv_dict["slots_used"]),
+                            int(qv_dict["slots"]),
+                            qv_dict["state_string"] or "ok"
+                        )
+                    )
+            if not out_f:
+                ret_state = max(ret_state, limits.nag_STATE_WARNING)
+            return ret_state, "; ".join(out_f) or "no Queues found"
         else:
             return limits.nag_STATE_CRITICAL, "no stats found"
 
