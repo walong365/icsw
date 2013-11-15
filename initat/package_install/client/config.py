@@ -2,7 +2,7 @@
 #
 # Copyright (C) 2001,2002,2003,2004,2005,2006,2007,2008,2009,2012,2013 Andreas Lang-Nevyjel
 #
-# this file is part of package-client
+# this file is part of package-server
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -19,9 +19,19 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
-""" daemon to automatically install packages (.rpm, .deb) """
+""" package client, configuration and constants """
 
-import sys
+import configfile
+import process_tools
 
-from initat.package_install.client.main import main
-sys.exit(main.main())
+try:
+    from initat.package_install.server.version import VERSION_STRING
+except ImportError:
+    VERSION_STRING = "?.?"
+
+global_config = configfile.get_global_config(process_tools.get_programm_name())
+
+P_SERVER_COM_PORT = 8007
+PACKAGE_CLIENT_PORT = 2003
+
+LF_NAME = "/var/lock/package_client.lock"
