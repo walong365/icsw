@@ -19,9 +19,21 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
-""" package server """
+""" package server, configuration """
 
-import sys
+import configfile
+import process_tools
 
-from initat.package_install.server.main import main
-sys.exit(main.main())
+global_config = configfile.get_global_config(process_tools.get_programm_name())
+
+P_SERVER_PUB_PORT = 8007
+PACKAGE_CLIENT_PORT = 2003
+
+ADD_PACK_PATH = "additional_packages"
+DEL_PACK_PATH = "deleted_packages"
+
+LAST_CONTACT_VAR_NAME = "package_server_last_contact"
+PACKAGE_VERSION_VAR_NAME = "package_client_version"
+DIRECT_MODE_VAR_NAME = "package_client_direct_mode"
+
+CONFIG_NAME = "/etc/sysconfig/cluster/package_server_clients.xml"
