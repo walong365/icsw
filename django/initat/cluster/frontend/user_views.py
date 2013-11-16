@@ -33,14 +33,13 @@ from lxml import etree # @UnresolvedImports
 from lxml.builder import E # @UnresolvedImports
 
 # from crispy_forms.layout import Submit, Layout, Field, ButtonHolder, Button
-from django.contrib.auth.decorators import login_required, permission_required
+from django.contrib.auth.decorators import login_required
 from django.contrib.contenttypes.models import ContentType
 from django.db.models import get_model, Q
 from django.utils.decorators import method_decorator
 from django.views.generic import View
 
-from initat.cluster.backbone.models import partition_table, partition_disc, partition, \
-     partition_fs, image, architecture, group, user, device_config, device_group, \
+from initat.cluster.backbone.models import group, user, device_config, device_group, \
      user_variable, csw_permission, get_related_models, csw_object_permission
 from initat.core.render import render_me, render_string
 from initat.cluster.backbone.render import permission_required_mixin
@@ -143,16 +142,16 @@ class sync_users(View):
             logger.info("trying to create user_home for '%s'" % (unicode(create_user)))
             srv_com = server_command.srv_command(command="create_user_home")
             srv_com["server_key:username"] = create_user.login
-            result = contact_server(request, "tcp://localhost:8004", srv_com, timeout=30)
+            _result = contact_server(request, "tcp://localhost:8004", srv_com, timeout=30)
         # check for configs, can be optimised ?
         if config_tools.server_check(server_type="ldap_server").effective_device:
             srv_com = server_command.srv_command(command="sync_ldap_config")
-            result = contact_server(request, "tcp://localhost:8004", srv_com, timeout=30)
+            _result = contact_server(request, "tcp://localhost:8004", srv_com, timeout=30)
         if config_tools.server_check(server_type="yp_server").effective_device:
             srv_com = server_command.srv_command(command="write_yp_config")
-            result = contact_server(request, "tcp://localhost:8004", srv_com, timeout=30)
+            _result = contact_server(request, "tcp://localhost:8004", srv_com, timeout=30)
         srv_com = server_command.srv_command(command="sync_http_users")
-        result = contact_server(request, "tcp://localhost:8010", srv_com)
+        _result = contact_server(request, "tcp://localhost:8010", srv_com)
 
 class get_password_form(View):
     @method_decorator(login_required)
