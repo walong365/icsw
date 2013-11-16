@@ -35,8 +35,8 @@ class authentication_form(Form):
         Div(
             Fieldset(
                 HTML("<h2>Login credentials</h2>"),
-                Field("username"),
-                Field("password"),
+                Field("username", placeholder="user name"),
+                Field("password", placeholder="password"),
             ),
             FormActions(
                 Submit("submit", "Submit", css_class="primaryAction"),
@@ -204,10 +204,11 @@ class dummy_password_form(Form):
     helper.layout = Layout(
         Fieldset(
             "please enter the new password",
-            Field("password1"),
-            Field("password2"),
+            Field("password1", placeholder="password"),
+            Field("password2", placeholder="again"),
             FormActions(
                 Button("check", "Check"),
+                Button("leave", "Check and save"),
             ),
         )
     )
@@ -529,9 +530,9 @@ class account_detail_form(ModelForm):
             Div(
                 Fieldset(
                     "Basic data",
-                    Field("first_name"),
-                    Field("last_name"),
-                    Field("shell"),
+                    Field("first_name", placeholder="first name"),
+                    Field("last_name", placeholder="last name"),
+                    Field("shell", placeholder="shell to use"),
                     css_class="form-horizontal",
                     ),
                 css_class="col-md-6",
@@ -539,11 +540,11 @@ class account_detail_form(ModelForm):
             Div(
                 Fieldset(
                     "Additional data",
-                    Field("title"),
-                    Field("email"),
-                    Field("pager"),
-                    Field("tel"),
-                    Field("comment"),
+                    Field("title", placeholder="Title"),
+                    Field("email", placeholder="EMail address"),
+                    Field("pager", placeholder="pager number"),
+                    Field("tel", placeholder="Telefon number"),
+                    Field("comment", placeholder="User comment"),
                     css_class="form-horizontal",
                     ),
                 css_class="col-md-6",
@@ -555,9 +556,6 @@ class account_detail_form(ModelForm):
             css_class="form-horizontal"
         ),
     )
-    def __init__(self, *args, **kwargs):
-        request = kwargs.pop("request")
-        super(account_detail_form, self).__init__(*args, **kwargs)
     class Meta:
         model = user
         fields = ["shell", "first_name", "last_name",

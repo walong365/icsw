@@ -601,7 +601,6 @@ class account_info(View):
         cur_user = request.user
         cur_form = account_detail_form(
             instance=cur_user,
-            request=request,
             auto_id="user__%d__%%s" % (cur_user.pk),
         )
         return render_me(request, "account_info.html", {
