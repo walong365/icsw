@@ -44,7 +44,7 @@ class domain_name_tree
                     detail_div = $("div#dnt_detail")
                     detail_div.children().remove()
                     detail_div.append($(xml).find("value[name='form']").text())
-                    detail_div.uniform()
+                    #detail_div.uniform()
     build_tree: () =>
         @top_div.dynatree
             autoFocus  : false

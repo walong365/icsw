@@ -27,7 +27,7 @@ $(document).ready(
                     master_xml : user_xml
                 })
                 detail_div = $("div#account_info")
-                detail_div.uniform()
+                #detail_div.uniform()
                 detail_div.find("input[name='password']").bind("focus", enter_password)
                 detail_div.find("input, select, textarea").on("change", my_submitter.submit)
 )

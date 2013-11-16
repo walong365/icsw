@@ -36,7 +36,7 @@ class object_permissions
                     @resp_xml = $(xml).find("response")
                     #console.log @resp_xml[0]
                     @build_div()
-                    @perm_div.modal
+                    @perm_div.simplemodal
                         opacity      : 50
                         position     : [@event.pageY, @event.pageX]
                         autoResize   : true
@@ -47,7 +47,7 @@ class object_permissions
                             $("#simplemodal-container").css("height", "auto")
                             $("#simplemodal-container").css("width", "auto")
                         onClose: =>
-                            $.modal.close()
+                            $.simplemodal.close()
     build_div: () =>
         perm_div = $("<div>")
         perm_div.append(
@@ -320,7 +320,7 @@ class user_tree
     install_ug_form: (form_text) =>
         @clear_ug_form()
         @detail_div.append(form_text)
-        @detail_div.uniform()
+        #@detail_div.uniform()
         @detail_div.find("select").chosen(
             width : "75%"
         )

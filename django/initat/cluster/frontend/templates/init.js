@@ -382,7 +382,7 @@ class moncc_detail
                 if parse_xml_response(xml)
                     @ajax_xml = $(xml).find("response")
                     @build_div()
-                    @moncc_div.modal
+                    @moncc_div.simplemodal
                         opacity      : 50
                         position     : [@event.pageY, @event.pageX]
                         autoResize   : true
@@ -420,7 +420,7 @@ class moncc_detail
         # parent div
         template_div = $("<div>").attr("id", "template")
         template_div.html(@ajax_xml.find("forms template_form").text())
-        template_div.uniform()
+        #template_div.uniform()
         template_div.find("select").addClass("chosen-select").chosen(
             width : "100%"
         )
@@ -441,11 +441,11 @@ class config_detail
         @cat_xml = @configs_xml.find("categories")
     show: () =>
         @build_div()
-        @config_div.modal
-            opacity      : 50
-            position     : [@event.pageY, @event.pageX]
-            autoResize   : true
-            autoPosition : true
+        @config_div.simplemodal
+            #opacity      : 50
+            #position     : [@event.pageY, @event.pageX]
+            #autoResize   : true
+            #autoPosition : true
             onShow: (dialog) -> 
                 dialog.container.draggable()
                 $("#simplemodal-container").css("height", "auto")
@@ -1151,14 +1151,14 @@ enter_password = (event) ->
             if parse_xml_response(xml)
                 in_form = $(xml).find("value[name='form']").text()
                 top_div.append(in_form)
-                top_div.uniform()
+                #top_div.uniform()
                 top_div.append(
                     $("<h4>").append(
                         $("<span>").attr
                             id : "error"
                     )
                 )
-                $.modal(
+                $.simplemodal(
                     top_div,
                     {
                         onShow : (dialog) ->
@@ -1181,7 +1181,7 @@ enter_password = (event) ->
                         onClose : (dialog) ->
                             pwd0 = dialog.data.find("input#id_password1").val()
                             pwd1 = dialog.data.find("input#id_password1").val()
-                            $.modal.close()
+                            $.simplemodal.close()
                             if pwd0 == pwd1
                                 if pwd0.length < 4
                                     $(event.target).val("")

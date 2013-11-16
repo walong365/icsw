@@ -85,7 +85,7 @@ class ext_file_info
                 if parse_xml_response(xml)
                     @resp_xml = $(xml).find("response file_info")
                     @build_div()
-                    @file_div.modal
+                    @file_div.simplemodal
                         opacity      : 50
                         position     : [@event.pageY, @event.pageX]
                         autoResize   : true
@@ -98,7 +98,7 @@ class ext_file_info
                             $("#simplemodal-container").css("height", "auto")
                             $("#simplemodal-container").css("width", "auto")
                         onClose: =>
-                            $.modal.close()
+                            $.simplemodal.close()
     build_div: () =>
         file_div = $("<div>")
         file_div.append(

@@ -370,7 +370,7 @@ class domain_name_tree
                     @build_div()
                     #console.log @resp_xml[0]
                     #console.log @event
-                    @div.modal
+                    @div.simplemodal
                         opacity      : 50 
                         position     : [@event.pageY, @event.pageX]
                         autoResize   : true
@@ -378,7 +378,7 @@ class domain_name_tree
                         onShow: (dialog) -> 
                             dialog.container.draggable()
                         onClose: =>
-                            $.modal.close()
+                            $.simplemodal.close()
     build_div: () =>
         dnt_div = $("<div>")
         dnt_div.append(
@@ -407,7 +407,7 @@ class device_info
                     if replace_div
                         $("div#center_content").children().remove().end().append(@dev_div)
                     else
-                        @dev_div.modal
+                        @dev_div.simplemodal
                             opacity      : 50
                             position     : [@event.pageY, @event.pageX]
                             autoResize   : true
@@ -418,7 +418,7 @@ class device_info
                                 $("#simplemodal-container").css("height", "auto")
                                 $("#simplemodal-container").css("width", "auto")
                             onClose: =>
-                                $.modal.close()
+                                $.simplemodal.close()
                                 if @callback
                                     @callback(@dev_key)
     get_pk_list: () =>

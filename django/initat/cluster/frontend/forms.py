@@ -5,13 +5,13 @@
 import re
 from django.forms.widgets import TextInput, PasswordInput, SelectMultiple
 from django.forms import Form, ModelForm, ValidationError, CharField, ModelChoiceField, \
-    ModelMultipleChoiceField, Textarea
+    ModelMultipleChoiceField
 from django.contrib.auth import authenticate
 from django.db.models import Q
 from django.utils.translation import ugettext_lazy as _
 from crispy_forms.helper import FormHelper
-from crispy_forms.layout import Submit, Layout, Field, ButtonHolder, Button, Fieldset, Div, HTML, \
-     Row, Column
+from crispy_forms.layout import Submit, Layout, Field, Button, Fieldset, Div, HTML
+from crispy_forms.bootstrap import FormActions
 # from crispy_forms.bootstrap import FormActions
 from django.core.urlresolvers import reverse
 from initat.cluster.backbone.models import domain_tree_node, device, category, mon_check_command, mon_service_templ, \
@@ -26,29 +26,22 @@ class authentication_form(Form):
                          max_length=30)
     password = CharField(label=_("Password"),
                          widget=PasswordInput)
-    def __init__(self, request=None, *args, **kwargs):
-        """
-        If request is passed in, the form will validate that cookies are
-        enabled. Note that the request (a HttpRequest object) must have set a
-        cookie with the key TEST_COOKIE_NAME and value TEST_COOKIE_VALUE before
-        running this validation.
-        """
-        self.helper = FormHelper()
-        self.helper.form_id = "id_login_form"
-        self.helper.form_method = "post"
-        self.helper.layout = Layout(
+    helper = FormHelper()
+    helper.form_id = "id_login_form"
+    helper.layout = Layout(
+        Div(
             Fieldset(
-                "",
                 HTML("<h2>Login credentials</h2>"),
                 Field("username"),
                 Field("password"),
-                css_class="inlineLabels",
-                ),
-            ButtonHolder(
+            ),
+            FormActions(
                 Submit("submit", "Submit", css_class="primaryAction"),
             ),
+            css_class="form-horizontal",
         )
-        # self.helper.add_input(Submit("submit", "Submit"))
+    )
+    def __init__(self, request=None, *args, **kwargs):
         self.helper.form_action = reverse("session:login")
         self.request = request
         self.user_cache = None
@@ -118,20 +111,20 @@ class dtn_detail_form(ModelForm):
     helper = FormHelper()
     helper.form_id = "id_dtn_detail_form"
     helper.layout = Layout(
-        Fieldset(
-            "Domain tree node details",
+        Div(
+            HTML("Domain tree node details"),
             Field("name"),
             Field("node_postfix"),
             Field("comment"),
-            ButtonHolder(
+            FormActions(
                 Field("create_short_names"),
                 Field("always_create_ip"),
                 Field("write_nameserver_config"),
             ),
-            ButtonHolder(
+            FormActions(
                 Button("delete", "Delete", css_class="primaryAction"),
             ),
-            css_class="inlineLabels",
+            css_class="form-horizontal",
         )
     )
     class Meta:
@@ -142,20 +135,20 @@ class dtn_new_form(ModelForm):
     helper = FormHelper()
     helper.form_id = "id_dtn_detail_form"
     helper.layout = Layout(
-        Fieldset(
-            "Create new node",
+        Div(
+            HTML("Create new node"),
             Field("full_name"),
             Field("node_postfix"),
             Field("comment"),
-            ButtonHolder(
+            FormActions(
                 Field("create_short_names"),
                 Field("always_create_ip"),
                 Field("write_nameserver_config"),
             ),
-            ButtonHolder(
+            FormActions(
                 Submit("submit", "Submit", css_class="primaryAction"),
             ),
-            css_class="inlineLabels",
+            css_class="form-horizontal",
         )
     )
     class Meta:
@@ -172,7 +165,7 @@ class device_general_form(ModelForm):
             Field("name"),
             Field("domain_tree_node"),
             Field("comment"),
-            css_class="inlineLabels",
+            css_class="form-horizontal",
         ),
         Fieldset(
             "Monitor settings",
@@ -180,12 +173,12 @@ class device_general_form(ModelForm):
             Field("monitor_checks"),
             Field("enable_perfdata"),
             Field("flap_detection_enabled"),
-            css_class="inlineLabels",
+            css_class="form-horizontal",
         ),
         Fieldset(
             "Info",
             Button("uuid", "show UUID info"),
-            css_class="inlineLabels",
+            # css_class="form-horizontal",
         )
     )
     def __init__(self, *args, **kwargs):
@@ -203,10 +196,10 @@ class dummy_password_form(Form):
             "please enter the new password",
             Field("password1"),
             Field("password2"),
-            ButtonHolder(
+            FormActions(
                 Button("check", "Check"),
             ),
-            css_class="inlineLabels",
+            css_class="form-horizontal",
         )
     )
     password1 = CharField(label=_("New Password"),
@@ -218,14 +211,14 @@ class category_detail_form(ModelForm):
     helper = FormHelper()
     helper.form_id = "id_cat_detail_form"
     helper.layout = Layout(
-        Fieldset(
-            "Category details",
+        Div(
+            HTML("Category details"),
             Field("name"),
             Field("comment"),
-            ButtonHolder(
+            FormActions(
                 Button("delete", "Delete", css_class="primaryAction"),
             ),
-            css_class="inlineLabels",
+            css_class="form-horizontal",
         )
     )
     class Meta:
@@ -236,16 +229,16 @@ class location_detail_form(ModelForm):
     helper = FormHelper()
     helper.form_id = "id_cat_detail_form"
     helper.layout = Layout(
-        Fieldset(
-            "Category details",
+        Div(
+            HTML("Category details"),
             Field("name"),
             Field("comment"),
-            ButtonHolder(
+            FormActions(
                 Button("delete", "Delete", css_class="primaryAction"),
             ),
             Field("latitude"),
             Field("longitude"),
-            css_class="inlineLabels",
+            css_class="form-horizontal",
         )
     )
     class Meta:
@@ -256,14 +249,14 @@ class category_new_form(ModelForm):
     helper = FormHelper()
     helper.form_id = "id_dtn_detail_form"
     helper.layout = Layout(
-        Fieldset(
-            "Create new category",
+        Div(
+            HTML("Create new category"),
             Field("full_name"),
             Field("comment"),
-            ButtonHolder(
+            FormActions(
                 Submit("submit", "Submit", css_class="primaryAction"),
                 ),
-            css_class="inlineLabels",
+            css_class="form-horizontal",
         )
     )
     def clean_full_name(self):
@@ -311,17 +304,17 @@ class moncc_template_flags_form(ModelForm):
     helper = FormHelper()
     helper.form_id = "form"
     helper.layout = Layout(
-        Fieldset(
-            "Templates and flags",
+        Div(
+            HTML("Templates and flags"),
             Field("mon_service_templ"),
             Field("exclude_devices"),
-            ButtonHolder(
+            FormActions(
                 Field("enable_perfdata"),
                 Field("volatile"),
                 Field("is_event_handler"),
                 Field("event_handler_enabled"),
                 ),
-            css_class="inlineLabels",
+            css_class="form-horizontal",
         )
     )
     class Meta:
@@ -343,21 +336,20 @@ class group_detail_form(ModelForm):
     helper.form_id = "form"
     helper.layout = Layout(
         HTML("<h2>Group details</h2>"),
-        Row(
-            Column(
+        Div(
+            Div(
                 Fieldset(
                     "Basic data",
                     Field("groupname"),
                     Field("gid"),
                     Field("homestart"),
-                    ButtonHolder(
+                    FormActions(
                         Field("active"),
                         ),
-                    css_class="inlineLabels",
                     ),
-                css_class="inlineLabels col first",
+                css_class="form-horizontal span6",
             ),
-            Column(
+            Div(
                 Fieldset(
                     "Additional data",
                     Field("title"),
@@ -365,12 +357,12 @@ class group_detail_form(ModelForm):
                     Field("pager"),
                     Field("tel"),
                     Field("comment"),
-                    css_class="inlineLabels",
                     ),
-                css_class="inlineLabels col last",
+                css_class="form-horizontal span6",
             ),
+            css_class="row-fluid",
         ),
-        ButtonHolder(
+        FormActions(
             Button("delete", "Delete", css_class="primaryAction"),
         ),
         Field("parent_group"),
@@ -417,23 +409,26 @@ class kernel_detail_form(ModelForm):
                 Field("comment"),
                 Field("target_module_list"),
                 Field("module_list", readonly=True),
-                css_class="inlineLabels",
+                css_class="form-horizontal",
                 ),
-            Column(
-                ButtonHolder(
-                    Field("stage1_lo_present", disabled=True),
-                    Field("stage1_cpio_present", disabled=True),
+            Div(
+                Div(
+                    FormActions(
+                        Field("stage1_lo_present", disabled=True),
+                        Field("stage1_cpio_present", disabled=True),
+                    ),
+                    css_class="span6",
                 ),
-                css_class="col first",
+                Div(
+                    FormActions(
+                        Field("stage1_cramfs_present", disabled=True),
+                        Field("stage2_present", disabled=True),
+                    ),
+                    css_class="span6",
+                ),
+                css_class="row-fluid",
             ),
-            Column(
-                ButtonHolder(
-                    Field("stage1_cramfs_present", disabled=True),
-                    Field("stage2_present", disabled=True),
-                ),
-                css_class="col second",
-            ),
-            ButtonHolder(
+            FormActions(
                 Submit("submit", "Submit", css_class="primaryAction"),
             ),
         )
@@ -459,8 +454,8 @@ class user_detail_form(ModelForm):
     helper.form_id = "form"
     helper.layout = Layout(
         HTML("<h2>User details</h2>"),
-        Row(
-            Column(
+        Div(
+            Div(
                 Fieldset(
                     "Basic data",
                     Field("login"),
@@ -468,11 +463,10 @@ class user_detail_form(ModelForm):
                     Field("first_name"),
                     Field("last_name"),
                     Field("shell"),
-                    css_class="inlineLabels",
                     ),
-                css_class="inlineLabels col first",
+                css_class="form-horizontal span6",
             ),
-            Column(
+            Div(
                 Fieldset(
                     "Additional data",
                     Field("title"),
@@ -480,15 +474,15 @@ class user_detail_form(ModelForm):
                     Field("pager"),
                     Field("tel"),
                     Field("comment"),
-                    css_class="inlineLabels",
-                    ),
-                css_class="inlineLabels col last",
+                ),
+                css_class="form-horizontal span6",
             ),
+            css_class="row-fluid"
         ),
         Field("group"),
         Field("password", css_class="passwordfields"),
         Field("aliases"),
-        ButtonHolder(
+        FormActions(
             Field("active"),
             Field("is_superuser"),
             Field("db_is_auth_for_password"),
@@ -547,18 +541,18 @@ class account_detail_form(ModelForm):
     helper.form_id = "form"
     helper.layout = Layout(
         HTML("<h2>Account info</h2>"),
-        Row(
-            Column(
+        Div(
+            Div(
                 Fieldset(
                     "Basic data",
                     Field("first_name"),
                     Field("last_name"),
                     Field("shell"),
-                    css_class="inlineLabels",
+                    css_class="form-horizontal",
                     ),
-                css_class="inlineLabels col first",
+                css_class="span6",
             ),
-            Column(
+            Div(
                 Fieldset(
                     "Additional data",
                     Field("title"),
@@ -566,12 +560,16 @@ class account_detail_form(ModelForm):
                     Field("pager"),
                     Field("tel"),
                     Field("comment"),
-                    css_class="inlineLabels",
+                    css_class="form-horizontal",
                     ),
-                css_class="inlineLabels col last",
+                css_class="span6",
             ),
+            css_class="row-fluid",
         ),
-        Field("password", css_class="passwordfields"),
+        Div(
+            Field("password", css_class="passwordfields"),
+            css_class="form-horizontal"
+        ),
     )
     def __init__(self, *args, **kwargs):
         request = kwargs.pop("request")

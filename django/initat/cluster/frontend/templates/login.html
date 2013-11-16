@@ -23,7 +23,8 @@
 {% inlinecoffeescript %}
 
 addHandlers = ->
-    $("form#uniForm").uniform()
+    #console.log $("form#uniForm")
+    #$("form#uniForm").uniform()
     $("input#id_username").focus()
 
 $(document).ready(addHandlers)
