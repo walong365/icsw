@@ -281,13 +281,20 @@ else:
 ZMQ_LOGGING = True
 
 # crispy settings, uni_form is no longer supported
-# CRISPY_TEMPLATE_PACK = "uni_form"
-CRISPY_TEMPLATE_PACK = "bootstrap"
+CRISPY_TEMPLATE_PACK = "bootstrap3"
 CRISPY_FAIL_SILENTLY = not DEBUG
 
 # coffee settings
 COFFEESCRIPT_EXECUTABLE = "/opt/cluster/bin/coffee"
 COFFEESCRIPT_USE_CACHE = False
+
+import crispy_forms
+_required = "1.4.0"
+if crispy_forms.__version__ != _required:
+    raise ImproperlyConfigured("Crispy forms has version '%s' (required: '%s')" % (
+        crispy_forms.__version__,
+        _required,
+    ))
 
 # for guardian
 ANONYMOUS_USER_ID = -1
