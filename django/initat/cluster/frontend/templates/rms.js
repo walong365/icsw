@@ -395,10 +395,9 @@ class rms_view
             cur_col = cur_table.dataTable().fnSettings().aoColumns[idx]
             opt_button = $("<input>").attr({
                 "type"       : "checkbox",
-                "data-label" : cur_col.sTitle,
-                "id"         : cur_table.attr("id") + "__#{idx}__" + cur_col.sTitle
+                "id"         : cur_table.attr("id") + "__#{idx}__#{cur_col.sTitle}"
             }).on("change", @change_vis)
-            pref_key = "rms_" + cur_table.attr("id") + "_" + cur_col.sTitle
+            pref_key = "rms_" + cur_table.attr("id") + "_#{cur_col.sTitle}"
             if pref_key of user_pref
                 is_checked = user_pref[pref_key]
             else
@@ -407,8 +406,9 @@ class rms_view
                 opt_button.attr("checked", "checked")
             else
                 cur_table.dataTable().fnSetColumnVis(idx, false)
-            opt_div.append(opt_button)
-        opt_div.find("input").prettyCheckable()
+            cur_label = $("<label>").addClass("checkbox-inline")
+            cur_label.append(opt_button, cur_col.sTitle)
+            opt_div.append(cur_label)
         accord_div.append(opt_div)
         cur_table.parent("div:first").append(accord_div)
         accord_div.accordion(

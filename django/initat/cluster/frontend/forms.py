@@ -28,6 +28,9 @@ class authentication_form(Form):
                          widget=PasswordInput)
     helper = FormHelper()
     helper.form_id = "id_login_form"
+    helper.form_class = 'form-horizontal'
+    helper.label_class = 'col-sm-2'
+    helper.field_class = 'col-sm-8'
     helper.layout = Layout(
         Div(
             Fieldset(
@@ -110,6 +113,9 @@ class authentication_form(Form):
 class dtn_detail_form(ModelForm):
     helper = FormHelper()
     helper.form_id = "id_dtn_detail_form"
+    helper.form_class = 'form-horizontal'
+    helper.label_class = 'col-sm-2'
+    helper.field_class = 'col-sm-8'
     helper.layout = Layout(
         Div(
             HTML("Domain tree node details"),
@@ -122,9 +128,8 @@ class dtn_detail_form(ModelForm):
                 Field("write_nameserver_config"),
             ),
             FormActions(
-                Button("delete", "Delete", css_class="primaryAction"),
+                Button("delete", "Delete", css_class="btn-danger")
             ),
-            css_class="form-horizontal",
         )
     )
     class Meta:
@@ -134,6 +139,9 @@ class dtn_detail_form(ModelForm):
 class dtn_new_form(ModelForm):
     helper = FormHelper()
     helper.form_id = "id_dtn_detail_form"
+    helper.form_class = 'form-horizontal'
+    helper.label_class = 'col-sm-2'
+    helper.field_class = 'col-sm-8'
     helper.layout = Layout(
         Div(
             HTML("Create new node"),
@@ -148,7 +156,6 @@ class dtn_new_form(ModelForm):
             FormActions(
                 Submit("submit", "Submit", css_class="primaryAction"),
             ),
-            css_class="form-horizontal",
         )
     )
     class Meta:
@@ -159,13 +166,15 @@ class device_general_form(ModelForm):
     domain_tree_node = ModelChoiceField(domain_tree_node.objects.none(), empty_label=None) # , widget=domain_name_tree_widget)
     helper = FormHelper()
     helper.form_id = "id_dtn_detail_form"
+    helper.form_class = 'form-horizontal'
+    helper.label_class = 'col-sm-2'
+    helper.field_class = 'col-sm-8'
     helper.layout = Layout(
         Fieldset(
             "Device details",
             Field("name"),
             Field("domain_tree_node"),
             Field("comment"),
-            css_class="form-horizontal",
         ),
         Fieldset(
             "Monitor settings",
@@ -173,12 +182,10 @@ class device_general_form(ModelForm):
             Field("monitor_checks"),
             Field("enable_perfdata"),
             Field("flap_detection_enabled"),
-            css_class="form-horizontal",
         ),
         Fieldset(
             "Info",
             Button("uuid", "show UUID info"),
-            # css_class="form-horizontal",
         )
     )
     def __init__(self, *args, **kwargs):
@@ -191,6 +198,9 @@ class device_general_form(ModelForm):
 
 class dummy_password_form(Form):
     helper = FormHelper()
+    helper.form_class = 'form-horizontal'
+    helper.label_class = 'col-sm-2'
+    helper.field_class = 'col-sm-8'
     helper.layout = Layout(
         Fieldset(
             "please enter the new password",
@@ -199,7 +209,6 @@ class dummy_password_form(Form):
             FormActions(
                 Button("check", "Check"),
             ),
-            css_class="form-horizontal",
         )
     )
     password1 = CharField(label=_("New Password"),
@@ -210,15 +219,17 @@ class dummy_password_form(Form):
 class category_detail_form(ModelForm):
     helper = FormHelper()
     helper.form_id = "id_cat_detail_form"
+    helper.form_class = 'form-horizontal'
+    helper.label_class = 'col-sm-2'
+    helper.field_class = 'col-sm-8'
     helper.layout = Layout(
         Div(
             HTML("Category details"),
             Field("name"),
             Field("comment"),
             FormActions(
-                Button("delete", "Delete", css_class="primaryAction"),
+                Button("delete", "Delete", css_class="btn-danger")
             ),
-            css_class="form-horizontal",
         )
     )
     class Meta:
@@ -228,17 +239,19 @@ class category_detail_form(ModelForm):
 class location_detail_form(ModelForm):
     helper = FormHelper()
     helper.form_id = "id_cat_detail_form"
+    helper.form_class = 'form-horizontal'
+    helper.label_class = 'col-sm-2'
+    helper.field_class = 'col-sm-8'
     helper.layout = Layout(
         Div(
             HTML("Category details"),
             Field("name"),
             Field("comment"),
             FormActions(
-                Button("delete", "Delete", css_class="primaryAction"),
+                Button("delete", "Delete", css_class="btn-danger"),
             ),
             Field("latitude"),
             Field("longitude"),
-            css_class="form-horizontal",
         )
     )
     class Meta:
@@ -248,6 +261,9 @@ class location_detail_form(ModelForm):
 class category_new_form(ModelForm):
     helper = FormHelper()
     helper.form_id = "id_dtn_detail_form"
+    helper.form_class = 'form-horizontal'
+    helper.label_class = 'col-sm-2'
+    helper.field_class = 'col-sm-8'
     helper.layout = Layout(
         Div(
             HTML("Create new category"),
@@ -256,7 +272,6 @@ class category_new_form(ModelForm):
             FormActions(
                 Submit("submit", "Submit", css_class="primaryAction"),
                 ),
-            css_class="form-horizontal",
         )
     )
     def clean_full_name(self):
@@ -303,6 +318,9 @@ class moncc_template_flags_form(ModelForm):
         )
     helper = FormHelper()
     helper.form_id = "form"
+    helper.form_class = 'form-horizontal'
+    helper.label_class = 'col-sm-2'
+    helper.field_class = 'col-sm-8'
     helper.layout = Layout(
         Div(
             HTML("Templates and flags"),
@@ -314,7 +332,6 @@ class moncc_template_flags_form(ModelForm):
                 Field("is_event_handler"),
                 Field("event_handler_enabled"),
                 ),
-            css_class="form-horizontal",
         )
     )
     class Meta:
@@ -334,6 +351,9 @@ class group_detail_form(ModelForm):
     )
     helper = FormHelper()
     helper.form_id = "form"
+    helper.form_class = 'form-horizontal'
+    helper.label_class = 'col-sm-2'
+    helper.field_class = 'col-sm-8'
     helper.layout = Layout(
         HTML("<h2>Group details</h2>"),
         Div(
@@ -347,7 +367,7 @@ class group_detail_form(ModelForm):
                         Field("active"),
                         ),
                     ),
-                css_class="form-horizontal span6",
+                css_class="col-md-6",
             ),
             Div(
                 Fieldset(
@@ -358,12 +378,12 @@ class group_detail_form(ModelForm):
                     Field("tel"),
                     Field("comment"),
                     ),
-                css_class="form-horizontal span6",
+                css_class="col-md-6",
             ),
-            css_class="row-fluid",
+            css_class="row",
         ),
         FormActions(
-            Button("delete", "Delete", css_class="primaryAction"),
+            Button("delete", "Delete", css_class="btn-danger"),
         ),
         Field("parent_group"),
         Field("allowed_device_groups"),
@@ -380,13 +400,13 @@ class group_detail_form(ModelForm):
     def create_mode(self):
         if "disabled" in self.helper.layout[3].attrs:
             del self.helper.layout[3].attrs["disabled"]
-        self.helper.layout[2][0] = Submit("submit", "Create", css_class="primaryAction")
+        self.helper.layout[2][0] = Submit("submit", "Create", css_class="btn-primary")
         if len(self.helper.layout[5]) == 2:
             # remove object permission button
             self.helper.layout[5].pop(1)
     def delete_mode(self):
         self.helper.layout[3].attrs["disabled"] = True
-        self.helper.layout[2][0] = Submit("delete", "Delete", css_class="primaryAction")
+        self.helper.layout[2][0] = Submit("delete", "Delete", css_class="btn-danger")
         if len(self.helper.layout[5]) == 1:
             # add object permissions button
             self.helper.layout[5].append(Button("object_perms", "Object Permissions"))
@@ -396,48 +416,6 @@ class export_choice_field(ModelChoiceField):
         self.queryset = home_export_list()
     def label_from_instance(self, obj):
         return self.queryset.exp_dict[obj.pk]["info"]
-
-class kernel_detail_form(ModelForm):
-    helper = FormHelper()
-    helper.form_id = "form"
-    helper.layout = Layout(
-        HTML("<h2>Kernel details</h2>"),
-            Fieldset(
-                "Basic data",
-                Field("name", readonly=True),
-                Field("initrd_built", readonly=True),
-                Field("comment"),
-                Field("target_module_list"),
-                Field("module_list", readonly=True),
-                css_class="form-horizontal",
-                ),
-            Div(
-                Div(
-                    FormActions(
-                        Field("stage1_lo_present", disabled=True),
-                        Field("stage1_cpio_present", disabled=True),
-                    ),
-                    css_class="span6",
-                ),
-                Div(
-                    FormActions(
-                        Field("stage1_cramfs_present", disabled=True),
-                        Field("stage2_present", disabled=True),
-                    ),
-                    css_class="span6",
-                ),
-                css_class="row-fluid",
-            ),
-            FormActions(
-                Submit("submit", "Submit", css_class="primaryAction"),
-            ),
-        )
-    class Meta:
-        model = kernel
-        fields = ["name", "comment",
-            "stage1_lo_present", "stage1_cpio_present", "stage1_cramfs_present", "stage2_present",
-            "module_list", "target_module_list", "initrd_built",
-            ]
 
 class user_detail_form(ModelForm):
     permissions = ModelMultipleChoiceField(
@@ -452,6 +430,9 @@ class user_detail_form(ModelForm):
     password = CharField(widget=PasswordInput)
     helper = FormHelper()
     helper.form_id = "form"
+    helper.form_class = 'form-horizontal'
+    helper.label_class = 'col-sm-2'
+    helper.field_class = 'col-sm-8'
     helper.layout = Layout(
         HTML("<h2>User details</h2>"),
         Div(
@@ -464,7 +445,7 @@ class user_detail_form(ModelForm):
                     Field("last_name"),
                     Field("shell"),
                     ),
-                css_class="form-horizontal span6",
+                css_class="col-md-6",
             ),
             Div(
                 Fieldset(
@@ -475,9 +456,9 @@ class user_detail_form(ModelForm):
                     Field("tel"),
                     Field("comment"),
                 ),
-                css_class="form-horizontal span6",
+                css_class="col-md-6",
             ),
-            css_class="row-fluid"
+            css_class="row"
         ),
         Field("group"),
         Field("password", css_class="passwordfields"),
@@ -486,7 +467,7 @@ class user_detail_form(ModelForm):
             Field("active"),
             Field("is_superuser"),
             Field("db_is_auth_for_password"),
-            Button("delete", "Delete", css_class="primaryAction"),
+            Button("delete", "Delete", css_class="btn-danger"),
         ),
         Field("export"),
         Field("allowed_device_groups"),
@@ -517,13 +498,13 @@ class user_detail_form(ModelForm):
     def create_mode(self):
         if "disabled" in self.helper.layout[2].attrs:
             del self.helper.layout[2].attrs["disabled"]
-        self.helper.layout[5][3] = Submit("submit", "Create", css_class="primaryAction")
+        self.helper.layout[5][3] = Submit("submit", "Create", css_class="btn-primare")
         if len(self.helper.layout[9]) == 2:
             # remove object permission button
             self.helper.layout[9].pop(1)
     def delete_mode(self):
         self.helper.layout[2].attrs["disabled"] = True
-        self.helper.layout[5][3] = Submit("delete", "Delete", css_class="primaryAction")
+        self.helper.layout[5][3] = Submit("delete", "Delete", css_class="btn-danger")
         if len(self.helper.layout[9]) == 1:
             # add object permissions button
             self.helper.layout[9].append(Button("object_perms", "Object Permissions"))
@@ -539,6 +520,9 @@ class account_detail_form(ModelForm):
     password = CharField(widget=PasswordInput)
     helper = FormHelper()
     helper.form_id = "form"
+    helper.form_class = 'form-horizontal'
+    helper.label_class = 'col-sm-2'
+    helper.field_class = 'col-sm-8'
     helper.layout = Layout(
         HTML("<h2>Account info</h2>"),
         Div(
@@ -550,7 +534,7 @@ class account_detail_form(ModelForm):
                     Field("shell"),
                     css_class="form-horizontal",
                     ),
-                css_class="span6",
+                css_class="col-md-6",
             ),
             Div(
                 Fieldset(
@@ -562,9 +546,9 @@ class account_detail_form(ModelForm):
                     Field("comment"),
                     css_class="form-horizontal",
                     ),
-                css_class="span6",
+                css_class="col-md-6",
             ),
-            css_class="row-fluid",
+            css_class="row",
         ),
         Div(
             Field("password", css_class="passwordfields"),
@@ -579,3 +563,48 @@ class account_detail_form(ModelForm):
         fields = ["shell", "first_name", "last_name",
                   "title", "email", "pager", "tel", "comment",
                   "password"]
+
+class kernel_detail_form(ModelForm):
+    helper = FormHelper()
+    helper.form_id = "form"
+    helper.form_class = 'form-horizontal'
+    helper.label_class = 'col-sm-2'
+    helper.field_class = 'col-sm-8'
+    helper.layout = Layout(
+        HTML("<h2>Kernel details</h2>"),
+            Fieldset(
+                "Basic data",
+                Field("name", readonly=True),
+                Field("initrd_built", readonly=True),
+                Field("comment"),
+                Field("target_module_list"),
+                Field("module_list", readonly=True),
+                ),
+            Div(
+                Div(
+                    FormActions(
+                        Field("stage1_lo_present", disabled=True),
+                        Field("stage1_cpio_present", disabled=True),
+                    ),
+                    css_class="col-md-6",
+                ),
+                Div(
+                    FormActions(
+                        Field("stage1_cramfs_present", disabled=True),
+                        Field("stage2_present", disabled=True),
+                    ),
+                    css_class="col-md-6",
+                ),
+                css_class="row",
+            ),
+            FormActions(
+                Submit("submit", "Submit", css_class="primaryAction"),
+            ),
+        )
+    class Meta:
+        model = kernel
+        fields = ["name", "comment",
+            "stage1_lo_present", "stage1_cpio_present", "stage1_cramfs_present", "stage2_present",
+            "module_list", "target_module_list", "initrd_built",
+            ]
+

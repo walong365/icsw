@@ -9,8 +9,8 @@
 
 <h1 class="center">Boot settings</h1>
 
-<h3 id="options">
-</h3>
+<form id="options" role="form">
+</form>
 
 <div id="boot">
 </div>
@@ -475,21 +475,21 @@ class boot_table
                 if parse_xml_response(xml)
                     @html_option_xml = $(xml).find("options")
                     @xml_dict = {}
-                    opt_h3 = $("h3#options")
+                    opt_h3 = $("form#options")
                     opt_h3.children().remove()
                     $(xml).find("option").each (index, opt) =>
                         opt = $(opt)
                         opt_button = $("<input>").attr({
                             "type" : "checkbox",
                             "id"   : "opt_" + opt.attr("short"),
-                            "data-label" : opt.text()
                         })
                         if @options_used[opt.attr("short")]
                             opt_button.attr("checked", "checked")
-                        opt_h3.append(opt_button)
+                        cur_label = $("<label>").addClass("checkbox-inline")
+                        cur_label.append(opt_button, opt.text())
+                        opt_h3.append(cur_label)
                         opt_button.bind("change", @change_option)
                         @option_list.push(opt.attr("short"))
-                    opt_h3.find("input").prettyCheckable()
                     # set number of devices
                     @num_devices = @xml.find("devices device[tree_selected='selected'][meta_device='0']").length
                     for key, value of @options_used
