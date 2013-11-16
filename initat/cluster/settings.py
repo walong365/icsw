@@ -280,9 +280,9 @@ else:
 # needed by some modules
 ZMQ_LOGGING = True
 
-# crispy settings
-CRISPY_TEMPLATE_PACK = "uni_form"
-# CRISPY_TEMPLATE_PACK = "bootstrap"
+# crispy settings, uni_form is no longer supported
+# CRISPY_TEMPLATE_PACK = "uni_form"
+CRISPY_TEMPLATE_PACK = "bootstrap"
 CRISPY_FAIL_SILENTLY = not DEBUG
 
 # coffee settings
