@@ -288,13 +288,17 @@ CRISPY_FAIL_SILENTLY = not DEBUG
 COFFEESCRIPT_EXECUTABLE = "/opt/cluster/bin/coffee"
 COFFEESCRIPT_USE_CACHE = False
 
-import crispy_forms
-_required = "1.4.0"
-if crispy_forms.__version__ != _required:
-    raise ImproperlyConfigured("Crispy forms has version '%s' (required: '%s')" % (
-        crispy_forms.__version__,
-        _required,
-    ))
+try:
+    import crispy_forms
+except ImportError:
+    pass
+else:
+    _required = "1.4.0"
+    if crispy_forms.__version__ != _required:
+        raise ImproperlyConfigured("Crispy forms has version '%s' (required: '%s')" % (
+            crispy_forms.__version__,
+            _required,
+        ))
 
 # for guardian
 ANONYMOUS_USER_ID = -1
