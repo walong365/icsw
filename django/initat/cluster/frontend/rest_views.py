@@ -1,39 +1,30 @@
 # user views
 
-import os
-import time
-import process_tools
 import logging
 import logging_tools
+import os
+import process_tools
+import time
 import types
-
-from django.conf import settings
-from django.contrib.auth.decorators import login_required
-from django.core.exceptions import ValidationError
-from django.db.models import Q
-from django.http import Http404, HttpResponse
-from django.views.decorators.csrf import csrf_exempt
 
 from rest_framework import mixins, generics
 from rest_framework.authentication import BasicAuthentication, SessionAuthentication
 from rest_framework.decorators import api_view, APIView
-from rest_framework.parsers import XMLParser
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.reverse import reverse
-from rest_framework.renderers import XMLRenderer
 
-from initat.core.render import render_me
 from initat.cluster.backbone.models import user, user_serializer, group, group_serializer, \
-     user_serializer_h, group_serializer_h, device_group_serializer
+     user_serializer_h, group_serializer_h, device_group_serializer, network_type_serializer
 
 logger = logging.getLogger("cluster.rest")
 
 @api_view(('GET',))
 def api_root(request, format=None):
     return Response({
-        'user'  : reverse('rest:user_list_h', request=request),
-        'group' : reverse('rest:group_list_h', request=request)
+        'user'         : reverse('rest:user_list_h', request=request),
+        'group'        : reverse('rest:group_list_h', request=request),
+        # 'network_type' : reverse('rest:network_type_list_h', request=request),
     })
 
 class rest_logging(object):
@@ -58,12 +49,12 @@ class rest_logging(object):
             self.log("exception: %s" % (
                 process_tools.get_except_info()),
                      logging_tools.LOG_LEVEL_ERROR)
-            raise 
+            raise
         e_time = time.time()
         self.log("call took %s" % (
             logging_tools.get_diff_time_str(e_time - s_time)))
         return result
-        
+
 class detail_view(mixins.RetrieveModelMixin,
                   mixins.UpdateModelMixin,
                   mixins.DestroyModelMixin,
@@ -76,6 +67,9 @@ class detail_view(mixins.RetrieveModelMixin,
         return self.update(request, *args, **kwargs)
     @rest_logging
     def delete(self, request, *args, **kwargs):
+        # just be careful
+        print "DESTROY", args, kwargs
+        return False
         return self.destroy(request, *args, **kwargs)
 
 class list_view(mixins.ListModelMixin,
@@ -89,37 +83,38 @@ class list_view(mixins.ListModelMixin,
         return self.create(request, *args, **kwargs)
 
 class user_list_h(generics.ListCreateAPIView):
-    authentication_classes = (BasicAuthentication, SessionAuthentication, )
+    authentication_classes = (BasicAuthentication, SessionAuthentication,)
     permission_classes = (IsAuthenticated,)
     model = user
     serializer_class = user_serializer_h
 
 class user_detail_h(generics.RetrieveUpdateDestroyAPIView):
-    authentication_classes = (BasicAuthentication, SessionAuthentication, )
+    authentication_classes = (BasicAuthentication, SessionAuthentication,)
     permission_classes = (IsAuthenticated,)
     model = user
     serializer_class = user_serializer_h
 
 class group_list_h(generics.ListCreateAPIView):
-    authentication_classes = (BasicAuthentication, SessionAuthentication, )
+    authentication_classes = (BasicAuthentication, SessionAuthentication,)
     permission_classes = (IsAuthenticated,)
     model = group
     serializer_class = group_serializer_h
 
 class group_detail_h(generics.RetrieveUpdateDestroyAPIView):
-    authentication_classes = (BasicAuthentication, SessionAuthentication, )
+    authentication_classes = (BasicAuthentication, SessionAuthentication,)
     permission_classes = (IsAuthenticated,)
     model = group
     serializer_class = group_serializer_h
 
-for obj_name in ["group", "user", "device_group"]:
+for obj_name in ["group", "user", "device_group", "network_type"]:
     for mode in ["list", "detail"]:
         class_name = "%s_%s" % (obj_name, mode)
         ser_class = globals()["%s_serializer" % (obj_name)]
         globals()[class_name] = type(
             class_name,
-            (detail_view, ) if mode == "detail" else (list_view,),
-            {"authentication_classes" : (BasicAuthentication, SessionAuthentication, ),
+            (detail_view,) if mode == "detail" else (list_view,),
+            {"authentication_classes" : (BasicAuthentication, SessionAuthentication,),
              "permission_classes"     : (IsAuthenticated,),
              "model"                  : ser_class.Meta.model,
              "serializer_class"       : ser_class})
+

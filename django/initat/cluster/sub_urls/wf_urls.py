@@ -202,23 +202,22 @@ rrd_patterns = patterns(
     url(r"^graph_rrd$", rrd_views.graph_rrds.as_view() , name="graph_rrds"),
 )
 
-if settings.CLUSTER_LICENSE.get("rest", False):
-    rpl = []
-    for obj_name in ["user", "group", "device_group"]:
-        rpl.extend([
-            url("^%s/$" % (obj_name), getattr(rest_views, "%s_list" % (obj_name)).as_view(), name="%s_list" % (obj_name)),
-            url("^%s/(?P<pk>[0-9]+)/$" % (obj_name), getattr(rest_views, "%s_detail" % (obj_name)).as_view(), name="%s_detail" % (obj_name)),
-        ])
-    rest_patterns = patterns(
-        "initat.cluster.frontend",
-        url("^api/$"                     , "rest_views.api_root"              , name="root"),
-        url("^api/user/$"                , rest_views.user_list_h.as_view()   , name="user_list_h"),
-        url("^api/user/(?P<pk>[0-9]+)/$" , rest_views.user_detail_h.as_view() , name="user_detail_h"),
-        url("^api/group/$"               , rest_views.group_list_h.as_view()  , name="group_list_h"),
-        url("^api/group/(?P<pk>[0-9]+)/$", rest_views.group_detail_h.as_view(), name="group_detail_h"),
-        *rpl
-    )
-    rest_patterns = format_suffix_patterns(rest_patterns)
+rpl = []
+for obj_name in ["user", "group", "device_group", "network_type"]:
+    rpl.extend([
+        url("^%s/$" % (obj_name), getattr(rest_views, "%s_list" % (obj_name)).as_view(), name="%s_list" % (obj_name)),
+        url("^%s/(?P<pk>[0-9]+)/$" % (obj_name), getattr(rest_views, "%s_detail" % (obj_name)).as_view(), name="%s_detail" % (obj_name)),
+    ])
+rest_patterns = patterns(
+    "initat.cluster.frontend",
+    url("^api/$"                     , "rest_views.api_root"              , name="root"),
+    url("^api/user/$"                , rest_views.user_list_h.as_view()   , name="user_list_h"),
+    url("^api/user/(?P<pk>[0-9]+)/$" , rest_views.user_detail_h.as_view() , name="user_detail_h"),
+    url("^api/group/$"               , rest_views.group_list_h.as_view()  , name="group_list_h"),
+    url("^api/group/(?P<pk>[0-9]+)/$", rest_views.group_detail_h.as_view(), name="group_detail_h"),
+    *rpl
+)
+rest_patterns = format_suffix_patterns(rest_patterns)
 
 doc_patterns = patterns(
     "",

@@ -15,7 +15,6 @@
     {# can be removed as soon as jquery-UI is up to par #}
     <link type="text/css" rel="stylesheet" href="{{ settings.STATIC_URL }}initat/core/static/js/libs/dynatree/skin/ui.dynatree.css" />
     <link type="text/css" rel="stylesheet" href="{{ settings.STATIC_URL }}initat/core/static/js/libs/chosen/chosen.min.css" />
-    <!--<link type="text/css" rel="stylesheet" href="{{ settings.STATIC_URL }}initat/core/static/js/libs/jstree/themes/classic/style.css" />-->
     <link type="text/css" rel="stylesheet" href="{{ MEDIA_URL }}frontend/css/jquery.dataTables.css" />
     <link type="text/css" rel="stylesheet" href="{{ MEDIA_URL }}frontend/css/msdropdown/dd.css" />
     <!-- needed for simplemodal -->
@@ -85,17 +84,21 @@
     <script type="text/javascript" src="{{ MEDIA_URL }}frontend/js/codemirror/xml.js"></script>
     <script type="text/javascript" src="{{ MEDIA_URL }}frontend/js/codemirror/shell.js"></script>
     <script type="text/javascript" src="{{ MEDIA_URL }}frontend/js/bootstrap.js"></script>
-    <script type="text/javascript" src="{{ settings.STATIC_URL}}initat/core/static/js/libs/jquery.color.js"></script>
-    <script type="text/javascript" src="{{ settings.STATIC_URL}}initat/core/static/js/libs/jquery-ui-timepicker-addon.js"></script>
-    <script type="text/javascript" src="{{ settings.STATIC_URL}}initat/core/static/js/libs/chosen/chosen.jquery.min.js"></script>
-    <script type="text/javascript" src="{{ settings.STATIC_URL}}initat/core/static/js/libs/jquery.blockUI.js"></script>
+    <script type="text/javascript" src="{{ settings.STATIC_URL }}initat/core/static/js/libs/jquery.color.js"></script>
+    <script type="text/javascript" src="{{ settings.STATIC_URL }}initat/core/static/js/libs/jquery-ui-timepicker-addon.js"></script>
+    <script type="text/javascript" src="{{ settings.STATIC_URL }}initat/core/static/js/libs/chosen/chosen.jquery.min.js"></script>
+    <script type="text/javascript" src="{{ settings.STATIC_URL }}initat/core/static/js/libs/jquery.blockUI.js"></script>
+    <script type="text/javascript" src="{{ settings.STATIC_URL }}initat/core/static/js/libs/angular.min.js"></script>
+    <script type="text/javascript" src="{{ settings.STATIC_URL }}initat/core/static/js/libs/angular-route.min.js"></script>
+    <script type="text/javascript" src="{{ settings.STATIC_URL }}initat/core/static/js/libs/angular-resource.min.js"></script>
 {% endcompress %}
 <script type="text/javascript" src="{{ settings.STATIC_URL}}initat/core/static/js/libs/jquery.Jcrop.min.js"></script>
-<!--<script type="text/javascript" src="{{ settings.STATIC_URL}}initat/core/static/js/libs/jstree/jquery.jstree.js"></script>-->
 
 {% include "init.js" %}
 {% include "deviceinfo.js" %}
 {% include "rms.js" %}
+{# angular modules #}
+{% include "test_module.js" %}
 
 {% endblock %}
 

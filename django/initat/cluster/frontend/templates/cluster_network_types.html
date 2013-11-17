@@ -10,6 +10,20 @@
 
 <div id="nwt_tables"></div>
 
+{% verbatim %}
+
+<div ng-app="icsw.test_module" ng-controller="myc">
+<xtable ></xtable>
+asdqwe<br>
+<table ng-controller="myc">
+    <tr ng-repeat="issue in data.issues">
+       <td>{{issue.idx}}</td>
+       <td>{{issue.identifier}}</td>
+    </tr>
+</table>
+</div>
+
+{% endverbatim %}
 <script type="text/javascript">
 
 {% inlinecoffeescript %}

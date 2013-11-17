@@ -6,14 +6,13 @@
 
 {% block content %}
 
-<div id="account_info">
-  {% crispy form form.helper %}
+<div id="account_info" ng-app>
+    {% crispy form form.helper %}
 </div>
 
 <script type="text/javascript">
 
 {% inlinecoffeescript %}
-
 
 $(document).ready(
     $.ajax
@@ -27,7 +26,6 @@ $(document).ready(
                     master_xml : user_xml
                 })
                 detail_div = $("div#account_info")
-                #detail_div.uniform()
                 detail_div.find("input[name='password']").bind("focus", enter_password)
                 detail_div.find("input, select, textarea").on("change", my_submitter.submit)
 )
