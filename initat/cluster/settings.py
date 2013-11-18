@@ -141,14 +141,10 @@ USE_L10N = True
 # If you set this to False, Django will not use timezone-aware datetimes.
 USE_TZ = True
 
-# Absolute filesystem path to the directory that will hold user-uploaded files.
-# Example: "/home/media/media.lawrence.com/media/"
-# MEDIA_ROOT = "/usr/local/share/home/local/development/clustersoftware/build-extern/webfrontend/htdocs/static/"
-
 # URL that handles the media served from MEDIA_ROOT. Make sure to use a
 # trailing slash.
 # Examples: "http://media.lawrence.com/media/", "http://example.com/media/"
-MEDIA_ROOT = os.path.join(FILE_ROOT, "media")
+MEDIA_ROOT = os.path.join(FILE_ROOT, "frontend", "media")
 
 MEDIA_URL = "%s/media/" % (SITE_ROOT)
 
@@ -212,7 +208,7 @@ MIDDLEWARE_CLASSES = (
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
 
-    # 'django.middleware.csrf.CsrfViewMiddleware',
+    "django.middleware.csrf.CsrfViewMiddleware",
 
     "django.middleware.transaction.TransactionMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
@@ -233,6 +229,7 @@ TEMPLATE_DIRS = (
     # Put strings here, like "/home/html/django_templates" or "C:/www/django/templates".
     # Always use forward slashes, even on Windows.
     # Don't forget to use absolute paths, not relative paths.
+    os.path.join(MEDIA_ROOT, "angular"),
 )
 if "INITIAL_MIGRATION_RUN" in os.environ:
     INSTALLED_APPS = (
@@ -364,26 +361,25 @@ for cur_lic in all_lics:
 CLUSTER_LICENSE["device_count"] = c_license.get_device_count()
 del c_license
 
-# add rest if enabled
-if CLUSTER_LICENSE.get("rest", False):
-    INSTALLED_APPS = tuple(list(INSTALLED_APPS) + ["rest_framework"])
+INSTALLED_APPS = tuple(list(INSTALLED_APPS) + ["rest_framework"])
 
-    rest_renderers = (["rest_framework.renderers.BrowsableAPIRenderer"] if DEBUG else []) + [
-        "rest_framework.renderers.JSONRenderer",
-        "rest_framework.renderers.XMLRenderer",
-    ]
+rest_renderers = (["rest_framework.renderers.BrowsableAPIRenderer"] if DEBUG else []) + [
+    "rest_framework.renderers.JSONRenderer",
+    "rest_framework.renderers.XMLRenderer",
+]
 
-    REST_FRAMEWORK = {
-        'DEFAULT_RENDERER_CLASSES' : tuple(rest_renderers),
-        "DEFAULT_PARSER_CLASSES"   : (
-            "rest_framework.parsers.XMLParser",
-            "rest_framework.parsers.JSONParser",
-        ),
-        "DEFAULT_AUTHENTICATION_CLASSES" : (
-            "rest_framework.authentication.BasicAuthentication",
-            "rest_framework.authentication.SessionAuthentication",
-        )
-    }
+REST_FRAMEWORK = {
+    'DEFAULT_RENDERER_CLASSES' : tuple(rest_renderers),
+    "DEFAULT_PARSER_CLASSES"   : (
+        "rest_framework.parsers.XMLParser",
+        "rest_framework.parsers.JSONParser",
+    ),
+    "DEFAULT_AUTHENTICATION_CLASSES" : (
+        "rest_framework.authentication.BasicAuthentication",
+        "rest_framework.authentication.SessionAuthentication",
+    ),
+    "EXCEPTION_HANDLER" : "initat.cluster.frontend.rest_views.csw_exception_handler",
+}
 
 # SOUTH config
 SOUTH_LOGGING_ON = True

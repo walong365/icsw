@@ -2224,12 +2224,14 @@ class network_network_device_type(models.Model):
 
 class network_type(models.Model):
     idx = models.AutoField(db_column="network_type_idx", primary_key=True)
-    identifier = models.CharField(unique=True, max_length=3,
-                                  choices=(("b", "boot"),
-                                           ("p", "prod"),
-                                           ("s", "slave"),
-                                           ("o", "other"),
-                                           ("l", "local")))
+    identifier = models.CharField(
+        unique=True, max_length=3,
+        choices=(
+            ("b", "boot"),
+            ("p", "prod"),
+            ("s", "slave"),
+            ("o", "other"),
+            ("l", "local")))
     description = models.CharField(max_length=192)
     date = models.DateTimeField(auto_now_add=True)
     def get_xml(self):
@@ -2245,10 +2247,16 @@ class network_type(models.Model):
         return u"%s (%s)" % (self.description,
                              self.identifier)
 
+class network_type_serializer(serializers.ModelSerializer):
+    class Meta:
+        model = network_type
+        fields = ("idx", "identifier", "description", "date")
+
 @receiver(signals.pre_save, sender=network_type)
 def network_type_pre_save(sender, **kwargs):
     if "instance" in kwargs:
         cur_inst = kwargs["instance"]
+        # raise ValidationError("test validation error")
         if not(cur_inst.identifier.strip()):
             raise ValidationError("identifer must not be empty")
 
@@ -3178,6 +3186,26 @@ def get_related_models(in_obj, m2m=False, detail=False, check_all=False):
             else:
                 used_objs += m2m_obj.model.objects.filter(Q(**{m2m_field_name : in_obj})).count()
     return used_objs
+
+def get_change_reset_list(s_obj, d_obj, required_changes=None):
+    if not required_changes:
+        required_changes = {}
+    c_list, r_list = ([], [])
+    for _f in s_obj._meta.fields:
+        s_val, d_val = (getattr(s_obj, _f.name), getattr(d_obj, _f.name))
+        cur_t = _f.get_internal_type()
+        # ignore Date(Time)Fields
+        if _f.name in required_changes and cur_t not in ["DateTimeField", "DateField"]:
+            if d_val != required_changes[_f.name]:
+                r_list.append((_f.name, d_val))
+        if cur_t in ["CharField", "IntegerField"]:
+            if s_val != d_val:
+                c_list.append((_f.name, "changed from '%s' to '%s'" % (s_val, d_val)))
+        elif cur_t in ["ForeignKeyField"]:
+            print "**", _f.name
+        else:
+            print cur_t
+    return c_list, r_list
 
 class md_check_data_store(models.Model):
     idx = models.AutoField(primary_key=True)
