@@ -91,6 +91,7 @@
     <script type="text/javascript" src="{{ settings.STATIC_URL }}initat/core/static/js/libs/angular.min.js"></script>
     <script type="text/javascript" src="{{ settings.STATIC_URL }}initat/core/static/js/libs/angular-route.min.js"></script>
     <script type="text/javascript" src="{{ settings.STATIC_URL }}initat/core/static/js/libs/angular-resource.min.js"></script>
+    <script type="text/javascript" src="{{ settings.STATIC_URL }}initat/core/static/js/libs/angular-cookies.min.js"></script>
 {% endcompress %}
 <script type="text/javascript" src="{{ settings.STATIC_URL}}initat/core/static/js/libs/jquery.Jcrop.min.js"></script>
 
@@ -112,7 +113,7 @@
         <div style="z-index:50 ; clear:both ; ">
             {% include "menu.html" %}
         </div>
-        <div class="fp_headline" style="float:right;margin:0;padding:10px;">
+        <div class="fp_headline" style="float:right;margin:0;padding:10px;">{% csrf_token %}
             {% now "l, j. F Y" %} <span id="cur_time">00:00:00</span>. {% trans "You are logged in as user" %}
             <span>'{{ user.login }}'{% ifnotequal user.login request.session.login_name %} (via alias {{ request.session.login_name }}){% endifnotequal %}</span>. <a href="{% url 'session:logout' %}">{% trans "Logout" %}</a>
         </div>

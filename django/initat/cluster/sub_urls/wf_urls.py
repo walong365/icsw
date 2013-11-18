@@ -205,9 +205,10 @@ rrd_patterns = patterns(
 rpl = []
 for obj_name in ["user", "group", "device_group", "network_type"]:
     rpl.extend([
-        url("^%s/$" % (obj_name), getattr(rest_views, "%s_list" % (obj_name)).as_view(), name="%s_list" % (obj_name)),
-        url("^%s/(?P<pk>[0-9]+)/$" % (obj_name), getattr(rest_views, "%s_detail" % (obj_name)).as_view(), name="%s_detail" % (obj_name)),
+        url("^%s$" % (obj_name), getattr(rest_views, "%s_list" % (obj_name)).as_view(), name="%s_list" % (obj_name)),
+        url("^%s/(?P<pk>[0-9]+)$" % (obj_name), getattr(rest_views, "%s_detail" % (obj_name)).as_view(), name="%s_detail" % (obj_name)),
     ])
+
 rest_patterns = patterns(
     "initat.cluster.frontend",
     url("^api/$"                     , "rest_views.api_root"              , name="root"),

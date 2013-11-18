@@ -6,6 +6,19 @@
 
 root = exports ? this
 
+remove_by_idx = (in_array, idx) ->
+    for c_idx, val of in_array
+        if val.idx == idx
+            remove_from_array(in_array, c_idx)
+            break
+
+remove_from_array = (in_array, from, to) ->
+    rest = in_array.slice((to | from) + 1 || in_array.length)
+    in_array.length = if from < 0 then in_array.length + from else from
+    return in_array.push.apply(in_array, rest)
+
+root.remove_by_idx = remove_by_idx
+
 jQuery.fn.justtext = () ->
     return $(this).clone().children().remove().end().text()
     
@@ -48,6 +61,7 @@ $.ajaxSetup
     type       : "POST"
     timeout    : 50000
     dataType   : "xml"
+    headers    : { "X-CSRFToken" : $.cookie("csrftoken") }
     beforeSend : (xhr, settings) ->
         if not settings.hidden
             xhr.inituuid = my_ajax_struct.new_connection(settings)

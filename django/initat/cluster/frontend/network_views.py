@@ -91,7 +91,11 @@ class device_network(View):
 class show_network_dev_types(View):
     @method_decorator(login_required)
     def get(self, request):
-        return render_me(request, "cluster_network_types.html")()
+        return render_me(request, "cluster_network_types.html",
+            # {
+            #    "network_types" : [(short_info, long_info) for short_info, long_info  in network_type._meta.get_field_by_name("identifier")[0].choices],
+            # }
+            )()
     @method_decorator(xml_wrapper)
     def post(self, request):
         xml_resp = E.response()
