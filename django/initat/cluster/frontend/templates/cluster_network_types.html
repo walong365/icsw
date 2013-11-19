@@ -1,80 +1,68 @@
 {% extends "main.html" %}
 
-{% load i18n extra_tags coffeescript %}
+{% load i18n coffeescript %}
 
 {% block title %}Cluster network (device) types{% endblock %}
 
 {% block content %}
 
-<h1>Network (device) types</h1>
-
-<div id="nwt_tables"></div>
-
-{{ network_types }}
-
 {% verbatim %}
 
-<div ng-app="icsw.test_module" ng-controller="overview">
+<div ng-app="icsw.network_type">
 
-<h2>Network types ({{data.issues.length}} entries)</h2>
+<div ng-controller="overview_network_device_type">
 
-<table class="table table-condensed" style="width:auto;">
+<h2>Network device types ({{types.length}} entries)</h2>
+
+<table class="table table-condensed table-condensed table-hover" style="width:auto;">
     <tbody>
-    <tr ng-repeat="issue in data.issues" ng-model="issue">
-        <td>
-           <select class="form-control" ng-model="issue.identifier" ng-change="change(issue)">
-               <option ng-repeat="cur_inst in network_types" ng-selected="cur_inst.value == issue.identifier" ng-value="cur_inst.value">{{ cur_inst.long }}</option>
-           </select>
-        </td>
-        <td><input class="form-control" ng-blur="change(issue)" type="text" ng-model="issue.description" size="30" placeholder="description" required/></td>
-        <td><input type="button" class="btn btn-danger" ng-click="delete(issue)" value="delete"/></td>
+    <tr ng-repeat="nw_type in types">
+        <td><input class="form-control" ng-blur="change(nw_type)" type="text" ng-model="nw_type.identifier" size="5" placeholder="identifier" required/></td>
+        <td><input class="form-control" ng-blur="change(nw_type)" type="text" ng-model="nw_type.description" size="30" placeholder="description" required/></td>
+        <td><input class="form-control" ng-change="change(nw_type)" type="number" ng-model="nw_type.mac_bytes" min="6" max="20"/></td>
+        <td><input type="button" class="btn btn-danger" ng-click="delete(nw_type)" value="delete"/></td>
     </tr>
     <form ng-submit="add_network_type()" role="form">
         <tr>
-            <td>
-               <select class="form-control" ng-model="network_type.identifier">
-                   <option ng-repeat="cur_inst in network_types" ng-value="cur_inst.value">{{ cur_inst.long }}</option>
-               </select>
-            </td>
-            <td><input class="form-control" type="text" ng-model="network_type.description" size="30" placeholder="description" required/></td>
+            <td><input class="form-control" type="text" ng-model="new_type.identifier" size="5" placeholder="identifier" required/></td>
+            <td><input class="form-control" type="text" ng-model="new_type.description" size="30" placeholder="description" required/></td>
+            <td><input class="form-control" type="number" ng-model="new_type.mac_bytes" placeholder="mac_bytes" min="6" max="20"/></td>
             <td><input type="submit" class="btn btn-primary" value="new"/></td>
         </tr>
     </form>
     </tbody>
 </table>
+
+</div>
+<div ng-controller="overview_network_type">
+
+<h2>Network types ({{types.length}} entries)</h2>
+
+<table class="table table-condensed table-condensed table-hover" style="width:auto;">
+    <tbody>
+    <tr ng-repeat="nw_type in types">
+        <td>
+            <select class="form-control" ng-model="nw_type.identifier" ng-change="change(nw_type)" ng-options="key as value for (key, value) in network_types" />
+        </td>
+        <td><input class="form-control" ng-blur="change(nw_type)" type="text" ng-model="nw_type.description" size="30" placeholder="description" required/></td>
+        <td><input type="button" class="btn btn-danger" ng-click="delete(nw_type)" value="delete"/></td>
+    </tr>
+    <form ng-submit="add_network_type()" role="form">
+        <tr>
+            <td>
+                <select class="form-control" ng-model="new_type.identifier" ng-options="key as value for (key, value) in network_types" />
+            </td>
+            <td><input class="form-control" type="text" ng-model="new_type.description" size="30" placeholder="description" required/></td>
+            <td><input type="submit" class="btn btn-primary" value="new"/></td>
+        </tr>
+    </form>
+    </tbody>
+</table>
+
+</div>
+
 </div>
 
 {% endverbatim %}
-<script type="text/javascript">
-
-{% inlinecoffeescript %}
-
-root = exports ? this
-
-master_array = {
-    "nwdt" : new draw_setup("NetworkDevicetype", "nwdt", "network_device_type",
-        "{% url 'base:create_object' 'network_device_type' %}",
-        "{% url 'base:delete_object' 'network_device_type' %}",
-        [
-            new draw_info("identifier", {clear_after_create : true }),
-            new draw_info("description"),
-            new draw_info("mac_bytes", {label : "MAC size", min : 6, max : 20, number : 1, default : 6})
-        ],
-        {"lock_div" : "nwt_tables"}),
-
-}
-
-load_nwts = ->
-    $.ajax
-        url     : "{% url 'network:show_network_dev_types' %}"
-        success : (xml) =>
-            if parse_xml_response(xml)
-                draw_ds_tables($("div#nwt_tables"), master_array, $(xml).find("value[name='response']"))
-
-$(document).ready(load_nwts)
-
-{% endinlinecoffeescript %}
-
-</script>
 
 {% endblock %}

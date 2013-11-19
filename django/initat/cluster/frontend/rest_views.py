@@ -21,9 +21,11 @@ from rest_framework.views import exception_handler
 
 from initat.cluster.backbone.models import user, user_serializer, group, group_serializer, \
      user_serializer_h, group_serializer_h, device_group_serializer, network_type_serializer, \
-     get_related_models, get_change_reset_list
+     get_related_models, get_change_reset_list, network_device_type_serializer
 
 logger = logging.getLogger("cluster.rest")
+
+REST_LIST = ["group", "user", "device_group", "network_type", "network_device_type"]
 
 @api_view(('GET',))
 def api_root(request, format=None):
@@ -76,6 +78,9 @@ class rest_logging(object):
             self.log("exception: %s" % (
                 process_tools.get_except_info()),
                      logging_tools.LOG_LEVEL_ERROR)
+            exc_info = process_tools.exception_info()
+            for line in exc_info.log_lines:
+                self.log("  %s" % (line))
             raise
         e_time = time.time()
         self.log("call took %s" % (
@@ -128,7 +133,8 @@ class list_view(mixins.ListModelMixin,
     @rest_logging
     def post(self, request, *args, **kwargs):
         resp = self.create(request, *args, **kwargs)
-        resp.data["_messages"] = [u"created '%s'" % (unicode(self.object))]
+        if resp.status_code in [200, 201, 202, 203]:
+            resp.data["_messages"] = [u"created '%s'" % (unicode(self.object))]
         return resp
 
 class user_list_h(generics.ListCreateAPIView):
@@ -155,7 +161,7 @@ class group_detail_h(generics.RetrieveUpdateDestroyAPIView):
     model = group
     serializer_class = group_serializer_h
 
-for obj_name in ["group", "user", "device_group", "network_type"]:
+for obj_name in REST_LIST:
     for mode in ["list", "detail"]:
         class_name = "%s_%s" % (obj_name, mode)
         ser_class = globals()["%s_serializer" % (obj_name)]

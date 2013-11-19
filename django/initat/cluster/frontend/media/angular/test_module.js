@@ -4,7 +4,6 @@
 
 {% inlinecoffeescript %}
 
-
 root = exports ? this
 
 render_error = (e, cur_inst) ->
@@ -35,15 +34,15 @@ render_ok = (data) ->
                 text : entry
     return data
             
-test_module = angular.module("icsw.test_module", ["ngRoute", "ngResource", "ngCookies"])
+network_type_module = angular.module("icsw.network_type", ["ngResource", "ngCookies"])
 
-test_module.config(['$httpProvider', 
+network_type_module.config(['$httpProvider', 
     ($httpProvider) ->
         $httpProvider.defaults.xsrfCookieName = 'csrftoken'
         $httpProvider.defaults.xsrfHeaderName = 'X-CSRFToken'
 ])
 
-test_module.factory("network_type", ["$resource",
+network_type_module.factory("network_type_rest", ["$resource",
     ($resource) ->
         return $resource("{% url 'rest:network_type_list' %}/:pk", {}, {
             query : {method : "GET" , isArray : true , params : { format : "json" }},
@@ -53,70 +52,99 @@ test_module.factory("network_type", ["$resource",
         })
     ])
     
-test_module.controller("overview", ["$scope", "network_type"
-    ($scope, network_type) ->
-        $scope.data = []
-        $scope.network_types = [
-            {
-                "value" : "b",
-                "long"  : "boot"
-            },
-            {
-                "value" : "p",
-                "long"  : "prod",
-            },
-            {
-                "value" : "s",
-                "long"  : "slave",
-            },
-            {
-                "value" : "o",
-                "long"  : "other",
-            },
-            {
-                "value" : "l",
-                "long"  : "local",
-            }
-        ]
-        network_type.query(
+network_type_module.factory("network_device_type_rest", ["$resource",
+    ($resource) ->
+        return $resource("{% url 'rest:network_device_type_list' %}/:pk", {}, {
+            query : {method : "GET" , isArray : true , params : { format : "json" }},
+            save  : {method : "POST", isArray : false, params : { format : "json" }},
+            update : {method : "PUT", isArray : false, params : { format : "json" }}
+            delete  : {method : "DELETE", isArray : false, params : { format : "json" }},
+        })
+    ])
+    
+network_type_module.controller("overview_network_type", ["$scope", "network_type_rest"
+    ($scope, network_type_rest) ->
+        $scope.types = []
+        $scope.network_types = {
+            "b" : "boot"
+            "p" : "prod"
+            "s" : "slave"
+            "o" : "other"
+            "l" : "local"
+        }
+        network_type_rest.query(
             (response) ->
-                $scope.data.issues = response
+                $scope.types = response
+                $scope.new_type = {identifier : "l", description : ""}
         )
-        $scope.change = (issue) ->
-            network_type.update(
-                {pk : issue.idx}
-                issue
+        $scope.change = (entry) ->
+            network_type_rest.update(
+                {pk : entry.idx}
+                entry
                 (data) ->
                     data = render_ok(data)
-                (e) -> render_error(e, issue)
+                (e) -> render_error(e, entry)
             )
-        $scope.delete = (issue) ->
-            network_type.delete(
-                {pk : issue.idx}
-                issue
+        $scope.delete = (entry) ->
+            network_type_rest.delete(
+                {pk : entry.idx}
+                entry
                 () -> 
                     noty
                         text : "deleted instance"
-                    remove_by_idx($scope.data.issues, issue.idx)
-                (e) -> render_error(e, issue)
+                    remove_by_idx($scope.types, entry.idx)
+                (e) -> render_error(e, entry)
             )
         $scope.add_network_type = () ->
-            new_nw = {
-                "identifier"  : $scope.network_type.identifier,
-                "description" : $scope.network_type.description,
-            }
-            network_type.save(
+            network_type_rest.save(
                 {}
-                new_nw
+                $scope.new_type
                 (data) ->
                     data = render_ok(data) 
-                    $scope.data.issues.push(data)
+                    $scope.types.push(data)
+                (e) -> render_error(e)
+            )
+    ])
+
+network_type_module.controller("overview_network_device_type", ["$scope", "network_device_type_rest"
+    ($scope, network_device_type_rest) ->
+        $scope.types = []
+        network_device_type_rest.query(
+            (response) ->
+                $scope.types = response
+                $scope.new_type = {identifier : "eth", description : "", "mac_bytes" : 6}
+        )
+        $scope.change = (entry) ->
+            network_device_type_rest.update(
+                {pk : entry.idx}
+                entry
+                (data) ->
+                    data = render_ok(data)
+                (e) -> render_error(e, entry)
+            )
+        $scope.delete = (entry) ->
+            network_device_type_rest.delete(
+                {pk : entry.idx}
+                entry
+                () -> 
+                    noty
+                        text : "deleted instance"
+                    remove_by_idx($scope.types, entry.idx)
+                (e) -> render_error(e, entry)
+            )
+        $scope.add_network_type = () ->
+            network_device_type_rest.save(
+                {}
+                $scope.new_type
+                (data) ->
+                    data = render_ok(data) 
+                    $scope.types.push(data)
                 (e) -> render_error(e)
             )
     ])
  
 {% comment %}
-test_module.directive("xtable",
+network_type_module.directive("xtable",
     () ->
         return {
             restrict : "E"
@@ -133,7 +161,7 @@ test_module.directive("xtable",
         }
     )
      
-test_module.directive("mytable", 
+network_type_module.directive("mytable", 
     () ->
         return {
             restrict : "E"
@@ -151,8 +179,6 @@ test_module.directive("mytable",
         }
     )
 {% endcomment %}
-
-root.test_module = test_module
 
 {% endinlinecoffeescript %}
 
