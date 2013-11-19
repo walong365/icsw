@@ -2214,6 +2214,11 @@ def network_device_type_pre_save(sender, **kwargs):
             raise ValidationError("identifer must not be empty")
         _check_integer(cur_inst, "mac_bytes", min_val=6, max_val=24)
 
+class network_device_type_serializer(serializers.ModelSerializer):
+    class Meta:
+        model = network_device_type
+        fields = ("idx", "identifier", "description", "mac_bytes", "date")
+
 class network_network_device_type(models.Model):
     idx = models.AutoField(db_column="network_network_device_type_idx", primary_key=True)
     network = models.ForeignKey("network")
@@ -3198,7 +3203,7 @@ def get_change_reset_list(s_obj, d_obj, required_changes=None):
         if _f.name in required_changes and cur_t not in ["DateTimeField", "DateField"]:
             if d_val != required_changes[_f.name]:
                 r_list.append((_f.name, d_val))
-        if cur_t in ["CharField", "IntegerField"]:
+        if cur_t in ["CharField", "IntegerField", "PositiveIntegerField"]:
             if s_val != d_val:
                 c_list.append((_f.name, "changed from '%s' to '%s'" % (s_val, d_val)))
         elif cur_t in ["ForeignKeyField"]:
