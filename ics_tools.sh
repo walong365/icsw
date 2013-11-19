@@ -48,3 +48,50 @@ check_threads_ok() {
     echo -n $ret
     return $ret_val
 }
+
+# check for redhat
+if [ -f /etc/redhat-release ] ; then
+    export IS_REDHAT=1
+    . /etc/init.d/functions
+else
+    export IS_REDHAT=0
+fi
+
+# check for debian
+if [ -f /etc/debian_version ] ; then
+    export IS_DEBIAN=1
+    . /lib/lsb/init-functions
+else
+    export IS_DEBIAN=0
+fi
+
+# check for suse
+if [ -f /etc/SuSE-release ] ; then
+    export IS_SUSE=1
+else
+    export IS_SUSE=0
+fi
+
+is_redhat() {
+    if [ -f /etc/redhat-release ] ; then
+	/bin/true
+    else
+	/bin/false
+    fi
+}
+
+is_debian() {
+    if [ -f /etc/debian_version ] ; then
+	/bin/true
+    else
+	/bin/false
+    fi
+}
+
+is_suse() {
+    if [ -f /etc/SuSE-release ] ; then
+	/bin/true
+    else
+	/bin/false
+    fi
+}
