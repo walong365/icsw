@@ -21,7 +21,6 @@
 #
 """ server process for md-config-server """
 
-import sys
 import os
 
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "initat.cluster.settings")

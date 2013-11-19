@@ -766,9 +766,13 @@ class main_config(object):
         main_cfg = base_config(global_config["MAIN_CONFIG_NAME"],
                                is_host_file=True,
                                values=main_values)
-        for log_descr, en in [("notifications" , 1), ("service_retries", 1), ("host_retries"     , 1),
-                              ("event_handlers", 1), ("initial_states" , 0), ("external_commands", 1),
-                              ("passive_checks", 1)]:
+        for log_descr, en in [
+            ("notifications" , 1), ("service_retries", 1), ("host_retries"     , 1),
+            ("event_handlers", 1),
+            ("initial_states", 1 if global_config["LOG_INITIAL_STATES"] else 0),
+            ("external_commands", 1 if global_config["LOG_EXTERNAL_COMMANDS"] else 0),
+            ("passive_checks", 1 if global_config["LOG_PASSIVE_CHECKS"] else 0)
+            ]:
             main_cfg["log_%s" % (log_descr)] = en
         for to_descr, to in [("service_check", 60), ("host_check", 30), ("event_handler", 30),
                              ("notification" , 30), ("ocsp"      , 5), ("perfdata"     , 5)]:
