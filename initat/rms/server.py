@@ -105,7 +105,8 @@ class rms_mon_process(threading_tools.process_obj):
         self.send_to_socket(self.__main_socket, ["command_result", src_id, unicode(srv_com)])
         del srv_com
     def _job_control(self, *args , **kwargs):
-        src_id, srv_com = server_command.srv_command(source=args[0])
+        src_id, srv_com_str = args
+        srv_com = server_command.srv_command(source=srv_com_str)
         job_action = srv_com["action"].text
         job_id = srv_com.xpath(None, ".//ns:job_list/ns:job/@job_id")[0]
         self.log("job action '%s' for job '%s'" % (job_action, job_id))
@@ -281,8 +282,6 @@ class server_process(threading_tools.process_pool):
                 self.send_to_process("rms_mon", "get_config", src_id, unicode(srv_com))
             elif cur_com == "job_control":
                 self.send_to_process("rms_mon", "job_control", src_id, unicode(srv_com))
-                self._job_control(srv_com)
-                self._send_result(src_id, srv_com)
             elif cur_com == "get_0mq_id":
                 srv_com["zmq_id"] = self.bind_id
                 srv_com["result"].attrib.update({

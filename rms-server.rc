@@ -39,6 +39,11 @@ test -x ${PYTHON_BIN} || exit 5
 
 rc_reset
 
+# unset environment variables to be reboot-save
+unset SGE_ARCH
+unset SGE_ROOT
+unset SGE_CELL
+
 export HOSTNAME=`/bin/hostname`
 case "$1" in
     start)
