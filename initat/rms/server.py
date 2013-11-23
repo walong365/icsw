@@ -22,9 +22,13 @@
 
 """ rms-server, process definitions """
 
+from initat.rms.config import global_config
+from lxml.builder import E # @UnresolvedImports
+import cluster_location
 import commands
 import configfile
 import logging_tools
+import os
 import process_tools
 import server_command
 import sge_tools
@@ -32,9 +36,6 @@ import threading_tools
 import time
 import uuid_tools
 import zmq
-from lxml.builder import E # @UnresolvedImports
-import cluster_location
-from initat.rms.config import global_config
 
 def call_command(command, log_com=None):
     start_time = time.time()
@@ -66,6 +67,7 @@ class rms_mon_process(threading_tools.process_obj):
         self._init_sge_info()
         self.__job_content_dict = {}
         self.register_func("get_config", self._get_config)
+        self.register_func("job_control", self._job_control)
         self.register_func("file_watch_content", self._file_watch_content)
         self.register_func("full_reload", self._full_reload)
         # self.register_func("get_job_xml", self._get_job_xml)
@@ -78,6 +80,9 @@ class rms_mon_process(threading_tools.process_obj):
             is_active=True,
             sge_dict=dict([(key, global_config[key]) for key in ["SGE_ARCH", "SGE_ROOT", "SGE_CELL"]]))
         self._update()
+        # set environment
+        os.environ["SGE_ROOT"] = global_config["SGE_ROOT"]
+        os.environ["SGE_CELL"] = global_config["SGE_CELL"]
     def _update(self):
         self.__sge_info.update(no_file_cache=True, force_update=True)
     def _full_reload(self, *args, **kwargs):
@@ -99,9 +104,36 @@ class rms_mon_process(threading_tools.process_obj):
         #        srv_com["sge:%s" % (key)] = self.__sge_info[key]
         self.send_to_socket(self.__main_socket, ["command_result", src_id, unicode(srv_com)])
         del srv_com
+    def _job_control(self, *args , **kwargs):
+        src_id, srv_com = server_command.srv_command(source=args[0])
+        job_action = srv_com["action"].text
+        job_id = srv_com.xpath(None, ".//ns:job_list/ns:job/@job_id")[0]
+        self.log("job action '%s' for job '%s'" % (job_action, job_id))
+        if job_action in ["force_delete", "delete"]:
+            cur_stat, cur_out, log_lines = call_command(
+                "/opt/sge/bin/lx-amd64/qdel %s %s" % (
+                    "-f" if job_action == "force_delete" else "",
+                    job_id
+                )
+            )
+            for log_line in log_lines:
+                self.log(log_line, logging_tools.LOG_LEVEL_OK if not cur_stat else logging_tools.LOG_LEVEL_ERROR)
+            srv_com["result"].attrib.update(
+                {
+                    "state" : "%d" % (server_command.SRV_REPLY_STATE_ERROR if cur_stat else server_command.SRV_REPLY_STATE_OK),
+                    "reply" : "%s gave: %s" % (job_action, cur_out),
+                }
+            )
+        else:
+            srv_com["result"].attrib.update(
+                {
+                    "state" : "%d" % (server_command.SRV_REPLY_STATE_ERROR),
+                    "reply" : "unknown job_action %s" % (job_action),
+                }
+            )
+        self.send_to_socket(self.__main_socket, ["command_result", src_id, unicode(srv_com)])
     def _file_watch_content(self, *args , **kwargs):
-        srv_com = server_command.srv_command(source=args[0])
-        print srv_com.pretty_print()
+        src_id, srv_com = server_command.srv_command(source=args[0])
         job_id = srv_com["id"].text.split(":")[0]
         file_name = srv_com["name"].text
         content = srv_com["content"].text
@@ -238,7 +270,9 @@ class server_process(threading_tools.process_pool):
         if len(data) == 2:
             src_id, xml_input = data
             srv_com = server_command.srv_command(source=xml_input)
-            self.log("got command '%s' from %s" % (srv_com["command"].text, src_id))
+            in_com_text = srv_com["command"].text
+            if in_com_text not in ["get_config"]:
+                self.log("got command '%s' from %s" % (srv_com["command"].text, src_id))
             srv_com.update_source()
             # set dummy result
             srv_com["result"] = None
@@ -246,6 +280,7 @@ class server_process(threading_tools.process_pool):
             if cur_com == "get_config":
                 self.send_to_process("rms_mon", "get_config", src_id, unicode(srv_com))
             elif cur_com == "job_control":
+                self.send_to_process("rms_mon", "job_control", src_id, unicode(srv_com))
                 self._job_control(srv_com)
                 self._send_result(src_id, srv_com)
             elif cur_com == "get_0mq_id":
@@ -255,12 +290,12 @@ class server_process(threading_tools.process_pool):
                     "state" : "%d" % (server_command.SRV_REPLY_STATE_OK)})
                 self._send_result(src_id, srv_com)
             elif cur_com == "status":
-                srv_com["result"].attrib.update({
-                    "reply" : "up and running",
-                    "state" : "%d" % (server_command.SRV_REPLY_STATE_OK)})
+                srv_com.set_result(
+                    "up and running",
+                    server_command.SRV_REPLY_STATE_OK)
                 self._send_result(src_id, srv_com)
             elif cur_com == "file_watch_content":
-                self.send_to_process("rms_mon", "file_watch_content", unicode(srv_com))
+                self.send_to_process("rms_mon", "file_watch_content", src_id, unicode(srv_com))
             else:
                 srv_com["result"].attrib.update(
                     {
@@ -277,32 +312,6 @@ class server_process(threading_tools.process_pool):
         self.com_socket.send_unicode(unicode(srv_com))
     def _com_result(self, src_proc, proc_id, src_id, srv_com):
         self._send_result(src_id, srv_com)
-    def _job_control(self, srv_com):
-        job_action = srv_com["action"].text
-        job_id = srv_com.xpath(None, ".//ns:job_list/ns:job/@job_id")[0]
-        self.log("job action '%s' for job '%s'" % (job_action, job_id))
-        if job_action in ["force_delete", "delete"]:
-            cur_stat, cur_out, log_lines = call_command(
-                "/opt/sge/bin/lx-amd64/qdel %s %s" % (
-                    "-f" if job_action == "force_delete" else "",
-                    job_id
-                )
-            )
-            for log_line in log_lines:
-                self.log(log_line, logging_tools.LOG_LEVEL_OK if not cur_stat else logging_tools.LOG_LEVEL_ERROR)
-            srv_com["result"].attrib.update(
-                {
-                    "state" : "%d" % (server_command.SRV_REPLY_STATE_ERROR if cur_stat else server_command.SRV_REPLY_STATE_OK),
-                    "reply" : "%s gave: %s" % (job_action, cur_out),
-                }
-            )
-        else:
-            srv_com["result"].attrib.update(
-                {
-                    "state" : "%d" % (server_command.SRV_REPLY_STATE_ERROR),
-                    "reply" : "unknown job_action %s" % (job_action),
-                }
-            )
     def loop_post(self):
         if self.com_socket:
             self.log("closing socket")
