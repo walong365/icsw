@@ -5,7 +5,7 @@
 # Send feedback to: <lang-nevyjel@init.at>
 #
 # this file belongs to host-monitoring
-# 
+#
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License Version 2 as
 # published by the Free Software Foundation.
@@ -25,6 +25,7 @@ import stat
 import sys
 import commands
 from initat.host_monitoring import limits, hm_classes
+from initat.host_monitoring import filesys_tools
 import tempfile
 import time
 import logging_tools
@@ -96,10 +97,10 @@ class check_file_command(hm_classes.hm_command):
         ret_state = limits.nag_STATE_OK
         file_stat = f_dict["stat"]
         if type(file_stat) == type({}):
-            file_size  = file_stat["st_size"]
+            file_size = file_stat["st_size"]
             file_mtime = file_stat["st_mtime"]
         else:
-            file_size  = file_stat[stat.ST_SIZE]
+            file_size = file_stat[stat.ST_SIZE]
             file_mtime = file_stat[stat.ST_MTIME]
         add_array = ["size %s" % (logging_tools.get_size_str(file_size))]
         act_time = time.localtime()
@@ -158,7 +159,7 @@ class my_modclass(hm_classes.hm_fileinfo):
                 ret_dict["min_file_size"] = int(arg)
             if opt == "--exclude-checkdate":
                 ret_dict["exclude_checkdate"].append(self._parse_ecd(arg))
-                #ret_dict["min_file_size"] = int(arg)
+                # ret_dict["min_file_size"] = int(arg)
         return ok, why, [my_lim, ret_dict]
     def _parse_ecd(self, in_str):
         # parse exclude_checkdate, ecd has the form [WHHMM][-WHHMM]
@@ -208,7 +209,7 @@ class my_modclass(hm_classes.hm_fileinfo):
                 return loc_queue.get()
             else:
                 return "error cannot start sync_thread"
-    
+
 class config_subthread(threading_tools.thread_obj):
     def __init__(self, loc_queue, logger):
         self.__logger = logger
@@ -262,7 +263,7 @@ class config_subthread(threading_tools.thread_obj):
         return act_stat, act_out
     def _interpret_target_sn(self, in_str):
         return 1, in_str
-        
+
 class resync_config_command(hm_classes.hmb_command):
     def __init__(self, **args):
         hm_classes.hmb_command.__init__(self, "resync_config", **args)
@@ -489,7 +490,7 @@ class create_file(hm_classes.hmb_command):
         file_name = cm.pop()
         if not file_name.startswith("/"):
             return "error file_name has to start with '/'"
-        dir_name, file_name = (os.path.dirname(file_name), 
+        dir_name, file_name = (os.path.dirname(file_name),
                                os.path.basename(file_name))
         if not os.path.isdir(dir_name):
             return "error directory '%s' does not exist" % (dir_name)
@@ -548,6 +549,27 @@ class create_file(hm_classes.hmb_command):
         else:
             return limits.nag_STATE_OK, result
 
+
+class create_dir_command(hm_classes.hm_command):
+    def __call__(self, srv_com, cur_ns):
+        filesys_tools.create_dir(srv_com, self.log)
+
+class remove_dir_command(hm_classes.hm_command):
+    def __call__(self, srv_com, cur_ns):
+        filesys_tools.remove_dir(srv_com, self.log)
+
+class get_dir_tree_command(hm_classes.hm_command):
+    def __call__(self, srv_com, cur_ns):
+        filesys_tools.get_dir_tree(srv_com, self.log)
+
+class get_file_content_command(hm_classes.hm_command):
+    def __call__(self, srv_com, cur_ns):
+        filesys_tools.get_file_content(srv_com, self.log)
+
+class set_file_content_command(hm_classes.hm_command):
+    def __call__(self, srv_com, cur_ns):
+        filesys_tools.set_file_content(srv_com, self.log)
+
 class check_dir_command(hm_classes.hm_command):
     def __init__(self, name):
         hm_classes.hm_command.__init__(self, name, positional_arguments=True)
@@ -570,7 +592,7 @@ class check_dir_command(hm_classes.hm_command):
                     local_time="%d" % (time.time()),
                     link_followed="1" if link_followed else "0",
                 ))
-                srv_com["result:dir_result:stat"] = dict([(key, getattr(stat,key)) for key in dir(stat) if key.startswith("ST")])
+                srv_com["result:dir_result:stat"] = dict([(key, getattr(stat, key)) for key in dir(stat) if key.startswith("ST")])
             else:
                 srv_com["result"].attrib.update({
                     "reply" : "directory %s not found" % (dir_name),

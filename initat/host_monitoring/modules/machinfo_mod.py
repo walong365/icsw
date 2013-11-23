@@ -21,6 +21,9 @@
 #
 """ machine information """
 
+from initat.host_monitoring import hm_classes, limits
+from lxml import etree # @UnresolvedImport
+from lxml.builder import E # @UnresolvedImport
 import commands
 import cpu_database
 import logging_tools
@@ -37,9 +40,6 @@ import sys
 import tempfile
 import time
 import uuid_tools
-from initat.host_monitoring import hm_classes, limits
-from lxml import etree # @UnresolvedImport
-from lxml.builder import E # @UnresolvedImport
 try:
     from initat.host_monitoring_version import VERSION_STRING
 except ImportError:
