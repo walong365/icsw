@@ -6,64 +6,113 @@
 
 {% block content %}
 
-<h1>Networks</h1>
+{% verbatim %}
 
-<div id="nw_tables"></div>
+<div ng-app="icsw.network">
 
-<script type="text/javascript">
-
-{% inlinecoffeescript %}
-
-root = exports ? this
-
-root.get_master_networks = (cur_el, kwargs) ->
-    master_xml = kwargs.master_xml
-    prod_id = master_xml.find("network_types network_type[identifier='p']").attr("pk")
-    ret_field = $("<networks>")
-    master_xml.find("networks network[network_type='#{prod_id}']").each (index, element) =>
-        cur_nw = $(element)
-        ret_field.append(
-            $("<network>").attr({
-                "pk"  : cur_nw.attr("pk"),
-                "key" : cur_nw.attr("key")
-            }).text(cur_nw.text())
-        )
-    return ret_field.find("network")
-
-add_config_handlers = ->
-    $.ajax
-        url     : "{% url 'network:show_networks' %}"
-        success : (xml) =>
-            if parse_xml_response(xml)
-                xml = $(xml).find("value[name='response']")
-                other_network_id = xml.find("network_type[identifier='o']").attr("pk")
-                ethernet_id = xml.find("network_device_type[identifier='eth']").attr("pk")
-                master_array = {
-                    "nw" : new draw_setup("Network", "nw", "network",
-                        "{% url 'base:create_object' 'network' %}",
-                        "{% url 'base:delete_object' 'network' %}",
-                        [
-                            new draw_collapse("exp", {default : false}),
-                            new draw_info("identifier"),
-                            new draw_info("network", {default : "192.168.1.0", size : 16, label : "Network", show_label : true, group : "network"}),
-                            new draw_info("netmask", {default : "255.255.255.0", size : 16, label : "Netmask", show_label : true, group : "network"}),
-                            new draw_info("broadcast", {default : "192.168.1.255", size : 16, label : "Broadcast", show_label : true, group : "network"}),
-                            new draw_info("gateway", {default : "192.168.1.1", size : 16, label : "Gateway", show_label : true, group : "network"}),
-                            new draw_info("ip_count", {number : 1, ro : true}),
-                            new draw_info("penalty", {number : 1, min : -100, max : 100, default : 1, newline : 1, cspan : 8, label : "penalty:", show_label : true}),
-                            new draw_info("network_type", {select_source : "network_types network_type", keep_td : 1, label : "type:", show_label : true, default : other_network_id, chosen : { width : "20%",}, }),
-                            new draw_info("master_network", {select_source : root.get_master_networks, add_null_entry : "not set", keep_td : 1, label : "master:", show_label : true, chosen : { width : "20%",}, } ),
-                            new draw_info("network_device_type", {select_source : "network_device_types network_device_type", manytomany : 1, show_label : true, chosen : {width : "25%",}, label : "DTs :", keep_td : 1, default : [ethernet_id]}),
-                        ],
-                        {"lock_div" : "nw_tables"})
-                }
-                
-                draw_ds_tables($("div#nw_tables"), master_array, xml)
-
-$(document).ready(add_config_handlers)
-
-{% endinlinecoffeescript %}
-
+<script type="text/ng-template" id="network.html">
+    <div class="form-horizontal">
+        <form ng-submit="modify()" name="form">
+            <div class="form-group ng-class: form_error('identifier')">
+                <label for="identifier" class="control-label col-sm-4">Identifier</label>
+                <div class="col-sm-8">
+                    <input id="identifier" class="form-control" name="identifier" ng-model="edit_obj.identifier" type="text" size="16" placeholder="Identifier" required/>
+                </div>
+            </div>
+            <div class="form-group ng-class: form_error('network')">
+                <label for="network" class="control-label col-sm-4">Network</label>
+                <div class="col-sm-8">
+                    <input id="network" class="form-control" type="text" name="network" ng-pattern="/^\d+\.\d+\.\d+\.\d+$/" ng-model="edit_obj.network" size="30" placeholder="Network" required/>
+                </div>
+            </div>
+            <div class="form-group ng-class: form_error('netmask')">
+                <label for="netmask" class="control-label col-sm-4">Netmask</label>
+                <div class="col-sm-8">
+                    <input id="netmask" class="form-control" type="text" name="netmask" ng-pattern="/^\d+\.\d+\.\d+\.\d+$/" ng-model="edit_obj.netmask" size="30" placeholder="Netmask" required/>
+                </div>
+            </div>
+            <div class="form-group ng-class: form_error('broadcast')">
+                <label for="broadcast" class="control-label col-sm-4">Broadcast</label>
+                <div class="col-sm-8">
+                    <input id="broadcast" class="form-control" type="text" name="broadcast" ng-pattern="/^\d+\.\d+\.\d+\.\d+$/" ng-model="edit_obj.broadcast" size="30" placeholder="Broadcast" required/>
+                </div>
+            </div>
+            <div class="form-group ng-class: form_error('gateway')">
+                <label for="gateway" class="control-label col-sm-4">Gateway</label>
+                <div class="col-sm-8">
+                    <input id="gateway" class="form-control" type="text" name="gateway" ng-pattern="/^\d+\.\d+\.\d+\.\d+$/" ng-model="edit_obj.gateway" size="30" placeholder="Gateway" required/>
+                </div>
+            </div>
+            <div class="form-group">
+                <label for="network_type" class="control-label col-sm-4">Network Type</label>
+                <div class="col-sm-8">
+                    <select id="network_type" class="form-control" ng-model="edit_obj.network_type" ng-options="value.idx as value.description for (key, value) in network_types" />
+                </div>
+            </div>
+            <div class="form-group" ng-show="is_slave_network(edit_obj.network_type)">
+                <label for="master_network" class="control-label col-sm-4">Master Network</label>
+                <div class="col-sm-8">
+                    <select id="master_network" class="form-control" ng-model="edit_obj.master_network" ng-options="value.idx as value.identifier for (key, value) in get_production_networks()">
+                        <option value="">No master network</option>
+                    </select>
+                </div>
+            </div>
+            <div class="form-group">
+                <label for="network_device_type" class="control-label col-sm-4">Network device types</label>
+                <div class="col-sm-8">
+                    <select id="network_device_type" class="form-control" chosen multiple ng-model="edit_obj.network_device_type" ng-options="value.idx as value.identifier for (key, value) in network_device_types">
+                    </select>
+                </div>
+            </div>
+            <div class="form-group">
+                <div class="col-sm-offset-4 col-sm-8">
+                    <button type="submit" class="btn btn-primary">{{ create_mode && 'Create' || 'Modify' }}</button>
+                </div>
+            </div>
+        </form>
+    </div>
 </script>
+
+<div ng-controller="network">
+
+<h2>Networks ({{entries.length}} entries), <input type="button" value="create new" ng-click="create($event)"/></h2>
+
+<table class="table table-condensed table-condensed table-hover" style="width:auto;">
+    <thead>
+        <tr>
+            <th>Id</th>   
+            <th>Network definition</th>   
+            <th>Gateway</th>
+            <th>Pri</th>
+            <th>Type</th>
+            <th>Master</th>
+            <th>devtype(s)</th>   
+            <th colspan="2" class="text-center">action</th>   
+        </tr>
+    </thead>
+    <tbody>
+    <tr ng-repeat="obj in entries | orderBy:'-identifier':true">
+        <td>{{ obj.identifier }}</td>
+        <td style="font-family:monospace;">
+            <span ng-bind-html="ip_fill_up(obj.network)"></span> / <span ng-bind-html="ip_fill_up(obj.netmask)"></span> / <span ng-bind-html="ip_fill_up(obj.broadcast)"></span>
+        </td>
+        <td>
+            <span ng-bind-html="ip_fill_up(obj.gateway)"></span>
+        </td>
+        <td>{{ obj.penalty }}</td>
+        <td>{{ network_types[obj.network_type].description }}</td>
+        <td>{{ obj.master_network | array_lookup:this:'entries':'identifier':'---' }}</td>
+        <td>{{ obj.network_device_type | resolve_n2m:this:'network_device_types':'identifier' }}</td>
+        <td><input type="button" class="btn btn-primary" ng-click="edit($event, obj)" value="modify"/></td>
+        <td><input type="button" class="btn btn-danger" ng-click="delete(obj)" value="delete"/></td>
+    </tr>
+    </tbody>
+</table>
+
+</div>
+
+</div>
+
+{% endverbatim %}
 
 {% endblock %}

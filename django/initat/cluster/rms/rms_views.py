@@ -5,7 +5,10 @@ import logging
 import logging_tools
 import pprint
 import server_command
-import sge_tools
+try:
+    import sge_tools
+except ImportError:
+    sge_tools = None
 import sys
 import threading
 import time
@@ -28,27 +31,32 @@ RMS_ADDONS = [sys.modules[key].modify_rms() for key in RMS_ADDON_KEYS]
 
 logger = logging.getLogger("cluster.rms")
 
-class tl_sge_info(sge_tools.sge_info):
-    # sge_info object with thread lock layer
-    def __init__(self):
-        self.lock = threading.Lock()
-        sge_tools.sge_info.__init__(
-            self,
-            server="127.0.0.1",
-            default_pref=["server"],
-            never_direct=True,
-            run_initial_update=False,
-            verbose=settings.DEBUG
-        )
-    def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
-        logger.log(log_level, "[sge] %s" % (what))
-    def update(self):
-        self.lock.acquire()
-        try:
-            sge_tools.sge_info.update(self)
-            sge_tools.sge_info.build_luts(self)
-        finally:
-            self.lock.release()
+if sge_tools:
+    class tl_sge_info(sge_tools.sge_info):
+        # sge_info object with thread lock layer
+        def __init__(self):
+            self.lock = threading.Lock()
+            sge_tools.sge_info.__init__(
+                self,
+                server="127.0.0.1",
+                default_pref=["server"],
+                never_direct=True,
+                run_initial_update=False,
+                verbose=settings.DEBUG
+            )
+        def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
+            logger.log(log_level, "[sge] %s" % (what))
+        def update(self):
+            self.lock.acquire()
+            try:
+                sge_tools.sge_info.update(self)
+                sge_tools.sge_info.build_luts(self)
+            finally:
+                self.lock.release()
+else:
+    class tl_sge_info(object):
+        def update(self):
+            pass
 
 my_sge_info = tl_sge_info()
 
@@ -65,17 +73,20 @@ class overview(View):
         })()
 
 def _rms_headers(request):
-    res = E.headers(
-        E.running_headers(
-            sge_tools.get_running_headers(get_job_options(request)),
-        ),
-        E.waiting_headers(
-            sge_tools.get_waiting_headers(get_job_options(request)),
-        ),
-        E.node_headers(
-            sge_tools.get_node_headers(get_node_options(request)),
+    if sge_tools:
+        res = E.headers(
+            E.running_headers(
+                sge_tools.get_running_headers(get_job_options(request)),
+            ),
+            E.waiting_headers(
+                sge_tools.get_waiting_headers(get_job_options(request)),
+            ),
+            E.node_headers(
+                sge_tools.get_node_headers(get_node_options(request)),
+            )
         )
-    )
+    else:
+        res = E.headers()
     return res
 
 class get_header_xml(View):
@@ -83,8 +94,9 @@ class get_header_xml(View):
     @method_decorator(xml_wrapper)
     def post(self, request):
         res = _rms_headers(request)
-        for change_obj in RMS_ADDONS:
-            change_obj.modify_headers(res)
+        if sge_tools is not None:
+            for change_obj in RMS_ADDONS:
+                change_obj.modify_headers(res)
         request.xml_response["headers"] = res
 
 def _node_to_value(in_node):

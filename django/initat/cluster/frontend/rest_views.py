@@ -9,6 +9,7 @@ import sys
 import time
 import types
 
+from django.core.exceptions import ValidationError
 from django.db import IntegrityError
 from django.db.models import Q
 from rest_framework import mixins, generics, status
@@ -19,13 +20,12 @@ from rest_framework.response import Response
 from rest_framework.reverse import reverse
 from rest_framework.views import exception_handler
 
-from initat.cluster.backbone.models import user, user_serializer, group, group_serializer, \
-     user_serializer_h, group_serializer_h, device_group_serializer, network_type_serializer, \
-     get_related_models, get_change_reset_list, network_device_type_serializer
+from initat.cluster.backbone.models import user , group, user_serializer_h, group_serializer_h, \
+     get_related_models, get_change_reset_list
 
 logger = logging.getLogger("cluster.rest")
 
-REST_LIST = ["group", "user", "device_group", "network_type", "network_device_type"]
+REST_LIST = ["group", "user", "device_group", "network_type", "network_device_type", "network"]
 
 @api_view(('GET',))
 def api_root(request, format=None):
@@ -98,9 +98,14 @@ class detail_view(mixins.RetrieveModelMixin,
     def put(self, request, *args, **kwargs):
         req_changes = request.DATA
         prev_model = self.model.objects.get(Q(pk=kwargs["pk"]))
+        # try:
         resp = self.update(request, *args, **kwargs)
+        # except ValidationError as cur_exc:
+        #    print cur_exc
+        # print dir(resp), resp.data
         new_model = self.model.objects.get(Q(pk=kwargs["pk"]))
         c_list, r_list = get_change_reset_list(prev_model, new_model, req_changes)
+        print c_list, r_list
         resp.data["_change_list"] = c_list
         resp.data["_reset_list"] = r_list
         return resp
@@ -161,10 +166,12 @@ class group_detail_h(generics.RetrieveUpdateDestroyAPIView):
     model = group
     serializer_class = group_serializer_h
 
+_models = __import__("initat.cluster.backbone.models")
 for obj_name in REST_LIST:
+    ser_name = "%s_serializer" % (obj_name)
+    ser_class = getattr(_models.cluster.backbone.models, ser_name)
     for mode in ["list", "detail"]:
         class_name = "%s_%s" % (obj_name, mode)
-        ser_class = globals()["%s_serializer" % (obj_name)]
         globals()[class_name] = type(
             class_name,
             (detail_view,) if mode == "detail" else (list_view,),

@@ -15,6 +15,7 @@
     {# can be removed as soon as jquery-UI is up to par #}
     <link type="text/css" rel="stylesheet" href="{{ settings.STATIC_URL }}initat/core/static/js/libs/dynatree/skin/ui.dynatree.css" />
     <link type="text/css" rel="stylesheet" href="{{ settings.STATIC_URL }}initat/core/static/js/libs/chosen/chosen.min.css" />
+    <link type="text/css" rel="stylesheet" href="{{ settings.STATIC_URL }}initat/core/static/js/libs/angular-chosen/chosen-spinner.css" />
     <link type="text/css" rel="stylesheet" href="{{ MEDIA_URL }}frontend/css/jquery.dataTables.css" />
     <link type="text/css" rel="stylesheet" href="{{ MEDIA_URL }}frontend/css/msdropdown/dd.css" />
     <!-- needed for simplemodal -->
@@ -73,7 +74,7 @@
     <script type="text/javascript" src="{{ MEDIA_URL }}frontend/js/noty/topRight.js"></script>
     <script type="text/javascript" src="{{ MEDIA_URL }}frontend/js/noty/topLeft.js"></script>
     <script type="text/javascript" src="{{ MEDIA_URL }}frontend/js/noty/default.js"></script>
-    <!--<script type="text/javascript" src="{{ MEDIA_URL }}frontend/js/underscore-min.js"></script>-->
+    <script type="text/javascript" src="{{ settings.STATIC_URL }}initat/core/static/js/libs/lodash.min.js"></script>
     <script type="text/javascript" src="{{ MEDIA_URL }}frontend/js/jquery.dd.min.js"></script>
     <!-- patched version -->
     <script type="text/javascript" src="{{ MEDIA_URL }}frontend/js/jquery.simplemodal.js"></script>
@@ -92,6 +93,11 @@
     <script type="text/javascript" src="{{ settings.STATIC_URL }}initat/core/static/js/libs/angular-route.min.js"></script>
     <script type="text/javascript" src="{{ settings.STATIC_URL }}initat/core/static/js/libs/angular-resource.min.js"></script>
     <script type="text/javascript" src="{{ settings.STATIC_URL }}initat/core/static/js/libs/angular-cookies.min.js"></script>
+    <script type="text/javascript" src="{{ settings.STATIC_URL }}initat/core/static/js/libs/angular-sanitize.min.js"></script>
+    <script type="text/javascript" src="{{ settings.STATIC_URL }}initat/core/static/js/libs/angular-chosen/chosen.js"></script>
+    <script type="text/javascript" src="{{ settings.STATIC_URL }}initat/core/static/js/libs/restangular.min.js"></script>
+    <script type="text/javascript" src="{{ settings.STATIC_URL }}initat/core/static/js/libs/ui-bootstrap.min.js"></script>
+    <script type="text/javascript" src="{{ settings.STATIC_URL }}initat/core/static/js/libs/ui-bootstrap-tpls.min.js"></script>
 {% endcompress %}
 <script type="text/javascript" src="{{ settings.STATIC_URL}}initat/core/static/js/libs/jquery.Jcrop.min.js"></script>
 
@@ -99,7 +105,7 @@
 {% include "deviceinfo.js" %}
 {% include "rms.js" %}
 {# angular modules #}
-{% include "test_module.js" %}
+{% include "angular/network.cs" %}
 
 {% endblock %}
 
