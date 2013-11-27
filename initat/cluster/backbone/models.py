@@ -2081,7 +2081,7 @@ class network(models.Model):
     network_type = models.ForeignKey("network_type")
     master_network = models.ForeignKey("network", null=True, related_name="rel_master_network", blank=True)
     # should no longer be used, now in domain_tree_node
-    short_names = models.BooleanField()
+    short_names = models.BooleanField(default=True)
     # should no longer be used, now in domain_tree_node
     name = models.CharField(max_length=192, blank=False)
     penalty = models.PositiveIntegerField(default=1)
@@ -2094,9 +2094,9 @@ class network(models.Model):
     gateway = models.IPAddressField()
     gw_pri = models.IntegerField(null=True, blank=True, default=1)
     # should no longer be used, now in domain_tree_node
-    write_bind_config = models.BooleanField()
+    write_bind_config = models.BooleanField(default=False)
     # should no longer be used, now in domain_tree_node
-    write_other_network_config = models.BooleanField()
+    write_other_network_config = models.BooleanField(default=False)
     start_range = models.IPAddressField(default="0.0.0.0")
     end_range = models.IPAddressField(default="0.0.0.0")
     date = models.DateTimeField(auto_now_add=True)
@@ -2147,6 +2147,12 @@ class network(models.Model):
             self.network_type.identifier
         )
 
+class network_serializer(serializers.ModelSerializer):
+    class Meta:
+        model = network
+        fields = ("idx", "identifier", "network_type", "master_network", "penalty", "info",
+            "network", "netmask", "broadcast", "gateway", "gw_pri", "date", "network_device_type")
+
 @receiver(signals.pre_save, sender=network)
 def network_pre_save(sender, **kwargs):
     if "instance" in kwargs:
@@ -2155,6 +2161,8 @@ def network_pre_save(sender, **kwargs):
         change_attr = getattr(cur_inst, "change_attribute", None)
         _check_integer(cur_inst, "penalty", min_val= -100, max_val=100)
         nw_type = cur_inst.network_type.identifier
+        if cur_inst.rel_master_network.all().count() and nw_type != "p":
+            raise ValidationError("slave networks exists, cannot change type")
         if nw_type != "s" and cur_inst.master_network_id:
             raise ValidationError("only slave networks can have a master")
         if nw_type == "s" and cur_inst.master_network_id:
@@ -3201,7 +3209,12 @@ def get_change_reset_list(s_obj, d_obj, required_changes=None):
         cur_t = _f.get_internal_type()
         # ignore Date(Time)Fields
         if _f.name in required_changes and cur_t not in ["DateTimeField", "DateField"]:
+            if cur_t == "ForeignKey":
+                # print _f.name, cur_t, d_val, required_changes[_f.name]
+                if d_val is not None:
+                    d_val = d_val.pk
             if d_val != required_changes[_f.name]:
+                print _f.name, d_val
                 r_list.append((_f.name, d_val))
         if cur_t in ["CharField", "IntegerField", "PositiveIntegerField"]:
             if s_val != d_val:
