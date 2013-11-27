@@ -121,9 +121,7 @@ device_patterns = patterns(
 network_patterns = patterns(
     "initat.cluster.frontend",
     url("^network$"           , network_views.show_cluster_networks.as_view() , name="show_networks"),
-    url("^netw_t_dt$"         , network_views.show_network_dev_types.as_view(), name="show_network_dev_types"),
     url("^dev_network$"       , network_views.device_network.as_view()        , name="device_network"),
-    # url("^get_network_tree$"  , network_views.get_network_tree.as_view()      , name="get_network_tree"       ),
     url("^create_netdevice$"  , network_views.create_netdevice.as_view()      , name="create_netdevice"),
     url("^delete_netdevice$"  , network_views.delete_netdevice.as_view()      , name="delete_netdevice"),
     url("^create_net_ip$"     , network_views.create_net_ip.as_view()         , name="create_net_ip"),

@@ -88,43 +88,10 @@ class device_network(View):
         # print etree.tostring(xml_resp, pretty_print=True)
         request.xml_response["response"] = xml_resp
 
-class show_network_dev_types(View):
-    @method_decorator(login_required)
-    def get(self, request):
-        return render_me(request, "cluster_network_types.html",
-            # {
-            #    "network_types" : [(short_info, long_info) for short_info, long_info  in network_type._meta.get_field_by_name("identifier")[0].choices],
-            # }
-            )()
-    @method_decorator(xml_wrapper)
-    def post(self, request):
-        xml_resp = E.response()
-        request.xml_response["response"] = xml_resp
-        xml_resp.append(E.network_types(
-            *[cur_nwt.get_xml() for cur_nwt in network_type.objects.all()]))
-        xml_resp.append(E.network_device_types(
-            *[cur_nwdt.get_xml() for cur_nwdt in network_device_type.objects.all()]))
-        xml_resp.append(E.network_type_choices(
-            *[E.network_type_choice(long_info, pk="%s" % (short_info)) for short_info, long_info in network_type._meta.get_field_by_name("identifier")[0].choices]))
-
 class show_cluster_networks(View):
     @method_decorator(login_required)
     def get(self, request):
         return render_me(request, "cluster_networks.html")()
-    @method_decorator(xml_wrapper)
-    def post(self, request):
-        xml_resp = E.response(
-            E.networks(
-                *[cur_nw.get_xml(add_ip_info=True) for cur_nw in network.objects.prefetch_related("net_ip_set", "network_device_type").select_related("network_type").all()]
-                ),
-            E.network_types(
-                *[cur_nwt.get_xml() for cur_nwt in network_type.objects.all()]
-                ),
-            E.network_device_types(
-                *[cur_nwdt.get_xml() for cur_nwdt in network_device_type.objects.all()]
-            )
-        )
-        request.xml_response["response"] = xml_resp
 
 class delete_netdevice(View):
     @method_decorator(login_required)
