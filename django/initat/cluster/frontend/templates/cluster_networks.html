@@ -1,131 +1,26 @@
 {% extends "main.html" %}
 
-{% load i18n extra_tags coffeescript %}
+{% load i18n extra_tags coffeescript crispy_forms_tags %}
 
 {% block title %}Cluster networks{% endblock %}
 
 {% block content %}
 
-{% verbatim %}
-
 <div ng-app="icsw.network">
 
 <script type="text/ng-template" id="network.html">
-    <div class="form-horizontal">
-        <form ng-submit="modify()" name="form">
-            <div class="form-group ng-class: form_error('identifier')">
-                <label for="identifier" class="control-label col-sm-4">Identifier</label>
-                <div class="col-sm-8">
-                    <input id="identifier" class="form-control" name="identifier" ng-model="edit_obj.identifier" type="text" size="16" placeholder="Identifier" required/>
-                </div>
-            </div>
-            <div class="form-group ng-class: form_error('network')">
-                <label for="network" class="control-label col-sm-4">Network</label>
-                <div class="col-sm-8">
-                    <input id="network" class="form-control" type="text" name="network" ng-pattern="/^\d+\.\d+\.\d+\.\d+$/" ng-model="edit_obj.network" size="30" placeholder="Network" required/>
-                </div>
-            </div>
-            <div class="form-group ng-class: form_error('netmask')">
-                <label for="netmask" class="control-label col-sm-4">Netmask</label>
-                <div class="col-sm-8">
-                    <input id="netmask" class="form-control" type="text" name="netmask" ng-pattern="/^\d+\.\d+\.\d+\.\d+$/" ng-model="edit_obj.netmask" size="30" placeholder="Netmask" required/>
-                </div>
-            </div>
-            <div class="form-group ng-class: form_error('broadcast')">
-                <label for="broadcast" class="control-label col-sm-4">Broadcast</label>
-                <div class="col-sm-8">
-                    <input id="broadcast" class="form-control" type="text" name="broadcast" ng-pattern="/^\d+\.\d+\.\d+\.\d+$/" ng-model="edit_obj.broadcast" size="30" placeholder="Broadcast" required/>
-                </div>
-            </div>
-            <div class="form-group ng-class: form_error('gateway')">
-                <label for="gateway" class="control-label col-sm-4">Gateway</label>
-                <div class="col-sm-8">
-                    <input id="gateway" class="form-control" type="text" name="gateway" ng-pattern="/^\d+\.\d+\.\d+\.\d+$/" ng-model="edit_obj.gateway" size="30" placeholder="Gateway" required/>
-                </div>
-            </div>
-            <div class="form-group">
-                <label for="network_type" class="control-label col-sm-4">Network Type</label>
-                <div class="col-sm-8">
-                    <select id="network_type" class="form-control" ng-model="edit_obj.network_type" ng-options="value.idx as value.description for (key, value) in network_types" />
-                </div>
-            </div>
-            <div class="form-group" ng-show="is_slave_network(edit_obj.network_type)">
-                <label for="master_network" class="control-label col-sm-4">Master Network</label>
-                <div class="col-sm-8">
-                    <select id="master_network" class="form-control" ng-model="edit_obj.master_network" ng-options="value.idx as value.identifier for (key, value) in get_production_networks()">
-                        <option value="">No master network</option>
-                    </select>
-                </div>
-            </div>
-            <div class="form-group">
-                <label for="network_device_type" class="control-label col-sm-4">Network device types</label>
-                <div class="col-sm-8">
-                    <select id="network_device_type" class="form-control" chosen multiple ng-model="edit_obj.network_device_type" ng-options="value.idx as value.identifier for (key, value) in network_device_types">
-                    </select>
-                </div>
-            </div>
-            <div class="form-group">
-                <div class="col-sm-offset-4 col-sm-8">
-                    <button type="submit" class="btn btn-primary">{{ create_mode && 'Create' || 'Modify' }}</button>
-                </div>
-            </div>
-        </form>
-    </div>
-</script>
-
-<script type="text/ng-template" id="network_device_type.html">
-    <div class="form-horizontal">
-        <form ng-submit="modify()" name="form">
-            <div class="form-group ng-class: form_error('identifier')">
-                <label for="identifier" class="control-label col-sm-4">Identifier</label>
-                <div class="col-sm-8">
-                    <input id="identifier" class="form-control" name="identifier" ng-model="edit_obj.identifier" type="text" size="5" placeholder="identifier" required/>
-                </div>
-            </div>
-            <div class="form-group ng-class: form_error('description')">
-                <label for="description" class="control-label col-sm-4">Description</label>
-                <div class="col-sm-8">
-                    <input id="description" class="form-control" type="text" name="description" ng-model="edit_obj.description" size="30" placeholder="description" required/>
-                </div>
-            </div>
-            <div class="form-group">
-                <label for="mac_bytes" class="control-label col-sm-4">MAC Bytes</label>
-                <div class="col-sm-8">
-                    <input id="mac_bytes" class="form-control" type="number" ng-model="edit_obj.mac_bytes" placeholder="mac_bytes" min="6" max="20"/>
-                </div>
-            </div>
-            <div class="form-group">
-                <div class="col-sm-offset-4 col-sm-8">
-                    <button type="submit" class="btn btn-primary">{{ create_mode && 'Create' || 'Modify' }}</button>
-                </div>
-            </div>
-        </form>
-    </div>
+    {% crispy network_form network_form.helper %}
 </script>
 
 <script type="text/ng-template" id="network_type.html">
-    <div class="form-horizontal">
-        <form ng-submit="modify()" name="form">
-            <div class="form-group">
-                <label for="identifier" class="control-label col-sm-4">Identifier</label>
-                <div class="col-sm-8">
-                    <select id="identifier" class="form-control" ng-model="edit_obj.identifier" ng-options="key as value for (key, value) in network_types" />
-                </div>
-            </div>
-            <div class="form-group ng-class: form_error('description')">
-                <label for="description" class="control-label col-sm-4">Description</label>
-                <div class="col-sm-8">
-                    <input id="description" class="form-control" type="text" name="description" ng-model="edit_obj.description" size="30" placeholder="description" required/>
-                </div>
-            </div>
-            <div class="form-group">
-                <div class="col-sm-offset-4 col-sm-8">
-                    <button type="submit" class="btn btn-primary">{{ create_mode && 'Create' || 'Modify' }}</button>
-                </div>
-            </div>
-        </form>
-    </div>
+    {% crispy network_type_form network_type_form.helper %}
 </script>
+
+<script type="text/ng-template" id="network_device_type.html">
+    {% crispy network_device_type_form network_device_type_form.helper %}
+</script>
+
+{% verbatim %}
 
 <tabset>
     <tab heading="Networks">

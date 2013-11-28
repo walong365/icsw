@@ -3,13 +3,7 @@
 
 """ network views """
 
-import logging
-import logging_tools
-import process_tools
-import ipvx_tools
-import config_tools
-from lxml.builder import E # @UnresolvedImports
-from networkx.readwrite import json_graph
+
 
 from django.contrib.auth.decorators import login_required
 from django.core.exceptions import ValidationError
@@ -18,13 +12,20 @@ from django.db.models import Q
 from django.http import HttpResponse, HttpResponseRedirect
 from django.utils.decorators import method_decorator
 from django.views.generic import View
-
 from initat.cluster.backbone.models import device, network, net_ip, \
-     network_type, network_device_type, netdevice, peer_information, \
-     netdevice_speed, domain_tree_node, domain_name_tree, get_related_models
-from initat.cluster.frontend.forms import dtn_detail_form, dtn_new_form
+    network_type, network_device_type, netdevice, peer_information, \
+    netdevice_speed, domain_tree_node, domain_name_tree, get_related_models
+from initat.cluster.frontend.forms import dtn_detail_form, dtn_new_form, network_form, \
+    network_type_form, network_device_type_form
 from initat.cluster.frontend.helper_functions import xml_wrapper
 from initat.core.render import render_me, render_string
+from lxml.builder import E # @UnresolvedImports
+from networkx.readwrite import json_graph
+import config_tools
+import ipvx_tools
+import logging
+import logging_tools
+import process_tools
 
 logger = logging.getLogger("cluster.network")
 
@@ -91,7 +92,11 @@ class device_network(View):
 class show_cluster_networks(View):
     @method_decorator(login_required)
     def get(self, request):
-        return render_me(request, "cluster_networks.html")()
+        return render_me(request, "cluster_networks.html", {
+            "network_form" : network_form(),
+            "network_device_type_form" : network_device_type_form(),
+            "network_type_form" : network_type_form(),
+            })()
 
 class delete_netdevice(View):
     @method_decorator(login_required)

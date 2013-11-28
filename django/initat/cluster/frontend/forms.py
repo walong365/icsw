@@ -5,7 +5,7 @@
 import re
 from django.forms.widgets import TextInput, PasswordInput, SelectMultiple
 from django.forms import Form, ModelForm, ValidationError, CharField, ModelChoiceField, \
-    ModelMultipleChoiceField
+    ModelMultipleChoiceField, ChoiceField
 from django.contrib.auth import authenticate
 from django.db.models import Q
 from django.utils.translation import ugettext_lazy as _
@@ -16,7 +16,7 @@ from crispy_forms.bootstrap import FormActions
 from django.core.urlresolvers import reverse
 from initat.cluster.backbone.models import domain_tree_node, device, category, mon_check_command, mon_service_templ, \
      domain_name_tree, user, group, device_group, home_export_list, device_config, TOP_LOCATIONS, \
-     csw_permission, kernel
+     csw_permission, kernel, network, network_type, network_device_type
 from initat.cluster.frontend.widgets import device_tree_widget
 
 # import PAM
@@ -606,3 +606,90 @@ class kernel_detail_form(ModelForm):
             "module_list", "target_module_list", "initrd_built",
             ]
 
+class empty_query_set(object):
+    def all(self):
+        raise StopIteration
+
+class network_form(ModelForm):
+    helper = FormHelper()
+    helper.form_id = "form"
+    helper.form_name = "form"
+    helper.form_class = 'form-horizontal'
+    helper.label_class = 'col-sm-3'
+    helper.field_class = 'col-sm-7'
+    helper.ng_model = "edit_obj"
+    master_network = ModelChoiceField(queryset=empty_query_set(), empty_label="No master network")
+    network_type = ModelChoiceField(queryset=empty_query_set(), empty_label=None)
+    network_device_type = ModelMultipleChoiceField(queryset=empty_query_set())
+    helper.layout = Layout(
+        HTML("<h2>Network</h2>"),
+            Fieldset(
+                "Basic data",
+                Field("identifier", wrapper_class="ng-class:form_error('identifier')", placeholder="Identifier"),
+                Field("network"   , wrapper_class="ng-class:form_error('network')"   , ng_pattern="/^\d+\.\d+\.\d+\.\d+$/", placeholder="Network"),
+                Field("netmask"   , wrapper_class="ng-class:form_error('netmask')"   , ng_pattern="/^\d+\.\d+\.\d+\.\d+$/", placeholder="Netmask"),
+                Field("broadcast" , wrapper_class="ng-class:form_error('broadcast')" , ng_pattern="/^\d+\.\d+\.\d+\.\d+$/", placeholder="Broadcast"),
+                Field("gateway"   , wrapper_class="ng-class:form_error('gateway')"   , ng_pattern="/^\d+\.\d+\.\d+\.\d+$/", placeholder="Gateway"),
+            ),
+            Fieldset(
+                "Additional settings",
+                Field("network_type", ng_options="value.idx as value.description for (key, value) in network_types"),
+                # we have to patch angular to put ng_show in the correct place
+                Field("master_network", ng_options="value.idx as value.identifier for (key, value) in get_production_networks()", ng_show="is_slave_network(edit_obj.network_type)"),
+                Field("network_device_type", ng_options="value.idx as value.identifier for (key, value) in network_device_types", chosen=True),
+            ),
+            FormActions(
+                Submit("submit", "{% verbatim %}{{ create_mode && 'Create' || 'Modify' }}{% endverbatim %}", css_class="primaryAction"),
+            ),
+        )
+    class Meta:
+        model = network
+        fields = ["identifier", "network", "netmask", "broadcast", "gateway", "master_network", "network_type", "network_device_type"]
+
+class network_type_form(ModelForm):
+    helper = FormHelper()
+    helper.form_id = "form"
+    helper.form_name = "form"
+    helper.form_class = 'form-horizontal'
+    helper.label_class = 'col-sm-3'
+    helper.field_class = 'col-sm-7'
+    helper.ng_model = "edit_obj"
+    identifier = ModelChoiceField(queryset=empty_query_set(), empty_label=None)
+    helper.layout = Layout(
+        HTML("<h2>Network type</h2>"),
+            Fieldset(
+                "Basic data",
+                Field("description", wrapper_class="ng-class:form_error('description')", placeholder="Description"),
+                Field("identifier" , ng_options="key as value for (key, value) in network_types"),
+            ),
+            FormActions(
+                Submit("submit", "{% verbatim %}{{ create_mode && 'Create' || 'Modify' }}{% endverbatim %}", css_class="primaryAction"),
+            ),
+        )
+    class Meta:
+        model = network_type
+        fields = ["identifier", "description"]
+
+class network_device_type_form(ModelForm):
+    helper = FormHelper()
+    helper.form_id = "form"
+    helper.form_name = "form"
+    helper.form_class = 'form-horizontal'
+    helper.label_class = 'col-sm-3'
+    helper.field_class = 'col-sm-7'
+    helper.ng_model = "edit_obj"
+    helper.layout = Layout(
+        HTML("<h2>Network device type</h2>"),
+            Fieldset(
+                "Basic data",
+                Field("identifier", wrapper_class="ng-class:form_error('identifier')", placeholder="Identifier"),
+                Field("description", wrapper_class="ng-class:form_error('description')", placeholder="Description"),
+                Field("mac_bytes", placeholder="MAC bytes", min=6, max=24),
+            ),
+            FormActions(
+                Submit("submit", "{% verbatim %}{{ create_mode && 'Create' || 'Modify' }}{% endverbatim %}", css_class="primaryAction"),
+            ),
+        )
+    class Meta:
+        model = network_device_type
+        fields = ["identifier", "description", "mac_bytes"]
