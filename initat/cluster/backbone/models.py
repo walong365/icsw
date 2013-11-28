@@ -2088,10 +2088,10 @@ class network(models.Model):
     # should no longer be used, now in domain_tree_node
     postfix = models.CharField(max_length=12, blank=True)
     info = models.CharField(max_length=255, blank=True)
-    network = models.IPAddressField()
-    netmask = models.IPAddressField()
-    broadcast = models.IPAddressField()
-    gateway = models.IPAddressField()
+    network = models.IPAddressField(blank=False)
+    netmask = models.IPAddressField(blank=False)
+    broadcast = models.IPAddressField(blank=False)
+    gateway = models.IPAddressField(blank=False)
     gw_pri = models.IntegerField(null=True, blank=True, default=1)
     # should no longer be used, now in domain_tree_node
     write_bind_config = models.BooleanField(default=False)
@@ -2245,7 +2245,7 @@ class network_type(models.Model):
             ("s", "slave"),
             ("o", "other"),
             ("l", "local")))
-    description = models.CharField(max_length=192)
+    description = models.CharField(max_length=192, blank=False)
     date = models.DateTimeField(auto_now_add=True)
     def get_xml(self):
         return E.network_type(
