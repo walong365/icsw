@@ -22,6 +22,67 @@
 
 {% verbatim %}
 
+<script type="text/ng-template" id="network_type_head.html">
+    <tr>
+        <th>Type</th>   
+        <th>Description</th>   
+        <th colspan="2" class="text-center">action</th>   
+    </tr>
+</script>
+
+<script type="text/ng-template" id="network_type_row.html">
+    <td>{{ network_types[obj.identifier] }}</td>
+    <td>{{ obj.description  }}</td>
+    <td><input type="button" class="btn btn-primary" ng-click="edit($event, obj)" value="modify"/></td>
+    <td><input type="button" class="btn btn-danger" ng-click="delete(obj)" value="delete"/></td>
+</script>
+
+<script type="text/ng-template" id="network_device_type_head.html">
+    <tr>
+        <th>Id</th>   
+        <th>Description</th>   
+        <th>MAC</th>   
+        <th colspan="2" class="text-center">action</th>   
+    </tr>
+</script>
+
+<script type="text/ng-template" id="network_device_type_row.html">
+    <td>{{ obj.identifier }}</td>
+    <td>{{ obj.description  }}</td>
+    <td>{{ obj.mac_bytes }}</td>
+    <td><input type="button" class="btn btn-primary" ng-click="edit($event, obj)" value="modify"/></td>
+    <td><input type="button" class="btn btn-danger" ng-click="delete(obj)" value="delete"/></td>
+</script>
+
+<script type="text/ng-template" id="network_head.html">
+    <tr>
+        <th>Id</th>   
+        <th>Network definition</th>   
+        <th>Gateway</th>
+        <th>Pri</th>
+        <th>Type</th>
+        <th>Master</th>
+        <th>devtype(s)</th>   
+        <th colspan="2" class="text-center">action</th>   
+    </tr>
+</script>
+
+<script type="text/ng-template" id="network_row.html">
+    <td>{{ obj.identifier }}</td>
+    <td style="font-family:monospace;">
+        <span ng-bind-html="ip_fill_up(obj.network)"></span> / <span ng-bind-html="ip_fill_up(obj.netmask)"></span> / <span ng-bind-html="ip_fill_up(obj.broadcast)"></span>
+    </td>
+    <td>
+        <span ng-bind-html="ip_fill_up(obj.gateway)"></span>
+    </td>
+    <td>{{ obj.penalty }}</td>
+    <td>{{ network_types[obj.network_type].description }}</td>
+    <td>{{ obj.master_network | array_lookup:this:'entries':'identifier':'---' }}</td>
+    <td>{{ obj.network_device_type | resolve_n2m:this:'network_device_types':'identifier' }}</td>
+    <td><input type="button" class="btn btn-primary" ng-click="edit($event, obj)" value="modify"/></td>
+    <td><input type="button" class="btn btn-danger" ng-click="delete(obj)" value="delete"/></td>
+</script>
+
 <tabset>
     <tab heading="Networks">
 <div ng-controller="network">
@@ -29,34 +90,9 @@
 <h2>Networks ({{entries.length}} entries), <input type="button" value="create new" ng-click="create($event)"/></h2>
 
 <table class="table table-condensed table-condensed table-hover" style="width:auto;">
-    <thead>
-        <tr>
-            <th>Id</th>   
-            <th>Network definition</th>   
-            <th>Gateway</th>
-            <th>Pri</th>
-            <th>Type</th>
-            <th>Master</th>
-            <th>devtype(s)</th>   
-            <th colspan="2" class="text-center">action</th>   
-        </tr>
-    </thead>
+    <thead networkhead></thead>
     <tbody>
-    <tr ng-repeat="obj in entries | orderBy:'-identifier':true">
-        <td>{{ obj.identifier }}</td>
-        <td style="font-family:monospace;">
-            <span ng-bind-html="ip_fill_up(obj.network)"></span> / <span ng-bind-html="ip_fill_up(obj.netmask)"></span> / <span ng-bind-html="ip_fill_up(obj.broadcast)"></span>
-        </td>
-        <td>
-            <span ng-bind-html="ip_fill_up(obj.gateway)"></span>
-        </td>
-        <td>{{ obj.penalty }}</td>
-        <td>{{ network_types[obj.network_type].description }}</td>
-        <td>{{ obj.master_network | array_lookup:this:'entries':'identifier':'---' }}</td>
-        <td>{{ obj.network_device_type | resolve_n2m:this:'network_device_types':'identifier' }}</td>
-        <td><input type="button" class="btn btn-primary" ng-click="edit($event, obj)" value="modify"/></td>
-        <td><input type="button" class="btn btn-danger" ng-click="delete(obj)" value="delete"/></td>
-    </tr>
+        <tr networkrow ng-repeat="obj in entries | orderBy:'-identifier':true"></tr>
     </tbody>
 </table>
 
@@ -69,22 +105,9 @@
 <h3>Network device types ({{entries.length}} entries), <input type="button" value="create new" ng-click="create($event)"/></h3>
 
 <table class="table table-condensed table-condensed table-hover" style="width:auto;">
-    <thead>
-        <tr>
-            <th>Id</th>   
-            <th>Description</th>   
-            <th>MAC</th>   
-            <th colspan="2" class="text-center">action</th>   
-        </tr>
-    </thead>
+    <thead networkdevicetypehead></thead>
     <tbody>
-    <tr ng-repeat="obj in entries | orderBy:'-identifier':true">
-        <td>{{ obj.identifier }}</td>
-        <td>{{ obj.description  }}</td>
-        <td>{{ obj.mac_bytes }}</td>
-        <td><input type="button" class="btn btn-primary" ng-click="edit($event, obj)" value="modify"/></td>
-        <td><input type="button" class="btn btn-danger" ng-click="delete(obj)" value="delete"/></td>
-    </tr>
+        <tr networkdevicetyperow ng-repeat="obj in entries | orderBy:'-identifier':true"></tr>
     </tbody>
 </table>
 
@@ -97,20 +120,9 @@
 <h3>Network types ({{entries.length}} entries), <input type="button" value="create new" ng-click="create($event)"/></h3>
 
 <table class="table table-condensed table-condensed table-hover" style="width:auto;">
-    <thead>
-        <tr>
-            <th>Type</th>   
-            <th>Description</th>   
-            <th colspan="2" class="text-center">action</th>   
-        </tr>
-    </thead>
+    <thead networktypehead></thead>
     <tbody>
-    <tr ng-repeat="obj in entries | orderBy:'-identifier':true">
-        <td>{{ network_types[obj.identifier] }}</td>
-        <td>{{ obj.description  }}</td>
-        <td><input type="button" class="btn btn-primary" ng-click="edit($event, obj)" value="modify"/></td>
-        <td><input type="button" class="btn btn-danger" ng-click="delete(obj)" value="delete"/></td>
-    </tr>
+        <tr networktyperow ng-repeat="obj in entries | orderBy:'-identifier':true"></tr>
     </tbody>
 </table>
 

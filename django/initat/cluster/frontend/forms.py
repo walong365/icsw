@@ -618,7 +618,7 @@ class network_form(ModelForm):
     helper.label_class = 'col-sm-3'
     helper.field_class = 'col-sm-7'
     helper.ng_model = "edit_obj"
-    master_network = ModelChoiceField(queryset=empty_query_set(), empty_label="No master network")
+    master_network = ModelChoiceField(queryset=empty_query_set(), empty_label="No master network", required=False)
     network_type = ModelChoiceField(queryset=empty_query_set(), empty_label=None)
     network_device_type = ModelMultipleChoiceField(queryset=empty_query_set())
     helper.layout = Layout(
@@ -638,7 +638,7 @@ class network_form(ModelForm):
                 Field("network_device_type", ng_options="value.idx as value.identifier for (key, value) in network_device_types", chosen=True),
             ),
             FormActions(
-                Submit("submit", "{% verbatim %}{{ create_mode && 'Create' || 'Modify' }}{% endverbatim %}", css_class="primaryAction"),
+                Submit("submit", "", css_class="primaryAction", ng_value="get_action_string()"),
             ),
         )
     class Meta:
@@ -662,7 +662,7 @@ class network_type_form(ModelForm):
                 Field("identifier" , ng_options="key as value for (key, value) in network_types"),
             ),
             FormActions(
-                Submit("submit", "{% verbatim %}{{ create_mode && 'Create' || 'Modify' }}{% endverbatim %}", css_class="primaryAction"),
+                Submit("submit", "", css_class="primaryAction", ng_value="get_action_string()"),
             ),
         )
     class Meta:
@@ -686,7 +686,7 @@ class network_device_type_form(ModelForm):
                 Field("mac_bytes", placeholder="MAC bytes", min=6, max=24),
             ),
             FormActions(
-                Submit("submit", "{% verbatim %}{{ create_mode && 'Create' || 'Modify' }}{% endverbatim %}", css_class="primaryAction"),
+                Submit("submit", "", css_class="primaryAction", ng_value="get_action_string()"),
             ),
         )
     class Meta:
