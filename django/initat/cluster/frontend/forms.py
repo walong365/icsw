@@ -634,8 +634,7 @@ class network_form(ModelForm):
             Fieldset(
                 "Additional settings",
                 Field("network_type", ng_options="value.idx as value.description for (key, value) in network_types"),
-                # we have to patch angular to put ng_show in the correct place
-                Field("master_network", ng_options="value.idx as value.identifier for (key, value) in get_production_networks()", ng_show="is_slave_network(edit_obj.network_type)"),
+                Field("master_network", ng_options="value.idx as value.identifier for (key, value) in get_production_networks()", wrapper_ng_show="is_slave_network(edit_obj.network_type)"),
                 Field("network_device_type", ng_options="value.idx as value.identifier for (key, value) in network_device_types", chosen=True),
             ),
             FormActions(
