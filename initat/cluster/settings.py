@@ -277,9 +277,9 @@ else:
 # needed by some modules
 ZMQ_LOGGING = True
 
-# crispy settings, bootstrap3_ng is the angularized version of bootstrap3
-CRISPY_ALLOWED_TEMPLATE_PACKS = ('bootstrap3_ng', 'bootstrap3')
-CRISPY_TEMPLATE_PACK = "bootstrap3_ng"
+# crispy settings, bootstrap3 is angularized via a patch
+CRISPY_ALLOWED_TEMPLATE_PACKS = ('bootstrap3')
+CRISPY_TEMPLATE_PACK = "bootstrap3"
 CRISPY_FAIL_SILENTLY = not DEBUG
 
 # coffee settings
@@ -335,10 +335,6 @@ if not "NO_AUTO_ADD_APPLICATIONS" in os.environ:
             INSTALLED_APPS.append(add_app)
     # INSTALLED_APPS.append("initat.core")
 
-if "crispy_forms" in INSTALLED_APPS:
-    # put crispy forms to the end of the list
-    INSTALLED_APPS.remove("crispy_forms")
-    INSTALLED_APPS.append("crispy_forms")
 INSTALLED_APPS = tuple(INSTALLED_APPS)
 
 AUTO_CREATE_NEW_DOMAINS = True
