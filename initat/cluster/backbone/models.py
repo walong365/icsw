@@ -137,6 +137,11 @@ class architecture(models.Model):
     def __unicode__(self):
         return self.architecture
 
+class architecture_serializer(serializers.ModelSerializer):
+    class Meta:
+        model = architecture
+        fields = ("idx", "architecture",)
+
 # class ccl_event(models.Model):
     # idx = models.AutoField(db_column="ccl_event_idx", primary_key=True)
     # device = models.ForeignKey("device")
@@ -1237,6 +1242,14 @@ def image_pre_save(sender, **kwargs):
         cur_inst = kwargs["instance"]
         cur_inst.size_string = logging_tools.get_size_str(cur_inst.size)
 
+class image_serializer(serializers.ModelSerializer):
+    class Meta:
+        model = image
+        fields = ("idx", "name", "enabled", "version", "release",
+            "sys_vendor", "sys_version", "sys_release", "size_string", "size", "architecture",
+            "new_image", "act_image"
+            )
+
 # package related models
 class package_repo(models.Model):
     idx = models.AutoField(primary_key=True)
@@ -1579,8 +1592,6 @@ class kernel(models.Model):
         fk_ignore_list = ["initrd_build", "kernel_build"]
 
 class kernel_serializer(serializers.ModelSerializer):
-    # usecount = serializers.Field(source="get_usecount")
-    # initrd_build = serializers.PrimaryKeyRelatedField(many=True, read_only=True)
     class Meta:
         model = kernel
         fields = ("idx", "name", "enabled", "kernel_version", "version",
