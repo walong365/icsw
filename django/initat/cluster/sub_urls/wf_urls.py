@@ -58,9 +58,8 @@ setup_patterns = patterns(
     url(r"xml/validate"       , setup_views.validate_partition.as_view()        , name="validate_partition"),
     url(r"i_overview"         , setup_views.image_overview.as_view()            , name="image_overview"),
     url(r"k_overview"         , setup_views.kernel_overview.as_view()           , name="kernel_overview"),
-    url(r"xml/scan_for_images", setup_views.scan_for_images.as_view()           , name="scan_for_images"),
+    url(r"xml/rescan_images"  , setup_views.scan_for_images.as_view()           , name="rescan_images"),
     url(r"xml/use_image"      , setup_views.use_image.as_view()                 , name="use_image"),
-    url(r"xml/delete_image"   , setup_views.delete_image.as_view()              , name="delete_image"),
     url(r"xml/rescan_kernels" , setup_views.rescan_kernels.as_view()            , name="rescan_kernels"),
 )
 

@@ -8,7 +8,7 @@ from django.utils.decorators import method_decorator
 from django.views.generic import View
 from initat.cluster.backbone.models import partition_table, partition_disc, partition, \
      partition_fs, image, architecture, get_related_models, kernel
-from initat.cluster.frontend.forms import kernel_form
+from initat.cluster.frontend.forms import kernel_form, image_form
 from initat.cluster.frontend.helper_functions import contact_server, xml_wrapper
 from initat.core.render import render_me
 from lxml.builder import E # @UnresolvedImport
@@ -108,7 +108,9 @@ class delete_partition(View):
 class image_overview(View):
     @method_decorator(login_required)
     def get(self, request):
-        return render_me(request, "image_overview.html", {})()
+        return render_me(request, "image_overview.html", {
+            "image_form" : image_form(),
+            })()
     @method_decorator(xml_wrapper)
     def post(self, request):
         img_list = E.images()
@@ -171,27 +173,6 @@ class scan_for_images(View):
                     request.xml_response["response"] = f_img_list
                 else:
                     request.xml_response.error("no images found", logger)
-
-class delete_image(View):
-    @method_decorator(login_required)
-    @method_decorator(xml_wrapper)
-    def post(self, request):
-        _post = request.POST
-        img_name = _post["img_name"]
-        try:
-            del_image = image.objects.get(Q(name=img_name))
-        except image.DoesNotExist:
-            request.xml_response.error(
-                "image '%s' does not exist" % (img_name), logger)
-        else:
-            num_ref = get_related_models(del_image)
-            if num_ref:
-                request.xml_response.error(
-                    "cannot delete image '%s' because of reference" % (img_name),
-                    logger)
-            else:
-                del_image.delete()
-                request.xml_response.info("deleted image '%s" % (img_name), logger)
 
 class use_image(View):
     @method_decorator(login_required)

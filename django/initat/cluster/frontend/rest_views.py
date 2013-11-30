@@ -26,7 +26,7 @@ from initat.cluster.backbone.models import user , group, user_serializer_h, grou
 logger = logging.getLogger("cluster.rest")
 
 REST_LIST = ["group", "user", "device_group", "network_type", "network_device_type", "network", \
-    "kernel"]
+    "kernel", "image", "architecture"]
 
 @api_view(('GET',))
 def api_root(request, format=None):
@@ -147,6 +147,7 @@ class list_view(mixins.ListModelMixin,
         model_name = self.model._meta.model_name
         related_fields, prefetch_fields = {
             "kernel" : ([], ["initrd_build_set", "kernel_build_set", "new_kernel", "act_kernel"]),
+            "image" : ([], ["new_image", "act_image"]),
             }.get(model_name, ([], []))
         return self.model.objects.all().select_related(*related_fields).prefetch_related(*prefetch_fields)
 

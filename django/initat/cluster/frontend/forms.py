@@ -16,7 +16,7 @@ from crispy_forms.bootstrap import FormActions
 from django.core.urlresolvers import reverse
 from initat.cluster.backbone.models import domain_tree_node, device, category, mon_check_command, mon_service_templ, \
      domain_name_tree, user, group, device_group, home_export_list, device_config, TOP_LOCATIONS, \
-     csw_permission, kernel, network, network_type, network_device_type
+     csw_permission, kernel, network, network_type, network_device_type, image
 from initat.cluster.frontend.widgets import device_tree_widget
 
 # import PAM
@@ -607,6 +607,29 @@ class kernel_form(ModelForm):
         fields = ["name", "comment", "enabled",
             "stage1_lo_present", "stage1_cpio_present", "stage1_cramfs_present", "stage2_present",
             "module_list", "target_module_list", "initrd_built",
+            ]
+
+class image_form(ModelForm):
+    helper = FormHelper()
+    helper.form_id = "form"
+    helper.form_name = "form"
+    helper.form_class = 'form-horizontal'
+    helper.label_class = 'col-sm-3'
+    helper.field_class = 'col-sm-7'
+    helper.ng_model = "edit_obj"
+    helper.layout = Layout(
+        HTML("<h2>Image details</h2>"),
+            Fieldset(
+                "Basic data",
+                Field("name", readonly=True),
+                ),
+            FormActions(
+                Submit("submit", "", ng_value="get_action_string()", css_class="primaryAction"),
+            ),
+        )
+    class Meta:
+        model = image
+        fields = ["name", "enabled",
             ]
 
 class empty_query_set(object):

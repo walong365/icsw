@@ -1,125 +1,94 @@
 {% extends "main.html" %}
 
-{% load i18n extra_tags coffeescript %}
+{% load i18n extra_tags coffeescript crispy_forms_tags %}
 
 {% block title %}{% trans "Image Overview" %}{% endblock %}
 
 {% block content %}
 
-<h1 class="center">Images (<span id="num_images">???</span> defined)</h1>
-<div id="image_list"></div>
+<div ng-app="icsw.image">
 
-<div id="found_images"></div>
-
-<div id="image_detail"></div>
-
-<script type="text/javascript">
-
-{% inlinecoffeescript %}
-
-class image_tree
-    constructor: (@list_div, @found_div, @detail_div) ->
-        @images = undefined
-        @load_images()
-    load_images: () =>
-        $.ajax
-            url     : "{% url 'setup:image_overview' %}"
-            success : (xml) =>
-                if parse_xml_response(xml)
-                    @images = $(xml).find("response")
-                    @show_all_images()
-    show_all_images: () =>
-        # clear divs
-        @detail_div.children().remove()
-        @found_div.children().remove()
-        $("span#num_images").text(@images.find("image").length)
-        img_ma = {
-            "image" : new draw_setup("Images", "image", "image",
-                undefined,
-                undefined,
-                [
-                    new draw_info("name", {size : 40, ro : true}),
-                    new draw_info("enabled", {boolean : true}),
-                    new draw_info("version", {ro : true, integer : true}),
-                    new draw_info("release", {ro : true, integer : true}),
-                    new draw_info("architecture", {ro : true, text_source : "architectures architecture"}),
-                    new draw_info("sys_vendor", {ro : true, label : "Vendor"}),
-                    new draw_info("sys_version", {ro : true, label : "version"}),
-                    new draw_info("sys_release", {ro : true}),
-                    #new draw_info("size", {ro : true, label : "Size (Byte)"}),
-                    new draw_info("size_string", {ro : true}),
-                    new draw_info("delete", {button : true, trigger : true, change_cb : @delete_image}),
-                    new draw_info("details", {button : true, trigger : true, change_cb : @choose_image}),
-                ],
-                {change : true},
-            )
-        }
-        draw_ds_tables(@list_div, img_ma, @images)
-        @scan_button = $("<input>").attr({
-            "type"   : "button",
-            "id"     : "scan_for_images",
-            "value"  : "scan for images"}).bind("click", @scan_for_images)
-        @list_div.append(@scan_button)
-    scan_for_images: () =>
-        @found_div.children().remove()
-        @scan_button.attr("disabled", "disabled")
-        $.ajax
-            url     : "{% url 'setup:scan_for_images' %}"
-            success : (xml) =>
-                @scan_button.removeAttr("disabled")
-                if parse_xml_response(xml)
-                    @found_images = $(xml).find("found_images")
-                    found_ma = {
-                        "image" : new draw_setup("Found Images", "found_image", "found_image",
-                            undefined,
-                            undefined,
-                            [
-                                new draw_info("name", {size : 40, ro : true}),
-                                new draw_info("vendor", {ro : true}),
-                                new draw_info("present", {boolean : true, ro : true}),
-                                new draw_info("use", {button : true, trigger : true, change_cb : @use_image}),
-                            ]
-                        )
-                    }
-                    draw_ds_tables(@found_div, found_ma, @found_images)
-    delete_image : (event) =>
-        img_pk = $(event.target).attr("id").split("__")[1]
-        cur_img = @images.find("images image[pk='#{img_pk}']")
-        if not parseInt(cur_img.attr("usecount"))
-            if confirm("Really delete image #{cur_img.attr['name']} ?")
-                $.ajax
-                    url     : "{% url 'setup:delete_image' %}"
-                    data    : {
-                        "img_name" : cur_img.attr("name")
-                    }
-                    success : (xml) =>
-                        if parse_xml_response(xml)
-                            @load_images()
-    choose_image : (event) =>
-        img_sel = $(event.target)
-        console.log img_sel.attr("id")
-    use_image: (event) =>
-        button_el = $(event.target)
-        use_id = button_el.attr("id").split("__")[1]
-        button_el.attr("disabled", "disabled")
-        $.ajax
-            url     : "{% url 'setup:use_image' %}"
-            data    : {
-                "img_name" : @found_images.find("found_image[pk='#{use_id}']").attr("name")
-            }
-            success : (xml) =>
-                button_el.removeAttr("disabled")
-                if parse_xml_response(xml)
-                    button_el.parents("tr:first").remove()
-                    @load_images()
-
-add_handlers = ->
-    my_it = new image_tree($("div#image_list"), $("div#found_images"), $("div#image_detail"))
-
-$(document).ready(add_handlers)
-
-{% endinlinecoffeescript %}
-
+<script type="text/ng-template" id="image.html">
+    {% crispy image_form image_form.helper %}
 </script>
+
+{% verbatim %}
+
+<script type="text/ng-template" id="image_head.html">
+    <tr>
+        <th>Name</th>   
+        <th>Version</th>
+        <th>Enabled</th>
+        <th>arch</th>   
+        <th>Sysinfo</th>
+        <th>Size</th>
+        <th>Usecount</th>
+        <th colspan="2" class="text-center">action</th>   
+    </tr>
+</script>
+
+<script type="text/ng-template" id="image_row.html">
+    <td>{{ obj.name }}</td>
+    <td class="text-center">{{ obj.version  }}.{{ obj.release }}</td>
+    <td>{{ obj.enabled && "yes" || "---" }}</td>
+    <td>{{ obj.architecture | array_lookup:this:'architectures':'architecture':'---' }}</td>
+    <td>{{ obj.sys_vendor }}, {{ obj.sys_version || "?" }}.{{ obj.sys_release || "?" }}</td>
+    <td class="text-center">{{ obj.act_image.length }} / {{ obj.new_image.length }}</td>
+    <td class="text-center">{{ obj.size_string }}</td>
+    <td><input type="button" class="btn btn-primary" ng-click="edit($event, obj)" value="modify"/></td>
+    <td><input type="button" class="btn btn-danger" ng-show="delete_ok(obj)" ng-click="delete(obj)" value="delete"/></td>
+</script>
+
+<script type="text/ng-template" id="image_new_head.html">
+    <tr>
+        <th>Name</th>   
+        <th>SysInfo</th>
+        <th>arch</th>
+        <th>Present</th>
+        <th>action</th>   
+    </tr>
+</script>
+
+<script type="text/ng-template" id="image_new_row.html">
+    <td>{{ obj.name }}</td>
+    <td>{{ obj.vendor }}, {{ obj.version }}</td>
+    <td>{{ obj.arch }}</td>
+    <td>{{ obj.present && "yes" || "no" }}
+    <td><input type="button" class="btn btn-primary" value="take" ng-click="take_image(obj)" ng-show="! obj.present"/></td>
+</script>
+
+<tabset>
+    <tab heading="Images">
+<div ng-controller="image_base">
+
+<div ng-controller="image">
+<h2>Images ({{entries.length}} entries), <input type="button" value="Scan for images" ng-click="scan_for_images()"/></h2>
+
+<table class="table table-condensed table-condensed table-hover" style="width:auto;">
+    <thead imagehead></thead>
+    <tbody>
+        <tr imagerow ng-repeat="obj in entries | orderBy:'-identifier':true"></tr>
+    </tbody>
+</table>
+
+<div ng-show="new_entries.length > 0">
+    <h2>Images found ({{ new_entries.length}})</h2>
+    <table class="table table-condensed table-condensed table-hover" style="width:auto;">
+        <thead imagenewhead></thead>
+        <tbody>
+            <tr imagenewrow ng-repeat="obj in new_entries | orderBy:'-identifier':true"></tr>
+        </tbody>
+    </table>
+</div>
+
+</div>
+
+</div>
+</tab>
+</tabset>
+
+</div>
+
+{% endverbatim %}
 
 {% endblock %}
