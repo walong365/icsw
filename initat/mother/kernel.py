@@ -64,8 +64,10 @@ class kernel_sync_process(threading_tools.process_obj):
     def loop_post(self):
         self.__log_template.close()
     def _rescan_kernels(self, *args, **kwargs):
-        srv_com = server_command.srv_command(source=args[1])
+        src_id, srv_com_str = args[0:2]
+        srv_com = server_command.srv_command(source=srv_com_str)
         self._check_kernel_dir(srv_com)
+        self.send_pool_message("send_return", src_id, unicode(srv_com))
     def _srv_command(self, srv_com, **kwargs):
         srv_com = server_command.srv_command(source=srv_com)
         if srv_com["command"].text == "check_kernel_dir":
