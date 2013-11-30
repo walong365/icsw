@@ -1536,7 +1536,7 @@ class kernel(models.Model):
     # not a foreignkey to break cyclic dependencies
     # device = models.ForeignKey("device", null=True)
     device = models.IntegerField(null=True)
-    build_lock = models.BooleanField()
+    build_lock = models.BooleanField(default=False)
     config_name = models.CharField(max_length=192, blank=True)
     cpu_arch = models.CharField(max_length=192, blank=True)
     sub_cpu_arch = models.CharField(max_length=192, blank=True)
@@ -1549,14 +1549,16 @@ class kernel(models.Model):
     module_list = models.TextField(blank=True)
     # which modules are requested
     target_module_list = models.TextField(blank=True, default="")
-    xen_host_kernel = models.BooleanField()
-    xen_guest_kernel = models.BooleanField()
+    xen_host_kernel = models.NullBooleanField(default=False)
+    xen_guest_kernel = models.NullBooleanField(default=False)
     bitcount = models.IntegerField(null=True, blank=True)
-    stage1_lo_present = models.BooleanField()
-    stage1_cpio_present = models.BooleanField()
-    stage1_cramfs_present = models.BooleanField()
-    stage2_present = models.BooleanField()
+    stage1_lo_present = models.BooleanField(default=False)
+    stage1_cpio_present = models.BooleanField(default=False)
+    stage1_cramfs_present = models.BooleanField(default=False)
+    stage2_present = models.BooleanField(default=False)
     date = models.DateTimeField(auto_now_add=True)
+    def get_usecount(self):
+        return 5
     def get_xml(self):
         return E.kernel(
             pk="%d" % (self.pk),
@@ -1573,6 +1575,17 @@ class kernel(models.Model):
         return self.name
     class Meta:
         db_table = u'kernel'
+    class CSW_Meta:
+        fk_ignore_list = ["initrd_build", "kernel_build"]
+
+class kernel_serializer(serializers.ModelSerializer):
+    # usecount = serializers.Field(source="get_usecount")
+    # initrd_build = serializers.PrimaryKeyRelatedField(many=True, read_only=True)
+    class Meta:
+        model = kernel
+        fields = ("idx", "name", "enabled", "kernel_version", "version",
+            "release", "bitcount", "initrd_build_set", "kernel_build_set",
+            "new_kernel", "act_kernel", "comment", "target_module_list", "module_list")
 
 class initrd_build(models.Model):
     idx = models.AutoField(primary_key=True)
