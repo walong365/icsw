@@ -25,7 +25,8 @@ from initat.cluster.backbone.models import user , group, user_serializer_h, grou
 
 logger = logging.getLogger("cluster.rest")
 
-REST_LIST = ["group", "user", "device_group", "network_type", "network_device_type", "network"]
+REST_LIST = ["group", "user", "device_group", "network_type", "network_device_type", "network", \
+    "kernel"]
 
 @api_view(('GET',))
 def api_root(request, format=None):
@@ -141,6 +142,13 @@ class list_view(mixins.ListModelMixin,
         if resp.status_code in [200, 201, 202, 203]:
             resp.data["_messages"] = [u"created '%s'" % (unicode(self.object))]
         return resp
+    @rest_logging
+    def get_queryset(self):
+        model_name = self.model._meta.model_name
+        related_fields, prefetch_fields = {
+            "kernel" : ([], ["initrd_build_set", "kernel_build_set", "new_kernel", "act_kernel"]),
+            }.get(model_name, ([], []))
+        return self.model.objects.all().select_related(*related_fields).prefetch_related(*prefetch_fields)
 
 class user_list_h(generics.ListCreateAPIView):
     authentication_classes = (BasicAuthentication, SessionAuthentication,)

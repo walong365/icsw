@@ -3,29 +3,27 @@
 
 """ base views """
 
+from django.contrib.auth.decorators import login_required
+from django.core.exceptions import ValidationError
+from django.core.urlresolvers import reverse
+from django.db.models import Q
+from django.db.utils import IntegrityError, DataError
+from django.utils.decorators import method_decorator
+from django.views.generic import View
+from initat.cluster.backbone.models import device, \
+     get_related_models, KPMC_MAP, device_variable, category, \
+     category_tree
+from initat.cluster.frontend.forms import category_detail_form, category_new_form, \
+     location_detail_form
+from initat.cluster.frontend.helper_functions import xml_wrapper
+from initat.core.render import render_me, render_string
+from lxml.builder import E # @UnresolvedImport
+import initat.cluster.backbone.models
 import logging
 import logging_tools
 import pprint
 import process_tools
 import re
-from lxml.builder import E # @UnresolvedImport
-
-from django.db.models import Q
-from django.db.utils import IntegrityError, DataError
-from django.contrib.auth.decorators import login_required
-from django.core.exceptions import ValidationError
-from django.core.urlresolvers import reverse
-from django.utils.decorators import method_decorator
-from django.views.generic import View
-
-from initat.core.render import render_me, render_string
-from initat.cluster.frontend.forms import category_detail_form, category_new_form, \
-     location_detail_form
-import initat.cluster.backbone.models
-from initat.cluster.backbone.models import device, \
-     get_related_models, KPMC_MAP, device_variable, category, \
-     category_tree
-from initat.cluster.frontend.helper_functions import xml_wrapper
 
 logger = logging.getLogger("cluster.base")
 

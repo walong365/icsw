@@ -3,9 +3,9 @@
 from django.conf.urls import patterns, include, url
 from django.conf import settings
 import os
-from initat.cluster.frontend import rest_views, device_views, main_views, network_views, monitoring_views, \
-     user_views, pack_views, config_views, boot_views, session_views, rrd_views
-from initat.cluster.setup import base_views, setup_views
+from initat.cluster.frontend import rest_views, device_views, main_views, network_views, \
+    monitoring_views, user_views, pack_views, config_views, boot_views, session_views, rrd_views, \
+    base_views, setup_views
 from initat.cluster.rms import rms_views
 from rest_framework.urlpatterns import format_suffix_patterns
 
@@ -62,8 +62,6 @@ setup_patterns = patterns(
     url(r"xml/use_image"      , setup_views.use_image.as_view()                 , name="use_image"),
     url(r"xml/delete_image"   , setup_views.delete_image.as_view()              , name="delete_image"),
     url(r"xml/rescan_kernels" , setup_views.rescan_kernels.as_view()            , name="rescan_kernels"),
-    url(r"xml/delete_kernel"  , setup_views.delete_kernel.as_view()             , name="delete_kernel"),
-    url(r"xml/kernel_detail"  , setup_views.kernel_detail.as_view()             , name="kernel_detail"),
 )
 
 config_patterns = patterns(

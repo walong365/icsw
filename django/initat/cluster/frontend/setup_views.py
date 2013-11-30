@@ -1,23 +1,21 @@
 # setup views
 
-import os
-import logging
-import process_tools
-import server_command
 # from lxml import etree # @UnresolvedImport
-from lxml.builder import E # @UnresolvedImport
-
-from django.db.models import Q
 from django.contrib.auth.decorators import login_required
 from django.core.exceptions import ValidationError
+from django.db.models import Q
 from django.utils.decorators import method_decorator
 from django.views.generic import View
-
-from initat.core.render import render_me, render_string
-from initat.cluster.frontend.forms import kernel_detail_form
-from initat.cluster.frontend.helper_functions import contact_server, xml_wrapper
 from initat.cluster.backbone.models import partition_table, partition_disc, partition, \
      partition_fs, image, architecture, get_related_models, kernel
+from initat.cluster.frontend.forms import kernel_form
+from initat.cluster.frontend.helper_functions import contact_server, xml_wrapper
+from initat.core.render import render_me
+from lxml.builder import E # @UnresolvedImport
+import logging
+import os
+import process_tools
+import server_command
 
 logger = logging.getLogger("cluster.setup")
 
@@ -129,7 +127,9 @@ class image_overview(View):
 class kernel_overview(View):
     @method_decorator(login_required)
     def get(self, request):
-        return render_me(request, "kernel_overview.html", {})()
+        return render_me(request, "kernel_overview.html", {
+            "kernel_form" : kernel_form(),
+            })()
     @method_decorator(xml_wrapper)
     def post(self, request):
         kernel_list = E.kernels()
@@ -250,29 +250,5 @@ class rescan_kernels(View):
     def post(self, request):
         _post = request.POST
         srv_com = server_command.srv_command(command="rescan_kernels")
-        srv_result = contact_server(request, "tcp://localhost:8000", srv_com, timeout=180, log_result=True)
+        _srv_result = contact_server(request, "tcp://localhost:8000", srv_com, timeout=180, log_result=True)
 
-class delete_kernel(View):
-    @method_decorator(login_required)
-    @method_decorator(xml_wrapper)
-    def post(self, request):
-        _post = request.POST
-        cur_k = kernel.objects.get(Q(pk=_post["pk"]))
-        request.xml_response.info("removed kernel '%s'" % (unicode(cur_k)), logger)
-        cur_k.delete()
-
-class kernel_detail(View):
-    @method_decorator(login_required)
-    @method_decorator(xml_wrapper)
-    def post(self, request):
-        cur_kern = kernel.objects.get(Q(pk=request.POST["pk"]))
-        request.xml_response["form"] = render_string(
-            request,
-            "crispy_form.html",
-            {
-                "form" : kernel_detail_form(
-                    auto_id="kernel__%d__%%s" % (cur_kern.pk),
-                    instance=cur_kern,
-                )
-            }
-        )

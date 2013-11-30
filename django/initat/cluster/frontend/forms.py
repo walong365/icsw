@@ -562,46 +562,49 @@ class account_detail_form(ModelForm):
                   "title", "email", "pager", "tel", "comment",
                   "password"]
 
-class kernel_detail_form(ModelForm):
+class kernel_form(ModelForm):
     helper = FormHelper()
     helper.form_id = "form"
+    helper.form_name = "form"
     helper.form_class = 'form-horizontal'
-    helper.label_class = 'col-sm-2'
-    helper.field_class = 'col-sm-8'
+    helper.label_class = 'col-sm-3'
+    helper.field_class = 'col-sm-7'
+    helper.ng_model = "edit_obj"
     helper.layout = Layout(
         HTML("<h2>Kernel details</h2>"),
             Fieldset(
                 "Basic data",
                 Field("name", readonly=True),
                 Field("initrd_built", readonly=True),
-                Field("comment"),
-                Field("target_module_list"),
-                Field("module_list", readonly=True),
+                Field("comment", rows=5),
+                Field("target_module_list", rows=3),
+                Field("module_list", readonly=True, rows=3),
                 ),
             Div(
                 Div(
                     FormActions(
                         Field("stage1_lo_present", disabled=True),
                         Field("stage1_cpio_present", disabled=True),
-                    ),
-                    css_class="col-md-6",
-                ),
-                Div(
-                    FormActions(
                         Field("stage1_cramfs_present", disabled=True),
                         Field("stage2_present", disabled=True),
                     ),
-                    css_class="col-md-6",
+                    css_class="col-md-5",
+                ),
+                Div(
+                    FormActions(
+                        Field("enabled"),
+                    ),
+                    css_class="col-md-5",
                 ),
                 css_class="row",
             ),
             FormActions(
-                Submit("submit", "Submit", css_class="primaryAction"),
+                Submit("submit", "", ng_value="get_action_string()", css_class="primaryAction"),
             ),
         )
     class Meta:
         model = kernel
-        fields = ["name", "comment",
+        fields = ["name", "comment", "enabled",
             "stage1_lo_present", "stage1_cpio_present", "stage1_cramfs_present", "stage2_present",
             "module_list", "target_module_list", "initrd_built",
             ]
