@@ -1,10 +1,152 @@
 {% extends "main.html" %}
 
-{% load i18n compress coffeescript %}
+{% load i18n compress coffeescript crispy_forms_tags %}
 
 {% block title %}{% trans "Monitoring" %}{% endblock %}
 
 {% block content %}
+
+<div ng-app="icsw.monitoring_basic">
+
+<script type="text/ng-template" id="mon_period.html">
+    {% crispy mon_period_form mon_period_form.helper %}
+</script>
+
+<script type="text/ng-template" id="mon_notification.html">
+    {% crispy mon_notification_form mon_notification_form.helper %}
+</script>
+
+<script type="text/ng-template" id="mon_contact.html">
+    {% crispy mon_contact_form mon_contact_form.helper %}
+</script>
+
+{% verbatim %}
+
+<script type="text/ng-template" id="mon_period_head.html">
+    <tr>
+        <th>Name</th>   
+        <th>Alias</th>
+        <th>Mon</th>
+        <th>Tue</th>
+        <th>Wed</th>
+        <th>Thu</th>
+        <th>Fri</th>
+        <th>Sat</th>
+        <th>Sun</th>
+        <th>Usecount</th>
+        <th colspan="2" class="text-center">action</th>   
+    </tr>
+</script>
+
+<script type="text/ng-template" id="mon_period_row.html">
+    <td>{{ obj.name }}</td>
+    <td>{{ obj.alias }}</td>
+    <td class="text-center">{{ obj.mon_range }}</td>
+    <td class="text-center">{{ obj.tue_range }}</td>
+    <td class="text-center">{{ obj.wed_range }}</td>
+    <td class="text-center">{{ obj.thu_range }}</td>
+    <td class="text-center">{{ obj.fri_range }}</td>
+    <td class="text-center">{{ obj.sat_range }}</td>
+    <td class="text-center">{{ obj.mon_range }}</td>
+    <td>{{ get_usecount(obj) }}</td>
+    <td><input type="button" class="btn btn-primary" ng-click="edit($event, obj)" value="modify"/></td>
+    <td><input type="button" class="btn btn-danger" ng-show="delete_ok(obj)" ng-click="delete(obj)" value="delete"/></td>
+</script>
+
+<script type="text/ng-template" id="mon_notification_head.html">
+    <tr>
+        <th>Name</th>   
+        <th>Channel</th>
+        <th>Type</th>
+        <th>subject</th>
+        <th>content</th>
+        <th>enabled</th>
+        <th colspan="2" class="text-center">action</th>   
+    </tr>
+</script>
+
+<script type="text/ng-template" id="mon_notification_row.html">
+    <td>{{ obj.name }}</td>
+    <td>{{ obj.channel }}</td>
+    <td>{{ obj.not_type }}</td>
+    <td>{{ obj.subject | limit_text:30 }}</td>
+    <td>{{ obj.content | limit_text:50 }}</td>
+    <td>{{ obj.enabled && "yes" || "---" }}</td>
+    <td><input type="button" class="btn btn-primary" ng-click="edit($event, obj)" value="modify"/></td>
+    <td><input type="button" class="btn btn-danger" ng-show="delete_ok(obj)" ng-click="delete(obj)" value="delete"/></td>
+</script>
+
+<script type="text/ng-template" id="mon_contact_head.html">
+    <tr>
+        <th>User</th>   
+        <th colspan="2" class="text-center">action</th>   
+    </tr>
+</script>
+
+<script type="text/ng-template" id="mon_contact_row.html">
+    <td>{{ obj.user }}</td>
+    <td><input type="button" class="btn btn-primary" ng-click="edit($event, obj)" value="modify"/></td>
+    <td><input type="button" class="btn btn-danger" ng-show="delete_ok(obj)" ng-click="delete(obj)" value="delete"/></td>
+</script>
+
+<tabset>
+    <tab heading="Periods">
+<div ng-controller="mon_period_base">
+
+<div ng-controller="mon_period">
+<h2>Periods ({{entries.length}} entries), <input type="button" value="create new" ng-click="create($event)"/></h2>
+
+<table class="table table-condensed table-condensed table-hover" style="width:auto;">
+    <thead monperiodhead></thead>
+    <tbody>
+        <tr><td colspan="9" paginator entries="entries" pag_settings="pagSettings" per_page="5"></td></tr>
+        <tr monperiodrow ng-repeat="obj in entries | orderBy:'-name':true | paginator:this"></tr>
+    </tbody>
+</table>
+
+</div>
+
+</div>
+</tab>
+    <tab heading="Notifications">
+<div ng-controller="mon_notification_base">
+
+<div ng-controller="mon_notification">
+<h2>Notifications ({{entries.length}} entries), <input type="button" value="create new" ng-click="create($event)"/></h2>
+
+<table class="table table-condensed table-condensed table-hover" style="width:auto;">
+    <thead monnotificationhead></thead>
+    <tbody>
+        <tr><td colspan="9" paginator entries="entries" pag_settings="pagSettings" per_page="5"></td></tr>
+        <tr monnotificationrow ng-repeat="obj in entries | orderBy:'-name':true | paginator:this"></tr>
+    </tbody>
+</table>
+
+</div>
+
+</div>
+</tab>
+    <tab heading="Contacts">
+<div ng-controller="mon_contact_base">
+
+<div ng-controller="mon_contact">
+<h2>Contacts ({{entries.length}} entries), <input type="button" value="create new" ng-click="create($event)"/></h2>
+
+<table class="table table-condensed table-condensed table-hover" style="width:auto;">
+    <thead moncontacthead></thead>
+    <tbody>
+        <tr><td colspan="9" paginator entries="entries" pag_settings="pagSettings" per_page="5"></td></tr>
+        <tr moncontactrow ng-repeat="obj in entries | orderBy:'-name':true | paginator:this"></tr>
+    </tbody>
+</table>
+
+</div>
+
+</div>
+</tab>
+</tabset>
+
+{% endverbatim %}
 
 <h1 class="center">Monitoring settings</h1>
 

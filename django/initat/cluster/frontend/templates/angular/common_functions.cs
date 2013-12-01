@@ -14,8 +14,16 @@ array_to_dict = (array, key) ->
             res[value[key]] = value
     return res
 
-class paginator_class
+class paginator_root
     constructor: () ->
+        @dict = {}
+    get_paginator: (name) =>
+        if name not in @dict
+            @dict[name] = new paginator_class(name)
+        return @dict[name]
+
+class paginator_class
+    constructor: (@name) ->
         @conf = {
             per_page    : 10
             num_entries : 0
@@ -47,21 +55,45 @@ class paginator_class
             @activate_page(1)
         else
             @activate_page(@conf.act_page)
-    
-angular_module_setup = (module_list) ->
+
+class rest_data_source
+    constructor: (@$q) ->
+    do_query: (q_type) =>    
+        d = @q.defer()
+        result = q_type.getList().then(
+           (response) ->
+               d.resolve(response)
+        )
+        return d.promise
+    query_data: () ->
+        q_list = [@do_query(Restangular.all(rest_url.slice(1)) for rest_url in @rest_urls)] 
+        $q.all(q_list).then((data) =>
+            echo "done", data
+            @data = data
+        )
+        return q_list
+  
+angular_module_setup = (module_list, url_list=[]) ->
+    #console.log url_list
     $(module_list).each (idx, cur_mod) ->
         cur_mod.config(['$httpProvider', 
             ($httpProvider) ->
                 $httpProvider.defaults.xsrfCookieName = 'csrftoken'
                 $httpProvider.defaults.xsrfHeaderName = 'X-CSRFToken'
         ])
-        cur_mod.service("paginatorSettings", (paginator_class))
         cur_mod.filter("paginator", () ->
             return (arr, scope) ->
-                if scope.pag_settings.conf.init 
-                    return arr.slice(scope.pag_settings.conf.start_idx, scope.pag_settings.conf.end_idx + 1)
+                if scope.pagSettings.conf.init 
+                    return arr.slice(scope.pagSettings.conf.start_idx, scope.pagSettings.conf.end_idx + 1)
                 else
                     return arr
+        )
+        cur_mod.filter("limit_text", () ->
+            return (text, max_len) ->
+                if text.length > max_len
+                    return text[0..max_len] + "..."
+                else
+                    return text
         )
         cur_mod.config(["RestangularProvider", 
             (RestangularProvider) ->
@@ -90,21 +122,30 @@ angular_module_setup = (module_list) ->
                     return true
                 )
         ])
-        cur_mod.directive("paginator", ($templateCache, paginatorSettings) ->
+        # in fact identical ?
+        # cur_mod.service("paginatorSettings", (paginator_class))
+        cur_mod.service("paginatorSettings", [() ->
+            return new paginator_root()
+        ])
+        cur_mod.service("restDataSource", ["$q", ($q) ->
+            return new rest_data_source($q)
+        ])
+        cur_mod.directive("paginator", ($templateCache) ->
             link = (scope, element, attrs) ->
-                scope.pag_settings = paginatorSettings
-                scope.pag_settings.conf.per_page = parseInt(attrs.perPage)
-                # console.log "init", scope.pag_settings
+                scope.pagSettings.conf.per_page = parseInt(attrs.perPage)
                 scope.activate_page = (page_num) ->
-                    scope.pag_settings.activate_page(page_num)
+                    scope.pagSettings.activate_page(page_num)
                 scope.$watch("entries", (new_el) ->
-                    scope.pag_settings.set_num_entries(new_el.length)
+                    scope.pagSettings.set_num_entries(new_el.length)
                 )
             return {
                 restrict : "EA"
                 scope:
-                    entries : "="
-                template : $templateCache.get("paginator.html")
+                    entries     : "="
+                    pagSettings : "="
+                template : '{% verbatim %}<span ng-show="pagSettings.conf.num_entries">' +
+                  '<input ng-show="pagSettings.conf.num_pages > 1" type="button" ng-repeat="pag_num in pagSettings.conf.page_list track by $index" value="{{ pag_num }}" ng-click="activate_page(pag_num)">' +
+                  '</input><span ng-show="pagSettings.conf.num_pages > 1">, </span>showing from {{ pagSettings.conf.start_idx + 1 }} to {{ pagSettings.conf.end_idx + 1 }}</span>{% endverbatim %}'
                 link     : link
             }
         )
@@ -127,19 +168,20 @@ angular_add_simple_list_controller = (module, name, settings) ->
                 template : $templateCache.get(t_name)
             }
         )
-    module.controller(name, ["$scope", "$compile", "$templateCache", "Restangular", "paginatorSettings"
+    module.controller(name, ["$scope", "$compile", "$templateCache", "Restangular", "paginatorSettings",
         ($scope, $compile, $templateCache, Restangular, paginatorSettings) ->
             $scope.settings = settings
-            $scope.pag_settings = paginatorSettings
+            $scope.pagSettings = paginatorSettings.get_paginator(name)
             $scope.entries = []
             $scope.rest = Restangular.all($scope.settings.rest_url.slice(1))
+            $scope.new_obj = settings.new_object
             $scope.reload = () ->
                 $scope.rest.getList().then((response) ->
                     $scope.entries = response
                 )
             $scope.reload()
             $scope.get_entries = () ->
-                pp = $scope.pag_settings.conf
+                pp = $scope.pagSettings.conf
                 r_list = (obj for obj in $scope.entries[pp.start_idx .. pp.end_idx])
                 return r_list
             $scope.modify = () ->
@@ -147,7 +189,8 @@ angular_add_simple_list_controller = (module, name, settings) ->
                     if $scope.create_mode
                         $scope.rest.post($scope.new_obj).then((new_data) ->
                             $scope.entries.push(new_data)
-                            #$scope.new_obj.description = ""
+                            if $scope.settings.new_object_created
+                                $scope.settings.new_object_created($scope.new_obj)
                         )
                     else
                         $scope.edit_obj.put().then(

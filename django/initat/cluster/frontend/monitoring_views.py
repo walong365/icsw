@@ -1,7 +1,7 @@
 #!/usr/bin/python-init -Ot
 # -*- coding: utf-8 -*-
 
-""" config views """
+""" monitoring views """
 
 import base64
 import logging
@@ -15,6 +15,7 @@ from django.utils.decorators import method_decorator
 from django.views.generic import View
 
 from initat.cluster.frontend import forms
+from initat.cluster.frontend.forms import mon_period_form, mon_notification_form, mon_contact_form
 from initat.cluster.frontend.helper_functions import contact_server, xml_wrapper
 from initat.cluster.backbone.models import config, device_group, device, \
      mon_check_command, mon_service_templ, mon_period, mon_contact, user, \
@@ -64,8 +65,13 @@ class delete_command(View):
 class setup(View):
     @method_decorator(login_required)
     def get(self, request):
+        print mon_contact_form()
         return render_me(
-            request, "monitoring_setup.html",
+            request, "monitoring_setup.html", {
+                "mon_period_form" : mon_period_form(),
+                "mon_notification_form" : mon_notification_form(),
+                "mon_contact_form" : mon_contact_form(),
+                }
         )()
     @method_decorator(xml_wrapper)
     def post(self, request):

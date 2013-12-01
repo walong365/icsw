@@ -3,9 +3,9 @@
 """ simple formulars for django / clustersoftware """
 
 import re
-from django.forms.widgets import TextInput, PasswordInput, SelectMultiple
+from django.forms.widgets import TextInput, PasswordInput, SelectMultiple, Textarea
 from django.forms import Form, ModelForm, ValidationError, CharField, ModelChoiceField, \
-    ModelMultipleChoiceField, ChoiceField
+    ModelMultipleChoiceField, ChoiceField, TextInput
 from django.contrib.auth import authenticate
 from django.db.models import Q
 from django.utils.translation import ugettext_lazy as _
@@ -16,7 +16,8 @@ from crispy_forms.bootstrap import FormActions
 from django.core.urlresolvers import reverse
 from initat.cluster.backbone.models import domain_tree_node, device, category, mon_check_command, mon_service_templ, \
      domain_name_tree, user, group, device_group, home_export_list, device_config, TOP_LOCATIONS, \
-     csw_permission, kernel, network, network_type, network_device_type, image, partition_table
+     csw_permission, kernel, network, network_type, network_device_type, image, partition_table, \
+     mon_period, mon_notification, mon_contact
 from initat.cluster.frontend.widgets import device_tree_widget
 
 # import PAM
@@ -746,3 +747,92 @@ class partition_table_form(ModelForm):
     class Meta:
         model = partition_table
         fields = ["name", "description", "enabled", "nodeboot"]
+
+class mon_period_form(ModelForm):
+    helper = FormHelper()
+    helper.form_id = "form"
+    helper.form_name = "form"
+    helper.form_class = 'form-horizontal'
+    helper.label_class = 'col-sm-3'
+    helper.field_class = 'col-sm-7'
+    helper.ng_model = "edit_obj"
+    helper.layout = Layout(
+        HTML("<h2>Monitoring period</h2>"),
+            Fieldset(
+                "Basic data",
+                Field("name", wrapper_class="ng-class:form_error('name')", placeholder="Name"),
+                Field("alias", wrapper_class="ng-class:form_error('alias')", placeholder="Alias"),
+            ),
+            Fieldset(
+                "Time ranges",
+                Field("sun_range", placeholder="00:00-24:00", wrapper_class="ng-class:form_error('sun_range')", ng_pattern="/^\d+:\d+-\d+:\d+$/", required=True),
+                Field("mon_range", placeholder="00:00-24:00"),
+                Field("tue_range", placeholder="00:00-24:00"),
+                Field("wed_range", placeholder="00:00-24:00"),
+                Field("thu_range", placeholder="00:00-24:00"),
+                Field("fri_range", placeholder="00:00-24:00"),
+                Field("sat_range", placeholder="00:00-24:00"),
+            ),
+            FormActions(
+                Submit("submit", "", css_class="primaryAction", ng_value="get_action_string()"),
+            ),
+        )
+    class Meta:
+        model = mon_period
+        fields = ["name", "alias", "sun_range", "mon_range", "tue_range", "wed_range", "thu_range",
+            "fri_range", "sat_range"]
+
+class mon_notification_form(ModelForm):
+    helper = FormHelper()
+    helper.form_id = "form"
+    helper.form_name = "form"
+    helper.form_class = 'form-horizontal'
+    helper.label_class = 'col-sm-3'
+    helper.field_class = 'col-sm-7'
+    helper.ng_model = "edit_obj"
+    channel = ChoiceField([("mail", "E-Mail"), ("sms" , "SMS")])
+    not_type = ChoiceField([("host", "Host"), ("service", "Service")])
+    content = CharField(widget=Textarea)
+    helper.layout = Layout(
+        HTML("<h2>Monitoring Notification</h2>"),
+            Fieldset(
+                "Basic data",
+                Field("name", wrapper_class="ng-class:form_error('name')", placeholder="Name"),
+                Field("channel"),
+                Field("not_type"),
+            ),
+            Fieldset(
+                "Flags and text",
+                Field("enabled"),
+                Field("subject", wrapper_ng_show="edit_obj.channel == 'mail'"),
+                Field("content", required=True),
+            ),
+            FormActions(
+                Submit("submit", "", css_class="primaryAction", ng_value="get_action_string()"),
+            ),
+        )
+    class Meta:
+        model = mon_notification
+        fields = ["name", "channel", "not_type", "subject", "content", "enabled", ]
+
+class mon_contact_form(ModelForm):
+    helper = FormHelper()
+    helper.form_id = "form"
+    helper.form_name = "form"
+    helper.form_class = 'form-horizontal'
+    helper.label_class = 'col-sm-3'
+    helper.field_class = 'col-sm-7'
+    helper.ng_model = "edit_obj"
+    helper.layout = Layout(
+        HTML("<h2>Monitoring Contact</h2>"),
+            Fieldset(
+                "Basic data",
+                Field("user"),
+            ),
+            FormActions(
+                Submit("submit", "", css_class="primaryAction", ng_value="get_action_string()"),
+            ),
+        )
+    class Meta:
+        model = mon_contact
+        fields = ["user", ]
