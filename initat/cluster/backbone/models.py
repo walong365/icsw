@@ -2520,7 +2520,7 @@ class partition(models.Model):
     def _validate(self, p_disc):
         p_list = []
         p_name = "%s%d" % (p_disc, self.pnum)
-        if not self.partition_fs:
+        if not self.partition_fs_id:
             p_list.append((logging_tools.LOG_LEVEL_ERROR, "no partition_fs set (%s)" % (p_name), False))
         else:
             if self.partition_fs.hexid == "0" and self.partition_fs.name == "empty":
@@ -2604,7 +2604,7 @@ class partition_disc(models.Model):
                 p_list.append((logging_tools.LOG_LEVEL_ERROR, "/ missing from mountpoints", False))
             if "/usr" in all_mps:
                 p_list.append((logging_tools.LOG_LEVEL_ERROR, "cannot boot when /usr is on a separate partition", False))
-        ext_parts = [cur_p for cur_p in my_parts if cur_p.partition_fs.name == "ext"]
+        ext_parts = [cur_p for cur_p in my_parts if cur_p.partition_fs_id and cur_p.partition_fs.name == "ext"]
         if my_parts:
             max_pnum = max([cur_p.pnum for cur_p in my_parts])
             if len(ext_parts) == 0:
@@ -2723,6 +2723,16 @@ class partition_table(models.Model):
         return self.name
     class Meta:
         db_table = u'partition_table'
+    class CSW_Meta:
+        fk_ignore_list = ["partition_disc", "sys_partition", "lvm_lv", "lvm_vg"]
+
+class partition_table_serializer(serializers.ModelSerializer):
+    class Meta:
+        model = partition_table
+        fields = ("partition_disc_set", "lvm_lv_set", "lvm_vg_set", "name", "idx", "description", "valid",
+            "enabled", "nodeboot", "act_partition_table", "new_partition_table")
+        # otherwise the REST framework would try to store lvm_lv and lvm_vg
+        read_only_fields = ("lvm_lv_set", "lvm_vg_set")
 
 @receiver(signals.pre_save, sender=partition_table)
 def partition_table_pre_save(sender, **kwargs):
@@ -3201,7 +3211,8 @@ class wc_files(models.Model):
 def get_related_models(in_obj, m2m=False, detail=False, check_all=False):
     used_objs = [] if detail else 0
     if hasattr(in_obj, "CSW_Meta"):
-        fk_ignore_list = getattr(in_obj.CSW_Meta, "fk_ignore_list", [])
+        # copy list because we remove entries as we iterate over foreign models
+        fk_ignore_list = [entry for entry in getattr(in_obj.CSW_Meta, "fk_ignore_list", [])]
     else:
         fk_ignore_list = []
     if check_all:
@@ -3210,11 +3221,14 @@ def get_related_models(in_obj, m2m=False, detail=False, check_all=False):
         ignore_list = fk_ignore_list
     for rel_obj in in_obj._meta.get_all_related_objects():
         rel_field_name = rel_obj.field.name
+        # print rel_obj.model._meta.object_name, rel_obj.model._meta.object_name in ignore_list, ignore_list
         if rel_obj.model._meta.object_name not in ignore_list:
             if detail:
                 used_objs.extend(list(rel_obj.model.objects.filter(Q(**{rel_field_name : in_obj}))))
             else:
                 used_objs += rel_obj.model.objects.filter(Q(**{rel_field_name : in_obj})).count()
+        else:
+            ignore_list.remove(rel_obj.model._meta.object_name)
     if m2m:
         for m2m_obj in in_obj._meta.get_all_related_many_to_many_objects():
             m2m_field_name = m2m_obj.field.name
@@ -3222,6 +3236,11 @@ def get_related_models(in_obj, m2m=False, detail=False, check_all=False):
                 used_objs.extend(list(m2m_obj.model.objects.filter(Q(**{m2m_field_name : in_obj}))))
             else:
                 used_objs += m2m_obj.model.objects.filter(Q(**{m2m_field_name : in_obj})).count()
+    if ignore_list:
+        raise ImproperlyConfigured("ignore_list not empty, typos (model %s, %s) ?" % (
+            in_obj._meta.model_name,
+            ", ".join(ignore_list)
+            ))
     return used_objs
 
 def get_change_reset_list(s_obj, d_obj, required_changes=None):
