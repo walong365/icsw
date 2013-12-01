@@ -1,15 +1,14 @@
 #!/usr/bin/python-init
 
-import logging_tools
-import re
-from lxml.builder import E # @UnresolvedImport
-
 from django.core.exceptions import ValidationError
 from django.db import models
 from django.db.models import Q, signals
 from django.dispatch import receiver
-
 from initat.cluster.backbone.model_functions import _check_empty_string, _check_float, _check_integer, _check_non_empty_string
+from lxml.builder import E # @UnresolvedImport
+from rest_framework import serializers
+import logging_tools
+import re
 
 class mon_host_cluster(models.Model):
     idx = models.AutoField(primary_key=True)
@@ -234,6 +233,14 @@ class mon_contact(models.Model):
     class Meta:
         db_table = u'ng_contact'
 
+class mon_contact_serializer(serializers.ModelSerializer):
+    class Meta:
+        model = mon_contact
+        fields = ("idx", "user", "snperiod", "hnperiod",
+            "snrecovery", "sncritical", "snwarning", "snunknown", "sflapping", "splanned_downtime",
+            "hnrecovery", "hndown", "hnunreachable", "hflapping", "hplanned_downtime", "notifications",)
+
+
 @receiver(signals.pre_save, sender=mon_contact)
 def mon_contact_pre_save(sender, **kwargs):
     if "instance" in kwargs:
@@ -247,11 +254,11 @@ class mon_notification(models.Model):
     name = models.CharField(max_length=128, blank=False, unique=True)
     channel = models.CharField(max_length=8, choices=[
         ("mail", "E-Mail"),
-        ("sms" , "SMS")])
+        ("sms" , "SMS")], blank=False)
     not_type = models.CharField(max_length=8, choices=[
         ("host"   , "Host"),
-        ("service", "Service")])
-    subject = models.CharField(max_length=140, blank=False)
+        ("service", "Service")], blank=False)
+    subject = models.CharField(max_length=140, blank=True)
     content = models.CharField(max_length=4096, blank=False)
     enabled = models.BooleanField(default=True)
     created = models.DateTimeField(auto_now_add=True)
@@ -273,6 +280,11 @@ class mon_notification(models.Model):
             self.not_type,
             self.channel,
         )
+
+class mon_notification_serializer(serializers.ModelSerializer):
+    class Meta:
+        model = mon_notification
+        fields = ("idx", "name", "channel", "not_type", "subject", "content", "enabled",)
 
 @receiver(signals.pre_save, sender=mon_notification)
 def mon_notification_pre_save(sender, **kwargs):
@@ -546,6 +558,15 @@ class mon_period(models.Model):
         return self.name
     class Meta:
         db_table = u'ng_period'
+
+class mon_period_serializer(serializers.ModelSerializer):
+    class Meta:
+        model = mon_period
+        fields = ("idx", "name", "alias", "sun_range", "mon_range", "tue_range",
+            "wed_range", "thu_range", "fri_range", "sat_range", "service_check_period",
+            "mon_device_templ_set",
+            )
+        read_only_fields = ("service_check_period", "mon_device_templ_set")
 
 @receiver(signals.pre_save, sender=mon_period)
 def mon_period_pre_save(sender, **kwargs):

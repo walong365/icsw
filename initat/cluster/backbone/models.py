@@ -1,21 +1,5 @@
 #!/usr/bin/python-init
 
-import base64
-import datetime
-import hashlib
-import inspect
-import ipvx_tools
-import logging
-import logging_tools
-import pytz
-import re
-import time
-import uuid
-import os
-from lxml import etree # @UnresolvedImport
-from lxml.builder import E # @UnresolvedImport
-from rest_framework import serializers
-
 from django.conf import settings
 from django.contrib.contenttypes.models import ContentType
 from django.core.exceptions import ValidationError, ImproperlyConfigured
@@ -24,10 +8,24 @@ from django.db.models import Q, signals, get_model
 from django.dispatch import receiver
 from django.forms import Textarea
 from django.utils.functional import memoize
-
 from initat.cluster.backbone.model_functions import _check_empty_string, _check_float, _check_integer, _check_non_empty_string
 from initat.cluster.backbone.mon_models import *
 from initat.cluster.backbone.user_models import *
+from lxml import etree # @UnresolvedImport
+from lxml.builder import E # @UnresolvedImport
+from rest_framework import serializers
+import base64
+import datetime
+import hashlib
+import inspect
+import ipvx_tools
+import logging
+import logging_tools
+import os
+import pytz
+import re
+import time
+import uuid
 
 ALLOWED_CFS = ["MAX", "MIN", "AVERAGE"]
 
