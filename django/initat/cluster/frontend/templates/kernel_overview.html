@@ -18,6 +18,7 @@
     <tr>
         <th>Name</th>   
         <th>Version</th>
+        <th>Comment</th>
         <th>Enabled</th>
         <th>Ver</th>   
         <th>Bitcount</th>
@@ -29,6 +30,7 @@
 <script type="text/ng-template" id="kernel_row.html">
     <td>{{ obj.name }}</td>
     <td>{{ obj.kernel_version  }}</td>
+    <td>{{ obj.comment }}</td>
     <td>{{ obj.enabled && "yes" || "---" }}</td>
     <td>{{ obj.version }}.{{ obj.release }}</td>
     <td>{{ obj.bitcount }}</td>

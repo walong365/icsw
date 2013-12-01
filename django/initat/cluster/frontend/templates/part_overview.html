@@ -1,14 +1,71 @@
 {% extends "main.html" %}
 
-{% load i18n extra_tags coffeescript %}
+{% load i18n extra_tags coffeescript crispy_forms_tags %}
 
 {% block title %}{% trans "Partition Overview" %}{% endblock %}
 
 {% block content %}
 
+<div ng-app="icsw.partition_table">
+
+<script type="text/ng-template" id="partition_table.html">
+    {% crispy partition_table_form partition_table_form.helper %}
+</script>
+
+{% verbatim %}
+
+<script type="text/ng-template" id="partition_table_head.html">
+    <tr>
+        <th>Name</th>   
+        <th>Description</th>
+        <th>enabled</th>
+        <th>valid</th>   
+        <th>nodeboot</th>
+        <th>Usecount</th>
+        <th colspan="2" class="text-center">action</th>   
+    </tr>
+</script>
+
+<script type="text/ng-template" id="partition_table_row.html">
+    <td>{{ obj.name }}</td>
+    <td>{{ obj.description }}</td>
+    <td>{{ obj.enabled && "yes" || "---" }}</td>
+    <td>{{ obj.valid && "yes" || "---" }}</td>
+    <td>{{ obj.nodeboot && "yes" || "---" }}</td>
+    <td class="text-center">{{ obj.act_partition_table.length }} / {{ obj.new_partition_table.length }}</td>
+    <td><input type="button" class="btn btn-primary" ng-click="edit($event, obj)" value="modify"/></td>
+    <td><input type="button" class="btn btn-danger" ng-show="delete_ok(obj)" ng-click="delete(obj)" value="delete"/></td>
+</script>
+
+<tabset>
+    <tab heading="Partition tables">
+<div ng-controller="partition_table_base">
+
+<div ng-controller="partition_table">
+<h2>Partition tables ({{entries.length}} entries), <input type="button" ng-click="reload()" value="reload"/></h2>
+
+<table class="table table-condensed table-condensed table-hover" style="width:auto;">
+    <thead partitiontablehead></thead>
+    <tbody>
+        <tr partitiontablerow ng-repeat="obj in entries | orderBy:'-name':true"></tr>
+    </tbody>
+</table>
+
+</div>
+
+</div>
+</tab>
+<tab heading="Partitions tables (old)">
 <div id="partition_list"></div>
 
 <div id="partition_table"></div>
+
+</tab>
+</tabset>
+
+</div>
+
+{% endverbatim %}
 
 <script type="text/javascript">
 
