@@ -62,6 +62,7 @@ angular_add_simple_list_controller(
     {
         rest_url            : "{% url 'rest:mon_contact_list' %}"
         edit_template       : "mon_contact.html"
+        rest_map            : {"mon_period" : "{% url 'rest:mon_period_list' %}"}
         delete_confirm_str  : (obj) -> return "Really delete monitoring contact '#{obj.user}' ?"
         template_cache_list : ["mon_contact_row.html", "mon_contact_head.html"]
         new_object          : {"user" : ""}
@@ -79,3 +80,4 @@ monitoring_basic_module.controller("mon_contact", ["$scope", "$compile", "$templ
 {% endinlinecoffeescript %}
 
 </script>
+

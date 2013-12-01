@@ -57,21 +57,37 @@ class paginator_class
             @activate_page(@conf.act_page)
 
 class rest_data_source
-    constructor: (@$q) ->
+    constructor: (@$q, @Restangular) ->
+        @data = {}
     do_query: (q_type) =>    
-        d = @q.defer()
+        d = @$q.defer()
         result = q_type.getList().then(
            (response) ->
                d.resolve(response)
         )
         return d.promise
-    query_data: () ->
-        q_list = [@do_query(Restangular.all(rest_url.slice(1)) for rest_url in @rest_urls)] 
-        $q.all(q_list).then((data) =>
-            echo "done", data
-            @data = data
-        )
-        return q_list
+    load: (url) =>
+        if url in @data
+            return @get(url)
+        else
+            return @reload(url)
+    reload: (url) =>
+        @data[url] = @do_query(@Restangular.all(url.slice(1)))
+        return @get(url) 
+    add_sources: (in_list) =>
+        q_list = []
+        r_list = []
+        for rest_url in in_list
+            if rest_url not in @data
+                sliced = rest_url.slice(1)
+                @data[rest_url] = @do_query(@Restangular.all(sliced))
+                q_list.push(@data[rest_url])
+            r_list.push(@data[rest_url])
+        if q_list
+            @$q.all(q_list)
+        return r_list
+    get: (url) =>
+        return @data[url]
   
 angular_module_setup = (module_list, url_list=[]) ->
     #console.log url_list
@@ -127,8 +143,8 @@ angular_module_setup = (module_list, url_list=[]) ->
         cur_mod.service("paginatorSettings", [() ->
             return new paginator_root()
         ])
-        cur_mod.service("restDataSource", ["$q", ($q) ->
-            return new rest_data_source($q)
+        cur_mod.service("restDataSource", ["$q", "Restangular", ($q, Restangular) ->
+            return new rest_data_source($q, Restangular)
         ])
         cur_mod.directive("paginator", ($templateCache) ->
             link = (scope, element, attrs) ->
@@ -168,18 +184,27 @@ angular_add_simple_list_controller = (module, name, settings) ->
                 template : $templateCache.get(t_name)
             }
         )
-    module.controller(name, ["$scope", "$compile", "$templateCache", "Restangular", "paginatorSettings",
-        ($scope, $compile, $templateCache, Restangular, paginatorSettings) ->
+    module.controller(name, ["$scope", "$compile", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "$q", 
+        ($scope, $compile, $templateCache, Restangular, paginatorSettings, restDataSource, $q) ->
             $scope.settings = settings
             $scope.pagSettings = paginatorSettings.get_paginator(name)
             $scope.entries = []
-            $scope.rest = Restangular.all($scope.settings.rest_url.slice(1))
-            $scope.new_obj = settings.new_object
+            wait_list = [restDataSource.add_sources([$scope.settings.rest_url])[0]]
+            $scope.new_obj = $scope.settings.new_object
+            $scope.rest_map = []
+            if $scope.settings.rest_map
+                for key, value of $scope.settings.rest_map
+                    $scope.rest_map[key] = restDataSource.reload(value)
+                    wait_list.push($scope.rest_map[key])
+            $q.all(wait_list).then((data) ->
+                # data ordering ? still unclear beyond the first element
+                $scope.entries = data[0]
+            )
             $scope.reload = () ->
-                $scope.rest.getList().then((response) ->
-                    $scope.entries = response
+                restDataSource.reload($scope.settings.rest_url).then((data) ->
+                    $scope.entries = data
+                    console.log data
                 )
-            $scope.reload()
             $scope.get_entries = () ->
                 pp = $scope.pagSettings.conf
                 r_list = (obj for obj in $scope.entries[pp.start_idx .. pp.end_idx])

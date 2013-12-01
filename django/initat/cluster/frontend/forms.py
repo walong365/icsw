@@ -766,12 +766,12 @@ class mon_period_form(ModelForm):
             Fieldset(
                 "Time ranges",
                 Field("sun_range", placeholder="00:00-24:00", wrapper_class="ng-class:form_error('sun_range')", ng_pattern="/^\d+:\d+-\d+:\d+$/", required=True),
-                Field("mon_range", placeholder="00:00-24:00"),
-                Field("tue_range", placeholder="00:00-24:00"),
-                Field("wed_range", placeholder="00:00-24:00"),
-                Field("thu_range", placeholder="00:00-24:00"),
-                Field("fri_range", placeholder="00:00-24:00"),
-                Field("sat_range", placeholder="00:00-24:00"),
+                Field("mon_range", placeholder="00:00-24:00", wrapper_class="ng-class:form_error('sun_range')", ng_pattern="/^\d+:\d+-\d+:\d+$/", required=True),
+                Field("tue_range", placeholder="00:00-24:00", wrapper_class="ng-class:form_error('sun_range')", ng_pattern="/^\d+:\d+-\d+:\d+$/", required=True),
+                Field("wed_range", placeholder="00:00-24:00", wrapper_class="ng-class:form_error('sun_range')", ng_pattern="/^\d+:\d+-\d+:\d+$/", required=True),
+                Field("thu_range", placeholder="00:00-24:00", wrapper_class="ng-class:form_error('sun_range')", ng_pattern="/^\d+:\d+-\d+:\d+$/", required=True),
+                Field("fri_range", placeholder="00:00-24:00", wrapper_class="ng-class:form_error('sun_range')", ng_pattern="/^\d+:\d+-\d+:\d+$/", required=True),
+                Field("sat_range", placeholder="00:00-24:00", wrapper_class="ng-class:form_error('sun_range')", ng_pattern="/^\d+:\d+-\d+:\d+$/", required=True),
             ),
             FormActions(
                 Submit("submit", "", css_class="primaryAction", ng_value="get_action_string()"),
