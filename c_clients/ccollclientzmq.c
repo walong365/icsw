@@ -49,6 +49,7 @@
 #define IOBUFF_SIZE 16384
 
 char *send_buffer;
+int verbose;
 
 int err_message(char *str)
 {
@@ -64,7 +65,9 @@ int err_message(char *str)
         sprintf(errstr, "An error occured (%d): %s for %s\n", getpid(), str,
                 send_buffer);
     }
-    syslog(LOG_DAEMON | LOG_ERR, errstr);
+    if (verbose) {
+        syslog(LOG_DAEMON | LOG_ERR, errstr);
+    };
     fprintf(stderr, errstr);
     free(errstr);
     return 0;
@@ -90,7 +93,7 @@ void try_second_socket(int dummy)
 
 int main(int argc, char **argv)
 {
-    int ret, num, inlen, file, i /*, time */ , port, rchar, verbose, quiet,
+    int ret, num, inlen, file, i /*, time */ , port, rchar, quiet,
         retcode, timeout, host_written, only_send, raw;
     struct in_addr sia;
 
