@@ -44,13 +44,13 @@ if sys.version_info[0] == 3:
     long = int
 
 if sys.platform in ["linux2", "linux3", "linux"]:
-    import cpu_database
-    import grp
-    import pwd
     # helper function for proepilogue
     from io_stream_helper import io_stream
     from lxml import etree # @UnresolvedImports
     from lxml.builder import E # @UnresolvedImports
+    import cpu_database
+    import grp
+    import pwd
 
 try:
     ENCODING = locale.getpreferredencoding()
