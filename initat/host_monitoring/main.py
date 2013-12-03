@@ -77,6 +77,7 @@ def main():
             ("HUGEPAGES"  , configfile.int_c_var(50, info="percentage of memory to use for hugepages", help_string="hugepages percentage [%(default)d]")),
             ("NO_INOTIFY" , configfile.bool_c_var(False, info="disable inotify process", help_string="disable inotify proces [%(default)s]", action="store_true")),
             ("AFFINITY"   , configfile.bool_c_var(False, info="enable process_affinity tools", help_string="enables pinning of processes to certain cores", action="store_true")),
+            ("TRACK_IPMI" , configfile.bool_c_var(False, info="enable tracking of IPMI sensors", help_string="enable tracking of IPMI sensor data", action="store_true")),
         ])
     elif prog_name == "collclient":
         global_config.add_config_entries([

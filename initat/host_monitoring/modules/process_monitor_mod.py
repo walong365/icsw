@@ -18,6 +18,11 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
 
+""" process monitor """
+
+from initat.host_monitoring import hm_classes, limits
+from initat.host_monitoring.config import global_config
+from lxml import etree # @UnresolvedImport
 import affinity_tools
 import commands
 import logging_tools
@@ -28,13 +33,6 @@ import re
 import signal
 import sys
 import time
-
-from initat.host_monitoring.config import global_config
-
-from initat.host_monitoring import limits
-from initat.host_monitoring import hm_classes
-
-from lxml import etree # @UnresolvedImport
 
 MIN_UPDATE_TIME = 10
 

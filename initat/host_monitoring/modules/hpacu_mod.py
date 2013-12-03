@@ -3,7 +3,7 @@
 # Copyright (C) 2001,2002,2003,2004,2005,2006,2007,2008 Andreas Lang-Nevyjel, init.at
 #
 # Send feedback to: <lang-nevyjel@init.at>
-# 
+#
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License Version 2 as
 # published by the Free Software Foundation.
@@ -18,13 +18,11 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
 
-import sys
+from initat.host_monitoring import hm_classes, limits
 import commands
-from initat.host_monitoring import limits
-from initat.host_monitoring import hm_classes
-import os
-import os.path
 import logging_tools
+import os
+import sys
 
 class my_modclass(hm_classes.hm_fileinfo):
     def __init__(self, **args):
@@ -35,12 +33,6 @@ class my_modclass(hm_classes.hm_fileinfo):
     def init(self, mode, logger, basedir_name, **args):
         if mode == "i":
             self.controllers = []
-
-def call_command(bin, what):
-    stat, out = commands.getstatusoutput("%s %s" % (bin, what))
-    if not stat:
-        out = [y for y in [x.strip() for x in out.split("\n")] if y]
-    return stat, out
 
 def check_for_controller_ids(logger, exec_name):
     stat, out = commands.getstatusoutput("echo 'controller all show' | %s" % (exec_name))
@@ -53,7 +45,7 @@ def check_for_controller_ids(logger, exec_name):
         else:
             c_ids = []
         return True, c_ids
-   
+
 def get_size(in_str):
     try:
         s_p, p_p = in_str.split()
@@ -143,7 +135,7 @@ class hpacu_status_command(hm_classes.hmb_command):
             c_dict = hm_classes.net_to_sys(result[3:])
             num_cont, num_array, num_log, num_phys = (0, 0, 0, 0)
             array_names, size_log, size_phys = ([], [], 0)
-            #pprint.pprint(c_dict)
+            # pprint.pprint(c_dict)
             error_f, warn_f = ([], [])
             for c_name, c_stuff in c_dict.iteritems():
                 num_cont += 1
