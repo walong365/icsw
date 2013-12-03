@@ -6,14 +6,6 @@
 
 root = exports ? this
 
-array_to_dict = (array, key) ->
-    res = {}
-    for idx, value of array
-        if idx.match(/\d+/)
-            # ignore stuff like $promise
-            res[value[key]] = value
-    return res
-
 class paginator_root
     constructor: () ->
         @dict = {}
@@ -67,7 +59,7 @@ class rest_data_source
         )
         return d.promise
     load: (url) =>
-        if url in @data
+        if url of @data
             return @get(url)
         else
             return @reload(url)
@@ -103,13 +95,6 @@ angular_module_setup = (module_list, url_list=[]) ->
                     return arr.slice(scope.pagSettings.conf.start_idx, scope.pagSettings.conf.end_idx + 1)
                 else
                     return arr
-        )
-        cur_mod.filter("limit_text", () ->
-            return (text, max_len) ->
-                if text.length > max_len
-                    return text[0..max_len] + "..."
-                else
-                    return text
         )
         cur_mod.config(["RestangularProvider", 
             (RestangularProvider) ->
@@ -161,7 +146,7 @@ angular_module_setup = (module_list, url_list=[]) ->
                     pagSettings : "="
                 template : '{% verbatim %}<span ng-show="pagSettings.conf.num_entries">' +
                   '<input ng-show="pagSettings.conf.num_pages > 1" type="button" ng-repeat="pag_num in pagSettings.conf.page_list track by $index" value="{{ pag_num }}" ng-click="activate_page(pag_num)">' +
-                  '</input><span ng-show="pagSettings.conf.num_pages > 1">, </span>showing from {{ pagSettings.conf.start_idx + 1 }} to {{ pagSettings.conf.end_idx + 1 }}</span>{% endverbatim %}'
+                  '</input><span ng-show="pagSettings.conf.num_pages > 1">, </span>showing entries {{ pagSettings.conf.start_idx + 1 }} to {{ pagSettings.conf.end_idx + 1 }}</span>{% endverbatim %}'
                 link     : link
             }
         )
@@ -188,32 +173,34 @@ angular_add_simple_list_controller = (module, name, settings) ->
         ($scope, $compile, $templateCache, Restangular, paginatorSettings, restDataSource, $q) ->
             $scope.settings = settings
             $scope.pagSettings = paginatorSettings.get_paginator(name)
+            $scope.rest = Restangular.all($scope.settings.rest_url.slice(1))
             $scope.entries = []
             wait_list = [restDataSource.add_sources([$scope.settings.rest_url])[0]]
             $scope.new_obj = $scope.settings.new_object
-            $scope.rest_map = []
+            $scope.rest_data = {}
             if $scope.settings.rest_map
-                for key, value of $scope.settings.rest_map
-                    $scope.rest_map[key] = restDataSource.reload(value)
-                    wait_list.push($scope.rest_map[key])
+                for value, idx in $scope.settings.rest_map
+                    $scope.rest_data[value.short] = restDataSource.load(value.url)
+                    wait_list.push($scope.rest_data[value.short])
             $q.all(wait_list).then((data) ->
-                # data ordering ? still unclear beyond the first element
-                $scope.entries = data[0]
+                for value, idx in data
+                    if idx == 0
+                        $scope.entries = value
+                    else
+                        $scope.rest_data[$scope.settings.rest_map[idx - 1].short] = value
             )
             $scope.reload = () ->
                 restDataSource.reload($scope.settings.rest_url).then((data) ->
                     $scope.entries = data
-                    console.log data
+                    console.log "reload", data
                 )
-            $scope.get_entries = () ->
-                pp = $scope.pagSettings.conf
-                r_list = (obj for obj in $scope.entries[pp.start_idx .. pp.end_idx])
-                return r_list
             $scope.modify = () ->
                 if not $scope.form.$invalid
                     if $scope.create_mode
                         $scope.rest.post($scope.new_obj).then((new_data) ->
                             $scope.entries.push(new_data)
+                            if $scope.pagSettings.conf.init
+                                $scope.pagSettings.set_num_entries($scope.entries.length)
                             if $scope.settings.new_object_created
                                 $scope.settings.new_object_created($scope.new_obj)
                         )
@@ -255,11 +242,59 @@ angular_add_simple_list_controller = (module, name, settings) ->
                         noty
                             text : "deleted instance"
                         remove_by_idx($scope.entries, obj.idx)
+                        if $scope.pagSettings.conf.init
+                            $scope.pagSettings.set_num_entries($scope.entries.length)
                     )
     ])
 
+angular.module(
+    "init.csw.filters", []
+).filter(
+    "resolve_n2m", () ->
+        return (in_array, f_array, n2m_key, null_msg) ->
+            if typeof(in_array) == "string"
+                # handle strings for chaining
+                in_array = (parseInt(value) for value in in_array.split(/,\s*/))
+            res = (value for key, value of f_array when typeof(value) == "object" and value and value.idx in in_array)
+            #ret_str = (f_array[key][n2m_key] for key in in_array).join(", ")
+            if res.length
+                return (value[n2m_key] for value in res).join(", ")
+            else
+                if null_msg
+                    return null_msg
+                else
+                    return "N/A"
+
+).filter(
+    "follow_fk", () ->
+        return (in_value, scope, fk_model, fk_key, null_msg) ->
+            if in_value != null
+                return scope[fk_model][in_value][fk_key]
+            else
+                return null_msg
+).filter(
+    "array_lookup", () ->
+        return (in_value, f_array, fk_key, null_msg) ->
+            if in_value != null
+                if fk_key
+                    return (entry[fk_key] for key, entry of f_array when typeof(entry) == "object" and entry and entry["idx"] == in_value)[0]
+                else
+                    return (entry for key, entry of f_array when typeof(entry) == "object" and entry and entry["idx"] == in_value)[0]
+            else
+                return if null_msg then null_msg else "N/A"
+).filter(
+    "yesno1", () ->
+        return (in_value) ->
+            return if in_value then "yes" else "---"
+).filter("limit_text", () ->
+    return (text, max_len) ->
+        if text.length > max_len
+            return text[0..max_len] + "..."
+        else
+            return text
+)
+
 root.angular_module_setup = angular_module_setup
-root.array_to_dict = array_to_dict
 root.handle_reset = handle_reset
 root.angular_add_simple_list_controller = angular_add_simple_list_controller
 

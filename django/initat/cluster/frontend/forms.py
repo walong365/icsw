@@ -17,7 +17,8 @@ from django.core.urlresolvers import reverse
 from initat.cluster.backbone.models import domain_tree_node, device, category, mon_check_command, mon_service_templ, \
      domain_name_tree, user, group, device_group, home_export_list, device_config, TOP_LOCATIONS, \
      csw_permission, kernel, network, network_type, network_device_type, image, partition_table, \
-     mon_period, mon_notification, mon_contact
+     mon_period, mon_notification, mon_contact, mon_service_templ, host_check_command, \
+     mon_contactgroup, mon_device_templ
 from initat.cluster.frontend.widgets import device_tree_widget
 
 # import PAM
@@ -647,7 +648,7 @@ class network_form(ModelForm):
     helper.ng_model = "edit_obj"
     master_network = ModelChoiceField(queryset=empty_query_set(), empty_label="No master network", required=False)
     network_type = ModelChoiceField(queryset=empty_query_set(), empty_label=None)
-    network_device_type = ModelMultipleChoiceField(queryset=empty_query_set())
+    network_device_type = ModelMultipleChoiceField(queryset=empty_query_set(), required=False)
     helper.layout = Layout(
         HTML("<h2>Network</h2>"),
             Fieldset(
@@ -827,12 +828,301 @@ class mon_contact_form(ModelForm):
         HTML("<h2>Monitoring Contact</h2>"),
             Fieldset(
                 "Basic data",
-                Field("user"),
+                Field("user", ng_options="value.idx as value.login + ' (' + value.first_name + ' ' + value.last_name + ')' for value in rest_data.user | orderBy:'login'"),
+                Field("notifications", ng_options="value.idx as value.name for value in rest_data.mon_notification | sortBy:'name'", chosen=True),
+                Field("mon_alias"),
+            ),
+            Fieldset(
+                "Service settings",
+                Field("snperiod", ng_options="value.idx as value.name for value in rest_data.mon_period | orderBy:'name'"),
+            ),
+            Div(
+                Div(
+                    FormActions(
+                        Field("snrecovery"),
+                        Field("sncritical"),
+                        Field("snwarning"),
+                    ),
+                    css_class="col-md-5",
+                ),
+                Div(
+                    FormActions(
+                        Field("snunknown"),
+                        Field("sflapping"),
+                        Field("splanned_downtime"),
+                    ),
+                    css_class="col-md-5",
+                ),
+                css_class="row",
+            ),
+            Fieldset(
+                "Host settings",
+                Field("hnperiod", ng_options="value.idx as value.name for value in rest_data.mon_period | orderBy:'name'"),
+            ),
+            Div(
+                Div(
+                    FormActions(
+                        Field("hnrecovery"),
+                        Field("hndown"),
+                        Field("hnunreachable"),
+                    ),
+                    css_class="col-md-5",
+                ),
+                Div(
+                    FormActions(
+                        Field("hflapping"),
+                        Field("hplanned_downtime"),
+                    ),
+                    css_class="col-md-5",
+                ),
+                css_class="row",
             ),
             FormActions(
                 Submit("submit", "", css_class="primaryAction", ng_value="get_action_string()"),
             ),
         )
+    def __init__(self, *args, **kwargs):
+        ModelForm.__init__(self, *args, **kwargs)
+        for clear_f in ["user", "snperiod", "hnperiod", "notifications"]:
+            self.fields[clear_f].queryset = empty_query_set()
+            self.fields[clear_f].empty_label = None
     class Meta:
         model = mon_contact
-        fields = ["user", ]
+        fields = ["user", "snperiod", "hnperiod", "notifications", "mon_alias",
+            "snrecovery", "sncritical", "snwarning", "snunknown", "sflapping", "splanned_downtime",
+            "hnrecovery", "hndown", "hnunreachable", "hflapping", "hplanned_downtime", ]
+
+class mon_service_templ_form(ModelForm):
+    helper = FormHelper()
+    helper.form_id = "form"
+    helper.form_name = "form"
+    helper.form_class = 'form-horizontal'
+    helper.label_class = 'col-sm-3'
+    helper.field_class = 'col-sm-7'
+    helper.ng_model = "edit_obj"
+    helper.layout = Layout(
+        HTML("<h2>Service template</h2>"),
+            Fieldset(
+                "Basic data",
+                Field("name"),
+                Field("volatile"),
+            ),
+            Fieldset(
+                "Check",
+                Field("nsc_period", ng_options="value.idx as value.name for value in rest_data.mon_period | orderBy:'name'"),
+            ),
+            FormActions(
+                Field("max_attempts", min=1, max=10),
+                Field("check_interval", min=1, max=60),
+                Field("retry_interval", min=1, max=60),
+            ),
+            Fieldset(
+                "Notification",
+                Field("nsn_period", ng_options="value.idx as value.name for value in rest_data.mon_period | orderBy:'name'"),
+            ),
+            Div(
+                Div(
+                    FormActions(
+                        Field("nrecovery"),
+                        Field("ncritical"),
+                    ),
+                    css_class="col-md-3",
+                ),
+                Div(
+                    FormActions(
+                        Field("nwarning"),
+                        Field("nunknown"),
+                    ),
+                    css_class="col-md-3",
+                ),
+                Div(
+                    FormActions(
+                        Field("nflapping"),
+                        Field("nplanned_downtime"),
+                    ),
+                    css_class="col-md-3",
+                ),
+                css_class="row",
+            ),
+            Fieldset(
+                "Flap settings",
+                Field("flap_detection_enabled"),
+            ),
+            FormActions(
+                Field("low_flap_threshold", min=0, max=100),
+                Field("high_flap_threshold", min=0, max=100),
+            ),
+            Div(
+                Div(
+                    FormActions(
+                        Field("flap_detect_ok"),
+                        Field("flap_detect_warn"),
+                    ),
+                    css_class="col-md-5",
+                ),
+                Div(
+                    FormActions(
+                        Field("flap_detect_critical"),
+                        Field("flap_detect_unknown"),
+                    ),
+                    css_class="col-md-5",
+                ),
+                css_class="row",
+            ),
+            FormActions(
+                Submit("submit", "", css_class="primaryAction", ng_value="get_action_string()"),
+            ),
+        )
+    def __init__(self, *args, **kwargs):
+        ModelForm.__init__(self, *args, **kwargs)
+        for clear_f in ["nsc_period", "nsn_period"]:
+            self.fields[clear_f].queryset = empty_query_set()
+            self.fields[clear_f].empty_label = None
+    class Meta:
+        model = mon_service_templ
+
+class host_check_command_form(ModelForm):
+    helper = FormHelper()
+    helper.form_id = "form"
+    helper.form_name = "form"
+    helper.form_class = 'form-horizontal'
+    helper.label_class = 'col-sm-3'
+    helper.field_class = 'col-sm-7'
+    helper.ng_model = "edit_obj"
+    helper.layout = Layout(
+        HTML("<h2>Host check command</h2>"),
+            Fieldset(
+                "Basic data",
+                Field("name"),
+                Field("command_line"),
+            ),
+            FormActions(
+                Submit("submit", "", css_class="primaryAction", ng_value="get_action_string()"),
+            ),
+        )
+    def __init__(self, *args, **kwargs):
+        ModelForm.__init__(self, *args, **kwargs)
+    class Meta:
+        model = host_check_command
+
+class mon_contactgroup_form(ModelForm):
+    helper = FormHelper()
+    helper.form_id = "form"
+    helper.form_name = "form"
+    helper.form_class = 'form-horizontal'
+    helper.label_class = 'col-sm-3'
+    helper.field_class = 'col-sm-7'
+    helper.ng_model = "edit_obj"
+    helper.layout = Layout(
+        HTML("<h2>Contactgroup</h2>"),
+            Fieldset(
+                "Basic data",
+                Field("name"),
+                Field("alias"),
+            ),
+            Fieldset(
+                "settings",
+                Field("members", ng_options="value.idx as value.user_name for value in rest_data.mon_contact | orderBy:'user_name'", chosen=True),
+                Field("device_groups", ng_options="value.idx as value.name for value in rest_data.device_group | orderBy:'name'", chosen=True),
+                Field("service_templates", ng_options="value.idx as value.name for value in rest_data.mon_service_templ | orderBy:'name'", chosen=True),
+            ),
+            FormActions(
+                Submit("submit", "", css_class="primaryAction", ng_value="get_action_string()"),
+            ),
+        )
+    def __init__(self, *args, **kwargs):
+        ModelForm.__init__(self, *args, **kwargs)
+        for clear_f in ["device_groups", "members", "service_templates"]:
+            self.fields[clear_f].queryset = empty_query_set()
+            self.fields[clear_f].empty_label = None
+    class Meta:
+        model = mon_contactgroup
+
+
+class mon_device_templ_form(ModelForm):
+    helper = FormHelper()
+    helper.form_id = "form"
+    helper.form_name = "form"
+    helper.form_class = 'form-horizontal'
+    helper.label_class = 'col-sm-3'
+    helper.field_class = 'col-sm-7'
+    helper.ng_model = "edit_obj"
+    helper.layout = Layout(
+        HTML("<h2>Device template</h2>"),
+            Fieldset(
+                "Basic data",
+                Field("name"),
+                Field("mon_service_templ", ng_options="value.idx as value.name for value in rest_data.mon_service_templ | orderBy:'name'", chosen=True),
+            ),
+            Fieldset(
+                "Check",
+                Field("host_check_command", ng_options="value.idx as value.name for value in rest_data.host_check_command | orderBy:'name'", chosen=True),
+                Field("mon_period", ng_options="value.idx as value.name for value in rest_data.mon_period | orderBy:'name'"),
+            ),
+            FormActions(
+                Field("check_interval", min=1, max=60),
+                Field("retry_interval", min=1, max=60),
+                Field("max_attempts", min=1, max=10),
+            ),
+            Fieldset(
+                "Notification",
+            ),
+            Div(
+                Div(
+                    FormActions(
+                        Field("nrecovery"),
+                        Field("ndown"),
+                    ),
+                    css_class="col-md-3",
+                ),
+                Div(
+                    FormActions(
+                        Field("nunreachable"),
+                    ),
+                    css_class="col-md-3",
+                ),
+                Div(
+                    FormActions(
+                        Field("nflapping"),
+                        Field("nplanned_downtime"),
+                    ),
+                    css_class="col-md-3",
+                ),
+                css_class="row",
+            ),
+            Fieldset(
+                "Flap settings",
+                Field("flap_detection_enabled"),
+            ),
+            FormActions(
+                Field("low_flap_threshold", min=0, max=100),
+                Field("high_flap_threshold", min=0, max=100),
+            ),
+            Div(
+                Div(
+                    FormActions(
+                        Field("flap_detect_up"),
+                        Field("flap_detect_down"),
+                    ),
+                    css_class="col-md-5",
+                ),
+                Div(
+                    FormActions(
+                        Field("flap_detect_unreachable"),
+                    ),
+                    css_class="col-md-5",
+                ),
+                css_class="row",
+            ),
+            FormActions(
+                Submit("submit", "", css_class="primaryAction", ng_value="get_action_string()"),
+            ),
+        )
+    def __init__(self, *args, **kwargs):
+        ModelForm.__init__(self, *args, **kwargs)
+        for clear_f in ["mon_service_templ", "host_check_command", "mon_period"]:
+            self.fields[clear_f].queryset = empty_query_set()
+            self.fields[clear_f].empty_label = None
+    class Meta:
+        model = mon_device_templ
+

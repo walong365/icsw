@@ -6,33 +6,7 @@
 
 root = exports ? this
 
-angular.module(
-    "ip_filters", []
-).filter(
-    "resolve_n2m", () ->
-        return (in_array, scope, n2m_field, n2m_key) ->
-            ret_str = (scope[n2m_field][key][n2m_key] for key in in_array).join(", ")
-            if ret_str
-                return ret_str
-            else
-                return "no " + n2m_field.replace(/_/g, " ") + " defined"
-).filter(
-    "follow_fk", () ->
-        return (in_value, scope, fk_model, fk_key, null_msg) ->
-            if in_value != null
-                return scope[fk_model][in_value][fk_key]
-            else
-                return null_msg
-).filter(
-    "array_lookup", () ->
-        return (in_value, scope, fk_model, fk_key, null_msg) ->
-            if in_value != null
-                return (entry[fk_key] for key, entry of scope[fk_model] when typeof(entry) == "object" and entry and entry["idx"] == in_value)[0]
-            else
-                return null_msg
-)
-
-network_module = angular.module("icsw.network", ["ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "ip_filters", "localytics.directives", "restangular"])
+network_module = angular.module("icsw.network", ["ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters", "localytics.directives", "restangular"])
 
 angular_module_setup([network_module])
 
@@ -217,10 +191,10 @@ network_module.controller("network", ["$scope", "$compile", "$templateCache", "$
             do_query($scope.rest_network_device_types)
             do_query($scope.rest)
         ]).then((data) ->
-            $scope.network_types = array_to_dict(data[0], "idx")
-            $scope.network_device_types = array_to_dict(data[1], "idx")
+            $scope.network_types = data[0]
+            $scope.network_device_types = data[1]
             $scope.entries = data[2]
-            $scope.new_obj = {identifier : "", network_type : (entry["idx"] for key, entry of $scope.network_types when entry["identifier"] == "o")[0]}
+            $scope.new_obj = {identifier : "", network_type : (entry["idx"] for key, entry of $scope.network_types when typeof(entry) == "object" and entry and entry["identifier"] == "o")[0]}
         )
         $scope.ip_fill_up = (in_str) ->
             if in_str

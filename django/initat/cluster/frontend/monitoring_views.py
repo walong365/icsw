@@ -3,29 +3,27 @@
 
 """ monitoring views """
 
-import base64
-import logging
-import server_command
-
 from django.contrib.auth.decorators import login_required
 from django.core.exceptions import ValidationError
 from django.db.models import Q
 from django.http import HttpResponseRedirect
 from django.utils.decorators import method_decorator
 from django.views.generic import View
-
-from initat.cluster.frontend import forms
-from initat.cluster.frontend.forms import mon_period_form, mon_notification_form, mon_contact_form
-from initat.cluster.frontend.helper_functions import contact_server, xml_wrapper
 from initat.cluster.backbone.models import config, device_group, device, \
      mon_check_command, mon_service_templ, mon_period, mon_contact, user, \
      mon_contactgroup, mon_device_templ, mon_host_dependency, \
      mon_host_cluster, mon_service_cluster, mon_device_esc_templ, mon_service_esc_templ, \
      partition_table, mon_notification, host_check_command
+from initat.cluster.frontend import forms
+from initat.cluster.frontend.forms import mon_period_form, mon_notification_form, mon_contact_form, \
+    mon_service_templ_form, host_check_command_form, mon_contactgroup_form, mon_device_templ_form
+from initat.cluster.frontend.helper_functions import contact_server, xml_wrapper
 from initat.core.render import render_me, render_string
-
 from lxml import etree # @UnresolvedImports
 from lxml.builder import E # @UnresolvedImports
+import base64
+import logging
+import server_command
 
 logger = logging.getLogger("cluster.monitoring")
 
@@ -65,12 +63,16 @@ class delete_command(View):
 class setup(View):
     @method_decorator(login_required)
     def get(self, request):
-        print mon_contact_form()
+        # print mon_contact_form()
         return render_me(
             request, "monitoring_setup.html", {
                 "mon_period_form" : mon_period_form(),
                 "mon_notification_form" : mon_notification_form(),
                 "mon_contact_form" : mon_contact_form(),
+                "mon_service_templ_form" : mon_service_templ_form(),
+                "host_check_command_form" : host_check_command_form(),
+                "mon_contactgroup_form" : mon_contactgroup_form(),
+                "mon_device_templ_form" : mon_device_templ_form(),
                 }
         )()
     @method_decorator(xml_wrapper)

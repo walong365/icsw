@@ -6,11 +6,9 @@
 
 root = exports ? this
 
-monitoring_basic_module = angular.module("icsw.monitoring_basic", ["ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "ip_filters", "localytics.directives", "restangular"])
+monitoring_basic_module = angular.module("icsw.monitoring_basic", ["ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters", "localytics.directives", "restangular"])
 
 angular_module_setup([monitoring_basic_module])
-
-
 
 angular_add_simple_list_controller(
     monitoring_basic_module,
@@ -62,7 +60,11 @@ angular_add_simple_list_controller(
     {
         rest_url            : "{% url 'rest:mon_contact_list' %}"
         edit_template       : "mon_contact.html"
-        rest_map            : {"mon_period" : "{% url 'rest:mon_period_list' %}"}
+        rest_map            : [
+            {"short" : "mon_period", "url" : "{% url 'rest:mon_period_list' %}"}
+            {"short" : "user"      , "url" : "{% url 'rest:user_list' %}"}
+            {"short" : "mon_notification", "url" : "{% url 'rest:mon_notification_list' %}"}
+        ]
         delete_confirm_str  : (obj) -> return "Really delete monitoring contact '#{obj.user}' ?"
         template_cache_list : ["mon_contact_row.html", "mon_contact_head.html"]
         new_object          : {"user" : ""}
@@ -74,8 +76,101 @@ monitoring_basic_module.controller("mon_contact", ["$scope", "$compile", "$templ
     ($scope, $compile, $templateCache, Restangular) ->
         $scope.delete_ok = (obj) ->
             return true
+]).filter("show_user", () ->
+    return (user) ->
+        return "#{user.login} (#{user.first_name} #{user.last_name})"
+)
+
+
+angular_add_simple_list_controller(
+    monitoring_basic_module,
+    "mon_service_templ_base",
+    {
+        rest_url            : "{% url 'rest:mon_service_templ_list' %}"
+        edit_template       : "mon_service_templ.html"
+        rest_map            : [
+            {"short" : "mon_period", "url" : "{% url 'rest:mon_period_list' %}"}
+        ]
+        delete_confirm_str  : (obj) -> return "Really delete service template '#{obj.name}' ?"
+        template_cache_list : ["mon_service_templ_row.html", "mon_service_templ_head.html"]
+        new_object          : {"name" : ""}
+        new_object_created  : (new_obj) -> new_obj.name = null
+    }
+)
+
+monitoring_basic_module.controller("mon_service_templ", ["$scope", "$compile", "$templateCache", "Restangular",
+    ($scope, $compile, $templateCache, Restangular) ->
+        $scope.delete_ok = (obj) ->
+            return true
 ])
 
+angular_add_simple_list_controller(
+    monitoring_basic_module,
+    "host_check_command_base",
+    {
+        rest_url            : "{% url 'rest:host_check_command_list' %}"
+        edit_template       : "host_check_command.html"
+        delete_confirm_str  : (obj) -> return "Really delete host check command '#{obj.name}' ?"
+        template_cache_list : ["host_check_command_row.html", "host_check_command_head.html"]
+        new_object          : {"name" : ""}
+        new_object_created  : (new_obj) -> new_obj.name = null
+    }
+)
+
+monitoring_basic_module.controller("host_check_command", ["$scope", "$compile", "$templateCache", "Restangular",
+    ($scope, $compile, $templateCache, Restangular) ->
+        $scope.delete_ok = (obj) ->
+            return true
+])
+
+angular_add_simple_list_controller(
+    monitoring_basic_module,
+    "mon_contactgroup_base",
+    {
+        rest_url            : "{% url 'rest:mon_contactgroup_list' %}"
+        edit_template       : "mon_contactgroup.html"
+        rest_map            : [
+            {"short" : "mon_contact"      , "url" : "{% url 'rest:mon_contact_list' %}"}
+            {"short" : "user"             , "url" : "{% url 'rest:user_list' %}"}
+            {"short" : "device_group"     , "url" : "{% url 'rest:device_group_list' %}"}
+            {"short" : "mon_service_templ", "url" : "{% url 'rest:mon_service_templ_list' %}"}
+        ]
+        delete_confirm_str  : (obj) -> return "Really delete Contactgroup '#{obj.name}' ?"
+        template_cache_list : ["mon_contactgroup_row.html", "mon_contactgroup_head.html"]
+        new_object          : {"name" : ""}
+        new_object_created  : (new_obj) -> new_obj.name = null
+    }
+)
+
+monitoring_basic_module.controller("mon_contactgroup", ["$scope", "$compile", "$templateCache", "Restangular",
+    ($scope, $compile, $templateCache, Restangular) ->
+        $scope.delete_ok = (obj) ->
+            return true
+])
+
+angular_add_simple_list_controller(
+    monitoring_basic_module,
+    "mon_device_templ_base",
+    {
+        rest_url            : "{% url 'rest:mon_device_templ_list' %}"
+        edit_template       : "mon_device_templ.html"
+        rest_map            : [
+            {"short" : "mon_period"        , "url" : "{% url 'rest:mon_period_list' %}"}
+            {"short" : "mon_service_templ" , "url" : "{% url 'rest:mon_service_templ_list' %}"}
+            {"short" : "host_check_command", "url" : "{% url 'rest:host_check_command_list' %}"}
+        ]
+        delete_confirm_str  : (obj) -> return "Really delete device template '#{obj.name}' ?"
+        template_cache_list : ["mon_device_templ_row.html", "mon_device_templ_head.html"]
+        new_object          : {"name" : ""}
+        new_object_created  : (new_obj) -> new_obj.name = null
+    }
+)
+
+monitoring_basic_module.controller("mon_device_templ", ["$scope", "$compile", "$templateCache", "Restangular",
+    ($scope, $compile, $templateCache, Restangular) ->
+        $scope.delete_ok = (obj) ->
+            return true
+])
 
 {% endinlinecoffeescript %}
 

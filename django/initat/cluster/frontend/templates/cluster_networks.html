@@ -76,9 +76,9 @@
         <span ng-bind-html="ip_fill_up(obj.gateway)"></span>
     </td>
     <td>{{ obj.penalty }}</td>
-    <td>{{ network_types[obj.network_type].description }}</td>
-    <td>{{ obj.master_network | array_lookup:this:'entries':'identifier':'---' }}</td>
-    <td>{{ obj.network_device_type | resolve_n2m:this:'network_device_types':'identifier' }}</td>
+    <td>{{ obj.network_type | array_lookup:this.network_types:'description' }}</td>
+    <td>{{ obj.master_network | array_lookup:this.entries:'identifier':'---' }}</td>
+    <td>{{ obj.network_device_type | resolve_n2m:this.network_device_types:'identifier':'---' }}</td>
     <td><input type="button" class="btn btn-primary" ng-click="edit($event, obj)" value="modify"/></td>
     <td><input type="button" class="btn btn-danger" ng-click="delete(obj)" value="delete"/></td>
 </script>

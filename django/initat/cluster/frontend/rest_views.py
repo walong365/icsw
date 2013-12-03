@@ -27,7 +27,8 @@ logger = logging.getLogger("cluster.rest")
 
 REST_LIST = ["group", "user", "device_group", "network_type", "network_device_type", "network", \
     "kernel", "image", "architecture", "partition_table", "mon_period", "mon_notification", \
-    "mon_contact"]
+    "mon_contact", "mon_service_templ", "host_check_command", "mon_contactgroup", \
+    "mon_device_templ"]
 
 @api_view(('GET',))
 def api_root(request, format=None):

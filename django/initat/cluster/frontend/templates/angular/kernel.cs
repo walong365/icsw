@@ -6,7 +6,7 @@
 
 root = exports ? this
 
-kernel_module = angular.module("icsw.kernel", ["ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "ip_filters", "localytics.directives", "restangular"])
+kernel_module = angular.module("icsw.kernel", ["ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters", "localytics.directives", "restangular"])
 
 angular_module_setup([kernel_module])
 
