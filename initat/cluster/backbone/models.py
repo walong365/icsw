@@ -1558,7 +1558,7 @@ class kernel(models.Model):
     sub_cpu_arch = models.CharField(max_length=192, blank=True)
     target_dir = models.CharField(max_length=765, blank=True)
     comment = models.TextField(blank=True, default="")
-    enabled = models.BooleanField()
+    enabled = models.BooleanField(default=False)
     initrd_version = models.IntegerField(null=True, blank=True)
     initrd_built = models.DateTimeField(null=True, blank=True)
     # which modules are actually built into initrd
