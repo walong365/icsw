@@ -26,15 +26,14 @@
 # install reactor
 import initat.host_monitoring.hm_twisted # @UnusedImport
 
+from initat.host_monitoring import hm_classes
+from initat.host_monitoring.client import client_code
+from initat.host_monitoring.config import global_config
+from initat.host_monitoring.relay import relay_code
+from initat.host_monitoring.server import server_code
 import configfile
 import process_tools
 import sys
-
-from initat.host_monitoring import hm_classes
-from initat.host_monitoring.config import global_config
-from initat.host_monitoring.client import client_code
-from initat.host_monitoring.server import server_code
-from initat.host_monitoring.relay import relay_code
 
 try:
     from host_monitoring_version import VERSION_STRING

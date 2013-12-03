@@ -75,10 +75,11 @@ def parse_ipmi(in_lines):
 
 class _general(hm_classes.hm_module):
     def init_module(self):
-        self.check_ipmi_settings()
         self.ipmi_result, self.ipmi_update = (None, None)
+        self.it_command = False
         self.registered_mvs = set()
         if hasattr(self.process_pool, "register_vector_receiver") and global_config["TRACK_IPMI"]:
+            self.check_ipmi_settings()
             self.popen = None
             self.process_pool.register_timer(self._update_ipmi, 20, instant=True)
         # print "*" * 20
@@ -98,10 +99,20 @@ class _general(hm_classes.hm_module):
         self.it_command = process_tools.find_file(cmd_name)
         # print self.it_command
         if self.it_command:
+            mp_command = process_tools.find_file("modprobe")
             self.log(
                 "found %s at %s" % (
                     cmd_name,
                     self.it_command))
+            self.log("trying to load ipmi kernel modules")
+            for kern_mod in ["ipmi_si", "ipmi_devintf"]:
+                cmd = "%s %s" % (mp_command, kern_mod)
+                c_stat, c_out = commands.getstatusoutput("%s %s" % (cmd))
+                self.log("calling '%s' gave (%d): %s" % (
+                    cmd,
+                    c_stat,
+                    c_out
+                    ))
             # c_suc, c_stat, c_out = self.call_ipmi_command("sensor list", self.log)
             # if c_suc:
             #    for line in c_out:
