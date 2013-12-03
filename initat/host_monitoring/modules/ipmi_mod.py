@@ -39,24 +39,25 @@ def parse_ipmi_type(name, sensor_type):
     key, info, unit, base = ("", "", "", 1)
     parts = name.strip().split()
     lparts = name.strip().lower().split()
+    key_str = "_".join([_p.replace(".", ",") for _p in lparts])
     # print "parse", name, sensor_type, parts
     if sensor_type == "rpm":
         if lparts[-1] == "tach":
             lparts.pop(-1)
-        key = "fan.%s" % ("_".join(lparts))
+        key = "fan.%s" % (key_str)
         info = "rotation of fan %s" % (" ".join(parts))
         unit = "RPM"
         base = 1000
     elif sensor_type == "degrees c":
-        key = "temp.%s" % ("_".join(lparts))
+        key = "temp.%s" % (key_str)
         info = "Temperature of %s" % (" ".join(parts))
         unit = "C"
     elif sensor_type == "volts":
-        key = "volts.%s" % ("_".join(lparts))
+        key = "volts.%s" % (key_str)
         info = "Voltage of %s" % (" ".join(parts))
         unit = "V"
     elif sensor_type == "watts":
-        key = "watts.%s" % ("_".join(lparts))
+        key = "watts.%s" % (key_str)
         info = "Power usage of %s" % (" ".join(parts))
         unit = "W"
     return key, info, unit, base
