@@ -21,6 +21,8 @@
 #
 """ tools for the SGE """
 
+from lxml import etree # @UnresolvedImport
+from lxml.builder import E # @UnresolvedImport
 import argparse
 import commands
 import copy
@@ -34,8 +36,6 @@ import stat
 import sys
 import time
 import zmq
-from lxml import etree # @UnresolvedImport
-from lxml.builder import E # @UnresolvedImport
 try:
     import memcache
 except:
