@@ -17,23 +17,23 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
-""" SNMP relayer """
+""" SNMP relayer, server part """
 
+# import pprint
+from initat.host_monitoring import limits
+from initat.snmp_relay import snmp_relay_schemes
+from initat.snmp_relay.config import global_config
+from initat.snmp_relay.snmp_process import snmp_process
 import configfile
 import difflib
 import logging_tools
 import os
-# import pprint
 import process_tools
 import server_command
 import socket
 import threading_tools
 import time
 import zmq
-from initat.host_monitoring import limits
-from initat.snmp_relay.config import global_config
-from initat.snmp_relay.snmp_process import snmp_process
-from initat.snmp_relay import snmp_relay_schemes
 
 class server_process(threading_tools.process_pool):
     def __init__(self):
@@ -140,7 +140,7 @@ class server_process(threading_tools.process_pool):
     def process_start(self, src_process, src_pid):
         process_tools.append_pids(self.__pid_name, src_pid, mult=3)
         if self.__msi_block:
-            self.__msi_block.add_actual_pid(src_pid, mult=3)
+            self.__msi_block.add_actual_pid(src_pid, mult=3, fuzzy_ceiling=3)
             self.__msi_block.save_block()
     def _int_error(self, err_cause):
         self.log("_int_error() called, cause %s" % (str(err_cause)), logging_tools.LOG_LEVEL_WARN)
