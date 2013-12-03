@@ -18,7 +18,8 @@ from initat.cluster.backbone.models import domain_tree_node, device, category, m
      domain_name_tree, user, group, device_group, home_export_list, device_config, TOP_LOCATIONS, \
      csw_permission, kernel, network, network_type, network_device_type, image, partition_table, \
      mon_period, mon_notification, mon_contact, mon_service_templ, host_check_command, \
-     mon_contactgroup, mon_device_templ
+     mon_contactgroup, mon_device_templ, mon_host_cluster, mon_service_cluster, mon_host_dependency, \
+     mon_service_esc_templ, mon_device_esc_templ
 from initat.cluster.frontend.widgets import device_tree_widget
 
 # import PAM
@@ -922,24 +923,18 @@ class mon_service_templ_form(ModelForm):
             ),
             Div(
                 Div(
-                    FormActions(
-                        Field("nrecovery"),
-                        Field("ncritical"),
-                    ),
+                    Field("nrecovery"),
+                    Field("ncritical"),
                     css_class="col-md-3",
                 ),
                 Div(
-                    FormActions(
-                        Field("nwarning"),
-                        Field("nunknown"),
-                    ),
+                    Field("nwarning"),
+                    Field("nunknown"),
                     css_class="col-md-3",
                 ),
                 Div(
-                    FormActions(
-                        Field("nflapping"),
-                        Field("nplanned_downtime"),
-                    ),
+                    Field("nflapping"),
+                    Field("nplanned_downtime"),
                     css_class="col-md-3",
                 ),
                 css_class="row",
@@ -954,17 +949,13 @@ class mon_service_templ_form(ModelForm):
             ),
             Div(
                 Div(
-                    FormActions(
-                        Field("flap_detect_ok"),
-                        Field("flap_detect_warn"),
-                    ),
+                    Field("flap_detect_ok"),
+                    Field("flap_detect_warn"),
                     css_class="col-md-5",
                 ),
                 Div(
-                    FormActions(
-                        Field("flap_detect_critical"),
-                        Field("flap_detect_unknown"),
-                    ),
+                    Field("flap_detect_critical"),
+                    Field("flap_detect_unknown"),
                     css_class="col-md-5",
                 ),
                 css_class="row",
@@ -980,6 +971,57 @@ class mon_service_templ_form(ModelForm):
             self.fields[clear_f].empty_label = None
     class Meta:
         model = mon_service_templ
+
+class mon_service_esc_templ_form(ModelForm):
+    helper = FormHelper()
+    helper.form_id = "form"
+    helper.form_name = "form"
+    helper.form_class = 'form-horizontal'
+    helper.label_class = 'col-sm-3'
+    helper.field_class = 'col-sm-7'
+    helper.ng_model = "edit_obj"
+    helper.layout = Layout(
+        HTML("<h2>Service Escalation template</h2>"),
+            Fieldset(
+                "Basic data",
+                Field("name"),
+            ),
+            Fieldset(
+                "Notifications",
+                Field("first_notification", min=1, max=10),
+                Field("last_notification", min=1, max=10),
+                Field("esc_period", ng_options="value.idx as value.name for value in rest_data.mon_period | orderBy:'name'"),
+                Field("ninterval", min=0, max=60),
+            ),
+            Div(
+                Div(
+                    Field("nrecovery"),
+                    Field("ncritical"),
+                    css_class="col-md-3",
+                ),
+                Div(
+                    Field("nwarning"),
+                    Field("nunknown"),
+                    css_class="col-md-3",
+                ),
+                Div(
+                    Field("nflapping"),
+                    Field("nplanned_downtime"),
+                    css_class="col-md-3",
+                ),
+                css_class="row",
+            ),
+            FormActions(
+                Submit("submit", "", css_class="primaryAction", ng_value="get_action_string()"),
+            ),
+        )
+    def __init__(self, *args, **kwargs):
+        ModelForm.__init__(self, *args, **kwargs)
+        for clear_f in ["esc_period"]:
+            self.fields[clear_f].queryset = empty_query_set()
+            self.fields[clear_f].empty_label = None
+    class Meta:
+        model = mon_service_esc_templ
 
 class host_check_command_form(ModelForm):
     helper = FormHelper()
@@ -1038,7 +1080,6 @@ class mon_contactgroup_form(ModelForm):
     class Meta:
         model = mon_contactgroup
 
-
 class mon_device_templ_form(ModelForm):
     helper = FormHelper()
     helper.form_id = "form"
@@ -1069,23 +1110,17 @@ class mon_device_templ_form(ModelForm):
             ),
             Div(
                 Div(
-                    FormActions(
-                        Field("nrecovery"),
-                        Field("ndown"),
-                    ),
+                    Field("nrecovery"),
+                    Field("ndown"),
                     css_class="col-md-3",
                 ),
                 Div(
-                    FormActions(
-                        Field("nunreachable"),
-                    ),
+                    Field("nunreachable"),
                     css_class="col-md-3",
                 ),
                 Div(
-                    FormActions(
-                        Field("nflapping"),
-                        Field("nplanned_downtime"),
-                    ),
+                    Field("nflapping"),
+                    Field("nplanned_downtime"),
                     css_class="col-md-3",
                 ),
                 css_class="row",
@@ -1100,16 +1135,12 @@ class mon_device_templ_form(ModelForm):
             ),
             Div(
                 Div(
-                    FormActions(
-                        Field("flap_detect_up"),
-                        Field("flap_detect_down"),
-                    ),
+                    Field("flap_detect_up"),
+                    Field("flap_detect_down"),
                     css_class="col-md-5",
                 ),
                 Div(
-                    FormActions(
-                        Field("flap_detect_unreachable"),
-                    ),
+                    Field("flap_detect_unreachable"),
                     css_class="col-md-5",
                 ),
                 css_class="row",
@@ -1125,4 +1156,198 @@ class mon_device_templ_form(ModelForm):
             self.fields[clear_f].empty_label = None
     class Meta:
         model = mon_device_templ
+
+class mon_device_esc_templ_form(ModelForm):
+    helper = FormHelper()
+    helper.form_id = "form"
+    helper.form_name = "form"
+    helper.form_class = 'form-horizontal'
+    helper.label_class = 'col-sm-3'
+    helper.field_class = 'col-sm-7'
+    helper.ng_model = "edit_obj"
+    helper.layout = Layout(
+        HTML("<h2>Device Escalation template</h2>"),
+            Fieldset(
+                "Basic data",
+                Field("name"),
+                Field("mon_service_esc_templ", ng_options="value.idx as value.name for value in rest_data.mon_service_esc_templ | orderBy:'name'", chosen=True),
+            ),
+            Fieldset(
+                "Notifications",
+                Field("first_notification", min=1, max=10),
+                Field("last_notification", min=1, max=10),
+                Field("esc_period", ng_options="value.idx as value.name for value in rest_data.mon_period | orderBy:'name'"),
+                Field("ninterval", min=0, max=60),
+            ),
+            Fieldset(
+                "Notification",
+            ),
+            Div(
+                Div(
+                    Field("nrecovery"),
+                    Field("ndown"),
+                    css_class="col-md-3",
+                ),
+                Div(
+                    Field("nunreachable"),
+                    css_class="col-md-3",
+                ),
+                Div(
+                    Field("nflapping"),
+                    Field("nplanned_downtime"),
+                    css_class="col-md-3",
+                ),
+                css_class="row",
+            ),
+            FormActions(
+                Submit("submit", "", css_class="primaryAction", ng_value="get_action_string()"),
+            ),
+        )
+    def __init__(self, *args, **kwargs):
+        ModelForm.__init__(self, *args, **kwargs)
+        for clear_f in ["mon_service_esc_templ", "esc_period"]:
+            self.fields[clear_f].queryset = empty_query_set()
+            self.fields[clear_f].empty_label = None
+    class Meta:
+        model = mon_device_esc_templ
+
+class mon_host_cluster_form(ModelForm):
+    helper = FormHelper()
+    helper.form_id = "form"
+    helper.form_name = "form"
+    helper.form_class = 'form-horizontal'
+    helper.label_class = 'col-sm-3'
+    helper.field_class = 'col-sm-7'
+    helper.ng_model = "edit_obj"
+    helper.layout = Layout(
+        HTML("<h2>Host Cluster</h2>"),
+            Fieldset(
+                "Basic data",
+                Field("name"),
+                Field("description"),
+            ),
+            Fieldset(
+                "Devices",
+                Field("main_device", ng_options="value.idx as value.name for value in rest_data.device | orderBy:'name'", chosen=True),
+                Field("devices", ng_options="value.idx as value.name for value in rest_data.device | orderBy:'name'", chosen=True),
+                # Field("device_groups", ng_options="value.idx as value.name for value in rest_data.device_group | orderBy:'name'", chosen=True),
+            ),
+            Fieldset(
+                "Service",
+                Field("mon_service_templ", ng_options="value.idx as value.name for value in rest_data.mon_service_templ | orderBy:'name'", chosen=True),
+                Field("warn_value", min=0, max=128),
+                Field("error_value", min=0, max=128),
+            ),
+            FormActions(
+                Submit("submit", "", css_class="primaryAction", ng_value="get_action_string()"),
+            ),
+        )
+    def __init__(self, *args, **kwargs):
+        ModelForm.__init__(self, *args, **kwargs)
+        for clear_f in ["mon_service_templ", "devices", "main_device"]:
+            self.fields[clear_f].queryset = empty_query_set()
+            self.fields[clear_f].empty_label = None
+    class Meta:
+        model = mon_host_cluster
+
+class mon_service_cluster_form(ModelForm):
+    helper = FormHelper()
+    helper.form_id = "form"
+    helper.form_name = "form"
+    helper.form_class = 'form-horizontal'
+    helper.label_class = 'col-sm-3'
+    helper.field_class = 'col-sm-7'
+    helper.ng_model = "edit_obj"
+    helper.layout = Layout(
+        HTML("<h2>Service Cluster</h2>"),
+            Fieldset(
+                "Basic data",
+                Field("name"),
+                Field("description"),
+            ),
+            Fieldset(
+                "Devices",
+                Field("main_device", ng_options="value.idx as value.name for value in rest_data.device | orderBy:'name'", chosen=True),
+                Field("devices", ng_options="value.idx as value.name for value in rest_data.device | orderBy:'name'", chosen=True),
+                # Field("device_groups", ng_options="value.idx as value.name for value in rest_data.device_group | orderBy:'name'", chosen=True),
+            ),
+            Fieldset(
+                "Service",
+                Field("mon_service_templ", ng_options="value.idx as value.name for value in rest_data.mon_service_templ | orderBy:'name'", chosen=True),
+                Field("mon_check_command", ng_options="value.idx as value.name for value in rest_data.mon_check_command | orderBy:'name'", chosen=True),
+                Field("warn_value", min=0, max=128),
+                Field("error_value", min=0, max=128),
+            ),
+            FormActions(
+                Submit("submit", "", css_class="primaryAction", ng_value="get_action_string()"),
+            ),
+        )
+    def __init__(self, *args, **kwargs):
+        ModelForm.__init__(self, *args, **kwargs)
+        for clear_f in ["mon_service_templ", "devices", "main_device", "mon_check_command"]:
+            self.fields[clear_f].queryset = empty_query_set()
+            self.fields[clear_f].empty_label = None
+    class Meta:
+        model = mon_service_cluster
+
+class mon_host_dependency_form(ModelForm):
+    helper = FormHelper()
+    helper.form_id = "form"
+    helper.form_name = "form"
+    helper.form_class = 'form-horizontal'
+    helper.label_class = 'col-sm-3'
+    helper.field_class = 'col-sm-7'
+    helper.ng_model = "edit_obj"
+    helper.layout = Layout(
+        HTML("<h2>Contactgroup</h2>"),
+            Fieldset(
+                "Basic data",
+                Field("name"),
+                Field("dependency_period", ng_options="value.idx as value.name for value in rest_data.mon_period | orderBy:'name'", chosen=True),
+                Field("priority", min= -128, max=128),
+                Field("inherits_parent"),
+            ),
+            Fieldset(
+                "Execution failure criteria",
+                Div(
+                    Div(
+                        Field("efc_up"),
+                        Field("efc_down"),
+                        css_class="col-md-5",
+                    ),
+                    Div(
+                        Field("efc_unreachable"),
+                        Field("efc_pending"),
+                        css_class="col-md-5",
+                    ),
+                    css_class="rows",
+                ),
+            ),
+            Fieldset(
+                "Notification failure criteria",
+                Div(
+                    Div(
+                        Field("nfc_up"),
+                        Field("nfc_down"),
+                        css_class="col-md-5",
+                    ),
+                    Div(
+                        Field("nfc_unreachable"),
+                        Field("nfc_pending"),
+                        css_class="col-md-5",
+                    ),
+                    css_class="rows",
+                ),
+            ),
+            FormActions(
+                Submit("submit", "", css_class="primaryAction", ng_value="get_action_string()"),
+            ),
+        )
+    def __init__(self, *args, **kwargs):
+        ModelForm.__init__(self, *args, **kwargs)
+        for clear_f in ["dependency_period"]:
+            self.fields[clear_f].queryset = empty_query_set()
+            self.fields[clear_f].empty_label = None
+    class Meta:
+        model = mon_host_dependency
 

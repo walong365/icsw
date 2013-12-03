@@ -28,7 +28,9 @@ logger = logging.getLogger("cluster.rest")
 REST_LIST = ["group", "user", "device_group", "network_type", "network_device_type", "network", \
     "kernel", "image", "architecture", "partition_table", "mon_period", "mon_notification", \
     "mon_contact", "mon_service_templ", "host_check_command", "mon_contactgroup", \
-    "mon_device_templ"]
+    "mon_device_templ", "mon_host_cluster", "device", "mon_check_command", "mon_service_cluster", \
+    "mon_host_dependency", "mon_service_esc_templ", "mon_device_esc_templ",
+    ]
 
 @api_view(('GET',))
 def api_root(request, format=None):
@@ -152,6 +154,8 @@ class list_view(mixins.ListModelMixin,
             "image" : ([], ["new_image", "act_image"]),
             "partition_table" : ([], ["new_partition_table", "act_partition_table", "sys_partition_set", "lvm_lv_set" , "lvm_vg_set", "partition_disc_set"]),
             "mon_period" : ([], ["service_check_period", "mon_device_templ_set"]),
+            "device" : ([], []),
+            "mon_check_command" : ([], ["exclude_devices", "categories"]),
             }.get(model_name, ([], []))
         return self.model.objects.all().select_related(*related_fields).prefetch_related(*prefetch_fields)
 

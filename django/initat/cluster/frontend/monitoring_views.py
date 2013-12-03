@@ -11,12 +11,12 @@ from django.utils.decorators import method_decorator
 from django.views.generic import View
 from initat.cluster.backbone.models import config, device_group, device, \
      mon_check_command, mon_service_templ, mon_period, mon_contact, user, \
-     mon_contactgroup, mon_device_templ, mon_host_dependency, \
-     mon_host_cluster, mon_service_cluster, mon_device_esc_templ, mon_service_esc_templ, \
-     partition_table, mon_notification, host_check_command
+     partition_table
 from initat.cluster.frontend import forms
 from initat.cluster.frontend.forms import mon_period_form, mon_notification_form, mon_contact_form, \
-    mon_service_templ_form, host_check_command_form, mon_contactgroup_form, mon_device_templ_form
+    mon_service_templ_form, host_check_command_form, mon_contactgroup_form, mon_device_templ_form, \
+    mon_host_cluster_form, mon_service_cluster_form, mon_host_dependency_form, \
+    mon_service_esc_templ_form, mon_device_esc_templ_form
 from initat.cluster.frontend.helper_functions import contact_server, xml_wrapper
 from initat.core.render import render_me, render_string
 from lxml import etree # @UnresolvedImports
@@ -75,57 +75,63 @@ class setup(View):
                 "mon_device_templ_form" : mon_device_templ_form(),
                 }
         )()
-    @method_decorator(xml_wrapper)
-    def post(self, request):
-        xml_resp = E.response()
-        request.xml_response["response"] = xml_resp
-        device_group_dict = {}
-        for cur_user in user.objects.all().prefetch_related("allowed_device_groups"):
-            device_group_dict[cur_user.login] = list([dg.pk for dg in cur_user.allowed_device_groups.all()])
-        xml_resp.extend(
-            [
-                E.host_check_commands(*[cur_cc.get_xml() for cur_cc in host_check_command.objects.all()]),
-                E.device_groups(*[cur_dg.get_xml(full=False, with_devices=False) for cur_dg in device_group.objects.exclude(Q(cluster_device_group=True))]),
-                E.users(*[cur_u.get_xml(allowed_device_group_dict=device_group_dict) for cur_u in user.objects.filter(Q(active=True))]),
-                E.mon_periods(*[cur_p.get_xml() for cur_p in mon_period.objects.all()]),
-                E.mon_contacts(*[cur_c.get_xml() for cur_c in mon_contact.objects.all()]),
-                E.mon_service_templs(*[cur_st.get_xml() for cur_st in mon_service_templ.objects.all()]),
-                E.mon_contactgroups(*[cur_cg.get_xml() for cur_cg in mon_contactgroup.objects.all()]),
-                E.mon_device_templs(*[cur_dt.get_xml() for cur_dt in mon_device_templ.objects.all()]),
-                E.devices(*[cur_dev.get_simple_xml() for cur_dev in device.objects.exclude(Q(device_type__identifier="MD")).order_by("name")]),
-                E.mon_check_command(*[cur_mc.get_xml() for cur_mc in mon_check_command.objects.prefetch_related("categories").all()]),
-                E.mon_notifications(*[cur_mn.get_xml() for cur_mn in mon_notification.objects.all()]),
-            ]
-        )
+#     @method_decorator(xml_wrapper)
+#     def post(self, request):
+#         xml_resp = E.response()
+#         request.xml_response["response"] = xml_resp
+#         device_group_dict = {}
+#         for cur_user in user.objects.all().prefetch_related("allowed_device_groups"):
+#             device_group_dict[cur_user.login] = list([dg.pk for dg in cur_user.allowed_device_groups.all()])
+#         xml_resp.extend(
+#             [
+#                 E.host_check_commands(*[cur_cc.get_xml() for cur_cc in host_check_command.objects.all()]),
+#                 E.device_groups(*[cur_dg.get_xml(full=False, with_devices=False) for cur_dg in device_group.objects.exclude(Q(cluster_device_group=True))]),
+#                 E.users(*[cur_u.get_xml(allowed_device_group_dict=device_group_dict) for cur_u in user.objects.filter(Q(active=True))]),
+#                 E.mon_periods(*[cur_p.get_xml() for cur_p in mon_period.objects.all()]),
+#                 E.mon_contacts(*[cur_c.get_xml() for cur_c in mon_contact.objects.all()]),
+#                 E.mon_service_templs(*[cur_st.get_xml() for cur_st in mon_service_templ.objects.all()]),
+#                 E.mon_contactgroups(*[cur_cg.get_xml() for cur_cg in mon_contactgroup.objects.all()]),
+#                 E.mon_device_templs(*[cur_dt.get_xml() for cur_dt in mon_device_templ.objects.all()]),
+#                 E.devices(*[cur_dev.get_simple_xml() for cur_dev in device.objects.exclude(Q(device_type__identifier="MD")).order_by("name")]),
+#                 E.mon_check_command(*[cur_mc.get_xml() for cur_mc in mon_check_command.objects.prefetch_related("categories").all()]),
+#                 E.mon_notifications(*[cur_mn.get_xml() for cur_mn in mon_notification.objects.all()]),
+#             ]
+#         )
 
 class extended_setup(View):
     @method_decorator(login_required)
     def get(self, request):
         return render_me(
-            request, "monitoring_extended_setup.html",
+            request, "monitoring_extended_setup.html", {
+                "mon_host_cluster_form" : mon_host_cluster_form(),
+                "mon_service_cluster_form" : mon_service_cluster_form(),
+                "mon_host_dependency_form" : mon_host_dependency_form(),
+                "mon_service_esc_templ_form" : mon_service_esc_templ_form(),
+                "mon_device_esc_templ_form" : mon_device_esc_templ_form(),
+                }
         )()
-    @method_decorator(xml_wrapper)
-    def post(self, request):
-        xml_resp = E.response()
-        request.xml_response["response"] = xml_resp
-        xml_resp.extend(
-            [
-                E.device_groups(*[cur_dg.get_xml(full=False, with_devices=False) for cur_dg in device_group.objects.exclude(Q(cluster_device_group=True))]),
-                E.users(*[cur_u.get_xml() for cur_u in user.objects.select_related("group").prefetch_related("secondary_groups").filter(Q(active=True))]),
-                E.mon_periods(*[cur_p.get_xml() for cur_p in mon_period.objects.all()]),
-                E.mon_contacts(*[cur_c.get_xml() for cur_c in mon_contact.objects.all()]),
-                E.mon_service_templs(*[cur_st.get_xml() for cur_st in mon_service_templ.objects.all()]),
-                E.mon_service_esc_templs(*[cur_set.get_xml() for cur_set in mon_service_esc_templ.objects.all()]),
-                E.mon_contactgroups(*[cur_cg.get_xml() for cur_cg in mon_contactgroup.objects.all()]),
-                E.mon_device_templs(*[cur_dt.get_xml() for cur_dt in mon_device_templ.objects.all()]),
-                E.mon_device_esc_templs(*[cur_det.get_xml() for cur_det in mon_device_esc_templ.objects.all()]),
-                E.mon_host_clusters(*[cur_mhc.get_xml() for cur_mhc in mon_host_cluster.objects.prefetch_related("devices").filter(Q(user_editable=True))]),
-                E.mon_service_clusters(*[cur_msc.get_xml() for cur_msc in mon_service_cluster.objects.filter(Q(user_editable=True))]),
-                E.devices(*[cur_dev.get_simple_xml() for cur_dev in device.objects.exclude(Q(device_type__identifier="MD")).order_by("name")]),
-                E.mon_check_commands(*[cur_mc.get_xml() for cur_mc in mon_check_command.objects.prefetch_related("categories").filter(Q(is_event_handler=False) & Q(is_special_command=False)).order_by("name")]),
-                E.mon_host_dependencies(*[cur_mhd.get_xml() for cur_mhd in mon_host_dependency.objects.all()]),
-            ]
-        )
+#     @method_decorator(xml_wrapper)
+#     def post(self, request):
+#         xml_resp = E.response()
+#         request.xml_response["response"] = xml_resp
+#         xml_resp.extend(
+#             [
+#                 E.device_groups(*[cur_dg.get_xml(full=False, with_devices=False) for cur_dg in device_group.objects.exclude(Q(cluster_device_group=True))]),
+#                 E.users(*[cur_u.get_xml() for cur_u in user.objects.select_related("group").prefetch_related("secondary_groups").filter(Q(active=True))]),
+#                 E.mon_periods(*[cur_p.get_xml() for cur_p in mon_period.objects.all()]),
+#                 E.mon_contacts(*[cur_c.get_xml() for cur_c in mon_contact.objects.all()]),
+#                 E.mon_service_templs(*[cur_st.get_xml() for cur_st in mon_service_templ.objects.all()]),
+#                 E.mon_service_esc_templs(*[cur_set.get_xml() for cur_set in mon_service_esc_templ.objects.all()]),
+#                 E.mon_contactgroups(*[cur_cg.get_xml() for cur_cg in mon_contactgroup.objects.all()]),
+#                 E.mon_device_templs(*[cur_dt.get_xml() for cur_dt in mon_device_templ.objects.all()]),
+#                 E.mon_device_esc_templs(*[cur_det.get_xml() for cur_det in mon_device_esc_templ.objects.all()]),
+#                 E.mon_host_clusters(*[cur_mhc.get_xml() for cur_mhc in mon_host_cluster.objects.prefetch_related("devices").filter(Q(user_editable=True))]),
+#                 E.mon_service_clusters(*[cur_msc.get_xml() for cur_msc in mon_service_cluster.objects.filter(Q(user_editable=True))]),
+#                 E.devices(*[cur_dev.get_simple_xml() for cur_dev in device.objects.exclude(Q(device_type__identifier="MD")).order_by("name")]),
+#                 E.mon_check_commands(*[cur_mc.get_xml() for cur_mc in mon_check_command.objects.prefetch_related("categories").filter(Q(is_event_handler=False) & Q(is_special_command=False)).order_by("name")]),
+#                 E.mon_host_dependencies(*[cur_mhd.get_xml() for cur_mhd in mon_host_dependency.objects.all()]),
+#             ]
+#         )
 
 class device_config(View):
     @method_decorator(login_required)

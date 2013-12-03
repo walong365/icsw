@@ -203,7 +203,6 @@
     <td><input type="button" class="btn btn-danger" ng-show="delete_ok(obj)" ng-click="delete(obj)" value="delete"/></td>
 </script>
 
-
 <script type="text/ng-template" id="mon_contactgroup_head.html">
     <tr>
         <th>Name</th>   
@@ -274,316 +273,107 @@
 
 <tabset>
     <tab heading="Periods">
-<div ng-controller="mon_period_base">
-
-<div ng-controller="mon_period">
-<h2>Periods ({{entries.length}} entries), <input type="button" value="create new" ng-click="create($event)"/></h2>
-
-<table class="table table-condensed table-condensed table-hover" style="width:auto;">
-    <thead monperiodhead></thead>
-    <tbody>
-        <tr><td colspan="9" paginator entries="entries" pag_settings="pagSettings" per_page="5"></td></tr>
-        <tr monperiodrow ng-repeat="obj in entries | orderBy:'-name':true | paginator:this"></tr>
-    </tbody>
-</table>
-
-</div>
-
-</div>
-</tab>
+        <div ng-controller="mon_period_base">
+            <div ng-controller="mon_period">
+                <h2>Periods ({{entries.length}} entries), <input type="button" value="create new" ng-click="create($event)"/></h2>
+                <table class="table table-condensed table-condensed table-hover" style="width:auto;">
+                    <thead monperiodhead></thead>
+                    <tbody>
+                        <tr><td colspan="9" paginator entries="entries" pag_settings="pagSettings" per_page="5"></td></tr>
+                        <tr monperiodrow ng-repeat="obj in entries | orderBy:'-name':true | paginator:this"></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </tab>
     <tab heading="Notifications">
-<div ng-controller="mon_notification_base">
-
-<div ng-controller="mon_notification">
-<h2>Notifications ({{entries.length}} entries), <input type="button" value="create new" ng-click="create($event)"/></h2>
-
-<table class="table table-condensed table-condensed table-hover" style="width:auto;">
-    <thead monnotificationhead></thead>
-    <tbody>
-        <tr><td colspan="9" paginator entries="entries" pag_settings="pagSettings" per_page="5"></td></tr>
-        <tr monnotificationrow ng-repeat="obj in entries | orderBy:'-name':true | paginator:this"></tr>
-    </tbody>
-</table>
-
-</div>
-
-</div>
-</tab>
+        <div ng-controller="mon_notification_base">
+            <div ng-controller="mon_notification">
+                <h2>Notifications ({{entries.length}} entries), <input type="button" value="create new" ng-click="create($event)"/></h2>
+                <table class="table table-condensed table-condensed table-hover" style="width:auto;">
+                    <thead monnotificationhead></thead>
+                    <tbody>
+                        <tr><td colspan="9" paginator entries="entries" pag_settings="pagSettings" per_page="5"></td></tr>
+                        <tr monnotificationrow ng-repeat="obj in entries | orderBy:'-name':true | paginator:this"></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </tab>
     <tab heading="Contacts">
-<div ng-controller="mon_contact_base">
-
-<div ng-controller="mon_contact">
-<h2>Contacts ({{entries.length}} entries), <input type="button" value="create new" ng-click="create($event)"/></h2>
-
-<table class="table table-condensed table-condensed table-hover" style="width:auto;">
-    <thead moncontacthead></thead>
-    <tbody>
-        <tr><td colspan="9" paginator entries="entries" pag_settings="pagSettings" per_page="5"></td></tr>
-        <tr moncontactrow ng-repeat="obj in entries | orderBy:'-name':true | paginator:this"></tr>
-    </tbody>
-</table>
-
-</div>
-
-</div>
-</tab>
-
-<tab heading="Service">
-<div ng-controller="mon_service_templ_base">
-
-<div ng-controller="mon_service_templ">
-<h2>Service templates ({{entries.length}} entries), <input type="button" value="create new" ng-click="create($event)"/></h2>
-
-<table class="table table-condensed table-condensed table-hover" style="width:auto;">
-    <thead monservicetemplhead></thead>
-    <tbody>
-        <tr><td colspan="9" paginator entries="entries" pag_settings="pagSettings" per_page="5"></td></tr>
-        <tr monservicetemplrow ng-repeat="obj in entries | orderBy:'-name':true | paginator:this"></tr>
-    </tbody>
-</table>
-
-</div>
-
-</div>
-</tab>
-<tab heading="Host check commands">
-<div ng-controller="host_check_command_base">
-
-<div ng-controller="host_check_command">
-<h2>Host check commands ({{entries.length}} entries), <input type="button" value="create new" ng-click="create($event)"/></h2>
-
-<table class="table table-condensed table-condensed table-hover" style="width:auto;">
-    <thead hostcheckcommandhead></thead>
-    <tbody>
-        <tr><td colspan="9" paginator entries="entries" pag_settings="pagSettings" per_page="5"></td></tr>
-        <tr hostcheckcommandrow ng-repeat="obj in entries | orderBy:'-name':true | paginator:this"></tr>
-    </tbody>
-</table>
-
-</div>
-
-</div>
-</tab>
-<tab heading="Contactgroups">
-<div ng-controller="mon_contactgroup_base">
-
-<div ng-controller="mon_contactgroup">
-<h2>Contactgroups ({{entries.length}} entries), <input type="button" value="create new" ng-click="create($event)"/></h2>
-
-<table class="table table-condensed table-condensed table-hover" style="width:auto;">
-    <thead moncontactgrouphead></thead>
-    <tbody>
-        <tr><td colspan="9" paginator entries="entries" pag_settings="pagSettings" per_page="5"></td></tr>
-        <tr moncontactgrouprow ng-repeat="obj in entries | orderBy:'-name':true | paginator:this"></tr>
-    </tbody>
-</table>
-
-</div>
-
-</div>
-</tab>
-<tab heading="Device templates">
-<div ng-controller="mon_device_templ_base">
-
-<div ng-controller="mon_device_templ">
-<h2>Device templates ({{entries.length}} entries), <input type="button" value="create new" ng-click="create($event)"/></h2>
-
-<table class="table table-condensed table-condensed table-hover" style="width:auto;">
-    <thead mondevicetemplhead></thead>
-    <tbody>
-        <tr><td colspan="9" paginator entries="entries" pag_settings="pagSettings" per_page="5"></td></tr>
-        <tr mondevicetemplrow ng-repeat="obj in entries | orderBy:'-name':true | paginator:this"></tr>
-    </tbody>
-</table>
-
-</div>
-
-</div>
-</tab>
+        <div ng-controller="mon_contact_base">
+            <div ng-controller="mon_contact">
+                <h2>Contacts ({{entries.length}} entries), <input type="button" value="create new" ng-click="create($event)"/></h2>
+                <table class="table table-condensed table-condensed table-hover" style="width:auto;">
+                    <thead moncontacthead></thead>
+                    <tbody>
+                        <tr><td colspan="9" paginator entries="entries" pag_settings="pagSettings" per_page="5"></td></tr>
+                        <tr moncontactrow ng-repeat="obj in entries | orderBy:'-name':true | paginator:this"></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </tab>
+    <tab heading="Service">
+        <div ng-controller="mon_service_templ_base">
+            <div ng-controller="mon_service_templ">
+                <h2>Service templates ({{entries.length}} entries), <input type="button" value="create new" ng-click="create($event)"/></h2>
+                <table class="table table-condensed table-condensed table-hover" style="width:auto;">
+                    <thead monservicetemplhead></thead>
+                    <tbody>
+                        <tr><td colspan="9" paginator entries="entries" pag_settings="pagSettings" per_page="5"></td></tr>
+                        <tr monservicetemplrow ng-repeat="obj in entries | orderBy:'-name':true | paginator:this"></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </tab>
+    <tab heading="Host check commands">
+        <div ng-controller="host_check_command_base">
+            <div ng-controller="host_check_command">
+                <h2>Host check commands ({{entries.length}} entries), <input type="button" value="create new" ng-click="create($event)"/></h2>
+                <table class="table table-condensed table-condensed table-hover" style="width:auto;">
+                    <thead hostcheckcommandhead></thead>
+                    <tbody>
+                        <tr><td colspan="9" paginator entries="entries" pag_settings="pagSettings" per_page="5"></td></tr>
+                        <tr hostcheckcommandrow ng-repeat="obj in entries | orderBy:'-name':true | paginator:this"></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </tab>
+    <tab heading="Contactgroups">
+        <div ng-controller="mon_contactgroup_base">
+            <div ng-controller="mon_contactgroup">
+                <h2>Contactgroups ({{entries.length}} entries), <input type="button" value="create new" ng-click="create($event)"/></h2>
+                <table class="table table-condensed table-condensed table-hover" style="width:auto;">
+                    <thead moncontactgrouphead></thead>
+                    <tbody>
+                        <tr><td colspan="9" paginator entries="entries" pag_settings="pagSettings" per_page="5"></td></tr>
+                        <tr moncontactgrouprow ng-repeat="obj in entries | orderBy:'-name':true | paginator:this"></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </tab>
+    <tab heading="Device templates">
+        <div ng-controller="mon_device_templ_base">
+            <div ng-controller="mon_device_templ">
+                <h2>Device templates ({{entries.length}} entries), <input type="button" value="create new" ng-click="create($event)"/></h2>
+                <table class="table table-condensed table-condensed table-hover" style="width:auto;">
+                    <thead mondevicetemplhead></thead>
+                    <tbody>
+                        <tr><td colspan="9" paginator entries="entries" pag_settings="pagSettings" per_page="5"></td></tr>
+                        <tr mondevicetemplrow ng-repeat="obj in entries | orderBy:'-name':true | paginator:this"></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </tab>
 </tabset>
 
 {% endverbatim %}
 
-{#<h1 class="center">Monitoring settings</h1>#}
-
-{#<div id="mon_tables"></div>#}
-
-<script type="text/javascript">
-
-{% inlinecoffeescript %}
-
-root = exports ? this
-
-get_channel_list = () ->
-    return $("<list>").append(
-        $("<entry>").attr("pk", "mail").text("E-Mail"),
-        $("<entry>").attr("pk", "sms").text("SMS"),
-    ).children()
-    
-get_not_type_list = () ->
-    return $("<list>").append(
-        $("<entry>").attr("pk", "host").text("Host"),
-        $("<entry>").attr("pk", "service").text("Service"),
-    ).children()
-    
-master_array = {
-    "monper" : new draw_setup("MonPeriod", "monper", "mon_period",
-        "{% url 'base:create_object' 'mon_period' %}",
-        "{% url 'base:delete_object' 'mon_period' %}",
-        [
-            new draw_info("name"), 
-            new draw_info("alias"),
-            new draw_info("sun_range", {label : "Sun", size : 14, default : "00:00-24:00"}),
-            new draw_info("mon_range", {label : "Mon", size : 14, default : "00:00-24:00"}),
-            new draw_info("tue_range", {label : "Tue", size : 14, default : "00:00-24:00"}),
-            new draw_info("wed_range", {label : "Wed", size : 14, default : "00:00-24:00"}),
-            new draw_info("thu_range", {label : "Thu", size : 14, default : "00:00-24:00"}),
-            new draw_info("fri_range", {label : "Fri", size : 14, default : "00:00-24:00"}),
-            new draw_info("sat_range", {label : "Sat", size : 14, default : "00:00-24:00"}),
-        ], {
-            lock_div : "mon_tables"
-        }
-    ),
-    "monn" : new draw_setup("Notification", "monn", "mon_notification",
-        "{% url 'base:create_object' 'mon_notification' %}",
-        "{% url 'base:delete_object' 'mon_notification' %}",
-        [
-            new draw_info("name"),
-            new draw_info("subject"),
-            new draw_info("enabled", {boolean : 1}),
-            new draw_info("channel", {select_source : get_channel_list}),
-            new draw_info("not_type", {select_source : get_not_type_list}),
-            new draw_info("content", {textarea : true}),
-        ], {
-            "lock_div" : "mon_tables"
-        }
-    ),
-    "moncon" : new draw_setup("Contact", "moncon", "mon_contact",
-        "{% url 'base:create_object' 'mon_contact' %}",
-        "{% url 'base:delete_object' 'mon_contact' %}",
-        [
-            new draw_info("user", {select_source : "users user"}),
-            new draw_info("snperiod", {select_source : "mon_periods mon_period", label : "Service Notify"}),
-            new draw_info("snrecovery", {boolean : 1, label : "Recov / Crit / Warn / Unknown / Flap / Planned", span : 6}),
-            new draw_info("sncritical", {boolean : 1}),
-            new draw_info("snwarning" , {boolean : 1}),
-            new draw_info("snunknown" , {boolean : 1}),
-            new draw_info("sflapping" , {boolean : 1}),
-            new draw_info("splanned_downtime" , {boolean : 1}),
-            new draw_info("hnperiod", {select_source : "mon_periods mon_period", label : "Host Notify"}),
-            new draw_info("hnrecovery"   , {boolean : 1, label : "Recov / Down / Unreach / Flap / Planned", span : 5}),
-            new draw_info("hndown"       , {boolean : 1}),
-            new draw_info("hnunreachable", {boolean : 1})
-            new draw_info("hflapping"    , {boolean : 1}),
-            new draw_info("hplanned_downtime" , {boolean : 1}),
-            new draw_info("notifications", {select_source : "mon_notifications mon_notification", label : "Notifications",   manytomany : 1}),
-            new draw_info("mon_alias", {label : "Alias"}),
-        ], {
-            "required_xml" : ["monper", "user", "monn"],
-            "lock_div"     : "mon_tables"
-        }
-    ),
-    "monst" : new draw_setup("Service Template", "monst", "mon_service_templ",
-        "{% url 'base:create_object' 'mon_service_templ' %}",
-        "{% url 'base:delete_object' 'mon_service_templ' %}",
-        [
-            new draw_info("name"),
-            new draw_info("volatile", {boolean : 1}),
-            new draw_info("nsc_period", {select_source : "mon_periods mon_period", label : "Check period"}),
-            new draw_info("max_attempts", {min : 1, max : 5, number : 1, default : 1, label : "max attempts"}),
-            new draw_info("check_interval", {min : 1, max : 60, number : 1, default : 5, label : "Check IV"}),
-            new draw_info("retry_interval", {min : 1, max : 60, number : 1, default : 10, label : "Retry IV"}),
-            new draw_info("nsn_period", {select_source : "mon_periods mon_period", label : "Notify period"}),
-            new draw_info("ninterval", {min : 0, max: 60, number : 1, default : 5, label : "Notif IV"}),
-            new draw_info("nrecovery", {boolean : 1, label : "Recov / Crit / Warn / Unknown / Flapping / Planned", span : 6}),
-            new draw_info("ncritical", {boolean : 1}),
-            new draw_info("nwarning" , {boolean : 1}),
-            new draw_info("nunknown" , {boolean : 1}),
-            new draw_info("nflapping" , {boolean : 1}),
-            new draw_info("nplanned_downtime" , {boolean : 1}),
-            new draw_info("flap_detection_enabled", {boolean : 1, label : "Flap"}),
-            new draw_info("low_flap_threshold" , {min : 0, max : 100, number : 1, default : 0, label : "min"}),
-            new draw_info("high_flap_threshold", {min : 0, max : 100, number : 1, default : 0, label : "max"}),
-            new draw_info("flap_detect_ok"      , {boolean : 1, label : "Ok / Warn / Crit / Unk", span : 4}),
-            new draw_info("flap_detect_warn"    , {boolean : 1}),
-            new draw_info("flap_detect_critical", {boolean : 1}),
-            new draw_info("flap_detect_unknown" , {boolean : 1}),
-        ], {
-            "required_xml" : ["monper"],
-            "lock_div"     : "mon_tables"
-        }
-    ),
-    "monhc" : new draw_setup("Host Check Command", "hcc", "host_check_command",
-        "{% url 'base:create_object' 'host_check_command' %}",
-        "{% url 'base:delete_object' 'host_check_command' %}",
-        [
-            new draw_info("name", {size : 32}),
-            new draw_info("command_line", {size : 80}),
-        ], {
-            "lock_div" : "mon_tabels"
-           }
-     ),
-    "moncg" : new draw_setup("Contact Group", "moncg", "mon_contactgroup",
-        "{% url 'base:create_object' 'mon_contactgroup' %}",
-        "{% url 'base:delete_object' 'mon_contactgroup' %}",
-        [
-            new draw_info("name"),
-            new draw_info("alias"),
-            new draw_info("members", {select_source : "mon_contacts mon_contact", label : "Members", manytomany : 1}),
-            new draw_info("device_groups", {select_source : "device_groups device_group", label : "Device Group",   manytomany : 1}),
-            new draw_info("service_templates", {select_source : "mon_service_templs mon_service_templ", label : "ServiceTemplates", manytomany : 1})
-        ], {
-            "required_xml" : ["monper", "moncon", "monst"],
-            "lock_div"     : "mon_tables"
-        }
-    ),
-    "mondt" : new draw_setup("Device Template", "mondt", "mon_device_templ",
-        "{% url 'base:create_object' 'mon_device_templ' %}",
-        "{% url 'base:delete_object' 'mon_device_templ' %}",
-        [
-            new draw_info("name"),
-            new draw_info("mon_service_templ", {select_source : "mon_service_templs mon_service_templ", label : "ServiceTemplate"}),
-            new draw_info("max_attempts", {min : 1, max : 5, number : 1, default : 1, label : "max attempts"}),
-            new draw_info("ninterval", {min : 0, max: 60, number : 1, default : 5, label : "Notif IV"}),
-            new draw_info("check_interval", {min : 1, max : 60, number : 1, default : 1, label : "Check interval"}),
-            new draw_info("retry_interval", {min : 1, max : 60, number : 1, default : 1, label : "Retry interval"}),
-            new draw_info("mon_period", {select_source : "mon_periods mon_period", label : "Mon period"}),
-            new draw_info("nrecovery"   , {boolean : 1, label : "Recov / Down / Unreach / Flapping / Planned", span : 5}),
-            new draw_info("ndown"       , {boolean : 1}),
-            new draw_info("nunreachable", {boolean : 1}),
-            new draw_info("nflapping" , {boolean : 1}),
-            new draw_info("nplanned_downtime" , {boolean : 1}),
-            new draw_info("host_check_command", {select_source : "host_check_commands host_check_command"}),
-            new draw_info("flap_detection_enabled", {boolean : 1, label : "Flap"}),
-            new draw_info("low_flap_threshold" , {min : 0, max : 100, number : 1, default : 0, label : "min"}),
-            new draw_info("high_flap_threshold", {min : 0, max : 100, number : 1, default : 0, label : "max"}),
-            new draw_info("flap_detect_up"         , {boolean : 1, label : "Ok / Down / Unr", span : 3}),
-            new draw_info("flap_detect_down"       , {boolean : 1}),
-            new draw_info("flap_detect_unreachable", {boolean : 1}),
-        ], {
-            "required_xml" : ["monper", "monst", "monhc"],
-            "lock_div"     : "mon_tables"
-        }
-    ),
-}
-
-load_config_old = ->
-    $.ajax
-        url     : "{% url 'mon:setup' %}"
-        success : (xml) ->
-            if parse_xml_response(xml)
-                draw_ds_tables($("div#mon_tables"), master_array, $(xml).find("value[name='response']"))
-                $("div#mon_tables textarea").attr({
-                    "cols" : 60,
-                    "rows" : 6,
-                })
-
-load_config = ->
-
-$(document).ready(load_config)
-
-{% endinlinecoffeescript %}
-
-</script>
+</div>
 
 {% endblock %}
