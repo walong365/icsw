@@ -1,23 +1,21 @@
 #!/usr/bin/python-init
 
-import crypt
-import inspect
-import hashlib
-import base64
-import os
-import random
-import string
-from lxml.builder import E # @UnresolvedImport
-from rest_framework import serializers
-
 from django.conf import settings
+from django.contrib.contenttypes.models import ContentType
 from django.core.exceptions import ValidationError, ImproperlyConfigured
 from django.db import models
 from django.db.models import Q, signals, get_model
 from django.dispatch import receiver
-from django.contrib.contenttypes.models import ContentType
-
 from initat.cluster.backbone.model_functions import _check_empty_string, _check_float, _check_integer, _check_non_empty_string
+from lxml.builder import E # @UnresolvedImport
+from rest_framework import serializers
+import base64
+import crypt
+import hashlib
+import inspect
+import os
+import random
+import string
 
 # auth_cache structure
 class auth_cache(object):
@@ -430,7 +428,7 @@ class user_serializer_h(serializers.HyperlinkedModelSerializer):
 class user_serializer(serializers.ModelSerializer):
     class Meta:
         model = user
-        fields = ("idx", "login", "uid", "group")
+        fields = ("idx", "login", "uid", "group", "first_name", "last_name")
 
 @receiver(signals.m2m_changed, sender=user.permissions.through)
 def user_permissions_changed(sender, *args, **kwargs):

@@ -106,6 +106,10 @@ class host_check_command(models.Model):
     def __unicode__(self):
         return "mcc_%s" % (self.name)
 
+class host_check_command_serializer(serializers.ModelSerializer):
+    class Meta:
+        model = host_check_command
+
 class mon_check_command(models.Model):
     idx = models.AutoField(db_column="ng_check_command_idx", primary_key=True)
     config_old = models.IntegerField(null=True, blank=True, db_column="config")
@@ -197,8 +201,8 @@ class mon_check_command_type(models.Model):
 class mon_contact(models.Model):
     idx = models.AutoField(db_column="ng_contact_idx", primary_key=True)
     user = models.ForeignKey("user")
-    snperiod = models.ForeignKey("mon_period", related_name="service_n_period")
-    hnperiod = models.ForeignKey("mon_period", related_name="host_n_period")
+    snperiod = models.ForeignKey("mon_period", related_name="service_n_period", verbose_name="service period")
+    hnperiod = models.ForeignKey("mon_period", related_name="host_n_period", verbose_name="host period")
     snrecovery = models.BooleanField(default=False)
     sncritical = models.BooleanField(default=False)
     snwarning = models.BooleanField(default=False)
@@ -211,8 +215,8 @@ class mon_contact(models.Model):
     hflapping = models.BooleanField(default=False)
     hplanned_downtime = models.BooleanField(default=False)
     date = models.DateTimeField(auto_now_add=True)
-    notifications = models.ManyToManyField("mon_notification")
-    mon_alias = models.CharField(max_length=64, default="")
+    notifications = models.ManyToManyField("mon_notification", blank=True)
+    mon_alias = models.CharField(max_length=64, default="", verbose_name="alias", blank=True)
     def get_xml(self):
         ret_xml = E.mon_contact(
             unicode(self),
@@ -228,18 +232,21 @@ class mon_contact(models.Model):
                    "hnrecovery", "hndown", "hnunreachable", "hflapping", "hplanned_downtime"]:
             ret_xml.attrib[bf] = "1" if getattr(self, bf) else "0"
         return ret_xml
+    def get_user_name(self):
+        return u"%s (%s %s)" % (
+            self.user.login,
+            self.user.first_name,
+            self.user.last_name,
+            )
     def __unicode__(self):
         return unicode(self.user)
     class Meta:
         db_table = u'ng_contact'
 
 class mon_contact_serializer(serializers.ModelSerializer):
+    user_name = serializers.Field(source="get_user_name")
     class Meta:
         model = mon_contact
-        fields = ("idx", "user", "snperiod", "hnperiod",
-            "snrecovery", "sncritical", "snwarning", "snunknown", "sflapping", "splanned_downtime",
-            "hnrecovery", "hndown", "hnunreachable", "hflapping", "hplanned_downtime", "notifications",)
-
 
 @receiver(signals.pre_save, sender=mon_contact)
 def mon_contact_pre_save(sender, **kwargs):
@@ -284,7 +291,6 @@ class mon_notification(models.Model):
 class mon_notification_serializer(serializers.ModelSerializer):
     class Meta:
         model = mon_notification
-        fields = ("idx", "name", "channel", "not_type", "subject", "content", "enabled",)
 
 @receiver(signals.pre_save, sender=mon_notification)
 def mon_notification_pre_save(sender, **kwargs):
@@ -308,10 +314,10 @@ class mon_contactgroup(models.Model):
     name = models.CharField(max_length=192, unique=True)
     alias = models.CharField(max_length=255, blank=True, default="")
     date = models.DateTimeField(auto_now_add=True)
-    device_groups = models.ManyToManyField("device_group")
-    members = models.ManyToManyField("mon_contact")
-    service_templates = models.ManyToManyField("mon_service_templ")
-    service_esc_templates = models.ManyToManyField("mon_service_esc_templ")
+    device_groups = models.ManyToManyField("device_group", blank=True)
+    members = models.ManyToManyField("mon_contact", blank=True)
+    service_templates = models.ManyToManyField("mon_service_templ", blank=True)
+    service_esc_templates = models.ManyToManyField("mon_service_esc_templ", blank=True)
     def get_xml(self):
         return E.mon_contactgroup(
             unicode(self),
@@ -328,6 +334,11 @@ class mon_contactgroup(models.Model):
         return self.name
     class Meta:
         db_table = u'ng_contactgroup'
+
+class mon_contactgroup_serializer(serializers.ModelSerializer):
+    class Meta:
+        model = mon_contactgroup
+        fields = ("idx", "name", "alias", "device_groups", "members", "service_templates", "service_esc_templates",)
 
 @receiver(signals.pre_save, sender=mon_contactgroup)
 def mon_contactgroup_pre_save(sender, **kwargs):
@@ -393,6 +404,10 @@ class mon_device_templ(models.Model):
         return self.name
     class Meta:
         db_table = u'ng_device_templ'
+
+class mon_device_templ_serializer(serializers.ModelSerializer):
+    class Meta:
+        model = mon_device_templ
 
 @receiver(signals.pre_save, sender=mon_device_templ)
 def mon_device_templ_pre_save(sender, **kwargs):
@@ -665,6 +680,10 @@ class mon_service_templ(models.Model):
         return self.name
     class Meta:
         db_table = u'ng_service_templ'
+
+class mon_service_templ_serializer(serializers.ModelSerializer):
+    class Meta:
+        model = mon_service_templ
 
 @receiver(signals.pre_save, sender=mon_service_templ)
 def mon_service_templ_pre_save(sender, **kwargs):
