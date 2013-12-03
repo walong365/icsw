@@ -12,7 +12,7 @@ for root, dirs, files in os.walk("src/initat/core/static"):
         stripped_root = re.sub(strip_leading, "", root)
         static_files.append(os.path.join(stripped_root, i))
 
-print [e for e in static_files if e.count("angular")]
+print [e for e in static_files if e.endswith("angular-chosen")]
 
 setup(name="initat",
       version="2.0.0",
