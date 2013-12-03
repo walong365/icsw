@@ -1,30 +1,27 @@
 # rms views
 
-import json
-import logging
-import logging_tools
-import pprint
-import server_command
-try:
-    import sge_tools
-except ImportError:
-    sge_tools = None
-import sys
-import threading
-import time
-from lxml.builder import E # @UnresolvedImport
-from lxml import etree # @UnresolvedImport
-
 from django.conf import settings
 from django.contrib.auth.decorators import login_required
 from django.http import HttpResponse
 from django.utils.decorators import method_decorator
 from django.views.generic import View
-
 from initat.cluster.frontend.helper_functions import contact_server, xml_wrapper
-from initat.core.render import render_me
-
 from initat.cluster.rms.rms_addons import *
+from initat.core.render import render_me
+from lxml import etree # @UnresolvedImport
+from lxml.builder import E # @UnresolvedImport
+import json
+import logging
+import logging_tools
+import pprint
+import server_command
+import sys
+import threading
+import time
+try:
+    import sge_tools
+except ImportError:
+    sge_tools = None
 
 RMS_ADDON_KEYS = [key for key in sys.modules.keys() if key.startswith("initat.cluster.rms.rms_addons.") and sys.modules[key]]
 RMS_ADDONS = [sys.modules[key].modify_rms() for key in RMS_ADDON_KEYS]
