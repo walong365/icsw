@@ -26,6 +26,8 @@ import sys
 
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "initat.cluster.settings")
 
+from django.db.models import Q
+from initat.cluster.backbone.models import kernel, initrd_build
 import argparse
 import commands
 import config_tools
@@ -45,8 +47,6 @@ import statvfs
 import tempfile
 import time
 import uuid_tools
-from django.db.models import Q
-from initat.cluster.backbone.models import kernel, initrd_build
 
 MOD_REFUSE_LIST = [
     "3w-9xxx", "3w-xxxx", "af_packet", "ata_piix",
