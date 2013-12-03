@@ -107,7 +107,7 @@ class _general(hm_classes.hm_module):
             self.log("trying to load ipmi kernel modules")
             for kern_mod in ["ipmi_si", "ipmi_devintf"]:
                 cmd = "%s %s" % (mp_command, kern_mod)
-                c_stat, c_out = commands.getstatusoutput("%s %s" % (cmd))
+                c_stat, c_out = commands.getstatusoutput(cmd)
                 self.log("calling '%s' gave (%d): %s" % (
                     cmd,
                     c_stat,
