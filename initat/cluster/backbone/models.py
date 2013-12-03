@@ -651,6 +651,11 @@ class device(models.Model):
         ordering = ("name",)
         unique_together = [("name", "domain_tree_node"), ]
 
+class device_serializer(serializers.ModelSerializer):
+    class Meta:
+        model = device
+        fields = ("idx", "name") # , "device_group", "comment")
+
 @receiver(signals.pre_save, sender=device)
 def device_pre_save(sender, **kwargs):
     if "instance" in kwargs:

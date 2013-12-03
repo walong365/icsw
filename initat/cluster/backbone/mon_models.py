@@ -39,6 +39,10 @@ class mon_host_cluster(models.Model):
     def __unicode__(self):
         return self.name
 
+class mon_host_cluster_serializer(serializers.ModelSerializer):
+    class Meta:
+        model = mon_host_cluster
+
 @receiver(signals.pre_save, sender=mon_host_cluster)
 def mon_host_cluster_pre_save(sender, **kwargs):
     if "instance" in kwargs:
@@ -79,6 +83,10 @@ class mon_service_cluster(models.Model):
         )
     def __unicode__(self):
         return self.name
+
+class mon_service_cluster_serializer(serializers.ModelSerializer):
+    class Meta:
+        model = mon_service_cluster
 
 @receiver(signals.pre_save, sender=mon_service_cluster)
 def mon_service_cluster_pre_save(sender, **kwargs):
@@ -156,6 +164,10 @@ class mon_check_command(models.Model):
         db_table = u'ng_check_command'
     def __unicode__(self):
         return "mcc_%s" % (self.name)
+
+class mon_check_command_serializer(serializers.ModelSerializer):
+    class Meta:
+        model = mon_check_command
 
 @receiver(signals.pre_save, sender=mon_check_command)
 def mon_check_command_pre_save(sender, **kwargs):
@@ -433,9 +445,9 @@ class mon_device_esc_templ(models.Model):
     mon_service_esc_templ = models.ForeignKey("mon_service_esc_templ")
     ninterval = models.IntegerField(default=1)
     esc_period = models.ForeignKey("mon_period")
-    nrecovery = models.BooleanField()
-    ndown = models.BooleanField()
-    nunreachable = models.BooleanField()
+    nrecovery = models.BooleanField(default=False)
+    ndown = models.BooleanField(default=False)
+    nunreachable = models.BooleanField(default=False)
     nflapping = models.BooleanField(default=False)
     nplanned_downtime = models.BooleanField(default=False)
     date = models.DateTimeField(auto_now_add=True)
@@ -458,6 +470,10 @@ class mon_device_esc_templ(models.Model):
         )
     def __unicode__(self):
         return self.name
+
+class mon_device_esc_templ_serializer(serializers.ModelSerializer):
+    class Meta:
+        model = mon_device_esc_templ
 
 @receiver(signals.pre_save, sender=mon_device_esc_templ)
 def mon_device_esc_templ_pre_save(sender, **kwargs):
@@ -509,6 +525,10 @@ class mon_host_dependency(models.Model):
         return self.name
     class Meta:
         ordering = ("name",)
+
+class mon_host_dependency_serializer(serializers.ModelSerializer):
+    class Meta:
+        model = mon_host_dependency
 
 @receiver(signals.pre_save, sender=mon_host_dependency)
 def mon_host_dependency_pre_save(sender, **kwargs):
@@ -734,6 +754,10 @@ class mon_service_esc_templ(models.Model):
         )
     def __unicode__(self):
         return self.name
+
+class mon_service_esc_templ_serializer(serializers.ModelSerializer):
+    class Meta:
+        model = mon_service_esc_templ
 
 @receiver(signals.pre_save, sender=mon_service_esc_templ)
 def mon_service_esc_templ_pre_save(sender, **kwargs):
