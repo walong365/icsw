@@ -22,18 +22,18 @@
 #
 """ kernel related parts of mother """
 
+from django.db import connection
+from initat.cluster.backbone.models import kernel
+from initat.mother.config import global_config
+from kernel_sync_tools import kernel_helper
 import config_tools
 import logging_tools
 import os
-from initat.mother.config import global_config
 import pprint
 import process_tools
 import server_command
 import threading_tools
 import time
-from django.db import connection
-from kernel_sync_tools import kernel_helper
-from initat.cluster.backbone.models import kernel
 
 class kernel_sync_process(threading_tools.process_obj):
     def process_init(self):
