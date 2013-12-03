@@ -241,13 +241,8 @@ my_url_patterns = patterns(
     url(r"^pack/"     , include(pack_patterns      , namespace="pack")),
     url(r"^rrd/"      , include(rrd_patterns       , namespace="rrd")),
     url(r"^doc/"      , include(doc_patterns       , namespace="doc")),
+    url(r"^rest/"     , include(rest_patterns      , namespace="rest")),
 )
-
-if settings.CLUSTER_LICENSE.get("rest", False):
-    my_url_patterns += patterns(
-        "",
-        url(r"^rest/"     , include(rest_patterns      , namespace="rest")),
-    )
 
 url_patterns = patterns(
     "",

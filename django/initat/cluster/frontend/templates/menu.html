@@ -85,14 +85,12 @@
         </ul>
     </li>
     {% endif %}
-    {% if settings.CLUSTER_LICENSE.rest %}
     <li>
         <a>{% trans "REST" %}</a>
         <ul>
-            <li><a href="{% url 'rest:root' %}">{% trans "REST API rootnode" %}</a></li>
+            <li><a href="{% url 'rest:root' %}">{% trans "REST API rootnode (for testing)" %}</a></li>
         </ul>
     </li>
-    {% endif %}
     {# additional menus #}
     {% for add_menu in settings.ADDITIONAL_MENU_FILES %}
         {% include add_menu %}
