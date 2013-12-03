@@ -239,6 +239,7 @@ def check_system(opt_ns):
                     pid_time = os.stat(ms_name)[stat.ST_CTIME]
                     ms_block = process_tools.meta_server_info(ms_name)
                     ms_block.check_block(pid_thread_dict, act_proc_dict)
+                    diff_dict = {key: value for key, value in ms_block.bound_dict.iteritems() if value}
                     diff_threads = sum(ms_block.bound_dict.values())
                     act_pids = ms_block.pids_found
                     num_started = len(act_pids)
@@ -253,7 +254,8 @@ def check_system(opt_ns):
                     pid_time = os.stat(pid_file_name)[stat.ST_CTIME]
                     act_pids = [int(line.strip()) for line in file(pid_file_name, "r").read().split("\n") if line.strip().isdigit()]
                     act_state, num_started, num_found = check_processes(name, act_pids, pid_thread_dict, True if int(entry.attrib["any_threads_ok"]) else False)
-                entry.append(E.state_info(num_started="%d" % (num_started), num_found="%d" % (num_found), pid_time="%d" % (pid_time), state="%d" % (act_state)))
+                    diff_dict = {}
+                entry.append(E.state_info(*[E.diff_info(pid="%d" % (key), diff="%d" % (value)) for key, value in diff_dict.iteritems()], num_started="%d" % (num_started), num_found="%d" % (num_found), pid_time="%d" % (pid_time), state="%d" % (act_state)))
             else:
                 if os.path.isfile(init_script_name):
                     entry.append(E.state_info("no threads", state="7"))
@@ -336,14 +338,23 @@ def show_xml(opt_ns, res_xml):
                 if any_ok:
                     ret_str = "%s running" % (logging_tools.get_plural("thread", num_found))
                 else:
+                    diffs_found = s_info.findall("diff_info")
+                    if diffs_found:
+                        diff_str = ", [diff: %s]" % (", ".join(["%d: %d" % (int(cur_diff.attrib["pid"]), int(cur_diff.attrib["diff"])) for cur_diff in diffs_found]))
+                    else:
+                        diff_str = ""
                     num_miss = num_started - num_found
                     if num_miss > 0:
-                        ret_str = "%s %s missing" % (
+                        ret_str = "%s %s missing%s" % (
                             logging_tools.get_plural("thread", num_miss),
-                            num_miss == 1 and "is" or "are")
+                            num_miss == 1 and "is" or "are",
+                            diff_str,
+                            )
                     elif num_miss < 0:
-                        ret_str = "%s too much" % (
-                            logging_tools.get_plural("thread", -num_miss))
+                        ret_str = "%s too much%s" % (
+                            logging_tools.get_plural("thread", -num_miss),
+                            diff_str,
+                        )
                     else:
                         ret_str = "the thread is running" if num_started == 1 else "all %d threads running" % (num_started)
                 if opt_ns.time:
