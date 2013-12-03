@@ -402,9 +402,11 @@ class sge_info(object):
                     dicts_to_update -= server_update
             e_time = time.time()
             if self.__verbose > 0:
-                self.log("%s (server %s) took %s" % (", ".join(server_update),
-                                                     srv_name,
-                                                     logging_tools.get_diff_time_str(e_time - s_time)))
+                self.log(
+                    "%s (server %s) took %s" % (
+                        ", ".join(server_update),
+                        srv_name,
+                        logging_tools.get_diff_time_str(e_time - s_time)))
         if not self.__never_direct:
             if self.__verbose:
                 self.log("dicts to update manually: %s" % (", ".join(dicts_to_update)))
@@ -444,11 +446,15 @@ class sge_info(object):
                              logging_tools.LOG_LEVEL_ERROR)
                     self.__sge_dict["SGE_CELL"] = "NO_SGE_CELL_SET"
         if not self.__sge_dict.has_key("SGE_ARCH"):
-            c_stat, c_out = self._execute_command("/%s/util/arch" % (self.__sge_dict["SGE_ROOT"]))
-            if c_stat:
-                self.__sge_dict["SGE_ARCH"] = "NO_SGE_ARCH_SET"
+            arch_path = "/%s/util/arch" % (self.__sge_dict["SGE_ROOT"])
+            if os.path.exists(arch_path):
+                c_stat, c_out = self._execute_command(arch_path)
+                if c_stat:
+                    self.__sge_dict["SGE_ARCH"] = "NO_SGE_ARCH_SET"
+                else:
+                    self.__sge_dict["SGE_ARCH"] = c_out
             else:
-                self.__sge_dict["SGE_ARCH"] = c_out
+                self.__sge_dict["SGE_ARCH"] = "???"
     def _check_for_update(self, d_name, force=False):
         cur_el = self.__tree.find(d_name)
         upd_cause = "unknown"
