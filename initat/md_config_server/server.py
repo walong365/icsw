@@ -397,7 +397,7 @@ class server_process(threading_tools.process_pool):
         mult = 3
         process_tools.append_pids(self.__pid_name, src_pid, mult=mult)
         if self.__msi_block:
-            self.__msi_block.add_actual_pid(src_pid, mult=mult)
+            self.__msi_block.add_actual_pid(src_pid, mult=mult, fuzzy_ceiling=3)
             self.__msi_block.save_block()
     def _init_msi_block(self):
         process_tools.save_pid(self.__pid_name, mult=3)
