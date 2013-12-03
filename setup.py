@@ -9,6 +9,7 @@ static_files = []
 strip_leading = re.compile("src/initat/core/")
 for root, dirs, files in os.walk("src/initat/core/static"):
     for i in files:
+        print i
         stripped_root = re.sub(strip_leading, "", root)
         static_files.append(os.path.join(stripped_root, i))
 
