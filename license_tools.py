@@ -20,16 +20,16 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
-""" kernel sync tools """
+""" init CSW license tools """
 
+from M2Crypto import RSA, EVP
+from lxml import etree # @UnresolvedImport
+from lxml.builder import E # @UnresolvedImport
 import base64
 import logging
-import sys
 import os
+import sys
 import tempfile
-from M2Crypto import RSA, EVP
-from lxml import etree
-from lxml.builder import E
 
 logger = logging.getLogger(__name__)
 
@@ -42,7 +42,6 @@ LICENSE_CAPS = [
     ("package", "Package installation"),
     ("rms"    , "Resource Management system"),
     ("ganglia", "Ganglia monitoring system"),
-    ("rest"   , "REST server"),
     ("docu"   , "show documentation"),
 ]
 
