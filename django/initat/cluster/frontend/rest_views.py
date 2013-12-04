@@ -157,6 +157,7 @@ class list_view(mixins.ListModelMixin,
             "mon_period" : ([], ["service_check_period", "mon_device_templ_set"]),
             "device" : ([], []),
             "mon_check_command" : ([], ["exclude_devices", "categories"]),
+            "mon_host_cluster" : ([], ["devices"]),
             }.get(model_name, ([], []))
         return self.model.objects.all().select_related(*related_fields).prefetch_related(*prefetch_fields)
 
