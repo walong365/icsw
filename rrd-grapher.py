@@ -26,8 +26,12 @@ import os
 
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "initat.cluster.settings")
 
+from colour import Color
 from django.conf import settings
-
+from django.db import connection, connections
+from django.db.models import Q
+from lxml import etree
+from lxml.builder import E
 import cluster_location
 import colorsys
 import commands
@@ -37,8 +41,8 @@ import copy
 import datetime
 import getopt
 import logging_tools
-import process_tools
 import pprint
+import process_tools
 import re
 import rrdtool
 import server_command
@@ -48,12 +52,6 @@ import threading_tools
 import time
 import uuid_tools
 import zmq
-from colour import Color
-from lxml import etree
-from lxml.builder import E
-
-from django.db import connection, connections
-from django.db.models import Q
 
 try:
     from rrd_grapher.version import VERSION_STRING
@@ -583,6 +581,7 @@ class graph_var(object):
 class graph_process(threading_tools.process_obj):
     def process_init(self):
         self.__log_template = logging_tools.get_logger(global_config["LOG_NAME"], global_config["LOG_DESTINATION"], zmq=True, context=self.zmq_context, init_logger=True)
+        connection.close()
         self.register_func("graph_rrd", self._graph_rrd)
         self.register_func("xml_info", self._xml_info)
         self.raw_vector_dict, self.vector_dict = ({}, {})
@@ -1082,7 +1081,6 @@ class server_process(threading_tools.process_pool):
                 "err" : (0, "/var/lib/logging-server/py_err_zmq")},
                                       zmq_context=self.zmq_context)
         self.__msi_block = self._init_msi_block()
-        connection.close()
         # re-insert config
         self._re_insert_config()
         self.register_exception("int_error", self._int_error)
@@ -1091,6 +1089,7 @@ class server_process(threading_tools.process_pool):
         self._log_config()
         self._init_network_sockets()
         self.add_process(graph_process("graph"), start=True)
+        connection.close()
         self.register_func("send_command", self._send_command)
         self.register_timer(self._clear_old_graphs, 60, instant=True)
         data_store.setup(self)
