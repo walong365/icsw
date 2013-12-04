@@ -553,6 +553,10 @@ class mon_host_dependency(models.Model):
         conf["notification_failure_criteria"] = self.mon_host_dependency_templ.notification_failure_criteria
         conf["dependency_period"] = self.mon_host_dependency_templ.dependency_period.name
 
+class mon_host_dependency_serializer(serializers.ModelSerializer):
+    class Meta:
+        model = mon_host_dependency
+
 class mon_service_dependency_templ(models.Model):
     idx = models.AutoField(primary_key=True)
     name = models.CharField(unique=True, max_length=192)
@@ -620,6 +624,10 @@ class mon_service_dependency(models.Model):
         conf["execution_failure_criteria"] = self.mon_service_dependency_templ.execution_failure_criteria
         conf["notification_failure_criteria"] = self.mon_service_dependency_templ.notification_failure_criteria
         conf["dependency_period"] = self.mon_service_dependency_templ.dependency_period.name
+
+class mon_service_dependency_serializer(serializers.ModelSerializer):
+    class Meta:
+        model = mon_service_dependency
 
 class mon_ext_host(models.Model):
     idx = models.AutoField(db_column="ng_ext_host_idx", primary_key=True)
