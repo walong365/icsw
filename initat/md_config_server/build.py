@@ -26,6 +26,22 @@ import sys
 
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "initat.cluster.settings")
 
+from django.db import connection
+from django.db.models import Q
+from initat.cluster.backbone.models import device, device_group, device_variable, mon_device_templ, \
+     mon_ext_host, mon_check_command, mon_period, mon_contact, \
+     mon_contactgroup, mon_service_templ, netdevice, network, network_type, net_ip, \
+     user, mon_host_cluster, mon_service_cluster, config, md_check_data_store, category, \
+     category_tree, TOP_MONITORING_CATEGORY, mon_notification, config_str, config_int, host_check_command, \
+     mon_host_dependency_templ, mon_host_dependency, mon_service_dependency_templ, \
+     mon_service_templ, mon_service_dependency
+from initat.md_config_server import constants
+from initat.md_config_server import special_commands
+from initat.md_config_server.config import global_config, main_config, var_cache, all_commands, \
+    all_service_groups, time_periods, all_contacts, all_contact_groups, all_host_groups, all_hosts, \
+    all_hosts_extinfo, all_services, config_dir, device_templates, service_templates, nag_config, \
+    all_host_dependencies
+from lxml.builder import E # @UnresolvedImport
 import codecs
 import commands
 import config_tools
@@ -38,24 +54,6 @@ import signal
 import stat
 import threading_tools
 import time
-from lxml.builder import E # @UnresolvedImport
-
-from django.db.models import Q
-from django.db import connection
-
-from initat.cluster.backbone.models import device, device_group, device_variable, mon_device_templ, \
-     mon_ext_host, mon_check_command, mon_period, mon_contact, \
-     mon_contactgroup, mon_service_templ, netdevice, network, network_type, net_ip, \
-     user, mon_host_cluster, mon_service_cluster, config, md_check_data_store, category, \
-     category_tree, TOP_MONITORING_CATEGORY, mon_notification, config_str, config_int, host_check_command, \
-     mon_host_dependency
-
-from initat.md_config_server.config import global_config, main_config, var_cache, all_commands, \
-    all_service_groups, time_periods, all_contacts, all_contact_groups, all_host_groups, all_hosts, \
-    all_hosts_extinfo, all_services, config_dir, device_templates, service_templates, nag_config, \
-    all_host_dependencies
-from initat.md_config_server import special_commands
-from initat.md_config_server import constants
 
 class build_process(threading_tools.process_obj):
     def process_init(self):
@@ -229,7 +227,7 @@ class build_process(threading_tools.process_obj):
     def _rebuild_config(self, *args, **kwargs):
         hdep_from_topo = global_config["USE_HOST_DEPENDENCIES"] and global_config["HOST_DEPENDENCIES_FROM_TOPOLOGY"]
         if hdep_from_topo:
-            host_deps = mon_host_dependency.objects.all().order_by("-priority")
+            host_deps = mon_host_dependency_templ.objects.all().order_by("-priority")
             if len(host_deps):
                 self.mon_host_dep = host_deps[0]
             else:
@@ -551,6 +549,12 @@ class build_process(threading_tools.process_obj):
                                    single_build,
                                    ):
         start_time = time.time()
+        # lookup table for host_check_commands
+        mcc_lut = {key : (v0, v1) for key, v0, v1 in mon_check_command.objects.all().values_list("pk", "name", "description")}
+        # lookup table for config -> mon_check_commands
+        mcc_lut_2 = {}
+        for v_list in mon_check_command.objects.all().values_list("name", "config__name"):
+            mcc_lut_2.setdefault(v_list[1], []).append(v_list[0])
         # set some vars
         host_nc = cur_gc["device.d"]
         if cur_gc.master:
@@ -584,6 +588,10 @@ class build_process(threading_tools.process_obj):
                           logging_tools.LOG_LEVEL_ERROR)
             num_error += 1
             net_devices = {}
+        use_host_deps, use_service_deps = (
+            global_config["USE_HOST_DEPENDENCIES"],
+            global_config["USE_SERVICE_DEPENDENCIES"],
+            )
         if net_devices:
             # print mni_str_s, mni_str_d, dev_str_s, dev_str_d
             # get correct netdevice for host
@@ -924,6 +932,39 @@ class build_process(threading_tools.process_obj):
                                     num_ok += len(sub_list)
                                 else:
                                     self.mach_log("ignoring empty service_cluster", logging_tools.LOG_LEVEL_WARN)
+                        # add host dependencies
+                        if use_host_deps:
+                            for h_dep in mon_host_dependency.objects.filter(Q(dependent_device=host)).select_related(
+                                "mon_host_dependency_templ",
+                                "mon_host_dependency_templ__mon_period",
+                                ):
+                                act_host_dep = nag_config("hostdependency", "")
+                                act_host_dep["host_name"] = all_hosts_dict[h_dep.device_id].full_name
+                                act_host_dep["dependent_host_name"] = host.full_name
+                                h_dep.feed_config(act_host_dep)
+                                host_config_list.append(act_host_dep)
+                        # add service dependencies
+                        if use_service_deps:
+                            for s_dep in mon_service_dependency.objects.filter(Q(dependent_device=host)).select_related(
+                                "mon_service_dependency_templ",
+                                "mon_service_dependency_templ__mon_period",
+                                ):
+                                act_service_dep = nag_config("servicedependency", "")
+                                srv_tuple, dep_srv_tuple = (
+                                    mcc_lut[s_dep.mon_check_command_id],
+                                    mcc_lut[s_dep.dependent_mon_check_command_id],
+                                    )
+                                dep_mcc_list = sum([mcc_lut_2.get(key, []) for key in all_configs.get(host.full_name, [])], [])
+                                mcc_list = sum([mcc_lut_2.get(key, []) for key in all_configs.get(all_hosts_dict[h_dep.device_id].full_name, [])], [])
+                                if dep_srv_tuple[0] in dep_mcc_list and srv_tuple[0] in mcc_list:
+                                    act_service_dep["dependent_service_description"] = dep_srv_tuple[1]
+                                    act_service_dep["service_description"] = srv_tuple[1]
+                                    act_service_dep["host_name"] = all_hosts_dict[h_dep.device_id].full_name
+                                    act_service_dep["dependent_host_name"] = host.full_name
+                                    s_dep.feed_config(act_service_dep)
+                                    host_config_list.append(act_service_dep)
+                                else:
+                                    self.mach_log("cannot add service_dependency", logging_tools.LOG_LEVEL_ERROR)
                         host_nc.add_device(host_config_list, host) # [act_host["name"]] = act_host
                     else:
                         self.mach_log("Host %s is disabled" % (host.full_name))

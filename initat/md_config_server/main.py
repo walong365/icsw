@@ -112,6 +112,7 @@ def main():
         ("PASSIVE_HOST_CHECKS_ARE_SOFT", configfile.bool_c_var(True)),
         ("RETAIN_PROGRAM_STATE"        , configfile.bool_c_var(False)),
         ("USE_HOST_DEPENDENCIES"       , configfile.bool_c_var(False)),
+        ("USE_SERVICE_DEPENDENCIES"    , configfile.bool_c_var(False)),
         ("HOST_DEPENDENCIES_FROM_TOPOLOGY", configfile.bool_c_var(False)),
         ("NDO_DATA_PROCESSING_OPTIONS"    , configfile.int_c_var((2 ** 26 - 1) - (IDOMOD_PROCESS_TIMED_EVENT_DATA - IDOMOD_PROCESS_SERVICE_CHECK_DATA + IDOMOD_PROCESS_HOST_CHECK_DATA))),
         ("EVENT_BROKER_OPTIONS"           , configfile.int_c_var((2 ** 20 - 1) - (BROKER_TIMED_EVENTS + BROKER_SERVICE_CHECKS + BROKER_HOST_CHECKS))),
