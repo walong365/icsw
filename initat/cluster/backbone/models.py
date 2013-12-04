@@ -3721,5 +3721,5 @@ KPMC_MAP = {
     "cat"           : category,
     "hcc"           : host_check_command,
     "cd_connection" : cd_connection,
-    "monhd"         : mon_host_dependency,
+    "monhd"         : mon_host_dependency_templ,
 }

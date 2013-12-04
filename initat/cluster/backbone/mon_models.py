@@ -162,6 +162,7 @@ class mon_check_command(models.Model):
         return r_xml
     class Meta:
         db_table = u'ng_check_command'
+        unique_together = (("name", "config"))
     def __unicode__(self):
         return "mcc_%s" % (self.name)
 
@@ -487,7 +488,7 @@ def mon_device_esc_templ_pre_save(sender, **kwargs):
             ("ninterval"         , 0, 60)]:
             _check_integer(cur_inst, attr_name, min_val=min_val, max_val=max_val)
 
-class mon_host_dependency(models.Model):
+class mon_host_dependency_templ(models.Model):
     idx = models.AutoField(primary_key=True)
     name = models.CharField(unique=True, max_length=192)
     inherits_parent = models.BooleanField(default=False)
@@ -501,6 +502,7 @@ class mon_host_dependency(models.Model):
     nfc_unreachable = models.BooleanField(default=True)
     nfc_pending = models.BooleanField(default=False)
     dependency_period = models.ForeignKey("mon_period")
+    date = models.DateTimeField(auto_now_add=True)
     @property
     def execution_failure_criteria(self):
         return ",".join([short for short, long in [("o", "up"), ("d", "down"), ("u", "unreachable"), ("p", "pending")] if getattr(self, "efc_%s" % (long))]) or "n"
@@ -508,7 +510,7 @@ class mon_host_dependency(models.Model):
     def notification_failure_criteria(self):
         return ",".join([short for short, long in [("o", "up"), ("d", "down"), ("u", "unreachable"), ("p", "pending")] if getattr(self, "nfc_%s" % (long))]) or "n"
     def get_xml(self):
-        r_xml = E.mon_host_dependency(
+        r_xml = E.mon_host_dependency_templ(
             unicode(self),
             pk="%d" % (self.pk),
             priority="%d" % (self.priority),
@@ -526,17 +528,87 @@ class mon_host_dependency(models.Model):
     class Meta:
         ordering = ("name",)
 
-class mon_host_dependency_serializer(serializers.ModelSerializer):
+class mon_host_dependency_templ_serializer(serializers.ModelSerializer):
     class Meta:
-        model = mon_host_dependency
+        model = mon_host_dependency_templ
 
-@receiver(signals.pre_save, sender=mon_host_dependency)
-def mon_host_dependency_pre_save(sender, **kwargs):
+@receiver(signals.pre_save, sender=mon_host_dependency_templ)
+def mon_host_dependency_templ_pre_save(sender, **kwargs):
     if "instance" in kwargs:
         cur_inst = kwargs["instance"]
         _check_integer(cur_inst, "priority", min_val= -128, max_val=128)
         if not cur_inst.name.strip():
             raise ValidationError("name must not be empty")
+
+class mon_host_dependency(models.Model):
+    idx = models.AutoField(primary_key=True)
+    device = models.ForeignKey("device", related_name="mhd_device")
+    dependent_device = models.ForeignKey("device", related_name="mhd_dependent_device")
+    mon_host_dependency_templ = models.ForeignKey(mon_host_dependency_templ)
+    date = models.DateTimeField(auto_now_add=True)
+
+class mon_service_dependency_templ(models.Model):
+    idx = models.AutoField(primary_key=True)
+    name = models.CharField(unique=True, max_length=192)
+    inherits_parent = models.BooleanField(default=False)
+    priority = models.IntegerField(default=0)
+    efc_ok = models.BooleanField(default=False)
+    efc_warn = models.BooleanField(default=True)
+    efc_unknown = models.BooleanField(default=True)
+    efc_critical = models.BooleanField(default=False)
+    efc_pending = models.BooleanField(default=False)
+    nfc_ok = models.BooleanField(default=False)
+    nfc_warn = models.BooleanField(default=True)
+    nfc_unknown = models.BooleanField(default=True)
+    nfc_critical = models.BooleanField(default=False)
+    nfc_pending = models.BooleanField(default=False)
+    dependency_period = models.ForeignKey("mon_period")
+    date = models.DateTimeField(auto_now_add=True)
+    @property
+    def execution_failure_criteria(self):
+        return ",".join([short for short, long in [("o", "ok"), ("w", "warn"), ("u", "unknown"), ("c", "critical"), ("p", "pending")] if getattr(self, "efc_%s" % (long))]) or "n"
+    @property
+    def notification_failure_criteria(self):
+        return ",".join([short for short, long in [("o", "ok"), ("w", "warn"), ("u", "unknown"), ("c", "critical"), ("p", "pending")] if getattr(self, "nfc_%s" % (long))]) or "n"
+    def get_xml(self):
+        r_xml = E.mon_service_dependency_templ(
+            unicode(self),
+            pk="%d" % (self.pk),
+            priority="%d" % (self.priority),
+            key="monsd__%d" % (self.pk),
+            name=self.name,
+            dependency_period="%d" % (self.dependency_period_id),
+        )
+        for b_type in ["e", "n"]:
+            for c_type in ["ok", "warn", "unknown", "critical", "pending"]:
+                attr_name = "%sfc_%s" % (b_type, c_type)
+                r_xml.attrib[attr_name] = "1" if getattr(self, attr_name) else "0"
+        return r_xml
+    def __unicode__(self):
+        return self.name
+    class Meta:
+        ordering = ("name",)
+
+class mon_service_dependency_templ_serializer(serializers.ModelSerializer):
+    class Meta:
+        model = mon_service_dependency_templ
+
+@receiver(signals.pre_save, sender=mon_service_dependency_templ)
+def mon_service_dependency_templ_pre_save(sender, **kwargs):
+    if "instance" in kwargs:
+        cur_inst = kwargs["instance"]
+        _check_integer(cur_inst, "priority", min_val= -128, max_val=128)
+        if not cur_inst.name.strip():
+            raise ValidationError("name must not be empty")
+
+class mon_service_dependency(models.Model):
+    idx = models.AutoField(primary_key=True)
+    device = models.ForeignKey("device", related_name="msd_device")
+    mon_check_command = models.ForeignKey("mon_check_command", related_name="msd_mcc")
+    dependent_device = models.ForeignKey("device", related_name="msd_dependent_device")
+    dependent_mon_check_command = models.ForeignKey("mon_check_command", related_name="msd_dependent_mcc")
+    mon_service_dependency_templ = models.ForeignKey(mon_service_dependency_templ)
+    date = models.DateTimeField(auto_now_add=True)
 
 class mon_ext_host(models.Model):
     idx = models.AutoField(db_column="ng_ext_host_idx", primary_key=True)
@@ -631,19 +703,6 @@ def mon_period_pre_save(sender, **kwargs):
                         raise ValidationError("illegal time %s (%s)" % (cur_time, day))
                     new_val.append("%02d:%02d" % (hours, minutes))
                 setattr(cur_inst, r_name, "-".join(new_val))
-
-# class mon_service(models.Model):
-    # idx = models.AutoField(db_column="ng_service_idx", primary_key=True)
-    # name = models.CharField(max_length=192)
-    # alias = models.CharField(max_length=192, blank=True)
-    # command = models.CharField(max_length=192, blank=True)
-    # parameter1 = models.CharField(max_length=192, blank=True)
-    # parameter2 = models.CharField(max_length=192, blank=True)
-    # parameter3 = models.CharField(max_length=192, blank=True)
-    # parameter4 = models.CharField(max_length=192, blank=True)
-    # date = models.DateTimeField(auto_now_add=True)
-    # class Meta:
-        # db_table = u'ng_service'
 
 class mon_service_templ(models.Model):
     idx = models.AutoField(db_column="ng_service_templ_idx", primary_key=True)
