@@ -15,8 +15,8 @@ from initat.cluster.backbone.models import config, device_group, device, \
 from initat.cluster.frontend import forms
 from initat.cluster.frontend.forms import mon_period_form, mon_notification_form, mon_contact_form, \
     mon_service_templ_form, host_check_command_form, mon_contactgroup_form, mon_device_templ_form, \
-    mon_host_cluster_form, mon_service_cluster_form, mon_host_dependency_form, \
-    mon_service_esc_templ_form, mon_device_esc_templ_form
+    mon_host_cluster_form, mon_service_cluster_form, mon_host_dependency_templ_form, \
+    mon_service_esc_templ_form, mon_device_esc_templ_form, mon_service_dependency_templ_form
 from initat.cluster.frontend.helper_functions import contact_server, xml_wrapper
 from initat.core.render import render_me, render_string
 from lxml import etree # @UnresolvedImports
@@ -105,7 +105,8 @@ class extended_setup(View):
             request, "monitoring_extended_setup.html", {
                 "mon_host_cluster_form" : mon_host_cluster_form(),
                 "mon_service_cluster_form" : mon_service_cluster_form(),
-                "mon_host_dependency_form" : mon_host_dependency_form(),
+                "mon_host_dependency_templ_form" : mon_host_dependency_templ_form(),
+                "mon_service_dependency_templ_form" : mon_service_dependency_templ_form(),
                 "mon_service_esc_templ_form" : mon_service_esc_templ_form(),
                 "mon_device_esc_templ_form" : mon_device_esc_templ_form(),
                 }

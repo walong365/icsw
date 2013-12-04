@@ -16,8 +16,8 @@
     {% crispy mon_service_cluster_form mon_service_cluster_form.helper %}
 </script>
 
-<script type="text/ng-template" id="mon_host_dependency.html">
-    {% crispy mon_host_dependency_form mon_host_dependency_form.helper %}
+<script type="text/ng-template" id="mon_host_dependency_templ.html">
+    {% crispy mon_host_dependency_templ_form mon_host_dependency_templ_form.helper %}
 </script>
 
 <script type="text/ng-template" id="mon_service_esc_templ.html">
@@ -26,6 +26,10 @@
 
 <script type="text/ng-template" id="mon_device_esc_templ.html">
     {% crispy mon_device_esc_templ_form mon_device_esc_templ_form.helper %}
+</script>
+
+<script type="text/ng-template" id="mon_service_dependency_templ.html">
+    {% crispy mon_service_dependency_templ_form mon_service_dependency_templ_form.helper %}
 </script>
 
 {% verbatim %}
@@ -86,7 +90,7 @@
     <td><input type="button" class="btn btn-danger" ng-show="delete_ok(obj)" ng-click="delete(obj)" value="delete"/></td>
 </script>
 
-<script type="text/ng-template" id="mon_host_dependency_head.html">
+<script type="text/ng-template" id="mon_host_dependency_templ_head.html">
     <tr>
         <th>Name</th>   
         <th>Inherits parent</th>
@@ -104,7 +108,7 @@
     </tr>
 </script>
 
-<script type="text/ng-template" id="mon_host_dependency_row.html">
+<script type="text/ng-template" id="mon_host_dependency_templ_row.html">
     <td>{{ obj.name }}</td>
     <td>{{ obj.inherits_parent | yesno1 }}</td>
     <td>{{ obj.priority }}</td>
@@ -116,6 +120,45 @@
     <td>{{ obj.nfc_up | yesno1 }}</td>
     <td>{{ obj.nfc_down | yesno1 }}</td>
     <td>{{ obj.nfc_unreachable | yesno1 }}</td>
+    <td>{{ obj.nfc_pending | yesno1 }}</td>
+    <td><input type="button" class="btn btn-primary" ng-click="edit($event, obj)" value="modify"/></td>
+    <td><input type="button" class="btn btn-danger" ng-show="delete_ok(obj)" ng-click="delete(obj)" value="delete"/></td>
+</script>
+
+<script type="text/ng-template" id="mon_service_dependency_templ_head.html">
+    <tr>
+        <th>Name</th>   
+        <th>Inherits parent</th>
+        <th>Priority</th>
+        <th>Period</th>
+        <th>ok/E</th>
+        <th>warn/E</th>
+        <th>unknown/E</th>
+        <th>critical/E</th>
+        <th>pend/E</th>
+        <th>ok/N</th>
+        <th>warn/N</th>
+        <th>unknown/N</th>
+        <th>critical/N</th>
+        <th>pend/N</th>
+        <th colspan="2" class="text-center">action</th>   
+    </tr>
+</script>
+
+<script type="text/ng-template" id="mon_service_dependency_templ_row.html">
+    <td>{{ obj.name }}</td>
+    <td>{{ obj.inherits_parent | yesno1 }}</td>
+    <td>{{ obj.priority }}</td>
+    <td>{{ obj.dependency_period | array_lookup:this.rest_data.mon_period:'name' }}</td>
+    <td>{{ obj.efc_ok | yesno1 }}</td>
+    <td>{{ obj.efc_warn | yesno1 }}</td>
+    <td>{{ obj.efc_unknown | yesno1 }}</td>
+    <td>{{ obj.efc_critical | yesno1 }}</td>
+    <td>{{ obj.efc_pending | yesno1 }}</td>
+    <td>{{ obj.nfc_ok | yesno1 }}</td>
+    <td>{{ obj.nfc_warn | yesno1 }}</td>
+    <td>{{ obj.nfc_unknown | yesno1 }}</td>
+    <td>{{ obj.nfc_critical | yesno1 }}</td>
     <td>{{ obj.nfc_pending | yesno1 }}</td>
     <td><input type="button" class="btn btn-primary" ng-click="edit($event, obj)" value="modify"/></td>
     <td><input type="button" class="btn btn-danger" ng-show="delete_ok(obj)" ng-click="delete(obj)" value="delete"/></td>
@@ -216,15 +259,29 @@
             </div>
         </div>
     </tab>
-    <tab heading="Host dependencies">
-        <div ng-controller="mon_host_dependency_base">
-            <div ng-controller="mon_host_dependency">
-                <h2>Host dependencies ({{entries.length}} entries), <input type="button" value="create new" ng-click="create($event)"/></h2>
+    <tab heading="Host dependency templates">
+        <div ng-controller="mon_host_dependency_templ_base">
+            <div ng-controller="mon_host_dependency_templ">
+                <h2>Host dependency templates ({{entries.length}} entries), <input type="button" value="create new" ng-click="create($event)"/></h2>
                 <table class="table table-condensed table-condensed table-hover" style="width:auto;">
-                    <thead monhostdependencyhead></thead>
+                    <thead monhostdependencytemplhead></thead>
                     <tbody>
                         <tr><td colspan="9" paginator entries="entries" pag_settings="pagSettings" per_page="5"></td></tr>
-                        <tr monhostdependencyrow ng-repeat="obj in entries | orderBy:'-name':true | paginator:this"></tr>
+                        <tr monhostdependencytemplrow ng-repeat="obj in entries | orderBy:'-name':true | paginator:this"></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </tab>
+    <tab heading="Service dependency templates">
+        <div ng-controller="mon_service_dependency_templ_base">
+            <div ng-controller="mon_service_dependency_templ">
+                <h2>Service dependency templates ({{entries.length}} entries), <input type="button" value="create new" ng-click="create($event)"/></h2>
+                <table class="table table-condensed table-condensed table-hover" style="width:auto;">
+                    <thead monservicedependencytemplhead></thead>
+                    <tbody>
+                        <tr><td colspan="9" paginator entries="entries" pag_settings="pagSettings" per_page="5"></td></tr>
+                        <tr monservicedependencytemplrow ng-repeat="obj in entries | orderBy:'-name':true | paginator:this"></tr>
                     </tbody>
                 </table>
             </div>

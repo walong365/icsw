@@ -59,21 +59,43 @@ monitoring_extended_module.controller("mon_service_cluster", ["$scope", "$compil
 
 angular_add_simple_list_controller(
     monitoring_extended_module,
-    "mon_host_dependency_base",
+    "mon_host_dependency_templ_base",
     {
-        rest_url            : "{% url 'rest:mon_host_dependency_list' %}"
-        edit_template       : "mon_host_dependency.html"
+        rest_url            : "{% url 'rest:mon_host_dependency_templ_list' %}"
+        edit_template       : "mon_host_dependency_templ.html"
         rest_map            : [
             {"short" : "mon_period"        , "url" : "{% url 'rest:mon_period_list' %}"}
         ]
         delete_confirm_str  : (obj) -> return "Really delete Host dependency '#{obj.name}' ?"
-        template_cache_list : ["mon_host_dependency_row.html", "mon_host_dependency_head.html"]
+        template_cache_list : ["mon_host_dependency_templ_row.html", "mon_host_dependency_templ_head.html"]
         new_object          : {"name" : "", "priority" : 0}
         new_object_created  : (new_obj) -> new_obj.name = ""
     }
 )
 
-monitoring_extended_module.controller("mon_host_dependency", ["$scope", "$compile", "$templateCache", "Restangular",
+monitoring_extended_module.controller("mon_host_dependency_templ", ["$scope", "$compile", "$templateCache", "Restangular",
+    ($scope, $compile, $templateCache, Restangular) ->
+        $scope.delete_ok = (obj) ->
+            return true
+])
+
+angular_add_simple_list_controller(
+    monitoring_extended_module,
+    "mon_service_dependency_templ_base",
+    {
+        rest_url            : "{% url 'rest:mon_service_dependency_templ_list' %}"
+        edit_template       : "mon_service_dependency_templ.html"
+        rest_map            : [
+            {"short" : "mon_period"        , "url" : "{% url 'rest:mon_period_list' %}"}
+        ]
+        delete_confirm_str  : (obj) -> return "Really delete Service dependency '#{obj.name}' ?"
+        template_cache_list : ["mon_service_dependency_templ_row.html", "mon_service_dependency_templ_head.html"]
+        new_object          : {"name" : "", "priority" : 0}
+        new_object_created  : (new_obj) -> new_obj.name = ""
+    }
+)
+
+monitoring_extended_module.controller("mon_service_dependency_templ", ["$scope", "$compile", "$templateCache", "Restangular",
     ($scope, $compile, $templateCache, Restangular) ->
         $scope.delete_ok = (obj) ->
             return true

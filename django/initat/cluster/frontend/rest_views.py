@@ -29,7 +29,8 @@ REST_LIST = ["group", "user", "device_group", "network_type", "network_device_ty
     "kernel", "image", "architecture", "partition_table", "mon_period", "mon_notification", \
     "mon_contact", "mon_service_templ", "host_check_command", "mon_contactgroup", \
     "mon_device_templ", "mon_host_cluster", "device", "mon_check_command", "mon_service_cluster", \
-    "mon_host_dependency", "mon_service_esc_templ", "mon_device_esc_templ",
+    "mon_host_dependency_templ", "mon_service_esc_templ", "mon_device_esc_templ", \
+    "mon_service_dependency_templ",
     ]
 
 @api_view(('GET',))
