@@ -69,7 +69,7 @@ INSTANCE_XML = """
     </instance>
     <instance name="package-client" runs_on="node"  has_force_stop="1" pid_file_name="package-client/package-client.pid">
     </instance>
-    <instance name="gmond" runs_on="node">
+    <instance name="gmond" runs_on="node" pid_file_name="">
     </instance>
     <instance name="logcheck-server" pid_file_name="logcheck-server/logcheck-server.pid" has_force_stop="1">
         <config_names>
@@ -224,9 +224,12 @@ def check_system(opt_ns):
             entry.append(E.state_info(act_str, state="%d" % (act_state)))
         elif entry.attrib["check_type"] == "threads_by_pid_file":
             pid_file_name = entry.attrib["pid_file_name"]
-            if not pid_file_name.startswith("/"):
+            if pid_file_name == "":
+                # no pid file
+                pass
+            elif not pid_file_name.startswith("/"):
                 pid_file_name = "/var/run/%s" % (pid_file_name)
-            if os.path.isfile(pid_file_name):
+            if pid_file_name and os.path.isfile(pid_file_name):
                 ms_name = None
                 # do we need a loop here ?
                 for c_name in set([entry.attrib["meta_server_name"]]):
@@ -258,7 +261,13 @@ def check_system(opt_ns):
                 entry.append(E.state_info(*[E.diff_info(pid="%d" % (key), diff="%d" % (value)) for key, value in diff_dict.iteritems()], num_started="%d" % (num_started), num_found="%d" % (num_found), pid_time="%d" % (pid_time), state="%d" % (act_state)))
             else:
                 if os.path.isfile(init_script_name):
-                    entry.append(E.state_info("no threads", state="7"))
+                    if pid_file_name == "":
+                        found_procs = {key : (value, pid_thread_dict.get(value["pid"], 1)) for key, value in act_proc_dict.iteritems() if value["name"] == entry.attrib["process_name"]}
+                        act_pids = sum([[key] * value[1] for key, value in found_procs.iteritems()], [])
+                        threads_found = sum([value[1] for value in found_procs.itervalues()])
+                        entry.append(E.state_info(num_started="%d" % (threads_found), num_found="%d" % (threads_found), state="0"))
+                    else:
+                        entry.append(E.state_info("no threads", state="7"))
                 else:
                     entry.append(E.state_info("not installed", state="5"))
         else:
@@ -333,7 +342,7 @@ def show_xml(opt_ns, res_xml):
                 num_started, num_found, pid_time, any_ok = (
                     int(s_info.get("num_started")),
                     int(s_info.get("num_found")),
-                    int(s_info.get("pid_time")),
+                    int(s_info.get("pid_time", "0")),
                     True if int(act_struct.attrib["any_threads_ok"]) else False)
                 if any_ok:
                     ret_str = "%s running" % (logging_tools.get_plural("thread", num_found))
@@ -358,15 +367,18 @@ def show_xml(opt_ns, res_xml):
                     else:
                         ret_str = "the thread is running" if num_started == 1 else "all %d threads running" % (num_started)
                 if opt_ns.time:
-                    diff_time = max(0, time.mktime(time.localtime()) - pid_time)
-                    diff_days = int(diff_time / (3600 * 24))
-                    diff_hours = int((diff_time - 3600 * 24 * diff_days) / 3600)
-                    diff_mins = int((diff_time - 3600 * (24 * diff_days + diff_hours)) / 60)
-                    diff_secs = int(diff_time - 60 * (60 * (24 * diff_days + diff_hours) + diff_mins))
-                    ret_str += ", stable since %s%02d:%02d:%02d (%s)" % (
-                        diff_days and "%s, " % (logging_tools.get_plural("day", diff_days)) or "",
-                        diff_hours, diff_mins, diff_secs,
-                        time.strftime("%a, %d. %b %Y, %H:%M:%S", time.localtime(pid_time)))
+                    if pid_time:
+                        diff_time = max(0, time.mktime(time.localtime()) - pid_time)
+                        diff_days = int(diff_time / (3600 * 24))
+                        diff_hours = int((diff_time - 3600 * 24 * diff_days) / 3600)
+                        diff_mins = int((diff_time - 3600 * (24 * diff_days + diff_hours)) / 60)
+                        diff_secs = int(diff_time - 60 * (60 * (24 * diff_days + diff_hours) + diff_mins))
+                        ret_str += ", stable since %s%02d:%02d:%02d (%s)" % (
+                            diff_days and "%s, " % (logging_tools.get_plural("day", diff_days)) or "",
+                            diff_hours, diff_mins, diff_secs,
+                            time.strftime("%a, %d. %b %Y, %H:%M:%S", time.localtime(pid_time)))
+                    else:
+                        ret_str += ", no pid found"
                 cur_line.append(logging_tools.form_entry(ret_str, header="Thread and time info" if opt_ns.time else "Thread info"))
         if opt_ns.pid:
             pid_dict = {}
