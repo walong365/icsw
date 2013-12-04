@@ -4,7 +4,8 @@ from django.core.exceptions import ValidationError
 from django.db import models
 from django.db.models import Q, signals
 from django.dispatch import receiver
-from initat.cluster.backbone.model_functions import _check_empty_string, _check_float, _check_integer, _check_non_empty_string
+from initat.cluster.backbone.model_functions import _check_empty_string, _check_float, \
+    _check_integer, _check_non_empty_string
 from lxml.builder import E # @UnresolvedImport
 from rest_framework import serializers
 import logging_tools
@@ -546,6 +547,11 @@ class mon_host_dependency(models.Model):
     dependent_device = models.ForeignKey("device", related_name="mhd_dependent_device")
     mon_host_dependency_templ = models.ForeignKey(mon_host_dependency_templ)
     date = models.DateTimeField(auto_now_add=True)
+    def feed_config(self, conf):
+        conf["inherits_parent"] = "1" if self.mon_host_dependency_templ.inherits_parent else "0"
+        conf["execution_failure_criteria"] = self.mon_host_dependency_templ.execution_failure_criteria
+        conf["notification_failure_criteria"] = self.mon_host_dependency_templ.notification_failure_criteria
+        conf["dependency_period"] = self.mon_host_dependency_templ.dependency_period.name
 
 class mon_service_dependency_templ(models.Model):
     idx = models.AutoField(primary_key=True)
@@ -609,6 +615,11 @@ class mon_service_dependency(models.Model):
     dependent_mon_check_command = models.ForeignKey("mon_check_command", related_name="msd_dependent_mcc")
     mon_service_dependency_templ = models.ForeignKey(mon_service_dependency_templ)
     date = models.DateTimeField(auto_now_add=True)
+    def feed_config(self, conf):
+        conf["inherits_parent"] = "1" if self.mon_service_dependency_templ.inherits_parent else "0"
+        conf["execution_failure_criteria"] = self.mon_service_dependency_templ.execution_failure_criteria
+        conf["notification_failure_criteria"] = self.mon_service_dependency_templ.notification_failure_criteria
+        conf["dependency_period"] = self.mon_service_dependency_templ.dependency_period.name
 
 class mon_ext_host(models.Model):
     idx = models.AutoField(db_column="ng_ext_host_idx", primary_key=True)
