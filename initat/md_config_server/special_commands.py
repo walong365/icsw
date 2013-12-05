@@ -488,15 +488,14 @@ class special_supermicro(special_base):
                 break
             else:
                 para_dict[para_name] = cur_var.get_value()
+        user_name = self.host.dev_variables.get("SMC_USER", "ADMIN")
+        cur_pwd = self.host.dev_variables.get("SMC_PASSWD", "ADMIN")
         if len(para_list) != len(para_dict):
             self.log("updating info from BMC")
-            snmp_community = self.host.dev_variables["SNMP_READ_COMMUNITY"],
-            snmp_version = self.host.dev_variables["SNMP_VERSION"],
-
             srv_result = self.collrelay("smcipmi",
                 "--ip=%s" % (self.host.valid_ip),
-                "--user=%s" % (self.host.dev_variables.get("SMC_USER", "ADMIN")),
-                "--passwd=%s" % (self.host.dev_variables.get("SMC_PASSWD", "ADMIN")),
+                "--user=%s" % (user_name),
+                "--passwd=%s" % (cur_pwd),
                 "counter", connect_to_localhost=True)
             # xpath string origins in supermiro_mod, server part (scmipmi_struct)
             r_dict = supermicro_mod.generate_dict(srv_result.xpath(None, ".//ns:output/text()")[0].split("\n"))
@@ -529,13 +528,17 @@ class special_supermicro(special_base):
         for ps_num in xrange(para_dict.get("num_power", 0)):
             sc_array.append(self.get_arg_template(
                 "Power supply %2d" % (ps_num + 1),
-                arg1="power %d" % (ps_num + 1)
+                arg1=user_name,
+                arg2=cur_pwd,
+                arg3="power %d" % (ps_num + 1)
             )
                             )
         for blade_num in xrange(para_dict.get("num_blade", 0)):
             sc_array.append(self.get_arg_template(
                 "Blade %2d" % (blade_num + 1),
-                arg1="blade %d" % (blade_num + 1)
+                arg1=user_name,
+                arg2=cur_pwd,
+                arg3="blade %d" % (blade_num + 1)
             )
                             )
         return sc_array
