@@ -45,6 +45,7 @@ from lxml.builder import E # @UnresolvedImport
 import codecs
 import commands
 import config_tools
+import configfile
 import logging_tools
 import networkx
 import operator
@@ -225,7 +226,9 @@ class build_process(threading_tools.process_obj):
         srv_com.set_result("rebuilt config for %s" % (", ".join(dev_names)), server_command.SRV_REPLY_STATE_OK)
         self.send_pool_message("send_command", src_id, unicode(srv_com))
     def _rebuild_config(self, *args, **kwargs):
-        hdep_from_topo = global_config["USE_HOST_DEPENDENCIES"] and global_config["HOST_DEPENDENCIES_FROM_TOPOLOGY"]
+        # copy from global_config (speedup)
+        self.gc = configfile.gc_proxy(global_config)
+        hdep_from_topo = self.gc["USE_HOST_DEPENDENCIES"] and self.gc["HOST_DEPENDENCIES_FROM_TOPOLOGY"]
         if hdep_from_topo:
             host_deps = mon_host_dependency_templ.objects.all().order_by("-priority")
             if len(host_deps):
@@ -247,7 +250,7 @@ class build_process(threading_tools.process_obj):
         if not single_build:
             self.version += 1
             self.log("config_version for full build is %d" % (self.version))
-        if global_config["DEBUG"]:
+        if self.gc["DEBUG"]:
             cur_query_count = len(connection.queries)
         cdg = device.objects.get(Q(device_group__cluster_device_group=True))
         if single_build:
@@ -341,11 +344,12 @@ class build_process(threading_tools.process_obj):
             res_node = E.config(
                 *sum([cur_gc[key].get_xml() for key in constants.SINGLE_BUILD_MAPS], [])
             )
-        if global_config["DEBUG"]:
+        if self.gc["DEBUG"]:
             tot_query_count = len(connection.queries) - cur_query_count
             self.log("queries issued: %d" % (tot_query_count))
             # for q_idx, act_sql in enumerate(connection.queries[cur_query_count:], 1):
             #    self.log("%5d %s" % (q_idx, act_sql["sql"][:180]))
+        del self.gc
         if single_build:
             return res_node
     def _build_distance_map(self, root_node, show_unroutable=True):
@@ -466,7 +470,7 @@ class build_process(threading_tools.process_obj):
         min_width, max_width, min_height, max_height = (16, 64, 16, 64)
         all_image_stuff = self._get_mon_ext_hosts()
         self.log("Found %s" % (logging_tools.get_plural("ext_host entry", len(all_image_stuff.keys()))))
-        logos_dir = "%s/share/images/logos" % (global_config["MD_BASEDIR"])
+        logos_dir = "%s/share/images/logos" % (self.gc["MD_BASEDIR"])
         base_names = set()
         if os.path.isdir(logos_dir):
             logo_files = os.listdir(logos_dir)
@@ -589,13 +593,13 @@ class build_process(threading_tools.process_obj):
             num_error += 1
             net_devices = {}
         use_host_deps, use_service_deps = (
-            global_config["USE_HOST_DEPENDENCIES"],
-            global_config["USE_SERVICE_DEPENDENCIES"],
+            self.gc["USE_HOST_DEPENDENCIES"],
+            self.gc["USE_SERVICE_DEPENDENCIES"],
             )
         if net_devices:
             # print mni_str_s, mni_str_d, dev_str_s, dev_str_d
             # get correct netdevice for host
-            if host.name == global_config["SERVER_SHORT_NAME"]:
+            if host.name == self.gc["SERVER_SHORT_NAME"]:
                 valid_ips, traces = ([("127.0.0.1", "localdomain")], [(1, 0, [host.pk])])
             else:
                 valid_ips, traces = self._get_target_ip_info(my_net_idxs, net_devices, all_hosts_dict[host.pk], check_hosts)
@@ -637,10 +641,10 @@ class build_process(threading_tools.process_obj):
                     act_host["host_name"] = host.full_name
                     act_host["display_name"] = host.full_name
                     # action url
-                    if global_config["ENABLE_PNP"] or global_config["ENABLE_COLLECTD"]:
+                    if self.gc["ENABLE_PNP"] or self.gc["ENABLE_COLLECTD"]:
                         act_host["process_perf_data"] = 1 if host.enable_perfdata else 0
                         if host.enable_perfdata:
-                            act_host["action_url"] = "%s/index.php/graph?host=$HOSTNAME$&srv=_HOST_" % (global_config["PNP_URL"])
+                            act_host["action_url"] = "%s/index.php/graph?host=$HOSTNAME$&srv=_HOST_" % (self.gc["PNP_URL"])
                     act_host["alias"] = ",".join(sorted(list(set([entry for entry in [host.alias, host.name, host.full_name] + ["%s.%s" % (host.name, dom_name) for dom_name in host.domain_names] if entry.strip()]))))
                     act_host["address"] = host.valid_ip
                     # check for parents
@@ -689,7 +693,7 @@ class build_process(threading_tools.process_obj):
                             logging_tools.get_plural("parent", len(parents)),
                             ", ".join(sorted(parents))))
                         act_host["parents"] = ",".join(parents)
-                    act_host["retain_status_information"] = 1 if global_config["RETAIN_HOST_STATUS"] else 0
+                    act_host["retain_status_information"] = 1 if self.gc["RETAIN_HOST_STATUS"] else 0
                     act_host["max_check_attempts"] = act_def_dev.max_attempts
                     act_host["retry_interval"] = act_def_dev.retry_interval
                     act_host["check_interval"] = act_def_dev.check_interval
@@ -715,7 +719,7 @@ class build_process(threading_tools.process_obj):
                         act_host["obsess_over_host"] = 1
                     host_groups = set(contact_group_dict.get(host.full_name, []))
                     # print "*", host, set(contact_group_dict.get(host.full_name, []))
-                    act_host["contact_groups"] = ",".join(host_groups) if host_groups else global_config["NONE_CONTACT_GROUP"]
+                    act_host["contact_groups"] = ",".join(host_groups) if host_groups else self.gc["NONE_CONTACT_GROUP"]
                     # deep copy needed here
                     c_list = [entry for entry in all_access]
                     # set alias
@@ -738,7 +742,7 @@ class build_process(threading_tools.process_obj):
                         if host.automap_root_nagvis and cur_gc.master:
                             # with or without .cfg ? full path ?
                             act_host["_nagvis_map"] = "%s" % (host.full_name.encode("ascii", errors="ignore"))
-                            map_file = os.path.join(global_config["NAGVIS_DIR"], "etc", "maps", "%s.cfg" % (host.full_name.encode("ascii", errors="ignore")))
+                            map_file = os.path.join(self.gc["NAGVIS_DIR"], "etc", "maps", "%s.cfg" % (host.full_name.encode("ascii", errors="ignore")))
                             map_dict = {
                                 "sources"      : "automap",
                                 "alias"        : host.comment or host.full_name,
@@ -788,7 +792,7 @@ class build_process(threading_tools.process_obj):
                         act_host["notification_options"] = ",".join(not_a)
                         # check for hostextinfo
                         if host.mon_ext_host_id and ng_ext_hosts.has_key(host.mon_ext_host_id):
-                            if (global_config["MD_TYPE"] == "nagios" and global_config["MD_VERSION"] > 1) or (global_config["MD_TYPE"] == "icinga"):
+                            if (self.gc["MD_TYPE"] == "nagios" and self.gc["MD_VERSION"] > 1) or (self.gc["MD_TYPE"] == "icinga"):
                                 # handle for nagios 2, icinga
                                 act_hostext_info = nag_config("hostextinfo", host.full_name)
                                 act_hostext_info["host_name"] = host.full_name
@@ -799,8 +803,8 @@ class build_process(threading_tools.process_obj):
                                 # hostext_nc[host.full_name] = act_hostext_info
                             else:
                                 self.log("don't know how to handle hostextinfo for %s_version %d" % (
-                                    global_config["MD_TYPE"],
-                                    global_config["MD_VERSION"]),
+                                    self.gc["MD_TYPE"],
+                                    self.gc["MD_VERSION"]),
                                          logging_tools.LOG_LEVEL_ERROR)
                         # clear host from servicegroups
                         cur_gc["servicegroup"].clear_host(host.full_name)
@@ -841,7 +845,7 @@ class build_process(threading_tools.process_obj):
                                         cur_special = getattr(special_commands, "special_%s" % (special.lower()))(
                                             self,
                                             s_check,
-                                            host, global_config, cache_mode=cur_gc.cache_mode)
+                                            host, self.gc, cache_mode=cur_gc.cache_mode)
                                     except:
                                         self.log("unable to initialize special '%s': %s" % (
                                             special,
@@ -1208,7 +1212,7 @@ class build_process(threading_tools.process_obj):
                     cur_gc["hostdependency"].add_host_dependency(new_hd)
             self.log("created %s" % (logging_tools.get_plural("nagvis map", len(nagvis_maps))))
             # remove old nagvis maps
-            nagvis_map_dir = os.path.join(global_config["NAGVIS_DIR"], "etc", "maps")
+            nagvis_map_dir = os.path.join(self.gc["NAGVIS_DIR"], "etc", "maps")
             if os.path.isdir(nagvis_map_dir):
                 skipped_customs = 0
                 for entry in os.listdir(nagvis_map_dir):
@@ -1240,7 +1244,7 @@ class build_process(threading_tools.process_obj):
                         "    alias=Group %s" % (dev_group.name),
                         "}",
                     ]))
-            cache_dir = os.path.join(global_config["NAGVIS_DIR"], "var")
+            cache_dir = os.path.join(self.gc["NAGVIS_DIR"], "var")
             if os.path.isdir(cache_dir):
                 rem_ok, rem_failed = (0, 0)
                 for entry in os.listdir(cache_dir):
@@ -1298,7 +1302,7 @@ class build_process(threading_tools.process_obj):
             if serv_cgs:
                 act_serv["contact_groups"] = ",".join(serv_cgs)
             else:
-                act_serv["contact_groups"] = global_config["NONE_CONTACT_GROUP"]
+                act_serv["contact_groups"] = self.gc["NONE_CONTACT_GROUP"]
             if not checks_are_active:
                 act_serv["check_freshness"] = 0
                 act_serv["freshness_threshold"] = 3600
@@ -1316,10 +1320,10 @@ class build_process(threading_tools.process_obj):
                 if not n_field:
                     n_field.append("o")
                 act_serv["flap_detection_options"] = ",".join(n_field)
-            if global_config["ENABLE_PNP"] or global_config["ENABLE_COLLECTD"]:
+            if self.gc["ENABLE_PNP"] or self.gc["ENABLE_COLLECTD"]:
                 act_serv["process_perf_data"] = 1 if (host.enable_perfdata and s_check.enable_perfdata) else 0
                 if host.enable_perfdata and s_check.enable_perfdata:
-                    act_serv["action_url"] = "%s/index.php/graph?host=$HOSTNAME$&srv=$SERVICEDESC$" % (global_config["PNP_URL"])
+                    act_serv["action_url"] = "%s/index.php/graph?host=$HOSTNAME$&srv=$SERVICEDESC$" % (self.gc["PNP_URL"])
             if s_check.servicegroup_names:
                 act_serv["servicegroups"] = ",".join(s_check.servicegroup_names)
                 cur_gc["servicegroup"].add_host(host.name, act_serv["servicegroups"])
