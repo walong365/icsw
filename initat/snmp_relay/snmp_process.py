@@ -19,18 +19,18 @@
 #
 """ SNMP relayer, SNMP process """
 
+from initat.snmp_relay.config import global_config
+from pyasn1.codec.ber import encoder, decoder # @UnresolvedImport
+from pyasn1.type.error import ValueConstraintError # @UnresolvedImport
+from pysnmp.carrier.asynsock.dgram import udp # @UnresolvedImport
+from pysnmp.carrier.asynsock.dispatch import AsynsockDispatcher # @UnresolvedImport
+from pysnmp.proto import api # @UnresolvedImport
+from pysnmp.smi import exval # @UnresolvedImport
 import logging_tools
 import process_tools
-import pyasn1
+import pyasn1 # @UnresolvedImport
 import threading_tools
 import time
-from initat.snmp_relay.config import global_config
-from pyasn1.codec.ber import encoder, decoder
-from pyasn1.type.error import ValueConstraintError
-from pysnmp.carrier.asynsock.dgram import udp
-from pysnmp.carrier.asynsock.dispatch import AsynsockDispatcher
-from pysnmp.proto import api
-from pysnmp.smi import exval
 
 class snmp_batch(object):
     batch_key = 0
@@ -313,14 +313,14 @@ class snmp_process(threading_tools.process_obj):
         if to_keys:
             for to_key in to_keys:
                 del self.__req_id_lut[to_key]
-            cur_batch.log("delete %s" % (logging_tools.get_plural("request ID", len(to_keys))))
+            cur_batch.log("deleted %s" % (logging_tools.get_plural("request ID", len(to_keys))))
         del self.__job_dict[cur_batch.key]
         self.__disp.jobFinished(cur_batch.key)
     def loop(self):
         try:
             while self["run_flag"]:
                 self.__disp.runDispatcher()
-                self.step(blocking=True)
+                self.step(blocking=self["run_flag"])
         except ValueConstraintError:
             self.log("caught ValueConstraintError, terminating process",
                      logging_tools.LOG_LEVEL_CRITICAL)
@@ -332,6 +332,7 @@ class snmp_process(threading_tools.process_obj):
                 self.log(" - %s" % (log_line), logging_tools.LOG_LEVEL_CRITICAL)
         else:
             self.log("no more jobs running")
+        self.log("jobs pending: %d" % (len(self.__job_dict)))
         self.__disp.closeDispatcher()
     def _inject(self, cur_batch):
         try:

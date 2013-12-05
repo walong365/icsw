@@ -57,7 +57,6 @@ class server_process(threading_tools.process_pool):
         self.register_func("int_error", self._int_error)
         self.register_func("snmp_finished", self._snmp_finished)
         self.__verbose = global_config["VERBOSE"]
-        self._check_msg_settings()
         self._log_config()
         # init luts
         self.__ip_lut, self.__forward_lut = ({}, {})
@@ -462,42 +461,6 @@ class server_process(threading_tools.process_pool):
                 for del_key in del_keys:
                     del self.__ret_dict[del_key]
             del self.__ret_dict[env_str]
-    def _check_msg_settings(self):
-        msg_dir = "/proc/sys/kernel/"
-        t_dict = {"max" : {"info"  : "maximum number of bytes in a message"},
-                  "mni" : {"info"  : "number of message-queue identifiers"},
-                  "mnb" : {"info"  : "initial value for msg_qbytes",
-                           "value" : 655360}}
-        for key, ipc_s in t_dict.iteritems():
-            r_name = "msg%s" % (key)
-            f_name = "%s%s" % (msg_dir, r_name)
-            if os.path.isfile(f_name):
-                value = int(file(f_name, "r").read().strip())
-                self.log("value of %s (%s) is %d" % (r_name, ipc_s["info"], value))
-                if ipc_s.has_key("value") and ipc_s["value"] != value:
-                    try:
-                        file(f_name, "w").write("%d\n" % (ipc_s["value"]))
-                    except:
-                        self.log(
-                            "Cannot alter value of %s (%s) to %d: %s" % (
-                                f_name,
-                                ipc_s["info"],
-                                ipc_s["value"],
-                                process_tools.get_except_info()
-                            ),
-                            logging_tools.LOG_LEVEL_WARN
-                        )
-                    else:
-                        self.log(
-                            "Altered value of %s (%s) from %d to %d" % (
-                                f_name,
-                                ipc_s["info"],
-                                value,
-                                ipc_s["value"]
-                            )
-                        )
-            else:
-                self.log("file %s not readable" % (f_name), logging_tools.LOG_LEVEL_WARN)
     def loop_end(self):
         self._close_ipc_sockets()
         process_tools.delete_pid(self.__pid_name)
