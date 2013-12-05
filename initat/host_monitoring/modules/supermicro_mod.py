@@ -3,7 +3,7 @@
 # Copyright (C) 2013 Andreas Lang-Nevyjel, init.at
 #
 # Send feedback to: <lang-nevyjel@init.at>
-# 
+#
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License Version 2 as
 # published by the Free Software Foundation.
@@ -98,7 +98,7 @@ class smcipmi_struct(hm_classes.subprocess_struct):
         else:
             output = self.read()
             self.srv_com["output"] = output
- 
+
 class smcipmi_command(hm_classes.hm_command):
     info_str = "SMCIPMITool frontend"
     def __init__(self, name):
@@ -142,15 +142,18 @@ class smcipmi_command(hm_classes.hm_command):
             ret_state = limits.nag_STATE_CRITICAL
         cur_temp = float(in_dict["temp."].split("/")[0][:-1])
         cur_ac = float(in_dict["ac"][:-1])
-        return ret_state, "PS '%s' is %s, temp: %.2f C, fan1/2: %d/%d, %.2f A | temp=%.2f amps=%.2f" % (
+        return ret_state, "PS '%s' is %s, temp: %.2f C, fan1/2: %d/%d, %.2f A | smcipmi psu=%d temp=%.2f amps=%.2f fan1=%d fan2=%d" % (
             in_dict["ps"],
             in_dict["power"],
             cur_temp,
             int(in_dict["fan 1"]),
             int(in_dict["fan 2"]),
             cur_ac,
-            cur_temp, 
+            int(in_dict["ps"].split()[-1]),
+            cur_temp,
             cur_ac,
+            int(in_dict["fan 1"]),
+            int(in_dict["fan 2"]),
         )
     def _handle_blade(self, in_dict):
         if in_dict["power"] == "on" or in_dict["error"]:
@@ -190,8 +193,7 @@ class smcipmi_command(hm_classes.hm_command):
                 return limits.nag_STATE_CRITICAL, "key %s not found in %s" % (
                     obj_key,
                     ", ".join(sorted(r_dict.keys())) or "EMPTY")
-        return limits.nag_STATE_OK, "ok"
-        
+
 if __name__ == "__main__":
     print "This is a loadable module."
     sys.exit(0)
