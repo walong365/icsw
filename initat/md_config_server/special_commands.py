@@ -618,6 +618,9 @@ class special_disc(special_base):
         return sc_array
 
 class special_net(special_base):
+    class Meta:
+        command = "$USER2$ -m $HOSTADDRESS$ net -w $ARG1$ -c $ARG2$ $ARG3$"
+        command2 = "$USER2$ -m $HOSTADDRESS$ net --duplex $ARG1$ -s $ARG2$ -w $ARG3$ -c $ARG4$ $ARG5$"
     def _call(self):
         sc_array = []
         eth_check = True if re.match(".*ethtool.*", self.s_check["command_name"]) else False
@@ -671,10 +674,37 @@ class special_libvirt(special_base):
                     )
         return sc_array
 
+class special_ipmi(special_base):
+    class Meta:
+        server_contact = True
+        command = "$USER2$ -m $HOSTADDRESS$ ipmi_sensor --lowern=${ARG1:na} --lowerc=${ARG2:na} --lowerw=${ARG3:na} --upperw=${ARG4:na} --upperc=${ARG5:na} --uppern=${ARG6:na} $ARG7$"
+    def _call(self):
+        sc_array = []
+        srv_result = self.collrelay("ipmi_sensor")
+        if srv_result is not None:
+            if "list:sensor_list" in srv_result:
+                for sensor in srv_result["list:sensor_list"]:
+                    print "*"
+                    sc_array.append(
+                        self.get_arg_template(
+                            sensor.attrib["info"],
+                            arg1=sensor.attrib.get("limit_ln", "na"),
+                            arg2=sensor.attrib.get("limit_lc", "na"),
+                            arg3=sensor.attrib.get("limit_lw", "na"),
+                            arg4=sensor.attrib.get("limit_uw", "na"),
+                            arg5=sensor.attrib.get("limit_uc", "na"),
+                            arg6=sensor.attrib.get("limit_un", "na"),
+                            arg7=sensor.attrib["key"],
+                            )
+                        )
+        print sc_array
+        return sc_array
+
 class special_eonstor(special_base):
     class Meta:
         retries = 4
         server_contact = True
+        command = "$USER3$ -m $HOSTADDRESS$ -C ${ARG1:SNMP_COMMUNITY:public} -V ${ARG2:SNMP_VERSION:2} $ARG3$ $ARG4$"
     def _call(self):
         sc_array = []
         srv_reply = self.snmprelay(
