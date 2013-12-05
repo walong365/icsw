@@ -249,9 +249,10 @@ network_module.controller("network", ["$scope", "$compile", "$templateCache", "$
                     remove_by_idx($scope.entries, obj.idx)
                 )
         $scope.get_production_networks = () ->
-            return (entry for key, entry of $scope.entries when key.match(/\d+/) and $scope.network_types[entry["network_type"]].identifier == "p")
+            prod_idx = (entry for key, entry of $scope.network_types when typeof(entry) == "object" and entry and entry["identifier"] == "p")[0].idx
+            return (entry for key, entry of $scope.entries when typeof(entry) == "object" and entry and entry.network_type == prod_idx)
         $scope.is_slave_network = (nw_type) ->
-            return $scope.network_types[nw_type].identifier == "s"
+            return (entry for key, entry of $scope.network_types when typeof(entry) == "object" and entry and entry["idx"] == nw_type)[0].identifier == "s"
 ])
 
 {% endinlinecoffeescript %}

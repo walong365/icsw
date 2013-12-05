@@ -662,8 +662,8 @@ class network_form(ModelForm):
             ),
             Fieldset(
                 "Additional settings",
-                Field("network_type", ng_options="value.idx as value.description for (key, value) in network_types"),
-                Field("master_network", ng_options="value.idx as value.identifier for (key, value) in get_production_networks()", wrapper_ng_show="is_slave_network(edit_obj.network_type)"),
+                Field("network_type", ng_options="value.idx as value.description for (key, value) in network_types", chosen=True),
+                Field("master_network", ng_options="value.idx as value.identifier for (key, value) in get_production_networks()", wrapper_ng_show="is_slave_network(edit_obj.network_type)", chosen=True),
                 Field("network_device_type", ng_options="value.idx as value.identifier for (key, value) in network_device_types", chosen=True),
             ),
             FormActions(
