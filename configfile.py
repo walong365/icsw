@@ -647,6 +647,15 @@ def get_global_config(c_name):
         cur_manager.start()
         return cur_manager.config(c_name)
 
+class gc_proxy(object):
+    def __init__(self, g_config):
+        self.global_config = g_config
+        self.__dict = {}
+    def __getitem__(self, key):
+        if key not in self.__dict:
+            self.__dict[key] = self.global_config[key]
+        return self.__dict[key]
+
 def enable_config_access(user_name, group_name):
     address = cur_manager.address
     process_tools.change_user_group_path(address, user_name, group_name)
@@ -724,48 +733,3 @@ def check_int_config(in_dict, name, default, minv=None, maxv=None):
         av = default
     in_dict[name] = av
     return in_dict
-
-# #def reload_global_config(dc, gcd, server_type, host_name = ""):
-# #    if not host_name:
-# #        host_name = socket.gethostname().split(".")[0]
-# #    num_serv, serv_idx, s_type, s_str, config_idx, real_config_name = is_server(dc, server_type, True, False, host_name.split(".")[0])
-# #    # read global configs
-# #    if num_serv:
-# #        # dict of local vars without specified host
-# #        l_var_wo_host = {}
-# #        for short in ["str",
-# #                      "int",
-# #                      "blob",
-# #                      "bool"]:
-# #            # very similiar code appears in config_tools.py
-# #            sql_str = "SELECT cv.* FROM new_config c INNER JOIN device_config dc LEFT JOIN config_%s cv ON cv.new_config=c.new_config_idx WHERE (cv.device=0 OR cv.device=%d) AND dc.device=%d AND dc.new_config=c.new_config_idx AND c.name='%s' ORDER BY cv.device, cv.name" % (short, config_idx, serv_idx, real_config_name)
-# #            dc.execute(sql_str)
-# #            for db_rec in [y for y in dc.fetchall() if y["name"]]:
-# #                if db_rec["name"].count(":"):
-# #                    var_global = False
-# #                    local_host_name, var_name = db_rec["name"].split(":", 1)
-# #                else:
-# #                    var_global = True
-# #                    local_host_name, var_name = (host_name, db_rec["name"])
-# #                if type(db_rec["value"]) == type(array.array("b")):
-# #                    new_val = str_c_var(db_rec["value"].tostring(), source="%s_table" % (short))
-# #                elif short == "int":
-# #                    new_val = int_c_var(int(db_rec["value"]), source="%s_table" % (short))
-# #                elif short == "bool":
-# #                    new_val = bool_c_var(bool(db_rec["value"]), source="%s_table" % (short))
-# #                else:
-# #                    new_val = str_c_var(db_rec["value"], source="%s_table" % (short))
-# #                new_val.is_global = var_global
-# #                if local_host_name == host_name:
-# #                    if var_name.upper() in gcd and gcd.fixed(var_name.upper()):
-# #                        # present value is fixed, keep value, only copy global / local status
-# #                        gcd.copy_flags({var_name.upper() : new_val})
-# #                    else:
-# #                        gcd.add_config_dict({var_name.upper() : new_val})
-# #                elif local_host_name == "":
-# #                    l_var_wo_host[var_name.upper()] = new_val
-# #        # check for vars to insert
-# #        for wo_var_name, wo_var in l_var_wo_host.iteritems():
-# #            if not wo_var_name in gcd or gcd.get_source(wo_var_name) == "default":
-# #                gcd.add_config_dict({wo_var_name : wo_var})
-
