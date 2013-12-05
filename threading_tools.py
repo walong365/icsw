@@ -1151,14 +1151,27 @@ class debug_zmq_ctx(zmq.Context):
             self.__dict__[key] = value
         else:
             super(debug_zmq_ctx, self).__setattr__(key, value)
+    def __delattr__(self, key):
+        if key in ["zmq_idx", "_sockets_open"]:
+            # not defined in zmq.Context
+            if key in self.__dict__:
+                del self.__dict__[key]
+        else:
+            super(debug_zmq_ctx, self).__delattr__(key)
     def log(self, out_str):
         t_name = threading.currentThread().name
         print("[[zmq_idx=%d, t_name=%-20s]] %s" % (self.zmq_idx, t_name, out_str))
+    def _interpret_sock_type(self, s_type):
+        l_type = ""
+        for _s_type in ["XPUB", "XSUB", "REP", "REQ", "ROUTER", "SUB", "DEALER", "PULL", "PUB", "PUSH"]:
+            if getattr(zmq, _s_type) == s_type:
+                l_type = _s_type
+        return "%d%s" % (s_type, "=%s" % (l_type) if l_type else "")
     def socket(self, sock_type, *args, **kwargs):
         ret_socket = super(debug_zmq_ctx, self).socket(sock_type, *args, **kwargs)
         self._sockets_open.add(ret_socket.fd)
-        self.log("socket(%d) == %d, now open: %s" % (
-            sock_type,
+        self.log("socket(%s) == %d, now open: %s" % (
+            self._interpret_sock_type(sock_type),
             ret_socket.fd,
             ", ".join(["%d" % (cur_fd) for cur_fd in self._sockets_open])))
         ret_sock = debug_zmq_sock(ret_socket)
@@ -1166,6 +1179,7 @@ class debug_zmq_ctx(zmq.Context):
         return ret_sock
     def term(self):
         self.log("term, %s open" % (logging_tools.get_plural("socket", len(self._sockets_open))))
+        del self._sockets_open
         super(debug_zmq_ctx, self).term()
 
 class process_pool(timer_base):
