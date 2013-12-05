@@ -524,7 +524,13 @@ class special_supermicro(special_base):
                 para_dict[para_name] = cur_var.get_value()
         self.log("para_dict: %s" % (", ".join(["%s=%d" % (key, value) for key, value in para_dict.iteritems()])))
         sc_array = []
-        sc_array.append(self.get_arg_template("Overview", arg1="counter"))
+        sc_array.append(
+            self.get_arg_template(
+                "Overview",
+                arg1=user_name,
+                arg2=cur_pwd,
+                arg3="counter",
+                ))
         for ps_num in xrange(para_dict.get("num_power", 0)):
             sc_array.append(self.get_arg_template(
                 "Power supply %2d" % (ps_num + 1),
@@ -532,7 +538,7 @@ class special_supermicro(special_base):
                 arg2=cur_pwd,
                 arg3="power %d" % (ps_num + 1)
             )
-                            )
+            )
         for blade_num in xrange(para_dict.get("num_blade", 0)):
             sc_array.append(self.get_arg_template(
                 "Blade %2d" % (blade_num + 1),
@@ -540,7 +546,7 @@ class special_supermicro(special_base):
                 arg2=cur_pwd,
                 arg3="blade %d" % (blade_num + 1)
             )
-                            )
+            )
         return sc_array
 
 class special_disc_all(special_base):
