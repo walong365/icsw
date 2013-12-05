@@ -490,7 +490,14 @@ class special_supermicro(special_base):
                 para_dict[para_name] = cur_var.get_value()
         if len(para_list) != len(para_dict):
             self.log("updating info from BMC")
-            srv_result = self.collrelay("smcipmi", "--ip", self.host.valid_ip, "counter", connect_to_localhost=True)
+            snmp_community = self.host.dev_variables["SNMP_READ_COMMUNITY"],
+            snmp_version = self.host.dev_variables["SNMP_VERSION"],
+
+            srv_result = self.collrelay("smcipmi",
+                "--ip=%s" % (self.host.valid_ip),
+                "--user=%s" % (self.host.dev_variables.get("SMC_USER", "ADMIN")),
+                "--passwd=%s" % (self.host.dev_variables.get("SMC_PASSWD", "ADMIN")),
+                "counter", connect_to_localhost=True)
             # xpath string origins in supermiro_mod, server part (scmipmi_struct)
             r_dict = supermicro_mod.generate_dict(srv_result.xpath(None, ".//ns:output/text()")[0].split("\n"))
             for para_name in para_list:
@@ -684,7 +691,6 @@ class special_ipmi(special_base):
         if srv_result is not None:
             if "list:sensor_list" in srv_result:
                 for sensor in srv_result["list:sensor_list"]:
-                    print "*"
                     sc_array.append(
                         self.get_arg_template(
                             sensor.attrib["info"],
@@ -697,7 +703,6 @@ class special_ipmi(special_base):
                             arg7=sensor.attrib["key"],
                             )
                         )
-        print sc_array
         return sc_array
 
 class special_eonstor(special_base):
