@@ -1,5 +1,5 @@
 icval                v:GAUGE:U:U
 ipd_load             load1:GAUGE:0:10000 load5:GAUGE:0:10000 load15:GAUGE:0:10000
 ipd_ping             sent:GAUGE:0:100 loss:GAUGE:0:100 rta:GAUGE:0:1000000 min:GAUGE:0:1000000 max:GAUGE:0:1000000
-ipd_smc_chassis_psu  amps:GAUGE:0:100 temp:GAUGE:0:100 fan1:GAUGE:0:10000 fan2:GAUGE:0:10000
+ipd_smc_chassis_psu  temp:GAUGE:0:100 amps:GAUGE:0:100 fan1:GAUGE:0:10000 fan2:GAUGE:0:10000
  
