@@ -662,7 +662,7 @@ class network_form(ModelForm):
             ),
             Fieldset(
                 "Additional settings",
-                Field("network_type", ng_options="value.idx as value.description for value in rest_data.network_types", chosen=True),
+                Field("network_type", ng_options="value.idx as value.description for value in rest_data.network_types", ng_disabled="fn.has_master_network(edit_obj)", chosen=True),
                 Field("master_network", ng_options="value.idx as value.identifier for value in fn.get_production_networks(this)", wrapper_ng_show="fn.is_slave_network(this, edit_obj.network_type)", chosen=True),
                 Field("network_device_type", ng_options="value.idx as value.identifier for value in rest_data.network_device_types", chosen=True),
             ),

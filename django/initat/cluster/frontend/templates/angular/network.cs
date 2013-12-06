@@ -76,6 +76,8 @@ angular_add_simple_list_controller(
                     return (entry for key, entry of $scope.rest_data.network_types when typeof(entry) == "object" and entry and entry["idx"] == nw_type)[0].identifier == "s"
                 else
                     return false
+            has_master_network : (edit_obj) ->
+                return if edit_obj.master_network then true else false
     }
 )
 
