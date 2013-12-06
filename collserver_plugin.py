@@ -56,9 +56,11 @@ class perfdata_object(object):
     def build_perfdata_info(self, mach_values):
         new_com = server_command.srv_command(command="perfdata_info")
         new_com["hostname"] = mach_values[2]
-        new_com["type_instance"] = mach_values[1]
         new_com["pd_type"] = self.PD_NAME
-        new_com["info"] = self.get_pd_xml_info(mach_values[5])
+        info = self.get_pd_xml_info(mach_values[5])
+        if mach_values[1]:
+            info.attrib["type_instance"] = mach_values[1]
+        new_com["info"] = info
         return new_com
 
 class load_pdata(perfdata_object):
