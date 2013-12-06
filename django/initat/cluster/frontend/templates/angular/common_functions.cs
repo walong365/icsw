@@ -216,17 +216,17 @@ angular_add_simple_list_controller = (module, name, settings) ->
                     return ""
                 else
                     return "has-error"
-            $scope.create = ($event) ->
+            $scope.create = (event) ->
                 $scope.create_or_edit(event, true, $scope.new_obj)
-            $scope.edit = ($event, obj) ->
+            $scope.edit = (event, obj) ->
                 $scope.create_or_edit(event, false, obj)
-            $scope.create_or_edit = ($event, create_or_edit, obj) ->
+            $scope.create_or_edit = (event, create_or_edit, obj) ->
                 $scope.edit_obj = obj
                 $scope.create_mode = create_or_edit
                 $scope.edit_div = $compile($templateCache.get($scope.settings.edit_template))($scope) 
                 $scope.edit_div.simplemodal
                     #opacity      : 50
-                    position     : [$event.pageY, $event.pageX]
+                    position     : [event.pageY, event.pageX]
                     #autoResize   : true
                     #autoPosition : true
                     onShow: (dialog) => 
