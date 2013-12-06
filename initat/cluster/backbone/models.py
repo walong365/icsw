@@ -2110,7 +2110,7 @@ class network(models.Model):
     # should no longer be used, now in domain_tree_node
     short_names = models.BooleanField(default=True)
     # should no longer be used, now in domain_tree_node
-    name = models.CharField(max_length=192, blank=False)
+    name = models.CharField(max_length=192, blank=True, default="")
     penalty = models.PositiveIntegerField(default=1)
     # should no longer be used, now in domain_tree_node
     postfix = models.CharField(max_length=12, blank=True)
@@ -2137,15 +2137,10 @@ class network(models.Model):
             identifier=self.identifier,
             network_type="%d" % (self.network_type_id),
             master_network="%d" % (self.master_network_id or 0),
-            # name=self.name,
-            # postfix=self.postfix or "",
             network=self.network,
             netmask=self.netmask,
             broadcast=self.broadcast,
             gateway=self.gateway,
-            # short_names="1" if self.short_names else "0",
-            # write_bind_config="1" if self.write_bind_config else "0",
-            # write_other_network_config="1" if self.write_other_network_config else "0",
             network_device_type="::".join(["%d" % (ndev_type.pk) for ndev_type in self.network_device_type.all()]),
         )
         if add_ip_info:
@@ -2153,9 +2148,6 @@ class network(models.Model):
         return r_xml
     class Meta:
         db_table = u'network'
-    # deprecated and removed
-    # def get_full_postfix(self):
-    #    return "%s" % (self.postfix, self.name)
     def get_info(self):
         all_slaves = self.rel_master_network.all()
         # return extended info
@@ -2177,8 +2169,6 @@ class network(models.Model):
 class network_serializer(serializers.ModelSerializer):
     class Meta:
         model = network
-        fields = ("idx", "identifier", "network_type", "master_network", "penalty", "info",
-            "network", "netmask", "broadcast", "gateway", "gw_pri", "date", "network_device_type")
 
 @receiver(signals.pre_save, sender=network)
 def network_pre_save(sender, **kwargs):
