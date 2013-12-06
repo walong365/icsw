@@ -2,7 +2,6 @@
 
 from lxml import etree # @UnresolvedImports
 from lxml.builder import E # @UnresolvedImports
-import collectd
 import logging_tools
 import multiprocessing
 import os
@@ -14,6 +13,8 @@ import threading
 import time
 import uuid_tools
 import zmq
+if __name__ != "__main__":
+    import collectd # @UnresolvedImport
 
 IPC_SOCK = "ipc:///var/log/cluster/sockets/collectd/com"
 RECV_PORT = 8002
@@ -22,14 +23,22 @@ GRAPHER_PORT = 8003
 
 class perfdata_value(object):
     PD_NAME = "unique_name"
-    def __init__(self, name, info, unit="1", v_type="f", key=""):
+    def __init__(self, name, info, unit="1", v_type="f", key="", rrd_spec="GAUGE:0:100"):
         self.name = name
         self.info = info
         self.unit = unit
         self.v_type = v_type
         self.key = key or name
+        self.rrd_spec = rrd_spec
     def get_xml(self):
-        return E.value(name=self.name, unit=self.unit, info=self.info, v_type=self.v_type, key=self.key)
+        return E.value(
+            name=self.name,
+            unit=self.unit,
+            info=self.info,
+            v_type=self.v_type,
+            key=self.key,
+            rrd_spec=self.rrd_spec,
+        )
 
 class perfdata_object(object):
     def _wrap(self, _xml, v_list, rsi=0):
@@ -51,6 +60,9 @@ class perfdata_object(object):
         ]
     def get_type_instance(self, v_list):
         return ""
+    @property
+    def default_xml_info(self):
+        return self.get_pd_xml_info([])
     def get_pd_xml_info(self, v_list):
         return self.PD_XML_INFO
     def build_perfdata_info(self, mach_values):
@@ -67,9 +79,9 @@ class load_pdata(perfdata_object):
     PD_RE = re.compile("^load1=(?P<load1>\S+)\s+load5=(?P<load5>\S+)\s+load15=(?P<load15>\S+)$")
     PD_NAME = "load"
     PD_XML_INFO = E.perfdata_info(
-        perfdata_value("load1", "mean load of the last minute").get_xml(),
-        perfdata_value("load5", "mean load of the 5 minutes").get_xml(),
-        perfdata_value("load15", "mean load of the 15 minutes").get_xml(),
+        perfdata_value("load1", "mean load of the last minute", rrd_spec="GAUGE:0:10000").get_xml(),
+        perfdata_value("load5", "mean load of the 5 minutes", rrd_spec="GAUGE:0:10000").get_xml(),
+        perfdata_value("load15", "mean load of the 15 minutes", rrd_spec="GAUGE:0:10000").get_xml(),
     )
     def build_values(self, _xml, in_dict):
         return self._wrap(
@@ -88,36 +100,30 @@ class smc_chassis_psu_pdata(perfdata_object):
             [int(in_dict["psu_num"]), float(in_dict["temp"]), float(in_dict["amps"]), int(in_dict["fan1"]), int(in_dict["fan2"])],
             rsi=1,
             )
+    @property
+    def default_xml_info(self):
+        return self.get_pd_xml_info([0])
     def get_pd_xml_info(self, v_list):
         psu_num = v_list[0]
         return E.perfdata_info(
-            perfdata_value("temp", "temperature of PSU %d" % (psu_num), v_type="f", unit="C", key="temp.psu%d" % (psu_num)).get_xml(),
-            perfdata_value("amps", "amperes consumed by PSU %d" % (psu_num), v_type="f", unit="A", key="amps.psu%d" % (psu_num)).get_xml(),
-            perfdata_value("fan1", "speed of FAN1 of PSU %d" % (psu_num), v_type="i", key="fan.psu%dfan1" % (psu_num)).get_xml(),
-            perfdata_value("fan2", "speed of FAN2 of PSU %d" % (psu_num), v_type="i", key="fan.psu%dfan2" % (psu_num)).get_xml(),
+            perfdata_value("temp", "temperature of PSU %d" % (psu_num), v_type="f", unit="C", key="temp.psu%d" % (psu_num), rrd_spec="GAUGE:0:100").get_xml(),
+            perfdata_value("amps", "amperes consumed by PSU %d" % (psu_num), v_type="f", unit="A", key="amps.psu%d" % (psu_num), rrd_spec="GAUGE:0:100").get_xml(),
+            perfdata_value("fan1", "speed of FAN1 of PSU %d" % (psu_num), v_type="i", key="fan.psu%dfan1" % (psu_num), rrd_spec="GAUGE:0:10000").get_xml(),
+            perfdata_value("fan2", "speed of FAN2 of PSU %d" % (psu_num), v_type="i", key="fan.psu%dfan2" % (psu_num), rrd_spec="GAUGE:0:10000").get_xml(),
         )
     def get_type_instance(self, v_list):
         # set PSU index as instance
         return "%d" % (v_list[0])
 
-class ping_pdata_simple(perfdata_object):
-    PD_RE = re.compile("^rta=(?P<rta>\S+)s loss=(?P<loss>\d+)$")
-    PD_NAME = "ping"
-    def build_values(self, _xml, in_dict):
-        return self._wrap(
-            _xml,
-            [3, int(in_dict["loss"]), float(in_dict["rta"]), 0., 0.]
-        )
-
 class ping_pdata(perfdata_object):
     PD_RE = re.compile("^rta=(?P<rta>\S+) min=(?P<min>\S+) max=(?P<max>\S+) sent=(?P<sent>\d+) loss=(?P<loss>\d+)$")
     PD_NAME = "ping"
     PD_XML_INFO = E.perfdata_info(
-        perfdata_value("sent", "packets sent", v_type="i").get_xml(),
-        perfdata_value("loss", "packets lost", v_type="i").get_xml(),
-        perfdata_value("rta", "mean package runtime", v_type="f", unit="s").get_xml(),
-        perfdata_value("min", "minimum package runtime", v_type="f", unit="s").get_xml(),
-        perfdata_value("max", "maximum package runtime", v_type="f", unit="s").get_xml(),
+        perfdata_value("sent", "packets sent", v_type="i", rrd_spec="GAUGE:0:100").get_xml(),
+        perfdata_value("loss", "packets lost", v_type="i", rrd_spec="GAUGE:0:100").get_xml(),
+        perfdata_value("rta", "mean package runtime", v_type="f", unit="s", rrd_spec="GAUGE:0:1000000").get_xml(),
+        perfdata_value("min", "minimum package runtime", v_type="f", unit="s", rrd_spec="GAUGE:0:1000000").get_xml(),
+        perfdata_value("max", "maximum package runtime", v_type="f", unit="s", rrd_spec="GAUGE:0:1000000").get_xml(),
     )
     def build_values(self, _xml, in_dict):
         return self._wrap(
@@ -559,21 +565,39 @@ class receiver(object):
             if name:
                 collectd.Values(plugin="collserver", host=host_name, time=s_time, type="icval", type_instance=name).dispatch(values=[value])
 
-# Our Own Functions go here
-def configer(ObjConfiguration):
-    pass
-    # collectd.debug('Configuring Stuff')
+if __name__ != "__main__":
+    # Our Own Functions go here
+    def configer(ObjConfiguration):
+        pass
+        # collectd.debug('Configuring Stuff')
 
-def initer(my_recv):
-    signal.signal(signal.SIGCHLD, signal.SIG_DFL)
-    my_recv.init_receiver()
-    my_recv.start_sub_proc()
+    def initer(my_recv):
+        signal.signal(signal.SIGCHLD, signal.SIG_DFL)
+        my_recv.init_receiver()
+        my_recv.start_sub_proc()
 
-# == Hook Callbacks, Order is important! ==#
+    # == Hook Callbacks, Order is important! ==#
 
-my_recv = receiver()
+    my_recv = receiver()
 
-collectd.register_config(configer)
-collectd.register_init(initer, my_recv)
-# call every 15 seconds
-collectd.register_read(my_recv.recv, 15.0)
+    collectd.register_config(configer)
+    collectd.register_init(initer, my_recv)
+    # call every 15 seconds
+    collectd.register_read(my_recv.recv, 15.0)
+else:
+    out_list = logging_tools.new_form_list()
+    out_list.append([
+        logging_tools.form_entry("icval"),
+        logging_tools.form_entry("v:GAUGE:U:U"),
+        ])
+    for key in sorted(globals().keys()):
+        obj = globals()[key]
+        if type(obj) == type and obj != perfdata_object:
+            if issubclass(obj, perfdata_object):
+                obj = obj()
+                out_list.append([
+                    logging_tools.form_entry("ipd_%s" % (obj.PD_NAME)),
+                    logging_tools.form_entry(" ".join(["%s:%s" % (_e.get("name"), _e.get("rrd_spec")) for _e in obj.default_xml_info.xpath(".//value[@rrd_spec]")])),
+                ])
+    print unicode(out_list)
+
