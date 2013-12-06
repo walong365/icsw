@@ -32,10 +32,6 @@ angular_add_simple_list_controller(
     }
 )
 
-network_module.controller("network_type", ["$scope", "Restangular",
-    ($scope, Restangular) ->
-])
-    
 angular_add_simple_list_controller(
     network_module,
     "network_device_type_base",
@@ -52,10 +48,6 @@ angular_add_simple_list_controller(
         new_object_created  : (new_obj) -> new_obj.identifier = ""
     }
 )
-
-network_module.controller("network_device_type", ["$scope", "$compile", "$templateCache", "$q", "Restangular",
-    ($scope, $compile, $templateCache, $q, Restangular) ->
-])
 
 angular_add_simple_list_controller(
     network_module,
@@ -86,16 +78,6 @@ angular_add_simple_list_controller(
                     return false
     }
 )
-
-network_module.controller("network", ["$scope",
-    ($scope) ->
-        $scope.ip_fill_up = (in_str) ->
-            if in_str
-                ip_field = in_str.split(".")
-            else
-                ip_field = ["?", "?", "?", "?"]
-            return ("QQ#{part}".substr(-3, 3) for part in ip_field).join(".").replace(/Q/g, "&nbsp;")
-])
 
 {% endinlinecoffeescript %}
 

@@ -70,10 +70,10 @@
 <script type="text/ng-template" id="network_row.html">
     <td>{{ obj.identifier }}</td>
     <td style="font-family:monospace;">
-        <span ng-bind-html="ip_fill_up(obj.network)"></span> / <span ng-bind-html="ip_fill_up(obj.netmask)"></span> / <span ng-bind-html="ip_fill_up(obj.broadcast)"></span>
+        <span ng-bind-html="obj.network | ip_fixed_width"></span> / <span ng-bind-html="obj.netmask | ip_fixed_width"></span> / <span ng-bind-html="obj.broadcast | ip_fixed_width"></span>
     </td>
     <td>
-        <span ng-bind-html="ip_fill_up(obj.gateway)"></span>
+        <span ng-bind-html="obj.gateway | ip_fixed_width"></span>
     </td>
     <td>{{ obj.penalty }}</td>
     <td>{{ obj.network_type | array_lookup:this.rest_data.network_types:'description' }}</td>
@@ -86,41 +86,35 @@
 <tabset>
     <tab heading="Network device types">
         <div ng-controller="network_device_type_base">
-            <div ng-controller="network_device_type">
-                <h3>Network device types ({{entries.length}} entries), <input type="button" value="create new" ng-click="create($event)"/></h3>
-                <table class="table table-condensed table-condensed table-hover" style="width:auto;">
-                    <thead networkdevicetypehead></thead>
-                    <tbody>
-                        <tr networkdevicetyperow ng-repeat="obj in entries | orderBy:'-identifier':true"></tr>
-                    </tbody>
-                </table>
-            </div>
+            <h3>Network device types ({{entries.length}} entries), <input type="button" value="create new" ng-click="create($event)"/></h3>
+            <table class="table table-condensed table-condensed table-hover" style="width:auto;">
+                <thead networkdevicetypehead></thead>
+                <tbody>
+                    <tr networkdevicetyperow ng-repeat="obj in entries | orderBy:'-identifier':true"></tr>
+                </tbody>
+            </table>
         </div>
     </tab>
     <tab heading="Network types">
         <div ng-controller="network_type_base">
-            <div ng-controller="network_type">
-                <h3>Network types ({{entries.length}} entries), <input type="button" value="create new" ng-click="create($event)"/></h3>
-                <table class="table table-condensed table-condensed table-hover" style="width:auto;">
-                    <thead networktypehead></thead>
-                    <tbody>
-                        <tr networktyperow ng-repeat="obj in entries | orderBy:'-identifier':true" ></tr>
-                    </tbody>
-                </table>
-            </div>
+            <h3>Network types ({{entries.length}} entries), <input type="button" value="create new" ng-click="create($event)"/></h3>
+            <table class="table table-condensed table-condensed table-hover" style="width:auto;">
+                <thead networktypehead></thead>
+                <tbody>
+                    <tr networktyperow ng-repeat="obj in entries | orderBy:'-identifier':true" ></tr>
+                </tbody>
+            </table>
         </div>
     </tab>
     <tab heading="Networks">
         <div ng-controller="network_base">
-            <div ng-controller="network">
-                <h2>Networks ({{entries.length}} entries), <input type="button" value="create new" ng-click="create($event)"/></h2>
-                <table class="table table-condensed table-condensed table-hover" style="width:auto;">
-                    <thead networkhead></thead>
-                    <tbody>
-                        <tr networkrow ng-repeat="obj in entries | orderBy:'-identifier':true"></tr>
-                    </tbody>
-                </table>
-            </div>
+            <h2>Networks ({{entries.length}} entries), <input type="button" value="create new" ng-click="create($event)"/></h2>
+            <table class="table table-condensed table-condensed table-hover" style="width:auto;">
+                <thead networkhead></thead>
+                <tbody>
+                    <tr networkrow ng-repeat="obj in entries | orderBy:'-identifier':true"></tr>
+                </tbody>
+            </table>
         </div>
     </tab>
 </tabset>

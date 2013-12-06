@@ -217,7 +217,6 @@ angular_add_simple_list_controller = (module, name, settings) ->
                 else
                     return "has-error"
             $scope.create = (event) ->
-                console.log typeof($scope.settings.new_object)
                 if typeof($scope.settings.new_object) == "function"
                     $scope.new_obj = $scope.settings.new_object($scope)
                 else
@@ -287,6 +286,14 @@ angular.module(
                     return (entry for key, entry of f_array when typeof(entry) == "object" and entry and entry["idx"] == in_value)[0]
             else
                 return if null_msg then null_msg else "N/A"
+).filter(
+    "ip_fixed_width", () ->
+        return (in_str) ->
+            if in_str
+                ip_field = in_str.split(".")
+            else
+                ip_field = ["?", "?", "?", "?"]
+            return ("QQ#{part}".substr(-3, 3) for part in ip_field).join(".").replace(/Q/g, "&nbsp;")
 ).filter(
     "yesno1", () ->
         return (in_value) ->
