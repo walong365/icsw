@@ -88,7 +88,10 @@ def main():
     global_config.add_config_entries(
         [
             ("LOG_SOURCE_IDX", configfile.int_c_var(cluster_location.log_source.create_log_source_entry("rrd-server", "Cluster RRDServer", device=sql_info.effective_device).pk)),
-            ("GRAPH_ROOT"    , configfile.str_c_var(os.path.abspath(os.path.join(settings.FILE_ROOT if (not global_config["DEBUG"] or options.SERVER_PATH) else os.path.join(cur_dir, "../webfrontend/django/initat/cluster"), "graphs"))))
+            ("GRAPH_ROOT"    , configfile.str_c_var(
+                os.path.abspath(os.path.join(
+                    settings.FILE_ROOT if (not global_config["DEBUG"] or options.SERVER_PATH) else "/usr/local/share/home/local/development/git/webfrontend/django/initat/cluster",
+                    "graphs"))))
         ]
     )
 

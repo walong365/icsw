@@ -28,7 +28,6 @@ from initat.cluster.backbone.models import device
 from initat.rrd_grapher.config import global_config
 from lxml import etree # @UnresolvedImport
 from lxml.builder import E # @UnresolvedImport
-import copy
 import datetime
 import logging_tools
 import os
@@ -128,7 +127,7 @@ class graph_var(object):
         if self.entry.tag == "value":
             # pde entry
             c_lines = [
-                "DEF:%s=%s:%s:AVERAGE" % (self.name, self.entry.getparent().get("file_name"), self["name"]),
+                "DEF:%s=%s:%s:AVERAGE" % (self.name, self["file_name"], self["part"]),
             ]
         else:
             c_lines = [
@@ -177,7 +176,7 @@ class graph_process(threading_tools.process_obj):
         connection.close()
         self.register_func("graph_rrd", self._graph_rrd)
         self.register_func("xml_info", self._xml_info)
-        self.raw_vector_dict, self.vector_dict = ({}, {})
+        self.vector_dict = {}
         self.graph_root = global_config["GRAPH_ROOT"]
         self.log("graphs go into %s" % (self.graph_root))
         self.colorizer = colorizer(self)
@@ -190,49 +189,11 @@ class graph_process(threading_tools.process_obj):
         pass
     def _xml_info(self, *args, **kwargs):
         dev_id, xml_str = (args[0], etree.fromstring(args[1]))
-        # needed ?
-        self.raw_vector_dict[dev_id] = xml_str
-        self.vector_dict[dev_id] = self._struct_vector(xml_str)
-    def _struct_vector(self, cur_xml):
-        # somehow related to struct_xml_vector
-        all_keys = set(cur_xml.xpath(".//mve/@name"))
-        xml_vect, lu_dict = (E.machine_vector(), {})
-        for key in sorted(all_keys):
-            parts = key.split(".")
-            s_dict, s_xml = (lu_dict, xml_vect)
-            for part in parts:
-                if part not in s_dict:
-                    new_el = E.entry(part=part, full=part)
-                    s_xml.append(new_el)
-                    s_dict[part] = (new_el, {})
-                s_xml, s_dict = s_dict[part]
-            add_entry = copy.deepcopy(cur_xml.find(".//mve[@name='%s']" % (key)))
-            s_xml.append(add_entry)
-        # remove structural entries with only one mve-child
-        for struct_ent in xml_vect.xpath(".//entry[not(entry)]"):
-            parent = struct_ent.getparent()
-            parent.append(struct_ent[0])
-            parent.remove(struct_ent)
-        # set full names
-        for ent in xml_vect.xpath(".//entry"):
-            cur_p = ent.getparent()
-            if cur_p.tag == "entry":
-                ent.attrib["full"] = "%s.%s" % (cur_p.attrib["full"], ent.attrib["full"])
-        # add pde entries
-        pde_keys = set(cur_xml.xpath(".//pde/@name"))
-        for key in sorted(pde_keys):
-            cur_el = cur_xml.find(".//pde[@name='%s']" % (key))
-            new_el = E.entry(name=key, part=key, file_name=cur_el.get("file_name"))
-            xml_vect.append(new_el)
-            for sub_val in cur_el:
-                new_val = copy.deepcopy(sub_val)
-                new_val.attrib["full"] = "%s.%s" % (new_el.get("name"), new_val.get("name"))
-                new_el.append(new_val)
-        return xml_vect
+        self.vector_dict[dev_id] = xml_str # self._struct_vector(xml_str)
     def _create_graph_keys(self, graph_keys):
         # graph_keys ... list of keys
-        first_level_keys = set([key.split(".")[0] for key in graph_keys])
-        g_key_dict = dict([(flk, sorted([key for key in graph_keys if key.split(".")[0] == flk])) for flk in first_level_keys])
+        first_level_keys = set([key.split(".")[0].split(":")[-1] for key in graph_keys])
+        g_key_dict = dict([(flk, sorted([key for key in graph_keys if key.split(".")[0].split(":")[-1] == flk])) for flk in first_level_keys])
         return g_key_dict
     def _graph_rrd(self, *args, **kwargs):
         src_id, srv_com = (args[0], server_command.srv_command(source=args[1]))
@@ -242,7 +203,10 @@ class graph_process(threading_tools.process_obj):
         graph_key_dict = self._create_graph_keys(graph_keys)
         self.log("found device pks: %s" % (", ".join(["%d" % (pk) for pk in dev_pks])))
         self.log("graph keys: %s" % (", ".join(graph_keys)))
-        self.log("top level keys (== distinct graphs): %d" % (len(graph_key_dict)))
+        self.log("top level keys (== distinct graphs): %d; %s" % (
+            len(graph_key_dict),
+            ", ".join(sorted(graph_key_dict)),
+            ))
         para_dict = {
             "size" : "400x200",
         }
@@ -295,12 +259,16 @@ class graph_process(threading_tools.process_obj):
             for graph_key in sorted(graph_keys):
                 for cur_pk in dev_pks:
                     dev_vector = self.vector_dict[cur_pk]
-                    graph_mve = dev_vector.find(".//mve[@name='%s']" % (graph_key))
-                    if graph_mve is not None:
-                        rrd_args.extend(graph_var(graph_mve, dev_dict[cur_pk], graph_width=graph_width).config)
-                    graph_pde = dev_vector.find(".//value[@full='%s']" % (graph_key))
-                    if graph_pde is not None:
-                        rrd_args.extend(graph_var(graph_pde, dev_dict[cur_pk], graph_width=graph_width).config)
+                    if graph_key.startswith("pde:"):
+                        # performance data from icinga
+                        graph_pde = dev_vector.find(".//value[@name='%s']" % (graph_key))
+                        if graph_pde is not None:
+                            rrd_args.extend(graph_var(graph_pde, dev_dict[cur_pk], graph_width=graph_width).config)
+                    else:
+                        # machine vector entry
+                        graph_mve = dev_vector.find(".//mve[@name='%s']" % (graph_key))
+                        if graph_mve is not None:
+                            rrd_args.extend(graph_var(graph_mve, dev_dict[cur_pk], graph_width=graph_width).config)
             if graph_var.var_idx:
                 rrd_args.extend([
                     "--title",
@@ -323,7 +291,7 @@ class graph_process(threading_tools.process_obj):
                         )
                     )
             else:
-                self.log("no DEFs", logging_tools.LOG_LEVEL_ERROR)
+                self.log("no DEFs for graph_key_dict %s" % (tlk), logging_tools.LOG_LEVEL_ERROR)
         srv_com["graphs"] = graph_list
         # print srv_com.pretty_print()
         srv_com.set_result(

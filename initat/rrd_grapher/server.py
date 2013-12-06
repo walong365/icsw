@@ -148,9 +148,12 @@ class server_process(threading_tools.process_pool):
         try:
             client.bind(bind_str)
         except zmq.core.error.ZMQError:
-            self.log("error binding to %d: %s" % (global_config["COM_PORT"],
-                                                  process_tools.get_except_info()),
-                     logging_tools.LOG_LEVEL_CRITICAL)
+            self.log(
+                "error binding to %d: %s" % (
+                    global_config["COM_PORT"],
+                    process_tools.get_except_info()
+                ),
+                logging_tools.LOG_LEVEL_CRITICAL)
             raise
         else:
             self.log("bound to %s" % (bind_str))
@@ -185,8 +188,9 @@ class server_process(threading_tools.process_pool):
             try:
                 srv_com = server_command.srv_command(source=data)
             except:
-                self.log("error interpreting command: %s" % (process_tools.get_except_info()),
-                         logging_tools.LOG_LEVEL_ERROR)
+                self.log(
+                    "error interpreting command: %s" % (process_tools.get_except_info()),
+                    logging_tools.LOG_LEVEL_ERROR)
                 # send something back
                 self.com_socket.send_unicode(src_id, zmq.SNDMORE)
                 self.com_socket.send_unicode("internal error")

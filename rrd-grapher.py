@@ -24,4 +24,4 @@
 from initat.rrd_grapher.main import main
 import sys
 
-sys.exit(main.main())
+sys.exit(main())

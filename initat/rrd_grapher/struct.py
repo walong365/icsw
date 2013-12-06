@@ -94,13 +94,21 @@ class data_store(object):
         # we ignore the global store name for perfdata stores
         old_keys = set(self.xml_vector.xpath(".//pde/@name"))
         rrd_dir = global_config["RRD_DIR"]
+        print host_name, pd_type
+        print etree.tostring(pd_info, pretty_print=True)
+        type_instance = pd_info.get("type_instance", "")
         # only one entry
-        cur_entry = self.xml_vector.find(".//pde[@name='%s']" % (pd_type))
+        if type_instance:
+            cur_entry = self.xml_vector.xpath(".//pde[@name='%s' and @type_instance='%s']" % (pd_type, type_instance))
+        else:
+            cur_entry = self.xml_vector.xpath(".//pde[@name='%s']" % (pd_type))
+        cur_entry = cur_entry[0] if cur_entry else None
         if cur_entry is None:
             # create new entry
             cur_entry = E.pde(
                 name=pd_type,
                 host=host_name,
+                type_instance=pd_info.get("type_instance", ""),
                 init_time="%d" % (time.time()),
             )
             for cur_idx, entry in enumerate(pd_info):
@@ -110,6 +118,8 @@ class data_store(object):
                     )
                 )
             self.xml_vector.append(cur_entry)
+        else:
+            cur_entry.attrib["type_instance"] = pd_info.get("type_instance", "")
         self._update_pd_entry(cur_entry, pd_info, rrd_dir)
         new_keys = set(self.xml_vector.xpath(".//pde/@name"))
         c_keys = old_keys ^ new_keys
@@ -125,7 +135,10 @@ class data_store(object):
             rrd_dir,
             entry.get("host"),
             "perfdata",
-            "ipd_%s.rrd" % (entry.get("name"))
+            "ipd_%s%s.rrd" % (
+                entry.get("name"),
+                "-%s" % (entry.attrib["type_instance"]) if entry.get("type_instance", "") else "",
+            )
         )
         if len(entry) == len(src_entry):
             for v_idx, (cur_value, src_value) in enumerate(zip(entry, src_entry)):
@@ -136,6 +149,7 @@ class data_store(object):
                     ("name"  , None),
                     ("index" , "%d" % (v_idx))]:
                     cur_value.attrib[key] = src_value.get(key, def_value)
+                cur_value.attrib["key"] = src_value.get("key", cur_value.attrib["name"])
     def _update_entry(self, entry, src_entry, rrd_dir):
         for key, def_value in [
             ("info"  , None),
@@ -152,7 +166,11 @@ class data_store(object):
         file(self.data_file_name(), "wb").write(etree.tostring(self.xml_vector, pretty_print=True))
         self.sync_to_grapher()
     def sync_to_grapher(self):
-        data_store.process.send_to_process("graph", "xml_info", self.pk, etree.tostring(self.xml_vector))
+        data_store.process.send_to_process(
+            "graph",
+            "xml_info",
+            self.pk,
+            etree.tostring(self.struct_xml_vector("graph")))
     def data_file_name(self):
         return os.path.join(data_store.store_dir, "%s_%d.info.xml" % (self.name, self.pk))
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
@@ -162,7 +180,12 @@ class data_store(object):
     @staticmethod
     def has_rrd_xml(dev_pk):
         return dev_pk in data_store.__devices
-    def struct_xml_vector(self):
+    def struct_xml_vector(self, mode):
+        # mode is one of web or graph
+        if mode not in ["web", "graph"]:
+            raise ValueError("mode '%s' is not correct" % (mode))
+        web_mode = mode == "web"
+        graph_mode = mode == "graph"
         cur_xml = self.xml_vector
         all_keys = set(cur_xml.xpath(".//mve/@name"))
         xml_vect, lu_dict = (E.machine_vector(), {})
@@ -177,9 +200,10 @@ class data_store(object):
                 s_xml, s_dict = s_dict[part]
             add_entry = copy.deepcopy(cur_xml.find(".//mve[@name='%s']" % (key)))
             # remove unneded entries
-            for rem_attr in ["file_name", "last_update", "sane_name"]:
-                if rem_attr in add_entry.attrib:
-                    del add_entry.attrib[rem_attr]
+            if web_mode:
+                for rem_attr in ["file_name", "last_update", "sane_name"]:
+                    if rem_attr in add_entry.attrib:
+                        del add_entry.attrib[rem_attr]
             if "info" in add_entry.attrib:
                 add_entry.attrib["info"] = self._expand_info(add_entry)
             s_xml.append(add_entry)
@@ -189,16 +213,37 @@ class data_store(object):
             parent.append(struct_ent[0])
             parent.remove(struct_ent)
         # print etree.tostring(xml_vect, pretty_print=True)
-         # add pde entries
-        pde_keys = set(cur_xml.xpath(".//pde/@name"))
-        for key in sorted(pde_keys):
-            new_el = E.entry(name=key, part=key)
-            xml_vect.append(new_el)
-            for sub_val in cur_xml.find(".//pde[@name='%s']" % (key)):
+        # add pde entries
+        pde_keys = sorted([(pde_node.attrib["name"], pde_node.get("type_instance", ""), pde_node) for pde_node in cur_xml.findall("pde")])
+        for pde_key, type_inst, pde_node in pde_keys:
+            ti_str = "/%s" % (type_inst) if type_inst else ""
+            for sub_val in pde_node:
                 new_val = copy.deepcopy(sub_val)
-                new_val.attrib["name"] = "%s.%s" % (new_el.get("name"), new_val.get("name"))
-                new_el.append(new_val)
+                v_key = sub_val.get("key", sub_val.get("name"))
+                sr_node = self._create_struct(xml_vect, "%s.%s" % (pde_key, v_key))
+                new_val.attrib["part"] = new_val.attrib["name"]
+                new_val.attrib["name"] = "pde:%s.%s%s" % (
+                    sr_node.get("name", sr_node.get("part")),
+                    new_val.get("name"),
+                    ti_str,
+                    )
+                new_val.attrib["type_instance"] = type_inst
+                new_val.attrib["info"] += " [PD]"
+                if graph_mode:
+                    new_val.attrib["file_name"] = pde_node.attrib["file_name"]
+                sr_node.append(new_val)
+        # print etree.tostring(xml_vect, pretty_print=True)
         return xml_vect
+    def _create_struct(self, top_node, full_key):
+        parts = full_key.split(".")[:-1]
+        cur_node = top_node
+        for part_idx, part in enumerate(parts):
+            cur_node = top_node.find("*[@part='%s']" % (part))
+            if cur_node is None:
+                cur_node = E.entry(name=".".join(parts[:part_idx + 1]), part=part)
+                top_node.append(cur_node)
+            top_node = cur_node
+        return cur_node
     @staticmethod
     def merge_node_results(res_list):
         if len(res_list) > 1:
@@ -244,7 +289,7 @@ class data_store(object):
     @staticmethod
     def get_rrd_xml(dev_pk, sort=False):
         if sort:
-            return data_store.__devices[dev_pk].struct_xml_vector()
+            return data_store.__devices[dev_pk].struct_xml_vector("web")
         else:
             # do a deepcopy (just to be sure)
             return copy.deepcopy(data_store.__devices[dev_pk].xml_vector)
