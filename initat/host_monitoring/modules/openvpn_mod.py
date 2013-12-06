@@ -3,7 +3,7 @@
 # Copyright (C) 2008,2009,2010,2011,2012,2013 Andreas Lang-Nevyjel, init.at
 #
 # Send feedback to: <lang-nevyjel@init.at>
-# 
+#
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License Version 2 as
 # published by the Free Software Foundation.
@@ -18,20 +18,20 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
 
+from initat.host_monitoring import limits, hm_classes
 import commands
 import datetime
 import glob
 import logging_tools
 import os
-import process_tools
 import pprint
+import process_tools
 import re
 import shutil
 import socket
 import sys
 import tempfile
 import time
-from initat.host_monitoring import limits, hm_classes
 
 OPENVPN_DIR = "/etc/openvpn"
 EXPECTED_FILE = "/etc/sysconfig/host-monitoring.d/openvpn_expected"
@@ -57,7 +57,7 @@ class net_speed(object):
                     self._get_value(self.__act_tx - prev_tx, diff_time))
         else:
             return (0., 0.)
-            
+
 class _general(hm_classes.hm_module):
     def __init__(self, *args, **kwargs):
         hm_classes.hm_module.__init__(self, *args, **kwargs)
@@ -88,22 +88,22 @@ class _general(hm_classes.hm_module):
         if self.__base_mv_registered:
             num_online = len([True for key in ovpn_keys if self[key].state])
             num_offline = num_total - num_online
-            mv["ovpn.total"]       = num_total
+            mv["ovpn.total"] = num_total
             mv["ovpn.operational"] = num_online
-            mv["ovpn.offline"]     = num_offline
+            mv["ovpn.offline"] = num_offline
         for ovpn_inst in [self[key] for key in ovpn_keys if self[key].ovpn_type == "server"]:
             ovpn_name = ovpn_inst.name.split(".")[0]
             clients = ovpn_inst.keys()
             if not ovpn_inst.mv_registered:
                 ovpn_inst.mv_registered = True
                 self.__client_dict[ovpn_name] = {}
-                mv.register_entry("ovpn.%s.total"   % (ovpn_name), 0, "Number of clients total for $2")
-                mv.register_entry("ovpn.%s.online"  % (ovpn_name), 0, "Number of clients online for $2")
+                mv.register_entry("ovpn.%s.total" % (ovpn_name), 0, "Number of clients total for $2")
+                mv.register_entry("ovpn.%s.online" % (ovpn_name), 0, "Number of clients online for $2")
                 mv.register_entry("ovpn.%s.offline" % (ovpn_name), 0, "Number of clients offline for $2")
             num_online = len([True for key in clients if ovpn_inst[key]["online"]])
             num_offline = len(clients) - num_online
-            mv["ovpn.%s.total" % (ovpn_name)]   =  len(clients)
-            mv["ovpn.%s.online" % (ovpn_name)]  = num_online
+            mv["ovpn.%s.total" % (ovpn_name)] = len(clients)
+            mv["ovpn.%s.online" % (ovpn_name)] = num_online
             mv["ovpn.%s.offline" % (ovpn_name)] = num_offline
             # iterate over clients
             act_dict = self.__client_dict[ovpn_name]
@@ -119,7 +119,7 @@ class _general(hm_classes.hm_module):
                 act_rx, act_tx = client_dict["speed"].feed(c_dict["rx"], c_dict["tx"])
                 mv["%s.rx" % (c_pfix)] = act_rx
                 mv["%s.tx" % (c_pfix)] = act_tx
-            #pprint.pprint(ovpn_inst.get_repr())
+            # pprint.pprint(ovpn_inst.get_repr())
     def update_expected(self):
         ret_field = []
         if os.path.isfile(EXPECTED_FILE):
@@ -349,7 +349,7 @@ class openvpn_instance(object):
             "dict"              : self.__act_dict,
             "device"            : self.__device
         }
-    
+
 class certificate_status_command(hm_classes.hm_command):
     def __init__(self, name):
         hm_classes.hm_command.__init__(self, name, positional_arguments=True)
@@ -370,13 +370,12 @@ class certificate_status_command(hm_classes.hm_command):
     def __call__(self, srv_com, cm):
         temp_dir = tempfile.mkdtemp("_certcheck")
         pem_files = sum([glob.glob(s_glob) for s_glob in cm.arguments], [])
-        home_dir = "/etc/openvpn"
         inline_cert_re = re.compile(".*</*(?P<cert_type>[a-zA-Z]+)>.*")
         cert_dict, map_dict = ({}, {})
-        if not pem_files:
-            conf_files = [file_name for file_name in os.listdir(home_dir) if file_name.endswith(".conf")]
+        if not pem_files and os.path.isdir(OPENVPN_DIR):
+            conf_files = [file_name for file_name in os.listdir(OPENVPN_DIR) if file_name.endswith(".conf")]
             for conf_file in conf_files:
-                file_name = "%s/%s" % (home_dir, conf_file)
+                file_name = "%s/%s" % (OPENVPN_DIR, conf_file)
                 lines = file(file_name, "r").read().split("\n")
                 is_inline = False
                 inline_pems = {}
@@ -398,17 +397,17 @@ class certificate_status_command(hm_classes.hm_command):
                             if len(l_parts) == 2:
                                 key, value = l_parts
                                 if key.lower() in ["ca", "cert"]:
-                                    map_dict[os.path.join(home_dir, value)] = file_name
+                                    map_dict[os.path.join(OPENVPN_DIR, value)] = file_name
                 for key, value in inline_pems.iteritems():
                     if key not in ["key"]:
                         full_name = os.path.join(temp_dir, "%s_%s.pem" % (conf_file.replace(".conf", ""), key))
                         file(full_name, "w").write("\n".join(inline_pems[key]))
                         pem_files.append(full_name)
                 # pprint.pprint(inline_pems)
-            for dir_name, _dir_list, file_list in os.walk(home_dir):
+            for dir_name, _dir_list, file_list in os.walk(OPENVPN_DIR):
                 pem_files.extend([os.path.join(dir_name, file_name) for file_name in file_list if file_name.endswith(".pem")])
         for file_name in pem_files:
-            #file_name = "%s/%s" % (dir_name, pem_file)
+            # file_name = "%s/%s" % (dir_name, pem_file)
             act_dict = self._get_pem_status(file_name)
             if act_dict:
                 if map_dict.has_key(file_name):
@@ -462,7 +461,7 @@ class certificate_status_command(hm_classes.hm_command):
             logging_tools.get_plural("certificate", num_dict["total"]),
             ", ".join([logging_tools.get_plural(key, num_dict[key]) for key in ["ok", "warn", "error"] if num_dict[key]]) or "no problems",
             "; %s" % (", ".join(sorted(errors))) if errors else "")
-            
+
 class openvpn_status_command(hm_classes.hm_command):
     def __init__(self, name):
         hm_classes.hm_command.__init__(self, name, positional_arguments=False)
@@ -563,7 +562,7 @@ class openvpn_status_command(hm_classes.hm_command):
                                             p_ip_str = "%s != %s" % (p_ip_str, remote_ip)
                                             ret_state = max(ret_state, limits.nag_STATE_WARNING)
                                     else:
-                                        # no p_ip, set p_ip_str according to 
+                                        # no p_ip, set p_ip_str according to
                                         p_ip_str = " at %s" % (remote_ip)
                                 if "rxs" in peer_dict:
                                     res_field.append("%s (Srv on %s, client %s%s ok, %s/s %s/s) | rx=%d tx=%d" % (
