@@ -1,5 +1,7 @@
 #!/usr/bin/python-init -Otu
 
+from lxml import etree # @UnresolvedImports
+from lxml.builder import E # @UnresolvedImports
 import collectd
 import logging_tools
 import multiprocessing
@@ -12,8 +14,6 @@ import threading
 import time
 import uuid_tools
 import zmq
-from lxml import etree # @UnresolvedImports
-from lxml.builder import E # @UnresolvedImports
 
 IPC_SOCK = "ipc:///var/log/cluster/sockets/collectd/com"
 RECV_PORT = 8002
@@ -21,23 +21,45 @@ COMMAND_PORT = 8008
 GRAPHER_PORT = 8003
 
 class perfdata_value(object):
-    def __init__(self, name, info, unit="1", v_type="f"):
+    PD_NAME = "unique_name"
+    def __init__(self, name, info, unit="1", v_type="f", key=""):
         self.name = name
         self.info = info
         self.unit = unit
         self.v_type = v_type
+        self.key = key or name
     def get_xml(self):
-        return E.value(name=self.name, unit=self.unit, info=self.info, v_type=self.v_type)
+        return E.value(name=self.name, unit=self.unit, info=self.info, v_type=self.v_type, key=self.key)
 
 class perfdata_object(object):
-    def _wrap(self, _xml, v_list):
+    def _wrap(self, _xml, v_list, rsi=0):
+        # rsi: report start index, used to skip values from v_list which should not be graphed
         # add name, host and timestamp values
         return [
+            # name of instance (has to exist in init_types.db)
             self.PD_NAME,
+            # instance type (for non-unique perfdata objects, PSUs on a bladecenterchassis for instance)
+            self.get_type_instance(v_list),
+            # hostname
             _xml.get("host"),
+            # time
             int(_xml.get("time")),
-            v_list
+            # report offset
+            rsi,
+            # list of variables
+            v_list,
         ]
+    def get_type_instance(self, v_list):
+        return ""
+    def get_pd_xml_info(self, v_list):
+        return self.PD_XML_INFO
+    def build_perfdata_info(self, mach_values):
+        new_com = server_command.srv_command(command="perfdata_info")
+        new_com["hostname"] = mach_values[2]
+        new_com["type_instance"] = mach_values[1]
+        new_com["pd_type"] = self.PD_NAME
+        new_com["info"] = self.get_pd_xml_info(mach_values[5])
+        return new_com
 
 class load_pdata(perfdata_object):
     PD_RE = re.compile("^load1=(?P<load1>\S+)\s+load5=(?P<load5>\S+)\s+load15=(?P<load15>\S+)$")
@@ -54,6 +76,27 @@ class load_pdata(perfdata_object):
                 float(in_dict[key]) for key in ["load1", "load5", "load15"]
             ]
         )
+
+class smc_chassis_psu_pdata(perfdata_object):
+    PD_RE = re.compile("^smcipmi psu=(?P<psu_num>\d+)\s+temp=(?P<temp>\S+)\s+amps=(?P<amps>\S+)\s+fan1=(?P<fan1>\d+)\s+fan2=(?P<fan2>\d+)$")
+    PD_NAME = "smc_chassis_psu"
+    def build_values(self, _xml, in_dict):
+        return self._wrap(
+            _xml,
+            [int(in_dict["psu_num"]), float(in_dict["temp"]), float(in_dict["amps"]), int(in_dict["fan1"]), int(in_dict["fan2"])],
+            rsi=1,
+            )
+    def get_pd_xml_info(self, v_list):
+        psu_num = v_list[0]
+        return E.perfdata_info(
+            perfdata_value("temp", "temperature of PSU %d" % (psu_num), v_type="f", unit="C", key="temp.psu%d" % (psu_num)).get_xml(),
+            perfdata_value("amps", "amperes consumed by PSU %d" % (psu_num), v_type="f", unit="A", key="amps.psu%d" % (psu_num)).get_xml(),
+            perfdata_value("fan1", "speed of FAN1 of PSU %d" % (psu_num), v_type="i", key="fan.psu%dfan1" % (psu_num)).get_xml(),
+            perfdata_value("fan2", "speed of FAN2 of PSU %d" % (psu_num), v_type="i", key="fan.psu%dfan2" % (psu_num)).get_xml(),
+        )
+    def get_type_instance(self, v_list):
+        # set PSU index as instance
+        return "%d" % (v_list[0])
 
 class ping_pdata_simple(perfdata_object):
     PD_RE = re.compile("^rta=(?P<rta>\S+)s loss=(?P<loss>\d+)$")
@@ -386,17 +429,16 @@ class net_receiver(multiprocessing.Process):
     def _check_for_ext_perfdata(self, mach_values):
         # unique tuple
         pd_tuple = (mach_values[0], mach_values[1])
+        # init counter
         if pd_tuple not in self.__perfdatas_cnt:
             self.__perfdatas_cnt[pd_tuple] = 1
+        # reduce by one
         self.__perfdatas_cnt[pd_tuple] -= 1
         if not self.__perfdatas_cnt[pd_tuple]:
+            # zero reached, reset counter to 10 and send info to local rrd-grapher
             self.__perfdatas_cnt[pd_tuple] = 10
             pd_obj = globals()["%s_pdata" % (mach_values[0])]()
-            new_com = server_command.srv_command(command="perfdata_info")
-            new_com["hostname"] = mach_values[1]
-            new_com["pd_type"] = pd_obj.PD_NAME
-            new_com["info"] = pd_obj.PD_XML_INFO
-            self._send_to_grapher(new_com)
+            self._send_to_grapher(pd_obj.build_perfdata_info(mach_values))
     def _handle_machine_vector(self, _xml, data_len):
         self.__trees_read += 1
         self.__total_size_trees += data_len
@@ -502,9 +544,10 @@ class receiver(object):
         self.__last_sent[h_tuple] = cur_time
         return self.__last_sent[h_tuple]
     def _handle_perfdata(self, data):
-        _type, host_name, time_recv, v_list = data[1]
+        # print "***", data
+        _type, type_instance, host_name, time_recv, rsi, v_list = data[1]
         s_time = self.get_time((host_name, "ipd_%s" % (_type)), time_recv)
-        collectd.Values(plugin="perfdata", host=host_name, time=s_time, type="ipd_%s" % (_type), interval=5 * 60).dispatch(values=v_list)
+        collectd.Values(plugin="perfdata", type_instance=type_instance, host=host_name, time=s_time, type="ipd_%s" % (_type), interval=5 * 60).dispatch(values=v_list[rsi:])
     def _handle_tree(self, data):
         host_name, time_recv, values = data
         # print host_name, time_recv

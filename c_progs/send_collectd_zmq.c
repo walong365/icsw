@@ -88,7 +88,7 @@ void mysigh(int dummy)
 int main(int argc, char **argv)
 {
     int ret, num, inlen, file, i /*, time */ , port, rchar, verbose, quiet,
-        retcode, timeout, file_size;
+        retcode, timeout, file_size, keep_file;
     struct in_addr sia;
     struct hostent *h;
     struct stat st;
@@ -103,6 +103,7 @@ int main(int argc, char **argv)
     retcode = STATE_CRITICAL;
 
     timeout = 10;
+    keep_file = 0;
     port = 8002;
     verbose = 0;
     quiet = 0;
@@ -114,7 +115,7 @@ int main(int argc, char **argv)
     uname(&myuts);
     sprintf(dest_host, "localhost");
     while (1) {
-        rchar = getopt(argc, argv, "+vm:p:ht:q");
+        rchar = getopt(argc, argv, "+vm:p:ht:qk");
         //printf("%d %c\n", rchar, rchar);
         switch (rchar) {
         case 'p':
@@ -131,13 +132,16 @@ int main(int argc, char **argv)
         case 'v':
             verbose = 1;
             break;
+        case 'k':
+            keep_file = 1;
+            break;
         case 'q':
             quiet = 1;
             break;
         case 'h':
         case '?':
             printf
-                ("Usage: %s [-t TIMEOUT] [-m HOST] [-p PORT] [-h] [-v] [-q] filename\n",
+                ("Usage: %s [-t TIMEOUT] [-m HOST] [-p PORT] [-h] [-v] [-q] [-k (keep file)] filename\n",
                  basename(argv[0]));
             printf("  defaults: port=%d, timeout=%d, dest_host=%s\n", port,
                    timeout, dest_host);
@@ -166,10 +170,12 @@ int main(int argc, char **argv)
     file = open(argv[optind], 0);
     read(file, filebuff, file_size);
     close(file);
-    // no empty it
-    open(argv[optind], O_NOFOLLOW | O_WRONLY | O_CREAT | O_TRUNC,
-         S_IREAD | S_IWRITE | S_IRGRP | S_IROTH);
-    close(file);
+    if (!keep_file) {
+        // now empty it
+        open(argv[optind], O_NOFOLLOW | O_WRONLY | O_CREAT | O_TRUNC,
+             S_IREAD | S_IWRITE | S_IRGRP | S_IROTH);
+        close(file);
+    }
     // mimic XML
     sprintf(sendbuff, "<?xml version='1.0'?><perf_data>%s</perf_data>",
             filebuff);
