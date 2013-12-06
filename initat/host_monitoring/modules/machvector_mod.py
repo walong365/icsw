@@ -21,25 +21,24 @@
 #
 """ machine vector stuff """
 
+from initat.host_monitoring import hm_classes
+from initat.host_monitoring import limits
+from lxml import etree # @UnresolvedImports
+from lxml.builder import E # @UnresolvedImports
 import commands
 import copy
 import json
+import logging_tools
 import os
+import process_tools
 import re
+import server_command
 import shutil
 import socket
 import struct
 import sys
 import time
 import zmq
-from lxml import etree # @UnresolvedImports
-from lxml.builder import E # @UnresolvedImports
-
-import server_command
-import logging_tools
-import process_tools
-from initat.host_monitoring import limits
-from initat.host_monitoring import hm_classes
 
 MACHVECTOR_NAME = "machvector.xml"
 ALERT_NAME = "alert"
@@ -69,22 +68,31 @@ class _general(hm_classes.hm_module):
 
 class get_mvector_command(hm_classes.hm_command):
     def __init__(self, name):
-        hm_classes.hm_command.__init__(self, name, positional_arguments=False)
+        hm_classes.hm_command.__init__(self, name, positional_arguments=True)
         self.parser.add_argument("--raw", dest="raw", action="store_true", default=False)
     def __call__(self, srv_com, cur_ns):
         self.module.machine_vector.store_xml(srv_com)
     def interpret(self, srv_com, cur_ns):
+        if cur_ns.arguments:
+            re_list = [re.compile(_arg) for _arg in cur_ns.arguments]
+        else:
+            re_list = []
         cur_vector = srv_com["data:machine_vector"]
         if cur_ns.raw:
             return limits.nag_STATE_OK, etree.tostring(cur_vector)
         else:
             vector_keys = sorted(srv_com.xpath(cur_vector, ".//ns:mve/@name"))
-            ret_array = ["Machinevector id %s, %s:" % (cur_vector.attrib["version"],
-                                                       logging_tools.get_plural("key", len(vector_keys)))]
+            used_keys = [key for key in vector_keys if any([cur_re.search(key) for cur_re in re_list]) or not re_list]
+            ret_array = ["Machinevector id %s, %s, %s shown:" % (
+                cur_vector.attrib["version"],
+                logging_tools.get_plural("key", len(vector_keys)),
+                logging_tools.get_plural("key", len(used_keys)),
+                )]
             out_list = logging_tools.new_form_list()
             for mv_num, mv_key in enumerate(vector_keys):
-                cur_xml = srv_com.xpath(cur_vector, "//ns:mve[@name='%s']" % (mv_key))[0]
-                out_list.append(hm_classes.mvect_entry(cur_xml.attrib.pop("name"), **cur_xml.attrib).get_form_entry(mv_num))
+                if mv_key in used_keys:
+                    cur_xml = srv_com.xpath(cur_vector, "//ns:mve[@name='%s']" % (mv_key))[0]
+                    out_list.append(hm_classes.mvect_entry(cur_xml.attrib.pop("name"), **cur_xml.attrib).get_form_entry(mv_num))
             ret_array.extend(unicode(out_list).split("\n"))
             return limits.nag_STATE_OK, "\n".join(ret_array)
 
