@@ -1,10 +1,10 @@
 #!/usr/bin/python-init -Ot
 #
-# Copyright (C) 2007,2008,2009,2013 Andreas Lang-Nevyjel, init.at
+# Copyright (C) 2013 Andreas Lang-Nevyjel, init.at
+#
+# this file is part of md-config-server
 #
 # Send feedback to: <lang-nevyjel@init.at>
-#
-# This file belongs to the rrd-server package
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License Version 2 as
@@ -19,9 +19,9 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
-""" rrd-grapher for graphing rrd-data """
+""" config part of rrd-grapher """
 
-from initat.rrd_grapher.main import main
-import sys
+import configfile
+import process_tools
 
-sys.exit(main.main())
+global_config = configfile.get_global_config(process_tools.get_programm_name())
