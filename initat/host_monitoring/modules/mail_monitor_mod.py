@@ -21,19 +21,19 @@
 #
 """ monitors the mail subsystem """
 
-import sys
-import os
-import time
-import Queue
-from initat.host_monitoring import limits
-import logging_tools
-import commands
-import threading_tools
 from initat.host_monitoring import hm_classes
+from initat.host_monitoring import limits
+import Queue
+import commands
+import logging_tools
+import os
+import pprint
 import process_tools
 import re
-import pprint
 import stat
+import sys
+import threading_tools
+import time
 
 MIN_UPDATE_TIME = 30
 # load threshold for mailq call
@@ -285,7 +285,7 @@ class _general(hm_classes.hm_module):
             try:
                 stat_lines = [line.strip() for line in open(stat_file, "r").read().split("\n") if line.strip()]
             except:
-                logger.log("error reading stat_file %s: %s" % (stat_file,
+                self.log("error reading stat_file %s: %s" % (stat_file,
                                                                      process_tools.get_except_info()),
                                  logging_tools.LOG_LEVEL_ERROR)
             else:
@@ -329,7 +329,7 @@ class _general(hm_classes.hm_module):
                         if not mv.has_key(key):
                             mv.reg_entry(key, 0., info, "1/min")
                         diff_value = value - self.__last_kerio_dict.get(key, value)
-                        mv.reg_update(logger, key, float(diff_value * 60. / diff_time))
+                        mv.reg_update(key, float(diff_value * 60. / diff_time))
     def _do_postfix_stuff(self, mv):
         act_snapshot, act_time = (self.__maillog_object.parse_lines(), time.time())
         diff_time = max(1, abs(act_time - self.__check_time))

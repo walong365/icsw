@@ -19,6 +19,10 @@
 #
 """ network througput and status information """
 
+from initat.host_monitoring import hm_classes
+from initat.host_monitoring import limits
+from lxml import etree # @UnresolvedImports
+from lxml.builder import E # @UnresolvedImports
 import commands
 import logging_tools
 import os
@@ -29,10 +33,6 @@ import server_command
 import subprocess
 import sys
 import time
-from initat.host_monitoring import limits
-from initat.host_monitoring import hm_classes
-from lxml import etree # @UnresolvedImports
-from lxml.builder import E # @UnresolvedImports
 
 # name of total-device
 TOTAL_DEVICE_NAME = "all"

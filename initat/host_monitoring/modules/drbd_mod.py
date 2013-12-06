@@ -18,10 +18,10 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
 
+from initat.host_monitoring import hm_classes, limits
 import logging_tools
 import server_command
 import sys
-from initat.host_monitoring import hm_classes, limits
 try:
     import drbd_tools
 except ImportError:

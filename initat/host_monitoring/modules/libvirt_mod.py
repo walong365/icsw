@@ -3,7 +3,7 @@
 # Copyright (C) 2010,2012,2013 Andreas Lang-Nevyjel init.at
 #
 # Send feedback to: <lang-nevyjel@init.at>
-# 
+#
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License Version 2 as
 # published by the Free Software Foundation.
@@ -18,13 +18,12 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
 
-import sys
-import commands
 from initat.host_monitoring import limits, hm_classes
-import os
+from lxml import etree # @UnresolvedImport
+import commands
 import logging_tools
 import server_command
-from lxml import etree # @UnresolvedImport
+import sys
 try:
     import libvirt_tools
 except:
@@ -90,7 +89,7 @@ class _general(hm_classes.hm_module):
                             1024,
                             _d.disk_dict[act_disk].stats["write"]["bytes"]
                         )
-                        t_read  += _d.disk_dict[act_disk].stats["read"]["bytes"]
+                        t_read += _d.disk_dict[act_disk].stats["read"]["bytes"]
                         t_write += _d.disk_dict[act_disk].stats["write"]["bytes"]
                     self._save_mv(
                         mv,
@@ -129,7 +128,7 @@ class _general(hm_classes.hm_module):
                             1024,
                             _d.net_dict[act_net].stats["write"]["bytes"]
                         )
-                        t_read  += _d.net_dict[act_net].stats["read"]["bytes"]
+                        t_read += _d.net_dict[act_net].stats["read"]["bytes"]
                         t_write += _d.net_dict[act_net].stats["write"]["bytes"]
                     self._save_mv(
                         mv,
@@ -154,7 +153,7 @@ class _general(hm_classes.hm_module):
                     self.log("unregistering domain %s" % (dom_del))
                     mv.unregister_tree("virt.%s" % (dom_del))
                     self.mv_regs = set([value for value in self.mv_regs if not value.startswith("virt.%s." % (dom_del))])
-                    
+
 class libvirt_status_command(hm_classes.hm_command):
     def __call__(self, srv_com, cur_ns):
         self.module.establish_connection()
@@ -245,7 +244,7 @@ class domain_status_command(hm_classes.hm_command):
         if cur_ns and cur_ns.arguments:
             if "desc" in dom_dict and dom_dict["desc"]:
                 xml_doc = etree.fromstring(dom_dict["desc"])
-                #print etree.tostring(xml_doc, pretty_print=True)
+                # print etree.tostring(xml_doc, pretty_print=True)
                 out_f.append("%s, memory %s, %s, %s, VNC port is %d" % (
                     xml_doc.find(".//name").text,
                     logging_tools.get_size_str(int(xml_doc.find(".//memory").text) * 1024),
@@ -264,7 +263,7 @@ class domain_status_command(hm_classes.hm_command):
             ret_state = limits.nag_STATE_WARNING
             out_f.append("no domain-name give")
         return ret_state, ", ".join(out_f)
-        
+
 if __name__ == "__main__":
     print "This is a loadable module."
     sys.exit(0)

@@ -18,15 +18,15 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
 
+# import pprint
+from initat.host_monitoring import limits, hm_classes
+from lxml import etree # @UnresolvedImport
 import commands
 import logging_tools
 import os
-# import pprint
 import process_tools
 import server_command
 import sys
-from initat.host_monitoring import limits, hm_classes
-from lxml import etree # @UnresolvedImport
 
 class _general(hm_classes.hm_module):
     def init_module(self):

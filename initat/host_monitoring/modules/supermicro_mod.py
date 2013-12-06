@@ -19,20 +19,10 @@
 #
 """ checks for Supermicro Hardware (using SMCIPMITool and others) """
 
-import sys
-import re
-import commands
 from initat.host_monitoring import limits, hm_classes
-import os
-import os.path
-import time
-import datetime
 import logging_tools
 import server_command
-import pprint
-import base64
-import marshal
-import bz2
+import sys
 
 SMCIPMI_BIN = "/sbin/SMCIPMITool"
 
@@ -166,7 +156,7 @@ class smcipmi_command(hm_classes.hm_command):
             in_dict["error"] if in_dict["error"] else "no error",
         )
     def interpret(self, srv_com, cur_ns):
-        orig_com, mapped_com = (
+        orig_com, _mapped_com = (
             srv_com.xpath(None, ".//ns:orig_command/text()")[0],
             srv_com.xpath(None, ".//ns:mapped_command/text()")[0],
         )

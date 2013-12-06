@@ -18,12 +18,11 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
 
-import sys
-import re
+from initat.host_monitoring import limits, hm_classes
 import commands
-from initat.host_monitoring import limits
-from initat.host_monitoring import hm_classes
 import logging_tools
+import re
+import sys
 
 class my_modclass(hm_classes.hm_fileinfo):
     def __init__(self, **args):
@@ -79,23 +78,25 @@ class lmstat_command(hm_classes.hmb_command):
                 servers_up   = sorted([k for k, v in l_dict["server_status"].iteritems() if v.lower().count("server up")])
                 servers_down = sorted([k for k, v in l_dict["server_status"].iteritems() if k not in servers_up])
                 if servers_down:
-                    return limits.nag_STATE_CRITICAL, "error %s down: %s, %s up: %s; %s: %s" % (logging_tools.get_plural("server", len(servers_down)),
-                                                                                                ", ".join(servers_down),
-                                                                                                logging_tools.get_plural("server", len(servers_up)),
-                                                                                                ", ".join(servers_up),
-                                                                                                logging_tools.get_plural("feature", len(feat_list)),
-                                                                                                ", ".join(feat_list))
+                    return limits.nag_STATE_CRITICAL, "error %s down: %s, %s up: %s; %s: %s" % (
+                        logging_tools.get_plural("server", len(servers_down)),
+                        ", ".join(servers_down),
+                        logging_tools.get_plural("server", len(servers_up)),
+                        ", ".join(servers_up),
+                        logging_tools.get_plural("feature", len(feat_list)),
+                        ", ".join(feat_list))
                 else:
                     num_features = len(feat_list)
                     if num_features:
                         ret_state, ret_str = (limits.nag_STATE_OK, "ok")
                     else:
                         ret_state, ret_str = (limits.nag_STATE_CRITICAL, "error")
-                    return ret_state, "%s %s up: %s; %s%s" % (ret_str,
-                                                              logging_tools.get_plural("server", len(servers_up)),
-                                                              ", ".join(servers_up),
-                                                              logging_tools.get_plural("feature", len(feat_list)),
-                                                              feat_list and ": %s" % (", ".join(feat_list)) or "")
+                    return ret_state, "%s %s up: %s; %s%s" % (
+                        ret_str,
+                        logging_tools.get_plural("server", len(servers_up)),
+                        ", ".join(servers_up),
+                        logging_tools.get_plural("feature", len(feat_list)),
+                        feat_list and ": %s" % (", ".join(feat_list)) or "")
             else:
                 return limits.nag_STATE_CRITICAL, "error no server_port or server_name key in response"
         else:

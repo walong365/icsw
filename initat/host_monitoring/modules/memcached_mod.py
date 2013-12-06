@@ -18,12 +18,12 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
 
-import logging_tools
 # import pprint
+from initat.host_monitoring import limits, hm_classes
+import logging_tools
 import process_tools
 import server_command
 import sys
-from initat.host_monitoring import limits, hm_classes
 try:
     import memcache
 except ImportError:

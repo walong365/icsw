@@ -3,14 +3,13 @@
 Checks related to pgpool-II >= 3.0 via SQL interface.
 """
 
-import cPickle
-import os
-import psycopg2
 from ConfigParser import SafeConfigParser
-
 from initat.host_monitoring import limits
 from initat.host_monitoring.hm_classes import hm_command, hm_module
 from initat.host_monitoring.server import server_command
+import cPickle
+import os
+import psycopg2
 
 CONFIG_DIR = "/etc/sysconfig/host-monitoring.d/"
 CONFIG_FILE = "pgpool.config"
