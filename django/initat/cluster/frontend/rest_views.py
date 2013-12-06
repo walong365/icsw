@@ -1,5 +1,19 @@
 # user views
 
+""" REST views """
+
+from django.core.exceptions import ValidationError
+from django.db import IntegrityError
+from django.db.models import Q
+from initat.cluster.backbone.models import user , group, user_serializer_h, group_serializer_h, \
+     get_related_models, get_change_reset_list
+from rest_framework import mixins, generics, status
+from rest_framework.authentication import BasicAuthentication, SessionAuthentication
+from rest_framework.decorators import api_view, APIView
+from rest_framework.permissions import IsAuthenticated
+from rest_framework.response import Response
+from rest_framework.reverse import reverse
+from rest_framework.views import exception_handler
 import json
 import logging
 import logging_tools
@@ -8,20 +22,6 @@ import process_tools
 import sys
 import time
 import types
-
-from django.core.exceptions import ValidationError
-from django.db import IntegrityError
-from django.db.models import Q
-from rest_framework import mixins, generics, status
-from rest_framework.authentication import BasicAuthentication, SessionAuthentication
-from rest_framework.decorators import api_view, APIView
-from rest_framework.permissions import IsAuthenticated
-from rest_framework.response import Response
-from rest_framework.reverse import reverse
-from rest_framework.views import exception_handler
-
-from initat.cluster.backbone.models import user , group, user_serializer_h, group_serializer_h, \
-     get_related_models, get_change_reset_list
 
 logger = logging.getLogger("cluster.rest")
 
@@ -158,6 +158,7 @@ class list_view(mixins.ListModelMixin,
             "device" : ([], []),
             "mon_check_command" : ([], ["exclude_devices", "categories"]),
             "mon_host_cluster" : ([], ["devices"]),
+            "network" : ([], ["network_device_type"]),
             }.get(model_name, ([], []))
         return self.model.objects.all().select_related(*related_fields).prefetch_related(*prefetch_fields)
 

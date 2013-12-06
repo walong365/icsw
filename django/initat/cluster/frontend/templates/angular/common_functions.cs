@@ -172,11 +172,11 @@ angular_add_simple_list_controller = (module, name, settings) ->
     module.controller(name, ["$scope", "$compile", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "$q", 
         ($scope, $compile, $templateCache, Restangular, paginatorSettings, restDataSource, $q) ->
             $scope.settings = settings
+            $scope.fn = settings.fn
             $scope.pagSettings = paginatorSettings.get_paginator(name)
             $scope.rest = Restangular.all($scope.settings.rest_url.slice(1))
             $scope.entries = []
             wait_list = [restDataSource.add_sources([$scope.settings.rest_url])[0]]
-            $scope.new_obj = $scope.settings.new_object
             $scope.rest_data = {}
             if $scope.settings.rest_map
                 for value, idx in $scope.settings.rest_map
@@ -217,6 +217,11 @@ angular_add_simple_list_controller = (module, name, settings) ->
                 else
                     return "has-error"
             $scope.create = (event) ->
+                console.log typeof($scope.settings.new_object)
+                if typeof($scope.settings.new_object) == "function"
+                    $scope.new_obj = $scope.settings.new_object($scope)
+                else
+                    $scope.new_obj = $scope.settings.new_object
                 $scope.create_or_edit(event, true, $scope.new_obj)
             $scope.edit = (event, obj) ->
                 $scope.create_or_edit(event, false, obj)

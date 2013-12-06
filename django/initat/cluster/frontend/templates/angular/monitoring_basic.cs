@@ -61,8 +61,8 @@ angular_add_simple_list_controller(
         rest_url            : "{% url 'rest:mon_contact_list' %}"
         edit_template       : "mon_contact.html"
         rest_map            : [
-            {"short" : "mon_period", "url" : "{% url 'rest:mon_period_list' %}"}
-            {"short" : "user"      , "url" : "{% url 'rest:user_list' %}"}
+            {"short" : "mon_period"      , "url" : "{% url 'rest:mon_period_list' %}"}
+            {"short" : "user"            , "url" : "{% url 'rest:user_list' %}"}
             {"short" : "mon_notification", "url" : "{% url 'rest:mon_notification_list' %}"}
         ]
         delete_confirm_str  : (obj) -> return "Really delete monitoring contact '#{obj.user}' ?"

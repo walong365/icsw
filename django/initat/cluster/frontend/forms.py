@@ -662,9 +662,9 @@ class network_form(ModelForm):
             ),
             Fieldset(
                 "Additional settings",
-                Field("network_type", ng_options="value.idx as value.description for (key, value) in network_types", chosen=True),
-                Field("master_network", ng_options="value.idx as value.identifier for (key, value) in get_production_networks()", wrapper_ng_show="is_slave_network(edit_obj.network_type)", chosen=True),
-                Field("network_device_type", ng_options="value.idx as value.identifier for (key, value) in network_device_types", chosen=True),
+                Field("network_type", ng_options="value.idx as value.description for value in rest_data.network_types", chosen=True),
+                Field("master_network", ng_options="value.idx as value.identifier for value in fn.get_production_networks(this)", wrapper_ng_show="fn.is_slave_network(this, edit_obj.network_type)", chosen=True),
+                Field("network_device_type", ng_options="value.idx as value.identifier for value in rest_data.network_device_types", chosen=True),
             ),
             FormActions(
                 Submit("submit", "", css_class="primaryAction", ng_value="get_action_string()"),
@@ -688,7 +688,7 @@ class network_type_form(ModelForm):
             Fieldset(
                 "Basic data",
                 Field("description", wrapper_class="ng-class:form_error('description')", placeholder="Description"),
-                Field("identifier" , ng_options="key as value for (key, value) in network_types"),
+                Field("identifier", ng_options="key as value for (key, value) in settings.network_types"),
             ),
             FormActions(
                 Submit("submit", "", css_class="primaryAction", ng_value="get_action_string()"),

@@ -31,7 +31,7 @@
 </script>
 
 <script type="text/ng-template" id="network_type_row.html">
-    <td>{{ network_types[obj.identifier] }}</td>
+    <td>{{ settings.network_types[obj.identifier] }}</td>
     <td>{{ obj.description  }}</td>
     <td><input type="button" class="btn btn-primary" ng-click="edit($event, obj)" value="modify"/></td>
     <td><input type="button" class="btn btn-danger" ng-click="delete(obj)" value="delete"/></td>
@@ -76,58 +76,53 @@
         <span ng-bind-html="ip_fill_up(obj.gateway)"></span>
     </td>
     <td>{{ obj.penalty }}</td>
-    <td>{{ obj.network_type | array_lookup:this.network_types:'description' }}</td>
+    <td>{{ obj.network_type | array_lookup:this.rest_data.network_types:'description' }}</td>
     <td>{{ obj.master_network | array_lookup:this.entries:'identifier':'---' }}</td>
-    <td>{{ obj.network_device_type | resolve_n2m:this.network_device_types:'identifier':'---' }}</td>
+    <td>{{ obj.network_device_type | resolve_n2m:this.rest_data.network_device_types:'identifier':'---' }}</td>
     <td><input type="button" class="btn btn-primary" ng-click="edit($event, obj)" value="modify"/></td>
     <td><input type="button" class="btn btn-danger" ng-click="delete(obj)" value="delete"/></td>
 </script>
 
 <tabset>
-    <tab heading="Networks">
-<div ng-controller="network">
-
-<h2>Networks ({{entries.length}} entries), <input type="button" value="create new" ng-click="create($event)"/></h2>
-
-<table class="table table-condensed table-condensed table-hover" style="width:auto;">
-    <thead networkhead></thead>
-    <tbody>
-        <tr networkrow ng-repeat="obj in entries | orderBy:'-identifier':true"></tr>
-    </tbody>
-</table>
-
-</div>
-
-    </tab>
     <tab heading="Network device types">
-<div ng-controller="network_device_type">
-
-<h3>Network device types ({{entries.length}} entries), <input type="button" value="create new" ng-click="create($event)"/></h3>
-
-<table class="table table-condensed table-condensed table-hover" style="width:auto;">
-    <thead networkdevicetypehead></thead>
-    <tbody>
-        <tr networkdevicetyperow ng-repeat="obj in entries | orderBy:'-identifier':true"></tr>
-    </tbody>
-</table>
-
-</div>
-</tab>
-<tab heading="Network types">
-
-<div ng-controller="network_type">
-
-<h3>Network types ({{entries.length}} entries), <input type="button" value="create new" ng-click="create($event)"/></h3>
-
-<table class="table table-condensed table-condensed table-hover" style="width:auto;">
-    <thead networktypehead></thead>
-    <tbody>
-        <tr networktyperow ng-repeat="obj in entries | orderBy:'-identifier':true"></tr>
-    </tbody>
-</table>
-
-</div>
-</tab>
+        <div ng-controller="network_device_type_base">
+            <div ng-controller="network_device_type">
+                <h3>Network device types ({{entries.length}} entries), <input type="button" value="create new" ng-click="create($event)"/></h3>
+                <table class="table table-condensed table-condensed table-hover" style="width:auto;">
+                    <thead networkdevicetypehead></thead>
+                    <tbody>
+                        <tr networkdevicetyperow ng-repeat="obj in entries | orderBy:'-identifier':true"></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </tab>
+    <tab heading="Network types">
+        <div ng-controller="network_type_base">
+            <div ng-controller="network_type">
+                <h3>Network types ({{entries.length}} entries), <input type="button" value="create new" ng-click="create($event)"/></h3>
+                <table class="table table-condensed table-condensed table-hover" style="width:auto;">
+                    <thead networktypehead></thead>
+                    <tbody>
+                        <tr networktyperow ng-repeat="obj in entries | orderBy:'-identifier':true" ></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </tab>
+    <tab heading="Networks">
+        <div ng-controller="network_base">
+            <div ng-controller="network">
+                <h2>Networks ({{entries.length}} entries), <input type="button" value="create new" ng-click="create($event)"/></h2>
+                <table class="table table-condensed table-condensed table-hover" style="width:auto;">
+                    <thead networkhead></thead>
+                    <tbody>
+                        <tr networkrow ng-repeat="obj in entries | orderBy:'-identifier':true"></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </tab>
 </tabset>
 
 </div>

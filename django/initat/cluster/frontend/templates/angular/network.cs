@@ -10,249 +10,91 @@ network_module = angular.module("icsw.network", ["ngResource", "ngCookies", "ngS
 
 angular_module_setup([network_module])
 
-network_module.constant("network_types", {
+nw_types_dict = {
     "b" : "boot"
     "p" : "prod"
     "s" : "slave"
     "o" : "other"
     "l" : "local"
-})
+}
 
-network_module.controller("network_type", ["$scope", "$compile", "$templateCache", "network_types", "Restangular",
-    ($scope, $compile, $templateCache, network_types, Restangular) ->
-        $scope.entries = []
-        $scope.network_types = network_types
-        $scope.rest = Restangular.all("{% url 'rest:network_type_list' %}".slice(1))
-        $scope.rest.getList().then((response) ->
-            $scope.entries = response
-            $scope.new_obj = {identifier : "p", description : ""}
-        )
-        $scope.modify = () ->
-            if not $scope.form.$invalid
-                if $scope.create_mode
-                    $scope.rest.post($scope.new_obj).then((new_data) ->
-                        $scope.entries.push(new_data)
-                        $scope.new_obj.description = ""
-                    )
-                else
-                    $scope.edit_obj.put().then(
-                        (data) -> 
-                            $.simplemodal.close()
-                            handle_reset(data, $scope.entries, $scope.edit_obj.idx)
-                        (resp) -> handle_reset(resp.data, $scope.entries, $scope.edit_obj.idx)
-                    )
-        $scope.form_error = (field_name) ->
-            if $scope.form[field_name].$valid
-                return ""
-            else
-                return "has-error"
-        $scope.create = ($event) ->
-            $scope.create_or_edit(event, true, $scope.new_obj)
-        $scope.edit = ($event, obj) ->
-            $scope.create_or_edit(event, false, obj)
-        $scope.create_or_edit = ($event, create_or_edit, obj) ->
-            $scope.edit_obj = obj
-            $scope.create_mode = create_or_edit
-            $scope.edit_div = $compile($templateCache.get("network_type.html"))($scope) 
-            $scope.edit_div.simplemodal
-                #opacity      : 50
-                position     : [$event.pageY, $event.pageX]
-                #autoResize   : true
-                #autoPosition : true
-                onShow: (dialog) => 
-                    dialog.container.draggable()
-                    $("#simplemodal-container").css("height", "auto")
-                onClose: (dialog) =>
-                    $.simplemodal.close()
-        $scope.get_action_string = () ->
-            return if $scope.create_mode then "Create" else "Modify"
-        $scope.delete = (obj) ->
-            if confirm("really delete network type '#{obj.description}' ?")
-                obj.remove().then((resp) ->
-                    noty
-                        text : "deleted instance"
-                    remove_by_idx($scope.entries, obj.idx)
-                )
-    ])
+angular_add_simple_list_controller(
+    network_module,
+    "network_type_base",
+    {
+        rest_url            : "{% url 'rest:network_type_list' %}"
+        edit_template       : "network_type.html"
+        delete_confirm_str  : (obj) -> return "Really delete Network type '#{obj.description}' ?"
+        template_cache_list : ["network_type_row.html", "network_type_head.html"]
+        new_object          : {"identifier" : "p", description : ""}
+        new_object_created  : (new_obj) -> new_obj.description = ""
+        network_types       : nw_types_dict 
+    }
+)
+
+network_module.controller("network_type", ["$scope", "Restangular",
+    ($scope, Restangular) ->
+])
     
-network_module.directive("networkrow", ($templateCache) ->
-    return {
-        restrict : "EA"
-        template : $templateCache.get("network_row.html")
+angular_add_simple_list_controller(
+    network_module,
+    "network_device_type_base",
+    {
+        rest_url            : "{% url 'rest:network_device_type_list' %}"
+        edit_template       : "network_device_type.html"
+        delete_confirm_str  : (obj) -> return "Really delete Network '#{obj.identifier}' ?"
+        template_cache_list : ["network_device_type_row.html", "network_device_type_head.html"]
+        new_object          : {
+            "identifier"  : "eth"
+            "description" : ""
+            "mac_bytes"   : 6
+        }
+        new_object_created  : (new_obj) -> new_obj.identifier = ""
     }
 )
 
-network_module.directive("networkhead", ($templateCache) ->
-    return {
-        restrict : "EA"
-        template : $templateCache.get("network_head.html")
-    }
-)
-
-network_module.directive("networktyperow", ($templateCache) ->
-    return {
-        restrict : "EA"
-        template : $templateCache.get("network_type_row.html")
-    }
-)
-
-network_module.directive("networktypehead", ($templateCache) ->
-    return {
-        restrict : "EA"
-        template : $templateCache.get("network_type_head.html")
-    }
-)
-
-network_module.directive("networkdevicetyperow", ($templateCache) ->
-    return {
-        restrict : "EA"
-        template : $templateCache.get("network_device_type_row.html")
-    }
-)
-
-network_module.directive("networkdevicetypehead", ($templateCache) ->
-    return {
-        restrict : "EA"
-        template : $templateCache.get("network_device_type_head.html")
-    }
-)
-
-network_module.controller("network_device_type", ["$scope", "$compile", "$templateCache", "Restangular"
-    ($scope, $compile, $templateCache, Restangular) ->
-        $scope.entries = []
-        $scope.rest = Restangular.all("{% url 'rest:network_device_type_list' %}".slice(1))
-        $scope.rest.getList().then((response) ->
-            $scope.entries = response
-            $scope.new_obj = {identifier : "eth", description : "", "mac_bytes" : 6}
-        )
-        $scope.modify = () ->
-            if not $scope.form.$invalid
-                if $scope.create_mode
-                    $scope.rest.post($scope.new_obj).then((new_data) ->
-                        $scope.entries.push(new_data)
-                        $scope.new_obj.identifier = ""
-                    )
-                else
-                    $scope.edit_obj.put().then(
-                        (data) -> 
-                            $.simplemodal.close()
-                            handle_reset(data, $scope.entries, $scope.edit_obj.idx)
-                        (resp) -> handle_reset(resp.data, $scope.entries, $scope.edit_obj.idx)
-                    )
-        $scope.form_error = (field_name) ->
-            if $scope.form[field_name].$valid
-                return ""
-            else
-                return "has-error"
-        $scope.create = ($event) ->
-            $scope.create_or_edit(event, true, $scope.new_obj)
-        $scope.edit = ($event, obj) ->
-            $scope.create_or_edit(event, false, obj)
-        $scope.create_or_edit = ($event, create_or_edit, obj) ->
-            $scope.edit_obj = obj
-            $scope.create_mode = create_or_edit
-            $scope.edit_div = $compile($templateCache.get("network_device_type.html"))($scope) 
-            $scope.edit_div.simplemodal
-                #opacity      : 50
-                position     : [$event.pageY, $event.pageX]
-                #autoResize   : true
-                #autoPosition : true
-                onShow: (dialog) => 
-                    dialog.container.draggable()
-                    $("#simplemodal-container").css("height", "auto")
-                onClose: (dialog) =>
-                    $.simplemodal.close()
-        $scope.get_action_string = () ->
-            return if $scope.create_mode then "Create" else "Modify"
-        $scope.delete = (obj) ->
-            if confirm("really delete network device type '#{obj.description}' ?") 
-                obj.remove().then((resp) ->
-                    noty
-                        text : "deleted instance"
-                    remove_by_idx($scope.entries, obj.idx)
-                )
-    ])
-
-network_module.controller("network", ["$scope", "$compile", "$templateCache", "$q", "Restangular",
+network_module.controller("network_device_type", ["$scope", "$compile", "$templateCache", "$q", "Restangular",
     ($scope, $compile, $templateCache, $q, Restangular) ->
-        #$scope.entries = []
-        $scope.rest_network_types = Restangular.all("{% url 'rest:network_type_list' %}".slice(1))
-        $scope.rest_network_device_types = Restangular.all("{% url 'rest:network_device_type_list' %}".slice(1))
-        $scope.rest = Restangular.all("{% url 'rest:network_list' %}".slice(1))
-        do_query = (q_type) ->
-            d = $q.defer()
-            result = q_type.getList().then(
-               (response) ->
-                   d.resolve(response)
-            )
-            return d.promise
-        $q.all([
-            do_query($scope.rest_network_types)
-            do_query($scope.rest_network_device_types)
-            do_query($scope.rest)
-        ]).then((data) ->
-            $scope.network_types = data[0]
-            $scope.network_device_types = data[1]
-            $scope.entries = data[2]
-            $scope.new_obj = {identifier : "", network_type : (entry["idx"] for key, entry of $scope.network_types when typeof(entry) == "object" and entry and entry["identifier"] == "o")[0]}
-        )
+])
+
+angular_add_simple_list_controller(
+    network_module,
+    "network_base",
+    {
+        rest_url            : "{% url 'rest:network_list' %}"
+        edit_template       : "network.html"
+        rest_map            : [
+            {"short" : "network_types"       , "url" : "{% url 'rest:network_type_list' %}"}
+            {"short" : "network_device_types", "url" : "{% url 'rest:network_device_type_list' %}"}
+        ]
+        delete_confirm_str  : (obj) -> return "Really delete Network '#{obj.identifier}' ?"
+        template_cache_list : ["network_row.html", "network_head.html"]
+        new_object          : ($scope) ->
+            return {
+                "identifier"   : "",
+                "network_type" : (entry["idx"] for key, entry of $scope.rest_data.network_types when typeof(entry) == "object" and entry and entry["identifier"] == "o")[0]
+            }
+        new_object_created  : (new_obj) -> new_obj.identifier = ""
+        fn : 
+            get_production_networks : ($scope) -> 
+                prod_idx = (entry for key, entry of $scope.rest_data.network_types when typeof(entry) == "object" and entry and entry["identifier"] == "p")[0].idx
+                return (entry for key, entry of $scope.entries when typeof(entry) == "object" and entry and entry.network_type == prod_idx)
+            is_slave_network : ($scope, nw_type) ->
+                if nw_type
+                    return (entry for key, entry of $scope.rest_data.network_types when typeof(entry) == "object" and entry and entry["idx"] == nw_type)[0].identifier == "s"
+                else
+                    return false
+    }
+)
+
+network_module.controller("network", ["$scope",
+    ($scope) ->
         $scope.ip_fill_up = (in_str) ->
             if in_str
                 ip_field = in_str.split(".")
             else
                 ip_field = ["?", "?", "?", "?"]
             return ("QQ#{part}".substr(-3, 3) for part in ip_field).join(".").replace(/Q/g, "&nbsp;")
-        $scope.modify = () ->
-            if not $scope.form.$invalid
-                if $scope.create_mode
-                    $scope.rest.post($scope.new_obj).then((new_data) ->
-                        $scope.entries.push(new_data)
-                        $scope.new_obj.identifier = ""
-                    )
-                else
-                    $scope.edit_obj.put().then(
-                        (data) ->
-                            $.simplemodal.close()
-                            handle_reset(data, $scope.entries, $scope.edit_obj.idx)
-                        (resp) -> handle_reset(resp.data, $scope.entries, $scope.edit_obj.idx)
-                    )
-        $scope.form_error = (field_name) ->
-            if $scope.form[field_name].$valid
-                return ""
-            else
-                return "has-error"
-        $scope.create = ($event) ->
-            $scope.create_or_edit(event, true, $scope.new_obj)
-        $scope.edit = ($event, obj) ->
-            $scope.create_or_edit(event, false, obj)
-        $scope.create_or_edit = ($event, create_or_edit, obj) ->
-            $scope.edit_obj = obj
-            $scope.create_mode = create_or_edit
-            $scope.edit_div = $compile($templateCache.get("network.html"))($scope) 
-            $scope.edit_div.simplemodal
-                #opacity      : 50
-                position     : [$event.pageY, $event.pageX]
-                #autoResize   : true
-                #autoPosition : true
-                onShow: (dialog) => 
-                    dialog.container.draggable()
-                    $("#simplemodal-container").css("height", "auto")
-                onClose: (dialog) =>
-                    $.simplemodal.close()
-        $scope.get_action_string = () ->
-            return if $scope.create_mode then "Create" else "Modify"
-        $scope.delete = (obj) ->
-            if confirm("really delete network '#{obj.description}' ?") 
-                obj.remove().then((resp) ->
-                    noty
-                        text : "deleted instance"
-                    remove_by_idx($scope.entries, obj.idx)
-                )
-        $scope.get_production_networks = () ->
-            prod_idx = (entry for key, entry of $scope.network_types when typeof(entry) == "object" and entry and entry["identifier"] == "p")[0].idx
-            return (entry for key, entry of $scope.entries when typeof(entry) == "object" and entry and entry.network_type == prod_idx)
-        $scope.is_slave_network = (nw_type) ->
-            return (entry for key, entry of $scope.network_types when typeof(entry) == "object" and entry and entry["idx"] == nw_type)[0].identifier == "s"
 ])
 
 {% endinlinecoffeescript %}
