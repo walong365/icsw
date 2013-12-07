@@ -88,7 +88,7 @@ void mysigh(int dummy)
 int main(int argc, char **argv)
 {
     int ret, num, inlen, file, i /*, time */ , rchar, quiet,
-        retcode, timeout, host_written, snmp_version;
+        retcode, timeout, host_written, snmp_version, delay;
     struct in_addr sia;
 
     struct hostent *h;
@@ -105,6 +105,7 @@ int main(int argc, char **argv)
     timeout = 10;
     verbose = 0;
     quiet = 0;
+    delay = 0;
     host_written = 0;
     snmp_version = 1;
     h = NULL;
@@ -117,7 +118,7 @@ int main(int argc, char **argv)
     strcpy(host_b, "localhost");
     strcpy(snmp_community, "public");
     while (1) {
-        rchar = getopt(argc, argv, "+vm:ht:qC:V:");
+        rchar = getopt(argc, argv, "+vm:ht:qC:V:d");
         //printf("%d %c\n", rchar, rchar);
         switch (rchar) {
         case 'm':
@@ -134,6 +135,9 @@ int main(int argc, char **argv)
         case 'V':
             snmp_version = strtol(optarg, NULL, 10);
             break;
+        case 'd':
+            delay = 1;
+            break;
         case 'C':
             strcpy(snmp_community, optarg);
             break;
@@ -143,7 +147,7 @@ int main(int argc, char **argv)
         case 'h':
         case '?':
             printf
-                ("Usage: %s [-t TIMEOUT] [-m HOST] [-C COMMUNITY] [-V VERSION] [-h] [-v] [-q] command\n",
+                ("Usage: %s [-t TIMEOUT] [-m HOST] [-C COMMUNITY] [-V VERSION] [-h] [-v] [-q] [-d(elay)] command\n",
                  basename(argv[0]));
             printf
                 ("  defaults: community=%s, version=%d, timeout=%d\n",
@@ -225,14 +229,16 @@ int main(int argc, char **argv)
 
         if (verbose) {
             printf
-                ("send buffer has %d bytes, identity is '%s', nodename is '%s', servicename is '%s', pid is %d\n",
+                ("send buffer has %d bytes, identity is '%s', nodename is '%s', servicename is '%s', pid is %d, delay is %d\n",
                  strlen(send_buffer), identity_str, myuts.nodename,
-                 SERVICE_NAME, getpid());
+                 SERVICE_NAME, getpid(), delay);
         };
         zmq_msg_init_size(&request, strlen(send_buffer));
         memcpy(zmq_msg_data(&request), send_buffer, strlen(send_buffer));
         zmq_msg_init(&reply);
-        // usleep(1000);
+        if (delay) {
+            usleep(10000);
+        }
         zmq_sendmsg(requester, &request, 0);
         if (verbose) {
             printf("send(), waiting for result\n");

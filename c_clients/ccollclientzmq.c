@@ -218,12 +218,8 @@ int main(int argc, char **argv)
 
         /* SUB receiver socket */
         void *receiver = zmq_socket(context, ZMQ_SUB);
-        // send
-        zmq_connect(requester,
-                    "ipc:///var/log/cluster/sockets/collrelay/receiver");
-        zmq_msg_t request;
-
         if (!only_send) {
+            // receive, init receiver before sender to let ZMQ settle
             zmq_connect(receiver,
                         "ipc:///var/log/cluster/sockets/collrelay/sender");
 
@@ -231,6 +227,11 @@ int main(int argc, char **argv)
             zmq_setsockopt(receiver, ZMQ_SUBSCRIBE, identity_str,
                            strlen(identity_str));
         };
+        // send
+        zmq_connect(requester,
+                    "ipc:///var/log/cluster/sockets/collrelay/receiver");
+        zmq_msg_t request;
+
         if (verbose) {
             printf
                 ("send buffer has %d bytes, identity is '%s', nodename is '%s', servicename is '%s', only_send is %d, delay is %d, pid is %d\n",

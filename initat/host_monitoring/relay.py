@@ -516,9 +516,7 @@ class host_message(object):
         self.sent = False
         self.sr_probe = None
     def set_result(self, state, res_str):
-        self.srv_com["result"] = None
-        self.srv_com["result"].attrib.update({"reply" : res_str,
-                                              "state" : "%d" % (state)})
+        self.srv_com.set_result(res_str, state)
     def set_com_struct(self, com_struct):
         self.com_struct = com_struct
         if com_struct:
@@ -544,16 +542,20 @@ class host_message(object):
         if type(result) == type(()):
             # from interpret
             if not self.xml_input:
-                ret_str = u"%d\0%s" % (result[0],
-                                       result[1])
+                ret_str = u"%d\0%s" % (
+                    result[0],
+                    result[1]
+                )
             else:
                 # shortcut
                 self.set_result(result[0], result[1])
                 ret_str = unicode(self.srv_com)
         else:
             if not self.xml_input:
-                ret_str = u"%s\0%s" % (result["result"].attrib["state"],
-                                       result["result"].attrib["reply"])
+                ret_str = u"%s\0%s" % (
+                    result["result"].attrib["state"],
+                    result["result"].attrib["reply"],
+                )
             else:
                 ret_str = unicode(result)
         return ret_str
@@ -738,8 +740,8 @@ class relay_code(threading_tools.process_pool):
         if True:
             self.log("Initialising meta-server-info block")
             msi_block = process_tools.meta_server_info("collrelay")
-            msi_block.add_actual_pid(mult=3, fuzzy_ceiling=3)
-            msi_block.add_actual_pid(act_pid=configfile.get_manager_pid(), mult=3)
+            msi_block.add_actual_pid(mult=3, fuzzy_ceiling=3, process_name="main")
+            msi_block.add_actual_pid(act_pid=configfile.get_manager_pid(), mult=3, process_name="manager")
             msi_block.start_command = "/etc/init.d/host-relay start"
             msi_block.stop_command = "/etc/init.d/host-relay force-stop"
             msi_block.kill_pids = True
@@ -760,7 +762,7 @@ class relay_code(threading_tools.process_pool):
             mult = 3
         process_tools.append_pids(self.__pid_name, src_pid, mult=mult)
         if self.__msi_block:
-            self.__msi_block.add_actual_pid(src_pid, mult=mult)
+            self.__msi_block.add_actual_pid(src_pid, mult=mult, process_name=src_process)
             self.__msi_block.save_block()
     def _check_timeout(self):
         host_connection.check_timeout_g()
@@ -1146,20 +1148,17 @@ class relay_code(threading_tools.process_pool):
                         t_file,
                         process_tools.get_except_info()),
                              logging_tools.LOG_LEVEL_ERROR)
-                    ret_com["result"].attrib.update({
-                        "reply" : "file not created: %s" % (process_tools.get_except_info()),
-                        "state" : "%d" % (logging_tools.LOG_LEVEL_ERROR)})
+                    ret_com.set_result(
+                        "file not created: %s" % (process_tools.get_except_info()),
+                        logging_tools.LOG_LEVEL_ERROR,
+                        )
                 else:
                     self.log("created %s (%d bytes)" % (
                         t_file,
                         len(content)))
-                    ret_com["result"].attrib.update({
-                        "reply" : "file created",
-                        "state" : "%d" % (logging_tools.LOG_LEVEL_OK)})
+                    ret_com.set_result("file created")
             else:
-                ret_com["result"].attrib.update({
-                    "reply" : "file not newer",
-                    "state" : "%d" % (logging_tools.LOG_LEVEL_WARN)})
+                ret_com.set_result("file not newer", logging_tools.LOG_LEVEL_WARN)
             ret_com["host"] = self.master_ip
             ret_com["port"] = "%d" % (self.master_port)
             self._send_to_nhm_service(None, ret_com, None, register=False)
@@ -1329,10 +1328,10 @@ class relay_code(threading_tools.process_pool):
             exc_info = process_tools.exception_info()
             for log_line in process_tools.exception_info().log_lines:
                 self.log(log_line, logging_tools.LOG_LEVEL_ERROR)
-                srv_com["result"] = None
-                srv_com["result"].attrib.update({
-                    "reply" : "caught server exception '%s'" % (process_tools.get_except_info()),
-                    "state" : "%d" % (server_command.SRV_REPLY_STATE_CRITICAL)})
+                srv_com.set_result(
+                    "caught server exception '%s'" % (process_tools.get_except_info()),
+                    server_command.SRV_REPLY_STATE_CRITICAL,
+                    )
     def _show_config(self):
         try:
             for log_line, log_level in global_config.get_log():
