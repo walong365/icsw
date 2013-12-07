@@ -24,25 +24,6 @@ import sys
 
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "initat.cluster.settings")
 
-import bz2
-import commands
-import cluster_location
-import config_tools
-import configfile
-import datetime
-import logging_tools
-import mail_tools
-import net_tools
-import process_tools
-import pprint
-import pwd
-import server_command
-import stat
-import threading_tools
-import time
-import uuid_tools
-import zmq
-import initat.cluster_server
 from django.conf import settings
 from django.db import connection
 from django.db.models import Q
@@ -51,6 +32,25 @@ from initat.cluster_server.config import global_config
 from initat.core.management.commands import dumpdatafast, dumpdataslow
 from initat.host_monitoring import hm_classes
 from optparse import OptionParser
+import bz2
+import cluster_location
+import commands
+import config_tools
+import configfile
+import datetime
+import initat.cluster_server
+import logging_tools
+import mail_tools
+import net_tools
+import pprint
+import process_tools
+import pwd
+import server_command
+import stat
+import threading_tools
+import time
+import uuid_tools
+import zmq
 
 try:
     from initat.cluster_server.cluster_server_version import VERSION_STRING
@@ -277,10 +277,12 @@ class quota_line(object):
     def get_uid(self):
         return self.__uid
     def __repr__(self):
-        return "quota info, uid %d, flags %s, block_info: %s, file_info: %s" % (self.__uid,
-                                                                                self.__quota_flags,
-                                                                                self.get_info_str(self.get_block_dict()),
-                                                                                self.get_info_str(self.get_file_dict()))
+        return "quota info, uid %d, flags %s, block_info: %s, file_info: %s" % (
+            self.__uid,
+            self.__quota_flags,
+            self.get_info_str(self.get_block_dict()),
+            self.get_info_str(self.get_file_dict()),
+        )
     def check_dict(self, in_dict):
         is_ok = True
         if in_dict["soft"] and in_dict["used"] >= in_dict["soft"]:
