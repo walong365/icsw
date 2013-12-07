@@ -22,15 +22,15 @@
 #
 """ meta-server, main part """
 
+from initat.meta_server.config import global_config
+from initat.meta_server.server import main_process
 import configfile
 import process_tools
 import socket
 import sys
-from initat.meta_server.config import global_config
-from initat.meta_server.server import main_process
 
 try:
-    from meta_server_version import VERSION_STRING
+    from initat.meta_server.version import VERSION_STRING
 except ImportError:
     VERSION_STRING = "?.?"
 

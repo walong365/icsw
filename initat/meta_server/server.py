@@ -22,20 +22,20 @@
 #
 """ meta-server, server process """
 
+from initat.meta_server.config import global_config
 import configfile
 import logging_tools
 import mail_tools
 import os
 import process_tools
-import threading_tools
-import time
 import server_command
 import stat
+import threading_tools
+import time
 import zmq
-from initat.meta_server.config import global_config
 
 try:
-    from meta_server_version import VERSION_STRING
+    from initat.meta_server.version import VERSION_STRING
 except ImportError:
     VERSION_STRING = "?.?"
 
@@ -267,25 +267,29 @@ class main_process(threading_tools.process_pool):
                             self._submit_at_command(struct.start_command, 2)
                         self.__new_mail.init_text()
                         self.__new_mail.set_subject("problem with %s on %s (meta-server)" % (key, global_config["SERVER_FULL_NAME"]))
-                        self.__new_mail.append_text(["check failed for %s: %s" % (
-                            key,
-                            struct.pid_check_string),
-                                                     "starting repair sequence",
-                                                     ""])
+                        self.__new_mail.append_text([
+                            "check failed for %s: %s" % (
+                                key,
+                                struct.pid_check_string),
+                            "starting repair sequence",
+                            ""])
                         self.log("*** starting repair sequence",
                              logging_tools.LOG_LEVEL_WARN)
                         if struct.kill_pids:
                             kill_info = struct.kill_all_found_pids()
                             self.log("  *** kill info: %s" % (kill_info),
                                      logging_tools.LOG_LEVEL_WARN)
-                            self.__new_mail.append_text(["trying to kill the remaining pids, kill info : %s" % (kill_info),
-                                                         ""])
+                            self.__new_mail.append_text([
+                                "trying to kill the remaining pids, kill info : %s" % (kill_info),
+                                ""])
                         if struct.stop_command:
-                            self.__new_mail.append_text(["issued the stop command : %s" % (struct.stop_command),
-                                                         ""])
+                            self.__new_mail.append_text([
+                                "issued the stop command : %s" % (struct.stop_command),
+                                ""])
                         if struct.start_command:
-                            self.__new_mail.append_text(["issued the start command : %s" % (struct.start_command),
-                                                         ""])
+                            self.__new_mail.append_text([
+                                "issued the start command : %s" % (struct.start_command),
+                                ""])
                         struct.remove_meta_block()
                         _sm_stat, log_lines = self.__new_mail.send_mail()
                         for line in log_lines:
