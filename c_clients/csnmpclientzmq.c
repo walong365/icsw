@@ -232,6 +232,7 @@ int main(int argc, char **argv)
         zmq_msg_init_size(&request, strlen(send_buffer));
         memcpy(zmq_msg_data(&request), send_buffer, strlen(send_buffer));
         zmq_msg_init(&reply);
+        // usleep(1000);
         zmq_sendmsg(requester, &request, 0);
         if (verbose) {
             printf("send(), waiting for result\n");

@@ -27,6 +27,9 @@ from icmp_twisted import install
 
 reactor = install()
 
+from initat.host_monitoring.config import global_config
+from twisted.internet.protocol import ClientFactory, Protocol # @UnresolvedImport
+from twisted.python import log # @UnresolvedImport
 import icmp_twisted
 import logging_tools
 import process_tools
@@ -34,11 +37,6 @@ import server_command
 import socket
 import threading_tools
 import time
-
-from twisted.internet.protocol import ClientFactory, Protocol
-from twisted.python import log
-
-from initat.host_monitoring.config import global_config
 
 class tcp_send(Protocol):
     # def __init__(self, log_recv):
@@ -90,6 +88,7 @@ class tcp_factory(ClientFactory):
     def add_to_send(self, src_id, srv_com):
         cur_id = "%s:%d" % (socket.gethostbyname(srv_com["host"].text), int(srv_com["port"].text))
         self.__to_send.setdefault(cur_id, []).append((src_id, srv_com))
+        # print sum([len(value) for value in self.__to_send.itervalues()])
     def connectionLost(self, reason):
         print "gone", reason
     def buildProtocol(self, addr):
@@ -99,13 +98,13 @@ class tcp_factory(ClientFactory):
             pass
         else:
             self.log(
-                "%s: %s" % (
+                "clientConnectionLost, %s: %s" % (
                     str(connector).strip(),
                     str(reason).strip()),
                 logging_tools.LOG_LEVEL_ERROR)
     def clientConnectionFailed(self, connector, reason):
         self.log(
-            "%s: %s" % (
+            "clientConnectionFailed, %s: %s" % (
                 str(connector).strip(),
                 str(reason).strip()),
             logging_tools.LOG_LEVEL_ERROR)

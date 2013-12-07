@@ -94,7 +94,7 @@ void try_second_socket(int dummy)
 int main(int argc, char **argv)
 {
     int ret, num, inlen, file, i /*, time */ , port, rchar, quiet,
-        retcode, timeout, host_written, only_send, raw;
+        retcode, timeout, host_written, only_send, raw, delay;
     struct in_addr sia;
 
     struct hostent *h;
@@ -114,6 +114,7 @@ int main(int argc, char **argv)
     verbose = 0;
     quiet = 0;
     raw = 0;
+    delay = 0;
     host_written = 0;
     h = NULL;
     // get uts struct
@@ -125,7 +126,7 @@ int main(int argc, char **argv)
     only_send = 0;
     sprintf(host_b, "localhost");
     while (1) {
-        rchar = getopt(argc, argv, "+vm:p:ht:qFsr");
+        rchar = getopt(argc, argv, "+vm:p:ht:qFsrd");
         //printf("%d %c\n", rchar, rchar);
         switch (rchar) {
         case 'p':
@@ -136,6 +137,9 @@ int main(int argc, char **argv)
             break;
         case 't':
             timeout = strtol(optarg, NULL, 10);
+            break;
+        case 'd':
+            delay = 1;
             break;
         case 'v':
             verbose = 1;
@@ -152,7 +156,7 @@ int main(int argc, char **argv)
         case 'h':
         case '?':
             printf
-                ("Usage: %s [-t TIMEOUT] [-m HOST] [-p PORT] [-h] [-v] [-q] [-r] [-s] command\n",
+                ("Usage: %s [-t TIMEOUT] [-m HOST] [-p PORT] [-h] [-v] [-q] [-r] [-s] [-d(delay)] command\n",
                  basename(argv[0]));
             printf("  defaults: port=%d, timeout=%d\n", port, timeout);
             free(host_b);
@@ -229,13 +233,16 @@ int main(int argc, char **argv)
         };
         if (verbose) {
             printf
-                ("send buffer has %d bytes, identity is '%s', nodename is '%s', servicename is '%s', only_send is %d, pid is %d\n",
+                ("send buffer has %d bytes, identity is '%s', nodename is '%s', servicename is '%s', only_send is %d, delay is %d, pid is %d\n",
                  strlen(send_buffer), identity_str, myuts.nodename,
-                 SERVICE_NAME, only_send, getpid());
+                 SERVICE_NAME, only_send, delay, getpid());
             printf("%s\n", send_buffer);
         };
         zmq_msg_init_size(&request, strlen(send_buffer));
         memcpy(zmq_msg_data(&request), send_buffer, strlen(send_buffer));
+        if (!only_send && delay) {
+            usleep(10000);
+        }
         zmq_sendmsg(requester, &request, 0);
         if (verbose) {
             printf("send(), waiting for result\n");

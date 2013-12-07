@@ -236,7 +236,7 @@ class id_discovery(object):
     @staticmethod
     def check_timeout(cur_time):
         del_list = []
-        for conn_str, cur_ids in id_discovery.pending.iteritems():
+        for _conn_str, cur_ids in id_discovery.pending.iteritems():
             diff_time = abs(cur_ids.init_time - cur_time)
             if diff_time > id_discovery.timeout:
                 del_list.append(cur_ids)
@@ -285,6 +285,7 @@ class host_connection(object):
         self.sr_probe = sr_probe(self)
         self.__open = False
         self.__conn_str = conn_str
+        # print "*" * 20
     @property
     def conn_str(self):
         return self.__conn_str
@@ -444,7 +445,7 @@ class host_connection(object):
         # raise zmq.ZMQError()
     @staticmethod
     def get_result(zmq_sock):
-        src_id = zmq_sock.recv()
+        _src_id = zmq_sock.recv()
         cur_reply = server_command.srv_command(source=zmq_sock.recv())
         host_connection._handle_result(cur_reply)
     @staticmethod
@@ -498,8 +499,14 @@ class host_connection(object):
             self.log("unknown id '%s' in _handle_old_result" % (mes_id), logging_tools.LOG_LEVEL_ERROR)
 
 class host_message(object):
+    hm_idx = 0
+    hm_open = set()
     def __init__(self, com_name, src_id, srv_com, xml_input):
         self.com_name = com_name
+        # self.hm_idx = host_message.hm_idx
+        # host_message.hm_idx += 1
+        # host_message.hm_open.add(self.hm_idx)
+        # print "init hm", self.hm_idx
         self.src_id = src_id
         self.xml_input = xml_input
         self.srv_com = srv_com
@@ -579,6 +586,8 @@ class host_message(object):
                 del self.com_struct.NOGOOD_srv_com
                 return ret_value
     def __del__(self):
+        # host_message.hm_open.remove(self.hm_idx)
+        # print "del {}, still open {}".format(self.hm_idx, len(host_message.hm_open))
         del self.srv_com
         pass
 
@@ -601,7 +610,7 @@ class relay_code(threading_tools.process_pool):
         # init lut
         self.__old_send_lut = {}
         if not global_config["DEBUG"]:
-            c_flag, self.__io_dict = process_tools.set_handles(
+            _c_flag, self.__io_dict = process_tools.set_handles(
                 {"out" : (1, "collrelay.out"),
                  "err" : (0, "/var/lib/logging-server/py_err_zmq")},
                 zmq_context=self.zmq_context,
@@ -1085,10 +1094,11 @@ class relay_code(threading_tools.process_pool):
             self._send_result(src_id, "cannot interpret", limits.nag_STATE_CRITICAL)
         self.__num_messages += 1
         if self.__num_messages % 1000 == 0:
-            cur_mem = process_tools.get_mem_info()
+            pid_list = sorted(list(set(self.__msi_block.pids)))
             self.log("memory usage is %s after %s" % (
-                logging_tools.get_size_str(cur_mem),
-                logging_tools.get_plural("message", self.__num_messages)))
+                ", ".join(["{:d}={:s}".format(cur_pid, logging_tools.get_size_str(process_tools.get_mem_info(cur_pid))) for cur_pid in pid_list]),
+                logging_tools.get_plural("message", self.__num_messages))
+            )
     def _check_version(self, key, new_vers):
         if new_vers == self.version_dict.get(key):
             self.log("no newer version for %s (%d)" % (key, new_vers))
