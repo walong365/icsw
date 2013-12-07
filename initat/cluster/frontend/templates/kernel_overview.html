@@ -31,7 +31,7 @@
     <td>{{ obj.name }}</td>
     <td>{{ obj.kernel_version  }}</td>
     <td>{{ obj.comment }}</td>
-    <td>{{ obj.enabled && "yes" || "---" }}</td>
+    <td>{{ obj.enabled | yesno1 }}</td>
     <td>{{ obj.version }}.{{ obj.release }}</td>
     <td>{{ obj.bitcount }}</td>
     <td class="text-center">{{ obj.act_kernel.length }} / {{ obj.new_kernel.length }}</td>
@@ -41,27 +41,22 @@
 
 <tabset>
     <tab heading="Kernels">
-<div ng-controller="kernel_base">
-
-<div ng-controller="kernel">
-<h2>Kernels ({{entries.length}} entries), <input type="button" value="Scan for kernels" ng-click="scan_for_kernels()"/></h2>
-
-<table class="table table-condensed table-condensed table-hover" style="width:auto;">
-    <thead kernelhead></thead>
-    <tbody>
-        <tr kernelrow ng-repeat="obj in entries | orderBy:'-identifier':true"></tr>
-    </tbody>
-</table>
-
-</div>
-
-</div>
-</tab>
+        <div ng-controller="kernel_base">
+            <div ng-controller="kernel">
+                <h2>Kernels ({{entries.length}} entries), <input type="button" value="Scan for kernels" ng-click="scan_for_kernels()"/></h2>
+                <table class="table table-condensed table-condensed table-hover" style="width:auto;">
+                    <thead kernelhead></thead>
+                    <tbody>
+                        <tr kernelrow ng-repeat="obj in entries | orderBy:'-identifier':true"></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </tab>
 </tabset>
 
 </div>
 
 {% endverbatim %}
-
 
 {% endblock %}
