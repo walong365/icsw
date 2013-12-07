@@ -23,12 +23,19 @@
 
 """ host-monitoring, with 0MQ and twisted support, relay part """
 
+# import pprint
+from initat.host_monitoring import limits, hm_classes
+from initat.host_monitoring.config import global_config
+from initat.host_monitoring.constants import MAPPING_FILE_IDS, MAPPING_FILE_TYPES, MASTER_FILE_NAME
+from initat.host_monitoring.hm_twisted import twisted_process
+from initat.host_monitoring.tools import my_cached_file
+from lxml import etree # @UnresolvedImport
+from lxml.builder import E # @UnresolvedImport
 import argparse
 import base64
 import configfile
 import logging_tools
 import os
-# import pprint
 import process_tools
 import resource
 import server_command
@@ -37,15 +44,6 @@ import threading_tools
 import time
 import uuid_tools
 import zmq
-
-from lxml import etree # @UnresolvedImport
-from lxml.builder import E # @UnresolvedImport
-
-from initat.host_monitoring import limits, hm_classes
-from initat.host_monitoring.config import global_config
-from initat.host_monitoring.constants import MAPPING_FILE_IDS, MAPPING_FILE_TYPES, MASTER_FILE_NAME
-from initat.host_monitoring.hm_twisted import twisted_process
-from initat.host_monitoring.tools import my_cached_file
 
 class id_discovery(object):
     # discover 0mq ids

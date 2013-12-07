@@ -24,7 +24,9 @@ for mod_name in __all__:
             new_hm_mod = new_mod._general(mod_name, new_mod)
             _new_hm_list.append((new_hm_mod.Meta().priority, new_hm_mod))
     except:
-        IMPORT_ERRORS.append((mod_name, "import", process_tools.get_except_info()))
+        exc_info = process_tools.exception_info()
+        for log_line in exc_info.log_lines:
+            IMPORT_ERRORS.append((mod_name, "import", log_line))
 
 _new_hm_list.sort(reverse=True)
 
@@ -38,6 +40,8 @@ for _pri, new_hm_mod in _new_hm_list:
         try:
             new_hm_mod.add_command(loc_com, getattr(new_mod, loc_com))
         except:
-            IMPORT_ERRORS.append((new_mod.__name__, loc_com, process_tools.get_except_info()))
+            exc_info = process_tools.exception_info()
+            for log_line in exc_info.log_lines:
+                IMPORT_ERRORS.append((new_mod.__name__, loc_com, log_line))
         #print getattr(getattr(new_mod, loc_com), "info_string", "???")
     command_dict.update(new_hm_mod.commands)

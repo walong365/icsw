@@ -276,10 +276,8 @@ class net_device(object):
         self.ibv_results = {}
         if self.name.startswith("ib"):
             self.ibv_map = {
-                "portrcvdata" : "rx",
-                # "portrcvpkts" : 1,
+                "portrcvdata"  : "rx",
                 "portxmitdata" : "tx",
-                # "portxmitpkts" : 9,
                 }
             self.perfquery_path = process_tools.find_file("perfquery")
         self.update()

@@ -5,7 +5,7 @@
 # Send feedback to: <lang-nevyjel@init.at>
 #
 # this file is part of host-monitoring
-# 
+#
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License Version 2 as
 # published by the Free Software Foundation.
@@ -23,7 +23,6 @@
 
 from initat.host_monitoring import hm_classes
 from initat.host_monitoring import limits
-import Queue
 import commands
 import logging_tools
 import os
@@ -43,11 +42,11 @@ INVALIDATE_TIME = 60 * 10
 
 class event(object):
     def __init__(self, year, month, day, time, what):
-        self.__year  = year
+        self.__year = year
         self.__month = month
-        self.__day   = day
-        self.__time  = time
-        self.__what  = what
+        self.__day = day
+        self.__time = time
+        self.__what = what
     def __repr__(self):
         return "%d. %d %d %s: %s" % (self.__day,
                                      self.__month,
@@ -71,7 +70,7 @@ class file_object(object):
             while True:
                 try:
                     lines = self.__fd.readlines()
-                except IOError, what:
+                except IOError, _what:
                     pass
                 else:
                     if not lines:
@@ -125,8 +124,8 @@ class mail_log_object(file_object):
                 self.__num_dict.setdefault(act_event.cause(), 0)
                 self.__num_dict[act_event.cause()] += 1
         return self.get_snapshot()
-        #pprint.pprint(self.__num_dict)
-        #print "#of lines: %d" % (num_lines)
+        # pprint.pprint(self.__num_dict)
+        # print "#of lines: %d" % (num_lines)
     def get_snapshot(self):
         return self.__num_dict.copy()
     def _parse_line(self, in_line, act_time):
@@ -182,7 +181,7 @@ class mail_log_object(file_object):
                 elif act_text.count("status=sent"):
                     r_re = self.__relay_re.match(act_text)
                     if r_re:
-                        #print r_re.group("relay"), r_re.group("relay_ip"), r_re.group("relay_port")
+                        # print r_re.group("relay"), r_re.group("relay_ip"), r_re.group("relay_port")
                         if r_re.group("relay_ip") == "127.0.0.1":
                             act_event = event(self.__act_year, act_month, act_day, act_hms_str, "sent.local")
                         else:
@@ -222,22 +221,24 @@ class mail_log_object(file_object):
             elif act_text.count("stat=Sent"):
                 act_event = event(self.__act_year, act_month, act_day, act_hms_str, "sent")
         else:
-            #print "***", act_hms_str, act_prog
+            # print "***", act_hms_str, act_prog
             pass
         return act_event
-        
+
 class _general(hm_classes.hm_module):
     class Meta:
         priority = 10
-    def init_machine_vector(self, mv):
+    def init_module(self):
         self.__maillog_object = mail_log_object()
         self.__maillog_object.parse_lines()
+        self.__mailq_command = process_tools.find_file("mailq")
+    def init_machine_vector(self, mv):
         self.__act_snapshot, self.__check_time = ({}, time.time())
         self.__num_mails = 0
         self.__check_kerio = False
         mv.register_entry("mail.waiting", 0, "number of mails in mail-queue")
     def get_num_mails(self):
-        return self.__num_mails
+        return self._get_mail_queue_entries()
     def ext_num_mails(self, mail_coms):
         ret_dict = {"num_mails" : 666,
                     "command"   : "notset"}
@@ -342,46 +343,58 @@ class _general(hm_classes.hm_module):
             mv["mail.%s" % (key)] = float(diff_value * 60. / diff_time)
         self.__act_snapshot, self.__check_time = (act_snapshot, act_time)
         mv["mail.waiting"] = self.get_num_mails()
-    #def _get_mail_queue_entries(self):
-        #self.__num_mails = 0
-        #stat, out = commands.getstatusoutput("mailq")
-        #if stat:
-            #self.log("cannot execute mailq (%d): %s" % (stat, out),
-                     #logging_tools.LOG_LEVEL_WARN)
-        #else:
-            #mail_lines = [x.strip() for x in out.split("\n") if x.strip]
-            #if mail_lines:
-                #last_line = mail_lines[-1]
-                #if last_line.startswith("--"):
-                    #if last_line.count("empty"):
-                        ## empty mailqueue
-                        #pass
-                    #else:
-                        #line_parts = last_line.split()
-                        #if line_parts[-2].isdigit():
-                            #self.__num_mails = int(line_parts[-2])
-##    def process_server_args(self, glob_config, logger):
-##        self.__check_kerio, self.__kerio_main_dir = (False, "")
-##        if glob_config["CHECK_KERIO"]:
-##            # search for kerio in the usual places
-##            for s_dir in ["/opt/kerio/"]:
-##                if os.path.isfile("%s/mailserver/stats.dat" % (s_dir)):
-##                    self.__last_kerio_check, self.__last_kerio_dict = (0, {})
-##                    self.__check_kerio, self.__kerio_main_dir = (True, s_dir)
-##                    break
-##        return (True, "")
-##    def process_client_args(self, opts, hmb):
-##        ok, why = (1, "")
-##        my_lim = limits.limits()
-##        for opt, arg in opts:
-##            if hmb.name in ["mailq", "ext_mailq"]:
-##                if opt == "-w":
-##                    if my_lim.set_warn_val(arg) == 0:
-##                        ok, why = (0, "Can't parse warning value !")
-##                if opt == "-c":
-##                    if my_lim.set_crit_val(arg) == 0:
-##                        ok, why = (0, "Can't parse critical value !")
-##        return ok, why, [my_lim]
+    def _get_mail_queue_entries(self):
+        self.__num_mails = 0
+        stat, out = commands.getstatusoutput(self.__mailq_command)
+        if stat:
+            self.log(
+                "cannot execute mailq (%d): %s" % (stat, out),
+                logging_tools.LOG_LEVEL_WARN)
+        else:
+            mail_lines = [_line.strip() for _line in out.split("\n") if _line.strip()]
+            if mail_lines:
+                last_line = mail_lines[-1]
+                if last_line.startswith("--"):
+                    if last_line.count("empty"):
+                        # empty mailqueue
+                        pass
+                    else:
+                        line_parts = last_line.split()
+                        if line_parts[-2].isdigit():
+                            self.__num_mails = int(line_parts[-2])
+                        self.log("cannot parse line '%s' (mailq)" % (last_line),
+                            logging_tools.LOG_LEVEL_WARN
+                            )
+                else:
+                    self.log("cannot parse line '%s' (mailq)" % (last_line),
+                        logging_tools.LOG_LEVEL_WARN
+                        )
+            else:
+                self.log("no lines got from %s" % (self.__mailq_command),
+                    logging_tools.LOG_LEVEL_WARN)
+        return self.__num_mails
+# #    def process_server_args(self, glob_config, logger):
+# #        self.__check_kerio, self.__kerio_main_dir = (False, "")
+# #        if glob_config["CHECK_KERIO"]:
+# #            # search for kerio in the usual places
+# #            for s_dir in ["/opt/kerio/"]:
+# #                if os.path.isfile("%s/mailserver/stats.dat" % (s_dir)):
+# #                    self.__last_kerio_check, self.__last_kerio_dict = (0, {})
+# #                    self.__check_kerio, self.__kerio_main_dir = (True, s_dir)
+# #                    break
+# #        return (True, "")
+# #    def process_client_args(self, opts, hmb):
+# #        ok, why = (1, "")
+# #        my_lim = limits.limits()
+# #        for opt, arg in opts:
+# #            if hmb.name in ["mailq", "ext_mailq"]:
+# #                if opt == "-w":
+# #                    if my_lim.set_warn_val(arg) == 0:
+# #                        ok, why = (0, "Can't parse warning value !")
+# #                if opt == "-c":
+# #                    if my_lim.set_crit_val(arg) == 0:
+# #                        ok, why = (0, "Can't parse critical value !")
+# #        return ok, why, [my_lim]
 
 class mailq_command(hm_classes.hm_command):
     def __init__(self, name):
@@ -400,8 +413,8 @@ class mailq_command(hm_classes.hm_command):
         ret_state = limits.check_ceiling(num_mails, cur_ns.warn, cur_ns.crit)
         result = "%s in queue" % (logging_tools.get_plural("mail", num_mails))
         return ret_state, result
-    
-class ext_mailq_command(hm_classes.hmb_command):
+
+class ext_mailq_commandX(object): # hm_classes.hmb_command):
     def __init__(self, **args):
         hm_classes.hmb_command.__init__(self, "ext_mailq", **args)
         self.help_str = "checks the number of mails in a mail queue via the supplied command"
