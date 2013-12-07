@@ -353,12 +353,12 @@ class int_error(error):
 class meta_server_info(object):
     def __init__(self, name):
         self.__prop_list = [
-            ("start_command"    , "s", None),
-            ("stop_command"     , "s", None),
-            ("kill_pids"        , "b", False),
-            ("check_memory"     , "b", True),
-            ("exe_name"         , "s", None),
-            ("need_any_pids"    , "b", 0),
+            ("start_command", "s", None),
+            ("stop_command" , "s", None),
+            ("kill_pids"    , "b", False),
+            ("check_memory" , "b", True),
+            ("exe_name"     , "s", None),
+            ("need_any_pids", "b", 0),
             ]
         if name.startswith("/"):
             self.__file_name = name
@@ -376,9 +376,11 @@ class meta_server_info(object):
                 self.__name = xml_struct.xpath(".//name/text()")[0]
                 # reads pids
                 self.__pids = []
+                self.__pid_names = {}
                 self.__pid_fuzzy = {}
-                for pid_struct in xml_struct.xpath(".//pid_list/pid"):
+                for cur_idx, pid_struct in enumerate(xml_struct.xpath(".//pid_list/pid")):
                     self.__pids.extend([int(pid_struct.text)] * int(pid_struct.get("mult", "1")))
+                    self.__pid_names[int(pid_struct.text)] = pid_struct.get("name", "proc%d" % (cur_idx + 1))
                     self.__pid_fuzzy[int(pid_struct.text)] = (
                         int(pid_struct.get("fuzzy_floor", "0")),
                         int(pid_struct.get("fuzzy_ceiling", "0")),
@@ -411,6 +413,7 @@ class meta_server_info(object):
                     act_dict = dict([(line[0].strip().lower(), line[1].strip()) for line in [lp.split("=", 1) for lp in lines if lp.count("=")] if len(line) > 1])
                     self.__name = act_dict.get("name", None)
                     self.__pids = sorted([int(cur_pid) for cur_pid in act_dict.get("pids", "").split() if cur_pid.isdigit()])
+                    self.__pid_names = {pid : "proc%d" % (cur_idx + 1) for cur_idx, pid in enumerate(sorted(list(set(self.__pids))))}
                     self.__pid_fuzzy = dict([(cur_pid, (0, 0)) for cur_pid in set(self.__pids)])
                     for opt, val_type, def_val in self.__prop_list:
                         if opt in act_dict:
@@ -432,6 +435,7 @@ class meta_server_info(object):
             self.set_meta_server_dir("/var/lib/meta-server")
             self.__name = name
             self.__pids = []
+            self.__pid_names = {}
             self.__pid_fuzzy = {}
             for opt, val_type, def_val in self.__prop_list:
                 setattr(self, opt, def_val)
@@ -481,11 +485,14 @@ class meta_server_info(object):
     def check_memory_set(self, cm=1):
         self.__check_memory = cm
     check_memory = property(check_memory_get, check_memory_set)
-    def add_actual_pid(self, act_pid=None, mult=1, fuzzy_floor=0, fuzzy_ceiling=0):
+    def add_actual_pid(self, act_pid=None, mult=1, fuzzy_floor=0, fuzzy_ceiling=0, process_name=""):
         if not act_pid:
             act_pid = os.getpid()
         self.__pids.extend(mult * [act_pid])
         self.__pid_fuzzy[act_pid] = (fuzzy_floor, fuzzy_ceiling)
+        if not process_name:
+            process_name = "proc%d" % (len(self.__pid_names) + 1)
+        self.__pid_names[act_pid] = process_name
         self.__pids.sort()
     def remove_actual_pid(self, act_pid=None, mult=0):
         """
@@ -508,6 +515,8 @@ class meta_server_info(object):
     pids = property(get_pids, set_pids)
     def get_unique_pids(self):
         return set(self.__pids)
+    def get_process_name(self, pid):
+        return self.__pid_names[pid]
     def get_info(self):
         pid_dict = dict([(pid, self.__pids.count(pid)) for pid in self.__pids])
         all_pids = sorted(pid_dict.keys())
@@ -519,7 +528,7 @@ class meta_server_info(object):
         if etree:
             pid_list = E.pid_list()
             for cur_pid in sorted(set(self.__pids)):
-                cur_pid_el = E.pid("%d" % (cur_pid), mult="%d" % (self.__pids.count(cur_pid)))
+                cur_pid_el = E.pid("%d" % (cur_pid), mult="%d" % (self.__pids.count(cur_pid)), name=self.__pid_names[cur_pid])
                 f_f, f_c = self.__pid_fuzzy[cur_pid]
                 if f_f:
                     cur_pid_el.attrib["fuzzy_floor"] = "%d" % (f_f)
