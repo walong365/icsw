@@ -35,6 +35,10 @@ import time
 import zmq
 
 try:
+    from initat.host_monitoring import hm_classes
+except:
+    hm_classes = None
+try:
     from initat.meta_server.version import VERSION_STRING
 except ImportError:
     VERSION_STRING = "?.?"
@@ -69,7 +73,7 @@ class main_process(threading_tools.process_pool):
         self._show_config()
         act_commands = self._check_for_new_info([])
         self._do_commands(act_commands)
-        self.register_timer(self._check, 60, instant=True)
+        self.register_timer(self._check, 30, instant=True)
     def log(self, what, lev=logging_tools.LOG_LEVEL_OK):
         if self.__log_template:
             self.__log_template.log(lev, what)
@@ -110,6 +114,16 @@ class main_process(threading_tools.process_pool):
         else:
             self.register_poller(client, zmq.POLLIN, self._recv_command)
         self.network_socket = client
+        conn_str = process_tools.get_zmq_ipc_name("vector", s_name="collserver", connect_to_root_instance=True)
+        if hm_classes:
+            vector_socket = self.zmq_context.socket(zmq.PUSH)
+            vector_socket.setsockopt(zmq.LINGER, 0)
+            vector_socket.connect(conn_str)
+        else:
+            vector_socket = None
+        self.vector_socket = vector_socket
+        self.mis_dict = {}
+        # memory info send dict
     def _recv_command(self, zmq_sock):
         src_id = zmq_sock.recv()
         more = zmq_sock.getsockopt(zmq.RCVMORE)
@@ -150,6 +164,8 @@ class main_process(threading_tools.process_pool):
         process_tools.delete_pid(self.__pid_name)
         if self.__msi_block:
             self.__msi_block.remove_meta_block()
+        if self.vector_socket:
+            self.vector_socket.close()
     def _do_commands(self, act_commands):
         for act_command in act_commands:
             self._submit_at_command(act_command, 1)
@@ -301,17 +317,38 @@ class main_process(threading_tools.process_pool):
                         pids = struct.get_unique_pids()
                         if pids:
                             # only count memory for one pid
-                            mem_info_dict[key] = sum([process_tools.get_mem_info(cur_pid) for cur_pid in pids])
+                            mem_info_dict[key] = {pid: (struct.get_process_name(pid), process_tools.get_mem_info(pid)) for pid in pids}
                         else:
-                            mem_info_dict[key] = 0
+                            mem_info_dict[key] = None
             if mem_info_dict:
                 self.__act_meminfo_line += 1
                 act_meminfo_keys = sorted(mem_info_dict.keys())
                 if act_meminfo_keys != self.__last_meminfo_keys or self.__act_meminfo_line > 100:
                     self.__act_meminfo_line = 0
                     self.__last_meminfo_keys = act_meminfo_keys
-                    self.log("Memory info mapping: %s" % (", ".join(["%d: %s" % (act_meminfo_keys.index(k) + 1, k) for k in act_meminfo_keys])))
-                self.log("Memory info: %s" % (" / ".join([process_tools.beautify_mem_info(mem_info_dict[k], 1) for k in act_meminfo_keys])))
+                    self.log("Memory info mapping: %s" % (", ".join(["%d: %s" % (act_meminfo_keys.index(key) + 1, key) for key in act_meminfo_keys])))
+                if hm_classes and self.vector_socket:
+                    drop_com = server_command.srv_command(command="set_vector")
+                    my_vector = drop_com.builder("values")
+                    for key in act_meminfo_keys:
+                        tot_mem = 0
+                        for proc_name, mem_usage in mem_info_dict[key].itervalues():
+                            tot_mem += mem_usage
+                            f_key = (key, proc_name)
+                            if f_key not in self.mis_dict:
+                                self.mis_dict[f_key] = hm_classes.mvect_entry("mem.icsw.%s.%s" % (key, proc_name), info="memory usage of %s (%s)" % (key, proc_name), default=0, unit="Byte", base=1024)
+                            self.mis_dict[f_key].update(mem_usage)
+                            self.mis_dict[f_key].valid_until = act_time + 120
+                            my_vector.append(self.mis_dict[f_key].build_xml(drop_com.builder))
+                        if proc_name not in self.mis_dict:
+                            self.mis_dict[key] = hm_classes.mvect_entry("mem.icsw.%s.total" % (key), info="memory usage of %s" % (key), default=0, unit="Byte", base=1024)
+                        self.mis_dict[key].update(tot_mem)
+                        self.mis_dict[key].valid_until = act_time + 120
+                        my_vector.append(self.mis_dict[key].build_xml(drop_com.builder))
+                    drop_com["vector"] = my_vector
+                    drop_com["vector"].attrib["type"] = "vector"
+                    self.vector_socket.send_unicode(unicode(drop_com))
+                self.log("Memory info: %s" % (" / ".join([process_tools.beautify_mem_info(sum([value[1] for value in mem_info_dict.get(key, {}).itervalues()])) for key in act_meminfo_keys])))
 
             if del_list:
                 del_list.sort()
