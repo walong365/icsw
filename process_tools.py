@@ -215,10 +215,7 @@ def bind_zmq_socket(zmq_socket, name):
         logging_tools.my_syslog("zmq_socket bound to %s" % (name))
 
 def submit_at_command(com, diff_time=0):
-    if os.path.isfile("/etc/redhat-release") or os.path.isfile("/etc/debian_version") or not diff_time:
-        pre_time_str = "now"
-    else:
-        pre_time_str = ""
+    pre_time_str = "now"
     diff_time_str = diff_time and "+%d minutes" % (diff_time) or ""
     time_str = "%s%s" % (pre_time_str, diff_time_str)
     cstat, cout = getstatusoutput(
