@@ -83,12 +83,15 @@ class main_process(threading_tools.process_pool):
         # store pid name because global_config becomes unavailable after SIGTERM
         self.__pid_name = global_config["PID_NAME"]
         process_tools.save_pids(self.__pid_name, mult=3)
-        process_tools.append_pids(self.__pid_name, pid=configfile.get_manager_pid(), mult=2)
+        _spm = global_config.single_process_mode()
+        if not _spm:
+            process_tools.append_pids(self.__pid_name, pid=configfile.get_manager_pid(), mult=2)
         if True: # not self.__options.DEBUG:
             self.log("Initialising meta-server-info block")
             msi_block = process_tools.meta_server_info("meta-server")
             msi_block.add_actual_pid(mult=3, fuzzy_ceiling=3)
-            msi_block.add_actual_pid(act_pid=configfile.get_manager_pid(), mult=2)
+            if not _spm:
+                msi_block.add_actual_pid(act_pid=configfile.get_manager_pid(), mult=2)
             msi_block.start_command = "/etc/init.d/meta-server start"
             msi_block.stop_command = "/etc/init.d/meta-server force-stop"
             msi_block.kill_pids = True
@@ -115,7 +118,7 @@ class main_process(threading_tools.process_pool):
             self.register_poller(client, zmq.POLLIN, self._recv_command)
         self.network_socket = client
         conn_str = process_tools.get_zmq_ipc_name("vector", s_name="collserver", connect_to_root_instance=True)
-        if hm_classes:
+        if hm_classes and global_config["TRACK_CSW_MEMORY"]:
             vector_socket = self.zmq_context.socket(zmq.PUSH)
             vector_socket.setsockopt(zmq.LINGER, 0)
             vector_socket.connect(conn_str)

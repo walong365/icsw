@@ -44,10 +44,12 @@ def main():
         ("LOG_DESTINATION"     , configfile.str_c_var("uds:/var/lib/logging-server/py_log")),
         ("LOG_NAME"            , configfile.str_c_var("meta-server")),
         ("MAIN_DIR"            , configfile.str_c_var("/var/lib/meta-server")),
+        ("KILL_RUNNING"        , configfile.bool_c_var(True)),
         ("FROM_NAME"           , configfile.str_c_var("meta-server")),
         ("FROM_ADDR"           , configfile.str_c_var(socket.getfqdn())),
         ("TO_ADDR"             , configfile.str_c_var("lang-nevyjel@init.at", help_string="mail address to send error-emails to [%(default)s]", short_options="t")),
         ("FAILED_CHECK_TIME"   , configfile.int_c_var(120, info="time in seconds to wait befor we do something")),
+        ("TRACK_CSW_MEMORY"    , configfile.bool_c_var(False, help_string="enable tracking of the memory usage of the CSW [%(default)b]", action="store_true")),
         ("MIN_CHECK_TIME"      , configfile.int_c_var(6, info="minimum time between two checks")),
         ("KILL_RUNNING"        , configfile.bool_c_var(True)),
         ("SERVER_FULL_NAME"    , configfile.str_c_var(long_host_name)),
@@ -55,6 +57,11 @@ def main():
     global_config.parse_file()
     options = global_config.handle_commandline(description="meta-server, version is %s" % (VERSION_STRING))
     global_config.write_file()
+    if global_config["KILL_RUNNING"]:
+        if global_config.single_process_mode():
+            process_tools.kill_running_processes()
+        else:
+            process_tools.kill_running_processes(exclude=configfile.get_manager_pid())
     # process_tools.fix_directories("root", "root", [(glob_config["MAIN_DIR"], 0777)])
     if not options.DEBUG:
         process_tools.become_daemon()
