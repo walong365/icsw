@@ -31,41 +31,41 @@ import os
 
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "initat.cluster.settings")
 
-import time
-import threading
-import re
-import zmq
+# SNMP imports
 # transition fix
-import configfile
-import cluster_location
-import socket
-import process_tools
-import logging_tools
-import pprint
-import server_command
-import uuid_tools
-import cpu_database
-import ipvx_tools
-import threading_tools
-import net_tools
-import config_tools
-import kernel_sync_tools
+from django.db import connection
+from django.db.models import Q
+from initat.cluster.backbone.models import network, status
+from initat.mother.config import global_config
 from lxml import etree # @UnresolvedImports
 from lxml.builder import E # @UnresolvedImports
-# SNMP imports
-import pyasn1.codec.ber
-from pysnmp.entity.rfc3413.oneliner import cmdgen
-from pysnmp.carrier.asynsock import dispatch
 from pysnmp.carrier.asynsock import dgram
-from pysnmp.proto import rfc1902
+from pysnmp.carrier.asynsock import dispatch
+from pysnmp.entity.rfc3413.oneliner import cmdgen
 from pysnmp.proto import api
-from initat.mother.config import global_config
-from django.db.models import Q
-from django.db import connection
-import initat.mother.kernel
+from pysnmp.proto import rfc1902
+import cluster_location
+import config_tools
+import configfile
+import cpu_database
 import initat.mother.command
 import initat.mother.control
-from initat.cluster.backbone.models import network, status
+import initat.mother.kernel
+import ipvx_tools
+import kernel_sync_tools
+import logging_tools
+import net_tools
+import pprint
+import process_tools
+import pyasn1.codec.ber
+import re
+import server_command
+import socket
+import threading
+import threading_tools
+import time
+import uuid_tools
+import zmq
 
 try:
     from mother_version import VERSION_STRING
@@ -2933,7 +2933,7 @@ class server_process(threading_tools.process_pool):
         mult = 3
         process_tools.append_pids(self.__pid_name, src_pid, mult=mult)
         if self.__msi_block:
-            self.__msi_block.add_actual_pid(src_pid, mult=mult)
+            self.__msi_block.add_actual_pid(src_pid, mult=mult, process_name=src_process)
             self.__msi_block.save_block()
     def _init_msi_block(self):
         process_tools.save_pid(self.__pid_name, mult=3)
@@ -2941,8 +2941,8 @@ class server_process(threading_tools.process_pool):
         if True:
             self.log("Initialising meta-server-info block")
             msi_block = process_tools.meta_server_info("mother")
-            msi_block.add_actual_pid(mult=3, fuzzy_ceiling=3)
-            msi_block.add_actual_pid(act_pid=configfile.get_manager_pid(), mult=6)
+            msi_block.add_actual_pid(mult=3, fuzzy_ceiling=3, process_name="main")
+            msi_block.add_actual_pid(act_pid=configfile.get_manager_pid(), mult=6, process_name="manager")
             msi_block.start_command = "/etc/init.d/mother-server start"
             msi_block.stop_command = "/etc/init.d/mother-server force-stop"
             msi_block.kill_pids = True
