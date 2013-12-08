@@ -46,6 +46,27 @@ angular_add_simple_list_controller(
     }
 )
 
+angular_add_simple_list_controller(
+    package_module,
+    "package_search_base",
+    {
+        rest_url            : "{% url 'rest:package_search_list' %}"
+        edit_template       : "network_type.html"
+        delete_confirm_str  : (obj) -> return "Really delete Package search '#{obj.name}' ?"
+        template_cache_list : ["package_search_row.html", "package_search_head.html"]
+        fn:
+            retry : ($scope, obj) ->
+                $.ajax
+                    url     : "{% url 'pack:retry_search' %}"
+                    data    : {
+                        "pk" : obj.idx
+                    }
+                    success : (xml) ->
+                        $scope.reload()
+                        parse_xml_response(xml)
+    }
+)
+
 {% endinlinecoffeescript %}
 
 </script>
