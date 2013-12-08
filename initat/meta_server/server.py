@@ -331,6 +331,8 @@ class main_process(threading_tools.process_pool):
                     drop_com = server_command.srv_command(command="set_vector")
                     my_vector = drop_com.builder("values")
                     # handle removal of old keys, track pids, TODO, FIXME
+                    old_keys = set(self.mis_dict.keys())
+                    new_keys = set()
                     for key in act_meminfo_keys:
                         tot_mem = 0
                         for proc_name, mem_usage in mem_info_dict[key].itervalues():
@@ -340,15 +342,22 @@ class main_process(threading_tools.process_pool):
                                 self.mis_dict[f_key] = hm_classes.mvect_entry("mem.icsw.%s.%s" % (key, proc_name), info="memory usage of %s (%s)" % (key, proc_name), default=0, unit="Byte", base=1024)
                             self.mis_dict[f_key].update(mem_usage)
                             self.mis_dict[f_key].valid_until = act_time + 120
+                            new_keys.add(f_key)
                             my_vector.append(self.mis_dict[f_key].build_xml(drop_com.builder))
                         if proc_name not in self.mis_dict:
                             self.mis_dict[key] = hm_classes.mvect_entry("mem.icsw.%s.total" % (key), info="memory usage of %s" % (key), default=0, unit="Byte", base=1024)
                         self.mis_dict[key].update(tot_mem)
                         self.mis_dict[key].valid_until = act_time + 120
+                        new_keys.ad(key)
                         my_vector.append(self.mis_dict[key].build_xml(drop_com.builder))
                     drop_com["vector"] = my_vector
                     drop_com["vector"].attrib["type"] = "vector"
                     self.vector_socket.send_unicode(unicode(drop_com))
+                    del_keys = old_keys - new_keys
+                    if del_keys:
+                        self.log("removing {} from mis_dict".format(logging_tools.get_plural("key", len(del_keys))))
+                        for del_key in del_keys:
+                            del self.mis_dict[del_key]
                 self.log("Memory info: %s" % (" / ".join([process_tools.beautify_mem_info(sum([value[1] for value in mem_info_dict.get(key, {}).itervalues()])) for key in act_meminfo_keys])))
 
             if del_list:
