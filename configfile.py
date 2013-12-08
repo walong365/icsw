@@ -82,6 +82,8 @@ class config_proxy(BaseProxy):
         return self._callmethod("write_file", (args))
     def get_config_info(self):
         return self._callmethod("get_config_info")
+    def single_process_mode(self):
+        return self._callmethod("single_process_mode")
     def name(self):
         return self._callmethod("name")
     def get_argument_stuff(self):
@@ -307,6 +309,7 @@ class configuration(object):
     def __init__(self, name, *args, **kwargs):
         self.__name = name
         self.__verbose = kwargs.get("verbose", False)
+        self.__spm = kwargs.pop("single_process_mode", False)
         self.__c_dict = OrderedDict()
         self.clear_log()
         self.__writeback_changes = False
@@ -332,6 +335,8 @@ class configuration(object):
         os.setegid(new_gid)
         os.setuid(new_uid)
         os.seteuid(new_uid)
+    def single_process_mode(self):
+        return self.__spm
     def add_config_entries(self, entries, **kwargs):
         if type(entries) == type({}):
             entries = [(key, value) for key, value in entries.iteritems()]
@@ -630,6 +635,7 @@ class config_manager(BaseManager):
 
 config_manager.register("config", configuration, config_proxy, exposed=[
     "parse_file", "add_config_entries", "set_uid_gid",
+    "single_process_mode",
     "get_log", "handle_commandline", "keys", "get_type", "get", "get_source",
     "is_global", "database", "is_global", "set_global",
     "__getitem__", "__setitem__", "__contains__", "__delitem__",
@@ -639,13 +645,16 @@ cur_manager = config_manager()
 
 CONFIG_INIT = False
 
-def get_global_config(c_name):
+def get_global_config(c_name, single_process=False):
     # lock against double-init, for instance md-config-server includes process_monitor_mod whic
     # in turn tries to start the global_config manager (but from a different module)
     if not globals()["CONFIG_INIT"]:
         globals()["CONFIG_INIT"] = True
-        cur_manager.start()
-        return cur_manager.config(c_name)
+        if single_process:
+            return configuration(c_name, single_process_mode=True)
+        else:
+            cur_manager.start()
+            return cur_manager.config(c_name)
 
 class gc_proxy(object):
     def __init__(self, g_config):
