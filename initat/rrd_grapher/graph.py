@@ -130,6 +130,7 @@ class graph_var(object):
                 "DEF:%s=%s:%s:AVERAGE" % (self.name, self["file_name"], self["part"]),
             ]
         else:
+            # machvector entry
             c_lines = [
                 "DEF:%s=%s:v:AVERAGE" % (self.name, self["file_name"]),
             ]
