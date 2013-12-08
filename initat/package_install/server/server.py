@@ -21,6 +21,10 @@
 #
 """ package server """
 
+from django.db import connection
+from initat.package_install.server.config import global_config
+from initat.package_install.server.repository_process import repo_process
+from initat.package_install.server.structs import client
 import cluster_location
 import configfile
 import logging_tools
@@ -29,10 +33,6 @@ import server_command
 import threading_tools
 import uuid_tools
 import zmq
-from django.db import connection
-from initat.package_install.server.config import global_config
-from initat.package_install.server.repository_process import repo_process
-from initat.package_install.server.structs import client
 
 class server_process(threading_tools.process_pool):
     def __init__(self):
@@ -78,8 +78,8 @@ class server_process(threading_tools.process_pool):
         if not global_config["DEBUG"] or True:
             self.log("Initialising meta-server-info block")
             msi_block = process_tools.meta_server_info("package-server")
-            msi_block.add_actual_pid(mult=3, fuzzy_ceiling=3)
-            msi_block.add_actual_pid(act_pid=configfile.get_manager_pid(), mult=3)
+            msi_block.add_actual_pid(mult=3, fuzzy_ceiling=3, process_name="main")
+            msi_block.add_actual_pid(act_pid=configfile.get_manager_pid(), mult=3, process_name="manager")
             msi_block.start_command = "/etc/init.d/package-server start"
             msi_block.stop_command = "/etc/init.d/package-server force-stop"
             msi_block.kill_pids = True
@@ -107,7 +107,7 @@ class server_process(threading_tools.process_pool):
         mult = 3
         process_tools.append_pids(self.__pid_name, src_pid, mult=mult)
         if self.__msi_block:
-            self.__msi_block.add_actual_pid(src_pid, mult=mult)
+            self.__msi_block.add_actual_pid(src_pid, mult=mult, process_name=src_process)
             self.__msi_block.save_block()
     def loop_end(self):
         for c_name in client.name_set:
