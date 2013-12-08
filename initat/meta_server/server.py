@@ -339,9 +339,11 @@ class main_process(threading_tools.process_pool):
                         for proc_name, mem_usage in mem_info_dict[key].itervalues():
                             tot_mem += mem_usage
                             f_key = (key, proc_name)
+                            info_str = "memory usage of %s (%s)" % (key, proc_name)
                             if f_key not in self.mis_dict:
-                                self.mis_dict[f_key] = hm_classes.mvect_entry("mem.icsw.%s.%s" % (key, proc_name), info="memory usage of %s (%s)" % (key, proc_name), default=0, unit="Byte", base=1024)
+                                self.mis_dict[f_key] = hm_classes.mvect_entry("mem.icsw.%s.%s" % (key, proc_name), default=0, unit="Byte", base=1024)
                             self.mis_dict[f_key].update(mem_usage)
+                            self.mis_dict[f_key].info = info_str
                             new_keys.add(f_key)
                             my_vector.append(self.mis_dict[f_key].build_xml(drop_com.builder))
                         if proc_name not in self.mis_dict:
