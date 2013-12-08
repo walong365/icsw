@@ -96,6 +96,10 @@ class package_search(models.Model):
     def __unicode__(self):
         return self.search_string
 
+class package_search_serializer(serializers.ModelSerializer):
+    class Meta:
+        model = package_search
+
 @receiver(signals.pre_save, sender=package_search)
 def package_search_pre_save(sender, **kwargs):
     if "instance" in kwargs:
