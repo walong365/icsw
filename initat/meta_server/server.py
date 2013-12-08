@@ -329,6 +329,7 @@ class main_process(threading_tools.process_pool):
                     self.log("Memory info mapping: %s" % (", ".join(["%d: %s" % (act_meminfo_keys.index(key) + 1, key) for key in act_meminfo_keys])))
                 if hm_classes and self.vector_socket:
                     drop_com = server_command.srv_command(command="set_vector")
+                    mv_valid = act_time + 60
                     my_vector = drop_com.builder("values")
                     # handle removal of old keys, track pids, TODO, FIXME
                     old_keys = set(self.mis_dict.keys())
@@ -341,15 +342,16 @@ class main_process(threading_tools.process_pool):
                             if f_key not in self.mis_dict:
                                 self.mis_dict[f_key] = hm_classes.mvect_entry("mem.icsw.%s.%s" % (key, proc_name), info="memory usage of %s (%s)" % (key, proc_name), default=0, unit="Byte", base=1024)
                             self.mis_dict[f_key].update(mem_usage)
-                            self.mis_dict[f_key].valid_until = act_time + 120
                             new_keys.add(f_key)
                             my_vector.append(self.mis_dict[f_key].build_xml(drop_com.builder))
                         if proc_name not in self.mis_dict:
                             self.mis_dict[key] = hm_classes.mvect_entry("mem.icsw.%s.total" % (key), info="memory usage of %s" % (key), default=0, unit="Byte", base=1024)
                         self.mis_dict[key].update(tot_mem)
-                        self.mis_dict[key].valid_until = act_time + 120
                         new_keys.ad(key)
                         my_vector.append(self.mis_dict[key].build_xml(drop_com.builder))
+                    # set valid times
+                    for key in new_keys:
+                        self.mis_dict[key].valid_until = mv_valid
                     drop_com["vector"] = my_vector
                     drop_com["vector"].attrib["type"] = "vector"
                     self.vector_socket.send_unicode(unicode(drop_com))
