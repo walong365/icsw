@@ -21,18 +21,17 @@
 #
 """ daemon to automatically install packages (.rpm, .deb) """
 
-import os
-import configfile
-import zmq
-import uuid_tools
-import server_command
-import logging_tools
-import process_tools
-import threading_tools
-
 from initat.package_install.client.config import global_config, LF_NAME
 from initat.package_install.client.install_process import yum_install_process, zypper_install_process, \
     get_srv_command
+import configfile
+import logging_tools
+import os
+import process_tools
+import server_command
+import threading_tools
+import uuid_tools
+import zmq
 
 class server_process(threading_tools.process_pool):
     def __init__(self):
@@ -85,8 +84,8 @@ class server_process(threading_tools.process_pool):
         if True: # not self.__options.DEBUG:
             self.log("Initialising meta-server-info block")
             msi_block = process_tools.meta_server_info("package-client")
-            msi_block.add_actual_pid(mult=3, fuzzy_ceiling=3)
-            msi_block.add_actual_pid(act_pid=configfile.get_manager_pid(), mult=3)
+            msi_block.add_actual_pid(mult=3, fuzzy_ceiling=3, process_name="main")
+            msi_block.add_actual_pid(act_pid=configfile.get_manager_pid(), mult=3, process_name="manager")
             msi_block.start_command = "/etc/init.d/package-client start"
             msi_block.stop_command = "/etc/init.d/package-client force-stop"
             msi_block.kill_pids = True
