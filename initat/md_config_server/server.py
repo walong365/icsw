@@ -25,15 +25,23 @@ import os
 
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "initat.cluster.settings")
 
+from django.db import connection, connections
+from django.db.models import Q
+from initat.cluster.backbone.models import device, device_group, device_variable, mon_device_templ, \
+     mon_ext_host, mon_check_command, mon_period, mon_contact, \
+     mon_contactgroup, mon_service_templ, netdevice, network, network_type, net_ip, \
+     user, mon_host_cluster, mon_service_cluster, config, md_check_data_store, category, \
+     category_tree, TOP_MONITORING_CATEGORY, mon_notification, config_str, config_int, host_check_command
+from initat.host_monitoring.hm_classes import mvect_entry
+from initat.md_config_server import constants
+from initat.md_config_server.build import build_process
+from initat.md_config_server.config import global_config
+from initat.md_config_server.status import status_process
 import cluster_location
 import codecs
 import commands
 import configfile
 import logging_tools
-try:
-    import mk_livestatus
-except ImportError:
-    mk_livestatus = None
 import process_tools
 import re
 import server_command
@@ -42,25 +50,16 @@ import time
 import uuid_tools
 import zmq
 
-from initat.host_monitoring.hm_classes import mvect_entry
-
-from initat.md_config_server.config import global_config
-from initat.md_config_server.build import build_process
-from initat.md_config_server.status import status_process
-from initat.md_config_server import constants
+try:
+    import mk_livestatus
+except ImportError:
+    mk_livestatus = None
 
 try:
     from md_config_server.version import VERSION_STRING
 except ImportError:
     VERSION_STRING = "?.?"
 
-from django.db.models import Q
-from django.db import connection, connections
-from initat.cluster.backbone.models import device, device_group, device_variable, mon_device_templ, \
-     mon_ext_host, mon_check_command, mon_period, mon_contact, \
-     mon_contactgroup, mon_service_templ, netdevice, network, network_type, net_ip, \
-     user, mon_host_cluster, mon_service_cluster, config, md_check_data_store, category, \
-     category_tree, TOP_MONITORING_CATEGORY, mon_notification, config_str, config_int, host_check_command
 
 class server_process(threading_tools.process_pool):
     def __init__(self):
@@ -397,7 +396,7 @@ class server_process(threading_tools.process_pool):
         mult = 3
         process_tools.append_pids(self.__pid_name, src_pid, mult=mult)
         if self.__msi_block:
-            self.__msi_block.add_actual_pid(src_pid, mult=mult, fuzzy_ceiling=3)
+            self.__msi_block.add_actual_pid(src_pid, mult=mult, fuzzy_ceiling=3, process_name=src_process)
             self.__msi_block.save_block()
     def _init_msi_block(self):
         process_tools.save_pid(self.__pid_name, mult=3)
@@ -405,8 +404,8 @@ class server_process(threading_tools.process_pool):
         if not global_config["DEBUG"] or True:
             self.log("Initialising meta-server-info block")
             msi_block = process_tools.meta_server_info("md-config-server")
-            msi_block.add_actual_pid(mult=3, fuzzy_ceiling=3)
-            msi_block.add_actual_pid(act_pid=configfile.get_manager_pid(), mult=4)
+            msi_block.add_actual_pid(mult=3, fuzzy_ceiling=3, process_name="main")
+            msi_block.add_actual_pid(act_pid=configfile.get_manager_pid(), mult=4, process_name="manager")
             msi_block.start_command = "/etc/init.d/md-config-server start"
             msi_block.stop_command = "/etc/init.d/md-config-server force-stop"
             msi_block.kill_pids = True
