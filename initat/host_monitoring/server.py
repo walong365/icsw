@@ -23,9 +23,15 @@
 
 """ host-monitoring, with 0MQ and twisted support, server code """
 
+# import inotify_tools
+from initat.host_monitoring.config import global_config
+from initat.host_monitoring.constants import TIME_FORMAT
+from initat.host_monitoring.hm_inotify import inotify_process
+from initat.host_monitoring.hm_twisted import twisted_process
+from lxml import etree # @UnresolvedImport
+from lxml.builder import E # @UnresolvedImport
 import configfile
 import difflib
-# import inotify_tools
 import logging_tools
 import netifaces
 import os
@@ -36,14 +42,6 @@ import time
 import uuid
 import uuid_tools
 import zmq
-
-from lxml import etree # @UnresolvedImport
-from lxml.builder import E # @UnresolvedImport
-
-from initat.host_monitoring.config import global_config
-from initat.host_monitoring.constants import TIME_FORMAT
-from initat.host_monitoring.hm_twisted import twisted_process
-from initat.host_monitoring.hm_inotify import inotify_process
 
 class server_code(threading_tools.process_pool):
     def __init__(self):
@@ -214,8 +212,8 @@ class server_code(threading_tools.process_pool):
         if True: # not self.__options.DEBUG:
             self.log("Initialising meta-server-info block")
             msi_block = process_tools.meta_server_info("collserver")
-            msi_block.add_actual_pid(mult=3, fuzzy_ceiling=3)
-            msi_block.add_actual_pid(act_pid=configfile.get_manager_pid(), mult=3 if global_config["NO_INOTIFY"] else 4)
+            msi_block.add_actual_pid(mult=3, fuzzy_ceiling=3, process_name="main")
+            msi_block.add_actual_pid(act_pid=configfile.get_manager_pid(), mult=3 if global_config["NO_INOTIFY"] else 4, process_name="manager")
             msi_block.start_command = "/etc/init.d/host-monitoring start"
             msi_block.stop_command = "/etc/init.d/host-monitoring force-stop"
             msi_block.kill_pids = True
@@ -227,7 +225,7 @@ class server_code(threading_tools.process_pool):
     def process_start(self, src_process, src_pid):
         process_tools.append_pids(self.__pid_name, src_pid, mult=3)
         if self.__msi_block:
-            self.__msi_block.add_actual_pid(src_pid, mult=3)
+            self.__msi_block.add_actual_pid(src_pid, mult=3, process_name=src_process)
             self.__msi_block.save_block()
     def _init_network_sockets(self):
         self.socket_list = []

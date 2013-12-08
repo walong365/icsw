@@ -23,6 +23,7 @@
 
 """ host-monitoring, inotify thread """
 
+from initat.host_monitoring.config import global_config
 import fnmatch
 import inotify_tools
 import logging_tools
@@ -34,11 +35,6 @@ import threading_tools
 import time
 import uuid_tools
 import zmq
-
-from lxml import etree # @UnresolvedImport
-from lxml.builder import E # @UnresolvedImport
-
-from initat.host_monitoring.config import global_config
 
 IDLE_TIMEOUT = 1
 

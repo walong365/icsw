@@ -3,7 +3,7 @@
 # Copyright (C) 2008,2009,2010,2012,2013 Andreas Lang-Nevyjel init.at
 #
 # Send feedback to: <lang-nevyjel@init.at>
-# 
+#
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License Version 2 as
 # published by the Free Software Foundation.
@@ -19,11 +19,11 @@
 #
 """ ipc communication tools, now using 0MQ as communication layer """
 
-import sys
 import process_tools
-import zmq
-import time
 import server_command
+import sys
+import time
+import zmq
 
 def send_and_receive_zmq(target_host, command, *args, **kwargs):
     identity_str = process_tools.zmq_identity_str(kwargs.pop("identity_string", "ipc_com"))
@@ -31,7 +31,7 @@ def send_and_receive_zmq(target_host, command, *args, **kwargs):
     cur_timeout = kwargs.pop("timeout", 20)
     client_send = zmq_context.socket(zmq.PUSH)
     client_recv = zmq_context.socket(zmq.SUB)
-    #client_send.setsockopt(zmq.IDENTITY, identity_str)
+    # client_send.setsockopt(zmq.IDENTITY, identity_str)
     client_send.setsockopt(zmq.LINGER, cur_timeout * 2)
     client_recv.setsockopt(zmq.SUBSCRIBE, identity_str)
     # kwargs["server"] : collrelay or snmprelay
@@ -58,7 +58,6 @@ def send_and_receive_zmq(target_host, command, *args, **kwargs):
     s_time = time.time()
     client_send.send_unicode(unicode(srv_com))
     client_send.close()
-    s_time = time.time()
     if client_recv.poll(cur_timeout * 1000):
         id_str = client_recv.recv()
     else:
@@ -83,11 +82,11 @@ def send_and_receive_zmq(target_host, command, *args, **kwargs):
         srv_reply = None
         raise SystemError, "timeout (%d seconds) exceeded" % (cur_timeout)
     return srv_reply
-    
+
 def send_and_receive(target_host, command, **kwargs):
     return 2, "error deprecated call"
 
 if __name__ == "__main__":
     print "Loadable module, exiting"
     sys.exit(0)
-    
+
