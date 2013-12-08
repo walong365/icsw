@@ -27,11 +27,11 @@ class paginator_class
             init        : false
         }
     activate_page: (num) =>
-        @conf.actpage = parseInt(num)
+        @conf.act_page = parseInt(num)
         # indices start at zero
         pp = @conf.per_page
-        @conf.start_idx = (@conf.actpage - 1 ) * pp
-        @conf.end_idx = (@conf.actpage - 1) * pp + pp - 1
+        @conf.start_idx = (@conf.act_page - 1 ) * pp
+        @conf.end_idx = (@conf.act_page - 1) * pp + pp - 1
         if @conf.end_idx >= @conf.num_entries
             @conf.end_idx = @conf.num_entries - 1
     set_num_entries: (num) =>
@@ -46,7 +46,10 @@ class paginator_class
         if @conf.act_page == 0
             @activate_page(1)
         else
-            @activate_page(@conf.act_page)
+            if @conf.act_page > @conf.page_list.length
+                @activate_page(@conf.page_list.length)
+            else
+                @activate_page(@conf.act_page)
 
 class rest_data_source
     constructor: (@$q, @Restangular) ->
@@ -192,7 +195,6 @@ angular_add_simple_list_controller = (module, name, settings) ->
             $scope.reload = () ->
                 restDataSource.reload($scope.settings.rest_url).then((data) ->
                     $scope.entries = data
-                    console.log "reload", data
                 )
             $scope.modify = () ->
                 if not $scope.form.$invalid

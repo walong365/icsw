@@ -5,6 +5,7 @@
 from django.core.exceptions import ValidationError
 from django.db import IntegrityError
 from django.db.models import Q
+from initat.cluster.backbone import models
 from initat.cluster.backbone.models import user , group, user_serializer_h, group_serializer_h, \
      get_related_models, get_change_reset_list
 from rest_framework import mixins, generics, status
@@ -14,6 +15,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.reverse import reverse
 from rest_framework.views import exception_handler
+from rest_framework.serializers import ModelSerializer
 import json
 import logging
 import logging_tools
@@ -25,13 +27,11 @@ import types
 
 logger = logging.getLogger("cluster.rest")
 
-REST_LIST = ["group", "user", "device_group", "network_type", "network_device_type", "network", \
-    "kernel", "image", "architecture", "partition_table", "mon_period", "mon_notification", \
-    "mon_contact", "mon_service_templ", "host_check_command", "mon_contactgroup", \
-    "mon_device_templ", "mon_host_cluster", "device", "mon_check_command", "mon_service_cluster", \
-    "mon_host_dependency_templ", "mon_service_esc_templ", "mon_device_esc_templ", \
-    "mon_service_dependency_templ",
-    ]
+# build REST_LIST from models content
+REST_LIST = []
+for key in dir(models):
+    if key.endswith("_serializer"):
+        REST_LIST.append("_".join(key.split("_")[:-1]))
 
 @api_view(('GET',))
 def api_root(request, format=None):
