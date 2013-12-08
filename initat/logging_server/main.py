@@ -22,6 +22,8 @@
 #
 """ logging server, central logging facility """
 
+# import pprint
+from initat.logging_server import version
 import configfile
 import grp
 import io_stream_helper
@@ -30,7 +32,6 @@ import logging_tools
 import mail_tools
 import os
 import pickle
-# import pprint
 import process_tools
 import pwd
 import socket
@@ -39,13 +40,14 @@ import sys
 import threading_tools
 import time
 import zmq
-from initat.logging_server import version
+
 PYTHON3 = sys.version_info[0] == 3
+
 if PYTHON3:
     unicode = str
 else:
-    from twisted.internet import reactor
-    from twisted.internet.protocol import DatagramProtocol
+    from twisted.internet import reactor # @UnresolvedImport
+    from twisted.internet.protocol import DatagramProtocol # @UnresolvedImport
 
 SEP_STR = "-" * 50
 
@@ -575,7 +577,7 @@ class main_process(threading_tools.process_pool):
     def process_start(self, src_process, src_pid):
         process_tools.append_pids("logserver/logserver", src_pid, mult=3)
         if self.__msi_block:
-            self.__msi_block.add_actual_pid(src_pid, mult=3)
+            self.__msi_block.add_actual_pid(src_pid, mult=3, process_name=src_process)
             self.__msi_block.save_block()
     def _init_msi_block(self):
         process_tools.save_pids("logserver/logserver", mult=3)
@@ -583,8 +585,8 @@ class main_process(threading_tools.process_pool):
         if not self.__options.DEBUG:
             self.log("Initialising meta-server-info block")
             msi_block = process_tools.meta_server_info("logserver")
-            msi_block.add_actual_pid(mult=3)
-            msi_block.add_actual_pid(act_pid=configfile.get_manager_pid(), mult=3 if PYTHON3 else 4)
+            msi_block.add_actual_pid(mult=3, process_name="main")
+            msi_block.add_actual_pid(act_pid=configfile.get_manager_pid(), mult=3 if PYTHON3 else 4, process_name="manager")
             msi_block.start_command = "/etc/init.d/logging-server start"
             msi_block.stop_command = "/etc/init.d/logging-server force-stop"
             msi_block.kill_pids = True
