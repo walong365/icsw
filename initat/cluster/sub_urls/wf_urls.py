@@ -9,6 +9,8 @@ from initat.cluster.frontend import rest_views, device_views, main_views, networ
 from initat.cluster.rms import rms_views
 from rest_framework.urlpatterns import format_suffix_patterns
 
+handler404 = main_views.index.as_view()
+
 # Uncomment the next two lines to enable the admin:
 # from django.contrib import admin
 # admin.autodiscover()
