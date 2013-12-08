@@ -1,6 +1,12 @@
 #!/usr/bin/python-init -Otu
 
-from django.core.exceptions import ValidationError, ImproperlyConfigured
+from django.conf import settings
+from django.core.exceptions import ValidationError
+import pytz
+import time
+
+cluster_timezone = pytz.timezone(settings.TIME_ZONE)
+system_timezone = pytz.timezone(time.tzname[0])
 
 # helper functions
 def _check_integer(inst, attr_name, **kwargs):
@@ -55,4 +61,5 @@ def _check_non_empty_string(inst, attr_name):
     if cur_val.strip():
         raise ValidationError("%s must be empty" % (attr_name))
 
-
+def to_system_tz(in_dt):
+    return in_dt.astimezone(system_timezone)
