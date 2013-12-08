@@ -87,7 +87,7 @@ class main_process(threading_tools.process_pool):
         if True: # not self.__options.DEBUG:
             self.log("Initialising meta-server-info block")
             msi_block = process_tools.meta_server_info("meta-server")
-            msi_block.add_actual_pid(mult=3)
+            msi_block.add_actual_pid(mult=3, fuzzy_ceiling=3)
             msi_block.add_actual_pid(act_pid=configfile.get_manager_pid(), mult=2)
             msi_block.start_command = "/etc/init.d/meta-server start"
             msi_block.stop_command = "/etc/init.d/meta-server force-stop"
@@ -330,6 +330,7 @@ class main_process(threading_tools.process_pool):
                 if hm_classes and self.vector_socket:
                     drop_com = server_command.srv_command(command="set_vector")
                     my_vector = drop_com.builder("values")
+                    # handle removal of old keys, track pids, TODO, FIXME
                     for key in act_meminfo_keys:
                         tot_mem = 0
                         for proc_name, mem_usage in mem_info_dict[key].itervalues():
