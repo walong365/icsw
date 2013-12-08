@@ -347,7 +347,7 @@ class main_process(threading_tools.process_pool):
                         if proc_name not in self.mis_dict:
                             self.mis_dict[key] = hm_classes.mvect_entry("mem.icsw.%s.total" % (key), info="memory usage of %s" % (key), default=0, unit="Byte", base=1024)
                         self.mis_dict[key].update(tot_mem)
-                        new_keys.ad(key)
+                        new_keys.add(key)
                         my_vector.append(self.mis_dict[key].build_xml(drop_com.builder))
                     # set valid times
                     for key in new_keys:
