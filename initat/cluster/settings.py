@@ -211,7 +211,7 @@ MIDDLEWARE_CLASSES = (
 
     "django.middleware.csrf.CsrfViewMiddleware",
 
-    "django.middleware.transaction.TransactionMiddleware",
+    # "django.middleware.transaction.TransactionMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
 
@@ -303,6 +303,8 @@ else:
 ANONYMOUS_USER_ID = -1
 
 # add all applications, including backbone
+
+AUTOCOMMIT = True
 
 INSTALLED_APPS = list(INSTALLED_APPS)
 ADDITIONAL_MENU_FILES = []
