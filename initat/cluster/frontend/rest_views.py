@@ -20,6 +20,7 @@ import json
 import logging
 import logging_tools
 import os
+import operator
 import process_tools
 import sys
 import time
@@ -160,7 +161,13 @@ class list_view(mixins.ListModelMixin,
             "mon_host_cluster" : ([], ["devices"]),
             "network" : ([], ["network_device_type"]),
             }.get(model_name, ([], []))
-        return self.model.objects.all().select_related(*related_fields).prefetch_related(*prefetch_fields)
+        res = self.model.objects.all()
+        filter_list = []
+        for key, value in self.request.QUERY_PARAMS.iteritems():
+            filter_list.append(Q(**{key : value}))
+        if filter_list:
+            res = res.filter(reduce(operator.iand, filter_list))
+        return res.select_related(*related_fields).prefetch_related(*prefetch_fields)
 
 class user_list_h(generics.ListCreateAPIView):
     authentication_classes = (BasicAuthentication, SessionAuthentication,)

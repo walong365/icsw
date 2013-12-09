@@ -76,11 +76,7 @@ monitoring_basic_module.controller("mon_contact", ["$scope", "$compile", "$templ
     ($scope, $compile, $templateCache, Restangular) ->
         $scope.delete_ok = (obj) ->
             return true
-]).filter("show_user", () ->
-    return (user) ->
-        return "#{user.login} (#{user.first_name} #{user.last_name})"
-)
-
+])
 
 angular_add_simple_list_controller(
     monitoring_basic_module,

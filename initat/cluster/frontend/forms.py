@@ -19,7 +19,7 @@ from initat.cluster.backbone.models import domain_tree_node, device, category, m
      csw_permission, kernel, network, network_type, network_device_type, image, partition_table, \
      mon_period, mon_notification, mon_contact, mon_service_templ, host_check_command, \
      mon_contactgroup, mon_device_templ, mon_host_cluster, mon_service_cluster, mon_host_dependency_templ, \
-     mon_service_esc_templ, mon_device_esc_templ, mon_service_dependency_templ
+     mon_service_esc_templ, mon_device_esc_templ, mon_service_dependency_templ, package_search
 from initat.cluster.frontend.widgets import device_tree_widget
 
 # import PAM
@@ -1414,3 +1414,27 @@ class mon_service_dependency_templ_form(ModelForm):
     class Meta:
         model = mon_service_dependency_templ
 
+class package_search_form(ModelForm):
+    helper = FormHelper()
+    helper.form_id = "form"
+    helper.form_name = "form"
+    helper.form_class = 'form-horizontal'
+    helper.label_class = 'col-sm-3'
+    helper.field_class = 'col-sm-7'
+    helper.ng_model = "edit_obj"
+    helper.layout = Layout(
+        HTML("<h2>Package search</h2>"),
+            Fieldset(
+                "Basic data",
+                Field("search_string"),
+            ),
+            FormActions(
+                Submit("submit", "", css_class="primaryAction", ng_value="get_action_string()"),
+            ),
+        )
+    def __init__(self, *args, **kwargs):
+        request = kwargs.pop("request")
+        ModelForm.__init__(self, *args, **kwargs)
+        self.fields["user"].initial = request.user
+    class Meta:
+        model = package_search

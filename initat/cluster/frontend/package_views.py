@@ -13,6 +13,7 @@ from initat.cluster.backbone.models import package_repo, package_search, user, \
      device, device_variable, to_system_tz
 from initat.cluster.frontend.helper_functions import contact_server, xml_wrapper, get_listlist
 from initat.core.render import render_me
+from initat.cluster.frontend.forms import package_search_form
 from lxml.builder import E # @UnresolvedImports
 import logging
 import logging_tools
@@ -26,55 +27,9 @@ logger = logging.getLogger("cluster.package")
 class repo_overview(View):
     @method_decorator(login_required)
     def get(self, request):
-        return render_me(request, "package_repo_overview.html", {})()
-    @method_decorator(xml_wrapper)
-    def post(self, request):
-        cur_mode = request.POST.get("mode", None)
-        if cur_mode == "rescan":
-            srv_com = server_command.srv_command(command="rescan_repos")
-            _result = contact_server(request, "tcp://localhost:8007", srv_com, timeout=10, log_result=True)
-        elif cur_mode == "sync":
-            srv_com = server_command.srv_command(command="sync_repos")
-            _result = contact_server(request, "tcp://localhost:8007", srv_com, timeout=10, log_result=True)
-        xml_resp = E.response(
-            E.package_repos(*[cur_r.get_xml() for cur_r in package_repo.objects.all()])
-        )
-        request.xml_response["response"] = xml_resp
-
-class search_package(View):
-    @method_decorator(login_required)
-    def get(self, request):
-        return render_me(request, "package_search.html", {})()
-    @method_decorator(xml_wrapper)
-    def post(self, request):
-        xml_resp = E.response(
-            E.package_searchs(*[cur_r.get_xml() for cur_r in package_search.objects.filter(Q(deleted=False))]),
-            E.users(*[cur_u.get_xml(with_allowed_device_groups=False) for cur_u in user.objects.prefetch_related("group", "secondary_groups").all()])
-        )
-        request.xml_response["response"] = xml_resp
-
-class create_search(View):
-    @method_decorator(login_required)
-    @method_decorator(xml_wrapper)
-    def post(self, request):
-        _post = request.POST
-        pn_prefix = "ps__new__"
-        in_dict = dict([(key[len(pn_prefix):], _post[key]) for key in _post.keys() if key.startswith(pn_prefix)])
-        logger.info("creating package_search with search_string '%s'" % (in_dict["search_string"]))
-        new_search = package_search(
-            search_string=in_dict["search_string"],
-            user=request.user,
-        )
-        with transaction.atomic():
-            try:
-                new_search.save()
-            except ValidationError, what:
-                request.xml_response.error("error creating: %s" % (unicode(what.messages[0])), logger)
-                new_search = None
-        if new_search:
-            srv_com = server_command.srv_command(command="reload_searches")
-            _result = contact_server(request, "tcp://localhost:8007", srv_com, timeout=5, log_result=False)
-            request.xml_response["new_entry"] = new_search.get_xml()
+        return render_me(request, "package_repo_overview.html", {
+            "package_search_form" : package_search_form(request=request),
+            })()
 
 def reload_searches(request):
     srv_com = server_command.srv_command(command="reload_searches")
@@ -99,33 +54,6 @@ class retry_search(View):
                 reload_searches(request)
             else:
                 request.xml_response.warn("search is in wrong state '%s'" % (cur_search.current_state), logger)
-
-class delete_search(View):
-    @method_decorator(login_required)
-    @method_decorator(xml_wrapper)
-    def post(self, request):
-        _post = request.POST
-        pk_re = re.compile("^ps__(?P<pk>\d+)$")
-        ps_pk = [key for key in _post.keys() if pk_re.match(key.strip())][0].split("__")[1]
-        cur_search = package_search.objects.get(Q(pk=ps_pk))
-        package_search_result.objects.filter(Q(package_search=cur_search)).delete()
-        cur_search.deleted = True
-        request.xml_response.info("removed package_search %s" % (unicode(cur_search)), logger)
-        cur_search.save()
-
-class get_search_result(View):
-    @method_decorator(login_required)
-    @method_decorator(xml_wrapper)
-    def post(self, request):
-        _post = request.POST
-        request.xml_response["response"] = E.response(
-            E.package_search_results(
-                *[cur_sr.get_xml() for cur_sr in package_search_result.objects.filter(Q(package_search=_post["pk"]))]
-            ),
-            E.package_repos(
-                *[cur_r.get_xml() for cur_r in package_repo.objects.all()]
-            )
-        )
 
 class use_package(View):
     @method_decorator(login_required)

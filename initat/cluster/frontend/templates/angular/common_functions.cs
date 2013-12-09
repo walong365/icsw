@@ -51,6 +51,10 @@ class paginator_class
             else
                 @activate_page(@conf.act_page)
 
+class shared_data_source
+    constructor: () ->
+        @data = {}
+
 class rest_data_source
     constructor: (@$q, @Restangular) ->
         @data = {}
@@ -118,7 +122,8 @@ angular_module_setup = (module_list, url_list=[]) ->
                 )
                 RestangularProvider.setErrorInterceptor((resp) ->
                     for key, value of resp.data
-                        if not key.match(/^_/)
+                        if typeof(value) == "object" and not key.match(/^_/)
+                            console.log key, value
                             noty
                                 text : key + " : " + if typeof(value) == "string" then value else value.join(", ")
                                 type : "error"
@@ -133,6 +138,9 @@ angular_module_setup = (module_list, url_list=[]) ->
         ])
         cur_mod.service("restDataSource", ["$q", "Restangular", ($q, Restangular) ->
             return new rest_data_source($q, Restangular)
+        ])
+        cur_mod.service("sharedDataSource", [() ->
+            return new shared_data_source()
         ])
         cur_mod.directive("paginator", ($templateCache) ->
             link = (scope, element, attrs) ->
@@ -172,28 +180,36 @@ angular_add_simple_list_controller = (module, name, settings) ->
                 template : $templateCache.get(t_name)
             }
         )
-    module.controller(name, ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "$q", 
-        ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, $q) ->
+    module.controller(name, ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "sharedDataSource", "$q", 
+        ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, sharedDataSource, $q) ->
             $scope.settings = settings
             $scope.fn = settings.fn
             $scope.pagSettings = paginatorSettings.get_paginator(name)
-            $scope.rest = Restangular.all($scope.settings.rest_url.slice(1))
             $scope.entries = []
-            wait_list = [restDataSource.add_sources([$scope.settings.rest_url])[0]]
+            $scope.shared_data = sharedDataSource.data
+            if $scope.settings.rest_url
+                $scope.rest = Restangular.all($scope.settings.rest_url.slice(1))
+                wait_list = [restDataSource.add_sources([$scope.settings.rest_url])[0]]
+            else
+                wait_list = []
             $scope.rest_data = {}
+            $scope.modal_active = false
             if $scope.settings.rest_map
                 for value, idx in $scope.settings.rest_map
                     $scope.rest_data[value.short] = restDataSource.load(value.url)
                     wait_list.push($scope.rest_data[value.short])
             $q.all(wait_list).then((data) ->
+                base_idx = if $scope.settings.rest_url then 0 else -1
                 for value, idx in data
-                    if idx == 0
+                    if idx == base_idx
                         $scope.set_entries(value)
                     else
-                        $scope.rest_data[$scope.settings.rest_map[idx - 1].short] = value
+                        $scope.rest_data[$scope.settings.rest_map[idx - (1 + base_idx)].short] = value
             )
             if $scope.settings.init_fn
                 $scope.settings.init_fn($scope)
+            $scope.load_data = (url, options) ->
+                return Restangular.all(url.slice(1)).getList(options)
             $scope.reload = () ->
                 restDataSource.reload($scope.settings.rest_url).then((data) ->
                     $scope.set_entries(data)
@@ -211,7 +227,7 @@ angular_add_simple_list_controller = (module, name, settings) ->
                             if $scope.pagSettings.conf.init
                                 $scope.pagSettings.set_num_entries($scope.entries.length)
                             if $scope.settings.new_object_created
-                                $scope.settings.new_object_created($scope.new_obj)
+                                $scope.settings.new_object_created($scope.new_obj, new_data)
                         )
                     else
                         $scope.edit_obj.put().then(
@@ -245,8 +261,10 @@ angular_add_simple_list_controller = (module, name, settings) ->
                     onShow: (dialog) => 
                         dialog.container.draggable()
                         $("#simplemodal-container").css("height", "auto")
+                        $scope.modal_active = true
                     onClose: (dialog) =>
                         $.simplemodal.close()
+                        $scope.modal_active = false
             $scope.get_action_string = () ->
                 return if $scope.create_mode then "Create" else "Modify"
             $scope.delete = (obj) ->
@@ -313,6 +331,16 @@ angular.module(
             return text[0..max_len] + "..."
         else
             return text
+).filter("show_user", () ->
+    return (user) ->
+        if user.first_name and user.last_name
+            return "#{user.login} (#{user.first_name} #{user.last_name})"
+        else if user.first_name
+            return "#{user.login} (#{user.first_name})"
+        else if user.last_name
+            return "#{user.login} (#{user.last_name})"
+        else
+            return "#{user.login}"
 )
 
 root.angular_module_setup = angular_module_setup

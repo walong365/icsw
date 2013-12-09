@@ -1,12 +1,16 @@
 {% extends "main.html" %}
 
-{% load i18n compress coffeescript %}
+{% load i18n compress coffeescript crispy_forms_tags %}
 
 {% block title %}{% trans "Package Install" %}{% endblock %}
 
 {% block content %}
 
 <div ng-app="icsw.package">
+
+<script type="text/ng-template" id="package_search.html">
+    {% crispy package_search_form package_search_form.helper %}
+</script>
 
 {% verbatim %}
 
@@ -39,21 +43,45 @@
     <tr>
         <th>Search string</th>
         <th>User</th>
-        <th>State</th>
         <th>repeat</th>
+        <th>State</th>
+        <th>results</th>
+        <th>search</th>
         <th>last search</th>   
         <th colspan="2" class="text-center">action</th>   
     </tr>
 </script>
 
 <script type="text/ng-template" id="package_search_row.html">
-    <td>{{ obj.last_search_string }}</td>
-    <td>{{ obj.user }}</td>
-    <td>{{ obj.current_state }}</td>
+    <td>{{ obj.search_string }}</td>
+    <td>{{ obj.user | array_lookup:this.rest_data.user | show_user }}</td>
     <td>{{ obj.num_searches }}</td>
+    <td>{{ obj.current_state }}</td>
+    <td>{{ obj.results }}</td>
+    <td>{{ obj.last_search_string }}</td>
     <td>{{ obj.last_search }}</td>
-    <td><input type="button" class="btn btn-primary" ng-show="obj.num_searches == 2" ng-click="fn.toggle(obj)" value="toggle"/></td>
-    <td><input type="button" class="btn btn-primary" ng-click="fn.retry(this, obj)" value="retry"/></td>
+    <td><input type="button" class="btn btn-primary" ng-show="obj.results > 0" ng-click="fn.show(this, obj)" value="show"/></td>
+    <td><input type="button" class="btn btn-primary" ng-show="obj.current_state == 'done'" ng-click="fn.retry(this, obj)" value="retry"/></td>
+    <td><input type="button" class="btn btn-primary" ng-show="obj.current_state == 'done'" ng-click="edit($event, obj)" value="modify"/></td>
+    <td><input type="button" class="btn btn-danger" ng-click="delete(obj)" value="delete"/></td>
+</script>
+
+<script type="text/ng-template" id="package_search_result_head.html">
+    <tr>
+        <th>name</th>
+        <th>version</th>
+        <th>kind</th>
+        <th>repo</th>
+        <th colspan="2" class="text-center">action</th>   
+    </tr>
+</script>
+
+<script type="text/ng-template" id="package_search_result_row.html">
+    <td>{{ obj.name }}</td>
+    <td>{{ obj.version }}</td>
+    <td>{{ obj.kind }}</td>
+    <td>{{ obj.package_repo | array_lookup:this.rest_data.package_repo:"name" }}</td>
+    <td><input type="button" ng-show="obj.copied == 0" class="btn btn-primary" ng-click="fn.take(obj)" value="take"/></td>
     <td><input type="button" class="btn btn-danger" ng-click="delete(obj)" value="delete"/></td>
 </script>
 
@@ -65,21 +93,32 @@
                 <thead packagerepohead></thead>
                 <tbody>
                     <tr><td colspan="9" paginator entries="entries" pag_settings="pagSettings" per_page="10"></td></tr>
-                    <tr packagereporow ng-repeat="obj in entries | orderBy:'-identifier':true | paginator:this"></tr>
+                    <tr packagereporow ng-repeat="obj in entries | orderBy:'-name':true | paginator:this"></tr>
                 </tbody>
             </table>
         </div>
     </tab>
     <tab heading="Package search">
         <div ng-controller="package_search_base">
-            <h3>Searches ({{entries.length}} entries)</h3>
+            <h3>Searches ({{entries.length}} entries), <input type="button" value="create new" ng-click="create($event)"/></h3>
             <table class="table table-condensed table-condensed table-hover" style="width:auto;">
                 <thead packagesearchhead></thead>
                 <tbody>
                     <tr><td colspan="9" paginator entries="entries" pag_settings="pagSettings" per_page="10"></td></tr>
-                    <tr packagesearchrow ng-repeat="obj in entries | orderBy:'-name':true | paginator:this"></tr>
+                    <tr packagesearchrow ng-repeat="obj in entries | orderBy:'-search_string':true | paginator:this"></tr>
                 </tbody>
             </table>
+        </div>
+        <div ng-controller="package_search_result_base">
+            <div ng-show="entries.length > 0">
+                <h3>Search results ({{ entries.length}} entries)</h3>
+            <table class="table table-condensed table-condensed table-hover" style="width:auto;">
+                <thead packagesearchresulthead></thead>
+                <tbody>
+                    <tr><td colspan="9" paginator entries="entries" pag_settings="pagSettings" per_page="15"></td></tr>
+                    <tr packagesearchresultrow ng-repeat="obj in entries | orderBy:'-name':true | paginator:this"></tr>
+                </tbody>
+            </div>
         </div>
     </tab>
 </tabset>
