@@ -23,6 +23,7 @@ import commands
 import cs_base_class
 import cs_tools
 import ldap
+import ldap.modlist # important, do not remove
 import logging_tools
 import os
 import pprint
