@@ -344,6 +344,7 @@ def show_xml(opt_ns, res_xml):
                     int(s_info.get("num_found")),
                     int(s_info.get("pid_time", "0")),
                     True if int(act_struct.attrib["any_threads_ok"]) else False)
+                # print etree.tostring(act_struct, pretty_print=True)
                 if any_ok:
                     ret_str = "%s running" % (logging_tools.get_plural("thread", num_found))
                 else:
@@ -465,7 +466,8 @@ def main():
     my_parser.add_argument("-d", dest="database", action="store_true", default=False, help="show database info (%(default)s)")
     my_parser.add_argument("-r", dest="runlevel", action="store_true", default=False, help="runlevel info (%(default)s)")
     my_parser.add_argument("-m", dest="memory", action="store_true", default=False, help="memory consumption (%(default)s)")
-    my_parser.add_argument("-a", dest="all", action="store_true", default=False, help="all of the above (%(default)s)")
+    my_parser.add_argument("-a", dest="almost_all", action="store_true", default=False, help="almost all of the above, except time and DB info (%(default)s)")
+    my_parser.add_argument("-A", dest="all", action="store_true", default=False, help="all of the above (%(default)s)")
     my_parser.add_argument("-q", dest="quiet", default=False, action="store_true", help="be quiet [%(default)s]")
     my_parser.add_argument("--instance", type=str, nargs="+", default=[], help="general instance names (%(default)s)")
     my_parser.add_argument("--node", type=str, nargs="+", default=[], help="node entity names (%(default)s)")
@@ -475,15 +477,17 @@ def main():
     my_parser.add_argument("--force", default=False, action="store_true", help="call force-stop if available [%(default)s]")
     my_parser.add_argument("--failed", default=False, action="store_true", help="show only instances in failed state [%(default)s]")
     opt_ns = my_parser.parse_args()
-    if opt_ns.all:
+    if opt_ns.all or opt_ns.almost_all:
         opt_ns.thread = True
-        opt_ns.time = True
         opt_ns.pid = True
-        opt_ns.database = True
         opt_ns.runlevel = True
         opt_ns.memory = True
+    if opt_ns.all:
+        opt_ns.time = True
+        opt_ns.database = True
     if os.getuid():
-        print "Not running as root, information may be incomplete"
+        print "Not running as root, information may be incomplete, disabling memory"
+        opt_ns.memory = False
     ret_xml = check_system(opt_ns)
     if not len(ret_xml.findall("instance[@checked='1']")):
         print "Nothing to do"
