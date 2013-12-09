@@ -19,19 +19,19 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
-""" package server """
+""" package server, repository process """
 
-import os
-import logging_tools
-import server_command
-import threading_tools
-import time
 from django.db import connection
 from django.db.models import Q
 from initat.cluster.backbone.models import package_search
 from initat.package_install.server.config import global_config
 from initat.package_install.server.structs import repo_type_rpm_yum, repo_type_rpm_zypper, \
     subprocess_struct
+import logging_tools
+import os
+import server_command
+import threading_tools
+import time
 
 class repo_process(threading_tools.process_obj):
     def process_init(self):

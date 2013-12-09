@@ -49,6 +49,13 @@ class repo_type(object):
                                                  self.REPO_SUBTYPE_STR))
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
         self.log_com("[rt] %s" % (what), log_level)
+    def init_search(self, s_struct):
+        cur_search = s_struct.run_info["stuff"]
+        cur_search.last_search_string = cur_search.search_string
+        cur_search.num_searches += 1
+        cur_search.results = 0
+        cur_search.current_state = "run"
+        cur_search.save(update_fields=["last_search_string", "current_state", "num_searches", "results"])
 
 class repo_type_rpm_yum(repo_type):
     REPO_TYPE_STR = "rpm"
@@ -102,12 +109,6 @@ class repo_type_rpm_yum(repo_type):
         #        "rescanned %s" % (logging_tools.get_plural("repository", len(found_repos))),
         #        server_command.SRV_REPLY_STATE_OK)
         self.master_process._reload_searches()
-    def init_search(self, s_struct):
-        cur_search = s_struct.run_info["stuff"]
-        cur_search.last_search_string = cur_search.search_string
-        cur_search.num_searches += 1
-        cur_search.current_state = "run"
-        cur_search.save(update_fields=["last_search_string", "current_state", "num_searches"])
     def search_result(self, s_struct):
         cur_mode = 0
         found_packs = []
@@ -186,12 +187,6 @@ class repo_type_rpm_zypper(repo_type):
                 "rescanned %s" % (logging_tools.get_plural("repository", len(found_repos))),
                 server_command.SRV_REPLY_STATE_OK)
         self.master_process._reload_searches()
-    def init_search(self, s_struct):
-        cur_search = s_struct.run_info["stuff"]
-        cur_search.last_search_string = cur_search.search_string
-        cur_search.num_searches += 1
-        cur_search.current_state = "run"
-        cur_search.save(update_fields=["last_search_string", "current_state", "num_searches"])
     def search_result(self, s_struct):
         res_xml = etree.fromstring(s_struct.read())
         cur_search = s_struct.run_info["stuff"]
