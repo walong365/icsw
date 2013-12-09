@@ -354,21 +354,21 @@ class _general(hm_classes.hm_module):
             mail_lines = [_line.strip() for _line in out.split("\n") if _line.strip()]
             if mail_lines:
                 last_line = mail_lines[-1]
-                if last_line.startswith("--"):
-                    if last_line.count("empty"):
-                        # empty mailqueue
-                        pass
-                    else:
+                if last_line.count("empty"):
+                    # empty mailqueue
+                    pass
+                else:
+                    if last_line.startswith("--"):
                         line_parts = last_line.split()
                         if line_parts[-2].isdigit():
                             self.__num_mails = int(line_parts[-2])
                         self.log("cannot parse line '%s' (mailq)" % (last_line),
                             logging_tools.LOG_LEVEL_WARN
                             )
-                else:
-                    self.log("cannot parse line '%s' (mailq)" % (last_line),
-                        logging_tools.LOG_LEVEL_WARN
-                        )
+                    else:
+                        self.log("cannot parse line '%s' (mailq)" % (last_line),
+                            logging_tools.LOG_LEVEL_WARN
+                            )
             else:
                 self.log("no lines got from %s" % (self.__mailq_command),
                     logging_tools.LOG_LEVEL_WARN)

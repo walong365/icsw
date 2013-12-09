@@ -184,9 +184,14 @@ class _general(hm_classes.hm_module):
                 if line[2] not in ["none"] and line[0].startswith("/") and not ram_match.match(line[0]) and line[0].startswith("/dev/"):
                     mount_list.append(line)
                     if os.path.islink(line[0]):
-                        link_set.add((os.path.normpath(os.path.join(os.path.dirname(line[0]),
-                                                                    os.readlink(line[0]))),
-                                      line[0]))
+                        link_set.add((
+                            os.path.normpath(
+                                os.path.join(
+                                    os.path.dirname(line[0]),
+                                    os.readlink(line[0]))
+                                ),
+                                line[0]
+                            ))
             # print self.disk_dict
             n_dict = {}
             for mnt in mount_list:
@@ -198,6 +203,7 @@ class _general(hm_classes.hm_module):
                     fact = float(osres[statvfs.F_FRSIZE]) / (1024.)
                     try:
                         blocks, bfree, bavail = int(osres[statvfs.F_BLOCKS]), int(osres[statvfs.F_BFREE]), int(osres[statvfs.F_BAVAIL])
+                        inodes, ifree, iavail = int(osres[statvfs.F_FILES]), int(osres[statvfs.F_FFREE]), int(osres[statvfs.F_FAVAIL])
                     except:
                         pass
                     else:
@@ -206,8 +212,21 @@ class _general(hm_classes.hm_module):
                             sizeused = (blocks - bfree) * fact
                             sizeavail = bavail * fact
                             sizefree = sizetot - sizeused
-                            proc = int((100.*float(blocks - bfree)) / float(blocks - bfree + bavail))
-                            n_dict[mnt[0]] = [mnt[1], proc, int(sizetot), int(sizeused), int(sizefree), mnt[2]]
+                            proc = int((100. * float(blocks - bfree)) / float(blocks - bfree + bavail))
+                            # print mnt, proc
+                            n_dict[mnt[0]] = {
+                                "mountpoint"  : mnt[1],
+                                "fs"          : mnt[2],
+                                "b_free_perc" : proc,
+                                "b_size"      : int(sizetot),
+                                "b_used"      : int(sizeused),
+                                "b_free"      : int(sizefree),
+                                "i_size"      : int(inodes),
+                                # "i_used"      : int(inodes) - int(ifree),
+                                "i_avail"     : int(iavail),
+                                "i_free"      : int(ifree),
+                            }
+                            # [mnt[1], proc, int(sizetot), int(sizeused), int(sizefree), mnt[2]]
             for link_dst, link_src in link_set:
                 n_dict[link_dst] = n_dict[link_src]
         else:
@@ -224,23 +243,23 @@ class _general(hm_classes.hm_module):
                     mvect.register_entry(
                         "df.%s.f" % (key),
                         0.,
-                        "free space on $2 (%s, %s)" % (n_dict[key][0], n_dict[key][5]),
+                        "free space on $2 (%s, %s)" % (n_dict[key]["mountpoint"], n_dict[key]["fs"]),
                         "Byte", 1000, 1000)
                     mvect.register_entry(
                         "df.%s.u" % (key),
                         0.,
-                        "used space on $2 (%s, %s)" % (n_dict[key][0], n_dict[key][5]),
+                        "used space on $2 (%s, %s)" % (n_dict[key]["mountpoint"], n_dict[key]["fs"]),
                         "Byte", 1000, 1000)
                     mvect.register_entry(
                         "df.%s.t" % (key),
                         0.,
-                        "size of $2 (%s, %s)" % (n_dict[key][0], n_dict[key][5]),
+                        "size of $2 (%s, %s)" % (n_dict[key]["mountpoint"], n_dict[key]["fs"]),
                         "Byte", 1000, 1000)
             self.disk_dict = n_dict
             for key in self.disk_dict:
-                mvect["df.%s.f" % (key)] = self.disk_dict[key][4]
-                mvect["df.%s.u" % (key)] = self.disk_dict[key][3]
-                mvect["df.%s.t" % (key)] = self.disk_dict[key][2]
+                mvect["df.%s.f" % (key)] = self.disk_dict[key]["b_free"]
+                mvect["df.%s.u" % (key)] = self.disk_dict[key]["b_used"]
+                mvect["df.%s.t" % (key)] = self.disk_dict[key]["b_size"]
         else:
             return n_dict
     def _vmstat_int(self, mvect):
@@ -249,7 +268,7 @@ class _general(hm_classes.hm_module):
         stat_dict, disk_stat = ({}, {})
         for line in [cur_line.strip().split() for cur_line in open("/proc/stat", "r").readlines() if cur_line.strip()]:
             if line[0].startswith("cpu"):
-                stat_dict[line[0]] = [long(x) for x in line[1:]]
+                stat_dict[line[0]] = [long(_line) for _line in line[1:]]
             elif line[0] == "ctxt":
                 stat_dict["ctxt"] = long(line[1])
             elif line[0] == "intr":
@@ -838,10 +857,10 @@ class df_command(hm_classes.hm_command):
             else:
                 if disk == "ALL":
                     srv_com["df_result"] = dict([(disk, {
-                        "mountpoint" : n_dict[disk][0],
-                        "perc"       : n_dict[disk][1],
-                        "used"       : n_dict[disk][3],
-                        "total"      : n_dict[disk][2]}) for disk in n_dict.keys()])
+                        "mountpoint" : n_dict[disk]["mountpoint"],
+                        "perc"       : n_dict[disk]["b_free_perc"],
+                        "used"       : n_dict[disk]["b_used"],
+                        "total"      : n_dict[disk]["b_size"]}) for disk in n_dict.keys()])
                 else:
                     store_info = True
                     if not mapped_disk in n_dict:
@@ -868,19 +887,22 @@ class df_command(hm_classes.hm_command):
                                     "state" : "%d" % (server_command.SRV_REPLY_STATE_ERROR)})
                     if store_info:
                         mapped_info = n_dict[mapped_disk]
-                        cur_fs = mapped_info[5]
+                        cur_fs = mapped_info["fs"]
                         res_dict = {
                             "part"        : disk,
                             "mapped_disk" : mapped_disk,
                             "orig_disk"   : orig_disk,
-                            "mountpoint"  : mapped_info[0],
-                            "perc"        : mapped_info[1],
-                            "used"        : mapped_info[3],
-                            "total"       : mapped_info[2],
+                            "mountpoint"  : mapped_info["mountpoint"],
+                            "perc"        : mapped_info["b_free_perc"],
+                            "used"        : mapped_info["b_used"],
+                            "total"       : mapped_info["b_size"],
+                            "i_size"      : mapped_info["i_size"],
+                            "i_free"      : mapped_info["i_free"],
+                            "i_avail"     : mapped_info["i_avail"],
                             "fs"          : cur_fs,
                         }
                         if cur_fs == "btrfs" and self.module.btrfs_path:
-                            cur_stat, cur_out = commands.getstatusoutput("%s fi df %s" % (self.module.btrfs_path, mapped_info[0]))
+                            cur_stat, cur_out = commands.getstatusoutput("%s fi df %s" % (self.module.btrfs_path, mapped_info["mountpoint"]))
                             if not cur_stat:
                                 btrfs_info = {}
                                 for line in cur_out.lower().strip().split("\n"):
@@ -898,13 +920,18 @@ class df_command(hm_classes.hm_command):
         if result.has_key("perc"):
             # single-partition result
             ret_state = limits.check_ceiling(result["perc"], cur_ns.warn, cur_ns.crit)
+            if result.get("i_size", 0):
+                # inode info present ?
+                inode_perc = float(100. * (float(result["i_size"] - result["i_avail"]) / float(result["i_size"])))
+                ret_state = max(ret_state, limits.check_ceiling(inode_perc, cur_ns.warn, cur_ns.crit))
             other_keys = []
             for key in ["mapped_disk", "orig_disk"]:
                 if key in result and result[key] != result["part"]:
                     other_keys.append(result[key])
-            part_str = "%s%s" % (result["part"],
-                                 " (%s)" % (", ".join(other_keys)) if other_keys else "",
-                                 )
+            part_str = "%s%s" % (
+                result["part"],
+                " (%s)" % (", ".join(other_keys)) if other_keys else "",
+                )
             if "btrfs_info" in result:
                 # check for btrfs info
                 btrfs_dict = result["btrfs_info"]
@@ -931,12 +958,24 @@ class df_command(hm_classes.hm_command):
                 result["perc"] = result["used"] * 100 / result["total"]
                 # add an asterisk to show the df-info as recalced
                 result["fs"] = "%s*" % (result["fs"])
-            return ret_state, u"%.0f %% (%s of %s%s%s) used on %s | total=%d used=%d free=%d" % (
+            if "i_size" in result:
+                if result["i_size"]:
+                    inode_str = "%.2f%% (%d of %d)" % (
+                        inode_perc,
+                        result["i_size"] - result["i_avail"],
+                        result["i_size"],
+                        )
+                else:
+                    inode_str = "no info"
+            else:
+                inode_str = ""
+            return ret_state, u"%.0f %% (%s of %s%s%s)%s used on %s | total=%d used=%d free=%d" % (
                 result["perc"],
                 logging_tools.get_size_str(result["used"] * 1024, strip_spaces=True),
                 logging_tools.get_size_str(result["total"] * 1024, strip_spaces=True),
                 ", mp %s" % (result["mountpoint"]) if "mountpoint" in result else "",
                 ", %s" % (result["fs"]) if "fs" in result else "",
+                ", inode: %s" % (inode_str) if inode_str else "",
                 part_str,
                 (result["total"]) * 1024,
                 (result["used"]) * 1024,
