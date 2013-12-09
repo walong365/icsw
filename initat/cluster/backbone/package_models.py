@@ -68,7 +68,7 @@ class package_search(models.Model):
     idx = models.AutoField(primary_key=True)
     search_string = models.CharField(max_length=128, default="")
     # search string for latest search result
-    last_search_string = models.CharField(max_length=128, default="")
+    last_search_string = models.CharField(max_length=128, default="", blank=True)
     user = models.ForeignKey("user")
     num_searches = models.IntegerField(default=0)
     # state diagramm ini (new) -> run -> done -> wait (search again pressed) -> run -> done -> ...
@@ -80,7 +80,7 @@ class package_search(models.Model):
     deleted = models.BooleanField(default=False)
     # number of results for the last search
     results = models.IntegerField(default=0)
-    last_search = models.DateTimeField(null=True)
+    last_search = models.DateTimeField(null=True, auto_now_add=True)
     created = models.DateTimeField(auto_now_add=True)
     def get_xml(self):
         return E.package_search(
@@ -153,6 +153,10 @@ class package_search_result(models.Model):
         )
     class Meta:
         ordering = ("name", "arch", "version",)
+
+class package_search_result_serializer(serializers.ModelSerializer):
+    class Meta:
+        model = package_search_result
 
 class package(models.Model):
     idx = models.AutoField(db_column="package_idx", primary_key=True)
