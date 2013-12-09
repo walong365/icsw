@@ -77,7 +77,7 @@
                 <thead packagesearchhead></thead>
                 <tbody>
                     <tr><td colspan="9" paginator entries="entries" pag_settings="pagSettings" per_page="10"></td></tr>
-                    <tr packagesearchrow ng-repeat="obj in entries | orderBy:'-identifier':true | paginator:this"></tr>
+                    <tr packagesearchrow ng-repeat="obj in entries | orderBy:'-name':true | paginator:this"></tr>
                 </tbody>
             </table>
         </div>

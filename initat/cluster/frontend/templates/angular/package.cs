@@ -54,6 +54,7 @@ angular_add_simple_list_controller(
         edit_template       : "network_type.html"
         delete_confirm_str  : (obj) -> return "Really delete Package search '#{obj.name}' ?"
         template_cache_list : ["package_search_row.html", "package_search_head.html"]
+        entries_filter      : {deleted : false}
         fn:
             retry : ($scope, obj) ->
                 $.ajax
@@ -62,8 +63,15 @@ angular_add_simple_list_controller(
                         "pk" : obj.idx
                     }
                     success : (xml) ->
-                        $scope.reload()
                         parse_xml_response(xml)
+                        $scope.reload()
+            show_time : (idx) ->
+                console.log idx
+        init_fn:
+            ($scope) ->
+                $(document).everyTime(5000, "show_time", (i) ->
+                    $scope.reload()
+                )
     }
 )
 

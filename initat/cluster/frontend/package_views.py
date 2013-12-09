@@ -1,27 +1,25 @@
 #!/usr/bin/python-init -Otu
 # package views
 
+from django.contrib.auth.decorators import login_required
+from django.core.exceptions import ValidationError
+from django.db import transaction
+from django.db.models import Q
+from django.db.utils import IntegrityError
+from django.utils.decorators import method_decorator
+from django.views.generic import View
+from initat.cluster.backbone.models import package_repo, package_search, user, \
+     package_search_result, package, get_related_models, package_device_connection, \
+     device, device_variable, to_system_tz
+from initat.cluster.frontend.helper_functions import contact_server, xml_wrapper, get_listlist
+from initat.core.render import render_me
+from lxml.builder import E # @UnresolvedImports
 import logging
 import logging_tools
 import pprint
 import re
 import server_command
 import time
-from lxml.builder import E # @UnresolvedImports
-
-from django.contrib.auth.decorators import login_required
-from django.core.exceptions import ValidationError
-from django.db import transaction
-from django.db.models import Q
-from django.db.utils import IntegrityError
-from django.views.generic import View
-from django.utils.decorators import method_decorator
-
-from initat.core.render import render_me
-from initat.cluster.frontend.helper_functions import contact_server, xml_wrapper, get_listlist
-from initat.cluster.backbone.models import package_repo, package_search, user, \
-     package_search_result, package, get_related_models, package_device_connection, \
-     device, device_variable, to_system_tz
 
 logger = logging.getLogger("cluster.package")
 

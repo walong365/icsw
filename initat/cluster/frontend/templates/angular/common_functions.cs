@@ -172,8 +172,8 @@ angular_add_simple_list_controller = (module, name, settings) ->
                 template : $templateCache.get(t_name)
             }
         )
-    module.controller(name, ["$scope", "$compile", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "$q", 
-        ($scope, $compile, $templateCache, Restangular, paginatorSettings, restDataSource, $q) ->
+    module.controller(name, ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "$q", 
+        ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, $q) ->
             $scope.settings = settings
             $scope.fn = settings.fn
             $scope.pagSettings = paginatorSettings.get_paginator(name)
@@ -188,14 +188,21 @@ angular_add_simple_list_controller = (module, name, settings) ->
             $q.all(wait_list).then((data) ->
                 for value, idx in data
                     if idx == 0
-                        $scope.entries = value
+                        $scope.set_entries(value)
                     else
                         $scope.rest_data[$scope.settings.rest_map[idx - 1].short] = value
             )
+            if $scope.settings.init_fn
+                $scope.settings.init_fn($scope)
             $scope.reload = () ->
                 restDataSource.reload($scope.settings.rest_url).then((data) ->
-                    $scope.entries = data
+                    $scope.set_entries(data)
                 )
+            $scope.set_entries = (data) ->
+                if $scope.settings.entries_filter
+                    $scope.entries = $filter("filter")(data, $scope.settings.entries_filter)
+                else
+                    $scope.entries = data
             $scope.modify = () ->
                 if not $scope.form.$invalid
                     if $scope.create_mode

@@ -4,7 +4,7 @@ from django.conf.urls import patterns, include, url
 from django.conf import settings
 import os
 from initat.cluster.frontend import rest_views, device_views, main_views, network_views, \
-    monitoring_views, user_views, pack_views, config_views, boot_views, session_views, rrd_views, \
+    monitoring_views, user_views, package_views, config_views, boot_views, session_views, rrd_views, \
     base_views, setup_views
 from initat.cluster.rms import rms_views
 from rest_framework.urlpatterns import format_suffix_patterns
@@ -170,22 +170,22 @@ user_patterns = patterns(
 
 pack_patterns = patterns(
     "initat.cluster.frontend",
-    url("overview/repo$"       , pack_views.repo_overview.as_view()      , name="repo_overview"),
-    url("search/repo$"         , pack_views.search_package.as_view()     , name="search_package"),
-    url("search/create"        , pack_views.create_search.as_view()      , name="create_search"),
-    url("search/delete"        , pack_views.delete_search.as_view()      , name="delete_search"),
-    url("search/retry"         , pack_views.retry_search.as_view()       , name="retry_search"),
-    url("search/search_result" , pack_views.get_search_result.as_view()  , name="get_search_result"),
-    url("search/use_package"   , pack_views.use_package.as_view()        , name="use_package"),
-    url("search/unuse_package" , pack_views.unuse_package.as_view()      , name="unuse_package"),
-    url("install"              , pack_views.install.as_view()            , name="install"),
-    url("refresh"              , pack_views.refresh.as_view()            , name="refresh"),
-    url("pack/add"             , pack_views.add_package.as_view()        , name="add_package"),
-    url("pack/remove"          , pack_views.remove_package.as_view()     , name="remove_package"),
-    url("pack/change_tstate"   , pack_views.change_target_state.as_view(), name="change_target_state"),
-    url("pack/change_pflag"    , pack_views.change_package_flag.as_view(), name="change_package_flag"),
-    url("pack/sync"            , pack_views.synchronize.as_view()        , name="synchronize"),
-    url("pack/get_status"      , pack_views.get_pdc_status.as_view()     , name="get_pdc_status"),
+    url("overview/repo$"       , package_views.repo_overview.as_view()      , name="repo_overview"),
+    url("search/repo$"         , package_views.search_package.as_view()     , name="search_package"),
+    url("search/create"        , package_views.create_search.as_view()      , name="create_search"),
+    url("search/delete"        , package_views.delete_search.as_view()      , name="delete_search"),
+    url("search/retry"         , package_views.retry_search.as_view()       , name="retry_search"),
+    url("search/search_result" , package_views.get_search_result.as_view()  , name="get_search_result"),
+    url("search/use_package"   , package_views.use_package.as_view()        , name="use_package"),
+    url("search/unuse_package" , package_views.unuse_package.as_view()      , name="unuse_package"),
+    url("install"              , package_views.install.as_view()            , name="install"),
+    url("refresh"              , package_views.refresh.as_view()            , name="refresh"),
+    url("pack/add"             , package_views.add_package.as_view()        , name="add_package"),
+    url("pack/remove"          , package_views.remove_package.as_view()     , name="remove_package"),
+    url("pack/change_tstate"   , package_views.change_target_state.as_view(), name="change_target_state"),
+    url("pack/change_pflag"    , package_views.change_package_flag.as_view(), name="change_package_flag"),
+    url("pack/sync"            , package_views.synchronize.as_view()        , name="synchronize"),
+    url("pack/get_status"      , package_views.get_pdc_status.as_view()     , name="get_pdc_status"),
 )
 
 main_patterns = patterns(
