@@ -830,7 +830,7 @@ class mon_contact_form(ModelForm):
             Fieldset(
                 "Basic data",
                 Field("user", ng_options="value.idx as value.login + ' (' + value.first_name + ' ' + value.last_name + ')' for value in rest_data.user | orderBy:'login'"),
-                Field("notifications", ng_options="value.idx as value.name for value in rest_data.mon_notification | sortBy:'name'", chosen=True),
+                Field("notifications", ng_options="value.idx as value.name for value in rest_data.mon_notification | orderBy:'name'", chosen=True),
                 Field("mon_alias"),
             ),
             Fieldset(
