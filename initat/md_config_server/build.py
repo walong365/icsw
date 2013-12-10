@@ -921,30 +921,34 @@ class build_process(threading_tools.process_obj):
                                             host,
                                             act_host,
                                             s_check,
-                                            [special_commands.arg_template(
-                                                s_check,
-                                                "%s / %s" % (s_check.get_description(), c_com.name),
-                                                arg1=msc_check.description,
-                                                arg2=msc_check.warn_value,
-                                                arg3=msc_check.error_value,
-                                                arg4=dev_names)
-                                             ],
+                                            [
+                                                special_commands.arg_template(
+                                                    s_check,
+                                                    "%s / %s" % (s_check.get_description(), c_com.get_description()),
+                                                    arg1=msc_check.description,
+                                                    arg2=msc_check.warn_value,
+                                                    arg3=msc_check.error_value,
+                                                    arg4=dev_names,
+                                                )
+                                            ],
                                             act_def_serv,
                                             serv_cgs,
                                             checks_are_active,
                                             serv_temp,
-                                            cur_gc)
+                                            cur_gc,
+                                        )
                                         host_config_list.extend(sub_list)
                                         num_ok += len(sub_list)
                                     else:
-                                        self.mach_log("check command '%s' not present list of commands %s" % (
+                                        self.mach_log("ignoring empty service_cluster", logging_tools.LOG_LEVEL_WARN)
+                                else:
+                                    self.mach_log(
+                                        "check command '%s' not present in list of commands %s" % (
                                             msc_check.mon_check_command.name,
                                             ", ".join(sorted(cur_gc["command"].keys()))
-                                            ),
-                                            logging_tools.LOG_LEVEL_ERROR,
-                                            )
-                                else:
-                                    self.mach_log("ignoring empty service_cluster", logging_tools.LOG_LEVEL_WARN)
+                                        ),
+                                        logging_tools.LOG_LEVEL_ERROR,
+                                    )
                         # add host dependencies
                         if use_host_deps:
                             for h_dep in mon_host_dependency.objects.filter(Q(dependent_devices=host)).select_related(
@@ -973,6 +977,7 @@ class build_process(threading_tools.process_obj):
                                     if all_ok:
                                         act_service_dep["dependent_service_description"] = mcc_lut[s_dep.dependent_mon_check_command_id][1]
                                         sc_check = cur_gc["command"]["check_service_cluster"]
+                                        # FIXME, mcc_lut[...][1] should be mapped to check_command().get_description()
                                         act_service_dep["service_description"] = "%s / %s" % (sc_check.get_description(), mcc_lut[s_dep.mon_service_cluster.mon_check_command_id][1])
                                         act_service_dep["host_name"] = all_hosts_dict[s_dep.mon_service_cluster.main_device_id].full_name
                                         act_service_dep["dependent_host_name"] = ",".join([all_hosts_dict[cur_dev.pk].full_name for cur_dev in s_dep.dependent_devices.all()])

@@ -1213,6 +1213,24 @@ class all_service_groups(host_type_config):
     def values(self):
         return self.__dict.values()
 
+class unique_list(object):
+    def __init__(self):
+        self._list = set()
+    def add(self, name):
+        if name not in self._list:
+            self._list.add(name)
+            return name
+        else:
+            add_idx = 1
+            while True:
+                _name = "%s_%d" % (name, add_idx)
+                if _name not in self._list:
+                    break
+                else:
+                    add_idx += 1
+            self._list.add(_name)
+            return _name
+
 class all_commands(host_type_config):
     def __init__(self, gen_conf, build_proc):
         check_command.gen_conf = gen_conf
@@ -1285,20 +1303,25 @@ class all_commands(host_type_config):
             )
             self.__obj_list.append(nag_conf)
     def _add_commands_from_db(self, gen_conf):
-        command_names = set()
+        # set of names of configs which point to a full check_config
+        cc_command_names = unique_list()
+        # set of all names
+        command_names = unique_list()
         for hc_com in host_check_command.objects.all():
             cur_nc = nag_config(
                 "command",
                 hc_com.name,
                 command_name=hc_com.name,
-                command_line=hc_com.command_line
+                command_line=hc_com.command_line,
             )
             self.__obj_list.append(cur_nc)
+            # simple nag_config, we do not add this to the command dict
+            # self.__dict[cur_nc["command_name"]] = cur_nc
             command_names.add(hc_com.name)
         ngc_re1 = re.compile("^\@(?P<special>\S+)\@(?P<comname>\S+)$")
         check_coms = list(mon_check_command.objects.all()
                           .prefetch_related("categories", "exclude_devices")
-                          .select_related("mon_service_templ", "config", "event_handler"))
+                          .select_related("mon_service_templ", "config", "event_handler").order_by("name"))
         enable_perfd = global_config["ENABLE_PNP"] or global_config["ENABLE_COLLECTD"]
         if enable_perfd and gen_conf.master:
             if global_config["ENABLE_COLLECTD"]:
@@ -1366,17 +1389,11 @@ class all_commands(host_type_config):
                 ngc_name, special = (re1m.group("comname"), re1m.group("special"))
             else:
                 ngc_name, special = (ngc.name, None)
-            name_postfix = 0
-            while True:
-                if ngc_name not in command_names:
-                    break
-                else:
-                    name_postfix += 1
-                    if "%s_%d" % (ngc_name, name_postfix) not in command_names:
-                        break
-            if name_postfix:
-                ngc_name = "%s_%d" % (ngc_name, name_postfix)
-            command_names.add(ngc_name)
+            _ngc_name = cc_command_names.add(ngc_name)
+            if _ngc_name != ngc_name:
+                self.log("rewrite %s to %s" % (ngc_name, _ngc_name), logging_tools.LOG_LEVEL_WARN)
+                ngc_name = _ngc_name
+            _nag_name = command_names.add(ngc_name)
             if ngc.pk:
                 cats = ngc.categories.all().values_list("full_name", flat=True)
             else:
@@ -1388,6 +1405,7 @@ class all_commands(host_type_config):
                 ngc.mon_service_templ.name if ngc.mon_service_templ_id else None,
                 ngc.description,
                 exclude_devices=ngc.exclude_devices.all() if ngc.pk else [],
+                nagios_name=_nag_name,
                 special=special,
                 servicegroup_names=cats,
                 enable_perfdata=ngc.enable_perfdata,
@@ -1399,7 +1417,7 @@ class all_commands(host_type_config):
             )
             nag_conf = cc_s.get_nag_config()
             self.__obj_list.append(nag_conf)
-            self.__dict[nag_conf["command_name"]] = cc_s
+            self.__dict[ngc_name] = cc_s # ag_conf["command_name"]] = cc_s
     def get_object_list(self):
         return self.__obj_list
     def values(self):
@@ -1712,6 +1730,8 @@ class all_services(host_type_config):
 class check_command(object):
     def __init__(self, name, com_line, config, template, descr, exclude_devices=None, special=None, **kwargs):
         self.__name = name
+        self.__nag_name = kwargs.pop("nagios_name", self.__name)
+        # print self.__name, self.__nag_name
         self.__com_line = com_line
         self.config = config
         self.template = template
@@ -1840,12 +1860,12 @@ class check_command(object):
     def get_nag_config(self):
         return nag_config(
             "command",
-            self.__name,
-            command_name=self.__name,
+            self.__nag_name,
+            command_name=self.__nag_name,
             command_line=self.md_command_line)
     def __getitem__(self, key):
         if key == "command_name":
-            return self.__name
+            return self.__nag_name
         else:
             raise SyntaxError("illegal call to __getitem__ of check_command (key='%s')" % (key))
     def get_special(self):
@@ -1864,7 +1884,8 @@ class check_command(object):
             return self.__name
     @property
     def name(self):
-        return self.__name
+        # returns config name for icinga config
+        return self.__nag_name
     @property
     def arg_ll(self):
         """
