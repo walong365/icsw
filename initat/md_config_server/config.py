@@ -1406,6 +1406,10 @@ class all_commands(host_type_config):
         return self.__dict.values()
     def __getitem__(self, key):
         return self.__dict[key]
+    def __contains__(self, key):
+        return key in self.__dict
+    def keys(self):
+        return self.__dict.keys()
 
 class all_contacts(host_type_config):
     def __init__(self, gen_conf, build_proc):

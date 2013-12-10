@@ -554,7 +554,7 @@ class build_process(threading_tools.process_obj):
                                    ):
         start_time = time.time()
         # lookup table for host_check_commands
-        mcc_lut = {key : (v0, v1) for key, v0, v1 in mon_check_command.objects.all().values_list("pk", "name", "description")}
+        mcc_lut = {key : (v0, v1, v2) for key, v0, v1, v2 in mon_check_command.objects.all().values_list("pk", "name", "description", "config__name")}
         # lookup table for config -> mon_check_commands
         mcc_lut_2 = {}
         for v_list in mon_check_command.objects.all().values_list("name", "config__name"):
@@ -910,82 +910,87 @@ class build_process(threading_tools.process_obj):
                         if len(msc_checks):
                             self.mach_log("adding %s" % (logging_tools.get_plural("service_cluster check", len(msc_checks))))
                             for msc_check in msc_checks:
-                                c_com = cur_gc["command"][msc_check.mon_check_command.name]
-                                dev_names = ",".join(["$SERVICESTATEID:%s:%s$" % (cur_dev.full_name, c_com.get_description()) for cur_dev in msc_check.devices.all()])
-                                if dev_names.strip():
-                                    s_check = cur_gc["command"]["check_service_cluster"]
-                                    serv_temp = serv_templates[msc_check.mon_service_templ_id]
-                                    serv_cgs = set(serv_temp.contact_groups).intersection(host_groups)
-                                    sub_list = self.get_service(
-                                        host,
-                                        act_host,
-                                        s_check,
-                                        [special_commands.arg_template(
+                                if msc_check.mon_check_command.name in cur_gc["command"]:
+                                    c_com = cur_gc["command"][msc_check.mon_check_command.name]
+                                    dev_names = ",".join(["$SERVICESTATEID:%s:%s$" % (cur_dev.full_name, c_com.get_description()) for cur_dev in msc_check.devices.all()])
+                                    if dev_names.strip():
+                                        s_check = cur_gc["command"]["check_service_cluster"]
+                                        serv_temp = serv_templates[msc_check.mon_service_templ_id]
+                                        serv_cgs = set(serv_temp.contact_groups).intersection(host_groups)
+                                        sub_list = self.get_service(
+                                            host,
+                                            act_host,
                                             s_check,
-                                            "%s / %s" % (s_check.get_description(), c_com.name),
-                                            arg1=msc_check.description,
-                                            arg2=msc_check.warn_value,
-                                            arg3=msc_check.error_value,
-                                            arg4=dev_names)
-                                         ],
-                                        act_def_serv,
-                                        serv_cgs,
-                                        checks_are_active,
-                                        serv_temp,
-                                        cur_gc)
-                                    host_config_list.extend(sub_list)
-                                    num_ok += len(sub_list)
+                                            [special_commands.arg_template(
+                                                s_check,
+                                                "%s / %s" % (s_check.get_description(), c_com.name),
+                                                arg1=msc_check.description,
+                                                arg2=msc_check.warn_value,
+                                                arg3=msc_check.error_value,
+                                                arg4=dev_names)
+                                             ],
+                                            act_def_serv,
+                                            serv_cgs,
+                                            checks_are_active,
+                                            serv_temp,
+                                            cur_gc)
+                                        host_config_list.extend(sub_list)
+                                        num_ok += len(sub_list)
+                                    else:
+                                        self.mach_log("check command '%s' not present list of commands %s" % (
+                                            msc_check.mon_check_command.name,
+                                            ", ".join(sorted(cur_gc["command"].keys()))
+                                            ),
+                                            logging_tools.LOG_LEVEL_ERROR,
+                                            )
                                 else:
                                     self.mach_log("ignoring empty service_cluster", logging_tools.LOG_LEVEL_WARN)
                         # add host dependencies
                         if use_host_deps:
-                            for h_dep in mon_host_dependency.objects.filter(Q(dependent_device=host)).select_related(
+                            for h_dep in mon_host_dependency.objects.filter(Q(dependent_devices=host)).select_related(
                                 "mon_host_dependency_templ",
                                 "mon_host_dependency_templ__mon_period",
                                 ):
                                 act_host_dep = nag_config("hostdependency", "")
-                                act_host_dep["host_name"] = all_hosts_dict[h_dep.device_id].full_name
-                                act_host_dep["dependent_host_name"] = host.full_name
+                                act_host_dep["host_name"] = ",".join([all_hosts_dict[cur_dev.pk].full_name for cur_dev in h_dep.devices.all()])
+                                act_host_dep["dependent_host_name"] = ",".join([all_hosts_dict[cur_dev.pk].full_name for cur_dev in h_dep.dependent_devices.all()])
                                 h_dep.feed_config(act_host_dep)
                                 host_config_list.append(act_host_dep)
                         # add service dependencies
                         if use_service_deps:
-                            for s_dep in mon_service_dependency.objects.filter(Q(dependent_device=host)).select_related(
+                            for s_dep in mon_service_dependency.objects.filter(Q(dependent_devices=host)).select_related(
                                 "mon_service_dependency_templ",
                                 "mon_service_dependency_templ__mon_period",
+                                "mon_check_command",
+                                "dependent_mon_check_command",
                                 "mon_service_cluster",
                                 ):
                                 act_service_dep = nag_config("servicedependency", "")
                                 if s_dep.mon_service_cluster_id:
-                                    # print "**", s_dep.mon_service_cluster
-                                    srv_tuple, dep_srv_tuple = (
-                                        mcc_lut[s_dep.mon_service_cluster.mon_check_command_id],
-                                        mcc_lut[s_dep.dependent_mon_check_command_id],
-                                        )
-                                    dep_mcc_list = sum([mcc_lut_2.get(key, []) for key in all_configs.get(host.full_name, [])], [])
-                                    if dep_srv_tuple[0] in dep_mcc_list:
-                                        act_service_dep["dependent_service_description"] = dep_srv_tuple[1]
+                                    all_ok = True
+                                    for d_host in s_dep.dependent_devices.all():
+                                        all_ok &= self._check_for_config(all_configs, mcc_lut, mcc_lut_2, d_host, s_dep.dependent_mon_check_command_id)
+                                    if all_ok:
+                                        act_service_dep["dependent_service_description"] = mcc_lut[s_dep.dependent_mon_check_command_id][1]
                                         sc_check = cur_gc["command"]["check_service_cluster"]
-                                        act_service_dep["service_description"] = "%s / %s" % (sc_check.get_description(), srv_tuple[1])
+                                        act_service_dep["service_description"] = "%s / %s" % (sc_check.get_description(), mcc_lut[s_dep.mon_service_cluster.mon_check_command_id][1])
                                         act_service_dep["host_name"] = all_hosts_dict[s_dep.mon_service_cluster.main_device_id].full_name
-                                        act_service_dep["dependent_host_name"] = host.full_name
+                                        act_service_dep["dependent_host_name"] = ",".join([all_hosts_dict[cur_dev.pk].full_name for cur_dev in s_dep.dependent_devices.all()])
                                         s_dep.feed_config(act_service_dep)
                                         host_config_list.append(act_service_dep)
                                     else:
                                         self.mach_log("cannot add cluster_service_dependency", logging_tools.LOG_LEVEL_ERROR)
                                 else:
-                                    srv_tuple, dep_srv_tuple = (
-                                        mcc_lut[s_dep.mon_check_command_id],
-                                        mcc_lut[s_dep.dependent_mon_check_command_id],
-                                        )
-                                    dep_mcc_list = sum([mcc_lut_2.get(key, []) for key in all_configs.get(host.full_name, [])], [])
-                                    mcc_list = sum([mcc_lut_2.get(key, []) for key in all_configs.get(all_hosts_dict[s_dep.device_id].full_name, [])], [])
-                                    # print dep_srv_tuple, dep_mcc_list, srv_tuple, mcc_list
-                                    if dep_srv_tuple[0] in dep_mcc_list and srv_tuple[0] in mcc_list:
-                                        act_service_dep["dependent_service_description"] = dep_srv_tuple[1]
-                                        act_service_dep["service_description"] = srv_tuple[1]
-                                        act_service_dep["host_name"] = all_hosts_dict[s_dep.device_id].full_name
-                                        act_service_dep["dependent_host_name"] = host.full_name
+                                    all_ok = True
+                                    for p_host in s_dep.devices.all():
+                                        all_ok &= self._check_for_config(all_configs, mcc_lut, mcc_lut_2, p_host, s_dep.mon_check_command_id)
+                                    for d_host in s_dep.dependent_devices.all():
+                                        all_ok &= self._check_for_config(all_configs, mcc_lut, mcc_lut_2, d_host, s_dep.dependent_mon_check_command_id)
+                                    if all_ok:
+                                        act_service_dep["dependent_service_description"] = mcc_lut[s_dep.dependent_mon_check_command_id][1]
+                                        act_service_dep["service_description"] = mcc_lut[s_dep.mon_check_command_id][1]
+                                        act_service_dep["host_name"] = ",".join([all_hosts_dict[cur_dev.pk].full_name for cur_dev in s_dep.devices.all()])
+                                        act_service_dep["dependent_host_name"] = ",".join([all_hosts_dict[cur_dev.pk].full_name for cur_dev in s_dep.dependent_devices.all()])
                                         s_dep.feed_config(act_service_dep)
                                         host_config_list.append(act_service_dep)
                                     else:
@@ -1004,6 +1009,20 @@ class build_process(threading_tools.process_obj):
         self.log(glob_log_str)
         self.mach_log(info_str)
         self.close_mach_log()
+    def _check_for_config(self, all_configs, mcc_lut, mcc_lut_2, device, moncc_id):
+        # configure mon check commands
+        ccoms = sum([mcc_lut_2.get(key, []) for key in all_configs.get(device.full_name, [])], [])
+        # needed checkcommand
+        nccom = mcc_lut[moncc_id]
+        if nccom[0] in ccoms:
+            return True
+        else:
+            self.mach_log("Checkcommand '%s' config (%s) not found in configs (%s)" % (
+                nccom[0],
+                nccom[2],
+                ", ".join(sorted(ccoms)) or "none defined",
+                ))
+            return False
     def _get_number_of_hosts(self, cur_gc, hosts):
         if hosts:
             h_filter = Q(name__in=hosts)
