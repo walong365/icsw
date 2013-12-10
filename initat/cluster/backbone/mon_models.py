@@ -548,9 +548,14 @@ class mon_host_dependency(models.Model):
     mon_host_dependency_templ = models.ForeignKey(mon_host_dependency_templ)
     mon_host_cluster = models.ForeignKey(mon_host_cluster, null=True)
     date = models.DateTimeField(auto_now_add=True)
-    def get_id(self):
+    def get_id(self, devices=None, dependent_devices=None):
         # returns an unique ID
-        return "*"
+        return "{%d:%d:[%s]:[%s]}" % (
+            self.mon_host_dependency_templ_id or 0,
+            self.mon_host_cluster_id or 0,
+            ",".join(["%d" % (val) for val in sorted([sub_dev.pk for sub_dev in (devices if devices is not None else self.devices.all())])]),
+            ",".join(["%d" % (val) for val in sorted([sub_dev.pk for sub_dev in (dependent_devices if dependent_devices is not None else self.dependent_devices.all())])]),
+            )
     def feed_config(self, conf):
         conf["inherits_parent"] = "1" if self.mon_host_dependency_templ.inherits_parent else "0"
         conf["execution_failure_criteria"] = self.mon_host_dependency_templ.execution_failure_criteria
@@ -625,6 +630,15 @@ class mon_service_dependency(models.Model):
     # overrides device and mon_check_command
     mon_service_cluster = models.ForeignKey(mon_service_cluster, null=True)
     date = models.DateTimeField(auto_now_add=True)
+    def get_id(self, devices=None, dependent_devices=None):
+        # returns an unique ID
+        return "{%d:%d:%d:[%s]:[%s]}" % (
+            self.mon_check_command_id or 0,
+            self.mon_service_dependency_templ_id or 0,
+            self.mon_service_cluster_id or 0,
+            ",".join(["%d" % (val) for val in sorted([sub_dev.pk for sub_dev in (devices if devices is not None else self.devices.all())])]),
+            ",".join(["%d" % (val) for val in sorted([sub_dev.pk for sub_dev in (dependent_devices if dependent_devices is not None else self.dependent_devices.all())])]),
+            )
     def feed_config(self, conf):
         conf["inherits_parent"] = "1" if self.mon_service_dependency_templ.inherits_parent else "0"
         conf["execution_failure_criteria"] = self.mon_service_dependency_templ.execution_failure_criteria
