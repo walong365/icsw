@@ -774,7 +774,8 @@ class build_process(threading_tools.process_obj):
                             else:
                                 nagvis_maps.add(map_file)
                                 map_h.write("define global {\n")
-                                for key, value in map_dict.iteritems():
+                                for key in sorted(map_dict.iterkeys()):
+                                    value = map_dict[key]
                                     if type(value) == bool:
                                         value = "1" if value else "0"
                                     elif type(value) in [int, long]:
@@ -921,7 +922,7 @@ class build_process(threading_tools.process_obj):
                                         s_check,
                                         [special_commands.arg_template(
                                             s_check,
-                                            s_check.get_description(),
+                                            "%s / %s" % (s_check.get_description(), c_com.name),
                                             arg1=msc_check.description,
                                             arg2=msc_check.warn_value,
                                             arg3=msc_check.error_value,
@@ -952,23 +953,43 @@ class build_process(threading_tools.process_obj):
                             for s_dep in mon_service_dependency.objects.filter(Q(dependent_device=host)).select_related(
                                 "mon_service_dependency_templ",
                                 "mon_service_dependency_templ__mon_period",
+                                "mon_service_cluster",
                                 ):
                                 act_service_dep = nag_config("servicedependency", "")
-                                srv_tuple, dep_srv_tuple = (
-                                    mcc_lut[s_dep.mon_check_command_id],
-                                    mcc_lut[s_dep.dependent_mon_check_command_id],
-                                    )
-                                dep_mcc_list = sum([mcc_lut_2.get(key, []) for key in all_configs.get(host.full_name, [])], [])
-                                mcc_list = sum([mcc_lut_2.get(key, []) for key in all_configs.get(all_hosts_dict[h_dep.device_id].full_name, [])], [])
-                                if dep_srv_tuple[0] in dep_mcc_list and srv_tuple[0] in mcc_list:
-                                    act_service_dep["dependent_service_description"] = dep_srv_tuple[1]
-                                    act_service_dep["service_description"] = srv_tuple[1]
-                                    act_service_dep["host_name"] = all_hosts_dict[h_dep.device_id].full_name
-                                    act_service_dep["dependent_host_name"] = host.full_name
-                                    s_dep.feed_config(act_service_dep)
-                                    host_config_list.append(act_service_dep)
+                                if s_dep.mon_service_cluster_id:
+                                    # print "**", s_dep.mon_service_cluster
+                                    srv_tuple, dep_srv_tuple = (
+                                        mcc_lut[s_dep.mon_service_cluster.mon_check_command_id],
+                                        mcc_lut[s_dep.dependent_mon_check_command_id],
+                                        )
+                                    dep_mcc_list = sum([mcc_lut_2.get(key, []) for key in all_configs.get(host.full_name, [])], [])
+                                    if dep_srv_tuple[0] in dep_mcc_list:
+                                        act_service_dep["dependent_service_description"] = dep_srv_tuple[1]
+                                        sc_check = cur_gc["command"]["check_service_cluster"]
+                                        act_service_dep["service_description"] = "%s / %s" % (sc_check.get_description(), srv_tuple[1])
+                                        act_service_dep["host_name"] = all_hosts_dict[s_dep.mon_service_cluster.main_device_id].full_name
+                                        act_service_dep["dependent_host_name"] = host.full_name
+                                        s_dep.feed_config(act_service_dep)
+                                        host_config_list.append(act_service_dep)
+                                    else:
+                                        self.mach_log("cannot add cluster_service_dependency", logging_tools.LOG_LEVEL_ERROR)
                                 else:
-                                    self.mach_log("cannot add service_dependency", logging_tools.LOG_LEVEL_ERROR)
+                                    srv_tuple, dep_srv_tuple = (
+                                        mcc_lut[s_dep.mon_check_command_id],
+                                        mcc_lut[s_dep.dependent_mon_check_command_id],
+                                        )
+                                    dep_mcc_list = sum([mcc_lut_2.get(key, []) for key in all_configs.get(host.full_name, [])], [])
+                                    mcc_list = sum([mcc_lut_2.get(key, []) for key in all_configs.get(all_hosts_dict[s_dep.device_id].full_name, [])], [])
+                                    # print dep_srv_tuple, dep_mcc_list, srv_tuple, mcc_list
+                                    if dep_srv_tuple[0] in dep_mcc_list and srv_tuple[0] in mcc_list:
+                                        act_service_dep["dependent_service_description"] = dep_srv_tuple[1]
+                                        act_service_dep["service_description"] = srv_tuple[1]
+                                        act_service_dep["host_name"] = all_hosts_dict[s_dep.device_id].full_name
+                                        act_service_dep["dependent_host_name"] = host.full_name
+                                        s_dep.feed_config(act_service_dep)
+                                        host_config_list.append(act_service_dep)
+                                    else:
+                                        self.mach_log("cannot add service_dependency", logging_tools.LOG_LEVEL_ERROR)
                         host_nc.add_device(host_config_list, host) # [act_host["name"]] = act_host
                     else:
                         self.mach_log("Host %s is disabled" % (host.full_name))

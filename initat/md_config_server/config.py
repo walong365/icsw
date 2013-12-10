@@ -1131,7 +1131,7 @@ class host_type_config(object):
             for act_le in act_list:
                 content.extend(
                     ["define %s {" % (dest_type)] + \
-                    ["  %s %s" % (act_key, unicode(val)) for act_key, val in act_le.iteritems()] + \
+                    ["  %s %s" % (act_key, unicode(act_le[act_key])) for act_key in sorted(act_le.iterkeys())] + \
                     ["}", ""]
                 )
             self.log("created %s for %s" % (
@@ -1141,7 +1141,7 @@ class host_type_config(object):
     def get_xml(self):
         res_xml = getattr(E, "%s_list" % (self.get_name()))()
         for act_le in self.get_object_list():
-            res_xml.append(getattr(E, self.get_name())(**dict([(key, unicode(value)) for key, value in act_le.iteritems()])))
+            res_xml.append(getattr(E, self.get_name())(**dict([(key, unicode(act_le[key])) for key in sorted(act_le.iterkeys())])))
         return [res_xml]
 
 class all_host_dependencies(host_type_config):
@@ -1654,7 +1654,7 @@ class config_dir(object):
         for entry in self[key]:
             content.extend(
                 ["define %s {" % (entry.obj_type)] + \
-                ["  %s %s" % (act_key, unicode(val)) for act_key, val in entry.iteritems()] + \
+                ["  %s %s" % (act_key, unicode(entry[act_key])) for act_key in sorted(entry.iterkeys())] + \
                 ["}", ""])
         return content
     def get_xml(self):
@@ -1669,7 +1669,7 @@ class config_dir(object):
                     else:
                         res_xml = res_dict[entry.obj_type]
                     prev_tag = entry.obj_type
-                res_xml.append(getattr(E, entry.obj_type)(**dict([(key, unicode(value)) for key, value in entry.iteritems()])))
+                res_xml.append(getattr(E, entry.obj_type)(**dict([(key, unicode(entry[key])) for key in sorted(entry.iterkeys())])))
         return list(res_dict.itervalues())
 
 class all_hosts(host_type_config):
