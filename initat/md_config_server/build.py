@@ -21,18 +21,13 @@
 #
 """ build process for md-config-server """
 
-import os
-import sys
-
-os.environ.setdefault("DJANGO_SETTINGS_MODULE", "initat.cluster.settings")
-
 from django.db import connection
 from django.db.models import Q
 from initat.cluster.backbone.models import device, device_group, device_variable, mon_device_templ, \
      mon_ext_host, mon_check_command, mon_period, mon_contact, \
      mon_contactgroup, mon_service_templ, netdevice, network, network_type, net_ip, \
      user, mon_host_cluster, mon_service_cluster, config, md_check_data_store, category, \
-     category_tree, TOP_MONITORING_CATEGORY, mon_notification, config_str, config_int, host_check_command, \
+     TOP_MONITORING_CATEGORY, mon_notification, config_str, config_int, host_check_command, \
      mon_host_dependency_templ, mon_host_dependency, mon_service_dependency_templ, \
      mon_service_templ, mon_service_dependency
 from initat.md_config_server import constants
@@ -49,6 +44,7 @@ import configfile
 import logging_tools
 import networkx
 import operator
+import os
 import process_tools
 import server_command
 import signal
@@ -735,7 +731,10 @@ class build_process(threading_tools.process_obj):
                             act_host["check_command"] = "check-host-ok"
                         else:
                             if act_def_dev.host_check_command:
-                                act_host["check_command"] = act_def_dev.host_check_command.name
+                                if checks_are_active:
+                                    act_host["check_command"] = act_def_dev.host_check_command.name
+                                else:
+                                    self.log("disabling host check_command (passive)")
                             else:
                                 self.log("dev_template has no host_check_command set", logging_tools.LOG_LEVEL_ERROR)
                         # check for nagvis map
@@ -820,13 +819,6 @@ class build_process(threading_tools.process_obj):
                                     ((cur_c.get_config() in conf_names) and (host.pk not in cur_c.exclude_devices)) or
                                           cur_c["command_name"] in cconf_names
                                 )])
-                        # old code, use only_ping config
-                        # if host["identifier"] == "NB" or host["identifier"] == "AM" or host["identifier"] == "S":
-                        #    # set config-dict for netbotzes, APC Masterswitches and switches to ping
-                        #    conf_dict = dict([(x["command_name"], x) for x in self.__gen_config["checkcommand"]["struct"].values() if x["command_name"].startswith("check_ping")])
-                        # print host["name"], conf_dict
-                        # now conf_dict is a list of all service-checks defined for this host
-                        # pprint.pprint(conf_dict)
                         # list of already used checks
                         used_checks = set()
                         conf_names = sorted(conf_dict.keys())

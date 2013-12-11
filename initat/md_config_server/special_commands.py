@@ -19,8 +19,15 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
-""" special tasks for generating md-config-server """
+""" special tasks for md-config-server, should be split into submodules, FIXME """
 
+from django.db.models import Q
+from initat.cluster.backbone.models import partition, partition_disc, partition_table, partition_fs, \
+     netdevice, net_ip, network, lvm_vg, lvm_lv, device, device_variable, md_check_data_store
+from initat.host_monitoring import ipc_comtools
+from initat.host_monitoring.modules import supermicro_mod
+from lxml import etree # @UnresolvedImport
+from lxml.builder import E # @UnresolvedImport
 import copy
 import logging_tools
 import os
@@ -29,16 +36,6 @@ import re
 import server_command
 import sys
 import time
-
-from django.db.models import Q
-
-from initat.host_monitoring import ipc_comtools
-from initat.host_monitoring.modules import supermicro_mod
-from initat.cluster.backbone.models import partition, partition_disc, partition_table, partition_fs, \
-     netdevice, net_ip, network, lvm_vg, lvm_lv, device, device_variable, md_check_data_store
-
-from lxml import etree # @UnresolvedImport
-from lxml.builder import E # @UnresolvedImport
 
 EXPECTED_FILE = "/etc/sysconfig/host-monitoring.d/openvpn_expected"
 

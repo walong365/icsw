@@ -21,34 +21,6 @@
 #
 """ config part of md-config-server """
 
-import configfile
-import process_tools
-
-global_config = configfile.get_global_config(process_tools.get_programm_name())
-
-import base64
-import binascii
-import cluster_location
-import codecs
-import config_tools
-import ConfigParser
-import logging_tools
-import os
-import re
-import server_command
-import shutil
-import sqlite3
-import stat
-import time
-from lxml.builder import E # @UnresolvedImport
-
-from initat.md_config_server import constants
-
-try:
-    from md_config_server.version import VERSION_STRING
-except ImportError:
-    VERSION_STRING = "?.?"
-
 from django.conf import settings
 from django.db.models import Q
 from initat.cluster.backbone.models import device, device_group, device_variable, mon_device_templ, \
@@ -56,6 +28,26 @@ from initat.cluster.backbone.models import device, device_group, device_variable
      mon_contactgroup, mon_service_templ, netdevice, network, network_type, net_ip, \
      user, mon_host_cluster, mon_service_cluster, config, md_check_data_store, category, \
      category_tree, TOP_MONITORING_CATEGORY, mon_notification, config_str, config_int, host_check_command
+from initat.md_config_server import constants
+from lxml.builder import E # @UnresolvedImport
+import ConfigParser
+import base64
+import binascii
+import cluster_location
+import codecs
+import config_tools
+import configfile
+import logging_tools
+import os
+import process_tools
+import re
+import server_command
+import shutil
+import sqlite3
+import stat
+import time
+
+global_config = configfile.get_global_config(process_tools.get_programm_name())
 
 class var_cache(dict):
     def __init__(self, cdg):
@@ -637,6 +629,7 @@ class main_config(object):
             ("service_interleave_factor"        , "s"),
             # ("enable_predictive_service_dependency_checks", 1 if global_config["USE_HOST_DEPENDENCIES"] else 0),
             ("enable_predictive_host_dependency_checks", 1 if global_config["USE_HOST_DEPENDENCIES"] else 0),
+            ("translate_passive_host_checks"    , 1 if global_config["TRANSLATE_PASSIVE_HOST_CHECKS"] else 0),
             ("max_concurrent_checks"            , global_config["MAX_CONCURRENT_CHECKS"]),
             ("passive_host_checks_are_soft"     , 1 if global_config["PASSIVE_HOST_CHECKS_ARE_SOFT"] else 0),
             ("service_reaper_frequency"         , 12),

@@ -21,26 +21,21 @@
 #
 """ status process """
 
-import os
-
-os.environ.setdefault("DJANGO_SETTINGS_MODULE", "initat.cluster.settings")
-
+from django.db import connection
+from django.db.models import Q
+from initat.cluster.backbone.models import device
+from initat.md_config_server.config import global_config
+from lxml.builder import E # @UnresolvedImport
 import logging_tools
+import os
 import process_tools
 import server_command
 import threading_tools
-from lxml.builder import E # @UnresolvedImport
-
-from initat.md_config_server.config import global_config
 
 try:
     from md_config_server.version import VERSION_STRING
 except ImportError:
     VERSION_STRING = "?.?"
-
-from django.db.models import Q
-from django.db import connection
-from initat.cluster.backbone.models import device
 
 try:
     import mk_livestatus
@@ -108,7 +103,7 @@ class status_process(threading_tools.process_obj):
                     # rewrite to xml
                     srv_com["result"] = E.node_results(
                         *[E.node_result(
-                            *[E.result(**entry) for sort_val, entry in sorted(value)],
+                            *[E.result(**entry) for _sort_val, entry in sorted(value)],
                             name=key) for key, value in node_results.iteritems()]
                     )
                     # print srv_com.pretty_print()

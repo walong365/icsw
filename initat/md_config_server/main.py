@@ -26,16 +26,15 @@ import os
 
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "initat.cluster.settings")
 
-import cluster_location
-import config_tools
-import configfile
-import process_tools
-
 from initat.md_config_server.config import global_config
 from initat.md_config_server.constants import SERVER_COM_PORT, IDOMOD_PROCESS_TIMED_EVENT_DATA, \
     IDOMOD_PROCESS_SERVICE_CHECK_DATA, IDOMOD_PROCESS_HOST_CHECK_DATA, BROKER_TIMED_EVENTS, \
     BROKER_SERVICE_CHECKS, BROKER_HOST_CHECKS
 from initat.md_config_server.server import server_process
+import cluster_location
+import config_tools
+import configfile
+import process_tools
 
 try:
     from md_config_server.version import VERSION_STRING
@@ -63,8 +62,9 @@ def main():
     ])
     global_config.parse_file()
     _options = global_config.handle_commandline(
-        description="%s, version is %s" % (prog_name,
-                                           VERSION_STRING),
+        description="%s, version is %s" % (
+            prog_name,
+            VERSION_STRING),
         add_writeback_option=True,
         positional_arguments=False)
     global_config.write_file()
@@ -85,34 +85,35 @@ def main():
     global_config.add_config_entries([("LOG_SOURCE_IDX", configfile.int_c_var(cluster_location.log_source.create_log_source_entry("mon-server", "Cluster MonitoringServer", device=sql_info.device).pk))])
 
     cluster_location.read_config_from_db(global_config, "monitor_server", [
-        ("COM_PORT"                    , configfile.int_c_var(SERVER_COM_PORT)),
-        ("NETSPEED_WARN_MULT"          , configfile.float_c_var(0.85)),
-        ("NETSPEED_CRITICAL_MULT"      , configfile.float_c_var(0.95)),
-        ("NETSPEED_DEFAULT_VALUE"      , configfile.int_c_var(10000000)),
-        ("CHECK_HOST_ALIVE_PINGS"      , configfile.int_c_var(5)),
-        ("CHECK_HOST_ALIVE_TIMEOUT"    , configfile.float_c_var(5.0)),
-        ("ENABLE_PNP"                  , configfile.bool_c_var(False)),
-        ("ENABLE_COLLECTD"             , configfile.bool_c_var(False)),
-        ("ENABLE_LIVESTATUS"           , configfile.bool_c_var(True)),
-        ("ENABLE_NDO"                  , configfile.bool_c_var(False)),
-        ("ENABLE_NAGVIS"               , configfile.bool_c_var(False)),
-        ("ENABLE_FLAP_DETECTION"       , configfile.bool_c_var(False)),
-        ("PNP_DIR"                     , configfile.str_c_var("/opt/pnp4nagios")),
-        ("PNP_URL"                     , configfile.str_c_var("/pnp4nagios")),
-        ("NAGVIS_DIR"                  , configfile.str_c_var("/opt/nagvis4icinga")),
-        ("NAGVIS_URL"                  , configfile.str_c_var("/nagvis")),
-        ("NONE_CONTACT_GROUP"          , configfile.str_c_var("none_group")),
-        ("FROM_ADDR"                   , configfile.str_c_var(long_host_name)),
-        ("LOG_EXTERNAL_COMMANDS"       , configfile.bool_c_var(False)),
-        ("LOG_PASSIVE_CHECKS"          , configfile.bool_c_var(False)),
-        ("LOG_INITIAL_STATES"          , configfile.bool_c_var(False)),
-        ("BUILD_CONFIG_ON_STARTUP"     , configfile.bool_c_var(True)),
-        ("RETAIN_HOST_STATUS"          , configfile.bool_c_var(True)),
-        ("RETAIN_SERVICE_STATUS"       , configfile.bool_c_var(True)),
-        ("PASSIVE_HOST_CHECKS_ARE_SOFT", configfile.bool_c_var(True)),
-        ("RETAIN_PROGRAM_STATE"        , configfile.bool_c_var(False)),
-        ("USE_HOST_DEPENDENCIES"       , configfile.bool_c_var(False)),
-        ("USE_SERVICE_DEPENDENCIES"    , configfile.bool_c_var(False)),
+        ("COM_PORT"                     , configfile.int_c_var(SERVER_COM_PORT)),
+        ("NETSPEED_WARN_MULT"           , configfile.float_c_var(0.85)),
+        ("NETSPEED_CRITICAL_MULT"       , configfile.float_c_var(0.95)),
+        ("NETSPEED_DEFAULT_VALUE"       , configfile.int_c_var(10000000)),
+        ("CHECK_HOST_ALIVE_PINGS"       , configfile.int_c_var(5)),
+        ("CHECK_HOST_ALIVE_TIMEOUT"     , configfile.float_c_var(5.0)),
+        ("ENABLE_PNP"                   , configfile.bool_c_var(False)),
+        ("ENABLE_COLLECTD"              , configfile.bool_c_var(False)),
+        ("ENABLE_LIVESTATUS"            , configfile.bool_c_var(True)),
+        ("ENABLE_NDO"                   , configfile.bool_c_var(False)),
+        ("ENABLE_NAGVIS"                , configfile.bool_c_var(False)),
+        ("ENABLE_FLAP_DETECTION"        , configfile.bool_c_var(False)),
+        ("PNP_DIR"                      , configfile.str_c_var("/opt/pnp4nagios")),
+        ("PNP_URL"                      , configfile.str_c_var("/pnp4nagios")),
+        ("NAGVIS_DIR"                   , configfile.str_c_var("/opt/nagvis4icinga")),
+        ("NAGVIS_URL"                   , configfile.str_c_var("/nagvis")),
+        ("NONE_CONTACT_GROUP"           , configfile.str_c_var("none_group")),
+        ("FROM_ADDR"                    , configfile.str_c_var(long_host_name)),
+        ("LOG_EXTERNAL_COMMANDS"        , configfile.bool_c_var(False)),
+        ("LOG_PASSIVE_CHECKS"           , configfile.bool_c_var(False)),
+        ("LOG_INITIAL_STATES"           , configfile.bool_c_var(False)),
+        ("BUILD_CONFIG_ON_STARTUP"      , configfile.bool_c_var(True)),
+        ("RETAIN_HOST_STATUS"           , configfile.bool_c_var(True)),
+        ("RETAIN_SERVICE_STATUS"        , configfile.bool_c_var(True)),
+        ("PASSIVE_HOST_CHECKS_ARE_SOFT" , configfile.bool_c_var(True)),
+        ("RETAIN_PROGRAM_STATE"         , configfile.bool_c_var(False)),
+        ("USE_HOST_DEPENDENCIES"        , configfile.bool_c_var(False)),
+        ("USE_SERVICE_DEPENDENCIES"     , configfile.bool_c_var(False)),
+        ("TRANSLATE_PASSIVE_HOST_CHECKS", configfile.bool_c_var(False)),
         ("HOST_DEPENDENCIES_FROM_TOPOLOGY", configfile.bool_c_var(False)),
         ("NDO_DATA_PROCESSING_OPTIONS"    , configfile.int_c_var((2 ** 26 - 1) - (IDOMOD_PROCESS_TIMED_EVENT_DATA - IDOMOD_PROCESS_SERVICE_CHECK_DATA + IDOMOD_PROCESS_HOST_CHECK_DATA))),
         ("EVENT_BROKER_OPTIONS"           , configfile.int_c_var((2 ** 20 - 1) - (BROKER_TIMED_EVENTS + BROKER_SERVICE_CHECKS + BROKER_HOST_CHECKS))),
