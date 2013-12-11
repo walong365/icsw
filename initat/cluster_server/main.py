@@ -26,7 +26,7 @@ os.environ.setdefault("DJANGO_SETTINGS_MODULE", "initat.cluster.settings")
 
 from django.conf import settings
 from initat.cluster_server.config import global_config
-from initat.cluster_server.server import server_process
+from initat.cluster_server.server_process import server_process
 import cluster_location
 import config_tools
 import configfile
