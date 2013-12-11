@@ -21,9 +21,9 @@
 #
 """ package install, simple command structure """
 
-import time
 import logging_tools
 import subprocess
+import time
 
 # copy from command_tools.py (package mother)
 class simple_command(object):

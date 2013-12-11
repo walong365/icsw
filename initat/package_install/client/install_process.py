@@ -21,17 +21,15 @@
 #
 """ install process structures """
 
-import os
-import server_command
-import logging_tools
-import process_tools
-import threading_tools
-
-from initat.package_install.client.config import global_config, VERSION_STRING
 from initat.package_install.client.command import simple_command
-
+from initat.package_install.client.config import global_config, VERSION_STRING
 from lxml import etree # @UnresolvedImport
 from lxml.builder import E # @UnresolvedImport
+import logging_tools
+import os
+import process_tools
+import server_command
+import threading_tools
 
 def get_repo_str(in_repo):
     # copy from initat.cluster.backbone.models.package_repo.repo_str
