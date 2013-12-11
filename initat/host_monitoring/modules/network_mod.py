@@ -318,7 +318,7 @@ class net_device(object):
                 if cur_time > last_time:
                     diff_time = max(1, cur_time - last_time)
                     for key in self.nd_keys:
-                        res_dict[key].append(min(1000 * 1000 * 1000 * 1000, max(0, (cur_dict[key] - last_dict[key]) / diff_time)))
+                        res_dict[key].append(min(1000 * 1000 * 1000 * 1000 * 1000, max(0, (cur_dict[key] - last_dict[key]) / diff_time)))
                 last_time, last_dict = (cur_time, cur_dict)
         res_dict = dict([(key, sum(value) / len(value) if len(value) else 0.) for key, value in res_dict.iteritems()])
         return res_dict
