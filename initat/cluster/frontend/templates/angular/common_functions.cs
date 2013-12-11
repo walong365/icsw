@@ -123,7 +123,7 @@ angular_module_setup = (module_list, url_list=[]) ->
                 RestangularProvider.setErrorInterceptor((resp) ->
                     for key, value of resp.data
                         if typeof(value) == "object" and not key.match(/^_/)
-                            console.log key, value
+                            #console.log key, value
                             noty
                                 text : key + " : " + if typeof(value) == "string" then value else value.join(", ")
                                 type : "error"

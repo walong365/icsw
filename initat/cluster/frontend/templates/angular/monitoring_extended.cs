@@ -66,7 +66,7 @@ angular_add_simple_list_controller(
         rest_map            : [
             {"short" : "mon_period"        , "url" : "{% url 'rest:mon_period_list' %}"}
         ]
-        delete_confirm_str  : (obj) -> return "Really delete Host dependency '#{obj.name}' ?"
+        delete_confirm_str  : (obj) -> return "Really delete Host dependency template '#{obj.name}' ?"
         template_cache_list : ["mon_host_dependency_templ_row.html", "mon_host_dependency_templ_head.html"]
         new_object          : {"name" : "", "priority" : 0}
         new_object_created  : (new_obj) -> new_obj.name = ""
@@ -88,7 +88,7 @@ angular_add_simple_list_controller(
         rest_map            : [
             {"short" : "mon_period"        , "url" : "{% url 'rest:mon_period_list' %}"}
         ]
-        delete_confirm_str  : (obj) -> return "Really delete Service dependency '#{obj.name}' ?"
+        delete_confirm_str  : (obj) -> return "Really delete Service dependency template '#{obj.name}' ?"
         template_cache_list : ["mon_service_dependency_templ_row.html", "mon_service_dependency_templ_head.html"]
         new_object          : {"name" : "", "priority" : 0}
         new_object_created  : (new_obj) -> new_obj.name = ""
@@ -146,6 +146,54 @@ monitoring_extended_module.controller("mon_device_esc_templ", ["$scope", "$compi
             return true
 ])
 
+angular_add_simple_list_controller(
+    monitoring_extended_module,
+    "mon_host_dependency_base",
+    {
+        rest_url            : "{% url 'rest:mon_host_dependency_list' %}"
+        edit_template       : "mon_host_dependency.html"
+        rest_map            : [
+            {"short" : "device"            , "url" : "{% url 'rest:device_list' %}"}
+            {"short" : "mon_host_dependency_templ", "url" : "{% url 'rest:mon_host_dependency_templ_list' %}"}
+            {"short" : "mon_host_cluster", "url" : "{% url 'rest:mon_host_cluster_list' %}"}
+        ]
+        delete_confirm_str  : (obj) -> return "Really delete Host-dependency ?"
+        template_cache_list : ["mon_host_dependency_row.html", "mon_host_dependency_head.html"]
+        new_object          : {}
+        new_object_created  : (new_obj) ->
+    }
+)
+
+monitoring_extended_module.controller("mon_host_dependency", ["$scope", "$compile", "$templateCache", "Restangular",
+    ($scope, $compile, $templateCache, Restangular) ->
+        $scope.delete_ok = (obj) ->
+            return true
+])
+
+angular_add_simple_list_controller(
+    monitoring_extended_module,
+    "mon_service_dependency_base",
+    {
+        rest_url            : "{% url 'rest:mon_service_dependency_list' %}"
+        edit_template       : "mon_service_dependency.html"
+        rest_map            : [
+            {"short" : "device"             , "url" : "{% url 'rest:device_list' %}"}
+            {"short" : "mon_service_dependency_templ", "url" : "{% url 'rest:mon_service_dependency_templ_list' %}"}
+            {"short" : "mon_check_command"  , "url" : "{% url 'rest:mon_check_command_list' %}"}
+            {"short" : "mon_service_cluster", "url" : "{% url 'rest:mon_service_cluster_list' %}"}
+        ]
+        delete_confirm_str  : (obj) -> return "Really delete Service-dependency ?"
+        template_cache_list : ["mon_service_dependency_row.html", "mon_service_dependency_head.html"]
+        new_object          : {}
+        new_object_created  : (new_obj) ->
+    }
+)
+
+monitoring_extended_module.controller("mon_service_dependency", ["$scope", "$compile", "$templateCache", "Restangular",
+    ($scope, $compile, $templateCache, Restangular) ->
+        $scope.delete_ok = (obj) ->
+            return true
+])
 
 {% endinlinecoffeescript %}
 

@@ -2,7 +2,7 @@
 
 {% load i18n compress coffeescript crispy_forms_tags %}
 
-{% block title %}{% trans "Extended monitoring" %}{% endblock %}
+{% block title %}{% trans "Monitoring setup / Cluster / Dependencies" %}{% endblock %}
 
 {% block content %}
 
@@ -20,16 +20,16 @@
     {% crispy mon_host_dependency_templ_form mon_host_dependency_templ_form.helper %}
 </script>
 
-<script type="text/ng-template" id="mon_service_esc_templ.html">
-    {% crispy mon_service_esc_templ_form mon_service_esc_templ_form.helper %}
-</script>
-
-<script type="text/ng-template" id="mon_device_esc_templ.html">
-    {% crispy mon_device_esc_templ_form mon_device_esc_templ_form.helper %}
-</script>
-
 <script type="text/ng-template" id="mon_service_dependency_templ.html">
     {% crispy mon_service_dependency_templ_form mon_service_dependency_templ_form.helper %}
+</script>
+
+<script type="text/ng-template" id="mon_host_dependency.html">
+    {% crispy mon_host_dependency_form mon_host_dependency_form.helper %}
+</script>
+
+<script type="text/ng-template" id="mon_service_dependency.html">
+    {% crispy mon_service_dependency_form mon_service_dependency_form.helper %}
 </script>
 
 {% verbatim %}
@@ -164,68 +164,44 @@
     <td><input type="button" class="btn btn-danger" ng-show="delete_ok(obj)" ng-click="delete(obj)" value="delete"/></td>
 </script>
 
-<script type="text/ng-template" id="mon_service_esc_templ_head.html">
+<script type="text/ng-template" id="mon_host_dependency_head.html">
     <tr>
-        <th>Name</th>   
-        <th>First notif</th>
-        <th>Last notif</th>
-        <th>Interval</th>
-        <th>Period</th>
-        <th>rec</th>
-        <th>crit</th>
-        <th>warn</th>
-        <th>unkn</th>
-        <th>flapping</th>
-        <th>planned</th>
+        <th>Devices</th>
+        <th>Dependent devices</th>
+        <th>Template</th>
+        <th>Cluster</th>
         <th colspan="2" class="text-center">action</th>   
     </tr>
 </script>
 
-<script type="text/ng-template" id="mon_service_esc_templ_row.html">
-    <td>{{ obj.name }}</td>
-    <td>{{ obj.first_notification }}</td>
-    <td>{{ obj.last_notification }}</td>
-    <td>{{ obj.ninterval }}</td>
-    <td>{{ obj.esc_period | array_lookup:this.rest_data.mon_period:'name' }}</td>
-    <td>{{ obj.nrecovery | yesno1 }}</td>
-    <td>{{ obj.ncritical | yesno1 }}</td>
-    <td>{{ obj.nwarning | yesno1 }}</td>
-    <td>{{ obj.nunknown | yesno1 }}</td>
-    <td>{{ obj.nflapping | yesno1 }}</td>
-    <td>{{ obj.nplanned_downtime | yesno1 }}</td>
+<script type="text/ng-template" id="mon_host_dependency_row.html">
+    <td>{{ obj.devices | resolve_n2m:this.rest_data.device:'name' }}</td>
+    <td>{{ obj.dependent_devices | resolve_n2m:this.rest_data.device:'name' }}</td>
+    <td>{{ obj.mon_host_dependency_templ | array_lookup:this.rest_data.mon_host_dependency_templ:'name' }}</td>
+    <td>{{ obj.mon_host_cluster | array_lookup:this.rest_data.mon_host_cluster:'name' }}</td>
     <td><input type="button" class="btn btn-primary" ng-click="edit($event, obj)" value="modify"/></td>
     <td><input type="button" class="btn btn-danger" ng-show="delete_ok(obj)" ng-click="delete(obj)" value="delete"/></td>
 </script>
 
-<script type="text/ng-template" id="mon_device_esc_templ_head.html">
+<script type="text/ng-template" id="mon_service_dependency_head.html">
     <tr>
-        <th>Name</th>   
-        <th>First notif</th>
-        <th>Last notif</th>
-        <th>Interval</th>
-        <th>Period</th>
-        <th>ServiceEsc</th>
-        <th>rec</th>
-        <th>down</th>
-        <th>unrch</th>
-        <th>flapping</th>
-        <th>planned</th>
+        <th>Devices</th>
+        <th>Check</th>
+        <th>Dependent devices</th>
+        <th>Dependent check</th>
+        <th>Template</th>
+        <th>Cluster</th>
         <th colspan="2" class="text-center">action</th>   
     </tr>
 </script>
 
-<script type="text/ng-template" id="mon_device_esc_templ_row.html">
-    <td>{{ obj.name }}</td>
-    <td>{{ obj.first_notification }}</td>
-    <td>{{ obj.last_notification }}</td>
-    <td>{{ obj.ninterval }}</td>
-    <td>{{ obj.esc_period | array_lookup:this.rest_data.mon_period:'name' }}</td>
-    <td>{{ obj.mon_service_esc_templ | array_lookup:this.rest_data.mon_service_esc_templ:'name' }}</td>
-    <td>{{ obj.nrecovery | yesno1 }}</td>
-    <td>{{ obj.ndown | yesno1 }}</td>
-    <td>{{ obj.nunreachable | yesno1 }}</td>
-    <td>{{ obj.nflapping | yesno1 }}</td>
-    <td>{{ obj.nplanned_downtime | yesno1 }}</td>
+<script type="text/ng-template" id="mon_service_dependency_row.html">
+    <td>{{ obj.devices | resolve_n2m:this.rest_data.device:'name' }}</td>
+    <td>{{ obj.mon_check_command | array_lookup:this.rest_data.mon_check_command:'name' }}</td>
+    <td>{{ obj.dependent_devices | resolve_n2m:this.rest_data.device:'name' }}</td>
+    <td>{{ obj.dependent_mon_check_command | array_lookup:this.rest_data.mon_check_command:'name' }}</td>
+    <td>{{ obj.mon_service_dependency_templ | array_lookup:this.rest_data.mon_service_dependency_templ:'name' }}</td>
+    <td>{{ obj.mon_service_cluster | array_lookup:this.rest_data.mon_service_cluster:'name' }}</td>
     <td><input type="button" class="btn btn-primary" ng-click="edit($event, obj)" value="modify"/></td>
     <td><input type="button" class="btn btn-danger" ng-show="delete_ok(obj)" ng-click="delete(obj)" value="delete"/></td>
 </script>
@@ -238,7 +214,7 @@
                 <table class="table table-condensed table-condensed table-hover" style="width:auto;">
                     <thead monhostclusterhead></thead>
                     <tbody>
-                        <tr><td colspan="9" paginator entries="entries" pag_settings="pagSettings" per_page="5"></td></tr>
+                        <tr><td colspan="9" paginator entries="entries" pag_settings="pagSettings" per_page="20"></td></tr>
                         <tr monhostclusterrow ng-repeat="obj in entries | orderBy:'-name':true | paginator:this"></tr>
                     </tbody>
                 </table>
@@ -252,7 +228,7 @@
                 <table class="table table-condensed table-condensed table-hover" style="width:auto;">
                     <thead monserviceclusterhead></thead>
                     <tbody>
-                        <tr><td colspan="9" paginator entries="entries" pag_settings="pagSettings" per_page="5"></td></tr>
+                        <tr><td colspan="9" paginator entries="entries" pag_settings="pagSettings" per_page="20"></td></tr>
                         <tr monserviceclusterrow ng-repeat="obj in entries | orderBy:'-name':true | paginator:this"></tr>
                     </tbody>
                 </table>
@@ -266,7 +242,7 @@
                 <table class="table table-condensed table-condensed table-hover" style="width:auto;">
                     <thead monhostdependencytemplhead></thead>
                     <tbody>
-                        <tr><td colspan="9" paginator entries="entries" pag_settings="pagSettings" per_page="5"></td></tr>
+                        <tr><td colspan="9" paginator entries="entries" pag_settings="pagSettings" per_page="20"></td></tr>
                         <tr monhostdependencytemplrow ng-repeat="obj in entries | orderBy:'-name':true | paginator:this"></tr>
                     </tbody>
                 </table>
@@ -280,36 +256,36 @@
                 <table class="table table-condensed table-condensed table-hover" style="width:auto;">
                     <thead monservicedependencytemplhead></thead>
                     <tbody>
-                        <tr><td colspan="9" paginator entries="entries" pag_settings="pagSettings" per_page="5"></td></tr>
+                        <tr><td colspan="9" paginator entries="entries" pag_settings="pagSettings" per_page="20"></td></tr>
                         <tr monservicedependencytemplrow ng-repeat="obj in entries | orderBy:'-name':true | paginator:this"></tr>
                     </tbody>
                 </table>
             </div>
         </div>
     </tab>
-    <tab heading="Service escalation">
-        <div ng-controller="mon_service_esc_templ_base">
-            <div ng-controller="mon_service_esc_templ">
-                <h2>Service escalation templates ({{entries.length}} entries), <input type="button" value="create new" ng-click="create($event)"/></h2>
+    <tab heading="Host dependencies">
+        <div ng-controller="mon_host_dependency_base">
+            <div ng-controller="mon_host_dependency">
+                <h2>Host dependencies ({{entries.length}} entries), <input type="button" value="create new" ng-click="create($event)"/></h2>
                 <table class="table table-condensed table-condensed table-hover" style="width:auto;">
-                    <thead monserviceesctemplhead></thead>
+                    <thead monhostdependencyhead></thead>
                     <tbody>
-                        <tr><td colspan="9" paginator entries="entries" pag_settings="pagSettings" per_page="5"></td></tr>
-                        <tr monserviceesctemplrow ng-repeat="obj in entries | orderBy:'-name':true | paginator:this"></tr>
+                        <tr><td colspan="9" paginator entries="entries" pag_settings="pagSettings" per_page="20"></td></tr>
+                        <tr monhostdependencyrow ng-repeat="obj in entries | orderBy:'-name':true | paginator:this"></tr>
                     </tbody>
                 </table>
             </div>
         </div>
     </tab>
-    <tab heading="Device escalation">
-        <div ng-controller="mon_device_esc_templ_base">
-            <div ng-controller="mon_device_esc_templ">
-                <h2>Device escalation templates ({{entries.length}} entries), <input type="button" value="create new" ng-click="create($event)"/></h2>
+    <tab heading="Service dependencies">
+        <div ng-controller="mon_service_dependency_base">
+            <div ng-controller="mon_service_dependency">
+                <h2>Service dependencies ({{entries.length}} entries), <input type="button" value="create new" ng-click="create($event)"/></h2>
                 <table class="table table-condensed table-condensed table-hover" style="width:auto;">
-                    <thead mondeviceesctemplhead></thead>
+                    <thead monservicedependencyhead></thead>
                     <tbody>
-                        <tr><td colspan="9" paginator entries="entries" pag_settings="pagSettings" per_page="5"></td></tr>
-                        <tr mondeviceesctemplrow ng-repeat="obj in entries | orderBy:'-name':true | paginator:this"></tr>
+                        <tr><td colspan="9" paginator entries="entries" pag_settings="pagSettings" per_page="20"></td></tr>
+                        <tr monservicedependencyrow ng-repeat="obj in entries | orderBy:'-name':true | paginator:this"></tr>
                     </tbody>
                 </table>
             </div>

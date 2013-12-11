@@ -140,7 +140,8 @@ network_patterns = patterns(
 monitoring_patterns = patterns(
     "initat.cluster.frontend",
     url("^setup$"              , monitoring_views.setup.as_view()            , name="setup"),
-    url("^extsetup$"           , monitoring_views.extended_setup.as_view()   , name="extended_setup"),
+    url("^extsetupc$"          , monitoring_views.setup_cluster.as_view()    , name="setup_cluster"),
+    url("^extsetupe$"          , monitoring_views.setup_escalation.as_view() , name="setup_escalation"),
     url("^create_command$"     , monitoring_views.create_command.as_view()   , name="create_command"),
     url("^delete_command$"     , monitoring_views.delete_command.as_view()   , name="delete_command"),
     url("^xml/dev_config$"     , monitoring_views.device_config.as_view()    , name="device_config"),

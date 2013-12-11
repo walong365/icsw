@@ -2,25 +2,26 @@
 
 """ simple formulars for django / clustersoftware """
 
-import re
-from django.forms.widgets import TextInput, PasswordInput, SelectMultiple, Textarea
-from django.forms import Form, ModelForm, ValidationError, CharField, ModelChoiceField, \
-    ModelMultipleChoiceField, ChoiceField, TextInput
-from django.contrib.auth import authenticate
-from django.db.models import Q
-from django.utils.translation import ugettext_lazy as _
+# from crispy_forms.bootstrap import FormActions
+from crispy_forms.bootstrap import FormActions
 from crispy_forms.helper import FormHelper
 from crispy_forms.layout import Submit, Layout, Field, Button, Fieldset, Div, HTML
-from crispy_forms.bootstrap import FormActions
-# from crispy_forms.bootstrap import FormActions
+from django.contrib.auth import authenticate
 from django.core.urlresolvers import reverse
+from django.db.models import Q
+from django.forms import Form, ModelForm, ValidationError, CharField, ModelChoiceField, \
+    ModelMultipleChoiceField, ChoiceField, TextInput
+from django.forms.widgets import TextInput, PasswordInput, SelectMultiple, Textarea
+from django.utils.translation import ugettext_lazy as _
 from initat.cluster.backbone.models import domain_tree_node, device, category, mon_check_command, mon_service_templ, \
      domain_name_tree, user, group, device_group, home_export_list, device_config, TOP_LOCATIONS, \
      csw_permission, kernel, network, network_type, network_device_type, image, partition_table, \
      mon_period, mon_notification, mon_contact, mon_service_templ, host_check_command, \
      mon_contactgroup, mon_device_templ, mon_host_cluster, mon_service_cluster, mon_host_dependency_templ, \
-     mon_service_esc_templ, mon_device_esc_templ, mon_service_dependency_templ, package_search
+     mon_service_esc_templ, mon_device_esc_templ, mon_service_dependency_templ, package_search, \
+     mon_service_dependency, mon_host_dependency
 from initat.cluster.frontend.widgets import device_tree_widget
+import re
 
 # import PAM
 
@@ -1299,7 +1300,7 @@ class mon_host_dependency_templ_form(ModelForm):
     helper.field_class = 'col-sm-7'
     helper.ng_model = "edit_obj"
     helper.layout = Layout(
-        HTML("<h2>Host dependence template</h2>"),
+        HTML("<h2>Host dependency template</h2>"),
             Fieldset(
                 "Basic data",
                 Field("name"),
@@ -1350,6 +1351,44 @@ class mon_host_dependency_templ_form(ModelForm):
             self.fields[clear_f].empty_label = None
     class Meta:
         model = mon_host_dependency_templ
+
+class mon_host_dependency_form(ModelForm):
+    helper = FormHelper()
+    helper.form_id = "form"
+    helper.form_name = "form"
+    helper.form_class = 'form-horizontal'
+    helper.label_class = 'col-sm-3'
+    helper.field_class = 'col-sm-7'
+    helper.ng_model = "edit_obj"
+    helper.layout = Layout(
+        HTML("<h2>Host dependency</h2>"),
+            Fieldset(
+                "Basic settngs",
+                Field("mon_host_dependency_templ", ng_options="value.idx as value.name for value in rest_data.mon_host_dependency_templ | orderBy:'name'", chosen=True),
+            ),
+            Fieldset(
+                "Parent",
+                Field("devices", ng_options="value.idx as value.name for value in rest_data.device | orderBy:'name'", chosen=True),
+            ),
+            Fieldset(
+                "Child",
+                Field("dependent_devices", ng_options="value.idx as value.name for value in rest_data.device | orderBy:'name'", chosen=True),
+            ),
+            Fieldset(
+                "Cluster",
+                Field("mon_host_cluster", ng_options="value.idx as value.name for value in rest_data.mon_host_cluster | orderBy:'name'", chosen=True),
+            ),
+            FormActions(
+                Submit("submit", "", css_class="primaryAction", ng_value="get_action_string()"),
+            ),
+        )
+    def __init__(self, *args, **kwargs):
+        ModelForm.__init__(self, *args, **kwargs)
+        for clear_f in ["devices", "dependent_devices", "mon_host_dependency_templ", "mon_host_cluster"]:
+            self.fields[clear_f].queryset = empty_query_set()
+            self.fields[clear_f].empty_label = None
+    class Meta:
+        model = mon_host_dependency
 
 class mon_service_dependency_templ_form(ModelForm):
     helper = FormHelper()
@@ -1413,6 +1452,46 @@ class mon_service_dependency_templ_form(ModelForm):
             self.fields[clear_f].empty_label = None
     class Meta:
         model = mon_service_dependency_templ
+
+class mon_service_dependency_form(ModelForm):
+    helper = FormHelper()
+    helper.form_id = "form"
+    helper.form_name = "form"
+    helper.form_class = 'form-horizontal'
+    helper.label_class = 'col-sm-3'
+    helper.field_class = 'col-sm-7'
+    helper.ng_model = "edit_obj"
+    helper.layout = Layout(
+        HTML("<h2>Service dependency</h2>"),
+            Fieldset(
+                "Basic settngs",
+                Field("mon_service_dependency_templ", ng_options="value.idx as value.name for value in rest_data.mon_service_dependency_templ | orderBy:'name'", chosen=True),
+            ),
+            Fieldset(
+                "Parent",
+                Field("devices", ng_options="value.idx as value.name for value in rest_data.device | orderBy:'name'", chosen=True),
+                Field("mon_check_command", ng_options="value.idx as value.name for value in rest_data.mon_check_command | orderBy:'name'", chosen=True),
+            ),
+            Fieldset(
+                "Child",
+                Field("dependent_devices", ng_options="value.idx as value.name for value in rest_data.device | orderBy:'name'", chosen=True),
+                Field("dependent_mon_check_command", ng_options="value.idx as value.name for value in rest_data.mon_check_command | orderBy:'name'", chosen=True),
+            ),
+            Fieldset(
+                "Cluster",
+                Field("mon_service_cluster", ng_options="value.idx as value.name for value in rest_data.mon_service_cluster | orderBy:'name'", chosen=True),
+            ),
+            FormActions(
+                Submit("submit", "", css_class="primaryAction", ng_value="get_action_string()"),
+            ),
+        )
+    def __init__(self, *args, **kwargs):
+        ModelForm.__init__(self, *args, **kwargs)
+        for clear_f in ["devices", "dependent_devices", "mon_service_dependency_templ", "mon_service_cluster", "mon_check_command", "dependent_mon_check_command"]:
+            self.fields[clear_f].queryset = empty_query_set()
+            self.fields[clear_f].empty_label = None
+    class Meta:
+        model = mon_service_dependency
 
 class package_search_form(ModelForm):
     helper = FormHelper()
