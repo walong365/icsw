@@ -3,7 +3,7 @@
 # Copyright (C) 2012,2013 Andreas Lang-Nevyjel
 #
 # Send feedback to: <lang-nevyjel@init.at>
-# 
+#
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License Version 2 as
 # published by the Free Software Foundation.
@@ -18,13 +18,13 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
 
-import sys
+from initat.cluster_server import cs_base_class
 import imp
 import os.path
 import pkgutil
 import pprint
-import initat.cluster_server.cs_base_class
 import process_tools
+import sys
 
 __all__ = [cur_entry for cur_entry in [entry.split(".")[0] for entry in os.listdir(os.path.dirname(__file__)) if entry.endswith("_mod.py")] if cur_entry and not cur_entry.startswith("_")]
 
