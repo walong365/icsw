@@ -641,7 +641,10 @@ class build_process(threading_tools.process_obj):
                         act_host["process_perf_data"] = 1 if host.enable_perfdata else 0
                         if host.enable_perfdata:
                             act_host["action_url"] = "%s/index.php/graph?host=$HOSTNAME$&srv=_HOST_" % (self.gc["PNP_URL"])
-                    act_host["alias"] = ",".join(sorted(list(set([entry for entry in [host.alias, host.name, host.full_name] + ["%s.%s" % (host.name, dom_name) for dom_name in host.domain_names] if entry.strip()]))))
+                    if global_config["USE_ONLY_ALIAS_FOR_ALIAS"]:
+                        act_host["alias"] = host.alias or host.name
+                    else:
+                        act_host["alias"] = ",".join(sorted(list(set([entry for entry in [host.alias, host.name, host.full_name] + ["%s.%s" % (host.name, dom_name) for dom_name in host.domain_names] if entry.strip()]))))
                     act_host["address"] = host.valid_ip
                     # check for parents
                     parents = []
@@ -734,7 +737,7 @@ class build_process(threading_tools.process_obj):
                                 if checks_are_active:
                                     act_host["check_command"] = act_def_dev.host_check_command.name
                                 else:
-                                    self.log("disabling host check_command (passive)")
+                                    self.mach_log("disabling host check_command (passive)")
                             else:
                                 self.log("dev_template has no host_check_command set", logging_tools.LOG_LEVEL_ERROR)
                         # check for nagvis map
@@ -1186,7 +1189,7 @@ class build_process(threading_tools.process_obj):
                 # parent list
                 parent_list = []
                 # check for nagvis_maps
-                nagvis_maps = []
+                local_nagvis_maps = []
                 p_parents = host["possible_parents"]
                 for _p_val, _nd_val, p_list in p_parents:
                     # skip first host (is self)
@@ -1208,9 +1211,9 @@ class build_process(threading_tools.process_obj):
                                 parent = all_hosts_dict[parent_idx].full_name
                                 if parent in host_names and parent != host["name"]:
                                     if "_nagvis_map" in host_nc[parent][0]:
-                                        nagvis_maps.append(host_nc[parent][0]["_nagvis_map"])
-                if "_nagvis_map" not in host and nagvis_maps:
-                    host["_nagvis_map"] = nagvis_maps[0]
+                                        local_nagvis_maps.append(host_nc[parent][0]["_nagvis_map"])
+                if "_nagvis_map" not in host and local_nagvis_maps:
+                    host["_nagvis_map"] = local_nagvis_maps[0]
                 if parent_list:
                     host["parents"] = ",".join(set(parent_list))
                     for cur_parent in set(parent_list):
