@@ -19,6 +19,9 @@
 #
 """ returns status of the cluster and updates the cluster_name if necessary """
 
+from django.db.models import Q
+from initat.cluster.backbone.models import device, device_group
+from initat.cluster_server.config import global_config
 import cluster_location
 import configfile
 import cs_base_class
@@ -27,9 +30,6 @@ import os
 import pprint
 import server_command
 import sys
-from initat.cluster_server.config import global_config
-from initat.cluster.backbone.models import device, device_group
-from django.db.models import Q
 
 CLUSTER_NAME_FILE = "/etc/sysconfig/cluster/cluster_name"
 

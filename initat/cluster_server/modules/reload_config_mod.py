@@ -3,7 +3,7 @@
 # Copyright (C) 2007,2012,2013 Andreas Lang-Nevyjel
 #
 # Send feedback to: <lang-nevyjel@init.at>
-#
+# 
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License Version 2 as
 # published by the Free Software Foundation.
@@ -18,19 +18,22 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
 
-""" simple one: returns the version string """
-
+from initat.cluster_server.config import global_config
+import configfile
 import cs_base_class
 import server_command
 import sys
-from initat.cluster_server.config import global_config
 
-class version(cs_base_class.server_com):
-    class Meta:
-        show_execution_time = False
+class reload_config(cs_base_class.server_com):
     def _call(self, cur_inst):
-        cur_inst.srv_com["version"] = global_config["VERSION"]
+        configfile.read_config_from_db(global_config, self.dc, "server")
+        # log config
+        for conf_line in global_config.get_config_info():
+            self.log("Config : %s" % (conf_line))
         cur_inst.srv_com["result"].attrib.update({
-            "reply" : "version is %s" % (global_config["VERSION"]),
+            "reply" : "ok reloaded config",
             "state" : "%d" % (server_command.SRV_REPLY_STATE_OK)})
 
+if __name__ == "__main__":
+    print "Loadable module, exiting ..."
+    sys.exit(0)

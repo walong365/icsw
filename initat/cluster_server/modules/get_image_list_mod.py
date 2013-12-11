@@ -18,13 +18,13 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
 
+from initat.cluster_server.config import global_config
 import cs_base_class
 import logging_tools
 import os
 import process_tools
 import server_command
 import sys
-from initat.cluster_server.config import global_config
 
 NEEDED_IMAGE_DIRS = ["usr", "etc", "bin", "sbin", "var"]
 

@@ -19,8 +19,8 @@
 #
 """ fetches informations from files or directories """
 
-import cs_base_class
 from initat.host_monitoring import filesys_tools
+import cs_base_class
 
 class get_file_content(cs_base_class.server_com):
     def _call(self, cur_inst):

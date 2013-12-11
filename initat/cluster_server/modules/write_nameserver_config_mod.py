@@ -18,9 +18,13 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
 
+from django.db.models import Q
+from initat.cluster.backbone.models import net_ip, netdevice, device, device_variable, \
+    domain_tree_node, config, network, device_type
+from initat.cluster_server.config import global_config
 import commands
-import configfile
 import config_tools
+import configfile
 import cs_base_class
 import grp
 import ipvx_tools
@@ -32,10 +36,6 @@ import pwd
 import server_command
 import sys
 import time
-from django.db.models import Q
-from initat.cluster.backbone.models import net_ip, netdevice, device, device_variable, \
-    domain_tree_node, config, network, device_type
-from initat.cluster_server.config import global_config
 
 class write_nameserver_config(cs_base_class.server_com):
     class Meta:
@@ -151,11 +151,11 @@ class write_nameserver_config(cs_base_class.server_com):
         if False:
             if real_config_name == "name_server":
                 # get slaves
-                slave_ips = [x["ip"] for x in call_params.dc.fetchall()]
+                # slave_ips = [x["ip"] for x in call_params.dc.fetchall()]
                 sub_dir = "master"
             elif real_config_name == "name_slave":
                 # get masters
-                master_ips = [x["ip"] for x in call_params.dc.fetchall()]
+                # master_ips = [x["ip"] for x in call_params.dc.fetchall()]
                 sub_dir = "slave"
         else:
             sub_dir = "master"

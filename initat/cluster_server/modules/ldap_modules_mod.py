@@ -19,6 +19,10 @@
 #
 """ tools for modifying LDAP servers """
 
+from django.db.models import Q
+from initat.cluster.backbone.models import user, group, device_config, device, config, \
+    config_str, home_export_list
+from initat.cluster_server.config import global_config
 import commands
 import cs_base_class
 import cs_tools
@@ -31,10 +35,6 @@ import process_tools
 import server_command
 import sys
 import time
-from django.db.models import Q
-from initat.cluster.backbone.models import user, group, device_config, device, config, \
-    config_str, home_export_list
-from initat.cluster_server.config import global_config
 
 """ possible smb.conf:
 

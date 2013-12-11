@@ -18,19 +18,26 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
 
-from initat.cluster_server import cs_base_class
+import os
+import sys
+
+os.environ.setdefault("DJANGO_SETTINGS_MODULE", "initat.cluster.settings")
+
+from initat.cluster_server.modules import cs_base_class
 import imp
 import os.path
 import pkgutil
 import pprint
 import process_tools
-import sys
 
-__all__ = [cur_entry for cur_entry in [entry.split(".")[0] for entry in os.listdir(os.path.dirname(__file__)) if entry.endswith("_mod.py")] if cur_entry and not cur_entry.startswith("_")]
+imp_dir = os.path.join(os.path.dirname(__file__), "modules")
+
+__all__ = [cur_entry for cur_entry in [entry.split(".")[0] for entry in os.listdir(imp_dir) if entry.endswith("_mod.py")] if cur_entry and not cur_entry.startswith("_")]
 
 _new_hm_list = []
 for mod_name in __all__:
-    new_mod = __import__(mod_name, globals(), locals())
+    print mod_name
+    new_mod = __import__("modules.%s" % (mod_name), globals(), locals())
     _new_hm_list.extend([cur_obj for cur_obj in [getattr(new_mod, key) for key in dir(new_mod)] if type(cur_obj) == type and issubclass(cur_obj, cs_base_class.server_com)])
 
 error_log = []

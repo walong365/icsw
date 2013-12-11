@@ -19,6 +19,10 @@
 #
 """ modifies yp-databases """
 
+from django.db.models import Q
+from initat.cluster.backbone.models import user, group, device_config, \
+    config_str, home_export_list
+from initat.cluster_server.config import global_config
 import commands
 import cs_base_class
 import cs_tools
@@ -30,10 +34,6 @@ import re
 import server_command
 import shutil
 import time
-from django.db.models import Q
-from initat.cluster.backbone.models import user, group, device_config, \
-    config_str, home_export_list
-from initat.cluster_server.config import global_config
 
 class write_yp_config(cs_base_class.server_com):
     class Meta:

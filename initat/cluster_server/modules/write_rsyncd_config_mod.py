@@ -20,16 +20,16 @@
 
 """ create rsync config """
 
-import cs_base_class
-import process_tools
-import logging_tools
-import os
-import re
-import server_command
-import sys
 from django.db.models import Q
 from initat.cluster.backbone.models import image
 from initat.cluster_server.config import global_config
+import cs_base_class
+import logging_tools
+import os
+import process_tools
+import re
+import server_command
+import sys
 
 class write_rsyncd_config(cs_base_class.server_com):
     class Meta:
@@ -138,7 +138,6 @@ class write_rsyncd_config(cs_base_class.server_com):
         try:
             file(rsyncd_cf_name, "w").write("\n".join(def_lines))
         except IOError:
-            rest_
             ret_state, ret_str = (server_command.SRV_REPLY_STATE_ERROR, "error creating %s" % (rsyncd_cf_name))
         else:
             cstat, log_f = process_tools.submit_at_command("/etc/init.d/rsyncd restart", 1)

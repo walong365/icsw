@@ -18,22 +18,19 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
 
+""" simple one: returns the version string """
+
+from initat.cluster_server.config import global_config
 import cs_base_class
-import process_tools
 import server_command
 import sys
 
-class reload_nscd(cs_base_class.server_com):
+class version(cs_base_class.server_com):
+    class Meta:
+        show_execution_time = False
     def _call(self, cur_inst):
-        cstat, log_f = process_tools.submit_at_command("/etc/init.d/nscd restart", 1)
-        for log_line in log_f:
-            self.log(log_line)
-        if cstat:
-            cur_inst.srv_com["result"].attrib.update({
-                "reply" : "error unable to submit at-command (%d, please check logs) to restart nscd" % (cstat),
-                "state" : "%d" % (server_command.SRV_REPLY_STATE_ERROR)})
-        else:
-            cur_inst.srv_com["result"].attrib.update({
-                "reply" : "ok successfully restarted nscd",
-                "state" : "%d" % (server_command.SRV_REPLY_STATE_OK)})
+        cur_inst.srv_com["version"] = global_config["VERSION"]
+        cur_inst.srv_com["result"].attrib.update({
+            "reply" : "version is %s" % (global_config["VERSION"]),
+            "state" : "%d" % (server_command.SRV_REPLY_STATE_OK)})
 

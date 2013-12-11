@@ -18,23 +18,23 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
 
+from django.db.models import Q
+from initat.cluster.backbone.models import device, partition, partition_disc, partition_table, \
+     partition_fs, lvm_lv, lvm_vg, sys_partition, get_related_models, netdevice, net_ip
+from initat.cluster_server.config import global_config
+from lxml import etree # @UnresolvedImport
 import base64
 import bz2
 import config_tools
 import cs_base_class
 import logging_tools
 import net_tools
-import pprint
 import partition_tools
 import pickle
+import pprint
 import process_tools
 import server_command
 import sys
-from lxml import etree
-from django.db.models import Q
-from initat.cluster_server.config import global_config
-from initat.cluster.backbone.models import device, partition, partition_disc, partition_table, \
-     partition_fs, lvm_lv, lvm_vg, sys_partition, get_related_models, netdevice, net_ip
 
 class fetch_partition_info(cs_base_class.server_com):
     class Meta:

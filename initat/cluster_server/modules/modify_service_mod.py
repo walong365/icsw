@@ -3,7 +3,7 @@
 # Copyright (C) 2007,2012,2013 Andreas Lang-Nevyjel
 #
 # Send feedback to: <lang-nevyjel@init.at>
-# 
+#
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License Version 2 as
 # published by the Free Software Foundation.
@@ -57,4 +57,4 @@ class modify_service(cs_base_class.server_com):
 if __name__ == "__main__":
     print "Loadable module, exiting ..."
     sys.exit(0)
-    
+

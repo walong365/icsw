@@ -18,6 +18,10 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
 
+from config_tools import router_object
+from django.db.models import Q
+from initat.cluster.backbone.models import net_ip, netdevice, device, device_variable, domain_tree_node
+from initat.cluster_server.config import global_config
 import cluster_location
 import codecs
 import cs_base_class
@@ -29,10 +33,6 @@ import pprint
 import process_tools
 import server_command
 import sys
-from django.db.models import Q
-from initat.cluster.backbone.models import net_ip, netdevice, device, device_variable, domain_tree_node
-from initat.cluster_server.config import global_config
-from config_tools import router_object
 
 SSH_KNOWN_HOSTS_FILENAME = "/etc/ssh/ssh_known_hosts"
 ETC_HOSTS_FILENAME = "/etc/hosts"

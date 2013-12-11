@@ -3,7 +3,7 @@
 # Copyright (C) 2007,2012,2013 Andreas Lang-Nevyjel
 #
 # Send feedback to: <lang-nevyjel@init.at>
-# 
+#
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License Version 2 as
 # published by the Free Software Foundation.
@@ -18,20 +18,19 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
 
-import cluster_location
+""" base classes for cluster-server modules """
+
+from django.db import connection
+from initat.cluster_server.config import global_config
 import config_tools
 import io_stream_helper
 import logging_tools
-import os
 import pprint
 import process_tools
+import server_command
 import sys
 import threading_tools
 import time
-import server_command
-from django.conf import settings
-from django.db import connection
-from initat.cluster_server.config import global_config
 
 class bg_process(threading_tools.process_obj):
     class Meta:
@@ -53,7 +52,7 @@ class bg_process(threading_tools.process_obj):
         self.srv_com = server_command.srv_command(source=srv_com)
     def _start_command(self, com_name, **kwargs):
         self.log("starting command '%s'" % (com_name))
-        #print [key for key in sys.modules.keys() if key.count("cluster_s")]
+        # print [key for key in sys.modules.keys() if key.count("cluster_s")]
         import initat.cluster_server
         ex_code = initat.cluster_server.command_dict[com_name]
         loc_inst = com_instance(ex_code, self.srv_com, self.option_dict, self.Meta, self.zmq_context)
@@ -86,7 +85,7 @@ class com_instance(object):
                 self.srv_com["command"].text,
                 "self.opt_str",
                 "self.src_host",
-                0,#"self.src_port",
+                0, # "self.src_port",
                 "self.loc_ip",
                 logging_tools.get_plural("config", len(self.Meta.actual_configs)),
                 ", ".join(self.Meta.actual_configs)))
@@ -230,7 +229,7 @@ class server_com(object):
         return (doit, srv_origin, err_str)
     def __call__(self, srv_com, option_dict):
         return com_instance(self, srv_com, option_dict, self.Meta, self.process_pool.zmq_context)
-        
+
 if __name__ == "__main__":
     print "Loadable module, exiting ..."
     sys.exit(0)
