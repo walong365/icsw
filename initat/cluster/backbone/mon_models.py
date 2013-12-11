@@ -543,10 +543,10 @@ def mon_host_dependency_templ_pre_save(sender, **kwargs):
 
 class mon_host_dependency(models.Model):
     idx = models.AutoField(primary_key=True)
-    devices = models.ManyToManyField("device", related_name="mhd_devices")
+    devices = models.ManyToManyField("device", related_name="mhd_devices", null=True, blank=True)
     dependent_devices = models.ManyToManyField("device", related_name="mhd_dependent_devices")
     mon_host_dependency_templ = models.ForeignKey(mon_host_dependency_templ)
-    mon_host_cluster = models.ForeignKey(mon_host_cluster, null=True)
+    mon_host_cluster = models.ForeignKey(mon_host_cluster, null=True, blank=True)
     date = models.DateTimeField(auto_now_add=True)
     def get_id(self, devices=None, dependent_devices=None):
         # returns an unique ID
@@ -622,13 +622,13 @@ def mon_service_dependency_templ_pre_save(sender, **kwargs):
 
 class mon_service_dependency(models.Model):
     idx = models.AutoField(primary_key=True)
-    devices = models.ManyToManyField("device", related_name="msd_devices")
+    devices = models.ManyToManyField("device", related_name="msd_devices", blank=True)
     mon_check_command = models.ForeignKey("mon_check_command", related_name="msd_mcc")
     dependent_devices = models.ManyToManyField("device", related_name="msd_dependent_devices")
     dependent_mon_check_command = models.ForeignKey("mon_check_command", related_name="msd_dependent_mcc")
     mon_service_dependency_templ = models.ForeignKey(mon_service_dependency_templ)
     # overrides device and mon_check_command
-    mon_service_cluster = models.ForeignKey(mon_service_cluster, null=True)
+    mon_service_cluster = models.ForeignKey(mon_service_cluster, null=True, blank=True)
     date = models.DateTimeField(auto_now_add=True)
     def get_id(self, devices=None, dependent_devices=None):
         # returns an unique ID
