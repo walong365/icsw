@@ -36,7 +36,6 @@ __all__ = [cur_entry for cur_entry in [entry.split(".")[0] for entry in os.listd
 
 _new_hm_list = []
 for mod_name in __all__:
-    print mod_name
     new_mod = __import__("modules.%s" % (mod_name), globals(), locals())
     _new_hm_list.extend([cur_obj for cur_obj in [getattr(new_mod, key) for key in dir(new_mod)] if type(cur_obj) == type and issubclass(cur_obj, cs_base_class.server_com)])
 
