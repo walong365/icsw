@@ -1,13 +1,9 @@
 #!/usr/bin/python-init
 
-from django.conf import settings
-from django.contrib.contenttypes.models import ContentType
 from django.core.exceptions import ValidationError, ImproperlyConfigured
 from django.db import models
-from django.db.models import Q, signals, get_model
+from django.db.models import Q, signals
 from django.dispatch import receiver
-from django.forms import Textarea
-from django.utils.functional import memoize
 from initat.cluster.backbone.model_functions import _check_empty_string, _check_float, _check_integer, _check_non_empty_string, to_system_tz
 from lxml import etree # @UnresolvedImport
 from lxml.builder import E # @UnresolvedImport
@@ -255,6 +251,8 @@ class package_device_connection(models.Model):
                         if len(install_summary.xpath(".//to-install")):
                             self.installed = "y"
                         elif len(install_summary.xpath(".//to-reinstall")):
+                            self.installed = "y"
+                        elif len(install_summary.xpath(".//to-upgrade")):
                             self.installed = "y"
                         elif len(install_summary.xpath(".//to-remove")):
                             self.installed = "n"
