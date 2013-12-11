@@ -56,6 +56,6 @@ class bg_stuff(object):
     def send_mail(self, to_addr, subject, msg_body):
         new_mail = mail_tools.mail(subject, "%s@%s" % (global_config["FROM_NAME"], global_config["FROM_ADDR"]), to_addr, msg_body)
         new_mail.set_server(global_config["MAILSERVER"], global_config["MAILSERVER"])
-        stat, log_lines = new_mail.send_mail()
+        _stat, log_lines = new_mail.send_mail()
         return log_lines
 
