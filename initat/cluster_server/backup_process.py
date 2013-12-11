@@ -31,13 +31,6 @@ import stat
 import threading_tools
 import time
 
-try:
-    from initat.cluster_server.cluster_server_version import VERSION_STRING
-except ImportError:
-    VERSION_STRING = "?.?"
-
-SERVER_PORT = 8004
-
 class dummy_file(file):
     ending = None
 
