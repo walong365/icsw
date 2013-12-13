@@ -21,21 +21,16 @@
 #
 """ cluster-config-server, build process """
 
-import os
-
-os.environ.setdefault("DJANGO_SETTINGS_MODULE", "initat.cluster.settings")
-
+from django.db import connection
+from django.db.models import Q
+from initat.cluster.backbone.models import device, network, config, cached_log_status, log_source
+from initat.cluster_config_server.build_client import build_client
+from initat.cluster_config_server.build_container import generated_tree, build_container
+from initat.cluster_config_server.config import global_config
 import config_tools
 import logging_tools
 import threading_tools
 import time
-from django.db import connection
-from django.db.models import Q
-from initat.cluster.backbone.models import device, network, config, cached_log_status, log_source
-
-from initat.cluster_config_server.config import global_config
-from initat.cluster_config_server.build_client import build_client
-from initat.cluster_config_server.build_container import generated_tree, build_container
 
 def pretty_print(name, obj, offset):
     lines = []

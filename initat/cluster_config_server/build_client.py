@@ -188,9 +188,11 @@ class build_client(object):
             try:
                 os.mkdir(node_dir)
             except OSError:
-                self.log("cannot create config_directory %s: %s" % (node_dir,
-                                                                    process_tools.get_except_info()),
-                         logging_tools.LOG_LEVEL_ERROR)
+                self.log(
+                    "cannot create config_directory %s: %s" % (
+                        node_dir,
+                        process_tools.get_except_info()),
+                    logging_tools.LOG_LEVEL_ERROR)
                 success = False
             else:
                 self.log("created config directory %s" % (node_dir))

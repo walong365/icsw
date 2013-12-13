@@ -21,27 +21,22 @@
 #
 """ cluster-config-server, server part """
 
-import os
-
-os.environ.setdefault("DJANGO_SETTINGS_MODULE", "initat.cluster.settings")
-
-import configfile
+from django.db import connection
+from django.db.models import Q
+from initat.cluster.backbone.models import device
+from initat.cluster_config_server.build_process import build_process
+from initat.cluster_config_server.config import global_config
+from initat.cluster_config_server.config_control import config_control
+from lxml import etree # @UnresolvedImport
+from lxml.builder import E # @UnresolvedImport
 import cluster_location
+import configfile
 import logging_tools
 import process_tools
 import server_command
 import threading_tools
 import uuid_tools
 import zmq
-from django.db import connection
-from django.db.models import Q
-from lxml import etree # @UnresolvedImport
-from lxml.builder import E # @UnresolvedImport
-from initat.cluster.backbone.models import device
-
-from initat.cluster_config_server.build_process import build_process
-from initat.cluster_config_server.config import global_config
-from initat.cluster_config_server.config_control import config_control
 
 class server_process(threading_tools.process_pool):
     def __init__(self):
