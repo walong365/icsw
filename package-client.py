@@ -24,4 +24,4 @@
 import sys
 
 from initat.package_install.client.main import main
-sys.exit(main.main())
+sys.exit(main())
