@@ -648,9 +648,21 @@ class device(models.Model):
         unique_together = [("name", "domain_tree_node"), ]
 
 class device_serializer(serializers.ModelSerializer):
+    full_name = serializers.Field(source="full_name")
     class Meta:
         model = device
-        fields = ("idx", "name") # , "device_group", "comment")
+        fields = ("idx", "name", "device_group", "device_type",
+            "comment", "full_name", "domain_tree_node", "enabled",
+            )
+
+class device_serializer_package_state(device_serializer):
+    package_device_connection_set = package_device_connection_serializer(many=True)
+    class Meta:
+        model = device
+        fields = ("idx", "name", "device_group", "device_type",
+            "comment", "full_name", "domain_tree_node", "enabled",
+            "package_device_connection_set",
+            )
 
 @receiver(signals.pre_save, sender=device)
 def device_pre_save(sender, **kwargs):
@@ -872,7 +884,7 @@ class device_group_serializer(serializers.ModelSerializer):
         return in_dict
     class Meta:
         model = device_group
-        fields = ("idx", "name", "description")
+        fields = ("idx", "name", "description", "cluster_device_group", "enabled", "device",)
 
 @receiver(signals.pre_save, sender=device_group)
 def device_group_pre_save(sender, **kwargs):

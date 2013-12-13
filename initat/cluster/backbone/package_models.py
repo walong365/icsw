@@ -91,6 +91,8 @@ class package_search(models.Model):
             results="%d" % (self.results))
     def __unicode__(self):
         return self.search_string
+    class CSW_Meta:
+        fk_ignore_list = ["package_search_result"]
 
 class package_search_serializer(serializers.ModelSerializer):
     class Meta:
@@ -120,13 +122,15 @@ class package_search_result(models.Model):
     copied = models.BooleanField(default=False)
     package_repo = models.ForeignKey(package_repo, null=True)
     created = models.DateTimeField(auto_now_add=True)
-    def create_package(self):
+    def create_package(self, exact=True):
         new_p = package(
             name=self.name,
             version=self.version,
             kind=self.kind,
             arch=self.arch,
-            package_repo=self.package_repo)
+            package_repo=self.package_repo,
+            always_latest=not exact,
+            )
         try:
             new_p.save()
         except:
@@ -162,6 +166,7 @@ class package(models.Model):
         ("package", "Package"),
         ("patch"  , "Patch"),
     ))
+    always_latest = models.BooleanField(default=False)
     arch = models.CharField(max_length=32, default="")
     # hard to determine ...
     size = models.IntegerField(default=0)
@@ -193,6 +198,10 @@ class package(models.Model):
         db_table = u'package'
         unique_together = (("name", "version", "arch", "kind",),)
 
+class package_serializer(serializers.ModelSerializer):
+    class Meta:
+        model = package
+
 class package_device_connection(models.Model):
     idx = models.AutoField(primary_key=True)
     device = models.ForeignKey("device")
@@ -212,7 +221,7 @@ class package_device_connection(models.Model):
     created = models.DateTimeField(auto_now_add=True)
     response_type = models.CharField(max_length=16, choices=(
         ("zypper_xml", "zypper_xml"),
-        ("yum_flat", "yum_flat"),
+        ("yum_flat"  , "yum_flat"),
         ("unknown"   , "unknown"),
         ), default="zypper_xml")
     response_str = models.TextField(max_length=65535, default="")
@@ -304,3 +313,6 @@ class package_device_connection(models.Model):
     class Meta:
         pass
 
+class package_device_connection_serializer(serializers.ModelSerializer):
+    class Meta:
+        model = package_device_connection

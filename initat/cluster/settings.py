@@ -22,7 +22,6 @@ if "START_VIA_RC" in os.environ:
     DEBUG = False
 else:
     DEBUG = os.uname()[1].split(".")[0] in ["slayer", "eddie", "sieghart"]
-DEBUG = False
 
 TEMPLATE_DEBUG = DEBUG
 
