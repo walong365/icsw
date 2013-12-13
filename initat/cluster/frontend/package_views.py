@@ -13,10 +13,11 @@ from initat.cluster.backbone.models import package_repo, package_search, user, \
      device, device_variable, to_system_tz
 from initat.cluster.frontend.helper_functions import contact_server, xml_wrapper, get_listlist
 from initat.core.render import render_me
-from initat.cluster.frontend.forms import package_search_form
+from initat.cluster.frontend.forms import package_search_form, package_action_form
 from lxml.builder import E # @UnresolvedImports
 import logging
 import logging_tools
+import json
 import pprint
 import re
 import server_command
@@ -29,7 +30,16 @@ class repo_overview(View):
     def get(self, request):
         return render_me(request, "package_repo_overview.html", {
             "package_search_form" : package_search_form(request=request),
+            "package_action_form" : package_action_form(),
             })()
+    @method_decorator(xml_wrapper)
+    def post(self, request):
+        cur_mode = request.POST.get("mode", None)
+        if cur_mode in ["rescan_repos", "reload_searches", "sync_repos"]:
+            srv_com = server_command.srv_command(command=cur_mode)
+            _result = contact_server(request, "tcp://localhost:8007", srv_com, timeout=10, log_result=True)
+        else:
+            request.xml_response.error("unknown mode '%s'" % (cur_mode))
 
 def reload_searches(request):
     srv_com = server_command.srv_command(command="reload_searches")
@@ -60,16 +70,18 @@ class use_package(View):
     @method_decorator(xml_wrapper)
     def post(self, request):
         _post = request.POST
+        exact = True if int(_post["exact"]) else False
         try:
             cur_sr = package_search_result.objects.get(Q(pk=_post["pk"]))
         except package_search_result.DoesNotExist:
             request.xml_response.error("package_result not found", logger)
         else:
-            request.xml_response.info("copied package_result", logger)
             try:
-                _new_p = cur_sr.create_package()
+                _new_p = cur_sr.create_package(exact=exact)
             except IntegrityError, what:
                 request.xml_response.error("error modifying: %s" % (unicode(what)), logger)
+            else:
+                request.xml_response.info("copied package_result", logger)
 
 class unuse_package(View):
     @method_decorator(login_required)
@@ -133,10 +145,7 @@ class add_package(View):
         _post = request.POST
         num_ok, num_error = (0, 0)
         new_entries = E.entries()
-        for dev_pk_s, pack_pk_s in get_listlist(_post, "add_list", []):
-            dev_pk, pack_pk = (
-                int(dev_pk_s.split("__")[1]),
-                int(pack_pk_s.split("__")[1]))
+        for dev_pk, pack_pk in json.loads(_post["add_list"]):
             try:
                 _cur_pdc = package_device_connection.objects.get(Q(device=dev_pk) & Q(package=pack_pk))
             except package_device_connection.DoesNotExist:
@@ -151,7 +160,7 @@ class add_package(View):
         if num_ok:
             request.xml_response.info("added %s" % (logging_tools.get_plural("connection", num_ok)), logger)
         if num_error:
-            request.xml_response.error("%s already existed" % (logging_tools.get_plural("connection", num_error)), logger)
+            request.xml_response.warn("%s already existed" % (logging_tools.get_plural("connection", num_error)), logger)
         request.xml_response["result"] = new_entries
 
 class remove_package(View):
@@ -160,8 +169,7 @@ class remove_package(View):
     def post(self, request):
         _post = request.POST
         num_ok, num_error = (0, 0)
-        for pdc_pk_s in _post.getlist("rem_list[]"):
-            pdc_pk = int(pdc_pk_s.split("__")[1])
+        for pdc_pk in json.loads(_post["remove_list"]):
             try:
                 cur_pdc = package_device_connection.objects.get(Q(pk=pdc_pk))
             except package_device_connection.DoesNotExist:
@@ -172,7 +180,36 @@ class remove_package(View):
         if num_ok:
             request.xml_response.info("%s removed" % (logging_tools.get_plural("connection", num_ok)), logger)
         if num_error:
-            request.xml_response.error("%s not exists" % (logging_tools.get_plural("connection", num_error)), logger)
+            request.xml_response.error("%s not there" % (logging_tools.get_plural("connection", num_error)), logger)
+
+class change_package(View):
+    @method_decorator(login_required)
+    @method_decorator(xml_wrapper)
+    def post(self, request):
+        _post = request.POST
+        c_dict = json.loads(_post["change_dict"])
+        edit_obj = c_dict["edit_obj"]
+        changed = 0
+        for cur_pdc in package_device_connection.objects.filter(Q(pk__in=c_dict["pdc_list"])):
+            change = False
+            for f_name in ["force_flag", "nodeps_flag"]:
+                if edit_obj[f_name] != "---":
+                    t_flag = True if edit_obj[f_name] == "set" else False
+                    if t_flag != getattr(cur_pdc, f_name):
+                        setattr(cur_pdc, f_name, t_flag)
+                        change = True
+            if edit_obj["target_state"] != "---" and edit_obj["target_state"] != cur_pdc.target_state:
+                change = True
+                cur_pdc.target_state = edit_obj["target_state"]
+            if change:
+                changed += 1
+                cur_pdc.save()
+        request.xml_response.info("%s updated" % (logging_tools.get_plural("PDC", changed)), logger)
+        srv_com = server_command.srv_command(command="new_config")
+        result = contact_server(request, "tcp://localhost:8007", srv_com, timeout=10, log_result=False)
+        if result:
+            # print result.pretty_print()
+            request.xml_response.info("sent sync to server", logger)
 
 class change_target_state(View):
     @method_decorator(login_required)

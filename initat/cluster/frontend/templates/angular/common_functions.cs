@@ -6,6 +6,12 @@
 
 root = exports ? this
 
+build_lut = (list) ->
+    lut = {}
+    for value in list
+        lut[value.idx] = value
+    return lut
+
 class paginator_root
     constructor: () ->
         @dict = {}
@@ -121,9 +127,13 @@ angular_module_setup = (module_list, url_list=[]) ->
                     return data
                 )
                 RestangularProvider.setErrorInterceptor((resp) ->
+                    if typeof(resp.data) == "string"
+                        if resp.data
+                            resp.data = {"error" : resp.data}
+                        else
+                            resp.data = {}
                     for key, value of resp.data
-                        if typeof(value) == "object" and not key.match(/^_/)
-                            #console.log key, value
+                        if (typeof(value) == "object" or typeof(value) == "string") and not key.match(/^_/)
                             noty
                                 text : key + " : " + if typeof(value) == "string" then value else value.join(", ")
                                 type : "error"
@@ -275,6 +285,8 @@ angular_add_simple_list_controller = (module, name, settings) ->
                         remove_by_idx($scope.entries, obj.idx)
                         if $scope.pagSettings.conf.init
                             $scope.pagSettings.set_num_entries($scope.entries.length)
+                        if $scope.settings.post_delete
+                            $scope.settings.post_delete($scope, obj)
                     )
     ])
 
@@ -333,19 +345,27 @@ angular.module(
             return text
 ).filter("show_user", () ->
     return (user) ->
-        if user.first_name and user.last_name
-            return "#{user.login} (#{user.first_name} #{user.last_name})"
-        else if user.first_name
-            return "#{user.login} (#{user.first_name})"
-        else if user.last_name
-            return "#{user.login} (#{user.last_name})"
+        if user
+            if user.first_name and user.last_name
+                return "#{user.login} (#{user.first_name} #{user.last_name})"
+            else if user.first_name
+                return "#{user.login} (#{user.first_name})"
+            else if user.last_name
+                return "#{user.login} (#{user.last_name})"
+            else
+                return "#{user.login}"
         else
-            return "#{user.login}"
+            # in case user is undefined
+            return "???"
+).filter("datetime1", () ->
+    return (cur_dt) ->
+        return moment(cur_dt).format("ddd, D. MMM YYYY, HH:mm:ss") + ", " + moment(cur_dt).fromNow()
 )
 
 root.angular_module_setup = angular_module_setup
 root.handle_reset = handle_reset
 root.angular_add_simple_list_controller = angular_add_simple_list_controller
+root.build_lut = build_lut
 
 {% endinlinecoffeescript %}
 

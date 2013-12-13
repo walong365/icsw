@@ -31,6 +31,7 @@ root = exports ? this
 
 root.sidebar_target_func = undefined
 root.sidebar_call_devsel_link_when_loaded = false
+root.sidebar = undefined
 
 class sidebar_tree
     constructor: (@tabs_div) ->
@@ -51,11 +52,14 @@ class sidebar_tree
         $("input#device_selection").focus().on("keyup", @apply_device_selection)
         $("input#devsel_clear").on("click", @clear_selection)
         # check for installed sidebar_target_func
-        if root.sidebar_target_func
-            $("input#devsel_button").show().on("click", @devsel_func)
+        @install_devsel_func()
         # indepent of sidebar mode
         @init_gauge_info()
         @update_gauge_info()
+    install_devsel_func: () =>
+        if root.sidebar_target_func
+            if $("input#devsel_button:visible").length == 0
+                $("input#devsel_button").show().on("click", @devsel_func)
     devsel_func: (event) =>
         # all nodes
         sel_keys = (value.data.key for value in @active_div.dynatree("getSelectedNodes"))
@@ -509,6 +513,8 @@ root.init_sidebar = ->
 root.install_devsel_link = (t_func, fire_when_loaded) ->
     root.sidebar_target_func = t_func
     root.sidebar_call_devsel_link_when_loaded = fire_when_loaded
+    if root.sidebar    
+        root.sidebar.install_devsel_func()
 
 {% endinlinecoffeescript %}
 

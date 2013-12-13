@@ -183,6 +183,7 @@ pack_patterns = patterns(
     url("refresh"              , package_views.refresh.as_view()            , name="refresh"),
     url("pack/add"             , package_views.add_package.as_view()        , name="add_package"),
     url("pack/remove"          , package_views.remove_package.as_view()     , name="remove_package"),
+    url("pack/change"          , package_views.change_package.as_view()     , name="change_pdc"),
     url("pack/change_tstate"   , package_views.change_target_state.as_view(), name="change_target_state"),
     url("pack/change_pflag"    , package_views.change_package_flag.as_view(), name="change_package_flag"),
     url("pack/sync"            , package_views.synchronize.as_view()        , name="synchronize"),
@@ -206,6 +207,9 @@ for obj_name in rest_views.REST_LIST:
         url("^%s$" % (obj_name), getattr(rest_views, "%s_list" % (obj_name)).as_view(), name="%s_list" % (obj_name)),
         url("^%s/(?P<pk>[0-9]+)$" % (obj_name), getattr(rest_views, "%s_detail" % (obj_name)).as_view(), name="%s_detail" % (obj_name)),
     ])
+rpl.extend([
+    url("^device_tree$", rest_views.device_tree_list.as_view(), name="device_tree_list"),
+])
 
 rest_patterns = patterns(
     "initat.cluster.frontend",
@@ -216,7 +220,7 @@ rest_patterns = patterns(
     url("^api/group/(?P<pk>[0-9]+)/$", rest_views.group_detail_h.as_view(), name="group_detail_h"),
     *rpl
 )
-rest_patterns = format_suffix_patterns(rest_patterns)
+# rest_patterns = format_suffix_patterns(rest_patterns)
 
 doc_patterns = patterns(
     "",

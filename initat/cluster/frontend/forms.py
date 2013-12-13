@@ -19,7 +19,7 @@ from initat.cluster.backbone.models import domain_tree_node, device, category, m
      mon_period, mon_notification, mon_contact, mon_service_templ, host_check_command, \
      mon_contactgroup, mon_device_templ, mon_host_cluster, mon_service_cluster, mon_host_dependency_templ, \
      mon_service_esc_templ, mon_device_esc_templ, mon_service_dependency_templ, package_search, \
-     mon_service_dependency, mon_host_dependency
+     mon_service_dependency, mon_host_dependency, package_device_connection
 from initat.cluster.frontend.widgets import device_tree_widget
 import re
 
@@ -1517,3 +1517,31 @@ class package_search_form(ModelForm):
         self.fields["user"].initial = request.user
     class Meta:
         model = package_search
+
+class package_action_form(Form):
+    helper = FormHelper()
+    helper.form_id = "form"
+    helper.form_name = "form"
+    helper.form_class = 'form-horizontal'
+    helper.label_class = 'col-sm-3'
+    helper.field_class = 'col-sm-7'
+    helper.ng_model = "edit_obj"
+    target_state = ChoiceField()
+    nodeps_flag = ChoiceField()
+    force_flag = ChoiceField()
+    helper.layout = Layout(
+        HTML("<h2>PDC action</h2>"),
+            Fieldset(
+                "Basic data",
+                Field("target_state", ng_options="key as value for (key, value) in target_states", initial="keep", chosen=True),
+            ),
+            Fieldset(
+                "Flags",
+                Field("nodeps_flag", ng_options="key as value for (key, value) in flag_states", initital="keep", chosen=True),
+                Field("force_flag", ng_options="key as value for (key, value) in flag_states", initial="keep", chosen=True),
+            ),
+            FormActions(
+                Submit("submit", "", css_class="primaryAction", ng_value="submit"),
+            ),
+        )
+
