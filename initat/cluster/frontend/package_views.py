@@ -80,6 +80,8 @@ class use_package(View):
                 _new_p = cur_sr.create_package(exact=exact)
             except IntegrityError, what:
                 request.xml_response.error("error modifying: %s" % (unicode(what)), logger)
+            except ValidationError, what:
+                request.xml_response.error("error creating: %s" % (unicode(what)), logger)
             else:
                 request.xml_response.info("copied package_result", logger)
 

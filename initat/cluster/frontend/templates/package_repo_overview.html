@@ -192,15 +192,17 @@
                     </thead>
                     <tbody>
                         <tr ng-repeat="pack in entries">
-                           <td>
-                               {{ pack.name }}
-                           </td>
-                           <td>
-                               <input type="button" class="btn btn-primary btn-xs" ng-click="change_package_sel(pack, 1)" value="S"></input>
-                               <input type="button" class="btn btn-success btn-xs" ng-click="change_package_sel(pack, 0)" value="T"></input>
-                               <input type="button" class="btn btn-warning btn-xs" ng-click="change_package_sel(pack, -1)" value="C"></input>
-                           </td>
-                           <td ng-repeat="device in devices" istate pdc="state_dict[device.idx][pack.idx]" pdcs="$parent.selected_pdcs"></td>
+                            <td>
+                                 {{ pack.name }}
+                                <span ng-show="pack.always_latest == false">{{ pack.version }}</span>
+                                <span ng-show="pack.always_latest == true">&lt;latest&gt;</span>
+                            </td>
+                            <td>
+                                <input type="button" class="btn btn-primary btn-xs" ng-click="change_package_sel(pack, 1)" value="S"></input>
+                                <input type="button" class="btn btn-success btn-xs" ng-click="change_package_sel(pack, 0)" value="T"></input>
+                                <input type="button" class="btn btn-warning btn-xs" ng-click="change_package_sel(pack, -1)" value="C"></input>
+                            </td>
+                            <td ng-repeat="device in devices" istate pdc="state_dict[device.idx][pack.idx]" pdcs="$parent.selected_pdcs"></td>
                         </tr>
                     </tbody>
                 </table>
