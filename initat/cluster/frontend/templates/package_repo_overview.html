@@ -154,11 +154,11 @@
         </div>
         <div ng-controller="package_search_result_base">
             <div ng-show="entries.length > 0">
-                <h3>Search results for '{{ shared_data.result_obj.last_search_string }}' ({{ entries.length}} entries)</h3>
+                <h3>Search results for '{{ shared_data.result_obj.last_search_string }}' ({{ entries | paginator_filter:this | array_length }} entries)</h3>
                 <table class="table table-condensed table-condensed table-hover" style="width:auto;">
                     <thead packagesearchresulthead></thead>
                     <tbody>
-                        <tr><td colspan="9" paginator entries="entries" pag_settings="pagSettings" per_page="15"></td></tr>
+                        <tr><td colspan="9" paginator entries="entries" pag_settings="pagSettings" per_page="15" paginator_filter="1"></td></tr>
                         <tr packagesearchresultrow ng-repeat="obj in entries | orderBy:'-name':true | paginator:this"></tr>
                     </tbody>
                 </table>
@@ -169,8 +169,13 @@
         <div ng-controller="package_base">
             <div ng-controller="install">
                 <h3>
-                    Grid ({{ entries.length }} packages, {{ devices.length }} devices), {{ selected_pdcs_length() }} selected,
-                    <input ng-show="selected_pdcs_length()" type="button" class="btn btn-success btm-sm" value="action" ng-click="action($event)"></input>
+                    <form class="form-inline" role="form">
+                        Grid ({{ entries.length }} packages, {{ devices.length }} devices), {{ selected_pdcs_length() }} selected, filter:
+                        <div class="form-group">
+                            <input ng-model="package_filter" class="form-control input-sm""></input>
+                        </div>,
+                        <input ng-show="selected_pdcs_length()" type="button" class="btn btn-success btm-sm" value="action" ng-click="action($event)"></input>
+                    </form>
                 </h3>
                 <table class="table table-condensed" style="width:auto;">
                     <thead>
@@ -191,9 +196,9 @@
                        </tr>
                     </thead>
                     <tbody>
-                        <tr ng-repeat="pack in entries">
+                        <tr ng-repeat="pack in entries | filter:package_filter">
                             <td>
-                                 {{ pack.name }}
+                                {{ pack.name }}
                                 <span ng-show="pack.always_latest == false">{{ pack.version }}</span>
                                 <span ng-show="pack.always_latest == true">&lt;latest&gt;</span>
                             </td>
@@ -206,11 +211,11 @@
                         </tr>
                     </tbody>
                 </table>
-                <h3>Packages ({{ entries.length }} entries)</h3>
+                <h3>Packages ({{ entries | paginator_filter:this | array_length }} entries)</h3>
                 <table class="table table-condensed table-condensed table-hover" style="width:auto;">
                     <thead packagehead></thead>
                     <tbody>
-                        <tr><td colspan="9" paginator entries="entries" pag_settings="pagSettings" per_page="10"></td></tr>
+                        <tr><td colspan="9" paginator entries="entries" pag_settings="pagSettings" per_page="10" paginator_filter="1"></td></tr>
                         <tr packagerow ng-repeat="obj in entries | orderBy:'-search_string':true | paginator:this"></tr>
                     </tbody>
                 </table>

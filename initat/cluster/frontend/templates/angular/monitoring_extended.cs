@@ -23,7 +23,7 @@ angular_add_simple_list_controller(
         delete_confirm_str  : (obj) -> return "Really delete host cluster '#{obj.name}' ?"
         template_cache_list : ["mon_host_cluster_row.html", "mon_host_cluster_head.html"]
         new_object          : {"name" : "", "description" : "new host cluster"},
-        new_object_created  : (new_obj) -> new_obj.name = ""
+        object_created  : (new_obj) -> new_obj.name = ""
     }
 )
 
@@ -47,7 +47,7 @@ angular_add_simple_list_controller(
         delete_confirm_str  : (obj) -> return "Really delete service cluster '#{obj.name}' ?"
         template_cache_list : ["mon_service_cluster_row.html", "mon_service_cluster_head.html"]
         new_object          : {"name" : "", "description" : "new service cluster"},
-        new_object_created  : (new_obj) -> new_obj.name = ""
+        object_created  : (new_obj) -> new_obj.name = ""
     }
 )
 
@@ -69,7 +69,7 @@ angular_add_simple_list_controller(
         delete_confirm_str  : (obj) -> return "Really delete Host dependency template '#{obj.name}' ?"
         template_cache_list : ["mon_host_dependency_templ_row.html", "mon_host_dependency_templ_head.html"]
         new_object          : {"name" : "", "priority" : 0}
-        new_object_created  : (new_obj) -> new_obj.name = ""
+        object_created  : (new_obj) -> new_obj.name = ""
     }
 )
 
@@ -91,7 +91,7 @@ angular_add_simple_list_controller(
         delete_confirm_str  : (obj) -> return "Really delete Service dependency template '#{obj.name}' ?"
         template_cache_list : ["mon_service_dependency_templ_row.html", "mon_service_dependency_templ_head.html"]
         new_object          : {"name" : "", "priority" : 0}
-        new_object_created  : (new_obj) -> new_obj.name = ""
+        object_created  : (new_obj) -> new_obj.name = ""
     }
 )
 
@@ -113,7 +113,7 @@ angular_add_simple_list_controller(
         delete_confirm_str  : (obj) -> return "Really delete Service escalation template '#{obj.name}' ?"
         template_cache_list : ["mon_service_esc_templ_row.html", "mon_service_esc_templ_head.html"]
         new_object          : {"name" : ""}
-        new_object_created  : (new_obj) -> new_obj.name = ""
+        object_created  : (new_obj) -> new_obj.name = ""
     }
 )
 
@@ -136,7 +136,7 @@ angular_add_simple_list_controller(
         delete_confirm_str  : (obj) -> return "Really delete Device escalation template '#{obj.name}' ?"
         template_cache_list : ["mon_device_esc_templ_row.html", "mon_device_esc_templ_head.html"]
         new_object          : {"name" : ""}
-        new_object_created  : (new_obj) -> new_obj.name = ""
+        object_created  : (new_obj) -> new_obj.name = ""
     }
 )
 
@@ -160,7 +160,7 @@ angular_add_simple_list_controller(
         delete_confirm_str  : (obj) -> return "Really delete Host-dependency ?"
         template_cache_list : ["mon_host_dependency_row.html", "mon_host_dependency_head.html"]
         new_object          : {}
-        new_object_created  : (new_obj) ->
+        object_created  : (new_obj) ->
     }
 )
 
@@ -185,7 +185,7 @@ angular_add_simple_list_controller(
         delete_confirm_str  : (obj) -> return "Really delete Service-dependency ?"
         template_cache_list : ["mon_service_dependency_row.html", "mon_service_dependency_head.html"]
         new_object          : {}
-        new_object_created  : (new_obj) ->
+        object_created  : (new_obj) ->
     }
 )
 

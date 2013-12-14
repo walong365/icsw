@@ -27,7 +27,7 @@ angular_add_simple_list_controller(
         delete_confirm_str  : (obj) -> return "Really delete Network type '#{obj.description}' ?"
         template_cache_list : ["network_type_row.html", "network_type_head.html"]
         new_object          : {"identifier" : "p", description : ""}
-        new_object_created  : (new_obj) -> new_obj.description = ""
+        object_created  : (new_obj) -> new_obj.description = ""
         network_types       : nw_types_dict 
     }
 )
@@ -45,7 +45,7 @@ angular_add_simple_list_controller(
             "description" : ""
             "mac_bytes"   : 6
         }
-        new_object_created  : (new_obj) -> new_obj.identifier = ""
+        object_created  : (new_obj) -> new_obj.identifier = ""
     }
 )
 
@@ -66,7 +66,7 @@ angular_add_simple_list_controller(
                 "identifier"   : "",
                 "network_type" : (entry["idx"] for key, entry of $scope.rest_data.network_types when typeof(entry) == "object" and entry and entry["identifier"] == "o")[0]
             }
-        new_object_created  : (new_obj) -> new_obj.identifier = ""
+        object_created  : (new_obj) -> new_obj.identifier = ""
         fn : 
             get_production_networks : ($scope) -> 
                 prod_idx = (entry for key, entry of $scope.rest_data.network_types when typeof(entry) == "object" and entry and entry["identifier"] == "p")[0].idx

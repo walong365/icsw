@@ -22,7 +22,7 @@ angular_add_simple_list_controller(
             "alias" : "new period", "mon_range" : "00:00-24:00", "tue_range" : "00:00-24:00", "sun_range" : "00:00-24:00",
             "wed_range" : "00:00-24:00", "thu_range" : "00:00-24:00", "fri_range" : "00:00-24:00", "sat_range" : "00:00-24:00"
         }
-        new_object_created  : (new_obj) -> new_obj.name = ""
+        object_created  : (new_obj) -> new_obj.name = ""
     }
 )
 
@@ -43,7 +43,7 @@ angular_add_simple_list_controller(
         delete_confirm_str  : (obj) -> return "Really delete monitoring notification '#{obj.name}' ?"
         template_cache_list : ["mon_notification_row.html", "mon_notification_head.html"]
         new_object          : {"name" : "", "channel" : "mail", "not_type" : "service"}
-        new_object_created  : (new_obj) -> new_obj.name = ""
+        object_created  : (new_obj) -> new_obj.name = ""
     }
 )
 
@@ -68,7 +68,7 @@ angular_add_simple_list_controller(
         delete_confirm_str  : (obj) -> return "Really delete monitoring contact '#{obj.user}' ?"
         template_cache_list : ["mon_contact_row.html", "mon_contact_head.html"]
         new_object          : {"user" : ""}
-        new_object_created  : (new_obj) -> new_obj.user = null
+        object_created  : (new_obj) -> new_obj.user = null
     }
 )
 
@@ -90,7 +90,7 @@ angular_add_simple_list_controller(
         delete_confirm_str  : (obj) -> return "Really delete service template '#{obj.name}' ?"
         template_cache_list : ["mon_service_templ_row.html", "mon_service_templ_head.html"]
         new_object          : {"name" : ""}
-        new_object_created  : (new_obj) -> new_obj.name = null
+        object_created  : (new_obj) -> new_obj.name = null
     }
 )
 
@@ -109,7 +109,7 @@ angular_add_simple_list_controller(
         delete_confirm_str  : (obj) -> return "Really delete host check command '#{obj.name}' ?"
         template_cache_list : ["host_check_command_row.html", "host_check_command_head.html"]
         new_object          : {"name" : ""}
-        new_object_created  : (new_obj) -> new_obj.name = null
+        object_created  : (new_obj) -> new_obj.name = null
     }
 )
 
@@ -134,7 +134,7 @@ angular_add_simple_list_controller(
         delete_confirm_str  : (obj) -> return "Really delete Contactgroup '#{obj.name}' ?"
         template_cache_list : ["mon_contactgroup_row.html", "mon_contactgroup_head.html"]
         new_object          : {"name" : ""}
-        new_object_created  : (new_obj) -> new_obj.name = null
+        object_created  : (new_obj) -> new_obj.name = null
     }
 )
 
@@ -158,7 +158,7 @@ angular_add_simple_list_controller(
         delete_confirm_str  : (obj) -> return "Really delete device template '#{obj.name}' ?"
         template_cache_list : ["mon_device_templ_row.html", "mon_device_templ_head.html"]
         new_object          : {"name" : ""}
-        new_object_created  : (new_obj) -> new_obj.name = null
+        object_created  : (new_obj) -> new_obj.name = null
     }
 )
 

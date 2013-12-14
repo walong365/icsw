@@ -61,7 +61,7 @@ angular_add_simple_list_controller(
         post_delete : ($scope, del_obj) ->
             if $scope.shared_data.result_obj and $scope.shared_data.result_obj.idx == del_obj.idx
                 $scope.shared_data.result_obj = undefined
-        new_object_created  : (new_obj, srv_data) -> 
+        object_created  : (new_obj, srv_data) -> 
             new_obj.search_string = ""
             $.ajax
                 url     : "{% url 'pack:repo_overview' %}"
@@ -70,6 +70,8 @@ angular_add_simple_list_controller(
                 }
                 success : (xml) ->
                     parse_xml_response(xml)
+        object_modified : (edit_obj, srv_data, $scope) ->
+            $scope.reload()
         fn:
             retry : ($scope, obj) ->
                 if $scope.shared_data.result_obj and $scope.shared_data.result_obj.idx == obj.idx
@@ -85,11 +87,16 @@ angular_add_simple_list_controller(
             show : ($scope, obj) ->
                 $scope.shared_data.result_obj = obj
         init_fn:
-            ($scope) ->
-                $(document).everyTime(5000, "show_time", (i) ->
-                    if not $scope.modal_active
-                        # only reload if no modal is currently active
+            ($scope, $timeout) ->
+                $scope.$timeout = $timeout
+                $scope.reload_searches = () ->
+                    # check all search states
+                    if (obj.current_state for obj in $scope.entries when obj.current_state != "done").length and not $scope.modal_active
                         $scope.reload()
+                    $timeout($scope.reload_searches, 5000)
+                $timeout(
+                    $scope.reload_searches,
+                    5000
                 )
     }
 )
@@ -184,10 +191,11 @@ class pdc
         # clears pdc state
         delete @idx
       
-package_module.controller("install", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "restDataSource", "sharedDataSource", "$q"
-    ($scope, $compile, $filter, $templateCache, Restangular, restDataSource, sharedDataSource, $q) ->
+package_module.controller("install", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "restDataSource", "sharedDataSource", "$q", "$timeout",
+    ($scope, $compile, $filter, $templateCache, Restangular, restDataSource, sharedDataSource, $q, $timeout) ->
         # devices
         $scope.devices = []
+        $scope.package_filter = "test"
         # init state dict
         $scope.state_dict = {}
         $scope.selected_pdcs = {}
@@ -213,6 +221,7 @@ package_module.controller("install", ["$scope", "$compile", "$filter", "$templat
         # not working right now, f*ck, will draw to many widgets
         # install_devsel_link($scope.reload_devices, true)
         $scope.reload_state = () ->
+            #console.log "rls"
             Restangular.all("{% url 'rest:device_tree_list' %}".slice(1)).getList({"package_state" : true}).then(
                 (data) ->
                     #console.log "reload"
@@ -225,10 +234,8 @@ package_module.controller("install", ["$scope", "$compile", "$filter", "$templat
                             else
                                 # copy flags
                                 cur_pdc.set_pdc(pdc)
+                    $scope.reload_promise = $timeout($scope.reload_state, 10000)
             )
-        $(document).everyTime(10000, "reload_package_state", (i) ->
-            $scope.reload_state()
-        )
         $scope.change_package_sel = (cur_p, t_state) ->
             for d_key, d_value of $scope.state_dict
                 csd = d_value[cur_p.idx]
@@ -261,17 +268,26 @@ package_module.controller("install", ["$scope", "$compile", "$filter", "$templat
                            $scope.selected_pdcs[pdc.idx] = pdc
                        else if not pdc.selected and pdc.idx of $scope.selected_pdcs
                            delete $scope.selected_pdcs[pdc.idx]
+        $scope.$watch("package_filter", (new_filter) ->
+            for d_key, d_value of $scope.state_dict
+                for p_key, pdc of d_value
+                    if (not $filter("filter")([$scope.package_lut[pdc.package]], $scope.package_filter).length) and pdc.selected
+                        pdc.selected = false
+                        delete $scope.selected_pdcs[pdc.idx]
+        )
         $scope.selected_pdcs_length = () ->
             sel = 0
             for key, value of $scope.selected_pdcs
                 sel += 1
             return sel
         $scope.set_devices = (data) ->
+            if $scope.reload_promise
+                $timeout.cancle($scope.reload_promise)
             $scope.devices = data
             # device lookup table
             #$scope.device_lut = build_lut(data)
             # package lut
-            #$scope.package_lut = build_lut($scope.entries)
+            $scope.package_lut = build_lut($scope.entries)
             for dev in $scope.devices
                 if not (dev.idx of $scope.state_dict)
                     $scope.state_dict[dev.idx] = {}

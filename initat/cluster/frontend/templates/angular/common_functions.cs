@@ -4,6 +4,27 @@
 
 {% inlinecoffeescript %}
 
+{% verbatim %}
+
+icsw_paginator = '
+<form class="form-inline" role="form">
+    <span ng-show="pagSettings.conf.num_entries">
+        <input ng-show="pagSettings.conf.num_pages > 1" type="button" ng-repeat="pag_num in pagSettings.conf.page_list track by $index" value="{{ pag_num }}" ng-click="activate_page(pag_num)">
+        </input>
+        <span ng-show="pagSettings.conf.num_pages > 1">, </span>
+        showing entries {{ pagSettings.conf.start_idx + 1 }} to {{ pagSettings.conf.end_idx + 1 }}
+    </span>
+    <span ng-show="! pagSettings.conf.num_entries">
+        no entries to show
+    </span>
+    <span ng-show="pagSettings.conf.filter_enabled">
+        , filter <div class="form-group"><input ng-model="pagSettings.conf.filter" class="form-control input-sm""></input></div>
+    </span>
+</form>
+'
+
+{% endverbatim %}
+
 root = exports ? this
 
 build_lut = (list) ->
@@ -13,15 +34,15 @@ build_lut = (list) ->
     return lut
 
 class paginator_root
-    constructor: () ->
+    constructor: (@$filter) ->
         @dict = {}
     get_paginator: (name) =>
         if name not in @dict
-            @dict[name] = new paginator_class(name)
+            @dict[name] = new paginator_class(name, @$filter)
         return @dict[name]
 
 class paginator_class
-    constructor: (@name) ->
+    constructor: (@name, @$filter) ->
         @conf = {
             per_page    : 10
             num_entries : 0
@@ -31,6 +52,8 @@ class paginator_class
             act_page    : 0
             page_list   : []
             init        : false
+            filter_enabled : false
+            filter         : undefined
         }
     activate_page: (num) =>
         @conf.act_page = parseInt(num)
@@ -40,7 +63,10 @@ class paginator_class
         @conf.end_idx = (@conf.act_page - 1) * pp + pp - 1
         if @conf.end_idx >= @conf.num_entries
             @conf.end_idx = @conf.num_entries - 1
-    set_num_entries: (num) =>
+    set_entries: (el_list) =>
+        if @conf.filter_enabled
+            el_list = @$filter("filter")(el_list, @conf.filter)
+        num = el_list.length
         @conf.init = true
         @conf.num_entries = num
         pp = @conf.per_page
@@ -102,13 +128,21 @@ angular_module_setup = (module_list, url_list=[]) ->
                 $httpProvider.defaults.xsrfCookieName = 'csrftoken'
                 $httpProvider.defaults.xsrfHeaderName = 'X-CSRFToken'
         ])
-        cur_mod.filter("paginator", () ->
+        cur_mod.filter("paginator", ["$filter", ($filter) ->
             return (arr, scope) ->
                 if scope.pagSettings.conf.init 
+                    if scope.pagSettings.conf.filter_enabled
+                        arr = $filter("filter")(arr, scope.pagSettings.conf.filter)
                     return arr.slice(scope.pagSettings.conf.start_idx, scope.pagSettings.conf.end_idx + 1)
                 else
                     return arr
-        )
+        ])
+        cur_mod.filter("paginator_filter", ["$filter", ($filter) ->
+            return (arr, scope) ->
+                if scope.pagSettings.conf.filter_enabled
+                    arr = $filter("filter")(arr, scope.pagSettings.conf.filter)
+                return arr
+        ])
         cur_mod.config(["RestangularProvider", 
             (RestangularProvider) ->
                 RestangularProvider.setRestangularFields({
@@ -143,8 +177,8 @@ angular_module_setup = (module_list, url_list=[]) ->
         ])
         # in fact identical ?
         # cur_mod.service("paginatorSettings", (paginator_class))
-        cur_mod.service("paginatorSettings", [() ->
-            return new paginator_root()
+        cur_mod.service("paginatorSettings", ["$filter", ($filter) ->
+            return new paginator_root($filter)
         ])
         cur_mod.service("restDataSource", ["$q", "Restangular", ($q, Restangular) ->
             return new rest_data_source($q, Restangular)
@@ -155,23 +189,29 @@ angular_module_setup = (module_list, url_list=[]) ->
         cur_mod.directive("paginator", ($templateCache) ->
             link = (scope, element, attrs) ->
                 scope.pagSettings.conf.per_page = parseInt(attrs.perPage)
+                #scope.pagSettings.conf.filter = attrs.paginatorFilter
+                if attrs.paginatorFilter
+                    scope.pagSettings.conf.filter_enabled = if parseInt(attrs.paginatorFilter) then true else false
+                    scope.pagSettings.conf.filter = ""
                 scope.activate_page = (page_num) ->
                     scope.pagSettings.activate_page(page_num)
                 scope.$watch("entries", (new_el) ->
-                    scope.pagSettings.set_num_entries(new_el.length)
+                    scope.pagSettings.set_entries(new_el)
+                )
+                scope.$watch(
+                    () -> return scope.pagSettings.conf.filter
+                    (new_el) ->
+                        scope.pagSettings.set_entries(scope.entries)
                 )
             return {
                 restrict : "EA"
                 scope:
                     entries     : "="
                     pagSettings : "="
-                template : '{% verbatim %}<span ng-show="pagSettings.conf.num_entries">' +
-                  '<input ng-show="pagSettings.conf.num_pages > 1" type="button" ng-repeat="pag_num in pagSettings.conf.page_list track by $index" value="{{ pag_num }}" ng-click="activate_page(pag_num)">' +
-                  '</input><span ng-show="pagSettings.conf.num_pages > 1">, </span>showing entries {{ pagSettings.conf.start_idx + 1 }} to {{ pagSettings.conf.end_idx + 1 }}</span>{% endverbatim %}'
+                template : icsw_paginator
                 link     : link
             }
         )
-        
         
 handle_reset = (data, e_list, idx) ->
     # console.log "HR", data, e_list, idx
@@ -190,8 +230,8 @@ angular_add_simple_list_controller = (module, name, settings) ->
                 template : $templateCache.get(t_name)
             }
         )
-    module.controller(name, ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "sharedDataSource", "$q", 
-        ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, sharedDataSource, $q) ->
+    module.controller(name, ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "sharedDataSource", "$q", "$timeout", 
+        ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, sharedDataSource, $q, $timeout) ->
             $scope.settings = settings
             $scope.fn = settings.fn
             $scope.pagSettings = paginatorSettings.get_paginator(name)
@@ -217,7 +257,7 @@ angular_add_simple_list_controller = (module, name, settings) ->
                         $scope.rest_data[$scope.settings.rest_map[idx - (1 + base_idx)].short] = value
             )
             if $scope.settings.init_fn
-                $scope.settings.init_fn($scope)
+                $scope.settings.init_fn($scope, $timeout)
             $scope.load_data = (url, options) ->
                 return Restangular.all(url.slice(1)).getList(options)
             $scope.reload = () ->
@@ -235,15 +275,17 @@ angular_add_simple_list_controller = (module, name, settings) ->
                         $scope.rest.post($scope.new_obj).then((new_data) ->
                             $scope.entries.push(new_data)
                             if $scope.pagSettings.conf.init
-                                $scope.pagSettings.set_num_entries($scope.entries.length)
-                            if $scope.settings.new_object_created
-                                $scope.settings.new_object_created($scope.new_obj, new_data)
+                                $scope.pagSettings.set_entries($scope.entries)
+                            if $scope.settings.object_created
+                                $scope.settings.object_created($scope.new_obj, new_data)
                         )
                     else
                         $scope.edit_obj.put().then(
                             (data) -> 
                                 $.simplemodal.close()
                                 handle_reset(data, $scope.entries, $scope.edit_obj.idx)
+                                if $scope.settings.object_modified
+                                    $scope.settings.object_modified($scope.edit_obj, data, $scope)
                             (resp) -> handle_reset(resp.data, $scope.entries, $scope.edit_obj.idx)
                         )
             $scope.form_error = (field_name) ->
@@ -284,7 +326,7 @@ angular_add_simple_list_controller = (module, name, settings) ->
                             text : "deleted instance"
                         remove_by_idx($scope.entries, obj.idx)
                         if $scope.pagSettings.conf.init
-                            $scope.pagSettings.set_num_entries($scope.entries.length)
+                            $scope.pagSettings.set_entries($scope.entries)
                         if $scope.settings.post_delete
                             $scope.settings.post_delete($scope, obj)
                     )
@@ -315,6 +357,10 @@ angular.module(
                 return scope[fk_model][in_value][fk_key]
             else
                 return null_msg
+).filter(
+    "array_length", () ->
+        return (array) ->
+            return array.length
 ).filter(
     "array_lookup", () ->
         return (in_value, f_array, fk_key, null_msg) ->
