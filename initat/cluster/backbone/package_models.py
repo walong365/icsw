@@ -330,3 +330,13 @@ class package_device_connection(models.Model):
 class package_device_connection_serializer(serializers.ModelSerializer):
     class Meta:
         model = package_device_connection
+
+@receiver(signals.pre_save, sender=package_device_connection)
+def package_device_connection_pre_save(sender, **kwargs):
+    if "instance" in kwargs:
+        cur_inst = kwargs["instance"]
+        if cur_inst.target_state == "install" and cur_inst.package.always_latest:
+            # rewrite t oupgrade
+            cur_inst.target_state = "upgrade"
+        if cur_inst.target_state not in ["upgrade", "keep", "install", "erase"]:
+            raise ValidationError("unknown target state '%s'" % (cur_inst.target_state))
