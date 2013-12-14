@@ -191,6 +191,7 @@ class package(models.Model):
             kind=self.kind,
             arch=self.arch,
             size="%d" % (self.size),
+            always_latest="1" if self.always_latest else "0",
             package_repo="%d" % (self.package_repo_id or 0)
         )
     def __unicode__(self):
