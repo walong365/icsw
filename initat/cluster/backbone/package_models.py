@@ -125,7 +125,8 @@ class package_search_result(models.Model):
     def create_package(self, exact=True):
         new_p = package(
             name=self.name,
-            version=self.version,
+            # set empty version in case of always latest (== not exact)
+            version=self.version if exact else "",
             kind=self.kind,
             arch=self.arch,
             package_repo=self.package_repo,
@@ -201,6 +202,18 @@ class package(models.Model):
 class package_serializer(serializers.ModelSerializer):
     class Meta:
         model = package
+
+@receiver(signals.pre_save, sender=package)
+def package_pre_save(sender, **kwargs):
+    if "instance" in kwargs:
+        cur_inst = kwargs["instance"]
+        cur_pack = package.objects.exclude(Q(pk=cur_inst.pk)).filter(
+            Q(name=cur_inst.name) &
+            Q(always_latest=cur_inst.always_latest) &
+            Q(version=cur_inst.version) &
+            Q(arch=cur_inst.arch))
+        if len(cur_pack):
+            raise ValidationError("Package already exists")
 
 class package_device_connection(models.Model):
     idx = models.AutoField(primary_key=True)
