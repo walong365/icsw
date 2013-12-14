@@ -185,7 +185,7 @@ class pdc
         for attr_name in ["force_flag", "nodeps_flag", "installed", "target_state", "response_str", "response_type", "idx"]
             @[attr_name] = pdc[attr_name]
     update: (pdc) =>
-        for attr_name in ["installed", "package", "response_str", "response_type"]
+        for attr_name in ["installed", "package", "response_str", "response_type", "target_state"]
             @[attr_name] = pdc[attr_name]
     remove_pdc: =>
         # clears pdc state
@@ -195,7 +195,7 @@ package_module.controller("install", ["$scope", "$compile", "$filter", "$templat
     ($scope, $compile, $filter, $templateCache, Restangular, restDataSource, sharedDataSource, $q, $timeout) ->
         # devices
         $scope.devices = []
-        $scope.package_filter = "test"
+        $scope.package_filter = ""
         # init state dict
         $scope.state_dict = {}
         $scope.selected_pdcs = {}
@@ -336,7 +336,7 @@ package_module.controller("install", ["$scope", "$compile", "$filter", "$templat
             "---"  : "---"
             "keep" : "keep",
             "install" : "install",
-            "upgrate" : "upgrade",
+            "upgrade" : "upgrade",
             "erase" : "erase",
         }
         $scope.flag_states = {
