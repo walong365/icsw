@@ -92,7 +92,7 @@ class load_pdata(perfdata_object):
         )
 
 class smc_chassis_psu_pdata(perfdata_object):
-    PD_RE = re.compile("^smcipmi psu=(?P<psu_num>\d+)\s+temp=(?P<temp>\S+)\s+amps=(?P<amps>\S+)\s+fan1=(?P<fan1>\d+)\s+fan2=(?P<fan2>\d+)$")
+    PD_RE = re.compile("^smcipmi\s+psu=(?P<psu_num>\d+)\s+temp=(?P<temp>\S+)\s+amps=(?P<amps>\S+)\s+fan1=(?P<fan1>\d+)\s+fan2=(?P<fan2>\d+)$")
     PD_NAME = "smc_chassis_psu"
     def build_values(self, _xml, in_dict):
         return self._wrap(
