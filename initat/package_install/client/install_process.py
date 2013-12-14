@@ -207,6 +207,17 @@ class install_process(threading_tools.process_obj):
                     self.log("empty package_list, removing")
             else:
                 self.log("unknown command '%s', ignoring..." % (cur_com), logging_tools.LOG_LEVEL_CRITICAL)
+    def get_always_latest(self, pack_xml):
+        return int(pack_xml.attrib.get("always_latest", "0"))
+    def package_name(self, pack_xml):
+        if self.get_always_latest(pack_xml):
+            return pack_xml.attrib["name"]
+        else:
+            return "%s-%s" % (
+                pack_xml.attrib["name"],
+                pack_xml.attrib["version"],
+            )
+
 
 class yum_install_process(install_process):
     response_type = "yum_flat"
@@ -231,9 +242,8 @@ class yum_install_process(install_process):
                 #    pack_xml.attrib["name"],
                 #    pack_xml.attrib["version"],
                 # )
-                yum_com = "/bin/rpm -q %s-%s" % (
-                    pack_xml.attrib["name"],
-                    pack_xml.attrib["version"],
+                yum_com = "/bin/rpm -q %s" % (
+                    self.package_name(pack_xml),
                     )
                 self.log("transformed pdc to '%s'" % (yum_com))
         return yum_com
@@ -250,10 +260,7 @@ class yum_install_process(install_process):
         yum_com = {"install" : "install",
                    "upgrade" : "update",
                    "erase"   : "erase"}.get(cur_pdc.attrib["target_state"])
-        package_name = "%s-%s" % (
-            pack_xml.attrib["name"],
-            pack_xml.attrib["version"],
-            )
+        package_name = self.package_name(pack_xml)
         if (is_installed and yum_com in ["install", "upgrade"]) or (not is_installed and yum_com in ["erase"]):
             self.log("doing nothing")
             if is_installed:
@@ -300,30 +307,27 @@ class zypper_install_process(install_process):
                 #    pack_xml.attrib["name"],
                 #    pack_xml.attrib["version"],
                 # )
-                zypper_com = "/bin/rpm -q %s-%s" % (
-                    pack_xml.attrib["name"],
-                    pack_xml.attrib["version"],
-                    )
+                zypper_com = "/bin/rpm -q %s" % (self.package_name(pack_xml))
                 self.log("transformed pdc to '%s'" % (zypper_com))
         return zypper_com
     def _decide(self, hc_sc, cur_out):
         cur_pdc = hc_sc.data
         is_installed = False if cur_out.count("is not installed") else True
+        pack_xml = cur_pdc[0]
+        package_name = self.package_name(pack_xml)
+        always_latest = self.get_always_latest(pack_xml)
         self.log(
-            "installed flag from '%s': %s" % (
+            "installed flag from '%s': %s, target state is '%s', always_latest is '%s'" % (
                 cur_out,
                 str(is_installed),
+                cur_pdc.attrib["target_state"],
+                str(always_latest),
                 )
             )
-        pack_xml = cur_pdc[0]
         zypper_com = {"install" : "in",
                       "upgrade" : "up",
                       "erase"   : "rm"}.get(cur_pdc.attrib["target_state"])
-        package_name = "%s-%s" % (
-            pack_xml.attrib["name"],
-            pack_xml.attrib["version"],
-            )
-        if (is_installed and zypper_com in ["in", "up"]) or (not is_installed and zypper_com in ["rm"]):
+        if (is_installed and zypper_com in ["in"]) or (is_installed and zypper_com in ["up"] and not always_latest) or (not is_installed and zypper_com in ["rm"]):
             self.log("doing nothing")
             if is_installed:
                 return True, E.stdout("package %s is installed" % (package_name))
@@ -354,7 +358,7 @@ class zypper_install_process(install_process):
         self.log("%s found in %s" % (
             logging_tools.get_plural("repository", len(cur_repo_names)),
             repo_dir))
-        new_repo_names = in_repos.xpath(".//package_repo/@alias")
+        _new_repo_names = in_repos.xpath(".//package_repo/@alias")
         old_repo_dict = dict([(f_name, file(os.path.join(repo_dir, "%s.repo" % (f_name)), "r").read()) for f_name in cur_repo_names])
         new_repo_dict = dict([(in_repo.attrib["alias"], get_repo_str(in_repo)) for in_repo in in_repos])
         rewrite_repos = False
