@@ -32,11 +32,14 @@
 </script>
 
 <script type="text/ng-template" id="pdc_state.html">
-    <td ng-class="get_td_class()" class="text-center">
+    <td ng-class="get_td_class()" class="text-right">
         <span ng-show="show_pdc()">
-            <span ng-show="pdc.force_flag">F</span>
-            <span ng-show="pdc.nodeps_flag">N</span>
             {{ pdc.target_state }}
+            <div class="btn-group btn-group-xs">
+                <input type="button" class="btn disabled" ng-class="get_btn_class()" value="{{ pdc.installed }}"></input>
+                <input type="button" class="btn disabled" ng-class="{'btn-primary': pdc.force_flag, 'btn-default': !pdc.force_flag}" value="F"></input>
+                <input type="button" class="btn disabled" ng-class="{'btn-primary': pdc.nodeps_flag, 'btn-default': !pdc.nodeps_flag}" value="N"></input>
+            </div>
         </span>
         <span ng-show="!show_pdc()">
         </span>
@@ -179,33 +182,37 @@
                 </h3>
                 <table class="table table-condensed" style="width:auto;">
                     <thead>
-                       <tr>
-                           <th colspan="2">&nbsp;</th>
-                           <th ng-repeat="dev in devices">
-                              {{ dev.name }}
-                           </td>
-                       </th>
-                       <tr>
-                           <th>Package</th>
-                           <th>action</th>
-                           <th ng-repeat="dev in devices" class="text-center">
-                               <input type="button" class="btn btn-primary btn-xs" ng-click="change_device_sel(dev, 1)" value="S"></input>
-                               <input type="button" class="btn btn-success btn-xs" ng-click="change_device_sel(dev, 0)" value="T"></input>
-                               <input type="button" class="btn btn-warning btn-xs" ng-click="change_device_sel(dev, -1)" value="C"></input>
-                           </td>
-                       </tr>
+                        <tr>
+                            <th colspan="2">&nbsp;</th>
+                            <th ng-repeat="dev in devices">
+                                {{ dev.name }}
+                            </td>
+                        </th>
+                        <tr>
+                            <th>Package</th>
+                            <th>action</th>
+                            <th ng-repeat="dev in devices" class="text-center">
+                                <div class="btn-group gtn-group-sm">
+                                    <input type="button" class="btn btn-primary" ng-click="change_device_sel(dev, 1)" value="S"></input>
+                                    <input type="button" class="btn btn-success" ng-click="change_device_sel(dev, 0)" value="T"></input>
+                                    <input type="button" class="btn btn-warning" ng-click="change_device_sel(dev, -1)" value="C"></input>
+                                </div>
+                            </td>
+                        </tr>
                     </thead>
                     <tbody>
-                        <tr ng-repeat="pack in entries | filter:package_filter">
+                        <tr ng-repeat="pack in entries | filter:{'name' : package_filter}">
                             <td>
                                 {{ pack.name }}
                                 <span ng-show="pack.always_latest == false">{{ pack.version }}</span>
                                 <span ng-show="pack.always_latest == true">&lt;latest&gt;</span>
                             </td>
                             <td>
-                                <input type="button" class="btn btn-primary btn-xs" ng-click="change_package_sel(pack, 1)" value="S"></input>
-                                <input type="button" class="btn btn-success btn-xs" ng-click="change_package_sel(pack, 0)" value="T"></input>
-                                <input type="button" class="btn btn-warning btn-xs" ng-click="change_package_sel(pack, -1)" value="C"></input>
+                                <div class="btn-group gtn-group-sm">
+                                    <input type="button" class="btn btn-primary" ng-click="change_package_sel(pack, 1)" value="S"></input>
+                                    <input type="button" class="btn btn-success" ng-click="change_package_sel(pack, 0)" value="T"></input>
+                                    <input type="button" class="btn btn-warning" ng-click="change_package_sel(pack, -1)" value="C"></input>
+                                </div>
                             </td>
                             <td ng-repeat="device in devices" istate pdc="state_dict[device.idx][pack.idx]" pdcs="$parent.selected_pdcs"></td>
                         </tr>

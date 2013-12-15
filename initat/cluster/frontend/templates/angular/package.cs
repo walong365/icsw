@@ -271,7 +271,8 @@ package_module.controller("install", ["$scope", "$compile", "$filter", "$templat
         $scope.$watch("package_filter", (new_filter) ->
             for d_key, d_value of $scope.state_dict
                 for p_key, pdc of d_value
-                    if (not $filter("filter")([$scope.package_lut[pdc.package]], $scope.package_filter).length) and pdc.selected
+                    #console.log $scope.package_lut[pdc.package]
+                    if (not $filter("filter")([$scope.package_lut[pdc.package]], {"name" : $scope.package_filter}).length) and pdc.selected
                         pdc.selected = false
                         delete $scope.selected_pdcs[pdc.idx]
         )
@@ -288,6 +289,7 @@ package_module.controller("install", ["$scope", "$compile", "$filter", "$templat
             #$scope.device_lut = build_lut(data)
             # package lut
             $scope.package_lut = build_lut($scope.entries)
+            console.log $scope.entries.length, $scope.devices.length
             for dev in $scope.devices
                 if not (dev.idx of $scope.state_dict)
                     $scope.state_dict[dev.idx] = {}
@@ -394,6 +396,8 @@ package_module.controller("install", ["$scope", "$compile", "$filter", "$templat
                         return true
                     else
                         return false
+                scope.get_btn_class = () ->
+                    return "btn-" + scope.get_td_class()
                 scope.get_td_class = () ->
                     if scope.pdc and scope.pdc.idx
                         cur = scope.pdc

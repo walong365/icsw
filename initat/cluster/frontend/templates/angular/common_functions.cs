@@ -214,6 +214,7 @@ angular_module_setup = (module_list, url_list=[]) ->
         )
         
 handle_reset = (data, e_list, idx) ->
+    # used to reset form fields when requested by server reply
     # console.log "HR", data, e_list, idx
     if data._reset_list
         scope_obj = (entry for key, entry of e_list when key.match(/\d+/) and entry.idx == idx)[0]
