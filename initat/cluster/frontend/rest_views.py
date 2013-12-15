@@ -220,7 +220,7 @@ class device_tree_list(
         dev_keys = [key.split("__")[1] for key in sel_list]
         _q = device.objects.filter(Q(pk__in=dev_keys)).select_related("domain_tree_node")
         if package_state:
-            _q = _q.prefetch_related("package_device_connection_set")
+            _q = _q.prefetch_related("package_device_connection_set", "device_variable_set")
         return _q
 
 class user_list_h(generics.ListCreateAPIView):

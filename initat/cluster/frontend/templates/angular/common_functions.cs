@@ -7,10 +7,15 @@
 {% verbatim %}
 
 icsw_paginator = '
-<form class="form-inline" role="form">
+<form class="form-inline">
     <span ng-show="pagSettings.conf.num_entries">
-        <input ng-show="pagSettings.conf.num_pages > 1" type="button" ng-repeat="pag_num in pagSettings.conf.page_list track by $index" value="{{ pag_num }}" ng-click="activate_page(pag_num)">
-        </input>
+        <div class="form-group">
+            <ul class="pagination pagination-sm" ng-show="pagSettings.conf.num_pages > 1"  style="margin-top:0px; margin-bottom:0px;">
+                <li ng-repeat="pag_num in pagSettings.conf.page_list track by $index" ng-class="pagSettings.get_li_class(pag_num)">
+                    <a href="#" ng-click="activate_page(pag_num)">{{ pag_num }}</a>
+                </li>
+            </ul>
+        </div>
         <span ng-show="pagSettings.conf.num_pages > 1">, </span>
         showing entries {{ pagSettings.conf.start_idx + 1 }} to {{ pagSettings.conf.end_idx + 1 }}
     </span>
@@ -63,6 +68,11 @@ class paginator_class
         @conf.end_idx = (@conf.act_page - 1) * pp + pp - 1
         if @conf.end_idx >= @conf.num_entries
             @conf.end_idx = @conf.num_entries - 1
+    get_li_class: (num) =>
+        if num == @conf.act_page
+            return "active"
+        else
+            return ""
     set_entries: (el_list) =>
         if @conf.filter_enabled
             el_list = @$filter("filter")(el_list, @conf.filter)
@@ -82,6 +92,9 @@ class paginator_class
                 @activate_page(@conf.page_list.length)
             else
                 @activate_page(@conf.act_page)
+    clear_filter: () =>
+        if @conf.filter_enabled
+            @conf.filter = ""
 
 class shared_data_source
     constructor: () ->

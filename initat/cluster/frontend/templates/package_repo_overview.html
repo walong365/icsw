@@ -134,7 +134,10 @@
 <tabset>
     <tab heading="Package repositories">
         <div ng-controller="package_repo_base">
-            <h3>Repositories ({{entries.length}} entries), <input type="button" value="Rescan" ng-click="fn.rescan(this)"/>, <input type="button" value="Sync to clients" ng-click="fn.sync(this)"/></h3>
+            <h3>Repositories ({{entries.length}} entries),
+                <input type="button" class="btn btn-primary" value="Rescan" ng-click="fn.rescan(this)"/>,
+                <input type="button" class="btn btn-warning" value="Sync to clients" ng-click="fn.sync(this)"/>
+            </h3>
             <table class="table table-condensed table-condensed table-hover" style="width:auto;">
                 <thead packagerepohead></thead>
                 <tbody>
@@ -146,7 +149,7 @@
     </tab>
     <tab heading="Package search">
         <div ng-controller="package_search_base">
-            <h3>Searches ({{entries.length}} entries), <input type="button" value="create new" ng-click="create($event)"/></h3>
+            <h3>Searches ({{entries.length}} entries), <input type="button" class="btn btn-success" value="create new" ng-click="create($event)"/></h3>
             <table class="table table-condensed table-condensed table-hover" style="width:auto;">
                 <thead packagesearchhead></thead>
                 <tbody>
@@ -173,19 +176,22 @@
             <div ng-controller="install">
                 <h3>
                     <form class="form-inline" role="form">
-                        Grid ({{ entries.length }} packages, {{ devices.length }} devices), {{ selected_pdcs_length() }} selected, filter:
+                        <input type="button" class="btn btn-success" ng-value="fn.get_grid_style(this)" ng-click="fn.toggle_grid_style(this)"></input>
+                        ({{ devices.length }} devices, {{ entries.length }} packages), {{ selected_pdcs_length() }} selected, package filter:
                         <div class="form-group">
                             <input ng-model="package_filter" class="form-control input-sm""></input>
                         </div>,
                         <input ng-show="selected_pdcs_length()" type="button" class="btn btn-success btm-sm" value="action" ng-click="action($event)"></input>
+                        <input type="button" class="btn btn-warning btm-sm" value="sync" ng-click="send_sync()"></input>
                     </form>
                 </h3>
                 <table class="table table-condensed" style="width:auto;">
                     <thead>
                         <tr>
-                            <th colspan="2">&nbsp;</th>
+                            <th>&nbsp;</th>
+                            <th>Device</th>
                             <th ng-repeat="dev in devices">
-                                {{ dev.name }}
+                                {{ dev.name }}, {{ latest_contact(dev) }}
                             </td>
                         </th>
                         <tr>
@@ -197,7 +203,7 @@
                                     <input type="button" class="btn btn-success" ng-click="change_device_sel(dev, 0)" value="T"></input>
                                     <input type="button" class="btn btn-warning" ng-click="change_device_sel(dev, -1)" value="C"></input>
                                 </div>
-                            </td>
+                            </th>
                         </tr>
                     </thead>
                     <tbody>

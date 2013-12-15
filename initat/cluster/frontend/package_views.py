@@ -35,7 +35,7 @@ class repo_overview(View):
     @method_decorator(xml_wrapper)
     def post(self, request):
         cur_mode = request.POST.get("mode", None)
-        if cur_mode in ["rescan_repos", "reload_searches", "sync_repos"]:
+        if cur_mode in ["rescan_repos", "reload_searches", "sync_repos", "new_config"]:
             srv_com = server_command.srv_command(command=cur_mode)
             _result = contact_server(request, "tcp://localhost:8007", srv_com, timeout=10, log_result=True)
         else:

@@ -114,12 +114,19 @@ angular_add_simple_list_controller(
         template_cache_list : ["package_row.html", "package_head.html"]
         init_fn:
             ($scope) ->
+                # true for device / pdc, false for pdc / device style
+                $scope.dp_style = true
                 $scope.shared_data.package_list_changed = 0
                 $scope.$watch(
                     () -> return $scope.shared_data.package_list_changed
                     (new_el) ->
                         $scope.reload()
                 )
+        fn:
+            toggle_grid_style : ($scope) ->
+                $scope.dp_style = !$scope.dp_style
+            get_grid_style : ($scope) ->
+                return if $scope.dp_style then "Dev/PDC grid" else "PDC/Dev grid"
     }
  )
 
@@ -140,6 +147,7 @@ angular_add_simple_list_controller(
                     () -> return $scope.shared_data.result_obj
                     (new_el) ->
                         if $scope.shared_data.result_obj
+                            $scope.pagSettings.clear_filter()
                             $.blockUI()
                             $scope.load_data(
                                 "{% url 'rest:package_search_result_list' %}",
@@ -226,6 +234,7 @@ package_module.controller("install", ["$scope", "$compile", "$filter", "$templat
                 (data) ->
                     #console.log "reload"
                     for dev in data
+                        $scope.device_lut[dev.idx].latest_contact = dev.latest_contact
                         for pdc in dev.package_device_connection_set
                             cur_pdc = $scope.state_dict[dev.idx][pdc.package]
                             if cur_pdc.idx
@@ -286,11 +295,12 @@ package_module.controller("install", ["$scope", "$compile", "$filter", "$templat
                 $timeout.cancle($scope.reload_promise)
             $scope.devices = data
             # device lookup table
-            #$scope.device_lut = build_lut(data)
+            $scope.device_lut = build_lut($scope.devices)
             # package lut
             $scope.package_lut = build_lut($scope.entries)
             console.log $scope.entries.length, $scope.devices.length
             for dev in $scope.devices
+                dev.latest_contact = 0
                 if not (dev.idx of $scope.state_dict)
                     $scope.state_dict[dev.idx] = {}
                 dev_dict = $scope.state_dict[dev.idx]
@@ -377,6 +387,21 @@ package_module.controller("install", ["$scope", "$compile", "$filter", "$templat
                     $("#simplemodal-container").css("height", "auto")
                 onClose: (dialog) =>
                     $.simplemodal.close()
+        $scope.send_sync = (event) ->
+            $.blockUI()
+            $.ajax
+                url     : "{% url 'pack:repo_overview' %}"
+                data    : {
+                    "mode" : "new_config"
+                }
+                success : (xml) ->
+                    $.unblockUI()
+                    parse_xml_response(xml)
+        $scope.latest_contact = (dev) ->
+            if dev.latest_contact
+                return moment.unix(dev.latest_contact).fromNow(true)
+            else
+                return "never"
 
 ]).directive("istate", ($templateCache, $compile) ->
     return {
