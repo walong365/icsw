@@ -630,6 +630,12 @@ class device(models.Model):
                 )
             )
         return r_xml
+    def latest_contact(self):
+        lc_obj = [obj for obj in self.device_variable_set.all() if obj.name == "package_server_last_contact"]
+        if lc_obj:
+            return int(time.mktime(to_system_tz(lc_obj[0].val_date).timetuple()))
+        else:
+            return 0
     def __unicode__(self):
         return u"%s%s" % (
             self.name,
@@ -657,11 +663,13 @@ class device_serializer(serializers.ModelSerializer):
 
 class device_serializer_package_state(device_serializer):
     package_device_connection_set = package_device_connection_serializer(many=True)
+    # package_
+    latest_contact = serializers.Field(source="latest_contact")
     class Meta:
         model = device
         fields = ("idx", "name", "device_group", "device_type",
             "comment", "full_name", "domain_tree_node", "enabled",
-            "package_device_connection_set",
+            "package_device_connection_set", "latest_contact",
             )
 
 @receiver(signals.pre_save, sender=device)
