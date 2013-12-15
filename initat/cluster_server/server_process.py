@@ -271,8 +271,8 @@ class server_process(threading_tools.process_pool):
         srv_com["result"].attrib.update({
             "reply" : "no reply set",
             "state" : "%d" % (server_command.SRV_REPLY_STATE_CRITICAL)})
-        if com_name in initat.cluster_server.command_dict:
-            com_obj = initat.cluster_server.command_dict[com_name]
+        if com_name in initat.cluster_server.modules.command_dict:
+            com_obj = initat.cluster_server.modules.command_dict[com_name]
             # check config status
             do_it, srv_origin, err_str = com_obj.check_config(global_config, global_config["FORCE"])
             self.log("checking the config gave: %s (%s) %s" % (str(do_it),
@@ -433,16 +433,16 @@ class server_process(threading_tools.process_pool):
         return self.__client_error, self.__client_ret_str
     def _load_modules(self):
         self.log("init modules from cluster_server")
-        if initat.cluster_server.error_log:
-            self.log("%s while loading:" % (logging_tools.get_plural("error", len(initat.cluster_server.error_log))),
+        if initat.cluster_server.modules.error_log:
+            self.log("%s while loading:" % (logging_tools.get_plural("error", len(initat.cluster_server.modules.error_log))),
                      logging_tools.LOG_LEVEL_ERROR)
-            for line_num, err_line in enumerate(initat.cluster_server.error_log):
+            for line_num, err_line in enumerate(initat.cluster_server.modules.error_log):
                 self.log("%2d : %s" % (line_num + 1,
                                        err_line),
                          logging_tools.LOG_LEVEL_ERROR)
         del_names = []
-        for com_name in initat.cluster_server.command_names:
-            act_sc = initat.cluster_server.command_dict[com_name]
+        for com_name in initat.cluster_server.modules.command_names:
+            act_sc = initat.cluster_server.modules.command_dict[com_name]
             if not act_sc.Meta.disabled:
                 if hasattr(act_sc, "_call"):
                     act_sc.link(self)
@@ -468,6 +468,6 @@ class server_process(threading_tools.process_pool):
             else:
                 self.log("command %s is disabled" % (com_name))
         for del_name in del_names:
-            initat.cluster_server.command_names.remove(del_name)
-            del initat.cluster_server.command_dict[del_name]
-        self.log("Found %s" % (logging_tools.get_plural("command", len(initat.cluster_server.command_names))))
+            initat.cluster_server.modules.command_names.remove(del_name)
+            del initat.cluster_server.modules.command_dict[del_name]
+        self.log("Found %s" % (logging_tools.get_plural("command", len(initat.cluster_server.modules.command_names))))

@@ -30,7 +30,7 @@ from initat.cluster_server.server_process import server_process
 import cluster_location
 import config_tools
 import configfile
-import initat.cluster_server
+import initat.cluster_server.modules
 import process_tools
 
 try:
@@ -55,7 +55,7 @@ def main():
         ("LOG_NAME"            , configfile.str_c_var(prog_name)),
         ("VERBOSE"             , configfile.int_c_var(0, help_string="set verbose level [%(default)d]", short_options="v", only_commandline=True)),
         ("CONTACT"             , configfile.bool_c_var(False, only_commandline=True, help_string="directly connect cluster-server on localhost [%(default)s]")),
-        ("COMMAND"             , configfile.str_c_var("", short_options="c", choices=[""] + initat.cluster_server.command_names, only_commandline=True, help_string="command to execute [%(default)s]")),
+        ("COMMAND"             , configfile.str_c_var("", short_options="c", choices=[""] + initat.cluster_server.modules.command_names, only_commandline=True, help_string="command to execute [%(default)s]")),
         ("BACKUP_DATABASE"     , configfile.bool_c_var(False, only_commandline=True, help_string="start backup of database immediately [%(default)s], only works in DEBUG mode")),
         ("OPTION_KEYS"         , configfile.array_c_var([], short_options="D", only_commandline=True, nargs="*", help_string="optional key-value pairs (command dependent)")),
     ])
