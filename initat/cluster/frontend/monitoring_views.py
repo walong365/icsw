@@ -17,7 +17,7 @@ from initat.cluster.frontend.forms import mon_period_form, mon_notification_form
     mon_service_templ_form, host_check_command_form, mon_contactgroup_form, mon_device_templ_form, \
     mon_host_cluster_form, mon_service_cluster_form, mon_host_dependency_templ_form, \
     mon_service_esc_templ_form, mon_device_esc_templ_form, mon_service_dependency_templ_form, \
-    mon_host_dependency_form, mon_service_dependency_form
+    mon_host_dependency_form, mon_service_dependency_form, device_monitoring_form
 from initat.cluster.frontend.helper_functions import contact_server, xml_wrapper
 from initat.core.render import render_me, render_string
 from lxml import etree # @UnresolvedImports
@@ -105,7 +105,9 @@ class device_config(View):
     @method_decorator(login_required)
     def get(self, request):
         return render_me(
-            request, "monitoring_device.html",
+            request, "monitoring_device.html", {
+                "device_monitoring_form" : device_monitoring_form(),
+            }
         )()
     @method_decorator(xml_wrapper)
     def post(self, request):

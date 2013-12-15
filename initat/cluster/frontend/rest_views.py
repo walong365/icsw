@@ -6,7 +6,8 @@
 from django.db.models import Q
 from initat.cluster.backbone import models
 from initat.cluster.backbone.models import user , group, user_serializer_h, group_serializer_h, \
-     get_related_models, get_change_reset_list, device, device_serializer, device_serializer_package_state
+     get_related_models, get_change_reset_list, device, device_serializer, \
+     device_serializer_package_state, device_serializer_monitoring
 from rest_framework import mixins, generics, status, viewsets
 from rest_framework.authentication import BasicAuthentication, SessionAuthentication
 from rest_framework.decorators import api_view
@@ -108,7 +109,7 @@ class detail_view(mixins.RetrieveModelMixin,
         # print dir(resp), resp.data
         new_model = self.model.objects.get(Q(pk=kwargs["pk"]))
         c_list, r_list = get_change_reset_list(prev_model, new_model, req_changes)
-        print c_list, r_list
+        # print c_list, r_list
         resp.data["_change_list"] = c_list
         resp.data["_reset_list"] = r_list
         return resp
@@ -260,3 +261,11 @@ for obj_name in REST_LIST:
              "permission_classes"     : (IsAuthenticated,),
              "model"                  : ser_class.Meta.model,
              "serializer_class"       : ser_class})
+
+device_tree_detail = type(
+    "device_tree_detail", (detail_view,),
+    {"authentication_classes" : (SessionAuthentication,),
+     "permission_classes"     : (IsAuthenticated,),
+     "model"                  : device_serializer_monitoring.Meta.model,
+     "serializer_class"       : device_serializer_monitoring}
+)

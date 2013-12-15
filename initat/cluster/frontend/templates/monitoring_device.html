@@ -1,12 +1,72 @@
 {% extends "main.html" %}
 
-{% load i18n compress coffeescript %}
+{% load i18n compress coffeescript crispy_forms_tags %}
 
-{% block title %}{% trans "Monitoring / device" %}{% endblock %}
+{% block title %}{% trans "Monitoring,  device settings" %}{% endblock %}
 
 {% block content %}
 
-<h1 class="center">Device specific monitoring settings</h1>
+<div ng-app="icsw.monitoring_device">
+
+<script type="text/ng-template" id="monitoring_device.html">
+    {% crispy device_monitoring_form device_monitoring_form.helper %}
+</script>
+
+{% verbatim %}
+
+<script type="text/ng-template" id="mon_device_head.html">
+    <tr>
+        <th>Name</th>   
+        <th>Checks</th>
+        <th>Template</th>
+        <th>Cache mode</th>
+        <th>Disk layout</th>
+        <th>Image</th>
+        <th>PerfData</th>
+        <th>Flap</th>
+        <th>NVroot</th>
+        <th>NVparent</th>
+        <th>MonServer</th>
+        <th colspan="1" class="text-center">action</th>   
+    </tr>
+</script>
+
+<script type="text/ng-template" id="mon_device_row.html">
+    <td>{{ obj.full_name }}</td>
+    <td>{{ obj.monitor_checks | yesno1 }}</td>
+    <td>{{ obj.mon_device_templ | array_lookup:this.rest_data.mon_device_templ:"name" }}</td>
+    <td>{{ settings.md_cache_modes[obj.md_cache_mode] }}</td>
+    <td>{{ obj.act_partition_table | yesno1 }}</td>
+    <td class="text-center">
+        <span ng-if="obj.mon_ext_host"> 
+            <img ng-src="http://localhost/{{ obj.mon_ext_host | array_lookup:this.rest_data.mon_ext_host:'data_image' }}" width="24px" height="24px"></img>
+        </span>
+        <span ng-if="obj.mon_ext_host == null">
+            ---
+        </span> 
+    </td>
+    <td>{{ obj.enable_perfdata | yesno1 }}</td>
+    <td>{{ obj.flap_detection_enabled | yesno1 }}</td>
+    <td>{{ obj.automap_root_nagvis | yesno1 }}</td>
+    <td>{{ obj.nagvis_parent | array_lookup:this.entries:"name" }}</td>
+    <td>{{ obj.monitor_server | array_lookup:this.entries:"name":"Master" }}</td>
+    <td><input type="button" class="btn btn-primary" ng-click="edit($event, obj)" value="modify"/></td>
+</script>
+
+<div ng-controller="mon_device_base">
+        <h2>Devices ({{ entries.length }} entries)</h2>
+        <table class="table table-condensed table-condensed table-hover" style="width:auto;">
+            <thead mondevicehead></thead>
+            <tbody>
+                <tr><td colspan="12" paginator entries="entries" pag_settings="pagSettings" per_page="15" paginator_filter="1"></td></tr>
+                <tr mondevicerow ng-repeat="obj in entries | orderBy:'-name':true | paginator:this"></tr>
+            </tbody>
+        </table>
+</div>
+
+{% endverbatim %}
+
+</div>
 
 <div id="mon_tables"></div>
 
@@ -390,9 +450,11 @@ class config_table
         @c_table.find("tr td input[id^='dev__'][id$='__sel']:checked").each (idx, sel_el) =>
             $(sel_el).parents("tr:first").find("input[id$='__nagvis_parent']").trigger("click")
 
-add_dcon_handlers = ->
+add_dcon_handlers2 = ->
     conf_t = new config_table($("div#mon_tables"))
     install_devsel_link(conf_t.use_devs, true)
+
+add_dcon_handlers = ->
 
 $(document).ready(add_dcon_handlers)
 

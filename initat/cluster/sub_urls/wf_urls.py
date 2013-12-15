@@ -209,6 +209,7 @@ for obj_name in rest_views.REST_LIST:
     ])
 rpl.extend([
     url("^device_tree$", rest_views.device_tree_list.as_view(), name="device_tree_list"),
+    url("^device_tree/(?P<pk>[0-9]+)$", rest_views.device_tree_detail.as_view(), name="device_tree_detail"),
 ])
 
 rest_patterns = patterns(

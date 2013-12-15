@@ -10,7 +10,7 @@ from django.contrib.auth import authenticate
 from django.core.urlresolvers import reverse
 from django.db.models import Q
 from django.forms import Form, ModelForm, ValidationError, CharField, ModelChoiceField, \
-    ModelMultipleChoiceField, ChoiceField, TextInput
+    ModelMultipleChoiceField, ChoiceField, TextInput, TypedChoiceField
 from django.forms.widgets import TextInput, PasswordInput, SelectMultiple, Textarea
 from django.utils.translation import ugettext_lazy as _
 from initat.cluster.backbone.models import domain_tree_node, device, category, mon_check_command, mon_service_templ, \
@@ -689,7 +689,7 @@ class network_type_form(ModelForm):
             Fieldset(
                 "Basic data",
                 Field("description", wrapper_class="ng-class:form_error('description')", placeholder="Description"),
-                Field("identifier", ng_options="key as value for (key, value) in settings.network_types"),
+                Field("identifier", ng_options="key as value for (key, value) in settings.network_types", chosen=True),
             ),
             FormActions(
                 Submit("submit", "", css_class="primaryAction", ng_value="get_action_string()"),
@@ -1544,4 +1544,46 @@ class package_action_form(Form):
                 Submit("submit", "", css_class="primaryAction", ng_value="submit"),
             ),
         )
+
+class device_monitoring_form(ModelForm):
+    helper = FormHelper()
+    helper.form_id = "form"
+    helper.form_name = "form"
+    helper.form_class = 'form-horizontal'
+    helper.label_class = 'col-sm-3'
+    helper.field_class = 'col-sm-7'
+    helper.ng_model = "edit_obj"
+    md_cache_mode = ChoiceField()
+    nagvis_parent = ModelChoiceField(queryset=empty_query_set(), required=False)
+    helper.layout = Layout(
+        HTML("<h2>Monitoring settings</h2>"),
+            Fieldset(
+                "Basic settings",
+                Field("md_cache_mode", ng_options="key as value for (key, value) in settings.md_cache_modes", initial=1),
+                Field("mon_device_templ", ng_options="value.idx as value.name for value in rest_data.mon_device_templ", initial=None),
+                Field("mon_ext_host", ng_options="value.idx as value.name for value in rest_data.mon_ext_host", initial=None, chosen=True),
+            ),
+            Fieldset(
+                "Flags",
+                Field("enable_perfdata"),
+                Field("flap_detection_enabled"),
+                Field("monitor_checks"),
+            ),
+            Fieldset(
+                "NagVis settings",
+                Field("automap_root_nagvis"),
+                Field("nagvis_parent", ng_options="value.idx as value.name for value in entries | filter:{'automap_root_nagvis' : true} | orderBy:'name'", initial=None),
+            ),
+            FormActions(
+                Submit("submit", "", css_class="primaryAction", ng_value="get_action_string()"),
+                Button("fetch", "Fetch disk layout", css_class="btn-warning", ng_click="settings.fn.fetch(this.edit_obj)"),
+            ),
+        )
+    def __init__(self, *args, **kwargs):
+        ModelForm.__init__(self, *args, **kwargs)
+        for clear_f in ["mon_device_templ", "nagvis_parent", "mon_ext_host"]:
+            self.fields[clear_f].queryset = empty_query_set()
+            self.fields[clear_f].empty_label = "---"
+    class Meta:
+        model = device
 
