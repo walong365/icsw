@@ -673,9 +673,16 @@ class mon_ext_host(models.Model):
         return cur_xml
     def __unicode__(self):
         return self.name
+    def data_image_field(self):
+        return "/icinga/images/logos/%s" % (self.icon_image)
     class Meta:
         ordering = ("name",)
         db_table = u'ng_ext_host'
+
+class mon_ext_host_serializer(serializers.ModelSerializer):
+    data_image = serializers.Field(source="data_image_field")
+    class Meta:
+        model = mon_ext_host
 
 class mon_period(models.Model):
     idx = models.AutoField(db_column="ng_period_idx", primary_key=True)

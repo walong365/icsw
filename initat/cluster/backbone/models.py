@@ -386,8 +386,8 @@ class device(models.Model):
     device_type = models.ForeignKey("device_type")
     alias = models.CharField(max_length=384, blank=True)
     comment = models.CharField(max_length=384, blank=True)
-    mon_device_templ = models.ForeignKey("mon_device_templ", null=True)
-    mon_device_esc_templ = models.ForeignKey("mon_device_esc_templ", null=True)
+    mon_device_templ = models.ForeignKey("mon_device_templ", null=True, blank=True)
+    mon_device_esc_templ = models.ForeignKey("mon_device_esc_templ", null=True, blank=True)
     mon_ext_host = models.ForeignKey("mon_ext_host", null=True, blank=True)
     # deprecated
     device_location = models.ForeignKey("device_location", null=True)
@@ -412,7 +412,7 @@ class device(models.Model):
     act_image = models.ForeignKey("image", null=True, related_name="act_image")
     imageversion = models.CharField(max_length=192, blank=True)
     partition_table = models.ForeignKey("partition_table", null=True, related_name="new_partition_table")
-    act_partition_table = models.ForeignKey("partition_table", null=True, related_name="act_partition_table")
+    act_partition_table = models.ForeignKey("partition_table", null=True, related_name="act_partition_table", blank=True)
     partdev = models.CharField(max_length=192, blank=True)
     fixed_partdev = models.IntegerField(null=True, blank=True)
     bz2_capable = models.IntegerField(null=True, blank=True)
@@ -443,7 +443,7 @@ class device(models.Model):
     # remove, no longer needed
     # device_mode = models.BooleanField()
     # link to monitor_server (or null for master)
-    monitor_server = models.ForeignKey("device", null=True)
+    monitor_server = models.ForeignKey("device", null=True, blank=True)
     monitor_checks = models.BooleanField(default=True, db_column="nagios_checks")
     # performance data tracking
     enable_perfdata = models.BooleanField(default=False)
@@ -461,7 +461,7 @@ class device(models.Model):
     # automap root for nagvis
     automap_root_nagvis = models.BooleanField(default=False)
     # parent nagvis
-    nagvis_parent = models.ForeignKey("device", null=True, related_name="nagvis_childs")
+    nagvis_parent = models.ForeignKey("device", null=True, related_name="nagvis_childs", blank=True)
     # enabled ?
     enabled = models.BooleanField(default=True)
     # try to read relevant data from device via md-config-server
@@ -659,6 +659,9 @@ class device_serializer(serializers.ModelSerializer):
         model = device
         fields = ("idx", "name", "device_group", "device_type",
             "comment", "full_name", "domain_tree_node", "enabled",
+            "monitor_checks", "mon_device_templ", "mon_device_esc_templ", "md_cache_mode",
+            "act_partition_table", "enable_perfdata", "flap_detection_enabled",
+            "automap_root_nagvis", "nagvis_parent", "monitor_server", "mon_ext_host",
             )
 
 class device_serializer_package_state(device_serializer):
@@ -671,6 +674,16 @@ class device_serializer_package_state(device_serializer):
             "comment", "full_name", "domain_tree_node", "enabled",
             "package_device_connection_set", "latest_contact",
             )
+
+class device_serializer_monitoring(serializers.ModelSerializer):
+    class Meta:
+        model = device
+        fields = (
+            "monitor_checks", "mon_device_templ", "mon_device_esc_templ", "md_cache_mode",
+            "act_partition_table", "enable_perfdata", "flap_detection_enabled",
+            "automap_root_nagvis", "nagvis_parent", "monitor_server", "mon_ext_host",
+            )
+        read_only_fields = ("act_partition_table",)
 
 @receiver(signals.pre_save, sender=device)
 def device_pre_save(sender, **kwargs):
