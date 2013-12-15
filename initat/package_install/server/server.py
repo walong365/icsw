@@ -204,9 +204,8 @@ class server_process(threading_tools.process_pool):
             if valid_devs:
                 self._send_update(command="new_config", dev_list=valid_devs)
             srv_com["result"].attrib.update({
-                "reply" : "send update to %d of %d %s" % (
+                "reply" : "send update to %d of %s" % (
                     len(valid_devs),
-                    len(all_devs),
                     logging_tools.get_plural("device", len(all_devs))),
                 "state" : "%d" % (server_command.SRV_REPLY_STATE_OK if len(valid_devs) == len(all_devs) else server_command.SRV_REPLY_STATE_WARN)})
         elif in_com == "reload_searches":
