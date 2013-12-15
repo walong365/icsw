@@ -3,7 +3,7 @@
 # Copyright (C) 2007,2008,2012,2013 Andreas Lang-Nevyjel
 #
 # Send feedback to: <lang-nevyjel@init.at>
-# 
+#
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License Version 2 as
 # published by the Free Software Foundation.
@@ -79,7 +79,7 @@ class fetch_partition_info(cs_base_class.server_com):
                 result_devs.append(target_dev)
                 conn_str = "tcp://%s:%d" % (cur_dev.target_ip,
                                             2001)
-                cur_inst.log("connection_str for %s is %s" % (unicode(target_dev), conn_str))
+                cur_inst.log(u"connection_str for %s is %s" % (unicode(target_dev), conn_str))
                 zmq_con.add_connection(
                     conn_str,
                     server_command.srv_command(command="partinfo"),
@@ -93,9 +93,9 @@ class fetch_partition_info(cs_base_class.server_com):
             if res_state:
                 num_errors += 1
                 if res_state == -1:
-                    ret_f.append("%s: no result" % (unicode(target_dev)))
+                    ret_f.append(u"%s: no result" % (unicode(target_dev)))
                 else:
-                    ret_f.append("%s: error %d: %s" % (
+                    ret_f.append(u"%s: error %d: %s" % (
                         unicode(target_dev),
                         int(result["result"].attrib["state"]),
                         result["result"].attrib["reply"]))
@@ -108,7 +108,7 @@ class fetch_partition_info(cs_base_class.server_com):
                     )
                 except KeyError:
                     num_errors += 1
-                    ret_f.append("%s: error missing keys in dict" % (target_dev))
+                    ret_f.append(u"%s: error missing keys in dict" % (target_dev))
                 else:
                     try:
                         old_stuff = bz2.decompress(base64.b64decode(lvm_dict.text))
@@ -235,7 +235,7 @@ class fetch_partition_info(cs_base_class.server_com):
                                             partition_hex=hex_type,
                                             size=part_stuff["size"],
                                             pnum=part,
-                                            #partition_fs=fs_dict[hex_type],
+                                            # partition_fs=fs_dict[hex_type],
                                             mount_options="defaults",
                                         )
                                         self.log("skipping partition because no mountpoint and no matching fs_dict (hex_type %s)" % (hex_type), logging_tools.LOG_LEVEL_ERROR)
@@ -321,25 +321,21 @@ class fetch_partition_info(cs_base_class.server_com):
                                 self.log("no fstype found for LV %s" % (lv_stuff["name"]),
                                          logging_tools.LOG_LEVEL_ERROR)
                     # set partition table
-                    cur_inst.log("set partition_table for '%s'" % (unicode(target_dev)))
+                    cur_inst.log(u"set partition_table for '%s'" % (unicode(target_dev)))
                     target_dev.act_partition_table = new_part_table
                     target_dev.partdev = ""
                     target_dev.save()
-                ret_f.append("%s: %s, %s, %s and %s" % (
+                ret_f.append(u"%s: %s, %s, %s and %s" % (
                     target_dev,
                     logging_tools.get_plural("disc", len(dev_dict.keys())),
                     logging_tools.get_plural("sys_partition", len(sys_dict.keys())),
                     logging_tools.get_plural("volumegroup", len(lvm_info.lv_dict.get("vg", {}).keys())),
                     logging_tools.get_plural("logical volume", len(lvm_info.lv_dict.get("lv", {}).keys()))))
         if num_errors:
-            cur_inst.srv_com["result"].attrib.update({
-                "reply" : "ok %s" % (";".join(ret_f)),
-                "state" : "%d" % (server_command.SRV_REPLY_STATE_ERROR)})
+            cur_inst.srv_com.set_result(u"ok %s" % (";".join(ret_f)), server_command.SRV_REPLY_STATE_ERROR)
         else:
-            cur_inst.srv_com["result"].attrib.update({
-                "reply" : "ok %s" % (";".join(ret_f)),
-                "state" : "%d" % (server_command.SRV_REPLY_STATE_OK)})
-        
+            cur_inst.srv_com.set_result(u"ok %s" % (";".join(ret_f)), server_command.SRV_REPLY_STATE_OK)
+
 if __name__ == "__main__":
     print "Loadable module, exiting ..."
     sys.exit(0)
