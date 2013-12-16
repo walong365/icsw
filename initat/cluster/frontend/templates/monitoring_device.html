@@ -39,7 +39,7 @@
     <td>{{ obj.act_partition_table | yesno1 }}</td>
     <td class="text-center">
         <span ng-if="obj.mon_ext_host"> 
-            <img ng-src="http://localhost/{{ obj.mon_ext_host | array_lookup:this.rest_data.mon_ext_host:'data_image' }}" width="24px" height="24px"></img>
+            <img ng-src="{{ obj.mon_ext_host | array_lookup:this.rest_data.mon_ext_host:'data_image' }}" width="24px" height="24px"></img>
         </span>
         <span ng-if="obj.mon_ext_host == null">
             ---
