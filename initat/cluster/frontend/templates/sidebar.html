@@ -513,7 +513,7 @@ root.init_sidebar = ->
 root.install_devsel_link = (t_func, fire_when_loaded) ->
     root.sidebar_target_func = t_func
     root.sidebar_call_devsel_link_when_loaded = fire_when_loaded
-    if root.sidebar    
+    if root.sidebar
         root.sidebar.install_devsel_func()
 
 {% endinlinecoffeescript %}

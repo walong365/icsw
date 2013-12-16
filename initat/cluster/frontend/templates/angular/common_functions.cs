@@ -102,36 +102,53 @@ class shared_data_source
 
 class rest_data_source
     constructor: (@$q, @Restangular) ->
-        @data = {}
-    do_query: (q_type) =>    
+        @_data = {}
+    _build_key: (url, options) =>
+        url_key = url
+        for key, value of options
+            url_key = "#{url_key},#{key}=#{value}"
+        return url_key
+    _do_query: (q_type, options) =>
+        #console.log "Query", q_type, options    
         d = @$q.defer()
-        result = q_type.getList().then(
+        result = q_type.getList(options).then(
            (response) ->
                d.resolve(response)
         )
         return d.promise
-    load: (url) =>
-        if url of @data
-            return @get(url)
+    load: (url, options) =>
+        options ?= {}
+        #console.log @_data, [url, options] in @_data
+        #console.log @_build_key(url, options)
+        if @_build_key(url, options) of @_data
+            # queries with options are not shared
+            return @get([url, options])
         else
-            return @reload(url)
-    reload: (url) =>
-        @data[url] = @do_query(@Restangular.all(url.slice(1)))
-        return @get(url) 
+            return @reload([url, options])
+    reload: (rest_tuple) =>
+        if typeof(rest_tuple) == "string"
+            rest_tuple = [rest_tuple, {}]
+        @_data[@_build_key(rest_tuple[0], rest_tuple[1])] = @_do_query(@Restangular.all(rest_tuple[0].slice(1)), rest_tuple[1])
+        return @get(rest_tuple)
     add_sources: (in_list) =>
+        # in list is a list of (url, option) lists
+        #console.log "*", in_list
         q_list = []
         r_list = []
-        for rest_url in in_list
-            if rest_url not in @data
-                sliced = rest_url.slice(1)
-                @data[rest_url] = @do_query(@Restangular.all(sliced))
-                q_list.push(@data[rest_url])
-            r_list.push(@data[rest_url])
+        for rest_tuple in in_list
+            rest_key = @_build_key(rest_tuple[0], rest_tuple[1])
+            if rest_key not of @_data
+                #console.log "not in @_data", rest_tuple, rest_key
+                sliced = rest_tuple[0].slice(1)
+                rest_tuple[1] ?= {}
+                @_data[rest_key] = @_do_query(@Restangular.all(sliced), rest_tuple[1])
+                q_list.push(@_data[rest_key])
+            r_list.push(@_data[rest_key])
         if q_list
             @$q.all(q_list)
         return r_list
-    get: (url) =>
-        return @data[url]
+    get: (rest_tuple) =>
+        return @_data[@_build_key(rest_tuple[0], rest_tuple[1])]
   
 angular_module_setup = (module_list, url_list=[]) ->
     #console.log url_list
@@ -253,14 +270,14 @@ angular_add_simple_list_controller = (module, name, settings) ->
             $scope.shared_data = sharedDataSource.data
             if $scope.settings.rest_url
                 $scope.rest = Restangular.all($scope.settings.rest_url.slice(1))
-                wait_list = [restDataSource.add_sources([$scope.settings.rest_url])[0]]
+                wait_list = [restDataSource.add_sources([[$scope.settings.rest_url, $scope.settings.rest_options]])[0]]
             else
                 wait_list = []
             $scope.rest_data = {}
             $scope.modal_active = false
             if $scope.settings.rest_map
                 for value, idx in $scope.settings.rest_map
-                    $scope.rest_data[value.short] = restDataSource.load(value.url)
+                    $scope.rest_data[value.short] = restDataSource.load(value.url, value.options)
                     wait_list.push($scope.rest_data[value.short])
             $q.all(wait_list).then((data) ->
                 base_idx = if $scope.settings.rest_url then 0 else -1
@@ -268,10 +285,9 @@ angular_add_simple_list_controller = (module, name, settings) ->
                     if idx == base_idx
                         $scope.set_entries(value)
                     else
+                        # console.log $scope.settings.rest_map[idx - (1 + base_idx)].short, value.length
                         $scope.rest_data[$scope.settings.rest_map[idx - (1 + base_idx)].short] = value
             )
-            if $scope.settings.init_fn
-                $scope.settings.init_fn($scope, $timeout)
             $scope.load_data = (url, options) ->
                 return Restangular.all(url.slice(1)).getList(options)
             $scope.reload = () ->
@@ -344,6 +360,9 @@ angular_add_simple_list_controller = (module, name, settings) ->
                         if $scope.settings.post_delete
                             $scope.settings.post_delete($scope, obj)
                     )
+            # call the external init function after the rest has been declared
+            if $scope.settings.init_fn
+                $scope.settings.init_fn($scope, $timeout)
     ])
 
 angular.module(
@@ -380,11 +399,16 @@ angular.module(
         return (in_value, f_array, fk_key, null_msg) ->
             if in_value != null
                 if fk_key
-                    return (entry[fk_key] for key, entry of f_array when typeof(entry) == "object" and entry and entry["idx"] == in_value)[0]
+                    res_list = (entry[fk_key] for key, entry of f_array when typeof(entry) == "object" and entry and entry["idx"] == in_value)
                 else
-                    return (entry for key, entry of f_array when typeof(entry) == "object" and entry and entry["idx"] == in_value)[0]
+                    res_list = (entry for key, entry of f_array when typeof(entry) == "object" and entry and entry["idx"] == in_value)
+                return if res_list.length then res_list[0] else "Key Error (#{in_value})"
             else
                 return if null_msg then null_msg else "N/A"
+).filter(
+    "exclude_device_groups", () ->
+        return (in_array) ->
+            return (entry for entry in in_array when entry.is_meta_device == false)
 ).filter(
     "ip_fixed_width", () ->
         return (in_str) ->

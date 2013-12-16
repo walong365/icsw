@@ -27,7 +27,7 @@
         <th>NVroot</th>
         <th>NVparent</th>
         <th>MonServer</th>
-        <th colspan="1" class="text-center">action</th>   
+        <th colspan="1" class="text-center">action</th>
     </tr>
 </script>
 
@@ -49,17 +49,21 @@
     <td>{{ obj.flap_detection_enabled | yesno1 }}</td>
     <td>{{ obj.automap_root_nagvis | yesno1 }}</td>
     <td>{{ obj.nagvis_parent | array_lookup:this.entries:"name" }}</td>
-    <td>{{ obj.monitor_server | array_lookup:this.entries:"name":"Master" }}</td>
+    <td>{{ obj.monitor_server | array_lookup:this.rest_data.mon_server:"full_name":"Master" }}</td>
     <td><input type="button" class="btn btn-primary" ng-click="edit($event, obj)" value="modify"/></td>
 </script>
 
+<script type="text/ng-template" id="mon_meta_device_row.html">
+    <td class="active" colspan="12">Devicegroup {{ obj.device_group_name }}</td>
+</script>
+
 <div ng-controller="mon_device_base">
-        <h2>Devices ({{ entries.length }} entries)</h2>
+        <h2>Devices ({{ entries | array_length }} entries)</h2>
         <table class="table table-condensed table-condensed table-hover" style="width:auto;">
             <thead mondevicehead></thead>
             <tbody>
                 <tr><td colspan="12" paginator entries="entries" pag_settings="pagSettings" per_page="15" paginator_filter="1"></td></tr>
-                <tr mondevicerow ng-repeat="obj in entries | orderBy:'-name':true | paginator:this"></tr>
+                <tr mondevicerow ng-repeat="obj in entries | paginator:this"></tr>
             </tbody>
         </table>
 </div>

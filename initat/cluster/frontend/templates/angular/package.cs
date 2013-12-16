@@ -52,7 +52,7 @@ angular_add_simple_list_controller(
         rest_url            : "{% url 'rest:package_search_list' %}"
         edit_template       : "package_search.html"
         rest_map            : [
-            {"short" : "user"            , "url" : "{% url 'rest:user_list' %}"}
+            {"short" : "user", "url" : "{% url 'rest:user_list' %}"}
         ]
         delete_confirm_str  : (obj) -> return "Really delete Package search '#{obj.name}' ?"
         template_cache_list : ["package_search_row.html", "package_search_head.html"]
@@ -128,7 +128,7 @@ angular_add_simple_list_controller(
             get_grid_style : ($scope) ->
                 return if $scope.dp_style then "Dev/PDC grid" else "PDC/Dev grid"
     }
- )
+)
 
 angular_add_simple_list_controller(
     package_module,
@@ -209,7 +209,7 @@ package_module.controller("install", ["$scope", "$compile", "$filter", "$templat
         $scope.selected_pdcs = {}
         $scope.shared_data = sharedDataSource.data
         $scope.device_tree_url = "{% url 'rest:device_tree_list' %}"
-        wait_list = [restDataSource.add_sources([$scope.device_tree_url])[0]]
+        wait_list = [restDataSource.add_sources([[$scope.device_tree_url, {"ignore_meta_devices" : true}]])[0]]
         $scope.inst_rest_data = {}
         $q.all(wait_list).then((data) ->
             for value, idx in data
@@ -222,15 +222,15 @@ package_module.controller("install", ["$scope", "$compile", "$filter", "$templat
         #    return Restangular.all(url.slice(1)).getList(options)
         $scope.reload_devices = () ->
             $.blockUI()
-            restDataSource.reload($scope.device_tree_url).then((data) ->
+            restDataSource.reload([$scope.device_tree_url, {"ignore_meta_devices" : true}]).then((data) ->
                 $scope.set_devices(data)
                 $.unblockUI()
             )
         # not working right now, f*ck, will draw to many widgets
-        # install_devsel_link($scope.reload_devices, true)
+        install_devsel_link($scope.reload_devices, true)
         $scope.reload_state = () ->
             #console.log "rls"
-            Restangular.all("{% url 'rest:device_tree_list' %}".slice(1)).getList({"package_state" : true}).then(
+            Restangular.all("{% url 'rest:device_tree_list' %}".slice(1)).getList({"package_state" : true, "ignore_meta_devices" : true}).then(
                 (data) ->
                     #console.log "reload"
                     for dev in data
@@ -292,7 +292,7 @@ package_module.controller("install", ["$scope", "$compile", "$filter", "$templat
             return sel
         $scope.set_devices = (data) ->
             if $scope.reload_promise
-                $timeout.cancle($scope.reload_promise)
+                $timeout.cancel($scope.reload_promise)
             $scope.devices = data
             # device lookup table
             $scope.device_lut = build_lut($scope.devices)
@@ -444,7 +444,7 @@ package_module.controller("install", ["$scope", "$compile", "$filter", "$templat
                         else if not pdc.selected and pdc.idx of scope.selected_pdcs
                             delete scope.selected_pdcs[pdc.idx]
                 new_el = $compile($templateCache.get("pdc_state.html"))
-                iElement.replaceWith(new_el(scope))
+                iElement.append(new_el(scope))
     }
 )
 

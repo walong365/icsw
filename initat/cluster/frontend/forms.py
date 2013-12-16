@@ -1556,18 +1556,28 @@ class device_monitoring_form(ModelForm):
     md_cache_mode = ChoiceField()
     nagvis_parent = ModelChoiceField(queryset=empty_query_set(), required=False)
     helper.layout = Layout(
-        HTML("<h2>Monitoring settings</h2>"),
+        HTML("<h2>Monitoring settings for {% verbatim %}{{ edit_obj.full_name }}{% endverbatim %}</h2>"),
             Fieldset(
                 "Basic settings",
                 Field("md_cache_mode", ng_options="key as value for (key, value) in settings.md_cache_modes", initial=1),
                 Field("mon_device_templ", ng_options="value.idx as value.name for value in rest_data.mon_device_templ", initial=None),
                 Field("mon_ext_host", ng_options="value.idx as value.name for value in rest_data.mon_ext_host", initial=None, chosen=True),
+                Field("monitor_server", ng_options="value.idx as value.full_name for value in rest_data.mon_server", initial=None, chosen=True),
             ),
             Fieldset(
                 "Flags",
-                Field("enable_perfdata"),
-                Field("flap_detection_enabled"),
-                Field("monitor_checks"),
+                Div(
+                    Div(
+                        Field("enable_perfdata"),
+                        Field("flap_detection_enabled"),
+                        css_class="col-md-5",
+                    ),
+                    Div(
+                        Field("monitor_checks"),
+                        css_class="col-md-5",
+                    ),
+                    css_class="rows",
+                ),
             ),
             Fieldset(
                 "NagVis settings",
@@ -1581,7 +1591,7 @@ class device_monitoring_form(ModelForm):
         )
     def __init__(self, *args, **kwargs):
         ModelForm.__init__(self, *args, **kwargs)
-        for clear_f in ["mon_device_templ", "nagvis_parent", "mon_ext_host"]:
+        for clear_f in ["mon_device_templ", "nagvis_parent", "mon_ext_host", "monitor_server"]:
             self.fields[clear_f].queryset = empty_query_set()
             self.fields[clear_f].empty_label = "---"
     class Meta:

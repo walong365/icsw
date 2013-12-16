@@ -15,18 +15,21 @@ angular_add_simple_list_controller(
     "mon_device_base",
     {
         rest_url            : "{% url 'rest:device_tree_list' %}"
+        rest_options        : {"ignore_meta_devices" : true}
         edit_template       : "monitoring_device.html"
         rest_map            : [
             {"short" : "mon_device_templ", "url" : "{% url 'rest:mon_device_templ_list' %}"}
             {"short" : "mon_ext_host"    , "url" : "{% url 'rest:mon_ext_host_list' %}"}
+            {"short" : "mon_server"      , "url" : "{% url 'rest:device_tree_list' %}", "options" : {"all_monitoring_servers" : true}}
         ]
-        delete_confirm_str  : (obj) -> return "Really delete monitoring period '#{obj.name}' ?"
-        template_cache_list : ["mon_device_row.html", "mon_device_head.html"]
+        template_cache_list : ["mon_device_head.html"]
         md_cache_modes : {
             1 : "automatic (server)"
             2 : "never use cache"
             3 : "once (until successfull)"
         }
+        init_fn: ($scope, $timeout) ->
+            install_devsel_link($scope.reload, true)
         fn:
             fetch : (edit_obj) ->
                 $.blockUI()
@@ -37,7 +40,19 @@ angular_add_simple_list_controller(
                     }
                     success : (xml) ->
                         $.unblockUI()
-                        parse_xml_response(xml)              
+                        parse_xml_response(xml)   
+    }
+)
+
+monitoring_device_module.directive("mondevicerow", ($templateCache, $compile) ->
+    return {
+        restrict : "EA"
+        link : (scope, element, attrs) ->
+            if scope.obj.is_meta_device
+                new_el = $compile($templateCache.get("mon_meta_device_row.html"))
+            else
+                new_el = $compile($templateCache.get("mon_device_row.html"))
+            element.append(new_el(scope))
     }
 )
 

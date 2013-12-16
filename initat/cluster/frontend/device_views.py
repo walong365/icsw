@@ -107,15 +107,28 @@ class add_selection(View):
                 cur_list.append(add_sel)
             elif not add_flag and add_sel in cur_list:
                 cur_list.remove(add_sel)
-            if add_sel.startswith("devg__") and not dbl:
-                # emulate toggle of device_group
-                logger.info("toggle selection of device_group %d" % (int(add_sel.split("__")[1])))
-                toggle_devs = ["dev__%d" % (cur_pk) for cur_pk in device.objects.filter(Q(device_group=add_sel.split("__")[1])).values_list("pk", flat=True)]
+            if add_sel.startswith("devg__"):
+                if dbl:
+                    # toggle meta device
+                    logger.info("toggle selection of META-device of device_group %d" % (int(add_sel.split("__")[1])))
+                    toggle_devs = ["dev__%d" % (cur_pk) for cur_pk in device.objects.filter(
+                        Q(enabled=True) &
+                        Q(device_group__enabled=True) &
+                        Q(device_group=add_sel.split("__")[1]) &
+                        Q(device_type__identifier="MD")).values_list("pk", flat=True)]
+                else:
+                    # emulate toggle of device_group
+                    logger.info("toggle selection of device_group %d" % (int(add_sel.split("__")[1])))
+                    toggle_devs = ["dev__%d" % (cur_pk) for cur_pk in device.objects.filter(
+                        Q(enabled=True) &
+                        Q(device_group__enabled=True) &
+                        Q(device_group=add_sel.split("__")[1])).values_list("pk", flat=True)]
                 for toggle_dev in toggle_devs:
                     if toggle_dev in cur_list:
                         cur_list.remove(toggle_dev)
                     else:
                         cur_list.append(toggle_dev)
+        # import pprint
         # pprint.pprint(cur_list)
         request.session["sel_list"] = cur_list
         request.session.save()

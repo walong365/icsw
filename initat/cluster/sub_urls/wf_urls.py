@@ -254,6 +254,12 @@ my_url_patterns = patterns(
 
 url_patterns = patterns(
     "",
+    # to show icinga logos in local debug mode
+    url(r"icinga/images/logos/(?P<path>.*)$",
+        "django.views.static.serve", {
+            "document_root" : "/opt/icinga/share/images/logos",
+            }
+        ),
     url(r"^%s/media/frontend/(?P<path>.*)$" % (settings.REL_SITE_ROOT),
         "django.views.static.serve", {
             "document_root" : os.path.join(settings.FILE_ROOT, "frontend", "media")

@@ -153,7 +153,7 @@ class list_view(mixins.ListModelMixin,
             "image" : ([], ["new_image", "act_image"]),
             "partition_table" : ([], ["new_partition_table", "act_partition_table", "sys_partition_set", "lvm_lv_set" , "lvm_vg_set", "partition_disc_set"]),
             "mon_period" : ([], ["service_check_period", "mon_device_templ_set"]),
-            "device" : ([], []),
+            "device" : (["domain_tree_node", "device_type", "device_group"], []),
             "mon_check_command" : ([], ["exclude_devices", "categories"]),
             "mon_host_cluster" : ([], ["devices"]),
             "network" : ([], ["network_device_type"]),
@@ -195,6 +195,7 @@ class device_tree_list(
             return device_serializer
     @rest_logging
     def get(self, request, *args, **kwargs):
+        # print self.list(request, *args, **kwargs)
         return self.list(request, *args, **kwargs)
     @rest_logging
     def post(self, request, *args, **kwargs):
@@ -213,15 +214,32 @@ class device_tree_list(
             return default
     @rest_logging
     def get_queryset(self):
+        # print "QSET", self.request.QUERY_PARAMS
         ignore_md = self._get_post_boolean("ignore_meta_devices", False)
         ignore_cdg = self._get_post_boolean("ignore_cdg", True)
-        with_variables = self._get_post_boolean("with_variables", False)
+        # with_variables = self._get_post_boolean("with_variables", False)
         package_state = self._get_post_boolean("package_state", False)
-        sel_list = self.request.session.get("sel_list", [])
-        dev_keys = [key.split("__")[1] for key in sel_list]
-        _q = device.objects.filter(Q(pk__in=dev_keys)).select_related("domain_tree_node")
+        _q = device.objects.filter(Q(enabled=True) & Q(device_group__enabled=True))
+        if self._get_post_boolean("all_monitoring_servers", False):
+            _q = _q.filter(Q(device_config__config__name__in=["monitor_server", "monitor_slave"]))
+        else:
+            # normally (frontend in-sync with backend) meta-devices have the same selection state
+            # as their device_groups, devg_keys are in fact redundant ...
+            dev_keys = [key.split("__")[1] for key in self.request.session.get("sel_list", []) if key.startswith("dev_")]
+            # devg_keys = [key.split("__")[1] for key in self.request.session.get("sel_list", []) if key.startswith("devg_")]
+            if ignore_cdg:
+                # ignore cluster device group
+                _q = _q.exclude(Q(device_group__cluster_device_group=True))
+            if ignore_md:
+                # ignore all meta-devices
+                _q = _q.exclude(Q(device_type__identifier="MD"))
+            # print dev_keys, devg_keys
+            _q = _q.filter(Q(pk__in=dev_keys))
+        _q = _q.select_related("domain_tree_node", "device_type", "device_group")
         if package_state:
             _q = _q.prefetch_related("package_device_connection_set", "device_variable_set")
+        _q = _q.order_by("device_group__name", "-device_type__priority", "name")
+        # print _q.count(), self.request.QUERY_PARAMS, self.request.session.get("sel_list", [])
         return _q
 
 class user_list_h(generics.ListCreateAPIView):
