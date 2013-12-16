@@ -270,6 +270,7 @@ angular_add_simple_list_controller = (module, name, settings) ->
             $scope.shared_data = sharedDataSource.data
             if $scope.settings.rest_url
                 $scope.rest = Restangular.all($scope.settings.rest_url.slice(1))
+                $scope.settings.rest_options ?= {}
                 wait_list = [restDataSource.add_sources([[$scope.settings.rest_url, $scope.settings.rest_options]])[0]]
             else
                 wait_list = []
@@ -291,7 +292,7 @@ angular_add_simple_list_controller = (module, name, settings) ->
             $scope.load_data = (url, options) ->
                 return Restangular.all(url.slice(1)).getList(options)
             $scope.reload = () ->
-                restDataSource.reload($scope.settings.rest_url).then((data) ->
+                restDataSource.reload([$scope.settings.rest_url, $scope.settings.rest_options]).then((data) ->
                     $scope.set_entries(data)
                 )
             $scope.set_entries = (data) ->
