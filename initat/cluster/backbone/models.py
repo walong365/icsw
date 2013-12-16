@@ -444,7 +444,7 @@ class device(models.Model):
     # device_mode = models.BooleanField()
     # link to monitor_server (or null for master)
     monitor_server = models.ForeignKey("device", null=True, blank=True)
-    monitor_checks = models.BooleanField(default=True, db_column="nagios_checks")
+    monitor_checks = models.BooleanField(default=True, db_column="nagios_checks", verbose_name="Checks enabled")
     # performance data tracking
     enable_perfdata = models.BooleanField(default=False)
     flap_detection_enabled = models.BooleanField(default=False)
@@ -483,6 +483,12 @@ class device(models.Model):
             return ".".join([self.name, self.domain_tree_node.full_name])
         else:
             return self.name
+    def is_meta_device(self):
+        return self.device_type.identifier == "MD"
+    def device_type_identifier(self):
+        return self.device_type.identifier
+    def device_group_name(self):
+        return self.device_group.name
     def get_boot_uuid(self):
         return boot_uuid(self.uuid)
     def add_log(self, log_src, log_stat, text, **kwargs):
@@ -655,6 +661,9 @@ class device(models.Model):
 
 class device_serializer(serializers.ModelSerializer):
     full_name = serializers.Field(source="full_name")
+    is_meta_device = serializers.Field(source="is_meta_device")
+    device_type_identifier = serializers.Field(source="device_type_identifier")
+    device_group_name = serializers.Field(source="device_group_name")
     class Meta:
         model = device
         fields = ("idx", "name", "device_group", "device_type",
@@ -662,6 +671,7 @@ class device_serializer(serializers.ModelSerializer):
             "monitor_checks", "mon_device_templ", "mon_device_esc_templ", "md_cache_mode",
             "act_partition_table", "enable_perfdata", "flap_detection_enabled",
             "automap_root_nagvis", "nagvis_parent", "monitor_server", "mon_ext_host",
+            "is_meta_device", "device_type_identifier", "device_group_name",
             )
 
 class device_serializer_package_state(device_serializer):
@@ -672,10 +682,11 @@ class device_serializer_package_state(device_serializer):
         model = device
         fields = ("idx", "name", "device_group", "device_type",
             "comment", "full_name", "domain_tree_node", "enabled",
-            "package_device_connection_set", "latest_contact",
+            "package_device_connection_set", "latest_contact", "is_meta_device",
             )
 
-class device_serializer_monitoring(serializers.ModelSerializer):
+class device_serializer_monitoring(device_serializer):
+    # only used for updating (no read)
     class Meta:
         model = device
         fields = (
@@ -975,12 +986,15 @@ class device_rsync_config(models.Model):
 class device_type(models.Model):
     idx = models.AutoField(db_column="device_type_idx", primary_key=True)
     identifier = models.CharField(unique=True, max_length=24)
+    # for ordering
+    priority = models.IntegerField(default=0)
     description = models.CharField(unique=True, max_length=192)
     date = models.DateTimeField(auto_now_add=True)
     def get_xml(self):
         return E.device_type(
             unicode(self),
             name=self.description,
+            priority="%d" % (self.priority),
             identifier=self.identifier,
             pk="%d" % (self.pk),
             key="devt__%d" % (self.pk)
