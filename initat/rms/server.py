@@ -134,7 +134,8 @@ class rms_mon_process(threading_tools.process_obj):
             )
         self.send_to_socket(self.__main_socket, ["command_result", src_id, unicode(srv_com)])
     def _file_watch_content(self, *args , **kwargs):
-        src_id, srv_com = server_command.srv_command(source=args[0])
+        src_id, srv_src = args
+        srv_com = server_command.srv_command(source=srv_src)
         job_id = srv_com["id"].text.split(":")[0]
         file_name = srv_com["name"].text
         content = srv_com["content"].text
