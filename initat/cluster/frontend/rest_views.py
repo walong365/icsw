@@ -219,10 +219,15 @@ class device_tree_list(
         ignore_cdg = self._get_post_boolean("ignore_cdg", True)
         # with_variables = self._get_post_boolean("with_variables", False)
         package_state = self._get_post_boolean("package_state", False)
-        _q = device.objects.filter(Q(enabled=True) & Q(device_group__enabled=True))
+        _q = device.objects
         if self._get_post_boolean("all_monitoring_servers", False):
             _q = _q.filter(Q(device_config__config__name__in=["monitor_server", "monitor_slave"]))
+        elif self._get_post_boolean("all_mother_servers", False):
+            _q = _q.filter(Q(device_config__config__name__in=["mother_server"]))
+        elif self._get_post_boolean("all_devices", False):
+            pass
         else:
+            # only selected ones
             # normally (frontend in-sync with backend) meta-devices have the same selection state
             # as their device_groups, devg_keys are in fact redundant ...
             dev_keys = [key.split("__")[1] for key in self.request.session.get("sel_list", []) if key.startswith("dev_")]
@@ -235,10 +240,13 @@ class device_tree_list(
                 _q = _q.exclude(Q(device_type__identifier="MD"))
             # print dev_keys, devg_keys
             _q = _q.filter(Q(pk__in=dev_keys))
+        if not self._get_post_boolean("all_devices", False):
+            _q = _q.filter(Q(enabled=True) & Q(device_group__enabled=True))
         _q = _q.select_related("domain_tree_node", "device_type", "device_group")
         if package_state:
             _q = _q.prefetch_related("package_device_connection_set", "device_variable_set")
-        _q = _q.order_by("device_group__name", "-device_type__priority", "name")
+        # ordering: at first cluster device group, then by group / device_type / name
+        _q = _q.order_by("-device_group__cluster_device_group", "device_group__name", "-device_type__priority", "name")
         # print _q.count(), self.request.QUERY_PARAMS, self.request.session.get("sel_list", [])
         return _q
 

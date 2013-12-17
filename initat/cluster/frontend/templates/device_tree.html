@@ -2,9 +2,70 @@
 
 {% load i18n coffeescript %}
 
+{% block angular %}{% include "angular/device.cs" %}{% endblock %}
+
 {% block title %}{% trans "Device tree" %}{% endblock %}
 
 {% block content %}
+
+<div ng-app="icsw.device">
+
+{% verbatim %}
+
+<script type="text/ng-template" id="device_tree_head.html">
+    <th>Name</th>
+    <th>Description</th>
+    <th>TLN</th>
+    <th>Enabled</th>
+    <th>Type</th>
+    <th>MonMaster</th>
+    <th>Mother</th>
+    <th>cURL</th>
+</script> 
+
+<script type="text/ng-template" id="device_tree_meta_row.html">
+    <td><strong>{{ device_group.name }}</strong></td>
+    <td>{{ device_group.description }}</td>
+    <td>{{ device_group.domain_tree_node | array_lookup:this.rest_data.domain_tree_node | show_dtn }}</td>
+    <td>{{ device_group.enabled | yesno1 }}</td>
+    <td colspan=4>{{ device_group.num_devices }} devices</td>
+</script> 
+
+<script type="text/ng-template" id="device_tree_row.html">
+    <td>{{ obj.full_name }}</td>
+    <td>{{ obj.comment }}</td>
+    <td>{{ obj.domain_tree_node | array_lookup:this.rest_data.domain_tree_node | show_dtn }}</td>
+    <td>{{ obj.enabled | yesno1 }}</td>
+    <td>{{ obj.device_type | array_lookup:this.rest_data.device_type:"description" }}</td>
+    <td>{{ obj.monitor_server | array_lookup:this.rest_data.monitor_server:"full_name" }}</td>
+    <td>{{ obj.bootserver | array_lookup:this.rest_data.mother_server:"full_name" }}</td>
+    <td>{{ obj.curl }}</td>
+</script> 
+
+<div ng-controller="device_tree_base">
+    <h2>Device tree ({{ entries.length }} entries)</h2>
+    <form class="form-inline" role="form">
+        <div class="form-group">
+            <label>Filter:</label>
+            <select class="form-control input-sm" type="checkbox" ng-model="pagSettings.conf.filter_settings.md">
+                <option value="a">all</option>
+                <option value="d">Devices</option>
+                <option value="g">Group</option>
+            </select>
+        </div>
+    </form>
+    <table class="table table-hover table-striped" style="width:auto;">
+        <thead devicetreehead></thead>
+        <tbody>
+            <tr><td colspan="9" paginator entries="entries" pag_settings="pagSettings" per_page="20" paginator-filter="func" paginator-filter-func="fn.filter"></td></tr>
+            <tr devicetreerow ng-repeat="obj in entries | paginator:this" ng-class="fn.get_tr_class(obj)"></tr>
+        </tbody>
+    </table>
+</div>
+
+{% endverbatim %}
+
+</div>
 
 <h1 class="center">Device tree</h1>
 
@@ -585,7 +646,7 @@ root.reload_device_tree = ->
                 new device_tree($(xml).find("response")[0]).build_table($("div#device_table"))
 
 add_dt_handlers = ->
-    reload_device_tree()
+    #reload_device_tree()
 
 $(document).ready(add_dt_handlers)
 

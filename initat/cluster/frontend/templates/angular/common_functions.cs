@@ -22,7 +22,7 @@ icsw_paginator = '
     <span ng-show="! pagSettings.conf.num_entries">
         no entries to show
     </span>
-    <span ng-show="pagSettings.conf.filter_enabled">
+    <span ng-show="pagSettings.simple_filter_mode()">
         , filter <div class="form-group"><input ng-model="pagSettings.conf.filter" class="form-control input-sm""></input></div>
     </span>
 </form>
@@ -41,13 +41,13 @@ build_lut = (list) ->
 class paginator_root
     constructor: (@$filter) ->
         @dict = {}
-    get_paginator: (name) =>
+    get_paginator: (name, $scope) =>
         if name not in @dict
-            @dict[name] = new paginator_class(name, @$filter)
+            @dict[name] = new paginator_class(name, @$filter, $scope)
         return @dict[name]
 
 class paginator_class
-    constructor: (@name, @$filter) ->
+    constructor: (@name, @$filter, @$scope) ->
         @conf = {
             per_page    : 10
             num_entries : 0
@@ -57,8 +57,10 @@ class paginator_class
             act_page    : 0
             page_list   : []
             init        : false
-            filter_enabled : false
-            filter         : undefined
+            filter_mode     : false
+            filter          : undefined
+            filter_func     : undefined
+            filter_settings : @$scope.settings.filter_settings
         }
     activate_page: (num) =>
         @conf.act_page = parseInt(num)
@@ -74,8 +76,7 @@ class paginator_class
         else
             return ""
     set_entries: (el_list) =>
-        if @conf.filter_enabled
-            el_list = @$filter("filter")(el_list, @conf.filter)
+        el_list = @apply_filter(el_list)
         num = el_list.length
         @conf.init = true
         @conf.num_entries = num
@@ -92,9 +93,18 @@ class paginator_class
                 @activate_page(@conf.page_list.length)
             else
                 @activate_page(@conf.act_page)
+    simple_filter_mode: () =>
+        return @conf.filter_mode == "simple"
     clear_filter: () =>
-        if @conf.filter_enabled
+        if @conf.filter_mode
             @conf.filter = ""
+    apply_filter: (el_list) =>
+        if @conf.filter_mode
+            if @conf.filter_func
+                el_list = (entry for entry in el_list when @conf.filter_func()(entry, @$scope))
+            else
+                el_list = @$filter("filter")(el_list, @conf.filter)
+        return el_list
 
 class shared_data_source
     constructor: () ->
@@ -161,17 +171,14 @@ angular_module_setup = (module_list, url_list=[]) ->
         cur_mod.filter("paginator", ["$filter", ($filter) ->
             return (arr, scope) ->
                 if scope.pagSettings.conf.init 
-                    if scope.pagSettings.conf.filter_enabled
-                        arr = $filter("filter")(arr, scope.pagSettings.conf.filter)
+                    arr = scope.pagSettings.apply_filter(arr)
                     return arr.slice(scope.pagSettings.conf.start_idx, scope.pagSettings.conf.end_idx + 1)
                 else
                     return arr
         ])
         cur_mod.filter("paginator_filter", ["$filter", ($filter) ->
             return (arr, scope) ->
-                if scope.pagSettings.conf.filter_enabled
-                    arr = $filter("filter")(arr, scope.pagSettings.conf.filter)
-                return arr
+                return scope.pagSettings.apply_filter(arr)
         ])
         cur_mod.config(["RestangularProvider", 
             (RestangularProvider) ->
@@ -221,23 +228,39 @@ angular_module_setup = (module_list, url_list=[]) ->
                 scope.pagSettings.conf.per_page = parseInt(attrs.perPage)
                 #scope.pagSettings.conf.filter = attrs.paginatorFilter
                 if attrs.paginatorFilter
-                    scope.pagSettings.conf.filter_enabled = if parseInt(attrs.paginatorFilter) then true else false
-                    scope.pagSettings.conf.filter = ""
+                    scope.pagSettings.conf.filter_mode = attrs.paginatorFilter
+                    if scope.pagSettings.conf.filter_mode == "simple"
+                        scope.pagSettings.conf.filter = ""
+                    else if scope.pagSettings.conf.filter_mode == "func"
+                        scope.pagSettings.conf.filter_func = scope.filterFunc
                 scope.activate_page = (page_num) ->
                     scope.pagSettings.activate_page(page_num)
-                scope.$watch("entries", (new_el) ->
-                    scope.pagSettings.set_entries(new_el)
+                scope.$watch(
+                    () -> return scope.entries
+                    (new_el) ->
+                        #console.log "r1"
+                        scope.pagSettings.set_entries(new_el)
                 )
                 scope.$watch(
                     () -> return scope.pagSettings.conf.filter
                     (new_el) ->
+                        #console.log "r2"
                         scope.pagSettings.set_entries(scope.entries)
+                )
+                scope.$watch(
+                    () -> return scope.pagSettings.conf.filter_settings
+                    (new_el) ->
+                        #console.log "r3"
+                        scope.pagSettings.set_entries(scope.entries)
+                    true
                 )
             return {
                 restrict : "EA"
                 scope:
                     entries     : "="
                     pagSettings : "="
+                    paginatorFilter : "="
+                    filterFunc  : "&paginatorFilterFunc"
                 template : icsw_paginator
                 link     : link
             }
@@ -263,9 +286,13 @@ angular_add_simple_list_controller = (module, name, settings) ->
         )
     module.controller(name, ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "sharedDataSource", "$q", "$timeout", 
         ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, sharedDataSource, $q, $timeout) ->
+            # set reference
             $scope.settings = settings
+            # shortcut to fn
             $scope.fn = settings.fn
-            $scope.pagSettings = paginatorSettings.get_paginator(name)
+            # init pagSettings
+            $scope.pagSettings = paginatorSettings.get_paginator(name, $scope)
+            # list of entries
             $scope.entries = []
             $scope.shared_data = sharedDataSource.data
             if $scope.settings.rest_url
@@ -288,6 +315,8 @@ angular_add_simple_list_controller = (module, name, settings) ->
                     else
                         # console.log $scope.settings.rest_map[idx - (1 + base_idx)].short, value.length
                         $scope.rest_data[$scope.settings.rest_map[idx - (1 + base_idx)].short] = value
+                if $scope.fn.rest_data_set
+                    $scope.fn.rest_data_set($scope)
             )
             $scope.load_data = (url, options) ->
                 return Restangular.all(url.slice(1)).getList(options)
@@ -442,6 +471,14 @@ angular.module(
         else
             # in case user is undefined
             return "???"
+).filter("show_dtn", () ->
+    return (cur_dtn) ->
+        r_str = cur_dtn.node_postfix
+        if cur_dtn.depth
+            r_str = "#{r_str}.#{cur_dtn.full_name}"
+        else
+            r_str = "#{r_str} [TLN]"
+        return r_str
 ).filter("datetime1", () ->
     return (cur_dt) ->
         return moment(cur_dt).format("ddd, D. MMM YYYY, HH:mm:ss") + ", " + moment(cur_dt).fromNow()
