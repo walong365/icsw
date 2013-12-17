@@ -46,6 +46,7 @@ class repo_process(threading_tools.process_obj):
         self.register_func("rescan_repos", self._rescan_repos)
         self.register_func("reload_searches", self._reload_searches)
         self.register_func("search", self._search)
+        self._correct_search_states()
         self.__background_commands = []
         self.register_timer(self._check_delayed, 1)
         # set repository type
@@ -57,6 +58,11 @@ class repo_process(threading_tools.process_obj):
         self.__log_template.log(log_level, what)
     def loop_post(self):
         self.__log_template.close()
+    def _correct_search_states(self):
+        inv_states = package_search.objects.exclude(Q(deleted=True) & Q(current_state="done"))
+        for inv_state in inv_states:
+            inv_state.current_state = "done"
+            inv_state.save()
     def _check_delayed(self):
         if len(self.__background_commands):
             self.log("%s running in background" % (logging_tools.get_plural("command", len(self.__background_commands))))

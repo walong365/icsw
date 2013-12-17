@@ -200,15 +200,21 @@ class repo_type_rpm_zypper(repo_type):
         cur_search.package_search_result_set.all().delete()
         self.log("found for %s: %d" % (cur_search.search_string, cur_search.results))
         for result in res_xml.xpath(".//solvable"):
-            new_sr = package_search_result(
-                name=result.attrib["name"],
-                kind=result.attrib["kind"],
-                arch=result.attrib["arch"],
-                version=result.attrib["edition"],
-                package_search=cur_search,
-                copied=False,
-                package_repo=repo_dict[result.attrib["repository"]])
-            new_sr.save()
+            if result.attrib["repository"] in repo_dict:
+                new_sr = package_search_result(
+                    name=result.attrib["name"],
+                    kind=result.attrib["kind"],
+                    arch=result.attrib["arch"],
+                    version=result.attrib["edition"],
+                    package_search=cur_search,
+                    copied=False,
+                    package_repo=repo_dict[result.attrib["repository"]])
+                new_sr.save()
+            else:
+                self.log("unknown repository '%s' for package '%s'" % (
+                    result.attrib["repository"],
+                    result.attrib["name"],
+                    ), logging_tools.LOG_LEVEL_ERROR)
 
 class subprocess_struct(object):
     run_idx = 0
