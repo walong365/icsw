@@ -671,7 +671,8 @@ class device_serializer(serializers.ModelSerializer):
             "monitor_checks", "mon_device_templ", "mon_device_esc_templ", "md_cache_mode",
             "act_partition_table", "enable_perfdata", "flap_detection_enabled",
             "automap_root_nagvis", "nagvis_parent", "monitor_server", "mon_ext_host",
-            "is_meta_device", "device_type_identifier", "device_group_name",
+            "is_meta_device", "device_type_identifier", "device_group_name", "bootserver",
+            "curl",
             )
 
 class device_serializer_package_state(device_serializer):
@@ -916,7 +917,6 @@ class device_group_serializer(serializers.ModelSerializer):
         return in_dict
     class Meta:
         model = device_group
-        fields = ("idx", "name", "description", "cluster_device_group", "enabled", "device",)
 
 @receiver(signals.pre_save, sender=device_group)
 def device_group_pre_save(sender, **kwargs):
@@ -1003,6 +1003,10 @@ class device_type(models.Model):
         return self.description
     class Meta:
         db_table = u'device_type'
+
+class device_type_serializer(serializers.ModelSerializer):
+    class Meta:
+        model = device_type
 
 class device_variable(models.Model):
     idx = models.AutoField(db_column="device_variable_idx", primary_key=True)
@@ -3175,6 +3179,10 @@ class domain_tree_node(models.Model):
             r_xml.attrib["local_refcount"] = "%d" % (self.local_refcount)
             r_xml.attrib["total_refcount"] = "%d" % (self.total_refcount)
         return r_xml
+
+class domain_tree_node_serializer(serializers.ModelSerializer):
+    class Meta:
+        model = domain_tree_node
 
 @receiver(signals.pre_save, sender=domain_tree_node)
 def domain_tree_node_pre_save(sender, **kwargs):
