@@ -861,18 +861,6 @@ class draw_info
     create_draw_result: (new_el) ->
         return new draw_result(@name, @group, new_el)
 
-class draw_collapse extends draw_info
-    constructor: (name="collapse", kwargs={}) ->
-        super(name, kwargs)
-    draw: (cur_line, xml_el, line_prefix) ->
-        cur_line.expand = @default ? true
-        return get_expand_td(line_prefix, "exp", undefined, @expand_cb, @default ? true)
-    expand_cb: (line_prefix, state, name) =>
-        if state
-            @draw_setup.table_div.find("tr[id='#{line_prefix}']")[1..].show()
-        else
-            @draw_setup.table_div.find("tr[id='#{line_prefix}']")[1..].hide()
-        
 class draw_link extends draw_info
     constructor: (name="link", kwargs={}) ->
         super(name, kwargs)
@@ -1400,7 +1388,6 @@ root.set_value                = set_value
 root.draw_setup               = draw_setup
 root.draw_info                = draw_info
 root.draw_link                = draw_link
-root.draw_collapse            = draw_collapse
 root.parse_xml_response       = parse_xml_response
 root.lock_elements            = lock_elements
 root.unlock_elements          = unlock_elements
