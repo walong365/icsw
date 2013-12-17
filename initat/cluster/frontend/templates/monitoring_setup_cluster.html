@@ -2,6 +2,8 @@
 
 {% load i18n compress coffeescript crispy_forms_tags %}
 
+{% block angular %}{% include "angular/monitoring_extended.cs" %}{% endblock %}
+
 {% block title %}{% trans "Monitoring setup / Cluster / Dependencies" %}{% endblock %}
 
 {% block content %}

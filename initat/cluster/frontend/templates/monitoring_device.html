@@ -2,6 +2,8 @@
 
 {% load i18n compress coffeescript crispy_forms_tags %}
 
+{% block angular %}{% include "angular/monitoring_device.cs" %}{% endblock %}
+
 {% block title %}{% trans "Monitoring,  device settings" %}{% endblock %}
 
 {% block content %}

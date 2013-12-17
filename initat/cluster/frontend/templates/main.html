@@ -105,17 +105,11 @@
 {% include "init.js" %}
 {% include "deviceinfo.js" %}
 {% include "rms.js" %}
-{# angular modules #}
+{# common angular modules #}
 {% include "angular/common_functions.cs" %}
-{% include "angular/network.cs" %}
-{% include "angular/kernel.cs" %}
-{% include "angular/image.cs" %}
-{% include "angular/package.cs" %}
-{% include "angular/device.cs" %}
-{% include "angular/partition_table.cs" %}
-{% include "angular/monitoring_basic.cs" %}
-{% include "angular/monitoring_extended.cs" %}
-{% include "angular/monitoring_device.cs" %}
+
+{# site-related angular modules #}
+{% block angular %}{% endblock %}
 
 {% endblock %}
 
@@ -136,7 +130,7 @@
     </div>
 {% endif %}
 <noscript>
-    <p>no JavaScript no Clustersoftware</p>
+    <p>no JavaScript, no Clustersoftware</p>
 </noscript>
 {% if not hide_sidebar %}
     <div class="ui-layout-west " >

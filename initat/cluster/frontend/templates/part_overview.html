@@ -2,6 +2,8 @@
 
 {% load i18n extra_tags coffeescript crispy_forms_tags %}
 
+{% block angular %}{% include "angular/partition_table.cs" %}{% endblock %}
+
 {% block title %}{% trans "Partition Overview" %}{% endblock %}
 
 {% block content %}
