@@ -429,7 +429,7 @@ class device(models.Model):
     uptime = models.IntegerField(default=0)
     uptime_timestamp = models.DateTimeField(null=True, default=None)
     bootnetdevice = models.ForeignKey("netdevice", null=True, related_name="boot_net_device")
-    bootserver = models.ForeignKey("device", null=True, related_name="boot_server")
+    bootserver = models.ForeignKey("device", null=True, related_name="boot_server", blank=True)
     reachable_via_bootserver = models.BooleanField(default=False)
     dhcp_mac = models.NullBooleanField(null=True, blank=True)
     dhcp_write = models.NullBooleanField(default=False)
@@ -677,7 +677,6 @@ class device_serializer(serializers.ModelSerializer):
 
 class device_serializer_package_state(device_serializer):
     package_device_connection_set = package_device_connection_serializer(many=True)
-    # package_
     latest_contact = serializers.Field(source="latest_contact")
     class Meta:
         model = device
@@ -940,9 +939,16 @@ def device_group_post_save(sender, **kwargs):
         # meta_device is always created
         if not cur_inst.device_id:
             cur_inst._add_meta_device()
-        if cur_inst.device_id and cur_inst.device.name != cur_inst.get_metadevice_name():
-            cur_inst.device.name = cur_inst.get_metadevice_name()
-            cur_inst.device.save()
+        if cur_inst.device_id:
+            save_meta = False
+            if cur_inst.device.name != cur_inst.get_metadevice_name():
+                cur_inst.device.name = cur_inst.get_metadevice_name()
+                save_meta = True
+            if cur_inst.enabled != cur_inst.device.enabled:
+                cur_inst.device.enabled = cur_inst.enabled
+                save_meta = True
+            if save_meta:
+                cur_inst.device.save()
         if cur_inst.cluster_device_group and not cur_inst.enabled:
             # always enable cluster device group
             cur_inst.enabled = True
