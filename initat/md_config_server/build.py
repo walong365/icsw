@@ -555,6 +555,8 @@ class build_process(threading_tools.process_obj):
         mcc_lut_2 = {}
         for v_list in mon_check_command.objects.all().values_list("name", "config__name"):
             mcc_lut_2.setdefault(v_list[1], []).append(v_list[0])
+        # import pprint
+        # pprint.pprint(mcc_lut_2)
         # set some vars
         host_nc = cur_gc["device.d"]
         if cur_gc.master:
@@ -968,7 +970,7 @@ class build_process(threading_tools.process_obj):
                                 if s_dep.mon_service_cluster_id:
                                     all_ok = True
                                     for d_host in s_dep.dependent_devices.all():
-                                        all_ok &= self._check_for_config(all_configs, mcc_lut, mcc_lut_2, d_host, s_dep.dependent_mon_check_command_id)
+                                        all_ok &= self._check_for_config("child", all_configs, mcc_lut, mcc_lut_2, d_host, s_dep.dependent_mon_check_command_id)
                                     if all_ok:
                                         act_service_dep["dependent_service_description"] = mcc_lut[s_dep.dependent_mon_check_command_id][1]
                                         sc_check = cur_gc["command"]["check_service_cluster"]
@@ -983,9 +985,9 @@ class build_process(threading_tools.process_obj):
                                 else:
                                     all_ok = True
                                     for p_host in s_dep.devices.all():
-                                        all_ok &= self._check_for_config(all_configs, mcc_lut, mcc_lut_2, p_host, s_dep.mon_check_command_id)
+                                        all_ok &= self._check_for_config("parent", all_configs, mcc_lut, mcc_lut_2, p_host, s_dep.mon_check_command_id)
                                     for d_host in s_dep.dependent_devices.all():
-                                        all_ok &= self._check_for_config(all_configs, mcc_lut, mcc_lut_2, d_host, s_dep.dependent_mon_check_command_id)
+                                        all_ok &= self._check_for_config("child", all_configs, mcc_lut, mcc_lut_2, d_host, s_dep.dependent_mon_check_command_id)
                                     if all_ok:
                                         act_service_dep["dependent_service_description"] = mcc_lut[s_dep.dependent_mon_check_command_id][1]
                                         act_service_dep["service_description"] = mcc_lut[s_dep.mon_check_command_id][1]
@@ -1009,19 +1011,23 @@ class build_process(threading_tools.process_obj):
         self.log(glob_log_str)
         self.mach_log(info_str)
         self.close_mach_log()
-    def _check_for_config(self, all_configs, mcc_lut, mcc_lut_2, device, moncc_id):
+    def _check_for_config(self, c_type, all_configs, mcc_lut, mcc_lut_2, device, moncc_id):
         # configure mon check commands
+        # import pprint
+        # pprint.pprint(all_configs.get(device.full_name, []))
         ccoms = sum([mcc_lut_2.get(key, []) for key in all_configs.get(device.full_name, [])], [])
         # needed checkcommand
         nccom = mcc_lut[moncc_id]
         if nccom[0] in ccoms:
             return True
         else:
-            self.mach_log("Checkcommand '%s' config (%s) not found in configs (%s)" % (
+            self.mach_log("Checkcommand '%s' config (%s) not found in configs (%s) for %s '%s'" % (
                 nccom[0],
                 nccom[2],
                 ", ".join(sorted(ccoms)) or "none defined",
-                ))
+                c_type,
+                unicode(device),
+                ), logging_tools.LOG_LEVEL_ERROR)
             return False
     def _get_number_of_hosts(self, cur_gc, hosts):
         if hosts:
@@ -1068,14 +1074,18 @@ class build_process(threading_tools.process_obj):
             h_filter = Q(pk__in=pk_list)
         else:
             h_filter = Q()
+        # filter for all configs, wider than the h_filter
+        ac_filter = Q()
         # add master/slave related filters
         if cur_gc.master:
             pass
             # h_filter &= (Q(monitor_server=cur_gc.monitor_server) | Q(monitor_server=None))
         else:
             h_filter &= Q(monitor_server=cur_gc.monitor_server)
+            ac_filter &= Q(monitor_server=cur_gc.monitor_server)
         if not single_build:
             h_filter &= Q(enabled=True) & Q(device_group__enabled=True)
+            ac_filter &= Q(enabled=True) & Q(device_group__enabled=True)
         # dictionary with all parent / slave relations
         ps_dict = {}
         for ps_config in config.objects.exclude(Q(parent_config=None)).select_related("parent_config"):
@@ -1087,7 +1097,7 @@ class build_process(threading_tools.process_obj):
             cur_dev.invalid_ips = {}
         meta_devices = dict([(md.device_group.pk, md) for md in device.objects.filter(Q(device_type__identifier='MD')).prefetch_related("device_config_set", "device_config_set__config").select_related("device_group")])
         all_configs = {}
-        for cur_dev in device.objects.filter(h_filter).select_related("domain_tree_node").prefetch_related("device_config_set", "device_config_set__config"):
+        for cur_dev in device.objects.filter(ac_filter).select_related("domain_tree_node").prefetch_related("device_config_set", "device_config_set__config"):
             loc_config = [cur_dc.config.name for cur_dc in cur_dev.device_config_set.all()]
             if cur_dev.device_group_id in meta_devices:
                 loc_config.extend([cur_dc.config.name for cur_dc in meta_devices[cur_dev.device_group_id].device_config_set.all()])
