@@ -70,9 +70,9 @@ angular_add_simple_list_controller(
                 }
                 success : (xml) ->
                     parse_xml_response(xml)
-        object_modified : (edit_obj, srv_data, $scope) ->
-            $scope.reload()
         fn:
+            object_modified : (edit_obj, srv_data, $scope) ->
+                $scope.reload()
             retry : ($scope, obj) ->
                 if $scope.shared_data.result_obj and $scope.shared_data.result_obj.idx == obj.idx
                     $scope.shared_data.result_obj = undefined

@@ -17,13 +17,19 @@ icsw_paginator = '
             </ul>
         </div>
         <span ng-show="pagSettings.conf.num_pages > 1">, </span>
-        showing entries {{ pagSettings.conf.start_idx + 1 }} to {{ pagSettings.conf.end_idx + 1 }}
+        showing entries {{ pagSettings.conf.start_idx + 1 }} to {{ pagSettings.conf.end_idx + 1 }},
     </span>
     <span ng-show="! pagSettings.conf.num_entries">
-        no entries to show
+        no entries to show,
+    </span>
+    <span ng-show="pagSettings.conf.modify_epp">
+        show
+        <div class="form-group">
+            <select class="form-control input-sm" ng-model="pagSettings.conf.per_page" ng-options="value as value for (key, value) in pagSettings.conf.entries_per_page"></select>
+        </div> per page,
     </span>
     <span ng-show="pagSettings.simple_filter_mode()">
-        , filter <div class="form-group"><input ng-model="pagSettings.conf.filter" class="form-control input-sm""></input></div>
+        filter <div class="form-group"><input ng-model="pagSettings.conf.filter" class="form-control input-sm""></input></div>,
     </span>
 </form>
 '
@@ -56,6 +62,8 @@ class paginator_class
             end_idx     : 0
             act_page    : 0
             page_list   : []
+            modify_epp : false
+            entries_per_page : []
             init        : false
             filter_mode     : false
             filter          : undefined
@@ -75,6 +83,9 @@ class paginator_class
             return "active"
         else
             return ""
+    set_epp: (in_str) =>
+        @conf.modify_epp = true
+        @conf.entries_per_page = (parseInt(entry) for entry in in_str.split(","))
     set_entries: (el_list) =>
         el_list = @apply_filter(el_list)
         num = el_list.length
@@ -126,8 +137,11 @@ class rest_data_source
                d.resolve(response)
         )
         return d.promise
-    load: (url, options) =>
-        options ?= {}
+    load: (rest_tuple) =>
+        if typeof(rest_tuple) == "string"
+            rest_tuple = [rest_tuple, {}]
+        url = rest_tuple[0]
+        options = rest_tuple[1]
         #console.log @_data, [url, options] in @_data
         #console.log @_build_key(url, options)
         if @_build_key(url, options) of @_data
@@ -138,8 +152,14 @@ class rest_data_source
     reload: (rest_tuple) =>
         if typeof(rest_tuple) == "string"
             rest_tuple = [rest_tuple, {}]
-        @_data[@_build_key(rest_tuple[0], rest_tuple[1])] = @_do_query(@Restangular.all(rest_tuple[0].slice(1)), rest_tuple[1])
-        return @get(rest_tuple)
+        url = rest_tuple[0]
+        options = rest_tuple[1]
+        if not @_build_key(url, options) of @_data
+            # not there, call load
+            return @load([url, options])
+        else
+            @_data[@_build_key(url, options)] = @_do_query(@Restangular.all(url.slice(1)), options)
+            return @get(rest_tuple)
     add_sources: (in_list) =>
         # in list is a list of (url, option) lists
         #console.log "*", in_list
@@ -204,9 +224,10 @@ angular_module_setup = (module_list, url_list=[]) ->
                         else
                             resp.data = {}
                     for key, value of resp.data
-                        if (typeof(value) == "object" or typeof(value) == "string") and not key.match(/^_/)
+                        if (typeof(value) == "object" or typeof(value) == "string") and (not key.match(/^_/) or key == "__all__")
+                            key_str = if key == "__all__" then "error: " else "#{key} : "
                             noty
-                                text : key + " : " + if typeof(value) == "string" then value else value.join(", ")
+                                text : key_str + if typeof(value) == "string" then value else value.join(", ")
                                 type : "error"
                                 timeout : false
                     return true
@@ -227,6 +248,8 @@ angular_module_setup = (module_list, url_list=[]) ->
             link = (scope, element, attrs) ->
                 scope.pagSettings.conf.per_page = parseInt(attrs.perPage)
                 #scope.pagSettings.conf.filter = attrs.paginatorFilter
+                if attrs.paginatorEpp
+                    scope.pagSettings.set_epp(attrs.paginatorEpp)
                 if attrs.paginatorFilter
                     scope.pagSettings.conf.filter_mode = attrs.paginatorFilter
                     if scope.pagSettings.conf.filter_mode == "simple"
@@ -244,7 +267,11 @@ angular_module_setup = (module_list, url_list=[]) ->
                 scope.$watch(
                     () -> return scope.pagSettings.conf.filter
                     (new_el) ->
-                        #console.log "r2"
+                        scope.pagSettings.set_entries(scope.entries)
+                )
+                scope.$watch(
+                    () -> return scope.pagSettings.conf.per_page
+                    (new_el) ->
                         scope.pagSettings.set_entries(scope.entries)
                 )
                 scope.$watch(
@@ -305,30 +332,33 @@ angular_add_simple_list_controller = (module, name, settings) ->
             $scope.modal_active = false
             if $scope.settings.rest_map
                 for value, idx in $scope.settings.rest_map
-                    $scope.rest_data[value.short] = restDataSource.load(value.url, value.options)
+                    $scope.rest_data[value.short] = restDataSource.load([value.url, value.options])
                     wait_list.push($scope.rest_data[value.short])
             $q.all(wait_list).then((data) ->
                 base_idx = if $scope.settings.rest_url then 0 else -1
                 for value, idx in data
                     if idx == base_idx
-                        $scope.set_entries(value)
+                        $scope.set_entries(value, true)
                     else
                         # console.log $scope.settings.rest_map[idx - (1 + base_idx)].short, value.length
                         $scope.rest_data[$scope.settings.rest_map[idx - (1 + base_idx)].short] = value
-                if $scope.fn.rest_data_set
+                if $scope.fn and $scope.fn.rest_data_set
                     $scope.fn.rest_data_set($scope)
             )
             $scope.load_data = (url, options) ->
                 return Restangular.all(url.slice(1)).getList(options)
             $scope.reload = () ->
+                # only reload primary rest, nothing from rest_map
                 restDataSource.reload([$scope.settings.rest_url, $scope.settings.rest_options]).then((data) ->
                     $scope.set_entries(data)
                 )
-            $scope.set_entries = (data) ->
+            $scope.set_entries = (data, ignore_rest_data_set) ->
                 if $scope.settings.entries_filter
                     $scope.entries = $filter("filter")(data, $scope.settings.entries_filter)
                 else
                     $scope.entries = data
+                if not ignore_rest_data_set and $scope.fn and $scope.fn.rest_data_set
+                    $scope.fn.rest_data_set($scope)
             $scope.modify = () ->
                 if not $scope.form.$invalid
                     if $scope.create_mode
@@ -340,12 +370,12 @@ angular_add_simple_list_controller = (module, name, settings) ->
                                 $scope.settings.object_created($scope.new_obj, new_data)
                         )
                     else
-                        $scope.edit_obj.put().then(
+                        $scope.edit_obj.put($scope.settings.rest_options).then(
                             (data) -> 
                                 $.simplemodal.close()
                                 handle_reset(data, $scope.entries, $scope.edit_obj.idx)
-                                if $scope.settings.object_modified
-                                    $scope.settings.object_modified($scope.edit_obj, data, $scope)
+                                if $scope.fn and $scope.fn.object_modified
+                                    $scope.fn.object_modified($scope.edit_obj, data, $scope)
                             (resp) -> handle_reset(resp.data, $scope.entries, $scope.edit_obj.idx)
                         )
             $scope.form_error = (field_name) ->
@@ -360,11 +390,12 @@ angular_add_simple_list_controller = (module, name, settings) ->
                     $scope.new_obj = $scope.settings.new_object
                 $scope.create_or_edit(event, true, $scope.new_obj)
             $scope.edit = (event, obj) ->
+                $scope.pre_edit_obj = angular.copy(obj)
                 $scope.create_or_edit(event, false, obj)
             $scope.create_or_edit = (event, create_or_edit, obj) ->
                 $scope.edit_obj = obj
                 $scope.create_mode = create_or_edit
-                $scope.edit_div = $compile($templateCache.get($scope.settings.edit_template))($scope) 
+                $scope.edit_div = $compile($templateCache.get($scope.settings.edit_template))($scope)
                 $scope.edit_div.simplemodal
                     #opacity      : 50
                     position     : [event.pageY, event.pageX]
@@ -473,7 +504,7 @@ angular.module(
             return "???"
 ).filter("show_dtn", () ->
     return (cur_dtn) ->
-        r_str = cur_dtn.node_postfix
+        r_str = if cur_dtn.node_postfix then "#{cur_dtn.node_postfix}" else ""
         if cur_dtn.depth
             r_str = "#{r_str}.#{cur_dtn.full_name}"
         else

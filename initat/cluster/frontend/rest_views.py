@@ -166,26 +166,30 @@ class list_view(mixins.ListModelMixin,
             res = res.filter(reduce(operator.iand, filter_list))
         return res.select_related(*related_fields).prefetch_related(*prefetch_fields)
 
-# class xdevice_tree_list(viewsets.ViewSet):
-#    def list(self, request):
-#        queryset = device.objects.all()
-#        serializer = device_serializer(queryset, package_state=True)
-#        return Response(serializer.data)
+class device_tree_detail(detail_view):
+    model = device
+    def _get_post_boolean(self, name, default):
+        if name in self.request.QUERY_PARAMS:
+            p_val = self.request.QUERY_PARAMS[name]
+            if p_val.lower() in ["1", "true"]:
+                return True
+            else:
+                return False
+        else:
+            return default
+    @rest_logging
+    def get_serializer_class(self):
+        if self._get_post_boolean("tree_mode", False):
+            return device_serializer
+        else:
+            return device_serializer_monitoring
 
-# xdevice_tree_list_vs = xdevice_tree_list.as_view({"get" : "list"})
-
-# router = DefaultRouter()
-# router.register(r"device_tree_package_state", xdevice_tree_list_vs, "device_tree_package_state_list")
-# print router.urls
-
-class device_tree_list(
-    mixins.ListModelMixin,
-    mixins.CreateModelMixin,
-    generics.MultipleObjectAPIView):
+class device_tree_list(mixins.ListModelMixin,
+                       mixins.CreateModelMixin,
+                       generics.MultipleObjectAPIView):
     authentication_classes = (SessionAuthentication,)
     permission_classes = (IsAuthenticated,)
     model = device
-    serializer_class = device_serializer
     @rest_logging
     def get_serializer_class(self):
         package_state = self._get_post_boolean("package_state", False)
@@ -288,10 +292,3 @@ for obj_name in REST_LIST:
              "model"                  : ser_class.Meta.model,
              "serializer_class"       : ser_class})
 
-device_tree_detail = type(
-    "device_tree_detail", (detail_view,),
-    {"authentication_classes" : (SessionAuthentication,),
-     "permission_classes"     : (IsAuthenticated,),
-     "model"                  : device_serializer_monitoring.Meta.model,
-     "serializer_class"       : device_serializer_monitoring}
-)

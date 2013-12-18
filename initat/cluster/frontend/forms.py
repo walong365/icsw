@@ -1597,3 +1597,88 @@ class device_monitoring_form(ModelForm):
     class Meta:
         model = device
 
+class device_tree_form(ModelForm):
+    helper = FormHelper()
+    helper.form_id = "form"
+    helper.form_name = "form"
+    helper.form_class = 'form-horizontal'
+    helper.label_class = 'col-sm-3'
+    helper.field_class = 'col-sm-7'
+    helper.ng_model = "edit_obj"
+    helper.layout = Layout(
+        HTML("<h2>Device settings for {% verbatim %}{{ edit_obj.name }}{% endverbatim %}</h2>"),
+            Fieldset(
+                "Basic settings",
+                Field("name"),
+                Field("comment"),
+                Field("device_type", ng_options="value.idx as value.description for value in rest_data.device_type | filter:ignore_md", chosen=True),
+                Field("device_group", ng_options="value.idx as value.name for value in rest_data.device_group | filter:ignore_cdg", chosen=True),
+            ),
+            Fieldset(
+                "Additional settings",
+                Field("curl"),
+                Field("bootserver", ng_options="value.idx as value.full_name for value in rest_data.mother_server", chosen=True),
+                Field("monitor_server", ng_options="value.idx as value.full_name for value in rest_data.monitor_server", chosen=True),
+            ),
+            Fieldset(
+                "Flags",
+                Div(
+                    Div(
+                        Field("enabled"),
+                        css_class="col-md-5",
+                    ),
+                    Div(
+                        css_class="col-md-5",
+                    ),
+                    css_class="rows",
+                ),
+            ),
+            FormActions(
+                Submit("submit", "", css_class="primaryAction", ng_value="get_action_string()"),
+            ),
+        )
+    def __init__(self, *args, **kwargs):
+        ModelForm.__init__(self, *args, **kwargs)
+        for clear_f in ["device_type", "device_group"]:
+            self.fields[clear_f].queryset = empty_query_set()
+            self.fields[clear_f].empty_label = None
+    class Meta:
+        model = device
+
+class device_group_tree_form(ModelForm):
+    helper = FormHelper()
+    helper.form_id = "form"
+    helper.form_name = "form"
+    helper.form_class = 'form-horizontal'
+    helper.label_class = 'col-sm-3'
+    helper.field_class = 'col-sm-7'
+    helper.ng_model = "edit_obj"
+    helper.layout = Layout(
+        HTML("<h2>Settings for devicegroup {% verbatim %}{{ edit_obj.name }}{% endverbatim %}</h2>"),
+            Fieldset(
+                "Basic settings",
+                Field("name"),
+                Field("description"),
+            ),
+            Fieldset(
+                "Flags",
+                Div(
+                    Div(
+                        Field("enabled"),
+                        css_class="col-md-5",
+                    ),
+                    Div(
+                        css_class="col-md-5",
+                    ),
+                    css_class="rows",
+                ),
+            ),
+            FormActions(
+                Submit("submit", "", css_class="primaryAction", ng_value="get_action_string()"),
+            ),
+        )
+    def __init__(self, *args, **kwargs):
+        ModelForm.__init__(self, *args, **kwargs)
+    class Meta:
+        model = device_group
+

@@ -3,33 +3,37 @@
 
 """ device views """
 
-import logging
-import logging_tools
-import re
-from lxml.builder import E # @UnresolvedImports
-import config_tools
-
 from django.contrib.auth.decorators import login_required
-from django.db.models import Q
 from django.core.exceptions import ValidationError
-from django.views.generic import View
+from django.db.models import Q
 from django.utils.decorators import method_decorator
-
-from initat.cluster.frontend.helper_functions import xml_wrapper
-from initat.core.render import render_me, render_string
+from django.views.generic import View
 from initat.cluster.backbone.models import device_type, device_group, device, \
      cd_connection, domain_name_tree, category_tree, package_device_connection, \
      mon_ext_host, mon_device_templ, mon_service_cluster, mon_host_cluster, network
 from initat.cluster.frontend import forms
-
+from initat.cluster.frontend.forms import device_tree_form, device_group_tree_form
+from initat.cluster.frontend.helper_functions import xml_wrapper
+from initat.core.render import render_me, render_string
 from lxml import etree # @UnresolvedImport
+from lxml.builder import E # @UnresolvedImports
+import config_tools
+import logging
+import logging_tools
+import re
 
 logger = logging.getLogger("cluster.device")
 
 class device_tree(View):
     @method_decorator(login_required)
     def get(self, request):
-        return render_me(request , "device_tree.html", hide_sidebar=True)()
+        return render_me(request, "device_tree.html",
+            {
+                "device_tree_form"       : device_tree_form(),
+                "device_group_tree_form" : device_group_tree_form(),
+                "hide_sidebar"           : True,
+            }
+            )()
 
 class get_xml_tree(View):
     @method_decorator(login_required)
