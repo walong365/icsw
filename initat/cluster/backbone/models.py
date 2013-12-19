@@ -489,6 +489,14 @@ class device(models.Model):
         return self.device_type.identifier
     def device_group_name(self):
         return self.device_group.name
+    def get_monitor_type(self):
+        sel_configs = self.device_config_set.filter(Q(config__name__in=["monitor_server", "monitor_master", "monitor_slave"])).values_list("config__name", flat=True)
+        if "monitor_master" in sel_configs:
+            return "master"
+        elif sel_configs:
+            return "slave"
+        else:
+            return "---"
     def get_boot_uuid(self):
         return boot_uuid(self.uuid)
     def add_log(self, log_src, log_stat, text, **kwargs):
@@ -695,6 +703,13 @@ class device_serializer_monitoring(device_serializer):
             "automap_root_nagvis", "nagvis_parent", "monitor_server", "mon_ext_host",
             )
         read_only_fields = ("act_partition_table",)
+
+class device_serializer_monitor_server(device_serializer):
+    # only used for reading (no write)
+    monitor_type = serializers.Field(source="get_monitor_type")
+    class Meta:
+        model = device
+        fields = ("idx", "name", "full_name", "device_group_name", "monitor_type")
 
 @receiver(signals.pre_save, sender=device)
 def device_pre_save(sender, **kwargs):
