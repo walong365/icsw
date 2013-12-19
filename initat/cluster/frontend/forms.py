@@ -10,7 +10,7 @@ from django.contrib.auth import authenticate
 from django.core.urlresolvers import reverse
 from django.db.models import Q
 from django.forms import Form, ModelForm, ValidationError, CharField, ModelChoiceField, \
-    ModelMultipleChoiceField, ChoiceField, TextInput, TypedChoiceField
+    ModelMultipleChoiceField, ChoiceField, TextInput, TypedChoiceField, BooleanField
 from django.forms.widgets import TextInput, PasswordInput, SelectMultiple, Textarea
 from django.utils.translation import ugettext_lazy as _
 from initat.cluster.backbone.models import domain_tree_node, device, category, mon_check_command, mon_service_templ, \
@@ -592,13 +592,13 @@ class kernel_form(ModelForm):
                         Field("stage1_cramfs_present", disabled=True),
                         Field("stage2_present", disabled=True),
                     ),
-                    css_class="col-md-5",
+                    css_class="col-md-6",
                 ),
                 Div(
                     FormActions(
                         Field("enabled"),
                     ),
-                    css_class="col-md-5",
+                    css_class="col-md-6",
                 ),
                 css_class="row",
             ),
@@ -845,7 +845,7 @@ class mon_contact_form(ModelForm):
                         Field("sncritical"),
                         Field("snwarning"),
                     ),
-                    css_class="col-md-5",
+                    css_class="col-md-6",
                 ),
                 Div(
                     FormActions(
@@ -853,7 +853,7 @@ class mon_contact_form(ModelForm):
                         Field("sflapping"),
                         Field("splanned_downtime"),
                     ),
-                    css_class="col-md-5",
+                    css_class="col-md-6",
                 ),
                 css_class="row",
             ),
@@ -868,14 +868,14 @@ class mon_contact_form(ModelForm):
                         Field("hndown"),
                         Field("hnunreachable"),
                     ),
-                    css_class="col-md-5",
+                    css_class="col-md-6",
                 ),
                 Div(
                     FormActions(
                         Field("hflapping"),
                         Field("hplanned_downtime"),
                     ),
-                    css_class="col-md-5",
+                    css_class="col-md-6",
                 ),
                 css_class="row",
             ),
@@ -926,17 +926,17 @@ class mon_service_templ_form(ModelForm):
                 Div(
                     Field("nrecovery"),
                     Field("ncritical"),
-                    css_class="col-md-3",
+                    css_class="col-md-4",
                 ),
                 Div(
                     Field("nwarning"),
                     Field("nunknown"),
-                    css_class="col-md-3",
+                    css_class="col-md-4",
                 ),
                 Div(
                     Field("nflapping"),
                     Field("nplanned_downtime"),
-                    css_class="col-md-3",
+                    css_class="col-md-4",
                 ),
                 css_class="row",
             ),
@@ -952,12 +952,12 @@ class mon_service_templ_form(ModelForm):
                 Div(
                     Field("flap_detect_ok"),
                     Field("flap_detect_warn"),
-                    css_class="col-md-5",
+                    css_class="col-md-6",
                 ),
                 Div(
                     Field("flap_detect_critical"),
                     Field("flap_detect_unknown"),
-                    css_class="col-md-5",
+                    css_class="col-md-6",
                 ),
                 css_class="row",
             ),
@@ -998,17 +998,17 @@ class mon_service_esc_templ_form(ModelForm):
                 Div(
                     Field("nrecovery"),
                     Field("ncritical"),
-                    css_class="col-md-3",
+                    css_class="col-md-4",
                 ),
                 Div(
                     Field("nwarning"),
                     Field("nunknown"),
-                    css_class="col-md-3",
+                    css_class="col-md-4",
                 ),
                 Div(
                     Field("nflapping"),
                     Field("nplanned_downtime"),
-                    css_class="col-md-3",
+                    css_class="col-md-4",
                 ),
                 css_class="row",
             ),
@@ -1113,16 +1113,16 @@ class mon_device_templ_form(ModelForm):
                 Div(
                     Field("nrecovery"),
                     Field("ndown"),
-                    css_class="col-md-3",
+                    css_class="col-md-4",
                 ),
                 Div(
                     Field("nunreachable"),
-                    css_class="col-md-3",
+                    css_class="col-md-4",
                 ),
                 Div(
                     Field("nflapping"),
                     Field("nplanned_downtime"),
-                    css_class="col-md-3",
+                    css_class="col-md-4",
                 ),
                 css_class="row",
             ),
@@ -1138,11 +1138,11 @@ class mon_device_templ_form(ModelForm):
                 Div(
                     Field("flap_detect_up"),
                     Field("flap_detect_down"),
-                    css_class="col-md-5",
+                    css_class="col-md-6",
                 ),
                 Div(
                     Field("flap_detect_unreachable"),
-                    css_class="col-md-5",
+                    css_class="col-md-6",
                 ),
                 css_class="row",
             ),
@@ -1187,16 +1187,16 @@ class mon_device_esc_templ_form(ModelForm):
                 Div(
                     Field("nrecovery"),
                     Field("ndown"),
-                    css_class="col-md-3",
+                    css_class="col-md-4",
                 ),
                 Div(
                     Field("nunreachable"),
-                    css_class="col-md-3",
+                    css_class="col-md-4",
                 ),
                 Div(
                     Field("nflapping"),
                     Field("nplanned_downtime"),
-                    css_class="col-md-3",
+                    css_class="col-md-4",
                 ),
                 css_class="row",
             ),
@@ -1314,14 +1314,14 @@ class mon_host_dependency_templ_form(ModelForm):
                     Div(
                         Field("efc_up"),
                         Field("efc_down"),
-                        css_class="col-md-5",
+                        css_class="col-md-6",
                     ),
                     Div(
                         Field("efc_unreachable"),
                         Field("efc_pending"),
-                        css_class="col-md-5",
+                        css_class="col-md-6",
                     ),
-                    css_class="rows",
+                    css_class="row",
                 ),
             ),
             Fieldset(
@@ -1330,14 +1330,14 @@ class mon_host_dependency_templ_form(ModelForm):
                     Div(
                         Field("nfc_up"),
                         Field("nfc_down"),
-                        css_class="col-md-5",
+                        css_class="col-md-6",
                     ),
                     Div(
                         Field("nfc_unreachable"),
                         Field("nfc_pending"),
-                        css_class="col-md-5",
+                        css_class="col-md-6",
                     ),
-                    css_class="rows",
+                    css_class="row",
                 ),
             ),
             FormActions(
@@ -1414,14 +1414,14 @@ class mon_service_dependency_templ_form(ModelForm):
                         Field("efc_ok"),
                         Field("efc_warn"),
                         Field("efc_unknown"),
-                        css_class="col-md-5",
+                        css_class="col-md-6",
                     ),
                     Div(
                         Field("efc_critical"),
                         Field("efc_pending"),
-                        css_class="col-md-5",
+                        css_class="col-md-6",
                     ),
-                    css_class="rows",
+                    css_class="row",
                 ),
             ),
             Fieldset(
@@ -1431,14 +1431,14 @@ class mon_service_dependency_templ_form(ModelForm):
                         Field("nfc_ok"),
                         Field("nfc_warn"),
                         Field("nfc_unknown"),
-                        css_class="col-md-5",
+                        css_class="col-md-6",
                     ),
                     Div(
                         Field("nfc_critical"),
                         Field("nfc_pending"),
-                        css_class="col-md-5",
+                        css_class="col-md-6",
                     ),
-                    css_class="rows",
+                    css_class="row",
                 ),
             ),
             FormActions(
@@ -1570,13 +1570,13 @@ class device_monitoring_form(ModelForm):
                     Div(
                         Field("enable_perfdata"),
                         Field("flap_detection_enabled"),
-                        css_class="col-md-5",
+                        css_class="col-md-6",
                     ),
                     Div(
                         Field("monitor_checks"),
-                        css_class="col-md-5",
+                        css_class="col-md-6",
                     ),
-                    css_class="rows",
+                    css_class="row",
                 ),
             ),
             Fieldset(
@@ -1617,6 +1617,7 @@ class device_tree_form(ModelForm):
             Fieldset(
                 "Additional settings",
                 Field("curl"),
+                Field("domain_tree_node", ng_options="value.idx as value.tree_info for value in rest_data.domain_tree_node", chosen=True),
                 Field("bootserver", ng_options="value.idx as value.full_name for value in rest_data.mother_server", chosen=True),
                 Field("monitor_server", ng_options="value.idx as value.full_name for value in rest_data.monitor_server", chosen=True),
             ),
@@ -1625,12 +1626,12 @@ class device_tree_form(ModelForm):
                 Div(
                     Div(
                         Field("enabled"),
-                        css_class="col-md-5",
+                        css_class="col-md-6",
                     ),
                     Div(
-                        css_class="col-md-5",
+                        css_class="col-md-6",
                     ),
-                    css_class="rows",
+                    css_class="row",
                 ),
             ),
             FormActions(
@@ -1639,9 +1640,83 @@ class device_tree_form(ModelForm):
         )
     def __init__(self, *args, **kwargs):
         ModelForm.__init__(self, *args, **kwargs)
-        for clear_f in ["device_type", "device_group"]:
+        for clear_f in ["device_type", "device_group", "domain_tree_node"]:
             self.fields[clear_f].queryset = empty_query_set()
             self.fields[clear_f].empty_label = None
+    class Meta:
+        model = device
+
+class device_tree_many_form(ModelForm):
+    helper = FormHelper()
+    helper.form_id = "form"
+    helper.form_name = "form"
+    helper.form_class = 'form-horizontal'
+    helper.label_class = 'col-sm-3'
+    helper.field_class = 'col-sm-8'
+    helper.ng_model = "edit_obj"
+    helper.ng_submit = "modify_many()"
+    change_device_type = BooleanField(label="DeviceType", required=False)
+    change_device_group = BooleanField(label="DeviceGroup", required=False)
+    curl = CharField(label="Curl", required=False)
+    change_curl = BooleanField(label="Curl", required=False)
+    change_domain_tree_node = BooleanField(label="DTN", required=False)
+    change_bootserver = BooleanField(label="Bootserver", required=False)
+    change_monitor_server = BooleanField(label="MonitorServer", required=False)
+    change_enabled = BooleanField(label="EnabledFlag", required=False)
+    helper.layout = Layout(
+        HTML("<h2>Change settings of {%verbatim %}{{ num_selected() }}{% endverbatim %} devices</h2>"),
+    )
+    for fs_string, el_list in [
+        (
+            "Basic settings", [
+                ("device_type", "value.idx as value.description for value in rest_data.device_type | filter:ignore_md", {"chosen" : True}),
+                ("device_group", "value.idx as value.name for value in rest_data.device_group | filter:ignore_cdg", {"chosen" : True}),
+            ]
+        ),
+        (
+            "Additional settings", [
+                ("curl", None, {}),
+                ("domain_tree_node", "value.idx as value.tree_info for value in rest_data.domain_tree_node", {"chosen" : True}),
+                ("bootserver", "value.idx as value.full_name for value in rest_data.monitor_server", {"chosen" : True}),
+                ("monitor_server", "value.idx as value.full_name for value in rest_data.mother_server", {"chosen" : True}),
+            ]
+        ),
+        (
+            "Flags", [
+                ("enabled", None, {}),
+            ]
+        ),
+        ]:
+        helper.layout.append(
+            Fieldset(
+                fs_string,
+                *[
+                    Div(
+                        Div(
+                            Field("change_%s" % (f_name)),
+                            css_class="col-md-2",
+                        ),
+                        Div(
+                            Field(f_name, wrapper_ng_show="edit_obj.change_%s" % (f_name), ng_options=ng_options if ng_options else None, **f_options),
+                            css_class="col-md-10",
+                        ),
+                        css_class="row",
+                    ) for f_name, ng_options, f_options in el_list
+
+                ]
+            )
+        )
+    helper.layout.append(
+        FormActions(
+            Submit("submit", "Modify many", css_class="primaryAction"),
+        ),
+    )
+    def __init__(self, *args, **kwargs):
+        ModelForm.__init__(self, *args, **kwargs)
+        for clear_f in ["device_type", "device_group", "domain_tree_node"]:
+            self.fields[clear_f].queryset = empty_query_set()
+            self.fields[clear_f].empty_label = None
+            self.fields[clear_f].required = False
     class Meta:
         model = device
 
@@ -1661,16 +1736,21 @@ class device_group_tree_form(ModelForm):
                 Field("description"),
             ),
             Fieldset(
+                "Additional settings",
+                Field("domain_tree_node", ng_options="value.idx as value.tree_info for value in rest_data.domain_tree_node", chosen=True),
+            ),
+            Fieldset(
                 "Flags",
                 Div(
                     Div(
-                        Field("enabled"),
-                        css_class="col-md-5",
+                        # disable enabled-flag for clusterdevicegroup
+                        Field("enabled", ng_show="!edit_obj.cluster_device_group"),
+                        css_class="col-md-6",
                     ),
                     Div(
-                        css_class="col-md-5",
+                        css_class="col-md-6",
                     ),
-                    css_class="rows",
+                    css_class="row",
                 ),
             ),
             FormActions(
@@ -1679,6 +1759,8 @@ class device_group_tree_form(ModelForm):
         )
     def __init__(self, *args, **kwargs):
         ModelForm.__init__(self, *args, **kwargs)
+        for clear_f in ["domain_tree_node"]:
+            self.fields[clear_f].queryset = empty_query_set()
+            self.fields[clear_f].empty_label = None
     class Meta:
         model = device_group
-

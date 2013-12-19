@@ -7,7 +7,7 @@ from django.db.models import Q
 from initat.cluster.backbone import models
 from initat.cluster.backbone.models import user , group, user_serializer_h, group_serializer_h, \
      get_related_models, get_change_reset_list, device, device_serializer, \
-     device_serializer_package_state, device_serializer_monitoring
+     device_serializer_package_state, device_serializer_monitoring, domain_name_tree
 from rest_framework import mixins, generics, status, viewsets
 from rest_framework.authentication import BasicAuthentication, SessionAuthentication
 from rest_framework.decorators import api_view
@@ -117,7 +117,8 @@ class detail_view(mixins.RetrieveModelMixin,
     def delete(self, request, *args, **kwargs):
         # just be careful
         cur_obj = self.model.objects.get(Q(pk=kwargs["pk"]))
-        num_refs = get_related_models(cur_obj)
+        ignore_objs = {"device_group" : list(device.objects.filter(Q(device_group=kwargs["pk"]) & Q(device_type__identifier="MD")))}.get(self.model._meta.object_name, [])
+        num_refs = get_related_models(cur_obj, ignore_objs=ignore_objs)
         if num_refs:
             raise ValueError("cannot delete %s: referenced %s" % (
                 self.model._meta.object_name,
@@ -148,6 +149,8 @@ class list_view(mixins.ListModelMixin,
     @rest_logging
     def get_queryset(self):
         model_name = self.model._meta.model_name
+        if model_name == "domain_tree_node":
+            return domain_name_tree()
         related_fields, prefetch_fields = {
             "kernel" : ([], ["initrd_build_set", "kernel_build_set", "new_kernel", "act_kernel"]),
             "image" : ([], ["new_image", "act_image"]),

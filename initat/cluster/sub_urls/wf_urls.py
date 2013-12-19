@@ -115,6 +115,7 @@ device_patterns = patterns(
     url("manual_connection"   , device_views.manual_connection.as_view(), name="manual_connection"),
     url("variables$"          , device_views.variables.as_view()        , name="variables"),
     url("dev_info$"           , device_views.device_info.as_view()      , name="device_info"),
+    url("change_devices$"     , device_views.change_devices.as_view()   , name="change_devices"),
 )
 
 network_patterns = patterns(

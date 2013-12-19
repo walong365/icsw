@@ -8,7 +8,7 @@
 
 icsw_paginator = '
 <form class="form-inline">
-    <span ng-show="pagSettings.conf.num_entries">
+    <span ng-show="pagSettings.conf.filtered_len">
         <div class="form-group">
             <ul class="pagination pagination-sm" ng-show="pagSettings.conf.num_pages > 1"  style="margin-top:0px; margin-bottom:0px;">
                 <li ng-repeat="pag_num in pagSettings.conf.page_list track by $index" ng-class="pagSettings.get_li_class(pag_num)">
@@ -19,7 +19,7 @@ icsw_paginator = '
         <span ng-show="pagSettings.conf.num_pages > 1">, </span>
         showing entries {{ pagSettings.conf.start_idx + 1 }} to {{ pagSettings.conf.end_idx + 1 }},
     </span>
-    <span ng-show="! pagSettings.conf.num_entries">
+    <span ng-show="! pagSettings.conf.filtered_len">
         no entries to show,
     </span>
     <span ng-show="pagSettings.conf.modify_epp">
@@ -55,20 +55,21 @@ class paginator_root
 class paginator_class
     constructor: (@name, @$filter, @$scope) ->
         @conf = {
-            per_page    : 10
-            num_entries : 0
-            num_pages   : 0
-            start_idx   : 0
-            end_idx     : 0
-            act_page    : 0
-            page_list   : []
-            modify_epp : false
+            per_page         : 10
+            filtered_len     : 0
+            unfiltered_len   : 0
+            num_pages        : 0
+            start_idx        : 0
+            end_idx          : 0
+            act_page         : 0
+            page_list        : []
+            modify_epp       : false
             entries_per_page : []
-            init        : false
-            filter_mode     : false
-            filter          : undefined
-            filter_func     : undefined
-            filter_settings : @$scope.settings.filter_settings
+            init             : false
+            filter_mode      : false
+            filter           : undefined
+            filter_func      : undefined
+            filter_settings  : @$scope.settings.filter_settings
         }
     activate_page: (num) =>
         @conf.act_page = parseInt(num)
@@ -87,12 +88,12 @@ class paginator_class
         @conf.modify_epp = true
         @conf.entries_per_page = (parseInt(entry) for entry in in_str.split(","))
     set_entries: (el_list) =>
+        @conf.unfiltered_len = el_list.length
         el_list = @apply_filter(el_list)
-        num = el_list.length
         @conf.init = true
-        @conf.num_entries = num
+        @conf.filtered_len = el_list.length
         pp = @conf.per_page
-        @conf.num_pages = parseInt((@conf.num_entries + pp - 1) / pp)
+        @conf.num_pages = parseInt((@conf.filtered_len + pp - 1) / pp)
         if @conf.num_pages > 0
             @conf.page_list = (idx for idx in [1..@conf.num_pages])
         else

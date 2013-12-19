@@ -48,10 +48,14 @@ device_tree_base = device_module.controller("device_tree_base", ["$scope", "$com
         $scope.edit_map = {
             "device"       : "device_tree.html",
             "device_group" : "device_group_tree.html",
+            "device_many"  : "device_tree_many.html",
         }
         $scope.modal_active = false
         $scope.entries = []
         $scope.reload = () ->
+            $.blockUI()
+            # store selected state
+            $scope.sel_cache = (entry.idx for entry in $scope.entries when entry.selected)
             wait_list = []
             for value, idx in $scope.rest_map
                 $scope.rest_data[value.short] = restDataSource.reload([value.url, value.options])
@@ -61,31 +65,25 @@ device_tree_base = device_module.controller("device_tree_base", ["$scope", "$com
                     if idx == 0
                         $scope.entries = value
                     $scope.rest_data[$scope.rest_map[idx].short] = value
+                $.unblockUI()
                 $scope.rest_data_set()
             )
         $scope.reload()
         $scope.modify = () ->
-            rest_entry = (entry for entry in $scope.rest_map when entry.short == $scope._array_name)[0]
             if not $scope.form.$invalid
+                rest_entry = (entry for entry in $scope.rest_map when entry.short == $scope._array_name)[0]
                 if $scope.create_mode
-                    $scope.rest.post($scope.new_obj).then((new_data) ->
-                        if $scope._array_name == "device"
-                            $scope.entries.push(new_data)
-                            if $scope.pagSettings.conf.init
-                                $scope.pagSettings.set_entries($scope.entries)
-                        else
-                            $scope.rest_data[$scope._array_name].push(new_data)
-                        #if $scope.settings.object_created
-                        #    $scope.settings.object_created($scope.new_obj, new_data)
+                    Restangular.all(rest_entry["url"].slice(1)).post($scope.new_obj, rest_entry.options).then((new_data) ->
+                        $scope.object_created(new_data)
                     )
                 else
+                    if $scope._array_name == "device"
+                        cur_f = $scope.entries
+                    else
+                        cur_f = $scope.rest_data[$scope._array_name]
                     $scope.edit_obj.put(rest_entry.options).then(
                         (data) -> 
                             $.simplemodal.close()
-                            if $scope._array_name == "device"
-                                cur_f = $scope.entries
-                            else
-                                cur_f = $scope.rest_data[$scope._array_name]
                             handle_reset(data, cur_f, $scope.edit_obj.idx)
                             $scope.object_modified(data)
                         (resp) -> handle_reset(resp.data, cur_f, $scope.edit_obj.idx)
@@ -95,12 +93,9 @@ device_tree_base = device_module.controller("device_tree_base", ["$scope", "$com
                 return ""
             else
                 return "has-error"
-        $scope.create = (a_name, event) ->
+        $scope.create = (a_name, event, parent_obj) ->
             $scope._array_name = a_name
-            #if typeof($scope.settings.new_object) == "function"
-            #    $scope.new_obj = $scope.settings.new_object($scope)
-            #else
-            #    $scope.new_obj = $scope.settings.new_object
+            $scope.new_obj = $scope.new_object(a_name, parent_obj)
             $scope.create_or_edit(event, true, $scope.new_obj)
         $scope.edit = (a_name, event, obj) ->
             $scope._array_name = a_name
@@ -108,9 +103,8 @@ device_tree_base = device_module.controller("device_tree_base", ["$scope", "$com
             $scope.create_or_edit(event, false, obj)
         $scope.create_or_edit = (event, create_or_edit, obj) ->
             $scope.edit_obj = obj
-            console.log obj
+            console.log $scope.edit_obj
             $scope.create_mode = create_or_edit
-            console.log $scope._array_name, $scope.edit_map[$scope._array_name]
             $scope.edit_div = $compile($templateCache.get($scope.edit_map[$scope._array_name]))($scope)
             $scope.edit_div.simplemodal
                 #opacity      : 50
@@ -124,26 +118,71 @@ device_tree_base = device_module.controller("device_tree_base", ["$scope", "$com
                 onClose: (dialog) =>
                     $.simplemodal.close()
                     $scope.modal_active = false
+        $scope.edit_many = (event) ->
+            $scope._array_name = "device_many"
+            edit_obj = {
+                "many_form"          : true
+                "device_type"        : (entry.idx for entry in $scope.rest_data.device_type when entry.identifier == "H")[0]
+                "device_group"       : (entry.idx for entry in $scope.rest_data.device_group when entry.cluster_device_group == false)[0]
+                "domain_tree_node"   : (entry.idx for entry in $scope.rest_data.domain_tree_node when entry.depth == 0)[0]
+            }
+            $scope.create_or_edit(event, false, edit_obj)
+        $scope.modify_many = () ->
+            console.log "mm", $scope.edit_obj
+            $.ajax
+                url     : "{% url 'device:change_devices' %}"
+                data    : {
+                    "change_dict" : angular.toJson($scope.edit_obj)
+                    "device_list" : angular.toJson((entry.idx for entry in $scope.entries when entry.is_meta_device == false and entry.selected))
+                }
+                success : (xml) ->
+                    if parse_xml_response(xml)
+                        if parseInt($(xml).find("value[name='changed']").text())
+                            $.simplemodal.close()
+                            $scope.reload()
+        $scope.delete_many = (event) ->
+            if confirm("Really delete " + $scope.num_selected() + " devices ?")
+                $.ajax
+                    url     : "{% url 'device:change_devices' %}"
+                    data    : {
+                        "change_dict" : angular.toJson({"delete" : true})
+                        "device_list" : angular.toJson((entry.idx for entry in $scope.entries when entry.is_meta_device == false and entry.selected))
+                    }
+                    success : (xml) ->
+                        if parse_xml_response(xml)
+                            $scope.reload()
         $scope.get_action_string = () ->
             return if $scope.create_mode then "Create" else "Modify"
-        $scope.delete = (obj) ->
-            if confirm($scope.settings.delete_confirm_str(obj))
+        $scope.delete = (a_name, obj) ->
+            if confirm("Really delete #{a_name} '#{obj.name}' ?")
                 obj.remove().then((resp) ->
                     noty
-                        text : "deleted instance"
-                    remove_by_idx($scope.entries, obj.idx)
-                    if $scope.pagSettings.conf.init
-                        $scope.pagSettings.set_entries($scope.entries)
-                    if $scope.settings.post_delete
-                        $scope.settings.post_delete($scope, obj)
+                        text : "deleted #{a_name}"
+                    if a_name == "device"
+                        $scope.device_group_lut[obj.device_group].num_devices--
+                        remove_by_idx($scope.entries, obj.idx)
+                    else
+                        remove_by_idx($scope.rest_data[a_name], obj.idx)
+                        if a_name == "device_group"
+                            # remove meta device
+                            remove_by_idx($scope.entries, (entry.idx for entry in $scope.entries when entry.device_group == obj.idx and entry.is_meta_device)[0])
+                    $scope.pagSettings.set_entries($scope.entries)
                 )
-
         $scope.rest_data_set = () ->
             $scope.device_lut = build_lut($scope.entries)
             $scope.device_group_lut = build_lut($scope.rest_data.device_group)
             for entry in $scope.entries
                 entry.selected = false
                 entry.device_group_obj = $scope.device_group_lut[entry.device_group]
+            for pk in $scope.sel_cache
+                if pk of $scope.device_lut
+                    # ignore deleted devices
+                    $scope.device_lut[pk].selected = true
+        $scope.num_selected = () ->
+            if $scope.entries
+                return (true for entry in $scope.entries when entry.selected and not entry.is_meta_device).length
+            else
+                return 0
         $scope.get_tr_class = (obj) ->
             return if obj.is_meta_device then "success" else ""
         $scope.ignore_md = (entry) ->
@@ -174,20 +213,59 @@ device_tree_base = device_module.controller("device_tree_base", ["$scope", "$com
                     en_flag = entry.enabled and scope.device_group_lut[entry.device_group].enabled
             else
                 if entry.is_meta_device
-                    en_flag = entry.device_group_obj.enabled
+                    en_flag = not entry.device_group_obj.enabled
                 else
                     # show disabled (device OR device_group)
                     en_flag = not entry.enabled or (not scope.device_group_lut[entry.device_group].enabled)
             # selected
             sel_flag = entry.selected in sel_list
             return entry.is_meta_device in md_list and en_flag and sel_flag
-        $scope.object_modified = (new_obj) ->
-            console.log "mod", $scope._array_name
-            new_obj.selected = $scope.pre_edit_obj.selected
-            new_obj.device_group_obj = $scope.device_group_lut[new_obj.device_group]
-            if new_obj.device_group != $scope.pre_edit_obj.device_group
+        $scope.object_modified = (mod_obj) ->
+            mod_obj.selected = $scope.pre_edit_obj.selected
+            mod_obj.device_group_obj = $scope.device_group_lut[mod_obj.device_group]
+            if mod_obj.is_meta_device
+                # copy enabled flag
+                mod_obj.device_group_obj.enabled = mod_obj.enabled
+            if mod_obj.device_group != $scope.pre_edit_obj.device_group
                 # device group has changed, reload to fix all dependencies
                 $scope.reload()
+        $scope.object_created = (new_obj) ->
+            if $scope._array_name == "device"
+                new_obj.selected = true
+                md_obj = _.find($scope.entries, (obj) ->
+                    return (obj.is_meta_device == true) and (obj.device_group == new_obj.device_group) 
+                )
+                # hm, fishy code, sometimes strange behaviour
+                $scope.entries.splice(_.indexOf($scope.entries, md_obj) + 1, 0, new_obj)
+                $scope.device_lut[new_obj.idx] = new_obj
+                $scope.device_group_lut[new_obj.device_group].num_devices++
+                $scope.pagSettings.set_entries($scope.entries)
+                # increase postfix of device name
+                node_re = new RegExp(/^(.*?)(\d+)(.*)$/)
+                name_m = node_re.exec(new_obj.name)
+                if name_m
+                    new_name = ("0" for _idx in [0..name_m[2].length]).join("") + String(parseInt(name_m[2]) + 1)
+                    $scope.edit_obj.name = name_m[1] + new_name.substr(new_name.length - name_m[2].length) + name_m[3]
+            else if $scope._array_name == "device_group"
+                $scope.reload()
+        $scope.new_object = (a_name, parent_obj) ->
+            new_obj = {"enabled" : true}
+            if a_name == "device_group"
+                new_obj.name = "nodes"
+                new_obj.description = "new devicegroup"
+                new_obj.domain_tree_node = (entry.idx for entry in $scope.rest_data.domain_tree_node when entry.depth == 0)[0]
+            else
+                new_obj.name = "dev"
+                new_obj.comment = "new device"
+                new_obj.curl = "ssh://"
+                new_obj.device_type = (entry.idx for entry in $scope.rest_data.device_type when entry.identifier == "H")[0]
+                if parent_obj
+                    new_obj.device_group = parent_obj.idx
+                    new_obj.domain_tree_node = parent_obj.domain_tree_node
+                else
+                    new_obj.device_group = (entry.idx for entry in $scope.rest_data.device_group when entry.cluster_device_group == false)[0]
+                    new_obj.domain_tree_node = (entry.idx for entry in $scope.rest_data.domain_tree_node when entry.depth == 0)[0]
+            return new_obj
 ])
 
 device_module.directive("devicetreerow", ($templateCache, $compile) ->
@@ -195,8 +273,11 @@ device_module.directive("devicetreerow", ($templateCache, $compile) ->
         restrict : "EA"
         link : (scope, element, attrs) ->
             if scope.obj.is_meta_device
-                scope.obj.device_group_obj.num_devices = (entry for entry in scope.entries when entry.device_group == scope.obj.device_group).length - 1
-                new_el = $compile($templateCache.get("device_tree_meta_row.html"))
+                if scope.obj.device_group_obj.cluster_device_group
+                    new_el = $compile($templateCache.get("device_tree_cdg_row.html"))
+                else
+                    scope.obj.device_group_obj.num_devices = (entry for entry in scope.entries when entry.device_group == scope.obj.device_group).length - 1
+                    new_el = $compile($templateCache.get("device_tree_meta_row.html"))
             else
                 new_el = $compile($templateCache.get("device_tree_row.html"))
             scope.change_dg_sel = (flag) ->

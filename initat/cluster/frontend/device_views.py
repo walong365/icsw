@@ -10,14 +10,17 @@ from django.utils.decorators import method_decorator
 from django.views.generic import View
 from initat.cluster.backbone.models import device_type, device_group, device, \
      cd_connection, domain_name_tree, category_tree, package_device_connection, \
-     mon_ext_host, mon_device_templ, mon_service_cluster, mon_host_cluster, network
+     mon_ext_host, mon_device_templ, mon_service_cluster, mon_host_cluster, network, \
+     domain_tree_node
 from initat.cluster.frontend import forms
-from initat.cluster.frontend.forms import device_tree_form, device_group_tree_form
+from initat.cluster.frontend.forms import device_tree_form, device_group_tree_form, \
+    device_tree_many_form
 from initat.cluster.frontend.helper_functions import xml_wrapper
 from initat.core.render import render_me, render_string
 from lxml import etree # @UnresolvedImport
 from lxml.builder import E # @UnresolvedImports
 import config_tools
+import json
 import logging
 import logging_tools
 import re
@@ -31,6 +34,7 @@ class device_tree(View):
             {
                 "device_tree_form"       : device_tree_form(),
                 "device_group_tree_form" : device_group_tree_form(),
+                "device_tree_many_form"  : device_tree_many_form(),
                 "hide_sidebar"           : True,
             }
             )()
@@ -62,6 +66,48 @@ class get_xml_tree(View):
             domain_name_tree().get_xml(),
         ])
         request.xml_response["response"] = xml_resp
+
+class change_devices(View):
+    @method_decorator(login_required)
+    @method_decorator(xml_wrapper)
+    def post(self, request):
+        _post = request.POST
+        c_dict = json.loads(_post.get("change_dict", ""))
+        pk_list = json.loads(_post.get("device_list"))
+        if c_dict.get("delete", False):
+            device.objects.filter(Q(pk__in=pk_list)).delete()
+            request.xml_response.info("delete {}".format(logging_tools.get_plural("device", len(pk_list))))
+        else:
+            def_dict = {
+                "curl" : "",
+                "bootserver" : None,
+                "monitor_server" : None,
+                }
+            # build change_dict
+            c_dict = {key[7:] : c_dict.get(key[7:], def_dict.get(key[7:], None)) for key in c_dict.iterkeys() if key.startswith("change_") and c_dict[key]}
+            # resolve foreign keys
+            c_dict = {key : {
+                "device_type" : device_type,
+                "device_group" : device_group,
+                "domain_tree_node" : domain_tree_node,
+                "bootserver" : device,
+                "monitor_server" : device,
+                }[key].objects.get(Q(pk=value)) if type(value) == int else value for key, value in c_dict.iteritems()}
+            logger.info("change_dict has {}".format(logging_tools.get_plural("key", len(c_dict))))
+            for key in sorted(c_dict):
+                logger.info(" %s: %s" % (key, unicode(c_dict[key])))
+            dev_changes = 0
+            for cur_dev in device.objects.filter(Q(pk__in=pk_list)):
+                changed = False
+                for c_key, c_value in c_dict.iteritems():
+                    if getattr(cur_dev, c_key) != c_value:
+                        setattr(cur_dev, c_key, c_value)
+                        changed = True
+                if changed:
+                    cur_dev.save()
+                    dev_changes += 1
+            request.xml_response["changed"] = dev_changes
+            request.xml_response.info("changed settings of {}".format(logging_tools.get_plural("device", dev_changes)))
 
 class clear_selection(View):
     @method_decorator(login_required)
