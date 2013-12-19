@@ -33,7 +33,7 @@ import sys
 import time
 
 from initat.cluster.backbone.models import config, device, net_ip, device_config, \
-     device_group, config_str, config_blob, config_int, config_bool, route_generation, netdevice, \
+     device_group, config_str, config_blob, config_int, config_bool, netdevice, \
      peer_information
 from django.db.models import Q
 
@@ -50,13 +50,16 @@ class router_object(object):
             src_node, dst_node = node_pair
             self.nx.add_edge(src_node, dst_node, weight=penalty)
     def _update(self):
-        latest_gen = route_generation.objects.all().order_by("-generation")
-        if latest_gen:
-            latest_gen = latest_gen[0].generation
-        else:
-            latest_gen = route_generation(generation=1)
-            latest_gen.save()
-            latest_gen = latest_gen.generation
+        # the concept of marking the current route setup dirty is flawed (too many dependencies)
+        # and is therefore removed
+        # latest_gen = route_generation.objects.all().order_by("-generation")
+        # if latest_gen:
+        #    latest_gen = latest_gen[0].generation
+        # else:
+        #    latest_gen = route_generation(generation=1)
+        #    latest_gen.save()
+        #    latest_gen = latest_gen.generation
+        latest_gen = self.__cur_gen + 1
         if latest_gen != self.__cur_gen:
             s_time = time.time()
             self.all_nds = netdevice.objects.exclude(Q(device__device_type__identifier="MD")).filter(Q(device__enabled=True) & Q(device__device_group__enabled=True)).values_list("idx", "device", "routing", "penalty")
@@ -621,20 +624,6 @@ class device_with_config(dict):
                     effective_device=dev_dict[dev_pk] if m_type == src_type else dev_dict[group_md_lut[devg_pk]],
                 )
                 self.setdefault(conf_name, []).append(cur_struct)
-    # def prefetch_hopcount_table(self, d_dev):
-        # dev_pks = set()
-        # for conf, srv_list in self.iteritems():
-            # dev_pks |= set([cur_str.device.pk for cur_str in srv_list])
-        # latest_gen = route_generation.objects.filter(Q(valid=True)).order_by("-pk")[0]
-        # all_hcs = hopcount.objects.filter(
-            # Q(route_generation=latest_gen) &
-            # Q(s_netdevice__device__in=dev_pks) &
-            # Q(d_netdevice__in=d_dev.netdevice_idx_list)).distinct().order_by("value").values_list("s_netdevice__device", "s_netdevice", "d_netdevice", "value")
-        # dev_dict = {}
-        # for in_list in all_hcs:
-            # dev_dict.setdefault(in_list[0], []).append(tuple(in_list[1:]))
-        # for conf, srv_list in self.iteritems():
-            # [cur_srv.set_hopcount_cache(dev_dict.get(cur_srv.device.pk, [])) for cur_srv in srv_list]
     def set_key_type(self, k_type):
         print "deprecated, only one key_type (config) supported"
         sys.exit(0)
