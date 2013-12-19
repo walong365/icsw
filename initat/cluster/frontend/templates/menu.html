@@ -1,109 +1,105 @@
 {% load i18n coffeescript %}
 
-<ul id="main_navigation" class="sf-menu">
-    <li>
-        <a href="{% url 'main:index' %}">{% trans "Home" %}</a>
-    </li>
-    <li>
-        <a>{% trans "Setup" %}</a>
-        <ul>
+<nav class="navbar navbar-default navbar-static-top" role="navigation">
+    <div class="navbar-header">
+        <ul class="nav navbar-nav">
             <li>
-                <a>{% trans "Trees" %}</a>
-                <ul>
+                <a href="{% url 'main:index' %}">{% trans "Home" %}</a>
+            </li>
+            <li class="dropdown">
+                <a class="dropdown-toggle" data-toggle="dropdown">{% trans "Setup" %} <b class="caret"></b></a>
+                <ul class="dropdown-menu">
                     <li><a href="{% url 'device:tree' %}">{% trans "Devicetree" %}</a></li>
                     <li><a href="{% url 'network:domain_name_tree' %}">{% trans "Domain name tree" %}</a></li>
                     <li><a href="{% url 'base:category_tree' %}">{% trans "Category tree" %}</a></li>
-                </ul>
-            </li>
-            <li><a href="{% url 'network:show_networks' %}">{% trans "Networks" %}</a></li>
-            <li><a href="{% url 'config:show_configs' %}">{% trans "Configurations" %}</a></li>
-            <li>
-                <a>{% trans "Device settings" %}</a>
-                <ul>
+                    <li class="divider"></li>
+                    <li><a href="{% url 'network:show_networks' %}">{% trans "Networks" %}</a></li>
                     <li><a href="{% url 'device:show_configs' %}">{% trans "Configurations" %}</a></li>
-                    <li><a href="{% url 'network:device_network' %}">{% trans "Network" %}</a></li>
-                    <li><a href="{% url 'device:connections' %}">{% trans "Connections" %}</a></li>
-                    <li><a href="{% url 'device:variables' %}">{% trans "Variables" %}</a></li>
+                    <li class="divider"></li>
+                    <li><a href="{% url 'network:device_network' %}">{% trans "Device network" %}</a></li>
+                    <li><a href="{% url 'device:connections' %}">{% trans "Device connections" %}</a></li>
+                    <li><a href="{% url 'device:variables' %}">{% trans "Device variables" %}</a></li>
+                </ul>
+            </li>
+            {% if settings.CLUSTER_LICENSE.boot %}
+            <li class="dropdown">
+                <a class="dropdown-toggle" data-toggle="dropdown">{% trans "Operation" %} <b class="caret"></b></a>
+                <ul class="dropdown-menu">
+                    <li><a href="{% url 'boot:show_boot' %}">{% trans "Node boot" %}</a></li>
+                    {% if settings.CLUSTER_LICENSE.package %}
+                      <li><a href="{% url 'pack:repo_overview' %}">{% trans "Package install" %}</a></li>
+                    {% endif %}
+                    <li class="divider"></li>
+                    <li><a href="{% url 'setup:image_overview' %}">{% trans "Image overview" %}</a></li>
+                    <li><a href="{% url 'setup:kernel_overview' %}">{% trans "Kernel overview" %}</a></li>
+                    <li><a href="{% url 'setup:partition_overview' %}">{% trans "Partition overview" %}</a></li>
+                </ul>
+            </li>
+            {% endif %}
+            {% if csw_perms.backbone.group_admin %}
+            <li class="dropdown">
+                <a class="dropdown-toggle" data-toggle="dropdown">{% trans "Users" %} <b class="caret"></b></a>
+                <ul class="dropdown-menu">
+                    <li><a href="{% url 'user:overview' %}">{% trans "Overview" %}</a></li>
+                </ul>
+            </li>
+            {% endif %}
+            {% if settings.CLUSTER_LICENSE.monitor %}
+            <li class="dropdown">
+                <a class="dropdown-toggle" data-toggle="dropdown">{% trans "Monitoring" %} <b class="caret"></b></a>
+                <ul class="dropdown-menu">
+                    <li><a href="{% url 'mon:setup' %}">{% trans "Basic setup" %}</a></li>
+                    {% if settings.CLUSTER_LICENSE.monext %}
+                        <li class="divider"></li>
+                        <li><a href="{% url 'mon:setup_cluster' %}">{% trans "Cluster / Dependency setup" %}</a></li>
+                        <li><a href="{% url 'mon:setup_escalation' %}">{% trans "Escalation setup" %}</a></li>
+                    {% endif %}
+                    <li><a href="{% url 'mon:device_config' %}">{% trans "Device settings" %}</a></li>
+                    <li class="divider"></li>
+                    <li><a href="{% url 'mon:call_icinga' %}">{% trans "Icinga (replace)" %}</a></li>
+                    <li><a href="{% url 'mon:call_icinga' %}" target="_blank">{% trans "Icinga (new tab)" %}</a></li>
+                    {% if settings.CLUSTER_LICENSE.ganglia %}
+                        <li><a href="/ganglia-web">{% trans "Ganglia" %}</a></li>
+                    {% endif %}
+                    <li>
+                        <input id="create_monitoring_config" type="button" class="btn btn-success text-center" value="rebuild config"/>
+                    </li>
+                </ul>
+            </li>
+            {% endif %}
+            {% if settings.CLUSTER_LICENSE.rms %}
+            <li class="dropdown">
+                <a class="dropdown-toggle" data-toggle="dropdown">{% trans "RMS" %} <b class="caret"></b></a>
+                <ul class="dropdown-menu">
+                    <li><a href="{% url 'rms:overview' %}">{% trans "RMS overview" %}</a></li>
+                </ul>
+            </li>
+            {% endif %}
+            <li class="dropdown">
+                <a class="dropdown-toggle" data-toggle="dropdown">{% trans "REST" %} <b class="caret"></b></a>
+                <ul class="dropdown-menu">
+                    <li><a href="{% url 'rest:root' %}">{% trans "REST API rootnode (for testing)" %}</a></li>
+                </ul>
+            </li>
+            {% for add_menu in settings.ADDITIONAL_MENU_FILES %}
+                {% include add_menu %}
+            {% endfor %}
+            <li class="dropdown">
+                <a class="dropdown-toggle" data-toggle="dropdown">{% trans "Session" %} <b class="caret"></b></a>
+                <ul class="dropdown-menu">
+                    <li><a href="{% url 'user:account_info' %}">{% trans "Account Info" %}</a></li>
+                    <li><a href="{% url 'session:logout' %}">{% trans "Logout" %}</a></li>
+                    <li><a href="{% url 'admin:index' %}">{% trans "Admin" %}</a></li>
                 </ul>
             </li>
         </ul>
-    </li>
-    {% if settings.CLUSTER_LICENSE.boot %}
-    <li>
-        <a>{% trans "Operation" %}</a>
-        <ul>
-            <li><a href="{% url 'boot:show_boot' %}">{% trans "Node boot" %}</a></li>
-            <li><a href="{% url 'setup:image_overview' %}">{% trans "Image overview" %}</a></li>
-            <li><a href="{% url 'setup:kernel_overview' %}">{% trans "Kernel overview" %}</a></li>
-            <li><a href="{% url 'setup:partition_overview' %}">{% trans "Partition overview" %}</a></li>
-        </ul>
-    </li>
-    {% endif %}
-    {% if settings.CLUSTER_LICENSE.package %}
-    <li>
-        <a>{% trans "Package Install" %}</a>
-        <ul>
-            <li><a href="{% url 'pack:repo_overview' %}">{% trans "Repositories / Search" %}</a></li>
-            <li><a href="{% url 'pack:install' %}">{% trans "Install" %}</a></li>
-        </ul>
-    </li>
-    {% endif %}
-    {% if csw_perms.backbone.group_admin %}
-    <li>
-        <a>{% trans "Users" %}</a>
-        <ul>
-            <li><a href="{% url 'user:overview' %}">{% trans "Overview" %}</a></li>
-        </ul>
-    </li>
-    {% endif %}
-    {% if settings.CLUSTER_LICENSE.monitor %}
-    <li>
-        <a>{% trans "Monitoring" %}</a>
-        <ul>
-            <li><a href="{% url 'mon:setup' %}">{% trans "Basic setup" %}</a></li>
-            {% if settings.CLUSTER_LICENSE.monext %}
-                <li><a href="{% url 'mon:setup_cluster' %}">{% trans "Cluster / Dependency setup" %}</a></li>
-                <li><a href="{% url 'mon:setup_escalation' %}">{% trans "Escalation setup" %}</a></li>
-            {% endif %}
-            <li><a href="{% url 'mon:device_config' %}">{% trans "Device settings" %}</a></li>
-            <li><a href="{% url 'mon:call_icinga' %}">{% trans "Icinga (replace)" %}</a></li>
-            <li><a href="{% url 'mon:call_icinga' %}" target="_blank">{% trans "Icinga (new tab)" %}</a></li>
-            {% if settings.CLUSTER_LICENSE.ganglia %}
-                <li><a href="/ganglia-web">{% trans "Ganglia" %}</a></li>
-            {% endif %}
-            <li>
-                <input id="create_monitoring_config" type="button" class="btn btn-primary" value="rebuild config"/>
-            </li>
-        </ul>
-    </li>
-    {% endif %}
-    {% if settings.CLUSTER_LICENSE.rms %}
-    <li>
-        <a>{% trans "RMS" %}</a>
-        <ul>
-            <li><a href="{% url 'rms:overview' %}">{% trans "RMS overview" %}</a></li>
-        </ul>
-    </li>
-    {% endif %}
-    <li>
-        <a>{% trans "REST" %}</a>
-        <ul>
-            <li><a href="{% url 'rest:root' %}">{% trans "REST API rootnode (for testing)" %}</a></li>
-        </ul>
-    </li>
-    {# additional menus #}
-    {% for add_menu in settings.ADDITIONAL_MENU_FILES %}
-        {% include add_menu %}
-    {% endfor %}
-    <li>
-        <a>{% trans "Session" %}</a>
-        <ul>
-            <li><a href="{% url 'user:account_info' %}">{% trans "Account Info" %}</a></li>
-            <li><a href="{% url 'session:logout' %}">{% trans "Logout" %}</a></li>
-            <li><a href="{% url 'admin:index' %}">{% trans "Admin" %}</a></li>
-        </ul>
-    </li>
-</ul>
+    </div>
+    <p class="navbar-text navbar-right">
+        {% now "l, j. F Y" %} <span id="cur_time">00:00:00</span>.
+        <span>'{{ user.login }}'{% ifnotequal user.login request.session.login_name %} (via alias {{ request.session.login_name }}){% endifnotequal %}</span>.
+        <a class="navbar-link" href="{% url 'session:logout' %}"><b>{% trans "Logout" %}</b></a>
+    </p>
+</nav>
 
 <script type="text/javascript">
 
@@ -112,10 +108,6 @@
 root = exports ? this
 
 root.init_menu = () ->
-    $("#main_navigation").superfish
-        speed : 1
-        delay : 500
-    $("#main_navigation input[type='button']").button()
     {% if settings.CLUSTER_LICENSE.monitor %}
     $("#main_navigation input#create_monitoring_config").bind("click", ->
         $.ajax

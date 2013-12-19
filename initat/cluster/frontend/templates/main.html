@@ -120,13 +120,7 @@
 {% block body %}
 {% if user.is_authenticated %}
     <div class="ui-layout-north ">
-        <div style="z-index:50 ; clear:both ; ">
-            {% include "menu.html" %}
-        </div>
-        <div class="fp_headline" style="float:right;margin:0;padding:10px;">{% csrf_token %}
-            {% now "l, j. F Y" %} <span id="cur_time">00:00:00</span>. {% trans "You are logged in as user" %}
-            <span>'{{ user.login }}'{% ifnotequal user.login request.session.login_name %} (via alias {{ request.session.login_name }}){% endifnotequal %}</span>. <a href="{% url 'session:logout' %}">{% trans "Logout" %}</a>
-        </div>
+        {% include "menu.html" %}
     </div>
 {% endif %}
 <noscript>
@@ -174,6 +168,7 @@ init_layout = ->
             east__size          : 300
             east__maxSize       : 600
             east__minSize       : 300
+            north__size         : 52
             center_minWidth     : 200
             north__spacing_open : 0
             south__initClosed   : true
@@ -183,7 +178,7 @@ init_layout = ->
                 save_layout_state(my_layout, p_name)
             onclose : (p_name) ->
                 save_layout_state(my_layout, p_name)
-        my_layout.panes.north.css("background-color", "#bfd8ff")
+        my_layout.panes.north.css("background-color", "#000000")
         my_layout.allowOverflow("north")
 
 update_time = ->

@@ -103,24 +103,6 @@ span.ok {
     padding: 2px !important;
 }
 
-.fp_headline {
-    float           : left;
-    padding         : 0px;
-    margin          : 0px;
-    white-space     : nowrap;
-    font-size       : 12px;
-    font-weight     : bold;
-    text-decoration : none;
-}
-
-/* just a test */
-th.rotate {
-    -moz-transform:rotate(-90deg);
-    -webkit-transform:rotate(-90deg);
-    -o-transform:rotate(-90deg);
-    -ms-transform:rotate(-90deg);   
-}
-
 tr.warn.even  { background-color: #ff8 !important; }
 tr.warn.odd   { background-color: #ee9 !important; }
 
