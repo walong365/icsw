@@ -34,7 +34,7 @@ device_tree_base = device_module.controller("device_tree_base", ["$scope", "$com
     ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, sharedDataSource, $q, $timeout) ->
         # init pagSettings /w. filter
         $scope.settings = {}
-        $scope.settings.filter_settings = {"dg_filter" : "b", "en_filter" : "b", "sel_filter" : "b"}
+        $scope.settings.filter_settings = {"dg_filter" : "b", "en_filter" : "b", "sel_filter" : "b", "mon_filter" : "i"}
         $scope.pagSettings = paginatorSettings.get_paginator("device_tree_base", $scope)
         $scope.rest_data = {}
         $scope.rest_map = [
@@ -174,6 +174,11 @@ device_tree_base = device_module.controller("device_tree_base", ["$scope", "$com
             for entry in $scope.entries
                 entry.selected = false
                 entry.device_group_obj = $scope.device_group_lut[entry.device_group]
+            mon_masters = (entry for entry in $scope.rest_data.monitor_server when entry.monitor_type == "master")
+            if mon_masters.length
+                $scope.mon_master = mon_masters[0].idx
+            else
+                $scope.mon_master = -1
             for pk in $scope.sel_cache
                 if pk of $scope.device_lut
                     # ignore deleted devices
@@ -219,7 +224,16 @@ device_tree_base = device_module.controller("device_tree_base", ["$scope", "$com
                     en_flag = not entry.enabled or (not scope.device_group_lut[entry.device_group].enabled)
             # selected
             sel_flag = entry.selected in sel_list
-            return entry.is_meta_device in md_list and en_flag and sel_flag
+            # monitoring
+            mon_f = scope.pagSettings.conf.filter_settings.mon_filter
+            if mon_f == "i"
+                mon_flag = true
+            else
+                if entry.monitor_server == null
+                    mon_flag = parseInt(mon_f) == $scope.mon_master
+                else
+                    mon_flag = parseInt(mon_f) == entry.monitor_server
+            return entry.is_meta_device in md_list and en_flag and sel_flag and mon_flag
         $scope.object_modified = (mod_obj) ->
             mod_obj.selected = $scope.pre_edit_obj.selected
             mod_obj.device_group_obj = $scope.device_group_lut[mod_obj.device_group]

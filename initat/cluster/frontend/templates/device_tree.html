@@ -32,7 +32,7 @@
     <th>Enabled</th>
     <th>Type</th>
     <th>MonMaster</th>
-    <th>Mother</th>
+    <th>BootServer</th>
     <th>cURL</th>
     <th colspan="3" class="text-center">action</th>
 </script> 
@@ -62,7 +62,7 @@
     <td>{{ obj.device_group_obj.num_devices }} devices</td>
     <td colspan="3" class="text-right"><input type="button btn-success" class="btn btn-success" ng-click="create('device', $event, obj.device_group_obj)" value="create device"/></td>
     <td><input type="button" class="btn btn-primary" ng-click="edit('device_group', $event, obj.device_group_obj)" value="modify"/></td>
-    <td><input type="button" class="btn btn-danger" ng-click="delete('device_group', obj.device_group_obj)" value="delete"/></td>
+    <td><input ng-show="!obj.device_group_obj.num_devices" type="button" class="btn btn-danger" ng-click="delete('device_group', obj.device_group_obj)" value="delete"/></td>
 </script> 
 
 <script type="text/ng-template" id="device_tree_row.html">
@@ -83,7 +83,7 @@
 </script> 
 
 <div ng-controller="device_tree_base">
-    <h2>Device tree ({{ entries.length }} entries, {{ pagSettings.conf.filtered_len }} shown),
+    <h2>Device tree ({{ entries.length }} entries, {{ pagSettings.conf.filtered_len }} shown<span ng-show="num_selected()">, {{ num_selected() }} selected</span>),
         <input type="button" class="btn btn-primary" value="create device" ng-click="create('device', $event)"></button>
         <input type="button" class="btn btn-success" value="create devicegroup" ng-click="create('device_group', $event)"></button>
         <input ng-show="num_selected()" type="button" class="btn btn-warning" value="modify selected" ng-click="edit_many($event)"></button>
@@ -114,7 +114,13 @@
                 <option value="f">disabled</option>
             </select>
         </div>
-        selected: {{ num_selected() }}
+        <div class="form-group">
+            <label class="control-label">MonServer:</label>
+            <select class="form-control input-sm" ng-model="pagSettings.conf.filter_settings.mon_filter">
+                <option value="i">ignore</option>
+                <option ng-repeat="obj in rest_data.monitor_server" ng-value="obj.idx">{{ obj.full_name }} ({{ obj.monitor_type }})</option>
+            </select>
+        </div>
     </form>
     <table class="table table-hover table-condensed table-striped" style="width:auto;">
         <thead devicetreehead></thead>

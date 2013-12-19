@@ -77,8 +77,8 @@ class paginator_class
         pp = @conf.per_page
         @conf.start_idx = (@conf.act_page - 1 ) * pp
         @conf.end_idx = (@conf.act_page - 1) * pp + pp - 1
-        if @conf.end_idx >= @conf.num_entries
-            @conf.end_idx = @conf.num_entries - 1
+        if @conf.end_idx >= @conf.filtered_len
+            @conf.end_idx = @conf.filtered_len - 1
     get_li_class: (num) =>
         if num == @conf.act_page
             return "active"

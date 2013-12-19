@@ -7,7 +7,8 @@ from django.db.models import Q
 from initat.cluster.backbone import models
 from initat.cluster.backbone.models import user , group, user_serializer_h, group_serializer_h, \
      get_related_models, get_change_reset_list, device, device_serializer, \
-     device_serializer_package_state, device_serializer_monitoring, domain_name_tree
+     device_serializer_package_state, device_serializer_monitoring, domain_name_tree, \
+     device_serializer_monitor_server
 from rest_framework import mixins, generics, status, viewsets
 from rest_framework.authentication import BasicAuthentication, SessionAuthentication
 from rest_framework.decorators import api_view
@@ -195,9 +196,10 @@ class device_tree_list(mixins.ListModelMixin,
     model = device
     @rest_logging
     def get_serializer_class(self):
-        package_state = self._get_post_boolean("package_state", False)
-        if package_state:
+        if self._get_post_boolean("package_state", False):
             return device_serializer_package_state
+        elif self._get_post_boolean("all_monitoring_servers", False):
+            return device_serializer_monitor_server
         else:
             return device_serializer
     @rest_logging
@@ -230,7 +232,7 @@ class device_tree_list(mixins.ListModelMixin,
         if self._get_post_boolean("all_monitoring_servers", False):
             _q = _q.filter(Q(device_config__config__name__in=["monitor_server", "monitor_slave"]))
         elif self._get_post_boolean("all_mother_servers", False):
-            _q = _q.filter(Q(device_config__config__name__in=["mother_server"]))
+            _q = _q.filter(Q(device_config__config__name__in=["mother_server", "mother"]))
         elif self._get_post_boolean("all_devices", False):
             pass
         else:
