@@ -212,7 +212,7 @@
     <tab heading="Host Clusters">
         <div ng-controller="mon_host_cluster_base">
             <div ng-controller="mon_host_cluster">
-                <h2>Host Cluster ({{entries.length}} entries), <input type="button" class="btn btn-success" value="create new" ng-click="create($event)"/></h2>
+                <h2>Host Cluster ({{entries.length}} entries), <input ng-show="fn.rest_data_present(this)" type="button" class="btn btn-success" value="create new" ng-click="create($event)"/></h2>
                 <table class="table table-condensed table-condensed table-hover" style="width:auto;">
                     <thead monhostclusterhead></thead>
                     <tbody>
@@ -226,7 +226,7 @@
     <tab heading="Service Clusters">
         <div ng-controller="mon_service_cluster_base">
             <div ng-controller="mon_service_cluster">
-                <h2>Service Cluster ({{entries.length}} entries), <input type="button" class="btn btn-success" value="create new" ng-click="create($event)"/></h2>
+                <h2>Service Cluster ({{entries.length}} entries), <input ng-show="fn.rest_data_present(this)" type="button" class="btn btn-success" value="create new" ng-click="create($event)"/></h2>
                 <table class="table table-condensed table-condensed table-hover" style="width:auto;">
                     <thead monserviceclusterhead></thead>
                     <tbody>
@@ -240,7 +240,7 @@
     <tab heading="Host dependency templates">
         <div ng-controller="mon_host_dependency_templ_base">
             <div ng-controller="mon_host_dependency_templ">
-                <h2>Host dependency templates ({{entries.length}} entries), <input type="button" class="btn btn-success" value="create new" ng-click="create($event)"/></h2>
+                <h2>Host dependency templates ({{entries.length}} entries), <input ng-show="fn.rest_data_present(this)" type="button" class="btn btn-success" value="create new" ng-click="create($event)"/></h2>
                 <table class="table table-condensed table-condensed table-hover" style="width:auto;">
                     <thead monhostdependencytemplhead></thead>
                     <tbody>
@@ -254,7 +254,7 @@
     <tab heading="Service dependency templates">
         <div ng-controller="mon_service_dependency_templ_base">
             <div ng-controller="mon_service_dependency_templ">
-                <h2>Service dependency templates ({{entries.length}} entries), <input type="button" class="btn btn-success" value="create new" ng-click="create($event)"/></h2>
+                <h2>Service dependency templates ({{entries.length}} entries), <input ng-show="fn.rest_data_present(this)" type="button" class="btn btn-success" value="create new" ng-click="create($event)"/></h2>
                 <table class="table table-condensed table-condensed table-hover" style="width:auto;">
                     <thead monservicedependencytemplhead></thead>
                     <tbody>
@@ -268,7 +268,7 @@
     <tab heading="Host dependencies">
         <div ng-controller="mon_host_dependency_base">
             <div ng-controller="mon_host_dependency">
-                <h2>Host dependencies ({{entries.length}} entries), <input type="button" class="btn btn-success" value="create new" ng-click="create($event)"/></h2>
+                <h2>Host dependencies ({{entries.length}} entries), <input ng-show="fn.rest_data_present(this)" type="button" class="btn btn-success" value="create new" ng-click="create($event)"/></h2>
                 <table class="table table-condensed table-condensed table-hover" style="width:auto;">
                     <thead monhostdependencyhead></thead>
                     <tbody>
@@ -282,7 +282,7 @@
     <tab heading="Service dependencies">
         <div ng-controller="mon_service_dependency_base">
             <div ng-controller="mon_service_dependency">
-                <h2>Service dependencies ({{entries.length}} entries), <input type="button" class="btn btn-success" value="create new" ng-click="create($event)"/></h2>
+                <h2>Service dependencies ({{entries.length}} entries), <input ng-show="fn.rest_data_present(this)" type="button" class="btn btn-success" value="create new" ng-click="create($event)"/></h2>
                 <table class="table table-condensed table-condensed table-hover" style="width:auto;">
                     <thead monservicedependencyhead></thead>
                     <tbody>

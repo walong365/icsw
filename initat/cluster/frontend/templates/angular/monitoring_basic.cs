@@ -67,8 +67,24 @@ angular_add_simple_list_controller(
         ]
         delete_confirm_str  : (obj) -> return "Really delete monitoring contact '#{obj.user}' ?"
         template_cache_list : ["mon_contact_row.html", "mon_contact_head.html"]
-        new_object          : {"user" : ""}
+        new_object          : ($scope) ->
+            return {
+                "user" : (entry.idx for entry in $scope.rest_data.user)[0]
+                "snperiod" : (entry.idx for entry in $scope.rest_data.mon_period)[0]
+                "hnperiod" : (entry.idx for entry in $scope.rest_data.mon_period)[0]
+                "snrecovery" : true
+                "sncritical" : true
+                "hnrecovery" : true
+                "hndown" : true
+            }
         object_created  : (new_obj) -> new_obj.user = null
+        fn:
+            rest_data_present : ($scope) ->
+                ok = true
+                for t_field in ["mon_period", "user"]
+                    if not $scope.rest_data[t_field].length
+                        ok = false
+                return ok
     }
 )
 
@@ -89,8 +105,26 @@ angular_add_simple_list_controller(
         ]
         delete_confirm_str  : (obj) -> return "Really delete service template '#{obj.name}' ?"
         template_cache_list : ["mon_service_templ_row.html", "mon_service_templ_head.html"]
-        new_object          : {"name" : ""}
+        new_object          : ($scope) ->
+            return {
+                "nsn_period" : (entry.idx for entry in $scope.rest_data.mon_period)[0]
+                "nsc_period" : (entry.idx for entry in $scope.rest_data.mon_period)[0]
+                "max_attempts" : 1
+                "check_interval" : 2
+                "retry_interval" : 2
+                "nrecovery" : true
+                "ncritical" : true
+                "low_flap_threshold" : 20
+                "high_flap_threshold" : 80
+            }
         object_created  : (new_obj) -> new_obj.name = null
+        fn:
+            rest_data_present : ($scope) ->
+                ok = true
+                for t_field in ["mon_period"]
+                    if not $scope.rest_data[t_field].length
+                        ok = false
+                return ok
     }
 )
 
@@ -157,8 +191,27 @@ angular_add_simple_list_controller(
         ]
         delete_confirm_str  : (obj) -> return "Really delete device template '#{obj.name}' ?"
         template_cache_list : ["mon_device_templ_row.html", "mon_device_templ_head.html"]
-        new_object          : {"name" : ""}
+        new_object          : ($scope) ->
+            return {
+                "mon_service_templ" : (entry.idx for entry in $scope.rest_data.mon_service_templ)[0]
+                "host_check_command" : (entry.idx for entry in $scope.rest_data.host_check_command)[0]
+                "mon_period" : (entry.idx for entry in $scope.rest_data.mon_period)[0]
+                "max_attempts" : 1
+                "check_interval" : 2
+                "retry_interval" : 2
+                "nrecovery" : true
+                "ncritical" : true
+                "low_flap_threshold" : 20
+                "high_flap_threshold" : 80
+            }
         object_created  : (new_obj) -> new_obj.name = null
+        fn:
+            rest_data_present : ($scope) ->
+                ok = true
+                for t_field in ["mon_period", "mon_service_templ", "host_check_command"]
+                    if not $scope.rest_data[t_field].length
+                        ok = false
+                return ok
     }
 )
 

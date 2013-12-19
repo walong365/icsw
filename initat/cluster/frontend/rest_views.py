@@ -23,6 +23,7 @@ import operator
 import process_tools
 import time
 import types
+import sys
 
 logger = logging.getLogger("cluster.rest")
 
@@ -43,22 +44,23 @@ def api_root(request, format=None):
 def csw_exception_handler(exc):
     response = exception_handler(exc)
     if response is None:
+        detail_str, detail_info = (exc.__class__.__name__, [])
         if hasattr(exc, "messages"):
-            response = Response(
-                {"detail" : "%s (%s)" % (exc.__class__.__name__, ", ".join(exc.messages))},
-                status=status.HTTP_406_NOT_ACCEPTABLE
-            )
-        elif hasattr(exc, "message"):
-            response = Response(
-                {"detail" : "%s (%s)" % (exc.__class__.__name__, exc.message)},
-                status=status.HTTP_406_NOT_ACCEPTABLE
-            )
-        else:
-            response = Response(
-                {"detail" : "%s" % (exc.__class__.__name__)},
-                status=status.HTTP_406_NOT_ACCEPTABLE
-            )
-    # print response
+            detail_info.extend(exc.messages)
+        if hasattr(exc, "message"):
+            detail_info.append(exc.message)
+        if hasattr(exc, "args"):
+            detail_info.append(str(exc.args))
+        detail_info = [_part.strip() for _part in detail_info if _part.strip()]
+        response = Response(
+            {
+                "detail" : "%s%s" % (
+                    detail_str,
+                    " (%s)" % (", ".join(detail_info)) if detail_info else ""
+                ),
+            },
+            status=status.HTTP_406_NOT_ACCEPTABLE,
+        )
     return response
 
 class rest_logging(object):
@@ -80,6 +82,7 @@ class rest_logging(object):
         try:
             result = self._func(*args, **kwargs)
         except:
+            exc_data = sys.exc_info()[1]
             self.log("exception: %s" % (
                 process_tools.get_except_info()),
                      logging_tools.LOG_LEVEL_ERROR)
