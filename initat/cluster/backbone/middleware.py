@@ -14,10 +14,10 @@ if DB_DEBUG:
     from django.db import connection
 else:
     connection = None
+from reversion.revisions import revision_context_manager
 import fcntl
 import struct
 import termios
-from reversion.revisions import revision_context_manager
 
 REVISION_MIDDLEWARE_FLAG = "reversion.revision_middleware_active"
 

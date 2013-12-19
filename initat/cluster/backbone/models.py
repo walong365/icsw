@@ -856,11 +856,16 @@ class device_group(models.Model):
     device = models.ForeignKey("device", db_column="device", null=True, blank=True, related_name="group_device")
     # flag
     cluster_device_group = models.BooleanField(default=False)
+    # enabled flag, ident to the enabled flag of the corresponding meta-device
     enabled = models.BooleanField(default=True)
+    # domain tree node, see enabled flag
+    domain_tree_node = models.ForeignKey("domain_tree_node", null=True, default=None)
     date = models.DateTimeField(auto_now_add=True)
     def _add_meta_device(self):
         new_md = device(name=self.get_metadevice_name(),
                         device_group=self,
+                        domain_tree_node=self.domain_tree_node,
+                        enabled=self.enabled,
                         # device_class=device_class.objects.get(Q(pk=1)),
                         device_type=device_type.objects.get(Q(identifier="MD")))
         new_md.save()
@@ -876,11 +881,15 @@ class device_group(models.Model):
                 with_monitoring=False,
                 ignore_enabled=False,
                 full_name=False):
+        if not self.domain_tree_node_id:
+            self.domain_tree_node = domain_tree_node.objects.get(Q(depth=0))
+            self.save()
         cur_xml = E.device_group(
             unicode(self),
             pk="%d" % (self.pk),
             key="devg__%d" % (self.pk),
             name=self.name,
+            domain_tree_node="%d" % (self.domain_tree_node_id),
             description=self.description or "",
             is_cdg="1" if self.cluster_device_group else "0",
             enabled="1" if self.enabled else "0",
@@ -944,9 +953,10 @@ def device_group_post_save(sender, **kwargs):
             if cur_inst.device.name != cur_inst.get_metadevice_name():
                 cur_inst.device.name = cur_inst.get_metadevice_name()
                 save_meta = True
-            if cur_inst.enabled != cur_inst.device.enabled:
-                cur_inst.device.enabled = cur_inst.enabled
-                save_meta = True
+            for c_field in ["enabled", "domain_tree_node"]:
+                if getattr(cur_inst.device, c_field) != getattr(cur_inst, c_field):
+                    setattr(cur_inst.device, c_field, getattr(cur_inst, c_field))
+                    save_meta = True
             if save_meta:
                 cur_inst.device.save()
         if cur_inst.cluster_device_group and not cur_inst.enabled:
@@ -1175,26 +1185,6 @@ class genstuff(models.Model):
     date = models.DateTimeField(auto_now_add=True)
     class Meta:
         db_table = u'genstuff'
-
-class route_generation(models.Model):
-    idx = models.AutoField(primary_key=True)
-    # generation, is increased whenever one of the routing entries changes
-    generation = models.IntegerField(default=1)
-    date = models.DateTimeField(auto_now_add=True)
-    def __unicode__(self):
-        return u"route generation %d" % (
-            self.generation,
-        )
-
-def mark_routing_dirty():
-    cur_gen = route_generation.objects.all().order_by("-generation")
-    if len(cur_gen):
-        new_gen = list(cur_gen)[0]
-        cur_gen.delete()
-        new_gen.generation += 1
-    else:
-        new_gen = route_generation(generation=1)
-    new_gen.save()
 
 class hw_entry(models.Model):
     idx = models.AutoField(db_column="hw_entry_idx", primary_key=True)
@@ -1753,19 +1743,12 @@ def netdevice_pre_save(sender, **kwargs):
 @receiver(signals.post_save, sender=netdevice)
 def netdevice_post_save(sender, **kwargs):
     if "instance" in kwargs:
-        cur_inst = kwargs["instance"]
-        mark_dirty = False
-        for comp_val in ["penalty", "routing"]:
-            if getattr(cur_inst, comp_val) != cur_inst.saved_values[comp_val]:
-                mark_dirty = True
-                break
-        if mark_dirty:
-            mark_routing_dirty()
+        _cur_inst = kwargs["instance"]
 
 @receiver(signals.post_delete, sender=netdevice)
 def netdevice_post_delete(sender, **kwargs):
     if "instance" in kwargs:
-        mark_routing_dirty()
+        _cur_inst = kwargs["instance"]
 
 class netdevice_speed(models.Model):
     idx = models.AutoField(db_column="netdevice_speed_idx", primary_key=True)
@@ -2563,116 +2546,12 @@ def peer_information_pre_save(sender, **kwargs):
 @receiver(signals.post_save, sender=peer_information)
 def peer_information_post_save(sender, **kwargs):
     if not kwargs["raw"] and "instance" in kwargs:
-        mark_routing_dirty()
+        _cur_inst = kwargs["instance"]
 
 @receiver(signals.post_delete, sender=peer_information)
 def peer_information_post_delete(sender, **kwargs):
     if "instance" in kwargs:
-        mark_routing_dirty()
-
-# #class pi_connection(models.Model):
-# #    idx = models.AutoField(db_column="pi_connection_idx", primary_key=True)
-# #    package = models.ForeignKey("package")
-# #    image = models.ForeignKey("image")
-# #    install_time = models.IntegerField()
-# #    date = models.DateTimeField(auto_now_add=True)
-# #    class Meta:
-# #        db_table = u'pi_connection'
-
-# #class rrd_class(models.Model):
-# #    idx = models.AutoField(db_column="rrd_class_idx", primary_key=True)
-# #    name = models.CharField(unique=True, max_length=255)
-# #    step = models.IntegerField(default=30)
-# #    heartbeat = models.IntegerField(default=60)
-# #    date = models.DateTimeField(auto_now_add=True)
-# #    class Meta:
-# #        db_table = u'rrd_class'
-# #    def get_xml(self):
-# #        return E.rrd_class(
-# #            unicode(self),
-# #            pk="%d" % (self.pk),
-# #            key="rrdc__%d" % (self.pk),
-# #            name=self.name,
-# #            step="%d" % (self.step),
-# #            heartbeat="%d" % (self.heartbeat),
-# #        )
-# #    def __unicode__(self):
-# #        return self.name
-# #
-# #@receiver(signals.pre_save, sender=rrd_class)
-# #def rrd_class_pre_save(sender, **kwargs):
-# #    if "instance" in kwargs:
-# #        cur_inst = kwargs["instance"]
-# #        _check_empty_string(cur_inst, "name")
-# #        _check_integer(cur_inst, "step")
-# #        _check_integer(cur_inst, "heartbeat")
-# #
-# #class rrd_data(models.Model):
-# #    idx = models.AutoField(db_column="rrd_data_idx", primary_key=True)
-# #    rrd_set = models.ForeignKey("rrd_set")
-# #    descr = models.CharField(max_length=765)
-# #    descr1 = models.CharField(max_length=189)
-# #    descr2 = models.CharField(max_length=189, blank=True)
-# #    descr3 = models.CharField(max_length=189, blank=True)
-# #    descr4 = models.CharField(max_length=189, blank=True)
-# #    unit = models.CharField(max_length=96, blank=True)
-# #    info = models.CharField(max_length=255, blank=True)
-# #    from_snmp = models.BooleanField()
-# #    base = models.IntegerField(null=True, blank=True)
-# #    factor = models.FloatField(null=True, blank=True)
-# #    var_type = models.CharField(max_length=3, blank=True)
-# #    date = models.DateTimeField(auto_now_add=True)
-# #    class Meta:
-# #        db_table = u'rrd_data'
-# #
-# #class rrd_data_store(models.Model):
-# #    idx = models.AutoField(db_column="rrd_data_store_idx", primary_key=True)
-# #    device = models.ForeignKey("device")
-# #    recv_time = models.IntegerField()
-# #    data = models.TextField()
-# #    date = models.DateTimeField(auto_now_add=True)
-# #    class Meta:
-# #        db_table = u'rrd_data_store'
-# #
-# #class rrd_rra(models.Model):
-# #    idx = models.AutoField(db_column="rrd_rra_idx", primary_key=True)
-# #    rrd_class = models.ForeignKey("rrd_class")
-# #    cf = models.CharField(max_length=192, choices=[(val, val) for val in ALLOWED_CFS])
-# #    steps = models.IntegerField(default=30)
-# #    rows = models.IntegerField(default=2000)
-# #    xff = models.FloatField(default=0.1)
-# #    date = models.DateTimeField(auto_now_add=True)
-# #    class Meta:
-# #        db_table = u'rrd_rra'
-# #    def get_xml(self):
-# #        return E.rrd_rra(
-# #            unicode(self),
-# #            pk="%d" % (self.idx),
-# #            key="rrdrra_%d" % (self.idx),
-# #            rrd_class="%d" % (self.rrd_class_id),
-# #            cf=self.cf,
-# #            steps="%d" % (self.steps),
-# #            rows="%d" % (self.rows),
-# #            xff="%.2f" % (self.xff),
-# #        )
-# #    def __unicode__(self):
-# #        return "%s:%d:%d:%.2f" % (self.cf, self.steps, self.rows, self.xff)
-# #
-# #@receiver(signals.pre_save, sender=rrd_rra)
-# #def rrd_rra_pre_save(sender, **kwargs):
-# #    if "instance" in kwargs:
-# #        cur_inst = kwargs["instance"]
-# #        _check_empty_string(cur_inst, "cf")
-# #        _check_integer(cur_inst, "steps", min_val=1, max_val=3600)
-# #        _check_integer(cur_inst, "rows", min_val=30, max_val=12000)
-# #
-# #class rrd_set(models.Model):
-# #    idx = models.AutoField(db_column="rrd_set_idx", primary_key=True)
-# #    device = models.ForeignKey("device")
-# #    filename = models.CharField(max_length=765, blank=True, null=True)
-# #    date = models.DateTimeField(auto_now_add=True)
-# #    class Meta:
-# #        db_table = u'rrd_set'
+        _cur_inst = kwargs["instance"]
 
 class session_data(models.Model):
     idx = models.AutoField(db_column="session_data_idx", primary_key=True)
@@ -2973,7 +2852,7 @@ class wc_files(models.Model):
     class Meta:
         db_table = u'wc_files'
 
-def get_related_models(in_obj, m2m=False, detail=False, check_all=False):
+def get_related_models(in_obj, m2m=False, detail=False, check_all=False, ignore_objs=[]):
     used_objs = [] if detail else 0
     if hasattr(in_obj, "CSW_Meta"):
         # copy list because we remove entries as we iterate over foreign models
@@ -2988,10 +2867,11 @@ def get_related_models(in_obj, m2m=False, detail=False, check_all=False):
         rel_field_name = rel_obj.field.name
         # print rel_obj.model._meta.object_name, rel_obj.model._meta.object_name in ignore_list, ignore_list
         if rel_obj.model._meta.object_name not in ignore_list:
+            ref_list = [entry for entry in rel_obj.model.objects.filter(Q(**{rel_field_name : in_obj})) if entry not in ignore_objs]
             if detail:
-                used_objs.extend(list(rel_obj.model.objects.filter(Q(**{rel_field_name : in_obj}))))
+                used_objs.extend(ref_list)
             else:
-                used_objs += rel_obj.model.objects.filter(Q(**{rel_field_name : in_obj})).count()
+                used_objs += len(ref_list)
         else:
             ignore_list.remove(rel_obj.model._meta.object_name)
     if m2m:
@@ -3009,6 +2889,7 @@ def get_related_models(in_obj, m2m=False, detail=False, check_all=False):
     return used_objs
 
 def get_change_reset_list(s_obj, d_obj, required_changes=None):
+    # changes required from client
     if not required_changes:
         required_changes = {}
     c_list, r_list = ([], [])
@@ -3017,20 +2898,26 @@ def get_change_reset_list(s_obj, d_obj, required_changes=None):
         cur_t = _f.get_internal_type()
         # ignore Date(Time)Fields
         if _f.name in required_changes and cur_t not in ["DateTimeField", "DateField"]:
+            # value for reset list
+            dr_val = d_val
             if cur_t == "ForeignKey":
                 # print _f.name, cur_t, d_val, required_changes[_f.name]
                 if d_val is not None:
-                    d_val = d_val.pk
-            if d_val != required_changes[_f.name]:
-                print _f.name, d_val
-                r_list.append((_f.name, d_val))
-        if cur_t in ["CharField", "IntegerField", "PositiveIntegerField", "BooleanField"]:
+                    # d_val_orig = d_val
+                    dr_val = d_val.pk
+            if dr_val != required_changes[_f.name]:
+                # values was reset from pre / post save, store in r_list
+                r_list.append((_f.name, dr_val))
+        if cur_t in ["CharField", "TextField", "IntegerField", "PositiveIntegerField", "BooleanField", "NullBooleanField", "ForeignKey"]:
             if s_val != d_val:
-                c_list.append((_f.verbose_name, "changed from '%s' to '%s'" % (s_val, d_val)))
-        elif cur_t in ["ForeignKeyField"]:
-            print "**", _f.name
+                c_list.append((_f.verbose_name, "changed from '{!s}' to '{!s}'".format(s_val, d_val)))
+        # elif cur_t in ["ForeignKey"]:
+        #    print "**", _f.name, s_val, d_val
+        elif cur_t in ["DateTimeField", "AutoField"]:
+            # ignore
+            pass
         else:
-            print cur_t
+            print "FieldType() in get_change_reset_list: {}".format(cur_t)
     return c_list, r_list
 
 class md_check_data_store(models.Model):
@@ -3125,6 +3012,8 @@ class domain_name_tree(object):
             return E.domain_tree_nodes(
                 *[self.__node_dict[pk].get_xml() for pk in pk_list]
             )
+    def __iter__(self):
+        return self.all()
     def all(self):
         # emulate queryset
         for pk in self.get_sorted_pks():
@@ -3187,6 +3076,7 @@ class domain_tree_node(models.Model):
         return r_xml
 
 class domain_tree_node_serializer(serializers.ModelSerializer):
+    tree_info = serializers.Field(source="__unicode__")
     class Meta:
         model = domain_tree_node
 
