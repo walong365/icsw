@@ -381,7 +381,7 @@ class mon_device_templ(models.Model):
     nunreachable = models.BooleanField(default=False)
     nflapping = models.BooleanField(default=False)
     nplanned_downtime = models.BooleanField(default=False)
-    is_default = models.BooleanField()
+    is_default = models.BooleanField(default=False)
     low_flap_threshold = models.IntegerField(default=0)
     high_flap_threshold = models.IntegerField(default=0)
     flap_detection_enabled = models.BooleanField(default=False)
