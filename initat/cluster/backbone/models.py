@@ -490,8 +490,8 @@ class device(models.Model):
     def device_group_name(self):
         return self.device_group.name
     def get_monitor_type(self):
-        sel_configs = self.device_config_set.filter(Q(config__name__in=["monitor_server", "monitor_master", "monitor_slave"])).values_list("config__name", flat=True)
-        if "monitor_master" in sel_configs:
+        sel_configs = set(self.device_config_set.filter(Q(config__name__in=["monitor_server", "monitor_master", "monitor_slave"])).values_list("config__name", flat=True))
+        if set(["monitor_master", "monitor_server"]) & sel_configs:
             return "master"
         elif sel_configs:
             return "slave"
