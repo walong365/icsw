@@ -30,6 +30,12 @@ ADMINS = (
     ("Andreas Lang-Nevyjel", "lang-nevyjel@init.at"),
 )
 
+# determine product name
+if os.path.isfile("/etc/sysconfig/cluster/.is_corvus"):
+    INIT_PRODUCT_NAME = "Corvus"
+else:
+    INIT_PRODUCT_NAME = "Noctua"
+
 ALLOWED_HOSTS = ["*"]
 
 INTERNAL_IPS = ("127.0.0.1", "192.168.1.173",)
