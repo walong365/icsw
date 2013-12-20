@@ -1,35 +1,28 @@
 {% extends "main.html" %}
 
-{% load i18n crispy_forms_tags coffeescript %}
+{% load i18n crispy_forms_tags %}
 
-{% block title %}{% trans "init.at login" %}{% endblock %}
+{% block title %}{{ settings.INIT_PRODUCT_NAME }}{% trans " by init.at login" %}{% endblock %}
 
 {% block body %}
 
-{% if login_form.err %}{{ login_form.err }}{% endif %}
-
-<div style="background-color:#aac8ff;margin-top:0px;padding:0px;border: 1px solid #111111;height:80px;vertical-align:middle;text-align:center;width:100%;">
-    <center>
-        <h1 class="center" style="font-size:36px;vertical-align:bottom;color:#434343;margin-top:20px;">{% trans "Please enter your login credentials" %}</h1> 
-    </center>
+<div class="page-header">
+    <h1 class="text-center">
+        {{ settings.INIT_PRODUCT_NAME }} by init.at
+    </h1>
 </div>
 
-<div style="margin-top:130px; width:600px; margin-left:auto; margin-right:auto;">
-    {% crispy login_form %}
+<div class="row" style="margin-top:100px;">
+    <div class="col-md-4 col-md-offset-4">
+        <div class="well"> 
+            {% crispy login_form %}
+        </div>
+    </div>
 </div>
 
 <script type="text/javascript">
 
-{% inlinecoffeescript %}
-
-addHandlers = ->
-    #console.log $("form#uniForm")
-    #$("form#uniForm").uniform()
-    $("input#id_username").focus()
-
-$(document).ready(addHandlers)
-
-{% endinlinecoffeescript %}
+$(document).ready($("input#id_username").focus());
 
 </script>
 

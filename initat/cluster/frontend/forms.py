@@ -38,12 +38,12 @@ class authentication_form(Form):
     helper.layout = Layout(
         Div(
             Fieldset(
-                HTML("<h2>Login credentials</h2>"),
+                "Please enter your login credentials",
                 Field("username", placeholder="user name"),
                 Field("password", placeholder="password"),
             ),
             FormActions(
-                Submit("submit", "Submit", css_class="primaryAction"),
+                Submit("submit", "Submit", css_class="btn btn-primary"),
             ),
             css_class="form-horizontal",
         )
