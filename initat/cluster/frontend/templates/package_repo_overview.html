@@ -11,7 +11,7 @@
 
 {% block content %}
 
-<div ng-app="icsw.package">
+<div id="icsw.package">
 
 <script type="text/ng-template" id="package_search.html">
     {% crispy package_search_form package_search_form.helper %}
@@ -243,5 +243,17 @@
 </tabset>
 
 {% endverbatim %}
+
+<script>
+
+{% inlinecoffeescript %}
+
+angular.element(document).ready(() ->
+    angular.bootstrap($("div[id='icsw.package']"), ["icsw.package"])
+)
+
+{% endinlinecoffeescript %}
+
+</script>
 
 {% endblock %}

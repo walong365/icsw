@@ -8,7 +8,7 @@
 
 {% block content %}
 
-<div ng-app="icsw.monitoring_basic">
+<div id="icsw.monitoring_basic">
 
 <script type="text/ng-template" id="mon_period.html">
     {% crispy mon_period_form mon_period_form.helper %}
@@ -377,5 +377,17 @@
 {% endverbatim %}
 
 </div>
+
+<script>
+
+{% inlinecoffeescript %}
+
+angular.element(document).ready(() ->
+    angular.bootstrap($("div[id='icsw.monitoring_basic']"), ["icsw.monitoring_basic"])
+)
+
+{% endinlinecoffeescript %}
+
+</script>
 
 {% endblock %}

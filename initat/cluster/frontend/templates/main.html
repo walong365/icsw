@@ -184,9 +184,6 @@ init_layout = ->
         my_layout.panes.north.css("background-color", "#000000")
         my_layout.allowOverflow("north")
 
-update_time = ->
-    $("span#cur_time").text(moment().format("HH:mm:ss"))
-
 init_blockUI = ->
     $.blockUI.defaults.fadeOut = 0
     $.blockUI.defaults.fadeIn  = 0
@@ -195,7 +192,6 @@ init_blockUI = ->
 add_handlers_main = ->
     init_layout()
     init_blockUI()
-    update_time()
     try
         init_sidebar()
         {% if user.is_authenticated %}
@@ -229,10 +225,6 @@ add_handlers_main = ->
         },
         buttons: false
     }
-    # show time
-    $(document).everyTime(1000, "show_time", (i) ->
-        update_time()
-    )
 
 $(document).ready(add_handlers_main)
 

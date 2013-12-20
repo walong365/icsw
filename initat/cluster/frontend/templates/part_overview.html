@@ -8,7 +8,7 @@
 
 {% block content %}
 
-<div ng-app="icsw.partition_table">
+<div id="icsw.partition_table">
 
 <script type="text/ng-template" id="partition_table.html">
     {% crispy partition_table_form partition_table_form.helper %}
@@ -327,6 +327,10 @@ add_handlers = ->
     load_partition_tables()
 
 $(document).ready(add_handlers)
+
+angular.element(document).ready(() ->
+    angular.bootstrap($("div[id='icsw.partition_table']"), ["icsw.partition_table"])
+)
 
 {% endinlinecoffeescript %}
 

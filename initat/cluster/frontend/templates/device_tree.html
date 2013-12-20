@@ -8,7 +8,7 @@
 
 {% block content %}
 
-<div ng-app="icsw.device">
+<div id="icsw.device">
 
 <script type="text/ng-template" id="device_tree.html">
     {% crispy device_tree_form device_tree_form.helper %}
@@ -135,4 +135,11 @@
 
 </div>
 
+<script>
+    // bootstrap angular
+    angular.element(document).ready(function() {
+        angular.bootstrap($("div[id='icsw.device']"), ["icsw.device"]);
+    });
+</script>
+    
 {% endblock %}

@@ -8,7 +8,7 @@
 
 {% block content %}
 
-<div ng-app="icsw.monitoring_device">
+<div id="icsw.monitoring_device">
 
 <script type="text/ng-template" id="monitoring_device.html">
     {% crispy device_monitoring_form device_monitoring_form.helper %}
@@ -79,6 +79,10 @@
 <script type="text/javascript">
 
 {% inlinecoffeescript %}
+
+angular.element(document).ready(() ->
+    angular.bootstrap($("div[id='icsw.monitoring_device']"), ["icsw.monitoring_device"])
+)
 
 class config_table
     constructor: (@top_div) ->

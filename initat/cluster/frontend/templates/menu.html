@@ -49,12 +49,12 @@
                 <a class="dropdown-toggle" data-toggle="dropdown">{% trans "Monitoring" %} <b class="caret"></b></a>
                 <ul class="dropdown-menu">
                     <li><a href="{% url 'mon:setup' %}">{% trans "Basic setup" %}</a></li>
+                    <li><a href="{% url 'mon:device_config' %}">{% trans "Device settings" %}</a></li>
                     {% if settings.CLUSTER_LICENSE.monext %}
                         <li class="divider"></li>
                         <li><a href="{% url 'mon:setup_cluster' %}">{% trans "Cluster / Dependency setup" %}</a></li>
                         <li><a href="{% url 'mon:setup_escalation' %}">{% trans "Escalation setup" %}</a></li>
                     {% endif %}
-                    <li><a href="{% url 'mon:device_config' %}">{% trans "Device settings" %}</a></li>
                     <li class="divider"></li>
                     <li><a href="{% url 'mon:call_icinga' %}">{% trans "Icinga (replace)" %}</a></li>
                     <li><a href="{% url 'mon:call_icinga' %}" target="_blank">{% trans "Icinga (new tab)" %}</a></li>
@@ -94,9 +94,11 @@
             </li>
         </ul>
     </div>
-    <p class="navbar-text navbar-right">
-        {% now "l, j. F Y" %} <span id="cur_time">00:00:00</span>.
-        <span>'{{ user.login }}'{% ifnotequal user.login request.session.login_name %} (via alias {{ request.session.login_name }}){% endifnotequal %}</span>.
+    <p class="navbar-text navbar-right" id="icsw.menu_app">
+        <span ng-controller="menu_base">
+            {% verbatim %}{{ cur_time }}{% endverbatim %}
+            '{{ user.login }}'{% ifnotequal user.login request.session.login_name %} (via alias {{ request.session.login_name }}){% endifnotequal %}
+        </span>
         <a class="navbar-link" href="{% url 'session:logout' %}"><b>{% trans "Logout" %}</b></a>
     </p>
 </nav>
@@ -106,6 +108,16 @@
 {% inlinecoffeescript %}
 
 root = exports ? this
+
+menu_module = angular.module("icsw.menu_app", ["ngSanitize"])
+
+menu_controller = menu_module.controller("menu_base", ["$scope", "$timeout"
+    ($scope, $timeout) ->
+        $scope.show_time = () ->
+            $scope.cur_time = moment().format("ddd, Do MMMM YYYY HH:mm:ss")
+            $timeout($scope.show_time, 1000)
+        $scope.show_time()
+])
 
 root.init_menu = () ->
     {% if settings.CLUSTER_LICENSE.monitor %}
@@ -123,7 +135,12 @@ root.init_menu = () ->
     )
     {% endif %}
     
+# bootstrap angular
+angular.element(document).ready(() ->
+    angular.bootstrap($("p[id='icsw.menu_app']"), ["icsw.menu_app"])
+)
 
 {% endinlinecoffeescript %}
 
 </script>
+

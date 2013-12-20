@@ -8,7 +8,7 @@
 
 {% block content %}
 
-<div ng-app="icsw.kernel">
+<div id="icsw.kernel">
 
 <script type="text/ng-template" id="kernel.html">
     {% crispy kernel_form kernel_form.helper %}
@@ -60,5 +60,17 @@
 </div>
 
 {% endverbatim %}
+
+<script>
+
+{% inlinecoffeescript %}
+
+angular.element(document).ready(() ->
+    angular.bootstrap($("div[id='icsw.kernel']"), ["icsw.kernel"])
+)
+
+{% endinlinecoffeescript %}
+
+</script>
 
 {% endblock %}

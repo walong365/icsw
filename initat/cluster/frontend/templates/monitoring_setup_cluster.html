@@ -8,7 +8,7 @@
 
 {% block content %}
 
-<div ng-app="icsw.monitoring_extended">
+<div id="icsw.monitoring_extended">
 
 <script type="text/ng-template" id="mon_host_cluster.html">
     {% crispy mon_host_cluster_form mon_host_cluster_form.helper %}
@@ -298,5 +298,17 @@
 {% endverbatim %}
 
 </div>
+
+<script>
+
+{% inlinecoffeescript %}
+
+angular.element(document).ready(() ->
+    angular.bootstrap($("div[id='icsw.monitoring_extended']"), ["icsw.monitoring_extended"])
+)
+
+{% endinlinecoffeescript %}
+
+</script>
 
 {% endblock %}
