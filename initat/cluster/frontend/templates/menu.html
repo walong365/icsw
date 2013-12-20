@@ -94,6 +94,8 @@
             </li>
         </ul>
     </div>
+    <img height="36px" src="{{ MEDIA_URL }}frontend/images/product/{{ settings.INIT_PRODUCT_NAME | lower }}-flat-trans.png" alt="{{ settings.INIT_PRODUCT_NAME }} logo">
+    </img>
     <p class="navbar-text navbar-right" id="icsw.menu_app">
         <span ng-controller="menu_base">
             {% verbatim %}{{ cur_time }}{% endverbatim %}
