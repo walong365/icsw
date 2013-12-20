@@ -25,6 +25,8 @@
   <!-- Place favicon.ico and apple-touch-icon.png in the root directory: mathiasbynens.be/notes/touch-icons -->
   {% block stylesheets_jquery %}
   <link rel="stylesheet" href="{{ settings.STATIC_URL }}initat/core/static/css/smoothness/jquery-ui-1.10.2.custom.min.css">
+  {% endblock %}
+  {% block stylesheets_superfish %}
   <link type="text/css" rel="stylesheet" href="{{ settings.STATIC_URL }}initat/core/static/css/superfish/superfish.css" />
   {% endblock %}
   {% block stylesheets %}
@@ -45,7 +47,9 @@
   <!--[if gte IE 9]><!--><script src="{{ settings.STATIC_URL }}initat/core/static/js/libs/jquery-2.0.3.min.js""></script><!--<![endif]-->
   <script src="{{ settings.STATIC_URL }}initat/core/static/js/libs/jquery-ui-1.10.2.custom.js"></script>
   <script src="{{ settings.STATIC_URL }}initat/core/static/js/libs/jquery-migrate-1.2.1.min.js"></script>
+  {% block javascript_superfish %}
   <script src="{{ settings.STATIC_URL }}initat/core/static/js/libs/superfish.js"></script>
+  {% endblock %}
   {% endblock %}
   {% block javascript %}
   {% endblock %}
