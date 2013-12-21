@@ -7,6 +7,21 @@
 </div>
 <div id="gauge_info">
 </div>
+
+<div ng-app="icsw.sidebar">
+    <tabset>
+        <tab heading="Group">
+            <div ng-controller="sidebar_base">
+                <tree tree="devices" treedepth="0"></tree>
+            </div>
+        </tab>
+        <tab heading="FQDN">
+        </tab>
+        <tab heading="Category">
+        </tab>
+    </tabset>
+</div>
+
 <div id="sidebar_tabs" class="noborder">
     <ul>
         <li><a href="#group_tree">Groups</a></li>
@@ -26,6 +41,142 @@
 <script type="text/javascript">
 
 {% inlinecoffeescript %}
+
+{% verbatim %}
+
+node_template = '
+<ul ng-class="{\'dynatree-container\' : treedepth == 0}">
+    <li ng-repeat="entry in tree" ng-class="{\'dynatree-lastsib\' : $last}">
+        <span ng-class="get_span_class(entry, $last, treedepth)">
+            <span ng-show="!entry.children.length" class="dynatree-connector"></span>
+            <span ng-show="entry.children.length" class="dynatree-expander" ng-click="toggle_expansion_state(entry)"></span>
+            <span class="dynatree-checkbox" style="margin-left:2px;" ng-click="toggle_checkbox_state(entry)"></span>
+            <span ng-show="1" class="dynatree-icon"></span>
+            <div class="btn-group btn-group-xs" ng-show="entry.children.length">
+                <input type="button" class="btn btn-success" value="S" ng-click="toggle_tree_state(entry, 1)"></input>
+                <input type="button" class="btn btn-primary" value="T" ng-click="toggle_tree_state(entry, 0)"></input>
+                <input type="button" class="btn btn-warning" value="C" ng-click="toggle_tree_state(entry, -1)"></input>
+            </div>
+            <a href="#" class="dynatree-title">{{ get_name(entry) }}<span ng-show="entry.children.length"> ({{ entry.children.length }}<span ng-show="get_num_selected(entry)"> / {{ get_num_selected(entry) }}</span>)</span></a>
+        </span>
+        <tree ng-show="entry.expand" tree="entry.children" treedepth="(treedepth || 0) + 1"></tree>
+    </li>
+</ul>
+'
+
+{% endverbatim %}
+
+sidebar_module = angular.module("icsw.sidebar", ["ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters", "localytics.directives", "restangular"])
+
+angular_module_setup([sidebar_module])
+
+sidebar_base = sidebar_module.controller("sidebar_base", ["$scope", "$compile", "restDataSource", "$q", 
+    ($scope, $compile, restDataSource, $q) ->
+        $scope.entries = []
+        $scope.devices = []
+        $scope.rest_data = {}
+        $scope.rest_map = [
+            {"short" : "device_tree", "url" : "{% url 'rest:device_tree_list' %}", "options" : {"ignore_cdg" : false, "tree_mode" : true, "all_devices" : true}} 
+        ]
+        $scope.reload = () ->
+            # store selected state
+            $scope.sel_cache = (entry.idx for entry in $scope.entries when entry.selected)
+            wait_list = []
+            for value, idx in $scope.rest_map
+                $scope.rest_data[value.short] = restDataSource.reload([value.url, value.options])
+                wait_list.push($scope.rest_data[value.short])
+            $q.all(wait_list).then((data) ->
+                for value, idx in data
+                    if idx == 0
+                        $scope.entries = value
+                    $scope.rest_data[$scope.rest_map[idx].short] = value
+                $.unblockUI()
+                $scope.rest_data_set()
+            )
+        $scope.reload()
+        $scope.rest_data_set = () ->
+            new_devs = []
+            cur_dg = undefined
+            for entry in $scope.rest_data["device_tree"]
+                entry.children = []
+                if entry.is_meta_device
+                    entry.folder = true
+                    cur_dg = entry
+                    new_devs.push(cur_dg)
+                else
+                    cur_dg.children.push(entry)
+            $scope.devices = new_devs
+])
+
+sidebar_module.directive("tree", ["$compile", 
+    ($compile) ->
+        return {
+            restrict : "E"
+            scope    : {
+                tree : "="
+                treedepth : "="
+            }
+            #template : node_template 
+            compile: (tElement, tAttr) ->
+                #contents = tElement.contents().remove()
+                #new_el = $compile(node_template)
+                #tElement.replaceWith(new_el)
+                return (scope, iElement, iAttr) ->
+                    scope.get_span_class = (entry, last, depth) ->
+                        r_class = ["dynatree-node"]
+                        if entry.folder
+                            r_class.push "dynatree-folder"
+                        if last
+                            r_class.push "dynatree-lastsib"
+                        if entry.selected
+                            r_class.push "dynatree-selected"
+                        if entry.children.length
+                            r_class.push "dynatree-has-children"
+                            if entry.expand
+                                r_class.push "dynatree-expanded" 
+                                r_class.push "dynatree-ico-ef"
+                                if last or not depth
+                                    r_class.push "dynatree-exp-el"
+                                else
+                                    r_class.push "dynatree-exp-e"
+                            else
+                                r_class.push "dynatree-ico-cf"
+                                if last or not depth
+                                    r_class.push "dynatree-exp-cl"
+                                else
+                                    r_class.push "dynatree-exp-cl"
+                        else
+                            r_class.push "dynatree-ico-c"
+                            r_class.push "dynatree-exp-c"
+                        return r_class
+                    scope.toggle_expansion_state = (entry) ->
+                        entry.expand = not entry.expand
+                    scope.toggle_checkbox_state = (entry) ->
+                        entry.selected = not entry.selected
+                    scope.toggle_tree_state = (entry, flag) ->
+                        if flag == 1
+                            entry.selected = true
+                            entry.expand = true
+                        else if flag == 0
+                            entry.selected = not entry.selected
+                        else
+                            entry.selected = false
+                        for sub_entry in entry.children
+                            scope.toggle_tree_state(sub_entry, flag)
+                    scope.get_name = (entry) ->
+                        if entry.is_meta_device
+                            return entry.full_name.slice(8)
+                        else
+                            info_f = [entry.device_type_identifier]
+                            if entry.comment
+                                info_f.push(entry.comment)
+                            return entry.full_name + " (" + info_f.join(", ") + ")"
+                    scope.get_num_selected = (entry) ->
+                        return (true for sub_el in entry.children when sub_el.selected).length
+                    new_el = $compile(node_template)
+                    iElement.append(new_el(scope))
+            } 
+])
 
 root = exports ? this
 

@@ -252,7 +252,7 @@ class device_tree_list(mixins.ListModelMixin,
                 _q = _q.exclude(Q(device_type__identifier="MD"))
             # print dev_keys, devg_keys
             _q = _q.filter(Q(pk__in=dev_keys))
-        if not self._get_post_boolean("all_devices", False):
+        if not self._get_post_boolean("ignore_disabled", False):
             _q = _q.filter(Q(enabled=True) & Q(device_group__enabled=True))
         _q = _q.select_related("domain_tree_node", "device_type", "device_group")
         if package_state:

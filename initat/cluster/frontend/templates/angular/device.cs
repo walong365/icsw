@@ -38,7 +38,7 @@ device_tree_base = device_module.controller("device_tree_base", ["$scope", "$com
         $scope.pagSettings = paginatorSettings.get_paginator("device_tree_base", $scope)
         $scope.rest_data = {}
         $scope.rest_map = [
-            {"short" : "device", "url" : "{% url 'rest:device_tree_list' %}", "options" : {"all_devices" : true, "ignore_cdg" : false, "tree_mode" : true}} 
+            {"short" : "device", "url" : "{% url 'rest:device_tree_list' %}", "options" : {"all_devices" : true, "ignore_cdg" : false, "tree_mode" : true, "ignore_disabled" : true}} 
             {"short" : "device_group", "url" : "{% url 'rest:device_group_list' %}"}
             {"short" : "device_type", "url" : "{% url 'rest:device_type_list' %}"}
             {"short" : "mother_server", "url" : "{% url 'rest:device_tree_list' %}", "options" : {"all_mother_servers" : true}}

@@ -9,16 +9,17 @@
             <li class="dropdown">
                 <a class="dropdown-toggle" data-toggle="dropdown">{% trans "Setup" %} <b class="caret"></b></a>
                 <ul class="dropdown-menu">
-                    <li><a href="{% url 'device:tree' %}">{% trans "Devicetree" %}</a></li>
+                    <li><a href="{% url 'device:tree' %}">{% trans "Device tree" %}</a></li>
                     <li><a href="{% url 'network:domain_name_tree' %}">{% trans "Domain name tree" %}</a></li>
                     <li><a href="{% url 'base:category_tree' %}">{% trans "Category tree" %}</a></li>
                     <li class="divider"></li>
                     <li><a href="{% url 'network:show_networks' %}">{% trans "Networks" %}</a></li>
-                    <li><a href="{% url 'device:show_configs' %}">{% trans "Configurations" %}</a></li>
+                    <li><a href="{% url 'config:show_configs' %}">{% trans "Configurations" %}</a></li>
                     <li class="divider"></li>
                     <li><a href="{% url 'network:device_network' %}">{% trans "Device network" %}</a></li>
                     <li><a href="{% url 'device:connections' %}">{% trans "Device connections" %}</a></li>
                     <li><a href="{% url 'device:variables' %}">{% trans "Device variables" %}</a></li>
+                    <li><a href="{% url 'device:show_configs' %}">{% trans "Device configurations" %}</a></li>
                 </ul>
             </li>
             {% if settings.CLUSTER_LICENSE.boot %}
@@ -94,7 +95,7 @@
             </li>
         </ul>
     </div>
-    <img height="36px" src="{{ MEDIA_URL }}frontend/images/product/{{ settings.INIT_PRODUCT_NAME | lower }}-flat-trans.png" alt="{{ settings.INIT_PRODUCT_NAME }} logo">
+    <img height="42px" src="{{ MEDIA_URL }}frontend/images/product/{{ settings.INIT_PRODUCT_NAME | lower }}-flat-trans.png" alt="{{ settings.INIT_PRODUCT_NAME }} logo">
     </img>
     <p class="navbar-text navbar-right" id="icsw.menu_app">
         <span ng-controller="menu_base">
@@ -123,7 +124,7 @@ menu_controller = menu_module.controller("menu_base", ["$scope", "$timeout"
 
 root.init_menu = () ->
     {% if settings.CLUSTER_LICENSE.monitor %}
-    $("#main_navigation input#create_monitoring_config").bind("click", ->
+    $("input#create_monitoring_config").bind("click", ->
         $.ajax
             url     : "{% url 'mon:create_config' %}"
             title   : "create config"
