@@ -1,41 +1,26 @@
 {% load i18n coffeescript %}
 
-<div style="vertical-align:middle;">
-    <input type="text" id="device_selection" size="32"/>
-    <input type="image" id="devsel_button" src="{{ MEDIA_URL }}frontend/images/right-arrow.png" width="22px" height="22px" style="vertical-align:middle; display:none;" title="take selection"/>
-    <input type="image" id="devsel_clear" src="{{ MEDIA_URL }}frontend/images/delete.png" width="22px" height="22px" style="vertical-align:middle;" title="clear selection"/>
-</div>
-<div id="gauge_info">
-</div>
-
 <div ng-app="icsw.sidebar">
+    <div ng-controller="sidebar_base">
+    <div class="input-group">
+        <input type="text" class="form-control" ng-model="searchstr" placeholder="search ..." ng-change="update_search()"></input>
+        <span class="input-group-btn">
+            <button class="btn btn-success" type="button" ng-click="call_devsel_func()">Go</button>
+            <button class="btn btn-danger" type="button" ng-click="clear_selection()">clr</button>
+        </span>  
+    </div>
     <tabset>
-        <tab heading="Group">
-            <div ng-controller="sidebar_base">
-                <tree tree="devices" treedepth="0"></tree>
-            </div>
+        <tab heading="Group" select="activate_tab('g')" active="tabs['g']">
+            <tree tree="devices" treedepth="0" treeconfig="tc_devices"></tree>
         </tab>
-        <tab heading="FQDN">
+        <tab heading="FQDN" select="activate_tab('f')" active="tabs['f']">
+            <tree tree="fqdns" treedepth="0" treeconfig="tc_fqdns"></tree>
         </tab>
-        <tab heading="Category">
+        <tab heading="Category" select="activate_tab('c')" active="tabs['c']">
+            <tree tree="categories" treedepth="0" treeconfig="tc_categories"></tree>
         </tab>
     </tabset>
-</div>
-
-<div id="sidebar_tabs" class="noborder">
-    <ul>
-        <li><a href="#group_tree">Groups</a></li>
-        <li><a href="#fqdn_tree">FQDN</a></li>
-        <li><a href="#category_tree">Category</a></li>
-    </ul>
-    <div id="group_tree">
     </div>
-    <div id="fqdn_tree">
-    </div>
-    <div id="category_tree">
-    </div>
-</div>
-<div id="ajax_info">
 </div>
 
 <script type="text/javascript">
@@ -46,20 +31,23 @@
 
 node_template = '
 <ul ng-class="{\'dynatree-container\' : treedepth == 0}">
+    <span ng-show="!treedepth && !tree.length">No entries</span>
     <li ng-repeat="entry in tree" ng-class="{\'dynatree-lastsib\' : $last}">
         <span ng-class="get_span_class(entry, $last, treedepth)">
             <span ng-show="!entry.children.length" class="dynatree-connector"></span>
             <span ng-show="entry.children.length" class="dynatree-expander" ng-click="toggle_expansion_state(entry)"></span>
-            <span class="dynatree-checkbox" style="margin-left:2px;" ng-click="toggle_checkbox_state(entry)"></span>
+            <span class="dynatree-checkbox" style="margin-left:2px;" ng-click="toggle_checkbox_state(entry, treeconfig)"></span>
             <span ng-show="1" class="dynatree-icon"></span>
             <div class="btn-group btn-group-xs" ng-show="entry.children.length">
-                <input type="button" class="btn btn-success" value="S" ng-click="toggle_tree_state(entry, 1)"></input>
-                <input type="button" class="btn btn-primary" value="T" ng-click="toggle_tree_state(entry, 0)"></input>
-                <input type="button" class="btn btn-warning" value="C" ng-click="toggle_tree_state(entry, -1)"></input>
+                <input type="button" class="btn btn-success" value="S" ng-click="toggle_tree_state(entry, treeconfig, 1)"></input>
+                <input type="button" class="btn btn-primary" value="T" ng-click="toggle_tree_state(entry, treeconfig, 0)"></input>
+                <input type="button" class="btn btn-warning" value="C" ng-click="toggle_tree_state(entry, treeconfig, -1)"></input>
             </div>
-            <a href="#" class="dynatree-title">{{ get_name(entry) }}<span ng-show="entry.children.length"> ({{ entry.children.length }}<span ng-show="get_num_selected(entry)"> / {{ get_num_selected(entry) }}</span>)</span></a>
+            <a href="#" class="dynatree-title">{{ treeconfig.get_name(entry) }}
+                <span ng-show="entry.children.length">({{ entry.children.length }}<span ng-show="get_num_selected(entry)"> / {{ get_num_selected(entry) }}</span>)</span>
+            </a>
         </span>
-        <tree ng-show="entry.expand" tree="entry.children" treedepth="(treedepth || 0) + 1"></tree>
+        <tree ng-show="entry.expand" tree="entry.children" treedepth="(treedepth || 0) + 1" treeconfig="treeconfig"></tree>
     </li>
 </ul>
 '
@@ -70,42 +58,251 @@ sidebar_module = angular.module("icsw.sidebar", ["ngResource", "ngCookies", "ngS
 
 angular_module_setup([sidebar_module])
 
+class tree_node
+    constructor: (args) ->
+        @selected = false
+        @expanded = false
+        @folder   = false
+        @children = []
+        for key, value of args
+            @[key] = value
+        
 sidebar_base = sidebar_module.controller("sidebar_base", ["$scope", "$compile", "restDataSource", "$q", 
     ($scope, $compile, restDataSource, $q) ->
-        $scope.entries = []
+        $scope.searchstr = ""
+        # active tab, (d)evices, (f)qdn, (c)ategories
+        $scope.devsel_func = undefined
+        $scope.fire_when_loaded = true
+        $scope.call_devsel_func = () ->
+            #console.log "***"
+            if $scope.devsel_func
+                # build device, device_group list
+                dev_list = []
+                devg_list = []
+                for idx in $scope.cur_sel
+                    if $scope.dev_lut[idx].device_type_identifier == "MD"
+                        devg_list.push("devg__#{idx}")
+                    else
+                        dev_list.push("dev__#{idx}")
+                #console.log dev_list, devg_list
+                $scope.devsel_func(dev_list, devg_list)
+        $scope.resolve_device_keys = (key_list) =>
+            list_len = key_list.length
+            ret_list = list_len + (if list_len == 1 then " device" else " devices")
+            if list_len
+                #d_tree = @active_div.dynatree("getTree")
+                #if @mode == "category"
+                #    ret_list = "#{ret_list}: " + (d_tree.getNodeByKey(@cat_lookup[val][0]).data.title for val in key_list).join(", ")
+                #else
+                ret_list = "#{ret_list}: " + ($scope.dev_lut[key.split("__")[1]].full_name for key in key_list).join(", ")
+            return ret_list
+        $scope.update_search = () ->
+            cur_re = new RegExp($scope.searchstr, "gi")
+            for entry in {"g" : $scope.devices, "f" : $scope.fqdns, "c" : $scope.categories}[$scope.active_tab]
+                $scope.apply_search_re(entry, cur_re)
+            $scope.selection_changed()
+        $scope.apply_search_re = (entry, cur_re) ->
+            if entry._node_type == "d"
+                entry.selected = $scope.dev_lut[entry.obj].full_name.match(cur_re)
+            for child in entry.children
+                $scope.apply_search_re(child, cur_re)
+        # current device selection
+        $scope.cur_sel = []            
+        $scope.install_devsel_link = (ds_func, fire_when_loaded) ->
+            $scope.devsel_func = ds_func
+            $scope.fire_when_loaded = fire_when_loaded
+        root.install_devsel_link = $scope.install_devsel_link
+        root.resolve_device_keys = $scope.resolve_device_keys
+        root.sidebar = {"resolve_device_keys" : $scope.resolve_device_keys}
+        $scope.active_tab = "{{ request.session.sidebar_mode }}".slice(0, 1) 
+        $scope.tabs = {}
+        for tab_short in ["g", "f", "c"]
+            $scope.tabs[tab_short] = tab_short == $scope.active_tab
         $scope.devices = []
         $scope.rest_data = {}
         $scope.rest_map = [
-            {"short" : "device_tree", "url" : "{% url 'rest:device_tree_list' %}", "options" : {"ignore_cdg" : false, "tree_mode" : true, "all_devices" : true}} 
+            {"short" : "device_tree", "url" : "{% url 'rest:device_tree_list' %}", "options" : {"ignore_cdg" : false, "tree_mode" : true, "all_devices" : true, "with_categories" : true}} 
+            {"short" : "domain_tree_node", "url" : "{% url 'rest:domain_tree_node_list' %}"}
+            {"short" : "category", "url" : "{% url 'rest:category_list' %}"}
+            {"short" : "device_sel", "url" : "{% url 'rest:device_selection_list' %}"}
         ]
         $scope.reload = () ->
-            # store selected state
-            $scope.sel_cache = (entry.idx for entry in $scope.entries when entry.selected)
             wait_list = []
             for value, idx in $scope.rest_map
                 $scope.rest_data[value.short] = restDataSource.reload([value.url, value.options])
                 wait_list.push($scope.rest_data[value.short])
             $q.all(wait_list).then((data) ->
                 for value, idx in data
-                    if idx == 0
-                        $scope.entries = value
                     $scope.rest_data[$scope.rest_map[idx].short] = value
                 $.unblockUI()
                 $scope.rest_data_set()
             )
         $scope.reload()
-        $scope.rest_data_set = () ->
-            new_devs = []
-            cur_dg = undefined
-            for entry in $scope.rest_data["device_tree"]
-                entry.children = []
+        $scope.set_active_selection = (t_type, new_sel) ->
+            #console.log t_type, new_sel
+            for entry in {"g" : $scope.devices, "f" : $scope.fqdns, "c" : $scope.categories}[t_type]
+                $scope.set_sub_selection(entry, new_sel)
+        $scope.set_sub_selection = (entry, new_sel) ->
+            if entry._node_type == "d"
+                entry.selected = entry.obj in new_sel
+            for child in entry.children
+                $scope.set_sub_selection(child, new_sel)
+        $scope.get_active_selection = (t_type) ->
+            act_sel = []
+            for entry in {"g" : $scope.devices, "f" : $scope.fqdns, "c" : $scope.categories}[t_type]
+                for sub_sel in $scope.get_sub_selection(entry)
+                    act_sel.push(sub_sel)
+            return _.unique(act_sel)
+        $scope.get_sub_selection = (entry) ->
+            act_sel = []
+            if entry._node_type == "d" and entry.selected
+                act_sel.push(entry.obj)
+            for child in entry.children
+                for sub_sel in $scope.get_sub_selection(child)
+                    act_sel.push(sub_sel)
+            return act_sel
+        $scope.clear_selection = () ->
+            for entry in {"g" : $scope.devices, "f" : $scope.fqdns, "c" : $scope.categories}[$scope.active_tab]
+                $scope.clear_sub_selection(entry)
+            $scope.selection_changed()
+        $scope.clear_sub_selection = (entry) ->
+            entry.selected = false
+            ($scope.clear_sub_selection(child) for child in entry.children)
+        $scope.activate_tab = (t_type) ->
+            # copy selected flags
+            #console.log "act", t_type, $scope.active_tab
+            if t_type != $scope.active_tab
+                # copy selection settings from active tab to new tab
+                # get src selection
+                cur_sel = $scope.get_active_selection($scope.active_tab)
+                $scope.set_active_selection(t_type, cur_sel)
+                $scope.active_tab = t_type
+                store_user_var("sidebar_mode", {"c" : "category", "f" : "fqdn", "g" : "group"}[$scope.active_tab], "str")
+        $scope.selection_changed = () ->
+            cur_sel = $scope.get_active_selection($scope.active_tab)
+            if cur_sel != $scope.cur_sel
+                $scope.cur_sel = cur_sel
+                console.log "selc"
+                $.ajax
+                    url     : "{% url 'device:set_selection' %}"
+                    data    : {
+                        "angular_sel" : angular.toJson(cur_sel)
+                    }
+                    success : (xml) ->
+                        parse_xml_response(xml)
+        $scope.prune_fqdn = (entry) ->
+            remove = true
+            new_childs = []
+            for sub_entry in entry.children
+                keep = false
+                if sub_entry._node_type == "d"
+                    keep = true
+                else
+                    if not $scope.prune_fqdn(sub_entry)
+                        keep = true
+                if keep
+                    new_childs.push(sub_entry)
+            entry.children = new_childs
+            return if entry.children.length then false else true
+        # treeconfig for devices
+        $scope.tc_devices = {
+            get_name : (t_entry) ->
+                entry = $scope.dev_lut[t_entry.obj]
                 if entry.is_meta_device
-                    entry.folder = true
-                    cur_dg = entry
+                    d_name = entry.full_name.slice(8) 
+                else
+                    d_name = entry.full_name
+                info_f = [entry.device_type_identifier]
+                if entry.comment
+                    info_f.push(entry.comment)
+                return "#{d_name} (" + info_f.join(", ") + ")"
+            selection_changed : () ->
+                $scope.selection_changed()
+        }
+        # treeconfig for FQDN
+        $scope.tc_fqdns = {
+            get_name : (t_entry) ->
+                if t_entry._node_type == "f"
+                    entry = $scope.fqdn_lut[t_entry.obj]
+                    if entry.parent
+                        return "#{entry.name} (*.#{entry.full_name})"
+                    else
+                        return "[TLN]"
+                else
+                    return $scope.tc_devices.get_name(t_entry)
+            selection_changed : () ->
+                $scope.selection_changed()
+        }
+        $scope.tc_categories = {
+            get_name : (t_entry) ->
+                entry = $scope.cat_lut[t_entry.obj]
+                if t_entry._node_type == "c"
+                    return if entry.depth then entry.name else "[TOP]"
+                else
+                    return $scope.tc_devices.get_name(t_entry)
+            selection_changed : () ->
+                $scope.selection_changed()
+        }
+        # remove empty FQDN nodes (iterative)
+        $scope.rest_data_set = () ->
+            # build FQDNs tree
+            new_fqdns = []
+            fqdn_lut = {}
+            $scope.fqdn_lut = {}
+            for entry in $scope.rest_data["domain_tree_node"]
+                $scope.fqdn_lut[entry.idx] = entry
+                t_entry = new tree_node({folder:true, obj:entry.idx, _node_type:"f", expand:entry.depth == 0})
+                fqdn_lut[entry.idx] = t_entry
+                if entry.parent
+                    #$scope.fqdn_lut[entry.parent].fqdn_childs.push(entry)
+                    fqdn_lut[entry.parent].children.push(t_entry)
+                else
+                    new_fqdns.push(t_entry)
+            # build category tree
+            $scope.cat_lut = {}
+            cat_lut = {}
+            new_cats = []
+            for entry in $scope.rest_data["category"]
+                $scope.cat_lut[entry.idx] = entry
+                t_entry = new tree_node({folder: true, obj:entry.idx, _node_type:"c", expand:entry.depth == 0})
+                cat_lut[entry.idx] = t_entry
+                if entry.parent
+                    cat_lut[entry.parent].children.push(t_entry)
+                else
+                    new_cats.push(t_entry)             
+            # build devices tree
+            new_devs = []
+            $scope.dev_lut = {}
+            cur_dg = undefined
+            dsel_list = (entry.idx for entry in $scope.rest_data["device_sel"] when entry.sel_type == "d")
+            $scope.cur_sel = dsel_list
+            # we dont need the group selection
+            # gsel_list = (entry.idx for entry in $scope.rest_data["device_sel"] when entry.sel_type == "g")
+            #console.log dsel_list
+            for entry in $scope.rest_data["device_tree"]
+                $scope.dev_lut[entry.idx] = entry
+                # copy selection state to device selection (the selection state of the meta devices is keeped in sync with the selection states of the devicegroups )
+                t_entry = new tree_node({obj:entry.idx, folder:entry.is_meta_device, _node_type:"d", selected:entry.idx in dsel_list})
+                fqdn_lut[entry.domain_tree_node].children.push(new tree_node({obj:entry.idx, _node_type:"d", selected:entry.idx in dsel_list}))
+                if entry.categories
+                    #console.log entry.idx in dsel_list
+                    cat_entry = new tree_node({obj:entry.idx, _node_type:"d", selected:entry.idx in dsel_list})
+                    for t_cat in entry.categories
+                        cat_lut[t_cat].children.push(cat_entry)
+                if entry.is_meta_device
+                    cur_dg = t_entry
                     new_devs.push(cur_dg)
                 else
-                    cur_dg.children.push(entry)
+                    cur_dg.children.push(t_entry)
+            for entry in new_fqdns
+                $scope.prune_fqdn(entry)
+            for entry in new_cats
+                $scope.prune_fqdn(entry)
             $scope.devices = new_devs
+            $scope.fqdns = new_fqdns
+            $scope.categories = new_cats
+            if $scope.fire_when_loaded
+                $scope.call_devsel_func()
 ])
 
 sidebar_module.directive("tree", ["$compile", 
@@ -115,6 +312,7 @@ sidebar_module.directive("tree", ["$compile",
             scope    : {
                 tree : "="
                 treedepth : "="
+                treeconfig : "="
             }
             #template : node_template 
             compile: (tElement, tAttr) ->
@@ -151,26 +349,21 @@ sidebar_module.directive("tree", ["$compile",
                         return r_class
                     scope.toggle_expansion_state = (entry) ->
                         entry.expand = not entry.expand
-                    scope.toggle_checkbox_state = (entry) ->
-                        entry.selected = not entry.selected
-                    scope.toggle_tree_state = (entry, flag) ->
+                    scope.toggle_checkbox_state = (entry, treeconfig) ->
+                        entry.selected = !entry.selected
+                        treeconfig.selection_changed()
+                    scope.toggle_tree_state = (entry, treeconfig, flag, signal=true) ->
                         if flag == 1
                             entry.selected = true
                             entry.expand = true
                         else if flag == 0
-                            entry.selected = not entry.selected
+                            entry.selected = !entry.selected
                         else
                             entry.selected = false
                         for sub_entry in entry.children
-                            scope.toggle_tree_state(sub_entry, flag)
-                    scope.get_name = (entry) ->
-                        if entry.is_meta_device
-                            return entry.full_name.slice(8)
-                        else
-                            info_f = [entry.device_type_identifier]
-                            if entry.comment
-                                info_f.push(entry.comment)
-                            return entry.full_name + " (" + info_f.join(", ") + ")"
+                            scope.toggle_tree_state(sub_entry, treeconfig, flag, false)
+                        if signal
+                            treeconfig.selection_changed()
                     scope.get_num_selected = (entry) ->
                         return (true for sub_el in entry.children when sub_el.selected).length
                     new_el = $compile(node_template)
@@ -182,490 +375,7 @@ root = exports ? this
 
 root.sidebar_target_func = undefined
 root.sidebar_call_devsel_link_when_loaded = false
-root.sidebar = undefined
-
-class sidebar_tree
-    constructor: (@tabs_div) ->
-        @initial_mode = '{{ request.session.sidebar_mode }}'
-        # some flags
-        @DYN_DTS_LOCKCOUNT = 0
-        @ADS_RUNNING       = false
-        @DBL_HANDLING      = false
-        @CALL_DEVSEL_LINK_WHEN_LOADED = root.sidebar_call_devsel_link_when_loaded
-        @CUR_DEVICE_SELECTION         = undefined
-        @active_tab = undefined
-        @active_tabs = {}
-        # shortcuts to divs
-        @group_div    = @tabs_div.find("div#group_tree")
-        @fqdn_div     = @tabs_div.find("div#fqdn_tree")
-        @category_div = @tabs_div.find("div#category_tree")
-        @init_sidebar()
-        $("input#device_selection").focus().on("keyup", @apply_device_selection)
-        $("input#devsel_clear").on("click", @clear_selection)
-        # check for installed sidebar_target_func
-        @install_devsel_func()
-        # indepent of sidebar mode
-        @init_gauge_info()
-        @update_gauge_info()
-    install_devsel_func: () =>
-        if root.sidebar_target_func
-            if $("input#devsel_button:visible").length == 0
-                $("input#devsel_button").show().on("click", @devsel_func)
-    devsel_func: (event) =>
-        # all nodes
-        sel_keys = (value.data.key for value in @active_div.dynatree("getSelectedNodes"))
-        if @mode == "category"
-            sel_keys = (@cat_lookup[key] for key in sel_keys when key of @cat_lookup)
-        # device nodes
-        dev_keys  = (key for key in sel_keys when key.match(/^dev_/))
-        # devgroup nodes
-        devg_keys = (key for key in sel_keys when key.match(/^devg_/))
-        root.sidebar_target_func(dev_keys, devg_keys)
-    init_sidebar: =>
-        @tabs_div.tabs(
-            active   : {"group" : 0, "fqdn" : 1, "category" : 2}[@initial_mode],
-            activate : @activate_tab_jq,
-        )
-        @activate_tab(@initial_mode, true)
-    activate_tab_jq: (event, ui) =>
-        @activate_tab(ui.newTab.find("a").attr("href").split("_")[0][1..])
-    activate_tab: (tab_name, first_call=false) =>
-        if not first_call
-            store_user_var("sidebar_mode", tab_name, "str")
-        @active_div = @["#{tab_name}_div"]
-        @mode = tab_name
-        if not @active_tabs[tab_name]
-            @active_tabs[tab_name] = 1
-            @["activate_#{tab_name}"](@active_div)
-        else
-            $.ajax
-                url     : "{% url 'device:get_selection' %}"
-                success : (xml) =>
-                    if parse_xml_response(xml)
-                        @clear_active_tree()
-                        d_tree = @active_div.dynatree("getTree")
-                        @DYN_DTS_LOCKCOUNT++
-                        $(xml).find("selection sel").each (idx, cur_sel) =>
-                            dev_key = $(cur_sel).text()
-                            if tab_name == "category"
-                                # cat-lookup for category tree
-                                if dev_key of @cat_lookup
-                                    for cat_key in @cat_lookup[dev_key]
-                                        cur_node = d_tree.getNodeByKey(cat_key)
-                                        if cur_node
-                                            cur_node.select(true)
-                                            cur_node.makeVisible(true)
-                            else
-                                cur_node = d_tree.getNodeByKey(dev_key)
-                                if cur_node
-                                    cur_node.select(true)
-                                    cur_node.makeVisible(true)
-                        @DYN_DTS_LOCKCOUNT--
-        #if @active_tab != tab_name
-        #    @active_tab = tab_name
-        #    @["activate_#{tab_name}"](@["#{tab_name}_div"])
-    activate_category: (tree_div) =>
-        $.ajax
-            url     : "{% url 'base:category_tree' %}"
-            data    :
-                with_devices : 1
-            success : (xml) =>
-                if parse_xml_response(xml)
-                    @CAT = $(xml).find("categories")
-                    $.ajax
-                        url     : "{% url 'device:get_group_tree' %}"
-                        data    :
-                            "ignore_cdg"      : "0"
-                            "permission_tree" : "1"
-                            "full_name"       : "1"
-                        success : (xml) =>
-                            if parse_xml_response(xml)
-                                @device_groups = $(xml).find("device_groups device_group")
-                                tree_div.dynatree
-                                    autoFocus  : false
-                                    checkbox   : true
-                                    onClick : (dtnode, event) =>
-                                        dt_key = dtnode.data.key
-                                        if dt_key of @cat_lookup
-                                            dev_key = @cat_lookup[dt_key]
-                                            if dev_key.match(/^dev__/)
-                                                if !@ADS_RUNNING
-                                                    if dtnode.getEventTargetType(event) == "title"
-                                                        show_device_info(event, dev_key, @update_node)
-                                    onSelect : (flat, dtnode) =>
-                                        if !@ADS_RUNNING and !@DBL_HANDLING
-                                            if !dtnode.isExpanded()
-                                                dtnode.expand(true)
-                                            if !@DYN_DTS_LOCKCOUNT
-                                                @DYN_DTS_LOCKCOUNT++
-                                                dtnode.visit(
-                                                    (cur_node) ->
-                                                        cur_node.toggleSelect()
-                                                    false)
-                                                @DYN_DTS_LOCKCOUNT--
-                                                key_list = [@cat_lookup[node.data.key] for node in tree_div.dynatree("getTree").getSelectedNodes() when node.data.key.match(/cat__/)]
-                                                $.ajax
-                                                    url  : "{% url 'device:set_selection' %}"
-                                                    data :
-                                                        "key_list" : key_list
-                                @root_cat_node = tree_div.dynatree("getRoot")
-                                @cat_lookup = {}
-                                @cat_lut_counter = 0
-                                @build_cat_node(@root_cat_node, @CAT.find("category[parent='0']"))
-                                if @CALL_DEVSEL_LINK_WHEN_LOADED
-                                    $("input#devsel_button").trigger("click")
-    build_cat_node: (dt_node, db_node) =>
-        if parseInt(db_node.attr("parent")) == 0
-            title_str = "TOP"
-            expand_flag = true
-        else
-            title_str = db_node.attr("name") + " (" + db_node.attr("full_name") + ")"
-            expand_flag = false
-        new_node = dt_node.addChild(
-            title    : title_str
-            expand   : expand_flag
-            key      : db_node.attr("pk")
-            #select   : if parseInt(db_node.attr("immutable")) then true else false
-            addClass : if db_node.attr("intermediate") == "1" then "intermediate" else "ip_ok"
-        )
-        if db_node.attr("devices")
-            dev_list = db_node.attr("devices").split("::")
-            for dev_pk in dev_list
-                cur_dev = @device_groups.find("device[pk='#{dev_pk}']")
-                if cur_dev.length
-                    # may be zero for disabled devices
-                    @add_cat_dev_node(new_node, cur_dev)
-        @CAT.find("category[parent='" + db_node.attr("pk") + "']").each (idx, sub_db_node) =>
-            @build_cat_node(new_node, $(sub_db_node))
-    add_cat_dev_node: (dt_node, cur_dev) =>
-        dev_key = cur_dev.attr("key")
-        @cat_lut_counter++
-        cat_key = "cat__#{@cat_lut_counter}"
-        if dev_key of @cat_lookup
-            @cat_lookup[dev_key].push(cat_key)
-        else
-            @cat_lookup[dev_key] = [cat_key]
-        #    node_key 
-        @cat_lookup[cat_key] = dev_key
-        sel_flag = if cur_dev.attr("selected") == "selected" then true else false
-        dev_node = dt_node.addChild
-            title   : cur_dev.attr("title")
-            key     : cat_key
-            select  : sel_flag
-            tooltip : "UUID: " + cur_dev.attr("uuid")
-        if sel_flag
-            dev_node.makeVisible(true)
-    activate_fqdn: (tree_div) =>
-        $.ajax
-            url     : "{% url 'network:domain_name_tree' %}"
-            data    :
-                add_device_references : true
-            success : (xml) =>
-                if parse_xml_response(xml)
-                    @DNT = $(xml).find("domain_tree_nodes")
-                    $.ajax
-                        url     : "{% url 'device:get_group_tree' %}"
-                        data    :
-                            "ignore_cdg"      : "0"
-                            "permission_tree" : "1"
-                            "full_name"       : "1"
-                        success : (xml) =>
-                            if parse_xml_response(xml)
-                                @device_groups = $(xml).find("device_groups device_group")
-                                tree_div.dynatree
-                                    autoFocus  : false
-                                    checkbox   : true
-                                    onClick : (dtnode, event) =>
-                                        if dtnode.data.key.match(/^dev__/)
-                                            if !@ADS_RUNNING
-                                                if dtnode.getEventTargetType(event) == "title"
-                                                    @show_device_info(dtnode, event)
-                                    onSelect : (flat, dtnode) =>
-                                        if !@ADS_RUNNING and !@DBL_HANDLING
-                                            if !dtnode.isExpanded()
-                                                dtnode.expand(true)
-                                            if !@DYN_DTS_LOCKCOUNT
-                                                @DYN_DTS_LOCKCOUNT++
-                                                dtnode.visit(
-                                                    (cur_node) ->
-                                                        cur_node.toggleSelect()
-                                                    false)
-                                                @DYN_DTS_LOCKCOUNT--
-                                                $.ajax
-                                                    url  : "{% url 'device:set_selection' %}"
-                                                    data :
-                                                        "key_list" : (x.data.key for x in tree_div.dynatree("getTree").getSelectedNodes())
-                                    debuglevel : {% if DEBUG %}0{% else %}0{% endif %}
-                                @root_fqdn_node = tree_div.dynatree("getRoot")
-                                @build_fqdn_node(@root_fqdn_node, @DNT.find("domain_tree_node[parent='0']"))
-                                if @CALL_DEVSEL_LINK_WHEN_LOADED
-                                    $("input#devsel_button").trigger("click")
-    build_fqdn_node: (dt_node, db_node) =>
-        if parseInt(db_node.attr("total_refcount")) > 0 or parseInt(db_node.attr("parent")) == 0
-            if parseInt(db_node.attr("parent")) == 0
-                title_str = "TOP"
-                expand_flag = true
-            else
-                title_str = db_node.attr("name") + " (*." + db_node.attr("full_name") + ")"
-                expand_flag = false
-            new_node = dt_node.addChild(
-                title    : title_str
-                expand   : expand_flag
-                key      : db_node.attr("pk")
-                isFolder : true
-                addClass : if db_node.attr("intermediate") == "1" then "intermediate" else "ip_ok"
-            )
-            add_node = new_node
-            # add all sub fqdns
-            @DNT.find("domain_tree_node[parent='" + db_node.attr("pk") + "']").each (idx, sub_db_node) =>
-                @build_fqdn_node(add_node, $(sub_db_node))
-            # add all devices
-            @device_groups.find("device[domain_tree_node='" + db_node.attr("pk") + "']").each (dev_id, cur_dev) =>
-                # we display META-devices in FQDN view
-                @add_device_node(add_node, $(cur_dev), true)
-            if not add_node.countChildren() and add_node.getLevel() > 1
-                add_node.remove()
-        return true
-    add_device_node: (dt_node, cur_dev, add_meta) =>
-        is_meta = cur_dev.attr("meta_device") == "1"
-        if is_meta
-            # for meta_devices we use the selected and not the tree_selected attribute
-            sel_flag = if cur_dev.attr("selected") == "selected" then true else false
-            if add_meta
-                new_node = dt_node.addChild
-                    title   : cur_dev.attr("title")
-                    select  : sel_flag
-                    key     : "devg__" + cur_dev.attr("device_group")
-                    tooltip : "UUID: " + cur_dev.attr("uuid")
-                if sel_flag
-                    new_node.makeVisible(true)
-        else
-            sel_flag = if cur_dev.attr("tree_selected") == "selected" then true else false
-            new_node = dt_node.addChild
-                title   : cur_dev.attr("title")
-                select  : sel_flag
-                key     : cur_dev.attr("key")
-                tooltip : "UUID: " + cur_dev.attr("uuid")
-            if sel_flag
-                new_node.makeVisible(true)
-    activate_group: (tree_div) =>
-        tree_div.dynatree
-            autoFocus  : false
-            checkbox   : true
-            onDblClick : (dtnode, event) =>
-                if !@ADS_RUNNING
-                    if !@DYN_DTS_LOCKCOUNT
-                        @DBL_HANDLING = true
-                        dtnode.toggleSelect()
-                        @DBL_HANDLING = false
-                        $.ajax
-                            url  : "{% url 'device:add_selection' %}"
-                            data :
-                                "key"    : dtnode.data.key
-                                "add"    : if dtnode.isSelected() then 1 else 0
-                                "double" : 1
-            onClick : (dtnode, event) =>
-                if !@ADS_RUNNING
-                    if dtnode.getEventTargetType(event) == "title"
-                        @show_device_info(dtnode, event)
-            onSelect : (flat, dtnode) =>
-                if !@ADS_RUNNING and !@DBL_HANDLING
-                    if !dtnode.isExpanded()
-                        dtnode.expand(true)
-                    if !@DYN_DTS_LOCKCOUNT
-                        $.ajax
-                            url  : "{% url 'device:add_selection' %}"
-                            data :
-                                "key"    : dtnode.data.key
-                                "add"    : if dtnode.isSelected() then 1 else 0
-                                "double" : 0
-                        @DYN_DTS_LOCKCOUNT++
-                        dtnode.visit(
-                            (cur_node) ->
-                                cur_node.toggleSelect()
-                            false)
-                        @DYN_DTS_LOCKCOUNT--
-            debuglevel : {% if DEBUG %}0{% else %}0{% endif %}
-        @load_group_xml(tree_div)
-    load_group_xml: (tree_div) =>
-        $.ajax
-            url     : "{% url 'device:get_group_tree' %}"
-            data    :
-                "ignore_cdg"      : "0"
-                "permission_tree" : "1"
-                "full_name"       : "1"
-            success : (xml) =>
-                if parse_xml_response(xml)
-                    root_node = tree_div.dynatree("getRoot")
-                    $(xml).find("device_groups device_group").each (dg_idx, cur_dg) =>
-                        cur_dg = $(cur_dg)
-                        title_str = cur_dg.attr("name")
-                        if cur_dg.find("device[meta_device='0']").length
-                            title_str = "#{title_str} (" + cur_dg.find("device[meta_device='0']").length + ")"
-                        dg_node = root_node.addChild(
-                            title    : title_str
-                            isFolder : true
-                            isLazy   : false
-                            select   : if cur_dg.attr("tree_selected") == "selected" then true else false
-                            expand   : if cur_dg.attr("tree_selected") == "selected" then true else false
-                            key      : cur_dg.attr("key")
-                        )
-                        cur_dg.find("device").each (d_idx, cur_dev) =>
-                            @add_device_node(dg_node, $(cur_dev), false)
-                    $.each(tree_div.dynatree("getSelectedNodes"),  (index, value) =>
-                        value.expand(true)
-                        value.makeVisible(true)
-                    )
-                    tree_div.find("ul").css({"border" : "none", "margin" : "0px"})
-                    tree_div.css({"border" : "1px dotted gray", "background-color" : "#FFFFFF"})
-                    if @CALL_DEVSEL_LINK_WHEN_LOADED
-                        $("input#devsel_button").trigger("click")
-    clear_selection: =>
-        $("input#device_selection").val("")
-        $.ajax
-            url     : "{% url 'device:clear_selection' %}"
-            success : (xml) =>
-                @clear_active_tree()
-    clear_active_tree: =>
-        @DYN_DTS_LOCKCOUNT = true
-        $.each(@active_div.dynatree("getSelectedNodes"), (index, value) =>
-            value.select(false)
-        )
-        @active_div.dynatree("getRoot").visit((node) ->
-            node.expand(false)
-        )
-        @DYN_DTS_LOCKCOUNT = false
-    get_key: (key) =>
-        if @mode == "category"
-            return @cat_lookup[key]
-        else
-            return key
-    apply_device_selection: =>
-        cur_text = $("input#device_selection").val()
-        if cur_text != @CUR_DEVICE_SELECTION
-            @CUR_DEVICE_SELECTION = cur_text
-            if @CUR_DEVICE_SELECTION
-                if @mode == "category" and @CUR_DEVICE_SELECTION.match(/\//)
-                    sub_sel = true
-                else
-                    sub_sel = false
-                @ADS_RUNNING = true
-                cur_re = new RegExp(@CUR_DEVICE_SELECTION, "gi")
-                key_list = []
-                # traverse tree
-                @active_div.dynatree("getRoot").visit((node) =>
-                    if node.data.title.match(cur_re)
-                        node.makeVisible(true)
-                        node.select(true)
-                        key_list.push(@get_key(node.data.key))
-                        if sub_sel
-                            node.visit((sub_node) =>
-                                sub_node.makeVisible(true)
-                                sub_node.select(true)
-                                key_list.push(@get_key(sub_node.data.key))
-                            )
-                            # important to skip deselect
-                            return "skip"
-                    else
-                        node.select(false)
-                )
-                # traverse tree, unexpand subtrees
-                @active_div.dynatree("getRoot").visit((node) =>
-                    if node.hasChildren()
-                        any_selected = false
-                        # count active
-                        node.visit((sub_node) =>
-                            if sub_node.isSelected()
-                                any_selected = true
-                        )
-                        if !any_selected
-                            node.expand(false)
-                    #return "skip"
-                )
-                $.ajax
-                    url  : "{% url 'device:add_selection' %}"
-                    data :
-                        "key"    : key_list
-                        "double" : 0
-                @ADS_RUNNING = false
-    resolve_device_keys: (key_list) =>
-        list_len = key_list.length
-        ret_list = list_len + (if list_len == 1 then " device" else " devices")
-        if list_len
-            d_tree = @active_div.dynatree("getTree")
-            if @mode == "category"
-                ret_list = "#{ret_list}: " + (d_tree.getNodeByKey(@cat_lookup[val][0]).data.title for val in key_list).join(", ")
-            else
-                ret_list = "#{ret_list}: " + (d_tree.getNodeByKey(val).data.title for val in key_list).join(", ")
-        return ret_list
-    show_device_info: (dtnode, event) =>
-        if dtnode.data.key.match(/^dev__/)
-            show_device_info(event, dtnode.data.key, @update_node)
-    update_node: (dev_key) =>
-        $.ajax
-            url     : "{% url 'base:get_object' %}"
-            data    :
-                "key"         : dev_key
-                "true_flag_0" : "full_name"
-            success : (xml) =>
-                if parse_xml_response(xml)
-                    dev_xml = $(xml).find("value[name='result'] device")
-                    title_str = dev_xml.attr("full_name")
-                    if dev_xml.attr("comment")
-                        title_str = "#{title_str} (" + dev_xml.attr("comment") + ")"
-                    if @mode == "category"
-                        for node_key in @cat_lookup[dev_xml.attr("key")] 
-                            cur_node = @active_div.dynatree("getTree").getNodeByKey(node_key)
-                            cur_node.data.title = title_str
-                            cur_node.render()
-                    else
-                        cur_node = @active_div.dynatree("getTree").getNodeByKey(dev_xml.attr("key"))
-                        cur_node.data.title = title_str
-                        cur_node.render()
-    init_gauge_info: =>
-        @next_iters = []
-        # defaults to 10 seconds
-        @default_gauge_timeout = 10000
-    set_next_iters: (diff_to, num_steps) =>
-        @next_iters = (diff_to for idx in [1..num_steps])
-        @set_next_gauge()
-    set_next_gauge: () =>
-        $(document).stopTime("get_gauge_info")
-        if @next_iters.length
-            next_timeout = @next_iters.pop()
-        else
-            next_timeout = @default_gauge_timeout
-        $(document).everyTime(next_timeout, "get_gauge_info", (next_timeout) =>
-            @update_gauge_info()
-        )
-    update_gauge_info: =>
-        $.ajax
-            url     : "{% url 'base:get_gauge_info' %}",
-            hidden  : true,
-            success : (xml) =>
-                if parse_xml_response(xml)
-                    gauge_td = $("div#gauge_info")
-                    gauge_td.children().remove()
-                    any_defined = false
-                    $(xml).find("gauge_info gauge_element").each (idx, gauge_el) ->
-                        any_defined = true
-                        gauge_el = $(gauge_el)
-                        gauge_td.append(
-                            $("<div>").text(gauge_el.text()).progressbar({
-                                "value" : parseInt(gauge_el.attr("value")),
-                            })
-                        )
-                    @default_gauge_timeout = if any_defined then 1500 else 10000
-                    @set_next_gauge()
-    
-root.init_sidebar = ->
-    root.sidebar = new sidebar_tree($("div#sidebar_tabs"))
-    
-root.install_devsel_link = (t_func, fire_when_loaded) ->
-    root.sidebar_target_func = t_func
-    root.sidebar_call_devsel_link_when_loaded = fire_when_loaded
-    if root.sidebar
-        root.sidebar.install_devsel_func()
+#root.sidebar = undefined
 
 {% endinlinecoffeescript %}
 

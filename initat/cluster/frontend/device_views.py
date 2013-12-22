@@ -121,7 +121,12 @@ class set_selection(View):
     @method_decorator(xml_wrapper)
     def post(self, request):
         _post = request.POST
-        cur_list = [key for key in _post.getlist("key_list[]", []) if key.startswith("dev")]
+        if "angular_sel" in _post:
+            dev_list = json.loads(_post["angular_sel"])
+            devg_list = device_group.objects.filter(Q(device__in=dev_list)).values_list("pk", flat=True)
+            cur_list = ["dev__%d" % (cur_pk) for cur_pk in dev_list] + ["devg__%d" % (cur_pk) for cur_pk in devg_list]
+        else:
+            cur_list = [key for key in _post.getlist("key_list[]", []) if key.startswith("dev")]
         request.session["sel_list"] = cur_list
         request.session.save()
 
