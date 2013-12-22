@@ -667,6 +667,18 @@ class device(models.Model):
         ordering = ("name",)
         unique_together = [("name", "domain_tree_node"), ]
 
+class device_selection(object):
+    def __init__(self, sel_str):
+        parts = sel_str.split("__")
+        self.idx = int(parts[1])
+        self.sel_type = {"dev" : "d", "devg" : "g"}[parts[0]]
+
+class device_selection_serializer(serializers.Serializer):
+    idx = serializers.IntegerField()
+    sel_type = serializers.CharField(max_length=2)
+    class Meta:
+        model = device_selection
+
 class device_serializer(serializers.ModelSerializer):
     full_name = serializers.Field(source="full_name")
     is_meta_device = serializers.Field(source="is_meta_device")
@@ -681,6 +693,18 @@ class device_serializer(serializers.ModelSerializer):
             "automap_root_nagvis", "nagvis_parent", "monitor_server", "mon_ext_host",
             "is_meta_device", "device_type_identifier", "device_group_name", "bootserver",
             "curl",
+            )
+
+class device_serializer_cat(device_serializer):
+    class Meta:
+        model = device
+        fields = ("idx", "name", "device_group", "device_type",
+            "comment", "full_name", "domain_tree_node", "enabled",
+            "monitor_checks", "mon_device_templ", "mon_device_esc_templ", "md_cache_mode",
+            "act_partition_table", "enable_perfdata", "flap_detection_enabled",
+            "automap_root_nagvis", "nagvis_parent", "monitor_server", "mon_ext_host",
+            "is_meta_device", "device_type_identifier", "device_group_name", "bootserver",
+            "curl", "categories",
             )
 
 class device_serializer_package_state(device_serializer):
@@ -844,22 +868,6 @@ def cd_connection_pre_save(sender, **kwargs):
         else:
             if cur_inst.pk is None:
                 raise ValidationError("connection already exists")
-
-class device_selection(models.Model):
-    idx = models.AutoField(db_column="device_selection_idx", primary_key=True)
-    name = models.CharField(unique=True, max_length=192)
-    user = models.ForeignKey("user", null=True)
-    date = models.DateTimeField(auto_now_add=True)
-    class Meta:
-        db_table = u'device_selection'
-
-class device_device_selection(models.Model):
-    idx = models.AutoField(db_column="device_device_selection_idx", primary_key=True)
-    device_selection = models.ForeignKey("device_selection")
-    device = models.ForeignKey("device")
-    date = models.DateTimeField(auto_now_add=True)
-    class Meta:
-        db_table = u'device_device_selection'
 
 class device_group(models.Model):
     idx = models.AutoField(db_column="device_group_idx", primary_key=True)
@@ -3262,6 +3270,12 @@ class category_tree(object):
         return E.categories(
             *[self.__node_dict[pk].get_xml(with_devices=self.with_devices) for pk in pk_list]
         )
+    def __iter__(self):
+        return self.all()
+    def all(self):
+        # emulate queryset
+        for pk in self.get_sorted_pks():
+            yield self[pk]
 
 # category
 class category(models.Model):
@@ -3306,6 +3320,10 @@ class category(models.Model):
         if with_devices:
             r_xml.attrib["devices"] = "::".join(["%d" % (cur_dev.pk) for cur_dev in self.device_set.all()])
         return r_xml
+
+class category_serializer(serializers.ModelSerializer):
+    class Meta:
+        model = category
 
 @receiver(signals.pre_save, sender=category)
 def category_pre_save(sender, **kwargs):
