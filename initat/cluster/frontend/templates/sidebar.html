@@ -43,7 +43,7 @@ node_template = '
                 <input type="button" class="btn btn-primary" value="T" ng-click="toggle_tree_state(entry, treeconfig, 0)"></input>
                 <input type="button" class="btn btn-warning" value="C" ng-click="toggle_tree_state(entry, treeconfig, -1)"></input>
             </div>
-            <a href="#" class="dynatree-title">{{ treeconfig.get_name(entry) }}
+            <a ng-href="#" class="dynatree-title" ng-click="handle_click($event, treeconfig, entry)">{{ treeconfig.get_name(entry) }}
                 <span ng-show="entry.children.length">({{ entry.children.length }}<span ng-show="get_num_selected(entry)"> / {{ get_num_selected(entry) }}</span>)</span>
             </a>
         </span>
@@ -218,6 +218,10 @@ sidebar_base = sidebar_module.controller("sidebar_base", ["$scope", "$compile", 
                 return "#{d_name} (" + info_f.join(", ") + ")"
             selection_changed : () ->
                 $scope.selection_changed()
+            handle_click : (event, entry) ->
+                dev = $scope.dev_lut[entry.obj]
+                if dev.device_type_identifier != "MD"
+                    show_device_info(event, "dev__" + dev.idx)
         }
         # treeconfig for FQDN
         $scope.tc_fqdns = {
@@ -366,6 +370,9 @@ sidebar_module.directive("tree", ["$compile",
                             treeconfig.selection_changed()
                     scope.get_num_selected = (entry) ->
                         return (true for sub_el in entry.children when sub_el.selected).length
+                    scope.handle_click = (event, treeconfig, entry) ->
+                        if treeconfig.handle_click
+                            treeconfig.handle_click(event, entry)
                     new_el = $compile(node_template)
                     iElement.append(new_el(scope))
             } 
