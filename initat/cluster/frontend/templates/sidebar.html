@@ -11,13 +11,13 @@
     </div>
     <tabset>
         <tab heading="Group" select="activate_tab('g')" active="tabs['g']">
-            <tree tree="devices" treedepth="0" treeconfig="tc_devices"></tree>
+            <tree tree="devices" treeconfig="tc_devices"></tree>
         </tab>
         <tab heading="FQDN" select="activate_tab('f')" active="tabs['f']">
-            <tree tree="fqdns" treedepth="0" treeconfig="tc_fqdns"></tree>
+            <tree tree="fqdns" treeconfig="tc_fqdns"></tree>
         </tab>
         <tab heading="Category" select="activate_tab('c')" active="tabs['c']">
-            <tree tree="categories" treedepth="0" treeconfig="tc_categories"></tree>
+            <tree tree="categories" treeconfig="tc_categories"></tree>
         </tab>
     </tabset>
     </div>
@@ -30,15 +30,15 @@
 {% verbatim %}
 
 node_template = '
-<ul ng-class="{\'dynatree-container\' : treedepth == 0}">
+<ul ng-class="{\'dynatree-container\' : (treedepth || 0) == 0}">
     <span ng-show="!treedepth && !tree.length">No entries</span>
     <li ng-repeat="entry in tree" ng-class="{\'dynatree-lastsib\' : $last}">
-        <span ng-class="get_span_class(entry, $last, treedepth)">
+        <span ng-class="get_span_class(entry, $last)">
             <span ng-show="!entry.children.length" class="dynatree-connector"></span>
             <span ng-show="entry.children.length" class="dynatree-expander" ng-click="toggle_expansion_state(entry)"></span>
             <span class="dynatree-checkbox" style="margin-left:2px;" ng-click="toggle_checkbox_state(entry, treeconfig)"></span>
             <span ng-show="1" class="dynatree-icon"></span>
-            <div class="btn-group btn-group-xs" ng-show="entry.children.length">
+            <div class="btn-group btn-group-xs" ng-show="entry.children.length && treeconfig.show_selection_buttons">
                 <input type="button" class="btn btn-success" value="S" ng-click="toggle_tree_state(entry, treeconfig, 1)"></input>
                 <input type="button" class="btn btn-primary" value="T" ng-click="toggle_tree_state(entry, treeconfig, 0)"></input>
                 <input type="button" class="btn btn-warning" value="C" ng-click="toggle_tree_state(entry, treeconfig, -1)"></input>
@@ -67,6 +67,14 @@ class tree_node
         for key, value of args
             @[key] = value
         
+class tree_config
+    constructor: (@scope, args) ->
+        # not really needed, enter more flags here
+        @show_selection_buttons = true
+        for key, value of args
+            @[key] = value
+        # console.log @show_selection_buttons
+            
 sidebar_base = sidebar_module.controller("sidebar_base", ["$scope", "$compile", "restDataSource", "$q", 
     ($scope, $compile, restDataSource, $q) ->
         $scope.searchstr = ""
@@ -137,6 +145,7 @@ sidebar_base = sidebar_module.controller("sidebar_base", ["$scope", "$compile", 
                 $.unblockUI()
                 $scope.rest_data_set()
             )
+        # load from server
         $scope.reload()
         $scope.set_active_selection = (t_type, new_sel) ->
             #console.log t_type, new_sel
@@ -204,9 +213,17 @@ sidebar_base = sidebar_module.controller("sidebar_base", ["$scope", "$compile", 
                     new_childs.push(sub_entry)
             entry.children = new_childs
             return if entry.children.length then false else true
-        # treeconfig for devices
-        $scope.tc_devices = {
-            get_name : (t_entry) ->
+        $scope.get_name = (t_entry) ->
+            if t_entry._node_type == "f"
+                entry = $scope.fqdn_lut[t_entry.obj]
+                if entry.parent
+                    return "#{entry.name} (*.#{entry.full_name})"
+                else
+                    return "[TLN]"
+            else if t_entry._node_type == "c"
+                entry = $scope.cat_lut[t_entry.obj]
+                return if entry.depth then entry.name else "[TOP]"
+            else
                 entry = $scope.dev_lut[t_entry.obj]
                 if entry.is_meta_device
                     d_name = entry.full_name.slice(8) 
@@ -216,37 +233,17 @@ sidebar_base = sidebar_module.controller("sidebar_base", ["$scope", "$compile", 
                 if entry.comment
                     info_f.push(entry.comment)
                 return "#{d_name} (" + info_f.join(", ") + ")"
-            selection_changed : () ->
-                $scope.selection_changed()
-            handle_click : (event, entry) ->
+        $scope.handle_click = (event, entry) ->
+            if entry._node_type == "d"
                 dev = $scope.dev_lut[entry.obj]
                 if dev.device_type_identifier != "MD"
-                    show_device_info(event, "dev__" + dev.idx)
-        }
+                    show_device_info(event, "dev__#{dev.idx}")
+        # treeconfig for devices
+        $scope.tc_devices = new tree_config($scope, {get_name : $scope.get_name, selection_changed : $scope.selection_changed, handle_click : $scope.handle_click})
         # treeconfig for FQDN
-        $scope.tc_fqdns = {
-            get_name : (t_entry) ->
-                if t_entry._node_type == "f"
-                    entry = $scope.fqdn_lut[t_entry.obj]
-                    if entry.parent
-                        return "#{entry.name} (*.#{entry.full_name})"
-                    else
-                        return "[TLN]"
-                else
-                    return $scope.tc_devices.get_name(t_entry)
-            selection_changed : () ->
-                $scope.selection_changed()
-        }
-        $scope.tc_categories = {
-            get_name : (t_entry) ->
-                entry = $scope.cat_lut[t_entry.obj]
-                if t_entry._node_type == "c"
-                    return if entry.depth then entry.name else "[TOP]"
-                else
-                    return $scope.tc_devices.get_name(t_entry)
-            selection_changed : () ->
-                $scope.selection_changed()
-        }
+        $scope.tc_fqdns = new tree_config($scope, {get_name : $scope.get_name, selection_changed : $scope.selection_changed, handle_click : $scope.handle_click})
+        # treeconfig for categories
+        $scope.tc_categories = new tree_config($scope, {get_name : $scope.get_name, selection_changed : $scope.selection_changed, handle_click : $scope.handle_click, show_selection_buttons : false})
         # remove empty FQDN nodes (iterative)
         $scope.rest_data_set = () ->
             # build FQDNs tree
@@ -324,7 +321,7 @@ sidebar_module.directive("tree", ["$compile",
                 #new_el = $compile(node_template)
                 #tElement.replaceWith(new_el)
                 return (scope, iElement, iAttr) ->
-                    scope.get_span_class = (entry, last, depth) ->
+                    scope.get_span_class = (entry, last) ->
                         r_class = ["dynatree-node"]
                         if entry.folder
                             r_class.push "dynatree-folder"
@@ -337,13 +334,13 @@ sidebar_module.directive("tree", ["$compile",
                             if entry.expand
                                 r_class.push "dynatree-expanded" 
                                 r_class.push "dynatree-ico-ef"
-                                if last or not depth
+                                if last # or not depth, depth was the 3rd argument, not needed ?
                                     r_class.push "dynatree-exp-el"
                                 else
                                     r_class.push "dynatree-exp-e"
                             else
                                 r_class.push "dynatree-ico-cf"
-                                if last or not depth
+                                if last # or not depth
                                     r_class.push "dynatree-exp-cl"
                                 else
                                     r_class.push "dynatree-exp-cl"
