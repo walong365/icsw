@@ -73,7 +73,6 @@ class tree_config
         @show_selection_buttons = true
         for key, value of args
             @[key] = value
-        # console.log @show_selection_buttons
             
 sidebar_base = sidebar_module.controller("sidebar_base", ["$scope", "$compile", "restDataSource", "$q", 
     ($scope, $compile, restDataSource, $q) ->
@@ -82,7 +81,6 @@ sidebar_base = sidebar_module.controller("sidebar_base", ["$scope", "$compile", 
         $scope.devsel_func = undefined
         $scope.fire_when_loaded = true
         $scope.call_devsel_func = () ->
-            #console.log "***"
             if $scope.devsel_func
                 # build device, device_group list
                 dev_list = []
@@ -92,16 +90,11 @@ sidebar_base = sidebar_module.controller("sidebar_base", ["$scope", "$compile", 
                         devg_list.push("devg__#{idx}")
                     else
                         dev_list.push("dev__#{idx}")
-                #console.log dev_list, devg_list
                 $scope.devsel_func(dev_list, devg_list)
         $scope.resolve_device_keys = (key_list) =>
             list_len = key_list.length
             ret_list = list_len + (if list_len == 1 then " device" else " devices")
             if list_len
-                #d_tree = @active_div.dynatree("getTree")
-                #if @mode == "category"
-                #    ret_list = "#{ret_list}: " + (d_tree.getNodeByKey(@cat_lookup[val][0]).data.title for val in key_list).join(", ")
-                #else
                 ret_list = "#{ret_list}: " + ($scope.dev_lut[key.split("__")[1]].full_name for key in key_list).join(", ")
             return ret_list
         $scope.update_search = () ->
@@ -148,7 +141,6 @@ sidebar_base = sidebar_module.controller("sidebar_base", ["$scope", "$compile", 
         # load from server
         $scope.reload()
         $scope.set_active_selection = (t_type, new_sel) ->
-            #console.log t_type, new_sel
             for entry in {"g" : $scope.devices, "f" : $scope.fqdns, "c" : $scope.categories}[t_type]
                 $scope.set_sub_selection(entry, new_sel)
         $scope.set_sub_selection = (entry, new_sel) ->
@@ -179,7 +171,6 @@ sidebar_base = sidebar_module.controller("sidebar_base", ["$scope", "$compile", 
             ($scope.clear_sub_selection(child) for child in entry.children)
         $scope.activate_tab = (t_type) ->
             # copy selected flags
-            #console.log "act", t_type, $scope.active_tab
             if t_type != $scope.active_tab
                 # copy selection settings from active tab to new tab
                 # get src selection
@@ -191,7 +182,6 @@ sidebar_base = sidebar_module.controller("sidebar_base", ["$scope", "$compile", 
             cur_sel = $scope.get_active_selection($scope.active_tab)
             if cur_sel != $scope.cur_sel
                 $scope.cur_sel = cur_sel
-                console.log "selc"
                 $.ajax
                     url     : "{% url 'device:set_selection' %}"
                     data    : {
@@ -279,14 +269,12 @@ sidebar_base = sidebar_module.controller("sidebar_base", ["$scope", "$compile", 
             $scope.cur_sel = dsel_list
             # we dont need the group selection
             # gsel_list = (entry.idx for entry in $scope.rest_data["device_sel"] when entry.sel_type == "g")
-            #console.log dsel_list
             for entry in $scope.rest_data["device_tree"]
                 $scope.dev_lut[entry.idx] = entry
                 # copy selection state to device selection (the selection state of the meta devices is keeped in sync with the selection states of the devicegroups )
                 t_entry = new tree_node({obj:entry.idx, folder:entry.is_meta_device, _node_type:"d", selected:entry.idx in dsel_list})
                 fqdn_lut[entry.domain_tree_node].children.push(new tree_node({obj:entry.idx, _node_type:"d", selected:entry.idx in dsel_list}))
                 if entry.categories
-                    #console.log entry.idx in dsel_list
                     cat_entry = new tree_node({obj:entry.idx, _node_type:"d", selected:entry.idx in dsel_list})
                     for t_cat in entry.categories
                         cat_lut[t_cat].children.push(cat_entry)
