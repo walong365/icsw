@@ -233,7 +233,7 @@ sidebar_base = sidebar_module.controller("sidebar_base", ["$scope", "$compile", 
         # treeconfig for FQDN
         $scope.tc_fqdns = new tree_config($scope, {get_name : $scope.get_name, selection_changed : $scope.selection_changed, handle_click : $scope.handle_click})
         # treeconfig for categories
-        $scope.tc_categories = new tree_config($scope, {get_name : $scope.get_name, selection_changed : $scope.selection_changed, handle_click : $scope.handle_click, show_selection_buttons : false})
+        $scope.tc_categories = new tree_config($scope, {get_name : $scope.get_name, selection_changed : $scope.selection_changed, handle_click : $scope.handle_click, show_selection_buttons : true})
         # remove empty FQDN nodes (iterative)
         $scope.rest_data_set = () ->
             # build FQDNs tree

@@ -193,13 +193,6 @@ init_blockUI = ->
 add_handlers_main = ->
     init_layout()
     init_blockUI()
-    try
-        init_sidebar()
-        {% if user.is_authenticated %}
-        init_menu()
-        {% endif %}
-    catch err
-        # in case no menu or sidebar is present
     # init noty
     $.noty.defaults = {
         "layout" : "topRight"

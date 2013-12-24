@@ -1,6 +1,6 @@
 {% load i18n coffeescript %}
 
-<nav class="navbar navbar-default navbar-static-top" role="navigation">
+<nav class="navbar navbar-default navbar-static-top" role="navigation" id="icsw.menu_app" ng-controller="menu_base">
     <div class="navbar-header">
         <ul class="nav navbar-nav">
             <li>
@@ -62,8 +62,8 @@
                     {% if settings.CLUSTER_LICENSE.ganglia %}
                         <li><a href="/ganglia-web">{% trans "Ganglia" %}</a></li>
                     {% endif %}
-                    <li>
-                        <input id="create_monitoring_config" type="button" class="btn btn-success text-center" value="rebuild config"/>
+                    <li class="text-center">
+                        <input id="create_monitoring_config" type="button" class="btn btn-success" value="rebuild config" ng-click="rebuild_config()"/>
                     </li>
                 </ul>
             </li>
@@ -93,12 +93,19 @@
                     <li><a href="{% url 'admin:index' %}">{% trans "Admin" %}</a></li>
                 </ul>
             </li>
+            <li>
+                <div ng-show="cur_gauges.length" ng-repeat="obj in cur_gauges" class="progress" style="width:200px; margin-top:10px;">
+                    <div class="progress-bar progress-bar-success" aria-valuenow="{{ obj.value }}" aria-valuemin="0" aria-valuemax="100" ng-style="get_progress_style(obj)"></div>
+                </div>
+            </li>
+            <li ng-show="!cur_gauges.length">
+                <img height="42px" src="{{ MEDIA_URL }}frontend/images/product/{{ settings.INIT_PRODUCT_NAME | lower }}-flat-trans.png" alt="{{ settings.INIT_PRODUCT_NAME }} logo">
+                </img>
+            </li>
         </ul>
     </div>
-    <img height="42px" src="{{ MEDIA_URL }}frontend/images/product/{{ settings.INIT_PRODUCT_NAME | lower }}-flat-trans.png" alt="{{ settings.INIT_PRODUCT_NAME }} logo">
-    </img>
-    <p class="navbar-text navbar-right" id="icsw.menu_app">
-        <span ng-controller="menu_base">
+    <p class="navbar-text navbar-right">
+        <span>
             {% verbatim %}{{ cur_time }}{% endverbatim %}
             '{{ user.login }}'{% ifnotequal user.login request.session.login_name %} (via alias {{ request.session.login_name }}){% endifnotequal %}
         </span>
@@ -114,33 +121,47 @@ root = exports ? this
 
 menu_module = angular.module("icsw.menu_app", ["ngSanitize"])
 
-menu_controller = menu_module.controller("menu_base", ["$scope", "$timeout"
+menu_controller = menu_module.controller("menu_base", ["$scope", "$timeout",
     ($scope, $timeout) ->
+        $scope.progress_iters = 0
+        $scope.cur_gauges = []
+        $scope.get_progress_style = (obj) ->
+            return {"width" : "#{obj.value}%"}
         $scope.show_time = () ->
             $scope.cur_time = moment().format("ddd, Do MMMM YYYY HH:mm:ss")
             $timeout($scope.show_time, 1000)
+        $scope.update_progress_bar = () ->
+            $.ajax
+                url     : "{% url 'base:get_gauge_info' %}",
+                hidden  : true,
+                success : (xml) =>
+                    if parse_xml_response(xml)
+                        cur_len = $scope.cur_gauges.length
+                        $(xml).find("gauge_info gauge_element").each (idx, cur_g) ->
+                            cur_g = $(cur_g)
+                            $scope.cur_gauges.push({info : cur_g.text(), value : parseInt(cur_g.attr("value"))})
+                        if cur_len
+                            $scope.cur_gauges.splice(0, cur_len)
+                    if $scope.cur_gauges.length or $scope.progress_iters
+                        if $scope.progress_iters
+                            $scope.progress_iters--
+                        $timeout($scope.update_progress_bar, 1000)
         $scope.show_time()
+        $scope.update_progress_bar()
+        $scope.rebuild_config = () ->
+            $.ajax
+                url     : "{% url 'mon:create_config' %}"
+                title   : "create config"
+                success : (xml) =>
+                    if parse_xml_response(xml)
+                        # make at least two iterations to catch slow startup of md-config-server
+                        $scope.progress_iters = 2
+                        $scope.update_progress_bar()
 ])
 
-root.init_menu = () ->
-    {% if settings.CLUSTER_LICENSE.monitor %}
-    $("input#create_monitoring_config").bind("click", ->
-        $.ajax
-            url     : "{% url 'mon:create_config' %}"
-            title   : "create config"
-            success : (xml) =>
-                if parse_xml_response(xml)
-                    try
-                        # iterate for the next 10 seconds (every second)
-                        root.sidebar.set_next_iters(1500, 10)
-                    catch err
-        
-    )
-    {% endif %}
-    
 # bootstrap angular
 angular.element(document).ready(() ->
-    angular.bootstrap($("p[id='icsw.menu_app']"), ["icsw.menu_app"])
+    angular.bootstrap($("nav[id='icsw.menu_app']"), ["icsw.menu_app"])
 )
 
 {% endinlinecoffeescript %}
