@@ -700,7 +700,7 @@ class build_process(threading_tools.process_obj):
                     act_host["check_interval"] = act_def_dev.check_interval
                     act_host["notification_interval"] = act_def_dev.ninterval
                     act_host["check_period"] = cur_gc["timeperiod"][act_def_dev.mon_period_id]["name"]
-                    act_host["notification_period"] = cur_gc["timeperiod"][act_def_dev.notif_period_id]["name"]
+                    act_host["notification_period"] = cur_gc["timeperiod"][act_def_dev.not_period_id]["name"]
                     act_host["checks_enabled"] = 1
                     act_host["%s_checks_enabled" % ("active" if checks_are_active else "passive")] = 1
                     act_host["%s_checks_enabled" % ("passive" if checks_are_active else "active")] = 0
@@ -1198,7 +1198,7 @@ class build_process(threading_tools.process_obj):
             host = host_nc[host_name][0]
             if host.has_key("possible_parents"):
                 # parent list
-                parent_list = []
+                parent_list = set()
                 # check for nagvis_maps
                 local_nagvis_maps = []
                 p_parents = host["possible_parents"]
@@ -1209,7 +1209,7 @@ class build_process(threading_tools.process_obj):
                         if d_map[host_pk] > d_map[parent_idx]:
                             parent = all_hosts_dict[parent_idx].full_name
                             if parent in host_names and parent != host["name"]:
-                                parent_list.append(parent)
+                                parent_list.add(parent)
                                 # exit inner loop
                                 break
                         else:
@@ -1226,8 +1226,8 @@ class build_process(threading_tools.process_obj):
                 if "_nagvis_map" not in host and local_nagvis_maps:
                     host["_nagvis_map"] = local_nagvis_maps[0]
                 if parent_list:
-                    host["parents"] = ",".join(set(parent_list))
-                    for cur_parent in set(parent_list):
+                    host["parents"] = ",".join(parent_list)
+                    for cur_parent in parent_list:
                         p_dict.setdefault(cur_parent, []).append(host_name)
                     self.log("Setting parent of '%s' to %s" % (host_name, ", ".join(parent_list)), logging_tools.LOG_LEVEL_OK)
                 else:
