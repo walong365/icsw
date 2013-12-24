@@ -373,8 +373,9 @@ class mon_device_templ(models.Model):
     max_attempts = models.IntegerField(null=True, blank=True, default=1)
     # notification interval
     ninterval = models.IntegerField(null=True, blank=True, default=1)
+    not_period = models.ForeignKey("mon_period", related_name="dev_notify_period")
     # monitoring period
-    mon_period = models.ForeignKey("mon_period", null=True, blank=True)
+    mon_period = models.ForeignKey("mon_period", related_name="dev_check_period")
     # Notificiation Flags
     nrecovery = models.BooleanField(default=False)
     ndown = models.BooleanField(default=False)
@@ -402,6 +403,7 @@ class mon_device_templ(models.Model):
             max_attempts="%d" % (self.max_attempts or 0),
             ninterval="%d" % (self.ninterval or 0),
             mon_period="%d" % (self.mon_period_id or 0),
+            not_period="%d" % (self.not_period_id or 0),
             nrecovery="%d" % (1 if self.nrecovery else 0),
             ndown="%d" % (1 if self.ndown else 0),
             nunreachable="%d" % (1 if self.nunreachable else 0),
@@ -722,9 +724,9 @@ class mon_period_serializer(serializers.ModelSerializer):
         model = mon_period
         fields = ("idx", "name", "alias", "sun_range", "mon_range", "tue_range",
             "wed_range", "thu_range", "fri_range", "sat_range", "service_check_period",
-            "mon_device_templ_set",
+            # "mon_device_templ_set",
             )
-        read_only_fields = ("service_check_period", "mon_device_templ_set")
+        read_only_fields = ("service_check_period",) # "mon_device_templ_set")
 
 @receiver(signals.pre_save, sender=mon_period)
 def mon_period_pre_save(sender, **kwargs):
