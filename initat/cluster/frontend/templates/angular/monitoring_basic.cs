@@ -29,7 +29,7 @@ angular_add_simple_list_controller(
 monitoring_basic_module.controller("mon_period", ["$scope", "$compile", "$templateCache", "Restangular",
     ($scope, $compile, $templateCache, Restangular) ->
         $scope.get_usecount = (obj) ->
-            return obj.service_check_period.length + obj.mon_device_templ_set.length
+            return obj.service_check_period.length# + obj.mon_device_templ_set.length
         $scope.delete_ok = (obj) ->
             return if $scope.get_usecount(obj) == 0 then true else false
 ])
@@ -197,6 +197,7 @@ angular_add_simple_list_controller(
                 "host_check_command" : (entry.idx for entry in $scope.rest_data.host_check_command)[0]
                 "mon_period" : (entry.idx for entry in $scope.rest_data.mon_period)[0]
                 "max_attempts" : 1
+                "ninterval" : 5
                 "check_interval" : 2
                 "retry_interval" : 2
                 "nrecovery" : true

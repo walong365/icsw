@@ -921,6 +921,7 @@ class mon_service_templ_form(ModelForm):
             Fieldset(
                 "Notification",
                 Field("nsn_period", ng_options="value.idx as value.name for value in rest_data.mon_period | orderBy:'name'"),
+                Field("ninterval", min=1, max=60),
             ),
             Div(
                 Div(
@@ -1108,6 +1109,8 @@ class mon_device_templ_form(ModelForm):
             ),
             Fieldset(
                 "Notification",
+                Field("not_period", ng_options="value.idx as value.name for value in rest_data.mon_period | orderBy:'name'"),
+                Field("ninterval", min=1, max=60),
             ),
             Div(
                 Div(
@@ -1152,7 +1155,7 @@ class mon_device_templ_form(ModelForm):
         )
     def __init__(self, *args, **kwargs):
         ModelForm.__init__(self, *args, **kwargs)
-        for clear_f in ["mon_service_templ", "host_check_command", "mon_period"]:
+        for clear_f in ["mon_service_templ", "host_check_command", "mon_period", "not_period"]:
             self.fields[clear_f].queryset = empty_query_set()
             self.fields[clear_f].empty_label = None
     class Meta:

@@ -172,7 +172,7 @@
     <td>{{ obj.check_interval }}</td>
     <td>{{ obj.retry_interval }}</td>
     <td>{{ obj.nsn_period | array_lookup:this.rest_data.mon_period:'name' }}</td>
-    <td>{{ obj.ninterval | yesno1 }}</td>
+    <td>{{ obj.ninterval }}</td>
     <td>{{ obj.nrecovery | yesno1 }}</td>
     <td>{{ obj.ncritical | yesno1 }}</td>
     <td>{{ obj.nwarning | yesno1 }}</td>
@@ -231,6 +231,8 @@
         <th>Name</th>
         <th>Service template</th>
         <th>Host check command</th>
+        <th>Notify:</th>
+        <th>Interval</th>
         <th>Mon period</th>
         <th>check</th>
         <th>retry</th>
@@ -254,6 +256,8 @@
     <td>{{ obj.name }}</td>
     <td>{{ obj.mon_service_templ | array_lookup:this.rest_data.mon_service_templ:'name' }}</td>
     <td>{{ obj.host_check_command | array_lookup:this.rest_data.host_check_command:'name' }}</td>
+    <td>{{ obj.not_period | array_lookup:this.rest_data.mon_period:'name' }}</td>
+    <td>{{ obj.ninterval }}</td>
     <td>{{ obj.mon_period | array_lookup:this.rest_data.mon_period:'name' }}</td>
     <td>{{ obj.check_interval }}</td>
     <td>{{ obj.retry_interval }}</td>
@@ -316,7 +320,7 @@
             </div>
         </div>
     </tab>
-    <tab heading="Service">
+    <tab heading="Service templates">
         <div ng-controller="mon_service_templ_base">
             <div ng-controller="mon_service_templ">
                 <h2>Service templates ({{entries.length}} entries), <input ng-show="fn.rest_data_present(this)" type="button" value="create new" class="btn btn-success" ng-click="create($event)"/></h2>
@@ -325,6 +329,20 @@
                     <tbody>
                         <tr><td colspan="9" paginator entries="entries" pag_settings="pagSettings" per_page="5"></td></tr>
                         <tr monservicetemplrow ng-repeat="obj in entries | orderBy:'-name':true | paginator:this"></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </tab>
+    <tab heading="Device templates">
+        <div ng-controller="mon_device_templ_base">
+            <div ng-controller="mon_device_templ">
+                <h2>Device templates ({{entries.length}} entries), <input ng-show="fn.rest_data_present(this)" type="button" value="create new" class="btn btn-success" ng-click="create($event)"/></h2>
+                <table class="table table-condensed table-condensed table-hover" style="width:auto;">
+                    <thead mondevicetemplhead></thead>
+                    <tbody>
+                        <tr><td colspan="9" paginator entries="entries" pag_settings="pagSettings" per_page="5"></td></tr>
+                        <tr mondevicetemplrow ng-repeat="obj in entries | orderBy:'-name':true | paginator:this"></tr>
                     </tbody>
                 </table>
             </div>
@@ -353,20 +371,6 @@
                     <tbody>
                         <tr><td colspan="9" paginator entries="entries" pag_settings="pagSettings" per_page="5"></td></tr>
                         <tr moncontactgrouprow ng-repeat="obj in entries | orderBy:'-name':true | paginator:this"></tr>
-                    </tbody>
-                </table>
-            </div>
-        </div>
-    </tab>
-    <tab heading="Device templates">
-        <div ng-controller="mon_device_templ_base">
-            <div ng-controller="mon_device_templ">
-                <h2>Device templates ({{entries.length}} entries), <input ng-show="fn.rest_data_present(this)" type="button" value="create new" class="btn btn-success" ng-click="create($event)"/></h2>
-                <table class="table table-condensed table-condensed table-hover" style="width:auto;">
-                    <thead mondevicetemplhead></thead>
-                    <tbody>
-                        <tr><td colspan="9" paginator entries="entries" pag_settings="pagSettings" per_page="5"></td></tr>
-                        <tr mondevicetemplrow ng-repeat="obj in entries | orderBy:'-name':true | paginator:this"></tr>
                     </tbody>
                 </table>
             </div>
