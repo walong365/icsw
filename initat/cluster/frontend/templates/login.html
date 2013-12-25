@@ -6,21 +6,14 @@
 
 {% block body %}
 
-<div class="page-header">
-    <h1 class="text-center">
-        {{ settings.INIT_PRODUCT_NAME }}&reg; by init.at
-    </h1>
+<div class="col-md-6 col-md-offset-3">
+    <img width="100%" src="{{ MEDIA_URL }}frontend/images/product/{{ settings.INIT_PRODUCT_NAME | lower }}-trans.png" alt="{{ settings.INIT_PRODUCT_NAME }} logo">
+    </img>
 </div>
 
-<div class="row">
-    <div class="col-md-4 text-center">
-        <img width="100%" src="{{ MEDIA_URL }}frontend/images/product/{{ settings.INIT_PRODUCT_NAME | lower }}-trans.png" alt="{{ settings.INIT_PRODUCT_NAME }} logo">
-        </img>
-    </div>
-    <div class="col-md-4 col-md-offset-1">
-        <div class="well"  style="margin-top:60px;"> 
-            {% crispy login_form %}
-        </div>
+<div class="col-md-4 col-md-offset-4">
+    <div class="well"  style="margin-top:60px;"> 
+        {% crispy login_form %}
     </div>
 </div>
 
