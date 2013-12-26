@@ -11,13 +11,13 @@
     </div>
     <tabset>
         <tab heading="Group" select="activate_tab('g')" active="tabs['g']">
-            <tree tree="devices" treeconfig="tc_devices"></tree>
+            <tree treeconfig="tc_devices"></tree>
         </tab>
         <tab heading="FQDN" select="activate_tab('f')" active="tabs['f']">
-            <tree tree="fqdns" treeconfig="tc_fqdns"></tree>
+            <tree treeconfig="tc_fqdns"></tree>
         </tab>
         <tab heading="Category" select="activate_tab('c')" active="tabs['c']">
-            <tree tree="categories" treeconfig="tc_categories"></tree>
+            <tree treeconfig="tc_categories"></tree>
         </tab>
     </tabset>
     </div>
@@ -31,8 +31,8 @@
 
 node_template = '
 <ul ng-class="{\'dynatree-container\' : (treedepth || 0) == 0}">
-    <span ng-show="!treedepth && !tree.length">No entries</span>
-    <li ng-repeat="entry in tree" ng-class="{\'dynatree-lastsib\' : $last}">
+    <span ng-show="!treedepth && !(tree || treeconfig.root_nodes).length">No entries</span>
+    <li ng-repeat="entry in (tree || treeconfig.root_nodes)" ng-class="{\'dynatree-lastsib\' : $last}">
         <span ng-class="get_span_class(entry, $last)">
             <span ng-show="!entry._num_childs" class="dynatree-connector"></span>
             <span ng-show="entry._num_childs" class="dynatree-expander" ng-click="toggle_expansion_state(entry)"></span>
@@ -42,6 +42,10 @@ node_template = '
                 <input type="button" class="btn btn-success" value="S" ng-click="toggle_tree_state(entry, treeconfig, 1)"></input>
                 <input type="button" class="btn btn-primary" value="T" ng-click="toggle_tree_state(entry, treeconfig, 0)"></input>
                 <input type="button" class="btn btn-warning" value="C" ng-click="toggle_tree_state(entry, treeconfig, -1)"></input>
+            </div>
+            <div ng-if="((treedepth ||0) == 0) && treeconfig.show_tree_expand_buttons" class="btn-group btn-group-xs">
+                <input type="button" class="btn btn-danger" value="c" ng-click="toggle_expand_state(treeconfig, -1)"></input>
+                <input type="button" class="btn btn-success" value="e" ng-click="toggle_expand_state(treeconfig, 1)"></input>
             </div>
             <a ng-href="#" class="dynatree-title" ng-click="handle_click($event, treeconfig, entry)">{{ treeconfig.get_name(entry) }}
                 <span ng-if="!treeconfig.show_descendants" ng-show="entry._num_childs">({{ entry._num_childs }}<span ng-show="entry._sel_childs"> / {{ entry._sel_childs }}</span>)</span>
@@ -64,17 +68,21 @@ class tree_node
         # is selected
         @selected = false
         # is expanded
-        @expanded = false
+        @expand = false
         # is folder
         @folder   = false
         # list of children
         @children = []
         # list of nodes with the same content
         @linklist = []
-        # linkt to parent
+        # link to parent
         @parent = null
+        # link to config
+        @config = null
         for key, value of args
             @[key] = value
+        # idx
+        @_idx = 0
         # number of all nodes below this
         @_num_descendants = 0
         # number of all direct children
@@ -84,21 +92,33 @@ class tree_node
         # number of selected descendants
         @_sel_descendants = 0
     set_selected: (flag, propagate=true) ->
+        # console.log @selected, flag, flag != @selected
         change = flag != @selected
         if change
-            @selected = flag
             if propagate and @linklist.length
-                # copy selected flags to nodes on the same level
-                (other.set_selected(@selected, false) for other in @linklist)
-            cur_p = @parent
-            diff = if @selected then 1 else -1
-            first = true
-            while cur_p
-                if first
-                    cur_p._sel_childs += diff
-                    first = false
-                cur_p._sel_descendants += diff
-                cur_p = cur_p.parent
+                for other in @linklist
+                    # only change if not already changed
+                    if @config._track_changes
+                        # track changes of linked items
+                        if other._idx not in @config._change_list
+                            @config._change_list.push(other._idx)
+                            other.set_selected(flag, false)
+                    # copy selected flags to nodes on the same level
+                    else
+                        other.set_selected(flag, false)
+            else
+                @selected = flag
+            if not (propagate and @linklist.length)
+                # only update parent selection list if we have changed something in the local node
+                cur_p = @parent
+                diff = if @selected then 1 else -1
+                first = true
+                while cur_p
+                    if first
+                        cur_p._sel_childs += diff
+                        first = false
+                    cur_p._sel_descendants += diff
+                    cur_p = cur_p.parent
     add_child: (child) =>
         child.parent = @
         @_num_childs++
@@ -127,8 +147,66 @@ class tree_config
         # not really needed, enter more flags here
         @show_selection_buttons = true
         @show_descendants = false
+        @show_tree_expand_buttons = true
         for key, value of args
             @[key] = value
+        @root_nodes = []
+        @_node_idx = 0
+        @_track_changes = false
+    start_tracking_changes: () =>
+        @_track_changes = true
+        @_change_list = []
+    stop_tracking_changes: () =>
+        # console.log "stop", @_change_list
+        @_track_changes = false
+        @_change_list = []
+    new_node: (args) =>
+        @_node_idx++
+        new_node = new tree_node(args)
+        new_node._idx = @_node_idx
+        new_node.config = @
+        return new_node
+    add_root_node: (node) =>
+        @root_nodes.push(node)
+    recalc: () =>
+        (entry.recalc_sel_descendants() for entry in @root_nodes)
+        (entry.recalc_num_descendants() for entry in @root_nodes)
+        (entry.recalc_sel_childs() for entry in @root_nodes)
+    prune: (keep_func) =>
+        # prune tree according to keep_func(entry)
+        for entry in @root_nodes
+            @_prune(entry, keep_func)
+    _prune: (entry, keep_func) =>
+        remove = true
+        new_childs = []
+        for sub_entry in entry.children
+            keep = false
+            if keep_func(sub_entry)
+                keep = true
+            else
+                if not @_prune(sub_entry, keep_func)
+                    keep = true
+            if keep
+                new_childs.push(sub_entry)
+        entry.children = new_childs
+        return if entry.children.length then false else true
+    show_selected: () =>
+        # make all selected nodes visible
+        for entry in @root_nodes
+            @_show_selected(entry)
+    _show_selected: (entry) =>
+        show = entry.expand or entry.selected
+        for sub_entry in entry.children
+            if @_show_selected(sub_entry)
+                show = true
+        entry.expand = show
+        return entry.expand
+    toggle_expand_state: (flag) =>
+        for entry in @root_nodes
+            @_toggle_expand_state(entry, flag)
+    _toggle_expand_state: (entry, flag) =>
+        entry.expand = flag
+        (@_toggle_expand_state(sub_entry, flag) for sub_entry in entry.children)
             
 sidebar_base = sidebar_module.controller("sidebar_base", ["$scope", "$compile", "restDataSource", "$q", 
     ($scope, $compile, restDataSource, $q) ->
@@ -155,7 +233,7 @@ sidebar_base = sidebar_module.controller("sidebar_base", ["$scope", "$compile", 
             return ret_list
         $scope.update_search = () ->
             cur_re = new RegExp($scope.searchstr, "gi")
-            for entry in {"g" : $scope.devices, "f" : $scope.fqdns, "c" : $scope.categories}[$scope.active_tab]
+            for entry in $scope.get_tc($scope.active_tab).root_nodes
                 $scope.apply_search_re(entry, cur_re)
             $scope.selection_changed()
         $scope.apply_search_re = (entry, cur_re) ->
@@ -175,7 +253,6 @@ sidebar_base = sidebar_module.controller("sidebar_base", ["$scope", "$compile", 
         $scope.tabs = {}
         for tab_short in ["g", "f", "c"]
             $scope.tabs[tab_short] = tab_short == $scope.active_tab
-        $scope.devices = []
         $scope.rest_data = {}
         $scope.rest_map = [
             {"short" : "device_tree", "url" : "{% url 'rest:device_tree_list' %}", "options" : {"ignore_cdg" : false, "tree_mode" : true, "all_devices" : true, "with_categories" : true}} 
@@ -196,17 +273,19 @@ sidebar_base = sidebar_module.controller("sidebar_base", ["$scope", "$compile", 
             )
         # load from server
         $scope.reload()
+        $scope.get_tc = (short) ->
+            return {"g" : $scope.tc_devices, "f" : $scope.tc_fqdns, "c" : $scope.tc_categories}[short]
         $scope.set_active_selection = (t_type, new_sel) ->
-            for entry in {"g" : $scope.devices, "f" : $scope.fqdns, "c" : $scope.categories}[t_type]
+            for entry in $scope.get_tc(t_type).root_nodes
                 $scope.set_sub_selection(entry, new_sel)
         $scope.set_sub_selection = (entry, new_sel) ->
             if entry._node_type == "d"
-                entry.set_selected(if entry.obj in new_sel then true else false)
+                entry.set_selected(entry.obj in new_sel)
             for child in entry.children
                 $scope.set_sub_selection(child, new_sel)
         $scope.get_active_selection = (t_type) ->
             act_sel = []
-            for entry in {"g" : $scope.devices, "f" : $scope.fqdns, "c" : $scope.categories}[t_type]
+            for entry in $scope.get_tc(t_type).root_nodes
                 for sub_sel in $scope.get_sub_selection(entry)
                     act_sel.push(sub_sel)
             return _.unique(act_sel)
@@ -219,7 +298,7 @@ sidebar_base = sidebar_module.controller("sidebar_base", ["$scope", "$compile", 
                     act_sel.push(sub_sel)
             return act_sel
         $scope.clear_selection = () ->
-            for entry in {"g" : $scope.devices, "f" : $scope.fqdns, "c" : $scope.categories}[$scope.active_tab]
+            for entry in $scope.get_tc($scope.active_tab).root_nodes
                 $scope.clear_sub_selection(entry)
             $scope.selection_changed()
         $scope.clear_sub_selection = (entry) ->
@@ -245,20 +324,8 @@ sidebar_base = sidebar_module.controller("sidebar_base", ["$scope", "$compile", 
                     }
                     success : (xml) ->
                         parse_xml_response(xml)
-        $scope.prune_fqdn = (entry) ->
-            remove = true
-            new_childs = []
-            for sub_entry in entry.children
-                keep = false
-                if sub_entry._node_type == "d"
-                    keep = true
-                else
-                    if not $scope.prune_fqdn(sub_entry)
-                        keep = true
-                if keep
-                    new_childs.push(sub_entry)
-            entry.children = new_childs
-            return if entry.children.length then false else true
+        $scope.keep_node = (entry) ->
+            return entry._node_type == "d"
         $scope.get_name = (t_entry) ->
             if t_entry._node_type == "f"
                 entry = $scope.fqdn_lut[t_entry.obj]
@@ -288,7 +355,7 @@ sidebar_base = sidebar_module.controller("sidebar_base", ["$scope", "$compile", 
                 if dev.device_type_identifier != "MD"
                     show_device_info(event, "dev__#{dev.idx}")
         # treeconfig for devices
-        $scope.tc_devices = new tree_config($scope, {get_name : $scope.get_name, selection_changed : $scope.selection_changed, handle_click : $scope.handle_click})
+        $scope.tc_devices = new tree_config($scope, {get_name : $scope.get_name, selection_changed : $scope.selection_changed, handle_click : $scope.handle_click, show_tree_expand_buttons : false})
         # treeconfig for FQDN
         $scope.tc_fqdns = new tree_config($scope, {get_name : $scope.get_name, selection_changed : $scope.selection_changed, handle_click : $scope.handle_click, show_descendants : false})
         # treeconfig for categories
@@ -296,32 +363,29 @@ sidebar_base = sidebar_module.controller("sidebar_base", ["$scope", "$compile", 
         # remove empty FQDN nodes (iterative)
         $scope.rest_data_set = () ->
             # build FQDNs tree
-            new_fqdns = []
             fqdn_lut = {}
             $scope.fqdn_lut = {}
             for entry in $scope.rest_data["domain_tree_node"]
                 $scope.fqdn_lut[entry.idx] = entry
-                t_entry = new tree_node({folder:true, obj:entry.idx, _node_type:"f", expand:entry.depth == 0})
+                t_entry = $scope.tc_fqdns.new_node({folder:true, obj:entry.idx, _node_type:"f", expand:entry.depth == 0})
                 fqdn_lut[entry.idx] = t_entry
                 if entry.parent
                     #$scope.fqdn_lut[entry.parent].fqdn_childs.push(entry)
                     fqdn_lut[entry.parent].add_child(t_entry)
                 else
-                    new_fqdns.push(t_entry)
+                    $scope.tc_fqdns.add_root_node(t_entry)
             # build category tree
             $scope.cat_lut = {}
             cat_lut = {}
-            new_cats = []
             for entry in $scope.rest_data["category"]
                 $scope.cat_lut[entry.idx] = entry
-                t_entry = new tree_node({folder: true, obj:entry.idx, _node_type:"c", expand:entry.depth == 0})
+                t_entry = $scope.tc_categories.new_node({folder: true, obj:entry.idx, _node_type:"c", expand:entry.depth == 0})
                 cat_lut[entry.idx] = t_entry
                 if entry.parent
                     cat_lut[entry.parent].add_child(t_entry)
                 else
-                    new_cats.push(t_entry)             
+                    $scope.tc_categories.add_root_node(t_entry)
             # build devices tree
-            new_devs = []
             $scope.dev_lut = {}
             cur_dg = undefined
             dsel_list = (entry.idx for entry in $scope.rest_data["device_sel"] when entry.sel_type == "d")
@@ -331,12 +395,12 @@ sidebar_base = sidebar_module.controller("sidebar_base", ["$scope", "$compile", 
             for entry in $scope.rest_data["device_tree"]
                 $scope.dev_lut[entry.idx] = entry
                 # copy selection state to device selection (the selection state of the meta devices is keeped in sync with the selection states of the devicegroups )
-                t_entry = new tree_node({obj:entry.idx, folder:entry.is_meta_device, _node_type:"d", selected:entry.idx in dsel_list})
-                fqdn_lut[entry.domain_tree_node].add_child(new tree_node({obj:entry.idx, _node_type:"d", selected:entry.idx in dsel_list}))
+                t_entry = $scope.tc_devices.new_node({obj:entry.idx, folder:entry.is_meta_device, _node_type:"d", selected:entry.idx in dsel_list})
+                fqdn_lut[entry.domain_tree_node].add_child($scope.tc_fqdns.new_node({obj:entry.idx, _node_type:"d", selected:entry.idx in dsel_list}))
                 if entry.categories
                     cat_list = []
                     for t_cat in entry.categories
-                        cat_entry = new tree_node({obj:entry.idx, _node_type:"d", selected:entry.idx in dsel_list})
+                        cat_entry = $scope.tc_categories.new_node({obj:entry.idx, _node_type:"d", selected:entry.idx in dsel_list})
                         cat_list.push(cat_entry)
                         cat_lut[t_cat].add_child(cat_entry)
                     if cat_list.length > 1
@@ -344,24 +408,18 @@ sidebar_base = sidebar_module.controller("sidebar_base", ["$scope", "$compile", 
                             cat_entry.linklist = cat_list
                 if entry.is_meta_device
                     cur_dg = t_entry
-                    new_devs.push(cur_dg)
+                    $scope.tc_devices.add_root_node(cur_dg)
                 else
                     cur_dg.add_child(t_entry)
-            for entry in new_fqdns
-                $scope.prune_fqdn(entry)
-                entry.recalc_num_descendants()
-            for entry in new_cats
-                $scope.prune_fqdn(entry)
-                entry.recalc_num_descendants()
-            (entry.recalc_sel_descendants() for entry in new_devs)
-            (entry.recalc_sel_descendants() for entry in new_fqdns)
-            (entry.recalc_sel_descendants() for entry in new_cats)
-            (entry.recalc_sel_childs() for entry in new_devs)
-            (entry.recalc_sel_childs() for entry in new_fqdns)
-            (entry.recalc_sel_childs() for entry in new_cats)
-            $scope.devices = new_devs
-            $scope.fqdns = new_fqdns
-            $scope.categories = new_cats
+            $scope.tc_devices.prune($scope.keep_node)
+            $scope.tc_devices.recalc()
+            $scope.tc_devices.show_selected()
+            $scope.tc_fqdns.prune($scope.keep_node)
+            $scope.tc_fqdns.recalc()
+            $scope.tc_fqdns.show_selected()
+            $scope.tc_categories.prune($scope.keep_node)
+            $scope.tc_categories.recalc()
+            $scope.tc_categories.show_selected()
             if $scope.fire_when_loaded
                 $scope.call_devsel_func()
 ])
@@ -414,6 +472,8 @@ sidebar_module.directive("tree", ["$compile",
                         entry.set_selected(!entry.selected)
                         treeconfig.selection_changed()
                     scope.toggle_tree_state = (entry, treeconfig, flag, signal=true) ->
+                        if signal and flag == 0
+                            entry.config.start_tracking_changes()
                         if flag == 1
                             entry.set_selected(true)
                             entry.expand = true
@@ -424,10 +484,13 @@ sidebar_module.directive("tree", ["$compile",
                         for sub_entry in entry.children
                             scope.toggle_tree_state(sub_entry, treeconfig, flag, false)
                         if signal
+                            entry.config.stop_tracking_changes()
                             treeconfig.selection_changed()
                     scope.handle_click = (event, treeconfig, entry) ->
                         if treeconfig.handle_click
                             treeconfig.handle_click(event, entry)
+                    scope.toggle_expand_state = (treeconfig, flag) ->
+                        treeconfig.toggle_expand_state(if flag == 1 then true else false)
                     new_el = $compile(node_template)
                     iElement.append(new_el(scope))
             } 
