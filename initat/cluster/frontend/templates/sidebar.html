@@ -2,25 +2,26 @@
 
 <div ng-app="icsw.sidebar">
     <div ng-controller="sidebar_base">
-    <div class="input-group">
-        <input type="text" class="form-control" ng-model="searchstr" placeholder="search ..." ng-change="update_search()"></input>
-        <span class="input-group-btn">
-            <button class="btn btn-success" type="button" ng-click="call_devsel_func()">Go</button>
-            <button class="btn btn-danger" type="button" ng-click="clear_selection()">clr</button>
-        </span>  
+        <div class="input-group">
+            <input type="text" class="form-control" ng-model="searchstr" placeholder="search ..." ng-change="update_search()"></input>
+            <span class="input-group-btn">
+                <button class="btn btn-success" type="button" ng-click="call_devsel_func()">Go</button>
+                <button class="btn btn-danger" type="button" ng-click="clear_selection()">clr</button>
+            </span>  
+        </div>
+        <tabset>
+            <tab heading="Group" select="activate_tab('g')" active="tabs['g']">
+                <tree treeconfig="tc_devices"></tree>
+            </tab>
+            <tab heading="FQDN" select="activate_tab('f')" active="tabs['f']">
+                <tree treeconfig="tc_fqdns"></tree>
+            </tab>
+            <tab heading="Category" select="activate_tab('c')" active="tabs['c']">
+                <tree treeconfig="tc_categories"></tree>
+            </tab>
+        </tabset>
     </div>
-    <tabset>
-        <tab heading="Group" select="activate_tab('g')" active="tabs['g']">
-            <tree treeconfig="tc_devices"></tree>
-        </tab>
-        <tab heading="FQDN" select="activate_tab('f')" active="tabs['f']">
-            <tree treeconfig="tc_fqdns"></tree>
-        </tab>
-        <tab heading="Category" select="activate_tab('c')" active="tabs['c']">
-            <tree treeconfig="tc_categories"></tree>
-        </tab>
-    </tabset>
-    </div>
+    <div id="ajax_info"></div> 
 </div>
 
 <script type="text/javascript">
