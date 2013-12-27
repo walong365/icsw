@@ -36,8 +36,6 @@ icsw_paginator = '
 
 {% endverbatim %}
 
-root = exports ? this
-
 build_lut = (list) ->
     lut = {}
     for value in list
@@ -516,6 +514,7 @@ angular.module(
         return moment(cur_dt).format("ddd, D. MMM YYYY, HH:mm:ss") + ", " + moment(cur_dt).fromNow()
 )
 
+root = exports ? this
 root.angular_module_setup = angular_module_setup
 root.handle_reset = handle_reset
 root.angular_add_simple_list_controller = angular_add_simple_list_controller
