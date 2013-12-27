@@ -30,7 +30,7 @@ _tree_node = '
                 <span ng-if="treeconfig.show_descendants" ng-show="entry._num_descendants">({{ entry._num_descendants }}<span ng-show="entry._sel_descendants"> / {{ entry._sel_descendants }}</span>)</span>
             </a>
         </span>
-        <tree ng-show="entry.expand" tree="entry.children" treedepth="(treedepth || 0) + 1" treeconfig="treeconfig"></tree>
+        <tree ng-if="entry.expand && entry.children.length" tree="entry.children" treedepth="(treedepth || 0) + 1" treeconfig="treeconfig"></tree>
     </li>
 </ul>
 '
@@ -285,7 +285,7 @@ add_tree_directive = (mod) ->
                     #tElement.replaceWith(new_el)
                     #console.log "c"
                     return (scope, iElement, iAttr) ->
-                        #console.log "l"
+                        # console.log "l", iAttr
                         iElement.append($compile(_tree_node)(scope))
                 } 
     ])
