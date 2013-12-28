@@ -366,15 +366,15 @@ angular_add_simple_list_controller = (module, name, settings) ->
                             if $scope.pagSettings.conf.init
                                 $scope.pagSettings.set_entries($scope.entries)
                             if $scope.settings.object_created
-                                $scope.settings.object_created($scope.new_obj, new_data)
+                                $scope.settings.object_created($scope.new_obj, new_data, $scope)
                         )
                     else
                         $scope.edit_obj.put($scope.settings.rest_options).then(
                             (data) -> 
-                                $.simplemodal.close()
                                 handle_reset(data, $scope.entries, $scope.edit_obj.idx)
                                 if $scope.fn and $scope.fn.object_modified
                                     $scope.fn.object_modified($scope.edit_obj, data, $scope)
+                                $.simplemodal.close()
                             (resp) -> handle_reset(resp.data, $scope.entries, $scope.edit_obj.idx)
                         )
             $scope.form_error = (field_name) ->
@@ -405,8 +405,15 @@ angular_add_simple_list_controller = (module, name, settings) ->
                         $("#simplemodal-container").css("height", "auto")
                         $scope.modal_active = true
                     onClose: (dialog) =>
-                        $.simplemodal.close()
-                        $scope.modal_active = false
+                        if $scope.modal_active
+                            $.simplemodal.close()
+                            $scope.modal_active = false
+                            if $scope.fn and $scope.fn.modal_closed
+                                $scope.fn.modal_closed($scope)
+                                try
+                                    # fixme
+                                    $scope.$digest()
+                                catch exc
             $scope.get_action_string = () ->
                 return if $scope.create_mode then "Create" else "Modify"
             $scope.delete = (obj) ->

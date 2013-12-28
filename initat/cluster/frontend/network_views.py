@@ -3,8 +3,6 @@
 
 """ network views """
 
-
-
 from django.contrib.auth.decorators import login_required
 from django.core.exceptions import ValidationError
 from django.core.urlresolvers import reverse
@@ -15,7 +13,7 @@ from django.views.generic import View
 from initat.cluster.backbone.models import device, network, net_ip, \
     network_type, network_device_type, netdevice, peer_information, \
     netdevice_speed, domain_tree_node, domain_name_tree, get_related_models
-from initat.cluster.frontend.forms import dtn_detail_form, dtn_new_form, network_form, \
+from initat.cluster.frontend.forms import dtn_detail_form, network_form, \
     network_type_form, network_device_type_form
 from initat.cluster.frontend.helper_functions import xml_wrapper
 from initat.core.render import render_me, render_string
@@ -375,103 +373,6 @@ class copy_network(View):
 class get_domain_name_tree(View):
     @method_decorator(login_required)
     def get(self, request):
-        return render_me(request, "domain_name_tree.html")()
-    @method_decorator(xml_wrapper)
-    def post(self, request):
-        cur_dnt = domain_name_tree()
-        if "add_device_references" in request.POST:
-            cur_dnt.add_device_references()
-        cur_dnt.check_intermediate()
-        xml_resp = cur_dnt.get_xml()
-        request.xml_response["response"] = xml_resp
-
-class move_domain_tree_node(View):
-    @method_decorator(login_required)
-    @method_decorator(xml_wrapper)
-    def post(self, request):
-        _post = request.POST
-        src_node = domain_tree_node.objects.get(Q(pk=_post["src_id"]))
-        dst_node = domain_tree_node.objects.get(Q(pk=_post["dst_id"]))
-        mode = _post["mode"]
-        if mode in ["over", "child"]:
-            src_node.parent = dst_node
-        else:
-            src_node.parent = dst_node.parent
-        try:
-            src_node.save()
-        except:
-            request.xml_response.error("error moving domain tree node: %s" % (process_tools.get_except_info()), logger)
-        else:
-            request.xml_response.info("moved node '%s' to '%s' (%s)" % (
-                unicode(src_node),
-                unicode(dst_node),
-                mode), logger)
-        # cleanup domain_name_tree
-        _cur_dnt = domain_name_tree()
-
-class get_dtn_detail_form(View):
-    @method_decorator(login_required)
-    @method_decorator(xml_wrapper)
-    def post(self, request):
-        cur_dtn = domain_tree_node.objects.get(Q(pk=request.POST["key"]))
-        request.xml_response["form"] = render_string(
-            request,
-            "crispy_form.html",
-            {
-                "form" : dtn_detail_form(
-                    auto_id="dtn__%d__%%s" % (cur_dtn.pk),
-                    instance=cur_dtn,
-                )
-            }
-        )
-
-class create_new_dtn(View):
-    @method_decorator(login_required)
-    @method_decorator(xml_wrapper)
-    def get(self, request):
-        new_form = dtn_new_form(
-            auto_id="dtn__new__%s",
-        )
-        new_form.helper.form_action = reverse("network:create_new_dtn")
-        request.xml_response["form"] = render_string(
-            request,
-            "crispy_form.html",
-            {
-                "form" : new_form,
-            }
-        )
-        return request.xml_response.create_response()
-    @method_decorator(xml_wrapper)
-    def post(self, request):
-        logger.info("creating new domain_tree_node")
-        _post = request.POST
-        cur_form = dtn_new_form(_post)
-        if cur_form.is_valid():
-            full_tree = domain_name_tree()
-            new_dnt = full_tree.add_domain(cur_form.cleaned_data["full_name"])
-            # print "**", cur_form.cleaned_data
-            # copy from cleaned_data
-            for key in ["comment", "node_postfix", "create_short_names", "always_create_ip", "write_nameserver_config"]:
-                setattr(new_dnt, key, cur_form.cleaned_data[key])
-            new_dnt.save()
-            logger.info("created new dnt '%s'" % (unicode(new_dnt)))
-        else:
-            logger.error(cur_form.errors.as_text())
-        return HttpResponseRedirect(reverse("network:domain_name_tree"))
-
-class delete_dtn(View):
-    @method_decorator(login_required)
-    @method_decorator(xml_wrapper)
-    def post(self, request):
-        _post = request.POST
-        cur_dtn = domain_tree_node.objects.get(Q(pk=_post["key"]))
-        num_ref = get_related_models(cur_dtn)
-        if num_ref:
-            request.xml_response.error(
-                "domain tree node '%s' still referenced by %s" % (
-                    unicode(cur_dtn),
-                    logging_tools.get_plural("object", num_ref)),
-                logger)
-        else:
-            request.xml_response.info("removed domain tree node '%s'" % (unicode(cur_dtn)), logger)
-            cur_dtn.delete()
+        return render_me(request, "domain_name_tree.html", {
+            "domain_name_tree_form" : dtn_detail_form(),
+            })()

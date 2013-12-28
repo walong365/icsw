@@ -13,8 +13,8 @@ _tree_node = '
         <span ng-class="treeconfig.get_span_class(entry, $last)">
             <span ng-show="!entry._num_childs" class="dynatree-connector"></span>
             <span ng-show="entry._num_childs" class="dynatree-expander" ng-click="treeconfig.toggle_expand_node(entry)"></span>
-            <span class="dynatree-checkbox" style="margin-left:2px;" ng-click="treeconfig.toggle_checkbox_node(entry)"></span>
-            <span ng-show="1" class="dynatree-icon"></span>
+            <span ng-if="treeconfig.show_select" class="dynatree-checkbox" style="margin-left:2px;" ng-click="treeconfig.toggle_checkbox_node(entry)"></span>
+            <span ng-show="dynatree.show_icons" class="dynatree-icon"></span>
             <div class="btn-group btn-group-xs" ng-show="entry._num_childs && treeconfig.show_selection_buttons">
                 <input type="button" class="btn btn-success" value="S" ng-click="treeconfig.toggle_tree_state(entry, 1)" title="select subtree"></input>
                 <input type="button" class="btn btn-primary" value="T" ng-click="treeconfig.toggle_tree_state(entry, 0)" title="toggle subtree selection"></input>
@@ -22,7 +22,7 @@ _tree_node = '
             </div>
             <div ng-if="((treedepth || 0) == 0) && treeconfig.show_tree_expand_buttons" class="btn-group btn-group-xs">
                 <input type="button" class="btn btn-success" value="e" ng-click="treeconfig.toggle_expand_tree(1, false)" title="expand all"></input>
-                <input type="button" class="btn btn-primary" value="s" ng-click="treeconfig.toggle_expand_tree(1, true)" title="expand selected"></input>
+                <input ng-if="treeconfig.show_select" type="button" class="btn btn-primary" value="s" ng-click="treeconfig.toggle_expand_tree(1, true)" title="expand selected"></input>
                 <input type="button" class="btn btn-danger" value="c" ng-click="treeconfig.toggle_expand_tree(-1, false)" title="collapse all"></input>
             </div>
             <a ng-href="#" class="dynatree-title" ng-click="treeconfig.handle_click(entry, $event)">{{ treeconfig.get_name(entry) }}
@@ -49,6 +49,8 @@ class tree_node
         @children = []
         # list of nodes with the same content
         @linklist = []
+        # active flag
+        @active = false
         # link to parent
         @parent = null
         # link to config
@@ -122,11 +124,15 @@ class tree_config
         @show_selection_buttons = true
         @show_descendants = false
         @show_tree_expand_buttons = true
+        @show_icons = true
+        @show_select = true
         for key, value of args
             @[key] = value
         @root_nodes = []
         @_node_idx = 0
         @_track_changes = false
+    clear_root_nodes: () =>
+        @root_nodes = []
     handle_click: () =>
         # override
     get_name: () =>
@@ -162,9 +168,8 @@ class tree_config
             keep = false
             if keep_func(sub_entry)
                 keep = true
-            else
-                if not @_prune(sub_entry, keep_func)
-                    keep = true
+            if not @_prune(sub_entry, keep_func)
+                keep = true
             if keep
                 new_childs.push(sub_entry)
         entry.children = new_childs
@@ -240,10 +245,14 @@ class tree_config
     _iter: (entry, cb_func, cb_data) =>
         cb_func(entry, cb_data)
         (@_iter(child, cb_func, cb_data) for child in entry.children)
+    clear_active: () =>
+        @iter((entry) -> entry.active=false)
     get_span_class: (entry, last) ->
         r_class = ["dynatree-node"]
         if entry.folder
             r_class.push "dynatree-folder"
+        if entry.active
+            r_class.push "dynatree-active"
         if last
             r_class.push "dynatree-lastsib"
         if entry.selected
@@ -278,6 +287,7 @@ add_tree_directive = (mod) ->
                     treedepth  : "="
                     treeconfig : "="
                 }
+                replace : true
                 #template : node_template 
                 compile: (tElement, tAttr) ->
                     #contents = tElement.contents().remove()

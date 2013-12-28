@@ -117,54 +117,44 @@ class authentication_form(Form):
 class dtn_detail_form(ModelForm):
     helper = FormHelper()
     helper.form_id = "id_dtn_detail_form"
+    helper.form_name = "form"
     helper.form_class = 'form-horizontal'
     helper.label_class = 'col-sm-2'
     helper.field_class = 'col-sm-8'
+    helper.ng_model = "edit_obj"
     helper.layout = Layout(
         Div(
-            HTML("Domain tree node details"),
-            Field("name"),
-            Field("node_postfix"),
-            Field("comment"),
-            FormActions(
+            HTML("<h2>Domain tree node details for {% verbatim %}{{ edit_obj.full_name }}{% endverbatim %}</h2>"),
+            Fieldset(
+                "Basic settings",
+                Field("name"),
+                Field("parent", ng_options="value.idx as value.tree_info for value in entries", chosen=True),
+            ),
+            Fieldset(
+                "Additional settings",
+                Field("node_postfix"),
+                Field("comment"),
+            ),
+            Fieldset(
+                "Flags",
                 Field("create_short_names"),
                 Field("always_create_ip"),
                 Field("write_nameserver_config"),
             ),
             FormActions(
-                Button("delete", "Delete", css_class="btn-danger")
+                Submit("submit", "", css_class="primaryAction", ng_value="get_action_string()"),
+                Button("delete", "delete", css_class="btn-danger", ng_click="fn.delete_node(this, edit_obj)"),
             ),
         )
     )
+    def __init__(self, *args, **kwargs):
+        ModelForm.__init__(self, *args, **kwargs)
+        for clear_f in ["parent"]:
+            self.fields[clear_f].queryset = empty_query_set()
+            self.fields[clear_f].empty_label = None
     class Meta:
         model = domain_tree_node
-        fields = ["name", "node_postfix", "create_short_names", "always_create_ip", "write_nameserver_config", "comment"]
-
-class dtn_new_form(ModelForm):
-    helper = FormHelper()
-    helper.form_id = "id_dtn_detail_form"
-    helper.form_class = 'form-horizontal'
-    helper.label_class = 'col-sm-2'
-    helper.field_class = 'col-sm-8'
-    helper.layout = Layout(
-        Div(
-            HTML("Create new node"),
-            Field("full_name"),
-            Field("node_postfix"),
-            Field("comment"),
-            FormActions(
-                Field("create_short_names"),
-                Field("always_create_ip"),
-                Field("write_nameserver_config"),
-            ),
-            FormActions(
-                Submit("submit", "Submit", css_class="primaryAction"),
-            ),
-        )
-    )
-    class Meta:
-        model = domain_tree_node
-        fields = ["full_name", "node_postfix", "create_short_names", "always_create_ip", "write_nameserver_config", "comment"]
+        fields = ["name", "node_postfix", "create_short_names", "always_create_ip", "write_nameserver_config", "comment", "parent", ]
 
 class device_general_form(ModelForm):
     domain_tree_node = ModelChoiceField(domain_tree_node.objects.none(), empty_label=None) # , widget=domain_name_tree_widget)

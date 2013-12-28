@@ -55,7 +55,7 @@ def csw_exception_handler(exc):
             detail_info.append(exc.message)
         if hasattr(exc, "args"):
             detail_info.append(str(exc.args))
-        detail_info = [_part.strip() for _part in detail_info if _part.strip()]
+        detail_info = list(set([_entry for _entry in [_part.strip() for _part in detail_info if _part.strip()] if _entry not in ["()"]]))
         response = Response(
             {
                 "detail" : "%s%s" % (

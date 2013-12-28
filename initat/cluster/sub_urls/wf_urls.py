@@ -132,10 +132,6 @@ network_patterns = patterns(
     url("^copy_network$"      , network_views.copy_network.as_view()          , name="copy_network"),
     url("^json_network$"      , network_views.json_network.as_view()          , name="json_network"),
     url("^cdnt$"              , network_views.get_domain_name_tree.as_view()  , name="domain_name_tree"),
-    url("^mdtn$"              , network_views.move_domain_tree_node.as_view() , name="move_domain_tree_node"),
-    url("^dtn_detail$"        , network_views.get_dtn_detail_form.as_view()   , name="dtn_detail_form"),
-    url("^dtn_new$"           , network_views.create_new_dtn.as_view()        , name="create_new_dtn"),
-    url("^delete_dtn$"        , network_views.delete_dtn.as_view()            , name="delete_dtn"),
 )
 
 monitoring_patterns = patterns(

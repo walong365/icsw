@@ -1,11 +1,11 @@
 {% load i18n coffeescript %}
 
-<div ng-app="icsw.sidebar">
+<div id="icsw.sidebar">
     <div ng-controller="sidebar_base">
         <div class="input-group">
             <input type="text" class="form-control" ng-model="searchstr" placeholder="search ..." ng-change="update_search()"></input>
             <span class="input-group-btn">
-                <button class="btn btn-success" type="button" ng-click="call_devsel_func()">Go</button>
+                <button class="btn btn-success" type="button" ng-click="call_devsel_func()" ng-show="devsel_func">Go</button>
                 <button class="btn btn-danger" type="button" ng-click="clear_selection()">clr</button>
             </span>  
         </div>
@@ -38,11 +38,11 @@ class sidebar_tree extends tree_config
     constructor: (@scope, args) ->
         super(args)
     handle_click: (entry, event) =>
-      if entry._node_type == "d"
-          dev = @scope.dev_lut[entry.obj]
-          if dev.device_type_identifier != "MD"
-              show_device_info(event, "dev__#{dev.idx}")
-    get_name : (t_entry) ->
+        if entry._node_type == "d"
+            dev = @scope.dev_lut[entry.obj]
+            if dev.device_type_identifier != "MD"
+                show_device_info(event, "dev__#{dev.idx}")
+    get_name: (t_entry) ->
         if t_entry._node_type == "f"
             entry = @scope.fqdn_lut[t_entry.obj]
             if entry.parent
@@ -244,6 +244,10 @@ root = exports ? this
 root.sidebar_target_func = undefined
 root.sidebar_call_devsel_link_when_loaded = false
 #root.sidebar = undefined
+
+angular.element(document).ready(() ->
+    angular.bootstrap($("div[id='icsw.sidebar']"), ["icsw.sidebar"])
+)
 
 {% endinlinecoffeescript %}
 

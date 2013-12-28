@@ -1,173 +1,153 @@
 {% extends "main.html" %}
 
-{% load i18n extra_tags coffeescript %}
+{% load i18n extra_tags coffeescript crispy_forms_tags %}
 
 {% block title %}Domain name tree{% endblock %}
 
 {% block content %}
 
-<h1>Domain name tree</h1>
+<div id="icsw.domain_name_tree">
 
-<div id="dnt_div" class="leftfloat">
-    <input type="button" value="create new entry" id="create_new_dtn"/>
+<script type="text/ng-template" id="domain_name_tree.html">
+    {% crispy domain_name_tree_form domain_name_tree_form.helper %}
+</script>
+
+{% verbatim %}
+
+<script type="text/ng-template" id="dtn_head.html">
+    <tr>
+        <th>Name</th>   
+        <th>Nodename</th>
+        <th>depth</th>
+        <th>postfix</th>
+        <th>comment</th>
+        <th>SN</th>
+        <th>IP</th>
+        <th>NS</th>
+        <th>Action</th>
+    </tr>
+</script>
+
+<script type="text/ng-template" id="dtn_row.html">
+    <td>{{ obj.name || '[TLN]' }}</td>
+    <td><span ng-show="obj.depth">*.{{ obj.full_name }}</span></td>
+    <td>{{ obj.depth }}</td>
+    <td>{{ obj.postfix }}</td>
+    <td>{{ obj.comment }}</td>
+    <td>{{ obj.create_short_names | yesno1 }}</td>
+    <td>{{ obj.always_create_ip | yesno1 }}</td>
+    <td>{{ obj.write_nameserver_config | yesno1 }}</td>
+    <td><input type="button" class="btn btn-primary" ng-click="edit($event, obj)" value="modify" ng-show="obj.depth"/></td>
+</script>
+
+<div ng-controller="dnt_base">
+    <h2>Domain tree ({{entries.length}} entries), <input type="button" value="create new" class="btn btn-success" ng-click="create($event)"/></h2>
+    <div class="row">
+        <div class="col-sm-6">
+            <table class="table table-condensed table-condensed table-hover" style="width:auto;">
+                <thead dtnhead></thead>
+                <tbody>
+                    <tr><td colspan="9" paginator entries="entries" pag_settings="pagSettings" per_page="10"></td></tr>
+                    <tr dtnrow ng-repeat="obj in entries | paginator:this"></tr>
+                </tbody>
+            </table>
+        </div>
+        <div class="col-sm-6">
+            <div style="width:auto;">
+                <tree treeconfig="dnt"></tree>
+            </div>
+        </div>
+    </div>
 </div>
-<div id="dnt_detail" class="leftfloat" style="width:400px; margin-left:auto; margin-right:auto;">
 </div>
+
+{% endverbatim %}
 
 <script type="text/javascript">
 
 {% inlinecoffeescript %}
 
-class domain_name_tree
-    constructor: (@top_div) ->
-        @load_dnt()
-    load_dnt: () =>
-        $.ajax
-            url     : "{% url 'network:domain_name_tree' %}"
-            success : (xml) =>
-                if parse_xml_response(xml)
-                    @DNT = $(xml).find("domain_tree_nodes")
-                    @my_submitter = new submitter({
-                        master_xml       : @DNT,
-                        success_callback : @change_cb
-                    })
-                    @bind_new_button()
-                    @build_tree()
-    bind_new_button: () =>
-        $("input#create_new_dtn").bind("click", @create_new)
-    create_new: (event) =>
-        $.ajax
-            url     : "{% url 'network:create_new_dtn' %}"
-            type    : "GET"
-            success : (xml) =>
-                if parse_xml_response(xml)
-                    detail_div = $("div#dnt_detail")
-                    detail_div.children().remove()
-                    detail_div.append($(xml).find("value[name='form']").text())
-                    #detail_div.uniform()
-    build_tree: () =>
-        @top_div.dynatree
-            autoFocus  : false
-            debuglevel : {% if DEBUG %}0{% else %}0{% endif %}
-            onExpand : (flag, dtnode) =>
-            onSelect : (flag, dtnode) =>
-            onFocus  : (dtnode) =>
-                @show_details(dtnode.data.key)
-                return false
-            dnd : {
-                onDragStart : (dtnode) =>
-                    #console.log dtnode.data.title
-                    return true
-                onDragEnter : (dst_node, src_node) =>
-                    if parseInt(@DNT.find("domain_tree_node[pk='#{src_node.data.key}']").attr("parent")) == 0
-                        return false
-                    else
-                        return true
-                onDrop: (dst_node, src_node, hit_mode, ui, draggable) =>
-                    # check if src_node is not a parent of dst_node
-                    move = true
-                    c_node = dst_node
-                    while true
-                        if c_node.data.key == src_node.data.key
-                            move = false
-                        c_node = c_node.getParent()
-                        if not c_node
-                            break
-                    if move
-                        $.ajax
-                            url     : "{% url 'network:move_domain_tree_node' %}"
-                            data    : {
-                                "src_id" : src_node.data.key
-                                "dst_id" : dst_node.data.key
-                                "mode"   : hit_mode
-                            }
-                            success : (xml) =>
-                                if parse_xml_response(xml)
-                                    src_db_node = @DNT.find("domain_tree_node[pk='#{src_node.data.key}']")
-                                    if hit_mode == "over" or hit_mode == "child"
-                                        src_db_node.attr("parent", dst_node.data.key)
-                                    else
-                                        src_db_node.attr("parent", @DNT.find("domain_tree_node[pk='#{dst_node.data.key}']").attr("parent"))
-                                    @rename_tree(src_node)
-                                    # move src_node to dst_node, according to hit_mode
-                                    src_node.move(dst_node, hit_mode)
-            }
-            #onCustomRender : (dtnode) =>
-            #    db_node = @DNT.find("domain_tree_node[pk='#{dtnode.data.key}']")
-            #    if db_node.attr("intermediate") == "1"
-            #        render_el = $("<span>").text(dtnode.data.title)
-            #    else
-            #        render_el = $("<span>").text(dtnode.data.title + "...")
-            #    return render_el.html()
-        @root_node = @top_div.dynatree("getRoot")
-        @build_node(@root_node, @DNT.find("domain_tree_node[parent='0']"))
-    build_node: (dt_node, db_node) =>
-        if parseInt(db_node.attr("parent")) == 0
-            title_str = "TOP"
-            expand_flag = true
-        else
-            title_str = db_node.attr("name") + " (*." + db_node.attr("full_name") + ")"
-            expand_flag = false
-        new_node = dt_node.addChild(
-            title    : title_str
-            expand   : expand_flag
-            key      : db_node.attr("pk")
-            addClass : if db_node.attr("intermediate") == "1" then "intermediate" else "ip_ok"
-        )
-        @DNT.find("domain_tree_node[parent='" + db_node.attr("pk") + "']").each (idx, sub_db_node) =>
-            @build_node(new_node, $(sub_db_node))
-    show_details: (key) =>
-        $.ajax
-            url     : "{% url 'network:dtn_detail_form' %}"
-            data     : {
-                "key" : key
-            }
-            success : (xml) =>
-                if parse_xml_response(xml)
-                    @active_node = key
-                    detail_div = $("div#dnt_detail")
-                    detail_div.children().remove()
-                    detail_div.append($(xml).find("value[name='form']").text())
-                    #detail_div.uniform()
-                    detail_div.find("input").on("change", @my_submitter.submit)
-                    cur_dtn = @DNT.find("domain_tree_node[pk='#{key}']")
-                    detail_div.find("input#button-id-delete").off("change").on("click", @delete_node)
-    delete_node: (event) =>
-        $.ajax
-            url     : "{% url 'network:delete_dtn' %}"
-            data     : {
-                "key" : @active_node
-            }
-            success : (xml) =>
-                if parse_xml_response(xml)
-                    $("div#dnt_detail").children().remove()
-                    @top_div.dynatree("getTree").getNodeByKey(@active_node).remove()
-    rename_tree: (cur_node) =>
-        cur_db_node    = @DNT.find("domain_tree_node[pk='#{cur_node.data.key}']")
-        parent_db_node = @DNT.find("domain_tree_node[pk='" + cur_db_node.attr("parent") + "']")
-        #console.log parent_db_node.attr("pk"), cur_db_node.attr("name"), parent_db_node.attr("full_name")
-        cur_db_node.attr("full_name", cur_db_node.attr("name") + (if parent_db_node.attr("full_name") then "." + parent_db_node.attr("full_name") else ""))
-        cur_node.data.title = cur_db_node.attr("name") + " (*." + cur_db_node.attr("full_name") + ")"
-        cur_node.render()
-        if cur_node.hasChildren()
-            for sub_node in cur_node.getChildren()
-                @rename_tree(sub_node)
-    change_cb: (cur_el) =>
-        c_type = cur_el.attr("id").split("__")[2]
-        node_key = cur_el.attr("id").split("__")[1]
-        dt_node = @top_div.dynatree("getTree").getNodeByKey(node_key)
-        if c_type == "name"
-            @rename_tree(dt_node, cur_el.val())
-        else if c_type == "intermediate"
-            if cur_el.is(":checked")
-                dt_node.data.addClass = "intermediate"
-            else
-                dt_node.data.addClass = "ip_ok"
-            dt_node.render()
-            #console.log @DNT.find("domain_tree_node[pk='#{dt_node.data.key}']").attr("intermediate")
+domain_name_tree_module = angular.module("icsw.domain_name_tree", ["ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters", "localytics.directives", "restangular"])
 
-$(document).ready(
-    my_dnt = new domain_name_tree($("div#dnt_div"))
+angular_module_setup([domain_name_tree_module])
+
+add_tree_directive(domain_name_tree_module)
+
+class domain_name_tree extends tree_config
+    constructor: (@scope, args) ->
+        super(args)
+        @show_selection_buttons = false
+        @show_icons = false
+        @show_select = false
+        @show_descendants = true
+    handle_click: (entry, event) =>
+      if entry._node_type == "d"
+          dev = @scope.dev_lut[entry.obj]
+          if dev.device_type_identifier != "MD"
+              show_device_info(event, "dev__#{dev.idx}")
+    get_name : (t_entry) ->
+        dtn = t_entry.obj
+        if dtn.parent
+            return "#{dtn.name} (*.#{dtn.full_name})"
+        else
+            return "TOP"
+    handle_click: (entry, event) =>
+        @clear_active()
+        entry.active = true
+        dtn = entry.obj
+        if dtn.parent
+            @scope.edit(event, dtn)
+
+angular_add_simple_list_controller(
+    domain_name_tree_module,
+    "dnt_base",
+    {
+        rest_url            : "{% url 'rest:domain_tree_node_list' %}"
+        delete_confirm_str  : (obj) -> return "Really delete domain tree node '#{obj.name}' ?"
+        template_cache_list : ["dtn_head.html", "dtn_row.html"]
+        edit_template       : "domain_name_tree.html"
+        new_object          : ($scope) ->
+            return {
+                "name" : "new"
+                "parent" : (entry.idx for entry in $scope.entries when entry.depth == 0)[0]
+                "create_short_names" : true
+            }
+        object_created: (new_obj, _b, $scope) -> 
+            new_obj.name = ""
+            $scope.reload()
+        post_delete: ($scope, del_obj) ->
+            $scope.dnt.prune(
+                (entry) ->
+                    return entry.obj.full_name != del_obj.full_name
+            )
+            $scope.dnt.recalc()
+        fn:
+            modal_closed: (scope) ->
+                scope.dnt.clear_active()
+            rest_data_set: ($scope) ->
+                fqdn_lut = {}
+                $scope.dnt.clear_root_nodes()
+                for entry in $scope.entries
+                    t_entry = $scope.dnt.new_node({folder:false, obj:entry, expand:entry.depth == 0})
+                    fqdn_lut[entry.idx] = t_entry
+                    if entry.parent
+                        #$scope.fqdn_lut[entry.parent].fqdn_childs.push(entry)
+                        fqdn_lut[entry.parent].add_child(t_entry)
+                    else
+                        $scope.dnt.add_root_node(t_entry)
+            object_modified: (prev_obj, new_obj, $scope) ->
+                $scope.reload()
+            delete_node: ($scope, del_obj) ->
+                $scope.delete(del_obj)
+                $.simplemodal.close()
+        init_fn: ($scope, $timeout) ->
+            $scope.dnt = new domain_name_tree($scope, {})
+            
+    }
+)
+
+angular.element(document).ready(() ->
+    angular.bootstrap($("div[id='icsw.domain_name_tree']"), ["icsw.domain_name_tree"])
 )
 
 {% endinlinecoffeescript %}
