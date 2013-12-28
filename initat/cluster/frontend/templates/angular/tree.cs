@@ -26,8 +26,8 @@ _tree_node = '
                 <input type="button" class="btn btn-danger" value="c" ng-click="treeconfig.toggle_expand_tree(-1, false)" title="collapse all"></input>
             </div>
             <a ng-href="#" class="dynatree-title" ng-click="treeconfig.handle_click(entry, $event)">{{ treeconfig.get_name(entry) }}
-                <span ng-if="!treeconfig.show_descendants" ng-show="entry._num_childs">({{ entry._num_childs }}<span ng-show="entry._sel_childs"> / {{ entry._sel_childs }}</span>)</span>
-                <span ng-if="treeconfig.show_descendants" ng-show="entry._num_descendants">({{ entry._num_descendants }}<span ng-show="entry._sel_descendants"> / {{ entry._sel_descendants }}</span>)</span>
+                <span ng-if="treeconfig.show_childs && !treeconfig.show_descendants" ng-show="entry._num_childs">({{ entry._num_childs }}<span ng-show="entry._sel_childs"> / {{ entry._sel_childs }}</span>)</span>
+                <span ng-if="treeconfig.show_descendants && !treeconfig.show_childs" ng-show="entry._num_descendants">({{ entry._num_descendants }}<span ng-show="entry._sel_descendants"> / {{ entry._sel_descendants }}</span>)</span>
             </a>
         </span>
         <tree ng-if="entry.expand && entry.children.length" tree="entry.children" treedepth="(treedepth || 0) + 1" treeconfig="treeconfig"></tree>
@@ -122,6 +122,7 @@ class tree_config
     constructor: (args) ->
         # not really needed, enter more flags here
         @show_selection_buttons = true
+        @show_childs = false
         @show_descendants = false
         @show_tree_expand_buttons = true
         @show_icons = true

@@ -412,7 +412,11 @@ class get_object(View):
 class get_category_tree(View):
     @method_decorator(login_required)
     def get(self, request):
-        return render_me(request, "category_tree.html")()
+        return render_me(request, "category_tree.html",
+            {
+                "category_form" : category_detail_form(),
+            }
+            )()
     @method_decorator(xml_wrapper)
     def post(self, request):
         _post = request.POST

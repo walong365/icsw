@@ -214,22 +214,37 @@ class dummy_password_form(Form):
 class category_detail_form(ModelForm):
     helper = FormHelper()
     helper.form_id = "id_cat_detail_form"
+    helper.form_name = "form"
     helper.form_class = 'form-horizontal'
     helper.label_class = 'col-sm-2'
     helper.field_class = 'col-sm-8'
+    helper.ng_model = "edit_obj"
     helper.layout = Layout(
         Div(
-            HTML("Category details"),
-            Field("name"),
-            Field("comment"),
+            HTML("<h2>Category details for {% verbatim %}{{ edit_obj.name }}{% endverbatim %}</h2>"),
+            Fieldset(
+                "Basic settings",
+                Field("name"),
+                Field("parent", ng_options="value.idx as value.full_name for value in fn.get_valid_parents(this)", chosen=True),
+            ),
+            Fieldset(
+                "Additional fields",
+                Field("comment"),
+            ),
             FormActions(
-                Button("delete", "Delete", css_class="btn-danger")
+                Submit("submit", "", css_class="primaryAction", ng_value="get_action_string()"),
+                Button("delete", "delete", css_class="btn-danger", ng_click="fn.delete_node(this, edit_obj)"),
             ),
         )
     )
+    def __init__(self, *args, **kwargs):
+        ModelForm.__init__(self, *args, **kwargs)
+        for clear_f in ["parent"]:
+            self.fields[clear_f].queryset = empty_query_set()
+            self.fields[clear_f].empty_label = None
     class Meta:
         model = category
-        fields = ["name", "comment"]
+        fields = ["name", "comment", "parent",]
 
 class location_detail_form(ModelForm):
     helper = FormHelper()

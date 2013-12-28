@@ -1,10 +1,64 @@
 {% extends "main.html" %}
 
-{% load i18n extra_tags coffeescript %}
+{% load i18n extra_tags coffeescript crispy_forms_tags %}
 
 {% block title %}Category tree{% endblock %}
 
 {% block content %}
+
+<div id="icsw.category_tree">
+
+<script type="text/ng-template" id="category.html">
+    {% crispy category_form category_form.helper %}
+</script>
+
+{% verbatim %}
+
+<script type="text/ng-template" id="cat_head.html">
+    <tr>
+        <th>Name</th>
+        <th>Full name</th>   
+        <th>Comment</th>
+        <th>refs</th>
+        <th>lat</th>
+        <th>long</th>
+        <th colspan="2">Action</th>
+    </tr>
+</script>
+
+<script type="text/ng-template" id="cat_row.html">
+    <td style="font-family:monospace;"><span ng-bind-html="fn.get_space(obj.depth )"></span>{{ obj.name || '[TLN]' }}</td>
+    <td><span ng-show="obj.depth">{{ obj.full_name }}</span></td>
+    <td>{{ obj.comment }}</td>
+    <td><span ng-show="obj.num_refs">{{ obj.num_refs }}</span></td>
+    <td><span ng-show="fn.is_location(obj)">{{ obj.latitude }}</span></td>
+    <td><span ng-show="fn.is_location(obj)">{{ obj.longitude }}</span></td>
+    <td><input type="button" class="btn btn-primary" ng-click="edit($event, obj)" value="modify" ng-show="obj.depth > 1"/></td>
+    <td><input type="button" class="btn btn-danger" ng-click="delete(obj)" value="delete" ng-show="obj.depth > 1"/></td>
+</script>
+
+<div ng-controller="cat_base">
+    <h2>Category tree ({{entries.length}} entries), <input type="button" value="create new" class="btn btn-success" ng-click="create($event)"/></h2>
+    <div class="row">
+        <div class="col-sm-4">
+            <div style="width:auto;">
+                <tree treeconfig="cat"></tree>
+            </div>
+        </div>
+        <div class="col-sm-8">
+            <table class="table table-condensed table-condensed table-hover" style="width:auto;">
+                <thead cathead></thead>
+                <tbody>
+                    <tr><td colspan="9" paginator entries="entries" pag_settings="pagSettings" per_page="10"></td></tr>
+                    <tr catrow ng-repeat="obj in entries | paginator:this"></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+</div>
+
+{% endverbatim %}
 
 <h1>Category tree</h1>
 
@@ -21,7 +75,105 @@
 
 {% inlinecoffeescript %}
 
-class category_tree
+category_tree_module = angular.module("icsw.category_tree", ["ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters", "localytics.directives", "restangular"])
+
+angular_module_setup([category_tree_module])
+
+add_tree_directive(category_tree_module)
+
+class category_tree extends tree_config
+    constructor: (@scope, args) ->
+        super(args)
+        @show_selection_buttons = false
+        @show_icons = false
+        @show_select = false
+        @show_descendants = false
+        @show_childs = false
+    get_name : (t_entry) ->
+        cat = t_entry.obj
+        if cat.depth > 1
+            r_info = "#{cat.full_name} (#{cat.name})"
+            if cat.num_refs
+                r_info = "#{r_info} (refs=#{cat.num_refs})"
+            return r_info
+        else if cat.depth
+            return cat.full_name
+        else
+            return "TOP"
+    handle_click: (entry, event) =>
+        @clear_active()
+        entry.active = true
+        cat = entry.obj
+        if cat.depth > 1
+            @scope.edit(event, cat)
+
+angular_add_simple_list_controller(
+    category_tree_module,
+    "cat_base",
+    {
+        rest_url            : "{% url 'rest:category_list' %}"
+        delete_confirm_str  : (obj) -> return "Really delete category node '#{obj.name}' ?"
+        template_cache_list : ["cat_head.html", "cat_row.html"]
+        edit_template       : "category.html"
+        new_object          : ($scope) ->
+            return {
+                "name" : "new"
+                "parent" : (entry.idx for entry in $scope.entries when entry.depth == 1)[0]
+            }
+        object_created: (new_obj, _b, $scope) -> 
+            new_obj.name = ""
+            $scope.reload()
+        post_delete: ($scope, del_obj) ->
+            $scope.cat.prune(
+                (entry) ->
+                    return entry.obj.full_name != del_obj.full_name
+            )
+            $scope.cat.recalc()
+        fn:
+            is_location: (obj) ->
+                # full_name.match leads to infinite digest cycles
+                return (obj.depth > 1) and obj.full_name.split("/")[1] == "location"
+            get_valid_parents: ($scope) ->
+                return (value for value in $scope.entries when value.depth)
+            get_space: (depth) ->
+                return ("&nbsp;&nbsp;" for idx in [0..depth]).join("")
+            modal_closed: (scope) ->
+                scope.cat.clear_active()
+            rest_data_set: ($scope) ->
+                cat_lut = {}
+                $scope.cat.clear_root_nodes()
+                for entry in $scope.entries
+                    t_entry = $scope.cat.new_node({folder:false, obj:entry, expand:entry.depth < 2, selected: entry.immutable})
+                    cat_lut[entry.idx] = t_entry
+                    if entry.parent
+                        #$scope.fqdn_lut[entry.parent].fqdn_childs.push(entry)
+                        cat_lut[entry.parent].add_child(t_entry)
+                    else
+                        $scope.cat.add_root_node(t_entry)
+            object_modified: (prev_obj, new_obj, $scope) ->
+                if $scope.pre_edit_obj.parent == new_obj.parent
+                    $scope.cat.iter(
+                        (entry) ->
+                            if entry.parent and entry.parent.obj.name
+                                entry.obj.full_name = "#{entry.parent.obj.full_name}/#{entry.obj.name}"
+                            else
+                                entry.obj.full_name = "/#{entry.obj.name}"
+                    )
+                else
+                    $scope.reload()
+            delete_node: ($scope, del_obj) ->
+                $scope.delete(del_obj)
+                $.simplemodal.close()
+        init_fn: ($scope, $timeout) ->
+            $scope.cat = new category_tree($scope, {})            
+    }
+)
+
+angular.element(document).ready(() ->
+    angular.bootstrap($("div[id='icsw.category_tree']"), ["icsw.category_tree"])
+)
+
+class category_treex
     constructor: (@top_div) ->
         @load_ct()
     load_ct: () =>
@@ -283,7 +435,7 @@ class category_tree
             $("input[name='longitude']").trigger("change")
 
 $(document).ready(
-    my_ct = new category_tree($("div#ct_div"))
+    my_ct = new category_treex($("div#ct_div"))
 )
 
 {% endinlinecoffeescript %}

@@ -172,9 +172,9 @@ sidebar_base = sidebar_module.controller("sidebar_base", ["$scope", "$compile", 
                     success : (xml) ->
                         parse_xml_response(xml)
         # treeconfig for devices
-        $scope.tc_devices = new sidebar_tree($scope, {selection_changed : $scope.selection_changed, show_tree_expand_buttons : false})
+        $scope.tc_devices = new sidebar_tree($scope, {selection_changed : $scope.selection_changed, show_tree_expand_buttons : false, show_descendants : true})
         # treeconfig for FQDN
-        $scope.tc_fqdns = new sidebar_tree($scope, {selection_changed : $scope.selection_changed, show_descendants : false})
+        $scope.tc_fqdns = new sidebar_tree($scope, {selection_changed : $scope.selection_changed, show_childs : true})
         # treeconfig for categories
         $scope.tc_categories = new sidebar_tree($scope, {selection_changed : $scope.selection_changed, show_selection_buttons : true, show_descendants : true})
         # remove empty FQDN nodes (iterative)

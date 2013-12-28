@@ -160,7 +160,7 @@ class list_view(mixins.ListModelMixin,
         if model_name == "domain_tree_node":
             return domain_name_tree()
         elif model_name == "category":
-            return category_tree()
+            return category_tree(with_ref_count=True)
         related_fields, prefetch_fields = {
             "kernel" : ([], ["initrd_build_set", "kernel_build_set", "new_kernel", "act_kernel"]),
             "image" : ([], ["new_image", "act_image"]),
