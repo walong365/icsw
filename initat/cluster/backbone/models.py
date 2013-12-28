@@ -3217,11 +3217,27 @@ class category_tree(object):
             if cur_node.parent_id is None:
                 self._root_node = cur_node
             else:
-                if cur_node.depth - 1 != self.__node_dict[cur_node.parent_id].depth:
-                    # fix depth
-                    cur_node.depth = self.__node_dict[cur_node.parent_id].depth + 1
-                    cur_node.save()
-                self.__node_dict[cur_node.parent_id]._sub_tree.setdefault(cur_node.name, []).append(cur_node)
+                if cur_node.parent_id not in self.__node_dict:
+                    # should not happen, damaged tree
+                    del self.__node_dict[cur_node.pk]
+                    try:
+                        cur_node.delete()
+                    except:
+                        pass
+                else:
+                    if cur_node.parent_id == cur_node.pk:
+                        # self reference, damaged tree, delete node
+                        del self.__node_dict[cur_node.pk]
+                        try:
+                            cur_node.delete()
+                        except:
+                            pass
+                    else:
+                        if cur_node.depth - 1 != self.__node_dict[cur_node.parent_id].depth:
+                            # fix depth
+                            cur_node.depth = self.__node_dict[cur_node.parent_id].depth + 1
+                            cur_node.save()
+                        self.__node_dict[cur_node.parent_id]._sub_tree.setdefault(cur_node.name, []).append(cur_node)
         if not TOP_MONITORING_CATEGORY in self.__category_lut:
             _migrate_mon_type(self)
         if not TOP_LOCATION_CATEGORY in self.__category_lut:
@@ -3385,6 +3401,14 @@ def category_pre_save(sender, **kwargs):
             cur_inst.parent = cur_parent
             cur_inst.name = parts[-1]
         if cur_inst.parent_id:
+            if cur_inst.pk:
+                # check for valid parent
+                all_parents = {_v[0] : _v[1] for _v in category.objects.all().values_list("idx", "parent")}
+                cur_p_id = cur_inst.parent_id
+                while cur_p_id:
+                    if cur_p_id == cur_inst.pk:
+                        raise ValidationError("parent node is child of node")
+                    cur_p_id = all_parents[cur_p_id]
             cur_inst.depth = cur_inst.parent.depth + 1
         if cur_inst.depth and not valid_category_re.match(cur_inst.name):
             raise ValidationError("illegal characters in name '%s'" % (cur_inst.name))
