@@ -3133,6 +3133,14 @@ def domain_tree_node_pre_save(sender, **kwargs):
             cur_inst.parent = cur_parent
             cur_inst.name = parts[-1]
         if cur_inst.parent_id:
+            if cur_inst.pk:
+                # check for valid parent
+                all_parents = {_v[0] : _v[1] for _v in domain_tree_node.objects.all().values_list("idx", "parent")}
+                cur_p_id = cur_inst.parent_id
+                while cur_p_id:
+                    if cur_p_id == cur_inst.pk:
+                        raise ValidationError("parent node is child of node")
+                    cur_p_id = all_parents[cur_p_id]
             cur_inst.depth = cur_inst.parent.depth + 1
         if cur_inst.depth and not valid_domain_re.match(cur_inst.name):
             raise ValidationError("illegal characters in name '%s'" % (cur_inst.name))
