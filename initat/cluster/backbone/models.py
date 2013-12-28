@@ -20,6 +20,7 @@ import inspect
 import ipvx_tools
 import logging
 import logging_tools
+import process_tools
 import os
 import pytz
 import re
@@ -3048,7 +3049,7 @@ class domain_tree_node(models.Model):
     # the top node has no name
     name = models.CharField(max_length=64, default="")
     # full_name, gets computed on structure change
-    full_name = models.CharField(max_length=256, default="")
+    full_name = models.CharField(max_length=256, default="", blank=True)
     # the top node has no parent
     parent = models.ForeignKey("self", null=True)
     # postfix to add to device name
@@ -3109,7 +3110,32 @@ def domain_tree_node_pre_save(sender, **kwargs):
         cur_inst = kwargs["instance"]
         cur_inst.name = cur_inst.name.strip()
         if cur_inst.name and cur_inst.name.count("."):
-            raise ValidationError("dot '.' not allowed in domain_name part")
+            parts = cur_inst.name.split(".")
+            cur_parent = cur_inst.parent
+            for idx, cur_part in enumerate(parts[:-1]):
+                _parent_name = ".".join(parts[:idx + 1])
+                print _parent_name
+                try:
+                    _parent = domain_tree_node.objects.get(Q(name=cur_part) & Q(parent=cur_parent))
+                except domain_tree_node.DoesNotExist:
+                    try:
+                        _parent = domain_tree_node(
+                            name=cur_part,
+                            parent=cur_parent,
+                            create_short_names=cur_inst.create_short_names,
+                            always_create_ip=cur_inst.always_create_ip,
+                            write_nameserver_config=cur_inst.write_nameserver_config,
+                            comment="autocreated intermediate",
+                            node_postfix="",
+                            )
+                        _parent.save()
+                    except:
+                        raise ValidationError("cannot create parent: %s" % (process_tools.get_except_info()))
+                cur_parent = _parent
+            cur_inst.parent = cur_parent
+            cur_inst.name = parts[-1]
+        if cur_inst.parent_id:
+            cur_inst.depth = cur_inst.parent.depth + 1
         if cur_inst.depth and not valid_domain_re.match(cur_inst.name):
             raise ValidationError("illegal characters in name '%s'" % (cur_inst.name))
         if cur_inst.intermediate:
@@ -3136,7 +3162,6 @@ def domain_tree_node_pre_save(sender, **kwargs):
         else:
             _check_non_empty_string(cur_inst, "name")
             _check_non_empty_string(cur_inst, "node_postfix")
-
 
 @receiver(signals.post_save, sender=domain_tree_node)
 def domain_tree_node_post_save(sender, **kwargs):
