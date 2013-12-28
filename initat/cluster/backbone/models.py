@@ -3112,9 +3112,7 @@ def domain_tree_node_pre_save(sender, **kwargs):
         if cur_inst.name and cur_inst.name.count("."):
             parts = cur_inst.name.split(".")
             cur_parent = cur_inst.parent
-            for idx, cur_part in enumerate(parts[:-1]):
-                _parent_name = ".".join(parts[:idx + 1])
-                print _parent_name
+            for cur_part in parts[:-1]:
                 try:
                     _parent = domain_tree_node.objects.get(Q(name=cur_part) & Q(parent=cur_parent))
                 except domain_tree_node.DoesNotExist:
@@ -3200,19 +3198,19 @@ def _migrate_location_type(cat_tree):
 class category_tree(object):
     # helper structure
     def __init__(self, **kwargs):
-        self.with_device_count = kwargs.get("with_device_count", False)
-        self.with_devices = kwargs.get("with_devices", False)
+        self.with_ref_count = kwargs.get("with_ref_count", False)
+        self.with_refs = kwargs.get("with_res", False)
         self.__node_dict = {}
         self.__category_lut = {}
         if not category.objects.all().count():
             category(name="", full_name="", comment="top node").save()
-        if self.with_device_count or self.with_devices:
+        if self.with_ref_count or self.with_refs:
             _sql = category.objects.all().prefetch_related("device_set", "config_set", "mon_check_command_set")
         else:
             _sql = category.objects.all()
         for cur_node in _sql.order_by("depth"):
-            if self.with_device_count or self.with_devices:
-                cur_node.device_count = cur_node.device_set.count() + cur_node.config_set.count() + cur_node.mon_check_command_set.count()
+            # if self.with_device_count or self.with_devices:
+            #    cur_node.device_count = cur_node.device_set.count() + cur_node.config_set.count() + cur_node.mon_check_command_set.count()
             self.__node_dict[cur_node.pk] = cur_node
             self.__category_lut.setdefault(cur_node.full_name, []).append(cur_node)
             cur_node._sub_tree = {}
@@ -3293,7 +3291,7 @@ class category_tree(object):
     def get_xml(self):
         pk_list = self.get_sorted_pks()
         return E.categories(
-            *[self.__node_dict[pk].get_xml(with_devices=self.with_devices) for pk in pk_list]
+            *[self.__node_dict[pk].get_xml(with_refs=self.with_refs) for pk in pk_list]
         )
     def __iter__(self):
         return self.all()
@@ -3308,7 +3306,7 @@ class category(models.Model):
     # the top node has no name
     name = models.CharField(max_length=64, default="")
     # full_name, gets computed on structure change
-    full_name = models.CharField(max_length=1024, default="")
+    full_name = models.CharField(max_length=1024, default="", blank=True)
     # the top node has no parent
     parent = models.ForeignKey("self", null=True)
     # depth information, top_node has idx=0
@@ -3326,6 +3324,15 @@ class category(models.Model):
         return [self.pk] + sum([pk_list for _sub_name, pk_list in sorted([(key, sum([sub_value.get_sorted_pks() for sub_value in value], [])) for key, value in self._sub_tree.iteritems()])], [])
     def __unicode__(self):
         return u"%s" % (self.full_name if self.depth else "[TLN]")
+    def get_references(self):
+        # print "*", self, dir(self._meta)
+        num_refs = 0
+        for rel in self._meta.get_all_related_many_to_many_objects():
+            # print dir(rel), rel.name
+            # for entry in getattr(self, rel.get_accessor_name()).all():
+            #    print entry
+            num_refs += getattr(self, rel.get_accessor_name()).count()
+        return num_refs
     def get_xml(self, **kwargs):
         with_devices = kwargs.get("with_devices", False)
         r_xml = E.category(
@@ -3347,6 +3354,7 @@ class category(models.Model):
         return r_xml
 
 class category_serializer(serializers.ModelSerializer):
+    num_refs = serializers.Field(source="get_references")
     class Meta:
         model = category
 
@@ -3357,9 +3365,27 @@ def category_pre_save(sender, **kwargs):
         cur_inst.name = cur_inst.name.strip()
         _check_float(cur_inst, "latitude")
         _check_float(cur_inst, "longitude")
-        if cur_inst.name:
-            if  cur_inst.name.count("/"):
-                raise ValidationError("slash '/' not allowed in name part")
+        if cur_inst.name and cur_inst.name.count("/"):
+            parts = [entry for entry in cur_inst.name.split("/") if entry.strip()]
+            cur_parent = cur_inst.parent
+            for cur_part in parts[:-1]:
+                try:
+                    _parent = category.objects.get(Q(name=cur_part) & Q(parent=cur_parent))
+                except category.DoesNotExist:
+                    try:
+                        _parent = category(
+                            name=cur_part,
+                            parent=cur_parent,
+                            comment="autocreated intermediate",
+                            )
+                        _parent.save()
+                    except:
+                        raise ValidationError("cannot create parent: %s" % (process_tools.get_except_info()))
+                cur_parent = _parent
+            cur_inst.parent = cur_parent
+            cur_inst.name = parts[-1]
+        if cur_inst.parent_id:
+            cur_inst.depth = cur_inst.parent.depth + 1
         if cur_inst.depth and not valid_category_re.match(cur_inst.name):
             raise ValidationError("illegal characters in name '%s'" % (cur_inst.name))
         if cur_inst.depth:
