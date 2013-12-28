@@ -231,9 +231,15 @@ class category_detail_form(ModelForm):
                 "Additional fields",
                 Field("comment"),
             ),
+            Fieldset(
+                "Positional data",
+                Field("latitude", ng_pattern="/^\d+\.\d+$/"),
+                Field("longitude", ng_pattern="/^\d+\.\d+$/"),
+                ng_if="fn.is_location(edit_obj)",
+            ),
             FormActions(
                 Submit("submit", "", css_class="primaryAction", ng_value="get_action_string()"),
-                Button("delete", "delete", css_class="btn-danger", ng_click="fn.delete_node(this, edit_obj)"),
+                Button("delete", "delete", css_class="btn-danger", ng_click="fn.delete_node(this, edit_obj)", ng_show="!create_mode"),
             ),
         )
     )
@@ -244,7 +250,7 @@ class category_detail_form(ModelForm):
             self.fields[clear_f].empty_label = None
     class Meta:
         model = category
-        fields = ["name", "comment", "parent",]
+        fields = ["name", "comment", "parent", "longitude", "latitude"]
 
 class location_detail_form(ModelForm):
     helper = FormHelper()

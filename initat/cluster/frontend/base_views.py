@@ -13,8 +13,7 @@ from django.views.generic import View
 from initat.cluster.backbone.models import device, \
      get_related_models, KPMC_MAP, device_variable, category, \
      category_tree
-from initat.cluster.frontend.forms import category_detail_form, category_new_form, \
-     location_detail_form
+from initat.cluster.frontend.forms import category_detail_form
 from initat.cluster.frontend.helper_functions import xml_wrapper
 from initat.core.render import render_me, render_string
 from lxml.builder import E # @UnresolvedImport
@@ -429,29 +428,30 @@ class get_category_tree(View):
 
 class prune_category_tree(View):
     @method_decorator(login_required)
-    def get(self, request):
-        category_tree().prune()
-        return render_me(request, "category_tree.html")()
-
-class category_detail(View):
-    @method_decorator(login_required)
     @method_decorator(xml_wrapper)
     def post(self, request):
-        cur_cat = category.objects.get(Q(pk=request.POST["key"]))
-        if cur_cat.full_name.startswith("/location"):
-            cur_form = location_detail_form
-        else:
-            cur_form = category_detail_form
-        request.xml_response["form"] = render_string(
-            request,
-            "crispy_form.html",
-            {
-                "form" : cur_form(
-                    auto_id="cat__%d__%%s" % (cur_cat.pk),
-                    instance=cur_cat,
-                )
-            }
-        )
+        category_tree().prune()
+        request.xml_response.info("tree pruned")
+
+# class category_detail(View):
+#     @method_decorator(login_required)
+#     @method_decorator(xml_wrapper)
+#     def post(self, request):
+#         cur_cat = category.objects.get(Q(pk=request.POST["key"]))
+#         if cur_cat.full_name.startswith("/location"):
+#             cur_form = location_detail_form
+#         else:
+#             cur_form = category_detail_form
+#         request.xml_response["form"] = render_string(
+#             request,
+#             "crispy_form.html",
+#             {
+#                 "form" : cur_form(
+#                     auto_id="cat__%d__%%s" % (cur_cat.pk),
+#                     instance=cur_cat,
+#                 )
+#             }
+#         )
 
 class get_cat_references(View):
     @method_decorator(login_required)
@@ -469,97 +469,97 @@ class get_cat_references(View):
                 res_list.append(sub_list)
         request.xml_response["result"] = res_list
 
-class delete_category(View):
-    @method_decorator(login_required)
-    @method_decorator(xml_wrapper)
-    def post(self, request):
-        _post = request.POST
-        cur_cat = category.objects.get(Q(pk=_post["key"]))
-        num_ref = get_related_models(cur_cat, m2m=True)
-        if num_ref:
-            request.xml_response.error(
-                "category '%s' still referenced by %s" % (
-                    unicode(cur_cat),
-                    logging_tools.get_plural("object", num_ref)),
-                logger)
-        elif not cur_cat.depth:
-            request.xml_response.error(
-                "cannot delete root category",
-                logger)
-        else:
-            request.xml_response.info("removed category '%s'" % (unicode(cur_cat)), logger)
-            cur_cat.delete()
+# class delete_category(View):
+#     @method_decorator(login_required)
+#     @method_decorator(xml_wrapper)
+#     def post(self, request):
+#         _post = request.POST
+#         cur_cat = category.objects.get(Q(pk=_post["key"]))
+#         num_ref = get_related_models(cur_cat, m2m=True)
+#         if num_ref:
+#             request.xml_response.error(
+#                 "category '%s' still referenced by %s" % (
+#                     unicode(cur_cat),
+#                     logging_tools.get_plural("object", num_ref)),
+#                 logger)
+#         elif not cur_cat.depth:
+#             request.xml_response.error(
+#                 "cannot delete root category",
+#                 logger)
+#         else:
+#             request.xml_response.info("removed category '%s'" % (unicode(cur_cat)), logger)
+#             cur_cat.delete()
 
-class create_category(View):
-    @method_decorator(login_required)
-    @method_decorator(xml_wrapper)
-    def get(self, request):
-        new_form = category_new_form(
-            auto_id="cat__new__%s",
-        )
-        new_form.helper.form_action = reverse("base:create_category")
-        request.xml_response["form"] = render_string(
-            request,
-            "crispy_form.html",
-            {
-                "form" : new_form,
-            }
-        )
-        return request.xml_response.create_response()
-    @method_decorator(login_required)
-    @method_decorator(xml_wrapper)
-    def post(self, request):
-        logger.info("creating new category")
-        _post = request.POST
-        cur_form = category_new_form(_post)
-        if cur_form.is_valid():
-            full_tree = category_tree()
-            if cur_form.cleaned_data["full_name"] in full_tree:
-                request.xml_response.warn("category already exists", logger)
-            else:
-                try:
-                    new_cat = full_tree.add_category(cur_form.cleaned_data["full_name"])
-                    # print "**", cur_form.cleaned_data
-                    # copy from cleaned_data
-                    for key in ["comment", ]:
-                        setattr(new_cat, key, cur_form.cleaned_data[key])
-                    new_cat.save()
-                except:
-                    request.xml_response.error("error creating new category: %s" % (process_tools.get_except_info()), logger)
-                else:
-                    request.xml_response.info("created new category '%s'" % (unicode(new_cat)), logger)
-                    node_list = [new_cat.get_xml()]
-                    while new_cat.parent_id:
-                        new_cat = new_cat.parent
-                        node_list.append(new_cat.get_xml())
-                    request.xml_response["new_nodes"] = list(reversed(node_list))
-        else:
-            line = ", ".join(cur_form.errors.as_text().split("\n"))
-            request.xml_response.error(line, logger)
+# class create_category(View):
+#     @method_decorator(login_required)
+#     @method_decorator(xml_wrapper)
+#     def get(self, request):
+#         new_form = category_new_form(
+#             auto_id="cat__new__%s",
+#         )
+#         new_form.helper.form_action = reverse("base:create_category")
+#         request.xml_response["form"] = render_string(
+#             request,
+#             "crispy_form.html",
+#             {
+#                 "form" : new_form,
+#             }
+#         )
+#         return request.xml_response.create_response()
+#     @method_decorator(login_required)
+#     @method_decorator(xml_wrapper)
+#     def post(self, request):
+#         logger.info("creating new category")
+#         _post = request.POST
+#         cur_form = category_new_form(_post)
+#         if cur_form.is_valid():
+#             full_tree = category_tree()
+#             if cur_form.cleaned_data["full_name"] in full_tree:
+#                 request.xml_response.warn("category already exists", logger)
+#             else:
+#                 try:
+#                     new_cat = full_tree.add_category(cur_form.cleaned_data["full_name"])
+#                     # print "**", cur_form.cleaned_data
+#                     # copy from cleaned_data
+#                     for key in ["comment", ]:
+#                         setattr(new_cat, key, cur_form.cleaned_data[key])
+#                     new_cat.save()
+#                 except:
+#                     request.xml_response.error("error creating new category: %s" % (process_tools.get_except_info()), logger)
+#                 else:
+#                     request.xml_response.info("created new category '%s'" % (unicode(new_cat)), logger)
+#                     node_list = [new_cat.get_xml()]
+#                     while new_cat.parent_id:
+#                         new_cat = new_cat.parent
+#                         node_list.append(new_cat.get_xml())
+#                     request.xml_response["new_nodes"] = list(reversed(node_list))
+#         else:
+#             line = ", ".join(cur_form.errors.as_text().split("\n"))
+#             request.xml_response.error(line, logger)
 
-class move_category(View):
-    @method_decorator(login_required)
-    @method_decorator(xml_wrapper)
-    def post(self, request):
-        _post = request.POST
-        src_node = category.objects.get(Q(pk=_post["src_id"]))
-        dst_node = category.objects.get(Q(pk=_post["dst_id"]))
-        mode = _post["mode"]
-        if mode in ["over", "child"]:
-            src_node.parent = dst_node
-        else:
-            src_node.parent = dst_node.parent
-        try:
-            src_node.save()
-        except:
-            request.xml_response.error("error moving node: %s" % (process_tools.get_except_info()), logger)
-        else:
-            request.xml_response.info("moved category '%s' to '%s' (%s)" % (
-                unicode(src_node),
-                unicode(dst_node),
-                mode), logger)
-        # cleanup category tree
-        _cur_ct = category_tree()
+# class move_category(View):
+#     @method_decorator(login_required)
+#     @method_decorator(xml_wrapper)
+#     def post(self, request):
+#         _post = request.POST
+#         src_node = category.objects.get(Q(pk=_post["src_id"]))
+#         dst_node = category.objects.get(Q(pk=_post["dst_id"]))
+#         mode = _post["mode"]
+#         if mode in ["over", "child"]:
+#             src_node.parent = dst_node
+#         else:
+#             src_node.parent = dst_node.parent
+#         try:
+#             src_node.save()
+#         except:
+#             request.xml_response.error("error moving node: %s" % (process_tools.get_except_info()), logger)
+#         else:
+#             request.xml_response.info("moved category '%s' to '%s' (%s)" % (
+#                 unicode(src_node),
+#                 unicode(dst_node),
+#                 mode), logger)
+#         # cleanup category tree
+#         _cur_ct = category_tree()
 
 class change_category(View):
     @method_decorator(login_required)

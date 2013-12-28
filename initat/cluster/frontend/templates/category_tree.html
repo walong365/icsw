@@ -30,7 +30,7 @@
     <td style="font-family:monospace;"><span ng-bind-html="fn.get_space(obj.depth )"></span>{{ obj.name || '[TLN]' }}</td>
     <td><span ng-show="obj.depth">{{ obj.full_name }}</span></td>
     <td>{{ obj.comment }}</td>
-    <td><span ng-show="obj.num_refs">{{ obj.num_refs }}</span></td>
+    <td><span ng-show="obj.depth > 1">{{ obj.num_refs || '---' }}</span></td>
     <td><span ng-show="fn.is_location(obj)">{{ obj.latitude }}</span></td>
     <td><span ng-show="fn.is_location(obj)">{{ obj.longitude }}</span></td>
     <td><input type="button" class="btn btn-primary" ng-click="edit($event, obj)" value="modify" ng-show="obj.depth > 1"/></td>
@@ -38,7 +38,11 @@
 </script>
 
 <div ng-controller="cat_base">
-    <h2>Category tree ({{entries.length}} entries), <input type="button" value="create new" class="btn btn-success" ng-click="create($event)"/></h2>
+    <h2>
+        Category tree ({{entries.length}} entries),
+        <input type="button" value="create new" class="btn btn-success" ng-click="create($event)"/>
+        <input type="button" value="prune tree" class="btn btn-warning" ng-click="fn.prune(this)"/>
+    </h2>
     <div class="row">
         <div class="col-sm-4">
             <div style="width:auto;">
@@ -50,7 +54,7 @@
                 <thead cathead></thead>
                 <tbody>
                     <tr><td colspan="9" paginator entries="entries" pag_settings="pagSettings" per_page="10"></td></tr>
-                    <tr catrow ng-repeat="obj in entries | paginator:this"></tr>
+                    <tr catrow ng-repeat="obj in entries | paginator:this" ng-class="fn.get_tr_class(obj)"></tr>
                 </tbody>
             </table>
         </div>
@@ -60,9 +64,7 @@
 
 {% endverbatim %}
 
-<h1>Category tree</h1>
-
-<div id="ct_div" class="leftfloat">
+<div id="ct_div" class="leftfloat" style="display:none;">
     <input type="button" value="create new entry" id="create_new_dtn"/>
     <input type="button" value="prune tree" id="prune_tree"/>
 </div>
@@ -116,9 +118,11 @@ angular_add_simple_list_controller(
         template_cache_list : ["cat_head.html", "cat_row.html"]
         edit_template       : "category.html"
         new_object          : ($scope) ->
+            parent = (entry.idx for entry in $scope.entries when entry.depth == 1)[0]
             return {
                 "name" : "new"
-                "parent" : (entry.idx for entry in $scope.entries when entry.depth == 1)[0]
+                "parent" : parent
+                "full_name" : "#{parent.full_name}/new"
             }
         object_created: (new_obj, _b, $scope) -> 
             new_obj.name = ""
@@ -130,6 +134,17 @@ angular_add_simple_list_controller(
             )
             $scope.cat.recalc()
         fn:
+            prune: (scope) ->
+                if confirm("Really prune the tree ?")
+                    $.blockUI()
+                    $.ajax
+                        url     : "{% url 'base:prune_categories' %}"
+                        success : (xml) ->
+                            parse_xml_response(xml)
+                            scope.reload()
+                            $.unblockUI()
+            get_tr_class: (obj) ->
+                return if obj.depth > 1 then "" else "success"
             is_location: (obj) ->
                 # full_name.match leads to infinite digest cycles
                 return (obj.depth > 1) and obj.full_name.split("/")[1] == "location"
@@ -198,7 +213,7 @@ class category_treex
             window.location = "{% url 'base:prune_categories' %}"
     create_new: (event) =>
         $.ajax
-            url     : "{% url 'base:create_category' %}"
+            # {#url     : "{% url 'base:create_category' %}" #}
             type    : "GET"
             success : (xml) =>
                 if parse_xml_response(xml)
@@ -209,7 +224,7 @@ class category_treex
                     $("div#ct_detail form").bind("submit", @submit_form)
     submit_form: (event) =>
         $.ajax
-            url     : "{% url 'base:create_category' %}"
+            #{# url     : "{% url 'base:create_category' %}"#}
             data    : create_dict($("div#ct_detail"), "cat__new", true)
             success : (xml) =>
                 if parse_xml_response(xml)
@@ -266,7 +281,7 @@ class category_treex
                             break
                     if move
                         $.ajax
-                            url     : "{% url 'base:move_category' %}"
+                            # {# url     : "{% url 'base:move_category' %}"#}
                             data    : {
                                 "src_id" : src_node.data.key
                                 "dst_id" : dst_node.data.key
@@ -317,7 +332,7 @@ class category_treex
         db_node = @DNT.find("category[pk='#{key}']")
         if parseInt(db_node.attr("immutable")) == 0
             $.ajax
-                url     : "{% url 'base:category_detail' %}"
+                # {# url     : "{% url 'base:category_detail' %}" #}
                 data     : {
                     "key" : key
                 }
@@ -334,7 +349,7 @@ class category_treex
                         if db_node.attr("full_name").match("/location/")
                             @show_map_info(db_node)
                         $.ajax
-                            url     : "{% url 'base:get_cat_references' %}"
+                            # {# url     : "{% url 'base:get_cat_references' %}" #}
                             data    :
                                 "key" : key 
                             success : (xml) =>
@@ -399,7 +414,7 @@ class category_treex
                 )
     delete_node: (event) =>
         $.ajax
-            url     : "{% url 'base:delete_category' %}"
+            # {# url     : "{% url 'base:delete_category' %}" #}
             data    : {
                 "key" : @active_node
             }
@@ -435,7 +450,7 @@ class category_treex
             $("input[name='longitude']").trigger("change")
 
 $(document).ready(
-    my_ct = new category_treex($("div#ct_div"))
+    #my_ct = new category_treex($("div#ct_div"))
 )
 
 {% endinlinecoffeescript %}
