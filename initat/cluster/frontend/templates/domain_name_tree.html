@@ -116,6 +116,17 @@ angular_add_simple_list_controller(
             )
             $scope.dnt.recalc()
         fn:
+            get_valid_parents: ($scope) ->
+                p_list = (value for value in $scope.entries)
+                if $scope.edit_obj.idx
+                    # remove all nodes below myself
+                    r_list = []
+                    add_list = [$scope.edit_obj.idx] 
+                    while add_list.length
+                        r_list = r_list.concat(add_list)
+                        add_list = (value.idx for value in p_list when (value.parent in r_list and value.idx not in r_list))
+                    p_list = (value for value in p_list when value.idx not in r_list)
+                return p_list
             get_space: (depth) ->
                 return ("&nbsp;&nbsp;" for idx in [0..depth]).join("")
             modal_closed: (scope) ->

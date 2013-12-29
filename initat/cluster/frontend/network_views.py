@@ -13,7 +13,7 @@ from django.views.generic import View
 from initat.cluster.backbone.models import device, network, net_ip, \
     network_type, network_device_type, netdevice, peer_information, \
     netdevice_speed, domain_tree_node, domain_name_tree, get_related_models
-from initat.cluster.frontend.forms import dtn_detail_form, network_form, \
+from initat.cluster.frontend.forms import domain_tree_node_form, network_form, \
     network_type_form, network_device_type_form
 from initat.cluster.frontend.helper_functions import xml_wrapper
 from initat.core.render import render_me, render_string
@@ -374,5 +374,5 @@ class get_domain_name_tree(View):
     @method_decorator(login_required)
     def get(self, request):
         return render_me(request, "domain_name_tree.html", {
-            "domain_name_tree_form" : dtn_detail_form(),
+            "domain_name_tree_form" : domain_tree_node_form(),
             })()

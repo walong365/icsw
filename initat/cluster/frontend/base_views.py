@@ -13,7 +13,7 @@ from django.views.generic import View
 from initat.cluster.backbone.models import device, \
      get_related_models, KPMC_MAP, device_variable, category, \
      category_tree
-from initat.cluster.frontend.forms import category_detail_form
+from initat.cluster.frontend.forms import category_form
 from initat.cluster.frontend.helper_functions import xml_wrapper
 from initat.core.render import render_me, render_string
 from lxml.builder import E # @UnresolvedImport
@@ -413,18 +413,18 @@ class get_category_tree(View):
     def get(self, request):
         return render_me(request, "category_tree.html",
             {
-                "category_form" : category_detail_form(),
+                "category_form" : category_form(),
             }
             )()
-    @method_decorator(xml_wrapper)
-    def post(self, request):
-        _post = request.POST
-        with_devices = True if int(_post.get("with_devices", "0")) else False
-        with_device_count = True if int(_post.get("with_device_count", "0")) else False
-        request.xml_response["response"] = category_tree(
-            with_device_count=with_device_count,
-            with_devices=with_devices,
-            ).get_xml()
+#     @method_decorator(xml_wrapper)
+#     def post(self, request):
+#         _post = request.POST
+#         with_devices = True if int(_post.get("with_devices", "0")) else False
+#         with_device_count = True if int(_post.get("with_device_count", "0")) else False
+#         request.xml_response["response"] = category_tree(
+#             with_device_count=with_device_count,
+#             with_devices=with_devices,
+#             ).get_xml()
 
 class prune_category_tree(View):
     @method_decorator(login_required)

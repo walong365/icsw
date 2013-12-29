@@ -114,7 +114,7 @@ class authentication_form(Form):
         # FIXME
         return self.login_name
 
-class dtn_detail_form(ModelForm):
+class domain_tree_node_form(ModelForm):
     helper = FormHelper()
     helper.form_id = "id_dtn_detail_form"
     helper.form_name = "form"
@@ -128,7 +128,7 @@ class dtn_detail_form(ModelForm):
             Fieldset(
                 "Basic settings",
                 Field("name"),
-                Field("parent", ng_options="value.idx as value.tree_info for value in entries", chosen=True),
+                Field("parent", ng_options="value.idx as value.tree_info for value in fn.get_valid_parents(this)", chosen=True),
             ),
             Fieldset(
                 "Additional settings",
@@ -211,7 +211,7 @@ class dummy_password_form(Form):
     password2 = CharField(label=_("Confirm Password"),
                          widget=PasswordInput)
 
-class category_detail_form(ModelForm):
+class category_form(ModelForm):
     helper = FormHelper()
     helper.form_id = "id_cat_detail_form"
     helper.form_name = "form"
@@ -252,56 +252,56 @@ class category_detail_form(ModelForm):
         model = category
         fields = ["name", "comment", "parent", "longitude", "latitude"]
 
-class location_detail_form(ModelForm):
-    helper = FormHelper()
-    helper.form_id = "id_cat_detail_form"
-    helper.form_class = 'form-horizontal'
-    helper.label_class = 'col-sm-2'
-    helper.field_class = 'col-sm-8'
-    helper.layout = Layout(
-        Div(
-            HTML("Category details"),
-            Field("name"),
-            Field("comment"),
-            FormActions(
-                Button("delete", "Delete", css_class="btn-danger"),
-            ),
-            Field("latitude"),
-            Field("longitude"),
-        )
-    )
-    class Meta:
-        model = category
-        fields = ["name", "comment", "latitude", "longitude"]
+# class location_detail_form(ModelForm):
+#     helper = FormHelper()
+#     helper.form_id = "id_cat_detail_form"
+#     helper.form_class = 'form-horizontal'
+#     helper.label_class = 'col-sm-2'
+#     helper.field_class = 'col-sm-8'
+#     helper.layout = Layout(
+#         Div(
+#             HTML("Category details"),
+#             Field("name"),
+#             Field("comment"),
+#             FormActions(
+#                 Button("delete", "Delete", css_class="btn-danger"),
+#             ),
+#             Field("latitude"),
+#             Field("longitude"),
+#         )
+#     )
+#     class Meta:
+#         model = category
+#         fields = ["name", "comment", "latitude", "longitude"]
 
-class category_new_form(ModelForm):
-    helper = FormHelper()
-    helper.form_id = "id_dtn_detail_form"
-    helper.form_class = 'form-horizontal'
-    helper.label_class = 'col-sm-2'
-    helper.field_class = 'col-sm-8'
-    helper.layout = Layout(
-        Div(
-            HTML("Create new category"),
-            Field("full_name"),
-            Field("comment"),
-            FormActions(
-                Submit("submit", "Submit", css_class="primaryAction"),
-                ),
-        )
-    )
-    def clean_full_name(self):
-        cur_name = self.cleaned_data["full_name"]
-        loc_re = re.compile("^(?P<top_level>/[^/]+)/(?P<rest>.*)$")
-        name_m = loc_re.match(cur_name)
-        if not name_m:
-            raise ValidationError("wrong format")
-        if name_m.group("top_level") not in TOP_LOCATIONS:
-            raise ValidationError("wrong top-level category '%s'" % (name_m.group("top_level")))
-        return cur_name
-    class Meta:
-        model = category
-        fields = ["full_name", "comment"]
+# class category_new_form(ModelForm):
+#     helper = FormHelper()
+#     helper.form_id = "id_dtn_detail_form"
+#     helper.form_class = 'form-horizontal'
+#     helper.label_class = 'col-sm-2'
+#     helper.field_class = 'col-sm-8'
+#     helper.layout = Layout(
+#         Div(
+#             HTML("Create new category"),
+#             Field("full_name"),
+#             Field("comment"),
+#             FormActions(
+#                 Submit("submit", "Submit", css_class="primaryAction"),
+#                 ),
+#         )
+#     )
+#     def clean_full_name(self):
+#         cur_name = self.cleaned_data["full_name"]
+#         loc_re = re.compile("^(?P<top_level>/[^/]+)/(?P<rest>.*)$")
+#         name_m = loc_re.match(cur_name)
+#         if not name_m:
+#             raise ValidationError("wrong format")
+#         if name_m.group("top_level") not in TOP_LOCATIONS:
+#             raise ValidationError("wrong top-level category '%s'" % (name_m.group("top_level")))
+#         return cur_name
+#     class Meta:
+#         model = category
+#         fields = ["full_name", "comment"]
 
 class device_fqdn(ModelMultipleChoiceField):
     def label_from_instance(self, obj):
