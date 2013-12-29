@@ -18,10 +18,7 @@ if (sys.version_info.major, sys.version_info.minor) in [(2, 7)]:
     import threading
     threading._DummyThread._Thread__stop = lambda x: 42
 
-if "START_VIA_RC" in os.environ:
-    DEBUG = False
-else:
-    DEBUG = os.uname()[1].split(".")[0] in ["slayer", "eddie", "sieghart"]
+DEBUG = "DEBUG_WEBFRONTEND" in os.environ
 
 TEMPLATE_DEBUG = DEBUG
 
@@ -102,14 +99,6 @@ if mon_dict:
 
 FILE_ROOT = os.path.normpath(os.path.dirname(__file__))
 
-# compress settings
-COMPRESS = False # not DEBUG
-COMPRESS_ENABLED = COMPRESS
-COMPRESS_OFFLINE = COMPRESS
-# rebuild once a day
-COMPRESS_REBUILD_TIMEOUT = 60 * 60 * 24
-STATIC_ROOT = "/opt/python-init/lib/python2.7/site-packages/initat/cluster/"
-
 CACHES = {
     "default" : {
         "BACKEND"  : "django.core.cache.backends.memcached.MemcachedCache",
@@ -154,16 +143,17 @@ MEDIA_ROOT = os.path.join(FILE_ROOT, "frontend", "media")
 
 MEDIA_URL = "%s/media/" % (SITE_ROOT)
 
-# COMPRESS_URL = "%s/frontend/media/" % (SITE_ROOT)
-
-COMPRESS_OFFLINE_CONTEXT = {
-    "MEDIA_URL" : MEDIA_URL,
-}
-
 # Absolute path to the directory static files should be collected to.
 # Don't put anything in this directory yourself; store your static files
 # in apps' "static/" subdirectories and in STATICFILES_DIRS.
 # Example: "/home/media/media.lawrence.com/static/"
+
+# where to store static files
+if DEBUG:
+    STATIC_ROOT = "/tmp/.icsw/static/"
+else:
+    STATIC_ROOT = "/srv/www/htdocs/icsw/static"
+# STATIC_ROOT = "/opt/python-init/lib/python2.7/site-packages/initat/cluster/"
 
 # URL prefix for static files.
 # Example: "http://media.lawrence.com/static/"
@@ -172,21 +162,6 @@ STATIC_URL = "%s/static/" % (SITE_ROOT)
 # Session settings
 SESSION_ENGINE = "django.contrib.sessions.backends.cache"
 SESSION_COOKIE_HTTPONLY = True
-
-# Additional locations of static files
-# #STATICFILES_DIRS = (
-# #    # Put strings here, like "/home/html/static" or "C:/www/django/static".
-# #    # Always use forward slashes, even on Windows.
-# #    # Don't forget to use absolute paths, not relative paths.
-# #)
-
-# List of finder classes that know how to find static files in
-# various locations.
-# #STATICFILES_FINDERS = (
-# #    'django.contrib.staticfiles.finders.FileSystemFinder',
-# #    'django.contrib.staticfiles.finders.AppDirectoriesFinder',
-# #    "compressor.finders.CompressorFinder",
-# #)
 
 # Make this unique, and don't share it with anybody.
 SECRET_KEY = "av^t8g^st(phckz=9u#68k6p&amp;%3@h*z!mt=mo@3t!!ls^+4%ic"
@@ -244,7 +219,7 @@ if "INITIAL_MIGRATION_RUN" in os.environ:
         "django.contrib.sessions",
         "django.contrib.sites",
         "django.contrib.messages",
-        # "django.contrib.staticfiles",
+        "django.contrib.staticfiles",
         # Uncomment the next line to enable the admin:
         # "django.contrib.admin",
         # Uncomment the next line to enable admin documentation:
@@ -252,7 +227,7 @@ if "INITIAL_MIGRATION_RUN" in os.environ:
         "django_extensions",
         # "reversion",
         "south",
-        "compressor",
+        "pipeline",
         "coffeescript",
         "crispy_forms",
         # cluster
@@ -265,7 +240,7 @@ else:
         "django.contrib.sessions",
         "django.contrib.sites",
         "django.contrib.messages",
-        # "django.contrib.staticfiles",
+        "django.contrib.staticfiles",
         # Uncomment the next line to enable the admin:
         "django.contrib.admin",
         # Uncomment the next line to enable admin documentation:
@@ -273,7 +248,7 @@ else:
         "django_extensions",
         "reversion",
         "south",
-        "compressor",
+        "pipeline",
         "coffeescript",
         "crispy_forms",
         # cluster
@@ -304,8 +279,33 @@ else:
             _required,
         ))
 
-# for guardian
-ANONYMOUS_USER_ID = -1
+# pipeline settings
+PIPELINE_YUGLIFY_BINARY = "/opt/cluster/bin/yuglify"
+STATICFILES_STORAGE = "pipeline.storage.PipelineCachedStorage"
+
+# List of finder classes that know how to find static files in
+# various locations.
+STATICFILES_FINDERS = (
+    "django.contrib.staticfiles.finders.FileSystemFinder",
+    "django.contrib.staticfiles.finders.AppDirectoriesFinder",
+)
+
+STATICFILES_DIRS = (
+    ("frontend", os.path.join(FILE_ROOT, "frontend", "media")),
+)
+
+PIPELINE_CSS = {
+    "part1" : {
+        "source_filenames" : {
+            "frontend/css/tablesorter.css",
+            "frontend/css/main.css",
+        },
+        "output_filename" : "frontend/css/part1.css"
+    }
+}
+
+# # for guardian
+# ANONYMOUS_USER_ID = -1
 
 # add all applications, including backbone
 
