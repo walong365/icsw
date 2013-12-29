@@ -1,4 +1,4 @@
-{% load i18n coffeescript %}
+{% load i18n coffeescript staticfiles %}
 
 <nav class="navbar navbar-default navbar-static-top" role="navigation" id="icsw.menu_app" ng-controller="menu_base">
     <div class="navbar-header">
@@ -99,8 +99,10 @@
                 </div>
             </li>
             <li ng-show="!cur_gauges.length">
-                <img height="42px" src="{{ MEDIA_URL }}frontend/images/product/{{ settings.INIT_PRODUCT_NAME | lower }}-flat-trans.png" alt="{{ settings.INIT_PRODUCT_NAME }} logo">
+                {% with "frontend/images/product/"|add:settings.INIT_PRODUCT_NAME|lower|add:"-flat-trans.png" as gfx_name %}
+                <img height="42px" src="{% static gfx_name %}" alt="{{ settings.INIT_PRODUCT_NAME }} logo">
                 </img>
+                {% endwith %}
             </li>
         </ul>
     </div>

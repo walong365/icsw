@@ -9,7 +9,6 @@
     padding : 12px;
 }
 #simplemodal-container a.modalCloseImg {
-    background : url(/cluster/static/initat/core/static/icons/x.png) no-repeat;
     width    : 25px;
     height   : 29px;
     display  : inline;

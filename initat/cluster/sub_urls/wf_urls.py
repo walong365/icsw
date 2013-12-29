@@ -2,6 +2,7 @@
 
 from django.conf.urls import patterns, include, url
 from django.conf import settings
+from django.contrib.staticfiles.urls import staticfiles_urlpatterns
 import os
 from initat.cluster.frontend import rest_views, device_views, main_views, network_views, \
     monitoring_views, user_views, package_views, config_views, boot_views, session_views, rrd_views, \
@@ -248,32 +249,39 @@ my_url_patterns = patterns(
 
 url_patterns = patterns(
     "",
-    # to show icinga logos in local debug mode
-    url(r"icinga/images/logos/(?P<path>.*)$",
-        "django.views.static.serve", {
-            "document_root" : "/opt/icinga/share/images/logos",
-            }
-        ),
-    url(r"^%s/media/frontend/(?P<path>.*)$" % (settings.REL_SITE_ROOT),
-        "django.views.static.serve", {
-            "document_root" : os.path.join(settings.FILE_ROOT, "frontend", "media")
-            }),
-    url(r"^%s/static/initat/core/(?P<path>.*)$" % (settings.REL_SITE_ROOT),
-        "django.views.static.serve", {
-            "document_root" : os.path.join(settings.FILE_ROOT, "..", "core")
-            }),
-    url(r"^%s/static/rest_framework/(?P<path>.*)$" % (settings.REL_SITE_ROOT),
-        "django.views.static.serve", {
-            "document_root" : "/opt/python-init/lib/python/site-packages/rest_framework/static/rest_framework"
-            }),
-    url(r"^%s/media/uni_form/(?P<path>.*)$" % (settings.REL_SITE_ROOT),
-        "django.views.static.serve", {
-            "document_root" : "/opt/python-init/lib/python/site-packages/crispy_forms/static/uni_form"
-            }),
-    url(r"^%s/graphs/(?P<path>.*)$" % (settings.REL_SITE_ROOT),
-        "django.views.static.serve", {
-            "document_root" : os.path.join(settings.FILE_ROOT, "graphs")
-            }),
-    url(r"^%s/" % (settings.REL_SITE_ROOT)                                , include(my_url_patterns)),
+    url(r"^%s/" % (settings.REL_SITE_ROOT), include(my_url_patterns)),
     url(r"^$", session_views.redirect_to_main.as_view()),
 )
+
+url_patterns += staticfiles_urlpatterns()
+
+# url_patterns = patterns(
+#     "",
+#     # to show icinga logos in local debug mode
+#     url(r"icinga/images/logos/(?P<path>.*)$",
+#         "django.views.static.serve", {
+#             "document_root" : "/opt/icinga/share/images/logos",
+#             }
+#         ),
+#     url(r"^%s/media/frontend/(?P<path>.*)$" % (settings.REL_SITE_ROOT),
+#         "django.views.static.serve", {
+#             "document_root" : os.path.join(settings.FILE_ROOT, "frontend", "media")
+#             }),
+#     url(r"^%s/static/initat/core/(?P<path>.*)$" % (settings.REL_SITE_ROOT),
+#         "django.views.static.serve", {
+#             "document_root" : os.path.join(settings.FILE_ROOT, "..", "core")
+#             }),
+#     url(r"^%s/static/rest_framework/(?P<path>.*)$" % (settings.REL_SITE_ROOT),
+#         "django.views.static.serve", {
+#             "document_root" : "/opt/python-init/lib/python/site-packages/rest_framework/static/rest_framework"
+#             }),
+#     url(r"^%s/media/uni_form/(?P<path>.*)$" % (settings.REL_SITE_ROOT),
+#         "django.views.static.serve", {
+#             "document_root" : "/opt/python-init/lib/python/site-packages/crispy_forms/static/uni_form"
+#             }),
+#     url(r"^%s/graphs/(?P<path>.*)$" % (settings.REL_SITE_ROOT),
+#         "django.views.static.serve", {
+#             "document_root" : os.path.join(settings.FILE_ROOT, "graphs")
+#             }),
+# )
+
