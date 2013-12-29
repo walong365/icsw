@@ -39,11 +39,19 @@
 </script>
 
 <div ng-controller="dnt_base">
-    <h2>Domain tree ({{entries.length}} entries), <input type="button" value="create new" class="btn btn-success" ng-click="create($event)"/></h2>
+    <h2>Domain name tree ({{entries.length}} entries), <input type="button" value="create new" class="btn btn-success" ng-click="create($event)"/></h2>
     <div class="row">
         <div class="col-sm-6">
-            <div style="width:auto;">
-                <tree treeconfig="dnt"></tree>
+            <div class="row">
+                <div class="col-sm-12">
+                    <tree treeconfig="dnt"></tree>
+                </div>
+            </div>
+            <div class="row">
+                <div class="col-sm-12">
+                    <div edittemplate ng-if="modal_active && !settings.use_modal" class="well well-sm">
+                    </div>
+                </div>
             </div>
         </div>
         <div class="col-sm-6">
@@ -100,6 +108,7 @@ angular_add_simple_list_controller(
         delete_confirm_str  : (obj) -> return "Really delete domain tree node '#{obj.name}' ?"
         template_cache_list : ["dtn_head.html", "dtn_row.html"]
         edit_template       : "domain_name_tree.html"
+        use_modal           : false
         new_object          : ($scope) ->
             return {
                 "name" : "new"

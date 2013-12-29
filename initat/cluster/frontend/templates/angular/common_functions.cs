@@ -310,10 +310,18 @@ angular_add_simple_list_controller = (module, name, settings) ->
                 template : $templateCache.get(t_name)
             }
         )
+    if settings.edit_template
+        module.directive("edittemplate", ($templateCache) ->
+            return {
+                restrict : "EA"
+                template : $templateCache.get(settings.edit_template)
+            }
+        )
     module.controller(name, ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "sharedDataSource", "$q", "$timeout", 
         ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, sharedDataSource, $q, $timeout) ->
             # set reference
             $scope.settings = settings
+            $scope.settings.use_modal ?= true
             # shortcut to fn
             $scope.fn = settings.fn
             # init pagSettings
@@ -365,6 +373,7 @@ angular_add_simple_list_controller = (module, name, settings) ->
                             $scope.entries.push(new_data)
                             if $scope.pagSettings.conf.init
                                 $scope.pagSettings.set_entries($scope.entries)
+                            $scope.close_modal()
                             if $scope.settings.object_created
                                 $scope.settings.object_created($scope.new_obj, new_data, $scope)
                         )
@@ -374,7 +383,7 @@ angular_add_simple_list_controller = (module, name, settings) ->
                                 handle_reset(data, $scope.entries, $scope.edit_obj.idx)
                                 if $scope.fn and $scope.fn.object_modified
                                     $scope.fn.object_modified($scope.edit_obj, data, $scope)
-                                $.simplemodal.close()
+                                $scope.close_modal()
                             (resp) -> handle_reset(resp.data, $scope.entries, $scope.edit_obj.idx)
                         )
             $scope.form_error = (field_name) ->
@@ -394,26 +403,39 @@ angular_add_simple_list_controller = (module, name, settings) ->
             $scope.create_or_edit = (event, create_or_edit, obj) ->
                 $scope.edit_obj = obj
                 $scope.create_mode = create_or_edit
-                $scope.edit_div = $compile($templateCache.get($scope.settings.edit_template))($scope)
-                $scope.edit_div.simplemodal
-                    #opacity      : 50
-                    position     : [event.pageY, event.pageX]
-                    #autoResize   : true
-                    #autoPosition : true
-                    onShow: (dialog) => 
-                        dialog.container.draggable()
-                        $("#simplemodal-container").css("height", "auto")
-                        $scope.modal_active = true
-                    onClose: (dialog) =>
-                        if $scope.modal_active
-                            $.simplemodal.close()
-                            $scope.modal_active = false
-                            if $scope.fn and $scope.fn.modal_closed
-                                $scope.fn.modal_closed($scope)
-                                try
-                                    # fixme
-                                    $scope.$digest()
-                                catch exc
+                #console.log cur_templ
+                if $scope.settings.use_modal
+                    $scope.edit_div = $compile($templateCache.get($scope.settings.edit_template))($scope)
+                    $scope.edit_div.simplemodal
+                        #opacity      : 50
+                        position     : [event.pageY, event.pageX]
+                        #autoResize   : true
+                        #autoPosition : true
+                        onShow: (dialog) => 
+                            dialog.container.draggable()
+                            $("#simplemodal-container").css("height", "auto")
+                            $scope.modal_active = true
+                        onClose: (dialog) =>
+                            $scope.close_modal()
+                else
+                    # dummy form to inherit
+                    $scope.form = {}
+                    $scope.modal_active = true
+            $scope.hide_modal = () ->
+                # hides dummy modal
+                if not $scope.fn.use_modal and $scope.modal_active
+                    $scope.modal_active = false
+            $scope.close_modal = () ->
+                if $scope.settings.use_modal
+                    $.simplemodal.close()
+                $scope.modal_active = false
+                if $scope.fn and $scope.fn.modal_closed
+                    $scope.fn.modal_closed($scope)
+                    if $scope.settings.use_modal
+                        try
+                            # fixme, call digest cycle and ignore if cycle is already running
+                            $scope.$digest()
+                        catch exc
             $scope.get_action_string = () ->
                 return if $scope.create_mode then "Create" else "Modify"
             $scope.delete = (obj) ->

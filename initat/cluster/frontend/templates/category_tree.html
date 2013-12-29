@@ -45,8 +45,16 @@
     </h2>
     <div class="row">
         <div class="col-sm-4">
-            <div style="width:auto;">
-                <tree treeconfig="cat"></tree>
+            <div class="row">
+                <div class="col-sm-12">
+                    <tree treeconfig="cat"></tree>
+                </div>
+            </div>
+            <div class="row">
+                <div class="col-sm-12">
+                    <div edittemplate ng-if="modal_active && !settings.use_modal" class="well well-sm">
+                    </div>
+                </div>
             </div>
         </div>
         <div class="col-sm-8">
@@ -117,6 +125,7 @@ angular_add_simple_list_controller(
         delete_confirm_str  : (obj) -> return "Really delete category node '#{obj.name}' ?"
         template_cache_list : ["cat_head.html", "cat_row.html"]
         edit_template       : "category.html"
+        use_modal           : false
         new_object          : ($scope) ->
             parent = (entry.idx for entry in $scope.entries when entry.depth == 1)[0]
             return {
@@ -135,6 +144,8 @@ angular_add_simple_list_controller(
             $scope.cat.recalc()
         fn:
             prune: (scope) ->
+                scope.cat.clear_active()
+                scope.hide_modal()
                 if confirm("Really prune the tree ?")
                     $.blockUI()
                     $.ajax
@@ -187,7 +198,7 @@ angular_add_simple_list_controller(
                     $scope.reload()
             delete_node: ($scope, del_obj) ->
                 $scope.delete(del_obj)
-                $.simplemodal.close()
+                $scope.close_modal()
         init_fn: ($scope, $timeout) ->
             $scope.cat = new category_tree($scope, {})            
     }

@@ -143,6 +143,7 @@ class domain_tree_node_form(ModelForm):
             ),
             FormActions(
                 Submit("submit", "", css_class="primaryAction", ng_value="get_action_string()"),
+                Button("close", "close", css_class="btn-warning", ng_click="close_modal()"),
                 Button("delete", "delete", css_class="btn-danger", ng_click="fn.delete_node(this, edit_obj)"),
             ),
         )
@@ -221,11 +222,11 @@ class category_form(ModelForm):
     helper.ng_model = "edit_obj"
     helper.layout = Layout(
         Div(
-            HTML("<h2>Category details for {% verbatim %}{{ edit_obj.name }}{% endverbatim %}</h2>"),
+            HTML("<h2>Category details for '{% verbatim %}{{ edit_obj.name }}{% endverbatim %}'</h2>"),
             Fieldset(
                 "Basic settings",
                 Field("name"),
-                Field("parent", ng_options="value.idx as value.full_name for value in fn.get_valid_parents(this)", chosen=True),
+                Field("parent", ng_options="value.idx as value.full_name for value in fn.get_valid_parents(this)", chosen=True, ng_disabled="edit_obj.num_refs"),
             ),
             Fieldset(
                 "Additional fields",
@@ -239,7 +240,8 @@ class category_form(ModelForm):
             ),
             FormActions(
                 Submit("submit", "", css_class="primaryAction", ng_value="get_action_string()"),
-                Button("delete", "delete", css_class="btn-danger", ng_click="fn.delete_node(this, edit_obj)", ng_show="!create_mode"),
+                Button("close", "close", css_class="btn-warning", ng_click="close_modal()"),
+                Button("delete", "delete", css_class="btn-danger", ng_click="fn.delete_node(this, edit_obj)", ng_show="!create_mode && !edit_obj.num_refs"),
             ),
         )
     )
