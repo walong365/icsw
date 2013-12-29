@@ -6,6 +6,7 @@
 <!-- Consider adding a manifest.appcache: h5bp.com/d/Offline -->
 <!--[if gt IE 8]><!--> <html class="no-js" lang="en"> <!--<![endif]-->
 <head>
+  {% load staticfiles %}
   <meta charset="utf-8">
 
   <!-- Use the .htaccess and remove these lines to avoid edge case issues.
@@ -24,13 +25,13 @@
 
   <!-- Place favicon.ico and apple-touch-icon.png in the root directory: mathiasbynens.be/notes/touch-icons -->
   {% block stylesheets_jquery %}
-  <link rel="stylesheet" href="{{ settings.STATIC_URL }}initat/core/static/css/smoothness/jquery-ui-1.10.2.custom.min.css">
+  <link rel="stylesheet" href="{% static 'css/smoothness/jquery-ui-1.10.2.custom.min.css' %}">
   {% endblock %}
   {% block stylesheets_superfish %}
-  <link type="text/css" rel="stylesheet" href="{{ settings.STATIC_URL }}initat/core/static/css/superfish/superfish.css" />
+  <link type="text/css" rel="stylesheet" href="{% static 'css/superfish/superfish.css' %}" />
   {% endblock %}
   {% block stylesheets %}
-  <link rel="stylesheet" href="{{ settings.STATIC_URL }}initat/core/static/css/style.css">
+  <link rel="stylesheet" href="{% static 'css/style.css' %}">
   {% endblock %}
 
   <!-- More ideas for your <head> here: h5bp.com/d/head-Tips -->
@@ -39,16 +40,16 @@
        Modernizr enables HTML5 elements & feature detects for optimal performance.
        Create your own custom Modernizr build: www.modernizr.com/download/ -->
   {% block modernizr %}
-  <script src="{{ settings.STATIC_URL }}initat/core/static/js/libs/modernizr-2.6.2.min.js"></script>
+  <script src="{% static 'js/libs/modernizr-2.6.2.min.js' %}"></script>
   {% endblock %}
   {% block javascript_jquery %}
-  <script src="{{ settings.STATIC_URL }}initat/core/static/js/plugins.js"></script>
-  <!--[if lt IE 9]><script src="{{ settings.STATIC_URL }}initat/core/static/js/libs/jquery-1.10.2.min.js"></script><![endif]-->
-  <!--[if gte IE 9]><!--><script src="{{ settings.STATIC_URL }}initat/core/static/js/libs/jquery-2.0.3.min.js""></script><!--<![endif]-->
-  <script src="{{ settings.STATIC_URL }}initat/core/static/js/libs/jquery-ui-1.10.2.custom.js"></script>
-  <script src="{{ settings.STATIC_URL }}initat/core/static/js/libs/jquery-migrate-1.2.1.min.js"></script>
+  <script src="{% static 'js/plugins.js' %}"></script>
+  <!--[if lt IE 9]><script src="{% static 'js/libs/jquery-1.10.2.min.js' %}"></script><![endif]-->
+  <!--[if gte IE 9]><!--><script src="{% static 'js/libs/jquery-2.0.3.min.js' %}"></script><!--<![endif]-->
+  <script src="{% static 'js/libs/jquery-ui-1.10.2.custom.js' %}"></script>
+  <script src="{% static 'js/libs/jquery-migrate-1.2.1.min.js' %}"></script>
   {% block javascript_superfish %}
-  <script src="{{ settings.STATIC_URL }}initat/core/static/js/libs/superfish.js"></script>
+  <script src="{% static 'js/libs/superfish.js' %}"></script>
   {% endblock %}
   {% endblock %}
   {% block javascript %}
