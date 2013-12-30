@@ -283,6 +283,8 @@ else:
 PIPELINE_YUGLIFY_BINARY = "/opt/cluster/bin/yuglify"
 if not os.path.exists(PIPELINE_YUGLIFY_BINARY):
     raise ImproperlyConfigured("no %s found" % (PIPELINE_YUGLIFY_BINARY))
+PIPELINE_YUGLIFY_CSS_ARGUMENTS = "--terminal"
+PIPELINE_YUGLIFY_JS_ARGUMENTS = "--terminal"
 STATICFILES_STORAGE = "pipeline.storage.PipelineCachedStorage"
 
 # List of finder classes that know how to find static files in
