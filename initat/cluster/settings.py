@@ -19,7 +19,7 @@ if (sys.version_info.major, sys.version_info.minor) in [(2, 7)]:
     threading._DummyThread._Thread__stop = lambda x: 42
 
 DEBUG = "DEBUG_WEBFRONTEND" in os.environ
-
+PIPELINE_ENABLED = True
 TEMPLATE_DEBUG = DEBUG
 
 ADMINS = (
@@ -281,6 +281,8 @@ else:
 
 # pipeline settings
 PIPELINE_YUGLIFY_BINARY = "/opt/cluster/bin/yuglify"
+if not os.path.exists(PIPELINE_YUGLIFY_BINARY):
+    raise ImproperlyConfigured("no %s found" % (PIPELINE_YUGLIFY_BINARY))
 STATICFILES_STORAGE = "pipeline.storage.PipelineCachedStorage"
 
 # List of finder classes that know how to find static files in
@@ -290,6 +292,9 @@ STATICFILES_FINDERS = (
     "django.contrib.staticfiles.finders.AppDirectoriesFinder",
 )
 
+if DEBUG:
+    STATICFILES_FINDERS = tuple(list(STATICFILES_FINDERS) + ["pipeline.finders.PipelineFinder"])
+
 STATICFILES_DIRS = (
     ("frontend", os.path.join(FILE_ROOT, "frontend", "media")),
 )
@@ -297,10 +302,83 @@ STATICFILES_DIRS = (
 PIPELINE_CSS = {
     "part1" : {
         "source_filenames" : {
+            "css/smoothness/jquery-ui-1.10.2.custom.min.css",
             "frontend/css/tablesorter.css",
             "frontend/css/main.css",
+            "js/libs/dynatree/skin/ui.dynatree.css",
+            "js/libs/chosen/chosen.min.css",
+            "js/libs/angular-chosen-1.0.3/chosen-spinner.css",
+            "frontend/css/jquery.dataTables.css",
+            "frontend/css/msdropdown/dd.css",
+            "frontend/css/jqModal.css",
+            "frontend/css/codemirror.css",
+            "frontend/css/bootstrap.css",
+            "css/jquery.Jcrop.min.css",
         },
-        "output_filename" : "frontend/css/part1.css"
+        "output_filename" : "pipeline/css/part1.css"
+    }
+}
+
+PIPELINE_JS = {
+    "js_jquery" : {
+        "source_filenames" : {
+            "js/libs/modernizr-2.6.2.min.js",
+            "js/libs/jquery-2.0.3.min.js",
+        },
+        "output_filename" : "pipeline/js/jquery.js"
+    },
+    "js_base" : {
+        "source_filenames" : {
+            "js/libs/jquery-ui-1.10.2.custom.js",
+            "js/libs/jquery-migrate-1.2.1.min.js",
+            "js/libs/jquery.layout-latest.min.js",
+            "frontend/js/jquery.dataTables.min.js",
+            "frontend/js/jquery.sprintf.js_8.txt",
+            "frontend/js/jquery.tablesorter.js",
+            "frontend/js/jquery.timers-1.2.js",
+            "frontend/js/noty/jquery.noty.js",
+            "js/libs/lodash.min.js",
+            "frontend/js/jquery.dd.min.js",
+            "frontend/js/jquery.simplemodal.js",
+            "frontend/js/codemirror/codemirror.js",
+            "frontend/js/bootstrap.js",
+            "js/libs/jquery.color.js",
+            "js/libs/chosen/chosen.jquery.min.js",
+            "js/libs/jquery.blockUI.js",
+            "js/libs/angular.min.js",
+            "js/libs/moment-with-langs.min.js",
+            "js/libs/jquery.Jcrop.min.js",
+        },
+        "output_filename" : "pipeline/js/base.js"
+    },
+    "js_extra1" : {
+        "source_filenames" : {
+                "js/libs/dynatree/jquery.dynatree.js",
+        },
+        "output_filename" : "pipeline/js/extra1.js"
+    },
+    "js_extra2" : {
+        "source_filenames" : {
+                "frontend/js/jquery.dataTables.rowGrouping.js",
+                "frontend/js/noty/top.js",
+                "frontend/js/noty/topRight.js",
+                "frontend/js/noty/topLeft.js",
+                "frontend/js/noty/default.js",
+                "frontend/js/codemirror/addon/selection/active-line.js",
+                "frontend/js/codemirror/python.js",
+                "frontend/js/codemirror/xml.js",
+                "frontend/js/codemirror/shell.js",
+                "js/libs/jquery-ui-timepicker-addon.js",
+                "js/libs/angular-route.min.js",
+                "js/libs/angular-resource.min.js",
+                "js/libs/angular-cookies.min.js",
+                "js/libs/angular-sanitize.min.js",
+                "js/libs/angular-chosen-1.0.3/chosen.js",
+                "js/libs/restangular.min.js",
+                "js/libs/ui-bootstrap.min.js",
+                "js/libs/ui-bootstrap-tpls.min.js",
+        },
+        "output_filename" : "pipeline/js/extra2.js"
     }
 }
 
