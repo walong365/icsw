@@ -229,7 +229,7 @@ if "INITIAL_MIGRATION_RUN" in os.environ:
         # "reversion",
         "south",
         "pipeline",
-        "coffeescript",
+        "static_precompiler",
         "crispy_forms",
         # cluster
         # "initat.core",
@@ -250,7 +250,7 @@ else:
         "reversion",
         "south",
         "pipeline",
-        "coffeescript",
+        "static_precompiler",
         "crispy_forms",
         # cluster
         "initat.core",
@@ -389,9 +389,6 @@ PIPELINE_JS = {
         "output_filename" : "pipeline/js/extra2.js"
     }
 }
-
-# # for guardian
-# ANONYMOUS_USER_ID = -1
 
 # add all applications, including backbone
 

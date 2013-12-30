@@ -71,9 +71,11 @@ else
     ${C_DIR}/manage.py schemamigration django.contrib.auth --initial
     ${C_DIR}/manage.py schemamigration backbone --initial
     ${C_DIR}/manage.py schemamigration reversion --initial
+    ${C_DIR}/manage.py schemamigration static_precompiler --initial
     ${C_DIR}/manage.py migrate auth
     ${C_DIR}/manage.py migrate backbone --no-initial-data
     ${C_DIR}/manage.py migrate reversion
+    ${C_DIR}/manage.py migrate static_precompiler
 
     echo "reinsert data"
     
