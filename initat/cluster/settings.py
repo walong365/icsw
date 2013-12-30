@@ -266,7 +266,7 @@ CRISPY_FAIL_SILENTLY = not DEBUG
 
 # coffee settings
 COFFEESCRIPT_EXECUTABLE = "/opt/cluster/bin/coffee"
-COFFEESCRIPT_USE_CACHE = False
+STATIC_PRECOMPILER_CACHE = not DEBUG
 
 try:
     import crispy_forms
