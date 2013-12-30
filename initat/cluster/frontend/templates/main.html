@@ -10,19 +10,6 @@
 
 {% block stylesheets %}
     {% compressed_css 'part1' %}
-    {# <link type="text/css" rel="stylesheet" href="{% static 'frontend/css/tablesorter.css' %}" /> #}
-    {# <link type="text/css" rel="stylesheet" href="{% static 'frontend/css/main.css' %}" /> #}
-    {# can be removed as soon as jquery-UI is up to par #}
-    <link type="text/css" rel="stylesheet" href="{% static 'js/libs/dynatree/skin/ui.dynatree.css' %}" />
-    <link type="text/css" rel="stylesheet" href="{% static 'js/libs/chosen/chosen.min.css' %}" />
-    <link type="text/css" rel="stylesheet" href="{% static 'js/libs/angular-chosen-1.0.3/chosen-spinner.css' %}" />
-    <link type="text/css" rel="stylesheet" href="{% static 'frontend/css/jquery.dataTables.css' %}" />
-    <link type="text/css" rel="stylesheet" href="{% static 'frontend/css/msdropdown/dd.css' %}" />
-    <!-- needed for simplemodal -->
-    <link type="text/css" rel="stylesheet" href="{% static 'frontend/css/jqModal.css' %}" />
-    <link type="text/css" rel="stylesheet" href="{% static 'frontend/css/codemirror.css' %}" />
-    <link type="text/css" rel="stylesheet" href="{% static 'frontend/css/bootstrap.css' %}" />
-    <link type="text/css" rel="stylesheet" href="{% static 'css/jquery.Jcrop.min.css' %}"/>
 <style type="text/css" media="screen">
 
     .dataTables_info { padding-top: 0; }
@@ -59,45 +46,16 @@
 
 {% endblock %}
 
+{# disable non-compressed imports #}
+{% block javascript_jquery %}{% endblock %}
+{% block stylesheets_jquery %}{% endblock %}
+{% block modernizr %}{% endblock %}
 {% block javascript %}
-    <script type="text/javascript" src="{% static 'js/libs/jquery.layout-latest.min.js' %}"></script>
-    <script type="text/javascript" src="{% static 'frontend/js/jquery.dataTables.min.js' %}"></script>
-    <script type="text/javascript" src="{% static 'frontend/js/jquery.dataTables.rowGrouping.js' %}"></script>
-    <script type="text/javascript" src="{% static 'frontend/js/jquery.sprintf.js_8.txt' %}"></script>
-    <script type="text/javascript" src="{% static 'frontend/js/jquery.tablesorter.js' %}"></script>
-    <script type="text/javascript" src="{% static 'frontend/js/jquery.timers-1.2.js' %}"></script>
-    <script type="text/javascript" src="{% static 'js/libs/dynatree/jquery.dynatree.min.js' %}"></script>
-    <script type="text/javascript" src="{% static 'frontend/js/noty/jquery.noty.js' %}"></script>
-    <script type="text/javascript" src="{% static 'frontend/js/noty/top.js' %}"></script>
-    <script type="text/javascript" src="{% static 'frontend/js/noty/topRight.js' %}"></script>
-    <script type="text/javascript" src="{% static 'frontend/js/noty/topLeft.js' %}"></script>
-    <script type="text/javascript" src="{% static 'frontend/js/noty/default.js' %}"></script>
-    <script type="text/javascript" src="{% static 'js/libs/lodash.min.js' %}"></script>
-    <script type="text/javascript" src="{% static 'frontend/js/jquery.dd.min.js' %}"></script>
-    <!-- patched version -->
-    <script type="text/javascript" src="{% static 'frontend/js/jquery.simplemodal.js' %}"></script>
-    {# <!-- <script type="text/javascript" src="{{ settings.STATIC_URL }}initat/core/static/js/libs/jquery.simplemodal-latest.min.js"></script> --> #}
-    <script type="text/javascript" src="{% static 'frontend/js/codemirror/codemirror.js' %}"></script>
-    <script type="text/javascript" src="{% static 'frontend/js/codemirror/addon/selection/active-line.js' %}"></script>
-    <script type="text/javascript" src="{% static 'frontend/js/codemirror/python.js' %}"></script>
-    <script type="text/javascript" src="{% static 'frontend/js/codemirror/xml.js' %}"></script>
-    <script type="text/javascript" src="{% static 'frontend/js/codemirror/shell.js' %}"></script>
-    <script type="text/javascript" src="{% static 'frontend/js/bootstrap.js' %}"></script>
-    <script type="text/javascript" src="{% static 'js/libs/jquery.color.js' %}"></script>
-    <script type="text/javascript" src="{% static 'js/libs/jquery-ui-timepicker-addon.js' %}"></script>
-    <script type="text/javascript" src="{% static 'js/libs/chosen/chosen.jquery.min.js' %}"></script>
-    <script type="text/javascript" src="{% static 'js/libs/jquery.blockUI.js' %}"></script>
-    <script type="text/javascript" src="{% static 'js/libs/angular.min.js' %}"></script>
-    <script type="text/javascript" src="{% static 'js/libs/angular-route.min.js' %}"></script>
-    <script type="text/javascript" src="{% static 'js/libs/angular-resource.min.js' %}"></script>
-    <script type="text/javascript" src="{% static 'js/libs/angular-cookies.min.js' %}""></script>
-    <script type="text/javascript" src="{% static 'js/libs/angular-sanitize.min.js' %}"></script>
-    <script type="text/javascript" src="{% static 'js/libs/angular-chosen-1.0.3/chosen.js' %}"></script>
-    <script type="text/javascript" src="{% static 'js/libs/restangular.min.js' %}"></script>
-    <script type="text/javascript" src="{% static 'js/libs/ui-bootstrap.min.js' %}"></script>
-    <script type="text/javascript" src="{% static 'js/libs/ui-bootstrap-tpls.min.js' %}"></script>
-    <script type="text/javascript" src="{% static 'js/libs/moment-with-langs.min.js' %}"></script>
-    <script type="text/javascript" src="{% static 'js/libs/jquery.Jcrop.min.js' %}"></script>
+    <!--[if lt IE 9]>{% compressed_js 'js_jquery_old' %}><![endif]-->
+    <!--[if gte IE 9]><!-->{% compressed_js 'js_jquery_new' %}<!--<![endif]-->
+    {% compressed_js 'js_base' %}
+    {% compressed_js 'js_extra1' %}
+    {% compressed_js 'js_extra2' %}
 
 {% include "javascript/init.js" %}
 {% include "javascript/deviceinfo.js" %}
