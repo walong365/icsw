@@ -156,8 +156,8 @@ menu_controller = menu_module.controller("menu_base", ["$scope", "$timeout",
                 title   : "create config"
                 success : (xml) =>
                     if parse_xml_response(xml)
-                        # make at least two iterations to catch slow startup of md-config-server
-                        $scope.progress_iters = 2
+                        # make at least five iterations to catch slow startup of md-config-server
+                        $scope.progress_iters = 5
                         $scope.update_progress_bar()
 ])
 
