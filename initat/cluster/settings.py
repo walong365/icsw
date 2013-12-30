@@ -293,6 +293,7 @@ STATICFILES_STORAGE = "pipeline.storage.PipelineCachedStorage"
 STATICFILES_FINDERS = (
     "django.contrib.staticfiles.finders.FileSystemFinder",
     "django.contrib.staticfiles.finders.AppDirectoriesFinder",
+    "static_precompiler.finders.StaticPrecompilerFinder",
 )
 
 if DEBUG:
