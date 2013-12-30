@@ -226,7 +226,7 @@ class category_form(ModelForm):
             Fieldset(
                 "Basic settings",
                 Field("name"),
-                Field("parent", ng_options="value.idx as value.full_name for value in fn.get_valid_parents(this)", chosen=True, ng_disabled="edit_obj.num_refs"),
+                Field("parent", ng_options="value.idx as value.full_name for value in fn.get_valid_parents(this)", chosen=True),
             ),
             Fieldset(
                 "Additional fields",

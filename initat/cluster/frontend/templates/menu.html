@@ -99,7 +99,7 @@
                 </div>
             </li>
             <li ng-show="!cur_gauges.length">
-                {% with "frontend/images/product/"|add:settings.INIT_PRODUCT_NAME|lower|add:"-flat-trans.png" as gfx_name %}
+                {% with "images/product/"|add:settings.INIT_PRODUCT_NAME|lower|add:"-flat-trans.png" as gfx_name %}
                 <img height="42px" src="{% static gfx_name %}" alt="{{ settings.INIT_PRODUCT_NAME }} logo">
                 </img>
                 {% endwith %}

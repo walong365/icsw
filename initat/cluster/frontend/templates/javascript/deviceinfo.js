@@ -1,4 +1,4 @@
-{% load coffeescript %}
+{% load coffeescript staticfiles %}
 
 <script type="text/javascript">
 
@@ -78,14 +78,14 @@ class rrd_config
         clear_el = $("<input>").attr(
             "title"  : "clear filter"
             "type"   : "image"
-            "src"    : "{{ MEDIA_URL }}frontend/images/delete.png"
+            "src"    : "{% static 'images/delete.png' %}"
             "width"  : "22px"
             "height" : "22px"
         ).on("click", @clear_rrd_sel)
         draw_el =  $("<input>").attr(
             "title"  : "draw graph(s)"
             "type"   : "image"
-            "src"    : "{{ MEDIA_URL }}frontend/images/ok.png"
+            "src"    : "{% static 'images/ok.png' %}"
             "width"  : "22px"
             "height" : "22px"
         ).on("click", @draw_rrd_el)
@@ -119,7 +119,7 @@ class rrd_config
         @tf_prev_arrow = $("<input>").attr(
             "title"  : "previous timeframe"
             "type"   : "image"
-            "src"    : "{{ MEDIA_URL }}frontend/images/left-arrow.png"
+            "src"    : "{% static 'images/left-arrow.png' %}"
             "width"  : "22px"
             "height" : "22px"
             "disabled" : "disabled"
@@ -127,7 +127,7 @@ class rrd_config
         @tf_next_arrow = $("<input>").attr(
             "title"  : "next timeframe"
             "type"   : "image"
-            "src"    : "{{ MEDIA_URL }}frontend/images/right-arrow.png"
+            "src"    : "{% static 'images/right-arrow.png' %}"
             "width"  : "22px"
             "height" : "22px"
             "disabled" : "disabled"
@@ -814,7 +814,7 @@ class device_info
                     $("<input>").attr(
                         "id"     : ip_xml.attr("key"),
                         "type"   : "image"
-                        "src"    : "{{ MEDIA_URL }}frontend/images/list-remove.png"
+                        "src"    : "{% static 'images/list-remove.png' %}"
                         "width"  : "22px"
                         "height" : "22px"
                     ).on("click", @remove_net_ip),
@@ -831,7 +831,7 @@ class device_info
                     $("<input>").attr(
                         "id"     : new_ip_key,
                         "type"   : "image"
-                        "src"    : "{{ MEDIA_URL }}frontend/images/list-add.png"
+                        "src"    : "{% static 'images/list-add.png' %}"
                         "width"  : "22px"
                         "height" : "22px"
                     ).on("click", @create_net_ip),
@@ -855,7 +855,7 @@ class device_info
                     $("<input>").attr(
                         "id"     : p_xml.attr("key"),
                         "type"   : "image"
-                        "src"    : "{{ MEDIA_URL }}frontend/images/list-remove.png"
+                        "src"    : "{% static 'images/list-remove.png' %}"
                         "width"  : "22px"
                         "height" : "22px"
                     ).on("click", @remove_peer),
@@ -871,7 +871,7 @@ class device_info
                     $("<input>").attr(
                         "id"     : new_peer_key,
                         "type"   : "image"
-                        "src"    : "{{ MEDIA_URL }}frontend/images/list-add.png"
+                        "src"    : "{% static 'images/list-add.png' %}"
                         "width"  : "22px"
                         "height" : "22px"
                     ).on("click", @create_new_peer),

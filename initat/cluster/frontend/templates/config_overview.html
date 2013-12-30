@@ -1,6 +1,6 @@
 {% extends "main.html" %}
 
-{% load i18n coffeescript %}
+{% load i18n coffeescript staticfiles %}
 
 {% block title %}{% trans "Configurations" %}{% endblock %}
 
@@ -10,7 +10,7 @@
     Configurations, <span id="config_info">none defined</span>
 </h1>
 Filter: <input type="text" id="filter" value=""/>
-    <input type="image" id="filter_clear" src="{{ MEDIA_URL }}frontend/images/delete.png" width="22px" height="22px" style="vertical-align:middle;" title="clear selection"/>,
+    <input type="image" id="filter_clear" src="{% static 'images/delete.png' %}" width="22px" height="22px" style="vertical-align:middle;" title="clear selection"/>,
     scope: <select id="filter_scope" class="chosen-select" multiple="multiple">
     <option value="var">Variables</option>
     <option value="script">Scripts</option>
@@ -170,7 +170,7 @@ class config_table
                 "width"  : "16px"
                 "height" : "16px"
                 "title"  : "Configuration details"
-                "src"    : "{{ MEDIA_URL }}frontend/images/information.png"
+                "src"    : "{% static 'images/information.png' %}"
             }).bind("click", @config_details)
         )
         if cur_conf
@@ -414,7 +414,7 @@ class config_table
                 "width"  : "16px"
                 "height" : "16px"
                 "title"  : "Monitoring Command details"
-                "src"    : "{{ MEDIA_URL }}frontend/images/information.png"
+                "src"    : "{% static 'images/information.png' %}"
             }).bind("click", @moncc_details)
         ).append(
             $("<td>").append(

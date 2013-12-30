@@ -222,7 +222,7 @@ class config_table
                         "type"   : "image"
                         "width"  : "16px"
                         "height" : "16px"
-                        "src"    : "{{ MEDIA_URL }}frontend/images/information.png"
+                        "src"    : "{% static 'images/information.png' %}"
                         "id"     : "#{line_prefix}__md_info"
                     }).bind("click", @device_information)
                 )
