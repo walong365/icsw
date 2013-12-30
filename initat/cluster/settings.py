@@ -199,6 +199,7 @@ MIDDLEWARE_CLASSES = (
     # 'django.middleware.clickjacking.XFrameOptionsMiddleware',
 
     "backbone.middleware.database_debug",
+    "pipeline.middleware.MinifyHTMLMiddleware",
 )
 
 ROOT_URLCONF = "initat.cluster.urls"
@@ -322,10 +323,19 @@ PIPELINE_CSS = {
 }
 
 PIPELINE_JS = {
-    "js_jquery" : {
+    "js_jquery_new" : {
         "source_filenames" : {
             "js/libs/modernizr-2.6.2.min.js",
+            "js/plugins.js",
             "js/libs/jquery-2.0.3.min.js",
+        },
+        "output_filename" : "pipeline/js/jquery_new.js"
+    },
+    "js_jquery_new_old" : {
+        "source_filenames" : {
+            "js/libs/modernizr-2.6.2.min.js",
+            "js/plugins.js",
+            "js/libs/jquery-1.10.2.min.js",
         },
         "output_filename" : "pipeline/js/jquery.js"
     },
