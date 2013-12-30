@@ -410,7 +410,7 @@ class mailq_command(hm_classes.hm_command):
         if self.module.mailq_command_valid():
             srv_com["num_mails"] = self.module.get_num_mails()
         else:
-            srv_com.set_result("no mailq command defined", server_command.SRV_REPLY_ERROR)
+            srv_com.set_result("no mailq command defined", server_command.SRV_REPLY_STATE_ERROR)
     def interpret(self, srv_com, cur_ns):
         num_mails = int(srv_com["num_mails"].text)
         return self._interpret(num_mails, cur_ns)
