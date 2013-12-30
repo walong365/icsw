@@ -91,12 +91,16 @@ sidebar_base = sidebar_module.controller("sidebar_base", ["$scope", "$compile", 
             return ret_list
         $scope.update_search = () ->
             cur_re = new RegExp($scope.searchstr, "gi")
-            $scope.get_tc($scope.active_tab).iter(
+            cur_tree = $scope.get_tc($scope.active_tab) 
+            cur_tree.toggle_tree_state(undefined, -1, false)
+            cur_tree.iter(
                 (entry, cur_re) ->
                     if entry._node_type == "d"
                         entry.set_selected(if $scope.dev_lut[entry.obj].full_name.match(cur_re) then true else false)
                 cur_re
             )
+            cur_tree.show_selected(false)
+            $scope.selection_changed()
         # current device selection
         $scope.cur_sel = []            
         $scope.install_devsel_link = (ds_func, fire_when_loaded) ->
@@ -162,7 +166,8 @@ sidebar_base = sidebar_module.controller("sidebar_base", ["$scope", "$compile", 
                 store_user_var("sidebar_mode", {"c" : "category", "f" : "fqdn", "g" : "group"}[$scope.active_tab], "str")
         $scope.selection_changed = () ->
             cur_sel = $scope.get_active_selection($scope.active_tab)
-            if cur_sel != $scope.cur_sel
+            # cast to string to compare the arrays
+            if String(cur_sel) != String($scope.cur_sel)
                 $scope.cur_sel = cur_sel
                 $.ajax
                     url     : "{% url 'device:set_selection' %}"

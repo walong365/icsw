@@ -175,14 +175,18 @@ class tree_config
                 new_childs.push(sub_entry)
         entry.children = new_childs
         return if entry.children.length then false else true
-    show_selected: () =>
+    show_selected: (keep=true) =>
         # make all selected nodes visible
-        (@_show_selected(entry) for entry in @root_nodes)
-    _show_selected: (entry) =>
-        show = entry.expand or entry.selected
-        for sub_entry in entry.children
-            if @_show_selected(sub_entry)
-                show = true
+        (@_show_selected(entry, keep) for entry in @root_nodes)
+    _show_selected: (entry, keep) =>
+        if (true for sub_entry in entry.children when @_show_selected(sub_entry, keep)).length
+            show = true
+        else 
+            # keep: keep expand state if already expanded
+            if keep
+                show = entry.expand or entry.selected
+            else
+                show = entry.selected
         entry.expand = show
         return entry.expand
     toggle_expand_node: (entry) -> 
@@ -191,20 +195,23 @@ class tree_config
         entry.set_selected(!entry.selected)
         @selection_changed()
     toggle_tree_state: (entry, flag, signal=true) =>
-        if signal and flag == 0
-            @start_tracking_changes()
-        if flag == 1
-            entry.set_selected(true)
-            entry.expand = true
-        else if flag == 0
-            entry.set_selected(!entry.selected)
+        if entry == undefined
+            (@toggle_tree_state(_entry, flag, signal) for _entry in @root_nodes)
         else
-            entry.set_selected(false)
-        for sub_entry in entry.children
-            @toggle_tree_state(sub_entry, flag, false)
-        if signal
-            @stop_tracking_changes()
-            @selection_changed()
+            if signal and flag == 0
+                @start_tracking_changes()
+            if flag == 1
+                entry.set_selected(true)
+                entry.expand = true
+            else if flag == 0
+                entry.set_selected(!entry.selected)
+            else
+                entry.set_selected(false)
+            for sub_entry in entry.children
+                @toggle_tree_state(sub_entry, flag, false)
+            if signal
+                @stop_tracking_changes()
+                @selection_changed()
     toggle_expand_tree: (flag, only_selected) ->
         exp_flag = if flag == 1 then true else false
         (@_toggle_expand_tree(entry, exp_flag, only_selected) for entry in @root_nodes)
