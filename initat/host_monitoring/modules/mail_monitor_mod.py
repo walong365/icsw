@@ -21,14 +21,14 @@
 #
 """ monitors the mail subsystem """
 
-from initat.host_monitoring import hm_classes
-from initat.host_monitoring import limits
+from initat.host_monitoring import hm_classes, limits
 import commands
 import logging_tools
 import os
 import pprint
 import process_tools
 import re
+import server_command
 import stat
 import sys
 import threading_tools
@@ -236,9 +236,12 @@ class _general(hm_classes.hm_module):
         self.__act_snapshot, self.__check_time = ({}, time.time())
         self.__num_mails = 0
         self.__check_kerio = False
-        mv.register_entry("mail.waiting", 0, "number of mails in mail-queue")
+        if self.mailq_command_valid():
+            mv.register_entry("mail.waiting", 0, "number of mails in mail-queue")
     def get_num_mails(self):
         return self._get_mail_queue_entries()
+    def mailq_command_valid(self):
+        return True if self.__mailq_command else False
     def ext_num_mails(self, mail_coms):
         ret_dict = {"num_mails" : 666,
                     "command"   : "notset"}
@@ -342,36 +345,38 @@ class _general(hm_classes.hm_module):
                 diff_value = value - self.__act_snapshot[key]
             mv["mail.%s" % (key)] = float(diff_value * 60. / diff_time)
         self.__act_snapshot, self.__check_time = (act_snapshot, act_time)
-        mv["mail.waiting"] = self.get_num_mails()
+        if self.mailq_command_valid():
+            mv["mail.waiting"] = self.get_num_mails()
     def _get_mail_queue_entries(self):
         self.__num_mails = 0
-        stat, out = commands.getstatusoutput(self.__mailq_command)
-        if stat:
-            self.log(
-                "cannot execute mailq (%d): %s" % (stat, out),
-                logging_tools.LOG_LEVEL_WARN)
-        else:
-            mail_lines = [_line.strip() for _line in out.split("\n") if _line.strip()]
-            if mail_lines:
-                last_line = mail_lines[-1]
-                if last_line.count("empty"):
-                    # empty mailqueue
-                    pass
-                else:
-                    if last_line.startswith("--"):
-                        line_parts = last_line.split()
-                        if line_parts[-2].isdigit():
-                            self.__num_mails = int(line_parts[-2])
-                        self.log("cannot parse line '%s' (mailq)" % (last_line),
-                            logging_tools.LOG_LEVEL_WARN
-                            )
-                    else:
-                        self.log("cannot parse line '%s' (mailq)" % (last_line),
-                            logging_tools.LOG_LEVEL_WARN
-                            )
-            else:
-                self.log("no lines got from %s" % (self.__mailq_command),
+        if self.__mailq_command:
+            stat, out = commands.getstatusoutput(self.__mailq_command)
+            if stat:
+                self.log(
+                    "cannot execute mailq (%d): %s" % (stat, out),
                     logging_tools.LOG_LEVEL_WARN)
+            else:
+                mail_lines = [_line.strip() for _line in out.split("\n") if _line.strip()]
+                if mail_lines:
+                    last_line = mail_lines[-1]
+                    if last_line.count("empty"):
+                        # empty mailqueue
+                        pass
+                    else:
+                        if last_line.startswith("--"):
+                            line_parts = last_line.split()
+                            if line_parts[-2].isdigit():
+                                self.__num_mails = int(line_parts[-2])
+                            self.log("cannot parse line '%s' (mailq)" % (last_line),
+                                logging_tools.LOG_LEVEL_WARN
+                                )
+                        else:
+                            self.log("cannot parse line '%s' (mailq)" % (last_line),
+                                logging_tools.LOG_LEVEL_WARN
+                                )
+                else:
+                    self.log("no lines got from %s" % (self.__mailq_command),
+                        logging_tools.LOG_LEVEL_WARN)
         return self.__num_mails
 # #    def process_server_args(self, glob_config, logger):
 # #        self.__check_kerio, self.__kerio_main_dir = (False, "")
@@ -402,7 +407,10 @@ class mailq_command(hm_classes.hm_command):
         self.parser.add_argument("-w", dest="warn", type=int)
         self.parser.add_argument("-c", dest="crit", type=int)
     def __call__(self, srv_com, cur_ns):
-        srv_com["num_mails"] = self.module.get_num_mails()
+        if self.module.mailq_command_valid():
+            srv_com["num_mails"] = self.module.get_num_mails()
+        else:
+            srv_com.set_result("no mailq command defined", server_command.SRV_REPLY_ERROR)
     def interpret(self, srv_com, cur_ns):
         num_mails = int(srv_com["num_mails"].text)
         return self._interpret(num_mails, cur_ns)
