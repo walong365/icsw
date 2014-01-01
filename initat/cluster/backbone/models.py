@@ -1503,6 +1503,49 @@ def log_status_lookup(key):
 
 cached_log_status = memoize(log_status_lookup, {}, 1)
 
+class partition_fs(models.Model):
+    # mix of partition and fs info, not perfect ...
+    idx = models.AutoField(db_column="partition_fs_idx", primary_key=True)
+    name = models.CharField(unique=True, max_length=48)
+    identifier = models.CharField(max_length=3)
+    descr = models.CharField(max_length=765, blank=True)
+    hexid = models.CharField(max_length=6)
+    date = models.DateTimeField(auto_now_add=True)
+    def get_xml(self):
+        return E.partition_fs(
+            self.name,
+            pk="%d" % (self.pk),
+            key="partfs__%d" % (self.pk),
+            identifier=self.identifier,
+            descr=self.descr,
+            hexid=self.hexid,
+        )
+    def need_mountpoint(self):
+        return True if self.hexid in ["83"] else False
+    def __unicode__(self):
+        return self.descr
+    class Meta:
+        db_table = u'partition_fs'
+        ordering = ("name",)
+
+class partition_fs_serializer(serializers.ModelSerializer):
+    class Meta:
+        model = partition_fs
+
+class sys_partition(models.Model):
+    idx = models.AutoField(db_column="sys_partition_idx", primary_key=True)
+    partition_table = models.ForeignKey("partition_table")
+    name = models.CharField(max_length=192)
+    mountpoint = models.CharField(max_length=192, default="/")
+    mount_options = models.CharField(max_length=255, blank=True)
+    date = models.DateTimeField(auto_now_add=True)
+    class Meta:
+        db_table = u'sys_partition'
+
+class sys_partition_serializer(serializers.ModelSerializer):
+    class Meta:
+        model = sys_partition
+
 class lvm_lv(models.Model):
     idx = models.AutoField(db_column="lvm_lv_idx", primary_key=True)
     partition_table = models.ForeignKey("partition_table")
@@ -1530,6 +1573,11 @@ class lvm_lv(models.Model):
     class Meta:
         db_table = u'lvm_lv'
         ordering = ("name",)
+
+class lvm_lv_serializer(serializers.ModelSerializer):
+    partition_fs = partition_fs_serializer()
+    class Meta:
+        model = lvm_lv
 
 @receiver(signals.pre_save, sender=lvm_lv)
 def lvm_lv_pre_save(sender, **kwargs):
@@ -1560,6 +1608,10 @@ class lvm_vg(models.Model):
     class Meta:
         db_table = u'lvm_vg'
         ordering = ("name",)
+
+class lvm_vg_serializer(serializers.ModelSerializer):
+    class Meta:
+        model = lvm_vg
 
 class mac_ignore(models.Model):
     idx = models.AutoField(db_column="mac_ignore_idx", primary_key=True)
@@ -2309,6 +2361,11 @@ class partition(models.Model):
         db_table = u'partition'
         ordering = ("pnum",)
 
+class partition_serializer(serializers.ModelSerializer):
+    partition_fs = partition_fs_serializer()
+    class Meta:
+        model = partition
+
 @receiver(signals.pre_save, sender=partition)
 def partition_pre_save(sender, **kwargs):
     if "instance" in kwargs:
@@ -2397,6 +2454,11 @@ class partition_disc(models.Model):
     def __unicode__(self):
         return self.disc
 
+class partition_disc_serializer(serializers.ModelSerializer):
+    partition_set = partition_serializer(many=True)
+    class Meta:
+        model = partition_disc
+
 @receiver(signals.pre_save, sender=partition_disc)
 def partition_disc_pre_save(sender, **kwargs):
     if "instance" in kwargs:
@@ -2411,31 +2473,6 @@ def partition_disc_pre_save(sender, **kwargs):
         if d_name in all_discs:
             raise ValidationError("name already used")
         cur_inst.disc = d_name
-
-class partition_fs(models.Model):
-    # mix of partition and fs info, not perfect ...
-    idx = models.AutoField(db_column="partition_fs_idx", primary_key=True)
-    name = models.CharField(unique=True, max_length=48)
-    identifier = models.CharField(max_length=3)
-    descr = models.CharField(max_length=765, blank=True)
-    hexid = models.CharField(max_length=6)
-    date = models.DateTimeField(auto_now_add=True)
-    def get_xml(self):
-        return E.partition_fs(
-            self.name,
-            pk="%d" % (self.pk),
-            key="partfs__%d" % (self.pk),
-            identifier=self.identifier,
-            descr=self.descr,
-            hexid=self.hexid,
-        )
-    def need_mountpoint(self):
-        return True if self.hexid in ["83"] else False
-    def __unicode__(self):
-        return self.descr
-    class Meta:
-        db_table = u'partition_fs'
-        ordering = ("name",)
 
 class partition_table(models.Model):
     idx = models.AutoField(db_column="partition_table_idx", primary_key=True)
@@ -2499,12 +2536,22 @@ class partition_table(models.Model):
         fk_ignore_list = ["partition_disc", "sys_partition", "lvm_lv", "lvm_vg"]
 
 class partition_table_serializer(serializers.ModelSerializer):
+    partition_disc_set = partition_disc_serializer(many=True)
+    sys_partition_set = sys_partition_serializer(many=True)
+    lvm_lv_set = lvm_lv_serializer(many=True)
+    lvm_vg_set = lvm_vg_serializer(many=True)
     class Meta:
         model = partition_table
         fields = ("partition_disc_set", "lvm_lv_set", "lvm_vg_set", "name", "idx", "description", "valid",
-            "enabled", "nodeboot", "act_partition_table", "new_partition_table")
+            "enabled", "nodeboot", "act_partition_table", "new_partition_table", "sys_partition_set")
         # otherwise the REST framework would try to store lvm_lv and lvm_vg
-        read_only_fields = ("lvm_lv_set", "lvm_vg_set")
+        # read_only_fields = ("lvm_lv_set", "lvm_vg_set",) # "partition_disc_set",)
+
+class partition_table_serializer_save(serializers.ModelSerializer):
+    class Meta:
+        model = partition_table
+        fields = ("name", "idx", "description", "valid",
+            "enabled", "nodeboot",)
 
 @receiver(signals.pre_save, sender=partition_table)
 def partition_table_pre_save(sender, **kwargs):
@@ -2791,16 +2838,6 @@ class status(models.Model):
         )
     class Meta:
         db_table = u'status'
-
-class sys_partition(models.Model):
-    idx = models.AutoField(db_column="sys_partition_idx", primary_key=True)
-    partition_table = models.ForeignKey("partition_table")
-    name = models.CharField(max_length=192)
-    mountpoint = models.CharField(max_length=192, default="/")
-    mount_options = models.CharField(max_length=255, blank=True)
-    date = models.DateTimeField(auto_now_add=True)
-    class Meta:
-        db_table = u'sys_partition'
 
 class tree_node(models.Model):
     idx = models.AutoField(primary_key=True)

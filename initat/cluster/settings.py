@@ -199,6 +199,7 @@ MIDDLEWARE_CLASSES = (
     # 'django.middleware.clickjacking.XFrameOptionsMiddleware',
 
     "backbone.middleware.database_debug",
+    # "django.middleware.gzip.GZipMiddleware",
     "pipeline.middleware.MinifyHTMLMiddleware",
 )
 
