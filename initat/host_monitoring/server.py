@@ -1,7 +1,7 @@
 #!/usr/bin/python-init -Ot
 # -*- coding: utf-8 -*-
 #
-# Copyright (C) 2013 Andreas Lang-Nevyjel
+# Copyright (C) 2013,2014 Andreas Lang-Nevyjel
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -23,7 +23,6 @@
 
 """ host-monitoring, with 0MQ and twisted support, server code """
 
-# import inotify_tools
 from initat.host_monitoring.config import global_config
 from initat.host_monitoring.constants import TIME_FORMAT
 from initat.host_monitoring.hm_inotify import inotify_process
