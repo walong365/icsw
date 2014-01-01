@@ -300,7 +300,26 @@ handle_reset = (data, e_list, idx) ->
         $(data._reset_list).each (idx, entry) ->
             scope_obj[entry[0]] = entry[1]
         delete data._reset_list
+
    
+simple_modal_ctrl = ($scope, $modalInstance, question) ->
+    $scope.question = question
+    $scope.ok = () ->
+        $modalInstance.close(true)
+    $scope.cancel = () ->
+        $modalInstance.dismiss("cancel")
+
+simple_modal_template = '
+<div class="modal-header"><h3>Please confirm</h3></div>
+<div class="modal-body">
+    {% verbatim %}{{ question }}{% endverbatim %}
+</div>
+<div class="modal-footer">
+    <button class="btn btn-primary" ng-click="ok()">OK</button>
+    <button class="btn btn-warning" ng-click="cancel()">Cancel</button>
+</div>
+'
+
 angular_add_simple_list_controller = (module, name, settings) ->
     $(settings.template_cache_list).each (idx, t_name) ->
         short_name = t_name.replace(/.html$/g, "").replace(/_/g, "")
@@ -317,8 +336,11 @@ angular_add_simple_list_controller = (module, name, settings) ->
                 template : $templateCache.get(settings.edit_template)
             }
         )
-    module.controller(name, ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "sharedDataSource", "$q", "$timeout", 
-        ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, sharedDataSource, $q, $timeout) ->
+    module.run(($templateCache) ->
+        $templateCache.put("simple_confirm.html", simple_modal_template)
+    )
+    module.controller(name, ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "sharedDataSource", "$q", "$timeout", "$modal", 
+        ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, sharedDataSource, $q, $timeout, $modal) ->
             # set reference
             $scope.settings = settings
             $scope.settings.use_modal ?= true
@@ -439,16 +461,25 @@ angular_add_simple_list_controller = (module, name, settings) ->
             $scope.get_action_string = () ->
                 return if $scope.create_mode then "Create" else "Modify"
             $scope.delete = (obj) ->
-                if confirm($scope.settings.delete_confirm_str(obj))
-                    obj.remove().then((resp) ->
-                        noty
-                            text : "deleted instance"
-                        remove_by_idx($scope.entries, obj.idx)
-                        if $scope.pagSettings.conf.init
-                            $scope.pagSettings.set_entries($scope.entries)
-                        if $scope.settings.post_delete
-                            $scope.settings.post_delete($scope, obj)
-                    )
+                c_modal = $modal.open
+                    template : $templateCache.get("simple_confirm.html")
+                    controller : simple_modal_ctrl
+                    backdrop : "static"
+                    resolve :
+                        question : () ->
+                            return $scope.settings.delete_confirm_str(obj)
+                c_modal.result.then(
+                    () ->
+                        obj.remove().then((resp) ->
+                            noty
+                                text : "deleted instance"
+                            remove_by_idx($scope.entries, obj.idx)
+                            if $scope.pagSettings.conf.init
+                                $scope.pagSettings.set_entries($scope.entries)
+                            if $scope.settings.post_delete
+                                $scope.settings.post_delete($scope, obj)
+                        )
+                )
             # call the external init function after the rest has been declared
             if $scope.settings.init_fn
                 $scope.settings.init_fn($scope, $timeout)
