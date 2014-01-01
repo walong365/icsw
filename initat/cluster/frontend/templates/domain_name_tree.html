@@ -164,7 +164,7 @@ angular_add_simple_list_controller(
                     $scope.reload()
             delete_node: ($scope, del_obj) ->
                 $scope.delete(del_obj)
-                $.simplemodal.close()
+                $scope.close_modal()
         init_fn: ($scope, $timeout) ->
             $scope.dnt = new domain_name_tree($scope, {})            
     }

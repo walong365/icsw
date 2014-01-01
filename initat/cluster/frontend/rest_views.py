@@ -11,7 +11,7 @@ from initat.cluster.backbone.models import user , group, user_serializer_h, grou
      get_related_models, get_change_reset_list, device, device_serializer, \
      device_serializer_package_state, device_serializer_monitoring, domain_name_tree, \
      device_serializer_monitor_server, category_tree, device_serializer_cat, device_selection, \
-     device_selection_serializer
+     device_selection_serializer, partition_table_serializer_save
 from rest_framework import mixins, generics, status, viewsets
 from rest_framework.authentication import BasicAuthentication, SessionAuthentication
 from rest_framework.decorators import api_view
@@ -108,6 +108,12 @@ class detail_view(mixins.RetrieveModelMixin,
     def get(self, request, *args, **kwargs):
         return self.retrieve(request, *args, **kwargs)
     @rest_logging
+    def get_serializer_class(self):
+        if self.model._meta.object_name == "partition_table":
+            return partition_table_serializer_save
+        else:
+            return self.serializer_class
+    @rest_logging
     def put(self, request, *args, **kwargs):
         req_changes = request.DATA
         prev_model = self.model.objects.get(Q(pk=kwargs["pk"]))
@@ -165,7 +171,8 @@ class list_view(mixins.ListModelMixin,
         related_fields, prefetch_fields = {
             "kernel" : ([], ["initrd_build_set", "kernel_build_set", "new_kernel", "act_kernel"]),
             "image" : ([], ["new_image", "act_image"]),
-            "partition_table" : ([], ["new_partition_table", "act_partition_table", "sys_partition_set", "lvm_lv_set" , "lvm_vg_set", "partition_disc_set"]),
+            "partition_table" : ([], ["new_partition_table", "act_partition_table", "sys_partition_set",
+                "lvm_lv_set__partition_fs" , "lvm_vg_set", "partition_disc_set__partition_set__partition_fs"]),
             "mon_period" : ([], ["service_check_period"]),
             "device" : (["domain_tree_node", "device_type", "device_group"], []),
             "mon_check_command" : ([], ["exclude_devices", "categories"]),

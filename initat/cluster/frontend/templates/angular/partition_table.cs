@@ -19,6 +19,61 @@ angular_add_simple_list_controller(
         delete_confirm_str  : (obj) -> return "Really delete partition table '#{obj.name}' ?"
         use_modal           : false
         template_cache_list : ["partition_table_row.html", "partition_table_head.html"]
+        post_delete : ($scope) ->
+            $scope.close_modal()
+    }
+)
+
+partition_table_module.directive("layout", ($compile, $templateCache) ->
+    return {
+        restrict : "EA"
+        scope :
+            layout : "=layout"
+        #template : $templateCache.get("layout.html")
+        compile: (tElement, tAttrs) ->
+            return (scope, element, attrs) ->
+                element.replaceWith($compile($templateCache.get("layout.html"))(scope))
+    }
+)
+
+partition_table_module.directive("partclean", ($compile, $templateCache) ->
+    return {
+        restrict : "EA"
+        replace : true
+        compile: (tElement, tAttrs) ->
+            return (scope, element, attrs) ->
+                # dirty but working
+                element.parent().find("tr[class*='icsw_dyn']").remove()
+    }
+)
+
+partition_table_module.directive("partdisc", ($compile, $templateCache) ->
+    return {
+        restrict : "EA"
+        replace : true
+        compile: (tElement, tAttrs) ->
+            return (scope, element, attrs) ->
+                element.replaceWith($compile($templateCache.get("part_disc.html"))(scope))
+    }
+)
+
+partition_table_module.directive("part", ($compile, $templateCache) ->
+    return {
+        restrict : "EA"
+        compile: (tElement, tAttrs) ->
+            return (scope, element, attrs) ->
+                # console.log scope, element, attrs, scope.layout
+                element.replaceWith($compile($templateCache.get("part.html"))(scope))
+    }
+)
+
+partition_table_module.directive("partsys", ($compile, $templateCache) ->
+    return {
+        restrict : "EA"
+        compile: (tElement, tAttrs) ->
+            return (scope, element, attrs) ->
+                # console.log scope, element, attrs, scope.layout
+                element.replaceWith($compile($templateCache.get("sys_part.html"))(scope))
     }
 )
 

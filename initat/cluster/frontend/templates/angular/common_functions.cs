@@ -566,6 +566,15 @@ angular.module(
 ).filter("datetime1", () ->
     return (cur_dt) ->
         return moment(cur_dt).format("ddd, D. MMM YYYY, HH:mm:ss") + ", " + moment(cur_dt).fromNow()
+).filter("get_size", () ->
+    return (size, base_factor, factor) ->
+        size = size * base_factor
+        f_idx = 0
+        while size > factor
+            size = parseInt(size/factor)
+            f_idx += 1
+        factor = ["", "k", "M", "G", "T"][f_idx]
+        return "#{size} #{factor}B"
 )
 
 root = exports ? this

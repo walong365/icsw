@@ -76,12 +76,14 @@
                 </ul>
             </li>
             {% endif %}
+            {% if settings.DEBUG %}
             <li class="dropdown">
                 <a class="dropdown-toggle" data-toggle="dropdown">{% trans "REST" %} <b class="caret"></b></a>
                 <ul class="dropdown-menu">
                     <li><a href="{% url 'rest:root' %}">{% trans "REST API rootnode (for testing)" %}</a></li>
                 </ul>
             </li>
+            {% endif %}
             {% for add_menu in settings.ADDITIONAL_MENU_FILES %}
                 {% include add_menu %}
             {% endfor %}
@@ -93,12 +95,12 @@
                     <li><a href="{% url 'admin:index' %}">{% trans "Admin" %}</a></li>
                 </ul>
             </li>
-            <li>
+            <li class="visible-md visible-lg">
                 <div ng-show="cur_gauges.length" ng-repeat="obj in cur_gauges" class="progress" style="width:200px; margin-top:10px;">
                     <div class="progress-bar progress-bar-success" aria-valuenow="{{ obj.value }}" aria-valuemin="0" aria-valuemax="100" ng-style="get_progress_style(obj)"></div>
                 </div>
             </li>
-            <li ng-show="!cur_gauges.length">
+            <li ng-show="!cur_gauges.length" class="visible-md visible-lg">
                 {% with "images/product/"|add:settings.INIT_PRODUCT_NAME|lower|add:"-flat-trans.png" as gfx_name %}
                 <img height="42px" src="{% static gfx_name %}" alt="{{ settings.INIT_PRODUCT_NAME }} logo">
                 </img>
@@ -106,7 +108,7 @@
             </li>
         </ul>
     </div>
-    <p class="navbar-text navbar-right">
+    <p class="navbar-text navbar-right  visible-md visible-lg"">
         <span>
             {% verbatim %}{{ cur_time }}{% endverbatim %}
             '{{ user.login }}'{% ifnotequal user.login request.session.login_name %} (via alias {{ request.session.login_name }}){% endifnotequal %}
