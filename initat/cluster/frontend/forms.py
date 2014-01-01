@@ -214,18 +214,18 @@ class dummy_password_form(Form):
 
 class category_form(ModelForm):
     helper = FormHelper()
-    helper.form_id = "id_cat_detail_form"
+    helper.form_id = "id_partition_form"
     helper.form_name = "form"
     helper.form_class = 'form-horizontal'
-    helper.label_class = 'col-sm-2'
-    helper.field_class = 'col-sm-8'
+    helper.label_class = 'col-sm-3'
+    helper.field_class = 'col-sm-7'
     helper.ng_model = "edit_obj"
     helper.layout = Layout(
         Div(
             HTML("<h2>Category details for '{% verbatim %}{{ edit_obj.name }}{% endverbatim %}'</h2>"),
             Fieldset(
                 "Basic settings",
-                Field("name"),
+                Field("name", wrapper_class="ng-class:form_error('name')"),
                 Field("parent", ng_options="value.idx as value.full_name for value in fn.get_valid_parents(this)", chosen=True),
             ),
             Fieldset(
@@ -738,14 +738,15 @@ class network_device_type_form(ModelForm):
 
 class partition_table_form(ModelForm):
     helper = FormHelper()
-    helper.form_id = "form"
+    helper.form_id = "id_partition_form"
     helper.form_name = "form"
     helper.form_class = 'form-horizontal'
     helper.label_class = 'col-sm-3'
     helper.field_class = 'col-sm-7'
     helper.ng_model = "edit_obj"
     helper.layout = Layout(
-        HTML("<h2>Partition table</h2>"),
+        Div(
+            HTML("<h2>Partition table</h2>"),
             Fieldset(
                 "Basic data",
                 Field("name", wrapper_class="ng-class:form_error('name')", placeholder="Name"),
@@ -760,6 +761,7 @@ class partition_table_form(ModelForm):
                 Submit("submit", "", css_class="primaryAction", ng_value="get_action_string()"),
             ),
         )
+    )
     class Meta:
         model = partition_table
         fields = ["name", "description", "enabled", "nodeboot"]

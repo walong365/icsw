@@ -17,6 +17,7 @@ angular_add_simple_list_controller(
         rest_url            : "{% url 'rest:partition_table_list' %}"
         edit_template       : "partition_table.html"
         delete_confirm_str  : (obj) -> return "Really delete partition table '#{obj.name}' ?"
+        use_modal           : false
         template_cache_list : ["partition_table_row.html", "partition_table_head.html"]
     }
 )

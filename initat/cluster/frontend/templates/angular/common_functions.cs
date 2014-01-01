@@ -129,7 +129,6 @@ class rest_data_source
             url_key = "#{url_key},#{key}=#{value}"
         return url_key
     _do_query: (q_type, options) =>
-        #console.log "Query", q_type, options    
         d = @$q.defer()
         result = q_type.getList(options).then(
            (response) ->
@@ -141,8 +140,6 @@ class rest_data_source
             rest_tuple = [rest_tuple, {}]
         url = rest_tuple[0]
         options = rest_tuple[1]
-        #console.log @_data, [url, options] in @_data
-        #console.log @_build_key(url, options)
         if @_build_key(url, options) of @_data
             # queries with options are not shared
             return @get([url, options])
@@ -161,13 +158,11 @@ class rest_data_source
             return @get(rest_tuple)
     add_sources: (in_list) =>
         # in list is a list of (url, option) lists
-        #console.log "*", in_list
         q_list = []
         r_list = []
         for rest_tuple in in_list
             rest_key = @_build_key(rest_tuple[0], rest_tuple[1])
             if rest_key not of @_data
-                #console.log "not in @_data", rest_tuple, rest_key
                 sliced = rest_tuple[0].slice(1)
                 rest_tuple[1] ?= {}
                 @_data[rest_key] = @_do_query(@Restangular.all(sliced), rest_tuple[1])
@@ -180,7 +175,6 @@ class rest_data_source
         return @_data[@_build_key(rest_tuple[0], rest_tuple[1])]
   
 angular_module_setup = (module_list, url_list=[]) ->
-    #console.log url_list
     $(module_list).each (idx, cur_mod) ->
         cur_mod.config(['$httpProvider', 
             ($httpProvider) ->
@@ -260,7 +254,6 @@ angular_module_setup = (module_list, url_list=[]) ->
                 scope.$watch(
                     () -> return scope.entries
                     (new_el) ->
-                        #console.log "r1"
                         scope.pagSettings.set_entries(new_el)
                 )
                 scope.$watch(
@@ -276,7 +269,6 @@ angular_module_setup = (module_list, url_list=[]) ->
                 scope.$watch(
                     () -> return scope.pagSettings.conf.filter_settings
                     (new_el) ->
-                        #console.log "r3"
                         scope.pagSettings.set_entries(scope.entries)
                     true
                 )
@@ -294,7 +286,6 @@ angular_module_setup = (module_list, url_list=[]) ->
         
 handle_reset = (data, e_list, idx) ->
     # used to reset form fields when requested by server reply
-    # console.log "HR", data, e_list, idx
     if data._reset_list
         scope_obj = (entry for key, entry of e_list when key.match(/\d+/) and entry.idx == idx)[0]
         $(data._reset_list).each (idx, entry) ->
@@ -329,13 +320,18 @@ angular_add_simple_list_controller = (module, name, settings) ->
                 template : $templateCache.get(t_name)
             }
         )
-    if settings.edit_template
-        module.directive("edittemplate", ($templateCache) ->
-            return {
-                restrict : "EA"
-                template : $templateCache.get(settings.edit_template)
-            }
-        )
+    module.directive("edittemplate", ($compile, $templateCache) ->
+        return {
+            restrict : "EA"
+            template : $templateCache.get(settings.edit_template)
+            link : (scope, element, attrs) ->
+                scope.form_error = (field_name) ->
+                    if scope.form[field_name].$valid
+                        return ""
+                    else
+                        return "has-error"
+        }
+    )
     module.run(($templateCache) ->
         $templateCache.put("simple_confirm.html", simple_modal_template)
     )
@@ -350,6 +346,8 @@ angular_add_simple_list_controller = (module, name, settings) ->
             $scope.pagSettings = paginatorSettings.get_paginator(name, $scope)
             # list of entries
             $scope.entries = []
+            # init form
+            $scope.form = {}
             $scope.shared_data = sharedDataSource.data
             if $scope.settings.rest_url
                 $scope.rest = Restangular.all($scope.settings.rest_url.slice(1))
@@ -369,7 +367,6 @@ angular_add_simple_list_controller = (module, name, settings) ->
                     if idx == base_idx
                         $scope.set_entries(value, true)
                     else
-                        # console.log $scope.settings.rest_map[idx - (1 + base_idx)].short, value.length
                         $scope.rest_data[$scope.settings.rest_map[idx - (1 + base_idx)].short] = value
                 if $scope.fn and $scope.fn.rest_data_set
                     $scope.fn.rest_data_set($scope)
@@ -425,7 +422,6 @@ angular_add_simple_list_controller = (module, name, settings) ->
             $scope.create_or_edit = (event, create_or_edit, obj) ->
                 $scope.edit_obj = obj
                 $scope.create_mode = create_or_edit
-                #console.log cur_templ
                 if $scope.settings.use_modal
                     $scope.edit_div = $compile($templateCache.get($scope.settings.edit_template))($scope)
                     $scope.edit_div.simplemodal
@@ -440,8 +436,6 @@ angular_add_simple_list_controller = (module, name, settings) ->
                         onClose: (dialog) =>
                             $scope.close_modal()
                 else
-                    # dummy form to inherit
-                    $scope.form = {}
                     $scope.modal_active = true
             $scope.hide_modal = () ->
                 # hides dummy modal
