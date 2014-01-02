@@ -746,7 +746,7 @@ class partition_table_form(ModelForm):
     helper.ng_model = "edit_obj"
     helper.layout = Layout(
         Div(
-            HTML("<h2>Partition table</h2>"),
+            HTML("<h2>Partition table '{% verbatim %}{{ edit_obj.name }}{% endverbatim %}'</h2>"),
             Fieldset(
                 "Basic data",
                 Field("name", wrapper_class="ng-class:form_error('name')", placeholder="Name"),

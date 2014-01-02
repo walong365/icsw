@@ -18,7 +18,7 @@
 
 <script type="text/ng-template" id="layout.html">
     <div>
-        <h3>Partition layout for {{ layout.name }}</h3>
+        <h3>Partition layout '{{ layout.name }}'</h3>
         <table class="table table-condensed table-condensed table-hover" style="width:auto;">
             <thead></thead>
             <tbody>
@@ -102,7 +102,7 @@
     <tab heading="Partition tables" ng-controller="partition_table_base">
         <div ng-controller="partition_table">
             <div class="row">
-                <div class="col-sm-6">
+                <div class="col-sm-5">
                     <div>
                         <h2>Partition tables ({{entries.length}} entries), <input class="btn btn-primary" type="button" ng-click="reload()" value="reload"/></h2>
                         <table class="table table-condensed table-condensed table-hover" style="width:auto;">
@@ -116,13 +116,15 @@
                         </table>
                     </div>
                 </div>
-                <div edittemplate ng-if="modal_active && !settings.use_modal" class="well well-sm col-sm-6">
-                </div>
-            </div>
-            <div class="row">
-                <div class="col-sm-12" ng-if="modal_active && !settings.use_modal">
-                    <div disklayout layout="edit_obj"></div>
-                </div>
+                <div class="col-sm-7">
+                    <div class="row">
+                        <div edittemplate ng-if="modal_active && !settings.use_modal" class="well well-sm col-sm-12">
+                        </div>
+                        <div class="col-sm-12" ng-if="modal_active && !settings.use_modal">
+                            <div disklayout layout="edit_obj"></div>
+                        </div>
+                    </div>
+                 </div>
             </div>
         </div>
     </tab>
