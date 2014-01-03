@@ -2353,9 +2353,7 @@ class partition(models.Model):
                     p_list.append((logging_tools.LOG_LEVEL_ERROR, "no mountpoint defined for %s" % (p_name), False))
                 if not self.mount_options.strip():
                     p_list.append((logging_tools.LOG_LEVEL_ERROR, "no mount_options given for %s" % (p_name), False))
-        self.problems = p_list
-    def _get_problems(self):
-        return self.problems
+        return p_list
     class Meta:
         db_table = u'partition'
         ordering = ("pnum",)
@@ -2419,16 +2417,14 @@ class partition_disc(models.Model):
             )
         return pd_xml
     def _validate(self):
-        p_list = []
-        for part in self.partition_set.all():
-            part._validate(self)
         my_parts = self.partition_set.all()
+        p_list = sum([[(cur_lev, "*%d : %s" % (part.pnum, msg), flag) for cur_lev, msg, flag in part._validate(self)] for part in my_parts], [])
         all_mps = [cur_mp.mountpoint for cur_mp in my_parts if cur_mp.mountpoint.strip()]
         if len(all_mps) != len(set(all_mps)):
             p_list.append((logging_tools.LOG_LEVEL_ERROR, "mountpoints not unque", False))
         if all_mps:
-            if "/" not in all_mps:
-                p_list.append((logging_tools.LOG_LEVEL_ERROR, "/ missing from mountpoints", False))
+            # if "/" not in all_mps:
+            #    p_list.append((logging_tools.LOG_LEVEL_ERROR, "/ missing from mountpoints", False))
             if "/usr" in all_mps:
                 p_list.append((logging_tools.LOG_LEVEL_ERROR, "cannot boot when /usr is on a separate partition", False))
         ext_parts = [cur_p for cur_p in my_parts if cur_p.partition_fs_id and cur_p.partition_fs.name == "ext"]
@@ -2443,9 +2439,7 @@ class partition_disc(models.Model):
                 ext_part = ext_parts[0]
                 if ext_part.pnum != 4:
                     p_list.append((logging_tools.LOG_LEVEL_ERROR, "extended partition must have pnum 4", False))
-        self.problems = p_list
-    def _get_problems(self):
-        return self.problems + sum([cur_part._get_problems() for cur_part in self.partition_set.all()], [])
+        return p_list
     class Meta:
         db_table = u'partition_disc'
         ordering = ("priority", "disc",)
@@ -2494,17 +2488,33 @@ class partition_table(models.Model):
     # non users-created partition tables can be deleted automatically
     user_created = models.BooleanField(default=True)
     date = models.DateTimeField(auto_now_add=True)
+    def _msg_merge(self, parent, msg):
+        if msg.startswith("*"):
+            return "%s%s" % (parent, msg[1:])
+        else:
+            return "%s: %s" % (parent, msg)
+    def validate(self):
+        # problem list, format is level, problem, global (always True for partition_table)
+        prob_list = []
+        if not self.partition_disc_set.all():
+            prob_list.append((logging_tools.LOG_LEVEL_ERROR, "no discs defined", True))
+        prob_list.extend(
+            sum([
+                [
+                    (cur_lev, self._msg_merge(p_disc.disc, msg), flag) for cur_lev, msg, flag in p_disc._validate()
+                ] for p_disc in self.partition_disc_set.all()
+            ], [])
+        )
+        # p_list = sum([[(cur_lev, "%d : %s" % (part.pnum, msg), flag) for cur_lev, msg, flag in part._validate(self)] for part in my_parts], [])
+        new_valid = not any([log_level in [
+            logging_tools.LOG_LEVEL_ERROR,
+            logging_tools.LOG_LEVEL_CRITICAL] for log_level, what, is_global in prob_list])
+        # validate
+        if new_valid != self.valid:
+            self.valid = new_valid
+            self.save()
+        return prob_list
     def get_xml(self, **kwargs):
-        _validate = kwargs.get("validate", False)
-        if _validate:
-            prob_list = self._validate()
-            new_valid = not any([log_level in [
-                logging_tools.LOG_LEVEL_ERROR,
-                logging_tools.LOG_LEVEL_CRITICAL] for log_level, what, is_global in prob_list])
-            # validate
-            if new_valid != self.valid:
-                self.valid = new_valid
-                self.save()
         pt_xml = E.partition_table(
             unicode(self),
             E.partition_discs(
@@ -2521,22 +2531,7 @@ class partition_table(models.Model):
             enabled="1" if self.enabled else "0",
             nodeboot="1" if self.nodeboot else "0",
         )
-        if _validate:
-            pt_xml.append(
-                E.problems(
-                    *[E.problem(what, level="%d" % (log_level)) for log_level, what, is_global in prob_list if is_global]
-                )
-            )
         return pt_xml
-    def _validate(self):
-        # problem list, format is level, problem, global (always True for partition_table)
-        p_list = []
-        if not self.partition_disc_set.all():
-            p_list.append((logging_tools.LOG_LEVEL_ERROR, "no discs defined", True))
-        for p_disc in self.partition_disc_set.all():
-            p_disc._validate()
-        self.problems = p_list
-        return self.problems + sum([cur_disc._get_problems() for cur_disc in self.partition_disc_set.all()], [])
     def __unicode__(self):
         return self.name
     class Meta:
