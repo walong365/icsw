@@ -1575,7 +1575,6 @@ class lvm_lv(models.Model):
         ordering = ("name",)
 
 class lvm_lv_serializer(serializers.ModelSerializer):
-    partition_fs = partition_fs_serializer()
     class Meta:
         model = lvm_lv
 
@@ -2304,7 +2303,7 @@ def config_post_save(sender, **kwargs):
 class partition(models.Model):
     idx = models.AutoField(db_column="partition_idx", primary_key=True)
     partition_disc = models.ForeignKey("partition_disc")
-    mountpoint = models.CharField(max_length=192, default="/")
+    mountpoint = models.CharField(max_length=192, default="/", blank=True)
     partition_hex = models.CharField(max_length=6, blank=True)
     size = models.IntegerField(null=True, blank=True, default=100)
     mount_options = models.CharField(max_length=255, blank=True, default="defaults")
@@ -2315,7 +2314,7 @@ class partition(models.Model):
     partition_fs = models.ForeignKey("partition_fs")
     # lut_blob = models.TextField(blank=True, null=True)
     # comma-delimited list of /dev/disk/by-* entries
-    disk_by_info = models.TextField(default="")
+    disk_by_info = models.TextField(default="", blank=True)
     warn_threshold = models.IntegerField(null=True, blank=True, default=85)
     crit_threshold = models.IntegerField(null=True, blank=True, default=95)
     date = models.DateTimeField(auto_now_add=True)
@@ -2362,7 +2361,6 @@ class partition(models.Model):
         ordering = ("pnum",)
 
 class partition_serializer(serializers.ModelSerializer):
-    partition_fs = partition_fs_serializer()
     class Meta:
         model = partition
 
@@ -2458,6 +2456,17 @@ class partition_disc_serializer(serializers.ModelSerializer):
     partition_set = partition_serializer(many=True)
     class Meta:
         model = partition_disc
+
+class partition_disc_serializer_save(serializers.ModelSerializer):
+    class Meta:
+        model = partition_disc
+        fields = ("disc",)
+
+class partition_disc_serializer_create(serializers.ModelSerializer):
+    # partition_set = partition_serializer(many=True)
+    class Meta:
+        model = partition_disc
+        # fields = ("disc", "partition_table")
 
 @receiver(signals.pre_save, sender=partition_disc)
 def partition_disc_pre_save(sender, **kwargs):
