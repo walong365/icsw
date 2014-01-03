@@ -30,22 +30,32 @@
 
 <script type="text/ng-template" id="layout.html">
     <div class="col-sm-10">
-        <h3>Partition layout '{{ edit_obj.name }}',
-            <input type="button" class="btn btn-success" ng-click="layout_edit.create($event)" value="create"/>
-        </h3>
+        <h4>Problems: {{ error_list.length }}</h4>
+        <ul ng-show="error_list.length" class="list-group">
+            <li ng-repeat="error in error_list" class="list-group-item">
+                {{ error.msg }}
+            </li>
+        </ul>
         <table class="table table-condensed table-condensed table-hover" style="width:auto;">
             <thead></thead>
             <tbody>
+                <tr class="success">
+                    <th colspan="10">Detailed disk layout for '{{ edit_obj.name }}'</th>
+                    <th>
+                        <input type="button" class="btn btn-success btn-sm" ng-click="layout_edit.create($event)" value="create disc"/>
+                    </th>
+                    <th colspan="2"></th>
+                </tr>
                 <tr partclean ng-repeat="disc in edit_obj.partition_disc_set"></tr>
                 <tr partdisc ng-repeat="disc in edit_obj.partition_disc_set"></tr>
                 <tr class="danger">
                     <th colspan="10">Sys partitions ({{ edit_obj.sys_partition_set.length }} defined)</th>
                     <th>
-                        <input type="button" class="btn btn-success" ng-click="sys_edit.create($event)" value="create"/>
+                        <input type="button" class="btn btn-success btn-sm" ng-click="sys_edit.create($event)" value="create sys"/>
                     </th>
                     <th colspan="2"></th>
                 </tr>
-                <tr partsys ng-repeat="sys in edit_obj.sys_partition_set | orderBy:'mountpoint'"></tr>
+                <tr partsys class="icsw_dyn" ng-repeat="sys in edit_obj.sys_partition_set | orderBy:'mountpoint'"></tr>
             </tbody>
         </table>
         {{ layoutx }}
@@ -53,23 +63,21 @@
 </script>
 
 <script type="text/ng-template" id="sys_part.html">
-    <tr class="icsw_dyn">
-        <td colspan="2">{{ sys.name }}</td>
-        <td>{{ sys.mountpoint }}</td>
-        <td colspan="8">{{ sys.mount_options }}</td>
-        <td>
-            <input type="button" class="btn btn-primary btn-sm" value="modify" ng-click="sys_edit.edit(sys, $event)"></input>
-        </td>
-        <td>
-            <input type="button" class="btn btn-danger btn-sm" value="delete" ng-click="sys_edit.delete_obj(sys)"></input>
-        </td>
-    </tr>
+    <td colspan="2">{{ sys.name }}</td>
+    <td>{{ sys.mountpoint }}</td>
+    <td colspan="8">{{ sys.mount_options }}</td>
+    <td>
+        <input type="button" class="btn btn-primary btn-sm" value="modify" ng-click="sys_edit.edit(sys, $event)"></input>
+    </td>
+    <td>
+        <input type="button" class="btn btn-danger btn-sm" value="delete" ng-click="sys_edit.delete_obj(sys)"></input>
+    </td>
 </script>
 
 <script type="text/ng-template" id="part_disc.html">
     <tr class="success icsw_dyn">
         <th colspan="10">Disc: {{ disc.disc }}, {{ disc.partition_set.length }} partitions</th>
-        <th><input type="button" class="btn btn-success btn-sm" ng-click="disc_edit.create($event)" value="create"/></th>
+        <th><input type="button" class="btn btn-success btn-sm" ng-click="disc_edit.create($event)" value="create part"/></th>
         <th><input type="button" class="btn btn-primary btn-sm" ng-click="disc_edit.edit(disc, $event)" value="modify"/></th>
         <th><input type="button" class="btn btn-danger btn-sm" ng-click="disc_edit.delete_obj(disc)" value="delete"/></th>
     </tr>
@@ -86,33 +94,31 @@
         <th class="text-center">limit</th>
         <th class="text-center" colspan="3">Action</th>
     </tr>
-    <tr part ng-repeat="part in disc.partition_set"></tr>
+    <tr class="icsw_dyn" part ng-repeat="part in disc.partition_set"></tr>
 </script>
 
 <script type="text/ng-template" id="part.html">
-    <tr class="icsw_dyn">
-        <td>{{ disc.disc }}{{ part.pnum }}</td>
-        <td>0x{{ part.partition_hex }}</td>
-        <td>{{ part.mountpoint }}</td>
-        <td>{{ part.mount_options }}</td>
-        <td>{{ part.bootable | yesno1 }}</td>
-        <td class="text-right">{{ part.size | get_size:1000000:1000 }}</td>
-        <td>{{ part.fs_freq }}</td>
-        <td>{{ part.fs_passno }}</td>
-        <td>{{ part.partition_fs | array_lookup:this.rest_data.partition_fs:'name' }}</td>
-        <td>
-            <span ng-if="part.warn_threshold || part.crit_threshold">{{ part.warn_threshold }} / {{ part.crit_threshold }}</span>
-            <span ng-if="!(part.warn_threshold && part.crit_threshold)">---</span>
-        </td>
-        <td>
-        </td>
-        <td>
-            <input type="button" class="btn btn-primary btn-sm" value="modify" ng-click="part_edit.edit(part, $event)"></input>
-        </td>
-        <td>
-            <input type="button" class="btn btn-danger btn-sm" value="delete" ng-click="part_edit.delete_obj(part)"></input>
-        </td>
-    </tr>
+    <td>{{ disc.disc }}{{ part.pnum }}</td>
+    <td>0x{{ part.partition_hex }}</td>
+    <td>{{ part.mountpoint }}</td>
+    <td>{{ part.mount_options }}</td>
+    <td>{{ part.bootable | yesno1 }}</td>
+    <td class="text-right">{{ part.size | get_size:1000000:1000 }}</td>
+    <td>{{ part.fs_freq }}</td>
+    <td>{{ part.fs_passno }}</td>
+    <td>{{ part.partition_fs | array_lookup:this.rest_data.partition_fs:'name' }}</td>
+    <td>
+        <span ng-if="part.warn_threshold || part.crit_threshold">{{ part.warn_threshold }} / {{ part.crit_threshold }}</span>
+        <span ng-if="!(part.warn_threshold && part.crit_threshold)">---</span>
+    </td>
+    <td>
+    </td>
+    <td>
+        <input type="button" class="btn btn-primary btn-sm" value="modify" ng-click="part_edit.edit(part, $event)"></input>
+    </td>
+    <td>
+        <input type="button" class="btn btn-danger btn-sm" value="delete" ng-click="part_edit.delete_obj(part)"></input>
+    </td>
 </script>
 
 <script type="text/ng-template" id="partition_table_head.html">
@@ -120,10 +126,10 @@
         <th>Name</th>   
         <th>Description</th>
         <th>enabled</th>
-        <th>valid</th>   
+        <th>valid</th>
         <th>nodeboot</th>
         <th>Usecount</th>
-        <th colspan="2" class="text-center">action</th>   
+        <th colspan="2" class="text-center">action</th>
     </tr>
 </script>
 
@@ -154,7 +160,7 @@
         </div>
         <div edittemplate ng-if="modal_active && !settings.use_modal" class="well well-sm col-sm-8">
         </div>
-        <div disklayout layout="edit_obj" ng-if="modal_active && !settings.use_modal" class="col-sm-12">
+        <div disklayout ng-if="modal_active && !settings.use_modal" class="col-sm-12">
         </div>
     </tab>
     <tab heading="Partitions tables (old)">

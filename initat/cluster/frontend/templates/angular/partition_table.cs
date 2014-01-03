@@ -59,12 +59,23 @@ class edit_mixin
             onShow: (dialog) => 
                 dialog.container.draggable()
                 $("#simplemodal-container").css("height", "auto")
+                @_modal_close_ok = false
                 @scope.modal_active = true
             onClose: (dialog) =>
                 @close_modal()
-    close_modal : () ->
+    close_modal : () =>
         $.simplemodal.close()
         #console.log scope.pre_edit_obj.pnum, scope._edit_obj.pnum
+        if @scope.modal_active
+            @scope.$emit("icsw.em.modal_closed")
+            #console.log "*", @_modal_close_ok, @scope.pre_edit_obj
+            if not @_modal_close_ok and not @scope.create_mode
+                # not working right now, hm ...
+                true
+                #@scope._edit_obj = angular.copy(@scope.pre_edit_obj)
+                #console.log @scope._edit_obj.pnum, @scope.pre_edit_obj.pnum
+                #@scope._edit_obj.pnum = 99
+                #console.log @scope._edit_obj, @scope.pre_edit_obj
         @scope.modal_active = false
     form_error : (field_name) =>
         if @scope.form[field_name].$valid
@@ -79,11 +90,13 @@ class edit_mixin
                     #console.log @create_list, new_data
                     @create_list.push(new_data)
                     @close_modal()
+                    @_modal_close_ok = true
                 )
             else
                 @scope._edit_obj.put().then(
                     (data) => 
                         handle_reset(data, @scope._edit_obj, null)
+                        @_modal_close_ok = true
                         @close_modal()
                     (resp) => handle_reset(resp.data, @scope._edit_obj, null)
                 )
@@ -102,7 +115,10 @@ class edit_mixin
             backdrop : "static"
             resolve :
                 question : () =>
-                    return "delete"
+                    if @delete_confirm_str
+                        return @delete_confirm_str(obj)
+                    else
+                        return "Really delete object ?"
         c_modal.result.then(
             () =>
                 # add restangular elements
@@ -111,19 +127,43 @@ class edit_mixin
                     noty
                         text : "deleted instance"
                     remove_by_idx(@delete_list, obj.idx)
-                    # not woking right now, hm ...
-                    try
-                        @scope.$digest()
-                    catch exc
                 )
         )
 
-partition_table_module.directive("layout", ($compile, $modal, $templateCache, Restangular) ->
+partition_table_module.directive("disklayout", ($compile, $modal, $templateCache, Restangular) ->
     return {
         restrict : "EA"
         scope : true
         compile: (tElement, tAttrs) ->
             return (scope, element, attrs) ->
+                scope.$on("icsw.em.modal_closed", (args) ->
+                    scope.validate()
+                )
+                scope.validate = () ->
+                    $.ajax
+                        url : "{% url 'setup:validate_partition' %}"
+                        data : {
+                            "pt_pk" : scope.edit_obj.idx
+                        }
+                        success : (xml) ->
+                            parse_xml_response(xml)
+                            error_list = []
+                            $(xml).find("problem").each (idx, cur_p) =>
+                                cur_p = $(cur_p)
+                                error_list.push(
+                                    {
+                                        "msg" : cur_p.text()
+                                        "level" : parseInt(cur_p.attr("level"))
+                                        "global" : if parseInt(cur_p.attr("g_problem")) then true else false
+                                    }
+                                )
+                            is_valid = if parseInt($(xml).find("problems").attr("valid")) then true else false
+                            scope.$apply(
+                                scope.edit_obj.valid = is_valid
+                                console.log scope.edit_obj
+                                scope.error_list = error_list
+                            )
+                scope.error_list = []
                 scope.layout_edit = new edit_mixin(scope, $templateCache, $compile, $modal, Restangular)
                 scope.layout_edit.create_template = "partition_disc.html"
                 scope.layout_edit.create_rest_url = Restangular.all("{% url 'rest:partition_disc_list' %}".slice(1))
@@ -141,6 +181,8 @@ partition_table_module.directive("layout", ($compile, $modal, $templateCache, Re
                     return {
                         "partition_table" : scope.edit_obj.idx
                         "name"            : "new"
+                        "mount_options"   : "defaults"
+                        "mountpoint"      : "/"
                     }
                 element.replaceWith($compile($templateCache.get("layout.html"))(scope))
     }
@@ -161,7 +203,7 @@ partition_table_module.directive("partclean", ($compile, $templateCache) ->
 partition_table_module.directive("partdisc", ($compile, $templateCache, $modal, Restangular) ->
     return {
         restrict : "EA"
-        replace : true
+        #replace : true
         compile: (tElement, tAttrs) ->
             return (scope, element, attrs) ->
                 scope.disc_edit = new edit_mixin(scope, $templateCache, $compile, $modal, Restangular)
@@ -171,6 +213,7 @@ partition_table_module.directive("partdisc", ($compile, $templateCache, $modal, 
                 scope.disc_edit.create_rest_url = Restangular.all("{% url 'rest:partition_list' %}".slice(1))
                 scope.disc_edit.create_list = scope.disc.partition_set
                 scope.disc_edit.delete_list = scope.edit_obj.partition_disc_set
+                scope.disc_edit.delete_confirm_str = (obj) -> "Really delete disc '#{obj.disc}' ?"
                 scope.disc_edit.new_object = (scope) ->
                     return {
                         "size" : 128
@@ -185,33 +228,39 @@ partition_table_module.directive("partdisc", ($compile, $templateCache, $modal, 
                         "partition_hex" : "82"
                     }
                 element.replaceWith($compile($templateCache.get("part_disc.html"))(scope))
+                #element.append($compile($templateCache.get("part_disc.html"))(scope))
     }
 )
 
 partition_table_module.directive("part", ($compile, $templateCache, $modal, Restangular) ->
     return {
         restrict : "EA"
-        compile: (tElement, tAttrs) ->
-            return (scope, element, attrs) ->
-                scope.part_edit = new edit_mixin(scope, $templateCache, $compile, $modal, Restangular)
-                scope.part_edit.edit_template = "partition.html"
-                scope.part_edit.modify_rest_url = "{% url 'rest:partition_detail' 1 %}".slice(1).slice(0, -2)
-                scope.part_edit.delete_list = scope.disc.partition_set
-                element.replaceWith($compile($templateCache.get("part.html"))(scope))
+        template : $templateCache.get("part.html")
+        link : (scope, element, attrs) ->
+            scope.part_edit = new edit_mixin(scope, $templateCache, $compile, $modal, Restangular)
+            scope.part_edit.edit_template = "partition.html"
+            scope.part_edit.modify_rest_url = "{% url 'rest:partition_detail' 1 %}".slice(1).slice(0, -2)
+            scope.part_edit.delete_list = scope.disc.partition_set
+            scope.part_edit.delete_confirm_str = (obj) -> "Really delete partition '#{obj.pnum}' ?"
+            #element.replaceWith($compile($templateCache.get("part.html"))(scope))
+            #element.append($compile($templateCache.get("part.html"))(scope))
     }
 )
 
 partition_table_module.directive("partsys", ($compile, $templateCache, $modal, Restangular) ->
     return {
         restrict : "EA"
-        compile: (tElement, tAttrs) ->
-            return (scope, element, attrs) ->
-                # console.log scope, element, attrs, scope.layout
-                scope.sys_edit = new edit_mixin(scope, $templateCache, $compile, $modal, Restangular)
-                scope.sys_edit.edit_template = "partition_sys.html"
-                scope.sys_edit.modify_rest_url = "{% url 'rest:sys_partition_detail' 1 %}".slice(1).slice(0, -2)
-                scope.sys_edit.delete_list = scope.edit_obj.sys_partition_set
-                element.replaceWith($compile($templateCache.get("sys_part.html"))(scope))
+        template : $templateCache.get("sys_part.html")
+        #compile: (tElement, tAttrs) ->
+        link : (scope, element, attrs) ->
+            # console.log scope, element, attrs, scope.layout
+            scope.sys_edit = new edit_mixin(scope, $templateCache, $compile, $modal, Restangular)
+            scope.sys_edit.edit_template = "partition_sys.html"
+            scope.sys_edit.modify_rest_url = "{% url 'rest:sys_partition_detail' 1 %}".slice(1).slice(0, -2)
+            scope.sys_edit.delete_list = scope.edit_obj.sys_partition_set
+            scope.sys_edit.delete_confirm_str = (obj) -> "Really delete sys partition '#{obj.name}' ?"
+            #element.replaceWith($compile($templateCache.get("sys_part.html"))(scope))
+            #element.append($compile($templateCache.get("sys_part.html"))(scope))
     }
 )
 

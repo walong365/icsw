@@ -765,7 +765,7 @@ class partition_table_form(ModelForm):
     )
     class Meta:
         model = partition_table
-        fields = ["name", "description", "enabled", "nodeboot"]
+        fields = ["name", "description", "enabled", "nodeboot", ]
 
 class partition_disc_form(ModelForm):
     helper = FormHelper()

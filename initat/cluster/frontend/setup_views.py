@@ -38,7 +38,7 @@ class partition_overview(View):
             "partition_disc_set__partition_set",
             "partition_disc_set__partition_set__partition_fs",
             ).order_by("name"):
-            part_list.append(cur_part.get_xml(validate=True))
+            part_list.append(cur_part.get_xml())
         xml_resp.append(part_list)
         xml_resp.append(
             E.partition_fs_list(
@@ -56,8 +56,13 @@ class validate_partition(View):
             "partition_disc_set",
             "partition_disc_set__partition_set",
             "partition_disc_set__partition_set__partition_fs",
+            "lvm_vg_set",
+            "lvm_lv_set__lvm_vg",
             ).order_by("name").get(Q(pk=_post["pt_pk"]))
-        request.xml_response["response"] = cur_part.get_xml(validate=True)
+        request.xml_response["response"] = E.problems(
+            valid="1" if cur_part.valid else "0",
+            *[E.problem(p_str, g_problem="1" if g_problem else "0", level="%d" % (cur_lev)) for cur_lev, p_str, g_problem in cur_part.validate()]
+        )
 
 class create_part_disc(View):
     @method_decorator(login_required)
