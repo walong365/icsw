@@ -160,7 +160,6 @@ partition_table_module.directive("disklayout", ($compile, $modal, $templateCache
                             is_valid = if parseInt($(xml).find("problems").attr("valid")) then true else false
                             scope.$apply(
                                 scope.edit_obj.valid = is_valid
-                                console.log scope.edit_obj
                                 scope.error_list = error_list
                             )
                 scope.error_list = []

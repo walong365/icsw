@@ -30,7 +30,7 @@
 
 <script type="text/ng-template" id="layout.html">
     <div class="col-sm-10">
-        <h4>Problems: {{ error_list.length }}</h4>
+        <h4 ng-class="edit_obj.valid && 'text-success' || 'text-danger'">Problems: {{ error_list.length }}</h4>
         <ul ng-show="error_list.length" class="list-group">
             <li ng-repeat="error in error_list" class="list-group-item">
                 {{ error.msg }}
@@ -136,12 +136,12 @@
 <script type="text/ng-template" id="partition_table_row.html">
     <td>{{ obj.name }}</td>
     <td>{{ obj.description }}</td>
-    <td>{{ obj.enabled | yesno1 }}</td>
-    <td>{{ obj.valid | yesno1  }}</td>
-    <td>{{ obj.nodeboot | yesno1 }}</td>
+    <td ng-class="obj.valid && ' ' || 'danger'">{{ obj.enabled | yesno1 }}</td>
+    <td ng-class="obj.valid && ' ' || 'danger'">{{ obj.valid | yesno1  }}</td>
+    <td ng-class="obj.valid && ' ' || 'danger'">{{ obj.nodeboot | yesno1 }}</td>
     <td class="text-center">{{ obj.act_partition_table.length }} / {{ obj.new_partition_table.length }}</td>
-    <td><input type="button" class="btn btn-primary" ng-click="edit($event, obj)" value="modify"/></td>
-    <td><input type="button" class="btn btn-danger" ng-show="fn.delete_ok(obj)" ng-click="delete(obj)" value="delete"/></td>
+    <td><input type="button" class="btn btn-primary btn-sm" ng-click="edit($event, obj)" value="modify"/></td>
+    <td><input type="button" class="btn btn-danger btn-sm" ng-show="fn.delete_ok(obj)" ng-click="delete(obj)" value="delete"/></td>
 </script>
 
 <tabset>
