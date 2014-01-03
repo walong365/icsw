@@ -7,8 +7,9 @@ from django.db.models import Q
 from django.utils.decorators import method_decorator
 from django.views.generic import View
 from initat.cluster.backbone.models import partition_table, partition_disc, partition, \
-     partition_fs, image, architecture, get_related_models, kernel
-from initat.cluster.frontend.forms import kernel_form, image_form, partition_table_form
+    partition_fs, image, architecture, get_related_models, kernel
+from initat.cluster.frontend.forms import kernel_form, image_form, partition_table_form, \
+    partition_form, partition_disc_form, partition_sys_form
 from initat.cluster.frontend.helper_functions import contact_server, xml_wrapper
 from initat.core.render import render_me
 from lxml.builder import E # @UnresolvedImport
@@ -24,6 +25,9 @@ class partition_overview(View):
     def get(self, request):
         return render_me(request, "part_overview.html", {
             "partition_table_form" : partition_table_form(),
+            "partition_disc_form"  : partition_disc_form(),
+            "partition_sys_form"   : partition_sys_form(),
+            "partition_form"       : partition_form(),
             })()
     @method_decorator(xml_wrapper)
     def post(self, request):

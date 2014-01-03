@@ -287,7 +287,11 @@ angular_module_setup = (module_list, url_list=[]) ->
 handle_reset = (data, e_list, idx) ->
     # used to reset form fields when requested by server reply
     if data._reset_list
-        scope_obj = (entry for key, entry of e_list when key.match(/\d+/) and entry.idx == idx)[0]
+        if idx == null
+            # special case: e_list is the element to modify
+            scope_obj = e_list
+        else
+            scope_obj = (entry for key, entry of e_list when key.match(/\d+/) and entry.idx == idx)[0]
         $(data._reset_list).each (idx, entry) ->
             scope_obj[entry[0]] = entry[1]
         delete data._reset_list
@@ -573,7 +577,7 @@ angular.module(
         while size > factor
             size = parseInt(size/factor)
             f_idx += 1
-        factor = ["", "k", "M", "G", "T"][f_idx]
+        factor = ["", "k", "M", "G", "T", "P", "E"][f_idx]
         return "#{size} #{factor}B"
 )
 

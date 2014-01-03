@@ -19,7 +19,8 @@ from initat.cluster.backbone.models import domain_tree_node, device, category, m
      mon_period, mon_notification, mon_contact, mon_service_templ, host_check_command, \
      mon_contactgroup, mon_device_templ, mon_host_cluster, mon_service_cluster, mon_host_dependency_templ, \
      mon_service_esc_templ, mon_device_esc_templ, mon_service_dependency_templ, package_search, \
-     mon_service_dependency, mon_host_dependency, package_device_connection
+     mon_service_dependency, mon_host_dependency, package_device_connection, partition, \
+     partition_disc, sys_partition
 from initat.cluster.frontend.widgets import device_tree_widget
 import re
 
@@ -749,8 +750,8 @@ class partition_table_form(ModelForm):
             HTML("<h2>Partition table '{% verbatim %}{{ edit_obj.name }}{% endverbatim %}'</h2>"),
             Fieldset(
                 "Basic data",
-                Field("name", wrapper_class="ng-class:form_error('name')", placeholder="Name"),
-                Field("description", wrapper_class="ng-class:form_error('description')", placeholder="Description"),
+                Field("name", wrapper_class="ng-class:cur_edit.form_error('name')", placeholder="Name"),
+                Field("description", wrapper_class="ng-class:cur_edit.form_error('description')", placeholder="Description"),
             ),
             Fieldset(
                 "Flags",
@@ -765,6 +766,111 @@ class partition_table_form(ModelForm):
     class Meta:
         model = partition_table
         fields = ["name", "description", "enabled", "nodeboot"]
+
+class partition_disc_form(ModelForm):
+    helper = FormHelper()
+    helper.form_id = "id_partition_disc_form"
+    helper.form_name = "form"
+    helper.form_class = 'form-horizontal'
+    helper.label_class = 'col-sm-3'
+    helper.field_class = 'col-sm-7'
+    helper.ng_model = "_edit_obj"
+    helper.ng_submit = "cur_edit.modify(this)"
+    helper.layout = Layout(
+        Div(
+            HTML("<h2>Disc '{% verbatim %}{{ _edit_obj.disc }}{% endverbatim %}'</h2>"),
+            Fieldset(
+                "Basic data",
+                Field("disc", wrapper_class="ng-class:cur_edit.form_error('disc')", placeholder="discname"),
+            ),
+            FormActions(
+                Submit("submit", "", css_class="primaryAction", ng_value="action_string"),
+            ),
+        )
+    )
+    class Meta:
+        model = partition_disc
+        fields = ["disc"]
+
+class partition_form(ModelForm):
+    helper = FormHelper()
+    helper.form_id = "id_partition_form"
+    helper.form_name = "form"
+    helper.form_class = 'form-horizontal'
+    helper.label_class = 'col-sm-3'
+    helper.field_class = 'col-sm-7'
+    helper.ng_model = "_edit_obj"
+    helper.ng_submit = "cur_edit.modify(this)"
+    helper.layout = Layout(
+        Div(
+            HTML("<h2>Partition '{% verbatim %}{{ _edit_obj.pnum }}{% endverbatim %}'</h2>"),
+            Fieldset(
+                "Basic data",
+                Field("partition_disc", ng_options="value.idx as value.disc for value in edit_obj.partition_disc_set | orderBy:'disc'", chosen=True, readonly=True),
+                Field("pnum", placeholder="partition", min=1, max=16),
+                Field("partition_fs", ng_options="value.idx as value.name for value in this.rest_data.partition_fs | orderBy:'name'", chosen=True),
+                Field("size", min=0, max=1000000000000),
+                Field("partition_hex", readonly=True),
+            ),
+            Fieldset(
+                "Mount options",
+                Field("mountpoint"),
+                Field("mount_options"),
+                Field("bootable"),
+                Field("fs_freq", min=0, max=1),
+                Field("fs_passno", min=0, max=2),
+            ),
+            Fieldset(
+                "Check thresholds",
+                Field("warn_threshold", min=0, max=100),
+                Field("crit_threshold", min=0, max=100),
+            ),
+            FormActions(
+                Submit("submit", "", css_class="primaryAction", ng_value="action_string"),
+            ),
+        )
+    )
+    def __init__(self, *args, **kwargs):
+        ModelForm.__init__(self, *args, **kwargs)
+        for clear_f in ["partition_fs", "partition_disc"]:
+            self.fields[clear_f].queryset = empty_query_set()
+            self.fields[clear_f].empty_label = None
+    class Meta:
+        model = partition
+        fields = ["mountpoint", "partition_hex", "partition_disc", "size", "mount_options", "pnum",
+            "bootable", "fs_freq", "fs_passno", "warn_threshold", "crit_threshold", "partition_fs"]
+
+class partition_sys_form(ModelForm):
+    helper = FormHelper()
+    helper.form_id = "id_partition_sys_form"
+    helper.form_name = "form"
+    helper.form_class = 'form-horizontal'
+    helper.label_class = 'col-sm-3'
+    helper.field_class = 'col-sm-7'
+    helper.ng_model = "_edit_obj"
+    helper.ng_submit = "cur_edit.modify(this)"
+    helper.layout = Layout(
+        Div(
+            HTML("<h2>Sys Partition '{% verbatim %}{{ _edit_obj.name }}{% endverbatim %}'</h2>"),
+            Fieldset(
+                "Basic data",
+                Field("name"),
+            ),
+            Fieldset(
+                "Mount options",
+                Field("mountpoint"),
+                Field("mount_options"),
+            ),
+            FormActions(
+                Submit("submit", "", css_class="primaryAction", ng_value="action_string"),
+            ),
+        )
+    )
+    def __init__(self, *args, **kwargs):
+        ModelForm.__init__(self, *args, **kwargs)
+    class Meta:
+        model = sys_partition
+        fields = ["name", "mountpoint", "mount_options"]
 
 class mon_period_form(ModelForm):
     helper = FormHelper()

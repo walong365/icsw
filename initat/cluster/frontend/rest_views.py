@@ -11,7 +11,8 @@ from initat.cluster.backbone.models import user , group, user_serializer_h, grou
      get_related_models, get_change_reset_list, device, device_serializer, \
      device_serializer_package_state, device_serializer_monitoring, domain_name_tree, \
      device_serializer_monitor_server, category_tree, device_serializer_cat, device_selection, \
-     device_selection_serializer, partition_table_serializer_save
+     device_selection_serializer, partition_table_serializer_save, partition_disc_serializer_save, \
+     partition_disc_serializer_create
 from rest_framework import mixins, generics, status, viewsets
 from rest_framework.authentication import BasicAuthentication, SessionAuthentication
 from rest_framework.decorators import api_view
@@ -88,6 +89,7 @@ class rest_logging(object):
             result = self._func(*args, **kwargs)
         except:
             exc_data = sys.exc_info()[1]
+            # print "*" * 20, exc_data
             self.log("exception: %s" % (
                 process_tools.get_except_info()),
                      logging_tools.LOG_LEVEL_ERROR)
@@ -111,6 +113,8 @@ class detail_view(mixins.RetrieveModelMixin,
     def get_serializer_class(self):
         if self.model._meta.object_name == "partition_table":
             return partition_table_serializer_save
+        if self.model._meta.object_name == "partition_disc":
+            return partition_disc_serializer_save
         else:
             return self.serializer_class
     @rest_logging
@@ -161,6 +165,12 @@ class list_view(mixins.ListModelMixin,
         if resp.status_code in [200, 201, 202, 203]:
             resp.data["_messages"] = [u"created '%s'" % (unicode(self.object))]
         return resp
+    @rest_logging
+    def get_serializer_class(self):
+        if self.request.method == "POST":
+            if self.model._meta.object_name == "partition_disc":
+                return partition_disc_serializer_create
+        return self.serializer_class
     @rest_logging
     def get_queryset(self):
         model_name = self.model._meta.model_name

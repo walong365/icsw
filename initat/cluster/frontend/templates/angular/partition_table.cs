@@ -19,19 +19,129 @@ angular_add_simple_list_controller(
         delete_confirm_str  : (obj) -> return "Really delete partition table '#{obj.name}' ?"
         use_modal           : false
         template_cache_list : ["partition_table_row.html", "partition_table_head.html"]
+        rest_map            : [
+            {"short" : "partition_fs"      , "url" : "{% url 'rest:partition_fs_list' %}"}
+        ]
         post_delete : ($scope) ->
             $scope.close_modal()
+        fn:
+            delete_ok:  (obj) ->
+                num_refs = obj.act_partition_table.length + obj.new_partition_table.length
+                return if num_refs == 0 then true else false
+        
     }
 )
 
-partition_table_module.directive("layout", ($compile, $templateCache) ->
+class edit_mixin
+    constructor : (@scope, @templateCache, @compile, @modal, @Restangular) ->
+    create : (event) =>
+        if @new_object
+            @scope.new_obj = @new_object(@scope)
+        else
+            @scope.new_obj = {}
+        @create_or_edit(event, true, @scope.new_obj)
+    edit : (obj, event) =>
+        @create_or_edit(event, false, obj)
+    create_or_edit : (event, create_or_edit, obj) =>
+        @scope._edit_obj = obj
+        @scope.pre_edit_obj = angular.copy(obj)
+        @scope.create_mode = create_or_edit
+        @scope.cur_edit = @
+        if not @scope.create_mode
+            @Restangular.restangularizeElement(null, @scope._edit_obj, @modify_rest_url)
+        @scope.action_string = if @scope.create_mode then "Create" else "Modify"
+        @edit_div = @compile(@templateCache.get(if @scope.create_mode then @create_template else @edit_template))(@scope)
+        @edit_div.simplemodal
+            #opacity      : 50
+            position     : [event.pageY, event.pageX]
+            #autoResize   : true
+            #autoPosition : true
+            onShow: (dialog) => 
+                dialog.container.draggable()
+                $("#simplemodal-container").css("height", "auto")
+                @scope.modal_active = true
+            onClose: (dialog) =>
+                @close_modal()
+    close_modal : () ->
+        $.simplemodal.close()
+        #console.log scope.pre_edit_obj.pnum, scope._edit_obj.pnum
+        @scope.modal_active = false
+    form_error : (field_name) =>
+        if @scope.form[field_name].$valid
+            return ""
+        else
+            return "has-error"
+    modify : () ->
+        # console.log @scope.form.$invalid, @scope.create_mode, @scope.new_obj
+        if not @scope.form.$invalid
+            if @scope.create_mode
+                @create_rest_url.post(@scope.new_obj).then((new_data) =>
+                    #console.log @create_list, new_data
+                    @create_list.push(new_data)
+                    @close_modal()
+                )
+            else
+                @scope._edit_obj.put().then(
+                    (data) => 
+                        handle_reset(data, @scope._edit_obj, null)
+                        @close_modal()
+                    (resp) => handle_reset(resp.data, @scope._edit_obj, null)
+                )
+        else
+            console.log "inv", @scope.form
+    modal_ctrl : ($scope, $modalInstance, question) ->
+        $scope.question = question
+        $scope.ok = () ->
+            $modalInstance.close(true)
+        $scope.cancel = () ->
+            $modalInstance.dismiss("cancel")
+    delete_obj : (obj) =>
+        c_modal = @modal.open
+            template : @templateCache.get("simple_confirm.html")
+            controller : @modal_ctrl
+            backdrop : "static"
+            resolve :
+                question : () =>
+                    return "delete"
+        c_modal.result.then(
+            () =>
+                # add restangular elements
+                @Restangular.restangularizeElement(null, obj, @modify_rest_url)
+                obj.remove().then((resp) =>
+                    noty
+                        text : "deleted instance"
+                    remove_by_idx(@delete_list, obj.idx)
+                    # not woking right now, hm ...
+                    try
+                        @scope.$digest()
+                    catch exc
+                )
+        )
+
+partition_table_module.directive("layout", ($compile, $modal, $templateCache, Restangular) ->
     return {
         restrict : "EA"
-        scope :
-            layout : "=layout"
-        #template : $templateCache.get("layout.html")
+        scope : true
         compile: (tElement, tAttrs) ->
             return (scope, element, attrs) ->
+                scope.layout_edit = new edit_mixin(scope, $templateCache, $compile, $modal, Restangular)
+                scope.layout_edit.create_template = "partition_disc.html"
+                scope.layout_edit.create_rest_url = Restangular.all("{% url 'rest:partition_disc_list' %}".slice(1))
+                scope.layout_edit.create_list = scope.edit_obj.partition_disc_set
+                scope.layout_edit.new_object = (scope) ->
+                    return {
+                        "partition_table" : scope.edit_obj.idx
+                        "disc"            : "/dev/sd"
+                    }
+                scope.sys_edit = new edit_mixin(scope, $templateCache, $compile, $modal, Restangular)
+                scope.sys_edit.create_template = "partition_sys.html"
+                scope.sys_edit.create_rest_url = Restangular.all("{% url 'rest:sys_partition_list'%}".slice(1))
+                scope.sys_edit.create_list = scope.edit_obj.sys_partition_set
+                scope.sys_edit.new_object = (scope) ->
+                    return {
+                        "partition_table" : scope.edit_obj.idx
+                        "name"            : "new"
+                    }
                 element.replaceWith($compile($templateCache.get("layout.html"))(scope))
     }
 )
@@ -43,46 +153,67 @@ partition_table_module.directive("partclean", ($compile, $templateCache) ->
         compile: (tElement, tAttrs) ->
             return (scope, element, attrs) ->
                 # dirty but working
+                # console.log element.parent().find("tr[class*='icsw_dyn']").length
                 element.parent().find("tr[class*='icsw_dyn']").remove()
     }
 )
 
-partition_table_module.directive("partdisc", ($compile, $templateCache) ->
+partition_table_module.directive("partdisc", ($compile, $templateCache, $modal, Restangular) ->
     return {
         restrict : "EA"
         replace : true
         compile: (tElement, tAttrs) ->
             return (scope, element, attrs) ->
+                scope.disc_edit = new edit_mixin(scope, $templateCache, $compile, $modal, Restangular)
+                scope.disc_edit.create_template = "partition.html"
+                scope.disc_edit.edit_template = "partition_disc.html"
+                scope.disc_edit.modify_rest_url = "{% url 'rest:partition_disc_detail' 1 %}".slice(1).slice(0, -2)
+                scope.disc_edit.create_rest_url = Restangular.all("{% url 'rest:partition_list' %}".slice(1))
+                scope.disc_edit.create_list = scope.disc.partition_set
+                scope.disc_edit.delete_list = scope.edit_obj.partition_disc_set
+                scope.disc_edit.new_object = (scope) ->
+                    return {
+                        "size" : 128
+                        "partition_disc" : scope.disc.idx
+                        "partition_fs" : (entry.idx for entry in scope.rest_data.partition_fs when entry.name == "btrfs")[0]
+                        "fs_freq" : 1
+                        "fs_passno" : 2
+                        "pnum" : 1
+                        "warn_threshold" : 85
+                        "crit_threshold" : 95
+                        "mount_options" : "defaults"
+                        "partition_hex" : "82"
+                    }
                 element.replaceWith($compile($templateCache.get("part_disc.html"))(scope))
     }
 )
 
-partition_table_module.directive("part", ($compile, $templateCache) ->
+partition_table_module.directive("part", ($compile, $templateCache, $modal, Restangular) ->
     return {
         restrict : "EA"
         compile: (tElement, tAttrs) ->
             return (scope, element, attrs) ->
-                # console.log scope, element, attrs, scope.layout
+                scope.part_edit = new edit_mixin(scope, $templateCache, $compile, $modal, Restangular)
+                scope.part_edit.edit_template = "partition.html"
+                scope.part_edit.modify_rest_url = "{% url 'rest:partition_detail' 1 %}".slice(1).slice(0, -2)
+                scope.part_edit.delete_list = scope.disc.partition_set
                 element.replaceWith($compile($templateCache.get("part.html"))(scope))
     }
 )
 
-partition_table_module.directive("partsys", ($compile, $templateCache) ->
+partition_table_module.directive("partsys", ($compile, $templateCache, $modal, Restangular) ->
     return {
         restrict : "EA"
         compile: (tElement, tAttrs) ->
             return (scope, element, attrs) ->
                 # console.log scope, element, attrs, scope.layout
+                scope.sys_edit = new edit_mixin(scope, $templateCache, $compile, $modal, Restangular)
+                scope.sys_edit.edit_template = "partition_sys.html"
+                scope.sys_edit.modify_rest_url = "{% url 'rest:sys_partition_detail' 1 %}".slice(1).slice(0, -2)
+                scope.sys_edit.delete_list = scope.edit_obj.sys_partition_set
                 element.replaceWith($compile($templateCache.get("sys_part.html"))(scope))
     }
 )
-
-partition_table_module.controller("partition_table", ["$scope", "$compile", "$templateCache", "Restangular",
-    ($scope, $compile, $templateCache, Restangular) ->
-        $scope.delete_ok = (obj) ->
-            num_refs = obj.act_partition_table.length + obj.new_partition_table.length
-            return if num_refs == 0 then true else false
-])
 
 {% endinlinecoffeescript %}
 
