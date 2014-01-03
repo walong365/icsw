@@ -29,7 +29,6 @@
 {% verbatim %}
 
 <script type="text/ng-template" id="layout.html">
-    <div class="col-sm-10">
         <h4 ng-class="edit_obj.valid && 'text-success' || 'text-danger'">Problems: {{ error_list.length }}</h4>
         <ul ng-show="error_list.length" class="list-group">
             <li ng-repeat="error in error_list" class="list-group-item">
@@ -40,7 +39,7 @@
             <thead></thead>
             <tbody>
                 <tr class="success">
-                    <th colspan="10">Detailed disk layout for '{{ edit_obj.name }}'</th>
+                    <th colspan="10"></th>
                     <th>
                         <input type="button" class="btn btn-success btn-sm" ng-click="layout_edit.create($event)" value="create disc"/>
                     </th>
@@ -49,7 +48,7 @@
                 <tr partclean ng-repeat="disc in edit_obj.partition_disc_set"></tr>
                 <tr partdisc ng-repeat="disc in edit_obj.partition_disc_set"></tr>
                 <tr class="danger">
-                    <th colspan="10">Sys partitions ({{ edit_obj.sys_partition_set.length }} defined)</th>
+                    <th colspan="10">system partitions ({{ edit_obj.sys_partition_set.length }} defined)</th>
                     <th>
                         <input type="button" class="btn btn-success btn-sm" ng-click="sys_edit.create($event)" value="create sys"/>
                     </th>
@@ -58,8 +57,6 @@
                 <tr partsys class="icsw_dyn" ng-repeat="sys in edit_obj.sys_partition_set | orderBy:'mountpoint'"></tr>
             </tbody>
         </table>
-        {{ layoutx }}
-    </div>
 </script>
 
 <script type="text/ng-template" id="sys_part.html">
@@ -158,9 +155,7 @@
                 </tfoot>
             </table>
         </div>
-        <div edittemplate ng-if="modal_active && !settings.use_modal" class="well well-sm col-sm-8">
-        </div>
-        <div disklayout ng-if="modal_active && !settings.use_modal" class="col-sm-12">
+        <div edittemplate ng-if="modal_active && !settings.use_modal" class="col-sm-12">
         </div>
     </tab>
     <tab heading="Partitions tables (old)">

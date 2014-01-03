@@ -747,19 +747,42 @@ class partition_table_form(ModelForm):
     helper.ng_model = "edit_obj"
     helper.layout = Layout(
         Div(
-            HTML("<h2>Partition table '{% verbatim %}{{ edit_obj.name }}{% endverbatim %}'</h2>"),
+            HTML("<h3>Partition table '{% verbatim %}{{ edit_obj.name }}{% endverbatim %}'</h3>"),
             Fieldset(
                 "Basic data",
-                Field("name", wrapper_class="ng-class:cur_edit.form_error('name')", placeholder="Name"),
-                Field("description", wrapper_class="ng-class:cur_edit.form_error('description')", placeholder="Description"),
+                Div(
+                    Div(
+                        Field("name", wrapper_class="ng-class:cur_edit.form_error('name')", placeholder="Name"),
+                        css_class="col-md-6",
+                    ),
+                    Div(
+                        Field("description", wrapper_class="ng-class:cur_edit.form_error('description')", placeholder="Description"),
+                        css_class="col-md-6",
+                    ),
+                    css_class="row",
+                ),
             ),
             Fieldset(
                 "Flags",
-                Field("enabled"),
-                Field("nodeboot"),
+                Div(
+                    Div(
+                        Field("enabled"),
+                        css_class="col-md-4",
+                    ),
+                    Div(
+                        Field("nodeboot"),
+                        css_class="col-md-4",
+                    ),
+                    Div(
+                        Submit("submit", "", css_class="primaryAction", ng_value="get_action_string()"),
+                        css_class="col-md-4",
+                    ),
+                    css_class="row",
+                ),
             ),
-            FormActions(
-                Submit("submit", "", css_class="primaryAction", ng_value="get_action_string()"),
+            Fieldset(
+                "Detailed partition layout",
+                HTML('<div disklayout ng-if="modal_active && !settings.use_modal">'),
             ),
         )
     )
