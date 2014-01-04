@@ -48,6 +48,15 @@ class server_code(threading_tools.process_pool):
         process_tools.ALLOW_MULTIPLE_INSTANCES = False
         # copy to access from modules
         self.global_config = global_config
+        self.hpy = None
+        if global_config["GUPPY"]:
+            try:
+                from guppy import hpy
+            except ImportError:
+                pass
+            else:
+                self.hpy = hpy()
+                self.hpy.setref()
         self.__log_cache, self.__log_template = ([], None)
         threading_tools.process_pool.__init__(
             self,
@@ -83,6 +92,8 @@ class server_code(threading_tools.process_pool):
             self.add_process(inotify_process("inotify", busy_loop=True), start=True)
         self._show_config()
         self.__debug = global_config["DEBUG"]
+        if self.hpy:
+            self.register_timer(self._hpy_run, 30, instant=True)
         if not self._init_commands():
             self._sigint("error init")
     def log(self, what, lev=logging_tools.LOG_LEVEL_OK):
@@ -98,6 +109,12 @@ class server_code(threading_tools.process_pool):
             self.log("exit already requested, ignoring", logging_tools.LOG_LEVEL_WARN)
         else:
             self["exit_requested"] = True
+    def _hpy_run(self):
+        # lines = unicode(self.hpy.heap().byrcs[0].byid).split("\n")
+        lines = unicode(self.hpy.heap()).split("\n")
+        self.log("hpy dump (%d lines)" % (len(lines)))
+        for line in lines:
+            self.log(u" - %s" % (line))
     def _check_ksm(self):
         if global_config["ENABLE_KSM"]:
             ksm_dir = "/sys/kernel/mm/ksm/"
