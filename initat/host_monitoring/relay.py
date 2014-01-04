@@ -1,7 +1,7 @@
 #!/usr/bin/python-init -Ot
 # -*- coding: utf-8 -*-
 #
-# Copyright (C) 2013 Andreas Lang-Nevyjel
+# Copyright (C) 2013,2014 Andreas Lang-Nevyjel
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -47,6 +47,7 @@ import zmq
 
 class id_discovery(object):
     # discover 0mq ids
+    __slots__ = ["port", "host", "raw_connect", "conn_str", "init_time", "srv_com", "src_id", "xml_input", "socket"]
     def __init__(self, srv_com, src_id, xml_input):
         self.port = int(srv_com["port"].text)
         self.host = srv_com["host"].text
@@ -246,6 +247,7 @@ class id_discovery(object):
             cur_ids.send_return("timeout triggered, closing")
 
 class sr_probe(object):
+    __slots__ = ["host_con", "__val", "__time"]
     def __init__(self, host_con):
         self.host_con = host_con
         self.__val = {"send" : 0,
@@ -278,6 +280,7 @@ class sr_probe(object):
         self.__val["recv"] += val
 
 class host_connection(object):
+    __slots__ = ["zmq_id", "tcp_con", "sr_probe", "__open", "__conn_str", "messages"]
     def __init__(self, conn_str, **kwargs):
         self.zmq_id = kwargs.get("zmq_id", "ms")
         self.tcp_con = kwargs.get("dummy_connection", False)
@@ -501,6 +504,7 @@ class host_connection(object):
 class host_message(object):
     hm_idx = 0
     hm_open = set()
+    __slots__ = ["src_id", "xml_input", "timeout", "s_time", "sent", "sr_probe", "ns", "com_name", "srv_com", "com_struct"]
     def __init__(self, com_name, src_id, srv_com, xml_input):
         self.com_name = com_name
         # self.hm_idx = host_message.hm_idx

@@ -1,6 +1,6 @@
 #!/usr/bin/python-init -Ot
 #
-# Copyright (C) 2001,2002,2003,2004,2005,2006,2007,2008,2010,2011,2012,2013 Andreas Lang-Nevyjel, init.at
+# Copyright (C) 2001-2014 Andreas Lang-Nevyjel, init.at
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -43,6 +43,9 @@ def sys_to_net(in_val):
     return cPickle.dumps(in_val)
 
 class subprocess_struct(object):
+    __slots__ = ["srv_com", "command", "command_line", "com_num", "popen", "srv_process",
+        "cb_func", "_init_time", "terminated", "__nfts", "__return_sent", "__finished",
+        "multi_command", "run_info", "src_id"]
     class Meta:
         max_usage = 2
         twisted = False

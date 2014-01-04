@@ -49,11 +49,12 @@ class server_code(threading_tools.process_pool):
         # copy to access from modules
         self.global_config = global_config
         self.__log_cache, self.__log_template = ([], None)
-        threading_tools.process_pool.__init__(self,
-                                              "main",
-                                              zmq=True,
-                                              zmq_contexts=1,
-                                              zmq_debug=global_config["ZMQ_DEBUG"])
+        threading_tools.process_pool.__init__(
+            self,
+            "main",
+            zmq=True,
+            zmq_contexts=1,
+            zmq_debug=global_config["ZMQ_DEBUG"])
         self.renice(global_config["NICE_LEVEL"])
         if not global_config["DEBUG"]:
             process_tools.set_handles({

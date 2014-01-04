@@ -1,6 +1,6 @@
 #!/usr/bin/python-init -Ot
 #
-# Copyright (C) 2001,2002,2003,2004,2005,2006,2007,2008,2010,2012 Andreas Lang-Nevyjel, init.at
+# Copyright (C) 2001-2008,2010-2014 Andreas Lang-Nevyjel, init.at
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -61,6 +61,7 @@ def check_floor(value, warn, crit):
         return nag_STATE_OK
     
 class range_parameter(object):
+    __slots = ["name", "lower_boundary", "upper_boundary"]
     def __init__(self, name):
         self.name = name
         self.set_lower_boundary()
@@ -91,6 +92,7 @@ class range_parameter(object):
         return b_ok
     
 class limits(object):
+    __slots = ["warn_val", "crit_val", "warn_val_f", "crit_val_f", "add_flags", "add_vars"]
     def __init__(self, warn_val=None, crit_val=None, add_flags=None):
         self.warn_val, self.warn_val_f = (None, None)
         self.crit_val, self.crit_val_f = (None, None)
@@ -150,14 +152,14 @@ class limits(object):
     def check_ceiling(self, val):
         # interpret values as upper limits (for example temperatures)
         ret_code, state = (nag_STATE_OK, "OK")
-        if type(val) == type(0.0):
+        if type(val) == float:
             if self.crit_val_f is not None:
                 if val >= self.crit_val_f:
                     ret_code, state = (nag_STATE_CRITICAL, "Critical")
             if (self.warn_val_f is not None) and ret_code == nag_STATE_OK:
                 if val >= self.warn_val_f:
                     ret_code, state = (nag_STATE_WARNING, "Warning")
-        elif type(val) in [type(0), type(0L)]:
+        elif type(val) in [int, long]:
             if self.crit_val is not None:
                 if val >= self.crit_val:
                     ret_code, state = (nag_STATE_CRITICAL, "Critical")
@@ -170,14 +172,14 @@ class limits(object):
     def check_floor(self, val):
         # interpret values as lower limits (for example RPMs for fans)
         ret_code, state = (nag_STATE_OK, "OK")
-        if type(val) == type(0.0):
+        if type(val) == float:
             if self.crit_val_f is not None:
                 if val <= self.crit_val_f:
                     ret_code, state = (nag_STATE_CRITICAL, "Critical")
             if (self.warn_val_f is not None) and ret_code == nag_STATE_OK:
                 if val <= self.warn_val_f:
                     ret_code, state = (nag_STATE_WARNING, "Warning")
-        elif type(val) in [type(0), type(0L)]:
+        elif type(val) in [int, long]:
             if self.crit_val is not None:
                 if val <= self.crit_val:
                     ret_code, state = (nag_STATE_CRITICAL, "Critical")
