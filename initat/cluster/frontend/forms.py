@@ -1706,7 +1706,7 @@ class device_monitoring_form(ModelForm):
         HTML("<h2>Monitoring settings for {% verbatim %}{{ edit_obj.full_name }}{% endverbatim %}</h2>"),
             Fieldset(
                 "Basic settings",
-                Field("md_cache_mode", ng_options="key as value for (key, value) in settings.md_cache_modes", initial=1),
+                Field("md_cache_mode", ng_options="value.idx as value.name for value in settings.md_cache_modes", initial=1),
                 Field("mon_device_templ", ng_options="value.idx as value.name for value in rest_data.mon_device_templ", initial=None),
                 Field("mon_ext_host", ng_options="value.idx as value.name for value in rest_data.mon_ext_host", initial=None, chosen=True),
                 Field("monitor_server", ng_options="value.idx as value.full_name for value in rest_data.mon_server", initial=None, chosen=True),

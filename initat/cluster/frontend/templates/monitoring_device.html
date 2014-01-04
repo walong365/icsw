@@ -1,6 +1,6 @@
 {% extends "main.html" %}
 
-{% load i18n coffeescript crispy_forms_tags %}
+{% load i18n coffeescript crispy_forms_tags staticfiles %}
 
 {% block angular %}{% include "angular/monitoring_device.cs" %}{% endblock %}
 
@@ -37,7 +37,7 @@
     <td>{{ obj.full_name }}</td>
     <td>{{ obj.monitor_checks | yesno1 }}</td>
     <td>{{ obj.mon_device_templ | array_lookup:this.rest_data.mon_device_templ:"name" }}</td>
-    <td>{{ settings.md_cache_modes[obj.md_cache_mode] }}</td>
+    <td>{{ obj.md_cache_mode | array_lookup:this.settings.md_cache_modes:"name" }}</td>
     <td>{{ obj.act_partition_table | yesno1 }}</td>
     <td class="text-center">
         <span ng-if="obj.mon_ext_host"> 

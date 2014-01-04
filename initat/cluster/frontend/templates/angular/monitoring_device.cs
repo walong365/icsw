@@ -23,11 +23,11 @@ angular_add_simple_list_controller(
             {"short" : "mon_server"      , "url" : "{% url 'rest:device_tree_list' %}", "options" : {"all_monitoring_servers" : true}}
         ]
         template_cache_list : ["mon_device_head.html"]
-        md_cache_modes : {
-            1 : "automatic (server)"
-            2 : "never use cache"
-            3 : "once (until successfull)"
-        }
+        md_cache_modes : [
+            {"idx" : 1, "name" : "automatic (server)"} 
+            {"idx" : 2, "name" : "never use cache"} 
+            {"idx" : 3, "name" : "once (until successfull)"} 
+        ]
         init_fn: ($scope, $timeout) ->
             install_devsel_link($scope.reload, true)
         fn:
