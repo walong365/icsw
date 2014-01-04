@@ -81,6 +81,7 @@ def decompress(in_str, **kwargs):
 
 class srv_command(object):
     srvc_open = 0
+    __slots__ = ["__builder", "__tree", "srvc_open"]
     def __init__(self, **kwargs):
         srv_command.srvc_open += 1
         self.__builder = ElementMaker(namespace=XML_NS)
