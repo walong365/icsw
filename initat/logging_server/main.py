@@ -1,7 +1,7 @@
 #!/usr/bin/python-init -OtB
 # -*- coding: utf-8 -*-
 #
-# Copyright (C) 2009,2010,2011,2012,2013 Andreas Lang-Nevyjel (lang-nevyjel@init.at)
+# Copyright (C) 2009-2014 Andreas Lang-Nevyjel (lang-nevyjel@init.at)
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -288,7 +288,7 @@ class log_receiver(threading_tools.process_obj):
             handle.close()
         del self.__handles[h_name]
     def _update(self, **kwargs):
-        c_handles = sorted([key for key, value in self.__handles.items() if isinstance(value, logging_tools.new_logfile) and value.check_for_temp_close()])
+        c_handles = sorted([key for key, value in self.__handles.items() if isinstance(value, logging_tools.logfile) and value.check_for_temp_close()])
         if c_handles:
             self.log("temporarily closing %s: %s" % (logging_tools.get_plural("handle", len(c_handles)),
                                                      ", ".join(c_handles)))
@@ -400,7 +400,7 @@ class log_receiver(threading_tools.process_obj):
                                               global_config["DATE_FORMAT"])
             logger.setLevel(logging.DEBUG)
             full_name = full_name.encode("ascii", errors="replace")
-            new_h = logging_tools.new_logfile(full_name, max_bytes=1000000, max_age_days=global_config["MAX_AGE_FILES"])
+            new_h = logging_tools.logfile(full_name, max_bytes=1000000, max_age_days=global_config["MAX_AGE_FILES"])
             form.set_max_line_length(global_config["MAX_LINE_LENGTH"])
             new_h.setFormatter(form)
             self.__num_open += 1
