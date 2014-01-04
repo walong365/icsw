@@ -325,56 +325,53 @@ def get_logger(name, destination, **kwargs):
         act_adapter = act_logger
     return act_adapter
 
-try:
-    class log_adapter(logging.LoggerAdapter):
-        """ small adapater which adds host information to logRecords """
-        def __init__(self, logger, extra):
-            self.__lock = threading.Lock()
-            self.set_prefix()
-            logging.LoggerAdapter.__init__(self, logger, extra)
-        def process(self, msg, kwargs):
-            # add hostname and parent process id (to handle multiprocessing logging)
-            if sys.platform in ["linux2", "linux3", "linux"]:
-                kwargs.setdefault("extra", {})
-                kwargs["extra"].setdefault("host", os.uname()[1].split(".")[0])
-                kwargs["extra"].setdefault("ppid", os.getppid())
-            elif sys.platform in ["win32"]:
-                kwargs.setdefault("extra", {})
-                kwargs["extra"].setdefault("host", os.getenv("COMPUTERNAME").lower())
-                kwargs["extra"].setdefault("ppid", os.getppid())
-            return msg, kwargs
-        def set_prefix(self, pfix=""):
-            self.__prefix = pfix
-        def log_command(self, what):
-            self.log("<LCH>%s</LCH>" % (what))
-        def log(self, level, what=LOG_LEVEL_OK, *args, **kwargs):
-            self.__lock.acquire()
-            if type(level) in [str, unicode]:
-                if self.__prefix:
-                    level = "%s%s" % (self.__prefix, level)
-                try:
-                    logging.LoggerAdapter.log(self, what, level, *args, **kwargs)
-                except:
-                    my_syslog(what)
-                    print(what, self)
-                    raise
-            else:
-                if self.__prefix:
-                    what = "%s%s" % (self.__prefix, what)
-                try:
-                    logging.LoggerAdapter.log(self, level, what, *args, **kwargs)
-                except:
-                    my_syslog(what)
-                    print(what, self)
-                    raise
-            self.__lock.release()
-        def close(self):
-            self.log_command("close")
-            for handle in self.logger.handlers:
-                if hasattr(handle, "close"):
-                    handle.close()
-except:
-    log_adapter = None
+class log_adapter(logging.LoggerAdapter):
+    """ small adapater which adds host information to logRecords """
+    def __init__(self, logger, extra):
+        self.__lock = threading.Lock()
+        self.set_prefix()
+        logging.LoggerAdapter.__init__(self, logger, extra)
+    def process(self, msg, kwargs):
+        # add hostname and parent process id (to handle multiprocessing logging)
+        if sys.platform in ["linux2", "linux3", "linux"]:
+            kwargs.setdefault("extra", {})
+            kwargs["extra"].setdefault("host", os.uname()[1].split(".")[0])
+            kwargs["extra"].setdefault("ppid", os.getppid())
+        elif sys.platform in ["win32"]:
+            kwargs.setdefault("extra", {})
+            kwargs["extra"].setdefault("host", os.getenv("COMPUTERNAME").lower())
+            kwargs["extra"].setdefault("ppid", os.getppid())
+        return msg, kwargs
+    def set_prefix(self, pfix=""):
+        self.__prefix = pfix
+    def log_command(self, what):
+        self.log("<LCH>%s</LCH>" % (what))
+    def log(self, level, what=LOG_LEVEL_OK, *args, **kwargs):
+        self.__lock.acquire()
+        if type(level) in [str, unicode]:
+            if self.__prefix:
+                level = "%s%s" % (self.__prefix, level)
+            try:
+                logging.LoggerAdapter.log(self, what, level, *args, **kwargs)
+            except:
+                my_syslog(what)
+                print(what, self)
+                raise
+        else:
+            if self.__prefix:
+                what = "%s%s" % (self.__prefix, what)
+            try:
+                logging.LoggerAdapter.log(self, level, what, *args, **kwargs)
+            except:
+                my_syslog(what)
+                print(what, self)
+                raise
+        self.__lock.release()
+    def close(self):
+        self.log_command("close")
+        for handle in self.logger.handlers:
+            if hasattr(handle, "close"):
+                handle.close()
 
 class zmq_handler(logging.Handler):
     def __init__(self, t_sock, logger_struct, **kwargs):
@@ -1004,7 +1001,7 @@ class my_formatter(logging.Formatter):
                 message.msg = "%s (%d left)" % (message.msg[:self.__max_line_length], len(message.msg))
         return logging.Formatter.format(self, message)
 
-class new_logfile(logging.handlers.BaseRotatingHandler):
+class logfile(logging.handlers.BaseRotatingHandler):
     def __init__(self, filename, mode="a", max_bytes=1000000, encoding=None, max_age_days=365):
         # always append if max_size > 0
         if max_bytes > 0:
