@@ -2,7 +2,7 @@
 #
 # -*- coding: utf-8 -*-
 #
-# Copyright (C) 2001,2002,2003,2004,2005,2006,2007,2008,2009,2011,2012,2013 Andreas Lang-Nevyjel, init.at
+# Copyright (C) 2001-2014 Andreas Lang-Nevyjel, init.at
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -1241,9 +1241,10 @@ class load_command(hm_classes.hm_command):
         srv_com["load5"] = "%.2f" % (cur_load[1])
         srv_com["load15"] = "%.2f" % (cur_load[2])
     def interpret(self, srv_com, cur_ns):
-        load_1, load_5, load_15 = (float(srv_com["load1"].text),
-                                   float(srv_com["load5"].text),
-                                   float(srv_com["load15"].text))
+        load_1, load_5, load_15 = (
+            float(srv_com["load1"].text),
+            float(srv_com["load5"].text),
+            float(srv_com["load15"].text))
         max_load = max([load_1, load_5, load_15])
         ret_state = limits.nag_STATE_OK
         if cur_ns.warn is not None:
