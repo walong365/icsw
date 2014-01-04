@@ -1,32 +1,50 @@
-#!/usr/bin/python-init -Ot
+#!/usr/bin/python -Ot
 # -*- coding: utf-8 -*-
+#
+# Copyright (C) 2012-2014 Andreas Lang-Nevyjel
+#
+# Send feedback to: <lang-nevyjel@init.at>
+#
+# This file is part of webfrontend
+#
+# This program is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License Version 2 as
+# published by the Free Software Foundation.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software
+# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+#
 
 """ config views """
 
-import datetime
-import logging
-import logging_tools
-import process_tools
-import server_command
-from lxml import etree # @UnresolvedImports
-from lxml.builder import E # @UnresolvedImports
-
+# do not remove mon_check_command, is access via globals()
 from django.contrib.auth.decorators import login_required
 from django.core.exceptions import ValidationError
 from django.core.urlresolvers import reverse
 from django.db.models import Q
 from django.db.utils import IntegrityError
 from django.http import HttpResponse, HttpResponseRedirect
-from django.views.generic import View
 from django.utils.decorators import method_decorator
-
-# do not remove mon_check_command, is access via globals()
+from django.views.generic import View
 from initat.cluster.backbone.models import config, device, \
      config_str, config_int, config_bool, config_blob, \
      config_script, device_config, tree_node, get_related_models, \
      mon_service_templ, category_tree, mon_check_command
 from initat.cluster.frontend.helper_functions import contact_server, xml_wrapper
 from initat.core.render import render_me
+from lxml import etree # @UnresolvedImports
+from lxml.builder import E # @UnresolvedImports
+import datetime
+import logging
+import logging_tools
+import process_tools
+import server_command
 
 logger = logging.getLogger("cluster.config")
 

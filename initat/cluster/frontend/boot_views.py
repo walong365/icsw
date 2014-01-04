@@ -1,10 +1,11 @@
 #!/usr/bin/python -Ot
-#
 # -*- coding: utf-8 -*-
 #
-# Copyright (C) 2012,2013 Andreas Lang-Nevyjel
+# Copyright (C) 2012-2014 Andreas Lang-Nevyjel
 #
 # Send feedback to: <lang-nevyjel@init.at>
+#
+# This file is part of webfrontend
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License Version 2 as
@@ -22,25 +23,22 @@
 
 """ boot views """
 
-import logging_tools
-import logging
-import server_command
-from lxml.builder import E # @UnresolvedImports
-
 from django.contrib.auth.decorators import login_required
 from django.core.exceptions import ValidationError
 from django.db import transaction
 from django.db.models import Q
-from django.views.generic import View
 from django.utils.decorators import method_decorator
-
-from initat.cluster.frontend.helper_functions import contact_server, xml_wrapper
-from initat.core.render import render_me
+from django.views.generic import View
 from initat.cluster.backbone.models import device, cd_connection, \
      kernel, image, partition_table, status, network, devicelog
+from initat.cluster.frontend.helper_functions import contact_server, xml_wrapper
+from initat.core.render import render_me
+from lxml.builder import E # @UnresolvedImports
+import logging
+import logging_tools
+import server_command
 
 logger = logging.getLogger("cluster.boot")
-
 
 # ordering is important
 OPTION_LIST = [

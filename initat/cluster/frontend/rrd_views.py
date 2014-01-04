@@ -1,16 +1,35 @@
-#!/usr/bin/python-init -Ot
+#!/usr/bin/python -Ot
 # -*- coding: utf-8 -*-
+#
+# Copyright (C) 2012-2014 Andreas Lang-Nevyjel
+#
+# Send feedback to: <lang-nevyjel@init.at>
+#
+# This file is part of webfrontend
+#
+# This program is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License Version 2 as
+# published by the Free Software Foundation.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software
+# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+#
 
 """ RRD views """
-
-import datetime
-import logging
-import server_command
-from lxml.builder import E # @UnresolvedImports
 
 from django.utils.decorators import method_decorator
 from django.views.generic import View
 from initat.cluster.frontend.helper_functions import xml_wrapper, contact_server
+from lxml.builder import E # @UnresolvedImports
+import datetime
+import logging
+import server_command
 
 logger = logging.getLogger("cluster.rrd")
 
