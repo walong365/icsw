@@ -442,11 +442,12 @@ def user_permissions_changed(sender, *args, **kwargs):
                     cur_user = request.user
         except:
             cur_user = None
-        is_admin = cur_user.has_perm("backbone.admin")
-        for add_pk in kwargs.get("pk_set"):
-            # only admins can grant admin or group_admin rights
-            if csw_permission.objects.get(Q(pk=add_pk)).codename in ["admin", "group_admin"] and not is_admin:
-                raise ValidationError("not enough rights")
+        if cur_user:
+            is_admin = cur_user.has_perm("backbone.admin")
+            for add_pk in kwargs.get("pk_set"):
+                # only admins can grant admin or group_admin rights
+                if csw_permission.objects.get(Q(pk=add_pk)).codename in ["admin", "group_admin"] and not is_admin:
+                    raise ValidationError("not enough rights")
 
 @receiver(signals.pre_save, sender=user)
 def user_pre_save(sender, **kwargs):

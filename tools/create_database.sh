@@ -19,11 +19,12 @@ if [ "${UID:-X}" = "0" ] ; then
         ${C_DIR}/manage.py schemamigration django.contrib.auth --initial
         ${C_DIR}/manage.py schemamigration backbone --initial
         ${C_DIR}/manage.py schemamigration reversion --initial
-	${C_DIR}/manage.py schemamigration static_precompiler --initial
+        # not working with south, strange ...
+	#${C_DIR}/manage.py schemamigration static_precompiler --initial
         ${C_DIR}/manage.py migrate auth
         ${C_DIR}/manage.py migrate backbone --no-initial-data
         ${C_DIR}/manage.py migrate reversion
-        ${C_DIR}/manage.py migrate static_precompiler
+        #${C_DIR}/manage.py migrate static_precompiler
         ${C_DIR}/manage.py syncdb --noinput ${ID_FLAGS}
         ${C_DIR}/manage.py migrate ${ID_FLAGS}
         if [ -z "$1" ]; then
