@@ -1510,6 +1510,7 @@ class partition_fs(models.Model):
     identifier = models.CharField(max_length=3)
     descr = models.CharField(max_length=765, blank=True)
     hexid = models.CharField(max_length=6)
+    # flags
     date = models.DateTimeField(auto_now_add=True)
     def get_xml(self):
         return E.partition_fs(
@@ -1529,6 +1530,7 @@ class partition_fs(models.Model):
         ordering = ("name",)
 
 class partition_fs_serializer(serializers.ModelSerializer):
+    need_mountpoint = serializers.Field(source="need_mountpoint")
     class Meta:
         model = partition_fs
 
@@ -2391,6 +2393,10 @@ def partition_pre_save(sender, **kwargs):
         _check_integer(cur_inst, "fs_freq", min_val=0, max_val=1)
         # fs_passno
         _check_integer(cur_inst, "fs_passno", min_val=0, max_val=2)
+        if cur_inst.partition_fs_id:
+            if cur_inst.partition_fs.name == "swap":
+                cur_inst.mountpoint = "swap"
+            cur_inst.partition_hex = cur_inst.partition_fs.hexid
 
 class partition_disc(models.Model):
     idx = models.AutoField(db_column="partition_disc_idx", primary_key=True)
@@ -2419,12 +2425,10 @@ class partition_disc(models.Model):
     def _validate(self):
         my_parts = self.partition_set.all()
         p_list = sum([[(cur_lev, "*%d : %s" % (part.pnum, msg), flag) for cur_lev, msg, flag in part._validate(self)] for part in my_parts], [])
-        all_mps = [cur_mp.mountpoint for cur_mp in my_parts if cur_mp.mountpoint.strip()]
+        all_mps = [cur_mp.mountpoint for cur_mp in my_parts if cur_mp.mountpoint.strip() and cur_mp.mountpoint.strip() != "swap"]
         if len(all_mps) != len(set(all_mps)):
             p_list.append((logging_tools.LOG_LEVEL_ERROR, "mountpoints not unque", False))
         if all_mps:
-            # if "/" not in all_mps:
-            #    p_list.append((logging_tools.LOG_LEVEL_ERROR, "/ missing from mountpoints", False))
             if "/usr" in all_mps:
                 p_list.append((logging_tools.LOG_LEVEL_ERROR, "cannot boot when /usr is on a separate partition", False))
         ext_parts = [cur_p for cur_p in my_parts if cur_p.partition_fs_id and cur_p.partition_fs.name == "ext"]
@@ -2505,7 +2509,20 @@ class partition_table(models.Model):
                 ] for p_disc in self.partition_disc_set.all()
             ], [])
         )
-        # p_list = sum([[(cur_lev, "%d : %s" % (part.pnum, msg), flag) for cur_lev, msg, flag in part._validate(self)] for part in my_parts], [])
+        all_mps = sum([[cur_p.mountpoint for cur_p in p_disc.partition_set.all() if cur_p.mountpoint.strip() and cur_p.mountpoint.strip() != "swap"] for p_disc in self.partition_disc_set.all()], [])
+        all_mps.extend([sys_p.mountpoint for sys_p in self.sys_partition_set.all()])
+        unique_mps = set(all_mps)
+        for non_unique_mp in sorted([name for name in unique_mps if all_mps.count(name) > 1]):
+            prob_list.append(
+                (logging_tools.LOG_LEVEL_ERROR, "mountpoint '%s' is not unique (%d)" % (
+                    non_unique_mp,
+                    all_mps.count(name),
+                ), True)
+                )
+        if u"/" not in all_mps:
+            prob_list.append(
+                (logging_tools.LOG_LEVEL_ERROR, "no '/' mountpoint defined", True)
+                )
         new_valid = not any([log_level in [
             logging_tools.LOG_LEVEL_ERROR,
             logging_tools.LOG_LEVEL_CRITICAL] for log_level, what, is_global in prob_list])
