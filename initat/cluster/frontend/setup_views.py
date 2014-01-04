@@ -1,13 +1,11 @@
 # setup views
 
-# from lxml import etree # @UnresolvedImport
 from django.contrib.auth.decorators import login_required
-from django.core.exceptions import ValidationError
 from django.db.models import Q
 from django.utils.decorators import method_decorator
 from django.views.generic import View
-from initat.cluster.backbone.models import partition_table, partition_disc, partition, \
-    partition_fs, image, architecture, get_related_models, kernel
+from initat.cluster.backbone.models import partition_table, \
+    image, architecture, kernel
 from initat.cluster.frontend.forms import kernel_form, image_form, partition_table_form, \
     partition_form, partition_disc_form, partition_sys_form
 from initat.cluster.frontend.helper_functions import contact_server, xml_wrapper
@@ -29,23 +27,23 @@ class partition_overview(View):
             "partition_sys_form"   : partition_sys_form(),
             "partition_form"       : partition_form(),
             })()
-    @method_decorator(xml_wrapper)
-    def post(self, request):
-        xml_resp = E.response()
-        part_list = E.partition_tables()
-        for cur_part in partition_table.objects.all().prefetch_related(
-            "partition_disc_set",
-            "partition_disc_set__partition_set",
-            "partition_disc_set__partition_set__partition_fs",
-            ).order_by("name"):
-            part_list.append(cur_part.get_xml())
-        xml_resp.append(part_list)
-        xml_resp.append(
-            E.partition_fs_list(
-                *[cur_pfs.get_xml() for cur_pfs in partition_fs.objects.all()]
-            )
-        )
-        request.xml_response["response"] = xml_resp
+    # @method_decorator(xml_wrapper)
+    # def post(self, request):
+    #    xml_resp = E.response()
+    #    part_list = E.partition_tables()
+    #    for cur_part in partition_table.objects.all().prefetch_related(
+    #        "partition_disc_set",
+    #        "partition_disc_set__partition_set",
+    #        "partition_disc_set__partition_set__partition_fs",
+    #        ).order_by("name"):
+    #        part_list.append(cur_part.get_xml())
+    #    xml_resp.append(part_list)
+    #    xml_resp.append(
+    #        E.partition_fs_list(
+    #            *[cur_pfs.get_xml() for cur_pfs in partition_fs.objects.all()]
+    #        )
+    #    )
+    #    request.xml_response["response"] = xml_resp
 
 class validate_partition(View):
     @method_decorator(login_required)
@@ -65,57 +63,57 @@ class validate_partition(View):
             *[E.problem(p_str, g_problem="1" if g_problem else "0", level="%d" % (cur_lev)) for cur_lev, p_str, g_problem in prob_list]
         )
 
-class create_part_disc(View):
-    @method_decorator(login_required)
-    @method_decorator(xml_wrapper)
-    def post(self, request):
-        _post = request.POST
-        cur_part = partition_table.objects.get(Q(pk=_post["pt_pk"]))
-        new_disc = partition_disc(
-            partition_table=cur_part,
-            disc=_post["disc"])
-        try:
-            new_disc.save()
-        except ValidationError, what:
-            request.xml_response.error("cannot add disc: %s" % (unicode(what.messages[0])), logger)
-        else:
-            request.xml_response.info("added disc %s" % (unicode(new_disc)), logger)
+# class create_part_disc(View):
+#    @method_decorator(login_required)
+#    @method_decorator(xml_wrapper)
+#    def post(self, request):
+#        _post = request.POST
+#        cur_part = partition_table.objects.get(Q(pk=_post["pt_pk"]))
+#        new_disc = partition_disc(
+#            partition_table=cur_part,
+#            disc=_post["disc"])
+#        try:
+#            new_disc.save()
+#        except ValidationError, what:
+#            request.xml_response.error("cannot add disc: %s" % (unicode(what.messages[0])), logger)
+#        else:
+#            request.xml_response.info("added disc %s" % (unicode(new_disc)), logger)
 
-class delete_part_disc(View):
-    @method_decorator(login_required)
-    @method_decorator(xml_wrapper)
-    def post(self, request):
-        _post = request.POST
-        cur_disc = partition_disc.objects.get(Q(pk=_post["pd_pk"]) & Q(partition_table=_post["pt_pk"]))
-        cur_disc.delete()
-        return request.xml_response.create_response()
+# class delete_part_disc(View):
+#    @method_decorator(login_required)
+#    @method_decorator(xml_wrapper)
+#    def post(self, request):
+#        _post = request.POST
+#        cur_disc = partition_disc.objects.get(Q(pk=_post["pd_pk"]) & Q(partition_table=_post["pt_pk"]))
+#        cur_disc.delete()
+#        return request.xml_response.create_response()
 
-class create_partition(View):
-    @method_decorator(login_required)
-    @method_decorator(xml_wrapper)
-    def post(self, request):
-        _post = request.POST
-        _cur_part = partition_table.objects.get(Q(pk=_post["pt_pk"]))
-        cur_disc = partition_disc.objects.get(Q(pk=_post["pd_pk"]))
-        cur_fstype = partition_fs.objects.get(Q(pk=_post["fstype"]))
-        new_part = partition(
-            partition_disc=cur_disc,
-            partition_fs=cur_fstype,
-            pnum=_post["pnum"])
-        try:
-            new_part.save()
-        except ValidationError, what:
-            request.xml_response.error("cannot add partition: %s" % (unicode(what.messages[0])), logger)
-        else:
-            request.xml_response.info("added partition %s" % (unicode(new_part)), logger)
+# class create_partition(View):
+#    @method_decorator(login_required)
+#    @method_decorator(xml_wrapper)
+#    def post(self, request):
+#        _post = request.POST
+#        _cur_part = partition_table.objects.get(Q(pk=_post["pt_pk"]))
+#        cur_disc = partition_disc.objects.get(Q(pk=_post["pd_pk"]))
+#        cur_fstype = partition_fs.objects.get(Q(pk=_post["fstype"]))
+#        new_part = partition(
+#            partition_disc=cur_disc,
+#            partition_fs=cur_fstype,
+#            pnum=_post["pnum"])
+#        try:
+#            new_part.save()
+#        except ValidationError, what:
+#            request.xml_response.error("cannot add partition: %s" % (unicode(what.messages[0])), logger)
+#        else:
+#            request.xml_response.info("added partition %s" % (unicode(new_part)), logger)
 
-class delete_partition(View):
-    @method_decorator(login_required)
-    @method_decorator(xml_wrapper)
-    def post(self, request):
-        _post = request.POST
-        cur_part = partition.objects.get(Q(pk=_post["part_pk"]))
-        cur_part.delete()
+# class delete_partition(View):
+#    @method_decorator(login_required)
+#    @method_decorator(xml_wrapper)
+#    def post(self, request):
+#        _post = request.POST
+#        cur_part = partition.objects.get(Q(pk=_post["part_pk"]))
+#        cur_part.delete()
 
 class image_overview(View):
     @method_decorator(login_required)

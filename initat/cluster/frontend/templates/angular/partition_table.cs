@@ -40,6 +40,9 @@ class edit_mixin
         else
             @scope.new_obj = {}
         @create_or_edit(event, true, @scope.new_obj)
+    send_change_signal : () =>
+        if @change_signal
+            @scope.$emit(@change_signal)
     edit : (obj, event) =>
         @create_or_edit(event, false, obj)
     create_or_edit : (event, create_or_edit, obj) =>
@@ -67,7 +70,6 @@ class edit_mixin
         $.simplemodal.close()
         #console.log scope.pre_edit_obj.pnum, scope._edit_obj.pnum
         if @scope.modal_active
-            @scope.$emit("icsw.em.modal_closed")
             #console.log "*", @_modal_close_ok, @scope.pre_edit_obj
             if not @_modal_close_ok and not @scope.create_mode
                 # not working right now, hm ...
@@ -90,6 +92,7 @@ class edit_mixin
                     #console.log @create_list, new_data
                     @create_list.push(new_data)
                     @close_modal()
+                    @send_change_signal()
                     @_modal_close_ok = true
                 )
             else
@@ -98,6 +101,7 @@ class edit_mixin
                         handle_reset(data, @scope._edit_obj, null)
                         @_modal_close_ok = true
                         @close_modal()
+                        @send_change_signal()
                     (resp) => handle_reset(resp.data, @scope._edit_obj, null)
                 )
         else
@@ -127,18 +131,28 @@ class edit_mixin
                     noty
                         text : "deleted instance"
                     remove_by_idx(@delete_list, obj.idx)
+                    @send_change_signal()
                 )
         )
 
+class part_edit_mixin extends edit_mixin
+    constructor : (scope, templateCache, compile, modal, Restangular) ->
+        super(scope, templateCache, compile, modal, Restangular)
+        @change_signal = "icsw.part_changed"
+         
 partition_table_module.directive("disklayout", ($compile, $modal, $templateCache, Restangular) ->
     return {
         restrict : "EA"
         scope : true
         compile: (tElement, tAttrs) ->
             return (scope, element, attrs) ->
-                scope.$on("icsw.em.modal_closed", (args) ->
+                scope.$on("icsw.part_changed", (args) ->
                     scope.validate()
                 )
+                scope.get_partition_fs = () ->
+                    for entry in scope.rest_data.partition_fs
+                        entry.full_info = "#{entry.name}" + if entry.need_mountpoint then " (need mountpoint)" else "" 
+                    return scope.rest_data.partition_fs
                 scope.validate = () ->
                     $.ajax
                         url : "{% url 'setup:validate_partition' %}"
@@ -163,7 +177,11 @@ partition_table_module.directive("disklayout", ($compile, $modal, $templateCache
                                 scope.error_list = error_list
                             )
                 scope.error_list = []
-                scope.layout_edit = new edit_mixin(scope, $templateCache, $compile, $modal, Restangular)
+                # watch edit_obj and validate if changed
+                scope.$watch("edit_obj", () ->
+                    scope.validate()
+                )
+                scope.layout_edit = new part_edit_mixin(scope, $templateCache, $compile, $modal, Restangular)
                 scope.layout_edit.create_template = "partition_disc.html"
                 scope.layout_edit.create_rest_url = Restangular.all("{% url 'rest:partition_disc_list' %}".slice(1))
                 scope.layout_edit.create_list = scope.edit_obj.partition_disc_set
@@ -172,7 +190,7 @@ partition_table_module.directive("disklayout", ($compile, $modal, $templateCache
                         "partition_table" : scope.edit_obj.idx
                         "disc"            : "/dev/sd"
                     }
-                scope.sys_edit = new edit_mixin(scope, $templateCache, $compile, $modal, Restangular)
+                scope.sys_edit = new part_edit_mixin(scope, $templateCache, $compile, $modal, Restangular)
                 scope.sys_edit.create_template = "partition_sys.html"
                 scope.sys_edit.create_rest_url = Restangular.all("{% url 'rest:sys_partition_list'%}".slice(1))
                 scope.sys_edit.create_list = scope.edit_obj.sys_partition_set
@@ -205,7 +223,7 @@ partition_table_module.directive("partdisc", ($compile, $templateCache, $modal, 
         #replace : true
         compile: (tElement, tAttrs) ->
             return (scope, element, attrs) ->
-                scope.disc_edit = new edit_mixin(scope, $templateCache, $compile, $modal, Restangular)
+                scope.disc_edit = new part_edit_mixin(scope, $templateCache, $compile, $modal, Restangular)
                 scope.disc_edit.create_template = "partition.html"
                 scope.disc_edit.edit_template = "partition_disc.html"
                 scope.disc_edit.modify_rest_url = "{% url 'rest:partition_disc_detail' 1 %}".slice(1).slice(0, -2)
@@ -236,7 +254,7 @@ partition_table_module.directive("part", ($compile, $templateCache, $modal, Rest
         restrict : "EA"
         template : $templateCache.get("part.html")
         link : (scope, element, attrs) ->
-            scope.part_edit = new edit_mixin(scope, $templateCache, $compile, $modal, Restangular)
+            scope.part_edit = new part_edit_mixin(scope, $templateCache, $compile, $modal, Restangular)
             scope.part_edit.edit_template = "partition.html"
             scope.part_edit.modify_rest_url = "{% url 'rest:partition_detail' 1 %}".slice(1).slice(0, -2)
             scope.part_edit.delete_list = scope.disc.partition_set
@@ -253,7 +271,7 @@ partition_table_module.directive("partsys", ($compile, $templateCache, $modal, R
         #compile: (tElement, tAttrs) ->
         link : (scope, element, attrs) ->
             # console.log scope, element, attrs, scope.layout
-            scope.sys_edit = new edit_mixin(scope, $templateCache, $compile, $modal, Restangular)
+            scope.sys_edit = new part_edit_mixin(scope, $templateCache, $compile, $modal, Restangular)
             scope.sys_edit.edit_template = "partition_sys.html"
             scope.sys_edit.modify_rest_url = "{% url 'rest:sys_partition_detail' 1 %}".slice(1).slice(0, -2)
             scope.sys_edit.delete_list = scope.edit_obj.sys_partition_set

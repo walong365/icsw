@@ -831,7 +831,7 @@ class partition_form(ModelForm):
                 "Basic data",
                 Field("partition_disc", ng_options="value.idx as value.disc for value in edit_obj.partition_disc_set | orderBy:'disc'", chosen=True, readonly=True),
                 Field("pnum", placeholder="partition", min=1, max=16),
-                Field("partition_fs", ng_options="value.idx as value.name for value in this.rest_data.partition_fs | orderBy:'name'", chosen=True),
+                Field("partition_fs", ng_options="value.idx as value.full_info for value in this.get_partition_fs() | orderBy:'name'", chosen=True),
                 Field("size", min=0, max=1000000000000),
                 Field("partition_hex", readonly=True),
             ),
