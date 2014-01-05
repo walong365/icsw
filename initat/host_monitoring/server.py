@@ -255,7 +255,7 @@ class server_code(threading_tools.process_pool):
             # compare 0mq from cluster with host-monitoring 0mq_id
             my_0mq_id = uuid_tools.get_uuid().get_urn()
             try:
-                hm_0mq_id = etree.fromstring(file(zmq_id_name, "r").read()).xpath(".//zmq_id[@bind_address='*']")[0].text
+                hm_0mq_id = etree.fromstring(file(zmq_id_name, "r").read()).xpath(".//zmq_id[@bind_address='*']", smart_strings=False)[0].text
             except:
                 self.log("error reading from %s: %s" % (zmq_id_name, process_tools.get_except_info()),
                          logging_tools.LOG_LEVEL_ERROR)
@@ -277,7 +277,7 @@ class server_code(threading_tools.process_pool):
         rewrite = False
         if my_0mq_id.startswith("<?xml"):
             zmq_id_xml = etree.fromstring(my_0mq_id)
-            for cur_el in zmq_id_xml.xpath(".//zmq_id[@bind_address]"):
+            for cur_el in zmq_id_xml.xpath(".//zmq_id[@bind_address]", smart_strings=False):
                 if cur_el.text is None:
                     rewrite = True
                     cur_el.text = uuid.uuid1().get_urn()
@@ -287,13 +287,19 @@ class server_code(threading_tools.process_pool):
             rewrite = True
         if rewrite:
             file(zmq_id_name, "w").write(etree.tostring(zmq_id_xml, pretty_print=True, xml_declaration=True, encoding="utf-8"))
-        my_0mq_id = zmq_id_xml.xpath(".//zmq_id[@bind_address='*']/text()")
+        my_0mq_id = zmq_id_xml.xpath(".//zmq_id[@bind_address='*']/text()", smart_strings=False)
         my_0mq_id = my_0mq_id[0]
         # get all ipv4 interfaces with their ip addresses, dict: interfacename -> IPv4
         ipv4_dict = dict([(cur_if_name, [ip_tuple["addr"] for ip_tuple in value[2]][0]) for cur_if_name, value in [(if_name, netifaces.ifaddresses(if_name)) for if_name in netifaces.interfaces()] if 2 in value])
         # ipv4_lut = dict([(value, key) for key, value in ipv4_dict.iteritems()])
         ipv4_addresses = ipv4_dict.values()
-        zmq_id_dict = dict([(cur_el.attrib["bind_address"], (cur_el.text, True if "virtual" in cur_el.attrib else False)) for cur_el in zmq_id_xml.xpath(".//zmq_id[@bind_address]")])
+        zmq_id_dict = dict([
+            (
+                cur_el.attrib["bind_address"], (
+                    cur_el.text, True if "virtual" in cur_el.attrib else False
+                )
+            ) for cur_el in zmq_id_xml.xpath(".//zmq_id[@bind_address]", smart_strings=False)
+        ])
         if zmq_id_dict.keys() == ["*"]:
             # wildcard bind
             pass

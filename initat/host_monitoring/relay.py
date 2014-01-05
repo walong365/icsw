@@ -216,7 +216,7 @@ class id_discovery(object):
         if addr_el is None:
             addr_el = E.host(address=addr)
             map_xml.append(addr_el)
-        uuid_el = addr_el.xpath("uuid[@proto='%s' and @port='%s']" % (proto, port))
+        uuid_el = addr_el.xpath("uuid[@proto='%s' and @port='%s']" % (proto, port), smart_strings=False)
         if not len(uuid_el):
             uuid_el = E.uuid("", proto=proto, port=port)
             addr_el.append(uuid_el)
