@@ -1,6 +1,6 @@
 #!/opt/python-init/bin/python -Ot
 #
-# Copyright (C) 2001,2002,2003,2004,2005,2006,2007,2008,2011,2012,2013 Andreas Lang-Nevyjel, init.at
+# Copyright (C) 2001-2014 Andreas Lang-Nevyjel, init.at
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -21,20 +21,17 @@
 #
 """ server command structure definitions """
 
+from lxml import etree # @UnresolvedImport
+from lxml.builder import ElementMaker # @UnresolvedImport
 import base64
 import bz2
 import datetime
 import logging_tools
 import marshal
 import os
+import pickle
 import re
 import sys
-from lxml import etree # @UnresolvedImport
-from lxml.builder import ElementMaker # @UnresolvedImport
-try:
-    import cPickle as pickle
-except ImportError:
-    import pickle
 
 XML_NS = "http://www.initat.org/lxml/ns"
 
@@ -106,7 +103,7 @@ class srv_command(object):
             kwargs["namespaces"] = {"ns" : XML_NS}
         if start_el is None:
             start_el = self.__tree
-        return start_el.xpath(*args, **kwargs)
+        return start_el.xpath(*args, smart_strings=False, **kwargs)
     def set_result(self, ret_str, level=SRV_REPLY_STATE_OK):
         if "result" not in self:
             self["result"] = None
@@ -172,11 +169,11 @@ class srv_command(object):
             return default
     def __contains__(self, key):
         xpath_str = "/ns:ics_batch/%s" % ("/".join(["ns:%s" % (sub_arg) for sub_arg in key.split(":")]))
-        xpath_res = self.__tree.xpath(xpath_str, namespaces={"ns" : XML_NS})
+        xpath_res = self.__tree.xpath(xpath_str, smart_strings=False, namespaces={"ns" : XML_NS})
         return True if len(xpath_res) else False
     def get_element(self, key):
         xpath_str = "/ns:ics_batch/%s" % ("/".join(["ns:%s" % (sub_arg) for sub_arg in key.split(":")]))
-        return self.__tree.xpath(xpath_str, namespaces={"ns" : XML_NS})
+        return self.__tree.xpath(xpath_str, smart_strings=False, namespaces={"ns" : XML_NS})
     def __getitem__(self, key):
         if key.startswith("*"):
             interpret = True
@@ -215,7 +212,7 @@ class srv_command(object):
             self._element(value, cur_element)
     def delete_subtree(self, key):
         xpath_str = "/ns:ics_batch/%s" % ("/".join(["ns:%s" % (sub_arg) for sub_arg in key.split(":")]))
-        for result in self.__tree.xpath(xpath_str, namespaces={"ns" : XML_NS}):
+        for result in self.__tree.xpath(xpath_str, smart_strings=False, namespaces={"ns" : XML_NS}):
             result.getparent().remove(result)
     def _element(self, value, cur_element=None):
         if cur_element is None:
@@ -272,7 +269,7 @@ class srv_command(object):
     def _create_element(self, key):
         """ creates all element(s) down to key.split(":") """
         xpath_str = "/ns:ics_batch"
-        cur_element = self.__tree.xpath(xpath_str, namespaces={"ns" : XML_NS})[0]
+        cur_element = self.__tree.xpath(xpath_str, smart_strings=False , namespaces={"ns" : XML_NS})[0]
         for cur_key in key.split(":"):
             xpath_str = "%s/ns:%s" % (xpath_str, self._escape_key(cur_key))
             full_key = "{%s}%s" % (XML_NS, self._escape_key(cur_key))
@@ -321,7 +318,7 @@ class srv_command(object):
         return result
     def get(self, key, def_value=None):
         xpath_str = ".//%s" % ("/".join(["ns:%s" % (sub_arg) for sub_arg in key.split(":")]))
-        xpath_res = self.__tree.xpath(xpath_str, namespaces={"ns" : XML_NS})
+        xpath_res = self.__tree.xpath(xpath_str, smart_strings=False, namespaces={"ns" : XML_NS})
         if len(xpath_res) == 1:
             return xpath_res[0].text
         elif len(xpath_res) > 1:
@@ -329,7 +326,7 @@ class srv_command(object):
         else:
             return def_value
     def update_source(self):
-        self.__tree.xpath(".//ns:source", namespaces={"ns" : XML_NS})[0].attrib.update({
+        self.__tree.xpath(".//ns:source", smart_strings=False, namespaces={"ns" : XML_NS})[0].attrib.update({
             "host" : os.uname()[1],
             "pid" : "%d" % (os.getpid())})
     def pretty_print(self):
