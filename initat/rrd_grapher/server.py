@@ -1,6 +1,6 @@
 #!/usr/bin/python-init -Ot
 #
-# Copyright (C) 2007,2008,2009,2013 Andreas Lang-Nevyjel, init.at
+# Copyright (C) 2007-2009,2013-2014 Andreas Lang-Nevyjel, init.at
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -165,7 +165,7 @@ class server_process(threading_tools.process_pool):
         data_store.feed_perfdata(host_name, pd_type, pd_info)
     def _get_node_rrd(self, srv_com):
         node_results = E.node_results()
-        dev_list = srv_com.xpath(None, ".//device_list")[0]
+        dev_list = srv_com.xpath(".//device_list")[0]
         pk_list = [int(cur_pk) for cur_pk in dev_list.xpath(".//device/@pk")]
         for dev_pk in pk_list:
             cur_res = E.node_result(pk="%d" % (dev_pk))
