@@ -1,6 +1,6 @@
 #!/usr/bin/python-init -Ot
 #
-# Copyright (C) 2001,2002,2003,2004,2005,2006,2007,2008,2009,2012,2013 Andreas Lang-Nevyjel
+# Copyright (C) 2001-2014 Andreas Lang-Nevyjel
 #
 # this file is part of package-client
 #
@@ -191,9 +191,9 @@ class install_process(threading_tools.process_obj):
                 self._handle_repo_list(first_com)
                 self._process_commands()
             elif cur_com in ["package_list"]:
-                if len(first_com.xpath(None, ".//ns:packages/package_device_connection")):
+                if len(first_com.xpath(".//ns:packages/package_device_connection")):
                     # clever enqueue ? FIXME
-                    for cur_pdc in first_com.xpath(None, ".//ns:packages/package_device_connection"):
+                    for cur_pdc in first_com.xpath(".//ns:packages/package_device_connection"):
                         # set flag to not init
                         cur_pdc.attrib["init"] = "0"
                         # flag to send return to server
@@ -350,7 +350,7 @@ class zypper_install_process(install_process):
                 data=cur_pdc)
             return False, None
     def _handle_repo_list(self, in_com):
-        in_repos = in_com.xpath(None, ".//ns:repos")[0]
+        in_repos = in_com.xpath(".//ns:repos")[0]
         self.log("handling repo_list (%s)" % (logging_tools.get_plural("entry", len(in_repos))))
         # manual comparision, better modify them with zypper, FIXME ?
         repo_dir = "/etc/zypp/repos.d"

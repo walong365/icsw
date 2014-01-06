@@ -1,6 +1,6 @@
 #!/usr/bin/python-init -Ot
 #
-# Copyright (C) 2001,2002,2003,2004,2005,2006,2007,2008,2009,2012,2013 Andreas Lang-Nevyjel
+# Copyright (C) 2001-2014 Andreas Lang-Nevyjel
 #
 # this file is part of package-server
 #
@@ -19,21 +19,22 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
-""" package server """
+""" package server, base structures """
 
-import os
-import datetime
-import logging_tools
-import server_command
-import subprocess
-import time
-from lxml import etree # @UnresolvedImport
-from lxml.builder import E # @UnresolvedImport
 from django.db.models import Q
 from initat.cluster.backbone.models import package_repo, cluster_timezone, \
      package_search_result, device_variable, device, package_device_connection
 from initat.package_install.server.config import global_config, CONFIG_NAME, \
     PACKAGE_VERSION_VAR_NAME, LAST_CONTACT_VAR_NAME
+from lxml import etree # @UnresolvedImport
+from lxml.builder import E # @UnresolvedImport
+import datetime
+import logging_tools
+import os
+import server_command
+import subprocess
+import time
+
 class repository(object):
     def __init__(self):
         pass
@@ -420,8 +421,8 @@ class client(object):
         )
         srv_com["repo_list"] = resp
     def _package_info(self, srv_com):
-        pdc_xml = srv_com.xpath(None, ".//package_device_connection")[0]
-        info_xml = srv_com.xpath(None, ".//result")
+        pdc_xml = srv_com.xpath(".//package_device_connection")[0]
+        info_xml = srv_com.xpath(".//result")
         if len(info_xml):
             info_xml = info_xml[0]
             cur_pdc = package_device_connection.objects.select_related("package").get(Q(pk=pdc_xml.attrib["pk"]))
