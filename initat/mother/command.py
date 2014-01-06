@@ -1,7 +1,7 @@
 #!/usr/bin/python-init -Otu
 # -*- coding: utf-8 -*-
 #
-# Copyright (C) 2012,2013 Andreas Lang-Nevyjel, init.at
+# Copyright (C) 2012-2014 Andreas Lang-Nevyjel, init.at
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -22,21 +22,21 @@
 #
 """ external commands (dhcp, ipmi) parts of mother """
 
-import threading_tools
-import logging_tools
-from initat.mother.config import global_config
-import config_tools
-import commands
-import time
-import subprocess
 from django.db import connection
 from django.db.models import Q
 from initat.cluster.backbone.models import device, network, cd_connection, device_variable, netdevice
 from initat.mother.command_tools import simple_command
+from initat.mother.config import global_config
+from lxml import etree # @UnresolvedImports
+import commands
+import config_tools
+import logging_tools
+import process_tools
 import re
 import server_command
-import process_tools
-from lxml import etree # @UnresolvedImports
+import subprocess
+import threading_tools
+import time
 
 class hc_command(object):
     def __init__(self, xml_struct, router_obj):
@@ -204,7 +204,7 @@ class external_command_process(threading_tools.process_obj):
             self.register_timer(self._check_commands, 1)
         in_com = server_command.srv_command(source=in_com)
         self.router_obj.check_for_update()
-        for cur_dev in in_com.xpath(None, ".//ns:device"):
+        for cur_dev in in_com.xpath(".//ns:device"):
             hc_command(cur_dev, self.router_obj)
     def sc_finished(self, sc_com):
         self.log("simple command done")

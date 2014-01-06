@@ -1,7 +1,7 @@
 #!/usr/bin/python-init -Otu
 # -*- coding: utf-8 -*-
 #
-# Copyright (C) 2012,2013 Andreas Lang-Nevyjel, init.at
+# Copyright (C) 2012-2014 Andreas Lang-Nevyjel, init.at
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -189,7 +189,7 @@ class machine(object):
                 cur_dev.log("call '%s' not defined" % (com_name), logging_tools.LOG_LEVEL_WARN)
     @staticmethod
     def iterate_xml(srv_com, com_name, *args, **kwargs):
-        for cur_dev in srv_com.xpath(None, ".//ns:device[@pk]"):
+        for cur_dev in srv_com.xpath(".//ns:device[@pk]"):
             pk = int(cur_dev.attrib["pk"])
             cur_mach = machine.get_device(pk)
             if cur_mach is None:
@@ -198,12 +198,12 @@ class machine(object):
                 getattr(cur_mach, com_name)(cur_dev, *args, **kwargs)
     @staticmethod
     def ping(srv_com):
-        keys = set(map(lambda x: int(x), srv_com.xpath(None, ".//ns:device/@pk"))) & set(machine.__unique_keys)
+        keys = set(map(lambda x: int(x), srv_com.xpath(".//ns:device/@pk"))) & set(machine.__unique_keys)
         cur_id = machine.ping_id
         ping_list = srv_com.builder("ping_list")
         for u_key in keys:
             cur_dev = machine.get_device(u_key)
-            dev_node = srv_com.xpath(None, ".//ns:device[@pk='%d']" % (cur_dev.pk))[0]
+            dev_node = srv_com.xpath(".//ns:device[@pk='%d']" % (cur_dev.pk))[0]
             dev_node.attrib.update({"tried"  : "%d" % (len(cur_dev.ip_dict)),
                                     "ok"     : "0",
                                     "failed" : "0"})
@@ -219,7 +219,7 @@ class machine(object):
         return True if len(ping_list) else False
     @staticmethod
     def interpret_result(srv_com, id_str, res_dict):
-        node = srv_com.xpath(None, ".//ns:ping[text() = '%s']" % (id_str))[0]
+        node = srv_com.xpath(".//ns:ping[text() = '%s']" % (id_str))[0]
         pk = int(node.attrib["pk"])
         ping_list = node.getparent()
         ping_list.remove(node)
@@ -230,7 +230,7 @@ class machine(object):
             pl_parent.getparent().remove(pl_parent)
     def interpret_local_result(self, srv_com, res_dict):
         # device-specific interpretation
-        dev_node = srv_com.xpath(None, ".//ns:device[@pk='%d']" % (self.pk))[0]
+        dev_node = srv_com.xpath(".//ns:device[@pk='%d']" % (self.pk))[0]
         ip_list = self.ip_dict.keys()
         if res_dict["host"] in ip_list:
             if res_dict["recv_ok"]:
@@ -245,7 +245,7 @@ class machine(object):
                         dev_node.attrib.get("soft_command", "status"),
                         dev_node.attrib["ip"])
                 # remove other ping requests for this node
-                for other_ping in srv_com.xpath(None, ".//ns:ping[@pk='%d']" % (self.pk)):
+                for other_ping in srv_com.xpath(".//ns:ping[@pk='%d']" % (self.pk)):
                     other_ping.getparent().remove(other_ping)
             else:
                 dev_node.attrib["failed"] = "%d" % (int(dev_node.attrib["failed"]) + 1)
@@ -1194,7 +1194,7 @@ class node_control_process(threading_tools.process_obj):
         if len(args):
             id_str, in_com = args
             in_com = server_command.srv_command(source=in_com)
-            dev_list = map(lambda x: int(x), in_com.xpath(None, ".//ns:device/@pk"))
+            dev_list = map(lambda x: int(x), in_com.xpath(".//ns:device/@pk"))
             machine.iterate("refresh_target_kernel", device_keys=dev_list)
             machine.iterate("read_dot_files", device_keys=dev_list)
         else:
@@ -1227,9 +1227,9 @@ class node_control_process(threading_tools.process_obj):
         new_pending = []
         # print "pr", id_str
         for cur_com in self.pending_list:
-            if len(cur_com.xpath(None, ".//ns:ping[text() = '%s']" % (id_str))):
+            if len(cur_com.xpath(".//ns:ping[text() = '%s']" % (id_str))):
                 machine.interpret_result(cur_com, id_str, res_dict)
-                if not cur_com.xpath(None, ".//ns:ping_list"):
+                if not cur_com.xpath(".//ns:ping_list"):
                     self._add_ping_info(cur_com)
                 else:
                     new_pending.append(cur_com)
@@ -1239,7 +1239,7 @@ class node_control_process(threading_tools.process_obj):
     def _add_ping_info(self, cur_com):
         machine.iterate_xml(cur_com, "add_ping_info")
         # print "**", cur_com.pretty_print()
-        self.send_pool_message("send_return", cur_com.xpath(None, ".//ns:command/@zmq_id")[0], unicode(cur_com))
+        self.send_pool_message("send_return", cur_com.xpath(".//ns:command/@zmq_id")[0], unicode(cur_com))
     def _nodeinfo(self, id_str, node_text, **kwargs):
         node_id, instance = id_str.split(":", 1)
         cur_dev = machine.get_device(node_id)
@@ -1298,7 +1298,7 @@ class node_control_process(threading_tools.process_obj):
         if len(args):
             id_str, in_com = args
             in_com = server_command.srv_command(source=in_com)
-            dev_list = in_com.xpath(None, ".//ns:device/@name")
+            dev_list = in_com.xpath(".//ns:device/@name")
             # print dev_list
             self._adw_macaddr("alter", nodes=dev_list)
             self.send_pool_message("send_return", id_str, unicode(in_com))
