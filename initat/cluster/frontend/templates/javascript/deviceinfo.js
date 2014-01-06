@@ -159,7 +159,7 @@ class rrd_config
             min_dt = @get_date()
             min_dt.setFullYear(min_dt.getYear() - 10)
         new_tf = {"min" : min_dt, "max" : max_dt, "start" : start_dt, "end" : end_dt}
-        console.log new_tf["start"]
+        #console.log new_tf["start"]
         # check for change
         add_new = true
         if @rrd_timeframes.length
@@ -936,7 +936,7 @@ class device_info
                     ip_table = @network_div.find("table[id='ip__" + add_nd.attr("key") + "']")
                     ip_table.replaceWith(@build_net_ip_table(add_nd))
     set_network_after_change: (cur_el) =>
-        console.log cur_el
+        #console.log cur_el
         # get xml_el
         net_ip_xml = @resp_xml.find("net_ip[pk='" + cur_el.attr("id").split("__")[1] + "']")
         @network_div.find("select[id='ip__" + net_ip_xml.attr("pk") + "__network']").attr("value", net_ip_xml.attr("network"))
