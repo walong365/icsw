@@ -1,7 +1,7 @@
 #!/usr/bin/python-init -Ot
 # -*- coding: utf-8 -*-
 #
-# Copyright (C) 2013,2014 Andreas Lang-Nevyjel
+# Copyright (C) 2013-2014 Andreas Lang-Nevyjel
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -1052,6 +1052,7 @@ class relay_code(threading_tools.process_pool):
                             _e.host(parts[0]),
                             _e.port(parts[1]),
                             _e.timeout(parts[2]),
+                            _e.raw_connect(parts[3]),
                             _e.arguments(
                                 *[getattr(_e, "arg%d" % (arg_idx))(arg) for arg_idx, arg in enumerate(arg_list)]
                             ),
