@@ -246,7 +246,7 @@ class get_file_content(View):
                     srv_com.builder("file", name=io_element.text),
                     )
                 result = contact_server(request, "tcp://localhost:8004", srv_com, timeout=60, connection_id="file_fetch_%s" % (str(job_id)))
-                for cur_file in result.xpath(None, ".//ns:file"):
+                for cur_file in result.xpath(".//ns:file"):
                     # print etree.tostring(cur_file)
                     if cur_file.attrib["error"] == "1":
                         request.xml_response.error("error reading %s (job %s): %s" % (

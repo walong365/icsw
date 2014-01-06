@@ -233,7 +233,7 @@ class get_boot_info(View):
             if call_mother:
                 if result is not None:
                     # copy from mother
-                    dev_node = result.xpath(None, ".//ns:device[@pk='%d']" % (cur_dev.pk))
+                    dev_node = result.xpath(".//ns:device[@pk='%d']" % (cur_dev.pk))
                     if len(dev_node):
                         dev_node = dev_node[0]
                     else:

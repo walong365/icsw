@@ -270,7 +270,7 @@ def process_page(req):
                     # FIXME
                     im_found[im_list_command.get_hostname()] = {
                         "image_source" : im_list_command.server_reply["result:image_list"].attrib["image_dir"],
-                        "images"       : im_list_command.server_reply.xpath(None, ".//ns:image")}
+                        "images"       : im_list_command.server_reply.xpath(".//ns:image")}
                     #".//image_list"opt_dict["image_dir"],
                     #                                            "images"       : opt_dict["images"]}
                 else:

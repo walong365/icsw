@@ -429,7 +429,7 @@ class generate_config(View):
         result = contact_server(request, "tcp://localhost:8005", srv_com, timeout=30, log_result=False)
         if result:
             request.xml_response["result"] = E.devices()
-            for dev_node in result.xpath(None, ".//ns:device"):
+            for dev_node in result.xpath(".//ns:device"):
                 res_node = E.device(dev_node.text, **dev_node.attrib)
                 for sub_el in dev_node:
                     res_node.append(sub_el)
@@ -554,7 +554,7 @@ class get_device_cvars(View):
         result = contact_server(request, "tcp://localhost:8005", srv_com, timeout=30, log_result=False)
         if result:
             request.xml_response["result"] = E.devices()
-            for dev_node in result.xpath(None, ".//ns:device"):
+            for dev_node in result.xpath(".//ns:device"):
                 res_node = E.device(dev_node.text, **dev_node.attrib)
                 for sub_el in dev_node:
                     res_node.append(sub_el)
