@@ -542,10 +542,9 @@ class host_message(object):
                 )
             )
             # print self.srv_com.pretty_print()
-            #for arg_idx, arg in enumerate(rest):
+            # for arg_idx, arg in enumerate(rest):
             #    self.srv_com["arguments:arg%d" % (arg_idx)] = arg
-            #self.srv_com["arguments:rest"] = " ".join(rest)
-            print self.srv_com.pretty_print()
+            # self.srv_com["arguments:rest"] = " ".join(rest)
             self.ns = cur_ns
         else:
             # connect to non-host-monitoring service

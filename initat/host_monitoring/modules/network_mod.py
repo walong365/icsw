@@ -1,6 +1,6 @@
 #!/usr/bin/python-init -Ot
 #
-# Copyright (C) 2001,2002,2003,2004,2005,2006,2007,2008,2009,2010,2012,2013 Andreas Lang-Nevyjel, init.at
+# Copyright (C) 2001-2014 Andreas Lang-Nevyjel, init.at
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -553,15 +553,15 @@ class ping_command(hm_classes.hm_command):
             timeout = 5.0
         elif len(args) == 1:
             target_host = args[0]
-            num_pings, timeout = (3, 5)
+            num_pings, timeout = (3, 5.0)
         else:
-            srv_com["result"].attrib.update({
-                "reply" : "wrong number of arguments (%d)" % (len(args)),
-                "state" : "%d" % (server_command.SRV_REPLY_STATE_ERROR)})
+            srv_com.set_resul("wrong number of arguments (%d)" % (len(args)), server_command.SRV_REPLY_STATE_ERROR)
             cur_sps, target_host = (None, None)
         if target_host:
-            num_pings, timeout = (min(32, max(1, int(float(num_pings)))),
-                                  max(0.1, float(timeout)))
+            num_pings, timeout = (
+                min(32, max(1, int(float(num_pings)))),
+                max(0.1, float(timeout))
+            )
             cur_sps = ping_sp_struct(srv_com, [entry.strip() for entry in target_host.split(",")], num_pings, timeout)
         return cur_sps
     def _interpret_wc(self, in_str, def_value, num_sent):
