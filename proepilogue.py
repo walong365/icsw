@@ -1916,13 +1916,23 @@ class job_object(object):
         failure_list = []
         for targ_ip, cur_res in zip(all_nfs_ips, result):
             if cur_res is not None:
-                for p_res in cur_res.xpath(None, ".//ns:ping_result"):
-                    was_ok = int(p_res.attrib["num_received"]) > 0
-                    dest_ip = p_res.attrib["target"]
-                    if was_ok:
-                        reach_dict[dest_ip]["ok_from"].append(targ_ip)
-                    else:
-                        reach_dict[dest_ip]["error_from"].append(targ_ip)
+                try:
+                    for p_res in cur_res.xpath(".//ns:ping_result"):
+                        was_ok = int(p_res.attrib["num_received"]) > 0
+                        dest_ip = p_res.attrib["target"]
+                        if was_ok:
+                            reach_dict[dest_ip]["ok_from"].append(targ_ip)
+                        else:
+                            reach_dict[dest_ip]["error_from"].append(targ_ip)
+                except:
+                    # fallback to old code
+                    for p_res in cur_res.xpath(None, ".//ns:ping_result"):
+                        was_ok = int(p_res.attrib["num_received"]) > 0
+                        dest_ip = p_res.attrib["target"]
+                        if was_ok:
+                            reach_dict[dest_ip]["ok_from"].append(targ_ip)
+                        else:
+                            reach_dict[dest_ip]["error_from"].append(targ_ip)
             else:
                 # node not reachable
                 failure_list.append(targ_ip)

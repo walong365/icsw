@@ -292,7 +292,7 @@ class server_process(threading_tools.process_pool):
         self._send_result(src_id, srv_com)
     def _job_control(self, srv_com):
         job_action = srv_com["action"].text
-        job_id = srv_com.xpath(None, ".//ns:job_list/ns:job/@job_id")[0]
+        job_id = srv_com.xpath(".//ns:job_list/ns:job/@job_id")[0]
         self.log("job action '%s' for job '%s'" % (job_action, job_id))
         if job_action in ["force_delete", "delete"]:
             cur_stat, cur_out, log_lines = call_command(

@@ -1,6 +1,6 @@
 #!/usr/bin/python-init -Ot
 #
-# Copyright (C) 2001,2002,2003,2004,2005,2006,2007,2008,2009,2011,2012,2013 Andreas Lang-Nevyjel, init.at
+# Copyright (C) 2001-2014 Andreas Lang-Nevyjel, init.at
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -108,7 +108,7 @@ class rms_mon_process(threading_tools.process_obj):
         src_id, srv_com_str = args
         srv_com = server_command.srv_command(source=srv_com_str)
         job_action = srv_com["action"].text
-        job_id = srv_com.xpath(None, ".//ns:job_list/ns:job/@job_id")[0]
+        job_id = srv_com.xpath(".//ns:job_list/ns:job/@job_id")[0]
         self.log("job action '%s' for job '%s'" % (job_action, job_id))
         if job_action in ["force_delete", "delete"]:
             cur_stat, cur_out, log_lines = call_command(
