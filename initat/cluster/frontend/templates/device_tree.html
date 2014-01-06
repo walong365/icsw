@@ -84,7 +84,7 @@
 
 <div ng-controller="device_tree_base">
     <h2>Device tree ({{ entries.length }} entries, {{ pagSettings.conf.filtered_len }} shown<span ng-show="num_selected()">, {{ num_selected() }} selected</span>),
-        <input type="button" class="btn btn-primary" value="create device" ng-click="create('device', $event)"></button>
+        <input type="button" class="btn btn-primary" value="create device" ng-click="create('device', $event)"></button>, 
         <input type="button" class="btn btn-success" value="create devicegroup" ng-click="create('device_group', $event)"></button>
         <input ng-show="num_selected()" type="button" class="btn btn-warning" value="modify selected" ng-click="edit_many($event)"></button>
         <input ng-show="num_selected()" type="button" class="btn btn-danger" value="delete selected" ng-click="delete_many($event)"></button>
