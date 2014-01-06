@@ -365,7 +365,7 @@ class host_connection(object):
     def _open(self):
         if not self.__open:
             try:
-                self.log("connecting to %s" % (self.__conn_str))
+                self.log("connecting")
                 host_connection.zmq_socket.connect(self.__conn_str)
             except:
                 raise
