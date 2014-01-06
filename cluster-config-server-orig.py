@@ -1670,7 +1670,7 @@ class server_process(threading_tools.process_pool):
                     cur_dev.attrib["internal_state"],
                     dict(cur_dev.attrib),
                     )
-        num_pending = len(cur_com.xpath(None, ".//ns:device[not(@internal_state='done')]"))
+        num_pending = len(cur_com.xpath(".//ns:device[not(@internal_state='done')]"))
         if not num_pending:
             self.log("nothing pending, sending return")
             self._send_return(cur_com)
@@ -1689,7 +1689,7 @@ class server_process(threading_tools.process_pool):
         run_idx = upd_dict.get("run_idx", -1)
         if run_idx in self.__pending_commands:
             cur_com = self.__pending_commands[run_idx]
-            cur_dev = cur_com.xpath(None, ".//ns:device[@name='%s']" % (upd_dict["name"]))[0]
+            cur_dev = cur_com.xpath(".//ns:device[@name='%s']" % (upd_dict["name"]))[0]
             for key, value in upd_dict.iteritems():
                 if key.endswith("_dict"):
                     new_dict = E.info_dict()
@@ -1833,7 +1833,7 @@ class simple_request(object):
             return "error cannot create partition info"
     def build_config_result(self, result):
         xml_result = server_command.srv_command(source=result)
-        res_node = xml_result.xpath(None, ".//ns:device[@pk='%d']" % (self.cc.device.pk))[0]
+        res_node = xml_result.xpath(".//ns:device[@pk='%d']" % (self.cc.device.pk))[0]
         self.log("result node has %s:" % (logging_tools.get_plural("attribute", len(res_node.attrib))))
         for key, value in res_node.attrib.iteritems():
             self.log("   %-10s: %s" % (key, value))
