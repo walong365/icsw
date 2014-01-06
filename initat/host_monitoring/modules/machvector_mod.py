@@ -1,6 +1,6 @@
 #!/usr/bin/python-init
 #
-# Copyright (C) 2001,2002,2003,2004,2005,2006,2007,2008,2010,2012,2013 Andreas Lang-Nevyjel
+# Copyright (C) 2001-2008,2010,2012-2014 Andreas Lang-Nevyjel
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -289,7 +289,7 @@ class machine_vector(object):
             self.log("error interpreting data as srv_command: %s" % (process_tools.get_except_info()),
                      logging_tools.LOG_LEVEL_ERROR)
         else:
-            for in_vector in rcv_com.xpath(None, ".//*[@type='vector']"):
+            for in_vector in rcv_com.xpath(".//*[@type='vector']"):
                 for values_list in in_vector:
                     for cur_value in values_list:
                         self.set_from_external(hm_classes.mvect_entry(**cur_value.attrib))

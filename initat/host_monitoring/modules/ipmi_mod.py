@@ -1,6 +1,6 @@
 #!/usr/bin/python-init -Ot
 #
-# Copyright (C) 2010,2013 Andreas Lang-Nevyjel, init.at
+# Copyright (C) 2010,2013-2014 Andreas Lang-Nevyjel, init.at
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -209,7 +209,7 @@ class ipmi_sensor_command(hm_classes.hm_command):
                 l_dict[key] = float(getattr(cur_ns, key))
             except:
                 l_dict[key] = None
-        s_list = srv_com.xpath(None, ".//ns:sensor_list")
+        s_list = srv_com.xpath(".//ns:sensor_list")
         if s_list:
             s_list = s_list[0]
             if cur_ns.arguments:

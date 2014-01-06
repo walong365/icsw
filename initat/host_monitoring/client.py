@@ -1,7 +1,7 @@
 #!/usr/bin/python-init -Ot
 # -*- coding: utf-8 -*-
 #
-# Copyright (C) 2011,2012,2013 Andreas Lang-Nevyjel
+# Copyright (C) 2011-2014 Andreas Lang-Nevyjel
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -58,7 +58,7 @@ def client_code():
                            os.getpid()),
                 timeout=global_config["TIMEOUT"]).add_connection(conn_str, srv_com)
             if result:
-                error_result = result.xpath(None, ".//ns:result[@state != '0']")
+                error_result = result.xpath(".//ns:result[@state != '0']")
                 if error_result:
                     error_result = error_result[0]
                     ret_state, ret_str = (

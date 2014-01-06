@@ -339,16 +339,21 @@ class host_connection(object):
             cur_hc = host_connection.hc_dict[(False, conn_str)]
         return cur_hc
     @staticmethod
-    def check_timeout_g():
+    def check_timeout_global():
+        # global check_timeout function
         cur_time = time.time()
         id_discovery.check_timeout(cur_time)
         [cur_hc.check_timeout(cur_time) for cur_hc in host_connection.hc_dict.itervalues()]
     @staticmethod
     def global_close():
         host_connection.zmq_socket.close()
-    def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
+    @staticmethod
+    def g_log(what, log_level):
         host_connection.relayer_process.log("[hc] %s" % (what), log_level)
+    def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
+        host_connection.relayer_process.log("[hc %s] %s" % (self.__conn_str, what), log_level)
     def check_timeout(self, cur_time):
+        # check all messages for current host
         to_messages = [cur_mes for cur_mes in self.messages.itervalues() if cur_mes.check_timeout(cur_time, host_connection.timeout)]
         if to_messages:
             # print "TO", len(to_messages), self.__conn_str
@@ -457,13 +462,13 @@ class host_connection(object):
         mes_id = result["relayer_id"].text
         if mes_id in host_connection.messages:
             host_connection.relayer_process._new_client(result["host"].text, int(result["port"].text))
-            if "host_unresolv" in result:
+            if "host_unresolved" in result:
                 host_connection.relayer_process._new_client(result["host_unresolved"].text, int(result["port"].text))
             cur_mes = host_connection.messages[mes_id]
             if cur_mes.sent:
                 cur_mes.sent = False
                 # self.__backlog_counter -= 1
-            if len(result.xpath(None, ".//ns:raw")):
+            if len(result.xpath(".//ns:raw")):
                 # raw response, no interpret
                 cur_mes.srv_com = result
                 host_connection._send_result(cur_mes, None)
@@ -482,10 +487,8 @@ class host_connection(object):
                 host_connection._send_result(cur_mes, res_tuple)
                 # self.send_result(cur_mes, res_tuple)
         else:
-            # FIXME
-            # print "ID", mes_id
-            # print self.log("unknown id '%s' in _handle_result" % (mes_id), logging_tools.LOG_LEVEL_ERROR)
-            pass
+            host_connection.g_log("got result for delayed id '%s'" % (mes_id), logging_tools.LOG_LEVEL_WARN)
+        del result
     def _handle_old_result(self, mes_id, result):
         if mes_id in host_connection.messages:
             cur_mes = host_connection.messages[mes_id]
@@ -515,7 +518,7 @@ class host_message(object):
         self.xml_input = xml_input
         self.srv_com = srv_com
         self.timeout = int(srv_com.get("timeout", "10"))
-        self.srv_com["relayer_id"] = self.src_id
+        self.srv_com[""].append(srv_com.builder("relayer_id", self.src_id))
         self.s_time = time.time()
         self.sent = False
         self.sr_probe = None
@@ -526,18 +529,33 @@ class host_message(object):
         if com_struct:
             cur_ns, rest = com_struct.handle_commandline((self.srv_com["arg_list"].text or "").split())
             # print "***", cur_ns, rest
-            self.srv_com["arg_list"] = " ".join(rest)
+            _e = self.srv_com.builder()
+            _arg_list = self.srv_com.xpath(".//ns:arg_list")
+            if len(_arg_list):
+                _arg_list[0].text = " ".join(rest)
+            else:
+                self.srv_com[""].append(_e.arg_list(" ".join(rest)))
             self.srv_com.delete_subtree("arguments")
-            for arg_idx, arg in enumerate(rest):
-                self.srv_com["arguments:arg%d" % (arg_idx)] = arg
-            self.srv_com["arguments:rest"] = " ".join(rest)
+            self.srv_com[""].append(
+                _e.arguments(
+                    *([getattr(_e, "arg%d" % (arg_idx))(arg) for arg_idx, arg in enumerate(rest)] + [_e.rest(" ".join(rest))])
+                )
+            )
+            # print self.srv_com.pretty_print()
+            #for arg_idx, arg in enumerate(rest):
+            #    self.srv_com["arguments:arg%d" % (arg_idx)] = arg
+            #self.srv_com["arguments:rest"] = " ".join(rest)
+            print self.srv_com.pretty_print()
             self.ns = cur_ns
         else:
             # connect to non-host-monitoring service
             self.srv_com["arguments:rest"] = self.srv_com["arg_list"].text
             self.ns = argparse.Namespace()
     def check_timeout(self, cur_time, to_value):
-        return abs(cur_time - self.s_time) > max(to_value, self.timeout - 2)
+        # check for timeout, to_value is a global timeout from the host_connection object
+        _timeout = abs(cur_time - self.s_time) > min(to_value, self.timeout - 2)
+        # print self.src_id, _timeout, self.timeout, abs(cur_time - self.s_time), to_value
+        return _timeout
     def get_runtime(self, cur_time):
         return abs(cur_time - self.s_time)
     def get_result(self, result):
@@ -567,7 +585,7 @@ class host_message(object):
         if self.sr_probe:
             self.sr_probe.recv = len(result)
             self.sr_probe = None
-        server_error = result.xpath(None, ".//ns:result[@state != '0']")
+        server_error = result.xpath(".//ns:result[@state != '0']")
         if server_error:
             return (int(server_error[0].attrib["state"]),
                     server_error[0].attrib["reply"])
@@ -575,7 +593,7 @@ class host_message(object):
             return self.com_struct.interpret(result, self.ns)
     def interpret_old(self, result):
         if type(result) not in [str, unicode]:
-            server_error = result.xpath(None, ".//ns:result[@state != '0']")
+            server_error = result.xpath(".//ns:result[@state != '0']")
         else:
             server_error = None
         if server_error:
@@ -786,7 +804,7 @@ class relay_code(threading_tools.process_pool):
             self.__msi_block.add_actual_pid(src_pid, mult=mult, process_name=src_process)
             self.__msi_block.save_block()
     def _check_timeout(self):
-        host_connection.check_timeout_g()
+        host_connection.check_timeout_global()
         cur_time = time.time()
         # check nhm timeouts
         del_list = []
@@ -1030,15 +1048,27 @@ class relay_code(threading_tools.process_pool):
                     else:
                         cur_com = arg_list.pop(0) if arg_list else ""
                         srv_com = server_command.srv_command(command=cur_com, identity=src_id)
-                        srv_com["host"] = parts[0]
-                        srv_com["port"] = parts[1]
-                        srv_com["timeout"] = parts[2]
-                        srv_com["raw_connect"] = parts[3]
-                        for arg_index, arg in enumerate(arg_list):
-                            srv_com["arguments:arg%d" % (arg_index)] = arg
-                        srv_com["arg_list"] = " ".join(arg_list)
+                        _e = srv_com.builder()
+                        srv_com[""].extend([
+                            _e.host(parts[0]),
+                            _e.port(parts[1]),
+                            _e.timeout(parts[2]),
+                            _e.arguments(
+                                *[getattr(_e, "arg%d" % (arg_idx))(arg) for arg_idx, arg in enumerate(arg_list)]
+                            ),
+                            _e.arg_list(" ".join(arg_list)),
+                        ])
+                        # print srv_com.pretty_print()
+                        # srv_com["host"] = parts[0]
+                        # srv_com["port"] = parts[1]
+                        # srv_com["timeout"] = parts[2]
+                        # srv_com["raw_connect"] = parts[3]
+                        # for arg_index, arg in enumerate(arg_list):
+                        #    srv_com["arguments:arg%d" % (arg_index)] = arg
+                        # srv_com["arg_list"] = " ".join(arg_list)
+                        # print srv_com.pretty_print()
                 except:
-                    self.log("error parsing %s" % (data), logging_tools.LOG_LEVEL_ERROR)
+                    self.log("error parsing %s: %s" % (data, process_tools.get_except_info()), logging_tools.LOG_LEVEL_ERROR)
                     srv_com = None
         if srv_com is not None:
             if self.__verbose:
@@ -1060,8 +1090,16 @@ class relay_code(threading_tools.process_pool):
                         self.sender_socket.send_unicode(src_id, zmq.SNDMORE)
                         self.sender_socket.send_unicode("%d\0resolve error" % (limits.nag_STATE_CRITICAL))
                     else:
-                        srv_com["host_unresolved"] = t_host
-                        srv_com["host"] = ip_addr
+                        _e = srv_com.builder()
+                        srv_com[""].append(_e.host_unresolved(t_host))
+                        cur_host = srv_com.xpath(".//ns:host")
+                        if len(cur_host) == 1:
+                            cur_host[0].text = ip_addr
+                        else:
+                            srv_com[""].append(_e.host(ip_addr))
+                        # , _e.host(ip_addr)])
+                        # srv_com["host_unresolved"] = t_host
+                        # srv_com["host"] = ip_addr
                         if self.__autosense:
                             # try to get the state of both addresses
                             c_state = self.__client_dict.get(t_host, self.__client_dict.get(ip_addr, None))

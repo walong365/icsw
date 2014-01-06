@@ -1406,8 +1406,8 @@ class umount_command(hm_classes.hm_command):
                         self.log("ok umounting %s" % (m_point))
                     srv_com["umount_list"].append(cur_umount_node)
     def interpret(self, srv_com, cur_ns):
-        ok_list, error_list = (srv_com.xpath(None, ".//ns:umount_result[@error='0']"),
-                               srv_com.xpath(None, ".//ns:umount_result[@error='1']"))
+        ok_list, error_list = (srv_com.xpath(".//ns:umount_result[@error='0']"),
+                               srv_com.xpath(".//ns:umount_result[@error='1']"))
         return limits.nag_STATE_CRITICAL if error_list else limits.nag_STATE_OK, \
                "".join([
                    "tried to unmount %s" % (logging_tools.get_plural("entry", len(ok_list) + len(error_list))),

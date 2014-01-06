@@ -1,6 +1,6 @@
 #!/usr/bin/python-init -Ot
 #
-# Copyright (C) 2001,2002,2003,2004,2005,2006,2007,2009,2010,2011,2012,2013 Andreas Lang-Nevyjel, init.at
+# Copyright (C) 2001-2014 Andreas Lang-Nevyjel, init.at
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -27,7 +27,10 @@ import affinity_tools
 import commands
 import logging_tools
 import os
+import marshal
 import pprint
+import base64
+import bz2
 import process_tools
 import re
 import signal
@@ -200,17 +203,36 @@ class procstat_command(hm_classes.hm_command):
         self.parser.add_argument("-Z", dest="zombie", default=False, action="store_true", help="ignore zombie processes")
     def __call__(self, srv_com, cur_ns):
         p_dict = process_tools.get_proc_list()
+        # pprint.pprint(p_dict)
         if cur_ns.arguments:
-            # try to be smart about cron
-            t_dict = dict([(key, value) for key, value in p_dict.iteritems() if value["name"] in cur_ns.arguments])
+            # try to be smart about cron / crond
+            t_dict = {key : value for key, value in p_dict.iteritems() if value["name"] in cur_ns.arguments}
             if not t_dict and cur_ns.arguments[0] == "cron":
-                t_dict = dict([(key, value) for key, value in p_dict.iteritems() if value["name"] in ["crond"]])
-            srv_com["process_tree"] = t_dict
-        else:
-            srv_com["process_tree"] = p_dict
+                t_dict = {key : value for key, value in p_dict.iteritems() if value["name"] in ["crond"]}
+            p_dict = t_dict
+        # s_time = time.time()
+        # _b = srv_com.builder()
+        # print _b
+        srv_com["process_tree"] = base64.b64encode(bz2.compress(marshal.dumps(p_dict)))
+        # format 1: base64 encoded compressed dump of p_dict
+        srv_com["process_tree"].attrib["format"] = "1"
+        # print len(srv_com["process_tree"].text)
+        # e_time = time.time()
+        # print e_time - s_time
+        # print unicode(srv_com)
     def interpret(self, srv_com, cur_ns):
         result = srv_com["process_tree"]
         # pprint.pprint(result)
+        if type(result) == dict:
+            # old version, gives a dict
+            pass
+        else:
+            _form = int(result.get("format", "1"))
+            if _form == 1:
+                result = marshal.loads(bz2.decompress(base64.b64decode(result.text)))
+            else:
+                return limits.nag_STATE_CRITICAL, "unknown format %d" % (_form)
+            # print result.text
         p_names = cur_ns.arguments
         zombie_ok_list = ["cron"]
         res_dict = {
@@ -220,10 +242,10 @@ class procstat_command(hm_classes.hm_command):
             "userspace" : 0,
             "zombie_ok" : 0,
         }
-        zombie_list = []
+        zombie_dict = {}
         for _pid, value in result.iteritems():
             if value["state"] == "Z":
-                zombie_list.append(value["name"])
+                zombie_dict.setdefault(value["name"], []).append(True)
                 if value["name"].lower() in zombie_ok_list:
                     res_dict["zombie_ok"] += 1
                 elif cur_ns.zombie:
@@ -247,6 +269,7 @@ class procstat_command(hm_classes.hm_command):
             if found_name != p_names[0]:
                 p_names[0] = "%s instead of %s" % (found_name, p_names[0])
             # print p_names, result
+        zombie_dict = {key : len(value) for key, value in zombie_dict.iteritems()}
         ret_state = max(ret_state, limits.check_floor(res_dict["ok"], cur_ns.warn, cur_ns.crit))
         ret_str = "%s running (%s%s%s)" % (
             " + ".join(
@@ -254,7 +277,7 @@ class procstat_command(hm_classes.hm_command):
             ", ".join(sorted(p_names)) if p_names else "all",
             ", %s [%s]" % (
                 logging_tools.get_plural("zombie", res_dict["fail"]),
-                ", ".join(sorted(zombie_list)),
+                ", ".join(["%s%s" % (key, " (x %d)" % (zombie_dict[key]) if zombie_dict[key] > 1 else "") for key in sorted(zombie_dict)]),
                 ) if res_dict["fail"] else "",
             ", %s" % (logging_tools.get_plural("accepted zombie", res_dict["zombie_ok"])) if res_dict["zombie_ok"] else "",
         )
@@ -486,8 +509,8 @@ class ipckill_command(hm_classes.hm_command):
                     if not len(cur_typenode):
                         cur_typenode.attrib["info"] = "nothing to do"
     def interpret(self, srv_com, cur_ns):
-        ok_list, error_list = (srv_com.xpath(None, ".//ns:rem_result[@error='0']"),
-                               srv_com.xpath(None, ".//ns:rem_result[@error='1']"))
+        ok_list, error_list = (srv_com.xpath(".//ns:rem_result[@error='0']"),
+                               srv_com.xpath(".//ns:rem_result[@error='1']"))
         return limits.nag_STATE_CRITICAL if error_list else limits.nag_STATE_OK, "removed %s%s" % (
             logging_tools.get_plural("entry", len(ok_list)),
             ", error for %s" % (logging_tools.get_plural("entry", len(error_list))) if error_list else "")
@@ -551,8 +574,8 @@ class signal_command(hm_classes.hm_command):
                                                           cmdline=" ".join(struct["cmdline"])))
         srv_com["signal_list"].attrib.update({"signal" : "%d" % (cur_ns.signal)})
     def interpret(self, srv_com, cur_ns):
-        ok_list, error_list = (srv_com.xpath(None, ".//ns:signal[@error='0']/text()"),
-                               srv_com.xpath(None, ".//ns:signal[@error='1']/text()"))
+        ok_list, error_list = (srv_com.xpath(".//ns:signal[@error='0']/text()"),
+                               srv_com.xpath(".//ns:signal[@error='1']/text()"))
         cur_sig = int(srv_com["signal_list"].attrib["signal"])
         return limits.nag_STATE_CRITICAL if error_list else limits.nag_STATE_OK, "sent %d[%s] to %s%s" % (
             cur_sig,

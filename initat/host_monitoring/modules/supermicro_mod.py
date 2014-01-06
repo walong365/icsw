@@ -1,6 +1,6 @@
 #!/usr/bin/python-init -Ot
 #
-# Copyright (C) 2013 Andreas Lang-Nevyjel, init.at
+# Copyright (C) 2013-2014 Andreas Lang-Nevyjel, init.at
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -157,10 +157,10 @@ class smcipmi_command(hm_classes.hm_command):
         )
     def interpret(self, srv_com, cur_ns):
         orig_com, _mapped_com = (
-            srv_com.xpath(None, ".//ns:orig_command/text()")[0],
-            srv_com.xpath(None, ".//ns:mapped_command/text()")[0],
+            srv_com.xpath(".//ns:orig_command/text()")[0],
+            srv_com.xpath(".//ns:mapped_command/text()")[0],
         )
-        r_dict = generate_dict(srv_com.xpath(None, ".//ns:output/text()")[0].split("\n"))
+        r_dict = generate_dict(srv_com.xpath(".//ns:output/text()")[0].split("\n"))
         if orig_com == "counter":
             return limits.nag_STATE_OK, ", ".join(["%s : %d of %d" % (
                 key,
@@ -169,7 +169,7 @@ class smcipmi_command(hm_classes.hm_command):
         else:
             # get number
             obj_type = orig_com
-            obj_num = int(srv_com.xpath(None, ".//ns:arguments/ns:rest/text()")[0].strip().split()[-1])
+            obj_num = int(srv_com.xpath(".//ns:arguments/ns:rest/text()")[0].strip().split()[-1])
             obj_key = {"ib" : "ibqdr"}.get(obj_type, obj_type)
             if obj_key in r_dict:
                 if obj_num in r_dict[obj_key]:
