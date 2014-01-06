@@ -1,6 +1,6 @@
 #!/usr/bin/python-init -Ot
 #
-# Copyright (c) 2012,2013 Andreas Lang-Nevyjel, lang-nevyjel@init.at
+# Copyright (c) 2012-2014 Andreas Lang-Nevyjel, lang-nevyjel@init.at
 #
 # this file is part of python-modules-base
 #
@@ -19,6 +19,7 @@
 #
 """ sends a command to one of the python-servers, 0MQ version"""
 
+from lxml import etree # @UnresolvedImports
 import argparse
 import logging_tools
 import os
@@ -27,7 +28,6 @@ import server_command
 import sys
 import time
 import zmq
-from lxml import etree # @UnresolvedImports
 
 def main():
     parser = argparse.ArgumentParser("send command to servers of the init.at Clustersoftware")
@@ -152,8 +152,8 @@ def main():
                 if "result" in srv_reply:
                     print srv_reply["result"].attrib["reply"]
                     ret_state = int(srv_reply["result"].attrib["state"])
-                elif len(srv_reply.xpath(None, ".//nodestatus")):
-                    print srv_reply.xpath(None, ".//nodestatus")[0].text
+                elif len(srv_reply.xpath(".//nodestatus")):
+                    print srv_reply.xpath(".//nodestatus")[0].text
                     ret_state = 0
                 else:
                     print "no result tag found in reply"

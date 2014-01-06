@@ -83,7 +83,6 @@ class srv_command(object):
         srv_command.srvc_open += 1
         self.__builder = ElementMaker(namespace=XML_NS)
         if "source" in kwargs:
-            # print len(kwargs["source"])
             if type(kwargs["source"]) in [str, unicode]:
                 self.__tree = etree.fromstring(kwargs["source"])
             else:
@@ -98,11 +97,10 @@ class srv_command(object):
                 srvc_version="%d" % (kwargs.pop("srvc_version", 1)))
             for key, value in kwargs.iteritems():
                 self[key] = value
-    def xpath(self, start_el=None, *args, **kwargs):
+    def xpath(self, *args, **kwargs):
         if "namespace" not in kwargs:
             kwargs["namespaces"] = {"ns" : XML_NS}
-        if start_el is None:
-            start_el = self.__tree
+        start_el = kwargs.pop("start_el", self.__tree)
         return start_el.xpath(*args, smart_strings=False, **kwargs)
     def set_result(self, ret_str, level=SRV_REPLY_STATE_OK):
         if "result" not in self:
@@ -172,7 +170,10 @@ class srv_command(object):
         xpath_res = self.__tree.xpath(xpath_str, smart_strings=False, namespaces={"ns" : XML_NS})
         return True if len(xpath_res) else False
     def get_element(self, key):
-        xpath_str = "/ns:ics_batch/%s" % ("/".join(["ns:%s" % (sub_arg) for sub_arg in key.split(":")]))
+        if key:
+            xpath_str = "/ns:ics_batch/%s" % ("/".join(["ns:%s" % (sub_arg) for sub_arg in key.split(":")]))
+        else:
+            xpath_str = "/ns:ics_batch"
         return self.__tree.xpath(xpath_str, smart_strings=False, namespaces={"ns" : XML_NS})
     def __getitem__(self, key):
         if key.startswith("*"):
@@ -209,6 +210,7 @@ class srv_command(object):
         if etree.iselement(value):
             cur_element.append(value)
         else:
+            # print "__setitem__() in srv_command: key=%s" % (key)
             self._element(value, cur_element)
     def delete_subtree(self, key):
         xpath_str = "/ns:ics_batch/%s" % ("/".join(["ns:%s" % (sub_arg) for sub_arg in key.split(":")]))
@@ -337,7 +339,7 @@ class srv_command(object):
         return etree.tostring(self.__tree, **kwargs)
     def get_log_tuple(self, swap=False):
         # returns the reply / state attribute, mapped to logging_tool levels
-        res_node = self.xpath(None, ".//ns:result")
+        res_node = self.xpath(".//ns:result")
         if len(res_node):
             res_node = res_node[0]
             ret_str, ret_state = res_node.attrib["reply"], int(res_node.attrib["state"])
