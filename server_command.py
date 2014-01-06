@@ -151,9 +151,10 @@ class srv_command(object):
             while True:
                 cur_match = iso_re.match(tag_name)
                 if cur_match:
-                    tag_name = "%s%s%s" % (cur_match.group("pre"),
-                                           chr(int(cur_match.group("code"), 16)),
-                                           cur_match.group("post"))
+                    tag_name = "%s%s%s" % (
+                        cur_match.group("pre"),
+                        chr(int(cur_match.group("code"), 16)),
+                        cur_match.group("post"))
                 else:
                     break
         return tag_name
