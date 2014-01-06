@@ -1,6 +1,6 @@
 #!/usr/bin/python-init -Ot
 #
-# Copyright (C) 2008,2009,2010,2012,2013 Andreas Lang-Nevyjel, init.at
+# Copyright (C) 2008-2014 Andreas Lang-Nevyjel, init.at
 #
 # this file is part of nagios-config-server
 #
@@ -269,7 +269,7 @@ class special_base(object):
                     srv_reply = None
                     self.__server_contact_ok = False
                 else:
-                    srv_error = srv_reply.xpath(None, ".//ns:result[@state != '0']")
+                    srv_error = srv_reply.xpath(".//ns:result[@state != '0']")
                     if srv_error:
                         self.__server_contact_ok = False
                         log_str = "%s, got an error (%d): %s" % (
@@ -330,7 +330,7 @@ class special_base(object):
                 cur_var = None
             else:
                 self.log("requested parameter %s from device via %s" % (para_name, server_type))
-                cur_val = srv_result.xpath(None, xpath_str)[0].text
+                cur_val = srv_result.xpath(xpath_str)[0].text
                 if var_type == "i":
                     cur_val = int(cur_val)
                 cur_var = device_variable(
@@ -495,7 +495,7 @@ class special_supermicro(special_base):
                 "--passwd=%s" % (cur_pwd),
                 "counter", connect_to_localhost=True)
             # xpath string origins in supermiro_mod, server part (scmipmi_struct)
-            r_dict = supermicro_mod.generate_dict(srv_result.xpath(None, ".//ns:output/text()")[0].split("\n"))
+            r_dict = supermicro_mod.generate_dict(srv_result.xpath(".//ns:output/text()")[0].split("\n"))
             for para_name in para_list:
                 r_para_name = self.real_parameter_name(para_name)
                 s_name = para_name.split("_", 1)[1]

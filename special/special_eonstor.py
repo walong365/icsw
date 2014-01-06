@@ -56,7 +56,7 @@ def handle(s_check, host, dc, build_proc, valid_ip, **kwargs):
                                                                               process_tools.get_except_info()),
                                 logging_tools.LOG_LEVEL_CRITICAL)
         else:
-            info_dict = server_command.srv_command.tree_to_dict(srv_reply.xpath(None, ".//ns:eonstor_info")[0])
+            info_dict = server_command.srv_command.tree_to_dict(srv_reply.xpath(".//ns:eonstor_info")[0])
             # disks
             for disk_id in sorted(info_dict.get("disc_ids", [])):
                 sc_array.append(("Disc %2d" % (disk_id), ["eonstor_disc_info", "%d" % (disk_id)]))

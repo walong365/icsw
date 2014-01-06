@@ -1,6 +1,6 @@
 #!/usr/bin/python-init -OtW default
 #
-# Copyright (C) 2001,2002,2003,2004,2005,2006,2007,2008,2009,2010,2011,2012,2013 Andreas Lang-Nevyjel, init.at
+# Copyright (C) 2001-2014 Andreas Lang-Nevyjel, init.at
 #
 # this file is part of md-config-server
 #
@@ -74,7 +74,7 @@ class status_process(threading_tools.process_obj):
     def _get_node_status(self, *args, **kwargs):
         src_id, srv_com = (args[0], server_command.srv_command(source=args[1]))
         if mk_livestatus:
-            pk_list = srv_com.xpath(None, ".//device_list/device/@pk")
+            pk_list = srv_com.xpath(".//device_list/device/@pk")
             dev_names = sorted([cur_dev.full_name for cur_dev in device.objects.filter(Q(pk__in=pk_list))])
             try:
                 cur_sock = self._open()

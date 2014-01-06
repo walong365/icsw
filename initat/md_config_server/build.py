@@ -1,6 +1,6 @@
 #!/usr/bin/python-init -Otu
 #
-# Copyright (C) 2001,2002,2003,2004,2005,2006,2007,2008,2009,2010,2011,2012,2013 Andreas Lang-Nevyjel, init.at
+# Copyright (C) 2001-2014 Andreas Lang-Nevyjel, init.at
 #
 # this file is part of md-config-server
 #
@@ -213,7 +213,7 @@ class build_process(threading_tools.process_obj):
         self.__gen_config._create_access_entries()
     def _build_host_config(self, *args, **kwargs):
         src_id, srv_com = (args[0], server_command.srv_command(source=args[1]))
-        dev_pks = srv_com.xpath(None, ".//device_list/device/@pk")
+        dev_pks = srv_com.xpath(".//device_list/device/@pk")
         dev_names = [cur_dev.full_name for cur_dev in device.objects.filter(Q(pk__in=dev_pks))]
         self.log("starting single build with %s: %s" % (
             logging_tools.get_plural("device", len(dev_names)),

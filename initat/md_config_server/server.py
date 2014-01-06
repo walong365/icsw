@@ -1,6 +1,6 @@
 #!/usr/bin/python-init -OtW default
 #
-# Copyright (C) 2013 Andreas Lang-Nevyjel, init.at
+# Copyright (C) 2013-2014 Andreas Lang-Nevyjel, init.at
 #
 # this file is part of md-config-server
 #
@@ -423,7 +423,7 @@ class server_process(threading_tools.process_pool):
             self.__slaves[conn_str] = slave_uuid
     def _handle_ocp_event(self, in_com):
         com_type = in_com["command"].text
-        targ_list = [cur_arg.text for cur_arg in in_com.xpath(None, ".//ns:arguments")[0]]
+        targ_list = [cur_arg.text for cur_arg in in_com.xpath(".//ns:arguments")[0]]
         target_com = {
             "ocsp-event" : "PROCESS_SERVICE_CHECK_RESULT",
             "ochp-event" : "PROCESS_HOST_CHECK_RESULT"}[com_type]
