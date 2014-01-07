@@ -116,10 +116,11 @@ class server_code(threading_tools.process_pool):
         my_io = StringIO.StringIO()
         sys.stdout = my_io
         self.objgraph.show_growth()
-        lines = unicode(my_io.getvalue()).split("\n")
-        self.log("objgraph show_growth (%d lines)" % (len(lines)))
-        for line in lines:
-            self.log(u" - %s" % (line))
+        lines = [line.rstrip() for line in unicode(my_io.getvalue()).split("\n") if line.strip()]
+        self.log("objgraph show_growth (%s)" % (logging_tools.get_plural("line", len(lines)) if lines else "no output"))
+        if lines:
+            for line in lines:
+                self.log(u" - %s" % (line))
         sys.stdout = cur_stdout
     def _check_ksm(self):
         if global_config["ENABLE_KSM"]:
