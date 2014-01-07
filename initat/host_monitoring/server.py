@@ -29,7 +29,6 @@ from initat.host_monitoring.hm_inotify import inotify_process
 from initat.host_monitoring.hm_twisted import twisted_process
 from lxml import etree # @UnresolvedImport
 from lxml.builder import E # @UnresolvedImport
-import sys
 import StringIO
 import configfile
 import difflib
@@ -38,6 +37,7 @@ import netifaces
 import os
 import process_tools
 import server_command
+import sys
 import threading_tools
 import time
 import uuid
@@ -112,7 +112,7 @@ class server_code(threading_tools.process_pool):
             self["exit_requested"] = True
     def _objgraph_run(self):
         # lines = unicode(self.hpy.heap().byrcs[0].byid).split("\n")
-        cur_stdout = sys.stderr
+        cur_stdout = sys.stdout
         my_io = StringIO.StringIO()
         sys.stdout = my_io
         self.objgraph.show_growth()
