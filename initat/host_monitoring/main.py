@@ -65,7 +65,7 @@ def main():
         ("SHOW-COMMAND-INFO"   , configfile.bool_c_var(False, help_string="show command info", only_commandline=True)),
         ("BACKLOG_SIZE"        , configfile.int_c_var(5, help_string="backlog size for 0MQ sockets [%(default)d]")),
         ("VERBOSE"             , configfile.int_c_var(0, help_string="set verbose level [%(default)d]", short_options="v", only_commandline=True)),
-        ("GUPPY"               , configfile.bool_c_var(False, help_string="enable guppy [%(default)c]", only_commandline=True)),
+        ("OBJGRAPH"            , configfile.bool_c_var(False, help_string="enable objgraph [%(default)c]", only_commandline=True)),
         ("NICE_LEVEL"          , configfile.int_c_var(10, help_string="nice level [%(default)d]")),
         ("PID_NAME"            , configfile.str_c_var("%s/%s" % (prog_name,
                                                                  prog_name)))])

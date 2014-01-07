@@ -29,6 +29,8 @@ from initat.host_monitoring.hm_inotify import inotify_process
 from initat.host_monitoring.hm_twisted import twisted_process
 from lxml import etree # @UnresolvedImport
 from lxml.builder import E # @UnresolvedImport
+import sys
+import StringIO
 import configfile
 import difflib
 import logging_tools
@@ -48,15 +50,14 @@ class server_code(threading_tools.process_pool):
         process_tools.ALLOW_MULTIPLE_INSTANCES = False
         # copy to access from modules
         self.global_config = global_config
-        self.hpy = None
-        if global_config["GUPPY"]:
+        self.objgraph = None
+        if global_config["OBJGRAPH"]:
             try:
-                from guppy import hpy
+                import objgraph
             except ImportError:
                 pass
             else:
-                self.hpy = hpy()
-                self.hpy.setref()
+                self.objgraph = objgraph
         self.__log_cache, self.__log_template = ([], None)
         threading_tools.process_pool.__init__(
             self,
@@ -92,8 +93,8 @@ class server_code(threading_tools.process_pool):
             self.add_process(inotify_process("inotify", busy_loop=True), start=True)
         self._show_config()
         self.__debug = global_config["DEBUG"]
-        if self.hpy:
-            self.register_timer(self._hpy_run, 30, instant=True)
+        if self.objgraph:
+            self.register_timer(self._objgraph_run, 30, instant=True)
         if not self._init_commands():
             self._sigint("error init")
     def log(self, what, lev=logging_tools.LOG_LEVEL_OK):
@@ -109,12 +110,17 @@ class server_code(threading_tools.process_pool):
             self.log("exit already requested, ignoring", logging_tools.LOG_LEVEL_WARN)
         else:
             self["exit_requested"] = True
-    def _hpy_run(self):
+    def _objgraph_run(self):
         # lines = unicode(self.hpy.heap().byrcs[0].byid).split("\n")
-        lines = unicode(self.hpy.heap()).split("\n")
-        self.log("hpy dump (%d lines)" % (len(lines)))
+        cur_stdout = sys.stderr
+        my_io = StringIO.StringIO()
+        sys.stdout = my_io
+        self.objgraph.show_growth()
+        lines = unicode(my_io.getvalue()).split("\n")
+        self.log("objgraph show_growth (%d lines)" % (len(lines)))
         for line in lines:
             self.log(u" - %s" % (line))
+        sys.stdout = cur_stdout
     def _check_ksm(self):
         if global_config["ENABLE_KSM"]:
             ksm_dir = "/sys/kernel/mm/ksm/"
