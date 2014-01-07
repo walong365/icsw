@@ -488,7 +488,7 @@ def mon_device_esc_templ_pre_save(sender, **kwargs):
         for attr_name, min_val, max_val in [
             ("first_notification", 1, 10),
             ("last_notification" , 1, 10),
-            ("ninterval"         , 0, 60)]:
+            ("ninterval"         , 0, 60 * 24)]:
             _check_integer(cur_inst, attr_name, min_val=min_val, max_val=max_val)
 
 class mon_host_dependency_templ(models.Model):
