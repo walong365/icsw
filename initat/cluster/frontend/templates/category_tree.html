@@ -1,6 +1,6 @@
 {% extends "main.html" %}
 
-{% load i18n extra_tags coffeescript crispy_forms_tags %}
+{% load i18n coffeescript crispy_forms_tags %}
 
 {% block title %}Category tree{% endblock %}
 
@@ -61,7 +61,7 @@
             <table class="table table-condensed table-condensed table-hover" style="width:auto;">
                 <thead cathead></thead>
                 <tbody>
-                    <tr><td colspan="9" paginator entries="entries" pag_settings="pagSettings" per_page="10"></td></tr>
+                    <tr><td colspan="9" paginator entries="entries" pag_settings="pagSettings" per_page="20"></td></tr>
                     <tr catrow ng-repeat="obj in entries | paginator:this" ng-class="fn.get_tr_class(obj)"></tr>
                 </tbody>
             </table>
@@ -143,6 +143,11 @@ angular_add_simple_list_controller(
             )
             $scope.cat.recalc()
         fn:
+            create_or_edit: ($scope, create_or_edit, obj) ->
+                if not create_or_edit
+                    $scope.cat.clear_active()
+                    $scope.cat_lut[obj.idx].active = true
+                    $scope.cat.show_active(keep=false)
             prune: (scope) ->
                 scope.cat.clear_active()
                 scope.hide_modal()
@@ -185,6 +190,7 @@ angular_add_simple_list_controller(
                         cat_lut[entry.parent].add_child(t_entry)
                     else
                         $scope.cat.add_root_node(t_entry)
+                $scope.cat_lut = cat_lut
             object_modified: (prev_obj, new_obj, $scope) ->
                 if $scope.pre_edit_obj.parent == new_obj.parent
                     $scope.cat.iter(

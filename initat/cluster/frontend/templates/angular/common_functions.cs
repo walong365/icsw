@@ -426,6 +426,8 @@ angular_add_simple_list_controller = (module, name, settings) ->
             $scope.create_or_edit = (event, create_or_edit, obj) ->
                 $scope.edit_obj = obj
                 $scope.create_mode = create_or_edit
+                if $scope.fn.create_or_edit
+                    $scope.fn.create_or_edit($scope, $scope.create_mode, obj)
                 if $scope.settings.use_modal
                     $scope.edit_div = $compile($templateCache.get($scope.settings.edit_template))($scope)
                     $scope.edit_div.simplemodal

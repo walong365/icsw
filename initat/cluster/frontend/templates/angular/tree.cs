@@ -175,6 +175,20 @@ class tree_config
                 new_childs.push(sub_entry)
         entry.children = new_childs
         return if entry.children.length then false else true
+    show_active: (keep=true) =>
+        # make all selected nodes visible
+        (@_show_active(entry, keep) for entry in @root_nodes)
+    _show_active: (entry, keep) =>
+        if (true for sub_entry in entry.children when @_show_active(sub_entry, keep)).length
+            show = true
+        else 
+            # keep: keep expand state if already expanded
+            if keep
+                show = entry.expand or entry.active
+            else
+                show = entry.active
+        entry.expand = show
+        return entry.expand
     show_selected: (keep=true) =>
         # make all selected nodes visible
         (@_show_selected(entry, keep) for entry in @root_nodes)

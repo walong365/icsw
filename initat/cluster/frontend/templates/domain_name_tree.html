@@ -1,6 +1,6 @@
 {% extends "main.html" %}
 
-{% load i18n extra_tags coffeescript crispy_forms_tags %}
+{% load i18n coffeescript crispy_forms_tags %}
 
 {% block title %}Domain name tree{% endblock %}
 
@@ -23,7 +23,7 @@
         <th>SN</th>
         <th>IP</th>
         <th>NS</th>
-        <th>Action</th>
+        <th colspan="2">Action</th>
     </tr>
 </script>
 
@@ -36,6 +36,7 @@
     <td>{{ obj.always_create_ip | yesno1 }}</td>
     <td>{{ obj.write_nameserver_config | yesno1 }}</td>
     <td><input type="button" class="btn btn-primary" ng-click="edit($event, obj)" value="modify" ng-show="obj.depth"/></td>
+    <td><input type="button" class="btn btn-danger" ng-click="delete(obj)" value="delete" ng-show="obj.depth > 0"/></td>
 </script>
 
 <div ng-controller="dnt_base">
@@ -58,7 +59,7 @@
             <table class="table table-condensed table-condensed table-hover" style="width:auto;">
                 <thead dtnhead></thead>
                 <tbody>
-                    <tr><td colspan="9" paginator entries="entries" pag_settings="pagSettings" per_page="10"></td></tr>
+                    <tr><td colspan="9" paginator entries="entries" pag_settings="pagSettings" per_page="20"></td></tr>
                     <tr dtnrow ng-repeat="obj in entries | paginator:this"></tr>
                 </tbody>
             </table>
@@ -125,6 +126,11 @@ angular_add_simple_list_controller(
             )
             $scope.dnt.recalc()
         fn:
+            create_or_edit: ($scope, create_or_edit, obj) ->
+                if not create_or_edit
+                    $scope.dnt.clear_active()
+                    $scope.dnt_lut[obj.idx].active = true
+                    $scope.dnt.show_active(keep=false)
             get_valid_parents: ($scope) ->
                 p_list = (value for value in $scope.entries)
                 if $scope.edit_obj.idx
@@ -151,6 +157,7 @@ angular_add_simple_list_controller(
                         dnt_lut[entry.parent].add_child(t_entry)
                     else
                         $scope.dnt.add_root_node(t_entry)
+                $scope.dnt_lut = dnt_lut
             object_modified: (prev_obj, new_obj, $scope) ->
                 if $scope.pre_edit_obj.parent == new_obj.parent
                     $scope.dnt.iter(
