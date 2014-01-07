@@ -1065,7 +1065,7 @@ class mon_service_templ_form(ModelForm):
             Fieldset(
                 "Notification",
                 Field("nsn_period", ng_options="value.idx as value.name for value in rest_data.mon_period | orderBy:'name'"),
-                Field("ninterval", min=1, max=60),
+                Field("ninterval", min=0, max=60),
             ),
             Div(
                 Div(
@@ -1254,7 +1254,7 @@ class mon_device_templ_form(ModelForm):
             Fieldset(
                 "Notification",
                 Field("not_period", ng_options="value.idx as value.name for value in rest_data.mon_period | orderBy:'name'"),
-                Field("ninterval", min=1, max=60),
+                Field("ninterval", min=0, max=60),
             ),
             Div(
                 Div(
