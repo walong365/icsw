@@ -81,7 +81,7 @@ class get_mvector_command(hm_classes.hm_command):
         if cur_ns.raw:
             return limits.nag_STATE_OK, etree.tostring(cur_vector)
         else:
-            vector_keys = sorted(srv_com.xpath(cur_vector, ".//ns:mve/@name"))
+            vector_keys = sorted(srv_com.xpath(".//ns:mve/@name", start_el=cur_vector))
             used_keys = [key for key in vector_keys if any([cur_re.search(key) for cur_re in re_list]) or not re_list]
             ret_array = ["Machinevector id %s, %s, %s shown:" % (
                 cur_vector.attrib["version"],
@@ -91,7 +91,7 @@ class get_mvector_command(hm_classes.hm_command):
             out_list = logging_tools.new_form_list()
             for mv_num, mv_key in enumerate(vector_keys):
                 if mv_key in used_keys:
-                    cur_xml = srv_com.xpath(cur_vector, "//ns:mve[@name='%s']" % (mv_key))[0]
+                    cur_xml = srv_com.xpath("//ns:mve[@name='%s']" % (mv_key), start_el=cur_vector)[0]
                     out_list.append(hm_classes.mvect_entry(cur_xml.attrib.pop("name"), **cur_xml.attrib).get_form_entry(mv_num))
             ret_array.extend(unicode(out_list).split("\n"))
             return limits.nag_STATE_OK, "\n".join(ret_array)
