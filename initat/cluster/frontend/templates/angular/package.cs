@@ -298,7 +298,7 @@ package_module.controller("install", ["$scope", "$compile", "$filter", "$templat
             $scope.device_lut = build_lut($scope.devices)
             # package lut
             $scope.package_lut = build_lut($scope.entries)
-            console.log $scope.entries.length, $scope.devices.length
+            #console.log $scope.entries.length, $scope.devices.length
             for dev in $scope.devices
                 dev.latest_contact = 0
                 if not (dev.idx of $scope.state_dict)

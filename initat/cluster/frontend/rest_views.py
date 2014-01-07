@@ -33,7 +33,7 @@ from initat.cluster.backbone.models import user , group, user_serializer_h, grou
      device_serializer_package_state, device_serializer_monitoring, domain_name_tree, \
      device_serializer_monitor_server, category_tree, device_serializer_cat, device_selection, \
      device_selection_serializer, partition_table_serializer_save, partition_disc_serializer_save, \
-     partition_disc_serializer_create
+     partition_disc_serializer_create, device_serializer_variables
 from rest_framework import mixins, generics, status, viewsets
 from rest_framework.authentication import BasicAuthentication, SessionAuthentication
 from rest_framework.decorators import api_view
@@ -250,6 +250,8 @@ class device_tree_list(mixins.ListModelMixin,
             return device_serializer_monitor_server
         elif self._get_post_boolean("with_categories", False):
             return device_serializer_cat
+        elif self._get_post_boolean("with_variables", False):
+            return device_serializer_variables
         else:
             return device_serializer
     @rest_logging
@@ -306,6 +308,8 @@ class device_tree_list(mixins.ListModelMixin,
             _q = _q.prefetch_related("package_device_connection_set", "device_variable_set")
         if self._get_post_boolean("with_categories", False):
             _q = _q.prefetch_related("categories")
+        if self._get_post_boolean("with_variables", False):
+            _q = _q.prefetch_related("device_variable_set")
         # ordering: at first cluster device group, then by group / device_type / name
         _q = _q.order_by("-device_group__cluster_device_group", "device_group__name", "-device_type__priority", "name")
         # print _q.count(), self.request.QUERY_PARAMS, self.request.session.get("sel_list", [])

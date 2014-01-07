@@ -34,7 +34,7 @@ from initat.cluster.backbone.models import device_type, device_group, device, \
      domain_tree_node
 from initat.cluster.frontend import forms
 from initat.cluster.frontend.forms import device_tree_form, device_group_tree_form, \
-    device_tree_many_form
+    device_tree_many_form, device_variable_form
 from initat.cluster.frontend.helper_functions import xml_wrapper
 from initat.core.render import render_me, render_string
 from lxml import etree # @UnresolvedImport
@@ -457,7 +457,9 @@ class manual_connection(View):
 class variables(View):
     @method_decorator(login_required)
     def get(self, request):
-        return render_me(request, "device_variables.html")()
+        return render_me(request, "device_variables.html", {
+            "device_variable_form" : device_variable_form(),
+            })()
     @method_decorator(xml_wrapper)
     def post(self, request):
         pass

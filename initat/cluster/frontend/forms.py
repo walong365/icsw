@@ -20,7 +20,7 @@ from initat.cluster.backbone.models import domain_tree_node, device, category, m
      mon_contactgroup, mon_device_templ, mon_host_cluster, mon_service_cluster, mon_host_dependency_templ, \
      mon_service_esc_templ, mon_device_esc_templ, mon_service_dependency_templ, package_search, \
      mon_service_dependency, mon_host_dependency, package_device_connection, partition, \
-     partition_disc, sys_partition
+     partition_disc, sys_partition, device_variable
 from initat.cluster.frontend.widgets import device_tree_widget
 import re
 
@@ -1911,3 +1911,30 @@ class device_group_tree_form(ModelForm):
             self.fields[clear_f].empty_label = None
     class Meta:
         model = device_group
+
+class device_variable_form(ModelForm):
+    helper = FormHelper()
+    helper.form_id = "form"
+    helper.form_name = "form"
+    helper.form_class = 'form-horizontal'
+    helper.label_class = 'col-sm-3'
+    helper.field_class = 'col-sm-7'
+    helper.ng_model = "_edit_obj"
+    helper.ng_submit = "cur_edit.modify(this)"
+    helper.layout = Layout(
+        HTML("<h2>Device variable {% verbatim %}'{{ _edit_obj.name }}'{% endverbatim %}</h2>"),
+            Fieldset(
+                "Basic settings",
+                Field("name"),
+                Field("val_str", wrapper_ng_show="_edit_obj.var_type == 's'"),
+                Field("val_int", wrapper_ng_show="_edit_obj.var_type == 'i'"),
+                Field("val_date", wrapper_ng_show="_edit_obj.var_type == 'd'"),
+                Field("val_time", wrapper_ng_show="_edit_obj.var_type == 't'"),
+                Field("val_blob", wrapper_ng_show="_edit_obj.var_type == 'b'"),
+            ),
+            FormActions(
+                Submit("submit", "", css_class="primaryAction", ng_value="action_string"),
+            ),
+        )
+    class Meta:
+        model = device_variable
