@@ -5,7 +5,7 @@ if [ ! -f /opt/cluster/bin/yuglify ] ; then
     /opt/cluster/bin/npm -g install yuglify
 fi
 
-/usr/bin/sed -i sX/usr/bin/env\ nodeX/opt/cluster/bin/nodeXg /opt/cluster/lib/node_modules/yuglify/bin/yuglify
+sed -i sX/usr/bin/env\ nodeX/opt/cluster/bin/nodeXg /opt/cluster/lib/node_modules/yuglify/bin/yuglify
 
 /opt/python-init/lib/python/site-packages/initat/cluster/manage.py collectstatic --noinput
 
