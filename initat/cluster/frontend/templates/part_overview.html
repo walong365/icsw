@@ -133,30 +133,35 @@
 <script type="text/ng-template" id="partition_table_row.html">
     <td>{{ obj.name }}</td>
     <td>{{ obj.description }}</td>
-    <td ng-class="obj.valid && ' ' || 'danger'">{{ obj.enabled | yesno1 }}</td>
-    <td ng-class="obj.valid && ' ' || 'danger'">{{ obj.valid | yesno1  }}</td>
-    <td ng-class="obj.valid && ' ' || 'danger'">{{ obj.nodeboot | yesno1 }}</td>
+    <td ng-class="obj.valid && 'success' || 'danger'">{{ obj.enabled | yesno1 }}</td>
+    <td ng-class="obj.valid && 'success' || 'danger'">{{ obj.valid | yesno1  }}</td>
+    <td ng-class="obj.valid && 'success' || 'danger'">{{ obj.nodeboot | yesno1 }}</td>
     <td class="text-center">{{ obj.act_partition_table.length }} / {{ obj.new_partition_table.length }}</td>
     <td><input type="button" class="btn btn-primary btn-sm" ng-click="edit($event, obj)" value="modify"/></td>
     <td><input type="button" class="btn btn-danger btn-sm" ng-show="fn.delete_ok(obj)" ng-click="delete(obj)" value="delete"/></td>
 </script>
 
-<div ng-controller="partition_table_base">
-    <div class="col-sm-12">
-        <h2>Partition tables ({{entries.length}} entries), <input class="btn btn-primary" type="button" ng-click="reload()" value="reload"/></h2>
-        <table class="table table-condensed table-condensed table-hover" style="width:auto;">
-            <thead partitiontablehead></thead>
-            <tbody>
-                <tr><td colspan="8" paginator entries="entries" pag_settings="pagSettings" per_page="10"></td></tr>
-                <tr partitiontablerow ng-repeat="obj in entries | orderBy:'-name':true | paginator:this"></tr>
-            </tbody>
-            <tfoot>
-            </tfoot>
-        </table>
-    </div>
-    <div edittemplate ng-if="modal_active && !settings.use_modal" class="col-sm-12">
-    </div>
-</div>
+<tabset>
+    <tab heading="Images">
+        <div ng-controller="partition_table_base">
+            <div class="col-sm-12">
+                <h2>Partition tables ({{entries.length}} entries), <input class="btn btn-primary" type="button" ng-click="reload()" value="reload"/></h2>
+                <table class="table table-condensed table-condensed table-hover" style="width:auto;">
+                    <thead partitiontablehead></thead>
+                    <tbody>
+                        <tr><td colspan="8" paginator entries="entries" pag_settings="pagSettings" per_page="10"></td></tr>
+                        <tr partitiontablerow ng-repeat="obj in entries | orderBy:'-name':true | paginator:this"></tr>
+                    </tbody>
+                    <tfoot>
+                    </tfoot>
+                </table>
+            </div>
+            <div edittemplate ng-if="modal_active && !settings.use_modal" class="col-sm-12">
+            </div>
+        </div>
+    </tab>
+</tabset>
+
 </div>
 
 {% endverbatim %}
