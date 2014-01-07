@@ -239,7 +239,7 @@ class tree_config
     clear_selected: () =>
         (@_clear_selected(entry) for entry in @root_nodes)
     _clear_selected: (entry) =>
-        entry.set_selection(false)
+        entry.set_selected(false)
         (@_clear_selected(child) for child in entry.children)
     set_selected: (sel_func, sel_list) =>
         (@_set_selected(entry, sel_func, sel_list) for entry in @root_nodes)

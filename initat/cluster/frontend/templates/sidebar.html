@@ -79,7 +79,7 @@ sidebar_base = sidebar_module.controller("sidebar_base", ["$scope", "$compile", 
                 devg_list = []
                 for idx in $scope.cur_sel
                     if $scope.dev_lut[idx].device_type_identifier == "MD"
-                        devg_list.push("devg__#{idx}")
+                        devg_list.push("devg__" + $scope.dev_lut[idx].device_group)
                     else
                         dev_list.push("dev__#{idx}")
                 $scope.devsel_func(dev_list, devg_list)
