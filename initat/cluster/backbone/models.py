@@ -377,6 +377,94 @@ def config_str_pre_save(sender, **kwargs):
         if cur_inst.name in all_var_names:
             raise ValidationError("name already used")
 
+class device_variable(models.Model):
+    idx = models.AutoField(db_column="device_variable_idx", primary_key=True)
+    device = models.ForeignKey("device")
+    is_public = models.BooleanField(default=True)
+    name = models.CharField(max_length=765)
+    description = models.CharField(max_length=765, default="", blank=True)
+    var_type = models.CharField(max_length=3, choices=[
+        ("i", "integer"),
+        ("s", "string"),
+        ("d", "datetime"),
+        ("t", "time"),
+        ("b", "blob")])
+    val_str = models.TextField(blank=True, null=True, default="")
+    val_int = models.IntegerField(null=True, blank=True, default=0)
+    # base64 encoded
+    val_blob = models.TextField(blank=True, null=True, default="")
+    val_date = models.DateTimeField(null=True, blank=True)
+    val_time = models.TextField(blank=True, null=True) # This field type is a guess.
+    date = models.DateTimeField(auto_now_add=True)
+    def set_value(self, value):
+        if type(value) == datetime.datetime:
+            self.var_type = "d"
+            self.val_date = cluster_timezone.localize(value)
+        elif type(value) in [int, long] or (type(value) in [str, unicode] and value.isdigit()):
+            self.var_type = "i"
+            self.val_int = int(value)
+        else:
+            self.var_type = "s"
+            self.val_str = value
+    def get_value(self):
+        if self.var_type == "i":
+            return self.val_int
+        elif self.var_type == "s":
+            return self.val_str
+        else:
+            return "get_value for %s" % (self.var_type)
+    value = property(get_value, set_value)
+    def get_xml(self):
+        dev_xml = E.device_variable(
+            pk="%d" % (self.pk),
+            key="dv__%d" % (self.pk),
+            device="%d" % (self.device_id),
+            is_public="1" if self.is_public else "0",
+            name=self.name,
+            description=self.description or "",
+            var_type=self.var_type)
+        if self.var_type == "i":
+            dev_xml.attrib["value"] = "%d" % (self.val_int)
+        elif self.var_type == "s":
+            dev_xml.attrib["value"] = self.val_str
+        return dev_xml
+    def __unicode__(self):
+        return "%s[%s] = %s" % (
+            self.name,
+            self.var_type,
+            str(self.get_value()))
+    def init_as_gauge(self, max_value, start=0):
+        self.__max, self.__cur = (max_value, start)
+        self._update_gauge()
+    def count(self, num=1):
+        self.__cur += num
+        self._update_gauge()
+    def _update_gauge(self):
+        self.val_int = min(100, int(float(100 * self.__cur) / float(max(1, self.__max))))
+        self.save()
+    class Meta:
+        db_table = u'device_variable'
+        ordering = ("name",)
+
+class device_variable_serializer(serializers.ModelSerializer):
+    class Meta:
+        model = device_variable
+
+@receiver(signals.pre_save, sender=device_variable)
+def device_variable_pre_save(sender, **kwargs):
+    if "instance" in kwargs:
+        cur_inst = kwargs["instance"]
+        if cur_inst.device_id:
+            _check_empty_string(cur_inst, "name")
+            if cur_inst.var_type == "s":
+                _check_empty_string(cur_inst, "val_str")
+            if cur_inst.var_type == "i":
+                _check_integer(cur_inst, "val_int")
+            _check_empty_string(cur_inst, "var_type")
+            all_var_names = device_variable.objects.exclude(Q(pk=cur_inst.pk)).filter(Q(device=cur_inst.device)).values_list("name", flat=True)
+            if cur_inst.name in all_var_names:
+                raise ValidationError("name '%s' already used for device" % (cur_inst.name))
+
 class device(models.Model):
     idx = models.AutoField(db_column="device_idx", primary_key=True)
     # no longer unique as of 20130531 (ALN)
@@ -706,6 +794,19 @@ class device_serializer_cat(device_serializer):
             "automap_root_nagvis", "nagvis_parent", "monitor_server", "mon_ext_host",
             "is_meta_device", "device_type_identifier", "device_group_name", "bootserver",
             "curl", "categories",
+            )
+
+class device_serializer_variables(device_serializer):
+    device_variable_set = device_variable_serializer(many=True)
+    class Meta:
+        model = device
+        fields = ("idx", "name", "device_group", "device_type",
+            "comment", "full_name", "domain_tree_node", "enabled",
+            "monitor_checks", "mon_device_templ", "mon_device_esc_templ", "md_cache_mode",
+            "act_partition_table", "enable_perfdata", "flap_detection_enabled",
+            "automap_root_nagvis", "nagvis_parent", "monitor_server", "mon_ext_host",
+            "is_meta_device", "device_type_identifier", "device_group_name", "bootserver",
+            "curl", "device_variable_set",
             )
 
 class device_serializer_package_state(device_serializer):
@@ -1047,90 +1148,6 @@ class device_type(models.Model):
 class device_type_serializer(serializers.ModelSerializer):
     class Meta:
         model = device_type
-
-class device_variable(models.Model):
-    idx = models.AutoField(db_column="device_variable_idx", primary_key=True)
-    device = models.ForeignKey("device")
-    is_public = models.BooleanField(default=True)
-    name = models.CharField(max_length=765)
-    description = models.CharField(max_length=765, default="", blank=True)
-    var_type = models.CharField(max_length=3, choices=[
-        ("i", "integer"),
-        ("s", "string"),
-        ("d", "datetime"),
-        ("t", "time"),
-        ("b", "blob")])
-    val_str = models.TextField(blank=True, null=True, default="")
-    val_int = models.IntegerField(null=True, blank=True, default=0)
-    # base64 encoded
-    val_blob = models.TextField(blank=True, null=True, default="")
-    val_date = models.DateTimeField(null=True, blank=True)
-    val_time = models.TextField(blank=True, null=True) # This field type is a guess.
-    date = models.DateTimeField(auto_now_add=True)
-    def set_value(self, value):
-        if type(value) == datetime.datetime:
-            self.var_type = "d"
-            self.val_date = cluster_timezone.localize(value)
-        elif type(value) in [int, long] or (type(value) in [str, unicode] and value.isdigit()):
-            self.var_type = "i"
-            self.val_int = int(value)
-        else:
-            self.var_type = "s"
-            self.val_str = value
-    def get_value(self):
-        if self.var_type == "i":
-            return self.val_int
-        elif self.var_type == "s":
-            return self.val_str
-        else:
-            return "get_value for %s" % (self.var_type)
-    value = property(get_value, set_value)
-    def get_xml(self):
-        dev_xml = E.device_variable(
-            pk="%d" % (self.pk),
-            key="dv__%d" % (self.pk),
-            device="%d" % (self.device_id),
-            is_public="1" if self.is_public else "0",
-            name=self.name,
-            description=self.description or "",
-            var_type=self.var_type)
-        if self.var_type == "i":
-            dev_xml.attrib["value"] = "%d" % (self.val_int)
-        elif self.var_type == "s":
-            dev_xml.attrib["value"] = self.val_str
-        return dev_xml
-    def __unicode__(self):
-        return "%s[%s] = %s" % (
-            self.name,
-            self.var_type,
-            str(self.get_value()))
-    def init_as_gauge(self, max_value, start=0):
-        self.__max, self.__cur = (max_value, start)
-        self._update_gauge()
-    def count(self, num=1):
-        self.__cur += num
-        self._update_gauge()
-    def _update_gauge(self):
-        self.val_int = min(100, int(float(100 * self.__cur) / float(max(1, self.__max))))
-        self.save()
-    class Meta:
-        db_table = u'device_variable'
-        ordering = ("name",)
-
-@receiver(signals.pre_save, sender=device_variable)
-def device_variable_pre_save(sender, **kwargs):
-    if "instance" in kwargs:
-        cur_inst = kwargs["instance"]
-        if cur_inst.device_id:
-            _check_empty_string(cur_inst, "name")
-            if cur_inst.var_type == "s":
-                _check_empty_string(cur_inst, "val_str")
-            if cur_inst.var_type == "i":
-                _check_integer(cur_inst, "val_int")
-            _check_empty_string(cur_inst, "var_type")
-            all_var_names = device_variable.objects.exclude(Q(pk=cur_inst.pk)).filter(Q(device=cur_inst.device)).values_list("name", flat=True)
-            if cur_inst.name in all_var_names:
-                raise ValidationError("name '%s' already used for device" % (cur_inst.name))
 
 class devicelog(models.Model):
     idx = models.AutoField(db_column="devicelog_idx", primary_key=True)
