@@ -103,7 +103,7 @@ device_tree_base = device_module.controller("device_tree_base", ["$scope", "$com
             $scope.create_or_edit(event, false, obj)
         $scope.create_or_edit = (event, create_or_edit, obj) ->
             $scope.edit_obj = obj
-            console.log $scope.edit_obj
+            #console.log $scope.edit_obj
             $scope.create_mode = create_or_edit
             $scope.edit_div = $compile($templateCache.get($scope.edit_map[$scope._array_name]))($scope)
             $scope.edit_div.simplemodal
@@ -128,7 +128,7 @@ device_tree_base = device_module.controller("device_tree_base", ["$scope", "$com
             }
             $scope.create_or_edit(event, false, edit_obj)
         $scope.modify_many = () ->
-            console.log "mm", $scope.edit_obj
+            #console.log "mm", $scope.edit_obj
             $.ajax
                 url     : "{% url 'device:change_devices' %}"
                 data    : {

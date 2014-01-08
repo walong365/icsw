@@ -1,12 +1,12 @@
 {% extends "main.html" %}
 
-{% load i18n coffeescript %}
+{% load i18n coffeescript staticfiles %}
 
 {% block title %}{% trans "Device network settings" %}{% endblock %}
 
 {% block tab_js %}
 
-    <!--[if gt IE8]><!--><script type="text/javascript" src="{{ settings.STATIC_URL }}initat/core/static/js/libs/d3js/d3.v3.min.js"></script><!--<![endif]-->
+    <!--[if gt IE8]><!--><script type="text/javascript" src="{% static 'js/d3.v3.min.js' %}"></script><!--<![endif]-->
     <style>
     circle.fixed {
         stroke-dasharray: 5,5;
