@@ -388,7 +388,9 @@ class device_variable(models.Model):
         ("s", "string"),
         ("d", "datetime"),
         ("t", "time"),
-        ("b", "blob")])
+        ("b", "blob"),
+        # only for posting a new dv
+        ("?", "guess")])
     val_str = models.TextField(blank=True, null=True, default="")
     val_int = models.IntegerField(null=True, blank=True, default=0)
     # base64 encoded
@@ -456,6 +458,16 @@ def device_variable_pre_save(sender, **kwargs):
         cur_inst = kwargs["instance"]
         if cur_inst.device_id:
             _check_empty_string(cur_inst, "name")
+            if cur_inst.var_type == "?":
+                # guess type
+                _val = cur_inst.val_str
+                cur_inst.val_str = ""
+                if len(_val.strip()) and _val.strip().isdigit():
+                    cur_inst.var_type = "i"
+                    cur_inst.val_int = int(_val.strip())
+                else:
+                    cur_inst.var_type = "s"
+                    cur_inst.val_str = _val
             if cur_inst.var_type == "s":
                 _check_empty_string(cur_inst, "val_str")
             if cur_inst.var_type == "i":
@@ -463,7 +475,7 @@ def device_variable_pre_save(sender, **kwargs):
             _check_empty_string(cur_inst, "var_type")
             all_var_names = device_variable.objects.exclude(Q(pk=cur_inst.pk)).filter(Q(device=cur_inst.device)).values_list("name", flat=True)
             if cur_inst.name in all_var_names:
-                raise ValidationError("name '%s' already used for device" % (cur_inst.name))
+                raise ValidationError("name '%s' already used for device '%s'" % (cur_inst.name, unicode(cur_inst.device)))
 
 class device(models.Model):
     idx = models.AutoField(db_column="device_idx", primary_key=True)
