@@ -1,7 +1,7 @@
 #!/usr/bin/python-init -Ot
 # -*- coding: utf-8 -*-
 #
-# Copyright (C) 2013,2014 Andreas Lang-Nevyjel
+# Copyright (C) 2013-2014 Andreas Lang-Nevyjel
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -34,7 +34,7 @@ from initat.cluster.backbone.models import device_type, device_group, device, \
      domain_tree_node
 from initat.cluster.frontend import forms
 from initat.cluster.frontend.forms import device_tree_form, device_group_tree_form, \
-    device_tree_many_form, device_variable_form
+    device_tree_many_form, device_variable_form, device_variable_new_form
 from initat.cluster.frontend.helper_functions import xml_wrapper
 from initat.core.render import render_me, render_string
 from lxml import etree # @UnresolvedImport
@@ -458,11 +458,9 @@ class variables(View):
     @method_decorator(login_required)
     def get(self, request):
         return render_me(request, "device_variables.html", {
-            "device_variable_form" : device_variable_form(),
+            "device_variable_form"     : device_variable_form(),
+            "device_variable_new_form" : device_variable_new_form(),
             })()
-    @method_decorator(xml_wrapper)
-    def post(self, request):
-        pass
 
 class device_info(View):
     @method_decorator(login_required)

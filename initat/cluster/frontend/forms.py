@@ -1938,3 +1938,26 @@ class device_variable_form(ModelForm):
         )
     class Meta:
         model = device_variable
+
+class device_variable_new_form(ModelForm):
+    helper = FormHelper()
+    helper.form_id = "form"
+    helper.form_name = "form"
+    helper.form_class = 'form-horizontal'
+    helper.label_class = 'col-sm-3'
+    helper.field_class = 'col-sm-7'
+    helper.ng_model = "_edit_obj"
+    helper.ng_submit = "cur_edit.modify(this)"
+    helper.layout = Layout(
+        HTML("<h2>New device variable</h2>"),
+            Fieldset(
+                "Basic settings",
+                Field("name", wrapper_class="ng-class:form_error('name')"),
+                Field("val_str"),
+            ),
+            FormActions(
+                Submit("submit", "", css_class="primaryAction", ng_value="action_string"),
+            ),
+        )
+    class Meta:
+        model = device_variable
