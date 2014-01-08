@@ -160,15 +160,16 @@ device_variable_module.controller("dv_base", ["$scope", "$compile", "$filter", "
                 return "glyphicon glyphicon-chevron-down"
             else
                 return "glyphicon glyphicon-chevron-right"
-        $scope.$watch("var_filter", $scope.new_filter_set)
-        $scope.new_filter_set = (new_val) ->
+        $scope.new_filter_set = (new_val, change_expand_state) ->
             cur_re = new RegExp($scope.var_filter, "gi")
             for entry in $scope.entries
                 entry.num_filtered = (true for _var in entry.device_variable_set when _var.name.match(cur_re)).length
-                if entry.num_filtered and new_val.length
-                    entry.expanded = true
-                else
-                    entry.expanded = false
+                if change_expand_state
+                    if entry.num_filtered and new_val.length
+                        entry.expanded = true
+                    else
+                        entry.expanded = false
+        $scope.$watch("var_filter", (new_val) -> $scope.new_filter_set(new_val, true))
         $scope.form_error = (field_name) =>
             if $scope.form[field_name].$valid
                 return ""
@@ -212,11 +213,11 @@ device_variable_module.controller("dv_base", ["$scope", "$compile", "$filter", "
                 $scope.create_rest_url.post($scope.add_list.shift()).then($scope.next_send, $scope.next_send_error)
             else
                 # trigger recalc of filter w. pagination settings
-                $scope.new_filter_set($scope.var_filter)
+                $scope.new_filter_set($scope.var_filter, false)
                 $.unblockUI()
         $scope.$on("icsw.dv.changed", (args) ->
             # trigger redisplay of vars
-            $scope.new_filter_set($scope.var_filter)
+            $scope.new_filter_set($scope.var_filter, false)
         )
         install_devsel_link($scope.new_devsel, true)
         #$scope.base_edit.create_template = 
