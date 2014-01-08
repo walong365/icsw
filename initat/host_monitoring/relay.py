@@ -31,6 +31,7 @@ from initat.host_monitoring.hm_twisted import twisted_process
 from initat.host_monitoring.tools import my_cached_file
 from lxml import etree # @UnresolvedImport
 from lxml.builder import E # @UnresolvedImport
+import StringIO
 import argparse
 import base64
 import configfile
@@ -40,6 +41,7 @@ import process_tools
 import resource
 import server_command
 import socket
+import sys
 import threading_tools
 import time
 import uuid_tools
@@ -618,15 +620,14 @@ class relay_code(threading_tools.process_pool):
     def __init__(self):
         # monkey path process tools to allow consistent access
         process_tools.ALLOW_MULTIPLE_INSTANCES = False
-        self.hpy = None
-        if global_config["GUPPY"]:
+        self.objgraph = None
+        if global_config["OBJGRAPH"]:
             try:
-                from guppy import hpy
+                import objgraph
             except ImportError:
                 pass
             else:
-                self.hpy = hpy()
-                self.hpy.setref()
+                self.objgraph = objgraph
         # copy to access from modules
         from initat.host_monitoring import modules
         self.modules = modules
@@ -668,8 +669,8 @@ class relay_code(threading_tools.process_pool):
         self.register_func("twisted_result", self._twisted_result)
         self.version_dict = {}
         self._show_config()
-        if self.hpy:
-            self.register_timer(self._hpy_run, 30, instant=True)
+        if self.objgraph:
+            self.register_timer(self._objgraph_run, 30, instant=True)
         if not self._init_commands():
             self._sigint("error init")
     def log(self, what, lev=logging_tools.LOG_LEVEL_OK):
@@ -684,12 +685,18 @@ class relay_code(threading_tools.process_pool):
             self.log("exit already requested, ignoring", logging_tools.LOG_LEVEL_WARN)
         else:
             self["exit_requested"] = True
-    def _hpy_run(self):
+    def _objgraph_run(self):
         # lines = unicode(self.hpy.heap().byrcs[0].byid).split("\n")
-        lines = unicode(self.hpy.heap()).split("\n")
-        self.log("hpy dump (%d lines)" % (len(lines)))
-        for line in lines:
-            self.log(u" - %s" % (line))
+        cur_stdout = sys.stdout
+        my_io = StringIO.StringIO()
+        sys.stdout = my_io
+        self.objgraph.show_growth()
+        lines = [line.rstrip() for line in unicode(my_io.getvalue()).split("\n") if line.strip()]
+        self.log("objgraph show_growth (%s)" % (logging_tools.get_plural("line", len(lines)) if lines else "no output"))
+        if lines:
+            for line in lines:
+                self.log(u" - %s" % (line))
+        sys.stdout = cur_stdout
     def _hup_error(self, err_cause):
         self.log("got SIGHUP (%s), setting all clients with connmode TCP to unknown" % (err_cause), logging_tools.LOG_LEVEL_WARN)
         num_c = 0
