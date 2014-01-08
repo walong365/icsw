@@ -446,6 +446,7 @@ class device_variable(models.Model):
         self.save()
     class Meta:
         db_table = u'device_variable'
+        unique_together = ("name", "device",)
         ordering = ("name",)
 
 class device_variable_serializer(serializers.ModelSerializer):
