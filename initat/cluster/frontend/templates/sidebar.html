@@ -93,7 +93,10 @@ sidebar_base = sidebar_module.controller("sidebar_base", ["$scope", "$compile", 
                 ret_list = "#{ret_list}: " + ($scope.dev_lut[key.split("__")[1]].full_name for key in key_list).join(", ")
             return ret_list
         $scope.update_search = () ->
-            cur_re = new RegExp($scope.searchstr, "gi")
+            try
+                cur_re = new RegExp($scope.searchstr, "gi")
+            catch exc
+                cur_re = new RegExp("^$", "gi")
             cur_tree = $scope.get_tc($scope.active_tab) 
             cur_tree.toggle_tree_state(undefined, -1, false)
             cur_tree.iter(

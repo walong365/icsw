@@ -20,18 +20,15 @@
 
 <script type="text/ng-template" id="dv_head.html">
     <tr>
+        <th>Info</th>
         <th>Name</th>
         <th>Group</th>
         <th>Comment</th>
-        <th>Info</th>
         <th colspan="1">Action</th>
     </tr>
 </script>
 
 <script type="text/ng-template" id="dv_row.html">
-    <td>{{ get_name(obj) }}</td>
-    <td>{{ obj.device_group_name }}</td>
-    <td>{{ obj.comment }}</td>
     <td>
         <button class="btn btn-primary btn-xs" ng-disabled="obj.num_filtered == 0" ng-click="expand_vt(obj)">
             <span ng_class="get_expand_class(obj)">
@@ -39,6 +36,9 @@
             <span ng-if="var_filter.length"> / {{ obj.num_filtered }} shown<span>
         </button>
     </td>
+    <td>{{ get_name(obj) }}</td>
+    <td>{{ obj.device_group_name }}</td>
+    <td>{{ obj.comment }}</td>
     <td><input type="button" class="btn btn-primary btn-xs" ng-click="create(obj, $event)" value="create"/></td>
 </script>
 
@@ -161,7 +161,10 @@ device_variable_module.controller("dv_base", ["$scope", "$compile", "$filter", "
             else
                 return "glyphicon glyphicon-chevron-right"
         $scope.new_filter_set = (new_val, change_expand_state) ->
-            cur_re = new RegExp($scope.var_filter, "gi")
+            try
+                cur_re = new RegExp($scope.var_filter, "gi")
+            catch exc
+                cur_re = new RegExp("^$", "gi")
             for entry in $scope.entries
                 entry.num_filtered = (true for _var in entry.device_variable_set when _var.name.match(cur_re)).length
                 if change_expand_state
@@ -235,7 +238,10 @@ device_variable_module.controller("dv_base", ["$scope", "$compile", "$filter", "
     $templateCache.put("simple_confirm.html", simple_modal_template)
 ).filter("filter_name", ["$filter", ($filter) ->
     return (arr, f_string) ->
-        cur_re = new RegExp(f_string, "gi")
+        try
+            cur_re = new RegExp(f_string, "gi")
+        catch exc
+            cur_re = new RegExp("^$", "gi")
         return (entry for entry in arr when entry.name.match(cur_re))
 ]).directive("vartable", ($templateCache, $compile, $modal, Restangular) ->
     return {
