@@ -211,8 +211,9 @@ device_config_module.controller("dc_base", ["$scope", "$compile", "$filter", "$t
                         dev.expanded = $scope.meta_devices[$scope.devg_md_lut[dev.device_group]].expanded
             $scope.set_line_list()
         $scope.get_config_info = (conf_idx) ->
-            cur_conf = $scope.configs_lut[conf_idx]
-            return cur_conf.info_str
+            if conf_idx != null
+                cur_conf = $scope.configs_lut[conf_idx]
+                return cur_conf.info_str
         install_devsel_link($scope.new_devsel, true, true)
 ]).directive("dcrow", ($templateCache) ->
     return {
