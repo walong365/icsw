@@ -259,8 +259,14 @@ class alter_config_cb(View):
     def post(self, request):
         _post = request.POST
         checked = bool(int(_post["value"]))
-        dev_id, conf_id = (int(_post["id"].split("__")[1]),
-                           int(_post["id"].split("__")[3]))
+        if "conf_pk" in _post:
+            dev_id, conf_id = (
+                int(_post["dev_pk"]),
+                int(_post["conf_pk"]),
+                )
+        else:
+            dev_id, conf_id = (int(_post["id"].split("__")[1]),
+                               int(_post["id"].split("__")[3]))
         cur_dev, cur_conf = (device.objects.select_related("device_type").get(Q(pk=dev_id)),
                              config.objects.get(Q(pk=conf_id)))
         # is metadevice ?

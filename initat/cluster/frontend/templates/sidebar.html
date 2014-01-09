@@ -5,8 +5,8 @@
         <div class="input-group">
             <input type="text" class="form-control" ng-model="searchstr" placeholder="search ..." ng-change="update_search()"></input>
             <span class="input-group-btn">
-                <button class="btn btn-success" type="button" ng-click="call_devsel_func(false)" ng-show="devsel_func.length">Go</button>
-                <button class="btn btn-danger" type="button" ng-click="clear_selection()">clr</button>
+                <button class="btn btn-success" type="button" ng-click="call_devsel_func(false)" ng-show="devsel_func.length"><span title="use selection" class="glyphicon glyphicon-chevron-right"></span></button>
+                <button class="btn btn-danger" type="button" ng-click="clear_selection()"><span title="clear selection" class="glyphicon glyphicon-ban-circle"></span></button>
             </span>  
         </div>
         <tabset>
@@ -74,18 +74,24 @@ sidebar_base = sidebar_module.controller("sidebar_base", ["$scope", "$compile", 
         $scope.call_devsel_func = (called_after_load) ->
             if $scope.devsel_func.length
                 dev_list = []
+                dev_pk_list = []
                 devg_list = []
+                devg_pk_list = []
                 for idx in $scope.cur_sel
                     if $scope.dev_lut[idx].device_type_identifier == "MD"
                         devg_list.push("devg__" + $scope.dev_lut[idx].device_group)
-                    else
-                        dev_list.push("dev__#{idx}")
+                        devg_pk_list.push($scope.dev_lut[idx].device_group)
+                    dev_list.push("dev__#{idx}")
+                    dev_pk_list.push(idx)
                 for entry in $scope.devsel_func
                     if called_after_load and not entry.fire_when_loaded
                         true
                     else
                         # build device, device_group list
-                        entry.func(dev_list, devg_list)
+                        if entry.use_pks
+                            entry.func(dev_pk_list, devg_pk_list)
+                        else
+                            entry.func(dev_list, devg_list)
         $scope.resolve_device_keys = (key_list) =>
             list_len = key_list.length
             ret_list = list_len + (if list_len == 1 then " device" else " devices")
@@ -109,8 +115,8 @@ sidebar_base = sidebar_module.controller("sidebar_base", ["$scope", "$compile", 
             $scope.selection_changed()
         # current device selection
         $scope.cur_sel = []            
-        $scope.install_devsel_link = (ds_func, fire_when_loaded) ->
-            $scope.devsel_func.push({"func" : ds_func, "fire_when_loaded" : fire_when_loaded})
+        $scope.install_devsel_link = (ds_func, fire_when_loaded, use_pks=false) ->
+            $scope.devsel_func.push({"func" : ds_func, "fire_when_loaded" : fire_when_loaded, "use_pks" : use_pks})
         root.install_devsel_link = $scope.install_devsel_link
         root.resolve_device_keys = $scope.resolve_device_keys
         root.sidebar = {"resolve_device_keys" : $scope.resolve_device_keys}

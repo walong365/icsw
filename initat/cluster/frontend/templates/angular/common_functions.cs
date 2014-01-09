@@ -125,6 +125,8 @@ class shared_data_source
 
 class rest_data_source
     constructor: (@$q, @Restangular) ->
+        @reset()
+    reset: () =>
         @_data = {}
     _build_key: (url, options) =>
         url_key = url

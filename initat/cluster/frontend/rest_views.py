@@ -33,7 +33,7 @@ from initat.cluster.backbone.models import user , group, user_serializer_h, grou
      device_serializer_package_state, device_serializer_monitoring, domain_name_tree, \
      device_serializer_monitor_server, category_tree, device_serializer_cat, device_selection, \
      device_selection_serializer, partition_table_serializer_save, partition_disc_serializer_save, \
-     partition_disc_serializer_create, device_serializer_variables
+     partition_disc_serializer_create, device_serializer_variables, device_serializer_device_configs
 from rest_framework import mixins, generics, status, viewsets
 from rest_framework.authentication import BasicAuthentication, SessionAuthentication
 from rest_framework.decorators import api_view
@@ -209,6 +209,7 @@ class list_view(mixins.ListModelMixin,
             "mon_check_command" : ([], ["exclude_devices", "categories"]),
             "mon_host_cluster" : ([], ["devices"]),
             "network" : ([], ["network_device_type"]),
+            "config" : ([], ["categories", "config_str_set", "config_int_set", "config_blob_set", "config_bool_set", "config_script_set", "mon_check_command_set"]),
             }.get(model_name, ([], []))
         res = self.model.objects.all()
         filter_list = []
@@ -252,6 +253,8 @@ class device_tree_list(mixins.ListModelMixin,
             return device_serializer_cat
         elif self._get_post_boolean("with_variables", False):
             return device_serializer_variables
+        elif self._get_post_boolean("with_device_configs", False):
+            return device_serializer_device_configs
         else:
             return device_serializer
     @rest_logging
@@ -275,9 +278,6 @@ class device_tree_list(mixins.ListModelMixin,
             return default
     @rest_logging
     def get_queryset(self):
-        # print "QSET", self.request.QUERY_PARAMS
-        ignore_md = self._get_post_boolean("ignore_meta_devices", False)
-        ignore_cdg = self._get_post_boolean("ignore_cdg", True)
         # with_variables = self._get_post_boolean("with_variables", False)
         package_state = self._get_post_boolean("package_state", False)
         _q = device.objects
@@ -288,6 +288,15 @@ class device_tree_list(mixins.ListModelMixin,
         elif self._get_post_boolean("all_devices", False):
             pass
         else:
+            # flags
+            # ignore meta devices (== device groups)
+            ignore_md = self._get_post_boolean("ignore_meta_devices", False)
+            # ignore the cluster device group
+            ignore_cdg = self._get_post_boolean("ignore_cdg", True)
+            # always add the meta_devices
+            with_md = self._get_post_boolean("with_meta_devices", False)
+            if with_md:
+                ignore_md = False
             # only selected ones
             # normally (frontend in-sync with backend) meta-devices have the same selection state
             # as their device_groups, devg_keys are in fact redundant ...
@@ -299,7 +308,9 @@ class device_tree_list(mixins.ListModelMixin,
             if ignore_md:
                 # ignore all meta-devices
                 _q = _q.exclude(Q(device_type__identifier="MD"))
-            # print dev_keys, devg_keys
+            if with_md:
+                md_pks = set(device.objects.filter(Q(pk__in=dev_keys)).values_list("device_group__device", flat=True))
+                dev_keys.extend(md_pks)
             _q = _q.filter(Q(pk__in=dev_keys))
         if not self._get_post_boolean("ignore_disabled", False):
             _q = _q.filter(Q(enabled=True) & Q(device_group__enabled=True))

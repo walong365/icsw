@@ -44,25 +44,25 @@
 
 <script type="text/ng-template" id="vartable.html">
     <table ng-show="device.num_filtered" class="table table-condensed table-condensed table-hover" style="width:auto;">
-          <thead>
-              <tr>
-                  <th>Name</th>
-                  <th>Type</th>
-                  <th>Value</th>
-                  <th>Public</th>
-                  <th colspan="2">Action</th>
-              </tr>
-          </thead>
-          <tbody>
-              <tr ng-repeat="obj in device.device_variable_set | filter_name:filtervalue | orderBy:'name'">
-                  <td>{{ obj.name }}</td>
-                  <td>{{ obj.var_type }}</td>
-                  <td>{{ get_value(obj) }}</td>
-                  <td>{{ obj.is_public|yesno1 }}</td>
-                  <td><input type="button" class="btn btn-primary btn-xs" ng-show="obj.is_public" ng-click="edit_mixin.edit(obj, $event)" value="modify"></input></td>
-                  <td><input type="button" class="btn btn-danger btn-xs" ng-click="edit_mixin.delete_obj(obj)" value="delete"></input></td>
-              </tr>
-          </tbody>
+        <thead>
+            <tr>
+                <th>Name</th>
+                <th>Type</th>
+                <th>Value</th>
+                <th>Public</th>
+                <th colspan="2">Action</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr ng-repeat="obj in device.device_variable_set | filter_name:filtervalue | orderBy:'name'">
+                <td>{{ obj.name }}</td>
+                <td>{{ obj.var_type }}</td>
+                <td>{{ get_value(obj) }}</td>
+                <td>{{ obj.is_public|yesno1 }}</td>
+                <td><input type="button" class="btn btn-primary btn-xs" ng-show="obj.is_public" ng-click="edit_mixin.edit(obj, $event)" value="modify"></input></td>
+                <td><input type="button" class="btn btn-danger btn-xs" ng-click="edit_mixin.delete_obj(obj)" value="delete"></input></td>
+            </tr>
+        </tbody>
     </table>
 </script>
 
@@ -110,7 +110,7 @@ device_variable_module = angular.module("icsw.device.variables", ["ngResource", 
 angular_module_setup([device_variable_module])
 
 device_variable_module.controller("dv_base", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "sharedDataSource", "$q", "$modal",
-    ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSoure, sharedDataSource, $q, $modal) ->
+    ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, sharedDataSource, $q, $modal) ->
         $scope.base_edit = new angular_edit_mixin($scope, $templateCache, $compile, $modal, Restangular)
         $scope.base_edit.create_template = "device_variable_new.html"
         $scope.base_edit.create_rest_url = Restangular.all("{% url 'rest:device_variable_list' %}".slice(1))
@@ -150,7 +150,7 @@ device_variable_module.controller("dv_base", ["$scope", "$compile", "$filter", "
                 return ""
         $scope.get_name = (obj) ->
             if obj.device_type_identifier == "MD"
-                return obj.full_name.slice(9)
+                return obj.full_name.slice(8)
             else
                 return obj.full_name
         $scope.expand_vt = (obj) ->
