@@ -171,6 +171,11 @@ class mon_check_command_serializer(serializers.ModelSerializer):
     class Meta:
         model = mon_check_command
 
+class mon_check_command_serializer_flat(serializers.ModelSerializer):
+    class Meta:
+        model = mon_check_command
+        fields = ("idx", "name",)
+
 @receiver(signals.pre_save, sender=mon_check_command)
 def mon_check_command_pre_save(sender, **kwargs):
     if "instance" in kwargs:

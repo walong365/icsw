@@ -132,10 +132,155 @@ class architecture(models.Model):
     def __unicode__(self):
         return self.architecture
 
-class architecture_serializer(serializers.ModelSerializer):
+class architecture_serializer(serializers.Serializer):
     class Meta:
         model = architecture
         fields = ("idx", "architecture",)
+
+class config(models.Model):
+    idx = models.AutoField(db_column="new_config_idx", primary_key=True)
+    name = models.CharField(unique=True, max_length=192, blank=False)
+    description = models.CharField(max_length=765)
+    priority = models.IntegerField(null=True, default=0)
+    # config_type = models.ForeignKey("config_type", db_column="new_config_type_id")
+    parent_config = models.ForeignKey("config", null=True)
+    date = models.DateTimeField(auto_now_add=True)
+    # categories for this config
+    categories = models.ManyToManyField("category")
+    def get_xml(self, full=True):
+        r_xml = E.config(
+            pk="%d" % (self.pk),
+            key="conf__%d" % (self.pk),
+            name=unicode(self.name),
+            description=unicode(self.description or ""),
+            priority="%d" % (self.priority or 0),
+            # config_type="%d" % (self.config_type_id),
+            parent_config="%d" % (self.parent_config_id or 0),
+            categories="::".join(["%d" % (cur_cat.pk) for cur_cat in self.categories.all()]),
+        )
+        if full:
+            # explicit but exposes chached queries
+            dev_names = [dev_conf.device.name for dev_conf in self.device_config_set.all()]
+            r_xml.attrib["num_device_configs"] = "%d" % (len(dev_names))
+            r_xml.attrib["device_list"] = logging_tools.compress_list(sorted(dev_names))
+            r_xml.extend([
+                E.config_vars(*[cur_var.get_xml() for cur_var in
+                                list(self.config_str_set.all()) + \
+                                list(self.config_int_set.all()) + \
+                                list(self.config_bool_set.all()) + \
+                                list(self.config_blob_set.all())]),
+                E.mon_check_commands(*[cur_ngc.get_xml(with_exclude_devices=full) for cur_ngc in list(self.mon_check_command_set.all())]),
+                E.config_scripts(*[cur_cs.get_xml() for cur_cs in list(self.config_script_set.all())])
+            ])
+        return r_xml
+    def __unicode__(self):
+        return self.name
+    def show_variables(self, log_com, detail=False):
+        log_com(" - config %s (pri %d)" % (self.name,
+                                           self.priority))
+        if detail:
+            for var_type in ["str", "int", "bool"]:
+                for cur_var in getattr(self, "config_%s_set" % (var_type)).all():
+                    log_com("    %-20s : %s" % (cur_var.name, unicode(cur_var)))
+    class Meta:
+        db_table = u'new_config'
+        ordering = ["name"]
+
+@receiver(signals.pre_save, sender=config)
+def config_pre_save(sender, **kwargs):
+    if "instance" in kwargs:
+        cur_inst = kwargs["instance"]
+        _check_empty_string(cur_inst, "name")
+        # priority
+        _check_integer(cur_inst, "priority", min_val= -9999, max_val=9999)
+
+@receiver(signals.post_save, sender=config)
+def config_post_save(sender, **kwargs):
+    if not kwargs["raw"] and "instance" in kwargs:
+        cur_inst = kwargs["instance"]
+        if kwargs["created"] and getattr(cur_inst, "create_default_entries", True):
+            add_list = []
+            if cur_inst.name.count("export"):
+                if cur_inst.name.count("home"):
+                    # create a homedir export
+                    # add export / options config_vars
+                    add_list = [
+                        config_str(
+                            name="homeexport",
+                            description="export path for automounter maps",
+                            value="/export_change_me"),
+                        config_str(
+                            name="createdir",
+                            description="create path for directory creation",
+                            value="/create_change_me"),
+                        config_str(
+                            name="options",
+                            description="Options",
+                            value="-soft,tcp,lock,rsize=8192,wsize=8192,noac,lookupcache=none"
+                        ),
+                        config_str(
+                            name="node_postfix",
+                            description="postfix (to change network interface)",
+                            value=""
+                        )
+                    ]
+                else:
+                    # create a normal export
+                    # add import / export / options config_vars
+                    add_list = [
+                        config_str(
+                            name="export",
+                            description="export path",
+                            value="/export_change_me"),
+                        config_str(
+                            name="import",
+                            description="import path (for automounter)",
+                            value="/import_change_me"),
+                        config_str(
+                            name="options",
+                            description="Options",
+                            value="-soft,tcp,lock,rsize=8192,wsize=8192,noac,lookupcache=none"
+                            )
+                    ]
+            elif cur_inst.name == "ldap_server":
+                add_list = [
+                    config_str(
+                        name="base_dn",
+                        description="Base DN",
+                        value="dc=test,dc=ac,dc=at"),
+                    config_str(
+                        name="admin_cn",
+                        description="Admin CN (relative to base_dn",
+                        value="admin"),
+                    config_str(
+                        name="root_passwd",
+                        description="LDAP Admin passwd",
+                        value="changeme"),
+                ]
+            elif cur_inst.name == "name_server":
+                add_list = [
+                    config_str(
+                        name="FORWARDER_1",
+                        description="first forward",
+                        value="192.168.1.1"),
+                    config_str(
+                        name="USER",
+                        description="named user",
+                        value="named"),
+                    config_str(
+                        name="GROUP",
+                        description="named group",
+                        value="named"),
+                    config_str(
+                        name="SECRET",
+                        description="ndc secret",
+                        value="h8DM8opPS3ThdswucAoUqQ=="),
+                ]
+            for cur_var in add_list:
+                cur_var.config = cur_inst
+                cur_var.save()
+        if cur_inst.parent_config_id == cur_inst.pk and cur_inst.pk:
+            raise ValidationError("cannot be my own parent")
 
 # class ccl_event(models.Model):
     # idx = models.AutoField(db_column="ccl_event_idx", primary_key=True)
@@ -178,6 +323,43 @@ class architecture_serializer(serializers.ModelSerializer):
     # date = models.DateTimeField(auto_now_add=True)
     # class Meta:
         # db_table = u'cluster_event'
+
+class config_str(models.Model):
+    idx = models.AutoField(db_column="config_str_idx", primary_key=True)
+    name = models.CharField(max_length=192)
+    description = models.CharField(db_column="descr", max_length=765)
+    config_old = models.IntegerField(null=True, blank=True, db_column="config")
+    config = models.ForeignKey("config", db_column="new_config_id")
+    value = models.TextField(blank=True)
+    device = models.ForeignKey("device", null=True, blank=True)
+    date = models.DateTimeField(auto_now_add=True)
+    def get_xml(self):
+        return E.config_str(
+            pk="%d" % (self.pk),
+            key="varstr__%d" % (self.pk),
+            type="str",
+            name=self.name,
+            description=self.description,
+            config="%d" % (self.config_id),
+            value=self.value or ""
+        )
+    def __unicode__(self):
+        return self.value or u""
+    class Meta:
+        db_table = u'config_str'
+        ordering = ("name",)
+
+@receiver(signals.pre_save, sender=config_str)
+def config_str_pre_save(sender, **kwargs):
+    if "instance" in kwargs:
+        cur_inst = kwargs["instance"]
+        _check_empty_string(cur_inst, "name")
+        all_var_names = list(cur_inst.config.config_str_set.exclude(Q(pk=cur_inst.pk)).values_list("name", flat=True)) + \
+            list(cur_inst.config.config_int_set.all().values_list("name", flat=True)) + \
+            list(cur_inst.config.config_bool_set.all().values_list("name", flat=True)) + \
+            list(cur_inst.config.config_blob_set.all().values_list("name", flat=True))
+        if cur_inst.name in all_var_names:
+            raise ValidationError("name already used")
 
 class config_blob(models.Model):
     idx = models.AutoField(db_column="config_blob_idx", primary_key=True)
@@ -340,43 +522,6 @@ def config_script_pre_save(sender, **kwargs):
             raise ValidationError("name already used")
         _check_integer(cur_inst, "priority")
 
-class config_str(models.Model):
-    idx = models.AutoField(db_column="config_str_idx", primary_key=True)
-    name = models.CharField(max_length=192)
-    description = models.CharField(db_column="descr", max_length=765)
-    config_old = models.IntegerField(null=True, blank=True, db_column="config")
-    config = models.ForeignKey("config", db_column="new_config_id")
-    value = models.TextField(blank=True)
-    device = models.ForeignKey("device", null=True, blank=True)
-    date = models.DateTimeField(auto_now_add=True)
-    def get_xml(self):
-        return E.config_str(
-            pk="%d" % (self.pk),
-            key="varstr__%d" % (self.pk),
-            type="str",
-            name=self.name,
-            description=self.description,
-            config="%d" % (self.config_id),
-            value=self.value or ""
-        )
-    def __unicode__(self):
-        return self.value or u""
-    class Meta:
-        db_table = u'config_str'
-        ordering = ("name",)
-
-@receiver(signals.pre_save, sender=config_str)
-def config_str_pre_save(sender, **kwargs):
-    if "instance" in kwargs:
-        cur_inst = kwargs["instance"]
-        _check_empty_string(cur_inst, "name")
-        all_var_names = list(cur_inst.config.config_str_set.exclude(Q(pk=cur_inst.pk)).values_list("name", flat=True)) + \
-            list(cur_inst.config.config_int_set.all().values_list("name", flat=True)) + \
-            list(cur_inst.config.config_bool_set.all().values_list("name", flat=True)) + \
-            list(cur_inst.config.config_blob_set.all().values_list("name", flat=True))
-        if cur_inst.name in all_var_names:
-            raise ValidationError("name already used")
-
 class device_variable(models.Model):
     idx = models.AutoField(db_column="device_variable_idx", primary_key=True)
     device = models.ForeignKey("device")
@@ -477,6 +622,25 @@ def device_variable_pre_save(sender, **kwargs):
             all_var_names = device_variable.objects.exclude(Q(pk=cur_inst.pk)).filter(Q(device=cur_inst.device)).values_list("name", flat=True)
             if cur_inst.name in all_var_names:
                 raise ValidationError("name '%s' already used for device '%s'" % (cur_inst.name, unicode(cur_inst.device)))
+
+class device_config(models.Model):
+    idx = models.AutoField(db_column="device_config_idx", primary_key=True)
+    device = models.ForeignKey("device")
+    config = models.ForeignKey("backbone.config", db_column="new_config_id")
+    date = models.DateTimeField(auto_now_add=True)
+    def get_xml(self):
+        return E.device_config(
+            pk="%d" % (self.pk),
+            key="dc__%d" % (self.pk),
+            device="%d" % (self.device_id),
+            config="%d" % (self.config_id)
+        )
+    class Meta:
+        db_table = u'device_config'
+
+class device_config_serializer(serializers.ModelSerializer):
+    class Meta:
+        model = device_config
 
 class device(models.Model):
     idx = models.AutoField(db_column="device_idx", primary_key=True)
@@ -822,6 +986,19 @@ class device_serializer_variables(device_serializer):
             "curl", "device_variable_set",
             )
 
+class device_serializer_device_configs(device_serializer):
+    device_config_set = device_config_serializer(many=True)
+    class Meta:
+        model = device
+        fields = ("idx", "name", "device_group", "device_type",
+            "comment", "full_name", "domain_tree_node", "enabled",
+            "monitor_checks", "mon_device_templ", "mon_device_esc_templ", "md_cache_mode",
+            "act_partition_table", "enable_perfdata", "flap_detection_enabled",
+            "automap_root_nagvis", "nagvis_parent", "monitor_server", "mon_ext_host",
+            "is_meta_device", "device_type_identifier", "device_group_name", "bootserver",
+            "curl", "device_config_set",
+            )
+
 class device_serializer_package_state(device_serializer):
     package_device_connection_set = package_device_connection_serializer(many=True)
     latest_contact = serializers.Field(source="latest_contact")
@@ -916,21 +1093,6 @@ def device_pre_save(sender, **kwargs):
             if dev_count > 0 and current_count >= dev_count:
                 logger.warning("Device limit %d reached", dev_count)
                 raise ValidationError("Device limit reached!")
-
-class device_config(models.Model):
-    idx = models.AutoField(db_column="device_config_idx", primary_key=True)
-    device = models.ForeignKey("device")
-    config = models.ForeignKey("config", db_column="new_config_id")
-    date = models.DateTimeField(auto_now_add=True)
-    def get_xml(self):
-        return E.device_config(
-            pk="%d" % (self.pk),
-            key="dc__%d" % (self.pk),
-            device="%d" % (self.device_id),
-            config="%d" % (self.config_id)
-        )
-    class Meta:
-        db_table = u'device_config'
 
 class cd_connection(models.Model):
     # controlling_device connection
@@ -2151,150 +2313,6 @@ def network_type_pre_save(sender, **kwargs):
         # raise ValidationError("test validation error")
         if not(cur_inst.identifier.strip()):
             raise ValidationError("identifer must not be empty")
-
-class config(models.Model):
-    idx = models.AutoField(db_column="new_config_idx", primary_key=True)
-    name = models.CharField(unique=True, max_length=192, blank=False)
-    description = models.CharField(max_length=765)
-    priority = models.IntegerField(null=True, default=0)
-    # config_type = models.ForeignKey("config_type", db_column="new_config_type_id")
-    parent_config = models.ForeignKey("config", null=True)
-    date = models.DateTimeField(auto_now_add=True)
-    # categories for this config
-    categories = models.ManyToManyField("category")
-    def get_xml(self, full=True):
-        r_xml = E.config(
-            pk="%d" % (self.pk),
-            key="conf__%d" % (self.pk),
-            name=unicode(self.name),
-            description=unicode(self.description or ""),
-            priority="%d" % (self.priority or 0),
-            # config_type="%d" % (self.config_type_id),
-            parent_config="%d" % (self.parent_config_id or 0),
-            categories="::".join(["%d" % (cur_cat.pk) for cur_cat in self.categories.all()]),
-        )
-        if full:
-            # explicit but exposes chached queries
-            dev_names = [dev_conf.device.name for dev_conf in self.device_config_set.all()]
-            r_xml.attrib["num_device_configs"] = "%d" % (len(dev_names))
-            r_xml.attrib["device_list"] = logging_tools.compress_list(sorted(dev_names))
-            r_xml.extend([
-                E.config_vars(*[cur_var.get_xml() for cur_var in
-                                list(self.config_str_set.all()) + \
-                                list(self.config_int_set.all()) + \
-                                list(self.config_bool_set.all()) + \
-                                list(self.config_blob_set.all())]),
-                E.mon_check_commands(*[cur_ngc.get_xml(with_exclude_devices=full) for cur_ngc in list(self.mon_check_command_set.all())]),
-                E.config_scripts(*[cur_cs.get_xml() for cur_cs in list(self.config_script_set.all())])
-            ])
-        return r_xml
-    def __unicode__(self):
-        return self.name
-    def show_variables(self, log_com, detail=False):
-        log_com(" - config %s (pri %d)" % (self.name,
-                                           self.priority))
-        if detail:
-            for var_type in ["str", "int", "bool"]:
-                for cur_var in getattr(self, "config_%s_set" % (var_type)).all():
-                    log_com("    %-20s : %s" % (cur_var.name, unicode(cur_var)))
-    class Meta:
-        db_table = u'new_config'
-
-@receiver(signals.pre_save, sender=config)
-def config_pre_save(sender, **kwargs):
-    if "instance" in kwargs:
-        cur_inst = kwargs["instance"]
-        _check_empty_string(cur_inst, "name")
-        # priority
-        _check_integer(cur_inst, "priority", min_val= -9999, max_val=9999)
-
-@receiver(signals.post_save, sender=config)
-def config_post_save(sender, **kwargs):
-    if not kwargs["raw"] and "instance" in kwargs:
-        cur_inst = kwargs["instance"]
-        if kwargs["created"] and getattr(cur_inst, "create_default_entries", True):
-            add_list = []
-            if cur_inst.name.count("export"):
-                if cur_inst.name.count("home"):
-                    # create a homedir export
-                    # add export / options config_vars
-                    add_list = [
-                        config_str(
-                            name="homeexport",
-                            description="export path for automounter maps",
-                            value="/export_change_me"),
-                        config_str(
-                            name="createdir",
-                            description="create path for directory creation",
-                            value="/create_change_me"),
-                        config_str(
-                            name="options",
-                            description="Options",
-                            value="-soft,tcp,lock,rsize=8192,wsize=8192,noac,lookupcache=none"
-                        ),
-                        config_str(
-                            name="node_postfix",
-                            description="postfix (to change network interface)",
-                            value=""
-                        )
-                    ]
-                else:
-                    # create a normal export
-                    # add import / export / options config_vars
-                    add_list = [
-                        config_str(
-                            name="export",
-                            description="export path",
-                            value="/export_change_me"),
-                        config_str(
-                            name="import",
-                            description="import path (for automounter)",
-                            value="/import_change_me"),
-                        config_str(
-                            name="options",
-                            description="Options",
-                            value="-soft,tcp,lock,rsize=8192,wsize=8192,noac,lookupcache=none"
-                            )
-                    ]
-            elif cur_inst.name == "ldap_server":
-                add_list = [
-                    config_str(
-                        name="base_dn",
-                        description="Base DN",
-                        value="dc=test,dc=ac,dc=at"),
-                    config_str(
-                        name="admin_cn",
-                        description="Admin CN (relative to base_dn",
-                        value="admin"),
-                    config_str(
-                        name="root_passwd",
-                        description="LDAP Admin passwd",
-                        value="changeme"),
-                ]
-            elif cur_inst.name == "name_server":
-                add_list = [
-                    config_str(
-                        name="FORWARDER_1",
-                        description="first forward",
-                        value="192.168.1.1"),
-                    config_str(
-                        name="USER",
-                        description="named user",
-                        value="named"),
-                    config_str(
-                        name="GROUP",
-                        description="named group",
-                        value="named"),
-                    config_str(
-                        name="SECRET",
-                        description="ndc secret",
-                        value="h8DM8opPS3ThdswucAoUqQ=="),
-                ]
-            for cur_var in add_list:
-                cur_var.config = cur_inst
-                cur_var.save()
-        if cur_inst.parent_config_id == cur_inst.pk and cur_inst.pk:
-            raise ValidationError("cannot be my own parent")
 
 # class config_type(models.Model):
     # idx = models.AutoField(db_column="new_config_type_idx", primary_key=True)
@@ -3533,6 +3551,36 @@ def category_post_save(sender, **kwargs):
         if getattr(cur_inst, "full_name_changed", False):
             for sub_node in category.objects.filter(Q(parent=cur_inst)):
                 sub_node.save()
+
+class config_str_serializer(serializers.ModelSerializer):
+    class Meta:
+        model = config_str
+
+class config_int_serializer(serializers.ModelSerializer):
+    class Meta:
+        model = config_int
+
+class config_blob_serializer(serializers.ModelSerializer):
+    class Meta:
+        model = config_blob
+
+class config_bool_serializer(serializers.ModelSerializer):
+    class Meta:
+        model = config_bool
+
+class config_script_serializer(serializers.ModelSerializer):
+    class Meta:
+        model = config_script
+
+class config_serializer(serializers.ModelSerializer):
+    config_str_set = config_str_serializer(many=True)
+    config_int_set = config_int_serializer(many=True)
+    config_blob_set = config_blob_serializer(many=True)
+    config_bool_set = config_bool_serializer(many=True)
+    config_script_set = config_script_serializer(many=True)
+    mon_check_command_set = mon_check_command_serializer_flat(many=True)
+    class Meta:
+        model = config
 
 KPMC_MAP = {
     "devg"          : device_group,

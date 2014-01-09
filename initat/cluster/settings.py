@@ -30,8 +30,10 @@ ADMINS = (
 # determine product name
 if os.path.isfile("/etc/sysconfig/cluster/.is_corvus"):
     INIT_PRODUCT_NAME = "Corvus"
+    INIT_PRODUCT_FAMILY = "Corvus albicollis" # Geierrabe
 else:
     INIT_PRODUCT_NAME = "Noctua"
+    INIT_PRODUCT_FAMILY = "Strigidae bubo bubo" # Uhu
 
 ALLOWED_HOSTS = ["*"]
 
