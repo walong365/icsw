@@ -150,7 +150,7 @@ device_variable_module.controller("dv_base", ["$scope", "$compile", "$filter", "
                 return ""
         $scope.get_name = (obj) ->
             if obj.device_type_identifier == "MD"
-                return obj.full_name.slice(8)
+                return obj.full_name.slice(8) + " [Group]"
             else
                 return obj.full_name
         $scope.expand_vt = (obj) ->

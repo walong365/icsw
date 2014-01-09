@@ -95,6 +95,7 @@ device_config_module.controller("dc_base", ["$scope", "$compile", "$filter", "$t
         $scope.name_filter = ""
         $scope.only_selected = false
         $scope.new_devsel = (_dev_sel, _devg_sel) ->
+            pre_sel = (dev.idx for dev in $scope.devices when dev.expanded)
             restDataSource.reset()
             $scope.devsel_list = _dev_sel
             wait_list = restDataSource.add_sources([
@@ -120,7 +121,7 @@ device_config_module.controller("dc_base", ["$scope", "$compile", "$filter", "$t
                     else if idx == 1
                         $scope.configs = value
                         $scope.new_filter_set($scope.name_filter, false)
-                $scope.init_devices()
+                $scope.init_devices(pre_sel)
             )
         $scope.get_tr_class = (obj) ->
             if obj.device_type_identifier == "MD"
@@ -129,17 +130,17 @@ device_config_module.controller("dc_base", ["$scope", "$compile", "$filter", "$t
                 return ""
         $scope.get_name = (obj) ->
             if obj.device_type_identifier == "MD"
-                return obj.full_name.slice(8)
+                return obj.full_name.slice(8) + " [Group]"
             else
                 return obj.full_name
-        $scope.init_devices = () ->
+        $scope.init_devices = (pre_sel) ->
             # called after load
             for entry in $scope.devices
                 entry.local_selected = (_dc.config for _dc in entry.device_config_set)
             for idx, entry of $scope.meta_devices
                 entry.local_selected = (_dc.config for _dc in entry.device_config_set)
             for entry in $scope.devices
-                entry.expanded = false
+                entry.expanded = if entry.idx in pre_sel then true else false
             $scope.configs_lut = {}
             for entry in $scope.configs
                 num_vars = entry.config_str_set.length + entry.config_int_set.length + entry.config_bool_set.length + entry.config_blob_set.length
@@ -288,12 +289,6 @@ device_config_module.controller("dc_base", ["$scope", "$compile", "$filter", "$t
 angular.element(document).ready(() ->
     angular.bootstrap($("div[id='icsw.device.config']"), ["icsw.device.config"])
 )
-
-add_dcon_handlers = ->
-    conf_t = new config_table($("div#config"), $("div#filter_widgets"))
-    install_devsel_link(conf_t.use_devs, true)
-
-$(document).ready(add_dcon_handlers)
 
 {% endinlinecoffeescript %}
 
