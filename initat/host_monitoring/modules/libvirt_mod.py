@@ -33,7 +33,12 @@ class _general(hm_classes.hm_module):
     def init_module(self):
         if libvirt_tools:
             self.connection = None
+            try:
+                self.libvirt_problem = "" if libvirt_tools.libvirt_ok() else "libvirt missing"
+            except:
+                self.libvirt_problem = "libvirt_tools too old"
         else:
+            self.libvirt_problem = "libvirt_tools missing"
             self.log("no libvirt_tools found", logging_tools.LOG_LEVEL_WARN)
             self.connection = None
     def establish_connection(self):
@@ -156,12 +161,15 @@ class _general(hm_classes.hm_module):
 
 class libvirt_status_command(hm_classes.hm_command):
     def __call__(self, srv_com, cur_ns):
-        self.module.establish_connection()
-        if self.module.connection:
-            ret_dict = self.module.connection.get_status()
+        if self.module.libvirt_problem:
+            srv_com.set_result(self.module.libvirt_problem, server_command.SRV_REPLY_STATE_ERROR)
         else:
-            ret_dict = {}
-        srv_com["libvirt"] = ret_dict
+            self.module.establish_connection()
+            if self.module.connection:
+                ret_dict = self.module.connection.get_status()
+            else:
+                ret_dict = {}
+            srv_com["libvirt"] = ret_dict
     def interpret(self, srv_com, cur_ns):
         r_dict = srv_com["libvirt"]
         return self._interpret(r_dict, cur_ns)
@@ -183,12 +191,15 @@ class libvirt_status_command(hm_classes.hm_command):
 
 class domain_overview_command(hm_classes.hm_command):
     def __call__(self, srv_com, cur_ns):
-        self.module.establish_connection()
-        if self.module.connection:
-            ret_dict = self.module.connection.domain_overview()
+        if self.module.libvirt_problem:
+            srv_com.set_result(self.module.libvirt_problem, server_command.SRV_REPLY_STATE_ERROR)
         else:
-            ret_dict = {}
-        srv_com["domain_overview"] = ret_dict
+            self.module.establish_connection()
+            if self.module.connection:
+                ret_dict = self.module.connection.domain_overview()
+            else:
+                ret_dict = {}
+            srv_com["domain_overview"] = ret_dict
     def interpret(self, srv_com, cur_ns):
         return self._interpret(srv_com["domain_overview"], cur_ns)
     def interpret_old(self, result, parsed_coms):
@@ -222,18 +233,18 @@ class domain_status_command(hm_classes.hm_command):
     def __init__(self, name):
         hm_classes.hm_command.__init__(self, name, positional_arguments=True)
     def __call__(self, srv_com, cur_ns):
-        if not "arguments:arg0" in srv_com:
-            srv_com["result"].attrib.update(
-                {
-                    "reply"  : "missing argument",
-                    "state" : "%d" % (server_command.SRV_REPLY_STATE_ERROR)})
+        if self.module.libvirt_problem:
+            srv_com.set_result(self.module.libvirt_problem, server_command.SRV_REPLY_STATE_ERROR)
         else:
-            self.module.establish_connection()
-            if self.module.connection:
-                ret_dict = self.module.connection.domain_status(srv_com["arguments:arg0"].text)
+            if not "arguments:arg0" in srv_com:
+                srv_com.set_result("missing argument", server_command.SRV_REPLY_STATE_ERROR)
             else:
-                ret_dict = {}
-            srv_com["domain_status"] = ret_dict
+                self.module.establish_connection()
+                if self.module.connection:
+                    ret_dict = self.module.connection.domain_status(srv_com["arguments:arg0"].text)
+                else:
+                    ret_dict = {}
+                srv_com["domain_status"] = ret_dict
     def interpret(self, srv_com, cur_ns):
         return self._interpret(srv_com["domain_status"], cur_ns)
     def interpret_old(self, result, parsed_coms):

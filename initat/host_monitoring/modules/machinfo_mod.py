@@ -969,7 +969,7 @@ class df_command(hm_classes.hm_command):
                     inode_str = "no info"
             else:
                 inode_str = ""
-            return ret_state, u"%.0f %% (%s of %s%s%s)%s used on %s | total=%d used=%d free=%d" % (
+            return ret_state, u"%.0f %% used (%s of %s%s%s)%s on %s | total=%d used=%d free=%d" % (
                 result["perc"],
                 logging_tools.get_size_str(result["used"] * 1024, strip_spaces=True),
                 logging_tools.get_size_str(result["total"] * 1024, strip_spaces=True),
