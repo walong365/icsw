@@ -1,6 +1,6 @@
 #!/usr/bin/python-init -Ot
 #
-# Copyright (C) 2001,2002,2003,2004,2005,2006,2007,2008,2012,2013 Andreas Lang-Nevyjel, init.at
+# Copyright (C) 2001-2008,2012-2014 Andreas Lang-Nevyjel, init.at
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -41,7 +41,7 @@ SAS_OK_KEYS = {
     "adp"  : set(),
     "virt" : set(
         ["virtual_drive", "raid_level", "name", "size", "state", "strip_size",
-         "number_of_drives", "ongoing_progresses"
+         "number_of_drives", "ongoing_progresses", "current_cache_policy",
          ]),
     "pd"   : set(
         ["slot_number", "pd_type", "raw_size", "firmware_state"
@@ -890,6 +890,11 @@ class ctrl_type_megaraid_sas(ctrl_type):
                 if "ongoing_progresses" in log_dict:
                     num_w += 1
                     drive_stats.append(log_dict["ongoing_progresses"])
+                if "current_cache_policy" in log_dict:
+                    _cur_cps = [entry.strip().lower() for entry in log_dict["current_cache_policy"].split(",") if entry.strip()]
+                    if _cur_cps and _cur_cps[0] != "writeback":
+                        num_e += 1
+                        drive_stats.append("suboptimal cache mode: %s" % (_cur_cps[0]))
                 drives_missing = []
                 if "pd" in log_stuff:
                     for pd_num in xrange(num_drives):
