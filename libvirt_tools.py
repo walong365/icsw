@@ -1,9 +1,9 @@
 #!/usr/bin/python-init -Ot
 #
-# Copyright (C) 2010,2012,2013 Andreas Lang-Nevyjel
+# Copyright (C) 2010,2012-2014 Andreas Lang-Nevyjel
 #
 # Send feedback to: <lang-nevyjel@init.at>
-# 
+#
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License Version 2 as
 # published by the Free Software Foundation.
@@ -18,20 +18,22 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
 
+from lxml import etree # @UnresolvedImport
 import logging_tools
 import os
 import process_tools
 import sys
 import time
 
-from lxml import etree # @UnresolvedImport
-
 try:
-    import libvirt
+    import libvirt # @UnresolvedImport
 except:
     libvirt = None
 
 LIBVIRT_RO_SOCK_NAME = "/var/run/libvirt/libvirt-sock-ro"
+
+def libvirt_ok():
+    return True if libvirt else False
 
 class base_stats(object):
     def __init__(self):
@@ -88,7 +90,7 @@ class disk_info(object):
             except:
                 self._clear_stats()
         self.__prev_args, self.__feed_time = (args, act_time)
-        
+
 class net_info(object):
     def __init__(self, xml_object):
         self.__xml_object = xml_object
@@ -121,7 +123,7 @@ class net_info(object):
             except:
                 self._clear_stats()
         self.__prev_args, self.__feed_time = (args, act_time)
-        
+
 class virt_instance(object):
     def __init__(self, i_id, log_com, ro_conn):
         self.log_com = log_com
@@ -147,7 +149,7 @@ class virt_instance(object):
             self.log("VNC port is %d" % (self.vnc_port))
         else:
             self.log("no VNC-port defined", logging_tools.LOG_LEVEL_WARN)
-        #print etree.tostring(self.xml_desc, pretty_print=True)
+        # print etree.tostring(self.xml_desc, pretty_print=True)
         for disk_entry in self.xml_desc.findall(".//disk[@device='disk']"):
             cur_disk_info = disk_info(disk_entry)
             self.disk_dict[disk_entry.xpath(".//target")[0].attrib["dev"]] = cur_disk_info
@@ -160,16 +162,16 @@ class virt_instance(object):
     def close(self):
         del self.dom_handle
     def update(self):
-        #print dir(self.dom_handle)
+        # print dir(self.dom_handle)
         self.base_info.feed(*self.dom_handle.info())
-        #print "+", self.name, self.disk_dict.keys(), "%.2f" % (self.base_info.cpu_used)
+        # print "+", self.name, self.disk_dict.keys(), "%.2f" % (self.base_info.cpu_used)
         for act_disk in self.disk_dict:
             self.disk_dict[act_disk].feed(*self.dom_handle.blockStats(act_disk))
-            #print "    ", act_disk, self.disk_dict[act_disk].stats
+            # print "    ", act_disk, self.disk_dict[act_disk].stats
         for act_net in self.net_dict:
             self.net_dict[act_net].feed(*self.dom_handle.interfaceStats(act_net))
-            #print "    ", act_net, self.net_dict[act_net].stats
-        
+            # print "    ", act_net, self.net_dict[act_net].stats
+
 class libvirt_connection(object):
     def __init__(self, read_only=True, **kwargs):
         self.__read_only = read_only
@@ -240,7 +242,6 @@ class libvirt_connection(object):
     def update(self):
         conn = self.connection
         if conn is not None:
-            print os.path.exists("/var/run/libvirt/libvirt-sock-ro")
             try:
                 id_list = self.conn_call(conn, "listDomainsID")
             except:
@@ -324,11 +325,11 @@ def _monitor_test():
     while True:
         cur_con.update()
         time.sleep(30)
-        
+
 if __name__ == "__main__":
     if len(sys.argv) > 1:
         if sys.argv[1] == "monitor":
             _monitor_test()
     print "Loadable module, exiting"
     sys.exit(0)
-    
+
