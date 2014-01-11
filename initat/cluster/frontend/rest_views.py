@@ -43,6 +43,7 @@ from rest_framework.reverse import reverse
 from rest_framework.routers import DefaultRouter
 from rest_framework.views import exception_handler, APIView
 from django.views.generic import View
+import json
 import logging
 import logging_tools
 import operator
@@ -297,10 +298,14 @@ class device_tree_list(mixins.ListModelMixin,
             with_md = self._get_post_boolean("with_meta_devices", False)
             if with_md:
                 ignore_md = False
-            # only selected ones
-            # normally (frontend in-sync with backend) meta-devices have the same selection state
-            # as their device_groups, devg_keys are in fact redundant ...
-            dev_keys = [key.split("__")[1] for key in self.request.session.get("sel_list", []) if key.startswith("dev_")]
+            if "pks" in self.request.QUERY_PARAMS:
+                pk_list = json.loads(self.request.QUERY_PARAMS["pks"])
+                dev_keys = pk_list
+            else:
+                # only selected ones
+                # normally (frontend in-sync with backend) meta-devices have the same selection state
+                # as their device_groups, devg_keys are in fact redundant ...
+                dev_keys = [key.split("__")[1] for key in self.request.session.get("sel_list", []) if key.startswith("dev_")]
             # devg_keys = [key.split("__")[1] for key in self.request.session.get("sel_list", []) if key.startswith("devg_")]
             if ignore_cdg:
                 # ignore cluster device group

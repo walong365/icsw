@@ -493,6 +493,7 @@ class device_info
         tabs_div.tabs(
             activate : @activate_tab
         )
+        @config_init = false
     show_config_vars: () =>
         $.ajax
             url     : "{% url 'config:get_device_cvars' %}"
@@ -561,9 +562,11 @@ class device_info
     activate_tab: (event, ui) =>
         t_href = ui.newTab.find("a").attr("href")
         if t_href == "#config"
-            if not ui.newPanel.html()
+            if not @config_init
+                @config_init = true
                 # lazy load config
-                new config_table(ui.newPanel, undefined, @resp_xml.find("device"), @show_config_vars)
+                angular.bootstrap(ui.newPanel.find("div[id='icsw.device.config.local']"), ["icsw.device.config"])
+                #new config_table(ui.newPanel, undefined, @resp_xml.find("device"), @show_config_vars)
         else if t_href == "#livestatus"
             if not ui.newPanel.html()
                 # lazy load status
@@ -942,7 +945,9 @@ class device_info
         @network_div.find("select[id='ip__" + net_ip_xml.attr("pk") + "__network']").attr("value", net_ip_xml.attr("network"))
     config_div: (dev_xml) =>
         # configuration div
+        dev_pk = @resp_xml.find("device").attr("pk")
         conf_div = $("<div>").attr("id", "config")
+        conf_div.append($("<div id='icsw.device.config.local'><div ng-controller='dc_base'><deviceconfig devicepk='#{dev_pk}'></deviceconfig></div></div>"))
         return conf_div
     livestatus_div: (dev_xml) =>
         # configuration div
