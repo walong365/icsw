@@ -144,7 +144,9 @@ class domain_tree_node_form(ModelForm):
             ),
             FormActions(
                 Submit("submit", "", css_class="primaryAction", ng_value="get_action_string()"),
+                HTML("&nbsp;"),
                 Button("close", "close", css_class="btn-warning", ng_click="close_modal()"),
+                HTML("&nbsp;"),
                 Button("delete", "delete", css_class="btn-danger", ng_click="fn.delete_node(this, edit_obj)"),
             ),
         )
@@ -544,6 +546,8 @@ class account_detail_form(ModelForm):
     helper.form_class = 'form-horizontal'
     helper.label_class = 'col-sm-2'
     helper.field_class = 'col-sm-8'
+    helper.ng_model = "edit_obj"
+    helper.ng_submit = "update_account()"
     helper.layout = Layout(
         HTML("<h2>Account info</h2>"),
         Div(
@@ -571,16 +575,17 @@ class account_detail_form(ModelForm):
             ),
             css_class="row",
         ),
-        Div(
-            Field("password", css_class="passwordfields"),
-            css_class="form-horizontal"
+        FormActions(
+            Submit("submit", "Modify", css_class="primaryAction"),
+            HTML("&nbsp;"),
+            Button("change password", "change password", ng_click="change_password()", css_class="btn-warning")
         ),
     )
     class Meta:
         model = user
         fields = ["shell", "first_name", "last_name",
-                  "title", "email", "pager", "tel", "comment",
-                  "password"]
+            "title", "email", "pager", "tel", "comment", ]
+
 
 class kernel_form(ModelForm):
     helper = FormHelper()

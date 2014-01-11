@@ -309,7 +309,7 @@ simple_modal_ctrl = ($scope, $modalInstance, question) ->
     $scope.cancel = () ->
         $modalInstance.dismiss("cancel")
 
-simple_modal_template = '
+simple_modal_template = """
 <div class="modal-header"><h3>Please confirm</h3></div>
 <div class="modal-body">
     {% verbatim %}{{ question }}{% endverbatim %}
@@ -318,7 +318,35 @@ simple_modal_template = '
     <button class="btn btn-primary" ng-click="ok()">OK</button>
     <button class="btn btn-warning" ng-click="cancel()">Cancel</button>
 </div>
-'
+"""
+
+enter_password_template = """
+<div class="modal-header"><h3>Please enter the new password</h3></div>
+<div class="modal-body">
+    <form name="form">
+        <div ng-class="dyn_check(pwd.pwd1)">
+            <label>Password:</label>
+            <input type="password" ng-model="pwd.pwd1" placeholder="enter password" class="form-control"></input>
+        </div>
+        <div ng-class="dyn_check(pwd.pwd2)">
+            <label>again:</label>
+            <input type="password" ng-model="pwd.pwd2" placeholder="confirm password" class="form-control"></input>
+        </div>
+    </form>
+</div>
+<div class="modal-footer">
+    <div ng-class="pwd_error_class">
+       {% verbatim %}
+           {{ pwd_error }}
+       {% endverbatim %}
+    </div>
+    <div>
+        <button class="btn btn-primary" ng-click="check()">Check</button>
+        <button class="btn btn-success" ng-click="ok()" ng-show="check()">Save</button>
+        <button class="btn btn-warning" ng-click="cancel()">Cancel</button>
+    </div>
+</div>
+"""
 
 angular_add_simple_list_controller = (module, name, settings) ->
     $(settings.template_cache_list).each (idx, t_name) ->
@@ -431,7 +459,7 @@ angular_add_simple_list_controller = (module, name, settings) ->
             $scope.create_or_edit = (event, create_or_edit, obj) ->
                 $scope.edit_obj = obj
                 $scope.create_mode = create_or_edit
-                if $scope.fn.create_or_edit
+                if $scope.fn and $scope.fn.create_or_edit
                     $scope.fn.create_or_edit($scope, $scope.create_mode, obj)
                 if $scope.settings.use_modal
                     $scope.edit_div = $compile($templateCache.get($scope.settings.edit_template))($scope)
@@ -689,7 +717,6 @@ class angular_edit_mixin
                     @send_change_signal()
                 )
         )
-
 
 root = exports ? this
 root.angular_edit_mixin = angular_edit_mixin

@@ -2,33 +2,53 @@
 
 {% load i18n coffeescript crispy_forms_tags %}
 
+{% block angular %}{% include "angular/user.cs" %}{% endblock %}
+
 {% block title %}{% trans "Account info" %}{% endblock %}
 
 {% block content %}
 
-<div id="account_info">
-    {% crispy form form.helper %}
+{% verbatim %}
+
+<div ng-app="icsw.user">
+    <div ng-controller="account_ctrl" ng-model="cur_user">
+        <div ng-controller="password_ctrl">
+            {% endverbatim %}
+                {% crispy form form.helper %}
+            {% verbatim %}
+        </div>
+    </div>
 </div>
+
+{% endverbatim %}
 
 <script type="text/javascript">
 
 {% inlinecoffeescript %}
 
-$(document).ready(
-    $.ajax
-        url : "{% url 'base:get_object' %}"
-        data :
-            key : "user__{{ user.pk }}"
-        success : (xml) ->
-            if parse_xml_response(xml)
-                user_xml = $(xml).find("user")
-                my_submitter = new submitter({
-                    master_xml : user_xml
-                })
-                detail_div = $("div#account_info")
-                detail_div.find("input[name='password']").bind("focus", enter_password)
-                detail_div.find("input, select, textarea").on("change", my_submitter.submit)
-)
+user_module = angular.module("icsw.user", ["ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters", "localytics.directives", "restangular"])
+
+angular_module_setup([user_module])
+
+angular_add_password_controller(user_module)
+
+user_module.controller("account_ctrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "sharedDataSource", "$q", "$timeout", "$modal", 
+    ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, sharedDataSource, $q, $timeout, $modal) ->
+        Restangular.all("{% url 'rest:user_detail' 1 %}".slice(1).slice(0, -2)).get(1).then((data) ->
+            $scope.edit_obj = data
+        )
+        $scope.update_account = () ->
+            $scope.edit_obj.put().then(
+               (data) ->
+               (resp) ->
+            )
+        $scope.$on("icsw.set_password", (event, new_pwd) ->
+            $scope.edit_obj.password = new_pwd
+            $scope.update_account()
+        )
+        $scope.change_password = () ->
+            $scope.$broadcast("icsw.enter_password")
+])
 
 {% endinlinecoffeescript %}
 
