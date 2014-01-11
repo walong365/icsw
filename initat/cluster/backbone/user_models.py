@@ -428,7 +428,9 @@ class user_serializer_h(serializers.HyperlinkedModelSerializer):
 class user_serializer(serializers.ModelSerializer):
     class Meta:
         model = user
-        fields = ("idx", "login", "uid", "group", "first_name", "last_name")
+        fields = ("idx", "login", "uid", "group", "first_name", "last_name", "shell",
+            "title", "email", "pager", "comment", "tel", "password",
+            )
 
 @receiver(signals.m2m_changed, sender=user.permissions.through)
 def user_permissions_changed(sender, *args, **kwargs):

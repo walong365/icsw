@@ -303,6 +303,7 @@ if DEBUG:
     STATICFILES_FINDERS = tuple(list(STATICFILES_FINDERS) + ["pipeline.finders.PipelineFinder"])
 
 STATICFILES_DIRS = (
+    ("icinga", "/opt/icinga/share/images/logos"),
     # ("frontend", os.path.join(FILE_ROOT, "frontend", "media")),
 )
 

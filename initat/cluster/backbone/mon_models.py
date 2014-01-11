@@ -8,6 +8,7 @@ from initat.cluster.backbone.model_functions import _check_empty_string, _check_
     _check_integer, _check_non_empty_string
 from lxml.builder import E # @UnresolvedImport
 from rest_framework import serializers
+from django.conf import settings
 import logging_tools
 import re
 
@@ -677,16 +678,15 @@ class mon_ext_host(models.Model):
             name=self.name,
             pk="%d" % (self.pk),
             key="mext__%d" % (self.pk),
-            icon_image="%s" % (self.icon_image)
+            icon_image="%s" % (self.icon_image),
         )
-        if with_images:
-            cur_xml.attrib["data-image"] = "/icinga/images/logos/%s" % (
-                self.icon_image)
+        cur_xml.attrib["data-image"] = self.data_image_field()
         return cur_xml
     def __unicode__(self):
         return self.name
     def data_image_field(self):
-        return "/icinga/images/logos/%s" % (self.icon_image)
+        _url = settings.STATIC_URL + "icinga/%s" % (self.icon_image)
+        return _url
     class Meta:
         ordering = ("name",)
         db_table = u'ng_ext_host'
