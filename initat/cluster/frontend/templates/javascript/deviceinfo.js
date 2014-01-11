@@ -527,38 +527,6 @@ class device_info
         )
         vtl_node.find("> *").each (idx, sub_node) =>
             @build_vtl_node(new_node, $(sub_node))
-    build_rrd_noxde: (dt_node, db_node) =>
-        if db_node.prop("tagName") == "machine_vector"
-            title_str = "vector"
-            key         = ""
-            expand_flag = true
-            hide_cb     = true
-            tooltip     = "Device vector"
-        else if db_node.prop("tagName") == "entry"
-            title_str   = db_node.attr("part")
-            expand_flag = false
-            key         = ""
-            hide_cb     = true
-            tooltip     = ""
-        else
-            title_str   = db_node.attr("info")
-            expand_flag = false
-            key         = db_node.attr("name")
-            hide_cb     = false
-            tooltip     = "key: " + db_node.attr("name")
-        if db_node.attr("devices") and parseInt(db_node.attr("devices")) > 1
-            title_str = "#{title_str} (" + db_node.attr("devices") + ")"
-        new_node = dt_node.addChild(
-            title        : title_str
-            expand       : expand_flag
-            key          : key
-            hideCheckbox : hide_cb
-            isFolder     : hide_cb
-            tooltip      : tooltip
-            #select       : selected
-        )
-        db_node.find("> *").each (idx, sub_node) =>
-            @build_rrd_node(new_node, $(sub_node))
     activate_tab: (event, ui) =>
         t_href = ui.newTab.find("a").attr("href")
         if t_href == "#config"
@@ -762,15 +730,35 @@ class device_info
             cur_el.after(@uuid_div)
     category_div: (dev_xml) =>
         cat_div = $("<div>").attr("id", "category")
-        tree_div = $("<div>").attr("id", "cat_tree")
+        tree_div = $('<div id="cat_tree"><div id="icsw.device.category.local"><div ng-controller="category_ctrl"><tree treeconfig="cat_tree"></tree></div></div></div>')
+        angular.bootstrap(tree_div.find("div[id='icsw.device.category.local']"), ["icsw.device.config"])
+        angular.element(tree_div.find("div[ng-controller='category_ctrl']")).scope().set_xml_entries(
+            # device pk
+            @resp_xml.find("device").attr("pk")
+            # selected categories
+            (parseInt(_entry) for _entry in @resp_xml.find("device").attr("categories").split("::"))
+            # XML tree
+            @resp_xml.find("categories category[full_name^='/device']")
+            # call digest() after init to force redraw
+            true
+        )
         cat_div.append(tree_div)
-        new category_tree(tree_div, undefined, dev_xml, @resp_xml, "/device", true)
         return cat_div
     location_div: (dev_xml) =>
         loc_div = $("<div>").attr("id", "location")
-        tree_div = $("<div>").attr("id", "loc_tree")
+        tree_div = $('<div id="cat_tree"><div id="icsw.device.location.local"><div ng-controller="location_ctrl"><tree treeconfig="loc_tree"></tree></div></div></div>')
+        angular.bootstrap(tree_div.find("div[id='icsw.device.location.local']"), ["icsw.device.config"])
+        angular.element(tree_div.find("div[ng-controller='location_ctrl']")).scope().set_xml_entries(
+            # device pk
+            @resp_xml.find("device").attr("pk")
+            # selected categories
+            (parseInt(_entry) for _entry in @resp_xml.find("device").attr("categories").split("::"))
+            # XML tree
+            @resp_xml.find("categories category[full_name^='/location']")
+            # call digest() after init to force redraw
+            true
+        )
         loc_div.append(tree_div)
-        new category_tree(tree_div, undefined, dev_xml, @resp_xml, "/location", false)
         return loc_div
     init_network_div: =>
         # load structures needed for network
@@ -947,7 +935,7 @@ class device_info
         # configuration div
         dev_pk = @resp_xml.find("device").attr("pk")
         conf_div = $("<div>").attr("id", "config")
-        conf_div.append($("<div id='icsw.device.config.local'><div ng-controller='dc_base'><deviceconfig devicepk='#{dev_pk}'></deviceconfig></div></div>"))
+        conf_div.append($("<div id='icsw.device.config.local'><div ng-controller='config_ctrl'><deviceconfig devicepk='#{dev_pk}'></deviceconfig></div></div>"))
         return conf_div
     livestatus_div: (dev_xml) =>
         # configuration div

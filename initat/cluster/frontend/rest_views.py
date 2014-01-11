@@ -299,8 +299,7 @@ class device_tree_list(mixins.ListModelMixin,
             if with_md:
                 ignore_md = False
             if "pks" in self.request.QUERY_PARAMS:
-                pk_list = json.loads(self.request.QUERY_PARAMS["pks"])
-                dev_keys = pk_list
+                dev_keys = json.loads(self.request.QUERY_PARAMS["pks"])
             else:
                 # only selected ones
                 # normally (frontend in-sync with backend) meta-devices have the same selection state

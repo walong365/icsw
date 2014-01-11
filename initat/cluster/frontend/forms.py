@@ -241,7 +241,9 @@ class category_form(ModelForm):
             ),
             FormActions(
                 Submit("submit", "", css_class="primaryAction", ng_value="get_action_string()"),
+                HTML("&nbsp;"),
                 Button("close", "close", css_class="btn-warning", ng_click="close_modal()"),
+                HTML("&nbsp;"),
                 Button("delete", "delete", css_class="btn-danger", ng_click="fn.delete_node(this, edit_obj)", ng_show="!create_mode && !edit_obj.num_refs"),
             ),
         )

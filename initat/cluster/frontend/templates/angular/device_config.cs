@@ -76,7 +76,7 @@ device_config_module = angular.module("icsw.device.config", ["ngResource", "ngCo
 
 angular_module_setup([device_config_module])
 
-device_config_module.controller("dc_base", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "sharedDataSource", "$q", "$modal",
+device_config_module.controller("config_ctrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "sharedDataSource", "$q", "$modal",
     ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, sharedDataSource, $q, $modal) ->
         $scope.devices = []
         $scope.configs = []
@@ -285,6 +285,161 @@ device_config_module.controller("dc_base", ["$scope", "$compile", "$filter", "$t
     $templateCache.put("devconftable.html", devconftable_template)
     $templateCache.put("device_config_template.html", device_config_template)
 )
+
+class category_tree extends tree_config
+    constructor: (@scope, args) ->
+        super(args)
+        @show_selection_buttons = false
+        @show_icons = false
+        @show_select = true
+        @show_descendants = false
+        @show_childs = false
+    selection_changed: () =>
+        sel_list = @get_selected((node) ->
+            if node.selected
+                return [node.obj.idx]
+            else
+                return []
+        )
+        @scope.new_selection(sel_list)
+    get_name : (t_entry) ->
+        cat = t_entry.obj
+        if cat.depth > 1
+            r_info = "#{cat.full_name} (#{cat.name})"
+            if cat.num_refs
+                r_info = "#{r_info} (refs=#{cat.num_refs})"
+            return r_info
+        else if cat.depth
+            return cat.full_name
+        else
+            return "TOP"
+
+cat_ctrl = device_config_module.controller("category_ctrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "sharedDataSource", "$q", "$modal",
+    ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, sharedDataSource, $q, $modal) ->
+        $scope.cat_tree = new category_tree($scope, {})            
+        $scope.xml_to_json = (in_xml) ->
+            entry = {
+                "depth" : parseInt(in_xml.attr("depth"))
+                "immutable" : if parseInt(in_xml.attr("immutable")) then true else false
+                "parent" : parseInt(in_xml.attr("parent"))
+                "name" : in_xml.attr("name")
+                "idx"  : parseInt(in_xml.attr("pk"))
+                "full_name" : in_xml.attr("full_name")
+            }
+            return entry
+        $scope.set_xml_entries = (dev_pk, sel_list, in_xml, call_digest=false) ->
+            $scope.device_pk = dev_pk
+            cat_tree_lut = {}
+            $scope.cat_tree.clear_root_nodes()
+            # transform to json
+            entries = []
+            $(in_xml).each (idx, _xml) ->
+                entries.push($scope.xml_to_json($(_xml)))
+            for entry in entries
+                t_entry = $scope.cat_tree.new_node({folder:false, obj:entry, expand:entry.depth < 2, selected: entry.idx in sel_list})
+                cat_tree_lut[entry.idx] = t_entry
+                if entry.parent and entry.parent of cat_tree_lut
+                    cat_tree_lut[entry.parent].add_child(t_entry)
+                else
+                    # hide selection from root nodes
+                    t_entry._show_select = false
+                    $scope.cat_tree.add_root_node(t_entry)
+            $scope.cat_tree_lut = cat_tree_lut
+            $scope.cat_tree.show_selected(false)
+            if call_digest
+                # needed when called from jQuery 
+                $scope.$digest()
+        $scope.new_selection = (sel_list) =>
+            $.ajax
+                url     : "{% url 'base:change_category' %}"
+                data    :
+                    "obj_type" : "device"
+                    "obj_pk"   : $scope.device_pk
+                    "subtree"  : "/device"
+                    "cur_sel"  : angular.toJson(sel_list)
+                success : (xml) =>
+                    parse_xml_response(xml)
+
+])
+
+class location_tree extends tree_config
+    constructor: (@scope, args) ->
+        super(args)
+        @show_selection_buttons = false
+        @show_icons = false
+        @show_select = true
+        @show_descendants = false
+        @show_childs = false
+        @single_select = true
+    selection_changed: () =>
+        sel_list = @get_selected((node) ->
+            if node.selected
+                return [node.obj.idx]
+            else
+                return []
+        )
+        @scope.new_selection(sel_list)
+    get_name : (t_entry) ->
+        cat = t_entry.obj
+        if cat.depth > 1
+            r_info = "#{cat.full_name} (#{cat.name})"
+            if cat.num_refs
+                r_info = "#{r_info} (refs=#{cat.num_refs})"
+            return r_info
+        else if cat.depth
+            return cat.full_name
+        else
+            return "TOP"
+
+loc_ctrl = device_config_module.controller("location_ctrl", ["$scope",
+    ($scope) ->
+        $scope.loc_tree = new location_tree($scope, {})            
+        $scope.xml_to_json = (in_xml) ->
+            entry = {
+                "depth" : parseInt(in_xml.attr("depth"))
+                "immutable" : if parseInt(in_xml.attr("immutable")) then true else false
+                "parent" : parseInt(in_xml.attr("parent"))
+                "name" : in_xml.attr("name")
+                "idx"  : parseInt(in_xml.attr("pk"))
+                "full_name" : in_xml.attr("full_name")
+            }
+            return entry
+        $scope.set_xml_entries = (dev_pk, sel_list, in_xml, call_digest=false) ->
+            $scope.device_pk = dev_pk
+            loc_tree_lut = {}
+            $scope.loc_tree.clear_root_nodes()
+            # transform to json
+            entries = []
+            $(in_xml).each (idx, _xml) ->
+                entries.push($scope.xml_to_json($(_xml)))
+            for entry in entries
+                t_entry = $scope.loc_tree.new_node({folder:false, obj:entry, expand:entry.depth < 2, selected: entry.idx in sel_list})
+                loc_tree_lut[entry.idx] = t_entry
+                if entry.parent and entry.parent of loc_tree_lut
+                    loc_tree_lut[entry.parent].add_child(t_entry)
+                else
+                    # hide selection from root nodes
+                    t_entry._show_select = false
+                    $scope.loc_tree.add_root_node(t_entry)
+            $scope.loc_tree_lut = loc_tree_lut
+            $scope.loc_tree.show_selected(false)
+            if call_digest
+                # needed when called from jQuery 
+                $scope.$digest()
+        $scope.new_selection = (sel_list) =>
+            $.ajax
+                url     : "{% url 'base:change_category' %}"
+                data    :
+                    "obj_type" : "device"
+                    "obj_pk"   : $scope.device_pk
+                    "subtree"  : "/location"
+                    "cur_sel"  : angular.toJson(sel_list)
+                success : (xml) =>
+                    parse_xml_response(xml)
+
+])
+
+add_tree_directive(cat_ctrl)
 
 {% endinlinecoffeescript %}
 

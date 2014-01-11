@@ -13,7 +13,7 @@ _tree_node = '
         <span ng-class="treeconfig.get_span_class(entry, $last)">
             <span ng-show="!entry._num_childs" class="dynatree-connector"></span>
             <span ng-show="entry._num_childs" class="dynatree-expander" ng-click="treeconfig.toggle_expand_node(entry)"></span>
-            <span ng-if="treeconfig.show_select" class="dynatree-checkbox" style="margin-left:2px;" ng-click="treeconfig.toggle_checkbox_node(entry)"></span>
+            <span ng-if="treeconfig.show_select && entry._show_select" class="dynatree-checkbox" style="margin-left:2px;" ng-click="treeconfig.toggle_checkbox_node(entry)"></span>
             <span ng-show="dynatree.show_icons" class="dynatree-icon"></span>
             <div class="btn-group btn-group-xs" ng-show="entry._num_childs && treeconfig.show_selection_buttons">
                 <input type="button" class="btn btn-success" value="S" ng-click="treeconfig.toggle_tree_state(entry, 1)" title="select subtree"></input>
@@ -127,11 +127,14 @@ class tree_config
         @show_tree_expand_buttons = true
         @show_icons = true
         @show_select = true
+        # only one element can be selected
+        @single_select = false
         for key, value of args
             @[key] = value
         @root_nodes = []
         @_node_idx = 0
         @_track_changes = false
+    selection_changed: () =>
     clear_root_nodes: () =>
         @root_nodes = []
     handle_click: () =>
@@ -149,10 +152,13 @@ class tree_config
     new_node: (args) =>
         @_node_idx++
         new_node = new tree_node(args)
+        new_node._is_root_node = false
+        new_node._show_select = true
         new_node._idx = @_node_idx
         new_node.config = @
         return new_node
     add_root_node: (node) =>
+        node._is_root_node = true
         @root_nodes.push(node)
     recalc: () =>
         (entry.recalc_sel_descendants() for entry in @root_nodes)
@@ -207,6 +213,14 @@ class tree_config
         entry.expand = not entry.expand
     toggle_checkbox_node: (entry) =>
         entry.set_selected(!entry.selected)
+        if entry.selected and @single_select
+            # remove all other selections
+            cur_idx = entry._idx
+            @iter(
+                (entry) ->
+                    if entry.selected and entry._idx != cur_idx
+                        entry.selected = false
+            )
         @selection_changed()
     toggle_tree_state: (entry, flag, signal=true) =>
         if entry == undefined
