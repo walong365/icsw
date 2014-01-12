@@ -101,6 +101,7 @@ class csw_permission(models.Model):
     valid_for_object_level = models.BooleanField(default=True)
     class Meta:
         unique_together = (("content_type", "codename"),)
+        ordering = ("content_type__app_label", "content_type__name", "name",)
     def get_xml(self):
         r_xml = E.csw_permission(
             pk="%d" % (self.pk),
@@ -127,7 +128,12 @@ class csw_permission(models.Model):
             "G/O" if self.valid_for_object_level else "G",
             )
 
+class content_type_serializer(serializers.ModelSerializer):
+    class Meta:
+        model = ContentType
+
 class csw_permission_serializer(serializers.ModelSerializer):
+    content_type = content_type_serializer()
     class Meta:
         model = csw_permission
 
@@ -142,6 +148,10 @@ class csw_object_permission(models.Model):
     object_pk = models.IntegerField(default=0)
     def __unicode__(self):
         return "%s | %d" % (unicode(self.csw_permission), self.object_pk)
+
+class csw_object_permissions_serializer(serializers.ModelSerializer):
+    class Meta:
+        model = csw_object_permission
 
 def get_label_codename(perm):
     app_label, codename = (None, None)
