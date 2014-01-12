@@ -30,8 +30,7 @@ from initat.cluster.backbone.models import device, device_group, device_variable
      TOP_MONITORING_CATEGORY, mon_notification, config_str, config_int, host_check_command, \
      mon_host_dependency_templ, mon_host_dependency, mon_service_dependency_templ, \
      mon_service_templ, mon_service_dependency
-from initat.md_config_server import constants
-from initat.md_config_server import special_commands
+from initat.md_config_server import special_commands, constants
 from initat.md_config_server.config import global_config, main_config, var_cache, all_commands, \
     all_service_groups, time_periods, all_contacts, all_contact_groups, all_host_groups, all_hosts, \
     all_hosts_extinfo, all_services, config_dir, device_templates, service_templates, nag_config, \
