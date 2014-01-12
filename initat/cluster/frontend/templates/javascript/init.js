@@ -481,70 +481,6 @@ force_expansion_state = (cur_tr, state) ->
     else
         cur_el.addClass("ui-icon-triangle-1-e")
 
-class password_struct
-    constructor: (@event) ->
-        @handle_pwd()
-    handle_pwd: =>
-        @target = $(event.target)
-        top_div = $("<div>")
-        $.ajax
-            url     : "{% url 'user:get_password_form' %}"
-            success : (xml) =>
-                if parse_xml_response(xml)
-                    in_form = $(xml).find("value[name='form']").text()
-                    top_div.append(in_form)
-                    #top_div.uniform()
-                    top_div.append(
-                        $("<h4>").append(
-                            $("<span>").attr
-                                id : "error"
-                        )
-                    )
-                    $.simplemodal(
-                        top_div,
-                        {
-                            onShow : (dialog) =>
-                                dialog.data.find("input[type='password']").bind("change", (event) =>
-                                    @check_passwd(dialog)
-                                )
-                                dialog.data.find("input[type='button']").bind("click", (event) =>
-                                    cur_id = $(event.target).attr("id")
-                                    @check_passwd(dialog, cur_id == "button-id-leave")
-                                )
-                            onClose : (dialog) =>
-                                pwd0 = dialog.data.find("input#id_password1").val()
-                                pwd1 = dialog.data.find("input#id_password1").val()
-                                $.simplemodal.close()
-                                if pwd0 == pwd1
-                                    if pwd0.length < 4
-                                        @target.val("")
-                                    else
-                                        @target.val(pwd0).trigger("change")
-                                else
-                                    @target.val("")
-                        }
-                    )
-    check_passwd: (dialog, leave_on_ok=false) =>
-        stat_h4 = dialog.data.find("span#error")
-        stat_h4.text("password empty")
-        pwd0 = dialog.data.find("input#id_password1").val()
-        pwd1 = dialog.data.find("input#id_password2").val()
-        if pwd0 == pwd1
-            if not pwd0 or not pwd1
-                stat_h4.attr("class", "warn").text("password empty")
-            else
-                if pwd0.length < 4
-                    stat_h4.attr("class", "error").text("password too short")
-                else
-                    stat_h4.attr("class", "ok").text("password OK")
-                    if leave_on_ok
-                        $.simplemodal.close()
-        else
-            stat_h4.attr("class", "error").text("password mismatch")
-
-enter_password = (event) ->
-    new password_struct(event)
-    
 create_input_el = (xml_el, attr_name, id_prefix, kwargs) ->
     dummy_div = $("<div>")
     kwargs = kwargs or {}
@@ -732,7 +668,6 @@ root.submit_change            = submit_change
 root.force_expansion_state    = force_expansion_state
 root.create_input_el          = create_input_el
 root.submitter                = submitter
-root.enter_password           = enter_password
 root.store_user_var           = store_user_var
 root.load_user_var            = load_user_var
 root.create_dict              = create_dict

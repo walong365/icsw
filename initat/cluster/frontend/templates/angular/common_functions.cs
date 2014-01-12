@@ -618,6 +618,7 @@ angular.module(
 
 class angular_edit_mixin
     constructor : (@scope, @templateCache, @compile, @modal, @Restangular) ->
+        @use_modal = true
     create : (event) =>
         if @new_object
             @scope.new_obj = @new_object(@scope)
@@ -637,21 +638,25 @@ class angular_edit_mixin
         if not @scope.create_mode
             @Restangular.restangularizeElement(null, @scope._edit_obj, @modify_rest_url)
         @scope.action_string = if @scope.create_mode then "Create" else "Modify"
-        @edit_div = @compile(@templateCache.get(if @scope.create_mode then @create_template else @edit_template))(@scope)
-        @edit_div.simplemodal
-            #opacity      : 50
-            position     : [event.pageY, event.pageX]
-            #autoResize   : true
-            #autoPosition : true
-            onShow: (dialog) => 
-                dialog.container.draggable()
-                $("#simplemodal-container").css("height", "auto")
-                @_modal_close_ok = false
-                @scope.modal_active = true
-            onClose: (dialog) =>
-                @close_modal()
+        if @use_modal
+            @edit_div = @compile(@templateCache.get(if @scope.create_mode then @create_template else @edit_template))(@scope)
+            @edit_div.simplemodal
+                #opacity      : 50
+                position     : [event.pageY, event.pageX]
+                #autoResize   : true
+                #autoPosition : true
+                onShow: (dialog) => 
+                    dialog.container.draggable()
+                    $("#simplemodal-container").css("height", "auto")
+                    @_modal_close_ok = false
+                    @scope.modal_active = true
+                onClose: (dialog) =>
+                    @close_modal()
+        else
+            @scope.modal_active = true
     close_modal : () =>
-        $.simplemodal.close()
+        if @use_modal
+            $.simplemodal.close()
         #console.log scope.pre_edit_obj.pnum, scope._edit_obj.pnum
         if @scope.modal_active
             #console.log "*", @_modal_close_ok, @scope.pre_edit_obj
@@ -688,7 +693,9 @@ class angular_edit_mixin
                     (resp) => handle_reset(resp.data, @scope._edit_obj, null)
                 )
         else
-            console.log "inv", @scope.form
+            noty
+                text : "form validation problem"
+                type : "warning"
     modal_ctrl : ($scope, $modalInstance, question) ->
         $scope.question = question
         $scope.ok = () ->
@@ -714,6 +721,7 @@ class angular_edit_mixin
                     noty
                         text : "deleted instance"
                     remove_by_idx(@delete_list, obj.idx)
+                    @close_modal()
                     @send_change_signal()
                 )
         )

@@ -259,57 +259,6 @@ class category_form(ModelForm):
         model = category
         fields = ["name", "comment", "parent", "longitude", "latitude"]
 
-# class location_detail_form(ModelForm):
-#     helper = FormHelper()
-#     helper.form_id = "id_cat_detail_form"
-#     helper.form_class = 'form-horizontal'
-#     helper.label_class = 'col-sm-2'
-#     helper.field_class = 'col-sm-8'
-#     helper.layout = Layout(
-#         Div(
-#             HTML("Category details"),
-#             Field("name"),
-#             Field("comment"),
-#             FormActions(
-#                 Button("delete", "Delete", css_class="btn-danger"),
-#             ),
-#             Field("latitude"),
-#             Field("longitude"),
-#         )
-#     )
-#     class Meta:
-#         model = category
-#         fields = ["name", "comment", "latitude", "longitude"]
-
-# class category_new_form(ModelForm):
-#     helper = FormHelper()
-#     helper.form_id = "id_dtn_detail_form"
-#     helper.form_class = 'form-horizontal'
-#     helper.label_class = 'col-sm-2'
-#     helper.field_class = 'col-sm-8'
-#     helper.layout = Layout(
-#         Div(
-#             HTML("Create new category"),
-#             Field("full_name"),
-#             Field("comment"),
-#             FormActions(
-#                 Submit("submit", "Submit", css_class="primaryAction"),
-#                 ),
-#         )
-#     )
-#     def clean_full_name(self):
-#         cur_name = self.cleaned_data["full_name"]
-#         loc_re = re.compile("^(?P<top_level>/[^/]+)/(?P<rest>.*)$")
-#         name_m = loc_re.match(cur_name)
-#         if not name_m:
-#             raise ValidationError("wrong format")
-#         if name_m.group("top_level") not in TOP_LOCATIONS:
-#             raise ValidationError("wrong top-level category '%s'" % (name_m.group("top_level")))
-#         return cur_name
-#     class Meta:
-#         model = category
-#         fields = ["full_name", "comment"]
-
 class device_fqdn(ModelMultipleChoiceField):
     def label_from_instance(self, obj):
         return (obj.device_group.name, obj.full_name)
@@ -363,33 +312,27 @@ class moncc_template_flags_form(ModelForm):
             "event_handler", "event_handler_enabled", "is_event_handler"]
 
 class group_detail_form(ModelForm):
-    permissions = ModelMultipleChoiceField(
-        queryset=csw_permission.objects.exclude(Q(codename__in=["admin", "group_admin"])).select_related("content_type").order_by("codename"),
-        widget=SelectMultiple(attrs={"size" : "8"}),
-        required=False,
-    )
-    allowed_device_groups = ModelMultipleChoiceField(
-        queryset=device_group.objects.exclude(Q(cluster_device_group=True)).filter(Q(enabled=True)),
-        required=False,
-    )
     helper = FormHelper()
     helper.form_id = "form"
+    helper.form_name = "form"
     helper.form_class = 'form-horizontal'
     helper.label_class = 'col-sm-2'
     helper.field_class = 'col-sm-8'
+    helper.ng_model = "_edit_obj"
+    helper.ng_submit = "group_edit.modify(this)"
     helper.layout = Layout(
-        HTML("<h2>Group details</h2>"),
+        HTML("<h2>Group details for {% verbatim %}'{{ _edit_obj.groupname }}'{% endverbatim %}</h2>"),
         Div(
             Div(
                 Fieldset(
                     "Basic data",
-                    Field("groupname"),
-                    Field("gid"),
-                    Field("homestart"),
+                    Field("groupname", ng_pattern="/^.+$/", wrapper_class="ng-class:group_edit.form_error('groupname')"),
+                    Field("gid", ng_pattern="/^\d+$/", wrapper_class="ng-class:group_edit.form_error('gid')"),
+                    Field("homestart", ng_pattern="/^\/.*/", wrapper_class="ng-class:group_edit.form_error('homestart')"),
                     FormActions(
                         Field("active"),
-                        ),
                     ),
+                ),
                 css_class="col-md-6",
             ),
             Div(
@@ -400,39 +343,51 @@ class group_detail_form(ModelForm):
                     Field("pager"),
                     Field("tel"),
                     Field("comment"),
-                    ),
+                ),
                 css_class="col-md-6",
             ),
             css_class="row",
         ),
-        FormActions(
-            Button("delete", "Delete", css_class="btn-danger"),
+        Fieldset(
+            "Permissions",
+            Field("parent_group", ng_options="value.idx as value.groupname for value in group_list", chosen=True),
+            Field("allowed_device_groups", ng_options="value.idx as value.name for value in valid_device_groups()", chosen=True),
+            Field("permissions", ng_options="value.idx as value.name for value in valid_group_csw_permissions()", chosen=True),
+            Field("object_permissions", ng_show="!create_mode"),
         ),
-        Field("parent_group"),
-        Field("allowed_device_groups"),
-        Div(
-            Field("permissions"),
-        )
+        FormActions(
+            Submit("modify", "Modify", css_class="btn-success", ng_show="!create_mode"),
+            Submit("create", "Create", css_class="btn-success", ng_show="create_mode"),
+            HTML("&nbsp;"),
+            Button("close", "close", css_class="btn-primary", ng_click="group_edit.close_modal()", ng_show="!create_mode"),
+            HTML("&nbsp;"),
+            Button("delete", "delete", css_class="btn-danger", ng_click="group_edit.delete_obj(_edit_obj)", ng_show="!create_mode"),
+        ),
     )
     homestart = CharField(widget=TextInput())
+    def __init__(self, *args, **kwargs):
+        ModelForm.__init__(self, *args, **kwargs)
+        for clear_f in ["parent_group", "allowed_device_groups", "permissions"]:
+            self.fields[clear_f].queryset = empty_query_set()
+            self.fields[clear_f].empty_label = None
     class Meta:
         model = group
         fields = ["groupname", "gid", "active", "homestart",
                   "title", "email", "pager", "tel", "comment",
-                  "allowed_device_groups", "permissions", "parent_group"]
-    def create_mode(self):
-        if "disabled" in self.helper.layout[3].attrs:
-            del self.helper.layout[3].attrs["disabled"]
-        self.helper.layout[2][0] = Submit("submit", "Create", css_class="btn-primary")
-        if len(self.helper.layout[5]) == 2:
-            # remove object permission button
-            self.helper.layout[5].pop(1)
-    def delete_mode(self):
-        self.helper.layout[3].attrs["disabled"] = True
-        self.helper.layout[2][0] = Submit("delete", "Delete", css_class="btn-danger")
-        if len(self.helper.layout[5]) == 1:
-            # add object permissions button
-            self.helper.layout[5].append(Button("object_perms", "Object Permissions"))
+                  "allowed_device_groups", "permissions", "parent_group", "object_permissions"]
+    # def create_mode(self):
+    #    if "disabled" in self.helper.layout[3].attrs:
+    #        del self.helper.layout[3].attrs["disabled"]
+    #    self.helper.layout[2][0] = Submit("submit", "Create", css_class="btn-primary")
+    #    if len(self.helper.layout[5]) == 2:
+    #        # remove object permission button
+    #        self.helper.layout[5].pop(1)
+    # def delete_mode(self):
+    #    self.helper.layout[3].attrs["disabled"] = True
+    #    self.helper.layout[2][0] = Submit("delete", "Delete", css_class="btn-danger")
+    #    if len(self.helper.layout[5]) == 1:
+    #        # add object permissions button
+    #        self.helper.layout[5].append(Button("object_perms", "Object Permissions"))
 
 class export_choice_field(ModelChoiceField):
     def reload(self):
@@ -441,23 +396,17 @@ class export_choice_field(ModelChoiceField):
         return self.queryset.exp_dict[obj.pk]["info"]
 
 class user_detail_form(ModelForm):
-    permissions = ModelMultipleChoiceField(
-        queryset=csw_permission.objects.all().select_related("content_type").order_by("codename"),
-        widget=SelectMultiple(attrs={"size" : "8"}),
-        required=False,
-    )
-    allowed_device_groups = ModelMultipleChoiceField(
-        queryset=device_group.objects.exclude(Q(cluster_device_group=True)).filter(Q(enabled=True)),
-        required=False,
-    )
     password = CharField(widget=PasswordInput)
     helper = FormHelper()
     helper.form_id = "form"
+    helper.form_name = "form"
     helper.form_class = 'form-horizontal'
     helper.label_class = 'col-sm-2'
     helper.field_class = 'col-sm-8'
+    helper.ng_model = "_edit_obj"
+    helper.ng_submit = "user_edit.modify()"
     helper.layout = Layout(
-        HTML("<h2>User details</h2>"),
+        HTML("<h2>User details for {% verbatim %}'{{ _edit_obj.login }}'{% endverbatim %}</h2>"),
         Div(
             Div(
                 Fieldset(
@@ -483,61 +432,82 @@ class user_detail_form(ModelForm):
             ),
             css_class="row"
         ),
-        Field("group"),
-        Field("password", css_class="passwordfields"),
         Field("aliases"),
         FormActions(
             Field("active"),
             Field("is_superuser"),
             Field("db_is_auth_for_password"),
-            Button("delete", "Delete", css_class="btn-danger"),
         ),
-        Field("export"),
-        Field("allowed_device_groups"),
-        Field("secondary_groups"),
-        Div(
-            Field("permissions"),
+        Fieldset(
+            "Groups / export entry",
+            Field("group", ng_options="value.idx as value.groupname for value in group_list", chosen=True),
+            Field("secondary_groups", ng_options="value.idx as value.groupname for value in group_list", chosen=True),
+            Field("export", ng_options="value.idx as value.info_string for value in get_export_list()", chosen=True),
+        ),
+        Fieldset(
+            "Permissions",
+            Field("allowed_device_groups", ng_options="value.idx as value.name for value in valid_device_groups()", chosen=True),
+            Field("permissions", ng_options="value.idx as value.name for value in valid_user_csw_permissions()", chosen=True),
+            Field("object_permissions", ng_show="!create_mode"),
+        ),
+        FormActions(
+            Submit("modify", "Modify", css_class="btn-success", ng_show="!create_mode"),
+            Submit("create", "Create", css_class="btn-success", ng_show="create_mode"),
+            HTML("&nbsp;"),
+            Button("close", "close", css_class="btn-primary", ng_click="user_edit.close_modal()", ng_show="!create_mode"),
+            HTML("&nbsp;"),
+            Button("delete", "delete", css_class="btn-danger", ng_click="user_edit.delete_obj(_edit_obj)", ng_show="!create_mode"),
+            HTML("&nbsp;"),
+            Button("change password", "change password", css_class="btn-warning", ng_click="change_password()", ng_show="!create_mode"),
+            Button("set password", "set password", css_class="btn-warning", ng_click="change_password()", ng_show="create_mode"),
         ),
     )
-    export = export_choice_field(device_config.objects.none(), required=False)
     def __init__(self, *args, **kwargs):
-        request = kwargs.pop("request")
+        # request = kwargs.pop("request")
         super(user_detail_form, self).__init__(*args, **kwargs)
-        self.fields["export"].reload()
-        clear_perms = True
-        if request is not None:
-            if request.user:
-                if request.user.has_perm("backbone.admin"):
-                    clear_perms = False
-                elif request.user.has_object_perm("backbone.group_admin"):
-                    self.fields["group"].queryset = group.objects.filter(Q(pk__in=request.user.get_allowed_object_list("backbone.group_admin")))
-                    self.fields["group"].empty_label = None
-                    # disable superuser field
-                    self.fields["is_superuser"].widget.attrs["disabled"] = True
-                    clear_perms = False
-        if clear_perms:
-            self.fields["group"].queryset = group.objects.none()
-            self.fields["is_superuser"].widget.attrs["disabled"] = True
-    def create_mode(self):
-        if "disabled" in self.helper.layout[2].attrs:
-            del self.helper.layout[2].attrs["disabled"]
-        self.helper.layout[5][3] = Submit("submit", "Create", css_class="btn-primare")
-        if len(self.helper.layout[9]) == 2:
-            # remove object permission button
-            self.helper.layout[9].pop(1)
-    def delete_mode(self):
-        self.helper.layout[2].attrs["disabled"] = True
-        self.helper.layout[5][3] = Submit("delete", "Delete", css_class="btn-danger")
-        if len(self.helper.layout[9]) == 1:
-            # add object permissions button
-            self.helper.layout[9].append(Button("object_perms", "Object Permissions"))
+        for clear_f in ["group", "secondary_groups", "permissions", "allowed_device_groups"]:
+            self.fields[clear_f].queryset = empty_query_set()
+            self.fields[clear_f].empty_label = None
+        self.fields["export"].queryset = empty_query_set()
+        self.fields["export"].empty_label = "None"
+        if False:
+            # to avoid validation errors
+            request = None
+            # FIXME, TODO
+            clear_perms = True
+            if request is not None:
+                if request.user:
+                    if request.user.has_perm("backbone.admin"):
+                        clear_perms = False
+                    elif request.user.has_object_perm("backbone.group_admin"):
+                        self.fields["group"].queryset = group.objects.filter(Q(pk__in=request.user.get_allowed_object_list("backbone.group_admin")))
+                        self.fields["group"].empty_label = None
+                        # disable superuser field
+                        self.fields["is_superuser"].widget.attrs["disabled"] = True
+                        clear_perms = False
+            if clear_perms:
+                self.fields["group"].queryset = group.objects.none()
+                self.fields["is_superuser"].widget.attrs["disabled"] = True
+    # def create_mode(self):
+    #    if "disabled" in self.helper.layout[2].attrs:
+    #        del self.helper.layout[2].attrs["disabled"]
+    #    self.helper.layout[5][3] = Submit("submit", "Create", css_class="btn-primare")
+    #    if len(self.helper.layout[9]) == 2:
+    #        # remove object permission button
+    #        self.helper.layout[9].pop(1)
+    # def delete_mode(self):
+    #    self.helper.layout[2].attrs["disabled"] = True
+    #    self.helper.layout[5][3] = Submit("delete", "Delete", css_class="btn-danger")
+    #    if len(self.helper.layout[9]) == 1:
+    #        # add object permissions button
+    #        self.helper.layout[9].append(Button("object_perms", "Object Permissions"))
     class Meta:
         model = user
         fields = ["login", "uid", "shell", "first_name", "last_name", "active",
                   "title", "email", "pager", "tel", "comment", "is_superuser",
                   "allowed_device_groups", "secondary_groups", "permissions",
-                  "aliases",
-                  "db_is_auth_for_password", "export", "password", "group"]
+                  "aliases", "object_permissions",
+                  "db_is_auth_for_password", "export", "group"]
 
 class account_detail_form(ModelForm):
     password = CharField(widget=PasswordInput)
@@ -549,7 +519,7 @@ class account_detail_form(ModelForm):
     helper.ng_model = "edit_obj"
     helper.ng_submit = "update_account()"
     helper.layout = Layout(
-        HTML("<h2>Account info</h2>"),
+        HTML("<h2>Account info for '{% verbatim %}{{ edit_obj.login }}{% endverbatim %}'</h2>"),
         Div(
             Div(
                 Fieldset(

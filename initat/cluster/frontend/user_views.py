@@ -2,7 +2,7 @@
 #
 # -*- coding: utf-8 -*-
 #
-# Copyright (C) 2012,2013 Andreas Lang-Nevyjel
+# Copyright (C) 2012-2014 Andreas Lang-Nevyjel
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -22,15 +22,7 @@
 
 """ user views """
 
-import config_tools
-import logging
-import logging_tools
-import os
-import pprint
-import process_tools
-import server_command
-from lxml import etree # @UnresolvedImports
-from lxml.builder import E # @UnresolvedImports
+
 
 # from crispy_forms.layout import Submit, Layout, Field, ButtonHolder, Button
 from django.contrib.auth.decorators import login_required
@@ -38,14 +30,22 @@ from django.contrib.contenttypes.models import ContentType
 from django.db.models import get_model, Q
 from django.utils.decorators import method_decorator
 from django.views.generic import View
-
 from initat.cluster.backbone.models import group, user, device_config, device_group, \
      user_variable, csw_permission, get_related_models, csw_object_permission
-from initat.core.render import render_me, render_string
 from initat.cluster.backbone.render import permission_required_mixin
-from initat.cluster.frontend.helper_functions import contact_server, xml_wrapper, update_session_object
 from initat.cluster.frontend.forms import dummy_password_form, group_detail_form, user_detail_form, \
     account_detail_form
+from initat.cluster.frontend.helper_functions import contact_server, xml_wrapper, update_session_object
+from initat.core.render import render_me, render_string
+# from lxml import etree # @UnresolvedImports
+from lxml.builder import E # @UnresolvedImports
+import config_tools
+import logging
+import logging_tools
+import os
+import pprint
+import process_tools
+import server_command
 
 logger = logging.getLogger("cluster.user")
 
@@ -56,79 +56,83 @@ class overview(permission_required_mixin, View):
             )
     @method_decorator(login_required)
     def get(self, request, *args, **kwargs):
-        return render_me(request, "user_overview_tree.html", {})()
-    @method_decorator(login_required)
-    @method_decorator(xml_wrapper)
-    def post(self, request, *args, **kwargs):
-        shell_names = [line.strip() for line in file("/etc/shells", "r").read().split("\n") if line.strip()]
-        shell_names = [line for line in shell_names if os.path.exists(line)] + ["/bin/false"]
-        # get homedir export
-        exp_list = E.homedir_exports(
-            E.homedir_export("none", pk="0")
-        )
-        home_exp = device_config.objects.filter(
-            Q(config__name__icontains="homedir") &
-            Q(config__name__icontains="export") &
-            Q(config__config_str__name="homeexport")).select_related("device", "config").prefetch_related("config__config_str_set")
-        for cur_exp in home_exp:
-            exp_list.append(
-                E.homedir_export("%s on %s" % (
-                    cur_exp.config.config_str_set.get(Q(name="homeexport")).value,
-                    unicode(cur_exp.device)),
-                                 pk="%d" % (cur_exp.pk))
-            )
-        # all permissions
-        all_perms = csw_permission.objects.all().select_related("content_type").order_by("codename")
-        perm_list = E.permissions()
-        for entry in all_perms:
-            c_name, ctm = (entry.codename,
-                           entry.content_type.model)
-            c_parts = c_name.split("_")
-            if c_parts[0] in ["add", "change", "delete"] and c_name.endswith(ctm) or c_name.startswith("wf_"):
-                pass
-            elif entry.content_type.app_label in ["backbone"]:
-                perm_list.append(E.permission(entry.name, pk="%d" % (entry.pk)))
-        # caching for faster m2m lookup
-        group_perm_dict, user_perm_dict = ({}, {})
-        for group_perm in csw_permission.objects.all().prefetch_related("db_group_permissions").select_related("content_type"):
-            for cur_group in group_perm.db_group_permissions.all():
-                group_perm_dict.setdefault(cur_group.groupname, []).append(group_perm)
-        for user_perm in csw_permission.objects.all().prefetch_related("db_user_permissions").select_related("content_type"):
-            for cur_user in user_perm.db_user_permissions.all():
-                user_perm_dict.setdefault(cur_user.login, []).append(user_perm)
-        group_device_group_dict, user_device_group_dict = ({}, {})
-        for cur_user in user.objects.all().prefetch_related("allowed_device_groups"):
-            user_device_group_dict[cur_user.login] = list([dg.pk for dg in cur_user.allowed_device_groups.all()])
-        for cur_group in group.objects.all().prefetch_related("allowed_device_groups"):
-            group_device_group_dict[cur_group.groupname] = list([dg.pk for dg in cur_group.allowed_device_groups.all()])
-        xml_resp = E.response(
-            exp_list,
-            perm_list,
-            E.groups(
-                *[
-                    cur_g.get_xml(
-                        with_permissions=True,
-                        group_perm_dict=group_perm_dict,
-                        with_allowed_device_groups=True,
-                        allowed_device_group_dict=group_device_group_dict,
-                        ) for cur_g in group.objects.all().prefetch_related("allowed_device_groups")
-                    ]
-                ),
-            E.users(
-                *[
-                    cur_u.get_xml(
-                        with_permissions=True,
-                        user_perm_dict=user_perm_dict,
-                        with_allowed_device_groups=True,
-                        allowed_device_group_dict=user_device_group_dict,
-                        ) for cur_u in user.objects.all().prefetch_related("secondary_groups", "allowed_device_groups")
-                        if request.user.has_object_perm("backbone.group_admin", cur_u.group)
-                    ]
-                ),
-            E.shells(*[E.shell(cur_shell, pk=cur_shell) for cur_shell in sorted(shell_names)]),
-            E.device_groups(*[cur_dg.get_xml(full=False, with_devices=False) for cur_dg in device_group.objects.exclude(Q(cluster_device_group=True))])
-        )
-        request.xml_response["response"] = xml_resp
+        return render_me(request, "user_overview_tree.html", {
+            # "user_detail_form" : user_detail_form(),
+            "group_detail_form" : group_detail_form(),
+            "user_detail_form" : user_detail_form(),
+            })()
+#     @method_decorator(login_required)
+#     @method_decorator(xml_wrapper)
+#     def post(self, request, *args, **kwargs):
+#         shell_names = [line.strip() for line in file("/etc/shells", "r").read().split("\n") if line.strip()]
+#         shell_names = [line for line in shell_names if os.path.exists(line)] + ["/bin/false"]
+#         # get homedir export
+#         exp_list = E.homedir_exports(
+#             E.homedir_export("none", pk="0")
+#         )
+#         home_exp = device_config.objects.filter(
+#             Q(config__name__icontains="homedir") &
+#             Q(config__name__icontains="export") &
+#             Q(config__config_str__name="homeexport")).select_related("device", "config").prefetch_related("config__config_str_set")
+#         for cur_exp in home_exp:
+#             exp_list.append(
+#                 E.homedir_export("%s on %s" % (
+#                     cur_exp.config.config_str_set.get(Q(name="homeexport")).value,
+#                     unicode(cur_exp.device)),
+#                                  pk="%d" % (cur_exp.pk))
+#             )
+#         # all permissions
+#         all_perms = csw_permission.objects.all().select_related("content_type").order_by("codename")
+#         perm_list = E.permissions()
+#         for entry in all_perms:
+#             c_name, ctm = (entry.codename,
+#                            entry.content_type.model)
+#             c_parts = c_name.split("_")
+#             if c_parts[0] in ["add", "change", "delete"] and c_name.endswith(ctm) or c_name.startswith("wf_"):
+#                 pass
+#             elif entry.content_type.app_label in ["backbone"]:
+#                 perm_list.append(E.permission(entry.name, pk="%d" % (entry.pk)))
+#         # caching for faster m2m lookup
+#         group_perm_dict, user_perm_dict = ({}, {})
+#         for group_perm in csw_permission.objects.all().prefetch_related("db_group_permissions").select_related("content_type"):
+#             for cur_group in group_perm.db_group_permissions.all():
+#                 group_perm_dict.setdefault(cur_group.groupname, []).append(group_perm)
+#         for user_perm in csw_permission.objects.all().prefetch_related("db_user_permissions").select_related("content_type"):
+#             for cur_user in user_perm.db_user_permissions.all():
+#                 user_perm_dict.setdefault(cur_user.login, []).append(user_perm)
+#         group_device_group_dict, user_device_group_dict = ({}, {})
+#         for cur_user in user.objects.all().prefetch_related("allowed_device_groups"):
+#             user_device_group_dict[cur_user.login] = list([dg.pk for dg in cur_user.allowed_device_groups.all()])
+#         for cur_group in group.objects.all().prefetch_related("allowed_device_groups"):
+#             group_device_group_dict[cur_group.groupname] = list([dg.pk for dg in cur_group.allowed_device_groups.all()])
+#         xml_resp = E.response(
+#             exp_list,
+#             perm_list,
+#             E.groups(
+#                 *[
+#                     cur_g.get_xml(
+#                         with_permissions=True,
+#                         group_perm_dict=group_perm_dict,
+#                         with_allowed_device_groups=True,
+#                         allowed_device_group_dict=group_device_group_dict,
+#                         ) for cur_g in group.objects.all().prefetch_related("allowed_device_groups")
+#                     ]
+#                 ),
+#             E.users(
+#                 *[
+#                     cur_u.get_xml(
+#                         with_permissions=True,
+#                         user_perm_dict=user_perm_dict,
+#                         with_allowed_device_groups=True,
+#                         allowed_device_group_dict=user_device_group_dict,
+#                         ) for cur_u in user.objects.all().prefetch_related("secondary_groups", "allowed_device_groups")
+#                         if request.user.has_object_perm("backbone.group_admin", cur_u.group)
+#                     ]
+#                 ),
+#             E.shells(*[E.shell(cur_shell, pk=cur_shell) for cur_shell in sorted(shell_names)]),
+#             E.device_groups(*[cur_dg.get_xml(full=False, with_devices=False) for cur_dg in device_group.objects.exclude(Q(cluster_device_group=True))])
+#         )
+#         request.xml_response["response"] = xml_resp
 
 class sync_users(View):
     @method_decorator(login_required)
@@ -153,17 +157,17 @@ class sync_users(View):
         srv_com = server_command.srv_command(command="sync_http_users")
         _result = contact_server(request, "tcp://localhost:8010", srv_com)
 
-class get_password_form(View):
-    @method_decorator(login_required)
-    @method_decorator(xml_wrapper)
-    def post(self, request):
-        request.xml_response["form"] = render_string(
-            request,
-            "crispy_form.html",
-            {
-                "form" : dummy_password_form()
-            }
-        )
+# class get_password_form(View):
+#     @method_decorator(login_required)
+#     @method_decorator(xml_wrapper)
+#     def post(self, request):
+#         request.xml_response["form"] = render_string(
+#             request,
+#             "crispy_form.html",
+#             {
+#                 "form" : dummy_password_form()
+#             }
+#         )
 
 class save_layout_state(View):
     @method_decorator(login_required)

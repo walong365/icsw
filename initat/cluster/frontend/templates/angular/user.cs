@@ -36,13 +36,13 @@ enter_password_template = """
 
 angular_add_password_controller = (module, name) ->
     module.run(($templateCache) ->
-        $templateCache.put("simple_confirm.html", enter_password_template)
+        $templateCache.put("set_password.html", enter_password_template)
     )
     module.controller("password_ctrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "sharedDataSource", "$q", "$timeout", "$modal", 
         ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, sharedDataSource, $q, $timeout, $modal) ->
             $scope.$on("icsw.enter_password", () ->
                 $modal.open
-                    template : $templateCache.get("simple_confirm.html")
+                    template : $templateCache.get("set_password.html")
                     controller : ($scope, $modalInstance, scope) ->
                         $scope.pwd = {
                             "pwd1" : ""

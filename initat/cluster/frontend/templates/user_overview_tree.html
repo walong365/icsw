@@ -1,12 +1,54 @@
 {% extends "main.html" %}
 
-{% load i18n coffeescript %}
+{% load i18n coffeescript crispy_forms_tags %}
+
+{% block angular %}{% include "angular/user.cs" %}{% endblock %}
 
 {% block title %}{% trans "User Overview" %}{% endblock %}
 
-
 {% block content %}
 
+<div id="icsw.user.tree">
+
+<script type="text/ng-template" id="group_edit.html">
+    {% crispy group_detail_form group_detail_form.helper %}
+</script>
+
+<script type="text/ng-template" id="user_edit.html">
+    {% crispy user_detail_form user_detail_form.helper %}
+</script>
+
+{% verbatim %}
+    <div ng-controller="user_tree">
+        <h2>
+            User / Group tree ({{ group_list.length }} groups, {{ user_list.length }} users)
+        </h2>
+        <div class="col-sm-4">
+            <form class="form-inline">
+                <div class="form-group">
+                    <label class="control-label">filter:</label>
+                    <input type="text" class="form-control" ng-model="filterstr" placeholder="filter ..." ng-change="update_filter()"></input>
+                </div>
+                <input type="button" class="btn btn-primary" value="create group" ng-click="create_group()"></input>, 
+                <input type="button" class="btn btn-primary" value="create user" ng-click="create_user()"></input>,
+                <input type="button" class="btn btn-warning" value="sync users" ng-click="sync_users()"></input>
+            </form>
+            <tree treeconfig="tree"></tree>
+        </div>
+        <div class="col-sm-8">
+            <div grouptemplate ng-if="_edit_mode == 'g' && modal_active" class="well well-sm">
+            </div>
+            <div ng-controller="password_ctrl">
+                <div usertemplate ng-if="_edit_mode == 'u' && modal_active" class="well well-sm">
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endverbatim %}
+
+{% comment %}
 <h1 class="center">Users and Groups / Treeview</h1>
 
 <div id="ug_tables" class="leftfloat">
@@ -15,11 +57,180 @@
 </div>
 <div id="ug_detail" class="leftfloat" style="width:800px; margin-left:auto; margin-right:auto;">
 </div>
-
+{% endcomment %}
 
 <script type="text/javascript">
 
 {% inlinecoffeescript %}
+
+user_tree_module = angular.module("icsw.user.tree", ["ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters", "localytics.directives", "restangular"])
+
+angular_module_setup([user_tree_module])
+
+add_tree_directive(user_tree_module)
+
+angular_add_password_controller(user_tree_module)
+
+class user_tree extends tree_config
+    constructor: (@scope, args) ->
+        super(args)
+        @show_selection_buttons = false
+        @show_icons = true
+        @show_select = false
+        @show_descendants = false
+        @show_childs = false
+    get_name : (t_entry) ->
+        ug = t_entry.obj
+        if t_entry._node_type == "g"
+            _name = ug.groupname
+            _if = ["gid #{ug.gid}"]
+        else
+            _name = ug.login
+            _if = ["uid #{ug.uid}"]
+        if ! ug.active
+            _if.push("inactive")
+        return "#{_name} (" + _if.join(", ") + ")"
+    handle_click: (entry, event) =>
+        @clear_active()
+        entry.active = true
+        @scope.edit_object(entry.obj, entry._node_type)
+
+user_tree_module.controller("user_tree", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "sharedDataSource", "$q", "$timeout", "$modal",
+    ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, sharedDataSource, $q, $timeout, $modal) ->
+        $scope.tree = new user_tree($scope)
+        $scope.filterstr = ""
+        # init edit mixins
+        $scope.group_edit = new angular_edit_mixin($scope, $templateCache, $compile, $modal, Restangular)
+        $scope.group_edit.modify_rest_url = "{% url 'rest:group_detail' 1 %}".slice(1).slice(0, -2)
+        $scope.group_edit.create_rest_url = Restangular.all("{% url 'rest:group_list' %}".slice(1))
+        $scope.group_edit.use_modal = false
+        $scope.group_edit.change_signal = "icsw.user.groupchange"
+        $scope.group_edit.new_object = () ->
+            return {
+                "groupname" : "new_group"
+                "gid" : 222
+                "homestart" : "/home"
+            }
+        $scope.user_edit = new angular_edit_mixin($scope, $templateCache, $compile, $modal, Restangular)
+        $scope.user_edit.modify_rest_url = "{% url 'rest:user_detail' 1 %}".slice(1).slice(0, -2)
+        $scope.user_edit.create_rest_url = Restangular.all("{% url 'rest:user_list' %}".slice(1))
+        $scope.user_edit.use_modal = false
+        $scope.user_edit.change_signal = "icsw.user.userchange"
+        $scope.user_edit.new_object = () ->
+            return {
+                "login" : "new_user"
+                "uid" : 333
+                "group" : (entry.idx for entry in $scope.group_list)[0]
+            }
+        #$scope.group_edit.edit_template = "group_edit.html"
+        wait_list = restDataSource.add_sources([
+            ["{% url 'rest:group_list' %}", {}]
+            ["{% url 'rest:user_list' %}", {}]
+            ["{% url 'rest:device_group_list' %}", {}]
+            ["{% url 'rest:csw_permission_list' %}", {}]
+            ["{% url 'rest:home_export_list' %}", {}]
+        ])
+        $q.all(wait_list).then(
+            (data) ->
+                $scope.group_list = data[0]
+                $scope.user_list = data[1]
+                $scope.device_group_list = data[2]
+                $scope.csw_permission_list = data[3]
+                $scope.home_export_list = data[4]
+                $scope.group_edit.delete_list = $scope.group_list 
+                $scope.group_edit.create_list = $scope.group_list
+                $scope.user_edit.delete_list = $scope.user_list 
+                $scope.user_edit.create_list = $scope.user_list
+                $scope.rebuild_tree() 
+        )
+        $scope.sync_users = () ->
+            $.blockUI()
+            $.ajax
+                url     : "{% url 'user:sync_users' %}"
+                title   : "syncing users"
+                success : (xml) =>
+                    $.unblockUI()
+                    parse_xml_response(xml)
+        $scope.rebuild_tree = () ->
+            $scope.tree.clear_root_nodes()
+            group_lut = {}
+            for entry in $scope.group_list
+                t_entry = $scope.tree.new_node({folder:true, obj:entry, expand:!entry.parent_group, _node_type:"g"})
+                group_lut[entry.idx] = t_entry
+                if entry.parent_group
+                    group_lut[entry.parent_group].add_child(t_entry)
+                else
+                    $scope.tree.add_root_node(t_entry)
+            for entry in $scope.user_list
+                t_entry = $scope.tree.new_node({folder:false, obj:entry, _node_type:"u"})
+                group_lut[entry.group].add_child(t_entry)
+            $scope.group_lut = group_lut
+        $scope.$on("icsw.user.groupchange", () ->
+            $scope.rebuild_tree()
+        )
+        $scope.$on("icsw.user.userchange", () ->
+            $scope.rebuild_tree()
+        )
+        $scope.valid_device_groups = () ->
+            return (entry for entry in $scope.device_group_list when entry.enabled == true and entry.cluster_device_group == false)
+        $scope.valid_group_csw_permissions = () ->
+            return (entry for entry in $scope.csw_permission_list when entry.codename not in ["admin", "group_admin"])
+        $scope.valid_user_csw_permissions = () ->
+            return (entry for entry in $scope.csw_permission_list)
+        $scope.get_export_list = () ->
+            return (entry for entry in $scope.home_export_list)
+        $scope.update_filter = () ->
+            if not $scope.filterstr
+                cur_re = new RegExp("^$", "gi")
+            else
+                try
+                    cur_re = new RegExp($scope.filterstr, "gi")
+                catch exc
+                    cur_re = new RegExp("^$", "gi")
+            $scope.tree.iter(
+               (entry, cur_re) ->
+                   cmp_name = if entry._node_type == "g" then entry.obj.groupname else entry.obj.login
+                   entry.set_selected(if cmp_name.match(cur_re) then true else false)
+               cur_re
+            )
+            $scope.tree.show_selected(false)
+        $scope.create_group = () ->
+            $scope._edit_mode = "g"
+            $scope.group_edit.create()
+        $scope.create_user = () ->
+            $scope._edit_mode = "u"
+            $scope.user_edit.create()
+        $scope.edit_object = (obj, obj_type) ->
+            # init dummy form object for subscope(s)
+            $scope._edit_mode = obj_type
+            if obj_type == "g"
+                $scope.group_edit.edit(obj)
+            else if obj_type == "u"
+                $scope.user_edit.edit(obj)
+            #console.log obj_type, obj
+        $scope.$on("icsw.set_password", (event, new_pwd) ->
+            $scope._edit_obj.password = new_pwd
+            $scope.user_edit.modify()
+        )
+        $scope.change_password = () ->
+            $scope.$broadcast("icsw.enter_password")
+]).directive("grouptemplate", ($compile, $templateCache) ->
+    return {
+        restrict : "A"
+        template : $templateCache.get("group_edit.html")
+        link : (scope, element, attrs) ->
+            scope.$parent.form = scope.form
+    }
+).directive("usertemplate", ($compile, $templateCache) ->
+    return {
+        restrict : "A"
+        template : $templateCache.get("user_edit.html")
+        link : (scope, element, attrs) ->
+            scope.$parent.$parent.form = scope.form
+    }
+).run(($templateCache) ->
+    $templateCache.put("simple_confirm.html", simple_modal_template)
+)
 
 show_object_permissions = (event, obj_key) ->
     new object_permissions(event, obj_key).show()
@@ -153,7 +364,7 @@ class object_permissions
                 if parse_xml_response(xml)
                     true
 
-class user_tree
+class user_treex
     constructor: (@top_div, @detail_div) ->
         @buttons_div = @top_div.find("div#buttons")
         @dt_div = @top_div.find("div#dynatree")
@@ -439,7 +650,11 @@ class user_tree
                             @clear_ug_form()
 
 $(document).ready(
-    my_ugt = new user_tree($("div#ug_tables"), $("div#ug_detail"))
+    #my_ugt = new user_treex($("div#ug_tables"), $("div#ug_detail"))
+)
+
+angular.element(document).ready(() ->
+    angular.bootstrap($("div[id='icsw.user.tree']"), ["icsw.user.tree"])
 )
 
 {% endinlinecoffeescript %}

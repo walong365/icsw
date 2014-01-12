@@ -34,7 +34,7 @@ angular_add_password_controller(user_module)
 
 user_module.controller("account_ctrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "sharedDataSource", "$q", "$timeout", "$modal", 
     ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, sharedDataSource, $q, $timeout, $modal) ->
-        Restangular.all("{% url 'rest:user_detail' 1 %}".slice(1).slice(0, -2)).get(1).then((data) ->
+        Restangular.all("{% url 'rest:user_detail' 1 %}".slice(1).slice(0, -2)).get({{ user.pk }}).then((data) ->
             $scope.edit_obj = data
         )
         $scope.update_account = () ->

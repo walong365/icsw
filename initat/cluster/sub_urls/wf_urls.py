@@ -154,7 +154,7 @@ monitoring_patterns = patterns(
 user_patterns = patterns(
     "initat.cluster.frontend",
     url("overview/$"                , user_views.overview.as_view()              , name="overview"),
-    url("passwd/xml$"               , user_views.get_password_form.as_view()     , name="get_password_form"),
+    # url("passwd/xml$"               , user_views.get_password_form.as_view()     , name="get_password_form"),
     url("sync$"                     , user_views.sync_users.as_view()            , name="sync_users"),
     url("^save_layout_state$"       , user_views.save_layout_state.as_view()     , name="save_layout_state"),
     url("^set_user_var$"            , user_views.set_user_var.as_view()          , name="set_user_var"),
@@ -205,6 +205,7 @@ rpl.extend([
     url("^device_tree$", rest_views.device_tree_list.as_view(), name="device_tree_list"),
     url("^device_tree/(?P<pk>[0-9]+)$", rest_views.device_tree_detail.as_view(), name="device_tree_detail"),
     url("^device_selection$", rest_views.device_selection_list.as_view(), name="device_selection_list"),
+    url("^home_export_list$", rest_views.rest_home_export_list.as_view(), name="home_export_list"),
 ])
 
 rest_patterns = patterns(
@@ -228,7 +229,6 @@ doc_patterns = patterns(
 
 my_url_patterns = patterns(
     "",
-    # url(r"static/(?P<path>.*)$"        , "django.views.static.serve", {"document_root" : settings.MEDIA_ROOT}),
     url(r"^$"         , session_views.redirect_to_main.as_view()),
     url(r"^base/"     , include(base_patterns      , namespace="base")),
     url(r"^session/"  , include(session_patterns   , namespace="session")),
@@ -254,34 +254,3 @@ url_patterns = patterns(
 )
 
 url_patterns += staticfiles_urlpatterns()
-
-# url_patterns = patterns(
-#     "",
-#     # to show icinga logos in local debug mode
-#     url(r"icinga/images/logos/(?P<path>.*)$",
-#         "django.views.static.serve", {
-#             "document_root" : "/opt/icinga/share/images/logos",
-#             }
-#         ),
-#     url(r"^%s/media/frontend/(?P<path>.*)$" % (settings.REL_SITE_ROOT),
-#         "django.views.static.serve", {
-#             "document_root" : os.path.join(settings.FILE_ROOT, "frontend", "media")
-#             }),
-#     url(r"^%s/static/initat/core/(?P<path>.*)$" % (settings.REL_SITE_ROOT),
-#         "django.views.static.serve", {
-#             "document_root" : os.path.join(settings.FILE_ROOT, "..", "core")
-#             }),
-#     url(r"^%s/static/rest_framework/(?P<path>.*)$" % (settings.REL_SITE_ROOT),
-#         "django.views.static.serve", {
-#             "document_root" : "/opt/python-init/lib/python/site-packages/rest_framework/static/rest_framework"
-#             }),
-#     url(r"^%s/media/uni_form/(?P<path>.*)$" % (settings.REL_SITE_ROOT),
-#         "django.views.static.serve", {
-#             "document_root" : "/opt/python-init/lib/python/site-packages/crispy_forms/static/uni_form"
-#             }),
-#     url(r"^%s/graphs/(?P<path>.*)$" % (settings.REL_SITE_ROOT),
-#         "django.views.static.serve", {
-#             "document_root" : os.path.join(settings.FILE_ROOT, "graphs")
-#             }),
-# )
-
