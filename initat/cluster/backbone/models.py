@@ -96,6 +96,7 @@ class home_export_list(object):
             del home_exp_dict[ihk]
         for key, value in home_exp_dict.iteritems():
             value["info"] = "%s on %s" % (value["homeexport"], value["name"])
+            value["entry"].info_str = value["info"]
         self.exp_dict = home_exp_dict
     def get(self, *args, **kwargs):
         # hacky
@@ -628,6 +629,8 @@ class device_config(models.Model):
     device = models.ForeignKey("device")
     config = models.ForeignKey("backbone.config", db_column="new_config_id")
     date = models.DateTimeField(auto_now_add=True)
+    def home_info(self):
+        return self.info_str
     def get_xml(self):
         return E.device_config(
             pk="%d" % (self.pk),
@@ -641,6 +644,12 @@ class device_config(models.Model):
 class device_config_serializer(serializers.ModelSerializer):
     class Meta:
         model = device_config
+
+class device_config_hel_serializer(serializers.ModelSerializer):
+    info_string = serializers.Field(source="home_info")
+    class Meta:
+        model = device_config
+        fields = ("idx", "info_string")
 
 class device(models.Model):
     idx = models.AutoField(db_column="device_idx", primary_key=True)

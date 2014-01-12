@@ -127,6 +127,10 @@ class csw_permission(models.Model):
             "G/O" if self.valid_for_object_level else "G",
             )
 
+class csw_permission_serializer(serializers.ModelSerializer):
+    class Meta:
+        model = csw_permission
+
 class csw_object_permission(models.Model):
     """
     ClusterSoftware object permissions
@@ -280,7 +284,7 @@ class user(models.Model):
     nt_password = models.CharField(max_length=255, blank=True, default="")
     lm_password = models.CharField(max_length=255, blank=True, default="")
     date = models.DateTimeField(auto_now_add=True)
-    allowed_device_groups = models.ManyToManyField("device_group")
+    allowed_device_groups = models.ManyToManyField("device_group", blank=True)
     home_dir_created = models.BooleanField(default=False)
     secondary_groups = models.ManyToManyField("group", related_name="secondary", blank=True)
     last_login = models.DateTimeField(null=True)
@@ -429,7 +433,9 @@ class user_serializer(serializers.ModelSerializer):
     class Meta:
         model = user
         fields = ("idx", "login", "uid", "group", "first_name", "last_name", "shell",
-            "title", "email", "pager", "comment", "tel", "password",
+            "title", "email", "pager", "comment", "tel", "password", "active", "export",
+            "permissions", "secondary_groups", "permissions", "object_permissions",
+            "allowed_device_groups", "aliases", "db_is_auth_for_password", "is_superuser",
             )
 
 @receiver(signals.m2m_changed, sender=user.permissions.through)
@@ -512,10 +518,10 @@ class group(models.Model):
     comment = models.CharField(max_length=765, blank=True)
     date = models.DateTimeField(auto_now_add=True)
     # not implemented right now in md-config-server
-    allowed_device_groups = models.ManyToManyField("device_group")
+    allowed_device_groups = models.ManyToManyField("device_group", blank=True)
     # parent group
     parent_group = models.ForeignKey("self", null=True, blank=True)
-    permissions = models.ManyToManyField(csw_permission, related_name="db_group_permissions")
+    permissions = models.ManyToManyField(csw_permission, related_name="db_group_permissions", blank=True)
     object_permissions = models.ManyToManyField(csw_object_permission, related_name="db_group_permissions")
     def has_perms(self, perms):
         # check if group has all of the perms
@@ -598,7 +604,10 @@ class group_serializer_h(serializers.HyperlinkedModelSerializer):
 class group_serializer(serializers.ModelSerializer):
     class Meta:
         model = group
-        fields = ("groupname", "active", "gid")
+        fields = ("groupname", "active", "gid", "idx", "parent_group",
+            "homestart", "tel", "title", "email", "pager", "comment",
+            "allowed_device_groups", "permissions",
+            )
 
 @receiver(signals.pre_save, sender=group)
 def group_pre_save(sender, **kwargs):
