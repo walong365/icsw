@@ -2,30 +2,27 @@
 
 from django.core.exceptions import ValidationError, ImproperlyConfigured
 from django.db import models
-from django.db.models import Q, signals, get_model
+from django.db.models import Q, signals
 from django.dispatch import receiver
-from django.forms import Textarea
+from django.conf import settings
 from django.utils.functional import memoize
 from initat.cluster.backbone.model_functions import _check_empty_string, _check_float, _check_integer, _check_non_empty_string, to_system_tz
-from initat.cluster.backbone.mon_models import *
-from initat.cluster.backbone.user_models import *
-from initat.cluster.backbone.package_models import *
 from lxml import etree # @UnresolvedImport
 from lxml.builder import E # @UnresolvedImport
 from rest_framework import serializers
-import base64
 import datetime
-import hashlib
-import inspect
 import ipvx_tools
 import logging
 import logging_tools
 import process_tools
-import os
 import pytz
 import re
 import time
 import uuid
+
+from initat.cluster.backbone.mon_models import * # @UnusedWildImport
+from initat.cluster.backbone.user_models import * # @UnusedWildImport
+from initat.cluster.backbone.package_models import * # @UnusedWildImport
 
 ALLOWED_CFS = ["MAX", "MIN", "AVERAGE"]
 
@@ -40,9 +37,9 @@ TOP_LOCATIONS = set([
     TOP_LOCATION_CATEGORY,
     TOP_CONFIG_CATEGORY,
     TOP_DEVICE_CATEGORY,
-    ])
+])
 
-# validation REs
+# validation regexps
 valid_domain_re = re.compile("^[a-zA-Z0-9-_]+$")
 valid_category_re = re.compile("^[a-zA-Z0-9-_\.]+$")
 
@@ -282,48 +279,6 @@ def config_post_save(sender, **kwargs):
                 cur_var.save()
         if cur_inst.parent_config_id == cur_inst.pk and cur_inst.pk:
             raise ValidationError("cannot be my own parent")
-
-# class ccl_event(models.Model):
-    # idx = models.AutoField(db_column="ccl_event_idx", primary_key=True)
-    # device = models.ForeignKey("device")
-    # rrd_data = models.ForeignKey("rrd_data")
-    # device_class = models.ForeignKey("device_class")
-    # threshold = models.FloatField(null=True, blank=True)
-    # threshold_class = models.IntegerField()
-    # cluster_event = models.ForeignKey("cluster_event")
-    # hysteresis = models.FloatField(null=True, blank=True)
-    # disabled = models.BooleanField()
-    # date = models.DateTimeField(auto_now_add=True)
-    # class Meta:
-        # db_table = u'ccl_event'
-
-# class ccl_event_log(models.Model):
-    # idx = models.AutoField(db_column="ccl_event_log_idx", primary_key=True)
-    # device = models.ForeignKey("device", null=True, blank=True)
-    # ccl_event = models.ForeignKey("ccl_event")
-    # cluster_event = models.ForeignKey("cluster_event")
-    # passive = models.BooleanField()
-    # date = models.DateTimeField(auto_now_add=True)
-    # class Meta:
-        # db_table = u'ccl_event_log'
-
-# class ccl_user_con(models.Model):
-    # idx = models.AutoField(db_column="ccl_user_con_idx", primary_key=True)
-    # ccl_event = models.ForeignKey("ccl_event")
-    # user = models.ForeignKey("user")
-    # date = models.DateTimeField(auto_now_add=True)
-    # class Meta:
-        # db_table = u'ccl_user_con'
-
-# class cluster_event(models.Model):
-    # idx = models.AutoField(db_column="cluster_event_idx", primary_key=True)
-    # name = models.CharField(unique=True, max_length=96)
-    # description = models.CharField(max_length=384, blank=True)
-    # color = models.CharField(max_length=18, blank=True)
-    # command = models.CharField(max_length=192, blank=True)
-    # date = models.DateTimeField(auto_now_add=True)
-    # class Meta:
-        # db_table = u'cluster_event'
 
 class config_str(models.Model):
     idx = models.AutoField(db_column="config_str_idx", primary_key=True)
@@ -2582,7 +2537,7 @@ class partition_table(models.Model):
                 )
         new_valid = not any([log_level in [
             logging_tools.LOG_LEVEL_ERROR,
-            logging_tools.LOG_LEVEL_CRITICAL] for log_level, what, is_global in prob_list])
+            logging_tools.LOG_LEVEL_CRITICAL] for log_level, _what, _is_global in prob_list])
         # validate
         if new_valid != self.valid:
             self.valid = new_valid

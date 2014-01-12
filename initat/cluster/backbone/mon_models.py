@@ -4,13 +4,33 @@ from django.core.exceptions import ValidationError
 from django.db import models
 from django.db.models import Q, signals
 from django.dispatch import receiver
-from initat.cluster.backbone.model_functions import _check_empty_string, _check_float, \
-    _check_integer, _check_non_empty_string
+from initat.cluster.backbone.model_functions import _check_empty_string, _check_integer
 from lxml.builder import E # @UnresolvedImport
 from rest_framework import serializers
 from django.conf import settings
 import logging_tools
 import re
+
+__all__ = [
+    "mon_host_cluster", "mon_host_cluster_serializer",
+    "mon_service_cluster", "mon_service_cluster_serializer",
+    "host_check_command", "host_check_command_serializer",
+    "mon_check_command", "mon_check_command_serializer", "mon_check_command_serializer_flat",
+    "mon_check_command_type",
+    "mon_contact", "mon_contact_serializer",
+    "mon_notification", "mon_notification_serializer",
+    "mon_contactgroup", "mon_contactgroup_serializer",
+    "mon_device_templ", "mon_device_templ_serializer",
+    "mon_device_esc_templ", "mon_device_esc_templ_serializer",
+    "mon_host_dependency_templ", "mon_host_dependency_templ_serializer",
+    "mon_host_dependency", "mon_host_dependency_serializer",
+    "mon_service_dependency_templ", "mon_service_dependency_templ_serializer",
+    "mon_service_dependency", "mon_service_dependency_serializer",
+    "mon_ext_host", "mon_ext_host_serializer",
+    "mon_period", "mon_period_serializer",
+    "mon_service_templ", "mon_service_templ_serializer",
+    "mon_service_esc_templ", "mon_service_esc_templ_serializer",
+    ]
 
 class mon_host_cluster(models.Model):
     idx = models.AutoField(primary_key=True)
@@ -514,10 +534,10 @@ class mon_host_dependency_templ(models.Model):
     date = models.DateTimeField(auto_now_add=True)
     @property
     def execution_failure_criteria(self):
-        return ",".join([short for short, long in [("o", "up"), ("d", "down"), ("u", "unreachable"), ("p", "pending")] if getattr(self, "efc_%s" % (long))]) or "n"
+        return ",".join([short for short, _long in [("o", "up"), ("d", "down"), ("u", "unreachable"), ("p", "pending")] if getattr(self, "efc_%s" % (long))]) or "n"
     @property
     def notification_failure_criteria(self):
-        return ",".join([short for short, long in [("o", "up"), ("d", "down"), ("u", "unreachable"), ("p", "pending")] if getattr(self, "nfc_%s" % (long))]) or "n"
+        return ",".join([short for short, _long in [("o", "up"), ("d", "down"), ("u", "unreachable"), ("p", "pending")] if getattr(self, "nfc_%s" % (long))]) or "n"
     def get_xml(self):
         r_xml = E.mon_host_dependency_templ(
             unicode(self),
@@ -595,10 +615,10 @@ class mon_service_dependency_templ(models.Model):
     date = models.DateTimeField(auto_now_add=True)
     @property
     def execution_failure_criteria(self):
-        return ",".join([short for short, long in [("o", "ok"), ("w", "warn"), ("u", "unknown"), ("c", "critical"), ("p", "pending")] if getattr(self, "efc_%s" % (long))]) or "n"
+        return ",".join([short for short, _long in [("o", "ok"), ("w", "warn"), ("u", "unknown"), ("c", "critical"), ("p", "pending")] if getattr(self, "efc_%s" % (long))]) or "n"
     @property
     def notification_failure_criteria(self):
-        return ",".join([short for short, long in [("o", "ok"), ("w", "warn"), ("u", "unknown"), ("c", "critical"), ("p", "pending")] if getattr(self, "nfc_%s" % (long))]) or "n"
+        return ",".join([short for short, _long in [("o", "ok"), ("w", "warn"), ("u", "unknown"), ("c", "critical"), ("p", "pending")] if getattr(self, "nfc_%s" % (long))]) or "n"
     def get_xml(self):
         r_xml = E.mon_service_dependency_templ(
             unicode(self),

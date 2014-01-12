@@ -6,7 +6,7 @@ from django.core.exceptions import ValidationError, ImproperlyConfigured
 from django.db import models
 from django.db.models import Q, signals, get_model
 from django.dispatch import receiver
-from initat.cluster.backbone.model_functions import _check_empty_string, _check_float, _check_integer, _check_non_empty_string
+from initat.cluster.backbone.model_functions import _check_empty_string, _check_integer
 from lxml.builder import E # @UnresolvedImport
 from rest_framework import serializers
 import base64
@@ -16,6 +16,11 @@ import inspect
 import os
 import random
 import string
+
+__all__ = ["csw_permission", "csw_permission_serializer", "csw_object_permission", "csw_object_permission_serializer",
+    "user", "user_serializer", "user_serializer_h", "group", "group_serializer", "group_serializer_h", "user_device_login",
+    "user_variable",
+    ]
 
 # auth_cache structure
 class auth_cache(object):
@@ -149,7 +154,7 @@ class csw_object_permission(models.Model):
     def __unicode__(self):
         return "%s | %d" % (unicode(self.csw_permission), self.object_pk)
 
-class csw_object_permissions_serializer(serializers.ModelSerializer):
+class csw_object_permission_serializer(serializers.ModelSerializer):
     class Meta:
         model = csw_object_permission
 
