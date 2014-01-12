@@ -206,6 +206,7 @@ rpl.extend([
     url("^device_tree/(?P<pk>[0-9]+)$", rest_views.device_tree_detail.as_view(), name="device_tree_detail"),
     url("^device_selection$", rest_views.device_selection_list.as_view(), name="device_selection_list"),
     url("^home_export_list$", rest_views.rest_home_export_list.as_view(), name="home_export_list"),
+    url("^object_permission_list$", rest_views.object_permission_list.as_view(), name="object_permission_list"),
 ])
 
 rest_patterns = patterns(

@@ -352,8 +352,11 @@ class group_detail_form(ModelForm):
             "Permissions",
             Field("parent_group", ng_options="value.idx as value.groupname for value in group_list", chosen=True),
             Field("allowed_device_groups", ng_options="value.idx as value.name for value in valid_device_groups()", chosen=True),
-            Field("permissions", ng_options="value.idx as value.name for value in valid_group_csw_permissions()", chosen=True),
-            Field("object_permissions", ng_show="!create_mode"),
+            Field("permissions", ng_options="value.idx as value.info for value in valid_group_csw_permissions()", chosen=True),
+        ),
+        Fieldset(
+            "Object permissions",
+            HTML("<div objectpermissions></div>"),
         ),
         FormActions(
             Submit("modify", "Modify", css_class="btn-success", ng_show="!create_mode"),
@@ -374,7 +377,7 @@ class group_detail_form(ModelForm):
         model = group
         fields = ["groupname", "gid", "active", "homestart",
                   "title", "email", "pager", "tel", "comment",
-                  "allowed_device_groups", "permissions", "parent_group", "object_permissions"]
+                  "allowed_device_groups", "permissions", "parent_group"]
     # def create_mode(self):
     #    if "disabled" in self.helper.layout[3].attrs:
     #        del self.helper.layout[3].attrs["disabled"]
@@ -447,8 +450,11 @@ class user_detail_form(ModelForm):
         Fieldset(
             "Permissions",
             Field("allowed_device_groups", ng_options="value.idx as value.name for value in valid_device_groups()", chosen=True),
-            Field("permissions", ng_options="value.idx as value.name for value in valid_user_csw_permissions()", chosen=True),
-            Field("object_permissions", ng_show="!create_mode"),
+            Field("permissions", ng_options="value.idx as value.info for value in valid_user_csw_permissions()", chosen=True),
+        ),
+        Fieldset(
+            "Object permissions",
+            HTML("<div objectpermissions></div>"),
         ),
         FormActions(
             Submit("modify", "Modify", css_class="btn-success", ng_show="!create_mode"),
@@ -506,8 +512,7 @@ class user_detail_form(ModelForm):
         fields = ["login", "uid", "shell", "first_name", "last_name", "active",
                   "title", "email", "pager", "tel", "comment", "is_superuser",
                   "allowed_device_groups", "secondary_groups", "permissions",
-                  "aliases", "object_permissions",
-                  "db_is_auth_for_password", "export", "group"]
+                  "aliases", "db_is_auth_for_password", "export", "group"]
 
 class account_detail_form(ModelForm):
     password = CharField(widget=PasswordInput)

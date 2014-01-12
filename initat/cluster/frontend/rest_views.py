@@ -34,7 +34,8 @@ from initat.cluster.backbone.models import user , group, user_serializer_h, grou
      device_serializer_monitor_server, category_tree, device_serializer_cat, device_selection, \
      device_selection_serializer, partition_table_serializer_save, partition_disc_serializer_save, \
      partition_disc_serializer_create, device_serializer_variables, device_serializer_device_configs, \
-     device_config, device_config_hel_serializer, home_export_list
+     device_config, device_config_hel_serializer, home_export_list, csw_permission, \
+     csw_permission_serializer
 from rest_framework import mixins, generics, status, viewsets
 from rest_framework.authentication import BasicAuthentication, SessionAuthentication
 from rest_framework.decorators import api_view
@@ -242,7 +243,7 @@ class device_tree_detail(detail_view):
             return device_serializer_monitoring
 
 class rest_home_export_list(mixins.ListModelMixin,
-                       generics.MultipleObjectAPIView):
+                            generics.MultipleObjectAPIView):
     authentication_classes = (SessionAuthentication,)
     permission_classes = (IsAuthenticated,)
     model = device_config
@@ -256,6 +257,21 @@ class rest_home_export_list(mixins.ListModelMixin,
     @rest_logging
     def get_queryset(self):
         return home_export_list().all()
+
+# not needed right now, maybe we can use this as an template for the csw with objects
+class object_permission_list(mixins.ListModelMixin,
+                             generics.MultipleObjectAPIView):
+    authentication_classes = (SessionAuthentication,)
+    permission_classes = (IsAuthenticated,)
+    model = csw_permission
+    serializer_class = csw_permission_serializer
+    @rest_logging
+    def get(self, request, *args, **kwargs):
+        # print self.list(request, *args, **kwargs)
+        return self.list(request, *args, **kwargs)
+    @rest_logging
+    def get_queryset(self):
+        return csw_permission.objects.select_related("content_type").filter(Q(valid_for_object_level=True))
 
 class device_tree_list(mixins.ListModelMixin,
                        mixins.CreateModelMixin,

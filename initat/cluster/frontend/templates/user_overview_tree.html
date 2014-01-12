@@ -19,6 +19,23 @@
 </script>
 
 {% verbatim %}
+
+    <script type="text/ng-template" id="object_perm_table.html">
+        {{ object_permission_objects }}
+        <tabset>
+            <tab ng-repeat="(key, value) in obj_perms" heading="{{ key }}">
+                <table class="table table-condensed table-condensed table-hover" style="width:auto;">
+                    <thead>
+                        <th>Object</th>
+                        <th ng-repeat="entry in value">
+                           {{ entry.name }}
+                        </th>
+                    </thead>
+                </table>
+            </tab>
+        </tabset>
+    </script>
+
     <div ng-controller="user_tree">
         <h2>
             User / Group tree ({{ group_list.length }} groups, {{ user_list.length }} users)
@@ -97,6 +114,7 @@ class user_tree extends tree_config
 
 user_tree_module.controller("user_tree", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "sharedDataSource", "$q", "$timeout", "$modal",
     ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, sharedDataSource, $q, $timeout, $modal) ->
+        $scope.obj_perms = {}
         $scope.tree = new user_tree($scope)
         $scope.filterstr = ""
         # init edit mixins
@@ -137,11 +155,19 @@ user_tree_module.controller("user_tree", ["$scope", "$compile", "$filter", "$tem
                 $scope.device_group_list = data[2]
                 $scope.csw_permission_list = data[3]
                 $scope.home_export_list = data[4]
+                # beautify permission list
+                for entry in $scope.csw_permission_list
+                    info_str = entry.content_type.app_label + " | " + entry.content_type.name + " | " + entry.name + " | " + (if entry.valid_for_object_level then "G/O" else "G")
+                    entry.info = info_str
+                    if entry.valid_for_object_level
+                        if entry.content_type.model not of $scope.obj_perms
+                            $scope.obj_perms[entry.content_type.model] = []
+                        $scope.obj_perms[entry.content_type.model].push(entry)
                 $scope.group_edit.delete_list = $scope.group_list 
                 $scope.group_edit.create_list = $scope.group_list
                 $scope.user_edit.delete_list = $scope.user_list 
                 $scope.user_edit.create_list = $scope.user_list
-                $scope.rebuild_tree() 
+                $scope.rebuild_tree()
         )
         $scope.sync_users = () ->
             $.blockUI()
@@ -214,19 +240,32 @@ user_tree_module.controller("user_tree", ["$scope", "$compile", "$filter", "$tem
         )
         $scope.change_password = () ->
             $scope.$broadcast("icsw.enter_password")
+        $scope.edit_object_permissions = () ->
+            console.log $scope._edit_obj
 ]).directive("grouptemplate", ($compile, $templateCache) ->
     return {
         restrict : "A"
         template : $templateCache.get("group_edit.html")
         link : (scope, element, attrs) ->
+            # not beautiful but working
             scope.$parent.form = scope.form
+            scope.obj_perms = scope.$parent.obj_perms
     }
 ).directive("usertemplate", ($compile, $templateCache) ->
     return {
         restrict : "A"
         template : $templateCache.get("user_edit.html")
         link : (scope, element, attrs) ->
+            # not beautiful but working
             scope.$parent.$parent.form = scope.form
+            scope.obj_perms = scope.$parent.$parent.obj_perms
+    }
+).directive("objectpermissions", ($compile, $templateCache) ->
+    return {
+        restrict : "EA"
+        template : $templateCache.get("object_perm_table.html")
+        link : (scope, element, attrs) ->
+            console.log scope.obj_perms
     }
 ).run(($templateCache) ->
     $templateCache.put("simple_confirm.html", simple_modal_template)
