@@ -1,9 +1,9 @@
 #!/usr/bin/python-init -Otu
 #
-# Copyright (C) 2009,2010,2011,2013 Andreas Lang-Nevyjel
+# Copyright (C) 2009-2014 Andreas Lang-Nevyjel
 #
 # Send feedback to: <lang-nevyjel@init.at>
-# 
+#
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License Version 2 as
 # published by the Free Software Foundation.
@@ -104,7 +104,7 @@ def main():
         "uds:/var/lib/logging-server/py_log",
         zmq=True,
         context=zmq_context)
-    #for key in sorted(os.environ):
+    # for key in sorted(os.environ):
     #    logger.info("%s: %s" % (key, str(os.environ[key])))
     ret_code = 1
     if len(sys.argv) == 3:
@@ -118,7 +118,7 @@ def main():
                             match_name,
                             os.environ["untrusted_ip"]))
                     # get CN (common name)
-                    parts = [part.strip().split("=", 1) for part in sys.argv[2].split("/") if part.strip().count("=")]
+                    parts = [part.strip().split("=", 1) for part in sum([_part.split(",") for _part in sys.argv[2].split("/")], []) if part.strip().count("=")]
                     value_dict = dict([(key, value) for key, value in parts])
                     if value_dict.has_key("CN"):
                         cn = value_dict["CN"]
@@ -162,4 +162,4 @@ def main():
 
 if __name__ == "__main__":
     sys.exit(main())
-    
+
