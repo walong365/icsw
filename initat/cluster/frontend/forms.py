@@ -321,7 +321,7 @@ class group_detail_form(ModelForm):
     helper.ng_model = "_edit_obj"
     helper.ng_submit = "group_edit.modify(this)"
     helper.layout = Layout(
-        HTML("<h2>Group details for {% verbatim %}'{{ _edit_obj.groupname }}'{% endverbatim %}</h2>"),
+        HTML("<h2>Details for group {% verbatim %}'{{ _edit_obj.groupname }}'{% endverbatim %}</h2>"),
         Div(
             Div(
                 Fieldset(
@@ -409,11 +409,11 @@ class user_detail_form(ModelForm):
     helper.ng_model = "_edit_obj"
     helper.ng_submit = "user_edit.modify()"
     helper.layout = Layout(
-        HTML("<h2>User details for {% verbatim %}'{{ _edit_obj.login }}'{% endverbatim %}</h2>"),
+        HTML("<h2>Details for user {% verbatim %}'{{ _edit_obj.login }}'{% endverbatim %}</h2>"),
         Div(
             Div(
                 Fieldset(
-                    "Basic data",
+                    "Base data",
                     Field("login"),
                     Field("uid"),
                     Field("first_name"),
@@ -435,11 +435,25 @@ class user_detail_form(ModelForm):
             ),
             css_class="row"
         ),
-        Field("aliases"),
-        FormActions(
-            Field("active"),
-            Field("is_superuser"),
-            Field("db_is_auth_for_password"),
+        Fieldset(
+            "Flags",
+            Div(
+                Div(
+                    Field("active"),
+                    Field("is_superuser"),
+                    css_class="col-md-6",
+                ),
+                Div(
+                    Field("db_is_auth_for_password"),
+                    css_class="col-md-6",
+                ),
+                css_class="row",
+            ),
+        ),
+        Fieldset(
+            "Permissions",
+            Field("allowed_device_groups", ng_options="value.idx as value.name for value in valid_device_groups()", chosen=True),
+            Field("permissions", ng_options="value.idx as value.info for value in valid_user_csw_permissions()", chosen=True),
         ),
         Fieldset(
             "Groups / export entry",
@@ -448,9 +462,8 @@ class user_detail_form(ModelForm):
             Field("export", ng_options="value.idx as value.info_string for value in get_export_list()", chosen=True),
         ),
         Fieldset(
-            "Permissions",
-            Field("allowed_device_groups", ng_options="value.idx as value.name for value in valid_device_groups()", chosen=True),
-            Field("permissions", ng_options="value.idx as value.info for value in valid_user_csw_permissions()", chosen=True),
+            "Aliases",
+            Field("aliases", rows=3),
         ),
         Fieldset(
             "Object permissions",
@@ -528,7 +541,7 @@ class account_detail_form(ModelForm):
         Div(
             Div(
                 Fieldset(
-                    "Basic data",
+                    "Base data",
                     Field("first_name", placeholder="first name"),
                     Field("last_name", placeholder="last name"),
                     Field("shell", placeholder="shell to use"),
@@ -573,7 +586,7 @@ class kernel_form(ModelForm):
     helper.layout = Layout(
         HTML("<h2>Kernel details</h2>"),
             Fieldset(
-                "Basic data",
+                "Base data",
                 Field("name", readonly=True),
                 Field("initrd_built", readonly=True),
                 Field("comment", rows=5),
@@ -620,7 +633,7 @@ class image_form(ModelForm):
     helper.layout = Layout(
         HTML("<h2>Image details</h2>"),
             Fieldset(
-                "Basic data",
+                "Base data",
                 Field("name", readonly=True),
                 ),
             FormActions(
@@ -650,7 +663,7 @@ class network_form(ModelForm):
     helper.layout = Layout(
         HTML("<h2>Network</h2>"),
             Fieldset(
-                "Basic data",
+                "Base data",
                 Field("identifier", wrapper_class="ng-class:form_error('identifier')", placeholder="Identifier"),
                 Field("network"   , wrapper_class="ng-class:form_error('network')"   , ng_pattern="/^\d+\.\d+\.\d+\.\d+$/", placeholder="Network"),
                 Field("netmask"   , wrapper_class="ng-class:form_error('netmask')"   , ng_pattern="/^\d+\.\d+\.\d+\.\d+$/", placeholder="Netmask"),
@@ -683,7 +696,7 @@ class network_type_form(ModelForm):
     helper.layout = Layout(
         HTML("<h2>Network type</h2>"),
             Fieldset(
-                "Basic data",
+                "Base data",
                 Field("description", wrapper_class="ng-class:form_error('description')", placeholder="Description"),
                 Field("identifier", ng_options="key as value for (key, value) in settings.network_types", chosen=True),
             ),
@@ -706,7 +719,7 @@ class network_device_type_form(ModelForm):
     helper.layout = Layout(
         HTML("<h2>Network device type</h2>"),
             Fieldset(
-                "Basic data",
+                "Base data",
                 Field("identifier", wrapper_class="ng-class:form_error('identifier')", placeholder="Identifier"),
                 Field("description", wrapper_class="ng-class:form_error('description')", placeholder="Description"),
                 Field("mac_bytes", placeholder="MAC bytes", min=6, max=24),
@@ -731,7 +744,7 @@ class partition_table_form(ModelForm):
         Div(
             HTML("<h3>Partition table '{% verbatim %}{{ edit_obj.name }}{% endverbatim %}'</h3>"),
             Fieldset(
-                "Basic data",
+                "Base data",
                 Div(
                     Div(
                         Field("name", wrapper_class="ng-class:cur_edit.form_error('name')", placeholder="Name"),
@@ -785,7 +798,7 @@ class partition_disc_form(ModelForm):
         Div(
             HTML("<h2>Disc '{% verbatim %}{{ _edit_obj.disc }}{% endverbatim %}'</h2>"),
             Fieldset(
-                "Basic data",
+                "Base data",
                 Field("disc", wrapper_class="ng-class:cur_edit.form_error('disc')", placeholder="discname"),
             ),
             FormActions(
@@ -810,7 +823,7 @@ class partition_form(ModelForm):
         Div(
             HTML("<h2>Partition '{% verbatim %}{{ _edit_obj.pnum }}{% endverbatim %}'</h2>"),
             Fieldset(
-                "Basic data",
+                "Base data",
                 Field("partition_disc", ng_options="value.idx as value.disc for value in edit_obj.partition_disc_set | orderBy:'disc'", chosen=True, readonly=True),
                 Field("pnum", placeholder="partition", min=1, max=16),
                 Field("partition_fs", ng_options="value.idx as value.full_info for value in this.get_partition_fs() | orderBy:'name'", chosen=True),
@@ -858,7 +871,7 @@ class partition_sys_form(ModelForm):
         Div(
             HTML("<h2>Sys Partition '{% verbatim %}{{ _edit_obj.name }}{% endverbatim %}'</h2>"),
             Fieldset(
-                "Basic data",
+                "Base data",
                 Field("name"),
             ),
             Fieldset(
@@ -888,7 +901,7 @@ class mon_period_form(ModelForm):
     helper.layout = Layout(
         HTML("<h2>Monitoring period</h2>"),
             Fieldset(
-                "Basic data",
+                "Base data",
                 Field("name", wrapper_class="ng-class:form_error('name')", placeholder="Name"),
                 Field("alias", wrapper_class="ng-class:form_error('alias')", placeholder="Alias"),
             ),
@@ -925,7 +938,7 @@ class mon_notification_form(ModelForm):
     helper.layout = Layout(
         HTML("<h2>Monitoring Notification</h2>"),
             Fieldset(
-                "Basic data",
+                "Base data",
                 Field("name", wrapper_class="ng-class:form_error('name')", placeholder="Name"),
                 Field("channel"),
                 Field("not_type"),
@@ -955,7 +968,7 @@ class mon_contact_form(ModelForm):
     helper.layout = Layout(
         HTML("<h2>Monitoring Contact</h2>"),
             Fieldset(
-                "Basic data",
+                "Base data",
                 Field("user", ng_options="value.idx as value.login + ' (' + value.first_name + ' ' + value.last_name + ')' for value in rest_data.user | orderBy:'login'"),
                 Field("notifications", ng_options="value.idx as value.name for value in rest_data.mon_notification | orderBy:'name'", chosen=True),
                 Field("mon_alias"),
@@ -1031,7 +1044,7 @@ class mon_service_templ_form(ModelForm):
     helper.layout = Layout(
         HTML("<h2>Service template</h2>"),
             Fieldset(
-                "Basic data",
+                "Base data",
                 Field("name"),
                 Field("volatile"),
             ),
@@ -1111,7 +1124,7 @@ class mon_service_esc_templ_form(ModelForm):
     helper.layout = Layout(
         HTML("<h2>Service Escalation template</h2>"),
             Fieldset(
-                "Basic data",
+                "Base data",
                 Field("name"),
             ),
             Fieldset(
@@ -1162,7 +1175,7 @@ class host_check_command_form(ModelForm):
     helper.layout = Layout(
         HTML("<h2>Host check command</h2>"),
             Fieldset(
-                "Basic data",
+                "Base data",
                 Field("name"),
                 Field("command_line"),
             ),
@@ -1186,7 +1199,7 @@ class mon_contactgroup_form(ModelForm):
     helper.layout = Layout(
         HTML("<h2>Contactgroup</h2>"),
             Fieldset(
-                "Basic data",
+                "Base data",
                 Field("name"),
                 Field("alias"),
             ),
@@ -1219,7 +1232,7 @@ class mon_device_templ_form(ModelForm):
     helper.layout = Layout(
         HTML("<h2>Device template</h2>"),
             Fieldset(
-                "Basic data",
+                "Base data",
                 Field("name"),
                 Field("mon_service_templ", ng_options="value.idx as value.name for value in rest_data.mon_service_templ | orderBy:'name'", chosen=True),
             ),
@@ -1298,7 +1311,7 @@ class mon_device_esc_templ_form(ModelForm):
     helper.layout = Layout(
         HTML("<h2>Device Escalation template</h2>"),
             Fieldset(
-                "Basic data",
+                "Base data",
                 Field("name"),
                 Field("mon_service_esc_templ", ng_options="value.idx as value.name for value in rest_data.mon_service_esc_templ | orderBy:'name'", chosen=True),
             ),
@@ -1352,7 +1365,7 @@ class mon_host_cluster_form(ModelForm):
     helper.layout = Layout(
         HTML("<h2>Host Cluster</h2>"),
             Fieldset(
-                "Basic data",
+                "Base data",
                 Field("name"),
                 Field("description"),
             ),
@@ -1391,7 +1404,7 @@ class mon_service_cluster_form(ModelForm):
     helper.layout = Layout(
         HTML("<h2>Service Cluster</h2>"),
             Fieldset(
-                "Basic data",
+                "Base data",
                 Field("name"),
                 Field("description"),
             ),
@@ -1431,7 +1444,7 @@ class mon_host_dependency_templ_form(ModelForm):
     helper.layout = Layout(
         HTML("<h2>Host dependency template</h2>"),
             Fieldset(
-                "Basic data",
+                "Base data",
                 Field("name"),
                 Field("dependency_period", ng_options="value.idx as value.name for value in rest_data.mon_period | orderBy:'name'", chosen=True),
                 Field("priority", min= -128, max=128),
@@ -1492,7 +1505,7 @@ class mon_host_dependency_form(ModelForm):
     helper.layout = Layout(
         HTML("<h2>Host dependency</h2>"),
             Fieldset(
-                "Basic settngs",
+                "Basic settings",
                 Field("mon_host_dependency_templ", ng_options="value.idx as value.name for value in rest_data.mon_host_dependency_templ | orderBy:'name'", chosen=True),
             ),
             Fieldset(
@@ -1530,7 +1543,7 @@ class mon_service_dependency_templ_form(ModelForm):
     helper.layout = Layout(
         HTML("<h2>Service dependence template</h2>"),
             Fieldset(
-                "Basic data",
+                "Base data",
                 Field("name"),
                 Field("dependency_period", ng_options="value.idx as value.name for value in rest_data.mon_period | orderBy:'name'", chosen=True),
                 Field("priority", min= -128, max=128),
@@ -1593,7 +1606,7 @@ class mon_service_dependency_form(ModelForm):
     helper.layout = Layout(
         HTML("<h2>Service dependency</h2>"),
             Fieldset(
-                "Basic settngs",
+                "Basic settings",
                 Field("mon_service_dependency_templ", ng_options="value.idx as value.name for value in rest_data.mon_service_dependency_templ | orderBy:'name'", chosen=True),
             ),
             Fieldset(
@@ -1633,7 +1646,7 @@ class package_search_form(ModelForm):
     helper.layout = Layout(
         HTML("<h2>Package search</h2>"),
             Fieldset(
-                "Basic data",
+                "Base data",
                 Field("search_string"),
             ),
             FormActions(
@@ -1661,7 +1674,7 @@ class package_action_form(Form):
     helper.layout = Layout(
         HTML("<h2>PDC action</h2>"),
             Fieldset(
-                "Basic data",
+                "Base data",
                 Field("target_state", ng_options="key as value for (key, value) in target_states", initial="keep", chosen=True),
             ),
             Fieldset(
