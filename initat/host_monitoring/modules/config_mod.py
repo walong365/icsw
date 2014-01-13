@@ -1,6 +1,6 @@
 #!/usr/bin/python-init -Ot
 #
-# Copyright (C) 2001,2002,2003,2004,2005,2006,2007,2008,2009,2010,2012 Andreas Lang-Nevyjel, init.at
+# Copyright (C) 2001-2014 Andreas Lang-Nevyjel, init.at
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -20,20 +20,20 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
 
+from initat.host_monitoring import filesys_tools
+from initat.host_monitoring import limits, hm_classes
+import Queue
+import commands
+import logging_tools
+import net_tools
 import os
+import process_tools
+import server_command
 import stat
 import sys
-import commands
-from initat.host_monitoring import limits, hm_classes
-from initat.host_monitoring import filesys_tools
 import tempfile
-import time
-import logging_tools
-import process_tools
 import threading_tools
-import Queue
-import net_tools
-import server_command
+import time
 
 class _general(hm_classes.hm_module):
     def _parse_ecd(self, in_str):
@@ -73,8 +73,7 @@ class check_file_command(hm_classes.hm_command):
         self.parser.add_argument("--exclude-checkdate", dest="exclude_checkdate", type=str)
     def __call__(self, srv_com, cur_ns):
         if not "arguments:arg0" in srv_com:
-            srv_com["result"].attrib.update({"reply" : "need filename",
-                                             "state" : "%d" % (server_command.SRV_REPLY_STATE_ERROR)})
+            srv_com.set_result("need filename", server_command.SRV_REPLY_STATE_ERROR)
         else:
             file_name = srv_com["arguments:arg0"].text.strip()
             if os.path.isfile(file_name):
@@ -86,9 +85,7 @@ class check_file_command(hm_classes.hm_command):
                     "stat"       : f_stat,
                     "local_time" : time.time()}
             else:
-                srv_com["stat_result"].attrib.update({
-                    "reply" : "file '%s' not found" % (file_name),
-                    "state" : "%d" % (server_command.SRV_REPLY_STATE_ERROR)})
+                srv_com.set_result("file '%s' not found" % (file_name), server_command.SRV_REPLY_STATE_ERROR)
     def interpret(self, srv_com, cur_ns):
         return self._interpret(srv_com["stat_result"], cur_ns)
     def interpret_old(self, result, cur_ns):
