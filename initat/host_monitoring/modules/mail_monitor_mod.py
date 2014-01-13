@@ -1,6 +1,6 @@
 #!/usr/bin/python-init -Ot
 #
-# Copyright (C) 2001,2002,2003,2004,2005,2006,2007,2008,2013 Andreas Lang-Nevyjel, init.at
+# Copyright (C) 2001-2008,2013-2014 Andreas Lang-Nevyjel, init.at
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -31,7 +31,6 @@ import re
 import server_command
 import stat
 import sys
-import threading_tools
 import time
 
 MIN_UPDATE_TIME = 30
@@ -234,11 +233,11 @@ class _general(hm_classes.hm_module):
         self.__mailq_command = process_tools.find_file("mailq")
     def init_machine_vector(self, mv):
         self.__act_snapshot, self.__check_time = ({}, time.time())
-        self.__num_mails = 0
+        self.__mailcount = {}
         self.__check_kerio = False
         if self.mailq_command_valid():
             mv.register_entry("mail.waiting", 0, "number of mails in mail-queue")
-    def get_num_mails(self):
+    def get_mailcount(self):
         return self._get_mail_queue_entries()
     def mailq_command_valid(self):
         return True if self.__mailq_command else False
@@ -346,9 +345,15 @@ class _general(hm_classes.hm_module):
             mv["mail.%s" % (key)] = float(diff_value * 60. / diff_time)
         self.__act_snapshot, self.__check_time = (act_snapshot, act_time)
         if self.mailq_command_valid():
-            mv["mail.waiting"] = self.get_num_mails()
+            mc_dict = self.get_mailcount()
+            # if "total" not in mc_dict:
+            #    mc_dict["total"] = 0
+            # for key, value in mc_dict.iteritems():
+            #    mv["mail.%s" % (key)] = value
+            mv["mail.total"] = mc_dict["total"]
     def _get_mail_queue_entries(self):
-        self.__num_mails = 0
+        # total = queued + hold
+        self.__mailcount = {"total" : 0, "queued" : 0, "hold" : 0}
         if self.__mailq_command:
             stat, out = commands.getstatusoutput(self.__mailq_command)
             if stat:
@@ -356,8 +361,19 @@ class _general(hm_classes.hm_module):
                     "cannot execute mailq (%d): %s" % (stat, out),
                     logging_tools.LOG_LEVEL_WARN)
             else:
-                mail_lines = [_line.strip() for _line in out.split("\n") if _line.strip()]
+                mail_lines = [_line.rstrip() for _line in out.split("\n") if _line.strip()]
                 if mail_lines:
+                    # check mail ids
+                    for line in mail_lines:
+                        if not line.startswith(" "):
+                            parts = line.split()
+                            if len(parts) > 5 and len(parts[0]) > 7:
+                                q_id = parts[0]
+                                if not q_id.startswith("-") and not q_id.startswith("postq"):
+                                    if q_id.endswith("!"):
+                                        self.__mailcount["hold"] += 1
+                                    else:
+                                        self.__mailcount["queued"] += 1
                     last_line = mail_lines[-1]
                     if last_line.count("empty"):
                         # empty mailqueue
@@ -366,7 +382,7 @@ class _general(hm_classes.hm_module):
                         if last_line.startswith("--"):
                             line_parts = last_line.split()
                             if line_parts[-2].isdigit():
-                                self.__num_mails = int(line_parts[-2])
+                                self.__mailcount["total"] = int(line_parts[-2])
                             self.log("cannot parse line '%s' (mailq)" % (last_line),
                                 logging_tools.LOG_LEVEL_WARN
                                 )
@@ -377,7 +393,7 @@ class _general(hm_classes.hm_module):
                 else:
                     self.log("no lines got from %s" % (self.__mailq_command),
                         logging_tools.LOG_LEVEL_WARN)
-        return self.__num_mails
+        return self.__mailcount
 # #    def process_server_args(self, glob_config, logger):
 # #        self.__check_kerio, self.__kerio_main_dir = (False, "")
 # #        if glob_config["CHECK_KERIO"]:
@@ -408,12 +424,29 @@ class mailq_command(hm_classes.hm_command):
         self.parser.add_argument("-c", dest="crit", type=int)
     def __call__(self, srv_com, cur_ns):
         if self.module.mailq_command_valid():
-            srv_com["num_mails"] = self.module.get_num_mails()
+            mc_dict = self.module.get_mailcount()
+            builder = srv_com.builder()
+            srv_com["mail_dict"] = builder.values(
+                *[builder.count("%d" % (value), info=key) for key, value in mc_dict.iteritems()])
         else:
             srv_com.set_result("no mailq command defined", server_command.SRV_REPLY_STATE_ERROR)
     def interpret(self, srv_com, cur_ns):
-        num_mails = int(srv_com["num_mails"].text)
-        return self._interpret(num_mails, cur_ns)
+        if "mail_dict" in srv_com:
+            mail_dict = srv_com["mail_dict"][0]
+            mail_dict = {entry.attrib["info"] : int(entry.text) for entry in mail_dict}
+            ret_state = limits.check_ceiling(mail_dict["queued"], cur_ns.warn, cur_ns.crit)
+            ret_f = []
+            if mail_dict["queued"]:
+                ret_f = ["%s queued" % (logging_tools.get_plural("mail", mail_dict["queued"]))]
+            if mail_dict["queued"] != mail_dict["total"]:
+                ret_f.append("%d total" % (mail_dict["total"]))
+            if mail_dict["hold"]:
+                ret_f.append("%d on hold" % (mail_dict["hold"]))
+                ret_state = max(ret_state, limits.nag_STATE_WARNING)
+            return ret_state, ", ".join(ret_f)
+        else:
+            num_mails = int(srv_com["num_mails"].text)
+            return self._interpret(num_mails, cur_ns)
     def interpret_old(self, result, cur_ns):
         num_mails = hm_classes.net_to_sys(result[3:])["mails"]
         return self._interpret(num_mails, cur_ns)
