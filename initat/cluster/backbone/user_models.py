@@ -210,30 +210,10 @@ def check_object_permission(auth_obj, perm, obj):
         if obj is None:
             # caching code
             return auth_obj._auth_cache.has_object_permission(app_label, code_name)
-            # old code
-            # "check for any_object permission '%s'" % (unicode(perm))
-            # if auth_obj.object_permissions.filter(Q(csw_permission__codename=codename)).count():
-            #    return True
-            # else:
-            #    # fallback to global permission check
-            #    return check_permission(auth_obj, perm)
         else:
             if app_label == obj._meta.app_label:
                 # caching code
                 return auth_obj._auth_cache.has_object_permission(app_label, code_name, obj)
-                # old code
-                # try:
-                #    auth_obj.object_permissions.get(
-                #        Q(csw_permission__codename=codename) &
-                #        Q(csw_permission__content_type__app_label=app_label) &
-                #        Q(csw_permission__content_type__model=obj._meta.object_name) &
-                #        Q(object_pk=obj.pk)
-                #        )
-                # except csw_object_permission.DoesNotExist:
-                #    # fallback to global permission check
-                #    return check_permission(auth_obj, perm)
-                # else:
-                #    return True
             else:
                 return False
     else:
@@ -445,11 +425,12 @@ class user_serializer_h(serializers.HyperlinkedModelSerializer):
         fields = ("url", "login", "uid", "group")
 
 class user_serializer(serializers.ModelSerializer):
+    object_permissions = csw_object_permission_serializer(many=True, read_only=True)
     class Meta:
         model = user
         fields = ("idx", "login", "uid", "group", "first_name", "last_name", "shell",
             "title", "email", "pager", "comment", "tel", "password", "active", "export",
-            "permissions", "secondary_groups", "permissions", "object_permissions",
+            "permissions", "secondary_groups", "object_permissions",
             "allowed_device_groups", "aliases", "db_is_auth_for_password", "is_superuser",
             )
 
@@ -617,11 +598,12 @@ class group_serializer_h(serializers.HyperlinkedModelSerializer):
         fields = ("url", "groupname", "active", "gid")
 
 class group_serializer(serializers.ModelSerializer):
+    object_permissions = csw_object_permission_serializer(many=True, read_only=True)
     class Meta:
         model = group
         fields = ("groupname", "active", "gid", "idx", "parent_group",
             "homestart", "tel", "title", "email", "pager", "comment",
-            "allowed_device_groups", "permissions",
+            "allowed_device_groups", "permissions", "object_permissions",
             )
 
 @receiver(signals.pre_save, sender=group)
