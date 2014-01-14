@@ -22,7 +22,6 @@ from initat.cluster.backbone.models import domain_tree_node, device, category, m
      mon_service_dependency, mon_host_dependency, package_device_connection, partition, \
      partition_disc, sys_partition, device_variable
 from initat.cluster.frontend.widgets import device_tree_widget
-import re
 
 # import PAM
 
@@ -161,7 +160,7 @@ class domain_tree_node_form(ModelForm):
         fields = ["name", "node_postfix", "create_short_names", "always_create_ip", "write_nameserver_config", "comment", "parent", ]
 
 class device_general_form(ModelForm):
-    domain_tree_node = ModelChoiceField(domain_tree_node.objects.none(), empty_label=None) # , widget=domain_name_tree_widget)
+    domain_tree_node = ModelChoiceField(domain_tree_node.objects.none(), empty_label=None)
     helper = FormHelper()
     helper.form_id = "id_dtn_detail_form"
     helper.form_class = 'form-horizontal'

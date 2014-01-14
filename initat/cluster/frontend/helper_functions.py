@@ -3,21 +3,18 @@
 
 """ helper functions for the init.at clustersoftware """
 
+from django.conf import settings
+from django.http import HttpResponse
+from lxml import etree # @UnresolvedImports
+from lxml.builder import E # @UnresolvedImports
+import email.mime
 import logging_tools
 import net_tools
 import pprint
 import process_tools
 import re
 import smtplib
-# import email
 import sys
-import email.mime
-# import email.header
-from lxml import etree # @UnresolvedImports
-from lxml.builder import E # @UnresolvedImports
-
-from django.conf import settings
-from django.http import HttpResponse
 
 class xml_response(object):
     """

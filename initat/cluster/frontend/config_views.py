@@ -552,7 +552,6 @@ class get_device_cvars(View):
     @method_decorator(xml_wrapper)
     def post(self, request):
         _post = request.POST
-        import pprint
         srv_com = server_command.srv_command(command="get_config_vars")
         srv_com["devices"] = srv_com.builder(
             "devices",
