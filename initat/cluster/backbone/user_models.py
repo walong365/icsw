@@ -708,4 +708,3 @@ def user_variable_post_save(sender, **kwargs):
     if "instance" in kwargs:
         cur_inst = kwargs["instance"]
         cur_inst.from_db_format()
-
