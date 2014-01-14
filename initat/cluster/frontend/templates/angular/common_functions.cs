@@ -194,6 +194,14 @@ angular_module_setup = (module_list, url_list=[]) ->
                 else
                     return arr
         ])
+        cur_mod.filter("paginator2", ["$filter", ($filter) ->
+            return (arr, pag_settings) ->
+                if pag_settings.conf.init
+                    arr = pag_settings.apply_filter(arr)
+                    return arr.slice(pag_settings.conf.start_idx, pag_settings.conf.end_idx + 1)
+                else
+                    return arr
+        ])
         cur_mod.filter("paginator_filter", ["$filter", ($filter) ->
             return (arr, scope) ->
                 return scope.pagSettings.apply_filter(arr)
@@ -244,37 +252,38 @@ angular_module_setup = (module_list, url_list=[]) ->
         ])
         cur_mod.directive("paginator", ($templateCache) ->
             link = (scope, element, attrs) ->
-                scope.pagSettings.conf.per_page = parseInt(attrs.perPage)
+                pagSettings = scope.pagSettings
+                pagSettings.conf.per_page = parseInt(attrs.perPage)
                 #scope.pagSettings.conf.filter = attrs.paginatorFilter
                 if attrs.paginatorEpp
-                    scope.pagSettings.set_epp(attrs.paginatorEpp)
+                    pagSettings.set_epp(attrs.paginatorEpp)
                 if attrs.paginatorFilter
-                    scope.pagSettings.conf.filter_mode = attrs.paginatorFilter
-                    if scope.pagSettings.conf.filter_mode == "simple"
-                        scope.pagSettings.conf.filter = ""
-                    else if scope.pagSettings.conf.filter_mode == "func"
-                        scope.pagSettings.conf.filter_func = scope.filterFunc
+                    pagSettings.conf.filter_mode = attrs.paginatorFilter
+                    if pagSettings.conf.filter_mode == "simple"
+                        pagSettings.conf.filter = ""
+                    else if pagSettings.conf.filter_mode == "func"
+                        pagSettings.conf.filter_func = scope.filterFunc
                 scope.activate_page = (page_num) ->
-                    scope.pagSettings.activate_page(page_num)
+                    pagSettings.activate_page(page_num)
                 scope.$watch(
                     () -> return scope.entries
                     (new_el) ->
-                        scope.pagSettings.set_entries(new_el)
+                        pagSettings.set_entries(new_el)
                 )
                 scope.$watch(
-                    () -> return scope.pagSettings.conf.filter
+                    () -> return pagSettings.conf.filter
                     (new_el) ->
-                        scope.pagSettings.set_entries(scope.entries)
+                        pagSettings.set_entries(scope.entries)
                 )
                 scope.$watch(
-                    () -> return scope.pagSettings.conf.per_page
+                    () -> return pagSettings.conf.per_page
                     (new_el) ->
-                        scope.pagSettings.set_entries(scope.entries)
+                        pagSettings.set_entries(scope.entries)
                 )
                 scope.$watch(
-                    () -> return scope.pagSettings.conf.filter_settings
+                    () -> return pagSettings.conf.filter_settings
                     (new_el) ->
-                        scope.pagSettings.set_entries(scope.entries)
+                        pagSettings.set_entries(scope.entries)
                     true
                 )
             return {

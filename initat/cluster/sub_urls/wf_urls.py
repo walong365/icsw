@@ -162,7 +162,6 @@ user_patterns = patterns(
     url("^move_node$"               , user_views.move_node.as_view()             , name="move_node"),
     url("^group_detail$"            , user_views.group_detail.as_view()          , name="group_detail"),
     url("^user_detail$"             , user_views.user_detail.as_view()           , name="user_detail"),
-    url("^get_object_permissions$"  , user_views.get_object_permissions.as_view(), name="get_object_permissions"),
     url("^change_obj_perm$"         , user_views.change_object_permission.as_view(), name="change_object_permission"),
     url("^account_info$"            , user_views.account_info.as_view()          , name="account_info"),
 )
@@ -206,7 +205,7 @@ rpl.extend([
     url("^device_tree/(?P<pk>[0-9]+)$", rest_views.device_tree_detail.as_view(), name="device_tree_detail"),
     url("^device_selection$", rest_views.device_selection_list.as_view(), name="device_selection_list"),
     url("^home_export_list$", rest_views.rest_home_export_list.as_view(), name="home_export_list"),
-    url("^object_permission_list$", rest_views.object_permission_list.as_view(), name="object_permission_list"),
+    url("^csw_object_list$", rest_views.csw_object_list.as_view({"get" : "list"}), name="csw_object_list"),
 ])
 
 rest_patterns = patterns(

@@ -64,16 +64,16 @@
         <div ng-controller="image_base">
             <div ng-controller="image">
                 <h2>Images ({{entries.length}} entries), <input type="button" class="btn btn-primary" value="Scan for images" ng-click="scan_for_images()"/></h2>
-                <table class="table table-condensed table-condensed table-hover" style="width:auto;">
+                <table class="table table-condensed table-hover" style="width:auto;">
                     <thead imagehead></thead>
                     <tbody>
-                        <tr><td colspan="9" paginator pag_settings="pagSettings" entries="entries" per_page="8"></td></tr>
+                        <tr><td colspan="9" paginator entries="entries" pag_settings="pagSettings" per_page="8"></td></tr>
                         <tr imagerow ng-repeat="obj in entries | orderBy:'-identifier':true | paginator:this"></tr>
                     </tbody>
                 </table>
                 <div ng-show="new_entries.length > 0">
                     <h2>Images found ({{ new_entries.length}})</h2>
-                    <table class="table table-condensed table-condensed table-hover" style="width:auto;">
+                    <table class="table table-condensed table-hover" style="width:auto;">
                         <thead imagenewhead></thead>
                         <tbody>
                             <tr imagenewrow ng-repeat="obj in new_entries | orderBy:'-identifier':true"></tr>

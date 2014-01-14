@@ -89,7 +89,7 @@
     <tab heading="Network device types">
         <div ng-controller="network_device_type_base">
             <h3>Network device types ({{entries.length}} entries), <input type="button" class="btn btn-primary" value="create new" ng-click="create($event)"/></h3>
-            <table class="table table-condensed table-condensed table-hover" style="width:auto;">
+            <table class="table table-condensed table-hover" style="width:auto;">
                 <thead networkdevicetypehead></thead>
                 <tbody>
                     <tr networkdevicetyperow ng-repeat="obj in entries | orderBy:'-identifier':true"></tr>
@@ -100,7 +100,7 @@
     <tab heading="Network types">
         <div ng-controller="network_type_base">
             <h3>Network types ({{entries.length}} entries), <input type="button" class="btn btn-primary" value="create new" ng-click="create($event)"/></h3>
-            <table class="table table-condensed table-condensed table-hover" style="width:auto;">
+            <table class="table table-condensed table-hover" style="width:auto;">
                 <thead networktypehead></thead>
                 <tbody>
                     <tr networktyperow ng-repeat="obj in entries | orderBy:'-identifier':true" ></tr>
@@ -111,7 +111,7 @@
     <tab heading="Networks">
         <div ng-controller="network_base">
             <h2>Networks ({{entries.length}} entries), <input type="button" class="btn btn-primary" value="create new" ng-click="create($event)"/></h2>
-            <table class="table table-condensed table-condensed table-hover" style="width:auto;">
+            <table class="table table-condensed table-hover" style="width:auto;">
                 <thead networkhead></thead>
                 <tbody>
                     <tr networkrow ng-repeat="obj in entries | orderBy:'-identifier':true"></tr>

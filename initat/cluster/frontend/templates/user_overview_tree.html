@@ -21,19 +21,37 @@
 {% verbatim %}
 
     <script type="text/ng-template" id="object_perm_table.html">
-        {{ object_permission_objects }}
-        <tabset>
-            <tab ng-repeat="(key, value) in obj_perms" heading="{{ key }}">
-                <table class="table table-condensed table-condensed table-hover" style="width:auto;">
-                    <thead>
-                        <th>Object</th>
-                        <th ng-repeat="entry in value">
-                           {{ entry.name }}
-                        </th>
-                    </thead>
-                </table>
-            </tab>
-        </tabset>
+        <div class="col-sm-12">
+            <tabset>
+                <tab ng-repeat="(key, value) in obj_perms" heading="{{ key }}">
+                    <div class="row panel">
+                    <table class="table table-condensed table-hover" style="width:100%;">
+                        <thead>
+                            <th>Object</th>
+                            <th ng-repeat="entry in value">
+                               {{ entry.name }}
+                            </th>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td colspan="11">
+                                    <div paginator entries="ct_dict[key]" pag_settings="pag_dict[key]" per_page="20" paginator-epp="10,20,50,100"></div>
+                                </td>
+                            </tr>
+                            <tr ng-repeat="obj in ct_dict[key] | paginator2:pag_dict[key]" ng-class="obj.tr_class">
+                                <td>
+                                    {{ obj.name }}
+                                </td>
+                                <td ng-repeat="entry in value" class="text-center">
+                                    <input type="checkbox" ng-checked="object_csw_set(obj.idx, entry.idx)" ng-click="toggle_object_csw(key, obj.idx, entry.idx)"></input>
+                                </td>
+                            <tr>
+                        </tbody>
+                    </table>
+                    </div>
+                </tab>
+            </tabset>
+        </div>
     </script>
 
     <div ng-controller="user_tree">
@@ -128,6 +146,7 @@ user_tree_module.controller("user_tree", ["$scope", "$compile", "$filter", "$tem
             return {
                 "groupname" : "new_group"
                 "gid" : 222
+                "active" : true
                 "homestart" : "/home"
             }
         $scope.user_edit = new angular_edit_mixin($scope, $templateCache, $compile, $modal, Restangular)
@@ -139,7 +158,9 @@ user_tree_module.controller("user_tree", ["$scope", "$compile", "$filter", "$tem
             return {
                 "login" : "new_user"
                 "uid" : 333
+                "active" : true
                 "group" : (entry.idx for entry in $scope.group_list)[0]
+                "shell" : "/bin/bash"
             }
         #$scope.group_edit.edit_template = "group_edit.html"
         wait_list = restDataSource.add_sources([
@@ -147,7 +168,9 @@ user_tree_module.controller("user_tree", ["$scope", "$compile", "$filter", "$tem
             ["{% url 'rest:user_list' %}", {}]
             ["{% url 'rest:device_group_list' %}", {}]
             ["{% url 'rest:csw_permission_list' %}", {}]
+            ["{% url 'rest:csw_object_permission_list' %}", {}]
             ["{% url 'rest:home_export_list' %}", {}]
+            ["{% url 'rest:csw_object_list' %}", {}]
         ])
         $q.all(wait_list).then(
             (data) ->
@@ -155,15 +178,37 @@ user_tree_module.controller("user_tree", ["$scope", "$compile", "$filter", "$tem
                 $scope.user_list = data[1]
                 $scope.device_group_list = data[2]
                 $scope.csw_permission_list = data[3]
-                $scope.home_export_list = data[4]
+                $scope.csw_object_permission_list = data[4]
+                $scope.home_export_list = data[5]
+                # optimise object_permission_list
+                for entry in $scope.user_list
+                    entry.ocsw_cache = {}
+                    for csw in $scope.csw_object_permission_list
+                        entry.ocsw_cache[csw.idx] = []
+                    for csw in entry.object_permissions
+                        entry.ocsw_cache[csw.csw_permission].push(csw.object_pk)
+                for entry in $scope.group_list
+                    entry.ocsw_cache = {}
+                    for csw in $scope.csw_object_permission_list
+                        entry.ocsw_cache[csw.idx] = []
+                    for csw in entry.object_permissions
+                        entry.ocsw_cache[csw.csw_permission].push(csw.object_pk)
                 # beautify permission list
                 for entry in $scope.csw_permission_list
                     info_str = entry.content_type.app_label + " | " + entry.content_type.name + " | " + entry.name + " | " + (if entry.valid_for_object_level then "G/O" else "G")
                     entry.info = info_str
                     if entry.valid_for_object_level
-                        if entry.content_type.model not of $scope.obj_perms
-                            $scope.obj_perms[entry.content_type.model] = []
-                        $scope.obj_perms[entry.content_type.model].push(entry)
+                        key = entry.content_type.app_label + "." + entry.content_type.model 
+                        if key not of $scope.obj_perms
+                            $scope.obj_perms[key] = []
+                        $scope.obj_perms[key].push(entry)
+                $scope.ct_dict = {}
+                $scope.pag_dict = {}
+                for entry in data[6]
+                    cur_pag = paginatorSettings.get_paginator("list_#{entry.content_label}", $scope)
+                    cur_pag.set_entries(entry.object_list)
+                    $scope.pag_dict[entry.content_label] = cur_pag
+                    $scope.ct_dict[entry.content_label] = entry.object_list
                 $scope.group_edit.delete_list = $scope.group_list 
                 $scope.group_edit.create_list = $scope.group_list
                 $scope.user_edit.delete_list = $scope.user_list 
@@ -241,8 +286,21 @@ user_tree_module.controller("user_tree", ["$scope", "$compile", "$filter", "$tem
         )
         $scope.change_password = () ->
             $scope.$broadcast("icsw.enter_password")
-        $scope.edit_object_permissions = () ->
-            console.log $scope._edit_obj
+        $scope.toggle_object_csw = (key, obj_idx, entry_idx) ->
+            $.ajax
+                url     : "{% url 'user:change_object_permission' %}"
+                data    :
+                    # group or user
+                    "auth_type" : $scope._edit_mode
+                    "auth_pk"   : $scope._edit_obj.idx
+                    "model_label" : key
+                    "obj_idx" : obj_idx
+                    "csw_idx" : entry_idx
+                    "set"     : if obj_idx in $scope._edit_obj.ocsw_cache[entry_idx] then "0" else "1"
+                success : (xml) =>
+                    parse_xml_response(xml)
+        $scope.object_csw_set = (obj_idx, entry_idx) ->
+            return obj_idx in $scope._edit_obj.ocsw_cache[entry_idx]
 ]).directive("grouptemplate", ($compile, $templateCache) ->
     return {
         restrict : "A"
@@ -266,7 +324,7 @@ user_tree_module.controller("user_tree", ["$scope", "$compile", "$filter", "$tem
         restrict : "EA"
         template : $templateCache.get("object_perm_table.html")
         link : (scope, element, attrs) ->
-            console.log scope.obj_perms
+            #console.log scope.obj_perms
     }
 ).run(($templateCache) ->
     $templateCache.put("simple_confirm.html", simple_modal_template)
@@ -279,7 +337,7 @@ class object_permissions
     constructor: (@event, @obj_key) ->
     show: () =>
         $.ajax
-            url     : "{% url 'user:get_object_permissions' %}"
+            {# url     : "{% url 'user:get_object_permissions' %}" #}
             data    :
                 "auth_key" : @obj_key
             success : (xml) =>
