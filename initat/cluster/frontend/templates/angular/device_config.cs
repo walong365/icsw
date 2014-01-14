@@ -444,5 +444,3 @@ add_tree_directive(cat_ctrl)
 {% endinlinecoffeescript %}
 
 </script>
-
-

@@ -494,6 +494,7 @@ class device_info
             activate : @activate_tab
         )
         @config_init = false
+        @livestatus_init = false
     show_config_vars: () =>
         $.ajax
             url     : "{% url 'config:get_device_cvars' %}"
@@ -536,9 +537,11 @@ class device_info
                 angular.bootstrap(ui.newPanel.find("div[id='icsw.device.config.local']"), ["icsw.device.config"])
                 #new config_table(ui.newPanel, undefined, @resp_xml.find("device"), @show_config_vars)
         else if t_href == "#livestatus"
-            if not ui.newPanel.html()
+            if not @livestatus_init
+                @livestatus_init = true
+                angular.bootstrap(ui.newPanel.find("div[id='icsw.device.livestatus']"), ["icsw.device.livestatus"])
                 # lazy load status
-                @init_livestatus(ui.newPanel)
+                #@init_livestatus(ui.newPanel)
         else if t_href == "#monconfig"
             if not ui.newPanel.html()
                 # lazy load monconfig
@@ -939,7 +942,10 @@ class device_info
         return conf_div
     livestatus_div: (dev_xml) =>
         # configuration div
-        return $("<div>").attr("id", "livestatus")
+        pk_list = @get_pk_list() 
+        ls_div = $("<div>").attr("id", "livestatus")
+        ls_div.append($("<div id='icsw.device.livestatus'><div ng-controller='livestatus_ctrl'><livestatus devicepk='" + pk_list.join(",") + "'></livestatus></div></div>"))
+        return ls_div
     monconfig_div: (dev_xml) =>
         # monitoring config div
         return $("<div>").attr("id", "monconfig")

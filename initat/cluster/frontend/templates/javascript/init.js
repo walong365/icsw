@@ -78,15 +78,6 @@ $.ajaxSetup
                 alert("*** #{status} ***\nxhr.status : #{xhr.status}\nxhr.statusText : #{xhr.statusText}")
         return false
 
-class display_config
-    constructor: (cur_conf) ->
-        @pk = cur_conf.attr("pk")
-        @name = cur_conf.attr("name")
-        @num_vars    = cur_conf.find("config_vars *").length
-        @num_scripts = cur_conf.find("config_scripts *").length
-        @num_checks  = cur_conf.find("mon_check_commands *").length
-        @title = "#{@num_vars} variables, #{@num_scripts} scripts, #{@num_checks} check commands"
-        
 root.show_moncc_detail = (event, config_xml, moncc_key) ->
     new moncc_detail(event, config_xml, moncc_key).show()
     
@@ -208,11 +199,6 @@ class config_detail
         new category_tree(tree_div, @configs_xml, conf_xml, @cat_xml, "/config")
         return cat_div
     
-String.prototype.toTitle = () ->
-    return @.replace(/\w\S*/g, (txt) ->
-        return txt.charAt(0).toUpperCase() + txt.substr(1).toLowerCase()
-    )
-        
 get_value = (cur_el) ->
     if cur_el.is(":checkbox")
         el_value = if cur_el.is(":checked") then "1" else "0"

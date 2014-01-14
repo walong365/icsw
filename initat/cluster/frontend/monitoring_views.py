@@ -43,6 +43,7 @@ from initat.core.render import render_me, render_string
 from lxml import etree # @UnresolvedImports
 from lxml.builder import E # @UnresolvedImports
 import base64
+import json
 import logging
 import server_command
 
@@ -232,9 +233,14 @@ class get_node_status(View):
     @method_decorator(login_required)
     @method_decorator(xml_wrapper)
     def post(self, request):
+        _post = request.POST
+        if "pk_list" in _post:
+            pk_list = json.loads(_post["pk_list"])
+        else:
+            pk_list = request.POST.getlist("pks[]")
         srv_com = server_command.srv_command(command="get_node_status")
         srv_com["device_list"] = E.device_list(
-            *[E.device(pk="%d" % (int(cur_pk))) for cur_pk in request.POST.getlist("pks[]")]
+            *[E.device(pk="%d" % (int(cur_pk))) for cur_pk in pk_list]
         )
         result = contact_server(request, "tcp://localhost:8010", srv_com, timeout=30)
         if result:
@@ -253,4 +259,3 @@ class get_node_status(View):
                     request.xml_response.error("no node_results", logger=logger)
             else:
                 request.xml_response.error("no node_results", logger=logger)
-

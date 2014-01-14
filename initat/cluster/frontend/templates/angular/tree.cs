@@ -20,7 +20,7 @@ _tree_node = '
                 <input type="button" class="btn btn-primary" value="T" ng-click="treeconfig.toggle_tree_state(entry, 0)" title="toggle subtree selection"></input>
                 <input type="button" class="btn btn-warning" value="C" ng-click="treeconfig.toggle_tree_state(entry, -1)" title="deselect subtree"></input>
             </div>
-            <div ng-if="((treedepth || 0) == 0) && treeconfig.show_tree_expand_buttons" class="btn-group btn-group-xs">
+            <div ng-if="((treedepth || 0) == 0) && entry._num_childs && treeconfig.show_tree_expand_buttons" class="btn-group btn-group-xs">
                 <input type="button" class="btn btn-success" value="e" ng-click="treeconfig.toggle_expand_tree(1, false)" title="expand all"></input>
                 <input ng-if="treeconfig.show_select" type="button" class="btn btn-primary" value="s" ng-click="treeconfig.toggle_expand_tree(1, true)" title="expand selected"></input>
                 <input type="button" class="btn btn-danger" value="c" ng-click="treeconfig.toggle_expand_tree(-1, false)" title="collapse all"></input>
