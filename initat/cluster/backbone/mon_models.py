@@ -534,10 +534,10 @@ class mon_host_dependency_templ(models.Model):
     date = models.DateTimeField(auto_now_add=True)
     @property
     def execution_failure_criteria(self):
-        return ",".join([short for short, _long in [("o", "up"), ("d", "down"), ("u", "unreachable"), ("p", "pending")] if getattr(self, "efc_%s" % (long))]) or "n"
+        return ",".join([short for short, _long in [("o", "up"), ("d", "down"), ("u", "unreachable"), ("p", "pending")] if getattr(self, "efc_%s" % (_long))]) or "n"
     @property
     def notification_failure_criteria(self):
-        return ",".join([short for short, _long in [("o", "up"), ("d", "down"), ("u", "unreachable"), ("p", "pending")] if getattr(self, "nfc_%s" % (long))]) or "n"
+        return ",".join([short for short, _long in [("o", "up"), ("d", "down"), ("u", "unreachable"), ("p", "pending")] if getattr(self, "nfc_%s" % (_long))]) or "n"
     def get_xml(self):
         r_xml = E.mon_host_dependency_templ(
             unicode(self),
@@ -615,10 +615,10 @@ class mon_service_dependency_templ(models.Model):
     date = models.DateTimeField(auto_now_add=True)
     @property
     def execution_failure_criteria(self):
-        return ",".join([short for short, _long in [("o", "ok"), ("w", "warn"), ("u", "unknown"), ("c", "critical"), ("p", "pending")] if getattr(self, "efc_%s" % (long))]) or "n"
+        return ",".join([short for short, _long in [("o", "ok"), ("w", "warn"), ("u", "unknown"), ("c", "critical"), ("p", "pending")] if getattr(self, "efc_%s" % (_long))]) or "n"
     @property
     def notification_failure_criteria(self):
-        return ",".join([short for short, _long in [("o", "ok"), ("w", "warn"), ("u", "unknown"), ("c", "critical"), ("p", "pending")] if getattr(self, "nfc_%s" % (long))]) or "n"
+        return ",".join([short for short, _long in [("o", "ok"), ("w", "warn"), ("u", "unknown"), ("c", "critical"), ("p", "pending")] if getattr(self, "nfc_%s" % (_long))]) or "n"
     def get_xml(self):
         r_xml = E.mon_service_dependency_templ(
             unicode(self),
