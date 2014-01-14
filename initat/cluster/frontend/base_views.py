@@ -388,27 +388,6 @@ class delete_object(View):
         else:
             request.xml_response.error("no valid keys found (present: %s)" % (", ".join(sorted(_post.keys()))), logger)
 
-class get_object(View):
-    @method_decorator(login_required)
-    @method_decorator(xml_wrapper)
-    def post(self, request, *args, **kwargs):
-        _post = request.POST
-        key_type, key_pk = _post["key"].split("__")
-        if not key_pk.isdigit():
-            request.xml_response.error("PK is not an integer", logger)
-        else:
-            arg_dict = {}
-            for key, value in _post.iteritems():
-                if key.startswith("true_flag"):
-                    arg_dict[value] = True
-                elif key.startswith("false_flag"):
-                    arg_dict[value] = False
-            mod_obj = KPMC_MAP.get(key_type, None)
-            if not mod_obj:
-                request.xml_response.error("object with type '%s' not found" % (key_type), logger)
-            else:
-                request.xml_response["result"] = mod_obj.objects.get(Q(pk=key_pk)).get_xml(**arg_dict)
-
 class get_category_tree(View):
     @method_decorator(login_required)
     def get(self, request):

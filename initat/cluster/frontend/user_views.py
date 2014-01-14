@@ -22,27 +22,20 @@
 
 """ user views """
 
-# from crispy_forms.layout import Submit, Layout, Field, ButtonHolder, Button
 from django.contrib.auth.decorators import login_required
-from django.contrib.contenttypes.models import ContentType
 from django.db.models import get_model, Q
 from django.utils.decorators import method_decorator
 from django.views.generic import View
-from initat.cluster.backbone.models import group, user, device_config, device_group, \
-     user_variable, csw_permission, get_related_models, csw_object_permission
+from initat.cluster.backbone.models import group, user, \
+     user_variable, csw_permission, csw_object_permission
 from initat.cluster.backbone.render import permission_required_mixin
-from initat.cluster.frontend.forms import dummy_password_form, group_detail_form, user_detail_form, \
+from initat.cluster.frontend.forms import group_detail_form, user_detail_form, \
     account_detail_form
 from initat.cluster.frontend.helper_functions import contact_server, xml_wrapper, update_session_object
-from initat.core.render import render_me, render_string
-# from lxml import etree # @UnresolvedImports
+from initat.core.render import render_me
 from lxml.builder import E # @UnresolvedImports
 import config_tools
 import logging
-import logging_tools
-import os
-import pprint
-import process_tools
 import server_command
 
 logger = logging.getLogger("cluster.user")
@@ -246,209 +239,17 @@ class get_user_var(View):
                 ]
             )
 
-
-class move_node(View):
-    @method_decorator(login_required)
-    @method_decorator(xml_wrapper)
-    def post(self, request):
-        _post = request.POST
-        if _post["dst_id"] == "top":
-            dst_group = None
-        else:
-            dst_group = group.objects.get(Q(pk=_post["dst_id"].split("__")[1]))
-        if _post["src_id"].startswith("user_"):
-            cur_user = user.objects.get(Q(pk=_post["src_id"].split("__")[1]))
-            cur_user.group = dst_group
-            cur_user.save()
-            request.xml_response.info("user %s moved to group %s" % (
-                unicode(cur_user),
-                unicode(dst_group)), logger)
-        else:
-            cur_group = group.objects.get(Q(pk=_post["src_id"].split("__")[1]))
-            cur_group.parent_group = dst_group
-            cur_group.save()
-            request.xml_response.info("group %s moved to %s" % (
-                unicode(cur_group),
-                u"group %s" % (unicode(dst_group)) if dst_group else "top"), logger)
-
-class group_detail(View):
-    @method_decorator(login_required)
-    @method_decorator(xml_wrapper)
-    def get(self, request):
-        new_form = group_detail_form(
-            auto_id="group__new__%s",
-        )
-        new_form.create_mode()
-        request.xml_response["form"] = render_string(
-            request,
-            "crispy_form.html",
-            {
-                "form" : new_form,
-            }
-        )
-        return request.xml_response.create_response()
-    @method_decorator(login_required)
-    @method_decorator(xml_wrapper)
-    def post(self, request):
-        _post = request.POST
-        if "key" in _post:
-            key, mode = (_post["key"], _post["mode"])
-            if mode == "show":
-                cur_group = group.objects.get(Q(pk=key.split("__")[1]))
-                if request.user.has_object_perm("backbone.group_admin", cur_group):
-                    new_form = group_detail_form(
-                        auto_id="group__%d__%%s" % (cur_group.pk),
-                        instance=cur_group,
-                    )
-                    new_form.delete_mode()
-                    request.xml_response["form"] = render_string(
-                        request,
-                        "crispy_form.html",
-                        {
-                            "form" : new_form
-                        }
-                    )
-                else:
-                    request.xml_response.error("not enough rights to show group", logger)
-            else:
-                del_obj = group.objects.get(Q(pk=key.split("__")[1]))
-                if del_obj == request.user.group:
-                    request.xml_response.error("cannot delete your group", logger)
-                else:
-                    num_ref = get_related_models(del_obj)
-                    if num_ref:
-                        # pprint.pprint(get_related_models(del_obj, detail=True))
-                        request.xml_response.error(
-                            "cannot delete %s '%s': %s" % (
-                                del_obj._meta.object_name,
-                                unicode(del_obj),
-                                logging_tools.get_plural("reference", num_ref)), logger)
-                    else:
-                        del_info = unicode(del_obj)
-                        del_obj.delete()
-                        request.xml_response.info("deleted %s '%s'" % (del_obj._meta.object_name, del_info), logger)
-        else:
-            cur_form = group_detail_form(_post, auto_id="group__new__%s")
-            new_group = None
-            if cur_form.is_valid():
-                try:
-                    new_group = cur_form.save()
-                except:
-                    line = process_tools.get_except_info()
-                    request.xml_response.error(line, logger)
-                else:
-                    request.xml_response.info("created new group '%s'" % (unicode(new_group)))
-            else:
-                line = ", ".join(cur_form.errors.as_text().split("\n"))
-                request.xml_response.error(line, logger)
-            if not new_group:
-                request.xml_response["error_form"] = render_string(
-                    request,
-                    "crispy_form.html",
-                    {
-                        "form" : cur_form
-                    }
-                )
-
-class user_detail(View):
-    @method_decorator(login_required)
-    @method_decorator(xml_wrapper)
-    def get(self, request):
-        new_form = user_detail_form(
-            auto_id="user__new__%s",
-            request=request,
-        )
-        new_form.create_mode()
-        request.xml_response["form"] = render_string(
-            request,
-            "crispy_form.html",
-            {
-                "form" : new_form,
-            }
-        )
-        return request.xml_response.create_response()
-    @method_decorator(login_required)
-    @method_decorator(xml_wrapper)
-    def post(self, request):
-        _post = request.POST
-        if "key" in _post:
-            key, mode = (_post["key"], _post["mode"])
-            if mode == "show":
-                cur_user = user.objects.get(Q(pk=key.split("__")[1]))
-                if request.user.has_object_perm("backbone.group_admin", cur_user.group):
-                    new_form = user_detail_form(
-                        auto_id="user__%d__%%s" % (cur_user.pk),
-                        instance=cur_user,
-                        request=request,
-                    )
-                    new_form.delete_mode()
-                    request.xml_response["form"] = render_string(
-                        request,
-                        "crispy_form.html",
-                        {
-                            "form" : new_form
-                        }
-                    )
-                else:
-                    request.xml_response.error("not enough rights to show user", logger)
-            else:
-                del_obj = user.objects.get(Q(pk=key.split("__")[1]))
-                if del_obj == request.user:
-                    request.xml_response.error("cannot delete yourself", logger)
-                else:
-                    num_ref = get_related_models(del_obj)
-                    if num_ref:
-                        # pprint.pprint(get_related_models(del_obj, detail=True))
-                        request.xml_response.error(
-                            "cannot delete %s '%s': %s" % (
-                                del_obj._meta.object_name,
-                                unicode(del_obj),
-                                logging_tools.get_plural("reference", num_ref)), logger)
-                    else:
-                        del_info = unicode(del_obj)
-                        del_obj.delete()
-                        request.xml_response.info("deleted %s '%s'" % (del_obj._meta.object_name, del_info), logger)
-        else:
-            cur_form = user_detail_form(
-                _post,
-                auto_id="user__new__%s",
-                request=request,
-                )
-            new_user = None
-            if cur_form.is_valid():
-                try:
-                    new_user = cur_form.save()
-                except:
-                    line = process_tools.get_except_info()
-                    request.xml_response.error(line, logger)
-                else:
-                    request.xml_response.info("created new user '%s'" % (unicode(new_user)))
-            else:
-                line = ", ".join(cur_form.errors.as_text().split("\n"))
-                request.xml_response.error(line, logger)
-            if not new_user:
-                request.xml_response["error_form"] = render_string(
-                    request,
-                    "crispy_form.html",
-                    {
-                        "form" : cur_form
-                    }
-                )
-
 class change_object_permission(View):
     @method_decorator(login_required)
     @method_decorator(xml_wrapper)
     def post(self, request):
         _post = request.POST
-        import pprint
-        pprint.pprint(_post)
         if "auth_type" in _post:
             auth_pk = int(_post["auth_pk"])
             auth_obj = {"g" : group, "u" : user}[_post["auth_type"]].objects.get(Q(pk=auth_pk))
             set_perm = csw_permission.objects.select_related("content_type").get(Q(pk=_post["csw_idx"]))
             obj_pk = int(_post["obj_idx"])
             add = True if int(_post["set"]) else False
-            print "***", add
         else:
             key = _post["key"]
             obj_pk, perm_pk = key.split("__")[1:3]
@@ -501,7 +302,7 @@ class change_object_permission(View):
                         )).delete()
                 else:
                     auth_obj.object_permissions.remove(csw_objp)
-                    logger.info("removed csw_object_permission %s to %s" % (
+                    logger.info("removed csw_object_permission %s from %s" % (
                         unicode(csw_objp),
                         unicode(auth_obj),
                         ))

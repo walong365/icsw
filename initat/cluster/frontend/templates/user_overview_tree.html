@@ -143,25 +143,39 @@ user_tree_module.controller("user_tree", ["$scope", "$compile", "$filter", "$tem
         $scope.group_edit.use_modal = false
         $scope.group_edit.change_signal = "icsw.user.groupchange"
         $scope.group_edit.new_object = () ->
-            return {
+            gid = 200
+            gids = (entry.gid for entry in $scope.group_list)
+            while gid in gids
+                gid++
+            r_obj = {
                 "groupname" : "new_group"
-                "gid" : 222
+                "gid" : gid
                 "active" : true
                 "homestart" : "/home"
+                "object_permissions" : []
+                "permissions" : []
             }
+            return r_obj
         $scope.user_edit = new angular_edit_mixin($scope, $templateCache, $compile, $modal, Restangular)
         $scope.user_edit.modify_rest_url = "{% url 'rest:user_detail' 1 %}".slice(1).slice(0, -2)
         $scope.user_edit.create_rest_url = Restangular.all("{% url 'rest:user_list' %}".slice(1))
         $scope.user_edit.use_modal = false
         $scope.user_edit.change_signal = "icsw.user.userchange"
         $scope.user_edit.new_object = () ->
-            return {
+            uid = 200
+            uids = (entry.uid for entry in $scope.user_list)
+            while uid in uids
+                uid++
+            r_obj = {
                 "login" : "new_user"
-                "uid" : 333
+                "uid" : uid
                 "active" : true
                 "group" : (entry.idx for entry in $scope.group_list)[0]
                 "shell" : "/bin/bash"
+                "object_permissions" : []
+                "permissions" : []
             }
+            return r_obj
         #$scope.group_edit.edit_template = "group_edit.html"
         wait_list = restDataSource.add_sources([
             ["{% url 'rest:group_list' %}", {}]
@@ -172,6 +186,12 @@ user_tree_module.controller("user_tree", ["$scope", "$compile", "$filter", "$tem
             ["{% url 'rest:home_export_list' %}", {}]
             ["{% url 'rest:csw_object_list' %}", {}]
         ])
+        $scope.init_ocsw_cache = (entry) ->
+            entry.ocsw_cache = {}
+            for csw in $scope.csw_object_permission_list
+                entry.ocsw_cache[csw.idx] = []
+            for csw in entry.object_permissions
+                entry.ocsw_cache[csw.csw_permission].push(csw.object_pk)
         $q.all(wait_list).then(
             (data) ->
                 $scope.group_list = data[0]
@@ -180,19 +200,6 @@ user_tree_module.controller("user_tree", ["$scope", "$compile", "$filter", "$tem
                 $scope.csw_permission_list = data[3]
                 $scope.csw_object_permission_list = data[4]
                 $scope.home_export_list = data[5]
-                # optimise object_permission_list
-                for entry in $scope.user_list
-                    entry.ocsw_cache = {}
-                    for csw in $scope.csw_object_permission_list
-                        entry.ocsw_cache[csw.idx] = []
-                    for csw in entry.object_permissions
-                        entry.ocsw_cache[csw.csw_permission].push(csw.object_pk)
-                for entry in $scope.group_list
-                    entry.ocsw_cache = {}
-                    for csw in $scope.csw_object_permission_list
-                        entry.ocsw_cache[csw.idx] = []
-                    for csw in entry.object_permissions
-                        entry.ocsw_cache[csw.csw_permission].push(csw.object_pk)
                 # beautify permission list
                 for entry in $scope.csw_permission_list
                     info_str = entry.content_type.app_label + " | " + entry.content_type.name + " | " + entry.name + " | " + (if entry.valid_for_object_level then "G/O" else "G")
@@ -226,14 +233,29 @@ user_tree_module.controller("user_tree", ["$scope", "$compile", "$filter", "$tem
         $scope.rebuild_tree = () ->
             $scope.tree.clear_root_nodes()
             group_lut = {}
+            rest_list = []
             for entry in $scope.group_list
+                # optimise object_permission_list
+                $scope.init_ocsw_cache(entry)
                 t_entry = $scope.tree.new_node({folder:true, obj:entry, expand:!entry.parent_group, _node_type:"g"})
                 group_lut[entry.idx] = t_entry
                 if entry.parent_group
-                    group_lut[entry.parent_group].add_child(t_entry)
+                    # handle later
+                    rest_list.push(t_entry)
                 else
                     $scope.tree.add_root_node(t_entry)
+            while rest_list.length > 0
+                # iterate until the list is empty
+                _rest_list = []
+                for entry in rest_list
+                    if entry.obj.parent_group of group_lut
+                        group_lut[entry.obj.parent_group].add_child(entry)
+                    else
+                        _rest_list.push(entry)
+                rest_list = _rest_list
             for entry in $scope.user_list
+                # optimise object_permission_list
+                $scope.init_ocsw_cache(entry)
                 t_entry = $scope.tree.new_node({folder:false, obj:entry, _node_type:"u"})
                 group_lut[entry.group].add_child(t_entry)
             $scope.group_lut = group_lut
@@ -287,6 +309,7 @@ user_tree_module.controller("user_tree", ["$scope", "$compile", "$filter", "$tem
         $scope.change_password = () ->
             $scope.$broadcast("icsw.enter_password")
         $scope.toggle_object_csw = (key, obj_idx, entry_idx) ->
+            remove = obj_idx in $scope._edit_obj.ocsw_cache[entry_idx]
             $.ajax
                 url     : "{% url 'user:change_object_permission' %}"
                 data    :
@@ -296,9 +319,16 @@ user_tree_module.controller("user_tree", ["$scope", "$compile", "$filter", "$tem
                     "model_label" : key
                     "obj_idx" : obj_idx
                     "csw_idx" : entry_idx
-                    "set"     : if obj_idx in $scope._edit_obj.ocsw_cache[entry_idx] then "0" else "1"
+                    "set"     : if remove then "0" else "1"
                 success : (xml) =>
-                    parse_xml_response(xml)
+                    if parse_xml_response(xml)
+                        # update cache
+                        if remove
+                            $scope._edit_obj.ocsw_cache[entry_idx] = (entry for entry in $scope._edit_obj.ocsw_cache[entry_idx] when entry != obj_idx) 
+                        else
+                            $scope._edit_obj.ocsw_cache[entry_idx].push(obj_idx)
+                        # trigger redraw
+                        $scope.$digest()
         $scope.object_csw_set = (obj_idx, entry_idx) ->
             return obj_idx in $scope._edit_obj.ocsw_cache[entry_idx]
 ]).directive("grouptemplate", ($compile, $templateCache) ->
@@ -546,7 +576,7 @@ class user_treex
     create_user: (event) =>
         @click_buttons.attr("disabled", "disabled")
         $.ajax
-            url     : "{% url 'user:user_detail' %}"
+            {# url     : "{% url 'user:user_detail' %}" #}
             type    : "GET"
             success : (xml) =>
                 if parse_xml_response(xml)
@@ -556,7 +586,7 @@ class user_treex
     submit_new_user: (event) =>
         $.blockUI()
         $.ajax
-            url     : "{% url 'user:user_detail' %}"
+            {# url     : "{% url 'user:user_detail' %}" #}
             data    : create_dict($("div#ug_detail"), "user__new", true, true)
             success : (xml) =>
                 if parse_xml_response(xml)
@@ -570,7 +600,7 @@ class user_treex
         if confirm("Really delete user ?")
             $.blockUI()
             $.ajax
-                url     : "{% url 'user:user_detail' %}"
+                {# url     : "{% url 'user:user_detail' %}" #}
                 data    : {
                     key  : @active_node
                     mode : "delete" 
@@ -589,7 +619,7 @@ class user_treex
         @click_buttons.attr("disabled", "disabled")
         @click_buttons.removeAttr("disabled")
         $.ajax
-            url     : "{% url 'user:group_detail' %}"
+            {# url     : "{% url 'user:group_detail' %}" #}
             type    : "GET"
             success : (xml) =>
                 if parse_xml_response(xml)
@@ -599,7 +629,7 @@ class user_treex
     submit_new_group: (event) =>
         $.blockUI()
         $.ajax
-            url     : "{% url 'user:group_detail' %}"
+            {# url     : "{% url 'user:group_detail' %}" #}
             data    : create_dict($("div#ug_detail"), "group__new", true, true)
             success : (xml) =>
                 if parse_xml_response(xml)
@@ -613,7 +643,7 @@ class user_treex
         if confirm("Really delete group ?")
             $.blockUI()
             $.ajax
-                url     : "{% url 'user:group_detail' %}"
+                {# url     : "{% url 'user:group_detail' %}" #}
                 data    : {
                     key  : @active_node
                     mode : "delete" 
@@ -676,7 +706,7 @@ class user_treex
                         return false
                 onDrop: (dst_node, src_node, hit_mode, ui, draggable) =>
                     $.ajax
-                        url     : "{% url 'user:move_node' %}"
+                        {# url     : "{% url 'user:move_node' %}" #}
                         data    : {
                             "src_id" : src_node.data.key
                             "dst_id" : dst_node.data.key
@@ -726,9 +756,9 @@ class user_treex
             # only reload if key is not the active key
             if key.match(/^(user|group)__/)
                 if key.match(/^(user)__/)
-                    url = "{% url 'user:user_detail' %}"
+                    {# url = "{% url 'user:user_detail' %}" #}
                 else
-                    url = "{% url 'user:group_detail' %}"
+                    {# url = "{% url 'user:group_detail' %}" #}
                 $.ajax
                     url     : url
                     data    : {

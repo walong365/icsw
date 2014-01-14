@@ -356,7 +356,7 @@ class group_detail_form(ModelForm):
         ),
         Fieldset(
             "Object permissions",
-            HTML("<div objectpermissions></div>"),
+            HTML("<div ng-if='!create_mode' objectpermissions></div>"),
         ),
         FormActions(
             Submit("modify", "Modify", css_class="btn-success", ng_show="!create_mode"),
@@ -467,7 +467,7 @@ class user_detail_form(ModelForm):
         ),
         Fieldset(
             "Object permissions",
-            HTML("<div objectpermissions ng-show='!create_mode'></div>"),
+            HTML("<div objectpermissions ng-if='!create_mode'></div>"),
         ),
         FormActions(
             Submit("modify", "Modify", css_class="btn-success", ng_show="!create_mode"),
