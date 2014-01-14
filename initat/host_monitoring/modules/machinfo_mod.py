@@ -982,20 +982,23 @@ class df_command(hm_classes.hm_command):
                 (result["total"] - result["used"]) * 1024,
             )
         else:
-            # all-partition result
-            max_stuff = {"perc" :-1}
-            all_parts = sorted(result.keys())
-            for part_name in all_parts:
-                d_stuff = result[part_name]
-                if d_stuff["perc"] > max_stuff["perc"]:
-                    max_stuff = d_stuff
-                    max_part = part_name
-            ret_state = limits.check_ceiling(max_stuff["perc"], cur_ns.warn, cur_ns.crit)
-            return ret_state, "%.0f %% used on %s (%s, %s)" % (
-                max_stuff["perc"],
-                max_part,
-                max_stuff["mountpoint"],
-                logging_tools.get_plural("partition", len(all_parts)))
+            if result:
+                # all-partition result
+                max_stuff = {"perc" :-1}
+                all_parts = sorted(result.keys())
+                for part_name in all_parts:
+                    d_stuff = result[part_name]
+                    if d_stuff["perc"] > max_stuff["perc"]:
+                        max_stuff = d_stuff
+                        max_part = part_name
+                ret_state = limits.check_ceiling(max_stuff["perc"], cur_ns.warn, cur_ns.crit)
+                return ret_state, "%.0f %% used on %s (%s, %s)" % (
+                    max_stuff["perc"],
+                    max_part,
+                    max_stuff["mountpoint"],
+                    logging_tools.get_plural("partition", len(all_parts)))
+            else:
+                return limits.nag_STATE_CRITICAL, "no partitions found"
     def interpret_old(self, result, parsed_coms):
         result = hm_classes.net_to_sys(result[3:])
         if result.has_key("perc"):

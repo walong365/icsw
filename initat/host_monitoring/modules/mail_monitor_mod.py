@@ -236,7 +236,9 @@ class _general(hm_classes.hm_module):
         self.__mailcount = {}
         self.__check_kerio = False
         if self.mailq_command_valid():
-            mv.register_entry("mail.waiting", 0, "number of mails in mail-queue")
+            mv.register_entry("mail.total", 0, "total number of mails in mail-queue")
+            mv.register_entry("mail.queued", 0, "number of queued mails")
+            mv.register_entry("mail.hold", 0, "number of hold mails")
     def get_mailcount(self):
         return self._get_mail_queue_entries()
     def mailq_command_valid(self):
@@ -346,11 +348,8 @@ class _general(hm_classes.hm_module):
         self.__act_snapshot, self.__check_time = (act_snapshot, act_time)
         if self.mailq_command_valid():
             mc_dict = self.get_mailcount()
-            # if "total" not in mc_dict:
-            #    mc_dict["total"] = 0
-            # for key, value in mc_dict.iteritems():
-            #    mv["mail.%s" % (key)] = value
-            mv["mail.total"] = mc_dict["total"]
+            for key in ["hold", "total", "queued"]:
+                mv["mail.%s" % (key)] = mc_dict[key]
     def _get_mail_queue_entries(self):
         # total = queued + hold
         self.__mailcount = {"total" : 0, "queued" : 0, "hold" : 0}
@@ -383,13 +382,14 @@ class _general(hm_classes.hm_module):
                             line_parts = last_line.split()
                             if line_parts[-2].isdigit():
                                 self.__mailcount["total"] = int(line_parts[-2])
-                            self.log("cannot parse line '%s' (mailq)" % (last_line),
-                                logging_tools.LOG_LEVEL_WARN
+                            else:
+                                self.log("cannot parse line '%s' (mailq, notdigit)" % (last_line),
+                                    logging_tools.LOG_LEVEL_WARN
                                 )
                         else:
-                            self.log("cannot parse line '%s' (mailq)" % (last_line),
+                            self.log("cannot parse line '%s' (mailq, '--' missing)" % (last_line),
                                 logging_tools.LOG_LEVEL_WARN
-                                )
+                            )
                 else:
                     self.log("no lines got from %s" % (self.__mailq_command),
                         logging_tools.LOG_LEVEL_WARN)
