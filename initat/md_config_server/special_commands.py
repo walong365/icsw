@@ -2,7 +2,7 @@
 #
 # Copyright (C) 2008-2014 Andreas Lang-Nevyjel, init.at
 #
-# this file is part of nagios-config-server
+# this file is part of md-config-server
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #

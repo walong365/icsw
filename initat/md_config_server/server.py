@@ -125,7 +125,7 @@ class server_process(threading_tools.process_pool):
                 global_config["MD_TYPE"],
                 global_config["MD_TYPE"])
             cursor = connections["monitor"].cursor()
-            nag_suc = cursor.execute(sql_str)
+            _nag_suc = cursor.execute(sql_str)
             nag_dict = dict([(db_rec[1], db_rec[0]) for db_rec in cursor.fetchall()])
             res_dict = {"tot"  : len(nag_dict.keys()),
                         "up"   : nag_dict.values().count(constants.NAG_HOST_UP),
@@ -209,7 +209,7 @@ class server_process(threading_tools.process_pool):
                 ("MD_LOCK_FILE"     , configfile.str_c_var("%s.lock" % (md_type))),
             ])
         # device_variable local to the server
-        dv = cluster_location.db_device_variable(global_config["SERVER_IDX"], "md_version", description="Version of the Monitor-daemon pacakge", value=md_version)
+        _dv = cluster_location.db_device_variable(global_config["SERVER_IDX"], "md_version", description="Version of the Monitor-daemon pacakge", value=md_version)
 # #        if dv.is_set():
 # #            dv.set_value(md_version)
 # #            dv.update(dc)
