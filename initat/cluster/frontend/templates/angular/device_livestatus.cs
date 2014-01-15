@@ -33,9 +33,14 @@ livestatus_templ = """
 """
 
 monconfig_templ = """
-    <div>
-        <tabset>
-            <tab ng-repeat="(key, value) in mc_tables" heading="{{ value.short_name }}">
+    <div class="row">
+        <tabset ng-show="!reload_pending">
+            <tab heading="action">
+                <div class="well">
+                    <input type="button" class="btn btn-success" value="reload" ng-show="!reload_pending" ng-click="load_data()"></input>
+                </div>
+            </tab>
+            <tab ng-repeat="(key, value) in mc_tables" heading="{{ value.short_name }} ({{ value.entries.length }})">
                 <h3>{{ value.entries.length }} entries for {{ value.short_name }}</h3> 
                 <table class="table table-condensed table-hover table-bordered" style="width:auto;">
                     <thead>
@@ -179,10 +184,7 @@ class mc_table
         
 device_livestatus_module.controller("monconfig_ctrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "sharedDataSource", "$q", "$modal", "$timeout"
     ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, sharedDataSource, $q, $modal, $timeout) ->
-        $scope.entries = []
-        $scope.order_name = "name"
-        $scope.order_dir = true
-        $scope.pagSettings = paginatorSettings.get_paginator("device_tree_base", $scope)
+        $scope.reload_pending = false
         $scope.new_devsel = (_dev_sel, _devg_sel) ->
             #pre_sel = (dev.idx for dev in $scope.devices when dev.expanded)
             #restDataSource.reset()
@@ -212,6 +214,7 @@ device_livestatus_module.controller("monconfig_ctrl", ["$scope", "$compile", "$f
             return (_str.slice(0, 1) for _str in _parts).join("").toUpperCase() 
         $scope.load_data = () ->
             #$timeout($scope.load_data, 20000)
+            $scope.reload_pending = true
             $.ajax
                 url  : "{% url 'mon:get_node_config' %}"
                 data : {
@@ -219,13 +222,13 @@ device_livestatus_module.controller("monconfig_ctrl", ["$scope", "$compile", "$f
                 },
                 success : (xml) =>
                     if parse_xml_response(xml)
-                        console.log xml
                         mc_tables = {}
                         $(xml).find("config > *").each (idx, node) => 
                             new_table = new mc_table($(node), paginatorSettings)
                             mc_tables[new_table.name] = new_table
                         $scope.$apply(
                             $scope.mc_tables = mc_tables
+                            $scope.reload_pending = false
                         )
 ]).directive("monconfig", ($templateCache) ->
     return {

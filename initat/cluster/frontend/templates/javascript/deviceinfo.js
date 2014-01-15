@@ -356,36 +356,6 @@ class rrd_config
                             onSelect  : @crop_select
                         )
         
-show_domain_name_tree = (event) ->
-    new domain_name_tree(event).show()
-
-class domain_name_tree
-    constructor: (@event) ->
-    show: () =>
-        $.ajax
-            url     : "{% url 'network:domain_name_tree' %}"
-            success : (xml) =>
-                if parse_xml_response(xml)
-                    @resp_xml = $(xml).find("domain_tree_nodes")
-                    @build_div()
-                    #console.log @resp_xml[0]
-                    #console.log @event
-                    @div.simplemodal
-                        opacity      : 50 
-                        position     : [@event.pageY, @event.pageX]
-                        autoResize   : true
-                        autoPosition : true
-                        onShow: (dialog) -> 
-                            dialog.container.draggable()
-                        onClose: =>
-                            $.simplemodal.close()
-    build_div: () =>
-        dnt_div = $("<div>")
-        dnt_div.append(
-            $("<h3>").text("Domain name tree")
-        )
-        @div = dnt_div
-    
 show_device_info = (event, dev_key, callback) ->
     new device_info(event, dev_key, callback).show()
 
@@ -555,60 +525,6 @@ class device_info
                 @init_network_div()
     shorten_attribute: (in_name) =>
         return (sub_str.charAt(0).toUpperCase() for sub_str in in_name.split("_")).join("")
-    update_monconfig: () =>
-        $.ajax
-            url  : "{% url 'mon:get_node_config' %}"
-            data : {
-                "pks" : @get_pk_list()
-            }
-            success : (xml) =>
-                @monconfig_div.empty()
-                if parse_xml_response(xml)
-                    conf_top = $(xml).find("config")
-                    tab_ul = $("<ul>")
-                    if @monconfig_div.hasClass("ui-tabs")
-                        @monconfig_div.tabs("destroy")
-                    @monconfig_div.append(tab_ul)
-                    conf_top.children().each (idx, child_xml) =>
-                        child_xml = $(child_xml)
-                        tag_name = child_xml.prop("tagName")
-                        # tab selector
-                        tab_ul.append($("<li>").append($("<a>").attr("href", "##{tag_name}").text(tag_name.split("_")[0])))
-                        # tab content
-                        sub_div = $("<div>").attr("id", tag_name)
-                        # table
-                        sub_table = $("<table>").addClass("style2")
-                        # get all attribute
-                        attr_list = []
-                        child_xml.children().each (idx, sub_el) =>
-                            for cur_attr in sub_el.attributes
-                                if cur_attr.name not in attr_list
-                                    attr_list.push(cur_attr.name)
-                        header_row = $("<tr>").addClass("ui-widget ui-widget-header")
-                        for attr_name in attr_list
-                            header_row.append($("<th>").attr("title", attr_name).text(@shorten_attribute(attr_name)))
-                        sub_table.append($("<thead>").append(header_row))
-                        table_body = $("<tbody>")
-                        sub_table.append(table_body)
-                        child_xml.children().each (idx, sub_el) =>
-                            sub_el = $(sub_el)
-                            cur_line = $("<tr>")
-                            for attr_name in attr_list
-                                cur_line.append($("<td>").attr("title", attr_name).text(sub_el.attr(attr_name)))
-                            table_body.append(cur_line)
-                        sub_div.append(sub_table)
-                        if table_body.children().length
-                            sub_table.dataTable(
-                                "sPaginationType" : "full_numbers"
-                                "iDisplayLength"  : 50
-                                "bScrollCollapse" : true
-                                "bScrollAutoCss"  : true
-                                "bAutoWidth"      : false
-                                "bJQueryUI"       : true
-                                "bPaginate"       : true
-                            )
-                        @monconfig_div.append(sub_div)
-                    @monconfig_div.tabs()
     init_rrd: (top_div) =>
         rrd_div = $("<div>").attr("id", "rrd").addClass("leftfloat")
         graph_div = $("<div>").attr("id", "graph").addClass("leftfloat")
@@ -951,7 +867,6 @@ class device_info
         return mdcds_div
     
 root.show_device_info = show_device_info
-root.show_domain_name_tree = show_domain_name_tree
 root.device_info = device_info
 root.category_tree = category_tree
 
