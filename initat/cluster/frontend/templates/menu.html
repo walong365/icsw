@@ -87,14 +87,6 @@
             {% for add_menu in settings.ADDITIONAL_MENU_FILES %}
                 {% include add_menu %}
             {% endfor %}
-            <li class="dropdown">
-                <a class="dropdown-toggle" data-toggle="dropdown">{% trans "Session" %} <b class="caret"></b></a>
-                <ul class="dropdown-menu">
-                    <li><a href="{% url 'user:account_info' %}">{% trans "Account Info" %}</a></li>
-                    <li><a href="{% url 'session:logout' %}">{% trans "Logout" %}</a></li>
-                    <li><a href="{% url 'admin:index' %}">{% trans "Admin" %}</a></li>
-                </ul>
-            </li>
             <li class="visible-md visible-lg">
                 {% verbatim %}
                 <div ng-show="num_gauges" ng-repeat="(key, obj) in cur_gauges" class="progress" style="width:200px; margin-top:10px;">
@@ -110,12 +102,27 @@
             </li>
         </ul>
     </div>
-    <p class="navbar-text navbar-right  visible-md visible-lg"">
-        <span>
-            {% verbatim %}{{ cur_time }}{% endverbatim %}
-            <span title="{{ user }}">{{ user.login }}</span>{% ifnotequal user.login request.session.login_name %} (via alias {{ request.session.login_name }}){% endifnotequal %}
-        </span>
-    </p>
+    <ul class="nav navbar-nav navbar-right">
+        <li>
+            <p class="navbar-text  visible-md visible-lg"">
+                <span>
+                    {% verbatim %}{{ cur_time }}{% endverbatim %}
+                    <span title="{{ user }}">user '{{ user.login }}'</span>{% ifnotequal user.login request.session.login_name %} (via alias {{ request.session.login_name }}){% endifnotequal %}
+                </span>
+            </p>
+        </li>
+        <li class="dropdown">
+            <a class="dropdown-toggle" data-toggle="dropdown">{% trans "Session" %} <b class="caret"></b></a>
+            <ul class="dropdown-menu">
+                <li><a href="{% url 'user:account_info' %}">{% trans "Account Info" %}</a></li>
+                <li><a href="{% url 'session:logout' %}">{% trans "Logout" %}</a></li>
+                <li><a href="{% url 'admin:index' %}">{% trans "Admin" %}</a></li>
+            </ul>
+        </li>
+        <li>
+            &nbsp;
+        </li>
+    </ul>
 </nav>
 
 <script type="text/javascript">
