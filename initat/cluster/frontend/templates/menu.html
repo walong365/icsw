@@ -104,7 +104,7 @@
             </li>
             <li ng-if="num_gauges == 0" class="visible-md visible-lg">
                 {% with "images/product/"|add:settings.INIT_PRODUCT_NAME|lower|add:"-flat-trans.png" as gfx_name %}
-                <img height="42px" src="{% static gfx_name %}" alt="{{ settings.INIT_PRODUCT_NAME }} logo">
+                <img height="42px" src="{% static gfx_name %}" ng-click="redirect_to_init()" alt="{{ settings.INIT_PRODUCT_NAME }} logo">
                 </img>
                 {% endwith %}
             </li>
@@ -164,6 +164,9 @@ menu_controller = menu_module.controller("menu_base", ["$scope", "$timeout",
                                 $scope.progress_iters--
                             $timeout($scope.update_progress_bar, 1000)
                     )
+        $scope.redirect_to_init = () ->
+            window.location = "http://www.init.at"
+            return false
         $scope.show_time()
         #$scope.update_progress_bar()
         $scope.rebuild_config = () ->
