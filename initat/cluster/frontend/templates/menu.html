@@ -98,7 +98,7 @@
             <li class="visible-md visible-lg">
                 {% verbatim %}
                 <div ng-show="num_gauges" ng-repeat="(key, obj) in cur_gauges" class="progress" style="width:200px; margin-top:10px;">
-                    <progressbar animate="true" value="obj.value" type="success"><span>{{ obj.value }}</span></progressbar>
+                    <progressbar animate="true" value="obj.value" type="success"><span>{{ obj.value }} %</span></progressbar>
                 </div>
                 {% endverbatim %}
             </li>
