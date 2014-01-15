@@ -4,10 +4,10 @@
     <div class="navbar-header">
         <ul class="nav navbar-nav">
             <li>
-                <a href="{% url 'main:index' %}">{% trans "Home" %}</a>
+                <a href="{% url 'main:index' %}"><span class="glyphicon glyphicon-home"></span></a>
             </li>
             <li class="dropdown">
-                <a class="dropdown-toggle" data-toggle="dropdown">{% trans "Setup" %} <b class="caret"></b></a>
+                <a class="dropdown-toggle" data-toggle="dropdown">{% trans "Base" %} <b class="caret"></b></a>
                 <ul class="dropdown-menu">
                     <li><a href="{% url 'device:tree' %}">{% trans "Device tree" %}</a></li>
                     <li><a href="{% url 'network:domain_name_tree' %}">{% trans "Domain name tree" %}</a></li>
@@ -24,9 +24,9 @@
             </li>
             {% if settings.CLUSTER_LICENSE.boot %}
             <li class="dropdown">
-                <a class="dropdown-toggle" data-toggle="dropdown">{% trans "Operation" %} <b class="caret"></b></a>
+                <a class="dropdown-toggle" data-toggle="dropdown">{% trans "Cluster" %} <b class="caret"></b></a>
                 <ul class="dropdown-menu">
-                    <li><a href="{% url 'boot:show_boot' %}">{% trans "Node boot" %}</a></li>
+                    <li><a href="{% url 'boot:show_boot' %}">{% trans "Nodeboot" %}</a></li>
                     {% if settings.CLUSTER_LICENSE.package %}
                       <li><a href="{% url 'pack:repo_overview' %}">{% trans "Package install" %}</a></li>
                     {% endif %}
@@ -77,7 +77,7 @@
             </li>
             {% endif %}
             {% if settings.DEBUG %}
-            <li class="dropdown">
+            <li ng-show="0" class="dropdown">
                 <a class="dropdown-toggle" data-toggle="dropdown">{% trans "REST" %} <b class="caret"></b></a>
                 <ul class="dropdown-menu">
                     <li><a href="{% url 'rest:root' %}">{% trans "REST API rootnode (for testing)" %}</a></li>
@@ -104,7 +104,7 @@
             </li>
             <li ng-if="num_gauges == 0" class="visible-md visible-lg">
                 {% with "images/product/"|add:settings.INIT_PRODUCT_NAME|lower|add:"-flat-trans.png" as gfx_name %}
-                <img height="42px" src="{% static gfx_name %}" ng-click="redirect_to_init()" alt="{{ settings.INIT_PRODUCT_NAME }} logo">
+                <img height="42px" src="{% static gfx_name %}" ng-click="redirect_to_init()" title="{{ settings.INIT_PRODUCT_NAME }}" alt="{{ settings.INIT_PRODUCT_NAME }} logo">
                 </img>
                 {% endwith %}
             </li>
@@ -113,9 +113,8 @@
     <p class="navbar-text navbar-right  visible-md visible-lg"">
         <span>
             {% verbatim %}{{ cur_time }}{% endverbatim %}
-            '{{ user.login }}'{% ifnotequal user.login request.session.login_name %} (via alias {{ request.session.login_name }}){% endifnotequal %}
+            <span title="{{ user }}">{{ user.login }}</span>{% ifnotequal user.login request.session.login_name %} (via alias {{ request.session.login_name }}){% endifnotequal %}
         </span>
-        <a class="navbar-link" href="{% url 'session:logout' %}"><b>{% trans "Logout" %}</b></a>
     </p>
 </nav>
 

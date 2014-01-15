@@ -6,13 +6,6 @@
 
 root = exports ? this
 
-beautify_seconds = (in_sec) ->
-    if in_sec > 60
-        mins = parseInt(in_sec / 60)
-        return  "#{mins}:#{in_sec - 60 * mins}" 
-    else
-        return "#{in_sec} s"
-        
 class category_tree
     constructor: (@tree_div, @top_xml, @xml, @cat_tree, @top_node, @multi_sel) ->
         @tree_div.dynatree
@@ -23,7 +16,7 @@ class category_tree
             #    dtnode.toggleSelect()
             onClick : (dtnode, event) =>
                 #console.log dtnode.data.key, event.type
-                #dtnode.toggleSelect()
+                  #dtnode.toggleSelect()
             onSelect : (flag, dtnode) =>
                 if flag
                     # deactivate other locations
@@ -467,6 +460,7 @@ class device_info
         @livestatus_init = false
         @monconfig_init = false
     show_config_vars: () =>
+        # has to be transfered to angular, FIXME
         $.ajax
             url     : "{% url 'config:get_device_cvars' %}"
             data    :
