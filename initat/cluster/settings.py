@@ -304,6 +304,7 @@ if DEBUG:
 
 STATICFILES_DIRS = (
     ("icinga", "/opt/icinga/share/images/logos"),
+    ("admin", "/opt/python-init/lib/python/site-packages/django/contrib/admin/static/admin"),
     # ("frontend", os.path.join(FILE_ROOT, "frontend", "media")),
 )
 
