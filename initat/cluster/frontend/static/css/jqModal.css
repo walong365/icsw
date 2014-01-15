@@ -9,6 +9,7 @@
     padding : 12px;
 }
 #simplemodal-container a.modalCloseImg {
+    background:url(../icons/x.png);
     width    : 25px;
     height   : 29px;
     display  : inline;
