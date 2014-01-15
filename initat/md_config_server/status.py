@@ -26,6 +26,8 @@ from django.db.models import Q
 from initat.cluster.backbone.models import device
 from initat.md_config_server.config import global_config
 from lxml.builder import E # @UnresolvedImport
+import csv
+import socket
 import logging_tools
 import os
 import process_tools
@@ -37,10 +39,54 @@ try:
 except ImportError:
     VERSION_STRING = "?.?"
 
-try:
-    import mk_livestatus
-except ImportError:
-    mk_livestatus = None
+class live_query(object):
+    def __init__(self, conn, resource):
+        self._conn = conn
+        self._resource = resource
+        self._columns = []
+        self._filters = []
+    def call(self):
+        if self._columns:
+            return self._conn.call(str(self), self._columns)
+        else:
+            return self._conn.call(str(self))
+    def __str__(self):
+        r_field = ["GET %s" % (self._resource)]
+        if self._columns:
+            r_field.append("Columns: %s" % (" ".join(self._columns)))
+        r_field.extend(self._filters)
+        return "\n".join(r_field + ["", ""])
+    def columns(self, *args):
+        self._columns = args
+        return self
+    def filter(self, key, op, value):
+        if type(value) == list:
+            for entry in value:
+                self._filters.append("Filter: %s %s %s" % (key, op, entry))
+            if len(value) > 1:
+                self._filters.append("Or: %d" % (len(value)))
+        else:
+            self._filters.append("Filter: %s %s %s" % (key, op, value))
+        return self
+
+class live_socket(object):
+    def __init__(self, peer_name):
+        self.peer = peer_name
+    def __getattr__(self, name):
+        return live_query(self, name)
+    def call(self, request, columns=None):
+        try:
+            if len(self.peer) == 2:
+                s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            else:
+                s = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+            s.connect(self.peer)
+            s.send(request)
+            s.shutdown(socket.SHUT_WR)
+            csv_lines = csv.DictReader(s.makefile(), columns, delimiter=';')
+            return list(csv_lines)
+        finally:
+            s.close()
 
 class status_process(threading_tools.process_obj):
     def process_init(self):
@@ -61,59 +107,48 @@ class status_process(threading_tools.process_obj):
         if self.__socket is None:
             sock_name = "/opt/%s/var/live" % (global_config["MD_TYPE"])
             if os.path.exists(sock_name):
-                try:
-                    self.__socket = mk_livestatus.Socket(sock_name)
-                except:
-                    self.log("cannot open livestatus socket %s : %s" % (sock_name, process_tools.get_except_info()), logging_tools.LOG_LEVEL_ERROR)
-                    self.__socket = None
-                else:
-                    self.log("reopened livestatus socket %s" % (sock_name))
+                self.__socket = live_socket(sock_name)
             else:
                 self.log("socket '%s' does not exist" % (sock_name), logging_tools.LOG_LEVEL_ERROR)
         return self.__socket
     def _get_node_status(self, *args, **kwargs):
         src_id, srv_com = (args[0], server_command.srv_command(source=args[1]))
-        if mk_livestatus:
-            pk_list = srv_com.xpath(".//device_list/device/@pk")
-            dev_names = sorted([cur_dev.full_name for cur_dev in device.objects.filter(Q(pk__in=pk_list))])
-            try:
-                cur_sock = self._open()
-                if cur_sock:
-                    srv_com.set_result("status for %s" % (logging_tools.get_plural("device", len(dev_names))))
-                    query_field = [
-                            "GET services",
-                            "Columns: host_name description state plugin_output last_check",
-                    ]
-                    query_field.append("Filter: host_name = %s" % (dev_names[0]))
-                    if len(dev_names) > 1:
-                        query_field.extend([
-                                          "Filter: host_name = %s" % (dev_n) for dev_n in dev_names[1:]])
-                        query_field.append("Or: %d" % (len(dev_names)))
-                    query_field.append("")
-                    query_str = "\n".join(query_field)
-                    cur_query = cur_sock.query(query_str)
-                    result = cur_query.get_list()
-                    node_results = {}
-                    for entry in result:
+        pk_list = srv_com.xpath(".//device_list/device/@pk")
+        dev_names = sorted([cur_dev.full_name for cur_dev in device.objects.filter(Q(pk__in=pk_list))])
+        try:
+            cur_sock = self._open()
+            if cur_sock:
+                srv_com.set_result("status for %s" % (logging_tools.get_plural("device", len(dev_names))))
+                query = cur_sock.services.columns("host_name", "description", "state", "plugin_output", "last_check").filter("host_name", "=", dev_names)
+                result = query.call()
+                node_results = {}
+                for entry in result:
+                    try:
+                        # cleanup entry
+                        entry = {key: value for key, value in entry.iteritems() if value != None}
                         host_name = entry.pop("host_name")
                         output = entry["plugin_output"]
                         if type(output) == list:
                             entry["plugin_output"] = ",".join(output)
-                        node_results.setdefault(host_name, []).append((entry["description"], entry))
-                    # rewrite to xml
-                    srv_com["result"] = E.node_results(
-                        *[E.node_result(
-                            *[E.result(**entry) for _sort_val, entry in sorted(value)],
-                            name=key) for key, value in node_results.iteritems()]
-                    )
-                    # print srv_com.pretty_print()
-                else:
-                    srv_com.set_result("cannot connect to socket", server_command.SRV_REPLY_STATE_CRITICAL)
-            except:
-                self._close()
-                self.log("fetch exception: %s" % (process_tools.get_except_info()), logging_tools.LOG_LEVEL_ERROR)
-                srv_com.set_result("exception during fetch", server_command.SRV_REPLY_STATE_CRITICAL)
-        else:
-            srv_com.set_result("no mk_livestatus found", server_command.SRV_REPLY_STATE_CRITICAL)
+                        if host_name:
+                            node_results.setdefault(host_name, []).append((entry["description"], entry))
+                    except:
+                        self.log("error processing livestatus entry '%s': %s" % (str(entry), process_tools.get_except_info()),
+                            logging_tools.LOG_LEVEL_CRITICAL)
+                srv_com["result"] = E.node_results(
+                    *[E.node_result(
+                        *[E.result(**entry) for _sort_val, entry in sorted(value)],
+                        name=key) for key, value in node_results.iteritems()]
+                )
+                # print srv_com.pretty_print()
+            else:
+                srv_com.set_result("cannot connect to socket", server_command.SRV_REPLY_STATE_CRITICAL)
+        except:
+            self.log("fetch exception: %s" % (process_tools.get_except_info()), logging_tools.LOG_LEVEL_ERROR)
+            exc_info = process_tools.exception_info()
+            for line in exc_info.log_lines:
+                self.log(" - %s" % (line), logging_tools.LOG_LEVEL_ERROR)
+            self._close()
+            srv_com.set_result("exception during fetch", server_command.SRV_REPLY_STATE_CRITICAL)
         self.send_pool_message("send_command", src_id, unicode(srv_com))
 
