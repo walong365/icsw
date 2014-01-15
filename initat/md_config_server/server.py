@@ -36,7 +36,7 @@ from initat.host_monitoring.hm_classes import mvect_entry
 from initat.md_config_server import constants
 from initat.md_config_server.build import build_process
 from initat.md_config_server.config import global_config
-from initat.md_config_server.status import status_process
+from initat.md_config_server.status import status_process, live_socket
 import cluster_location
 import codecs
 import commands
@@ -49,11 +49,6 @@ import threading_tools
 import time
 import uuid_tools
 import zmq
-
-try:
-    import mk_livestatus
-except ImportError:
-    mk_livestatus = None
 
 try:
     from md_config_server.version import VERSION_STRING
@@ -106,25 +101,22 @@ class server_process(threading_tools.process_pool):
         res_dict = {}
         if self.__enable_livestatus:
             if "MD_TYPE" in global_config:
-                if mk_livestatus:
-                    sock_name = "/opt/%s/var/live" % (global_config["MD_TYPE"])
-                    cur_s = mk_livestatus.Socket(sock_name)
-                    try:
-                        query = cur_s.query("GET hosts\nColumns: name state\n")
-                    except:
-                        self.log("cannot query socket %s: %s" % (sock_name, process_tools.get_except_info()),
-                                 logging_tools.LOG_LEVEL_CRITICAL)
-                    else:
-                        q_list = [int(value["state"]) for value in query.get_list()]
-                        res_dict = dict([(s_name, q_list.count(value)) for s_name, value in [
-                            ("unknown", constants.NAG_HOST_UNKNOWN),
-                            ("up"     , constants.NAG_HOST_UP),
-                            ("down"   , constants.NAG_HOST_DOWN)]])
-                        res_dict["tot"] = sum(res_dict.values())
-                    # cur_s.peer.close()
-                    del cur_s
+                sock_name = "/opt/%s/var/live" % (global_config["MD_TYPE"])
+                cur_s = live_socket(sock_name)
+                try:
+                    result = cur_s.hosts.columns("name", "state").call()
+                except:
+                    self.log("cannot query socket %s: %s" % (sock_name, process_tools.get_except_info()),
+                             logging_tools.LOG_LEVEL_CRITICAL)
                 else:
-                    self.log("mk_livestatus enabled but module not loaded", logging_tools.LOG_LEVEL_ERROR)
+                    q_list = [int(value["state"]) for value in result]
+                    res_dict = dict([(s_name, q_list.count(value)) for s_name, value in [
+                        ("unknown", constants.NAG_HOST_UNKNOWN),
+                        ("up"     , constants.NAG_HOST_UP),
+                        ("down"   , constants.NAG_HOST_DOWN)]])
+                    res_dict["tot"] = sum(res_dict.values())
+                # cur_s.peer.close()
+                del cur_s
             else:
                 self.log("no MD_TYPE set, skipping livecheck", logging_tools.LOG_LEVEL_WARN)
         else:
