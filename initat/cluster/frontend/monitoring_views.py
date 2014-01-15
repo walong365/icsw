@@ -215,9 +215,14 @@ class get_node_config(View):
     @method_decorator(login_required)
     @method_decorator(xml_wrapper)
     def post(self, request):
+        _post = request.POST
+        if "pk_list" in _post:
+            pk_list = json.loads(_post["pk_list"])
+        else:
+            pk_list = request.POST.getlist("pks[]")
         srv_com = server_command.srv_command(command="get_host_config")
         srv_com["device_list"] = E.device_list(
-            *[E.device(pk="%d" % (int(cur_pk))) for cur_pk in request.POST.getlist("pks[]")]
+            *[E.device(pk="%d" % (int(cur_pk))) for cur_pk in pk_list]
         )
         result = contact_server(request, "tcp://localhost:8010", srv_com, timeout=30)
         if result:

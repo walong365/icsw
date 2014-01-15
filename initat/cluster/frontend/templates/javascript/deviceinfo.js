@@ -495,6 +495,7 @@ class device_info
         )
         @config_init = false
         @livestatus_init = false
+        @monconfig_init = false
     show_config_vars: () =>
         $.ajax
             url     : "{% url 'config:get_device_cvars' %}"
@@ -540,12 +541,10 @@ class device_info
             if not @livestatus_init
                 @livestatus_init = true
                 angular.bootstrap(ui.newPanel.find("div[id='icsw.device.livestatus']"), ["icsw.device.livestatus"])
-                # lazy load status
-                #@init_livestatus(ui.newPanel)
         else if t_href == "#monconfig"
-            if not ui.newPanel.html()
-                # lazy load monconfig
-                @init_monconfig(ui.newPanel)
+            if not @monconfig_init
+                @monconfig_init = true
+                angular.bootstrap(ui.newPanel.find("div[id='icsw.device.monconfig']"), ["icsw.device.livestatus"])
         else if t_href == "#rrd"
             if not ui.newPanel.html()
                 # lazy load rrd
@@ -554,75 +553,6 @@ class device_info
             if not ui.newPanel.html()
                 # lazy load network
                 @init_network_div()
-    init_livestatus: (top_div) =>
-        table_div = $("<div>").attr("id", "livestatus")
-        @livestatus_div = table_div
-        top_div.append(@livestatus_div)
-        top_div.append(
-            $("<input>").attr(
-                "type" : "button",
-                "value" : "reload",
-            ).on("click", @update_livestatus)
-        )
-        @update_livestatus()
-    update_livestatus: () =>
-        $.ajax
-            url  : "{% url 'mon:get_node_status' %}"
-            data : {
-                "pks" : @get_pk_list()
-            }
-            success : (xml) =>
-                if parse_xml_response(xml)
-                    node_results = $(xml).find("node_results")
-                    new_tab = $("<table>").addClass("style2")
-                    new_tab.append(
-                        $("<thead>").append(
-                            $("<tr>").addClass("ui-widget ui-widget-header").append(
-                                $("<th>").text("Host"),
-                                $("<th>").text("Check"),
-                                $("<th>").text("when"),
-                                $("<th>").text("Result"),
-                            )
-                        )
-                    )
-                    cur_date = new Date()
-                    tab_body = $("<tbody>")
-                    node_results.find("node_result").each (node_idx, cur_node) =>
-                        cur_node = $(cur_node)
-                        cur_node.find("result").each (idx, cur_res) =>
-                            cur_res = $(cur_res)
-                            diff_date = parseInt(cur_date.getTime() / 1000 - parseInt(cur_res.attr("last_check")))
-                            tab_body.append(
-                                $("<tr>").addClass({"0" : "ok", "1" : "warn", "2" : "error", "3" : "unknown"}[cur_res.attr("state")]).append(
-                                    $("<td>").text(cur_node.attr("name")),
-                                    $("<td>").text(cur_res.attr("description")),
-                                    $("<td>").addClass("right").text(beautify_seconds(diff_date)),
-                                    $("<td>").text(cur_res.text()),
-                                )
-                            )
-                    new_tab.append(tab_body)
-                    @livestatus_div.empty().html(new_tab)
-                    if tab_body.children().length
-                        new_tab.dataTable(
-                            "sPaginationType" : "full_numbers"
-                            "iDisplayLength"  : 50
-                            "bScrollCollapse" : true
-                            "bScrollAutoCss"  : true
-                            "bAutoWidth"      : false
-                            "bJQueryUI"       : true
-                            "bPaginate"       : true
-                        )
-    init_monconfig: (top_div) =>
-        table_div = $("<div>").attr("id", "monconfig")
-        @monconfig_div = table_div
-        top_div.append(@monconfig_div)
-        top_div.append(
-            $("<input>").attr(
-                "type"  : "button",
-                "value" : "reload",
-            ).on("click", @update_monconfig)
-        )
-        @update_monconfig()
     shorten_attribute: (in_name) =>
         return (sub_str.charAt(0).toUpperCase() for sub_str in in_name.split("_")).join("")
     update_monconfig: () =>
@@ -948,7 +878,10 @@ class device_info
         return ls_div
     monconfig_div: (dev_xml) =>
         # monitoring config div
-        return $("<div>").attr("id", "monconfig")
+        pk_list = @get_pk_list() 
+        mc_div = $("<div>").attr("id", "monconfig")
+        mc_div.append($("<div id='icsw.device.monconfig'><div ng-controller='monconfig_ctrl'><monconfig devicepk='" + pk_list.join(",") + "'></monconfig></div></div>"))
+        return mc_div
     rrd_div: (dev_xml) =>
         # rrd div
         return $("<div>").attr("id", "rrd")

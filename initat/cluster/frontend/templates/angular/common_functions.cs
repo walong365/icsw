@@ -68,7 +68,7 @@ class paginator_class
             filter           : undefined
             filter_func      : undefined
         }
-        if @$scope.settings and @$scope.settings.filter_settings
+        if @$scope and @$scope.settings and @$scope.settings.filter_settings
             @conf.filter_settings = @$scope.settings.filter_settings
         else
             @conf.filter_settings = {}
