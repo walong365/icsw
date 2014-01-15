@@ -339,6 +339,7 @@ class get_gauge_info(View):
                 E.gauge_element(
                     gauge_dv.description,
                     value="%d" % (gauge_dv.val_int),
+                    idx="%d" % (gauge_dv.pk),
                 )
             )
         # gauge_info.append(E.gauge_element("test", value="40"))

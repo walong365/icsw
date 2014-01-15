@@ -96,11 +96,13 @@
                 </ul>
             </li>
             <li class="visible-md visible-lg">
-                <div ng-show="cur_gauges.length" ng-repeat="obj in cur_gauges" class="progress" style="width:200px; margin-top:10px;">
-                    <div class="progress-bar progress-bar-success" aria-valuenow="{{ obj.value }}" aria-valuemin="0" aria-valuemax="100" ng-style="get_progress_style(obj)"></div>
+                {% verbatim %}
+                <div ng-show="num_gauges" ng-repeat="(key, obj) in cur_gauges" class="progress" style="width:200px; margin-top:10px;">
+                    <progressbar animate="true" value="obj.value" type="success"><span>{{ obj.value }}</span></progressbar>
                 </div>
+                {% endverbatim %}
             </li>
-            <li ng-show="!cur_gauges.length" class="visible-md visible-lg">
+            <li ng-if="num_gauges == 0" class="visible-md visible-lg">
                 {% with "images/product/"|add:settings.INIT_PRODUCT_NAME|lower|add:"-flat-trans.png" as gfx_name %}
                 <img height="42px" src="{% static gfx_name %}" alt="{{ settings.INIT_PRODUCT_NAME }} logo">
                 </img>
@@ -123,12 +125,13 @@
 
 root = exports ? this
 
-menu_module = angular.module("icsw.menu_app", ["ngSanitize"])
+menu_module = angular.module("icsw.menu_app", ["ngSanitize", "ui.bootstrap"])
 
 menu_controller = menu_module.controller("menu_base", ["$scope", "$timeout",
     ($scope, $timeout) ->
         $scope.progress_iters = 0
-        $scope.cur_gauges = []
+        $scope.cur_gauges = {}
+        $scope.num_gauges = 0
         $scope.get_progress_style = (obj) ->
             return {"width" : "#{obj.value}%"}
         $scope.show_time = () ->
@@ -139,19 +142,30 @@ menu_controller = menu_module.controller("menu_base", ["$scope", "$timeout",
                 url     : "{% url 'base:get_gauge_info' %}",
                 hidden  : true,
                 success : (xml) =>
+                    cur_pb = []
                     if parse_xml_response(xml)
-                        cur_len = $scope.cur_gauges.length
                         $(xml).find("gauge_info gauge_element").each (idx, cur_g) ->
                             cur_g = $(cur_g)
-                            $scope.cur_gauges.push({info : cur_g.text(), value : parseInt(cur_g.attr("value"))})
-                        if cur_len
-                            $scope.cur_gauges.splice(0, cur_len)
-                    if $scope.cur_gauges.length or $scope.progress_iters
-                        if $scope.progress_iters
-                            $scope.progress_iters--
-                        $timeout($scope.update_progress_bar, 1000)
+                            idx = cur_g.attr("idx")
+                            if idx of $scope.cur_gauges
+                                $scope.cur_gauges[idx].info = cur_g.text()
+                                $scope.cur_gauges[idx].value = parseInt(cur_g.attr("value"))
+                            else
+                                $scope.cur_gauges[idx] = {info : cur_g.text(), value : parseInt(cur_g.attr("value"))}
+                            cur_pb.push(idx)
+                    del_pbs = (cur_idx for cur_idx of $scope.cur_gauges when cur_idx not in cur_pb)
+                    for del_pb in del_pbs
+                        delete $scope.cur_gauges[del_pb]
+                    #for cur_idx, value of $scope.cur_gauges
+                    $scope.$apply(
+                        $scope.num_gauges = cur_pb.length
+                        if cur_pb.length or $scope.progress_iters
+                            if $scope.progress_iters
+                                $scope.progress_iters--
+                            $timeout($scope.update_progress_bar, 1000)
+                    )
         $scope.show_time()
-        $scope.update_progress_bar()
+        #$scope.update_progress_bar()
         $scope.rebuild_config = () ->
             $.ajax
                 url     : "{% url 'mon:create_config' %}"
