@@ -25,7 +25,7 @@ _tree_node = '
                 <input ng-if="treeconfig.show_select" type="button" class="btn btn-primary" value="s" ng-click="treeconfig.toggle_expand_tree(1, true)" title="expand selected"></input>
                 <input type="button" class="btn btn-danger" value="c" ng-click="treeconfig.toggle_expand_tree(-1, false)" title="collapse all"></input>
             </div>
-            <a ng-href="#" class="dynatree-title" ng-click="treeconfig.handle_click(entry, $event)">{{ treeconfig.get_name(entry) }}
+            <a ng-href="#" class="dynatree-title" ng-click="treeconfig.handle_click(entry, $event)"><span ng-class="treeconfig.get_name_class(entry)">{{ treeconfig.get_name(entry) }}</span>
                 <span ng-if="treeconfig.show_childs && !treeconfig.show_descendants" ng-show="entry._num_childs">({{ entry._num_childs }}<span ng-show="entry._sel_childs"> / {{ entry._sel_childs }}</span>)</span>
                 <span ng-if="treeconfig.show_descendants && !treeconfig.show_childs" ng-show="entry._num_descendants">({{ entry._num_descendants }}<span ng-show="entry._sel_descendants"> / {{ entry._sel_descendants }}</span>)</span>
             </a>
@@ -142,6 +142,9 @@ class tree_config
     get_name: () =>
         # override
         return "node"
+    get_name_class: () =>
+        # override
+        return ""
     start_tracking_changes: () =>
         @_track_changes = true
         @_change_list = []
