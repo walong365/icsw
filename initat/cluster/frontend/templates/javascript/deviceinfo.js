@@ -433,7 +433,7 @@ class device_info
                 $("<li>").append($("<a>").attr("href", "#location").text("Location")),
                 if @has_perm("change_network") then $("<li>").append($("<a>").attr("href", "#network").text("Network")) else null,
                 $("<li>").append($("<a>").attr("href", "#config").text("Config#{addon_text}")),
-                $("<li>").append($("<a>").attr("href", "#disk").text("Disk")),
+                $("<li>").append($("<a>").attr("href", "#disk").text("Disk#{addon_text}")),
                 $("<li>").append($("<a>").attr("href", "#mdcds").text("MD data store")),
                 $("<li>").append($("<a>").attr("href", "#livestatus").text("Livestatus#{addon_text}")),
                 $("<li>").append($("<a>").attr("href", "#monconfig").text("MonConfig#{addon_text}")),
@@ -459,6 +459,7 @@ class device_info
         @config_init = false
         @livestatus_init = false
         @monconfig_init = false
+        @diskinfo_init = false
     activate_tab: (event, ui) =>
         t_href = ui.newTab.find("a").attr("href")
         if t_href == "#config"
@@ -474,6 +475,10 @@ class device_info
             if not @monconfig_init
                 @monconfig_init = true
                 angular.bootstrap(ui.newPanel.find("div[id='icsw.device.monconfig']"), ["icsw.device.livestatus"])
+        else if t_href == "#disk"
+            if not @diskinfo_init
+                @diskinfo_init = true
+                angular.bootstrap(ui.newPanel.find("div[id='icsw.device.partinfo']"), ["icsw.device.config"])
         else if t_href == "#rrd"
             if not ui.newPanel.html()
                 # lazy load rrd
@@ -482,8 +487,6 @@ class device_info
             if not ui.newPanel.html()
                 # lazy load network
                 @init_network_div()
-    shorten_attribute: (in_name) =>
-        return (sub_str.charAt(0).toUpperCase() for sub_str in in_name.split("_")).join("")
     init_rrd: (top_div) =>
         rrd_div = $("<div>").attr("id", "rrd").addClass("leftfloat")
         graph_div = $("<div>").attr("id", "graph").addClass("leftfloat")
@@ -772,6 +775,10 @@ class device_info
         # rrd div
         return $("<div>").attr("id", "rrd")
     disk_div: (dev_xml) =>
+        pk_list = @get_pk_list() 
+        dsk_div = $("<div>").attr("id", "disk")
+        dsk_div.append($("<div id='icsw.device.partinfo'><div ng-controller='partinfo_ctrl'><partinfo devicepk='" + pk_list.join(",") + "'></partinfo></div></div>"))
+        return dsk_div
         # disk div
         disk_div = $("<div>").attr("id", "disk")
         if dev_xml.find("partition_table").length

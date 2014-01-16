@@ -32,7 +32,8 @@ from initat.cluster.backbone.models import user , group, user_serializer_h, grou
      device_serializer_monitor_server, category_tree, device_serializer_cat, device_selection, \
      device_selection_serializer, partition_table_serializer_save, partition_disc_serializer_save, \
      partition_disc_serializer_create, device_serializer_variables, device_serializer_device_configs, \
-     device_config, device_config_hel_serializer, home_export_list, csw_permission
+     device_config, device_config_hel_serializer, home_export_list, csw_permission, \
+     device_serializer_disk_info
 from rest_framework import mixins, generics, status, viewsets, serializers
 from rest_framework.authentication import BasicAuthentication, SessionAuthentication
 from rest_framework.decorators import api_view
@@ -430,6 +431,8 @@ class device_tree_list(mixins.ListModelMixin,
             return device_serializer_variables
         elif self._get_post_boolean("with_device_configs", False):
             return device_serializer_device_configs
+        elif self._get_post_boolean("with_disk_info", False):
+            return device_serializer_disk_info
         else:
             return device_serializer
     @rest_logging

@@ -84,6 +84,34 @@ devconf_vars_template = """
     </div>
 """
 
+partinfo_template = """
+    <div>
+        <tabset>
+            <tab ng-repeat="dev in entries" heading="{{ dev.full_name }}">
+                <span ng-show="dev.partition_table">
+                    <h3>Partition table '{{ dev.partition_table.name}}'</h3>
+                    <table class="table table-condensed table-hover table-bordered" style="width:auto;">
+                        <tbody>
+                            <tr ng-repeat-start="disk in dev.partition_table.partition_disc_set">
+                                <th colspan="2">Disk {{ disk.disc }}, {{ disk.partition_set.length }} partitions</th>
+                                <th>warn</th>
+                                <th>crit</th>
+                            </tr>
+                            <tr ng-repeat-end ng-repeat="part in disk.partition_set" ng-show="part.mountpoint">
+                                <td>{{ disk.disc }}{{ part.pnum }}</td>
+                                <td>{{ part.mountpoint }}</td>
+                                <td>{{ part.warn_threshold }}</td>
+                                <td>{{ part.crit_threshold }}</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </span>
+                <span ng-show="!dev.partition_table" class="text-danger">No partition table defined</span>
+            </tab> 
+        </tabset>
+    </div>
+"""
+
 {% endverbatim %}
 
 device_config_module = angular.module("icsw.device.config", ["ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters", "localytics.directives", "restangular"])
@@ -535,6 +563,28 @@ loc_ctrl = device_config_module.controller("location_ctrl", ["$scope",
                     parse_xml_response(xml)
 
 ])
+
+device_config_module.controller("partinfo_ctrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "sharedDataSource", "$q", "$modal",
+    ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, sharedDataSource, $q, $modal) ->
+        $scope.entries = []
+        $scope.new_devsel = (_dev_sel, _devg_sel) ->
+            $scope.devsel_list = _dev_sel
+            wait_list = restDataSource.add_sources([
+                ["{% url 'rest:device_tree_list' %}", {"with_disk_info" : true, "with_meta_devices" : false, "pks" : angular.toJson($scope.devsel_list)}],
+            ])
+            $q.all(wait_list).then((data) ->
+                $scope.entries = data[0]
+            )
+]).directive("partinfo", ($templateCache, $compile, $modal, Restangular) ->
+    return {
+        restrict : "EA"
+        template : $templateCache.get("partinfo.html")
+        link : (scope, el, attrs) ->
+            scope.new_devsel((parseInt(entry) for entry in attrs["devicepk"].split(",")), [])
+    }
+).run(($templateCache) ->
+    $templateCache.put("partinfo.html", partinfo_template)
+)
 
 add_tree_directive(cat_ctrl)
 
