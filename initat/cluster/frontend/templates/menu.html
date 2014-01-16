@@ -106,7 +106,7 @@
         <li>
             <p class="navbar-text  visible-md visible-lg"">
                 <span>
-                    {% verbatim %}{{ cur_time }}{% endverbatim %}
+                    {% verbatim %}{{ cur_time }}{% endverbatim %}, 
                     <span title="{{ user }}">user '{{ user.login }}'</span>{% ifnotequal user.login request.session.login_name %} (via alias {{ request.session.login_name }}){% endifnotequal %}
                 </span>
             </p>

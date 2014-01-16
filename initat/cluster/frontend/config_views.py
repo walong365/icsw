@@ -40,6 +40,7 @@ from initat.cluster.frontend.helper_functions import contact_server, xml_wrapper
 from initat.core.render import render_me
 from lxml import etree # @UnresolvedImports
 from lxml.builder import E # @UnresolvedImports
+import json
 import datetime
 import logging
 import logging_tools
@@ -552,10 +553,14 @@ class get_device_cvars(View):
     @method_decorator(xml_wrapper)
     def post(self, request):
         _post = request.POST
+        if "keys" in _post:
+            pk_list = json.loads(_post["keys"])
+        else:
+            pk_list = [_post["key"]]
         srv_com = server_command.srv_command(command="get_config_vars")
         srv_com["devices"] = srv_com.builder(
             "devices",
-            *[srv_com.builder("device", pk="%d" % (int(cur_pk))) for cur_pk in [_post["key"]]])
+            *[srv_com.builder("device", pk="%d" % (int(cur_pk))) for cur_pk in pk_list])
         result = contact_server(request, "tcp://localhost:8005", srv_com, timeout=30, log_result=False)
         if result:
             request.xml_response["result"] = E.devices()

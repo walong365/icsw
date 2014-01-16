@@ -70,11 +70,96 @@ device_config_template = """
     </table>
 """
 
+devconf_vars_template = """
+    <h2>Config variables for {{ devsel_list.length }} devices</h2>
+    <div class="row">
+        <div class="col-sm-5 form-inline">
+            <div class="form-group">
+                <input class="form-control" ng-model="var_filter" placeholder="filter"></input>
+            </div>
+        </div>
+    </div>
+    <div>
+        <tree treeconfig="devvar_tree"></tree>
+    </div>
+"""
+
 {% endverbatim %}
 
 device_config_module = angular.module("icsw.device.config", ["ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters", "localytics.directives", "restangular"])
 
 angular_module_setup([device_config_module])
+
+class device_config_var_tree extends tree_config
+    constructor: (@scope, args) ->
+        super(args)
+        @show_selection_buttons = false
+        @show_icons = true
+        @show_select = false
+        @show_descendants = false
+        @show_childs = false
+    get_name : (t_entry) ->
+        obj = t_entry.obj
+        if t_entry._node_type == "d"
+            return obj.attr("name") + " (" + obj.attr("info_str") + ")"
+        else
+            if obj.attr("value")?
+                return obj.attr("key") + " = " + obj.attr("value")
+            else
+                return obj.attr("key")
+
+device_config_module.controller("config_vars_ctrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "sharedDataSource", "$q", "$modal",
+    ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, sharedDataSource, $q, $modal) ->
+        $scope.devvar_tree = new device_config_var_tree($scope)
+        $scope.var_filter = ""
+        $scope.new_devsel = (_dev_sel, _devg_sel) ->
+            $scope.devsel_list = _dev_sel
+            $.ajax
+                url     : "{% url 'config:get_device_cvars' %}"
+                data    :
+                    "keys" : angular.toJson($scope.devsel_list)
+                success : (xml) =>
+                    parse_xml_response(xml)
+                    $scope.set_tree_content($(xml).find("devices"))
+        $scope.set_tree_content = (in_xml) ->
+            for dev_xml in in_xml.find("device")
+                dev_xml = $(dev_xml)
+                dev_entry = $scope.devvar_tree.new_node({folder: true, expand:true, obj:dev_xml, _node_type:"d"})
+                $scope.devvar_tree.add_root_node(dev_entry)
+                for _xml in dev_xml.find("var_tuple_list").children()
+                    _xml = $(_xml)
+                    t_entry = $scope.devvar_tree.new_node({folder : true, obj: _xml, _node_type : "c"})
+                    dev_entry.add_child(t_entry)
+                    _xml.children().each (idx, _sv) ->
+                        _sv = $(_sv)
+                        t_entry.add_child($scope.devvar_tree.new_node({folder : false, obj:_sv, _node_type : "v"}))
+            $scope.$digest()
+        $scope.$watch("var_filter", (new_val) -> $scope.new_filter_set(new_val, true))
+        $scope.new_filter_set = (new_val) ->
+            if new_val
+                try
+                    filter_re = new RegExp(new_val, "gi")
+                catch
+                    filter_re = new RegExp("^$", "gi")
+            else
+                filter_re = new RegExp("^$", "gi")  
+            $scope.devvar_tree.iter(
+                (entry, filter_re) ->
+                    cmp_name = if entry._node_type == "d" then entry.obj.attr("name") else entry.obj.attr("key")
+                    entry.set_selected(if cmp_name.match(filter_re) then true else false)
+                filter_re
+            )
+            $scope.devvar_tree.show_selected(false)
+]).directive("deviceconfigvars", ($templateCache, $compile, $modal, Restangular) ->
+    return {
+        restrict : "EA"
+        template : $templateCache.get("devconfvars.html")
+        link : (scope, el, attrs) ->
+            scope.new_devsel((parseInt(entry) for entry in attrs["devicepk"].split(",")), [])
+    }
+).run(($templateCache) ->
+    $templateCache.put("devconfvars.html", devconf_vars_template)
+)
 
 device_config_module.controller("config_ctrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "sharedDataSource", "$q", "$modal",
     ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, sharedDataSource, $q, $modal) ->
@@ -215,7 +300,7 @@ device_config_module.controller("config_ctrl", ["$scope", "$compile", "$filter",
         restrict : "EA"
         template : $templateCache.get("device_config_template.html")
         link : (scope, el, attrs) ->
-            scope.new_devsel([parseInt(attrs["devicepk"])], [])
+            scope.new_devsel((parseInt(entry) for entry in attrs["devicepk"].split(",")), [])
     }
 ).directive("deviceconfigtable", ($templateCache, $compile, $modal, Restangular) ->
     return {

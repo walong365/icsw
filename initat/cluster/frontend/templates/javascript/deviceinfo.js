@@ -432,7 +432,7 @@ class device_info
                 $("<li>").append($("<a>").attr("href", "#category").text("Category")),
                 $("<li>").append($("<a>").attr("href", "#location").text("Location")),
                 if @has_perm("change_network") then $("<li>").append($("<a>").attr("href", "#network").text("Network")) else null,
-                $("<li>").append($("<a>").attr("href", "#config").text("Config")),
+                $("<li>").append($("<a>").attr("href", "#config").text("Config#{addon_text}")),
                 $("<li>").append($("<a>").attr("href", "#disk").text("Disk")),
                 $("<li>").append($("<a>").attr("href", "#mdcds").text("MD data store")),
                 $("<li>").append($("<a>").attr("href", "#livestatus").text("Livestatus#{addon_text}")),
@@ -459,40 +459,6 @@ class device_info
         @config_init = false
         @livestatus_init = false
         @monconfig_init = false
-    show_config_vars: () =>
-        # has to be transfered to angular, FIXME
-        $.ajax
-            url     : "{% url 'config:get_device_cvars' %}"
-            data    :
-                "key"    : @resp_xml.find("device").attr("pk")
-            success : (xml) =>
-                if parse_xml_response(xml)
-                    vtl = $(xml).find("var_tuple_list")
-                    if vtl.length
-                        dt_div = $("<div>").attr("id", "var_tree")
-                        dt_div.dynatree
-                            autoFocus : false
-                            checkbox  : false
-                            clickFolderMode : 2
-                        @build_vtl_node(dt_div.dynatree("getRoot"), vtl)
-                        @dev_div.find("div#config").append(dt_div)
-    build_vtl_node: (root_node, vtl_node) =>
-        if vtl_node.prop("tagName") == "var"
-            title_str = vtl_node.attr("key")
-            if vtl_node.attr("value")?
-                title_str = title_str + " = " + vtl_node.attr("value")
-        else
-            title_str = vtl_node.prop("tagName")
-        if vtl_node.find("*").length
-            is_folder = true
-        else
-            is_folder = false
-        new_node = root_node.addChild(
-            title    : title_str
-            isFolder : is_folder
-        )
-        vtl_node.find("> *").each (idx, sub_node) =>
-            @build_vtl_node(new_node, $(sub_node))
     activate_tab: (event, ui) =>
         t_href = ui.newTab.find("a").attr("href")
         if t_href == "#config"
@@ -500,7 +466,6 @@ class device_info
                 @config_init = true
                 # lazy load config
                 angular.bootstrap(ui.newPanel.find("div[id='icsw.device.config.local']"), ["icsw.device.config"])
-                #new config_table(ui.newPanel, undefined, @resp_xml.find("device"), @show_config_vars)
         else if t_href == "#livestatus"
             if not @livestatus_init
                 @livestatus_init = true
@@ -776,9 +741,20 @@ class device_info
         @network_div.find("select[id='ip__" + net_ip_xml.attr("pk") + "__network']").attr("value", net_ip_xml.attr("network"))
     config_div: (dev_xml) =>
         # configuration div
-        dev_pk = @resp_xml.find("device").attr("pk")
+        pk_list = @get_pk_list() 
         conf_div = $("<div>").attr("id", "config")
-        conf_div.append($("<div id='icsw.device.config.local'><div ng-controller='config_ctrl'><deviceconfig devicepk='#{dev_pk}'></deviceconfig></div></div>"))
+        conf_div.append($("""
+            <div id='icsw.device.config.local'>
+                <div ng-controller='config_ctrl'>
+                    <deviceconfig devicepk='#{pk_list}'>
+                    </deviceconfig>
+                </div>
+                <div ng-controller='config_vars_ctrl'>
+                    <deviceconfigvars devicepk='#{pk_list}'>
+                    </deviceconfigvars>
+                </div>
+            </div>
+        """))
         return conf_div
     livestatus_div: (dev_xml) =>
         # configuration div
