@@ -43,7 +43,7 @@
                                     {{ obj.name }}
                                 </td>
                                 <td ng-repeat="entry in value" class="text-center">
-                                    <input type="checkbox" ng-checked="object_csw_set(obj.idx, entry.idx)" ng-click="toggle_object_csw(key, obj.idx, entry.idx)"></input>
+                                    <input type="checkbox" ng-disabled="has_global_perm(entry.idx)" ng-checked="object_csw_set(obj.idx, entry.idx)" ng-click="toggle_object_csw(key, obj.idx, entry.idx)"></input>
                                 </td>
                             <tr>
                         </tbody>
@@ -182,13 +182,15 @@ user_tree_module.controller("user_tree", ["$scope", "$compile", "$filter", "$tem
             ["{% url 'rest:user_list' %}", {}]
             ["{% url 'rest:device_group_list' %}", {}]
             ["{% url 'rest:csw_permission_list' %}", {}]
-            ["{% url 'rest:csw_object_permission_list' %}", {}]
+            #["{% url 'rest:csw_object_permission_list' %}", {}]
             ["{% url 'rest:home_export_list' %}", {}]
             ["{% url 'rest:csw_object_list' %}", {}]
         ])
         $scope.init_ocsw_cache = (entry) ->
+            # copy permissions
+            entry.initial_permissions = (_perm for _perm in entry.permissions)
             entry.ocsw_cache = {}
-            for csw in $scope.csw_object_permission_list
+            for csw in $scope.csw_permission_list
                 entry.ocsw_cache[csw.idx] = []
             for csw in entry.object_permissions
                 entry.ocsw_cache[csw.csw_permission].push(csw.object_pk)
@@ -198,8 +200,8 @@ user_tree_module.controller("user_tree", ["$scope", "$compile", "$filter", "$tem
                 $scope.user_list = data[1]
                 $scope.device_group_list = data[2]
                 $scope.csw_permission_list = data[3]
-                $scope.csw_object_permission_list = data[4]
-                $scope.home_export_list = data[5]
+                #$scope.csw_object_permission_list = data[4]
+                $scope.home_export_list = data[4]
                 # beautify permission list
                 for entry in $scope.csw_permission_list
                     info_str = entry.content_type.app_label + " | " + entry.content_type.name + " | " + entry.name + " | " + (if entry.valid_for_object_level then "G/O" else "G")
@@ -211,7 +213,7 @@ user_tree_module.controller("user_tree", ["$scope", "$compile", "$filter", "$tem
                         $scope.obj_perms[key].push(entry)
                 $scope.ct_dict = {}
                 $scope.pag_dict = {}
-                for entry in data[6]
+                for entry in data[5]
                     cur_pag = paginatorSettings.get_paginator("list_#{entry.content_label}", $scope)
                     cur_pag.set_entries(entry.object_list)
                     $scope.pag_dict[entry.content_label] = cur_pag
@@ -324,13 +326,17 @@ user_tree_module.controller("user_tree", ["$scope", "$compile", "$filter", "$tem
                     if parse_xml_response(xml)
                         # update cache
                         if remove
-                            $scope._edit_obj.ocsw_cache[entry_idx] = (entry for entry in $scope._edit_obj.ocsw_cache[entry_idx] when entry != obj_idx) 
+                            $scope._edit_obj.ocsw_cache[entry_idx] = (entry for entry in $scope._edit_obj.ocsw_cache[entry_idx] when entry != obj_idx)
+                            $scope._edit_obj.object_permissions = (entry for entry in $scope._edit_obj.object_permissions when (entry.csw_permission != entry_idx or entry.object_pk != obj_idx)) 
                         else
                             $scope._edit_obj.ocsw_cache[entry_idx].push(obj_idx)
+                            $scope._edit_obj.object_permissions.push({csw_permission : entry_idx, object_pk : obj_idx})
                         # trigger redraw
                         $scope.$digest()
         $scope.object_csw_set = (obj_idx, entry_idx) ->
             return obj_idx in $scope._edit_obj.ocsw_cache[entry_idx]
+        $scope.has_global_perm = (entry_idx) ->
+            return entry_idx in $scope._edit_obj.initial_permissions
 ]).directive("grouptemplate", ($compile, $templateCache) ->
     return {
         restrict : "A"

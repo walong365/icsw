@@ -292,14 +292,21 @@ class change_object_permission(View):
                         object_pk=perm_model.pk
                         ))
                 except csw_object_permission.MultipleObjectsReturned:
-                    logger.critical("multiple objects returned for csw_object_permission (perm=%s, pk=%d)" % (
+                    logger.critical("multiple objects returned for csw_object_permission (perm=%s, pk=%d, auth_obj=%s)" % (
                         unicode(set_perm),
                         perm_model.pk,
+                        unicode(auth_obj),
                         ))
                     csw_object_permission.objects.filter(Q(
                         csw_permission=set_perm,
                         object_pk=perm_model.pk
                         )).delete()
+                except csw_object_permission.DoesNotExist:
+                    logger.error("csw_object_permission doest not exist (perm=%s, pk=%d, auth_obj=%s)" % (
+                        unicode(set_perm),
+                        perm_model.pk,
+                        unicode(auth_obj),
+                        ))
                 else:
                     auth_obj.object_permissions.remove(csw_objp)
                     logger.info("removed csw_object_permission %s from %s" % (

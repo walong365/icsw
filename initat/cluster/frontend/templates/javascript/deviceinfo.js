@@ -368,7 +368,7 @@ class device_info
                     @permissions = @resp_xml.find("permissions")
                     @build_div()
                     if replace_div
-                        $("div#center_content").children().remove().end().append(@dev_div)
+                        $("div#center_deviceinfo").children().remove().end().append(@dev_div)
                     else
                         @dev_div.simplemodal
                             opacity      : 50
