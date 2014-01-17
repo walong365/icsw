@@ -1031,7 +1031,9 @@ class device(models.Model):
     actimage = models.CharField(max_length=765, blank=True)
     act_image = models.ForeignKey("image", null=True, related_name="act_image")
     imageversion = models.CharField(max_length=192, blank=True)
+    # new partition table
     partition_table = models.ForeignKey("partition_table", null=True, related_name="new_partition_table")
+    # current partition table
     act_partition_table = models.ForeignKey("partition_table", null=True, related_name="act_partition_table", blank=True)
     partdev = models.CharField(max_length=192, blank=True)
     fixed_partdev = models.IntegerField(null=True, blank=True)
@@ -1354,6 +1356,7 @@ class device_serializer_device_configs(device_serializer):
             )
 
 class device_serializer_disk_info(device_serializer):
+    act_partition_table = partition_table_serializer()
     partition_table = partition_table_serializer()
     class Meta:
         model = device
