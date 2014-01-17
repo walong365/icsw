@@ -88,11 +88,14 @@ partinfo_template = """
     <div>
         <tabset>
             <tab ng-repeat="dev in entries" heading="{{ dev.full_name }}">
-                <span ng-show="dev.partition_table">
-                    <h3>Partition table '{{ dev.partition_table.name}}'</h3>
+                <div ng-show="dev.act_partition_table">
+                    <h4>
+                        Partition table '{{ dev.act_partition_table.name}}',
+                        <input type="button" class="btn btn-sm btn-warning" value="fetch partition info" ng-click="fetch(dev.idx)"></input>
+                    </h4>
                     <table class="table table-condensed table-hover table-bordered" style="width:auto;">
                         <tbody>
-                            <tr ng-repeat-start="disk in dev.partition_table.partition_disc_set">
+                            <tr ng-repeat-start="disk in dev.act_partition_table.partition_disc_set">
                                 <th colspan="2">Disk {{ disk.disc }}, {{ disk.partition_set.length }} partitions</th>
                                 <th>warn</th>
                                 <th>crit</th>
@@ -103,10 +106,26 @@ partinfo_template = """
                                 <td>{{ part.warn_threshold }}</td>
                                 <td>{{ part.crit_threshold }}</td>
                             </tr>
+                            <tr>
+                                <th colspan="2">Logical Volumes</th>
+                                <th>warn</th>
+                                <th>crit</th>
+                            </tr>
+                            <tr ng-repeat="lvm in dev.act_partition_table.lvm_lv_set | orderBy:'name'">
+                                <td>/dev/{{ get_vg(dev, lvm.lvm_vg).name }}/{{ lvm.name }}</td>
+                                <td>{{ lvm.mountpoint }}</td>
+                                <td>{{ lvm.warn_threshold }}</td>
+                                <td>{{ lvm.crit_threshold }}</td>
+                            </tr>
                         </tbody>
                     </table>
-                </span>
-                <span ng-show="!dev.partition_table" class="text-danger">No partition table defined</span>
+                </div>
+                <div ng-show="!dev.act_partition_table">
+                    <h4>
+                        <span class="text-danger">No partition table defined</span>, 
+                        <input type="button" class="btn btn-sm btn-warning" value="fetch partition info" ng-click="fetch(dev.idx)"></input>
+                    </h4>
+                </div>
             </tab> 
         </tabset>
     </div>
@@ -569,12 +588,25 @@ device_config_module.controller("partinfo_ctrl", ["$scope", "$compile", "$filter
         $scope.entries = []
         $scope.new_devsel = (_dev_sel, _devg_sel) ->
             $scope.devsel_list = _dev_sel
-            wait_list = restDataSource.add_sources([
-                ["{% url 'rest:device_tree_list' %}", {"with_disk_info" : true, "with_meta_devices" : false, "pks" : angular.toJson($scope.devsel_list)}],
-            ])
-            $q.all(wait_list).then((data) ->
-                $scope.entries = data[0]
+            $scope.reload()
+        $scope.reload = () ->
+            restDataSource.reload(["{% url 'rest:device_tree_list' %}", {"with_disk_info" : true, "with_meta_devices" : false, "pks" : angular.toJson($scope.devsel_list)}]).then((data) ->
+                $scope.entries = (dev for dev in data)
             )
+        $scope.get_vg = (dev, vg_idx) ->
+            return (cur_vg for cur_vg in dev.act_partition_table.lvm_vg_set when cur_vg.idx == vg_idx)[0]
+        $scope.fetch = (pk) ->
+            if pk?
+                $.blockUI()
+                $.ajax
+                    url     : "{% url 'mon:fetch_partition' %}"
+                    data    : {
+                        "pk" : pk
+                    }
+                    success : (xml) ->
+                        $.unblockUI()
+                        parse_xml_response(xml)
+                        $scope.reload()
 ]).directive("partinfo", ($templateCache, $compile, $modal, Restangular) ->
     return {
         restrict : "EA"
