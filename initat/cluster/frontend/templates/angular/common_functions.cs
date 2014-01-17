@@ -89,6 +89,7 @@ class paginator_class
         @conf.modify_epp = true
         @conf.entries_per_page = (parseInt(entry) for entry in in_str.split(","))
     set_entries: (el_list) =>
+        # can also be used to reapply the filter
         @conf.unfiltered_len = el_list.length
         el_list = @apply_filter(el_list)
         @conf.init = true

@@ -121,12 +121,6 @@ device_variable_module.controller("dv_base", ["$scope", "$compile", "$filter", "
             $scope._obj = obj
             $scope.base_edit.create_list = obj.device_variable_set
             $scope.base_edit.create(event)
-        $scope.filter_empty = () ->
-            return (entry) ->
-                if $scope.pagSettings.conf.filter_settings.hide_empty and not entry.device_variable_set.length
-                    return false
-                else
-                    return true
         $scope.var_filter = ""
         $scope.entries = []
         $scope.pagSettings = paginatorSettings.get_paginator("dv_base", $scope)
@@ -134,7 +128,12 @@ device_variable_module.controller("dv_base", ["$scope", "$compile", "$filter", "
         $scope.pagSettings.conf.filter_settings = {
             "hide_empty" : true
         } 
-        $scope.pagSettings.conf.filter_func = $scope.filter_empty
+        $scope.pagSettings.conf.filter_func = () ->
+            return (entry) ->
+                if $scope.pagSettings.conf.filter_settings.hide_empty and not entry.device_variable_set.length
+                    return false
+                else
+                    return true
         $scope.new_devsel = (a, b) ->
             Restangular.all("{% url 'rest:device_tree_list' %}".slice(1)).getList({"with_variables" : true}).then((data) ->
                 $scope.base_edit.create_list = data
@@ -172,6 +171,7 @@ device_variable_module.controller("dv_base", ["$scope", "$compile", "$filter", "
                         entry.expanded = true
                     else
                         entry.expanded = false
+            $scope.pagSettings.set_entries($scope.entries)
         $scope.$watch("var_filter", (new_val) -> $scope.new_filter_set(new_val, true))
         $scope.form_error = (field_name) =>
             if $scope.form[field_name].$valid
