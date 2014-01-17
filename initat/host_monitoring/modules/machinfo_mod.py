@@ -519,7 +519,7 @@ class _general(hm_classes.hm_module):
         for file_name in file_list:
             b_name = os.path.basename(file_name)
             try:
-                cur_list = [line.strip().split() for line in open(file_name, "r").read().split("\n") if line.strip()]
+                cur_list = [line.strip().split() for line in open(file_name, "r").read().split("\n") if line.strip() and not line.strip().startswith("#")]
             except:
                 pass
             else:
