@@ -238,6 +238,7 @@ class _general(hm_classes.hm_module):
         if self.mailq_command_valid():
             mv.register_entry("mail.total", 0, "total number of mails in mail-queue")
             mv.register_entry("mail.queued", 0, "number of queued mails")
+            mv.register_entry("mail.active", 0, "number of active mails")
             mv.register_entry("mail.hold", 0, "number of hold mails")
     def get_mailcount(self):
         return self._get_mail_queue_entries()
@@ -348,11 +349,11 @@ class _general(hm_classes.hm_module):
         self.__act_snapshot, self.__check_time = (act_snapshot, act_time)
         if self.mailq_command_valid():
             mc_dict = self.get_mailcount()
-            for key in ["hold", "total", "queued"]:
+            for key in ["hold", "total", "queued", "active"]:
                 mv["mail.%s" % (key)] = mc_dict[key]
     def _get_mail_queue_entries(self):
-        # total = queued + hold
-        self.__mailcount = {"total" : 0, "queued" : 0, "hold" : 0}
+        # total = queued + hold + active
+        self.__mailcount = {"total" : 0, "queued" : 0, "hold" : 0, "active" : 0}
         if self.__mailq_command:
             stat, out = commands.getstatusoutput(self.__mailq_command)
             if stat:
@@ -368,9 +369,15 @@ class _general(hm_classes.hm_module):
                             parts = line.split()
                             if len(parts) > 5 and len(parts[0]) > 7:
                                 q_id = parts[0]
-                                if not q_id.startswith("-") and not q_id.startswith("postq"):
+                                try:
+                                    int(q_id.replace("!", "").replace("*", ""), 16)
+                                except:
+                                    pass
+                                else:
                                     if q_id.endswith("!"):
                                         self.__mailcount["hold"] += 1
+                                    elif q_id.endswith("*"):
+                                        self.__mailcount["active"] += 1
                                     else:
                                         self.__mailcount["queued"] += 1
                     last_line = mail_lines[-1]
@@ -394,28 +401,6 @@ class _general(hm_classes.hm_module):
                     self.log("no lines got from %s" % (self.__mailq_command),
                         logging_tools.LOG_LEVEL_WARN)
         return self.__mailcount
-# #    def process_server_args(self, glob_config, logger):
-# #        self.__check_kerio, self.__kerio_main_dir = (False, "")
-# #        if glob_config["CHECK_KERIO"]:
-# #            # search for kerio in the usual places
-# #            for s_dir in ["/opt/kerio/"]:
-# #                if os.path.isfile("%s/mailserver/stats.dat" % (s_dir)):
-# #                    self.__last_kerio_check, self.__last_kerio_dict = (0, {})
-# #                    self.__check_kerio, self.__kerio_main_dir = (True, s_dir)
-# #                    break
-# #        return (True, "")
-# #    def process_client_args(self, opts, hmb):
-# #        ok, why = (1, "")
-# #        my_lim = limits.limits()
-# #        for opt, arg in opts:
-# #            if hmb.name in ["mailq", "ext_mailq"]:
-# #                if opt == "-w":
-# #                    if my_lim.set_warn_val(arg) == 0:
-# #                        ok, why = (0, "Can't parse warning value !")
-# #                if opt == "-c":
-# #                    if my_lim.set_crit_val(arg) == 0:
-# #                        ok, why = (0, "Can't parse critical value !")
-# #        return ok, why, [my_lim]
 
 class mailq_command(hm_classes.hm_command):
     def __init__(self, name):
@@ -440,6 +425,8 @@ class mailq_command(hm_classes.hm_command):
                 ret_f = ["%s queued" % (logging_tools.get_plural("mail", mail_dict["queued"]))]
             if mail_dict["queued"] != mail_dict["total"]:
                 ret_f.append("%d total" % (mail_dict["total"]))
+            if mail_dict["active"]:
+                ret_f.append("%d active" % (mail_dict["active"]))
             if mail_dict["hold"]:
                 ret_f.append("%d on hold" % (mail_dict["hold"]))
                 ret_state = max(ret_state, limits.nag_STATE_WARNING)
