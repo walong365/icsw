@@ -87,7 +87,7 @@ devconf_vars_template = """
 partinfo_template = """
     <div>
         <tabset>
-            <tab ng-repeat="dev in entries" heading="{{ dev.full_name }}">
+            <tab ng-repeat="dev in entries" heading="{{ dev.full_name }}" active="dev.tab_active">
                 <div ng-show="dev.act_partition_table">
                     <h4>
                         Partition table '{{ dev.act_partition_table.name}}',
@@ -586,12 +586,18 @@ loc_ctrl = device_config_module.controller("location_ctrl", ["$scope",
 device_config_module.controller("partinfo_ctrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "sharedDataSource", "$q", "$modal",
     ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, sharedDataSource, $q, $modal) ->
         $scope.entries = []
+        $scope.active_dev = undefined
         $scope.new_devsel = (_dev_sel, _devg_sel) ->
             $scope.devsel_list = _dev_sel
             $scope.reload()
         $scope.reload = () ->
+            active_tab = (dev for dev in $scope.entries when dev.tab_active)
             restDataSource.reload(["{% url 'rest:device_tree_list' %}", {"with_disk_info" : true, "with_meta_devices" : false, "pks" : angular.toJson($scope.devsel_list)}]).then((data) ->
                 $scope.entries = (dev for dev in data)
+                if active_tab.length
+                    for dev in $scope.entries
+                        if dev.idx == active_tab[0].idx
+                            dev.tab_active = true
             )
         $scope.get_vg = (dev, vg_idx) ->
             return (cur_vg for cur_vg in dev.act_partition_table.lvm_vg_set when cur_vg.idx == vg_idx)[0]
