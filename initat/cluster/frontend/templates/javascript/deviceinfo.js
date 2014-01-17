@@ -779,43 +779,6 @@ class device_info
         dsk_div = $("<div>").attr("id", "disk")
         dsk_div.append($("<div id='icsw.device.partinfo'><div ng-controller='partinfo_ctrl'><partinfo devicepk='" + pk_list.join(",") + "'></partinfo></div></div>"))
         return dsk_div
-        # disk div
-        disk_div = $("<div>").attr("id", "disk")
-        if dev_xml.find("partition_table").length
-            disk_div.append($("<h3>").text("partition table"))
-            pt_ul = $("<ul>")
-            dev_xml.find("partition_table partition_discs partition_disc").each (idx, cur_disc) =>
-                cur_disc = $(cur_disc)
-                disk_li = $("<li>").text(cur_disc.attr("disc"))
-                disk_lu = $("<ul>")
-                disk_li.append(disk_lu)
-                cur_disc.find("partitions partition").each (p_idx, cur_part) =>
-                    cur_part = $(cur_part)
-                    part_li = $("<li>").text("part #{cur_part.attr('pnum')} at #{cur_part.attr('mountpoint')}")
-                    part_li.append(
-                        create_input_el(cur_part, "warn_threshold", cur_part.attr("key"), {master_xml : cur_part, number: true, min:0, max: 100, label: ", warning at"})
-                        create_input_el(cur_part, "crit_threshold", cur_part.attr("key"), {master_xml : cur_part, number: true, min:0, max: 100, label: ", critical at"})
-                    )
-                    disk_lu.append(part_li)
-                pt_ul.append(disk_li)
-            dev_xml.find("partition_table lvm_info lvm_vg").each (idx, cur_vg) =>
-                cur_vg = $(cur_vg)
-                vg_li = $("<li>").text("VG " + cur_vg.attr("name"))
-                vg_lu = $("<ul>")
-                vg_li.append(vg_lu)
-                cur_vg.find("lvm_lvs lvm_lv").each (lvm_idx, cur_lvm) =>
-                    cur_lvm = $(cur_lvm)
-                    lvm_li = $("<li>").text("#{cur_lvm.attr('name')} at #{cur_lvm.attr('mountpoint')}")
-                    lvm_li.append(
-                        create_input_el(cur_lvm, "warn_threshold", cur_lvm.attr("key"), {master_xml : cur_lvm, number: true, min:0, max: 100, label: ", warning at"})
-                        create_input_el(cur_lvm, "crit_threshold", cur_lvm.attr("key"), {master_xml : cur_lvm, number: true, min:0, max: 100, label: ", critical at"})
-                    )
-                    vg_lu.append(lvm_li)
-                pt_ul.append(vg_li)
-            disk_div.append(pt_ul)
-        else
-            disk_div.append($("<h3>").text("No partition table defined"))
-        return disk_div
     mdcds_div: (dev_xml) =>
         # md check data store div
         mdcds_div = $("<div>").attr("id", "mdcds")

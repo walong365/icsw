@@ -103,8 +103,8 @@ partinfo_template = """
                             <tr ng-repeat-end ng-repeat="part in disk.partition_set" ng-show="part.mountpoint">
                                 <td>{{ disk.disc }}{{ part.pnum }}</td>
                                 <td>{{ part.mountpoint }}</td>
-                                <td>{{ part.warn_threshold }}</td>
-                                <td>{{ part.crit_threshold }}</td>
+                                <td>{{ part.warn_threshold }} %</td>
+                                <td>{{ part.crit_threshold }} %</td>
                             </tr>
                             <tr>
                                 <th colspan="2">Logical Volumes</th>
@@ -114,8 +114,8 @@ partinfo_template = """
                             <tr ng-repeat="lvm in dev.act_partition_table.lvm_lv_set | orderBy:'name'">
                                 <td>/dev/{{ get_vg(dev, lvm.lvm_vg).name }}/{{ lvm.name }}</td>
                                 <td>{{ lvm.mountpoint }}</td>
-                                <td>{{ lvm.warn_threshold }}</td>
-                                <td>{{ lvm.crit_threshold }}</td>
+                                <td>{{ lvm.warn_threshold }} %</td>
+                                <td>{{ lvm.crit_threshold }} %</td>
                             </tr>
                         </tbody>
                     </table>
