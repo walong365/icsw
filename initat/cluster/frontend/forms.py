@@ -20,7 +20,8 @@ from initat.cluster.backbone.models import domain_tree_node, device, category, m
      mon_contactgroup, mon_device_templ, mon_host_cluster, mon_service_cluster, mon_host_dependency_templ, \
      mon_service_esc_templ, mon_device_esc_templ, mon_service_dependency_templ, package_search, \
      mon_service_dependency, mon_host_dependency, package_device_connection, partition, \
-     partition_disc, sys_partition, device_variable, config
+     partition_disc, sys_partition, device_variable, config, config_str, config_int, config_bool, \
+     config_script
 from initat.cluster.frontend.widgets import device_tree_widget
 
 # import PAM
@@ -1954,7 +1955,7 @@ class config_form(ModelForm):
             ),
             Fieldset(
                 "Categories",
-                HTML("<div category edit_obj='{% verbatim %}{{_edit_obj }}{% endverbatim %}'></div>"),
+                HTML("<div category edit_obj='{% verbatim %}{{_edit_obj }}{% endverbatim %}' mode='conf'></div>"),
             ),
             FormActions(
                 Submit("submit", "", css_class="primaryAction", ng_value="action_string"),
@@ -1963,3 +1964,164 @@ class config_form(ModelForm):
     class Meta:
         model = config
         fields = ("name", "description", "enabled", "priority", "parent_config",)
+
+class config_str_form(ModelForm):
+    helper = FormHelper()
+    helper.form_id = "form"
+    helper.form_name = "form"
+    helper.form_class = 'form-horizontal'
+    helper.label_class = 'col-sm-3'
+    helper.field_class = 'col-sm-7'
+    helper.ng_model = "_edit_obj"
+    helper.ng_submit = "cur_edit.modify(this)"
+    helper.layout = Layout(
+        HTML("<h2>String var '{% verbatim %}{{ _edit_obj.name }}{% endverbatim %}'</h2>"),
+            Fieldset(
+                "Basic settings",
+                Field("name", wrapper_class="ng-class:form_error('name')"),
+                Field("description"),
+                Field("value"),
+            ),
+            FormActions(
+                Submit("submit", "", css_class="primaryAction", ng_value="action_string"),
+            )
+        )
+    class Meta:
+        model = config_str
+        fields = ("name", "description", "value",)
+
+class config_int_form(ModelForm):
+    helper = FormHelper()
+    helper.form_id = "form"
+    helper.form_name = "form"
+    helper.form_class = 'form-horizontal'
+    helper.label_class = 'col-sm-3'
+    helper.field_class = 'col-sm-7'
+    helper.ng_model = "_edit_obj"
+    helper.ng_submit = "cur_edit.modify(this)"
+    helper.layout = Layout(
+        HTML("<h2>Integer var '{% verbatim %}{{ _edit_obj.name }}{% endverbatim %}'</h2>"),
+            Fieldset(
+                "Basic settings",
+                Field("name", wrapper_class="ng-class:form_error('name')"),
+                Field("description"),
+                Field("value"),
+            ),
+            FormActions(
+                Submit("submit", "", css_class="primaryAction", ng_value="action_string"),
+            )
+        )
+    class Meta:
+        model = config_int
+        fields = ("name", "description", "value",)
+
+class config_bool_form(ModelForm):
+    helper = FormHelper()
+    helper.form_id = "form"
+    helper.form_name = "form"
+    helper.form_class = 'form-horizontal'
+    helper.label_class = 'col-sm-3'
+    helper.field_class = 'col-sm-7'
+    helper.ng_model = "_edit_obj"
+    helper.ng_submit = "cur_edit.modify(this)"
+    helper.layout = Layout(
+        HTML("<h2>Bool var '{% verbatim %}{{ _edit_obj.name }}{% endverbatim %}'</h2>"),
+            Fieldset(
+                "Basic settings",
+                Field("name", wrapper_class="ng-class:form_error('name')"),
+                Field("description"),
+                Field("value", min=0, max=1),
+            ),
+            FormActions(
+                Submit("submit", "", css_class="primaryAction", ng_value="action_string"),
+            )
+        )
+    class Meta:
+        model = config_bool
+        fields = ("name", "description", "value",)
+
+class config_script_form(ModelForm):
+    helper = FormHelper()
+    helper.form_id = "form"
+    helper.form_name = "form"
+    helper.form_class = 'form-horizontal'
+    helper.label_class = 'col-sm-3'
+    helper.field_class = 'col-sm-7'
+    helper.ng_model = "_edit_obj"
+    helper.ng_submit = "cur_edit.modify(this)"
+    helper.layout = Layout(
+        HTML("<h2>Config script '{% verbatim %}{{ _edit_obj.name }}{% endverbatim %}'</h2>"),
+            Fieldset(
+                "Basic settings",
+                Field("name", wrapper_class="ng-class:form_error('name')"),
+                Field("description"),
+                Field("priority"),
+                Field("enabled"),
+                Field("value"),
+            ),
+            FormActions(
+                Submit("submit", "", css_class="primaryAction", ng_value="action_string"),
+            )
+        )
+    class Meta:
+        model = config_script
+        fields = ("name", "description", "value", "priority", "enabled",)
+
+class mon_check_command_form(ModelForm):
+    helper = FormHelper()
+    helper.form_id = "form"
+    helper.form_name = "form"
+    helper.form_class = 'form-horizontal'
+    helper.label_class = 'col-sm-3'
+    helper.field_class = 'col-sm-7'
+    helper.ng_model = "_edit_obj"
+    helper.ng_submit = "cur_edit.modify(this)"
+    helper.layout = Layout(
+        HTML("<h2>Check command '{% verbatim %}{{ _edit_obj.name }}{% endverbatim %}'</h2>"),
+            Fieldset(
+                "Basic settings",
+                Field("name", wrapper_class="ng-class:form_error('name')"),
+                Field("description"),
+                Field("command_line"),
+            ),
+            Fieldset(
+                "Additional settings",
+                Field("mon_service_templ", ng_options="value.idx as value.name for value in mon_service_templ", chosen=True),
+                Field("event_handler", ng_options="value.idx as value.name for value in get_event_handlers(_edit_obj)", chosen=True, wrapper_ng_show="!_edit_obj.is_event_handler"),
+            ),
+            Fieldset(
+                "Flags",
+                Div(
+                    Div(
+                        # disable enabled-flag for clusterdevicegroup
+                        Field("volatile"),
+                        Field("enable_perfdata"),
+                        css_class="col-md-6",
+                    ),
+                    Div(
+                        Field("event_handler_enabled"),
+                        Field("is_event_handler", wrapper_ng_show="_edit_obj.event_handler == undefined"),
+                        css_class="col-md-6",
+                    ),
+                    css_class="row",
+                ),
+            ),
+            Fieldset(
+                "Categories",
+                HTML("<div category edit_obj='{% verbatim %}{{_edit_obj }}{% endverbatim %}' mode='mon'></div>"),
+            ),
+            FormActions(
+                Submit("submit", "", css_class="primaryAction", ng_value="action_string"),
+            )
+        )
+    def __init__(self, *args, **kwargs):
+        ModelForm.__init__(self, *args, **kwargs)
+        for clear_f in ["mon_service_templ", "event_handler"]:
+            self.fields[clear_f].queryset = empty_query_set()
+            self.fields[clear_f].empty_label = "----"
+    class Meta:
+        model = mon_check_command
+        fields = ("name", "mon_service_templ", "command_line",
+            "description", "enable_perfdata", "volatile", "is_event_handler",
+            "event_handler", "event_handler_enabled",)
+

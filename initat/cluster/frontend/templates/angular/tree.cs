@@ -27,7 +27,9 @@ _tree_node = '
             </div>
             <a ng-href="#" class="dynatree-title" ng-click="treeconfig.handle_click(entry, $event)"><span ng-class="treeconfig.get_name_class(entry)">{{ treeconfig.get_name(entry) }}</span>
                 <span ng-if="treeconfig.show_childs && !treeconfig.show_descendants" ng-show="entry._num_childs">({{ entry._num_childs }}<span ng-show="entry._sel_childs"> / {{ entry._sel_childs }}</span>)</span>
-                <span ng-if="treeconfig.show_descendants && !treeconfig.show_childs" ng-show="entry._num_descendants">({{ entry._num_descendants }}<span ng-show="entry._sel_descendants"> / {{ entry._sel_descendants }}</span>)</span>
+                <span ng-if="treeconfig.show_descendants && !treeconfig.show_childs" ng-show="entry._num_descendants">
+                    <span ng-class="entry.get_label_class()">{{ entry._num_descendants }}<span ng-show="entry._sel_descendants"> / {{ entry._sel_descendants }}</span></span>
+                </span>
             </a>
         </span>
         <tree ng-if="entry.expand && entry.children.length" tree="entry.children" treedepth="(treedepth || 0) + 1" treeconfig="treeconfig"></tree>
@@ -117,6 +119,11 @@ class tree_node
     recalc_sel_childs: () => 
         @_sel_childs = (true for entry in @children when entry.selected).length
         (child.recalc_sel_childs() for child in @children)
+    get_label_class: () =>
+        if @_sel_descendants
+            return "label label-primary"
+        else
+            return "label label-default"
 
 class tree_config
     constructor: (args) ->

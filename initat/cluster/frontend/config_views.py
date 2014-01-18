@@ -33,11 +33,12 @@ from django.http import HttpResponse, HttpResponseRedirect
 from django.utils.decorators import method_decorator
 from django.views.generic import View
 from initat.cluster.backbone.models import config, device, \
-     config_str, config_int, config_bool, config_blob, \
-     config_script, device_config, tree_node, get_related_models, \
-     mon_service_templ, category_tree, mon_check_command
+    config_str, config_int, config_bool, config_blob, \
+    config_script, device_config, tree_node, get_related_models, \
+    mon_service_templ, category_tree, mon_check_command
 from initat.cluster.frontend.helper_functions import contact_server, xml_wrapper
-from initat.cluster.frontend.forms import config_form
+from initat.cluster.frontend.forms import config_form, config_str_form, config_int_form, \
+    config_bool_form, config_script_form, mon_check_command_form
 from initat.core.render import render_me
 from lxml import etree # @UnresolvedImports
 from lxml.builder import E # @UnresolvedImports
@@ -56,74 +57,13 @@ class show_configs(View):
         return render_me(
             request, "config_overview.html", {
                 "config_form" : config_form(),
+                "config_str_form" : config_str_form(),
+                "config_int_form" : config_int_form(),
+                "config_bool_form" : config_bool_form(),
+                "config_script_form" : config_script_form(),
+                "mon_check_command_form" : mon_check_command_form(),
                 }
         )()
-    @method_decorator(xml_wrapper)
-    def post(self, request):
-        _post = request.POST
-        mode = _post.get("mode", "full")
-        full_mode = mode == "full"
-        logger.info("get configs, mode is %s" % (mode))
-        if full_mode:
-            all_configs = config.objects.all().prefetch_related(
-                "categories",
-                "config_int_set",
-                "config_str_set",
-                "config_bool_set",
-                "config_blob_set",
-                "config_script_set",
-                "mon_check_command_set",
-                "mon_check_command_set__categories",
-                "mon_check_command_set__exclude_devices",
-                "device_config_set",
-                "device_config_set__device",
-                ).order_by("name")
-        else:
-            all_configs = config.objects.all().order_by("name")
-        xml_resp = E.response(
-            E.config_list(
-                *[cur_c.get_xml(full=full_mode) for cur_c in all_configs]
-            )
-        )
-        if full_mode:
-            xml_resp.extend(
-                [
-                    E.mon_service_templates(
-                        *[cur_st.get_xml() for cur_st in mon_service_templ.objects.all().order_by("name")]
-                    ),
-                    category_tree().get_xml(),
-                ]
-            )
-        # print etree.tostring(xml_resp, pretty_print=True)
-        request.xml_response["response"] = xml_resp
-
-class create_config(View):
-    @method_decorator(login_required)
-    @method_decorator(xml_wrapper)
-    def post(self, request):
-        _post = request.POST
-        val_dict = dict([(key.split("__", 2)[2], value) for key, value in _post.iteritems() if key.count("__") > 1])
-        copy_dict = dict([(key, value) for key, value in val_dict.iteritems() if key in ["name", "description", "priority"]])
-        new_conf = config(**copy_dict)
-        try:
-            new_conf.save()
-        except ValidationError, what:
-            request.xml_response.error("error creating: %s" % (unicode(what.messages[0])), logger)
-        except IntegrityError, what:
-            request.xml_response.error("error modifying: %s" % (unicode(what)), logger)
-        except:
-            raise
-        else:
-            request.xml_response["new_config"] = new_conf.get_xml()
-
-class delete_config(View):
-    @method_decorator(login_required)
-    @method_decorator(xml_wrapper)
-    def post(self, request):
-        _post = request.POST
-        val_dict = dict([(key.split("__", 1)[1], value) for key, value in _post.iteritems() if key.count("__") > 0])
-        del_obj = config.objects.get(Q(pk=int(val_dict.keys()[0].split("__")[0])))
-        delete_object(request, del_obj)
 
 def delete_object(request, del_obj, **kwargs):
     num_ref = get_related_models(del_obj)
@@ -138,76 +78,6 @@ def delete_object(request, del_obj, **kwargs):
             request.xml_response.info("deleted %s" % (del_obj._meta.object_name), logger)
         else:
             logger.info("deleted %s" % (del_obj._meta.object_name))
-
-class create_var(View):
-    @method_decorator(login_required)
-    @method_decorator(xml_wrapper)
-    def post(self, request):
-        _post = request.POST
-        keys = _post.keys()
-        conf_pk = int(keys[0].split("__")[1])
-        value_dict = dict([(key.split("__", 3)[3], value) for key, value in _post.iteritems() if key.count("__") > 2])
-        logger.info("create new config_var %s for config %d (%s)" % (
-            value_dict["name"],
-            conf_pk,
-            value_dict["type"]))
-        new_obj = {"str"  : config_str,
-                   "int"  : config_int,
-                   "bool" : config_bool,
-                   "blob" : config_blob}[value_dict["type"]]
-        new_var = new_obj(name=value_dict["name"],
-                          description=value_dict["description"],
-                          config=config.objects.get(Q(pk=conf_pk)),
-                          value=value_dict["value"])
-        try:
-            new_var.save()
-        except ValidationError, what:
-            request.xml_response.error("error creating new variable: %s" % (unicode(what.messages[0])), logger)
-        else:
-            request.xml_response["new_var"] = new_var.get_xml()
-
-class delete_var(View):
-    @method_decorator(login_required)
-    @method_decorator(xml_wrapper)
-    def post(self, request):
-        _post = request.POST
-        main_key = [key for key in _post.keys() if key.endswith("__name")][0]
-        _mother_name, _conf_pk, var_type, var_pk, _stuff = main_key.split("__", 4)
-        del_obj = {"str"  : config_str,
-                   "int"  : config_int,
-                   "bool" : config_bool,
-                   "blob" : config_blob}[var_type[3:]]
-        logger.warn("remove config_%s with pk %s" % (var_type[3:], var_pk))
-        del_obj = del_obj.objects.get(Q(pk=var_pk))
-        delete_object(request, del_obj)
-
-class create_script(View):
-    @method_decorator(login_required)
-    @method_decorator(xml_wrapper)
-    def post(self, request):
-        _post = request.POST
-        keys = _post.keys()
-        conf_pk = int(keys[0].split("__")[1])
-        val_dict = dict([(key.split("__", 3)[3], value) for key, value in _post.iteritems() if key.count("__") > 2])
-        copy_dict = dict([(key, value) for key, value in val_dict.iteritems() if key in ["name", "description", "priority", "value"]])
-        new_script = config_script(config=config.objects.get(Q(pk=conf_pk)),
-                                   **copy_dict)
-        try:
-            new_script.save()
-        except ValidationError, what:
-            request.xml_response.error("error creating new config_script: %s" % (unicode(what.messages[0])), logger)
-        else:
-            request.xml_response["new_config_script"] = new_script.get_xml()
-
-class delete_script(View):
-    @method_decorator(login_required)
-    @method_decorator(xml_wrapper)
-    def post(self, request):
-        _post = request.POST
-        val_dict = dict([(key.split("__", 1)[1], value) for key, value in _post.iteritems() if key.count("__") > 0])
-        del_cs = int(val_dict.keys()[0].split("__")[2])
-        del_cs = config_script.objects.get(Q(pk=del_cs))
-        delete_object(request, del_cs)
 
 class get_device_configs(View):
     @method_decorator(login_required)

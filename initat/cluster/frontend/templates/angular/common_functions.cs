@@ -230,6 +230,7 @@ angular_module_setup = (module_list, url_list=[]) ->
                 )
                 RestangularProvider.setErrorInterceptor((resp) ->
                     error_list = []
+                    console.log resp
                     if typeof(resp.data) == "string"
                         if resp.data
                             resp.data = {"error" : resp.data}
@@ -241,7 +242,7 @@ angular_module_setup = (module_list, url_list=[]) ->
                                 if sub_val.non_field_errors
                                     error_list.push(key + ": " + sub_val.non_field_errors.join(", "))
                                 else
-                                    error_list.push(key)
+                                    error_list.push(key + ": " + String(sub_val))
                         else
                             if (typeof(value) == "object" or typeof(value) == "string") and (not key.match(/^_/) or key == "__all__")
                                 key_str = if key == "__all__" then "error: " else "#{key} : "
@@ -644,9 +645,10 @@ angular.module(
 )
 
 class angular_edit_mixin
-    constructor : (@scope, @templateCache, @compile, @modal, @Restangular) ->
+    constructor : (@scope, @templateCache, @compile, @modal, @Restangular, @q) ->
         @use_modal = true
         @new_object_at_tail = true
+        @use_promise = false
     create : (event) =>
         if @new_object
             @scope.new_obj = @new_object(@scope)
@@ -666,6 +668,8 @@ class angular_edit_mixin
         if not @scope.create_mode
             @Restangular.restangularizeElement(null, @scope._edit_obj, @modify_rest_url)
         @scope.action_string = if @scope.create_mode then "Create" else "Modify"
+        if @use_promise
+           @_prom = @q.defer()
         if @use_modal
             @edit_div = @compile(@templateCache.get(if @scope.create_mode then @create_template else @edit_template))(@scope)
             @edit_div.simplemodal
@@ -682,6 +686,8 @@ class angular_edit_mixin
                     @close_modal()
         else
             @scope.modal_active = true
+        if @use_promise
+            return @_prom.promise
     close_modal : () =>
         if @use_modal
             $.simplemodal.close()
@@ -704,15 +710,22 @@ class angular_edit_mixin
     modify : () ->
         if not @scope.form.$invalid
             if @scope.create_mode
-                @create_rest_url.post(@scope.new_obj).then((new_data) =>
-                    #console.log @create_list, new_data
-                    if @new_object_at_tail
-                        @create_list.push(new_data)
-                    else
-                        @create_list.splice(0, 0, new_data)
-                    @close_modal()
-                    @send_change_signal()
-                    @_modal_close_ok = true
+                @create_rest_url.post(@scope.new_obj).then(
+                    (new_data) =>
+                        #console.log @create_list, new_data
+                        if @new_object_at_tail
+                            @create_list.push(new_data)
+                        else
+                            @create_list.splice(0, 0, new_data)
+                        @close_modal()
+                        @_modal_close_ok = true
+                        if @use_promise
+                            return @_prom.resolve(new_data)
+                        else
+                            @send_change_signal()                
+                    () ->        
+                        if @use_promise
+                            return @_prom.resolve(false)
                 )
             else
                 @scope._edit_obj.put().then(
@@ -720,8 +733,15 @@ class angular_edit_mixin
                         handle_reset(data, @scope._edit_obj, null)
                         @_modal_close_ok = true
                         @close_modal()
-                        @send_change_signal()
-                    (resp) => handle_reset(resp.data, @scope._edit_obj, null)
+                        if @use_promise
+                            return @_prom.resolve(data)
+                        else
+                            @send_change_signal()                
+                    (resp) =>
+                        if @use_promise
+                            return @_prom.resolve(false)
+                        else
+                            handle_reset(resp.data, @scope._edit_obj, null)
                 )
         else
             noty
@@ -734,6 +754,8 @@ class angular_edit_mixin
         $scope.cancel = () ->
             $modalInstance.dismiss("cancel")
     delete_obj : (obj) =>
+        if @use_promise
+           ret = @q.defer()
         c_modal = @modal.open
             template : @templateCache.get("simple_confirm.html")
             controller : @modal_ctrl
@@ -746,16 +768,29 @@ class angular_edit_mixin
                         return "Really delete object ?"
         c_modal.result.then(
             () =>
+                console.log "yes"
                 # add restangular elements
                 @Restangular.restangularizeElement(null, obj, @modify_rest_url)
-                obj.remove().then((resp) =>
-                    noty
-                        text : "deleted instance"
-                    remove_by_idx(@delete_list, obj.idx)
-                    @close_modal()
-                    @send_change_signal()
+                obj.remove().then(
+                    (resp) =>
+                        noty
+                            text : "deleted instance"
+                        remove_by_idx(@delete_list, obj.idx)
+                        @close_modal()
+                        if @use_promise
+                            return ret.resolve(true)
+                        else
+                            @send_change_signal()
+                    () =>
+                        if @use_promise
+                            return ret.resolve(false)
                 )
+            () =>
+                if @use_promise
+                    return ret.resolve(false)
         )
+        if @use_promise
+            return ret.promise
 
 root = exports ? this
 root.angular_edit_mixin = angular_edit_mixin
