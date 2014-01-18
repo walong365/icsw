@@ -31,18 +31,22 @@ nag_STATE_UNKNOWN   = -1
 nag_STATE_DEPENDENT = -2
 
 def get_state_str(in_state):
-    return {nag_STATE_CRITICAL  : "Critical",
-            nag_STATE_WARNING   : "Warning",
-            nag_STATE_OK        : "OK",
-            nag_STATE_UNKNOWN   : "Unknown",
-            nag_STATE_DEPENDENT : "Dependent"}.get(in_state, "state %d not known" % (in_state))
+    return {
+        nag_STATE_CRITICAL  : "Critical",
+        nag_STATE_WARNING   : "Warning",
+        nag_STATE_OK        : "OK",
+        nag_STATE_UNKNOWN   : "Unknown",
+        nag_STATE_DEPENDENT : "Dependent"
+    }.get(in_state, "state %d not known" % (in_state))
 
 def nag_state_to_log_level(in_state):
-    return {nag_STATE_CRITICAL  : logging_tools.LOG_LEVEL_CRITICAL,
-            nag_STATE_WARNING   : logging_tools.LOG_LEVEL_WARN,
-            nag_STATE_OK        : logging_tools.LOG_LEVEL_OK,
-            nag_STATE_UNKNOWN   : logging_tools.LOG_LEVEL_ERROR,
-            nag_STATE_DEPENDENT : logging_tools.LOG_LEVEL_WARN}.get(in_state, logging_tools.LOG_LEVEL_ERROR)
+    return {
+        nag_STATE_CRITICAL  : logging_tools.LOG_LEVEL_CRITICAL,
+        nag_STATE_WARNING   : logging_tools.LOG_LEVEL_WARN,
+        nag_STATE_OK        : logging_tools.LOG_LEVEL_OK,
+        nag_STATE_UNKNOWN   : logging_tools.LOG_LEVEL_ERROR,
+        nag_STATE_DEPENDENT : logging_tools.LOG_LEVEL_WARN
+    }.get(in_state, logging_tools.LOG_LEVEL_ERROR)
 
 def check_ceiling(value, warn, crit):
     if crit is not None and value >= crit:
