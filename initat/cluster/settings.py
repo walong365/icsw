@@ -391,6 +391,7 @@ PIPELINE_JS = {
                 "js/libs/restangular.min.js",
                 "js/libs/ui-bootstrap.min.js",
                 "js/libs/ui-bootstrap-tpls.min.js",
+                "js/libs/ui-codemirror.min.js",
         },
         "output_filename" : "pipeline/js/extra2.js"
     }
