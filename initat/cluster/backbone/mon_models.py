@@ -145,8 +145,8 @@ class mon_check_command(models.Model):
     config_old = models.IntegerField(null=True, blank=True, db_column="config")
     config = models.ForeignKey("config", db_column="new_config_id")
     # deprecated, now references category tree
-    mon_check_command_type = models.ForeignKey("mon_check_command_type", null=True, default=None)
-    mon_service_templ = models.ForeignKey("mon_service_templ", null=True)
+    mon_check_command_type = models.ForeignKey("mon_check_command_type", null=True, default=None, blank=True)
+    mon_service_templ = models.ForeignKey("mon_service_templ", null=True, blank=True)
     # only unique per config
     name = models.CharField(max_length=192) # , unique=True)
     # flag for special commands (@<SREF>@command)
@@ -158,12 +158,12 @@ class mon_check_command(models.Model):
     enable_perfdata = models.BooleanField(default=False)
     volatile = models.BooleanField(default=False)
     # categories for this device
-    categories = models.ManyToManyField("category")
+    categories = models.ManyToManyField("category", blank=True)
     # device to exclude
     exclude_devices = models.ManyToManyField("device", related_name="mcc_exclude_devices")
     # event handler settings
     is_event_handler = models.BooleanField(default=False)
-    event_handler = models.ForeignKey("self", null=True, default=None)
+    event_handler = models.ForeignKey("self", null=True, default=None, blank=True)
     event_handler_enabled = models.BooleanField(default=True)
     def get_xml(self, with_exclude_devices=False):
         r_xml = E.mon_check_command(
