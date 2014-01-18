@@ -140,6 +140,16 @@ class detail_view(mixins.RetrieveModelMixin,
             return partition_disc_serializer_save
         else:
             return self.serializer_class
+    # def get_serializer(self, instance=None, data=None,
+    #                   files=None, many=False, partial=False):
+    #    """
+    #    Return the serializer instance that should be used for validating and
+    #    deserializing input, and for serializing output.
+    #    """
+    #    serializer_class = self.get_serializer_class()
+    #    context = self.get_serializer_context()
+    #    return serializer_class(instance, data=data, files=files,
+    #                            many=many, partial=partial, context=context, allow_add_remove=self.model._meta.object_name in ["config"])
     @rest_logging
     def put(self, request, *args, **kwargs):
         req_changes = request.DATA
@@ -213,7 +223,7 @@ class list_view(mixins.ListModelMixin,
             "network" : ([], ["network_device_type"]),
             "user" : (["group"], ["permissions", "secondary_groups", "object_permissions", "allowed_device_groups"]),
             "group" : (["parent_group"], ["permissions", "object_permissions", "allowed_device_groups"]),
-            "config" : ([], ["categories", "config_str_set", "config_int_set", "config_blob_set", "config_bool_set", "config_script_set", "mon_check_command_set"]),
+            "config" : ([], ["categories", "config_str_set", "config_int_set", "config_blob_set", "config_bool_set", "config_script_set", "mon_check_command_set", "device_config_set"]),
             }.get(model_name, ([], []))
         res = self.model.objects.all()
         filter_list = []
@@ -504,6 +514,21 @@ class device_tree_list(mixins.ListModelMixin,
             _q = _q.prefetch_related("device_variable_set")
         if self._get_post_boolean("with_device_configs", False):
             _q = _q.prefetch_related("device_config_set")
+        if self._get_post_boolean("with_disk_info", False):
+            _q = _q.prefetch_related(
+                "partition_table__partition_disc_set__partition_set",
+                "partition_table__lvm_vg_set",
+                "partition_table__lvm_lv_set",
+                "partition_table__sys_partition_set",
+                "partition_table__new_partition_table",
+                "partition_table__act_partition_table",
+                "act_partition_table__partition_disc_set__partition_set",
+                "act_partition_table__lvm_vg_set",
+                "act_partition_table__lvm_lv_set",
+                "act_partition_table__sys_partition_set",
+                "act_partition_table__new_partition_table",
+                "act_partition_table__act_partition_table",
+            )
         # ordering: at first cluster device group, then by group / device_type / name
         _q = _q.order_by("-device_group__cluster_device_group", "device_group__name", "-device_type__priority", "name")
         # print _q.count(), self.request.QUERY_PARAMS, self.request.session.get("sel_list", [])

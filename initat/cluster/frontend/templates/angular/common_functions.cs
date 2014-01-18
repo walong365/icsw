@@ -6,7 +6,7 @@
 
 {% verbatim %}
 
-icsw_paginator = '
+icsw_paginator = """
 <form class="form-inline">
     <span ng-show="pagSettings.conf.filtered_len">
         <div class="form-group">
@@ -32,7 +32,7 @@ icsw_paginator = '
         filter <div class="form-group"><input ng-model="pagSettings.conf.filter" class="form-control input-sm""></input></div>,
     </span>
 </form>
-'
+"""
 
 {% endverbatim %}
 
@@ -64,6 +64,7 @@ class paginator_class
             modify_epp       : false
             entries_per_page : []
             init             : false
+            filter_changed   : false
             filter_mode      : false
             filter           : undefined
             filter_func      : undefined
@@ -92,6 +93,7 @@ class paginator_class
         # can also be used to reapply the filter
         @conf.unfiltered_len = el_list.length
         el_list = @apply_filter(el_list)
+        @filtered_list = el_list
         @conf.init = true
         @conf.filtered_len = el_list.length
         pp = @conf.per_page
@@ -113,6 +115,8 @@ class paginator_class
         if @conf.filter_mode
             @conf.filter = ""
     apply_filter: (el_list) =>
+        if @conf.filter_changed
+            @conf.filter_changed(@)
         if @conf.filter_mode
             if @conf.filter_func
                 el_list = (entry for entry in el_list when @conf.filter_func()(entry, @$scope))
@@ -225,16 +229,29 @@ angular_module_setup = (module_list, url_list=[]) ->
                     return data
                 )
                 RestangularProvider.setErrorInterceptor((resp) ->
+                    error_list = []
                     if typeof(resp.data) == "string"
                         if resp.data
                             resp.data = {"error" : resp.data}
                         else
                             resp.data = {}
                     for key, value of resp.data
-                        if (typeof(value) == "object" or typeof(value) == "string") and (not key.match(/^_/) or key == "__all__")
-                            key_str = if key == "__all__" then "error: " else "#{key} : "
+                        if Array.isArray(value)
+                            for sub_val in value
+                                if sub_val.non_field_errors
+                                    error_list.push(key + ": " + sub_val.non_field_errors.join(", "))
+                                else
+                                    error_list.push(key)
+                        else
+                            if (typeof(value) == "object" or typeof(value) == "string") and (not key.match(/^_/) or key == "__all__")
+                                key_str = if key == "__all__" then "error: " else "#{key} : "
+                                error_list.push(key_str + if typeof(value) == "string" then value else value.join(", "))
+                    new_error_list = []
+                    for _err in error_list
+                        if _err not in new_error_list
+                            new_error_list.push(_err)
                             noty
-                                text : key_str + if typeof(value) == "string" then value else value.join(", ")
+                                text : _err
                                 type : "error"
                                 timeout : false
                     return true
@@ -629,6 +646,7 @@ angular.module(
 class angular_edit_mixin
     constructor : (@scope, @templateCache, @compile, @modal, @Restangular) ->
         @use_modal = true
+        @new_object_at_tail = true
     create : (event) =>
         if @new_object
             @scope.new_obj = @new_object(@scope)
@@ -688,7 +706,10 @@ class angular_edit_mixin
             if @scope.create_mode
                 @create_rest_url.post(@scope.new_obj).then((new_data) =>
                     #console.log @create_list, new_data
-                    @create_list.push(new_data)
+                    if @new_object_at_tail
+                        @create_list.push(new_data)
+                    else
+                        @create_list.splice(0, 0, new_data)
                     @close_modal()
                     @send_change_signal()
                     @_modal_close_ok = true

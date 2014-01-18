@@ -37,6 +37,7 @@ from initat.cluster.backbone.models import config, device, \
      config_script, device_config, tree_node, get_related_models, \
      mon_service_templ, category_tree, mon_check_command
 from initat.cluster.frontend.helper_functions import contact_server, xml_wrapper
+from initat.cluster.frontend.forms import config_form
 from initat.core.render import render_me
 from lxml import etree # @UnresolvedImports
 from lxml.builder import E # @UnresolvedImports
@@ -53,7 +54,9 @@ class show_configs(View):
     @method_decorator(login_required)
     def get(self, request):
         return render_me(
-            request, "config_overview.html",
+            request, "config_overview.html", {
+                "config_form" : config_form(),
+                }
         )()
     @method_decorator(xml_wrapper)
     def post(self, request):

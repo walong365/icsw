@@ -94,7 +94,7 @@
                 </div>
                 {% endverbatim %}
             </li>
-            <li ng-if="num_gauges == 0" class="visible-md visible-lg">
+            <li ng-if="num_gauges == 0" class="visible-lg visible-md">
                 {% with "images/product/"|add:settings.INIT_PRODUCT_NAME|lower|add:"-flat-trans.png" as gfx_name %}
                 <img height="42px" src="{% static gfx_name %}" ng-click="redirect_to_init()" title="{{ settings.INIT_PRODUCT_NAME }}" alt="{{ settings.INIT_PRODUCT_NAME }} logo">
                 </img>
@@ -104,11 +104,9 @@
     </div>
     <ul class="nav navbar-nav navbar-right">
         <li>
-            <p class="navbar-text  visible-md visible-lg"">
-                <span>
-                    {% verbatim %}{{ cur_time }}{% endverbatim %}, 
-                    <span title="{{ user }}">user '{{ user.login }}'</span>{% ifnotequal user.login request.session.login_name %} (via alias {{ request.session.login_name }}){% endifnotequal %}
-                </span>
+            <p class="navbar-text visible-md visible-lg"">
+                {% verbatim %}{{ cur_time }}{% endverbatim %}, 
+                <span title="{{ user }}">user '{{ user.login }}'</span>{% ifnotequal user.login request.session.login_name %} (via alias {{ request.session.login_name }}){% endifnotequal %}
             </p>
         </li>
         <li class="dropdown">

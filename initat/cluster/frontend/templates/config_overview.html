@@ -1,10 +1,23 @@
 {% extends "main.html" %}
 
-{% load i18n coffeescript staticfiles %}
+{% load i18n coffeescript staticfiles crispy_forms_tags %}
+
+{% block angular %}{% include "angular/config.cs" %}{% endblock %}
 
 {% block title %}{% trans "Configurations" %}{% endblock %}
 
 {% block content %}
+
+<div id="icsw.config">
+
+    <script type="text/ng-template" id="config_template.html">
+        {% crispy config_form config_form.helper %}
+    </script>
+
+    <div ng-controller="config_ctrl">
+        <configtable></configtable>    
+    </div>
+</div>
 
 <h1 class="center">
     Configurations, <span id="config_info">none defined</span>
@@ -33,6 +46,10 @@ Filter: <input type="text" id="filter" value=""/>
 <script type="text/javascript">
 
 {% inlinecoffeescript %}
+
+angular.element(document).ready(() ->
+    angular.bootstrap($("div[id='icsw.config']"), ["icsw.config"])
+)
 
 class config_table
     constructor: (@top_div) ->

@@ -19,9 +19,6 @@ remove_from_array = (in_array, from, to) ->
 
 root.remove_by_idx = remove_by_idx
 
-jQuery.fn.justtext = () ->
-    return $(this).clone().children().remove().end().text()
-    
 class ajax_struct
     constructor: (@top_div_name) ->
         @ajax_uuid = 0
