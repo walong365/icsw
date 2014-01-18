@@ -15,7 +15,7 @@ __all__ = [
     "mon_host_cluster", "mon_host_cluster_serializer",
     "mon_service_cluster", "mon_service_cluster_serializer",
     "host_check_command", "host_check_command_serializer",
-    "mon_check_command", "mon_check_command_serializer", "mon_check_command_serializer_flat",
+    "mon_check_command", "mon_check_command_serializer",
     "mon_check_command_type",
     "mon_contact", "mon_contact_serializer",
     "mon_notification", "mon_notification_serializer",
@@ -191,11 +191,6 @@ class mon_check_command(models.Model):
 class mon_check_command_serializer(serializers.ModelSerializer):
     class Meta:
         model = mon_check_command
-
-class mon_check_command_serializer_flat(serializers.ModelSerializer):
-    class Meta:
-        model = mon_check_command
-        fields = ("idx", "name",)
 
 @receiver(signals.pre_save, sender=mon_check_command)
 def mon_check_command_pre_save(sender, **kwargs):

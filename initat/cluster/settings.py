@@ -477,6 +477,7 @@ REST_FRAMEWORK = {
         "rest_framework.authentication.SessionAuthentication",
     ),
     "EXCEPTION_HANDLER" : "initat.cluster.frontend.rest_views.csw_exception_handler",
+    "ID_FIELD_NAME" : "idx",
 }
 
 # SOUTH config

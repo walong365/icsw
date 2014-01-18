@@ -528,13 +528,16 @@ def partition_table_pre_save(sender, **kwargs):
 class config(models.Model):
     idx = models.AutoField(db_column="new_config_idx", primary_key=True)
     name = models.CharField(unique=True, max_length=192, blank=False)
-    description = models.CharField(max_length=765)
+    description = models.CharField(max_length=765, default="", blank=True)
     priority = models.IntegerField(null=True, default=0)
     # config_type = models.ForeignKey("config_type", db_column="new_config_type_id")
-    parent_config = models.ForeignKey("config", null=True)
+    parent_config = models.ForeignKey("config", null=True, blank=True)
+    enabled = models.BooleanField(default=True)
     date = models.DateTimeField(auto_now_add=True)
     # categories for this config
     categories = models.ManyToManyField("category")
+    def get_use_count(self):
+        return self.device_config_set.all().count()
     def get_xml(self, full=True):
         r_xml = E.config(
             pk="%d" % (self.pk),
@@ -573,6 +576,8 @@ class config(models.Model):
     class Meta:
         db_table = u'new_config'
         ordering = ["name"]
+    class CSW_Meta:
+        fk_ignore_list = ["config_str", "config_int", "config_script", "config_bool", "config_blob", "mon_check_command"]
 
 @receiver(signals.pre_save, sender=config)
 def config_pre_save(sender, **kwargs):
@@ -667,8 +672,16 @@ def config_post_save(sender, **kwargs):
             for cur_var in add_list:
                 cur_var.config = cur_inst
                 cur_var.save()
-        if cur_inst.parent_config_id == cur_inst.pk and cur_inst.pk:
-            raise ValidationError("cannot be my own parent")
+        parent_list = []
+        cur_parent = cur_inst
+        while True:
+            if cur_parent.pk in parent_list:
+                raise ValidationError("Loop in config parent setup detected")
+            parent_list.append(cur_parent.pk)
+            if cur_parent.parent_config_id:
+                cur_parent = cur_parent.parent_config
+            else:
+                break
 
 class config_str(models.Model):
     idx = models.AutoField(db_column="config_str_idx", primary_key=True)
@@ -3464,6 +3477,7 @@ class category(models.Model):
         return r_xml
 
 class category_serializer(serializers.ModelSerializer):
+    allow_add_remove = True
     num_refs = serializers.Field(source="get_references")
     class Meta:
         model = category
@@ -3553,12 +3567,14 @@ class config_script_serializer(serializers.ModelSerializer):
         model = config_script
 
 class config_serializer(serializers.ModelSerializer):
-    config_str_set = config_str_serializer(many=True)
-    config_int_set = config_int_serializer(many=True)
-    config_blob_set = config_blob_serializer(many=True)
-    config_bool_set = config_bool_serializer(many=True)
-    config_script_set = config_script_serializer(many=True)
-    mon_check_command_set = mon_check_command_serializer_flat(many=True)
+    config_str_set = config_str_serializer(many=True, read_only=True)
+    config_int_set = config_int_serializer(many=True, read_only=True)
+    config_blob_set = config_blob_serializer(many=True, read_only=True)
+    config_bool_set = config_bool_serializer(many=True, read_only=True)
+    config_script_set = config_script_serializer(many=True, read_only=True)
+    mon_check_command_set = mon_check_command_serializer(many=True, read_only=True)
+    usecount = serializers.Field(source="get_use_count")
+    # categories only as flat list, no nesting
     class Meta:
         model = config
 
