@@ -98,7 +98,10 @@ sidebar_base = sidebar_module.controller("sidebar_base", ["$scope", "$compile", 
             list_len = key_list.length
             ret_list = list_len + (if list_len == 1 then " device" else " devices")
             if list_len
-                ret_list = "#{ret_list}: " + ($scope.dev_lut[key.split("__")[1]].full_name for key in key_list).join(", ")
+                if typeof(key_list[0]) == "int"
+                    ret_list = "#{ret_list}: " + ($scope.dev_lut[key.split("__")[1]].full_name for key in key_list).join(", ")
+                else
+                    ret_list = "#{ret_list}: " + ($scope.dev_lut[key].full_name for key in key_list).join(", ")
             return ret_list
         $scope.update_search = () ->
             try

@@ -359,7 +359,8 @@ device_config_module.controller("config_ctrl", ["$scope", "$compile", "$filter",
         restrict : "EA"
         template : $templateCache.get("device_config_template.html")
         link : (scope, el, attrs) ->
-            scope.new_devsel((parseInt(entry) for entry in attrs["devicepk"].split(",")), [])
+            if attrs["devicepk"]?
+                scope.new_devsel((parseInt(entry) for entry in attrs["devicepk"].split(",")), [])
     }
 ).directive("deviceconfigtable", ($templateCache, $compile, $modal, Restangular) ->
     return {

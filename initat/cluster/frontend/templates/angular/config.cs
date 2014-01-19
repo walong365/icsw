@@ -13,7 +13,7 @@ config_table_template = """
 <table class="table table-condensed table-hover table-bordered" style="width:auto;">
     <thead>
         <tr>
-            <td colspan="11">
+            <td colspan="12">
                 <div class="row" style="width:900px;">
                     <div class="col-sm-4">
                         <div class="input-group">

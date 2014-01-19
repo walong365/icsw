@@ -244,11 +244,13 @@ class alter_config_cb(View):
         request.xml_response["response"] = xml_resp
 
 class tree_struct(object):
-    def __init__(self, cur_dev, node_list, node=None, depth=0):
+    def __init__(self, cur_dev, node_list, node=None, depth=0, parent=None):
         self.dev_pk = cur_dev.pk
         self.depth = depth
+        self.parent = parent
         if not node:
             if node_list:
+                # root entry
                 self.node = [entry for entry in node_list if not entry.parent_id][0]
             else:
                 self.node = None
@@ -261,22 +263,26 @@ class tree_struct(object):
                 node_list,
                 node=cur_node,
                 depth=self.depth + 1,
-                ) for cur_node in sorted(node_list) if cur_node.parent_id == self.node.pk]
+                parent=self,
+            ) for cur_node in sorted(node_list) if cur_node.parent_id == self.node.pk]
         else:
             self.wc_file = None
             self.childs = []
     def get_name(self):
         if self.node:
-            return "%s%s" % (self.wc_file.dest,
-                             "/" if self.node.is_dir else "")
+            return "%s%s" % (
+                self.wc_file.dest,
+                "/" if self.node.is_dir else "")
         else:
             return "empty"
     def __unicode__(self):
         return "\n".join([
-            "%s%s (%d), %s" % ("  " * self.depth,
-                               unicode(self.node),
-                               self.depth,
-                               self.get_name())
+            "%s%s (%d, %d), %s" % (
+                "  " * self.depth,
+                unicode(self.node),
+                self.depth,
+                len(self),
+                self.get_name())
             ] +
             ["%s" % (unicode(sub_entry)) for sub_entry in self.childs])
     def get_xml(self):
@@ -287,7 +293,9 @@ class tree_struct(object):
             depth="%d" % (self.depth),
             is_dir="1" if self.node.is_dir else "0",
             is_link="1" if self.node.is_link else "0",
-            node_id="%d_%d" % (self.dev_pk, self.node.pk)
+            node_id="%d_%d" % (self.dev_pk, self.node.pk),
+            # needed for linking in frontend angular code
+            parent_id="%s" % ("%d_%d" % (self.dev_pk, self.parent.node.pk) if self.parent else "0")
         )
 
 class generate_config(View):
@@ -295,7 +303,10 @@ class generate_config(View):
     @method_decorator(xml_wrapper)
     def post(self, request):
         _post = request.POST
-        sel_list = [key.split("__")[1] for key in _post.getlist("sel_list[]", []) if key.startswith("dev__")]
+        if "pk_list" in _post:
+            sel_list = json.loads(_post["pk_list"])
+        else:
+            sel_list = [key.split("__")[1] for key in _post.getlist("sel_list[]", []) if key.startswith("dev__")]
         dev_list = device.objects.filter(Q(pk__in=sel_list)).order_by("name")
         dev_dict = dict([(cur_dev.pk, cur_dev) for cur_dev in dev_list])
         logger.info(
@@ -319,6 +330,7 @@ class generate_config(View):
                     # build tree
                     cur_tree = tree_struct(cur_dev, tree_node.objects.filter(Q(device=cur_dev)).select_related("wc_files"))
                     res_node.append(cur_tree.get_xml())
+                    # print etree.tostring(cur_tree.get_xml(), pretty_print=True)
                 request.xml_response["result"].append(res_node)
             request.xml_response.info("build done", logger)
 
