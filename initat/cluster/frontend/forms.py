@@ -2046,7 +2046,7 @@ class config_script_form(ModelForm):
     helper.form_name = "form"
     helper.form_class = 'form-horizontal'
     helper.label_class = 'col-sm-2'
-    helper.field_class = 'col-sm-8'
+    helper.field_class = 'col-sm-9'
     helper.ng_model = "_edit_obj"
     helper.ng_submit = "cur_edit.modify(this)"
     helper.layout = Layout(
@@ -2088,8 +2088,8 @@ class mon_check_command_form(ModelForm):
     helper.form_id = "form"
     helper.form_name = "form"
     helper.form_class = 'form-horizontal'
-    helper.label_class = 'col-sm-3'
-    helper.field_class = 'col-sm-7'
+    helper.label_class = 'col-sm-2'
+    helper.field_class = 'col-sm-9'
     helper.ng_model = "_edit_obj"
     helper.ng_submit = "cur_edit.modify(this)"
     helper.layout = Layout(
