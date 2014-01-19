@@ -107,16 +107,16 @@ class csw_permission(models.Model):
     class Meta:
         unique_together = (("content_type", "codename"),)
         ordering = ("content_type__app_label", "content_type__name", "name",)
-    def get_xml(self):
-        r_xml = E.csw_permission(
-            pk="%d" % (self.pk),
-            key="cswp__%d" % (self.pk),
-            name=self.name or "",
-            codename=self.codename or "",
-            valid_for_object_level="1" if self.valid_for_object_level else "0",
-            content_type="%d" % (self.content_type_id),
-            )
-        return r_xml
+    # def get_xml(self):
+    #    r_xml = E.csw_permission(
+    #        pk="%d" % (self.pk),
+    #        key="cswp__%d" % (self.pk),
+    #        name=self.name or "",
+    #        codename=self.codename or "",
+    #        valid_for_object_level="1" if self.valid_for_object_level else "0",
+    #        content_type="%d" % (self.content_type_id),
+    #        )
+    #    return r_xml
     @staticmethod
     def get_permission(in_object, code_name):
         ct = ContentType.objects.get_for_model(in_object)
@@ -363,44 +363,44 @@ class user(models.Model):
     def get_is_active(self):
         return self.active
     is_active = property(get_is_active)
-    def get_xml(self, with_permissions=False, with_allowed_device_groups=True, user_perm_dict=None,
-                allowed_device_group_dict=None):
-        user_xml = E.user(
-            unicode(self),
-            pk="%d" % (self.pk),
-            key="user__%d" % (self.pk),
-            login=self.login,
-            uid="%d" % (self.uid),
-            group="%d" % (self.group_id or 0),
-            aliases=self.aliases or "",
-            active="1" if self.active else "0",
-            export="%d" % (self.export_id or 0),
-            home_dir_created="1" if self.home_dir_created else "0",
-            first_name=self.first_name or "",
-            last_name=self.last_name or "",
-            title=self.title or "",
-            email=self.email or "",
-            pager=self.pager or "",
-            tel=self.tel or "",
-            comment=self.comment or "",
-            is_superuser="1" if self.is_superuser else "0",
-            secondary_groups="::".join(["%d" % (sec_group.pk) for sec_group in self.secondary_groups.all()]),
-            db_is_auth_for_password="1" if self.db_is_auth_for_password else "0"
-        )
-        if with_allowed_device_groups:
-            if allowed_device_group_dict:
-                user_xml.attrib["allowed_device_groups"] = "::".join(["%d" % (cur_pk) for cur_pk in allowed_device_group_dict.get(self.login, [])])
-            else:
-                user_xml.attrib["allowed_device_groups"] = "::".join(["%d" % (cur_pk) for cur_pk in self.allowed_device_groups.all().values_list("pk", flat=True)])
-        if with_permissions:
-            if user_perm_dict:
-                user_xml.attrib["permissions"] = "::".join(["%d" % (cur_perm.pk) for cur_perm in user_perm_dict.get(self.login, [])])
-            else:
-                user_xml.attrib["permissions"] = "::".join(["%d" % (cur_perm.pk) for cur_perm in csw_permission.objects.filter(Q(db_user_permissions=self))])
-        else:
-            # empty field
-            user_xml.attrib["permissions"] = ""
-        return user_xml
+#     def get_xml(self, with_permissions=False, with_allowed_device_groups=True, user_perm_dict=None,
+#                 allowed_device_group_dict=None):
+#         user_xml = E.user(
+#             unicode(self),
+#             pk="%d" % (self.pk),
+#             key="user__%d" % (self.pk),
+#             login=self.login,
+#             uid="%d" % (self.uid),
+#             group="%d" % (self.group_id or 0),
+#             aliases=self.aliases or "",
+#             active="1" if self.active else "0",
+#             export="%d" % (self.export_id or 0),
+#             home_dir_created="1" if self.home_dir_created else "0",
+#             first_name=self.first_name or "",
+#             last_name=self.last_name or "",
+#             title=self.title or "",
+#             email=self.email or "",
+#             pager=self.pager or "",
+#             tel=self.tel or "",
+#             comment=self.comment or "",
+#             is_superuser="1" if self.is_superuser else "0",
+#             secondary_groups="::".join(["%d" % (sec_group.pk) for sec_group in self.secondary_groups.all()]),
+#             db_is_auth_for_password="1" if self.db_is_auth_for_password else "0"
+#         )
+#         if with_allowed_device_groups:
+#             if allowed_device_group_dict:
+#                 user_xml.attrib["allowed_device_groups"] = "::".join(["%d" % (cur_pk) for cur_pk in allowed_device_group_dict.get(self.login, [])])
+#             else:
+#                 user_xml.attrib["allowed_device_groups"] = "::".join(["%d" % (cur_pk) for cur_pk in self.allowed_device_groups.all().values_list("pk", flat=True)])
+#         if with_permissions:
+#             if user_perm_dict:
+#                 user_xml.attrib["permissions"] = "::".join(["%d" % (cur_perm.pk) for cur_perm in user_perm_dict.get(self.login, [])])
+#             else:
+#                 user_xml.attrib["permissions"] = "::".join(["%d" % (cur_perm.pk) for cur_perm in csw_permission.objects.filter(Q(db_user_permissions=self))])
+#         else:
+#             # empty field
+#             user_xml.attrib["permissions"] = ""
+#         return user_xml
     class CSW_Meta:
         permissions = (
             ("admin"      , "Administrator", True),
@@ -549,36 +549,36 @@ class group(models.Model):
     def get_is_active(self):
         return self.active
     is_active = property(get_is_active)
-    def get_xml(self, with_permissions=False, group_perm_dict=None, with_allowed_device_groups=False,
-                allowed_device_group_dict=None):
-        group_xml = E.group(
-            unicode(self),
-            pk="%d" % (self.pk),
-            key="group__%d" % (self.pk),
-            groupname=unicode(self.groupname),
-            gid="%d" % (self.gid),
-            homestart=self.homestart or "",
-            active="1" if self.active else "0",
-            parent_group="%d" % (self.parent_group_id or 0),
-        )
-        for attr_name in [
-            "first_name", "last_name", "group_comment",
-            "title", "email", "pager", "tel", "comment"]:
-            group_xml.attrib[attr_name] = getattr(self, attr_name)
-        if with_allowed_device_groups:
-            if allowed_device_group_dict:
-                group_xml.attrib["allowed_device_groups"] = "::".join(["%d" % (cur_pk) for cur_pk in allowed_device_group_dict.get(self.groupname, [])])
-            else:
-                group_xml.attrib["allowed_device_groups"] = "::".join(["%d" % (cur_pk) for cur_pk in self.allowed_device_groups.all().values_list("pk", flat=True)])
-        if with_permissions:
-            if group_perm_dict is not None:
-                group_xml.attrib["permissions"] = "::".join(["%d" % (cur_perm.pk) for cur_perm in group_perm_dict.get(self.groupname, [])])
-            else:
-                group_xml.attrib["permissions"] = "::".join(["%d" % (cur_perm.pk) for cur_perm in csw_permission.objects.filter(Q(db_group_permissions=self))])
-        else:
-            # empty field
-            group_xml.attrib["permissions"] = ""
-        return group_xml
+#     def get_xml(self, with_permissions=False, group_perm_dict=None, with_allowed_device_groups=False,
+#                 allowed_device_group_dict=None):
+#         group_xml = E.group(
+#             unicode(self),
+#             pk="%d" % (self.pk),
+#             key="group__%d" % (self.pk),
+#             groupname=unicode(self.groupname),
+#             gid="%d" % (self.gid),
+#             homestart=self.homestart or "",
+#             active="1" if self.active else "0",
+#             parent_group="%d" % (self.parent_group_id or 0),
+#         )
+#         for attr_name in [
+#             "first_name", "last_name", "group_comment",
+#             "title", "email", "pager", "tel", "comment"]:
+#             group_xml.attrib[attr_name] = getattr(self, attr_name)
+#         if with_allowed_device_groups:
+#             if allowed_device_group_dict:
+#                 group_xml.attrib["allowed_device_groups"] = "::".join(["%d" % (cur_pk) for cur_pk in allowed_device_group_dict.get(self.groupname, [])])
+#             else:
+#                 group_xml.attrib["allowed_device_groups"] = "::".join(["%d" % (cur_pk) for cur_pk in self.allowed_device_groups.all().values_list("pk", flat=True)])
+#         if with_permissions:
+#             if group_perm_dict is not None:
+#                 group_xml.attrib["permissions"] = "::".join(["%d" % (cur_perm.pk) for cur_perm in group_perm_dict.get(self.groupname, [])])
+#             else:
+#                 group_xml.attrib["permissions"] = "::".join(["%d" % (cur_perm.pk) for cur_perm in csw_permission.objects.filter(Q(db_group_permissions=self))])
+#         else:
+#             # empty field
+#             group_xml.attrib["permissions"] = ""
+#         return group_xml
     class CSW_Meta:
         permissions = (
             ("group_admin", "Group administrator", True),

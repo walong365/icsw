@@ -5,7 +5,6 @@ from django.db import models
 from django.db.models import Q, signals
 from django.dispatch import receiver
 from initat.cluster.backbone.model_functions import _check_empty_string, _check_integer
-from lxml.builder import E # @UnresolvedImport
 from rest_framework import serializers
 from django.conf import settings
 import logging_tools
@@ -44,20 +43,6 @@ class mon_host_cluster(models.Model):
     # True for user editable (user created) clusters
     user_editable = models.BooleanField(default=True)
     date = models.DateTimeField(auto_now_add=True)
-    def get_xml(self):
-        return E.mon_host_cluster(
-            unicode(self),
-            pk="%d" % (self.pk),
-            key="monhc__%d" % (self.pk),
-            name=self.name,
-            main_device="%d" % (self.main_device_id),
-            mon_service_templ="%d" % (self.mon_service_templ_id),
-            devices="::".join(["%d" % (cur_pk) for cur_pk in self.devices.all().values_list("pk", flat=True)]),
-            warn_value="%d" % (self.warn_value),
-            error_value="%d" % (self.error_value),
-            user_editable="1" if self.user_editable else "0",
-            description=self.description,
-        )
     def __unicode__(self):
         return self.name
 
@@ -88,21 +73,6 @@ class mon_service_cluster(models.Model):
     # True for user editable (user created) clusters
     user_editable = models.BooleanField(default=True)
     date = models.DateTimeField(auto_now_add=True)
-    def get_xml(self):
-        return E.mon_service_cluster(
-            unicode(self),
-            pk="%d" % (self.pk),
-            key="monsc__%d" % (self.pk),
-            name=self.name,
-            main_device="%d" % (self.main_device_id),
-            mon_service_templ="%d" % (self.mon_service_templ_id),
-            mon_check_command="%d" % (self.mon_check_command_id),
-            devices="::".join(["%d" % (cur_pk) for cur_pk in self.devices.all().values_list("pk", flat=True)]),
-            warn_value="%d" % (self.warn_value),
-            error_value="%d" % (self.error_value),
-            user_editable="1" if self.user_editable else "0",
-            description=self.description,
-        )
     def __unicode__(self):
         return self.name
 
@@ -125,14 +95,6 @@ class host_check_command(models.Model):
     name = models.CharField(max_length=64, unique=True, blank=False, null=False)
     command_line = models.CharField(max_length=128, unique=True, blank=False, null=False)
     date = models.DateTimeField(auto_now_add=True)
-    def get_xml(self):
-        return E.host_check_command(
-            self.name,
-            pk="%d" % (self.pk),
-            key="hcc__%d" % (self.pk),
-            name=self.name,
-            command_line=self.command_line,
-        )
     def __unicode__(self):
         return "mcc_%s" % (self.name)
 
@@ -165,23 +127,6 @@ class mon_check_command(models.Model):
     is_event_handler = models.BooleanField(default=False)
     event_handler = models.ForeignKey("self", null=True, default=None, blank=True)
     event_handler_enabled = models.BooleanField(default=True)
-    def get_xml(self, with_exclude_devices=False):
-        r_xml = E.mon_check_command(
-            self.name,
-            pk="%d" % (self.pk),
-            key="moncc__%d" % (self.pk),
-            config="%d" % (self.config_id),
-            mon_service_templ="%d" % (self.mon_service_templ_id or 0),
-            name=self.name or "",
-            command_line=self.command_line or "",
-            description=self.description or "",
-            enable_perfdata="1" if self.enable_perfdata else "0",
-            volatile="1" if self.volatile else "0",
-            categories="::".join(["%d" % (cur_cat.pk) for cur_cat in self.categories.all()]),
-        )
-        if with_exclude_devices:
-            r_xml.attrib["exclude_devices"] = "::".join(["%d" % (cur_dev.pk) for cur_dev in self.exclude_devices.all()])
-        return r_xml
     class Meta:
         db_table = u'ng_check_command'
         unique_together = (("name", "config"))
@@ -221,13 +166,6 @@ class mon_check_command_type(models.Model):
     idx = models.AutoField(db_column="ng_check_command_type_idx", primary_key=True)
     name = models.CharField(unique=True, max_length=192)
     date = models.DateTimeField(auto_now_add=True)
-    def get_xml(self):
-        return E.mon_check_command_type(
-            unicode(self),
-            pk="%d" % (self.pk),
-            key="ngcct__%d" % (self.pk),
-            name=self.name or ""
-        )
     def __unicode__(self):
         return self.name
     class Meta:
@@ -252,21 +190,6 @@ class mon_contact(models.Model):
     date = models.DateTimeField(auto_now_add=True)
     notifications = models.ManyToManyField("mon_notification", blank=True)
     mon_alias = models.CharField(max_length=64, default="", verbose_name="alias", blank=True)
-    def get_xml(self):
-        ret_xml = E.mon_contact(
-            unicode(self),
-            pk="%d" % (self.pk),
-            key="moncon__%d" % (self.pk),
-            user="%d" % (self.user_id or 0),
-            snperiod="%d" % (self.snperiod_id or 0),
-            hnperiod="%d" % (self.hnperiod_id or 0),
-            notifications="::".join(["%d" % (cur_not.pk) for cur_not in self.notifications.all()]),
-            mon_alias="%s" % (unicode(self.mon_alias or "")),
-        )
-        for bf in ["snrecovery", "sncritical", "snunknown", "snwarning", "sflapping", "splanned_downtime",
-                   "hnrecovery", "hndown", "hnunreachable", "hflapping", "hplanned_downtime"]:
-            ret_xml.attrib[bf] = "1" if getattr(self, bf) else "0"
-        return ret_xml
     def get_user_name(self):
         return u"%s (%s %s)" % (
             self.user.login,
@@ -304,18 +227,6 @@ class mon_notification(models.Model):
     content = models.CharField(max_length=4096, blank=False)
     enabled = models.BooleanField(default=True)
     created = models.DateTimeField(auto_now_add=True)
-    def get_xml(self):
-        return E.mon_notification(
-            unicode(self),
-            pk="%d" % (self.pk),
-            key="monn__%d" % (self.pk),
-            name=self.name,
-            channel=self.channel,
-            not_type=self.not_type,
-            subject=self.subject,
-            content=self.content,
-            enabled="1" if self.enabled else "0",
-        )
     def __unicode__(self):
         return "%s (%s via %s)" % (
             self.name,
@@ -353,18 +264,6 @@ class mon_contactgroup(models.Model):
     members = models.ManyToManyField("mon_contact", blank=True)
     service_templates = models.ManyToManyField("mon_service_templ", blank=True)
     service_esc_templates = models.ManyToManyField("mon_service_esc_templ", blank=True)
-    def get_xml(self):
-        return E.mon_contactgroup(
-            unicode(self),
-            members="::".join(["%d" % (cur_pk) for cur_pk in self.members.all().values_list("pk", flat=True)]),
-            device_groups="::".join(["%d" % (cur_pk) for cur_pk in self.device_groups.all().values_list("pk", flat=True)]),
-            service_templates="::".join(["%d" % (cur_pk) for cur_pk in self.service_templates.all().values_list("pk", flat=True)]),
-            service_esc_templates="::".join(["%d" % (cur_pk) for cur_pk in self.service_esc_templates.all().values_list("pk", flat=True)]),
-            pk="%d" % (self.pk),
-            key="moncg__%d" % (self.pk),
-            name=self.name,
-            alias=self.alias,
-        )
     def __unicode__(self):
         return self.name
     class Meta:
@@ -411,32 +310,6 @@ class mon_device_templ(models.Model):
     flap_detect_down = models.BooleanField(default=False)
     flap_detect_unreachable = models.BooleanField(default=False)
     date = models.DateTimeField(auto_now_add=True)
-    def get_xml(self):
-        return E.mon_device_templ(
-            unicode(self),
-            pk="%d" % (self.pk),
-            key="mondt__%d" % (self.pk),
-            name=self.name,
-            host_check_command="%d" % (self.host_check_command_id or 0),
-            mon_service_templ="%d" % (self.mon_service_templ_id or 0),
-            check_interval="%d" % (self.check_interval),
-            retry_interval="%d" % (self.retry_interval),
-            max_attempts="%d" % (self.max_attempts or 0),
-            ninterval="%d" % (self.ninterval or 0),
-            mon_period="%d" % (self.mon_period_id or 0),
-            not_period="%d" % (self.not_period_id or 0),
-            nrecovery="%d" % (1 if self.nrecovery else 0),
-            ndown="%d" % (1 if self.ndown else 0),
-            nunreachable="%d" % (1 if self.nunreachable else 0),
-            nflapping="%d" % (1 if self.nflapping else 0),
-            nplanned_downtime="%d" % (1 if self.nplanned_downtime else 0),
-            low_flap_threshold="%d" % (self.low_flap_threshold),
-            high_flap_threshold="%d" % (self.high_flap_threshold),
-            flap_detection_enabled="%d" % (1 if self.flap_detection_enabled else 0),
-            flap_detect_up="%d" % (1 if self.flap_detect_up else 0),
-            flap_detect_down="%d" % (1 if self.flap_detect_down else 0),
-            flap_detect_unreachable="%d" % (1 if self.flap_detect_unreachable else 0),
-        )
     def __unicode__(self):
         return self.name
     class Meta:
@@ -476,23 +349,6 @@ class mon_device_esc_templ(models.Model):
     nflapping = models.BooleanField(default=False)
     nplanned_downtime = models.BooleanField(default=False)
     date = models.DateTimeField(auto_now_add=True)
-    def get_xml(self):
-        return E.mon_device_esc_templ(
-            unicode(self),
-            pk="%d" % (self.pk),
-            key="mondet__%d" % (self.pk),
-            name=self.name,
-            first_notification="%d" % (self.first_notification),
-            last_notification="%d" % (self.last_notification),
-            mon_service_esc_templ="%d" % (self.mon_service_esc_templ_id or 0),
-            ninterval="%d" % (self.ninterval or 0),
-            esc_period="%d" % (self.esc_period_id or 0),
-            nrecovery="%d" % (1 if self.nrecovery else 0),
-            nflapping="%d" % (1 if self.nflapping else 0),
-            nplanned_downtime="%d" % (1 if self.nplanned_downtime else 0),
-            ndown="%d" % (1 if self.ndown else 0),
-            nunreachable="%d" % (1 if self.nunreachable else 0),
-        )
     def __unicode__(self):
         return self.name
 
@@ -533,20 +389,6 @@ class mon_host_dependency_templ(models.Model):
     @property
     def notification_failure_criteria(self):
         return ",".join([short for short, _long in [("o", "up"), ("d", "down"), ("u", "unreachable"), ("p", "pending")] if getattr(self, "nfc_%s" % (_long))]) or "n"
-    def get_xml(self):
-        r_xml = E.mon_host_dependency_templ(
-            unicode(self),
-            pk="%d" % (self.pk),
-            priority="%d" % (self.priority),
-            key="monhd__%d" % (self.pk),
-            name=self.name,
-            dependency_period="%d" % (self.dependency_period_id),
-        )
-        for b_type in ["e", "n"]:
-            for c_type in ["up", "down", "unreachable", "pending"]:
-                attr_name = "%sfc_%s" % (b_type, c_type)
-                r_xml.attrib[attr_name] = "1" if getattr(self, attr_name) else "0"
-        return r_xml
     def __unicode__(self):
         return self.name
     class Meta:
@@ -614,20 +456,6 @@ class mon_service_dependency_templ(models.Model):
     @property
     def notification_failure_criteria(self):
         return ",".join([short for short, _long in [("o", "ok"), ("w", "warn"), ("u", "unknown"), ("c", "critical"), ("p", "pending")] if getattr(self, "nfc_%s" % (_long))]) or "n"
-    def get_xml(self):
-        r_xml = E.mon_service_dependency_templ(
-            unicode(self),
-            pk="%d" % (self.pk),
-            priority="%d" % (self.priority),
-            key="monsd__%d" % (self.pk),
-            name=self.name,
-            dependency_period="%d" % (self.dependency_period_id),
-        )
-        for b_type in ["e", "n"]:
-            for c_type in ["ok", "warn", "unknown", "critical", "pending"]:
-                attr_name = "%sfc_%s" % (b_type, c_type)
-                r_xml.attrib[attr_name] = "1" if getattr(self, attr_name) else "0"
-        return r_xml
     def __unicode__(self):
         return self.name
     class Meta:
@@ -687,16 +515,6 @@ class mon_ext_host(models.Model):
     # gd2
     statusmap_image = models.CharField(max_length=192, blank=True)
     date = models.DateTimeField(auto_now_add=True)
-    def get_xml(self, with_images=False):
-        cur_xml = E.mon_ext_host(
-            unicode(self),
-            name=self.name,
-            pk="%d" % (self.pk),
-            key="mext__%d" % (self.pk),
-            icon_image="%s" % (self.icon_image),
-        )
-        cur_xml.attrib["data-image"] = self.data_image_field()
-        return cur_xml
     def __unicode__(self):
         return self.name
     def data_image_field(self):
@@ -723,17 +541,6 @@ class mon_period(models.Model):
     fri_range = models.CharField(max_length=48, blank=True, db_column="frirange")
     sat_range = models.CharField(max_length=48, blank=True, db_column="satrange")
     date = models.DateTimeField(auto_now_add=True)
-    def get_xml(self):
-        ret_xml = E.mon_period(
-            unicode(self),
-            pk="%d" % (self.pk),
-            key="monper__%d" % (self.pk),
-            name=unicode(self.name),
-            alias=unicode(self.alias),
-        )
-        for day in ["sun", "mon", "tue", "wed", "thu", "fri", "sat"]:
-            ret_xml.attrib["%s_range" % (day)] = getattr(self, "%s_range" % (day))
-        return ret_xml
     def __unicode__(self):
         return self.name
     class Meta:
@@ -801,33 +608,6 @@ class mon_service_templ(models.Model):
     flap_detect_critical = models.BooleanField(default=False)
     flap_detect_unknown = models.BooleanField(default=False)
     date = models.DateTimeField(auto_now_add=True)
-    def get_xml(self):
-        return E.mon_service_templ(
-            unicode(self),
-            pk="%d" % (self.pk),
-            key="monst__%d" % (self.pk),
-            name=self.name,
-            volatile="1" if self.volatile else "0",
-            max_attempts="%d" % (self.max_attempts),
-            nsc_period="%d" % (self.nsc_period_id or 0),
-            check_interval="%d" % (self.check_interval),
-            retry_interval="%d" % (self.retry_interval),
-            nsn_period="%d" % (self.nsn_period_id or 0),
-            ninterval="%d" % (self.ninterval),
-            nrecovery="%d" % (1 if self.nrecovery else 0),
-            ncritical="%d" % (1 if self.ncritical else 0),
-            nwarning="%d" % (1 if self.nwarning else 0),
-            nunknown="%d" % (1 if self.nunknown else 0),
-            nflapping="%d" % (1 if self.nflapping else 0),
-            nplanned_downtime="%d" % (1 if self.nplanned_downtime else 0),
-            low_flap_threshold="%d" % (self.low_flap_threshold),
-            high_flap_threshold="%d" % (self.high_flap_threshold),
-            flap_detection_enabled="%d" % (1 if self.flap_detection_enabled else 0),
-            flap_detect_ok="%d" % (1 if self.flap_detect_ok else 0),
-            flap_detect_warn="%d" % (1 if self.flap_detect_warn else 0),
-            flap_detect_critical="%d" % (1 if self.flap_detect_critical else 0),
-            flap_detect_unknown="%d" % (1 if self.flap_detect_unknown else 0),
-        )
     def __unicode__(self):
         return self.name
     class Meta:
@@ -867,23 +647,6 @@ class mon_service_esc_templ(models.Model):
     nflapping = models.BooleanField(default=False)
     nplanned_downtime = models.BooleanField(default=False)
     date = models.DateTimeField(auto_now_add=True)
-    def get_xml(self):
-        return E.mon_service_esc_templ(
-            unicode(self),
-            pk="%d" % (self.pk),
-            key="monset__%d" % (self.pk),
-            name=self.name,
-            first_notification="%d" % (self.first_notification),
-            last_notification="%d" % (self.last_notification),
-            ninterval="%d" % (self.ninterval or 0),
-            esc_period="%d" % (self.esc_period_id or 0),
-            nflapping="%d" % (1 if self.nflapping else 0),
-            nplanned_downtime="%d" % (1 if self.nplanned_downtime else 0),
-            nrecovery="%d" % (1 if self.nrecovery else 0),
-            ncritical="%d" % (1 if self.ncritical else 0),
-            nwarning="%d" % (1 if self.nwarning else 0),
-            nunknown="%d" % (1 if self.nunknown else 0),
-        )
     def __unicode__(self):
         return self.name
 

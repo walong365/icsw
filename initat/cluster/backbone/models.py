@@ -130,10 +130,9 @@ class architecture(models.Model):
     def __unicode__(self):
         return self.architecture
 
-class architecture_serializer(serializers.Serializer):
+class architecture_serializer(serializers.ModelSerializer):
     class Meta:
         model = architecture
-        fields = ("idx", "architecture",)
 
 class partition_fs(models.Model):
     # mix of partition and fs info, not perfect ...

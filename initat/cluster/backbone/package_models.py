@@ -4,9 +4,8 @@ from django.core.exceptions import ValidationError
 from django.db import models
 from django.db.models import Q, signals
 from django.dispatch import receiver
-from initat.cluster.backbone.model_functions import _check_empty_string, to_system_tz
+from initat.cluster.backbone.model_functions import _check_empty_string
 from lxml import etree # @UnresolvedImport
-from lxml.builder import E # @UnresolvedImport
 from rest_framework import serializers
 
 __all__ = [
@@ -29,19 +28,6 @@ class package_repo(models.Model):
     url = models.CharField(max_length=384, default="")
     created = models.DateTimeField(auto_now_add=True)
     publish_to_nodes = models.BooleanField(default=False, verbose_name="PublishFlag")
-    def get_xml(self):
-        return E.package_repo(
-            unicode(self),
-            pk="%d" % (self.pk),
-            key="pr__%d" % (self.pk),
-            name=self.name,
-            alias=self.alias,
-            repo_type=self.repo_type,
-            enabled="1" if self.enabled else "0",
-            autorefresh="1" if self.autorefresh else "0",
-            gpg_check="1" if self.gpg_check else "0",
-            publish_to_nodes="1" if self.publish_to_nodes else "0",
-            url=self.url)
     def __unicode__(self):
         return self.name
     @property
@@ -86,17 +72,6 @@ class package_search(models.Model):
     results = models.IntegerField(default=0)
     last_search = models.DateTimeField(null=True, auto_now_add=True)
     created = models.DateTimeField(auto_now_add=True)
-    def get_xml(self):
-        return E.package_search(
-            unicode(self),
-            pk="%d" % (self.pk),
-            key="ps__%d" % (self.pk),
-            search_string=self.search_string,
-            current_state=self.current_state,
-            num_searches="%d" % (self.num_searches),
-            last_search_string="%s" % (self.last_search_string),
-            last_search=unicode(to_system_tz(self.last_search)) if self.last_search else "never",
-            results="%d" % (self.results))
     def __unicode__(self):
         return self.search_string
     class CSW_Meta:
@@ -148,18 +123,6 @@ class package_search_result(models.Model):
             self.copied = True
             self.save()
         return new_p
-    def get_xml(self):
-        return E.package_search_result(
-            unicode(self),
-            pk="%d" % (self.pk),
-            key="psr__%d" % (self.pk),
-            name=self.name,
-            kind=self.kind,
-            arch=self.arch,
-            version=self.version,
-            copied="1" if self.copied else "0",
-            package_repo="%d" % (self.package_repo_id or 0)
-        )
     class Meta:
         ordering = ("name", "arch", "version",)
 
@@ -180,28 +143,7 @@ class package(models.Model):
     # hard to determine ...
     size = models.IntegerField(default=0)
     package_repo = models.ForeignKey(package_repo, null=True)
-# #    pgroup = models.TextField()
-# #    summary = models.TextField()
-# #    distribution = models.ForeignKey("distribution")
-# #    vendor = models.ForeignKey("vendor")
-# #    buildtime = models.IntegerField(null=True, blank=True)
-# #    buildhost = models.CharField(max_length=765, blank=True)
-# #    packager = models.CharField(max_length=765, blank=True)
-# #    date = models.DateTimeField(auto_now_add=True)
     created = models.DateTimeField(auto_now_add=True)
-    def get_xml(self):
-        return E.package(
-            unicode(self),
-            pk="%d" % (self.pk),
-            key="pack__%d" % (self.pk),
-            name=self.name,
-            version=self.version,
-            kind=self.kind,
-            arch=self.arch,
-            size="%d" % (self.size),
-            always_latest="1" if self.always_latest else "0",
-            package_repo="%d" % (self.package_repo_id or 0)
-        )
     def __unicode__(self):
         return "%s-%s" % (self.name, self.version)
     class Meta:
@@ -247,20 +189,6 @@ class package_device_connection(models.Model):
         ("unknown"   , "unknown"),
         ), default="zypper_xml")
     response_str = models.TextField(max_length=65535, default="")
-    def get_xml(self, with_package=False):
-        pdc_xml = E.package_device_connection(
-            pk="%d" % (self.pk),
-            key="pdc__%d" % (self.pk),
-            device="%d" % (self.device_id),
-            package="%d" % (self.package_id),
-            target_state="%s" % (self.target_state),
-            installed="%s" % (self.installed),
-            force_flag="1" if self.force_flag else "0",
-            nodeps_flag="1" if self.nodeps_flag else "0",
-        )
-        if with_package:
-            pdc_xml.append(self.package.get_xml())
-        return pdc_xml
     def interpret_response(self):
         if self.response_type == "zypper_xml":
             xml = etree.fromstring(self.response_str)
