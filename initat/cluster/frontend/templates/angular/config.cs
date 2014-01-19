@@ -192,6 +192,7 @@ mon_table_template = """
             <th>is event</th>
             <th>event handler</th>
             <th>eh enabled</th>
+            <th>cats</th>
             <th colspan="2">Action</th>
         </tr>
     </thead>
@@ -206,6 +207,7 @@ mon_table_template = """
             <td>{{ obj.is_event_handler | yesno1 }}</td>
             <td>{{ obj.event_handler }}</td>
             <td>{{ obj.event_handler_enabled }}</td>
+            <td>{{ get_num_cats(obj) }}</td>
             <td><input type="button" class="btn btn-primary btn-xs" ng-click="edit_mon(config, obj, $event)" value="modify"></input></td>
             <td><input type="button" class="btn btn-danger btn-xs" ng-click="delete_mon(config, obj)" value="delete"></input></td>
         </tr>
