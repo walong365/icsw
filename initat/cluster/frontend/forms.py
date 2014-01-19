@@ -2045,8 +2045,8 @@ class config_script_form(ModelForm):
     helper.form_id = "form"
     helper.form_name = "form"
     helper.form_class = 'form-horizontal'
-    helper.label_class = 'col-sm-3'
-    helper.field_class = 'col-sm-7'
+    helper.label_class = 'col-sm-2'
+    helper.field_class = 'col-sm-8'
     helper.ng_model = "_edit_obj"
     helper.ng_submit = "cur_edit.modify(this)"
     helper.layout = Layout(
@@ -2055,9 +2055,25 @@ class config_script_form(ModelForm):
                 "Basic settings",
                 Field("name", wrapper_class="ng-class:form_error('name')"),
                 Field("description"),
-                Field("priority"),
-                Field("enabled"),
-                Field("value"),
+            ),
+            Fieldset(
+                "Script",
+                HTML("<textarea ui-codemirror='editorOptions' ng-model='_edit_obj.edit_value'></textarea>"), # Field("value"),
+            ),
+            Fieldset(
+                "Flags",
+                Div(
+                    Div(
+                        # disable enabled-flag for clusterdevicegroup
+                        Field("priority"),
+                        css_class="col-md-6",
+                    ),
+                    Div(
+                        Field("enabled"),
+                        css_class="col-md-6",
+                    ),
+                    css_class="row",
+                ),
             ),
             FormActions(
                 Submit("submit", "", css_class="primaryAction", ng_value="action_string"),
@@ -2065,7 +2081,7 @@ class config_script_form(ModelForm):
         )
     class Meta:
         model = config_script
-        fields = ("name", "description", "value", "priority", "enabled",)
+        fields = ("name", "description", "priority", "enabled",)
 
 class mon_check_command_form(ModelForm):
     helper = FormHelper()

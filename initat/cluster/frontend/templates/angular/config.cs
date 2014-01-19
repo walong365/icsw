@@ -127,7 +127,7 @@ config_table_template = """
 """
 
 var_table_template = """
-<table ng-if="config.var_expanded" class="table table-condensed table-hover" style="width:auto;">
+<table ng-if="config.var_expanded" class="table table-condensed table-hover">
     <thead>
         <tr>
             <th>Name</th>
@@ -151,7 +151,7 @@ var_table_template = """
 """
 
 script_table_template = """
-<table ng-if="config.script_expanded" class="table table-condensed table-hover" style="width:auto;">
+<table ng-if="config.script_expanded" class="table table-condensed table-hover">
     <thead>
         <tr>
             <th>Name</th>
@@ -165,7 +165,10 @@ script_table_template = """
     <tbody>
         <tr ng-repeat="obj in config.config_script_set">
             <td>{{ obj.name }}</td>
-            <td>{{ obj.value }}</td>
+            <td style="font-family:monospace; width:480px;">
+                <textarea ng-model="obj.value" class="form-control input-sm" rows="5" readonly>
+                </textarea>
+            </td>
             <td>{{ obj.description }}</td>
             <td>{{ obj.priority }}</td>
             <td>{{ obj.enabled | yesno1 }}</td>
@@ -177,7 +180,7 @@ script_table_template = """
 """
 
 mon_table_template = """
-<table ng-if="config.mon_expanded" class="table table-condensed table-hover" style="width:auto;">
+<table ng-if="config.mon_expanded" class="table table-condensed table-hover">
     <thead>
         <tr>
             <th>Name</th>
@@ -193,7 +196,7 @@ mon_table_template = """
         </tr>
     </thead>
     <tbody>
-        <tr ng-repeat="obj in config.mon_check_command_set">
+        <tr ng-repeat="obj in config.mon_check_command_set | orderBy:'name'">
             <td>{{ obj.name }}</td>
             <td>{{ obj.mon_service_templ | array_lookup:this.mon_service_templ:'name':'-' }}</td>
             <td>{{ obj.description }}</td>
@@ -212,7 +215,7 @@ mon_table_template = """
 
 {% endverbatim %}
 
-config_module = angular.module("icsw.config", ["ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters", "localytics.directives", "restangular"])
+config_module = angular.module("icsw.config", ["ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters", "localytics.directives", "restangular", "ui.codemirror"])
 
 angular_module_setup([config_module])
 
@@ -225,6 +228,19 @@ config_ctrl = config_module.controller("config_ctrl", ["$scope", "$compile", "$f
             "filter_script" : false
             "filter_var" : false
             "filter_mon" : false
+        }
+        $scope.editorOptions = {
+            lineWrapping : false
+            lineNumbers: true
+            mode: 
+                name : "python"
+                version : 2
+            matchBrackets: true
+            minHeight : 200
+            width: "800px"
+            height: "600px"
+            styleActiveLine: true
+            indentUnit : 4
         }
         $scope.pagSettings.conf.filter_changed = (ps) ->
             cf = $scope.pagSettings.conf.filter_settings
@@ -265,6 +281,7 @@ config_ctrl = config_module.controller("config_ctrl", ["$scope", "$compile", "$f
         $scope.script_edit.modify_rest_url = "{% url 'rest:config_script_detail' 1 %}".slice(1).slice(0, -2)
         $scope.script_edit.use_promise = true
         $scope.script_edit.new_object_at_tail = false
+        $scope.script_edit.min_width = "820px"
         $scope.mon_edit = new angular_edit_mixin($scope, $templateCache, $compile, $modal, Restangular, $q)
         $scope.mon_edit.create_template = "mon_check_command_template.html"
         $scope.mon_edit.edit_template = "mon_check_command_template.html"
@@ -272,6 +289,7 @@ config_ctrl = config_module.controller("config_ctrl", ["$scope", "$compile", "$f
         $scope.mon_edit.modify_rest_url = "{% url 'rest:mon_check_command_detail' 1 %}".slice(1).slice(0, -2)
         $scope.mon_edit.use_promise = true
         $scope.mon_edit.new_object_at_tail = false
+        $scope.mon_edit.min_width = "820px"
         #$scope.config_edit.change_signal = "icsw.new_config"
         $scope.reload = () ->
             wait_list = [
@@ -415,8 +433,8 @@ config_ctrl = config_module.controller("config_ctrl", ["$scope", "$compile", "$f
             $scope.var_edit.new_object = (scope) ->
                 return {
                     "config" : config.idx
-                    "name" : "new var"
-                    "description" : "new variable"
+                    "name" : "new #{v_type} var"
+                    "description" : "new variable (type #{v_type})"
                     "value" : {"str" : "", "int" : 0, "bool" : 1}[v_type]
                 }
             $scope.var_edit.create(event).then(
@@ -432,6 +450,14 @@ config_ctrl = config_module.controller("config_ctrl", ["$scope", "$compile", "$f
             )
         $scope.edit_script = (config, obj, event) ->
             $scope.script_edit.create_list = config.config_script_set
+            obj.edit_value = obj.value
+            $scope.$watch(
+                () -> 
+                    return obj.edit_value
+                (new_val) ->
+                    if typeof(new_val) == "string" and new_val.length
+                        obj.value = new_val
+            )
             $scope.script_edit.edit(obj, event).then(
                 (mod_obj) ->
                     if mod_obj != false
@@ -446,8 +472,15 @@ config_ctrl = config_module.controller("config_ctrl", ["$scope", "$compile", "$f
                     "priority" : 0
                     "enabled" : true
                     "description" : "new script"
-                    "value" : "#config script\n#\n"
+                    "edit_value" : "# config script (" + moment().format() + ")\n#\n"
                 }
+            $scope.$watch(
+                () -> 
+                    return $scope._edit_obj.edit_value
+                (new_val) ->
+                    if typeof(new_val) == "string" and new_val.length
+                        $scope._edit_obj.value = new_val
+            )
             $scope.script_edit.create(event).then(
                 (new_obj) ->
                     if new_obj != false

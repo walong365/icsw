@@ -649,6 +649,7 @@ class angular_edit_mixin
         @use_modal = true
         @new_object_at_tail = true
         @use_promise = false
+        @min_width = "600px"
     create : (event) =>
         if @new_object
             @scope.new_obj = @new_object(@scope)
@@ -675,6 +676,7 @@ class angular_edit_mixin
             @edit_div.simplemodal
                 #opacity      : 50
                 position     : [event.pageY, event.pageX]
+                minWidth : @min_width
                 #autoResize   : true
                 #autoPosition : true
                 onShow: (dialog) => 
