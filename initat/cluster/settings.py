@@ -369,13 +369,13 @@ PIPELINE_JS = {
         },
         "output_filename" : "pipeline/js/base.js"
     },
-    # "js_extra1" : {
-    #    "source_filenames" : {
-    #            "js/libs/dynatree/jquery.dynatree.js",
-    #    },
-    #    "output_filename" : "pipeline/js/extra1.js"
-    # },
     "js_extra1" : {
+       "source_filenames" : {
+               "js/libs/dynatree/jquery.dynatree.js",
+       },
+       "output_filename" : "pipeline/js/extra1.js"
+    },
+    "js_extra2" : {
         "source_filenames" : {
                 "js/jquery.dataTables.rowGrouping.js",
                 "js/codemirror/addon/selection/active-line.js",
