@@ -1,6 +1,6 @@
 #!/usr/bin/python-init -OtW default
 #
-# Copyright (C) 2001,2002,2003,2004,2005,2006,2007,2008,2012,2013 Andreas Lang-Nevyjel, init.at
+# Copyright (C) 2001-2008,2012-2014 Andreas Lang-Nevyjel, init.at
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -59,9 +59,12 @@ class tree_node_g(object):
         if self.is_dir:
             self.childs = {}
         if c_node is None:
+            # intermediate, can be overwritten
             self.content_node = new_config_object(self.path, "?", mode="0755")
+            self.content_node_valid = False
         else:
             self.content_node = c_node
+            self.content_node_valid = True
     def add_config(self, c_pk):
         self.used_config_pks.add(c_pk)
     def get_path(self):
@@ -74,10 +77,14 @@ class tree_node_g(object):
             # normalize path at top level
             path = os.path.normpath(path)
         if path == self.path:
+            # found
             if self.is_dir == dir_node:
-                if self.content_node != c_node:
-                    if not use_existing:
-                        raise ValueError, "content node '%s' already set, missing append=True ?" % (path)
+                if self.content_node_valid:
+                    if self.content_node != c_node:
+                        if not use_existing:
+                            raise ValueError, "content node '%s' already set, missing append=True ?" % (path)
+                else:
+                    self.content_node = c_node
                 # match, return myself
                 if self.content_node.c_type == "l":
                     self.is_link = True
@@ -94,11 +101,11 @@ class tree_node_g(object):
                 raise KeyError, "path mismatch: %s != %s" % (path_list[0], self.path)
             if path_list[1] not in self.childs:
                 if len(path_list) == 2 and not dir_node:
-                    # add content node
+                    # add content node (final node)
                     self.childs[path_list[1]] = tree_node_g(path_list[1], c_node, parent=self, is_dir=False)
                 else:
-                    # add dir node
-                    self.childs[path_list[1]] = tree_node_g(path_list[1], c_node, parent=self, intermediate=True)
+                    # add (intermediate) dir node
+                    self.childs[path_list[1]] = tree_node_g(path_list[1], None, parent=self, intermediate=True)
             return self.childs[path_list[1]].get_node(os.path.join(*path_list[1:]), c_node, dir_node=dir_node, use_existing=use_existing)
     def get_type_str(self):
         return "dir" if self.is_dir else ("link" if self.is_link else "file")
@@ -127,6 +134,7 @@ class tree_node_g(object):
             parent=kwargs.get("parent", None))
         cur_tn.save()
         cur_tn.node = self
+        # print "wn", self.path, "**", "".join(self.content_node.content)
         cur_wc = wc_files(
             device=cur_bc.conf_dict["device"],
             dest=self.path,
