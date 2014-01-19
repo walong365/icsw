@@ -37,8 +37,8 @@
     <td>{{ obj.sys_vendor }}, {{ obj.sys_version || "?" }}.{{ obj.sys_release || "?" }}</td>
     <td class="text-center">{{ obj.act_image.length }} / {{ obj.new_image.length }}</td>
     <td class="text-center">{{ obj.size_string }}</td>
-    <td><input type="button" class="btn btn-primary" ng-click="edit($event, obj)" value="modify"/></td>
-    <td><input type="button" class="btn btn-danger" ng-show="delete_ok(obj)" ng-click="delete(obj)" value="delete"/></td>
+    <td><input type="button" class="btn btn-primary btn-sm" ng-click="edit($event, obj)" value="modify"/></td>
+    <td><input type="button" class="btn btn-danger btn-sm" ng-show="delete_ok(obj)" ng-click="delete(obj)" value="delete"/></td>
 </script>
 
 <script type="text/ng-template" id="image_new_head.html">

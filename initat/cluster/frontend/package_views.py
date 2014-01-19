@@ -125,42 +125,42 @@ class unuse_package(View):
                 cur_p.delete()
                 request.xml_response.info("removed package", logger)
 
-class install(View):
-    @method_decorator(login_required)
-    def get(self, request):
-        return render_me(request, "package_install.html", {})()
-    @method_decorator(xml_wrapper)
-    def post(self, request):
-        xml_resp = E.response(
-            E.packages(
-                *[cur_p.get_xml() for cur_p in package.objects.all()]
-            ),
-            E.target_states(
-                *[E.target_state(key, pk=key) for key in ["keep", "install", "upgrade", "erase"]]
-                ),
-            E.package_repos(*[cur_r.get_xml() for cur_r in package_repo.objects.all()])
-        )
-        request.xml_response["response"] = xml_resp
+# class install(View):
+#     @method_decorator(login_required)
+#     def get(self, request):
+#         return render_me(request, "package_install.html", {})()
+#     @method_decorator(xml_wrapper)
+#     def post(self, request):
+#         xml_resp = E.response(
+#             E.packages(
+#                 *[cur_p.get_xml() for cur_p in package.objects.all()]
+#             ),
+#             E.target_states(
+#                 *[E.target_state(key, pk=key) for key in ["keep", "install", "upgrade", "erase"]]
+#                 ),
+#             E.package_repos(*[cur_r.get_xml() for cur_r in package_repo.objects.all()])
+#         )
+#         request.xml_response["response"] = xml_resp
 
-class refresh(View):
-    @method_decorator(login_required)
-    @method_decorator(xml_wrapper)
-    def post(self, request):
-        _post = request.POST
-        # print time.mktime(datetime.datetime.now().timetuple()), int(float(_post["cur_time"]))
-        # pprint.pprint(_post)
-        dev_list = [key.split("__")[1] for key in _post.getlist("sel_list[]")]
-        xml_resp = E.response(
-            E.package_device_connections(
-                *[cur_pdc.get_xml() for cur_pdc in package_device_connection.objects.filter(Q(device__in=dev_list))]
-            ),
-            E.last_contacts(
-                *[E.last_contact(device="%d" % (cur_var.device_id), when="%d" % (
-                    time.mktime(to_system_tz(cur_var.val_date).timetuple())))
-                    for cur_var in device_variable.objects.filter(Q(name="package_server_last_contact") & Q(device__pk__in=dev_list))]
-            )
-        )
-        request.xml_response["response"] = xml_resp
+# class refresh(View):
+#     @method_decorator(login_required)
+#     @method_decorator(xml_wrapper)
+#     def post(self, request):
+#         _post = request.POST
+#         # print time.mktime(datetime.datetime.now().timetuple()), int(float(_post["cur_time"]))
+#         # pprint.pprint(_post)
+#         dev_list = [key.split("__")[1] for key in _post.getlist("sel_list[]")]
+#         xml_resp = E.response(
+#             E.package_device_connections(
+#                 *[cur_pdc.get_xml() for cur_pdc in package_device_connection.objects.filter(Q(device__in=dev_list))]
+#             ),
+#             E.last_contacts(
+#                 *[E.last_contact(device="%d" % (cur_var.device_id), when="%d" % (
+#                     time.mktime(to_system_tz(cur_var.val_date).timetuple())))
+#                     for cur_var in device_variable.objects.filter(Q(name="package_server_last_contact") & Q(device__pk__in=dev_list))]
+#             )
+#         )
+#         request.xml_response["response"] = xml_resp
 
 class add_package(View):
     @method_decorator(login_required)

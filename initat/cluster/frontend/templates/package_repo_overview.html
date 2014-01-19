@@ -85,10 +85,10 @@
     <td>{{ obj.results }}</td>
     <td>{{ obj.last_search_string }}</td>
     <td class="text-right">{{ obj.last_search | datetime1 }}</td>
-    <td><input type="button" class="btn btn-primary" ng-show="obj.results > 0" ng-click="fn.show(this, obj)" value="show"/></td>
-    <td><input type="button" class="btn btn-primary" ng-show="obj.current_state == 'done'" ng-click="fn.retry(this, obj)" value="retry"/></td>
-    <td><input type="button" class="btn btn-primary" ng-show="obj.current_state == 'done'" ng-click="edit($event, obj)" value="modify"/></td>
-    <td><input type="button" class="btn btn-danger" ng-click="delete(obj)" value="delete"/></td>
+    <td><input type="button" class="btn btn-success btn-sm" ng-show="obj.results > 0" ng-click="fn.show(this, obj)" value="show"/></td>
+    <td><input type="button" class="btn btn-primary btn-sm" ng-show="obj.current_state == 'done'" ng-click="fn.retry(this, obj)" value="retry"/></td>
+    <td><input type="button" class="btn btn-warning btn-sm" ng-show="obj.current_state == 'done'" ng-click="edit($event, obj)" value="modify"/></td>
+    <td><input type="button" class="btn btn-danger btn-sm" ng-click="delete(obj)" value="delete"/></td>
 </script>
 
 <script type="text/ng-template" id="package_search_result_head.html">
@@ -131,9 +131,9 @@
     <td>{{ obj.package_repo | array_lookup:this.rest_data.package_repo:"name" }}</td>
     <td>{{ obj.kind }}</td>
     <td>{{ obj.arch }}</td>
-    <td><input type="button" class="btn btn-primary" ng-click="attach(obj)" value="attach" title="attach to selected devices"/></td>
-    <td><input type="button" class="btn btn-warning" ng-click="remove(obj)" value="remove" title="remove from selected devices"/></td>
-    <td><input type="button" class="btn btn-danger" ng-click="delete(obj)" value="delete"/></td>
+    <td><input type="button" class="btn btn-primary btn-sm" ng-click="attach(obj)" value="attach" title="attach to selected devices"/></td>
+    <td><input type="button" class="btn btn-warning btn-sm" ng-click="remove(obj)" value="remove" title="remove from selected devices"/></td>
+    <td><input type="button" class="btn btn-danger btn-sm" ng-click="delete(obj)" value="delete"/></td>
 </script>
 
 <tabset>

@@ -412,7 +412,7 @@ class device_table
         return r_val
     refresh_package_info: =>
         $.ajax
-            url     : "{% url 'pack:refresh' %}"
+            {# url     : "{% url 'pack:refresh' %}" #}
             data    : {"sel_list" : @sel_list, "cur_time" : new Date().getTime() / 1000}
             success : (xml) =>
                 if parse_xml_response(xml)

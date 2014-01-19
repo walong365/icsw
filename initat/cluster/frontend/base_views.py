@@ -405,51 +405,36 @@ class prune_category_tree(View):
         category_tree().prune()
         request.xml_response.info("tree pruned")
 
-class get_cat_references(View):
-    @method_decorator(login_required)
-    @method_decorator(xml_wrapper)
-    def post(self, request):
-        cur_cat = category.objects.prefetch_related("device_set", "config_set", "mon_check_command_set", "device_set__domain_tree_node").get(Q(pk=request.POST["key"]))
-        res_list = E.references()
-        for entry in ["device", "config", "mon_check_command"]:
-            _getter = getattr(cur_cat, "%s_set" % (entry))
-            if _getter.count():
-                sub_list = getattr(E, entry)(count="%d" % (_getter.count()))
-                for sub_entry in _getter.all():
-                    info_str = sub_entry.full_name if entry == "device" else unicode(sub_entry)
-                    sub_list.append(E.entry(info_str, pk="%d" % (sub_entry.pk)))
-                res_list.append(sub_list)
-        request.xml_response["result"] = res_list
+# class get_cat_references(View):
+#     @method_decorator(login_required)
+#     @method_decorator(xml_wrapper)
+#     def post(self, request):
+#         cur_cat = category.objects.prefetch_related("device_set", "config_set", "mon_check_command_set", "device_set__domain_tree_node").get(Q(pk=request.POST["key"]))
+#         res_list = E.references()
+#         for entry in ["device", "config", "mon_check_command"]:
+#             _getter = getattr(cur_cat, "%s_set" % (entry))
+#             if _getter.count():
+#                 sub_list = getattr(E, entry)(count="%d" % (_getter.count()))
+#                 for sub_entry in _getter.all():
+#                     info_str = sub_entry.full_name if entry == "device" else unicode(sub_entry)
+#                     sub_list.append(E.entry(info_str, pk="%d" % (sub_entry.pk)))
+#                 res_list.append(sub_list)
+#         request.xml_response["result"] = res_list
 
 class change_category(View):
     @method_decorator(login_required)
     @method_decorator(xml_wrapper)
     def post(self, request):
         _post = request.POST
-        if "obj_type" in _post:
-            # new style
-            cur_obj = getattr(initat.cluster.backbone.models, _post["obj_type"]).objects.get(Q(pk=_post["obj_pk"]))
-            cur_sel = set(cur_obj.categories.filter(Q(full_name__startswith=_post["subtree"])).values_list("pk", flat=True))
-            new_sel = set(json.loads(_post["cur_sel"]))
-            # remove
-            to_del = [_entry for _entry in cur_sel - new_sel]
-            to_add = [_entry for _entry in new_sel - cur_sel]
-            if to_del:
-                cur_obj.categories.remove(*category.objects.filter(Q(pk__in=to_del)))
-            if to_add:
-                cur_obj.categories.add(*category.objects.filter(Q(pk__in=to_add)))
-            request.xml_response.info("added %d, removed %d" % (len(to_add), len(to_del)))
-        else:
-            # old style
-            obj_type, obj_pk = _post["obj_key"].split("__")
-            mod_obj = KPMC_MAP.get(obj_type, None)
-            cur_obj = mod_obj.objects.get(Q(pk=obj_pk))
-            add = True if int(_post["flag"]) else False
-            new_cat = category.objects.get(Q(pk=_post["cat_pk"]))
-            if add:
-                cur_obj.categories.add(new_cat)
-                request.xml_response.info("add category '%s' to %s" % (unicode(new_cat), unicode(cur_obj)), logger)
-            else:
-                cur_obj.categories.remove(new_cat)
-                request.xml_response.info("removed category '%s' from %s" % (unicode(new_cat), unicode(cur_obj)), logger)
-            request.xml_response["object"] = cur_obj.get_xml()
+        # new style
+        cur_obj = getattr(initat.cluster.backbone.models, _post["obj_type"]).objects.get(Q(pk=_post["obj_pk"]))
+        cur_sel = set(cur_obj.categories.filter(Q(full_name__startswith=_post["subtree"])).values_list("pk", flat=True))
+        new_sel = set(json.loads(_post["cur_sel"]))
+        # remove
+        to_del = [_entry for _entry in cur_sel - new_sel]
+        to_add = [_entry for _entry in new_sel - cur_sel]
+        if to_del:
+            cur_obj.categories.remove(*category.objects.filter(Q(pk__in=to_del)))
+        if to_add:
+            cur_obj.categories.add(*category.objects.filter(Q(pk__in=to_add)))
+        request.xml_response.info("added %d, removed %d" % (len(to_add), len(to_del)))

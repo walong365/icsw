@@ -53,7 +53,6 @@ image_module.controller("image", ["$scope", "$compile", "$templateCache", "Resta
                         $scope.new_entries = new_list
                     )
         $scope.take_image = (obj) =>
-            console.log obj
             $.blockUI()
             $.ajax
                 url     : "{% url 'setup:use_image' %}"

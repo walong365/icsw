@@ -59,34 +59,6 @@ class device_tree(View):
             }
             )()
 
-class get_xml_tree(View):
-    @method_decorator(login_required)
-    @method_decorator(xml_wrapper)
-    def post(self, request):
-        _post = request.POST
-        full_tree = device_group.objects.all().prefetch_related(
-            "device",
-            "device_group__categories",
-            "device_group",
-            "device_group__device_type").distinct().order_by("-cluster_device_group", "name")
-        xml_resp = E.response()
-        for cur_dg in full_tree:
-            xml_resp.append(cur_dg.get_xml(with_devices=True, full=False, ignore_enabled=True))
-        # add device type
-        xml_resp.append(
-            E.device_types(
-                *[cur_dt.get_xml() for cur_dt in device_type.objects.all()]
-            )
-        )
-        # add mother server(s)
-        all_mothers = config_tools.device_with_config("mother_server").get("mother_server", [])
-        xml_resp.extend([
-            E.mother_servers(
-                *[E.mother_server(unicode(mother_server.effective_device), pk="%d" % (mother_server.effective_device.pk)) for mother_server in all_mothers]),
-            domain_name_tree().get_xml(),
-        ])
-        request.xml_response["response"] = xml_resp
-
 class change_devices(View):
     @method_decorator(login_required)
     @method_decorator(xml_wrapper)

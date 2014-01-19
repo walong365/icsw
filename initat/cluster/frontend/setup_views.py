@@ -28,7 +28,7 @@ from django.db.models import Q
 from django.utils.decorators import method_decorator
 from django.views.generic import View
 from initat.cluster.backbone.models import partition_table, \
-    image, architecture, kernel
+    image, architecture
 from initat.cluster.frontend.forms import kernel_form, image_form, partition_table_form, \
     partition_form, partition_disc_form, partition_sys_form
 from initat.cluster.frontend.helper_functions import contact_server, xml_wrapper
@@ -75,20 +75,6 @@ class image_overview(View):
         return render_me(request, "image_overview.html", {
             "image_form" : image_form(),
             })()
-    @method_decorator(xml_wrapper)
-    def post(self, request):
-        img_list = E.images()
-        for cur_img in image.objects.all().prefetch_related("new_image"):
-            img_xml = cur_img.get_xml()
-            img_xml.attrib["usecount"] = "%d" % (cur_img.new_image.count())
-            img_list.append(img_xml)
-        xml_resp = E.response(
-            img_list,
-            E.architectures(
-                *[cur_arch.get_xml() for cur_arch in architecture.objects.all()]
-            ),
-        )
-        request.xml_response["response"] = xml_resp
 
 class kernel_overview(View):
     @method_decorator(login_required)
@@ -96,20 +82,6 @@ class kernel_overview(View):
         return render_me(request, "kernel_overview.html", {
             "kernel_form" : kernel_form(),
             })()
-    @method_decorator(xml_wrapper)
-    def post(self, request):
-        kernel_list = E.kernels()
-        for cur_kernel in kernel.objects.prefetch_related("new_kernel", "act_kernel").all():
-            kernel_xml = cur_kernel.get_xml()
-            kernel_xml.attrib["usecount"] = "%d" % (cur_kernel.new_kernel.count() + cur_kernel.act_kernel.count())
-            kernel_list.append(kernel_xml)
-        xml_resp = E.response(
-            kernel_list,
-            E.architectures(
-                *[cur_arch.get_xml() for cur_arch in architecture.objects.all()]
-            ),
-        )
-        request.xml_response["response"] = xml_resp
 
 class scan_for_images(View):
     @method_decorator(login_required)

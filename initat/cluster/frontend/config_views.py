@@ -79,11 +79,12 @@ def delete_object(request, del_obj, **kwargs):
         else:
             logger.info("deleted %s" % (del_obj._meta.object_name))
 
-class get_device_configs(View):
-    @method_decorator(login_required)
-    @method_decorator(xml_wrapper)
-    def post(self, request):
-        request.xml_response["response"] = _get_device_configs(request.POST.getlist("sel_list[]", []))
+# class get_device_configs(View):
+#     @method_decorator(login_required)
+#     @method_decorator(xml_wrapper)
+#     def post(self, request):
+#         request.xml_response["response"] = _get_device_configs(request.POST.getlist("sel_list[]", []))
+#
 
 def _get_device_configs(sel_list, **kwargs):
     dev_list = [key.split("__")[1] for key in sel_list if key.startswith("dev__")]
@@ -307,7 +308,7 @@ class generate_config(View):
             sel_list = json.loads(_post["pk_list"])
         else:
             sel_list = [key.split("__")[1] for key in _post.getlist("sel_list[]", []) if key.startswith("dev__")]
-        dev_list = device.objects.filter(Q(pk__in=sel_list)).order_by("name")
+        dev_list = device.objects.prefetch_related("categories").filter(Q(pk__in=sel_list)).order_by("name")
         dev_dict = dict([(cur_dev.pk, cur_dev) for cur_dev in dev_list])
         logger.info(
             "generating config for %s: %s" % (
