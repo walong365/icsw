@@ -571,6 +571,10 @@ class main_config(object):
             self.log("error reading sql_file '%s', no ndo2b_cfg to write" % (sql_file),
                      logging_tools.LOG_LEVEL_ERROR)
             ndo2db_cfg = None
+        elif not "monitor" in settings.DATABASES:
+            self.log("no 'monitor' database defined in settings.py",
+                     logging_tools.LOG_LEVEL_ERROR)
+            ndo2db_cfg = None
         else:
             nag_engine = settings.DATABASES["monitor"]["ENGINE"]
             db_server = "pgsql" if nag_engine.count("psycopg") else "mysql"
