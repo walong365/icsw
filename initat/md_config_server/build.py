@@ -29,7 +29,7 @@ from initat.cluster.backbone.models import device, device_group, device_variable
      user, mon_host_cluster, mon_service_cluster, config, md_check_data_store, category, \
      TOP_MONITORING_CATEGORY, mon_notification, config_str, config_int, host_check_command, \
      mon_host_dependency_templ, mon_host_dependency, mon_service_dependency_templ, \
-     mon_service_templ, mon_service_dependency
+     mon_service_templ, mon_service_dependency, net_ip
 from initat.md_config_server import special_commands, constants
 from initat.md_config_server.config import global_config, main_config, var_cache, all_commands, \
     all_service_groups, time_periods, all_contacts, all_contact_groups, all_host_groups, all_hosts, \
@@ -597,14 +597,14 @@ class build_process(threading_tools.process_obj):
             # print mni_str_s, mni_str_d, dev_str_s, dev_str_d
             # get correct netdevice for host
             if host.name == self.gc["SERVER_SHORT_NAME"]:
-                valid_ips, traces = ([("127.0.0.1", "localdomain")], [(1, 0, [host.pk])])
+                valid_ips, traces = ([(net_ip(ip="127.0.0.1"), "localdomain")], [(1, 0, [host.pk])])
             else:
                 valid_ips, traces = self._get_target_ip_info(my_net_idxs, net_devices, all_hosts_dict[host.pk], check_hosts)
                 if not valid_ips:
                     num_error += 1
             act_def_dev = dev_templates[host.mon_device_templ_id or 0]
             if not valid_ips and single_build:
-                valid_ips = [("0.0.0.0", host.full_name), ]
+                valid_ips = [(net_ip(ip="0.0.0.0"), host.full_name)]
                 self.mach_log("no ips found using %s as dummy IP" % (str(valid_ips)))
             if valid_ips and act_def_dev:
                 host.domain_names = [cur_ip[1] for cur_ip in valid_ips if cur_ip[1]]
