@@ -610,10 +610,11 @@ class build_process(threading_tools.process_obj):
                 host.domain_names = [cur_ip[1] for cur_ip in valid_ips if cur_ip[1]]
                 valid_ip = valid_ips[0][0]
                 host.valid_ip = valid_ip
-                self.mach_log("Found %s for host %s : %s, using %s" % (
+                self.mach_log("Found %s for host %s : %s, mon_resolve_name is %s, using %s" % (
                     logging_tools.get_plural("target ip", len(valid_ips)),
                     host.full_name,
                     ", ".join(["%s%s" % (cur_ip, " (.%s)" % (dom_name) if dom_name else "") for cur_ip, dom_name in valid_ips]),
+                    str(host.mon_resolve_name),
                     host.valid_ip))
                 if not serv_templates.has_key(act_def_dev.mon_service_templ_id):
                     self.log("Default service_template not found in service_templates", logging_tools.LOG_LEVEL_WARN)
@@ -646,7 +647,7 @@ class build_process(threading_tools.process_obj):
                         act_host["alias"] = host.alias or host.name
                     else:
                         act_host["alias"] = ",".join(sorted(list(set([entry for entry in [host.alias, host.name, host.full_name] + ["%s.%s" % (host.name, dom_name) for dom_name in host.domain_names] if entry.strip()]))))
-                    act_host["address"] = host.valid_ip
+                    act_host["address"] = host.valid_ip if host.mon_resolve_name else host.full_name
                     # check for parents
                     parents = []
                     # rule 1: APC Masterswitches have their bootserver set as parent
@@ -1140,6 +1141,7 @@ class build_process(threading_tools.process_obj):
         for n_i, n_t, n_d, d_pk, dom_name in net_ip.objects.all().values_list("ip", "network__network_type__identifier", "netdevice__pk", "netdevice__device__pk", "domain_tree_node__full_name"):
             if d_pk in check_hosts:
                 cur_host = check_hosts[d_pk]
+                # populate valid_ips and invalid_ips
                 getattr(cur_host, "valid_ips" if n_t in valid_nwt_list else "invalid_ips").setdefault(n_d, []).append((n_i, dom_name))
         # get all masterswitch connections, FIXME
         # dc.execute("SELECT d.device_idx, ms.device FROM device d, msoutlet ms WHERE ms.slave_device = d.device_idx")
