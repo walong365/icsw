@@ -43,12 +43,12 @@
 
 {% block tab_js %}{% endblock %}
 {% block forms_media %}{% endblock %}
+{% block stylesheets_jquery %}{% endblock %}
 
 {% endblock %}
 
 {# disable non-compressed imports #}
 {% block javascript_jquery %}{% endblock %}
-{% block stylesheets_jquery %}{% endblock %}
 {% block modernizr %}{% endblock %}
 {% block javascript %}
     <!--[if lt IE 9]>{% compressed_js 'js_jquery_old' %}><![endif]-->

@@ -249,6 +249,7 @@ sidebar_base = sidebar_module.controller("sidebar_base", ["$scope", "$compile", 
                     $scope.tc_devices.add_root_node(cur_dg)
                 else
                     cur_dg.add_child(t_entry)
+            #console.log "go"
             for cur_tc in [$scope.tc_devices, $scope.tc_fqdns, $scope.tc_categories]
                 cur_tc.prune(
                     (entry) ->
