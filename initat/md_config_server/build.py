@@ -609,13 +609,14 @@ class build_process(threading_tools.process_obj):
             if valid_ips and act_def_dev:
                 host.domain_names = [cur_ip[1] for cur_ip in valid_ips if cur_ip[1]]
                 valid_ip = valid_ips[0][0]
+                # print "***", valid_ips
                 host.valid_ip = valid_ip
                 self.mach_log("Found %s for host %s : %s, mon_resolve_name is %s, using %s" % (
                     logging_tools.get_plural("target ip", len(valid_ips)),
                     host.full_name,
                     ", ".join(["%s%s" % (cur_ip, " (.%s)" % (dom_name) if dom_name else "") for cur_ip, dom_name in valid_ips]),
                     str(host.mon_resolve_name),
-                    host.valid_ip))
+                    unicode(host.valid_ip)))
                 if not serv_templates.has_key(act_def_dev.mon_service_templ_id):
                     self.log("Default service_template not found in service_templates", logging_tools.LOG_LEVEL_WARN)
                 else:
@@ -647,7 +648,14 @@ class build_process(threading_tools.process_obj):
                         act_host["alias"] = host.alias or host.name
                     else:
                         act_host["alias"] = ",".join(sorted(list(set([entry for entry in [host.alias, host.name, host.full_name] + ["%s.%s" % (host.name, dom_name) for dom_name in host.domain_names] if entry.strip()]))))
-                    act_host["address"] = host.valid_ip if host.mon_resolve_name else host.full_name
+                    if host.mon_resolve_name:
+                        act_host["address"] = host.valid_ip.ip
+                    else:
+                        v_ip = host.valid_ip
+                        if v_ip.alias and v_ip.alias_excl:
+                            act_host["address"] = "%s.%s" % (v_ip.alias, v_ip.domain_tree_node.full_name)
+                        else:
+                            act_host["address"] = host.full_name
                     # check for parents
                     parents = []
                     # rule 1: APC Masterswitches have their bootserver set as parent
@@ -732,7 +740,7 @@ class build_process(threading_tools.process_obj):
                     self.mach_log("contact groups for host: %s" % (
                         ", ".join(sorted(host_groups)) or "none"))
                     if host.monitor_checks or single_build:
-                        if host.valid_ip == "0.0.0.0":
+                        if host.valid_ip.ip == "0.0.0.0":
                             self.mach_log("IP address is '%s', host is assumed to be always up" % (unicode(host.valid_ip)))
                             act_host["check_command"] = "check-host-ok"
                         else:
@@ -1138,7 +1146,16 @@ class build_process(threading_tools.process_obj):
         valid_nwt_list = set(network_type.objects.filter(Q(identifier__in=["p", "o"])).values_list("identifier", flat=True))
         invalid_nwt_list = set(network_type.objects.exclude(Q(identifier__in=["p", "o"])).values_list("identifier", flat=True))
         # get all network devices (needed for relaying)
-        for n_i, n_t, n_d, d_pk, dom_name in net_ip.objects.all().values_list("ip", "network__network_type__identifier", "netdevice__pk", "netdevice__device__pk", "domain_tree_node__full_name"):
+        # for n_i, n_t, n_d, d_pk, dom_name in net_ip.objects.all().values_list("ip", "network__network_type__identifier", "netdevice__pk", "netdevice__device__pk", "domain_tree_node__full_name"):
+        for n_i in net_ip.objects.all().select_related("network__network_type", "netdevice", "domain_tree_node"): # values_list("ip", "network__network_type__identifier", "netdevice__pk", "netdevice__device__pk", "domain_tree_node__full_name"):
+            n_t = n_i.network.network_type.identifier
+            n_d = n_i.netdevice.pk
+            d_pk = n_i.netdevice.device_id
+            if n_i.domain_tree_node_id:
+                dom_name = n_i.domain_tree_node.full_name
+            else:
+                dom_name = ""
+            # print n_i, n_t, n_d, d_pk, dom_name
             if d_pk in check_hosts:
                 cur_host = check_hosts[d_pk]
                 # populate valid_ips and invalid_ips
