@@ -1690,6 +1690,7 @@ class device_monitoring_form(ModelForm):
                     ),
                     Div(
                         Field("monitor_checks"),
+                        Field("mon_resolve_name"),
                         css_class="col-md-6",
                     ),
                     css_class="row",
