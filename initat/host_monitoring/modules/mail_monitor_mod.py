@@ -421,15 +421,17 @@ class mailq_command(hm_classes.hm_command):
             mail_dict = {entry.attrib["info"] : int(entry.text) for entry in mail_dict}
             ret_state = limits.check_ceiling(mail_dict["queued"], cur_ns.warn, cur_ns.crit)
             ret_f = []
-            if mail_dict["queued"]:
+            if mail_dict.get("queued", 0):
                 ret_f = ["%s queued" % (logging_tools.get_plural("mail", mail_dict["queued"]))]
-            if mail_dict["queued"] != mail_dict["total"]:
+            if mail_dict.get("queued", 0) != mail_dict.get("total", 0) and mail_dict.get("total", 0):
                 ret_f.append("%d total" % (mail_dict["total"]))
-            if mail_dict["active"]:
+            if mail_dict.get("active", 0):
                 ret_f.append("%d active" % (mail_dict["active"]))
-            if mail_dict["hold"]:
+            if mail_dict.get("hold", 0):
                 ret_f.append("%d on hold" % (mail_dict["hold"]))
                 ret_state = max(ret_state, limits.nag_STATE_WARNING)
+            if not ret_f:
+                ret_f = ["mailqueue is empty"]
             return ret_state, ", ".join(ret_f)
         else:
             num_mails = int(srv_com["num_mails"].text)
