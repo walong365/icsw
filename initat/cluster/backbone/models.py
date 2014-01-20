@@ -1106,6 +1106,8 @@ class device(models.Model):
         ], default=1)
     # system name
     domain_tree_node = models.ForeignKey("domain_tree_node", null=True, default=None)
+    # resolve name for monitoring
+    mon_resolve_name = models.BooleanField(default=True)
     # categories for this device
     categories = models.ManyToManyField("category")
     @property
@@ -1326,7 +1328,7 @@ class device_serializer(serializers.ModelSerializer):
             "act_partition_table", "enable_perfdata", "flap_detection_enabled",
             "automap_root_nagvis", "nagvis_parent", "monitor_server", "mon_ext_host",
             "is_meta_device", "device_type_identifier", "device_group_name", "bootserver",
-            "curl",
+            "curl", "mon_resolve_name",
             )
 
 class device_serializer_cat(device_serializer):
@@ -1399,6 +1401,7 @@ class device_serializer_monitoring(device_serializer):
             "monitor_checks", "mon_device_templ", "mon_device_esc_templ", "md_cache_mode",
             "act_partition_table", "enable_perfdata", "flap_detection_enabled",
             "automap_root_nagvis", "nagvis_parent", "monitor_server", "mon_ext_host",
+            "mon_resolve_name",
             )
         read_only_fields = ("act_partition_table",)
 
