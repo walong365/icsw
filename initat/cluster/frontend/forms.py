@@ -165,8 +165,8 @@ class device_general_form(ModelForm):
     helper = FormHelper()
     helper.form_id = "id_dtn_detail_form"
     helper.form_class = 'form-horizontal'
-    helper.label_class = 'col-sm-2'
-    helper.field_class = 'col-sm-8'
+    helper.label_class = 'col-sm-3'
+    helper.field_class = 'col-sm-9'
     helper.layout = Layout(
         Fieldset(
             "Device details",
@@ -177,9 +177,19 @@ class device_general_form(ModelForm):
         Fieldset(
             "Monitor settings",
             Field("mon_device_templ"),
-            Field("monitor_checks"),
-            Field("enable_perfdata"),
-            Field("flap_detection_enabled"),
+            Div(
+                Div(
+                    Field("monitor_checks"),
+                    Field("enable_perfdata"),
+                    css_class="col-md-6",
+                ),
+                Div(
+                    Field("flap_detection_enabled"),
+                    Field("mon_resolve_name"),
+                    css_class="col-md-6",
+                ),
+                css_class="row",
+            ),
         ),
         Fieldset(
             "Info",
@@ -192,7 +202,7 @@ class device_general_form(ModelForm):
     class Meta:
         model = device
         fields = ["name", "comment", "monitor_checks", "domain_tree_node", "mon_device_templ",
-                  "enable_perfdata", "flap_detection_enabled"]
+                  "enable_perfdata", "flap_detection_enabled", "mon_resolve_name"]
 
 class dummy_password_form(Form):
     helper = FormHelper()

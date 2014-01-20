@@ -223,7 +223,10 @@ class list_view(mixins.ListModelMixin,
             "network" : ([], ["network_device_type"]),
             "user" : (["group"], ["permissions", "secondary_groups", "object_permissions", "allowed_device_groups"]),
             "group" : (["parent_group"], ["permissions", "object_permissions", "allowed_device_groups"]),
-            "config" : ([], ["categories", "config_str_set", "config_int_set", "config_blob_set", "config_bool_set", "config_script_set", "mon_check_command_set", "device_config_set"]),
+            "config" : ([], [
+                "categories", "config_str_set", "config_int_set", "config_blob_set",
+                "config_bool_set", "config_script_set", "mon_check_command_set__categories", "mon_check_command_set__exclude_devices",
+                "device_config_set"]),
             }.get(model_name, ([], []))
         res = self.model.objects.all()
         filter_list = []
