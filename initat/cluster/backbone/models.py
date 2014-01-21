@@ -1107,7 +1107,7 @@ class device(models.Model):
     # system name
     domain_tree_node = models.ForeignKey("domain_tree_node", null=True, default=None)
     # resolve name for monitoring
-    mon_resolve_name = models.BooleanField(default=True)
+    mon_resolve_name = models.BooleanField(default=True, verbose_name="Resolve to IP for monitoring")
     # categories for this device
     categories = models.ManyToManyField("category")
     @property
