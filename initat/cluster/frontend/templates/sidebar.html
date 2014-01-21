@@ -3,7 +3,7 @@
 <div id="icsw.sidebar">
     <div ng-controller="sidebar_base">
         <div class="input-group">
-            <input type="text" class="form-control" ng-model="searchstr" placeholder="search ..." ng-change="update_search()"></input>
+            <input type="text" class="form-control" ng-disabled="is_loading" ng-model="searchstr" placeholder="search ..." ng-change="update_search()"></input>
             <span class="input-group-btn">
                 <button class="btn btn-success" type="button" ng-click="call_devsel_func(false)" ng-show="devsel_func.length"><span title="use selection" class="glyphicon glyphicon-chevron-right"></span></button>
                 <button class="btn btn-danger" type="button" ng-click="clear_selection()"><span title="clear selection" class="glyphicon glyphicon-ban-circle"></span></button>
@@ -11,13 +11,13 @@
         </div>
         <tabset>
             <tab heading="Group" select="activate_tab('g')" active="tabs['g']">
-                <tree treeconfig="tc_devices"></tree>
+                <treesingle treeconfig="s_tc_devices"></treesingle>
             </tab>
             <tab heading="FQDN" select="activate_tab('f')" active="tabs['f']">
-                <tree treeconfig="tc_fqdns"></tree>
+                <tree treeconfig="s_tc_fqdns"></tree>
             </tab>
             <tab heading="Category" select="activate_tab('c')" active="tabs['c']">
-                <tree treeconfig="tc_categories"></tree>
+                <tree treeconfig="s_tc_categories"></tree>
             </tab>
         </tabset>
     </div>
@@ -71,6 +71,8 @@ class sidebar_tree extends tree_config
 sidebar_base = sidebar_module.controller("sidebar_base", ["$scope", "$compile", "restDataSource", "$q", "$timeout",
     ($scope, $compile, restDataSource, $q, $timeout) ->
         $scope.searchstr = ""
+        $scope.is_loading = true
+        $scope.hidden_tabs = {"g" : true, "f" : true, "c" : true}
         # active tab, (d)evices, (f)qdn, (c)ategories
         $scope.devsel_func = []
         $scope.call_devsel_func = (called_after_load) ->
@@ -106,7 +108,7 @@ sidebar_base = sidebar_module.controller("sidebar_base", ["$scope", "$compile", 
         $scope.update_search = () ->
             if $scope.cur_search_to
                 $timeout.cancel($scope.cur_search_to)
-            $scope.cur_search_to = $timeout($scope.set_search_filter, 250)
+            $scope.cur_search_to = $timeout($scope.set_search_filter, 500)
         $scope.set_search_filter = () ->
             try
                 cur_re = new RegExp($scope.searchstr, "gi")
@@ -177,13 +179,19 @@ sidebar_base = sidebar_module.controller("sidebar_base", ["$scope", "$compile", 
             $scope.get_tc($scope.active_tab).clear_selected()
             $scope.selection_changed()
         $scope.activate_tab = (t_type) ->
-            # copy selected flags            if t_type != $scope.active_tab
-                # copy selection settings from active tab to new tab
-                # get src selection
-                cur_sel = $scope.get_active_selection($scope.active_tab)
-                $scope.set_active_selection(t_type, cur_sel)
-                $scope.active_tab = t_type
-                store_user_var("sidebar_mode", {"c" : "category", "f" : "fqdn", "g" : "group"}[$scope.active_tab], "str")
+            if $scope.hidden_tabs[t_type]
+                $scope.hidden_tabs[t_type] = false
+                switch t_type
+                    when "g"
+                        $scope.s_tc_devices = $scope.tc_devices
+                    when "f"
+                        $scope.s_tc_fqdns = $scope.tc_fqdns
+                    when "c"
+                        $scope.s_tc_categories = $scope.tc_categories
+            cur_sel = $scope.get_active_selection($scope.active_tab)
+            $scope.set_active_selection(t_type, cur_sel)
+            $scope.active_tab = t_type
+            store_user_var("sidebar_mode", {"c" : "category", "f" : "fqdn", "g" : "group"}[$scope.active_tab], "str")
         $scope.selection_changed = () ->
             cur_sel = $scope.get_active_selection($scope.active_tab)
             # cast to string to compare the arrays
@@ -261,6 +269,7 @@ sidebar_base = sidebar_module.controller("sidebar_base", ["$scope", "$compile", 
                 )
                 cur_tc.recalc()
                 cur_tc.show_selected()
+            $scope.is_loading = false
             $scope.call_devsel_func(true)
 ])
 

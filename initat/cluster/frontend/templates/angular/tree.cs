@@ -6,7 +6,7 @@
 
 {% verbatim %}
 
-_tree_node = """
+_tree_root_node = """
 <ul class="dynatree-container">
     <span ng-show="!treeconfig.root_nodes.length">No entries</span>
     <li ng-repeat="entry in (tree || treeconfig.root_nodes)" ng-class="{\'dynatree-lastsib\' : $last}">
@@ -16,11 +16,29 @@ _tree_node = """
 </ul>
 """
 
+_tree_root_node_single = """
+<ul class="dynatree-container">
+    <span ng-show="!treeconfig.root_nodes.length">No entries</span>
+    <li ng-repeat="entry in (tree || treeconfig.root_nodes)" ng-class="{\'dynatree-lastsib\' : $last}">
+        <subnode entry="entry" treeconfig="treeconfig"></subnode>
+        <subtreesingle ng-if="entry.expand && entry.children.length" tree="entry.children" treeconfig="treeconfig"></subtreesingle>
+    </li>
+</ul>
+"""
+
 _subtree_node = """
 <ul>
     <li ng-repeat="entry in tree" ng-class="{\'dynatree-lastsib\' : $last}">
         <subnode entry="entry" treeconfig="treeconfig"></subnode>
         <subtree ng-if="entry.expand && entry.children.length" tree="entry.children" treeconfig="treeconfig"></subtree>
+    </li>
+</ul>
+"""
+
+_subtree_node_single = """
+<ul>
+    <li ng-repeat="entry in tree" ng-class="{\'dynatree-lastsib\' : $last}">
+        <subnode entry="entry" treeconfig="treeconfig"></subnode>
     </li>
 </ul>
 """
@@ -346,13 +364,25 @@ add_tree_directive = (mod) ->
             return {
                 restrict : "E"
                 scope    : {
-                    tree       : "="
                     treeconfig : "="
                 }
                 replace : true
                 compile: (tElement, tAttr) ->
                     return (scope, iElement, iAttr) ->
-                        iElement.append($compile(_tree_node)(scope))
+                        iElement.append($compile(_tree_root_node)(scope))
+                } 
+    ]).directive("treesingle", ["$compile",
+        # only one nesting level (device group tree)
+        ($compile) ->
+            return {
+                restrict : "E"
+                scope    : {
+                    treeconfig : "="
+                }
+                replace : true
+                compile: (tElement, tAttr) ->
+                    return (scope, iElement, iAttr) ->
+                        iElement.append($compile(_tree_root_node_single)(scope))
                 } 
     ]).directive("subtree", ["$compile",
         ($compile) ->
@@ -366,6 +396,19 @@ add_tree_directive = (mod) ->
                 compile: (tElement, tAttr) ->
                     return (scope, iElement, iAttr) ->
                         iElement.append($compile(_subtree_node)(scope))
+                } 
+    ]).directive("subtreesingle", ["$compile",
+        ($compile) ->
+            return {
+                restrict : "E"
+                scope    : {
+                    tree       : "="
+                    treeconfig : "="
+                }
+                replace : true
+                compile: (tElement, tAttr) ->
+                    return (scope, iElement, iAttr) ->
+                        iElement.append($compile(_subtree_node_single)(scope))
                 } 
     ]).directive("subnode", ["$compile",
         ($compile) ->
