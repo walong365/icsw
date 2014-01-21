@@ -6,59 +6,6 @@
 
 root = exports ? this
 
-class category_tree
-    constructor: (@tree_div, @top_xml, @xml, @cat_tree, @top_node, @multi_sel) ->
-        @tree_div.dynatree
-            autoFocus : false
-            checkbox  : true
-            clickFolderMode : 2
-            #onExpand : (flag, dtnode) =>
-            #    dtnode.toggleSelect()
-            onClick : (dtnode, event) =>
-                #console.log dtnode.data.key, event.type
-                  #dtnode.toggleSelect()
-            onSelect : (flag, dtnode) =>
-                if flag
-                    # deactivate other locations
-                    @tree_div.dynatree("getTree").visit(
-                        (cur_node) =>
-                            if cur_node.isSelected() and cur_node.data.key != dtnode.data.key and not @multi_sel
-                                cur_node.toggleSelect()
-                    )
-                $.ajax
-                    url     : "{% url 'base:change_category' %}"
-                    data    :
-                        "obj_key" : @xml.attr("key")
-                        "cat_pk"  : dtnode.data.key
-                        "flag"    : if flag then 1 else 0
-                    success : (xml) =>
-                        if parse_xml_response(xml)
-                            if @top_xml
-                              replace_xml_element(@top_xml, $(xml))
-                #dtnode.toggleSelect()
-        root_node = @tree_div.dynatree("getRoot")
-        @select_cats = @xml.attr("categories").split("::")
-        @build_node(root_node, @cat_tree.find("category[full_name='#{@top_node}']"))
-    build_node: (dt_node, db_node) =>
-        if parseInt(db_node.attr("parent")) == 0
-            title_str = "TOP"
-            expand_flag = true
-        else
-            title_str = db_node.attr("name") + " (" + db_node.attr("full_name") + ")"
-            expand_flag = false
-        selected = if db_node.attr("pk") in @select_cats then true else false
-        new_node = dt_node.addChild(
-            title        : title_str
-            expand       : expand_flag
-            key          : db_node.attr("pk")
-            hideCheckbox : if (db_node.attr("full_name") == "#{@top_node}") then true else false
-            select       : selected
-        )
-        if selected
-            new_node.makeVisible()
-        @cat_tree.find("category[parent='" + db_node.attr("pk") + "']").each (idx, sub_db_node) =>
-            @build_node(new_node, $(sub_db_node))
-
 class rrd_config
     constructor: (@top_div, @key_tree_div, @graph_div, @pk_list) ->
         @top_div.css("vertical-align", "middle")
@@ -460,6 +407,7 @@ class device_info
         @livestatus_init = false
         @monconfig_init = false
         @diskinfo_init = false
+        @rrd_init = false
     activate_tab: (event, ui) =>
         t_href = ui.newTab.find("a").attr("href")
         if t_href == "#config"
@@ -480,25 +428,13 @@ class device_info
                 @diskinfo_init = true
                 angular.bootstrap(ui.newPanel.find("div[id='icsw.device.partinfo']"), ["icsw.device.config"])
         else if t_href == "#rrd"
-            if not ui.newPanel.html()
-                # lazy load rrd
-                @init_rrd(ui.newPanel)
+            if not @rrd_init
+                @rrd_init = true
+                angular.bootstrap(ui.newPanel.find("div[id='icsw.device.rrd']"), ["icsw.device.rrd"])
         else if t_href == "#network"
             if not ui.newPanel.html()
                 # lazy load network
                 @init_network_div()
-    init_rrd: (top_div) =>
-        rrd_div = $("<div>").attr("id", "rrd").addClass("leftfloat")
-        graph_div = $("<div>").attr("id", "graph").addClass("leftfloat")
-        config_div = $("<div>").attr("id", "rrd_config")
-        @rrd_div = rrd_div
-        @graph_div = graph_div
-        @config_div = config_div
-        @rrd_config = new rrd_config(@config_div, @rrd_div, @graph_div, @get_pk_list())
-        top_div.append(@config_div)
-        top_div.append(@rrd_div)
-        top_div.append(@graph_div)
-        #@load_rrd_tree()
     general_div: (dev_xml) =>
         # general div
         general_div = $("<div>").attr("id", "general")
@@ -508,17 +444,6 @@ class device_info
         general_div.find("input, select").bind("change", @my_submitter.submit)
         @uuid_div = null
         general_div.find("input[name='uuid']").on("click", @show_uuid_info)
-        #general_div.find("select.select_chosen").chosen(
-        #    width : "50%"
-        #)
-        #general_div.find("div#dnt").jstree(
-        #    "plugins" : ["html_data", "themes",]            
-        #)
-        #general_div.find("div#dnt").dynatree(
-        #    autoFocus  : false
-        #    checkbox   : true
-        #)
-        #general_div.find("input[id$='_domain_tree_node']").on("click", show_domain_name_tree)
         return general_div
     show_uuid_info: (event) => 
         cur_el = $(event.target)
@@ -772,6 +697,10 @@ class device_info
         mc_div.append($("<div id='icsw.device.monconfig'><div ng-controller='monconfig_ctrl'><monconfig devicepk='" + pk_list.join(",") + "'></monconfig></div></div>"))
         return mc_div
     rrd_div: (dev_xml) =>
+        pk_list = @get_pk_list() 
+        rrd_div = $("<div>").attr("id", "rrd")
+        rrd_div.append($("<div id='icsw.device.rrd'><div ng-controller='rrd_ctrl'><rrdgraph devicepk='" + pk_list.join(",") + "'></rrdgraph></div></div>"))
+        return rrd_div
         # rrd div
         return $("<div>").attr("id", "rrd")
     disk_div: (dev_xml) =>
@@ -808,8 +737,8 @@ class device_info
     
 root.show_device_info = show_device_info
 root.device_info = device_info
-root.category_tree = category_tree
 
 {% endinlinecoffeescript %}
 
 </script>
+

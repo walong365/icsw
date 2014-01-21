@@ -231,3 +231,4 @@ url_patterns = patterns(
 )
 
 url_patterns += staticfiles_urlpatterns()
+

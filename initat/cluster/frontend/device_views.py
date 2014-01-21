@@ -49,14 +49,16 @@ logger = logging.getLogger("cluster.device")
 class device_tree(View):
     @method_decorator(login_required)
     def get(self, request):
-        return render_me(request, "device_tree.html",
+        return render_me(
+            request,
+            "device_tree.html",
             {
                 "device_tree_form"       : device_tree_form(),
                 "device_group_tree_form" : device_group_tree_form(),
                 "device_tree_many_form"  : device_tree_many_form(),
                 "hide_sidebar"           : True,
             }
-            )()
+        )()
 
 class change_devices(View):
     @method_decorator(login_required)
@@ -443,8 +445,8 @@ class device_info(View):
         cur_dev = device.objects.prefetch_related("netdevice_set", "netdevice_set__net_ip_set").get(Q(pk=dev_key))
         request.xml_response["permissions"] = request.user.get_all_object_perms_xml(cur_dev)
         request.xml_response["response"] = cur_dev.get_xml(
-            with_partition=True,
-            with_variables=True,
+            # with_partition=True,
+            # with_variables=True,
             with_md_cache=True,
             full_name=True,
         )

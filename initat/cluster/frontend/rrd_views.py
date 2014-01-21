@@ -29,6 +29,7 @@ from initat.cluster.frontend.helper_functions import xml_wrapper, contact_server
 from lxml.builder import E # @UnresolvedImports
 import datetime
 import logging
+import json
 import server_command
 
 logger = logging.getLogger("cluster.rrd")
@@ -42,7 +43,7 @@ class device_rrds(View):
     @method_decorator(xml_wrapper)
     def post(self, request):
         srv_com = server_command.srv_command(command="get_node_rrd")
-        dev_pks = request.POST.getlist("pks[]")
+        dev_pks = json.loads(request.POST["pks"])
         srv_com["device_list"] = E.device_list(
             *[E.device(pk="%d" % (int(dev_pk))) for dev_pk in dev_pks],
             merge_results="1"
@@ -66,7 +67,7 @@ class graph_rrds(View):
     def post(self, request):
         _post = request.POST
         srv_com = server_command.srv_command(command="graph_rrd")
-        pk_list, graph_keys = (_post.getlist("pks[]"), set(_post.getlist("keys[]")))
+        pk_list, graph_keys = (json.loads(_post["pks"]), json.loads(_post["keys"]))
         srv_com["device_list"] = E.device_list(
             *[E.device(pk="%d" % (int(dev_pk))) for dev_pk in pk_list]
         )
