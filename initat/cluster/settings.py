@@ -464,6 +464,7 @@ INSTALLED_APPS = tuple(list(INSTALLED_APPS) + ["rest_framework"])
 
 rest_renderers = (["rest_framework.renderers.BrowsableAPIRenderer"] if DEBUG else []) + [
     "rest_framework.renderers.JSONRenderer",
+    # "rest_framework_csv.renderers.CSVRenderer",
     "rest_framework.renderers.XMLRenderer",
 ]
 
