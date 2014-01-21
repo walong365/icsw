@@ -68,8 +68,8 @@ class sidebar_tree extends tree_config
     selection_changed: () =>
         @scope.selection_changed()
         
-sidebar_base = sidebar_module.controller("sidebar_base", ["$scope", "$compile", "restDataSource", "$q", 
-    ($scope, $compile, restDataSource, $q) ->
+sidebar_base = sidebar_module.controller("sidebar_base", ["$scope", "$compile", "restDataSource", "$q", "$timeout",
+    ($scope, $compile, restDataSource, $q, $timeout) ->
         $scope.searchstr = ""
         # active tab, (d)evices, (f)qdn, (c)ategories
         $scope.devsel_func = []
@@ -104,6 +104,10 @@ sidebar_base = sidebar_module.controller("sidebar_base", ["$scope", "$compile", 
                     ret_list = "#{ret_list}: " + ($scope.dev_lut[key].full_name for key in key_list).join(", ")
             return ret_list
         $scope.update_search = () ->
+            if $scope.cur_search_to
+                $timeout.cancel($scope.cur_search_to)
+            $scope.cur_search_to = $timeout($scope.set_search_filter, 250)
+        $scope.set_search_filter = () ->
             try
                 cur_re = new RegExp($scope.searchstr, "gi")
             catch exc
@@ -249,7 +253,7 @@ sidebar_base = sidebar_module.controller("sidebar_base", ["$scope", "$compile", 
                     $scope.tc_devices.add_root_node(cur_dg)
                 else
                     cur_dg.add_child(t_entry)
-            console.log "go"
+            #console.log "go"
             for cur_tc in [$scope.tc_devices, $scope.tc_fqdns, $scope.tc_categories]
                 cur_tc.prune(
                     (entry) ->
