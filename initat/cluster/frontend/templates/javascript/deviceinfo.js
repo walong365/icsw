@@ -384,7 +384,7 @@ class device_info
                                 $.simplemodal.close()
                                 if @callback
                                     @callback(@dev_key)
-    get_pk_list: () =>
+    get_pk_list: (with_md=true) =>
         # get all pks
         pk_list = [@resp_xml.find("device").attr("pk")]
         for addon_key in @addon_devices

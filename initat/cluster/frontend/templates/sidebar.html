@@ -78,13 +78,18 @@ sidebar_base = sidebar_module.controller("sidebar_base", ["$scope", "$compile", 
         $scope.call_devsel_func = (called_after_load) ->
             if $scope.devsel_func.length
                 dev_list = []
+                dev_nmd_list = []
                 dev_pk_list = []
+                dev_pk_nmd_list = []
                 devg_list = []
                 devg_pk_list = []
                 for idx in $scope.cur_sel
                     if $scope.dev_lut[idx].device_type_identifier == "MD"
                         devg_list.push("devg__" + $scope.dev_lut[idx].device_group)
                         devg_pk_list.push($scope.dev_lut[idx].device_group)
+                    else
+                        dev_nmd_list.push("dev__#{idx}")
+                        dev_pk_nmd_list.push(idx)
                     dev_list.push("dev__#{idx}")
                     dev_pk_list.push(idx)
                 for entry in $scope.devsel_func
@@ -93,9 +98,15 @@ sidebar_base = sidebar_module.controller("sidebar_base", ["$scope", "$compile", 
                     else
                         # build device, device_group list
                         if entry.use_pks
-                            entry.func(dev_pk_list, devg_pk_list)
+                            if entry.with_meta_devices
+                                entry.func(dev_pk_list, devg_pk_list)
+                            else
+                                entry.func(dev_pk_nmd_list, devg_pk_list)
                         else
-                            entry.func(dev_list, devg_list)
+                            if entry.with_meta_devices
+                                entry.func(dev_list, devg_list)
+                            else
+                                entry.func(dev_nmd_list, devg_list)
         $scope.resolve_device_keys = (key_list) =>
             list_len = key_list.length
             ret_list = list_len + (if list_len == 1 then " device" else " devices")
@@ -126,8 +137,8 @@ sidebar_base = sidebar_module.controller("sidebar_base", ["$scope", "$compile", 
             $scope.selection_changed()
         # current device selection
         $scope.cur_sel = []            
-        $scope.install_devsel_link = (ds_func, fire_when_loaded, use_pks=false) ->
-            $scope.devsel_func.push({"func" : ds_func, "fire_when_loaded" : fire_when_loaded, "use_pks" : use_pks})
+        $scope.install_devsel_link = (ds_func, fire_when_loaded, use_pks=false, with_meta_devices=true) ->
+            $scope.devsel_func.push({"func" : ds_func, "fire_when_loaded" : fire_when_loaded, "use_pks" : use_pks, "with_meta_devices" : with_meta_devices})
         root.install_devsel_link = $scope.install_devsel_link
         root.resolve_device_keys = $scope.resolve_device_keys
         root.sidebar = {"resolve_device_keys" : $scope.resolve_device_keys}
@@ -261,7 +272,7 @@ sidebar_base = sidebar_module.controller("sidebar_base", ["$scope", "$compile", 
                     $scope.tc_devices.add_root_node(cur_dg)
                 else
                     cur_dg.add_child(t_entry)
-            #console.log "go"
+            # console.log "go"
             for cur_tc in [$scope.tc_devices, $scope.tc_fqdns, $scope.tc_categories]
                 cur_tc.prune(
                     (entry) ->

@@ -29,7 +29,7 @@ use_devs = (dev_list) ->
         $("div#center_deviceinfo").hide() 
 
 add_config_handlers = ->
-    install_devsel_link(use_devs, true)
+    install_devsel_link(use_devs, true, false, false)
 
 $(document).ready(add_config_handlers)
 
