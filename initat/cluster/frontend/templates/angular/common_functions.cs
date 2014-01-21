@@ -10,14 +10,33 @@ icsw_paginator = """
 <form class="form-inline">
     <span ng-show="pagSettings.conf.filtered_len">
         <div class="form-group">
-            <ul class="pagination pagination-sm" ng-show="pagSettings.conf.num_pages > 1"  style="margin-top:0px; margin-bottom:0px;">
+            <ul class="pagination pagination-sm" ng-show="pagSettings.conf.num_pages > 1 && pagSettings.conf.num_pages < 11"  style="margin-top:0px; margin-bottom:0px;">
                 <li ng-repeat="pag_num in pagSettings.conf.page_list track by $index" ng-class="pagSettings.get_li_class(pag_num)">
                     <a href="#" ng-click="activate_page(pag_num)">{{ pag_num }}</a>
                 </li>
             </ul>
+            <ul class="pagination pagination-sm" ng-show="pagSettings.conf.num_pages > 1 && pagSettings.conf.num_pages > 10"  style="margin-top:0px; margin-bottom:0px;">
+                <li ng-class="pagSettings.get_laquo_class()">
+                    <a href="#" ng-click="pagSettings.page_back()">&laquo;</a>
+                </li>
+                <li ng-class="pagSettings.get_raquo_class()">
+                    <a href="#" ng-click="pagSettings.page_forward()">&raquo;</a>
+                </li>
+                <li ng-repeat="pag_num in pagSettings.get_filtered_pl() track by $index" ng-class="pagSettings.get_li_class(pag_num)">
+                    <a href="#" ng-click="activate_page(pag_num)">{{ pag_num }}</a>
+                </li>
+            </ul>
         </div>
+        <span ng-show="pagSettings.conf.num_pages > 5">
+            <select class="form-control input-sm" ng-model="pagSettings.conf.act_page" ng-change="activate_page()"
+                ng-options="idx as pagSettings.get_range_info(idx) for idx in [] | range:pagSettings.conf.num_pages"
+            >
+            </select>
+        </span>
         <span ng-show="pagSettings.conf.num_pages > 1">, </span>
-        showing entries {{ pagSettings.conf.start_idx + 1 }} to {{ pagSettings.conf.end_idx + 1 }},
+        <span ng-show="pagSettings.conf.num_pages < 6">
+            showing entries {{ pagSettings.conf.start_idx + 1 }} to {{ pagSettings.conf.end_idx + 1 }},
+        </span>
     </span>
     <span ng-show="! pagSettings.conf.filtered_len">
         no entries to show,
@@ -73,8 +92,43 @@ class paginator_class
             @conf.filter_settings = @$scope.settings.filter_settings
         else
             @conf.filter_settings = {}
+    get_laquo_class : () =>
+        if @conf.act_page == 1
+            return "disabled"
+        else
+            return ""
+    get_raquo_class : () =>
+        if @conf.act_page == @conf.num_pages
+            return "disabled"
+        else
+            return ""
+    page_back: () =>
+        @conf.act_page--
+        @activate_page()
+    page_forward: () =>
+        @conf.act_page++
+        @activate_page()
+    get_filtered_pl: () =>
+        # return a filtered page list around the current page
+        s_page = @conf.act_page
+        m_page = @conf.act_page
+        e_page = @conf.act_page
+        for idx in [1..10]
+            if s_page > 1 and e_page - s_page < 10
+                s_page--
+            if e_page < @conf.num_pages and e_page - s_page < 10
+                e_page++
+        return (idx for idx in [s_page..e_page])
+    get_range_info: (num) =>
+        num = parseInt(num)
+        s_val = (num - 1 ) * @conf.per_page + 1
+        e_val = s_val + @conf.per_page - 1
+        if e_val > @conf.filtered_len
+            e_val = @conf.filtered_len
+        return "page #{num} (#{s_val} - #{e_val})"
     activate_page: (num) =>
-        @conf.act_page = parseInt(num)
+        if num != undefined
+            @conf.act_page = parseInt(num)
         # indices start at zero
         pp = @conf.per_page
         @conf.start_idx = (@conf.act_page - 1 ) * pp
@@ -598,6 +652,10 @@ angular.module(
             else
                 ip_field = ["?", "?", "?", "?"]
             return ("QQ#{part}".substr(-3, 3) for part in ip_field).join(".").replace(/Q/g, "&nbsp;")
+).filter(
+    "range", () ->
+        return (in_value, upper_value) ->
+            return (_val for _val in [1..parseInt(upper_value)])
 ).filter(
     "yesno1", () ->
         return (in_value) ->

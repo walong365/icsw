@@ -83,11 +83,14 @@
 </script> 
 
 <div ng-controller="device_tree_base">
-    <h2>Device tree ({{ entries.length }} entries, {{ pagSettings.conf.filtered_len }} shown<span ng-show="num_selected()">, {{ num_selected() }} selected</span>),
-        <input type="button" class="btn btn-primary" value="create device" ng-click="create('device', $event)"></button>, 
+    <h2>
+        Device tree ({{ entries.length }} entries, {{ pagSettings.conf.filtered_len }} shown<span ng-show="num_selected()">, {{ num_selected() }} selected</span>),
+        <div class="btn-group">
+        <input type="button" class="btn btn-primary" value="create device" ng-click="create('device', $event)"></button>
         <input type="button" class="btn btn-success" value="create devicegroup" ng-click="create('device_group', $event)"></button>
         <input ng-show="num_selected()" type="button" class="btn btn-warning" value="modify selected" ng-click="edit_many($event)"></button>
         <input ng-show="num_selected()" type="button" class="btn btn-danger" value="delete selected" ng-click="delete_many($event)"></button>
+        </div>
     </h2>
     <form class="form-inline">
         <div class="form-group">
@@ -121,12 +124,27 @@
                 <option ng-repeat="obj in rest_data.monitor_server" ng-value="obj.idx">{{ obj.full_name }} ({{ obj.monitor_type }})</option>
             </select>
         </div>
+        <div class="form-group">
+            <label class="control-label">BootServer:</label>
+            <select class="form-control input-sm" ng-model="pagSettings.conf.filter_settings.boot_filter">
+                <option value="i">ignore</option>
+                <option ng-repeat="obj in rest_data.mother_server" ng-value="obj.idx">{{ obj.full_name }}</option>
+            </select>,&nbsp;
+        </div>
+        <div class="form-group">
+            <input class="form-control input-sm" ng-model="str_filter" ng-change="update_filter()" placeholder="filter"></input>
+        </div>
     </form>
     <table class="table table-hover table-condensed table-striped" style="width:auto;">
-        <thead devicetreehead></thead>
+        <thead>
+            <tr>
+                <td colspan="11" paginator entries="entries" pag_settings="pagSettings" per_page="20" paginator-filter="func" paginator-filter-func="filter_pag" paginator-epp="10,20,50,100,200,500,1000">
+                </td>
+            </tr>
+            <tr devicetreehead></tr>
+        </thead>
         <tbody>
-            <tr><td colspan="11" paginator entries="entries" pag_settings="pagSettings" per_page="20" paginator-filter="func" paginator-filter-func="filter_pag" paginator-epp="10,20,50,100,1000"></td></tr>
-            <tr devicetreerow ng-repeat="obj in entries | paginator:this" ng-class="get_tr_class(obj)"></tr>
+            <tr devicetreerow ng-repeat="obj in entries | paginator2:this.pagSettings" ng-class="get_tr_class(obj)"></tr>
         </tbody>
     </table>
 </div>

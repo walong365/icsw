@@ -34,7 +34,7 @@ device_tree_base = device_module.controller("device_tree_base", ["$scope", "$com
     ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, sharedDataSource, $q, $timeout) ->
         # init pagSettings /w. filter
         $scope.settings = {}
-        $scope.settings.filter_settings = {"dg_filter" : "b", "en_filter" : "b", "sel_filter" : "b", "mon_filter" : "i"}
+        $scope.settings.filter_settings = {"dg_filter" : "b", "en_filter" : "b", "sel_filter" : "b", "mon_filter" : "i", "boot_filter" : "i", "str_filter" : ""}
         $scope.pagSettings = paginatorSettings.get_paginator("device_tree_base", $scope)
         $scope.rest_data = {}
         $scope.rest_map = [
@@ -194,46 +194,65 @@ device_tree_base = device_module.controller("device_tree_base", ["$scope", "$com
             return entry.identifier != "MD"
         $scope.ignore_cdg = (entry) ->
             return not entry.cluster_device_group
-        $scope.filter_pag = (entry, scope) ->
+        $scope.update_filter = () ->
+            if $scope.cur_f_to
+                $timeout.cancel($scope.cur_f_to)
+            $scope.cur_f_to = $timeout($scope.new_filter, 250)
+        $scope.new_filter = () ->
+            # apply filter
+            $scope.pagSettings.conf.filter_settings.str_filter = $scope.str_filter
+            # console.log $scope.pagSettings.conf.filter_settings
+        $scope.pagSettings.conf.filter_changed = () ->
             aft_dict = {
                 "b" : [true, false]
                 "f" : [false]
                 "t" : [true]
-            } 
+            }
+            try
+                str_re = new RegExp($scope.pagSettings.conf.filter_settings.str_filter, "gi")
+            catch
+                str_re = new RegExp(/^$/, "gi") 
             # meta device selection list
-            md_list = aft_dict[scope.pagSettings.conf.filter_settings.dg_filter]
+            md_list = aft_dict[$scope.pagSettings.conf.filter_settings.dg_filter]
             # enabled selection list
-            en_list = aft_dict[scope.pagSettings.conf.filter_settings.en_filter]
+            en_list = aft_dict[$scope.pagSettings.conf.filter_settings.en_filter]
             # selected list
-            sel_list = aft_dict[scope.pagSettings.conf.filter_settings.sel_filter]
-            # check enabled flag
-            if en_list.length == 2
-                # show all, no check
-                en_flag = true
-            else if en_list[0] == true
+            sel_list = aft_dict[$scope.pagSettings.conf.filter_settings.sel_filter]
+            for entry in $scope.entries
+                if en_list.length == 2
+                    # show all, no check
+                    en_flag = true
+                else if en_list[0] == true
+                    if entry.is_meta_device
+                        en_flag = entry.device_group_obj.enabled
+                    else
+                        # show enabled (device AND device_group)
+                        en_flag = entry.enabled and $scope.device_group_lut[entry.device_group].enabled
+                else
+                    if entry.is_meta_device
+                        en_flag = not entry.device_group_obj.enabled
+                    else
+                        # show disabled (device OR device_group)
+                        en_flag = not entry.enabled or (not $scope.device_group_lut[entry.device_group].enabled)
+                # selected
+                sel_flag = entry.selected in sel_list
+                # monitoring
+                mon_f = $scope.pagSettings.conf.filter_settings.mon_filter
+                if mon_f == "i"
+                    mon_flag = true
+                else
+                    if entry.monitor_server == null
+                        mon_flag = parseInt(mon_f) == $scope.mon_master
+                    else
+                        mon_flag = parseInt(mon_f) == entry.monitor_server
+                # string filter
                 if entry.is_meta_device
-                    en_flag = entry.device_group_obj.enabled
+                    sf_flag = entry.name.match(str_re) or entry.comment.match(str_re)
                 else
-                    # show enabled (device AND device_group)
-                    en_flag = entry.enabled and scope.device_group_lut[entry.device_group].enabled
-            else
-                if entry.is_meta_device
-                    en_flag = not entry.device_group_obj.enabled
-                else
-                    # show disabled (device OR device_group)
-                    en_flag = not entry.enabled or (not scope.device_group_lut[entry.device_group].enabled)
-            # selected
-            sel_flag = entry.selected in sel_list
-            # monitoring
-            mon_f = scope.pagSettings.conf.filter_settings.mon_filter
-            if mon_f == "i"
-                mon_flag = true
-            else
-                if entry.monitor_server == null
-                    mon_flag = parseInt(mon_f) == $scope.mon_master
-                else
-                    mon_flag = parseInt(mon_f) == entry.monitor_server
-            return entry.is_meta_device in md_list and en_flag and sel_flag and mon_flag
+                    sf_flag = entry.full_name.match(str_re) or entry.comment.match(str_re)
+                entry._show = entry.is_meta_device in md_list and en_flag and sel_flag and mon_flag and sf_flag
+        $scope.filter_pag = (entry, scope) ->
+            return entry._show
         $scope.object_modified = (mod_obj) ->
             mod_obj.selected = $scope.pre_edit_obj.selected
             mod_obj.device_group_obj = $scope.device_group_lut[mod_obj.device_group]

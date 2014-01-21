@@ -39,7 +39,6 @@ from initat.cluster.frontend.helper_functions import xml_wrapper
 from initat.core.render import render_me, render_string
 from lxml import etree # @UnresolvedImport
 from lxml.builder import E # @UnresolvedImports
-import config_tools
 import json
 import logging
 import logging_tools
@@ -74,6 +73,7 @@ class change_devices(View):
                 "curl" : "",
                 "bootserver" : None,
                 "monitor_server" : None,
+                "enabled" : False,
                 }
             # build change_dict
             c_dict = {key[7:] : c_dict.get(key[7:], def_dict.get(key[7:], None)) for key in c_dict.iterkeys() if key.startswith("change_") and c_dict[key]}

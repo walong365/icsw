@@ -111,8 +111,6 @@ class rest_logging(object):
         try:
             result = self._func(*args, **kwargs)
         except:
-            exc_data = sys.exc_info()[1]
-            # print "*" * 20, exc_data
             self.log("exception: %s" % (
                 process_tools.get_except_info()),
                      logging_tools.LOG_LEVEL_ERROR)
