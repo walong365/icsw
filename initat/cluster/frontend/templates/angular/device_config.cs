@@ -97,25 +97,29 @@ partinfo_template = """
                         <tbody>
                             <tr ng-repeat-start="disk in dev.act_partition_table.partition_disc_set">
                                 <th colspan="2">Disk {{ disk.disc }}, {{ disk.partition_set.length }} partitions</th>
+                                <th>Size</th>
                                 <th>warn</th>
                                 <th>crit</th>
                             </tr>
                             <tr ng-repeat-end ng-repeat="part in disk.partition_set" ng-show="part.mountpoint">
                                 <td>{{ disk.disc }}{{ part.pnum }}</td>
                                 <td>{{ part.mountpoint }}</td>
-                                <td>{{ part.warn_threshold }} %</td>
-                                <td>{{ part.crit_threshold }} %</td>
+                                <td class="text-right">{{ part.size | get_size:1000000:1000 }}</td>
+                                <td class="text-center">{{ part.warn_threshold }} %</td>
+                                <td class="text-center">{{ part.crit_threshold }} %</td>
                             </tr>
                             <tr>
                                 <th colspan="2">Logical Volumes</th>
+                                <th>Size</th>
                                 <th>warn</th>
                                 <th>crit</th>
                             </tr>
                             <tr ng-repeat="lvm in dev.act_partition_table.lvm_lv_set | orderBy:'name'">
                                 <td>/dev/{{ get_vg(dev, lvm.lvm_vg).name }}/{{ lvm.name }}</td>
                                 <td>{{ lvm.mountpoint }}</td>
-                                <td>{{ lvm.warn_threshold }} %</td>
-                                <td>{{ lvm.crit_threshold }} %</td>
+                                <td class="text-right">{{ lvm.size | get_size:1:1000 }}</td>
+                                <td class="text-center">{{ lvm.warn_threshold }} %</td>
+                                <td class="text-center">{{ lvm.crit_threshold }} %</td>
                             </tr>
                         </tbody>
                     </table>
