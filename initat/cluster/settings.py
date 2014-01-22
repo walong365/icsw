@@ -151,8 +151,9 @@ MEDIA_URL = "%s/media/" % (SITE_ROOT)
 # Example: "/home/media/media.lawrence.com/static/"
 
 # where to store static files
+STATIC_ROOT_DEBUG = "/tmp/.icsw/static/"
 if DEBUG:
-    STATIC_ROOT = "/tmp/.icsw/static/"
+    STATIC_ROOT = STATIC_ROOT_DEBUG
 else:
     STATIC_ROOT = "/srv/www/htdocs/icsw/static"
 # STATIC_ROOT = "/opt/python-init/lib/python2.7/site-packages/initat/cluster/"
@@ -323,6 +324,7 @@ PIPELINE_CSS = {
             "css/codemirror.css",
             "css/bootstrap.css",
             "css/jquery.Jcrop.min.css",
+            "css/angular-datetimepicker.css",
         },
         "output_filename" : "pipeline/css/part1.css"
     }
@@ -392,6 +394,7 @@ PIPELINE_JS = {
                 "js/libs/ui-bootstrap.min.js",
                 "js/libs/ui-bootstrap-tpls.min.js",
                 "js/libs/ui-codemirror.min.js",
+                "js/libs/angular-datetimepicker.js",
         },
         "output_filename" : "pipeline/js/extra2.js"
     }
