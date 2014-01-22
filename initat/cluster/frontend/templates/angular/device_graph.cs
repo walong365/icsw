@@ -40,11 +40,19 @@ rrd_graph_template = """
                 </ul>
             </span>
             <div class="input-group-btn">
-                <button type="button" class="btn btn-sm dropdown-toggle" data-toggle="dropdown">
+                <button type="button" class="btn btn-sm btn-success dropdown-toggle" data-toggle="dropdown">
                     {{ cur_dim }} <span class="caret"></span>
                 </button>
                 <ul class="dropdown-menu">
                   <li ng-repeat="dim in all_dims" ng-click="set_active_dim(dim)"><a href="#">{{ dim }}</a></li>
+                </ul>
+            </div>&nbsp;
+            <div class="input-group-btn">
+                <button type="button" class="btn btn-sm btn-primary dropdown-toggle" data-toggle="dropdown">
+                    timerange <span class="caret"></span>
+                </button>
+                <ul class="dropdown-menu">
+                  <li ng-repeat="tr in all_timeranges" ng-click="set_active_tr(tr)"><a href="#">{{ tr.name }}</a></li>
                 </ul>
             </div>
         </div>
@@ -92,10 +100,31 @@ angular_module_setup([device_rrd_module])
 
 DT_FORM = "YYYY-MM-DD HH:mm"
 
+class pd_timerange
+    constructor: (@name, @from, @to) ->
+    get_from: () =>
+        if @to
+            return @from
+        else
+            return moment().subtract("days", 1)
+    get_to: () =>
+        if @to
+            return @to
+        else
+            return moment()
+
 device_rrd_module.controller("rrd_ctrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "sharedDataSource", "$q", "$modal", "$timeout"
     ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, sharedDataSource, $q, $modal, $timeout) ->
         # possible dimensions
         $scope.all_dims = ["420x200", "640x300", "800x350", "1024x400", "1280x450"]
+        $scope.all_timeranges = [
+            new pd_timerange("last 24 hours", "24:00", undefined)
+            new pd_timerange("last day", moment().subtract("24:00").startOf("day"), moment().subtract("24:00").endOf("day"))
+            new pd_timerange("current month", moment().startOf("month"), moment().endOf("month"))
+            new pd_timerange("last month", moment().subtract("month", 1).startOf("month"), moment().subtract("month", 1).endOf("month"))
+            new pd_timerange("current year", moment().startOf("year"), moment().endOf("year"))
+            new pd_timerange("last year", moment().subtract("year", 1).startOf("year"), moment().subtract("year", 1).endOf("year"))
+        ]
         $scope.dt_valid = true
         $scope.to_date_mom = moment()
         $scope.from_date_mom = moment().subtract("days", 1)
@@ -121,13 +150,20 @@ device_rrd_module.controller("rrd_ctrl", ["$scope", "$compile", "$filter", "$tem
             if $scope.dt_valid
                 diff = $scope.to_date_mom - $scope.from_date_mom 
                 if diff < 0
+                    console.log "sw"
                     $scope.from_date = $scope.to_date_mom.format(DT_FORM)
                     $scope.to_date = $scope.from_date_mom.format(DT_FORM)
                     noty
                         text : "exchanged from with to date"
                         type : "warning"
-                else if diff < 60
+                else if diff < 60000
                     $scope.dt_valid = false
+        $scope.set_active_tr = (new_tr) ->
+            $scope.from_date_mom = new_tr.get_from()
+            $scope.to_date_mom   = new_tr.get_to()
+            $scope.from_date = $scope.from_date_mom.format(DT_FORM)
+            $scope.to_date   = $scope.to_date_mom.format(DT_FORM)
+            $scope.update_dt()
         $scope.set_active_dim = (cur_dim) ->
             $scope.cur_dim = cur_dim
         $scope.new_devsel = (_dev_sel, _devg_sel) ->
