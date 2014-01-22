@@ -335,14 +335,6 @@ submit_change = (cur_el, callback, modify_data_dict, modify_data_dict_opts, mast
             if lock_list
                 unlock_elements(lock_list)
 
-force_expansion_state = (cur_tr, state) ->
-    cur_el = cur_tr.find("div[id*='__expand__']")
-    cur_el.removeClass("ui-icon-triangle-1-e ui-icon-triangle-1-s")
-    if state
-        cur_el.addClass("ui-icon-triangle-1-s")
-    else
-        cur_el.addClass("ui-icon-triangle-1-e")
-
 create_input_el = (xml_el, attr_name, id_prefix, kwargs) ->
     dummy_div = $("<div>")
     kwargs = kwargs or {}
@@ -527,7 +519,6 @@ root.toggle_config_line_ev    = toggle_config_line_ev
 root.get_xml_value            = get_xml_value
 root.replace_xml_element      = replace_xml_element
 root.submit_change            = submit_change
-root.force_expansion_state    = force_expansion_state
 root.create_input_el          = create_input_el
 root.submitter                = submitter
 root.store_user_var           = store_user_var

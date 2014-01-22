@@ -508,7 +508,7 @@ config_ctrl = config_module.controller("config_ctrl", ["$scope", "$compile", "$f
                     "config" : config.idx
                     "name" : "c_command"
                     "description" : "Check command"
-                    "command_line" : "$USER2$/ccollclientzmq -H $HOSTADDRESS$ uptime"
+                    "command_line" : "$USER2$/ccollclientzmq -m $HOSTADDRESS$ uptime"
                     "categories" : []
                 }
             $scope.mon_edit.create(event).then(

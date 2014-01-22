@@ -1,5 +1,25 @@
 #!/usr/bin/python-init -Otu
 # -*- coding: utf-8 -*-
+#
+# Copyright (C) 2012-2014 Andreas Lang-Nevyjel
+#
+# Send feedback to: <lang-nevyjel@init.at>
+#
+# This file is part of webfrontend
+#
+# This program is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License Version 2 as
+# published by the Free Software Foundation.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software
+# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+#
 
 """ helper functions for the init.at clustersoftware """
 
@@ -12,7 +32,6 @@ import logging_tools
 import net_tools
 import pprint
 import process_tools
-import re
 import smtplib
 import sys
 
@@ -221,20 +240,6 @@ def contact_server(request, conn_str, send_com, **kwargs):
                 send_com["command"].text
                 ))
     return result
-
-def get_listlist(q_dict, key, default):
-    # f_keys = [key for key in q_dict.]
-    list_re = re.compile("^%s\[(?P<idx>\d+)\]\[\]$" % (key))
-    res_list = None
-    for l_name, l_values in q_dict.lists():
-        l_m = list_re.match(l_name)
-        if l_m:
-            if res_list is None:
-                res_list = []
-            res_list.insert(int(l_m.group("idx")), l_values)
-    if res_list is None:
-        res_list = default
-    return res_list
 
 if __name__ == "__main__":
     print "Loadable module, exiting..."
