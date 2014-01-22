@@ -119,7 +119,7 @@ device_rrd_module.controller("rrd_ctrl", ["$scope", "$compile", "$filter", "$tem
         $scope.all_dims = ["420x200", "640x300", "800x350", "1024x400", "1280x450"]
         $scope.all_timeranges = [
             new pd_timerange("last 24 hours", "24:00", undefined)
-            new pd_timerange("last day", moment().subtract("24:00").startOf("day"), moment().subtract("24:00").endOf("day"))
+            new pd_timerange("last day", moment().subtract("days", 1).startOf("day"), moment().subtract("days", 1).endOf("day"))
             new pd_timerange("current month", moment().startOf("month"), moment().endOf("month"))
             new pd_timerange("last month", moment().subtract("month", 1).startOf("month"), moment().subtract("month", 1).endOf("month"))
             new pd_timerange("current year", moment().startOf("year"), moment().endOf("year"))
