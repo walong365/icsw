@@ -2165,7 +2165,7 @@ class netdevice(models.Model):
     def find_matching_network_device_type(self):
         # remove digits
         name = self.devname.split(":")[0].strip("0123456789")
-        ndt_dict = dict([(cur_ndt.identifier, cur_ndt) for cur_ndt in network_device_type.objects.all()])
+        ndt_dict = {cur_ndt.identifier : cur_ndt for cur_ndt in network_device_type.objects.all()}
         match_list = [ndt for nw_id, ndt in ndt_dict.iteritems() if nw_id.startswith(name) or name.endswith(nw_id)]
         if len(match_list) == 0:
             return None
@@ -2257,7 +2257,7 @@ def netdevice_pre_save(sender, **kwargs):
         # change network_device_type
         nd_type = cur_inst.find_matching_network_device_type()
         if not nd_type:
-            raise ValidationError("no matching device_type found")
+            raise ValidationError("no matching device_type found for '%s' (%s)" % (unicode(cur_inst), cur_inst.pk))
         cur_inst.network_device_type = nd_type
         # fix None as vlan_id
         _check_integer(cur_inst, "vlan_id", none_to_zero=True, min_val=0)
@@ -2271,17 +2271,17 @@ def netdevice_pre_save(sender, **kwargs):
             if not cur_inst.macaddr.strip() or int(cur_inst.macaddr.replace(":", ""), 16) == 0:
                 cur_inst.macaddr = dummy_mac
         except:
-            raise ValidationError("MACaddress has illegal format")
+            raise ValidationError("MACaddress '%s' has illegal format" % (cur_inst.macaddr))
         # set empty if not set
         try:
             if not cur_inst.fake_macaddr.strip() or int(cur_inst.fake_macaddr.replace(":", ""), 16) == 0:
                 cur_inst.fake_macaddr = dummy_mac
         except:
-            raise ValidationError("fake MACaddress has illegal format")
+            raise ValidationError("fake MACaddress '%s' has illegal format" % (cur_inst.fake_macaddr))
         if not mac_re.match(cur_inst.macaddr):
-            raise ValidationError("MACaddress has illegal format")
+            raise ValidationError("MACaddress '%s' has illegal format" % (cur_inst.macaddr))
         if not mac_re.match(cur_inst.fake_macaddr):
-            raise ValidationError("fake MACaddress has illegal format")
+            raise ValidationError("fake MACaddress has illegal format" % (cur_inst.fake_macaddr))
 
 @receiver(signals.post_save, sender=netdevice)
 def netdevice_post_save(sender, **kwargs):
@@ -2481,6 +2481,7 @@ def network_pre_save(sender, **kwargs):
         if nw_type != "s" and cur_inst.master_network_id:
             raise ValidationError("only slave networks can have a master")
         if nw_type == "s" and cur_inst.master_network_id:
+            print cur_inst.pk, cur_inst.master_network_id
             if cur_inst.master_network.network_type.identifier != "p":
                 raise ValidationError("master network must be a production network")
         # validate IP

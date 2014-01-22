@@ -231,9 +231,9 @@ if "INITIAL_MIGRATION_RUN" in os.environ:
         "django_extensions",
         # "reversion",
         "south",
-        "pipeline",
-        "static_precompiler",
-        "crispy_forms",
+        # "pipeline",
+        # "static_precompiler",
+        # "crispy_forms",
         # cluster
         # "initat.core",
     )

@@ -1,8 +1,23 @@
 #!/bin/bash
 
-C_DIR="/opt/python-init/lib/python/site-packages/initat/cluster/"
+LIB_DIR="/opt/python-init/lib/python/site-packages"
+C_DIR="${LIB_DIR}/initat/cluster/"
 MIG_DIR="${C_DIR}/backbone/migrations/"
 bu_name=${1:-xxx}
+
+CLEAR_MIG=0
+if [ "${bu_name}" == "--clear-migrations" ] ; then
+    CLEAR_MIG=1
+    bu_name=${2:-xxx}
+    echo "clearing migrations"
+    for mig_dir in static_precompiler reversion django/contrib/auth initat/cluster/backbone ; do
+	fm_dir="${LIB_DIR}/${mig_dir}/migrations"
+	if [ -d ${fm_dir} ] ; then
+	    echo "clearing migration dir ${fm_dir}"
+	    rm -rf ${fm_dir}
+	fi
+    done
+fi
 
 if [ ! -f ${bu_name} ] ; then
     echo "Backupfile missing"
