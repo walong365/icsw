@@ -14,18 +14,48 @@ rrd_graph_template = """
         <div class="input-group">
             <input type="text" class="form-control" ng-disabled="is_loading" ng-model="searchstr" placeholder="search ..." ng-change="update_search()"></input>
             <span class="input-group-btn">
-                <button class="btn btn-success" ng-show="cur_selected" type="button" ng-click="draw_graph()"><span title="draw graph(s)" class="glyphicon glyphicon-pencil"></span></button>
+                <button class="btn btn-success" ng-show="cur_selected.length && dt_valid" type="button" ng-click="draw_graph()"><span title="draw graph(s)" class="glyphicon glyphicon-pencil"></span></button>
                 <button class="btn btn-danger" type="button" ng-click="clear_selection()"><span title="clear selection" class="glyphicon glyphicon-ban-circle"></span></button>
             </span>
+            <input type="text" class="form-control input-sm" ng-model="from_date"></input>
+            <span class="input-group-btn">
+                <button type="button" class="btn btn-sm dropdown-toggle btn-primary" data-toggle="dropdown">
+                   <span class="glyphicon glyphicon-calendar"></span>
+                </button>
+                <ul class="dropdown-menu" role="menu">
+                    <datetimepicker ng-model="from_date" 
+                                    datetimepicker-config="{ dropdownSelector: '.my-toggle-select' }">
+                    </datetimepicker>
+                </ul>
+            </span>
+            <input type="text" class="form-control input-sm" ng-model="to_date"></input>
+            <span class="input-group-btn">
+                <button type="button" class="btn btn-sm dropdown-toggle btn-primary" data-toggle="dropdown">
+                   <span class="glyphicon glyphicon-calendar"></span>
+                </button>
+                <ul class="dropdown-menu" role="menu">
+                    <datetimepicker ng-model="to_date"
+                                    datetimepicker-config="{ dropdownSelector: '.my-toggle-select' }">
+                    </datetimepicker>
+                </ul>
+            </span>
+            <div class="input-group-btn">
+                <button type="button" class="btn btn-sm dropdown-toggle" data-toggle="dropdown">
+                    {{ cur_dim }} <span class="caret"></span>
+                </button>
+                <ul class="dropdown-menu">
+                  <li ng-repeat="dim in all_dims" ng-click="set_active_dim(dim)"><a href="#">{{ dim }}</a></li>
+                </ul>
+            </div>
         </div>
         <div class="row">
+            <h4>{{ graph_info_str }}</h4>
             <div class="col-md-4">  
                 <tree treeconfig="g_tree"></tree>
             </div>
             <div class="col-md-8">
                 <h4>{{ graph_list.length }} graphs</h4>
                 <div ng-repeat="graph in graph_list">
-                    {{ graph }}
                     <img ng-src="{{ graph }}"></img>
                 </div>
             </div>
@@ -56,18 +86,50 @@ class rrd_tree extends tree_config
     selection_changed: () =>
         @scope.selection_changed()
             
-device_rrd_module = angular.module("icsw.device.rrd", ["ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters", "localytics.directives", "restangular"])
+device_rrd_module = angular.module("icsw.device.rrd", ["ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters", "localytics.directives", "restangular", "ui.bootstrap.datetimepicker"])
 
 angular_module_setup([device_rrd_module])
 
+DT_FORM = "YYYY-MM-DD HH:mm"
+
 device_rrd_module.controller("rrd_ctrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "sharedDataSource", "$q", "$modal", "$timeout"
     ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, sharedDataSource, $q, $modal, $timeout) ->
+        # possible dimensions
+        $scope.all_dims = ["420x200", "640x300", "800x350", "1024x400", "1280x450"]
+        $scope.dt_valid = true
+        $scope.to_date_mom = moment()
+        $scope.from_date_mom = moment().subtract("days", 1)
+        $scope.from_date = $scope.from_date_mom.format(DT_FORM)
+        $scope.to_date = $scope.to_date_mom.format(DT_FORM)
+        $scope.cur_dim = $scope.all_dims[1]
         $scope.error_string = ""
         $scope.searchstr = ""
         $scope.is_loading = true
         $scope.cur_selected = []
         $scope.graph_list = []
         $scope.g_tree = new rrd_tree($scope)
+        $scope.$watch("from_date", (new_val) ->
+            $scope.from_date_mom = moment(new_val)
+            $scope.update_dt() 
+        )
+        $scope.$watch("to_date", (new_val) ->
+            $scope.to_date_mom = moment(new_val)
+            $scope.update_dt() 
+        )
+        $scope.update_dt = () ->
+            $scope.dt_valid = $scope.from_date_mom.isValid() and $scope.to_date_mom.isValid()
+            if $scope.dt_valid
+                diff = $scope.to_date_mom - $scope.from_date_mom 
+                if diff < 0
+                    $scope.from_date = $scope.to_date_mom.format(DT_FORM)
+                    $scope.to_date = $scope.from_date_mom.format(DT_FORM)
+                    noty
+                        text : "exchanged from with to date"
+                        type : "warning"
+                else if diff < 60
+                    $scope.dt_valid = false
+        $scope.set_active_dim = (cur_dim) ->
+            $scope.cur_dim = cur_dim
         $scope.new_devsel = (_dev_sel, _devg_sel) ->
             $scope.devsel_list = _dev_sel
             $scope.reload()
@@ -79,15 +141,19 @@ device_rrd_module.controller("rrd_ctrl", ["$scope", "$compile", "$filter", "$tem
                 }
                 success : (xml) =>
                     if parse_xml_response(xml)
-                        @vector = $(xml).find("machine_vector")
-                        if @vector.length
+                        $scope.vector = $(xml).find("machine_vector")
+                        if $scope.vector.length
                             # we only get one vector at most (due to merge_results=1 in rrd_views.py)
-                            @add_nodes(undefined, @vector)
+                            $scope.add_nodes(undefined, $scope.vector)
                             $scope.is_loading = false
-                            $scope.$digest()
+                            $scope.$apply(
+                                num_struct = $scope.vector.find("entry").length
+                                num_mve = $scope.vector.find("mve").length
+                                $scope.graph_info_str = "Vector info: #{num_struct} / #{num_mve}"
+                            ) 
                         else
                             $scope.$apply(
-                                $scope.error_string = "No graphs found"
+                                $scope.error_string = "No vector found"
                             )
         $scope.add_nodes = (p_node, xml_node) =>
             if p_node == undefined
@@ -150,15 +216,16 @@ device_rrd_module.controller("rrd_ctrl", ["$scope", "$compile", "$filter", "$tem
                 data : {
                     "keys"       : angular.toJson($scope.cur_selected)
                     "pks"        : angular.toJson($scope.devsel_list)
-                    "start_time" : "2014-01-01 00:00"
-                    "end_time"   : "2014-01-21 00:00"
-                    "size"       : "640x480"
+                    "start_time" : $scope.from_date_mom.format(DT_FORM)
+                    "end_time"   : $scope.to_date_mom.format(DT_FORM)
+                    "size"       : $scope.cur_dim
                 }
                 success : (xml) =>
                     graph_list = []
                     if parse_xml_response(xml)
                         for graph in $(xml).find("graph_list > graph")
                             graph = $(graph)
+                            #console.log graph[0]
                             graph_list.push(graph.attr("href"))
                     $scope.$apply(
                         $scope.graph_list = graph_list
