@@ -229,7 +229,7 @@ class graph_process(threading_tools.process_obj):
             graph_name = "gfx_%s_%d.png" % (tlk, int(time.time()))
             abs_file_loc, rel_file_loc = (
                 os.path.join(self.graph_root, graph_name),
-                os.path.join("/%s/graphs/%s" % (settings.REL_SITE_ROOT, graph_name)),
+                os.path.join("/%s/static/graphs/%s" % (settings.REL_SITE_ROOT, graph_name)),
             )
             dt_1970 = datetime.datetime(1970, 1, 1)
             rrd_args = [
@@ -296,7 +296,7 @@ class graph_process(threading_tools.process_obj):
         srv_com["graphs"] = graph_list
         # print srv_com.pretty_print()
         srv_com.set_result(
-            "generated %s" % (logging_tools.get_plural("graph", len(graph_list))),
+            "generated %d %s" % (len(graph_list), "graph" if len(graph_list) == 1 else "graphs"),
             server_command.SRV_REPLY_STATE_OK)
         self.send_pool_message("send_command", src_id, unicode(srv_com))
 

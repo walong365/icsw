@@ -41,6 +41,16 @@ except ImportError:
 
 SERVER_COM_PORT = 8003
 
+def _create_dirs():
+    graph_root = global_config["GRAPH_ROOT"]
+    if not os.path.isdir(graph_root):
+        try:
+            os.makedirs(graph_root)
+        except:
+            print("*** cannot create graph_root '%s': %s" % (graph_root, process_tools.get_except_info()))
+        else:
+            print("created graph_root '%s'" % (graph_root))
+
 def main():
     long_host_name, _mach_name = process_tools.get_fqdn()
     prog_name = global_config.name()
@@ -90,13 +100,14 @@ def main():
             ("LOG_SOURCE_IDX", configfile.int_c_var(cluster_location.log_source.create_log_source_entry("rrd-server", "Cluster RRDServer", device=sql_info.effective_device).pk)),
             ("GRAPH_ROOT"    , configfile.str_c_var(
                 os.path.abspath(os.path.join(
-                    settings.FILE_ROOT if (not global_config["DEBUG"] or options.SERVER_PATH) else "/usr/local/share/home/local/development/git/webfrontend/django/initat/cluster",
+                    settings.STATIC_ROOT_DEBUG if global_config["DEBUG"] else settings.STATIC_ROOT, # if (not global_config["DEBUG"] or options.SERVER_PATH) else "/usr/local/share/home/local/development/git/webfrontend/django/initat/cluster",
                     "graphs"))))
         ]
     )
+    _create_dirs()
 
     process_tools.renice()
-    process_tools.fix_directories(global_config["USER"], global_config["GROUP"], ["/var/run/rrd-grapher"])
+    process_tools.fix_directories(global_config["USER"], global_config["GROUP"], ["/var/run/rrd-grapher", global_config["GRAPH_ROOT"]])
     global_config.set_uid_gid(global_config["USER"], global_config["GROUP"])
     process_tools.change_user_group(global_config["USER"], global_config["GROUP"], global_config["GROUPS"], global_config=global_config)
     if not global_config["DEBUG"]:
