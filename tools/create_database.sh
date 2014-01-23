@@ -1,6 +1,24 @@
 #!/bin/bash
 
-C_DIR="/opt/python-init/lib/python/site-packages/initat/cluster/"
+LIB_DIR="/opt/python-init/lib/python/site-packages"
+C_DIR="${LIB_DIR}/initat/cluster/"
+MIG_DIR="${C_DIR}/backbone/migrations/"
+
+bu_name=${1:-xxx}
+
+CLEAR_MIG=0
+if [ "${bu_name}" == "--clear-migrations" ] ; then
+    CLEAR_MIG=1
+    bu_name=${2:-xxx}
+    echo "clearing migrations"
+    for mig_dir in static_precompiler reversion django/contrib/auth initat/cluster/backbone initat/cluster/liebherr ; do
+	fm_dir="${LIB_DIR}/${mig_dir}/migrations"
+	if [ -d ${fm_dir} ] ; then
+	    echo "clearing migration dir ${fm_dir}"
+	    rm -rf ${fm_dir}
+	fi
+    done
+fi
 
 if [ "${UID:-X}" = "0" ] ; then 
     if [ "${1:-X}" = "--no-initial-data" ] ; then
@@ -20,6 +38,14 @@ if [ "${UID:-X}" = "0" ] ; then
         ${C_DIR}/manage.py schemamigration backbone --initial
         ${C_DIR}/manage.py schemamigration reversion --initial
 	${C_DIR}/manage.py schemamigration static_precompiler --initial
+	sync_apps="liebherr"
+	for sync_app in ${sync_apps} ; do
+	    if [ -d "${C_DIR}${sync_app}" ] ; then
+		echo "syncing app ${sync_app}"
+		${C_DIR}/manage.py schemamigration ${sync_app} --auto
+		${C_DIR}/manage.py migrate ${sync_app}
+	    fi
+	done
         ${C_DIR}/manage.py migrate auth
         ${C_DIR}/manage.py migrate backbone --no-initial-data
         ${C_DIR}/manage.py migrate reversion
