@@ -21,4 +21,3 @@ if [ -d ${MIG_DIR} ] ; then
 else
     echo "no migration directory ${MIG_DIR} present, refuse to operate"
 fi
-

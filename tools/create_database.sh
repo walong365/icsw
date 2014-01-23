@@ -58,6 +58,9 @@ if [ "${UID:-X}" = "0" ] ; then
             echo ""
             ${C_DIR}/manage.py createsuperuser
         fi
+	${C_DIR}/manage.py init_csw_permissions
+	${C_DIR}/manage.py loaddata ${C_DIR}/backbone/fixtures/initial_new_data.xml
+	/opt/cluster/bin/migrate_to_domain_name.py --init
     else
         echo "migration directory ${MIG_DIR} present, refuse to operate"
     fi

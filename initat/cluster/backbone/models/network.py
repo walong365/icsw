@@ -175,9 +175,11 @@ class network(models.Model):
             ": %s" % ([cur_slave.identifier for cur_slave in all_slaves]) if all_slaves else "",
         )
         return log_str
+    def info_string(self):
+        return unicode(self)
     def __unicode__(self):
         return u"%s (%s/%s, %s)" % (
-            self.name,
+            self.identifier,
             self.network,
             self.netmask,
             self.network_type.identifier
@@ -259,7 +261,8 @@ class net_ip(models.Model):
     def __unicode__(self):
         return self.ip
     class Meta:
-        db_table = u'netip'
+        db_table = u"netip"
+        app_label = "backbone"
 
 @receiver(signals.pre_save, sender=net_ip)
 def net_ip_pre_save(sender, **kwargs):
@@ -270,6 +273,7 @@ def net_ip_pre_save(sender, **kwargs):
         except:
             raise ValidationError("not a valid IPv4 address")
         if not cur_inst.network_id:
+            print "***"
             match_list = ipv_addr.find_matching_network(network.objects.all())
             if len(match_list):
                 cur_inst.network = match_list[0][1]
@@ -312,11 +316,12 @@ class network_network_device_type_serializer(serializers.ModelSerializer):
         model = network_network_device_type
 
 class network_serializer(serializers.ModelSerializer):
+    info_string = serializers.Field(source="info_string")
     class Meta:
         model = network
 
 class net_ip_serializer(serializers.ModelSerializer):
-    network = network_serializer()
+    # network = network_serializer()
     class Meta:
         model = net_ip
 
@@ -340,7 +345,7 @@ class netdevice(models.Model):
     bridge_name = models.CharField(max_length=765, blank=True)
     vlan_id = models.IntegerField(null=True, blank=True)
     # for VLAN devices
-    master_device = models.ForeignKey("self", null=True, related_name="vlan_slaves")
+    master_device = models.ForeignKey("self", null=True, related_name="vlan_slaves", blank=True)
     date = models.DateTimeField(auto_now_add=True)
     def __init__(self, *args, **kwargs):
         models.Model.__init__(self, *args, **kwargs)
@@ -439,6 +444,7 @@ class netdevice(models.Model):
             nd_type="%d" % (self.network_device_type_id),
             master_device="%d" % (self.master_device_id or 0),
             )
+
 @receiver(signals.pre_delete, sender=netdevice)
 def netdevice_pre_delete(sender, **kwargs):
     # too late here, handled by delete_netdevice in network_views
@@ -520,6 +526,8 @@ class netdevice_speed(models.Model):
         db_table = u'netdevice_speed'
         ordering = ("speed_bps", "full_duplex")
         app_label = "backbone"
+    def info_string(self):
+        return unicode(self)
     def __unicode__(self):
         _s_str, lut_idx = ("", 0)
         cur_s = self.speed_bps
@@ -533,6 +541,7 @@ class netdevice_speed(models.Model):
             "check via ethtool" if self.check_via_ethtool else "no check")
 
 class netdevice_speed_serializer(serializers.ModelSerializer):
+    info_string = serializers.Field(source="info_string")
     class Meta:
         model = netdevice_speed
 
@@ -572,6 +581,7 @@ class peer_information(models.Model):
         return u"%s [%d] %s" % (self.s_netdevice.devname, self.penalty, self.d_netdevice.devname)
     class Meta:
         db_table = u'peer_information'
+        app_label = "backbone"
 
 class peer_information_serializer(serializers.ModelSerializer):
     class Meta:
