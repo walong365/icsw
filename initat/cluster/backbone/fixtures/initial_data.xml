@@ -316,48 +316,56 @@
     </object>
   <object pk="1" model="backbone.network_device_type">
     <field type="CharField" name="identifier">lo</field>
+    <field type="CharField" name="name_re">^lo\d+$</field>
     <field type="CharField" name="description">loopback devices</field>
     <field type="IntegerField" name="mac_bytes">6</field>
     <field type="DateTimeField" name="date">2012-04-22T10:09:59</field>
   </object>
   <object pk="2" model="backbone.network_device_type">
     <field type="CharField" name="identifier">eth</field>
+    <field type="CharField" name="name_re">^eth\d+$</field>
     <field type="CharField" name="description">ethernet devices</field>
     <field type="IntegerField" name="mac_bytes">6</field>
     <field type="DateTimeField" name="date">2012-04-22T10:09:59</field>
   </object>
   <object pk="3" model="backbone.network_device_type">
     <field type="CharField" name="identifier">myri</field>
+    <field type="CharField" name="name_re">^myri\d+$</field>
     <field type="CharField" name="description">myrinet devices</field>
     <field type="IntegerField" name="mac_bytes">6</field>
     <field type="DateTimeField" name="date">2012-04-22T10:09:59</field>
   </object>
   <object pk="4" model="backbone.network_device_type">
     <field type="CharField" name="identifier">xenbr</field>
+    <field type="CharField" name="name_re">^xenbr\d+$</field>
     <field type="CharField" name="description">xen bridge devices</field>
     <field type="IntegerField" name="mac_bytes">6</field>
     <field type="DateTimeField" name="date">2012-04-22T10:09:59</field>
   </object>
   <object pk="5" model="backbone.network_device_type">
     <field type="CharField" name="identifier">tun</field>
+    <field type="CharField" name="name_re">^tun\d+$</field>
     <field type="CharField" name="description">ethernet tunnel devices</field>
     <field type="IntegerField" name="mac_bytes">6</field>
     <field type="DateTimeField" name="date">2012-04-22T10:09:59</field>
   </object>
   <object pk="6" model="backbone.network_device_type">
     <field type="CharField" name="identifier">ib</field>
+    <field type="CharField" name="name_re">^ib\d+$</field>
     <field type="CharField" name="description">infiniband devices</field>
     <field type="IntegerField" name="mac_bytes">20</field>
     <field type="DateTimeField" name="date">2012-04-22T10:09:59</field>
   </object>
   <object pk="7" model="backbone.network_device_type">
     <field type="CharField" name="identifier">bridge</field>
+    <field type="CharField" name="name_re">^bridge\d+$</field>
     <field type="CharField" name="description">generic bridge</field>
     <field type="IntegerField" name="mac_bytes">6</field>
     <field type="DateTimeField" name="date">2013-05-23T08:50:00</field>
   </object>
   <object pk="8" model="backbone.network_device_type">
     <field type="CharField" name="identifier">vlan</field>
+    <field type="CharField" name="name_re">^vlan\d+$</field>
     <field type="CharField" name="description">VLAN device</field>
     <field type="IntegerField" name="mac_bytes">6</field>
     <field type="DateTimeField" name="date">2013-10-21T08:50:00</field>

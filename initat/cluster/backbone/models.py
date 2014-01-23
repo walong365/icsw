@@ -2163,17 +2163,14 @@ class netdevice(models.Model):
             vlan_id=self.vlan_id,
             )
     def find_matching_network_device_type(self):
-        # remove digits
-        name = self.devname.split(":")[0].strip("0123456789")
-        ndt_dict = {cur_ndt.identifier : cur_ndt for cur_ndt in network_device_type.objects.all()}
-        match_list = [ndt for nw_id, ndt in ndt_dict.iteritems() if nw_id.startswith(name) or name.endswith(nw_id)]
+        match_list = [ndt for ndt in network_device_type.objects.all() if re.match(ndt.name_re, self.devname)]
         if len(match_list) == 0:
             return None
         elif len(match_list) == 1:
             return match_list[0]
         else:
-            # FIXME, enhance to full match
-            return match_list[0]
+            # take ndt with shortest name_re
+            return sorted([(len(ndt.name_re), ndt) for ndt in match_list])[0][1]
     def get_dummy_macaddr(self):
         return ":".join(["00"] * self.network_device_type.mac_bytes)
     class Meta:
@@ -2510,6 +2507,7 @@ def network_pre_save(sender, **kwargs):
 class network_device_type(models.Model):
     idx = models.AutoField(db_column="network_device_type_idx", primary_key=True)
     identifier = models.CharField(unique=True, max_length=48, blank=False)
+    name_re = models.CharField(max_length=128, default="^.*$")
     description = models.CharField(max_length=192)
     mac_bytes = models.PositiveIntegerField(default=6)
     date = models.DateTimeField(auto_now_add=True)
@@ -2518,6 +2516,7 @@ class network_device_type(models.Model):
             unicode(self),
             pk="%d" % (self.pk),
             key="nwdt__%d" % (self.pk),
+            name_re=self.name_re,
             identifier=self.identifier,
             description=self.description,
             mac_bytes="%d" % (self.mac_bytes)
@@ -2530,18 +2529,36 @@ class network_device_type(models.Model):
             self.description,
             self.mac_bytes)
 
+@receiver(signals.post_init, sender=network_device_type)
+def network_device_type_post_init(sender, **kwargs):
+    if "instance" in kwargs:
+        cur_inst = kwargs["instance"]
+        # print "*" * 20, cur_inst.identifier, cur_inst.pk, "+" * 20
+        if cur_inst.name_re == "^.*$" and cur_inst.pk:
+            cur_inst.name_re = "^%s\d+$" % (cur_inst.identifier)
+            cur_inst.save()
+
 @receiver(signals.pre_save, sender=network_device_type)
 def network_device_type_pre_save(sender, **kwargs):
     if "instance" in kwargs:
         cur_inst = kwargs["instance"]
         if not(cur_inst.identifier.strip()):
             raise ValidationError("identifer must not be empty")
+        if not re.match("^[a-zA-Z0-9]+$", cur_inst.identifier):
+            raise ValidationError("identifier '%s' contains illegal characters" % (cur_inst.identifier))
+        if not cur_inst.name_re.startswith("^"):
+            cur_inst.name_re = "^%s" % (cur_inst.name_re)
+        if not cur_inst.name_re.endswith("$"):
+            cur_inst.name_re = "%s$" % (cur_inst.name_re)
+        try:
+            _cur_re = re.compile(cur_inst.name_re)
+        except:
+            raise ValidationError("invalid re '%s': %s" % (cur_inst.name_re, process_tools.get_except_info()))
         _check_integer(cur_inst, "mac_bytes", min_val=6, max_val=24)
 
 class network_device_type_serializer(serializers.ModelSerializer):
     class Meta:
         model = network_device_type
-        fields = ("idx", "identifier", "description", "mac_bytes", "date")
 
 class network_network_device_type(models.Model):
     idx = models.AutoField(db_column="network_network_device_type_idx", primary_key=True)
