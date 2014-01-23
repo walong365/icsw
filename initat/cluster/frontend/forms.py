@@ -21,7 +21,7 @@ from initat.cluster.backbone.models import domain_tree_node, device, category, m
      mon_service_esc_templ, mon_device_esc_templ, mon_service_dependency_templ, package_search, \
      mon_service_dependency, mon_host_dependency, package_device_connection, partition, \
      partition_disc, sys_partition, device_variable, config, config_str, config_int, config_bool, \
-     config_script
+     config_script, netdevice, net_ip
 from initat.cluster.frontend.widgets import device_tree_widget
 
 # import PAM
@@ -2153,3 +2153,66 @@ class mon_check_command_form(ModelForm):
             "description", "enable_perfdata", "volatile", "is_event_handler",
             "event_handler", "event_handler_enabled",)
 
+
+class netdevice_form(ModelForm):
+    helper = FormHelper()
+    helper.form_id = "form"
+    helper.form_name = "form"
+    helper.form_class = 'form-horizontal'
+    helper.label_class = 'col-sm-2'
+    helper.field_class = 'col-sm-9'
+    helper.ng_model = "_edit_obj"
+    helper.ng_submit = "cur_edit.modify(this)"
+    helper.layout = Layout(
+        HTML("<h2>Netdevice '{% verbatim %}{{ _edit_obj.devname }}{% endverbatim %}'</h2>"),
+            Fieldset(
+                "Basic settings",
+                Field("devname", wrapper_class="ng-class:form_error('devname')", placeholder="devicename"),
+                Field("description"),
+            ),
+            Fieldset(
+                "additional settings",
+                Field("netdevice_speed", ng_options="value.idx as value.info_string for value in netdevice_speeds", chosen=True),
+            ),
+            FormActions(
+                Submit("submit", "", css_class="primaryAction", ng_value="action_string"),
+            )
+        )
+    def __init__(self, *args, **kwargs):
+        ModelForm.__init__(self, *args, **kwargs)
+        for clear_f in ["netdevice_speed"]:
+            self.fields[clear_f].queryset = empty_query_set()
+            self.fields[clear_f].empty_label = None
+    class Meta:
+        model = netdevice
+        fields = ("devname", "netdevice_speed", "description",)
+
+class net_ip_form(ModelForm):
+    helper = FormHelper()
+    helper.form_id = "form"
+    helper.form_name = "form"
+    helper.form_class = 'form-horizontal'
+    helper.label_class = 'col-sm-2'
+    helper.field_class = 'col-sm-9'
+    helper.ng_model = "_edit_obj"
+    helper.ng_submit = "cur_edit.modify(this)"
+    helper.layout = Layout(
+        HTML("<h2>IP Address '{% verbatim %}{{ _edit_obj.ip }}{% endverbatim %}'</h2>"),
+            Fieldset(
+                "Basic settings",
+                Field("ip", wrapper_class="ng-class:form_error('devname')", placeholder="IP address"),
+                Field("network", ng_options="value.idx as value.info_string for value in networks", chosen=True),
+                Field("domain_tree_node", ng_options="value.idx as value.tree_info for value in domain_tree_node", chosen=True),
+            ),
+            FormActions(
+                Submit("submit", "", css_class="primaryAction", ng_value="action_string"),
+            )
+        )
+    def __init__(self, *args, **kwargs):
+        ModelForm.__init__(self, *args, **kwargs)
+        for clear_f in ["network", "domain_tree_node"]:
+            self.fields[clear_f].queryset = empty_query_set()
+            self.fields[clear_f].empty_label = None
+    class Meta:
+        model = net_ip
+        fields = ("ip", "network", "domain_tree_node")

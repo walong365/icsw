@@ -69,6 +69,8 @@ device_tree_base = device_module.controller("device_tree_base", ["$scope", "$com
                 $scope.rest_data_set()
             )
         $scope.reload()
+        $scope.dg_present = () ->
+            return (entry for entry in $scope.entries when entry.device_type_identifier == "MD").length > 1
         $scope.modify = () ->
             if not $scope.form.$invalid
                 rest_entry = (entry for entry in $scope.rest_map when entry.short == $scope._array_name)[0]

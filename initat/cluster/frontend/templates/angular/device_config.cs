@@ -39,15 +39,23 @@ device_config_template = """
         Device config ({{ devices.length }} devices), {{ configs.length }} configurations ({{ active_configs.length }} shown)
     </h2>
     <div class="row">
-        <div class="col-sm-5 form-inline">
+        <div class="form-inline col-sm-3">
             <div class="form-group">
                 <input class="form-control" ng-model="name_filter" placeholder="filter"></input>
             </div>,
-            <div class="checkbox">
+            <span class="checkbox">
                 <label>
                     only selected:
                     <input title="show only configs selected anywhere in the curren selection" type="checkbox" ng-model="only_selected"></input>
                 </label>
+            </span>
+        </div>
+        <div class="form-inline col-sm-4">
+            <div class="form-group">
+                <input placeholder="new config" ng-model="new_config_name" class="form-control input-sm"></input>
+            </div>
+            <div class="form-group">
+                <input type="button" class="btn btn-success btn-sm" ng-show="new_config_name" ng-click="create_config()" value="create config"></input>
             </div>
         </div>
     </div>
@@ -230,11 +238,14 @@ device_config_module.controller("config_ctrl", ["$scope", "$compile", "$filter",
         $scope.configs = []
         $scope.active_configs = []
         $scope.name_filter = ""
+        $scope.new_config_name = ""
         $scope.only_selected = false
         $scope.new_devsel = (_dev_sel, _devg_sel) ->
+            $scope.devsel_list = _dev_sel
+            $scope.reload()
+        $scope.reload = () ->
             pre_sel = (dev.idx for dev in $scope.devices when dev.expanded)
             restDataSource.reset()
-            $scope.devsel_list = _dev_sel
             wait_list = restDataSource.add_sources([
                 ["{% url 'rest:device_tree_list' %}", {"with_device_configs" : true, "with_meta_devices" : true, "pks" : angular.toJson($scope.devsel_list)}],
                 ["{% url 'rest:config_list' %}", {}]
@@ -259,6 +270,14 @@ device_config_module.controller("config_ctrl", ["$scope", "$compile", "$filter",
                         $scope.configs = value
                         $scope.new_filter_set($scope.name_filter, false)
                 $scope.init_devices(pre_sel)
+            )
+        $scope.create_config = () ->
+            new_obj = {
+                "name" : $scope.new_config_name
+            }
+            Restangular.all("{% url 'rest:config_list' %}".slice(1)).post(new_obj).then((new_data) ->
+                $scope.new_config_name = ""
+                $scope.reload()
             )
         $scope.get_tr_class = (obj) ->
             if obj.device_type_identifier == "MD"

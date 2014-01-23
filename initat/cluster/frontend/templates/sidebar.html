@@ -84,14 +84,16 @@ sidebar_base = sidebar_module.controller("sidebar_base", ["$scope", "$compile", 
                 devg_list = []
                 devg_pk_list = []
                 for idx in $scope.cur_sel
-                    if $scope.dev_lut[idx].device_type_identifier == "MD"
-                        devg_list.push("devg__" + $scope.dev_lut[idx].device_group)
-                        devg_pk_list.push($scope.dev_lut[idx].device_group)
-                    else
-                        dev_nmd_list.push("dev__#{idx}")
-                        dev_pk_nmd_list.push(idx)
-                    dev_list.push("dev__#{idx}")
-                    dev_pk_list.push(idx)
+                    if idx of $scope.dev_lut
+                        # in case dev_lut is not valid
+                        if $scope.dev_lut[idx].device_type_identifier == "MD"
+                            devg_list.push("devg__" + $scope.dev_lut[idx].device_group)
+                            devg_pk_list.push($scope.dev_lut[idx].device_group)
+                        else
+                            dev_nmd_list.push("dev__#{idx}")
+                            dev_pk_nmd_list.push(idx)
+                        dev_list.push("dev__#{idx}")
+                        dev_pk_list.push(idx)
                 for entry in $scope.devsel_func
                     if called_after_load and not entry.fire_when_loaded
                         true

@@ -34,7 +34,7 @@ from initat.cluster.backbone.models import device, network, net_ip, \
     network_type, network_device_type, netdevice, peer_information, \
     netdevice_speed, domain_tree_node, domain_name_tree, get_related_models
 from initat.cluster.frontend.forms import domain_tree_node_form, network_form, \
-    network_type_form, network_device_type_form
+    network_type_form, network_device_type_form, netdevice_form, net_ip_form
 from initat.cluster.frontend.helper_functions import xml_wrapper
 from initat.core.render import render_me, render_string
 from lxml.builder import E # @UnresolvedImports
@@ -61,7 +61,10 @@ class device_network(View):
     @method_decorator(login_required)
     def get(self, request):
         return render_me(
-            request, "device_network.html",
+            request, "device_network.html", {
+                "netdevice_form" : netdevice_form(),
+                "net_ip_form" : net_ip_form(),
+            }
         )()
     @method_decorator(login_required)
     @method_decorator(xml_wrapper)

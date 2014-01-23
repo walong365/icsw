@@ -28,8 +28,17 @@
 {% block content %}
 
 <div id="icsw.network.device">
+
+    <script type="text/ng-template" id="netdevice_template.html">
+        {% crispy netdevice_form netdevice_form.helper %}
+    </script>
+
+    <script type="text/ng-template" id="netip_template.html">
+        {% crispy net_ip_form net_ip_form.helper %}
+    </script>
+
     <div ng-controller="network_ctrl">
-    dd
+        <devicenetworks></devicenetworks>
     </div>
 </div>
 
