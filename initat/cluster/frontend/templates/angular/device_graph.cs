@@ -152,6 +152,9 @@ class rrd_tree extends tree_config
     handle_click: (entry, event) =>
         if entry._node_type == "s"
             entry.expand = ! entry.expand
+        else if entry._node_type == "e"
+            entry.set_selected(!entry.selected)
+            @scope.selection_changed()
     selection_changed: () =>
         @scope.selection_changed()
             
@@ -251,9 +254,8 @@ device_rrd_module.controller("rrd_ctrl", ["$scope", "$compile", "$filter", "$tem
                                 $scope.num_mve_sel = 0
                             ) 
                         else
-                            $scope.$apply(
-                                $scope.error_string = "No vector found"
-                            )
+                            $scope.error_string = "No vector found"
+                            $scope.$digest()
         $scope.add_nodes = (p_node, xml_node) =>
             if p_node == undefined
                 cur_node = $scope.g_tree.new_node({folder:true, _node_type:"h", expand:true})

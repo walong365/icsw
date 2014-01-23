@@ -33,7 +33,7 @@ from initat.cluster.backbone.models import user , group, user_serializer_h, grou
      device_selection_serializer, partition_table_serializer_save, partition_disc_serializer_save, \
      partition_disc_serializer_create, device_serializer_variables, device_serializer_device_configs, \
      device_config, device_config_hel_serializer, home_export_list, csw_permission, \
-     device_serializer_disk_info
+     device_serializer_disk_info, device_serializer_network
 from rest_framework import mixins, generics, status, viewsets, serializers
 from rest_framework.authentication import BasicAuthentication, SessionAuthentication
 from rest_framework.decorators import api_view
@@ -444,6 +444,8 @@ class device_tree_list(mixins.ListModelMixin,
             return device_serializer_device_configs
         elif self._get_post_boolean("with_disk_info", False):
             return device_serializer_disk_info
+        elif self._get_post_boolean("with_network", False):
+            return device_serializer_network
         else:
             return device_serializer
     @rest_logging
@@ -530,6 +532,11 @@ class device_tree_list(mixins.ListModelMixin,
                 "act_partition_table__new_partition_table",
                 "act_partition_table__act_partition_table",
             )
+        if self._get_post_boolean("with_network", False):
+            _q = _q.prefetch_related(
+                "netdevice_set__net_ip_set__network__network_type",
+                "netdevice_set__net_ip_set__network__network_device_type",
+                )
         # ordering: at first cluster device group, then by group / device_type / name
         _q = _q.order_by("-device_group__cluster_device_group", "device_group__name", "-device_type__priority", "name")
         # print _q.count(), self.request.QUERY_PARAMS, self.request.session.get("sel_list", [])

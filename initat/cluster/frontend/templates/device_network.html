@@ -1,8 +1,10 @@
 {% extends "main.html" %}
 
-{% load i18n coffeescript staticfiles %}
+{% load i18n coffeescript staticfiles crispy_forms_tags %}
 
 {% block title %}{% trans "Device network settings" %}{% endblock %}
+
+{% block angular %}{% include "angular/device_network.cs" %}{% endblock %}
 
 {% block tab_js %}
 
@@ -24,6 +26,12 @@
 {% endblock %}
 
 {% block content %}
+
+<div id="icsw.network.device">
+    <div ng-controller="network_ctrl">
+    dd
+    </div>
+</div>
 
 <div id="network_div">
 <h1 class="center">Device network settings</h1>
@@ -61,6 +69,10 @@
 <script type="text/javascript">
 
 {% inlinecoffeescript %}
+
+angular.element(document).ready(() ->
+    angular.bootstrap($("div[id='icsw.network.device']"), ["icsw.network.device"])
+)
 
 class network_table
     constructor: (@top_div) ->
