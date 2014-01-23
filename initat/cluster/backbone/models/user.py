@@ -6,7 +6,7 @@ from django.core.exceptions import ValidationError, ImproperlyConfigured
 from django.db import models
 from django.db.models import Q, signals, get_model
 from django.dispatch import receiver
-from initat.cluster.backbone.model_functions import _check_empty_string, _check_integer
+from initat.cluster.backbone.models.functions import _check_empty_string, _check_integer
 from lxml.builder import E # @UnresolvedImport
 from rest_framework import serializers
 import base64
@@ -17,8 +17,12 @@ import os
 import random
 import string
 
-__all__ = ["csw_permission", "csw_permission_serializer", "csw_object_permission", "csw_object_permission_serializer",
-    "user", "user_serializer", "user_serializer_h", "group", "group_serializer", "group_serializer_h", "user_device_login",
+__all__ = [
+    "csw_permission", "csw_permission_serializer",
+    "csw_object_permission", "csw_object_permission_serializer",
+    "user", "user_serializer", "user_serializer_h",
+    "group", "group_serializer", "group_serializer_h",
+    "user_device_login",
     "user_variable",
     ]
 
@@ -107,6 +111,7 @@ class csw_permission(models.Model):
     class Meta:
         unique_together = (("content_type", "codename"),)
         ordering = ("content_type__app_label", "content_type__name", "name",)
+        app_label = "backbone"
     # def get_xml(self):
     #    r_xml = E.csw_permission(
     #        pk="%d" % (self.pk),
@@ -153,6 +158,8 @@ class csw_object_permission(models.Model):
     object_pk = models.IntegerField(default=0)
     def __unicode__(self):
         return "%s | %d" % (unicode(self.csw_permission), self.object_pk)
+    class Meta:
+        app_label = "backbone"
 
 class csw_object_permission_serializer(serializers.ModelSerializer):
     class Meta:
@@ -410,6 +417,7 @@ class user(models.Model):
     class Meta:
         db_table = u'user'
         ordering = ("login",)
+        app_label = "backbone"
     def __unicode__(self):
         return u"%s (%d; %s, %s)" % (
             self.login,
@@ -586,6 +594,7 @@ class group(models.Model):
     class Meta:
         db_table = u'ggroup'
         ordering = ("groupname",)
+        app_label = "backbone"
     def __unicode__(self):
         return "%s (gid=%d)" % (
             self.groupname,
@@ -645,15 +654,15 @@ def group_permissions_changed(sender, *args, **kwargs):
 
 class user_device_login(models.Model):
     idx = models.AutoField(db_column="user_device_login_idx", primary_key=True)
-    user = models.ForeignKey("user")
-    device = models.ForeignKey("device")
+    user = models.ForeignKey("backbone.user")
+    device = models.ForeignKey("backbone.device")
     date = models.DateTimeField(auto_now_add=True)
     class Meta:
         db_table = u'user_device_login'
 
 class user_variable(models.Model):
     idx = models.AutoField(primary_key=True)
-    user = models.ForeignKey("user")
+    user = models.ForeignKey("backbone.user")
     var_type = models.CharField(max_length=2, choices=[
         ("s", "string"),
         ("i", "integer"),
@@ -689,6 +698,7 @@ class user_variable(models.Model):
             self.value = None
     class Meta:
         unique_together = [("name", "user"), ]
+        app_label = "backbone"
 
 @receiver(signals.pre_save, sender=user_variable)
 def user_variable_pre_save(sender, **kwargs):

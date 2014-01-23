@@ -4,7 +4,7 @@ from django.core.exceptions import ValidationError
 from django.db import models
 from django.db.models import Q, signals
 from django.dispatch import receiver
-from initat.cluster.backbone.model_functions import _check_empty_string
+from initat.cluster.backbone.models.functions import _check_empty_string
 from lxml import etree # @UnresolvedImport
 from rest_framework import serializers
 
@@ -49,6 +49,7 @@ class package_repo(models.Model):
         ])
     class Meta:
         ordering = ("name",)
+        app_label = "backbone"
 
 class package_repo_serializer(serializers.ModelSerializer):
     class Meta:
@@ -76,6 +77,8 @@ class package_search(models.Model):
         return self.search_string
     class CSW_Meta:
         fk_ignore_list = ["package_search_result"]
+    class Meta:
+        app_label = "backbone"
 
 class package_search_serializer(serializers.ModelSerializer):
     class Meta:
@@ -103,7 +106,7 @@ class package_search_result(models.Model):
     # version w. release
     version = models.CharField(max_length=128, default="")
     copied = models.BooleanField(default=False)
-    package_repo = models.ForeignKey(package_repo, null=True)
+    package_repo = models.ForeignKey("backbone.package_repo", null=True)
     created = models.DateTimeField(auto_now_add=True)
     def create_package(self, exact=True):
         new_p = package(
@@ -142,13 +145,14 @@ class package(models.Model):
     arch = models.CharField(max_length=32, default="")
     # hard to determine ...
     size = models.IntegerField(default=0)
-    package_repo = models.ForeignKey(package_repo, null=True)
+    package_repo = models.ForeignKey("backbone.package_repo", null=True)
     created = models.DateTimeField(auto_now_add=True)
     def __unicode__(self):
         return "%s-%s" % (self.name, self.version)
     class Meta:
         db_table = u'package'
         unique_together = (("name", "version", "arch", "kind",),)
+        app_label = "backbone"
 
 class package_serializer(serializers.ModelSerializer):
     class Meta:
@@ -168,8 +172,8 @@ def package_pre_save(sender, **kwargs):
 
 class package_device_connection(models.Model):
     idx = models.AutoField(primary_key=True)
-    device = models.ForeignKey("device")
-    package = models.ForeignKey(package)
+    device = models.ForeignKey("backbone.device")
+    package = models.ForeignKey("backbone.package")
     # target state
     target_state = models.CharField(max_length=8, choices=(
         ("keep"   , "keep"),
@@ -261,7 +265,7 @@ class package_device_connection(models.Model):
         else:
             self.installed = "u"
     class Meta:
-        pass
+        app_label = "backbone"
 
 class package_device_connection_serializer(serializers.ModelSerializer):
     class Meta:

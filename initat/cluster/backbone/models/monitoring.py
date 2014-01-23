@@ -4,7 +4,7 @@ from django.core.exceptions import ValidationError
 from django.db import models
 from django.db.models import Q, signals
 from django.dispatch import receiver
-from initat.cluster.backbone.model_functions import _check_empty_string, _check_integer
+from initat.cluster.backbone.models.functions import _check_empty_string, _check_integer
 from rest_framework import serializers
 from django.conf import settings
 import logging_tools
@@ -35,9 +35,9 @@ class mon_host_cluster(models.Model):
     idx = models.AutoField(primary_key=True)
     name = models.CharField(max_length=128, blank=False, null=False, unique=True)
     description = models.CharField(max_length=255, default="")
-    main_device = models.ForeignKey("device", related_name="main_mon_host_cluster")
-    mon_service_templ = models.ForeignKey("mon_service_templ")
-    devices = models.ManyToManyField("device", related_name="devs_mon_host_cluster")
+    main_device = models.ForeignKey("backbone.device", related_name="backbone.main_mon_host_cluster")
+    mon_service_templ = models.ForeignKey("backbone.mon_service_templ")
+    devices = models.ManyToManyField("backbone.device", related_name="devs_mon_host_cluster")
     warn_value = models.IntegerField(default=0)
     error_value = models.IntegerField(default=1)
     # True for user editable (user created) clusters
@@ -45,6 +45,8 @@ class mon_host_cluster(models.Model):
     date = models.DateTimeField(auto_now_add=True)
     def __unicode__(self):
         return self.name
+    class Meta:
+        app_label = "backbone"
 
 class mon_host_cluster_serializer(serializers.ModelSerializer):
     class Meta:
@@ -64,10 +66,10 @@ class mon_service_cluster(models.Model):
     idx = models.AutoField(primary_key=True)
     name = models.CharField(max_length=128, blank=False, null=False, unique=True)
     description = models.CharField(max_length=255, default="")
-    main_device = models.ForeignKey("device", related_name="main_mon_service_cluster")
-    mon_service_templ = models.ForeignKey("mon_service_templ")
-    devices = models.ManyToManyField("device", related_name="devs_mon_service_cluster")
-    mon_check_command = models.ForeignKey("mon_check_command")
+    main_device = models.ForeignKey("backbone.device", related_name="main_mon_service_cluster")
+    mon_service_templ = models.ForeignKey("backbone.mon_service_templ")
+    devices = models.ManyToManyField("backbone.device", related_name="devs_mon_service_cluster")
+    mon_check_command = models.ForeignKey("backbone.mon_check_command")
     warn_value = models.IntegerField(default=0)
     error_value = models.IntegerField(default=1)
     # True for user editable (user created) clusters
@@ -75,6 +77,8 @@ class mon_service_cluster(models.Model):
     date = models.DateTimeField(auto_now_add=True)
     def __unicode__(self):
         return self.name
+    class Meta:
+        app_label = "backbone"
 
 class mon_service_cluster_serializer(serializers.ModelSerializer):
     class Meta:
@@ -97,6 +101,8 @@ class host_check_command(models.Model):
     date = models.DateTimeField(auto_now_add=True)
     def __unicode__(self):
         return "mcc_%s" % (self.name)
+    class Meta:
+        app_label = "backbone"
 
 class host_check_command_serializer(serializers.ModelSerializer):
     class Meta:
@@ -105,24 +111,24 @@ class host_check_command_serializer(serializers.ModelSerializer):
 class mon_check_command(models.Model):
     idx = models.AutoField(db_column="ng_check_command_idx", primary_key=True)
     config_old = models.IntegerField(null=True, blank=True, db_column="config")
-    config = models.ForeignKey("config", db_column="new_config_id")
+    config = models.ForeignKey("backbone.config", db_column="new_config_id")
     # deprecated, now references category tree
-    mon_check_command_type = models.ForeignKey("mon_check_command_type", null=True, default=None, blank=True)
-    mon_service_templ = models.ForeignKey("mon_service_templ", null=True, blank=True)
+    mon_check_command_type = models.ForeignKey("backbone.mon_check_command_type", null=True, default=None, blank=True)
+    mon_service_templ = models.ForeignKey("backbone.mon_service_templ", null=True, blank=True)
     # only unique per config
     name = models.CharField(max_length=192) # , unique=True)
     # flag for special commands (@<SREF>@command)
     is_special_command = models.BooleanField(default=False)
     command_line = models.CharField(max_length=765)
     description = models.CharField(max_length=192, blank=True)
-    # device = models.ForeignKey("device", null=True, blank=True)
+    # device = models.ForeignKey("backbone.device", null=True, blank=True)
     date = models.DateTimeField(auto_now_add=True)
     enable_perfdata = models.BooleanField(default=False)
     volatile = models.BooleanField(default=False)
     # categories for this device
-    categories = models.ManyToManyField("category", blank=True)
+    categories = models.ManyToManyField("backbone.category", blank=True)
     # device to exclude
-    exclude_devices = models.ManyToManyField("device", related_name="mcc_exclude_devices")
+    exclude_devices = models.ManyToManyField("backbone.device", related_name="mcc_exclude_devices")
     # event handler settings
     is_event_handler = models.BooleanField(default=False)
     event_handler = models.ForeignKey("self", null=True, default=None, blank=True)
@@ -130,6 +136,7 @@ class mon_check_command(models.Model):
     class Meta:
         db_table = u'ng_check_command'
         unique_together = (("name", "config"))
+        app_label = "backbone"
     def __unicode__(self):
         return "mcc_%s" % (self.name)
 
@@ -170,12 +177,13 @@ class mon_check_command_type(models.Model):
         return self.name
     class Meta:
         db_table = u'ng_check_command_type'
+        app_label = "backbone"
 
 class mon_contact(models.Model):
     idx = models.AutoField(db_column="ng_contact_idx", primary_key=True)
-    user = models.ForeignKey("user")
-    snperiod = models.ForeignKey("mon_period", related_name="service_n_period", verbose_name="service period")
-    hnperiod = models.ForeignKey("mon_period", related_name="host_n_period", verbose_name="host period")
+    user = models.ForeignKey("backbone.user")
+    snperiod = models.ForeignKey("backbone.mon_period", related_name="service_n_period", verbose_name="service period")
+    hnperiod = models.ForeignKey("backbone.mon_period", related_name="host_n_period", verbose_name="host period")
     snrecovery = models.BooleanField(default=False)
     sncritical = models.BooleanField(default=False)
     snwarning = models.BooleanField(default=False)
@@ -188,7 +196,7 @@ class mon_contact(models.Model):
     hflapping = models.BooleanField(default=False)
     hplanned_downtime = models.BooleanField(default=False)
     date = models.DateTimeField(auto_now_add=True)
-    notifications = models.ManyToManyField("mon_notification", blank=True)
+    notifications = models.ManyToManyField("backbone.mon_notification", blank=True)
     mon_alias = models.CharField(max_length=64, default="", verbose_name="alias", blank=True)
     def get_user_name(self):
         return u"%s (%s %s)" % (
@@ -200,6 +208,7 @@ class mon_contact(models.Model):
         return unicode(self.user)
     class Meta:
         db_table = u'ng_contact'
+        app_label = "backbone"
 
 class mon_contact_serializer(serializers.ModelSerializer):
     user_name = serializers.Field(source="get_user_name")
@@ -233,6 +242,8 @@ class mon_notification(models.Model):
             self.not_type,
             self.channel,
         )
+    class Meta:
+        app_label = "backbone"
 
 class mon_notification_serializer(serializers.ModelSerializer):
     class Meta:
@@ -261,13 +272,14 @@ class mon_contactgroup(models.Model):
     alias = models.CharField(max_length=255, blank=True, default="")
     date = models.DateTimeField(auto_now_add=True)
     device_groups = models.ManyToManyField("device_group", blank=True)
-    members = models.ManyToManyField("mon_contact", blank=True)
-    service_templates = models.ManyToManyField("mon_service_templ", blank=True)
-    service_esc_templates = models.ManyToManyField("mon_service_esc_templ", blank=True)
+    members = models.ManyToManyField("backbone.mon_contact", blank=True)
+    service_templates = models.ManyToManyField("backbone.mon_service_templ", blank=True)
+    service_esc_templates = models.ManyToManyField("backbone.mon_service_esc_templ", blank=True)
     def __unicode__(self):
         return self.name
     class Meta:
         db_table = u'ng_contactgroup'
+        app_label = "backbone"
 
 class mon_contactgroup_serializer(serializers.ModelSerializer):
     class Meta:
@@ -283,8 +295,8 @@ def mon_contactgroup_pre_save(sender, **kwargs):
 class mon_device_templ(models.Model):
     idx = models.AutoField(db_column="ng_device_templ_idx", primary_key=True)
     name = models.CharField(unique=True, max_length=192)
-    mon_service_templ = models.ForeignKey("mon_service_templ")
-    host_check_command = models.ForeignKey(host_check_command, null=True)
+    mon_service_templ = models.ForeignKey("backbone.mon_service_templ")
+    host_check_command = models.ForeignKey("backbone.host_check_command", null=True)
     # check interval
     check_interval = models.IntegerField(default=1)
     # retry interval
@@ -293,9 +305,9 @@ class mon_device_templ(models.Model):
     max_attempts = models.IntegerField(null=True, blank=True, default=1)
     # notification interval
     ninterval = models.IntegerField(null=True, blank=True, default=1)
-    not_period = models.ForeignKey("mon_period", related_name="dev_notify_period")
+    not_period = models.ForeignKey("backbone.mon_period", related_name="dev_notify_period")
     # monitoring period
-    mon_period = models.ForeignKey("mon_period", related_name="dev_check_period")
+    mon_period = models.ForeignKey("backbone.mon_period", related_name="dev_check_period")
     # Notificiation Flags
     nrecovery = models.BooleanField(default=False)
     ndown = models.BooleanField(default=False)
@@ -314,6 +326,7 @@ class mon_device_templ(models.Model):
         return self.name
     class Meta:
         db_table = u'ng_device_templ'
+        app_label = "backbone"
 
 class mon_device_templ_serializer(serializers.ModelSerializer):
     class Meta:
@@ -340,9 +353,9 @@ class mon_device_esc_templ(models.Model):
     name = models.CharField(unique=True, max_length=192)
     first_notification = models.IntegerField(default=1)
     last_notification = models.IntegerField(default=1)
-    mon_service_esc_templ = models.ForeignKey("mon_service_esc_templ")
+    mon_service_esc_templ = models.ForeignKey("backbone.mon_service_esc_templ")
     ninterval = models.IntegerField(default=1)
-    esc_period = models.ForeignKey("mon_period")
+    esc_period = models.ForeignKey("backbone.mon_period")
     nrecovery = models.BooleanField(default=False)
     ndown = models.BooleanField(default=False)
     nunreachable = models.BooleanField(default=False)
@@ -351,6 +364,8 @@ class mon_device_esc_templ(models.Model):
     date = models.DateTimeField(auto_now_add=True)
     def __unicode__(self):
         return self.name
+    class Meta:
+        app_label = "backbone"
 
 class mon_device_esc_templ_serializer(serializers.ModelSerializer):
     class Meta:
@@ -381,7 +396,7 @@ class mon_host_dependency_templ(models.Model):
     nfc_down = models.BooleanField(default=True)
     nfc_unreachable = models.BooleanField(default=True)
     nfc_pending = models.BooleanField(default=False)
-    dependency_period = models.ForeignKey("mon_period")
+    dependency_period = models.ForeignKey("backbone.mon_period")
     date = models.DateTimeField(auto_now_add=True)
     @property
     def execution_failure_criteria(self):
@@ -393,6 +408,7 @@ class mon_host_dependency_templ(models.Model):
         return self.name
     class Meta:
         ordering = ("name",)
+        app_label = "backbone"
 
 class mon_host_dependency_templ_serializer(serializers.ModelSerializer):
     class Meta:
@@ -410,8 +426,8 @@ class mon_host_dependency(models.Model):
     idx = models.AutoField(primary_key=True)
     devices = models.ManyToManyField("device", related_name="mhd_devices", null=True, blank=True)
     dependent_devices = models.ManyToManyField("device", related_name="mhd_dependent_devices")
-    mon_host_dependency_templ = models.ForeignKey(mon_host_dependency_templ)
-    mon_host_cluster = models.ForeignKey(mon_host_cluster, null=True, blank=True)
+    mon_host_dependency_templ = models.ForeignKey("backbone.mon_host_dependency_templ")
+    mon_host_cluster = models.ForeignKey("backbone.mon_host_cluster", null=True, blank=True)
     date = models.DateTimeField(auto_now_add=True)
     def is_valid(self):
         return True if (self.mon_host_dependency_templ_id) else False
@@ -428,6 +444,8 @@ class mon_host_dependency(models.Model):
         conf["execution_failure_criteria"] = self.mon_host_dependency_templ.execution_failure_criteria
         conf["notification_failure_criteria"] = self.mon_host_dependency_templ.notification_failure_criteria
         conf["dependency_period"] = self.mon_host_dependency_templ.dependency_period.name
+    class Meta:
+        app_label = "backbone"
 
 class mon_host_dependency_serializer(serializers.ModelSerializer):
     class Meta:
@@ -448,7 +466,7 @@ class mon_service_dependency_templ(models.Model):
     nfc_unknown = models.BooleanField(default=True)
     nfc_critical = models.BooleanField(default=False)
     nfc_pending = models.BooleanField(default=False)
-    dependency_period = models.ForeignKey("mon_period")
+    dependency_period = models.ForeignKey("backbone.mon_period")
     date = models.DateTimeField(auto_now_add=True)
     @property
     def execution_failure_criteria(self):
@@ -460,6 +478,7 @@ class mon_service_dependency_templ(models.Model):
         return self.name
     class Meta:
         ordering = ("name",)
+        app_label = "backbone"
 
 class mon_service_dependency_templ_serializer(serializers.ModelSerializer):
     class Meta:
@@ -475,13 +494,13 @@ def mon_service_dependency_templ_pre_save(sender, **kwargs):
 
 class mon_service_dependency(models.Model):
     idx = models.AutoField(primary_key=True)
-    devices = models.ManyToManyField("device", related_name="msd_devices", blank=True)
-    mon_check_command = models.ForeignKey("mon_check_command", related_name="msd_mcc")
-    dependent_devices = models.ManyToManyField("device", related_name="msd_dependent_devices")
-    dependent_mon_check_command = models.ForeignKey("mon_check_command", related_name="msd_dependent_mcc")
-    mon_service_dependency_templ = models.ForeignKey(mon_service_dependency_templ)
+    devices = models.ManyToManyField("backbone.device", related_name="msd_devices", blank=True)
+    mon_check_command = models.ForeignKey("backbone.mon_check_command", related_name="msd_mcc")
+    dependent_devices = models.ManyToManyField("backbone.device", related_name="msd_dependent_devices")
+    dependent_mon_check_command = models.ForeignKey("backbone.mon_check_command", related_name="msd_dependent_mcc")
+    mon_service_dependency_templ = models.ForeignKey("backbone.mon_service_dependency_templ")
     # overrides device and mon_check_command
-    mon_service_cluster = models.ForeignKey(mon_service_cluster, null=True, blank=True)
+    mon_service_cluster = models.ForeignKey("backbone.mon_service_cluster", null=True, blank=True)
     date = models.DateTimeField(auto_now_add=True)
     def is_valid(self):
         return True if (self.mon_service_dependency_templ_id and self.mon_check_command_id and self.dependent_mon_check_command_id) else False
@@ -500,6 +519,8 @@ class mon_service_dependency(models.Model):
         conf["execution_failure_criteria"] = self.mon_service_dependency_templ.execution_failure_criteria
         conf["notification_failure_criteria"] = self.mon_service_dependency_templ.notification_failure_criteria
         conf["dependency_period"] = self.mon_service_dependency_templ.dependency_period.name
+    class Meta:
+        app_label = "backbone"
 
 class mon_service_dependency_serializer(serializers.ModelSerializer):
     class Meta:
@@ -523,6 +544,7 @@ class mon_ext_host(models.Model):
     class Meta:
         ordering = ("name",)
         db_table = u'ng_ext_host'
+        app_label = "backbone"
 
 class mon_ext_host_serializer(serializers.ModelSerializer):
     data_image = serializers.Field(source="data_image_field")
@@ -545,6 +567,7 @@ class mon_period(models.Model):
         return self.name
     class Meta:
         db_table = u'ng_period'
+        app_label = "backbone"
 
 class mon_period_serializer(serializers.ModelSerializer):
     class Meta:
@@ -588,12 +611,12 @@ class mon_service_templ(models.Model):
     idx = models.AutoField(db_column="ng_service_templ_idx", primary_key=True)
     name = models.CharField(max_length=192, unique=True)
     volatile = models.BooleanField(default=False)
-    nsc_period = models.ForeignKey("mon_period", related_name="service_check_period")
+    nsc_period = models.ForeignKey("backbone.mon_period", related_name="service_check_period")
     max_attempts = models.IntegerField(default=1)
     check_interval = models.IntegerField(default=5)
     retry_interval = models.IntegerField(default=10)
     ninterval = models.IntegerField(default=5)
-    nsn_period = models.ForeignKey("mon_period", related_name="service_notify_period")
+    nsn_period = models.ForeignKey("backbone.mon_period", related_name="service_notify_period")
     nrecovery = models.BooleanField(default=False)
     ncritical = models.BooleanField(default=False)
     nwarning = models.BooleanField(default=False)
@@ -612,6 +635,7 @@ class mon_service_templ(models.Model):
         return self.name
     class Meta:
         db_table = u'ng_service_templ'
+        app_label = "backbone"
 
 class mon_service_templ_serializer(serializers.ModelSerializer):
     class Meta:
@@ -639,7 +663,7 @@ class mon_service_esc_templ(models.Model):
     first_notification = models.IntegerField(default=1)
     last_notification = models.IntegerField(default=1)
     ninterval = models.IntegerField(default=1)
-    esc_period = models.ForeignKey("mon_period")
+    esc_period = models.ForeignKey("backbone.mon_period")
     nrecovery = models.BooleanField(default=False)
     ncritical = models.BooleanField(default=False)
     nwarning = models.BooleanField(default=False)
@@ -649,6 +673,8 @@ class mon_service_esc_templ(models.Model):
     date = models.DateTimeField(auto_now_add=True)
     def __unicode__(self):
         return self.name
+    class Meta:
+        app_label = "backbone"
 
 class mon_service_esc_templ_serializer(serializers.ModelSerializer):
     class Meta:

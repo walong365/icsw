@@ -1,0 +1,135 @@
+#!/usr/bin/python-init -Otu
+
+from django.conf import settings
+from django.core.exceptions import ImproperlyConfigured, ValidationError
+from django.db.models import Q
+import pytz
+import time
+
+cluster_timezone = pytz.timezone(settings.TIME_ZONE)
+system_timezone = pytz.timezone(time.tzname[0])
+
+# helper functions
+def _check_integer(inst, attr_name, **kwargs):
+    cur_val = getattr(inst, attr_name)
+    min_val, max_val = (kwargs.get("min_val", None),
+                        kwargs.get("max_val", None))
+    if cur_val is None and kwargs.get("none_to_zero", False):
+        cur_val = 0
+    try:
+        cur_val = int(cur_val)
+    except:
+        raise ValidationError("%s is not an integer" % (attr_name))
+    else:
+        if min_val is not None and max_val is not None:
+            if min_val is None:
+                if cur_val > max_val:
+                    raise ValidationError("%s too high (%d > %d)" % (
+                        attr_name,
+                        cur_val,
+                        max_val))
+            elif max_val is None:
+                if cur_val < min_val:
+                    raise ValidationError("%s too low (%d < %d)" % (
+                        attr_name,
+                        cur_val,
+                        min_val))
+            else:
+                if cur_val < min_val or cur_val > max_val:
+                    raise ValidationError("%s (%d) not in [%d, %d]" % (
+                        attr_name,
+                        cur_val,
+                        min_val,
+                        max_val))
+        setattr(inst, attr_name, cur_val)
+        return cur_val
+
+def _check_float(inst, attr_name):
+    cur_val = getattr(inst, attr_name)
+    try:
+        cur_val = float(cur_val)
+    except:
+        raise ValidationError("%s is not a float" % (attr_name))
+    setattr(inst, attr_name, cur_val)
+
+def _check_empty_string(inst, attr_name):
+    cur_val = getattr(inst, attr_name)
+    if not cur_val.strip():
+        raise ValidationError("%s can not be empty" % (attr_name))
+
+def _check_non_empty_string(inst, attr_name):
+    cur_val = getattr(inst, attr_name)
+    if cur_val.strip():
+        raise ValidationError("%s must be empty" % (attr_name))
+
+def to_system_tz(in_dt):
+    return in_dt.astimezone(system_timezone)
+
+def get_related_models(in_obj, m2m=False, detail=False, check_all=False, ignore_objs=[]):
+    used_objs = [] if detail else 0
+    if hasattr(in_obj, "CSW_Meta"):
+        # copy list because we remove entries as we iterate over foreign models
+        fk_ignore_list = [entry for entry in getattr(in_obj.CSW_Meta, "fk_ignore_list", [])]
+    else:
+        fk_ignore_list = []
+    if check_all:
+        ignore_list = []
+    else:
+        ignore_list = fk_ignore_list
+    for rel_obj in in_obj._meta.get_all_related_objects():
+        rel_field_name = rel_obj.field.name
+        # print rel_obj.model._meta.object_name, rel_obj.model._meta.object_name in ignore_list, ignore_list
+        if rel_obj.model._meta.object_name not in ignore_list:
+            ref_list = [entry for entry in rel_obj.model.objects.filter(Q(**{rel_field_name : in_obj})) if entry not in ignore_objs]
+            if detail:
+                used_objs.extend(ref_list)
+            else:
+                used_objs += len(ref_list)
+        else:
+            ignore_list.remove(rel_obj.model._meta.object_name)
+    if m2m:
+        for m2m_obj in in_obj._meta.get_all_related_many_to_many_objects():
+            m2m_field_name = m2m_obj.field.name
+            if detail:
+                used_objs.extend(list(m2m_obj.model.objects.filter(Q(**{m2m_field_name : in_obj}))))
+            else:
+                used_objs += m2m_obj.model.objects.filter(Q(**{m2m_field_name : in_obj})).count()
+    if ignore_list:
+        raise ImproperlyConfigured("ignore_list not empty, typos (model %s, %s) ?" % (
+            in_obj._meta.model_name,
+            ", ".join(ignore_list)
+            ))
+    return used_objs
+
+def get_change_reset_list(s_obj, d_obj, required_changes=None):
+    # changes required from client
+    if not required_changes:
+        required_changes = {}
+    c_list, r_list = ([], [])
+    for _f in s_obj._meta.fields:
+        s_val, d_val = (getattr(s_obj, _f.name), getattr(d_obj, _f.name))
+        cur_t = _f.get_internal_type()
+        # ignore Date(Time)Fields
+        if _f.name in required_changes and cur_t not in ["DateTimeField", "DateField"]:
+            # value for reset list
+            dr_val = d_val
+            if cur_t == "ForeignKey":
+                # print _f.name, cur_t, d_val, required_changes[_f.name]
+                if d_val is not None:
+                    # d_val_orig = d_val
+                    dr_val = d_val.pk
+            if dr_val != required_changes[_f.name]:
+                # values was reset from pre / post save, store in r_list
+                r_list.append((_f.name, dr_val))
+        if cur_t in ["CharField", "TextField", "IntegerField", "PositiveIntegerField", "BooleanField", "NullBooleanField", "ForeignKey"]:
+            if s_val != d_val:
+                c_list.append((_f.verbose_name, "changed from '{!s}' to '{!s}'".format(s_val, d_val)))
+        # elif cur_t in ["ForeignKey"]:
+        #    print "**", _f.name, s_val, d_val
+        elif cur_t in ["DateTimeField", "AutoField"]:
+            # ignore
+            pass
+        else:
+            print "FieldType() in get_change_reset_list: {}".format(cur_t)
+    return c_list, r_list
+
