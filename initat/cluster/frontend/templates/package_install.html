@@ -1,256 +1,609 @@
 {% extends "main.html" %}
 
-{% load i18n coffeescript crispy_forms_tags %}
-
-{% block angular %}
-{% include "angular/package.cs" %}
-{% include "angular/device.cs" %}
-{% endblock %}
+{% load i18n coffeescript %}
 
 {% block title %}{% trans "Package Install" %}{% endblock %}
 
 {% block content %}
 
-<div id="icsw.package">
+<h2 class="center">
+    <a href="{% url 'pack:repo_overview' %}">Repository Overview</a>, 
+    package filter: <input id='package_filter' type=text/><span id="package_filter_info"/>
+</h2>
 
-<script type="text/ng-template" id="package_search.html">
-    {% crispy package_search_form package_search_form.helper %}
-</script>
+<div id="device"></div>
 
-<script type="text/ng-template" id="package_action.html">
-    {% crispy package_action_form package_action_form.helper %}
-</script>
+<div id="package"></div>
 
-{% verbatim %}
-
-<script type="text/ng-template" id="package_repo_head.html">
-    <tr>
-        <th>Name</th>
-        <th>Alias</th>
-        <th>Enabled</th>
-        <th>AutoRefresh</th>
-        <th>GPGcheck</th>
-        <th>publish</th>
-        <th>URL</th>   
-        <th colspan="2" class="text-center">action</th>   
-    </tr>
-</script>
-
-<script type="text/ng-template" id="pdc_state.html">
-    <td ng-class="get_td_class()" class="text-right">
-        <span ng-show="show_pdc()">
-            {{ pdc.target_state }}
-            <div class="btn-group btn-group-xs">
-                <input type="button" class="btn disabled" ng-class="get_btn_class()" value="{{ pdc.installed }}"></input>
-                <input type="button" class="btn disabled" ng-class="{'btn-primary': pdc.force_flag, 'btn-default': !pdc.force_flag}" value="F"></input>
-                <input type="button" class="btn disabled" ng-class="{'btn-primary': pdc.nodeps_flag, 'btn-default': !pdc.nodeps_flag}" value="N"></input>
-            </div>
-        </span>
-        <span ng-show="!show_pdc()">
-        </span>
-        <input type="checkbox" ng-model="pdc.selected" ng-change="change_sel()"></input>
-    </td>
-</script>
-
-<script type="text/ng-template" id="package_repo_row.html">
-    <td>{{ obj.name }}</td>
-    <td>{{ obj.alias }}</td>
-    <td>{{ obj.enabled | yesno1 }}</td>
-    <td>{{ obj.autorefresh | yesno1 }}</td>
-    <td>{{ obj.gpg_check | yesno1 }}</td>
-    <td>{{ obj.publish_to_nodes | yesno1 }}</td>
-    <td>{{ obj.url }}</td>
-    <td><input type="button" class="btn btn-primary" ng-click="fn.toggle(obj)" value="toggle"/></td>
-    <td><input type="button" class="btn btn-danger" ng-click="delete(obj)" value="delete"/></td>
-</script>
-
-<script type="text/ng-template" id="package_search_head.html">
-    <tr>
-        <th>Search string</th>
-        <th>User</th>
-        <th>repeat</th>
-        <th>State</th>
-        <th>results</th>
-        <th>search</th>
-        <th>last search</th>   
-        <th colspan="4" class="text-center">action</th>   
-    </tr>
-</script>
-
-<script type="text/ng-template" id="package_search_row.html">
-    <td>{{ obj.search_string }}</td>
-    <td>{{ obj.user | array_lookup:this.rest_data.user | show_user }}</td>
-    <td>{{ obj.num_searches }}</td>
-    <td>{{ obj.current_state }}</td>
-    <td>{{ obj.results }}</td>
-    <td>{{ obj.last_search_string }}</td>
-    <td class="text-right">{{ obj.last_search | datetime1 }}</td>
-    <td><input type="button" class="btn btn-success btn-sm" ng-show="obj.results > 0" ng-click="fn.show(this, obj)" value="show"/></td>
-    <td><input type="button" class="btn btn-primary btn-sm" ng-show="obj.current_state == 'done'" ng-click="fn.retry(this, obj)" value="retry"/></td>
-    <td><input type="button" class="btn btn-warning btn-sm" ng-show="obj.current_state == 'done'" ng-click="edit($event, obj)" value="modify"/></td>
-    <td><input type="button" class="btn btn-danger btn-sm" ng-click="delete(obj)" value="delete"/></td>
-</script>
-
-<script type="text/ng-template" id="package_search_result_head.html">
-    <tr>
-        <th>name</th>
-        <th>version</th>
-        <th>kind</th>
-        <th>repo</th>
-        <th>arch</th>
-        <th colspan="3" class="text-center">action</th>   
-    </tr>
-</script>
-
-<script type="text/ng-template" id="package_search_result_row.html">
-    <td>{{ obj.name }}</td>
-    <td>{{ obj.version }}</td>
-    <td>{{ obj.kind }}</td>
-    <td>{{ obj.package_repo | array_lookup:this.rest_data.package_repo:"name" }}</td>
-    <td>{{ obj.arch }}</td>
-    <td><input type="button" ng-show="obj.copied == 0" class="btn btn-primary" ng-click="fn.take(this, obj, true)" value="take exact"/></td>
-    <td><input type="button" ng-show="obj.copied == 0" class="btn btn-primary" ng-click="fn.take(this, obj, false)" value="take latest"/></td>
-    <td><input type="button" class="btn btn-danger" ng-click="delete(obj)" value="delete"/></td>
-</script>
-
-<script type="text/ng-template" id="package_head.html">
-    <tr>
-        <th>name</th>
-        <th>version</th>
-        <th>Repository</th>
-        <th>kind</th>
-        <th>arch</th>
-        <th colspan="3" class="text-center">action</th>   
-    </tr>
-</script>
-
-<script type="text/ng-template" id="package_row.html">
-    <td>{{ obj.name }}</td>
-    <td ng-show="obj.always_latest == false">{{ obj.version }}</td>
-    <td ng-show="obj.always_latest == true">&lt;latest&gt;</td>
-    <td>{{ obj.package_repo | array_lookup:this.rest_data.package_repo:"name" }}</td>
-    <td>{{ obj.kind }}</td>
-    <td>{{ obj.arch }}</td>
-    <td><input type="button" class="btn btn-primary btn-sm" ng-click="attach(obj)" value="attach" title="attach to selected devices"/></td>
-    <td><input type="button" class="btn btn-warning btn-sm" ng-click="remove(obj)" value="remove" title="remove from selected devices"/></td>
-    <td><input type="button" class="btn btn-danger btn-sm" ng-click="delete(obj)" value="delete"/></td>
-</script>
-
-<tabset>
-    <tab heading="Package repositories">
-        <div ng-controller="package_repo_base">
-            <h3>Repositories ({{entries.length}} entries),
-                <input type="button" class="btn btn-primary" value="Rescan" ng-click="fn.rescan(this)"/>,
-                <input type="button" class="btn btn-warning" value="Sync to clients" ng-click="fn.sync(this)"/>
-            </h3>
-            <table class="table table-condensed table-hover" style="width:auto;">
-                <thead packagerepohead></thead>
-                <tbody>
-                    <tr><td colspan="9" paginator entries="entries" pag_settings="pagSettings" per_page="10"></td></tr>
-                    <tr packagereporow ng-repeat="obj in entries | orderBy:'-name':true | paginator:this"></tr>
-                </tbody>
-            </table>
-        </div>
-    </tab>
-    <tab heading="Package search">
-        <div ng-controller="package_search_base">
-            <h3>Searches ({{entries.length}} entries), <input type="button" class="btn btn-success" value="create new" ng-click="create($event)"/></h3>
-            <table class="table table-condensed table-hover" style="width:auto;">
-                <thead packagesearchhead></thead>
-                <tbody>
-                    <tr><td colspan="9" paginator entries="entries" pag_settings="pagSettings" per_page="10"></td></tr>
-                    <tr packagesearchrow ng-repeat="obj in entries | orderBy:'-search_string':true | paginator:this"></tr>
-                </tbody>
-            </table>
-        </div>
-        <div ng-controller="package_search_result_base">
-            <div ng-show="entries.length > 0">
-                <h3>Search results for '{{ shared_data.result_obj.last_search_string }}' ({{ entries | paginator_filter:this | array_length }} entries)</h3>
-                <table class="table table-condensed table-hover" style="width:auto;">
-                    <thead packagesearchresulthead></thead>
-                    <tbody>
-                        <tr><td colspan="9" paginator entries="entries" pag_settings="pagSettings" per_page="15" paginator-filter="simple"></td></tr>
-                        <tr packagesearchresultrow ng-repeat="obj in entries | orderBy:'-name':true | paginator:this"></tr>
-                    </tbody>
-                </table>
-            </div>
-        </div>
-    </tab>
-    <tab heading="Install">
-        <div ng-controller="package_base">
-            <div ng-controller="install">
-                <h3>
-                    <form class="form-inline" role="form">
-                        <input type="button" class="btn btn-success" ng-value="fn.get_grid_style(this)" ng-click="fn.toggle_grid_style(this)"></input>
-                        ({{ devices.length }} devices, {{ entries.length }} packages), {{ selected_pdcs_length() }} selected, package filter:
-                        <div class="form-group">
-                            <input ng-model="package_filter" class="form-control input-sm""></input>
-                        </div>,
-                        <input ng-show="selected_pdcs_length()" type="button" class="btn btn-success btm-sm" value="action" ng-click="action($event)"></input>
-                        <input type="button" class="btn btn-warning btm-sm" value="sync" ng-click="send_sync()"></input>
-                    </form>
-                </h3>
-                <table class="table table-condensed" style="width:auto;">
-                    <thead>
-                        <tr>
-                            <th>&nbsp;</th>
-                            <th>Device</th>
-                            <th ng-repeat="dev in devices">
-                                {{ dev.name }}, {{ latest_contact(dev) }}
-                            </td>
-                        </th>
-                        <tr>
-                            <th>Package</th>
-                            <th>action</th>
-                            <th ng-repeat="dev in devices" class="text-center">
-                                <div class="btn-group btn-group-sm">
-                                    <input type="button" class="btn btn-primary" ng-click="change_device_sel(dev, 1)" value="S"></input>
-                                    <input type="button" class="btn btn-success" ng-click="change_device_sel(dev, 0)" value="T"></input>
-                                    <input type="button" class="btn btn-warning" ng-click="change_device_sel(dev, -1)" value="C"></input>
-                                </div>
-                            </th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <tr ng-repeat="pack in entries | filter:{'name' : package_filter}">
-                            <td>
-                                {{ pack.name }}
-                                <span ng-show="pack.always_latest == false">{{ pack.version }}</span>
-                                <span ng-show="pack.always_latest == true">&lt;latest&gt;</span>
-                            </td>
-                            <td>
-                                <div class="btn-group btn-group-sm">
-                                    <input type="button" class="btn btn-primary" ng-click="change_package_sel(pack, 1)" value="S"></input>
-                                    <input type="button" class="btn btn-success" ng-click="change_package_sel(pack, 0)" value="T"></input>
-                                    <input type="button" class="btn btn-warning" ng-click="change_package_sel(pack, -1)" value="C"></input>
-                                </div>
-                            </td>
-                            <td ng-repeat="device in devices" istate pdc="state_dict[device.idx][pack.idx]" pdcs="$parent.selected_pdcs"></td>
-                        </tr>
-                    </tbody>
-                </table>
-                <h3>Packages ({{ entries | paginator_filter:this | array_length }} entries)</h3>
-                <table class="table table-condensed table-hover" style="width:auto;">
-                    <thead packagehead></thead>
-                    <tbody>
-                        <tr><td colspan="9" paginator entries="entries" pag_settings="pagSettings" per_page="10" paginator-filter="simple"></td></tr>
-                        <tr packagerow ng-repeat="obj in entries | orderBy:'-search_string':true | paginator:this"></tr>
-                    </tbody>
-                </table>
-            </div>
-        </div>
-    </tab>
-</tabset>
-
-{% endverbatim %}
-
-<script>
+<script type="text/javascript">
 
 {% inlinecoffeescript %}
 
-angular.element(document).ready(() ->
-    angular.bootstrap($("div[id='icsw.package']"), ["icsw.package"])
-)
+class device
+    constructor: (@device_table, @xml) ->
+        @last_contact = undefined
+        @key = @xml.attr("key")
+        @pk = @xml.attr("pk")
+        @pdc_lut = {}
+        @pdc_line_lut = {}
+        @exp_state = false
+        @filter_re = undefined
+    draw_device: (pdc_list) =>
+        tstate_xml = @pack_xml.find("target_states target_state")
+        dummy_div = $("<div>")
+        line_prefix = @key
+        new_tr = $("<tr>").attr({
+            "class" : "ui-widget ui-widget-header"
+            "id"    : line_prefix
+        })
+        @header_line = new_tr
+        new_tr.append(
+            $("<td>").append(
+                $("<input>").attr({
+                    "type" : "checkbox"
+                    "id"   : "#{line_prefix}__sel"
+                })
+                    
+            ).on("change", (event) =>
+                @change_d_sel(event)
+            ),
+            get_expand_td(line_prefix, "pdc", undefined, @expand_device),
+            $("<td>").attr({
+                "colspan" : 5
+            }).text("device " + @xml.text()
+            ).append(
+                $("<span>").attr({
+                    "id" : "#{line_prefix}__pinfo"
+                }).text("---")
+            ),
+            $("<td>").attr(
+                "colspan" : 4
+                "id"      : "last_contact"
+            ).addClass("warn").text("???")
+        )
+        dummy_div.append(new_tr)
+        for pdc_xml in pdc_list
+            @append_pdc($(pdc_xml), false)
+        return dummy_div.children()
+    set_last: (last_xml) =>
+        diff = parseInt(Math.abs(parseInt(last_xml) - new Date().getTime() / 1000))
+        lc_td = @header_line.find("td#last_contact")
+        try
+            lc_td.removeClass("warn", "ok", "error")
+        catch
+            # catch strange error
+            true
+        if diff > 600
+            lc_td.addClass("error")
+        else if diff > 120
+            lc_td.addClass("warn")
+        else
+            lc_td.addClass("ok")
+        lc_td.text(diff)
+    append_pdc: (pdc_xml, selected) =>
+        new_line = @draw_pdc(@pack_xml.find("target_states target_state"), pdc_xml, selected)
+        # DOM
+        @header_line.after(new_line)
+        @update_device_info()
+    remove_pdc: (pdc_xml) =>
+        # DOM
+        @pdc_line_lut[pdc_xml.attr("key")].remove()
+        # xml
+        @pdc_lut[pdc_xml.attr("key")].remove()
+        delete @pdc_line_lut[pdc_xml.attr("key")]
+        delete @pdc_lut[pdc_xml.attr("key")]
+        @update_device_info()
+    update_device_info: (pdc_xml) =>
+        info_th = @header_line.find("span[id$='__pinfo']")
+        installed = 0
+        removed   = 0
+        total     = 0
+        unknown   = 0
+        pending   = 0
+        for key, entry of @pdc_lut
+            total++
+            switch $(entry).attr("installed")
+                when "y"
+                    installed++
+                when "n"
+                    removed++
+                when "p"
+                    pending++
+                when "u"
+                    unknown++
+        info_str = ""
+        for str, num of {
+            "total" : total,
+            "installed" : installed,
+            "removed" : removed,
+            "pending" : pending,
+            "unknown" : unknown}
+            if num
+                info_str = "#{info_str}, #{num} #{str}"
+        info_th.text(info_str)
+        @recolor()
+    recolor: (dev) =>
+        pdc_lines = (line for key, line of @pdc_line_lut)
+        (line.removeClass("even odd") for line in pdc_lines)
+        (line.addClass("even") for line in pdc_lines by 2)
+        (line.addClass("odd") for line in pdc_lines[1..] by 2)
+    expand_device: (line_prefix, state, name) =>
+        if @header_line
+            # @header_line is not always set here (first call)
+            force_expansion_state(@header_line, state)
+        for key, value of @pdc_line_lut
+            if state
+                if @check_visibility(key)
+                    value.show()
+                else
+                    value.hide()
+            else
+                value.hide()
+        @exp_state = state
+    check_visibility: (key) =>
+        if @filter_re
+            cur_pack = @pack_xml.find("packages package[pk='" + @pdc_lut[key].attr("package") + "']")
+            if cur_pack.text().match(@filter_re)
+                return true
+            else
+                return false
+        else
+            return true
+    set_filter: (@filter_re) =>
+        @expand_device("bla", @exp_state, "bla")
+    change_d_sel: (event) =>
+        (line.find("input[id$='__sel']").trigger("click") for value, line of @pdc_line_lut)
+    draw_pdc: (tstate_xml, pdc_xml, selected) =>
+        line_prefix = pdc_xml.attr("key")
+        pack_xml = @pack_xml.find("packages package[pk='" + pdc_xml.attr("package") + "']")
+        new_tr = $("<tr>").attr({
+            "id"    : line_prefix
+        })
+        new_tr.append(
+            $("<td>").attr("colspan", 2).append(
+                $("<input>").attr({
+                    "type" : "checkbox"
+                    "id"   : pdc_xml.attr("key") + "__sel"
+                })
+            ),
+            $("<td>").text(pack_xml.text()),
+            $("<td>").text(pack_xml.attr("version")),
+            $("<td>").text(pack_xml.attr("arch")),
+            $("<td>").append(@draw_remove(pdc_xml)),
+            $("<td>").append(@draw_tstate(pdc_xml, tstate_xml)),
+            $("<td>").append(
+                $("<span>").attr("id", pdc_xml.attr("key") + "__installed").text("?")
+            ),
+            $("<td>").append(
+                $("<input>").attr(
+                    "id" : pdc_xml.attr("key") + "__info"
+                    "type" : "image"
+                    "width"  : "16px"
+                    "height" : "16px"
+                    "src"    : "{% static 'images/information.png' %}"
+                ).on("click", @show_pdc_info)
+            ),
+            $("<td>").append(@draw_pflag(pdc_xml, "force_flag")),
+            $("<td>").append(@draw_pflag(pdc_xml, "nodeps_flag"))
+        )
+        if selected
+            new_tr.find("input[id$='__sel']").attr("checked", "checked")
+        @pdc_lut[pdc_xml.attr("key")] = pdc_xml
+        @pdc_line_lut[pdc_xml.attr("key")] = new_tr
+        if not @exp_state
+            new_tr.hide()
+        return new_tr
+    draw_remove: (pdc_xml) =>
+        return $("<input>").attr({
+            "id"    : pdc_xml.attr("key"),
+            "type"  : "button",
+            "value" : "remove"}).on("click", (event) =>
+                rem_pack = @pack_xml.find("package[pk='" + pdc_xml.attr("package") + "']")
+                if confirm("really remove " + rem_pack.text() + " from " + @xml.attr("name") + " ?")
+                    @device_table.remove_package_list([pdc_xml.attr("key")])
+            )
+    draw_tstate: (pdc_xml, tstate_xml) =>
+        cur_ts = $("<select>").attr({
+            "id" : pdc_xml.attr("key") + "__tstate"
+        })
+        tstate_xml.each (index, cur_s) =>
+            value = $(cur_s).attr("pk")
+            cur_opt = $("<option>").attr({"value" : cur_opt}).text(value)
+            if pdc_xml.attr("target_state") == value
+                cur_opt.attr("selected", "selected")
+            cur_ts.append(cur_opt)
+        cur_ts.on("change", (event) =>
+            cur_el = $(event.target)
+            $.ajax
+                url   : "{% url 'pack:change_target_state' %}"
+                data  : {
+                    "pdc_key" : cur_el.attr("id")
+                    "value"   : cur_el.val()
+                }
+                success : (xml) ->
+                    parse_xml_response(xml)
+        )
+        return cur_ts
+    draw_pflag: (pdc_xml, flag_name) => 
+        cur_ts = $("<input>").attr({
+            "type"  : "checkbox",
+            "title" : flag_name.split("_")[0] + " flag",
+            "id"    : pdc_xml.attr("key") + "__#{flag_name}"})
+        if pdc_xml.attr(flag_name) == "1"
+            cur_ts.attr("checked", "checked")
+        cur_ts.on("change", (event) =>
+            cur_el = $(event.target)
+            $.ajax
+                url   : "{% url 'pack:change_package_flag' %}"
+                data  : {
+                    "pdc_key" : cur_el.attr("id"),
+                    "value"   : if cur_el.prop("checked") then "1" else "0"
+                }
+                success : (xml) ->
+                    parse_xml_response(xml)
+        )
+        return cur_ts
+    show_pdc_info: (event) =>
+        pdc_id = $(event.target).attr("id").split("__")[1]
+        $.ajax
+            url   : "{% url 'pack:get_pdc_status' %}"
+            data  : {
+                "pdc_pk" : pdc_id
+            }
+            success : (xml) ->
+                if parse_xml_response(xml)
+                    pdc_stat = $(xml).find("value[name='pdc_status']").text()
+                    alert(pdc_stat)
+
+class device_table
+    constructor: (@top_div, @pack_div) ->
+        @install_filter()
+        install_devsel_link(@use_devs, true)
+    install_filter: =>
+        @CUR_FILTER = ""
+        @filter_el = $("input#package_filter")
+        @filter_info = $("span#package_filter_info")
+        @filter_el.val("").on("keyup", @change_filter)
+        @update_filter_info()
+    change_filter: (in_el) =>
+        cur_text = $(in_el.target).val()
+        @new_filter(cur_text, false)
+    new_filter: (cur_text, force) =>
+        if cur_text != @CUR_FILTER or force
+            @CUR_FILTER = cur_text
+            @update_filter_info()
+            @xml.find("device_group").each (index, cur_dg) =>
+                cur_dg = $(cur_dg)
+                cur_dg.find("devices device[tree_selected='selected'][meta_device='0']").each (index, cur_dev) =>
+                    dev_struct = @devices[$(cur_dev).attr("key")]
+                    # to be optimised
+                    dev_struct.set_filter(@filter_re)
+                    # needed for coffeescript (sigh)
+                    true
+    update_filter_info: () =>
+        shown_pks = []
+        if not @CUR_FILTER
+            filter_re = undefined
+            f_text = "all packages shown"
+        else
+            try
+                filter_re = new RegExp(@CUR_FILTER)
+                f_text = "waiting for packages"
+            catch
+                filter_re = undefined
+                f_text = "error in filter string"
+        if filter_re and @pack_xml
+            @pack_xml.find("package").each (p_idx, cur_pack) =>
+                cur_pack = $(cur_pack)
+                if cur_pack.text().match(filter_re)
+                    shown_pks.push(cur_pack.attr("pk"))
+            total_pks = @pack_xml.find("package").length
+            f_text = "showing #{shown_pks.length} of #{total_pks}"
+        @filter_info.text(f_text)
+        @filter_re = filter_re
+    use_devs: (sel_list) =>
+        $.ajax
+            url     : "{% url 'device:get_group_tree' %}"
+            data    : {
+                "sel_list"            : sel_list
+                "ignore_meta_devices" : 1
+                "extra_t0"            : "package_device_connection"
+                "extra_t0_device"     : 1
+            }
+            success : (xml) =>
+                if parse_xml_response(xml)
+                    @devices = {}
+                    @xml = $(xml)
+                    @xml.find("devices device[selected='selected']").each (idx, cur_dev) =>
+                        cur_dev = $(cur_dev)
+                        @devices[cur_dev.attr("key")] = new device(@, cur_dev)
+                    @build_table(sel_list)
+                    @new_filter(@filter_el.val(), true)
+    build_table: (@sel_list) =>
+        $.ajax
+            url     : "{% url 'pack:install' %}"
+            success : (xml) =>
+                if parse_xml_response(xml)
+                    @pack_xml = $(xml).find("value[name='response']")
+                    # rewrite packages to aaData for datatable
+                    aa_data = []
+                    @pack_xml.find("package").each (idx, cur_pack) =>
+                        cur_pack = $(cur_pack)
+                        aa_data.push([
+                            cur_pack.attr("name"),
+                            cur_pack.attr("version"),
+                            cur_pack.attr("kind"),
+                            cur_pack.attr("arch"),
+                            @pack_xml.find("package_repos package_repo[pk='" + cur_pack.attr("package_repo") + "']").text(),
+                            cur_pack.attr("key"),
+                            cur_pack.attr("key"),
+                            cur_pack.attr("key"),
+                            cur_pack.attr("key"),
+                        ])
+                    new_t = $("<table>").attr("id", "package_table")
+                    @pack_div.children().remove()
+                    @pack_div.append(new_t)
+                    new_t.dataTable
+                        "aaData"          : aa_data
+                        "bJQueryUI"       : true
+                        "bAutoWidth"      : true
+                        "aoColumns"       : [
+                            {"sTitle" : "Name"},
+                            {"sTitle" : "Version", "sClass" : "center"},
+                            {"sTitle" : "kind", "sClass" : "center"},
+                            {"sTitle" : "arch", "sClass" : "center"},
+                            {"sTitle" : "Repo", "sClass" : "right"},
+                            {"sTitle" : "tstate", "sClass" : "center"},
+                            {"sTitle" : "add", "sClass" : "center"},
+                            {"sTitle" : "remove", "sClass" : "center"},
+                            {"sTitle" : "delete", "sClass" : "center"},
+                        ]
+                        "aoColumnDefs" : [
+                            {
+                                "fnRender" : (o, val) =>
+                                    return $("<div>").append(@render_change_target_state(val)).html()
+                                "aTargets" : [5],
+                            }
+                            {
+                                "fnRender" : (o, val) =>
+                                    return $("<input>").attr(
+                                        "type" : "button"
+                                        "value" : "add"
+                                        "id"    : "add__#{val}"
+                                    )[0].outerHTML
+                                "aTargets" : [6],
+                            }
+                            {
+                                "fnRender" : (o, val) =>
+                                    return $("<input>").attr(
+                                        "type" : "button"
+                                        "value" : "remove"
+                                        "id"    : "remove__#{val}"
+                                    )[0].outerHTML
+                                "aTargets" : [7],
+                            }
+                            {
+                                "fnRender" : (o, val) =>
+                                    return $("<input>").attr(
+                                        "type" : "button"
+                                        "value" : "delete"
+                                        "id"    : "delete__#{val}"
+                                    )[0].outerHTML
+                                "aTargets" : [8],
+                            }
+                        ]
+                        "fnDrawCallback" : (o_settings) =>
+                            new_t.find("select[id^='tstate__']").on("change", @change_target_state)
+                            new_t.find("input[id^='add__']").on("click", @add_package)
+                            new_t.find("input[id^='remove__']").on("click", @remove_package)
+                            new_t.find("input[id^='delete__']").on("click", @delete_package)
+                    for dev_key, dev_struct of @devices
+                        # set pack xml
+                        dev_struct.pack_xml = @pack_xml
+                    @load_packages()
+                    @update_filter_info()
+                    $(document).everyTime(5000, "refresh_package_info", @refresh_package_info)
+    render_change_target_state: (cur_key) =>
+        r_val = $("<select>").attr("id", "tstate__#{cur_key}")
+        r_val.append($("<option>").attr("value", "0").text("---"))
+        @pack_xml.find("target_state").each (idx, cur_ts) =>
+            cur_ts = $(cur_ts)
+            r_val.append($("<option>").attr("value", cur_ts.attr("pk")).text(cur_ts.text()))
+        return r_val
+    refresh_package_info: =>
+        $.ajax
+            {# url     : "{% url 'pack:refresh' %}" #}
+            data    : {"sel_list" : @sel_list, "cur_time" : new Date().getTime() / 1000}
+            success : (xml) =>
+                if parse_xml_response(xml)
+                    $(xml).find("package_device_connection").each (index, cur_pdc) =>
+                        cur_pdc = $(cur_pdc)
+                        cur_dev = @devices["dev__" + cur_pdc.attr("device")]
+                        @xml.find("package_device_connections package_device_connection[key='" + cur_pdc.attr("key") + "']").attr("installed", cur_pdc.attr("installed"))
+                        @table.find("span#" + cur_pdc.attr("key") + "__installed").text(cur_pdc.attr("installed"))
+                        cur_dev.update_device_info()
+                    $(xml).find("last_contacts last_contact").each (index, last_c) =>
+                        @devices["dev__" + $(last_c).attr("device")].set_last($(last_c).attr("when"))
+                        
+    change_target_state: (event) =>
+        cur_el = $(event.target)
+        pack_key = cur_el.attr("id").split("__")[1...3].join("__")
+        pack_pk = pack_key.split("__")[1]
+        t_state = cur_el.val()
+        if t_state != "0"
+            cur_el.val("0")
+            @table.find("tr[id^='pdc__'] ").each (idx, cur_tr) =>
+                cur_tr = $(cur_tr)
+                if @xml.find("package_device_connections package_device_connection[pk='" + cur_tr.attr("id").split("__")[1] + "'][package='" + pack_pk + "']").length
+                    if cur_tr.find("input[id$='__sel']:checkbox:checked").length
+                        cur_sel = cur_tr.find("select[id$='__tstate']")
+                        cur_sel.val(t_state).trigger("change")
+    remove_package: (event) =>
+        cur_el = $(event.target)
+        if confirm("really remove package ?")
+            pack_key = cur_el.attr("id").split("__")[1...3].join("__")
+            pack_pk = pack_key.split("__")[1]
+            rem_list = []
+            # get all devices which have the current package not set
+            @xml.find("device_group devices device[meta_device='0']").each (index, dev_xml) =>
+                dev_xml = $(dev_xml)
+                dev_key = dev_xml.attr("key")
+                # device is selected
+                if @table.find("input[id='#{dev_key}__sel']").prop("checked")
+                    cur_pdc = @xml.find("package_device_connections package_device_connection[package='#{pack_pk}'][device='" + dev_xml.attr("pk") + "']")
+                    if cur_pdc.length
+                        rem_list.push(cur_pdc.attr("key"))
+            @remove_package_list(rem_list)
+    remove_package_list: (rem_list) =>
+        if rem_list.length
+            $.ajax
+                url     : "{% url 'pack:remove_package' %}"
+                data    : {
+                    "rem_list" : rem_list
+                }
+                success : (xml) =>
+                    if parse_xml_response(xml)
+                        for pdc_key in rem_list
+                            cur_pdc = @xml.find("package_device_connection[key='#{pdc_key}']")
+                            @xml.find("package_device_connections package_device_connection[key='" + cur_pdc.attr("key") + "']").remove()
+                            @devices["dev__" + cur_pdc.attr("device")].remove_pdc(cur_pdc)
+    add_package: (event) =>
+        cur_el = $(event.target)
+        pack_key = cur_el.attr("id").split("__")[1...3].join("__")
+        pack_pk = pack_key.split("__")[1]
+        add_list = []
+        @xml.find("device_group devices device[meta_device='0']").each (idx, dev_xml) =>
+            dev_key = $(dev_xml).attr("key")
+            if @table.find("input[id='#{dev_key}__sel']").prop("checked")
+                cur_dev = @devices[dev_key]
+                if pack_pk not in (value.attr("package") for key, value of cur_dev.pdc_lut)
+                    add_list.push([dev_key, @pack_xml.find("package[key='#{pack_key}']").attr("key")])
+        if add_list.length
+            $.ajax
+                url     : "{% url 'pack:add_package' %}"
+                data    : {
+                    "add_list" : add_list,
+                },
+                success : (xml) =>
+                    if parse_xml_response(xml)
+                        $(xml).find("value[name='result'] entries package_device_connection").each (idx, new_pdc) =>
+                            new_pdc = $(new_pdc)
+                            @xml.find("package_device_connections").append(new_pdc)
+                            @devices["dev__" + new_pdc.attr("device")].append_pdc(new_pdc, true)
+    delete_package: (event) =>
+        targ_el = $(event.target)
+        if confirm("really delete package ?")
+            $.ajax
+                url     : "{% url 'pack:unuse_package' %}"
+                data    : {
+                    "pk" : targ_el.attr("id").split("__")[2]
+                }
+                success : (xml) =>
+                    if parse_xml_response(xml)
+                        targ_el.parents("tr:first").remove()
+    load_packages: () =>
+        d_table = $("<table>").attr({"id" : "device"})
+        @table = d_table
+        @dev_exp_state = {}
+        @xml.find("device_group").each (index, cur_dg) =>
+            d_table.append(@draw_device_group($(cur_dg)))
+        @top_div.children().remove()
+        @top_div.append(d_table)
+        @top_div.append(
+            $("<span>").text("selection: "),
+            $("<input>").attr({
+                "type"  : "button",
+                "value" : "toggle"
+            }).on("click", @change_global_sel),
+            $("<input>").attr({
+                "type"  : "button",
+                "value" : "clear"
+            }).on("click", @clear_all_sel),
+            $("<input>").attr({
+                "type"  : "button",
+                "value" : "all"
+            }).on("click", @set_all_sel),
+            $("<span>").text(", display: "),
+            $("<input>").attr({
+                "type"  : "button",
+                "value" : "expand"
+            }).on("click", @expand_collapse_all),
+            $("<input>").attr({
+                "type"  : "button",
+                "value" : "collapse"
+            }).on("click", @expand_collapse_all),
+            $("<span>").text(", server: "),
+            $("<input>").attr({
+                "type"  : "button",
+                "value" : "synchronize"
+            }).on("click", @sync_server)
+        )
+    draw_device_group: (cur_dg) =>
+        dummy_div = $("<div>")
+        new_tr = $("<tr>").attr({
+            "class"   : "ui-widget ui-widget-header"
+        })
+        line_prefix = cur_dg.attr("key")
+        new_tr.append(
+            $("<th>").append(
+                $("<input>").attr({
+                    "type" : "checkbox",
+                    "id"   : "#{line_prefix}__sel"
+                }).on("click", (event) =>
+                    @change_dg_sel(event)
+                )
+            )
+        ).append($("<th>").attr({
+            "colspan" : 10
+        }).addClass("ui-widget ui-widget-header").text("device group " + cur_dg.attr("name")))
+        dummy_div.append(new_tr)
+        cur_dg.find("devices device[tree_selected='selected'][meta_device='0']").each (index, cur_dev) =>
+            dev_struct = @devices[$(cur_dev).attr("key")]
+            dummy_div.append(dev_struct.draw_device(@xml.find("package_device_connection[device='#{dev_struct.pk}']")))
+        return dummy_div.children()
+    clear_all_sel: (event) =>
+        # at first clear all device groups
+        @table.find("input[id^='devg__'][id$='__sel']:checked").each (index, cur_el) =>
+            $(cur_el).trigger("click")
+        # then clear all devices
+        @table.find("input[id^='dev__'][id$='__sel']:checked").each (index, cur_el) =>
+            $(cur_el).trigger("click")
+        # then all pdcs
+        @table.find("input[id^='pdc__'][id$='__sel']:checked").each (index, cur_el) =>
+            $(cur_el).trigger("click")
+    set_all_sel: (event) =>
+        # at first set all device groups
+        @table.find("input[id^='devg__'][id$='__sel']:not(:checked)").each (index, cur_el) =>
+            $(cur_el).trigger("click")
+        # then set all devices
+        @table.find("input[id^='dev__'][id$='__sel']:not(:checked)").each (index, cur_el) =>
+            $(cur_el).trigger("click")
+        # then all pdcs
+        @table.find("input[id^='pdc__'][id$='__sel']:not(:checked)").each (index, cur_el) =>
+            $(cur_el).trigger("click")
+    expand_collapse_all: (event) =>
+        expand = if $(event.target).attr("value") == "expand" then true else false
+        for key, cur_dev of @devices
+            cur_dev.expand_device("bla", expand, "bla")
+    sync_server: (event) =>
+        $.ajax
+            url     : "{% url 'pack:synchronize' %}"
+            success : (xml) =>
+                parse_xml_response(xml)
+    change_global_sel: (event) =>
+        @xml.find("device_group").each (idx, cur_dg) =>
+            cur_dg = $(cur_dg)
+            @table.find("input[id='" + cur_dg.attr("key") + "__sel']").trigger("click")
+    change_dg_sel: (event) =>
+        cur_el = $(event.target)
+        @xml.find("device_group[key='" + cur_el.attr("id").split("__")[0...2].join("__") + "'] devices device[tree_selected='selected']").each (idx, cur_dev) =>
+            cur_dev = $(cur_dev)
+            @table.find("input[id='" + cur_dev.attr("key") + "__sel']").trigger("click")
+
+add_install_handlers = ->
+    new device_table($("div#device"), $("div#package"))
+
+$(document).ready(add_install_handlers)
 
 {% endinlinecoffeescript %}
 

@@ -42,7 +42,8 @@
 <script type="text/ng-template" id="network_device_type_head.html">
     <tr>
         <th>Id</th>   
-        <th>Description</th>   
+        <th>Description</th>
+        <th>RegExp</th> 
         <th>MAC</th>   
         <th colspan="2" class="text-center">action</th>   
     </tr>
@@ -51,6 +52,7 @@
 <script type="text/ng-template" id="network_device_type_row.html">
     <td>{{ obj.identifier }}</td>
     <td>{{ obj.description  }}</td>
+    <td>{{ obj.name_re }}</td>
     <td>{{ obj.mac_bytes }}</td>
     <td><input type="button" class="btn btn-primary" ng-click="edit($event, obj)" value="modify"/></td>
     <td><input type="button" class="btn btn-danger" ng-click="delete(obj)" value="delete"/></td>

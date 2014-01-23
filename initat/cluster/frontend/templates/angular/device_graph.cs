@@ -44,7 +44,7 @@ rrd_graph_template = """
                     {{ cur_dim }} <span class="caret"></span>
                 </button>
                 <ul class="dropdown-menu">
-                  <li ng-repeat="dim in all_dims" ng-click="set_active_dim(dim)"><a href="#">{{ dim }}</a></li>
+                    <li ng-repeat="dim in all_dims" ng-click="set_active_dim(dim)"><a href="#">{{ dim }}</a></li>
                 </ul>
             </div>&nbsp;
             <div class="input-group-btn">
@@ -52,19 +52,36 @@ rrd_graph_template = """
                     timerange <span class="caret"></span>
                 </button>
                 <ul class="dropdown-menu">
-                  <li ng-repeat="tr in all_timeranges" ng-click="set_active_tr(tr)"><a href="#">{{ tr.name }}</a></li>
+                    <li ng-repeat="tr in all_timeranges" ng-click="set_active_tr(tr)"><a href="#">{{ tr.name }}</a></li>
                 </ul>
             </div>
         </div>
         <div class="row">
-            <h4>{{ graph_info_str }}</h4>
-            <div class="col-md-4">  
+            <h4 ng-show="vector_valid">
+                Vector info:
+                <span class="label label-primary">{{ num_struct }}</span> /
+                <span class="label label-primary">{{ num_mve }}<span ng-show="num_mve_sel"> / {{ num_mve_sel }}</span></span>
+            </h4>
+            <div class="col-md-3">  
                 <tree treeconfig="g_tree"></tree>
             </div>
-            <div class="col-md-8">
-                <h4>{{ graph_list.length }} graphs</h4>
+            <div class="col-md-9" ng-show="graph_list.length">
+                <h3>{{ graph_list.length }} graphs</h3>
                 <div ng-repeat="graph in graph_list">
-                    <img ng-src="{{ graph }}"></img>
+                    <h4>
+                        <span class="label label-default" ng-click="graph.toggle_expand()">
+                            <span ng-class="graph.get_expand_class()"></span>
+                            {{ graph.num }}
+                        </span>
+                        &nbsp;from {{ graph.get_tv(graph.ts_start_mom) }} to {{ graph.get_tv(graph.ts_end_mom) }}
+                    </h4>
+                    <span ng-show="graph.cropped && graph.active">cropped timerange: {{ graph.get_tv(graph.cts_start_mom) }} to {{ graph.get_tv(graph.cts_end_mom) }}
+                        <input type="button" class="btn btn-xs btn-warning" value="apply" ng-click="use_crop(graph)"></input>
+                    </span>
+                    <div ng-show="graph.active">
+                        <img-cropped ng-src="{{ graph.src }}" graph="graph">
+                        </img-cropped>
+                    </div>
                 </div>
             </div>
         </div>
@@ -73,6 +90,50 @@ rrd_graph_template = """
 
 {% endverbatim %}
 
+class d_graph
+    constructor: (@num, @xml) ->
+        @active = true
+        @src = @xml.attr("href")
+        #console.log @xml[0]
+        @value_min = parseFloat(@xml.attr("value_min"))
+        @value_max = parseFloat(@xml.attr("value_max"))
+        # complete graphic
+        @img_width = parseInt(@xml.attr("image_width"))
+        @img_height = parseInt(@xml.attr("imageheight"))
+        # relevant part, coordinates in pixel
+        @gfx_width = parseInt(@xml.attr("graph_width"))
+        @gfx_height = parseInt(@xml.attr("graph_height"))
+        @gfx_left = parseInt(@xml.attr("graph_left"))
+        @gfx_top = parseInt(@xml.attr("graph_top"))
+        # timescale
+        @ts_start = parseInt(@xml.attr("graph_start"))
+        @ts_end = parseInt(@xml.attr("graph_end"))
+        @ts_start_mom = moment.unix(@ts_start)
+        @ts_end_mom = moment.unix(@ts_end)
+        @cropped = false
+        #console.log @
+    get_tv: (val) ->
+        if val
+            return val.format(DT_FORM)
+        else
+            return "???"
+    set_crop: (sel) ->
+        @cropped = true
+        ts_range = @ts_end - @ts_start
+        new_start = @ts_start + parseInt((sel.x - @gfx_left) * ts_range / @gfx_width)
+        new_end = @ts_start + parseInt((sel.x2 - @gfx_left) * ts_range / @gfx_width)
+        @cts_start_mom = moment.unix(new_start)
+        @cts_end_mom = moment.unix(new_end)
+    clear_crop: () ->
+        @cropped = false
+    get_expand_class: () ->
+        if @active
+            return "glyphicon glyphicon-chevron-down"
+        else
+            return "glyphicon glyphicon-chevron-right"
+    toggle_expand: () ->
+        @active = !@active
+      
 class rrd_tree extends tree_config
     constructor: (@scope, args) ->
         super(args)
@@ -126,6 +187,7 @@ device_rrd_module.controller("rrd_ctrl", ["$scope", "$compile", "$filter", "$tem
             new pd_timerange("last year", moment().subtract("year", 1).startOf("year"), moment().subtract("year", 1).endOf("year"))
         ]
         $scope.dt_valid = true
+        $scope.vector_valid = false
         $scope.to_date_mom = moment()
         $scope.from_date_mom = moment().subtract("days", 1)
         $scope.from_date = $scope.from_date_mom.format(DT_FORM)
@@ -150,7 +212,6 @@ device_rrd_module.controller("rrd_ctrl", ["$scope", "$compile", "$filter", "$tem
             if $scope.dt_valid
                 diff = $scope.to_date_mom - $scope.from_date_mom 
                 if diff < 0
-                    console.log "sw"
                     $scope.from_date = $scope.to_date_mom.format(DT_FORM)
                     $scope.to_date = $scope.from_date_mom.format(DT_FORM)
                     noty
@@ -170,6 +231,7 @@ device_rrd_module.controller("rrd_ctrl", ["$scope", "$compile", "$filter", "$tem
             $scope.devsel_list = _dev_sel
             $scope.reload()
         $scope.reload = () ->
+            $scope.vector_valid = false
             $.ajax
                 url  : "{% url 'rrd:device_rrds' %}"
                 data : {
@@ -183,9 +245,10 @@ device_rrd_module.controller("rrd_ctrl", ["$scope", "$compile", "$filter", "$tem
                             $scope.add_nodes(undefined, $scope.vector)
                             $scope.is_loading = false
                             $scope.$apply(
-                                num_struct = $scope.vector.find("entry").length
-                                num_mve = $scope.vector.find("mve").length
-                                $scope.graph_info_str = "Vector info: #{num_struct} / #{num_mve}"
+                                $scope.vector_valid = true
+                                $scope.num_struct = $scope.vector.find("entry").length
+                                $scope.num_mve = $scope.vector.find("mve").length
+                                $scope.num_mve_sel = 0
                             ) 
                         else
                             $scope.$apply(
@@ -246,6 +309,13 @@ device_rrd_module.controller("rrd_ctrl", ["$scope", "$compile", "$filter", "$tem
                     else
                         return []
             )
+            $scope.num_mve_sel = $scope.cur_selected.length
+        $scope.use_crop = (graph) ->
+            $scope.from_date_mom = graph.cts_start_mom
+            $scope.to_date_mom = graph.cts_end_mom
+            $scope.from_date = $scope.from_date_mom.format(DT_FORM)
+            $scope.to_date = $scope.to_date_mom.format(DT_FORM)
+            $scope.draw_graph()
         $scope.draw_graph = () =>
             $.ajax
                 url  : "{% url 'rrd:graph_rrds' %}"
@@ -259,10 +329,10 @@ device_rrd_module.controller("rrd_ctrl", ["$scope", "$compile", "$filter", "$tem
                 success : (xml) =>
                     graph_list = []
                     if parse_xml_response(xml)
+                        num_graph = 0
                         for graph in $(xml).find("graph_list > graph")
-                            graph = $(graph)
-                            #console.log graph[0]
-                            graph_list.push(graph.attr("href"))
+                            num_graph++
+                            graph_list.push(new d_graph(num_graph, $(graph)))#graph.attr("href"))
                     $scope.$apply(
                         $scope.graph_list = graph_list
                     )
@@ -276,6 +346,46 @@ device_rrd_module.controller("rrd_ctrl", ["$scope", "$compile", "$filter", "$tem
     }
 ).run(($templateCache) ->
     $templateCache.put("rrd_graph_template.html", rrd_graph_template)
+).directive("imgCropped", () ->
+    return {
+        restrict: "E"
+        replace: true
+        scope: {
+            src: "@"
+            graph: "="
+            selected: "&"
+        }
+        link: (scope, element, attr) ->
+            clear = () ->
+                if myImg
+                    myImg.next().remove()
+                    myImg.remove()
+                    myImg = undefined
+            scope.$watch("src", (nv) ->
+                clear()
+                if nv
+                    element.after("<img />")
+                    myImg = element.next()
+                    myImg.attr("src", nv)
+                    $(myImg).Jcrop({
+                        trackDocument: true
+                        onSelect: (sel) ->
+                            scope.$apply(() ->
+                                scope.graph.set_crop(sel)
+                            )
+                        onRelease: () ->
+                            scope.$apply(() ->
+                                scope.graph.clear_crop()
+                            )
+                    }, () ->
+                        bounds = this.getBounds()
+                        boundx = bounds[0]
+                        boundy = bounds[1]
+
+                    )
+            )
+            scope.$on("$destroy", clear)
+    }
 )
 
 add_tree_directive(device_rrd_module)

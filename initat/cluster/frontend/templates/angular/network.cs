@@ -42,7 +42,8 @@ angular_add_simple_list_controller(
         template_cache_list : ["network_device_type_row.html", "network_device_type_head.html"]
         new_object          : {
             "identifier"  : "eth"
-            "description" : ""
+            "description" : "new network device type"
+            "name_re"     : "^eth.*$"
             "mac_bytes"   : 6
         }
         object_created  : (new_obj) -> new_obj.identifier = ""

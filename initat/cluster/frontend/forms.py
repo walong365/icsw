@@ -706,6 +706,7 @@ class network_device_type_form(ModelForm):
                 "Base data",
                 Field("identifier", wrapper_class="ng-class:form_error('identifier')", placeholder="Identifier"),
                 Field("description", wrapper_class="ng-class:form_error('description')", placeholder="Description"),
+                Field("name_re", wrapper_class="ng-class:form_error('name_re')", placeholder="Regular expression"),
                 Field("mac_bytes", placeholder="MAC bytes", min=6, max=24),
             ),
             FormActions(
@@ -714,7 +715,7 @@ class network_device_type_form(ModelForm):
         )
     class Meta:
         model = network_device_type
-        fields = ["identifier", "description", "mac_bytes"]
+        fields = ("identifier", "description", "mac_bytes", "name_re",)
 
 class partition_table_form(ModelForm):
     helper = FormHelper()
