@@ -777,10 +777,11 @@ class angular_edit_mixin
                 @create_rest_url.post(@scope.new_obj).then(
                     (new_data) =>
                         #console.log @create_list, new_data
-                        if @new_object_at_tail
-                            @create_list.push(new_data)
-                        else
-                            @create_list.splice(0, 0, new_data)
+                        if @create_list
+                            if @new_object_at_tail
+                                @create_list.push(new_data)
+                            else
+                                @create_list.splice(0, 0, new_data)
                         @close_modal()
                         @_modal_close_ok = true
                         if @use_promise
@@ -839,7 +840,8 @@ class angular_edit_mixin
                     (resp) =>
                         noty
                             text : "deleted instance"
-                        remove_by_idx(@delete_list, obj.idx)
+                        if @delete_list
+                            remove_by_idx(@delete_list, obj.idx)
                         @close_modal()
                         if @use_promise
                             return ret.resolve(true)

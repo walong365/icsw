@@ -21,7 +21,7 @@ from initat.cluster.backbone.models import domain_tree_node, device, category, m
      mon_service_esc_templ, mon_device_esc_templ, mon_service_dependency_templ, package_search, \
      mon_service_dependency, mon_host_dependency, package_device_connection, partition, \
      partition_disc, sys_partition, device_variable, config, config_str, config_int, config_bool, \
-     config_script, netdevice, net_ip
+     config_script, netdevice, net_ip, peer_information
 from initat.cluster.frontend.widgets import device_tree_widget
 
 # import PAM
@@ -2159,20 +2159,66 @@ class netdevice_form(ModelForm):
     helper.form_id = "form"
     helper.form_name = "form"
     helper.form_class = 'form-horizontal'
-    helper.label_class = 'col-sm-2'
-    helper.field_class = 'col-sm-9'
+    helper.label_class = 'col-sm-3'
+    helper.field_class = 'col-sm-8'
     helper.ng_model = "_edit_obj"
     helper.ng_submit = "cur_edit.modify(this)"
+    ethtool_speed = ChoiceField(choices=[(0, "default"), (1, "10 MBit"), (2, "100 MBit"), (3, "1 GBit"), (4, "10 GBit")])
+    ethtool_autoneg = ChoiceField(choices=[(0, "default"), (1, "on"), (2, "off")])
+    ethtool_duplex = ChoiceField(choices=[(0, "default"), (1, "on"), (2, "off")])
+    dhcp_device = BooleanField(required=False, label="force write DHCP address")
+    routing = BooleanField(required=False)
     helper.layout = Layout(
         HTML("<h2>Netdevice '{% verbatim %}{{ _edit_obj.devname }}{% endverbatim %}'</h2>"),
             Fieldset(
                 "Basic settings",
                 Field("devname", wrapper_class="ng-class:form_error('devname')", placeholder="devicename"),
                 Field("description"),
+                Field("netdevice_speed", ng_options="value.idx as value.info_string for value in netdevice_speeds", chosen=True),
             ),
             Fieldset(
-                "additional settings",
-                Field("netdevice_speed", ng_options="value.idx as value.info_string for value in netdevice_speeds", chosen=True),
+                "Routing settings",
+                Div(
+                    Div(
+                        # disable enabled-flag for clusterdevicegroup
+                        Field("penalty", min=1, max=128),
+                        css_class="col-md-6",
+                    ),
+                    Div(
+                        Field("routing"),
+                        css_class="col-md-6",
+                    ),
+                    css_class="row",
+                ),
+            ),
+            Fieldset(
+                "hardware settings",
+                Field("driver"),
+                Field("driver_options"),
+                Field("ethtool_autoneg", ng_change="update_ethtool(_edit_obj)"),
+                Field("ethtool_duplex", ng_change="update_ethtool(_edit_obj)"),
+                Field("ethtool_speed", ng_change="update_ethtool(_edit_obj)"),
+            ),
+            Fieldset(
+                "MAC Address settings",
+                Div(
+                    Div(
+                        # disable enabled-flag for clusterdevicegroup
+                        Field("macaddr"),
+                        css_class="col-md-6",
+                    ),
+                    Div(
+                        Field("fake_macaddr"),
+                        css_class="col-md-6",
+                    ),
+                    css_class="row",
+                ),
+                Field("dhcp_device"),
+            ),
+            Fieldset(
+                "VLAN settings",
+                Field("master_device", ng_options="value.idx as value.devname for value in get_vlan_masters()", chosen=True),
+                Field("vlan_id", min=0, max=255),
             ),
             FormActions(
                 Submit("submit", "", css_class="primaryAction", ng_value="action_string"),
@@ -2183,9 +2229,13 @@ class netdevice_form(ModelForm):
         for clear_f in ["netdevice_speed"]:
             self.fields[clear_f].queryset = empty_query_set()
             self.fields[clear_f].empty_label = None
+        for clear_f in ["master_device"]:
+            self.fields[clear_f].queryset = empty_query_set()
+            self.fields[clear_f].empty_label = "---"
     class Meta:
         model = netdevice
-        fields = ("devname", "netdevice_speed", "description",)
+        fields = ("devname", "netdevice_speed", "description", "driver", "driver_options",
+            "macaddr", "fake_macaddr", "dhcp_device", "vlan_id", "master_device", "routing", "penalty")
 
 class net_ip_form(ModelForm):
     helper = FormHelper()
@@ -2196,6 +2246,7 @@ class net_ip_form(ModelForm):
     helper.field_class = 'col-sm-9'
     helper.ng_model = "_edit_obj"
     helper.ng_submit = "cur_edit.modify(this)"
+    alias_excl = BooleanField(required=False)
     helper.layout = Layout(
         HTML("<h2>IP Address '{% verbatim %}{{ _edit_obj.ip }}{% endverbatim %}'</h2>"),
             Fieldset(
@@ -2203,6 +2254,11 @@ class net_ip_form(ModelForm):
                 Field("ip", wrapper_class="ng-class:form_error('devname')", placeholder="IP address"),
                 Field("network", ng_options="value.idx as value.info_string for value in networks", chosen=True),
                 Field("domain_tree_node", ng_options="value.idx as value.tree_info for value in domain_tree_node", chosen=True),
+            ),
+            Fieldset(
+                "Alias settings",
+                Field("alias"),
+                Field("alias_excl"),
             ),
             FormActions(
                 Submit("submit", "", css_class="primaryAction", ng_value="action_string"),
@@ -2215,4 +2271,62 @@ class net_ip_form(ModelForm):
             self.fields[clear_f].empty_label = None
     class Meta:
         model = net_ip
-        fields = ("ip", "network", "domain_tree_node")
+        fields = ("ip", "network", "domain_tree_node", "alias", "alias_excl")
+
+class peer_information_s_form(ModelForm):
+    helper = FormHelper()
+    helper.form_id = "form"
+    helper.form_name = "form"
+    helper.form_class = 'form-horizontal'
+    helper.label_class = 'col-sm-2'
+    helper.field_class = 'col-sm-9'
+    helper.ng_model = "_edit_obj"
+    helper.ng_submit = "cur_edit.modify(this)"
+    helper.layout = Layout(
+        HTML("<h2>Peer information from {% verbatim %}{{ get_peer_src_info() }}{% endverbatim %}</h2>"),
+            Fieldset(
+                "Settings",
+                Field("penalty", min=1, max=128),
+                Field("s_netdevice", ng_options="value.pk as value.info_string for value in nd_peers", chosen=True),
+            ),
+            FormActions(
+                Submit("submit", "", css_class="primaryAction", ng_value="action_string"),
+            )
+        )
+    def __init__(self, *args, **kwargs):
+        ModelForm.__init__(self, *args, **kwargs)
+        for clear_f in ["s_netdevice"]:
+            self.fields[clear_f].queryset = empty_query_set()
+            self.fields[clear_f].empty_label = None
+    class Meta:
+        model = peer_information
+        fields = ("penalty", "s_netdevice",)
+
+class peer_information_d_form(ModelForm):
+    helper = FormHelper()
+    helper.form_id = "form"
+    helper.form_name = "form"
+    helper.form_class = 'form-horizontal'
+    helper.label_class = 'col-sm-2'
+    helper.field_class = 'col-sm-9'
+    helper.ng_model = "_edit_obj"
+    helper.ng_submit = "cur_edit.modify(this)"
+    helper.layout = Layout(
+        HTML("<h2>Peer information from {% verbatim %}{{ get_peer_src_info() }}{% endverbatim %}</h2>"),
+            Fieldset(
+                "Settings",
+                Field("penalty", min=1, max=128),
+                Field("d_netdevice", ng_options="value.pk as value.info_string for value in nd_peers", chosen=True),
+            ),
+            FormActions(
+                Submit("submit", "", css_class="primaryAction", ng_value="action_string"),
+            )
+        )
+    def __init__(self, *args, **kwargs):
+        ModelForm.__init__(self, *args, **kwargs)
+        for clear_f in ["d_netdevice"]:
+            self.fields[clear_f].queryset = empty_query_set()
+            self.fields[clear_f].empty_label = None
+    class Meta:
+        model = peer_information
+        fields = ("penalty", "d_netdevice",)

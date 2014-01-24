@@ -34,7 +34,8 @@ from initat.cluster.backbone.models import device, network, net_ip, \
     network_type, network_device_type, netdevice, peer_information, \
     netdevice_speed, domain_tree_node, domain_name_tree, get_related_models
 from initat.cluster.frontend.forms import domain_tree_node_form, network_form, \
-    network_type_form, network_device_type_form, netdevice_form, net_ip_form
+    network_type_form, network_device_type_form, netdevice_form, net_ip_form, \
+    peer_information_s_form, peer_information_d_form
 from initat.cluster.frontend.helper_functions import xml_wrapper
 from initat.core.render import render_me, render_string
 from lxml.builder import E # @UnresolvedImports
@@ -64,6 +65,8 @@ class device_network(View):
             request, "device_network.html", {
                 "netdevice_form" : netdevice_form(),
                 "net_ip_form" : net_ip_form(),
+                "peer_information_s_form" : peer_information_s_form(),
+                "peer_information_d_form" : peer_information_d_form(),
             }
         )()
     @method_decorator(login_required)
@@ -133,7 +136,7 @@ class delete_netdevice(View):
         nd_dev = device.objects.get(Q(pk=dev_pk))
         to_del = netdevice.objects.get(Q(pk=nd_pk) & Q(device=dev_pk))
         for vlan_slave in to_del.vlan_slaves.all():
-            # unseet master for vlan_slaves
+            # unset master for vlan_slaves
             vlan_slave.master_device = None
             vlan_slave.save()
         if nd_dev.bootnetdevice_id == nd_pk:

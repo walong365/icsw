@@ -37,6 +37,14 @@
         {% crispy net_ip_form net_ip_form.helper %}
     </script>
 
+    <script type="text/ng-template" id="peer_information_s_template.html">
+        {% crispy peer_information_s_form peer_information_s_form.helper %}
+    </script>
+
+    <script type="text/ng-template" id="peer_information_d_template.html">
+        {% crispy peer_information_d_form peer_information_d_form.helper %}
+    </script>
+
     <div ng-controller="network_ctrl">
         <devicenetworks></devicenetworks>
     </div>

@@ -33,7 +33,7 @@ from initat.cluster.backbone.models import user , group, user_serializer_h, grou
      device_selection_serializer, partition_table_serializer_save, partition_disc_serializer_save, \
      partition_disc_serializer_create, device_serializer_variables, device_serializer_device_configs, \
      device_config, device_config_hel_serializer, home_export_list, csw_permission, \
-     device_serializer_disk_info, device_serializer_network
+     device_serializer_disk_info, device_serializer_network, peer_information, netdevice
 from rest_framework import mixins, generics, status, viewsets, serializers
 from rest_framework.authentication import BasicAuthentication, SessionAuthentication
 from rest_framework.decorators import api_view
@@ -252,6 +252,20 @@ class device_tree_detail(detail_view):
         else:
             return device_serializer_monitoring
 
+class ext_peer_serializer(serializers.Serializer):
+    pk = serializers.IntegerField()
+    penalty = serializers.IntegerField()
+    device__name = serializers.CharField()
+    devname = serializers.CharField()
+
+class netdevice_peer_list(viewsets.ViewSet):
+    display_name = "netdevice_peer_list"
+    @rest_logging
+    def list(self, request):
+        ext_list = netdevice.objects.filter(Q(peer_s_netdevice__gt=0) | Q(peer_d_netdevice__gt=0) | Q(routing=True)).select_related("device").values("pk", "devname", "penalty", "device__name")
+        _ser = ext_peer_serializer(ext_list, many=True)
+        return Response(_ser.data)
+
 class rest_home_export_list(mixins.ListModelMixin,
                             generics.MultipleObjectAPIView):
     authentication_classes = (SessionAuthentication,)
@@ -290,7 +304,6 @@ class csw_object(object):
         self.name = name
         self.tr_class = tr_class
 
-# not needed right now, maybe we can use this as an template for the csw with objects
 class csw_object_list(viewsets.ViewSet):
     display_name = "csw_object_groups"
     @rest_logging

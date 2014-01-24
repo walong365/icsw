@@ -85,13 +85,13 @@ config_table_template = """
                         Create <span class="caret"></span>
                     </button>
                     <ul class="dropdown-menu">
-                      <li ng-click="create_script(config, $event)"><a href="#">Script</a></li>
-                      <li class="divider"></li>
-                      <li ng-click="create_var(config, 'str', $event)"><a href="#">String var</a></li>
-                      <li ng-click="create_var(config, 'int', $event)"><a href="#">Integer var</a></li>
-                      <li ng-click="create_var(config, 'bool', $event)"><a href="#">Bool var</a></li>
-                      <li class="divider"></li>
-                      <li ng-click="create_mon(config, $event)"><a href="#">Check command</a></li>
+                        <li ng-click="create_script(config, $event)"><a href="#">Script</a></li>
+                        <li class="divider"></li>
+                        <li ng-click="create_var(config, 'str', $event)"><a href="#">String var</a></li>
+                        <li ng-click="create_var(config, 'int', $event)"><a href="#">Integer var</a></li>
+                        <li ng-click="create_var(config, 'bool', $event)"><a href="#">Bool var</a></li>
+                        <li class="divider"></li>
+                        <li ng-click="create_mon(config, $event)"><a href="#">Check command</a></li>
                     </ul>
                 </div>
             </td>
