@@ -128,6 +128,7 @@ class package_search_result(models.Model):
         return new_p
     class Meta:
         ordering = ("name", "arch", "version",)
+        app_label = "backbone"
 
 class package_search_result_serializer(serializers.ModelSerializer):
     class Meta:

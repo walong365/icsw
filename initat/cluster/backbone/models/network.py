@@ -19,7 +19,6 @@ __all__ = [
     "network_type", "network_type_serializer",
     "net_ip", "net_ip_serializer",
     "network_device_type", "network_device_type_serializer",
-    "network_network_device_type", "network_network_device_type_serializer",
     "netdevice", "netdevice_serializer",
     "netdevice_speed", "netdevice_speed_serializer",
     "peer_information", "peer_information_serializer",
@@ -47,6 +46,8 @@ class network_device_type(models.Model):
     class Meta:
         db_table = u'network_device_type'
         app_label = "backbone"
+    def info_string(self):
+        return unicode(self)
     def __unicode__(self):
         return u"%s (%s [%d])" % (
             self.identifier,
@@ -108,15 +109,6 @@ class network_type(models.Model):
     def __unicode__(self):
         return u"%s (%s)" % (self.description,
                              self.identifier)
-
-class network_network_device_type(models.Model):
-    idx = models.AutoField(db_column="network_network_device_type_idx", primary_key=True)
-    network = models.ForeignKey("backbone.network")
-    network_device_type = models.ForeignKey("backbone.network_device_type")
-    date = models.DateTimeField(auto_now_add=True)
-    class Meta:
-        db_table = u'network_network_device_type'
-        app_label = "backbone"
 
 class network(models.Model):
     idx = models.AutoField(db_column="network_idx", primary_key=True)
@@ -304,16 +296,13 @@ def net_ip_post_save(sender, **kwargs):
             cur_inst.save()
 
 class network_device_type_serializer(serializers.ModelSerializer):
+    info_string = serializers.Field(source="info_string")
     class Meta:
         model = network_device_type
 
 class network_type_serializer(serializers.ModelSerializer):
     class Meta:
         model = network_type
-
-class network_network_device_type_serializer(serializers.ModelSerializer):
-    class Meta:
-        model = network_network_device_type
 
 class network_serializer(serializers.ModelSerializer):
     info_string = serializers.Field(source="info_string")
@@ -343,7 +332,7 @@ class netdevice(models.Model):
     description = models.CharField(max_length=765, blank=True)
     is_bridge = models.BooleanField(default=False)
     bridge_name = models.CharField(max_length=765, blank=True)
-    vlan_id = models.IntegerField(null=True, blank=True)
+    vlan_id = models.IntegerField(null=True, blank=True, default=0)
     # for VLAN devices
     master_device = models.ForeignKey("self", null=True, related_name="vlan_slaves", blank=True)
     date = models.DateTimeField(auto_now_add=True)
@@ -457,6 +446,9 @@ def netdevice_pre_delete(sender, **kwargs):
 
 class netdevice_serializer(serializers.ModelSerializer):
     net_ip_set = net_ip_serializer(many=True)
+    ethtool_autoneg = serializers.Field(source="ethtool_autoneg")
+    ethtool_duplex = serializers.Field(source="ethtool_duplex")
+    ethtool_speed = serializers.Field(source="ethtool_speed")
     class Meta:
         model = netdevice
 
@@ -496,6 +488,15 @@ def netdevice_pre_save(sender, **kwargs):
             raise ValidationError("MACaddress '%s' has illegal format" % (cur_inst.macaddr))
         if not mac_re.match(cur_inst.fake_macaddr):
             raise ValidationError("fake MACaddress has illegal format" % (cur_inst.fake_macaddr))
+        if cur_inst.master_device_id:
+            if not cur_inst.vlan_id:
+                raise ValidationError("VLAN id cannot be zero")
+            if cur_inst.master_device_id == cur_inst.pk:
+                raise ValidationError("cannot be my own VLAN master")
+            if cur_inst.master_device.master_device_id:
+                raise ValidationError("cannot chain VLAN devices")
+        if cur_inst.vlan_id and not cur_inst.master_device_id:
+            raise ValidationError("need a VLAN master")
 
 @receiver(signals.post_save, sender=netdevice)
 def netdevice_post_save(sender, **kwargs):
@@ -591,6 +592,14 @@ class peer_information_serializer(serializers.ModelSerializer):
 def peer_information_pre_save(sender, **kwargs):
     if "instance" in kwargs:
         cur_inst = kwargs["instance"]
+        try:
+            _cur_peer = peer_information.objects.get(
+                (Q(s_netdevice=cur_inst.s_netdevice_id) & Q(d_netdevice=cur_inst.d_netdevice_id)) |
+                (Q(s_netdevice=cur_inst.d_netdevice_id) & Q(d_netdevice=cur_inst.s_netdevice_id)))
+        except peer_information.DoesNotExist:
+            pass
+        else:
+            raise ValidationError("peer already exists")
         _check_integer(cur_inst, "penalty", min_val=1)
 
 @receiver(signals.post_save, sender=peer_information)

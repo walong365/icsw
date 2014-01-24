@@ -659,6 +659,7 @@ class user_device_login(models.Model):
     date = models.DateTimeField(auto_now_add=True)
     class Meta:
         db_table = u'user_device_login'
+        app_label = "backbone"
 
 class user_variable(models.Model):
     idx = models.AutoField(primary_key=True)
