@@ -49,7 +49,7 @@ dn_row_template = """
 <td>{{ obj.comment }}</td>
 <td></td>
 <td>
-    <input type="button" class="btn btn-success btn-xs" value="create nd" ng-click="create_netdevice(obj, $event)"></input>
+    <input type="button" class="btn btn-success btn-xs" value="create nd" ng-click="create_netdevice(obj, $event)" ng-show="enable_modal"></input>
 </td>
 <td></td>
 <td></td>
@@ -57,7 +57,7 @@ dn_row_template = """
 
 nd_row_template = """
 <td>
-    <button class="btn btn-primary btn-xs" ng-disabled="ndip_obj.net_ip_set.length + ndip_obj.peers.length == 0" ng-click="toggle_expand(ndip_obj)">
+    <button class="btn btn-info btn-xs" ng-disabled="ndip_obj.net_ip_set.length + ndip_obj.peers.length == 0" ng-click="toggle_expand(ndip_obj)">
         <span ng-class="get_expand_class(ndip_obj)">
         {{ ndip_obj.net_ip_set.length }} / {{ ndip_obj.peers.length }}
         </span>  
@@ -83,7 +83,7 @@ nd_row_template = """
      </div>"></input>
 </td>
 <td>
-    <div class="input-group-btn">
+    <div class="input-group-btn" ng-show="enable_modal">
         <button type="button" class="btn btn-success btn-xs dropdown-toggle" data-toggle="dropdown">
             Create <span class="caret"></span>
         </button>
@@ -94,10 +94,10 @@ nd_row_template = """
     </div>
 </td>
 <td>
-    <input type="button" class="btn btn-primary btn-xs" value="modify" ng-click="edit_netdevice(obj, ndip_obj, $event)"></input>
+    <input type="button" class="btn btn-primary btn-xs" value="modify" ng-click="edit_netdevice(obj, ndip_obj, $event)" ng-show="enable_modal"></input>
 </td>
 <td>
-    <input type="button" class="btn btn-danger btn-xs" value="delete" ng-click="delete_netdevice(ndip_obj, $event)"></input>
+    <input type="button" class="btn btn-danger btn-xs" value="delete" ng-click="delete_netdevice(ndip_obj, $event)" ng-show="enable_modal"></input>
 <td>
 """
 
@@ -109,10 +109,10 @@ ip_row_template = """
 <td></td>
 <td></td>
 <td>
-    <input type="button" class="btn btn-primary btn-xs" value="modify" ng-click="edit_netip(ndip_obj, $event)"></input>
+    <input type="button" class="btn btn-primary btn-xs" value="modify" ng-click="edit_netip(ndip_obj, $event)" ng-show="enable_modal"></input>
 </td>
 <td>
-    <input type="button" class="btn btn-danger btn-xs" value="delete" ng-click="delete_netip(ndip_obj, $event)"></input>
+    <input type="button" class="btn btn-danger btn-xs" value="delete" ng-click="delete_netip(ndip_obj, $event)" ng-show="enable_modal"></input>
 <td>
 """
 
@@ -126,10 +126,10 @@ peer_row_template = """
 <td></td>
 <td></td>
 <td>
-    <input type="button" class="btn btn-primary btn-xs" value="modify" ng-click="edit_peer_information(ndip_obj, $event)"></input>
+    <input type="button" class="btn btn-primary btn-xs" value="modify" ng-click="edit_peer_information(ndip_obj, $event)" ng-show="enable_modal"></input>
 </td>
 <td>
-    <input type="button" class="btn btn-danger btn-xs" value="delete" ng-click="delete_peer_information(ndip_obj, $event)"></input>
+    <input type="button" class="btn btn-danger btn-xs" value="delete" ng-click="delete_peer_information(ndip_obj, $event)" ng-show="enable_modal"></input>
 </td>
 """
 
@@ -141,6 +141,7 @@ angular_module_setup([device_network_module])
 
 device_network_module.controller("network_ctrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "sharedDataSource", "$q", "$modal",
     ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, sharedDataSource, $q, $modal) ->
+        $scope.enable_modal = true
         # mixins
         $scope.netdevice_edit = new angular_edit_mixin($scope, $templateCache, $compile, $modal, Restangular, $q)
         $scope.netdevice_edit.create_template = "netdevice_template.html"
@@ -423,8 +424,10 @@ device_network_module.controller("network_ctrl", ["$scope", "$compile", "$filter
         restrict : "EA"
         template : $templateCache.get("devicenetworks.html")
         link : (scope, el, attrs) ->
-            if attrs["devicepk"]
+            if attrs["devicepk"]?
                 scope.new_devsel((parseInt(entry) for entry in attrs["devicepk"].split(",")), [])
+            if attrs["disablemodal"]?
+                scope.enable_modal = if parseInt(attrs["disablemodal"]) then false else true
     }
 ).directive("dnrow", ($templateCache) ->
     return {

@@ -13,7 +13,7 @@ class device_info
     constructor: (@event, @dev_key, @callback=undefined) ->
         @addon_devices = []
     show: () =>
-        replace_div = {% if index_view %}true{% else %}false{% endif %}
+        @replace_div = {% if index_view %}true{% else %}false{% endif %}
         $.ajax
             url     : "{% url 'device:device_info' %}"
             data    :
@@ -24,7 +24,7 @@ class device_info
                     @network_list = @resp_xml.find("network_list network")
                     @permissions = @resp_xml.find("permissions")
                     @build_div()
-                    if replace_div
+                    if @replace_div
                         $("div#center_deviceinfo").children().remove().end().append(@dev_div)
                     else
                         @dev_div.simplemodal
@@ -32,7 +32,7 @@ class device_info
                             position     : [@event.pageY, @event.pageX]
                             autoResize   : true
                             autoPosition : true
-                            minWidth     : "640px"
+                            minWidth     : "800px"
                             onShow: (dialog) -> 
                                 dialog.container.draggable()
                                 $("#simplemodal-container").css("height", "auto")
@@ -207,7 +207,8 @@ class device_info
         # network div
         pk_list = @get_pk_list() 
         net_div = $("<div>").attr("id", "network")
-        net_div.append($("<div id='icsw.device.network'><div ng-controller='network_ctrl'><devicenetworks devicepk='" + pk_list.join(",") + "'></devicenetworks></div></div>"))
+        dis_modal = if @replace_div then 0 else 1
+        net_div.append($("<div id='icsw.device.network'><div ng-controller='network_ctrl'><devicenetworks devicepk='" + pk_list.join(",") + "' disablemodal='#{dis_modal}'></devicenetworks></div></div>"))
         return net_div
     config_div: (dev_xml) =>
         # configuration div
