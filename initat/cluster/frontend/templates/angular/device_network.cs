@@ -170,6 +170,8 @@ device_network_module.controller("network_ctrl", ["$scope", "$compile", "$filter
         $scope.devices = []
         $scope.new_devsel = (_dev_sel, _devg_sel) ->
             $scope.devsel_list = _dev_sel
+            $scope.reload()
+        $scope.reload= () ->
             wait_list = [
                 restDataSource.reload(["{% url 'rest:device_tree_list' %}", {"with_network" : true, "pks" : angular.toJson($scope.devsel_list)}]),
                 restDataSource.reload(["{% url 'rest:peer_information_list' %}", {}]),
@@ -402,6 +404,19 @@ device_network_module.controller("network_ctrl", ["$scope", "$compile", "$filter
             else
                 peer = $scope.nd_peer_lut[ndip_obj.target]
                 return "#{peer.devname} (#{peer.penalty}) on #{peer.device__name}"
+        $scope.copy_network = (src_obj, event) ->
+            if confirm("Overwrite all networks with the one from #{src_obj.full_name} ?")
+                $.blockUI()
+                $.ajax
+                    url     : "{% url 'network:copy_network' %}"
+                    data    : {
+                        "source_dev" : src_obj.idx
+                        "all_devs"   : angular.toJson(@devsel_list)
+                    },
+                    success : (xml) =>
+                        $.unblockUI()
+                        parse_xml_response(xml)
+                        $scope.reload()
         install_devsel_link($scope.new_devsel, true, true, false)
 ]).directive("devicenetworks", ($templateCache) ->
     return {

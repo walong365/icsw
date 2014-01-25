@@ -8,7 +8,7 @@ from initat.cluster.frontend import rest_views, device_views, main_views, networ
     monitoring_views, user_views, package_views, config_views, boot_views, session_views, rrd_views, \
     base_views, setup_views
 from initat.cluster.rms import rms_views
-from rest_framework.urlpatterns import format_suffix_patterns
+# from rest_framework.urlpatterns import format_suffix_patterns
 
 handler404 = main_views.index.as_view()
 
@@ -107,13 +107,6 @@ network_patterns = patterns(
     "initat.cluster.frontend",
     url("^network$"           , network_views.show_cluster_networks.as_view() , name="show_networks"),
     url("^dev_network$"       , network_views.device_network.as_view()        , name="device_network"),
-    url("^create_netdevice$"  , network_views.create_netdevice.as_view()      , name="create_netdevice"),
-    url("^delete_netdevice$"  , network_views.delete_netdevice.as_view()      , name="delete_netdevice"),
-    url("^create_net_ip$"     , network_views.create_net_ip.as_view()         , name="create_net_ip"),
-    url("^delete_net_ip$"     , network_views.delete_net_ip.as_view()         , name="delete_net_ip"),
-    url("^create_new_peer$"   , network_views.create_new_peer.as_view()       , name="create_new_peer"),
-    url("^delete_peer$"       , network_views.delete_peer.as_view()           , name="delete_peer"),
-    url("^get_valid_peers$"   , network_views.get_valid_peers.as_view()       , name="get_valid_peers"),
     url("^copy_network$"      , network_views.copy_network.as_view()          , name="copy_network"),
     url("^json_network$"      , network_views.json_network.as_view()          , name="json_network"),
     url("^cdnt$"              , network_views.get_domain_name_tree.as_view()  , name="domain_name_tree"),
