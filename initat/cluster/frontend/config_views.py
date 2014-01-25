@@ -25,10 +25,8 @@
 
 # do not remove mon_check_command, is access via globals()
 from django.contrib.auth.decorators import login_required
-from django.core.exceptions import ValidationError
 from django.core.urlresolvers import reverse
 from django.db.models import Q
-from django.db.utils import IntegrityError
 from django.http import HttpResponse, HttpResponseRedirect
 from django.utils.decorators import method_decorator
 from django.views.generic import View
@@ -36,14 +34,14 @@ from initat.cluster.backbone.models import config, device, \
     config_str, config_int, config_bool, config_blob, \
     config_script, device_config, tree_node, get_related_models, \
     mon_service_templ, category_tree, mon_check_command
-from initat.cluster.frontend.helper_functions import contact_server, xml_wrapper
 from initat.cluster.frontend.forms import config_form, config_str_form, config_int_form, \
     config_bool_form, config_script_form, mon_check_command_form
+from initat.cluster.frontend.helper_functions import contact_server, xml_wrapper
 from initat.core.render import render_me
 from lxml import etree # @UnresolvedImports
 from lxml.builder import E # @UnresolvedImports
-import json
 import datetime
+import json
 import logging
 import logging_tools
 import process_tools
@@ -78,13 +76,6 @@ def delete_object(request, del_obj, **kwargs):
             request.xml_response.info("deleted %s" % (del_obj._meta.object_name), logger)
         else:
             logger.info("deleted %s" % (del_obj._meta.object_name))
-
-# class get_device_configs(View):
-#     @method_decorator(login_required)
-#     @method_decorator(xml_wrapper)
-#     def post(self, request):
-#         request.xml_response["response"] = _get_device_configs(request.POST.getlist("sel_list[]", []))
-#
 
 def _get_device_configs(sel_list, **kwargs):
     dev_list = [key.split("__")[1] for key in sel_list if key.startswith("dev__")]
