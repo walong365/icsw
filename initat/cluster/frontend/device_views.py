@@ -29,15 +29,12 @@ from django.db.models import Q
 from django.utils.decorators import method_decorator
 from django.views.generic import View
 from initat.cluster.backbone.models import device_type, device_group, device, \
-     cd_connection, domain_name_tree, category_tree, package_device_connection, \
-     mon_ext_host, mon_device_templ, mon_service_cluster, mon_host_cluster, network, \
-     domain_tree_node
+     cd_connection, domain_name_tree, category_tree, domain_tree_node
 from initat.cluster.frontend import forms
 from initat.cluster.frontend.forms import device_tree_form, device_group_tree_form, \
     device_tree_many_form, device_variable_form, device_variable_new_form
 from initat.cluster.frontend.helper_functions import xml_wrapper
 from initat.core.render import render_me, render_string
-from lxml import etree # @UnresolvedImport
 from lxml.builder import E # @UnresolvedImports
 import json
 import logging
@@ -103,86 +100,16 @@ class change_devices(View):
             request.xml_response["changed"] = dev_changes
             request.xml_response.info("changed settings of {}".format(logging_tools.get_plural("device", dev_changes)))
 
-class clear_selection(View):
-    @method_decorator(login_required)
-    @method_decorator(xml_wrapper)
-    def post(self, request):
-        request.session["sel_list"] = []
-        request.session.save()
-
 class set_selection(View):
     @method_decorator(login_required)
     @method_decorator(xml_wrapper)
     def post(self, request):
         _post = request.POST
-        if "angular_sel" in _post:
-            dev_list = json.loads(_post["angular_sel"])
-            devg_list = device_group.objects.filter(Q(device__in=dev_list)).values_list("pk", flat=True)
-            cur_list = ["dev__%d" % (cur_pk) for cur_pk in dev_list] + ["devg__%d" % (cur_pk) for cur_pk in devg_list]
-        else:
-            cur_list = [key for key in _post.getlist("key_list[]", []) if key.startswith("dev")]
+        dev_list = json.loads(_post["angular_sel"])
+        devg_list = device_group.objects.filter(Q(device__in=dev_list)).values_list("pk", flat=True)
+        cur_list = ["dev__%d" % (cur_pk) for cur_pk in dev_list] + ["devg__%d" % (cur_pk) for cur_pk in devg_list]
         request.session["sel_list"] = cur_list
         request.session.save()
-
-class get_selection(View):
-    @method_decorator(login_required)
-    @method_decorator(xml_wrapper)
-    def post(self, request):
-        request.xml_response["sel_list"] = E.selection(
-            *[E.sel(cur_key) for cur_key in request.session.get("sel_list", [])]
-        )
-
-class add_selection(View):
-    @method_decorator(login_required)
-    @method_decorator(xml_wrapper)
-    def post(self, request):
-        _post = request.POST
-        dbl = True if int(_post["double"]) else False
-        if "key" in _post:
-            # single set / delete
-            add_flag, add_sel_list, cur_list = (
-                int(_post["add"]),
-                [_post["key"]],
-                request.session.get("sel_list", []))
-        else:
-            # total set / delete
-            add_flag, add_sel_list, cur_list = (
-                1,
-                _post.getlist("key[]"),
-                []
-            )
-        for add_sel in add_sel_list:
-            if add_flag and add_sel not in cur_list:
-                cur_list.append(add_sel)
-            elif not add_flag and add_sel in cur_list:
-                cur_list.remove(add_sel)
-            if add_sel.startswith("devg__"):
-                if dbl:
-                    # toggle meta device
-                    logger.info("toggle selection of META-device of device_group %d" % (int(add_sel.split("__")[1])))
-                    toggle_devs = ["dev__%d" % (cur_pk) for cur_pk in device.objects.filter(
-                        Q(enabled=True) &
-                        Q(device_group__enabled=True) &
-                        Q(device_group=add_sel.split("__")[1]) &
-                        Q(device_type__identifier="MD")).values_list("pk", flat=True)]
-                else:
-                    # emulate toggle of device_group
-                    logger.info("toggle selection of device_group %d" % (int(add_sel.split("__")[1])))
-                    toggle_devs = ["dev__%d" % (cur_pk) for cur_pk in device.objects.filter(
-                        Q(enabled=True) &
-                        Q(device_group__enabled=True) &
-                        Q(device_group=add_sel.split("__")[1])).values_list("pk", flat=True)]
-                for toggle_dev in toggle_devs:
-                    if toggle_dev in cur_list:
-                        cur_list.remove(toggle_dev)
-                    else:
-                        cur_list.append(toggle_dev)
-        # import pprint
-        # pprint.pprint(cur_list)
-        request.session["sel_list"] = cur_list
-        request.session.save()
-        logger.info("%s in list" % (logging_tools.get_plural("selection", len(cur_list))))
-        return request.xml_response.create_response()
 
 class show_configs(View):
     @method_decorator(login_required)
@@ -451,9 +378,6 @@ class device_info(View):
             full_name=True,
         )
         request.xml_response["response"] = domain_name_tree().get_xml()
-        request.xml_response["response"] = E.network_list(
-            *[cur_nw.get_xml() for cur_nw in network.objects.all().select_related("network_type").prefetch_related("network_device_type").order_by("name")]
-        )
         request.xml_response["response"] = category_tree().get_xml()
         # print etree.tostring(request.xml_response["response"][1], pretty_print=True)
         request.xml_response["response"] = E.forms(

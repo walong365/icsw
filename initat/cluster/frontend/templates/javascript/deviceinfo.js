@@ -6,11 +6,11 @@
 
 root = exports ? this
 
-show_device_info = (event, dev_key, callback) ->
-    new device_info(event, dev_key, callback).show()
+show_device_info = (event, dev_key) ->
+    new device_info(event, dev_key).show()
 
 class device_info
-    constructor: (@event, @dev_key, @callback=undefined) ->
+    constructor: (@event, @dev_key) ->
         @addon_devices = []
     show: () =>
         @replace_div = {% if index_view %}true{% else %}false{% endif %}
@@ -21,7 +21,6 @@ class device_info
             success : (xml) =>
                 if parse_xml_response(xml)
                     @resp_xml = $(xml).find("response")
-                    @network_list = @resp_xml.find("network_list network")
                     @permissions = @resp_xml.find("permissions")
                     @build_div()
                     if @replace_div
@@ -39,8 +38,6 @@ class device_info
                                 $("#simplemodal-container").css("width", "auto")
                             onClose: =>
                                 $.simplemodal.close()
-                                if @callback
-                                    @callback(@dev_key)
     get_pk_list: (with_md=true) =>
         # get all pks
         pk_list = [@resp_xml.find("device").attr("pk")]
@@ -120,7 +117,6 @@ class device_info
         if t_href == "#config"
             if not @config_init
                 @config_init = true
-                # lazy load config
                 angular.bootstrap(ui.newPanel.find("div[id='icsw.device.config.local']"), ["icsw.device.config"])
         else if t_href == "#livestatus"
             if not @livestatus_init
