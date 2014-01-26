@@ -160,45 +160,65 @@ class domain_tree_node_form(ModelForm):
         model = domain_tree_node
         fields = ["name", "node_postfix", "create_short_names", "always_create_ip", "write_nameserver_config", "comment", "parent", ]
 
-class device_general_form(ModelForm):
+class device_info_form(ModelForm):
     domain_tree_node = ModelChoiceField(domain_tree_node.objects.none(), empty_label=None)
     helper = FormHelper()
     helper.form_id = "id_dtn_detail_form"
+    helper.form_name = "form"
     helper.form_class = 'form-horizontal'
     helper.label_class = 'col-sm-3'
     helper.field_class = 'col-sm-9'
+    helper.ng_model = "_edit_obj"
     helper.layout = Layout(
-        Fieldset(
-            "Device details",
-            Field("name"),
-            Field("domain_tree_node"),
-            Field("comment"),
-        ),
-        Fieldset(
-            "Monitor settings",
-            Field("mon_device_templ"),
-            Div(
-                Div(
-                    Field("monitor_checks"),
-                    Field("enable_perfdata"),
-                    css_class="col-md-6",
-                ),
-                Div(
-                    Field("flap_detection_enabled"),
-                    Field("mon_resolve_name"),
-                    css_class="col-md-6",
-                ),
-                css_class="row",
+        Div(
+            HTML("<h2>Category details for '{% verbatim %}{{ _edit_obj.name }}{% endverbatim %}'</h2>"),
+            Fieldset(
+                "Device details",
+                Field("name"),
+                Field("domain_tree_node", ng_options="value.idx as value.tree_info for value in domain_tree_node", chosen=True),
+                Field("comment"),
             ),
-        ),
-        Fieldset(
-            "Info",
-            Button("uuid", "show UUID info"),
+            Fieldset(
+                "Monitor settings",
+                Field("mon_device_templ", ng_options="value.idx as value.name for value in mon_device_templ_list", chosen=True),
+                Div(
+                    Div(
+                        Field("monitor_checks"),
+                        Field("enable_perfdata"),
+                        css_class="col-md-6",
+                    ),
+                    Div(
+                        Field("flap_detection_enabled"),
+                        Field("mon_resolve_name"),
+                        css_class="col-md-6",
+                    ),
+                    css_class="row",
+                ),
+            ),
+            Fieldset(
+                "Info",
+                Div(
+                    Div(
+                        Button("uuid", "show UUID info", css_class="btn-info", ng_click="toggle_uuid()"),
+                        css_class="col-md-6",
+                    ),
+                    Div(
+                        Submit("modify", "modify", css_class="primaryAction"),
+                        css_class="col-md-6",
+                    ),
+                    css_class="row",
+                ),
+            ),
         )
     )
     def __init__(self, *args, **kwargs):
-        super(device_general_form, self).__init__(*args, **kwargs)
-        self.fields["domain_tree_node"].queryset = domain_name_tree()
+        super(device_info_form, self).__init__(*args, **kwargs)
+        for clear_f in ["domain_tree_node"]:
+            self.fields[clear_f].queryset = empty_query_set()
+            self.fields[clear_f].empty_label = None
+        for clear_f in ["mon_device_templ"]:
+            self.fields[clear_f].queryset = empty_query_set()
+            self.fields[clear_f].empty_label = "---"
     class Meta:
         model = device
         fields = ["name", "comment", "monitor_checks", "domain_tree_node", "mon_device_templ",

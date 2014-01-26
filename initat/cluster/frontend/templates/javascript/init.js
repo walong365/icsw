@@ -75,26 +75,6 @@ $.ajaxSetup
                 alert("*** #{status} ***\nxhr.status : #{xhr.status}\nxhr.statusText : #{xhr.statusText}")
         return false
 
-get_value = (cur_el) ->
-    if cur_el.is(":checkbox")
-        el_value = if cur_el.is(":checked") then "1" else "0"
-    else if cur_el.prop("tagName") == "TEXTAREA"
-        is_textarea = true
-        if cur_el.is(":visible")
-            # normal elements (not wrapped in codemirror)
-            el_value = cur_el.val()
-        else
-            # wrapped in codemirror
-            el_value = cur_el.text()
-    else if cur_el.prop("tagName") == "SELECT" and cur_el.attr("multiple")
-        el_value = ($(element).attr("value") for element in cur_el.find("option:selected")).join("::")
-    else
-        el_value = cur_el.attr("value")
-    return el_value
-
-set_value = (el_id, el_value) ->
-    $("#" + el_id).val(el_value)
-
 parse_xml_response = (xml, min_level) ->
     success = false
     if $(xml).find("response header").length
@@ -114,16 +94,6 @@ parse_xml_response = (xml, min_level) ->
         if xml != null
             noty({"text" : "error parsing response", "type" : "error", "timeout" : false})
     return success
-
-get_xml_value = (xml, key) ->
-    ret_value = undefined
-    $(xml).find("response values value[name='#{key}']").each (idx, val) ->
-        value_xml = $(val)
-        if value_xml.attr("type") == "integer"
-            ret_value = parseInt(value_xml.text())
-        else
-            ret_value = value_xml.text()
-    return ret_value
 
 # create a dictionary from a list of elements
 create_dict_unserialized = (top_el, id_prefix, use_name=false, django_save=false) ->
@@ -162,64 +132,6 @@ create_dict = (top_el, id_prefix, use_name=false, django_save=false) ->
     out_dict = create_dict_unserialized(top_el, id_prefix, use_name, django_save)
     return $.param(out_dict, traditional=true)
 
-replace_xml_element = (master_xml, xml) ->
-    # replace element in master_xml
-    xml.find("value[name='object'] > *").each (idx, new_el) ->
-        new_el = $(new_el)
-        if master_xml
-            master_xml.find("[key='" + new_el.attr("key") + "']").replaceWith(new_el)
-
-class submitter
-    constructor: (kwargs) ->
-        kwargs = kwargs ? {}
-        @modify_data_dict = kwargs.modify_data_dict ? undefined
-        @master_xml = kwargs.master_xml ? undefined
-        @success_callback = kwargs.success_callback ? undefined
-        @error_callback = kwargs.error_callback ? undefined
-        @callback = kwargs.callback ? undefined
-    submit: (event) =>
-        cur_el = $(event.target)
-        is_textarea = false
-        el_value = get_value(cur_el)
-        data_field = {
-            "id"         : cur_el.attr("id")
-            "checkbox"   : cur_el.is(":checkbox")
-            "value"      : el_value,
-            "ignore_nop" : 1
-        }
-        if @modify_data_dict
-            @modify_data_dict(data_field)
-        if data_field.lock_list
-            lock_list = $(data_field.lock_list.join(", ")).attr("disabled", "disabled")
-        else
-            lock_list = undefined
-        $.ajax
-            url     : "{% url 'base:change_xml_entry' %}"
-            data    : data_field
-            success : (xml) =>
-                if parse_xml_response(xml)
-                    replace_xml_element(@master_xml, $(xml))
-                    if @callback
-                        @callback(cur_el)
-                    else
-                        # set values
-                        $(xml).find("changes change").each (idx, cur_os) ->
-                            cur_os = $(cur_os)
-                            set_value(cur_os.attr("id"), cur_os.text())
-                        if @success_callback
-                            @success_callback(cur_el)
-                else
-                    # set back to previous value 
-                    if is_textarea
-                        $(cur_el).text(get_xml_value(xml, "original_value"))
-                    else if $(cur_el).is(":checkbox")
-                        if get_xml_value(xml, "original_value") == "False"
-                            $(cur_el).removeAttr("checked")
-                        else
-                            $(cur_el).attr("checked", "checked")
-                    else
-                        $(cur_el).attr("value", get_xml_value(xml, "original_value"))
-
 store_user_var = (var_name, var_value, var_type="str") -> 
     $.ajax
         url  : "{% url 'user:set_user_var' %}"
@@ -253,12 +165,7 @@ load_user_var = (var_name) ->
                     true
     return ret_dict
 
-root.get_value                = get_value
-root.set_value                = set_value
 root.parse_xml_response       = parse_xml_response
-root.get_xml_value            = get_xml_value
-root.replace_xml_element      = replace_xml_element
-root.submitter                = submitter
 root.store_user_var           = store_user_var
 root.load_user_var            = load_user_var
 root.create_dict              = create_dict

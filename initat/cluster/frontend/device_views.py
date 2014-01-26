@@ -30,11 +30,10 @@ from django.utils.decorators import method_decorator
 from django.views.generic import View
 from initat.cluster.backbone.models import device_type, device_group, device, \
      cd_connection, domain_name_tree, category_tree, domain_tree_node
-from initat.cluster.frontend import forms
 from initat.cluster.frontend.forms import device_tree_form, device_group_tree_form, \
     device_tree_many_form, device_variable_form, device_variable_new_form
 from initat.cluster.frontend.helper_functions import xml_wrapper
-from initat.core.render import render_me, render_string
+from initat.core.render import render_me
 from lxml.builder import E # @UnresolvedImports
 import json
 import logging
@@ -363,34 +362,10 @@ class variables(View):
             "device_variable_new_form" : device_variable_new_form(),
             })()
 
-class device_info(View):
-    @method_decorator(login_required)
-    @method_decorator(xml_wrapper)
-    def post(self, request):
-        # request.xml_response.log(logging_tools.LOG_LEVEL_ERROR, "ok", logger)
-        dev_key = request.POST["key"].split("__")[1]
-        cur_dev = device.objects.prefetch_related("netdevice_set", "netdevice_set__net_ip_set").get(Q(pk=dev_key))
-        request.xml_response["permissions"] = request.user.get_all_object_perms_xml(cur_dev)
-        request.xml_response["response"] = cur_dev.get_xml(
-            # with_partition=True,
-            # with_variables=True,
-            with_md_cache=True,
-            full_name=True,
-        )
-        request.xml_response["response"] = domain_name_tree().get_xml()
-        request.xml_response["response"] = category_tree().get_xml()
-        # print etree.tostring(request.xml_response["response"][1], pretty_print=True)
-        request.xml_response["response"] = E.forms(
-            E.general_form(
-                render_string(
-                    request,
-                    "crispy_form.html",
-                    {
-                        "form" : forms.device_general_form(
-                            auto_id="dev__%d__%%s" % (cur_dev.pk),
-                            instance=cur_dev,
-                        )
-                    }
-                )
-            )
-        )
+# class device_info(View):
+#     @method_decorator(login_required)
+#     @method_decorator(xml_wrapper)
+#     def post(self, request):
+#         # request.xml_response.log(logging_tools.LOG_LEVEL_ERROR, "ok", logger)
+#         cur_dev = device.objects.prefetch_related("netdevice_set", "netdevice_set__net_ip_set").get(Q(pk=request.POST["pk"]))
+#         request.xml_response["permissions"] = request.user.get_all_object_perms_xml(cur_dev)

@@ -19,8 +19,7 @@
 use_devs = (dev_list) ->
     if dev_list.length
         # only use when at least one device is selected
-        cur_di = new device_info(undefined, dev_list[0], undefined)
-        cur_di.addon_devices = (entry for entry in dev_list[1..])
+        cur_di = new device_info(undefined, dev_list[0], (entry for entry in dev_list[1..]))
         $("div#center_content").hide()
         $("div#center_deviceinfo").show() 
         cur_di.show()
@@ -29,7 +28,7 @@ use_devs = (dev_list) ->
         $("div#center_deviceinfo").hide() 
 
 add_config_handlers = ->
-    install_devsel_link(use_devs, true, false, false)
+    install_devsel_link(use_devs, true, true, false)
 
 $(document).ready(add_config_handlers)
 

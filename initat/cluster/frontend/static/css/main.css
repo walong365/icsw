@@ -15,16 +15,6 @@ table.devicelist * th {
     font-weight: normal;
 }
 
-table.device_objperm {
-    color:#000000 ;
-    background-color:#a19b9e ;
-    border-width:1px 1px 1px 1px;
-    border-color:#000000;
-    border-spacing: 0px 0px;
-    border-style:solid;
-    padding:0px ;
-}
-
 table.devicelist * td.meta_device, th.meta_device {
     font-weight : bold !important ;
 }
@@ -235,3 +225,4 @@ td.selected {
 .ui-timepicker-rtl{ direction: rtl; }
 .ui-timepicker-rtl dl { text-align: right; }
 .ui-timepicker-rtl dl dd { margin: 0 65px 10px 10px; }
+

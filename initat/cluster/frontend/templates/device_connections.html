@@ -29,7 +29,6 @@ class conn_table
     use_devs: (@sel_list) =>
         @load_devices()
     load_devices: () =>
-        @my_submitter = new submitter()
         $.ajax
             url     : "{% url 'device:get_group_tree' %}"
             data    : {
@@ -124,7 +123,7 @@ class conn_table
                         "min"   : 0
                         "max"   : 100
                         "value" : cd_node.attr("parameter_i#{idx}")
-                    ).on("change", @my_submitter.submit)
+                    )#.on("change", @my_submitter.submit)
                 )
             )
         add_div.append(parameter_ul)

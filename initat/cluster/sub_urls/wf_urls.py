@@ -36,7 +36,6 @@ rms_patterns = patterns(
 
 base_patterns = patterns(
     "initat.cluster.setup",
-    url("^change_xml_entry$"                  , base_views.change_xml_entry.as_view()   , name="change_xml_entry"),
     url("^get_gauge_info$"                    , base_views.get_gauge_info.as_view()     , name="get_gauge_info"),
     url("^get_cat_tree$"                      , base_views.get_category_tree.as_view()  , name="category_tree"),
     url("^change_category"                    , base_views.change_category.as_view()    , name="change_category"),
@@ -92,7 +91,6 @@ device_patterns = patterns(
     url("^xml/delete_connect" , device_views.delete_connection.as_view(), name="delete_connection"),
     url("manual_connection"   , device_views.manual_connection.as_view(), name="manual_connection"),
     url("variables$"          , device_views.variables.as_view()        , name="variables"),
-    url("dev_info$"           , device_views.device_info.as_view()      , name="device_info"),
     url("change_devices$"     , device_views.change_devices.as_view()   , name="change_devices"),
 )
 

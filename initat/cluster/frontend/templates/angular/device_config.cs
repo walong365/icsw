@@ -485,38 +485,29 @@ class category_tree extends tree_config
 cat_ctrl = device_config_module.controller("category_ctrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "sharedDataSource", "$q", "$modal",
     ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, sharedDataSource, $q, $modal) ->
         $scope.cat_tree = new category_tree($scope, {})            
-        $scope.xml_to_json = (in_xml) ->
-            entry = {
-                "depth" : parseInt(in_xml.attr("depth"))
-                "immutable" : if parseInt(in_xml.attr("immutable")) then true else false
-                "parent" : parseInt(in_xml.attr("parent"))
-                "name" : in_xml.attr("name")
-                "idx"  : parseInt(in_xml.attr("pk"))
-                "full_name" : in_xml.attr("full_name")
-            }
-            return entry
-        $scope.set_xml_entries = (dev_pk, sel_list, in_xml, call_digest=false) ->
+        $scope.reload = (dev_pk) ->
             $scope.device_pk = dev_pk
-            cat_tree_lut = {}
-            $scope.cat_tree.clear_root_nodes()
-            # transform to json
-            entries = []
-            $(in_xml).each (idx, _xml) ->
-                entries.push($scope.xml_to_json($(_xml)))
-            for entry in entries
-                t_entry = $scope.cat_tree.new_node({folder:false, obj:entry, expand:entry.depth < 2, selected: entry.idx in sel_list})
-                cat_tree_lut[entry.idx] = t_entry
-                if entry.parent and entry.parent of cat_tree_lut
-                    cat_tree_lut[entry.parent].add_child(t_entry)
-                else
-                    # hide selection from root nodes
-                    t_entry._show_select = false
-                    $scope.cat_tree.add_root_node(t_entry)
-            $scope.cat_tree_lut = cat_tree_lut
-            $scope.cat_tree.show_selected(false)
-            if call_digest
-                # needed when called from jQuery 
-                $scope.$digest()
+            wait_list = [
+                restDataSource.reload(["{% url 'rest:category_list' %}", {}])
+                restDataSource.reload(["{% url 'rest:device_tree_list' %}", {"pks" : angular.toJson([$scope.device_pk]), "with_categories" : true}])
+            ]
+            $q.all(wait_list).then((data) ->
+                sel_list = data[1][0].categories
+                cat_tree_lut = {}
+                $scope.cat_tree.clear_root_nodes()
+                for entry in data[0]
+                    if entry.full_name.match(/^\/device/)
+                        t_entry = $scope.cat_tree.new_node({folder:false, obj:entry, expand:entry.depth < 2, selected: entry.idx in sel_list})
+                        cat_tree_lut[entry.idx] = t_entry
+                        if entry.parent and entry.parent of cat_tree_lut
+                            cat_tree_lut[entry.parent].add_child(t_entry)
+                        else
+                            # hide selection from root nodes
+                            t_entry._show_select = false
+                            $scope.cat_tree.add_root_node(t_entry)
+                $scope.cat_tree_lut = cat_tree_lut
+                $scope.cat_tree.show_selected(false)
+            )
         $scope.new_selection = (sel_list) =>
             $.ajax
                 url     : "{% url 'base:change_category' %}"
@@ -528,7 +519,14 @@ cat_ctrl = device_config_module.controller("category_ctrl", ["$scope", "$compile
                 success : (xml) =>
                     parse_xml_response(xml)
 
-])
+]).directive("devicecategory", ($templateCache, $compile, $modal, Restangular) ->
+    return {
+        restrict : "EA"
+        link : (scope, el, attrs) ->
+            if attrs["devicepk"]?
+                scope.reload(parseInt(attrs["devicepk"]))
+    }
+)
 
 class location_tree extends tree_config
     constructor: (@scope, args) ->
@@ -559,41 +557,32 @@ class location_tree extends tree_config
         else
             return "TOP"
 
-loc_ctrl = device_config_module.controller("location_ctrl", ["$scope",
-    ($scope) ->
-        $scope.loc_tree = new location_tree($scope, {})            
-        $scope.xml_to_json = (in_xml) ->
-            entry = {
-                "depth" : parseInt(in_xml.attr("depth"))
-                "immutable" : if parseInt(in_xml.attr("immutable")) then true else false
-                "parent" : parseInt(in_xml.attr("parent"))
-                "name" : in_xml.attr("name")
-                "idx"  : parseInt(in_xml.attr("pk"))
-                "full_name" : in_xml.attr("full_name")
-            }
-            return entry
-        $scope.set_xml_entries = (dev_pk, sel_list, in_xml, call_digest=false) ->
+loc_ctrl = device_config_module.controller("location_ctrl", ["$scope", "restDataSource", "$q",
+    ($scope, restDataSource, $q) ->
+        $scope.loc_tree = new location_tree($scope, {})
+        $scope.reload = (dev_pk) ->
             $scope.device_pk = dev_pk
-            loc_tree_lut = {}
-            $scope.loc_tree.clear_root_nodes()
-            # transform to json
-            entries = []
-            $(in_xml).each (idx, _xml) ->
-                entries.push($scope.xml_to_json($(_xml)))
-            for entry in entries
-                t_entry = $scope.loc_tree.new_node({folder:false, obj:entry, expand:entry.depth < 2, selected: entry.idx in sel_list})
-                loc_tree_lut[entry.idx] = t_entry
-                if entry.parent and entry.parent of loc_tree_lut
-                    loc_tree_lut[entry.parent].add_child(t_entry)
-                else
-                    # hide selection from root nodes
-                    t_entry._show_select = false
-                    $scope.loc_tree.add_root_node(t_entry)
-            $scope.loc_tree_lut = loc_tree_lut
-            $scope.loc_tree.show_selected(false)
-            if call_digest
-                # needed when called from jQuery 
-                $scope.$digest()
+            wait_list = [
+                restDataSource.reload(["{% url 'rest:category_list' %}", {}])
+                restDataSource.reload(["{% url 'rest:device_tree_list' %}", {"pks" : angular.toJson([$scope.device_pk]), "with_categories" : true}])
+            ]
+            $q.all(wait_list).then((data) ->
+                sel_list = data[1][0].categories
+                loc_tree_lut = {}
+                $scope.loc_tree.clear_root_nodes()
+                for entry in data[0]
+                    if entry.full_name.match(/^\/location/)
+                        t_entry = $scope.loc_tree.new_node({folder:false, obj:entry, expand:entry.depth < 2, selected: entry.idx in sel_list})
+                        loc_tree_lut[entry.idx] = t_entry
+                        if entry.parent and entry.parent of loc_tree_lut
+                            loc_tree_lut[entry.parent].add_child(t_entry)
+                        else
+                            # hide selection from root nodes
+                            t_entry._show_select = false
+                            $scope.loc_tree.add_root_node(t_entry)
+                $scope.loc_tree_lut = loc_tree_lut
+                $scope.loc_tree.show_selected(false)
+            )
         $scope.new_selection = (sel_list) =>
             $.ajax
                 url     : "{% url 'base:change_category' %}"
@@ -604,8 +593,14 @@ loc_ctrl = device_config_module.controller("location_ctrl", ["$scope",
                     "cur_sel"  : angular.toJson(sel_list)
                 success : (xml) =>
                     parse_xml_response(xml)
-
-])
+]).directive("devicelocation", ($templateCache, $compile, $modal, Restangular) ->
+    return {
+        restrict : "EA"
+        link : (scope, el, attrs) ->
+            if attrs["devicepk"]?
+                scope.reload(parseInt(attrs["devicepk"]))
+    }
+)
 
 device_config_module.controller("partinfo_ctrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "sharedDataSource", "$q", "$modal",
     ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, sharedDataSource, $q, $modal) ->
@@ -646,6 +641,41 @@ device_config_module.controller("partinfo_ctrl", ["$scope", "$compile", "$filter
     }
 ).run(($templateCache) ->
     $templateCache.put("partinfo.html", partinfo_template)
+)
+
+info_ctrl = device_config_module.controller("deviceinfo_ctrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "sharedDataSource", "$q", "$modal",
+    ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, sharedDataSource, $q, $modal) ->
+        $scope.show_uuid = false
+        $scope.toggle_uuid = () ->
+            $scope.show_uuid = !$scope.show_uuid
+        $scope.modify = () ->
+            if not $scope.form.$invalid
+                $scope._edit_obj.put()
+            else
+                noty
+                    text : "form validation problem"
+                    type : "warning"
+]).directive("deviceinfo", ($templateCache, $compile, $modal, Restangular, restDataSource, $q) ->
+    return {
+        restrict : "EA"
+        link : (scope, element, attrs) ->
+            if attrs["devicepk"]?
+                device_pk = parseInt(attrs["devicepk"])
+                wait_list = [
+                    restDataSource.reload(["{% url 'rest:fetch_forms' %}", {"forms" : angular.toJson(["device_info_form"])}])
+                    restDataSource.reload(["{% url 'rest:domain_tree_node_list' %}", {}])
+                    restDataSource.reload(["{% url 'rest:mon_device_templ_list' %}", {}])
+                ]
+                $q.all(wait_list).then((data) ->
+                    form = data[0][0].form
+                    scope.domain_tree_node = data[1]
+                    scope.mon_device_templ_list = data[2]
+                    Restangular.one("{% url 'rest:device_detail' 1 %}".slice(1).slice(0, -2), device_pk).get().then((res) ->
+                        scope._edit_obj = res
+                        element.append($compile(form)(scope))
+                    )
+                )
+    }
 )
 
 add_tree_directive(cat_ctrl)

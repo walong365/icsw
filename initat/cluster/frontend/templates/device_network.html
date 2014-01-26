@@ -265,7 +265,7 @@ class network_table
             .on("dblclick", (d) ->
                 cur_ev = d3.event
                 #console.log cur_ev, d
-                cur_di = new device_info(cur_ev, "dev__" + d.id)
+                cur_di = new device_info(cur_ev, d.id)
                 cur_di.show()
                 #console.log "dbl"
             )
