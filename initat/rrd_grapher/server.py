@@ -98,6 +98,7 @@ class server_process(threading_tools.process_pool):
         cur_time = time.time()
         # set stale after two hours
         MAX_DT = 3600 * 2
+        num_changed = 0
         for pk in data_store.present_pks():
             changed = False
             _struct = data_store.get_instance(pk)
@@ -116,12 +117,14 @@ class server_process(threading_tools.process_pool):
                         disabled += 1
             if enabled or disabled:
                 changed = True
+                num_changed += 1
                 self.log("updated active info for %s: %d enabled, %d disabled" % (
                     _struct.name,
                     enabled,
                     disabled,
                     ))
                 _struct.store()
+        self.log("checked for stale entries, modified %s" % (logging_tools.get_plural("device", num_changed)))
     def _clear_old_graphs(self):
         cur_time = time.time()
         graph_root = global_config["GRAPH_ROOT"]
