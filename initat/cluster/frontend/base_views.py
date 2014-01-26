@@ -5,25 +5,21 @@
 
 from django.contrib.auth.decorators import login_required
 from django.core.exceptions import ValidationError
-from django.core.urlresolvers import reverse
 from django.db.models import Q
 from django.db.utils import IntegrityError, DataError
 from django.utils.decorators import method_decorator
 from django.views.generic import View
-from initat.cluster.backbone.models import device, \
-     get_related_models, KPMC_MAP, device_variable, category, \
+from initat.cluster.backbone.models import get_related_models, KPMC_MAP, device_variable, category, \
      category_tree
 from initat.cluster.frontend.forms import category_form
 from initat.cluster.frontend.helper_functions import xml_wrapper
-from initat.core.render import render_me, render_string
+from initat.core.render import render_me
 from lxml.builder import E # @UnresolvedImport
 import initat.cluster.backbone.models
 import logging
 import logging_tools
-import pprint
 import json
 import process_tools
-import re
 
 logger = logging.getLogger("cluster.base")
 
@@ -215,121 +211,6 @@ class change_xml_entry(View):
                                     # not safe to use in case of multi-object modification, FIXME
                                     request.xml_response["changes"] = other_change
 
-class create_object(View):
-    @method_decorator(login_required)
-    @method_decorator(xml_wrapper)
-    def post(self, request, *args, **kwargs):
-        _post = request.POST
-        obj_name = kwargs["obj_name"]
-        logger.info("obj_name for create_object is '%s'" % (obj_name))
-        new_obj_class = getattr(initat.cluster.backbone.models, obj_name)
-        key_pf = min([(len(key), key) for key in _post.iterkeys() if key.count("__new")])[1]
-        set_dict, extra_dict = ({}, {})
-        m2m_dict = {}
-        logger.info("key_prefix is '%s'" % (key_pf))
-        no_check_fields = {
-            "device_variable" : ["value"]}.get(obj_name, [])
-        # was used for permissions, not needed right now
-        proxy_fields = {}
-        xml_create_args = {
-            "user"  : {"with_permissions" : True},
-            "group" : {"with_permissions" : True},
-        }
-        if no_check_fields:
-            logger.info("%s: %s" % (
-                logging_tools.get_plural("no_check_field", len(no_check_fields)),
-                ", ".join(no_check_fields)))
-        for key, value in _post.iteritems():
-            if key.startswith(key_pf) and key != key_pf:
-                s_key = key[len(key_pf) + 2:]
-                if s_key in no_check_fields:
-                    extra_dict[s_key] = value
-                else:
-                    skip = False
-                    if s_key not in proxy_fields:
-                        int_type = new_obj_class._meta.get_field(s_key).get_internal_type()
-                    else:
-                        int_type = "???"
-                    if s_key in proxy_fields:
-                        # proxy field, for instance permissions (related to django group/user not csw group/user)
-                        # see above, not in use right now
-                        if s_key == "permissions":
-                            d_value = value
-                        else:
-                            # FIXME
-                            pass
-                    elif int_type.lower() in ["booleanfield", "nullbooleanfield"]:
-                        d_value = True if int(value) else False
-                    elif int_type.lower() in ["foreignkey"]:
-                        if int(value) == 0:
-                            d_value = None
-                        else:
-                            d_value = new_obj_class._meta.get_field(s_key).rel.to.objects.get(pk=value)
-                    elif int_type.lower() in ["integerfield"]:
-                        d_value = int(value)
-                    elif int_type.lower() in ["manytomanyfield"]:
-                        skip = True
-                        m2m_dict[s_key] = [int(val) for val in value.split("::") if val.strip()]
-                    else:
-                        d_value = value
-                    logger.info("key '%s' is '%s' -> '%s' (%s)" % (s_key, value, unicode(d_value), type(d_value)))
-                    if not skip:
-                        set_dict[s_key] = d_value
-        create_list = [(None, None)]
-        for range_attr, range_re in {"device" : [
-            ("name", re.compile("^(?P<name>.+)\[(?P<start>\d+)-(?P<end>\d+)\](?P<post>.*)$"))]}.get(obj_name, []):
-            range_m = range_re.match(set_dict[range_attr])
-            if range_m:
-                num_dig = max(len(range_m.group("start")),
-                              len(range_m.group("end")))
-                start_idx, end_idx = (
-                    int(range_m.group("start")),
-                    int(range_m.group("end")))
-                start_idx, end_idx = (
-                    min(start_idx, end_idx),
-                    max(start_idx, end_idx))
-                start_idx, end_idx = (
-                    min(max(start_idx, 1), 1000),
-                    min(max(end_idx, 1), 1000))
-                logger.info(
-                    "range has %s (%d -> %d)" % (
-                        logging_tools.get_plural("digit", num_dig),
-                        start_idx,
-                        end_idx))
-                form_str = "%s%%0%dd%s" % (
-                    range_m.group("name"),
-                    num_dig,
-                    range_m.group("post"))
-                create_list = [(range_attr, form_str % (cur_idx)) for cur_idx in xrange(start_idx, end_idx + 1)]
-        created_ok = []
-        for change_key, change_value in create_list:
-            new_obj = new_obj_class(**set_dict)
-            for key, value in extra_dict.iteritems():
-                setattr(new_obj, key, value)
-            if change_key:
-                setattr(new_obj, change_key, change_value)
-            # add defaults
-            if obj_name == "device_variable":
-                new_obj.device = device.objects.get(Q(pk=key_pf.split("__")[1]))
-            try:
-                new_obj.save()
-            except ValidationError, what:
-                request.xml_response.error("error creating: %s" % (unicode(what.messages[0])), logger)
-            except:
-                request.xml_response.error("error creating: %s" % (process_tools.get_except_info()), logger)
-            else:
-                created_ok.append(new_obj)
-                # add m2m entries
-                for key, value in m2m_dict.iteritems():
-                    logger.info("added %s for %s" % (logging_tools.get_plural("m2m entry", len(value)), key))
-                    for sub_value in value:
-                        getattr(new_obj, key).add(new_obj_class._meta.get_field(key).rel.to.objects.get(Q(pk=sub_value)))
-                request.xml_response["new_entry"] = new_obj.get_xml(**xml_create_args.get(new_obj._meta.object_name, {}))
-        if created_ok:
-            request.xml_response.info("created %s new %s" % (
-                " %d" % (len(create_list)) if len(create_list) > 1 else "",
-                new_obj._meta.object_name), logger)
-
 class get_gauge_info(View):
     @method_decorator(xml_wrapper)
     def post(self, request):
@@ -344,50 +225,6 @@ class get_gauge_info(View):
             )
         # gauge_info.append(E.gauge_element("test", value="40"))
         request.xml_response["response"] = gauge_info
-
-class delete_object(View):
-    @method_decorator(login_required)
-    @method_decorator(xml_wrapper)
-    def post(self, request, *args, **kwargs):
-        _post = request.POST
-        obj_name = kwargs["obj_name"]
-        force_delete = _post.get("force_delete", "false").lower() == "true"
-        del_obj_class = getattr(initat.cluster.backbone.models, obj_name)
-        valid_keys = [key for key in _post.iterkeys() if key.count("__")]
-        if valid_keys:
-            key_pf = min([(len(key), key) for key in valid_keys])[1]
-            del_index = int(_post.get("delete_index", "1"))
-            logger.info("obj_name for delete_object is '%s' (delete_index is %d), force_delete flag is %s" % (
-                obj_name,
-                del_index,
-                str(force_delete),
-            ))
-            del_pk = int(key_pf.split("__")[del_index])
-            logger.info("removing item with pk %d" % (del_pk))
-            try:
-                del_obj = del_obj_class.objects.get(Q(pk=del_pk))
-            except:
-                request.xml_response.error("object not found for deletion: %s" % (process_tools.get_except_info()), logger)
-            else:
-                min_ref = 0
-                if obj_name == "device_group":
-                    # remove associated meta_device
-                    if del_obj.device_id:
-                        min_ref = 1
-                num_ref = get_related_models(del_obj)
-                if num_ref > min_ref and not force_delete:
-                    # pprint.pprint(get_related_models(del_obj, detail=True))
-                    request.xml_response.error(
-                        "cannot delete %s '%s': %s" % (
-                            del_obj._meta.object_name,
-                            unicode(del_obj),
-                            logging_tools.get_plural("reference", num_ref)), logger)
-                else:
-                    del_info = unicode(del_obj)
-                    del_obj.delete()
-                    request.xml_response.info("deleted %s '%s'" % (del_obj._meta.object_name, del_info), logger)
-        else:
-            request.xml_response.error("no valid keys found (present: %s)" % (", ".join(sorted(_post.keys()))), logger)
 
 class get_category_tree(View):
     @method_decorator(login_required)
@@ -438,3 +275,4 @@ class change_category(View):
         if to_add:
             cur_obj.categories.add(*category.objects.filter(Q(pk__in=to_add)))
         request.xml_response.info("added %d, removed %d" % (len(to_add), len(to_del)))
+

@@ -37,11 +37,8 @@ rms_patterns = patterns(
 base_patterns = patterns(
     "initat.cluster.setup",
     url("^change_xml_entry$"                  , base_views.change_xml_entry.as_view()   , name="change_xml_entry"),
-    url("^xml/create_object/(?P<obj_name>.*)$", base_views.create_object.as_view()      , name="create_object"),
-    url("^xml/delete_object/(?P<obj_name>.*)$", base_views.delete_object.as_view()      , name="delete_object"),
     url("^get_gauge_info$"                    , base_views.get_gauge_info.as_view()     , name="get_gauge_info"),
     url("^get_cat_tree$"                      , base_views.get_category_tree.as_view()  , name="category_tree"),
-    # url("^cat_reference$"                     , base_views.get_cat_references.as_view() , name="get_cat_references"),
     url("^change_category"                    , base_views.change_category.as_view()    , name="change_category"),
     url("^prune_cat_tree"                     , base_views.prune_category_tree.as_view(), name="prune_categories"),
 )
@@ -60,7 +57,6 @@ setup_patterns = patterns(
 config_patterns = patterns(
     "initat.cluster.frontend",
     url("^show_config$"         , config_views.show_configs.as_view()            , name="show_configs"),
-    # url("^get_dev_confs_xml$"   , config_views.get_device_configs.as_view()      , name="get_device_configs"),
     url("^set_config_cb$"       , config_views.alter_config_cb.as_view()         , name="alter_config_cb"),
     url("^generate_config$"     , config_views.generate_config.as_view()         , name="generate_config"),
     url("^download_hash$"       , config_views.download_hash.as_view()           , name="download_hash"),
@@ -177,6 +173,7 @@ rpl.extend([
     url("^home_export_list$", rest_views.rest_home_export_list.as_view(), name="home_export_list"),
     url("^csw_object_list$", rest_views.csw_object_list.as_view({"get" : "list"}), name="csw_object_list"),
     url("^netdevice_peer_list$", rest_views.netdevice_peer_list.as_view({"get" : "list"}), name="netdevice_peer_list"),
+    url("^fetch_forms$", rest_views.fetch_forms.as_view({"get" : "list"}), name="fetch_forms"),
 ])
 
 rest_patterns = patterns(

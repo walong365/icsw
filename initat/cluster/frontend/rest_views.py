@@ -25,6 +25,7 @@
 
 from django.contrib.contenttypes.models import ContentType
 from django.db.models import get_model, Q
+from initat.core.render import render_string
 from initat.cluster.backbone import models
 from initat.cluster.backbone.models import user , group, user_serializer_h, group_serializer_h, \
      get_related_models, get_change_reset_list, device, device_serializer, \
@@ -34,6 +35,8 @@ from initat.cluster.backbone.models import user , group, user_serializer_h, grou
      partition_disc_serializer_create, device_serializer_variables, device_serializer_device_configs, \
      device_config, device_config_hel_serializer, home_export_list, csw_permission, \
      device_serializer_disk_info, device_serializer_network, peer_information, netdevice
+# from initat.cluster.backbone.forms import * # @UnusedWildImport
+from initat.cluster.frontend import forms
 from rest_framework import mixins, generics, status, viewsets, serializers
 from rest_framework.authentication import BasicAuthentication, SessionAuthentication
 from rest_framework.decorators import api_view
@@ -251,6 +254,41 @@ class device_tree_detail(detail_view):
             return device_serializer
         else:
             return device_serializer_monitoring
+
+class form_serializer(serializers.Serializer):
+    name = serializers.CharField()
+    form = serializers.CharField()
+
+class fetch_forms(viewsets.ViewSet):
+    display_name = "fetch_forms"
+    @rest_logging
+    def list(self, request):
+        form_list = json.loads(request.QUERY_PARAMS["forms"])
+        ext_list = []
+        for cur_form in form_list:
+            if cur_form in dir(forms):
+                ext_list.append(
+                    {
+                        "name" : "%s.html" % (cur_form),
+                        "form" : render_string(
+                            request,
+                            "crispy_form.html",
+                            {
+                                "form" : getattr(forms, cur_form)()
+                            }
+                        )
+                    }
+                )
+            else:
+                ext_list.append(
+                    {
+                        "name" : "%s.html" % (cur_form),
+                        "form" : "<strong>form '%s' not found</strong>" % (cur_form)
+                    }
+                )
+                print ext_list[-1]
+        _ser = form_serializer(ext_list, many=True)
+        return Response(_ser.data)
 
 class ext_peer_serializer(serializers.Serializer):
     pk = serializers.IntegerField()

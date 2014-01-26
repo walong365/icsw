@@ -144,23 +144,23 @@ device_network_module.controller("network_ctrl", ["$scope", "$compile", "$filter
         $scope.enable_modal = true
         # mixins
         $scope.netdevice_edit = new angular_edit_mixin($scope, $templateCache, $compile, $modal, Restangular, $q)
-        $scope.netdevice_edit.create_template = "netdevice_template.html"
-        $scope.netdevice_edit.edit_template = "netdevice_template.html"
+        $scope.netdevice_edit.create_template = "netdevice_form.html"
+        $scope.netdevice_edit.edit_template = "netdevice_form.html"
         $scope.netdevice_edit.create_rest_url = Restangular.all("{% url 'rest:netdevice_list'%}".slice(1))
         $scope.netdevice_edit.modify_rest_url = "{% url 'rest:netdevice_detail' 1 %}".slice(1).slice(0, -2)
         $scope.netdevice_edit.new_object_at_tail = false
         $scope.netdevice_edit.use_promise = true
 
         $scope.netip_edit = new angular_edit_mixin($scope, $templateCache, $compile, $modal, Restangular, $q)
-        $scope.netip_edit.create_template = "netip_template.html"
-        $scope.netip_edit.edit_template = "netip_template.html"
+        $scope.netip_edit.create_template = "net_ip_form.html"
+        $scope.netip_edit.edit_template = "net_ip_form.html"
         $scope.netip_edit.create_rest_url = Restangular.all("{% url 'rest:net_ip_list'%}".slice(1))
         $scope.netip_edit.modify_rest_url = "{% url 'rest:net_ip_detail' 1 %}".slice(1).slice(0, -2)
         $scope.netip_edit.new_object_at_tail = false
         $scope.netip_edit.use_promise = true
 
         $scope.peer_edit = new angular_edit_mixin($scope, $templateCache, $compile, $modal, Restangular, $q)
-        $scope.peer_edit.create_template = "peer_information_d_template.html"
+        $scope.peer_edit.create_template = "peer_information_d_form.html"
         #$scope.peer_edit.edit_template = "netip_template.html"
         $scope.peer_edit.create_rest_url = Restangular.all("{% url 'rest:peer_information_list'%}".slice(1))
         $scope.peer_edit.modify_rest_url = "{% url 'rest:peer_information_detail' 1 %}".slice(1).slice(0, -2)
@@ -181,6 +181,7 @@ device_network_module.controller("network_ctrl", ["$scope", "$compile", "$filter
                 restDataSource.reload(["{% url 'rest:network_list' %}", {}])
                 restDataSource.reload(["{% url 'rest:domain_tree_node_list' %}", {}])
                 restDataSource.reload(["{% url 'rest:netdevice_peer_list' %}", {}])
+                restDataSource.reload(["{% url 'rest:fetch_forms' %}", {"forms" : angular.toJson(["netdevice_form", "net_ip_form", "peer_information_s_form", "peer_information_d_form"])}]),
             ]
             $q.all(wait_list).then((data) ->
                 $scope.devices = (dev for dev in data[0])
@@ -195,6 +196,8 @@ device_network_module.controller("network_ctrl", ["$scope", "$compile", "$filter
                 $scope.domain_tree_node = data[5]
                 $scope.nd_peers = data[6]
                 $scope.build_luts()
+                for cur_form in data[7] 
+                    $templateCache.put(cur_form.name, cur_form.form)
             )
         $scope.build_luts = () ->
             $scope.dev_lut = {}
@@ -310,9 +313,9 @@ device_network_module.controller("network_ctrl", ["$scope", "$compile", "$filter
             return $scope._src_nd.devname + " on " + $scope.dev_lut[$scope._src_nd.device].name
         $scope.edit_peer_information = (peer, event) ->
             if peer.peer.s_netdevice == peer.netdevice
-                $scope.peer_edit.edit_template = "peer_information_d_template.html"
+                $scope.peer_edit.edit_template = "peer_information_d_form.html"
             else
-                $scope.peer_edit.edit_template = "peer_information_s_template.html"
+                $scope.peer_edit.edit_template = "peer_information_s_form.html"
             $scope._src_nd = $scope.nd_lut[peer.netdevice]
             $scope.peer_edit.edit(peer.peer, event).then(
                 (mod_peer) ->
