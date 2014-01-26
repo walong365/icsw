@@ -14,39 +14,34 @@ Some measurements:
   The same operation with dumpdatafast takes about ~30s, because of the rather expensive
   datetime operations and some conversion overhead.
 """
-import networkx as nx
+
+from collections import Counter
+from django.conf import settings
+from django.core.exceptions import ImproperlyConfigured, ObjectDoesNotExist
+from django.core.management.base import BaseCommand, CommandError
+from django.db import DEFAULT_DB_ALIAS, connection
+from django.db.models import ForeignKey, OneToOneField, Model, ManyToManyField
+from django.utils import datetime_safe
+from django.utils.datastructures import SortedDict
+from django.utils.encoding import smart_unicode
+from functools import partial
+from initat.core.utils import init_base_object, sql_iterator, MemoryProfile
+from optparse import make_option
 import array
 import base64
 import bz2
 import cProfile
-import pstats
-import os
-import sys
-# For profiling
-#os.environ["DJANGO_SETTINGS_MODULE"] = "settings"
-#sys.path.append(".")
-import subprocess
-import datetime
-import pytz
 import codecs
+import datetime
+import logging_tools
+import networkx as nx
+import os
+import pstats
+import pytz
+import subprocess
+import sys
 import time
 import zipfile
-import logging_tools
-from functools import partial
-from collections import Counter
-
-from django.core.exceptions import ImproperlyConfigured, ObjectDoesNotExist
-from django.core.management.base import BaseCommand, CommandError
-from django.db import DEFAULT_DB_ALIAS, connection
-from django.utils.datastructures import SortedDict
-from django.conf import settings
-from django.utils import datetime_safe
-from django.db.models import ForeignKey, OneToOneField, Model, ManyToManyField
-from django.utils.encoding import smart_unicode
-
-from optparse import make_option
-
-from initat.core.utils import init_base_object, sql_iterator, MemoryProfile
 
 # lazy init, for use in cluster-server.py::backup_process
 BASE_OBJECT = None

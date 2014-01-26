@@ -1,10 +1,9 @@
+from django.core import serializers
 from django.core.exceptions import ImproperlyConfigured
 from django.core.management.base import BaseCommand, CommandError
-from django.core import serializers
 from django.db import router, DEFAULT_DB_ALIAS
 from django.db.models import ForeignKey, OneToOneField, Model
 from django.utils.datastructures import SortedDict
-
 from optparse import make_option
 
 class Command(BaseCommand):

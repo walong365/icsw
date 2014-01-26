@@ -2,14 +2,13 @@
 """
 Compare the data in the database with the Django models
 """
+
 from django.core.exceptions import ImproperlyConfigured, ObjectDoesNotExist
 from django.core.management.base import BaseCommand, CommandError
 from django.db import DEFAULT_DB_ALIAS
-from django.utils.datastructures import SortedDict
 from django.db.models import ForeignKey, ManyToManyField, OneToOneField
-
+from django.utils.datastructures import SortedDict
 from optparse import make_option
-
 import pprint
 import time
 
