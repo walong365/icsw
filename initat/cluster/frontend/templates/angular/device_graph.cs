@@ -184,6 +184,8 @@ device_rrd_module.controller("rrd_ctrl", ["$scope", "$compile", "$filter", "$tem
             new pd_timerange("last day", moment().subtract("days", 1).startOf("day"), moment().subtract("days", 1).endOf("day"))
             new pd_timerange("current month", moment().startOf("month"), moment().endOf("month"))
             new pd_timerange("last month", moment().subtract("month", 1).startOf("month"), moment().subtract("month", 1).endOf("month"))
+            new pd_timerange("current week", moment().startOf("week"), moment().endOf("week"))
+            new pd_timerange("last week", moment().subtract("week", 1).startOf("week"), moment().subtract("week", 1).endOf("week"))
             new pd_timerange("current year", moment().startOf("year"), moment().endOf("year"))
             new pd_timerange("last year", moment().subtract("year", 1).startOf("year"), moment().subtract("year", 1).endOf("year"))
         ]

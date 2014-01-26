@@ -6,9 +6,6 @@
 
 root = exports ? this
 
-show_device_info = (event, dev_key) ->
-    new device_info(event, dev_key).show()
-
 class device_info
     constructor: (@event, @dev_key, @addon_devices=[]) ->
     show: () =>
@@ -178,7 +175,6 @@ urn:uuid:{{ _edit_obj.uuid }}
                 el.tab("show")
         )
     
-root.show_device_info = show_device_info
 root.device_info = device_info
 
 {% endinlinecoffeescript %}

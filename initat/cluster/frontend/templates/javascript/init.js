@@ -17,8 +17,6 @@ remove_from_array = (in_array, from, to) ->
     in_array.length = if from < 0 then in_array.length + from else from
     return in_array.push.apply(in_array, rest)
 
-root.remove_by_idx = remove_by_idx
-
 class ajax_struct
     constructor: (@top_div_name) ->
         @ajax_uuid = 0
@@ -171,6 +169,7 @@ root.load_user_var            = load_user_var
 root.create_dict              = create_dict
 root.create_dict_unserialized = create_dict_unserialized
 root.my_ajax_struct           = my_ajax_struct
+root.remove_by_idx = remove_by_idx
 
 {% endinlinecoffeescript %}
 
