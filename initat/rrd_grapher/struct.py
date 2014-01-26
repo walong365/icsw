@@ -50,6 +50,7 @@ class data_store(object):
             # for pure-pde vectors no store name is set
             self.store_name = self.xml_vector.attrib.get("store_name", "")
             all_mves = self.xml_vector.xpath(".//mve/@name")
+            changed = False
             if len(all_mves) != len(set(all_mves)):
                 self.log("found duplicate entries, removing them")
                 removed = 0
@@ -58,8 +59,15 @@ class data_store(object):
                     for sub_entry in sub_list[:-1]:
                         sub_entry.getparent().remove(sub_entry)
                         removed += 1
+                        changed = True
                 self.log("removed %d entries" % (removed))
-                self.store_info()
+            for fix_el in self.xml_vector.xpath(".//*[@file_name and not(@active)]"):
+                fix_el.attrib["active"] = "1"
+                changed = True
+            if changed:
+                self.log("vector was changed on load, storing")
+                self.store()
+            # changed
         # send a copy to the grapher
         self.sync_to_grapher()
     def feed(self, in_vector):
@@ -89,7 +97,7 @@ class data_store(object):
             self.log("mve: %d keys total, %d keys changed" % (len(new_keys), len(c_keys)))
         else:
             self.log("mve: %d keys total" % (len(new_keys)))
-        self.store_info()
+        self.store()
     def feed_pd(self, host_name, pd_type, pd_info):
         # we ignore the global store name for perfdata stores
         old_keys = set(self.xml_vector.xpath(".//pde/@name"))
@@ -128,9 +136,10 @@ class data_store(object):
         # else:
         #    too verbose
         #    self.log("pde: %d keys total" % (len(new_keys)))
-        self.store_info()
+        self.store()
     def _update_pd_entry(self, entry, src_entry, rrd_dir):
         entry.attrib["last_update"] = "%d" % (time.time())
+        entry.attrib["active"] = "1"
         entry.attrib["file_name"] = os.path.join(
             rrd_dir,
             entry.get("host"),
@@ -161,8 +170,9 @@ class data_store(object):
             entry.attrib[key] = src_entry.get(key, def_value)
         # last update time
         entry.attrib["last_update"] = "%d" % (time.time())
+        entry.attrib["active"] = "1"
         entry.attrib["file_name"] = os.path.join(rrd_dir, self.store_name, "collserver", "icval-%s.rrd" % (entry.attrib["sane_name"]))
-    def store_info(self):
+    def store(self):
         file(self.data_file_name(), "wb").write(etree.tostring(self.xml_vector, pretty_print=True))
         self.sync_to_grapher()
     def sync_to_grapher(self):
@@ -180,6 +190,9 @@ class data_store(object):
     @staticmethod
     def has_rrd_xml(dev_pk):
         return dev_pk in data_store.__devices
+    @staticmethod
+    def present_pks():
+        return data_store.__devices.keys()
     def struct_xml_vector(self, mode):
         # mode is one of web or graph
         if mode not in ["web", "graph"]:
@@ -187,7 +200,7 @@ class data_store(object):
         web_mode = mode == "web"
         graph_mode = mode == "graph"
         cur_xml = self.xml_vector
-        all_keys = set(cur_xml.xpath(".//mve/@name"))
+        all_keys = set(cur_xml.xpath(".//mve[@active='1']/@name"))
         xml_vect, lu_dict = (E.machine_vector(), {})
         for key in sorted(all_keys):
             parts = key.split(".")
@@ -254,8 +267,10 @@ class data_store(object):
                 if len(entry) == 0:
                     empty_nodes += 1
                     entry.getparent().remove(entry)
-            data_store.g_log("merging %s (%s empty)" % (logging_tools.get_plural("node result", len(res_list)),
-                                                        logging_tools.get_plural("entry", empty_nodes)))
+            data_store.g_log(
+                "merging %s (%s empty)" % (
+                    logging_tools.get_plural("node result", len(res_list)),
+                    logging_tools.get_plural("entry", empty_nodes)))
             first_mv = res_list[0][0]
             ref_dict = {"mve" : {}, "value" : {}}
             for val_el in first_mv.xpath(".//*"):
@@ -293,6 +308,9 @@ class data_store(object):
         else:
             # do a deepcopy (just to be sure)
             return copy.deepcopy(data_store.__devices[dev_pk].xml_vector)
+    @staticmethod
+    def get_instance(pk):
+        return data_store.__devices[pk]
     @staticmethod
     def setup(srv_proc):
         data_store.process = srv_proc

@@ -62,6 +62,7 @@ class server_process(threading_tools.process_pool):
         connection.close()
         self.register_func("send_command", self._send_command)
         self.register_timer(self._clear_old_graphs, 60, instant=True)
+        self.register_timer(self._check_for_stale_rrds, 3600, instant=True)
         data_store.setup(self)
     def _log_config(self):
         self.log("Config info:")
@@ -93,6 +94,34 @@ class server_process(threading_tools.process_pool):
         if self.__msi_block:
             self.__msi_block.add_actual_pid(src_pid, mult=mult, process_name=src_process)
             self.__msi_block.save_block()
+    def _check_for_stale_rrds(self):
+        cur_time = time.time()
+        # set stale after two hours
+        MAX_DT = 3600 * 2
+        for pk in data_store.present_pks():
+            changed = False
+            _struct = data_store.get_instance(pk)
+            enabled, disabled = (0, 0)
+            for file_el in _struct.xml_vector.xpath(".//*[@file_name]", smart_strings=False):
+                f_name = file_el.attrib["file_name"]
+                if os.path.isfile(f_name):
+                    c_time = os.stat(f_name)[stat.ST_CTIME]
+                    stale = abs(cur_time - c_time) > MAX_DT
+                    is_active = True if int(file_el.attrib["active"]) else False
+                    if is_active and stale:
+                        file_el.attrib["active"] = "0"
+                        disabled += 1
+                    elif not is_active and not stale:
+                        file_el.attrib["active"] = "1"
+                        disabled += 1
+            if enabled or disabled:
+                changed = True
+                self.log("updated active info for %s: %d enabled, %d disabled" % (
+                    _struct.name,
+                    enabled,
+                    disabled,
+                    ))
+                _struct.store()
     def _clear_old_graphs(self):
         cur_time = time.time()
         graph_root = global_config["GRAPH_ROOT"]

@@ -74,7 +74,7 @@ def main():
         ("COLORRULES_FILE"     , configfile.str_c_var("/opt/cluster/share/color_rules.xml", help_string="name of color_rules file")),
     ])
     global_config.parse_file()
-    options = global_config.handle_commandline(
+    _options = global_config.handle_commandline(
         description="%s, version is %s" % (prog_name,
                                            VERSION_STRING),
         add_writeback_option=True,
@@ -94,7 +94,6 @@ def main():
             ignore_names=[],
             exclude=configfile.get_manager_pid())
 
-    cur_dir = os.path.dirname(os.path.abspath(__file__))
     global_config.add_config_entries(
         [
             ("LOG_SOURCE_IDX", configfile.int_c_var(cluster_location.log_source.create_log_source_entry("rrd-server", "Cluster RRDServer", device=sql_info.effective_device).pk)),
