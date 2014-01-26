@@ -100,7 +100,6 @@ class server_process(threading_tools.process_pool):
         MAX_DT = 3600 * 2
         num_changed = 0
         for pk in data_store.present_pks():
-            changed = False
             _struct = data_store.get_instance(pk)
             enabled, disabled = (0, 0)
             for file_el in _struct.xml_vector.xpath(".//*[@file_name]", smart_strings=False):
@@ -116,7 +115,6 @@ class server_process(threading_tools.process_pool):
                         file_el.attrib["active"] = "1"
                         disabled += 1
             if enabled or disabled:
-                changed = True
                 num_changed += 1
                 self.log("updated active info for %s: %d enabled, %d disabled" % (
                     _struct.name,

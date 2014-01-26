@@ -335,9 +335,13 @@ class data_store(object):
                         process_tools.get_except_info()), logging_tools.LOG_LEVEL_ERROR)
                 else:
                     data_store.__devices[pk] = new_ds
-                    data_store.g_log("recovered info for %s from disk (%s)" % (
-                        full_name,
-                        logging_tools.get_size_str(process_tools.get_mem_info())))
+                    data_store.g_log(
+                        "recovered info for %s from disk (pk %d, memory usage now %s)" % (
+                            full_name,
+                            pk,
+                            logging_tools.get_size_str(process_tools.get_mem_info())))
+            else:
+                data_store.g_log("ignoring direntry '%s'" % (entry), logging_tools.LOG_LEVEL_WARN)
     @staticmethod
     def g_log(what, log_level=logging_tools.LOG_LEVEL_OK):
         data_store.process.log("[ds] %s" % (what), log_level)
