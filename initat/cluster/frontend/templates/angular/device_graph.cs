@@ -23,8 +23,7 @@ rrd_graph_template = """
                    <span class="glyphicon glyphicon-calendar"></span>
                 </button>
                 <ul class="dropdown-menu" role="menu">
-                    <datetimepicker ng-model="from_date" 
-                                    datetimepicker-config="{ dropdownSelector: '.my-toggle-select' }">
+                    <datetimepicker ng-model="from_date" datetimepicker-config="{ dropdownSelector: '.my-toggle-select' }">
                     </datetimepicker>
                 </ul>
             </span>
@@ -34,8 +33,7 @@ rrd_graph_template = """
                    <span class="glyphicon glyphicon-calendar"></span>
                 </button>
                 <ul class="dropdown-menu" role="menu">
-                    <datetimepicker ng-model="to_date"
-                                    datetimepicker-config="{ dropdownSelector: '.my-toggle-select' }">
+                    <datetimepicker ng-model="to_date" datetimepicker-config="{ dropdownSelector: '.my-toggle-select' }">
                     </datetimepicker>
                 </ul>
             </span>
