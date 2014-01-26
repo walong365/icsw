@@ -313,7 +313,6 @@ PIPELINE_CSS = {
     "part1" : {
         "source_filenames" : {
             "css/smoothness/jquery-ui-1.10.2.custom.min.css",
-            "css/tablesorter.css",
             "css/main.css",
             "js/libs/dynatree/skin/ui.dynatree.css",
             "js/libs/chosen/chosen.min.css",
@@ -335,7 +334,7 @@ PIPELINE_JS = {
         "source_filenames" : {
             "js/libs/modernizr-2.6.2.min.js",
             "js/plugins.js",
-            "js/libs/jquery-2.0.3.min.js",
+            "js/libs/jquery-2.1.0.min.js",
         },
         "output_filename" : "pipeline/js/jquery_new.js"
     },
@@ -343,7 +342,7 @@ PIPELINE_JS = {
         "source_filenames" : {
             "js/libs/modernizr-2.6.2.min.js",
             "js/plugins.js",
-            "js/libs/jquery-1.10.2.min.js",
+            "js/libs/jquery-1.11.0.min.js",
         },
         "output_filename" : "pipeline/js/jquery.js"
     },
@@ -354,7 +353,6 @@ PIPELINE_JS = {
             "js/libs/jquery.layout-latest.min.js",
             "js/jquery.dataTables.min.js",
             "js/jquery.sprintf.js_8.txt",
-            "js/jquery.tablesorter.js",
             "js/jquery.timers-1.2.js",
             "js/jquery.noty.packaged.js",
             "js/libs/lodash.min.js",

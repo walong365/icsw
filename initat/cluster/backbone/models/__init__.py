@@ -1315,8 +1315,9 @@ class device_serializer(serializers.ModelSerializer):
             "act_partition_table", "enable_perfdata", "flap_detection_enabled",
             "automap_root_nagvis", "nagvis_parent", "monitor_server", "mon_ext_host",
             "is_meta_device", "device_type_identifier", "device_group_name", "bootserver",
-            "curl", "mon_resolve_name",
+            "curl", "mon_resolve_name", "uuid",
             )
+        read_only_fields = ("uuid",)
 
 class device_serializer_cat(device_serializer):
     class Meta:
@@ -2475,53 +2476,3 @@ class config_serializer(serializers.ModelSerializer):
     # categories only as flat list, no nesting
     class Meta:
         model = config
-
-KPMC_MAP = {
-    "devg"          : device_group,
-    "dev"           : device,
-    "nd"            : netdevice,
-    "ip"            : net_ip,
-    "routing"       : peer_information,
-    "conf"          : config,
-    "varstr"        : config_str,
-    "varint"        : config_int,
-    "varbool"       : config_bool,
-    "varblob"       : config_blob,
-    "cscript"       : config_script,
-    "image"         : image,
-    "kernel"        : kernel,
-    "pdisc"         : partition_disc,
-    "part"          : partition,
-    "monper"        : mon_period,
-    "mondt"         : mon_device_templ,
-    "monst"         : mon_service_templ,
-    "mondet"        : mon_device_esc_templ,
-    "monset"        : mon_service_esc_templ,
-    "moncg"         : mon_contactgroup,
-    "monhc"         : mon_host_cluster,
-    "monn"          : mon_notification,
-    "monsc"         : mon_service_cluster,
-    "moncc"         : mon_check_command,
-    "moncon"        : mon_contact,
-    "nwdt"          : network_device_type,
-    "nwt"           : network_type,
-    # "dc"            : device_class,
-    # "dl"            : device_location,
-    "nw"            : network,
-    "user"          : user,
-    "ps"            : package_search,
-    "group"         : group,
-    "dv"            : device_variable,
-    "ptable"        : partition_table,
-    # "rrdc"          : rrd_class,
-    # "rrdrra"        : rrd_rra,
-    "lvm_vg"        : lvm_vg,
-    "lvm_lv"        : lvm_lv,
-    "package_repo"  : package_repo,
-    "mdcds"         : md_check_data_store,
-    "dtn"           : domain_tree_node,
-    "cat"           : category,
-    "hcc"           : host_check_command,
-    "cd_connection" : cd_connection,
-    "monhd"         : mon_host_dependency_templ,
-}

@@ -16,6 +16,7 @@ __all__ = [
     "domain_tree_node", "domain_tree_node_serializer",
     "category_tree",
     "category", "category_serializer",
+    "TOP_MONITORING_CATEGORY",
 ]
 
 # top monitoring category
@@ -100,16 +101,6 @@ class domain_name_tree(object):
             return self.__node_dict[key]
     def keys(self):
         return self.__node_dict.keys()
-    def get_xml(self, no_intermediate=False):
-        pk_list = self.get_sorted_pks()
-        if no_intermediate:
-            return E.domain_tree_nodes(
-                *[self.__node_dict[pk].get_xml() for pk in pk_list if self.__node_dict[pk].intermediate == False]
-            )
-        else:
-            return E.domain_tree_nodes(
-                *[self.__node_dict[pk].get_xml() for pk in pk_list]
-            )
     def __iter__(self):
         return self.all()
     def all(self):
@@ -152,26 +143,6 @@ class domain_tree_node(models.Model):
                 return u"%s%s (%s)" % (r"+-" * (self.depth), self.name, self.full_name)
         else:
             return u"[TLN]"
-    def get_xml(self):
-        r_xml = E.domain_tree_node(
-            unicode(self),
-            pk="%d" % (self.pk),
-            key="dtn__%d" % (self.pk),
-            name=self.name,
-            full_name=self.full_name,
-            parent="%d" % (self.parent_id or 0),
-            node_postfix="%s" % (self.node_postfix),
-            depth="%d" % (self.depth),
-            intermediate="%d" % (1 if self.intermediate else 0),
-            create_short_names="1" if self.create_short_names else "0",
-            write_nameserver_config="1" if self.write_nameserver_config else "0",
-            always_create_ip="1" if self.always_create_ip else "0",
-            comment="%s" % (self.comment or ""),
-        )
-        if hasattr(self, "local_refcount"):
-            r_xml.attrib["local_refcount"] = "%d" % (self.local_refcount)
-            r_xml.attrib["total_refcount"] = "%d" % (self.total_refcount)
-        return r_xml
     class Meta:
         app_label = "backbone"
 
@@ -394,11 +365,6 @@ class category_tree(object):
                 del self.__node_dict[del_node.pk]
                 del_node.delete()
             removed = len(del_nodes) > 0
-    def get_xml(self):
-        pk_list = self.get_sorted_pks()
-        return E.categories(
-            *[self.__node_dict[pk].get_xml(with_refs=self.with_refs) for pk in pk_list]
-        )
     def __iter__(self):
         return self.all()
     def all(self):
@@ -439,25 +405,6 @@ class category(models.Model):
             #    print entry
             num_refs += getattr(self, rel.get_accessor_name()).count()
         return num_refs
-    def get_xml(self, **kwargs):
-        with_devices = kwargs.get("with_devices", False)
-        r_xml = E.category(
-            unicode(self),
-            pk="%d" % (self.pk),
-            key="dtn__%d" % (self.pk),
-            name=self.name,
-            full_name=self.full_name,
-            parent="%d" % (self.parent_id or 0),
-            depth="%d" % (self.depth),
-            comment="%s" % (self.comment or ""),
-            immutable="1" if self.immutable else "0",
-            latitude="%.6f" % (self.latitude),
-            longitude="%.6f" % (self.longitude),
-            device_count="%d" % (getattr(self, "device_count", 0)),
-        )
-        if with_devices:
-            r_xml.attrib["devices"] = "::".join(["%d" % (cur_dev.pk) for cur_dev in self.device_set.all()])
-        return r_xml
     class Meta:
         app_label = "backbone"
 
