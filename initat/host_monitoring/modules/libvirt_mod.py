@@ -72,7 +72,7 @@ class _general(hm_classes.hm_module):
                     self.log("registering domain '%s' (%s)" % (_d.name, sane_name))
                 base_name = "virt.%s" % (sane_name)
                 # CPU
-                self._save_mv(mv, "%s.cpu" % (base_name), "cpu usage", "%", 1, _d.base_info.cpu_used)
+                self._save_mv(mv, "%s.cpu" % (base_name), "cpu usage for $2", "%", 1, _d.base_info.cpu_used)
                 if _d.disk_dict:
                     # Disk
                     disk_base = "%s.disk" % (base_name)
