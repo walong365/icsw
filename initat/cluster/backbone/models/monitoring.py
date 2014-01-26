@@ -35,7 +35,7 @@ class mon_host_cluster(models.Model):
     idx = models.AutoField(primary_key=True)
     name = models.CharField(max_length=128, blank=False, null=False, unique=True)
     description = models.CharField(max_length=255, default="")
-    main_device = models.ForeignKey("backbone.device", related_name="backbone.main_mon_host_cluster")
+    main_device = models.ForeignKey("backbone.device", related_name="main_mon_host_cluster")
     mon_service_templ = models.ForeignKey("backbone.mon_service_templ")
     devices = models.ManyToManyField("backbone.device", related_name="devs_mon_host_cluster")
     warn_value = models.IntegerField(default=0)
