@@ -324,8 +324,8 @@ PIPELINE_CSS = {
             "css/bootstrap.css",
             "css/jquery.Jcrop.min.css",
             "css/angular-datetimepicker.css",
-            # "js/libs/select2/select2.css",
-            # "js/libs/select2/select2-bootstrap.css",
+            "js/libs/select2/select2.css",
+            "js/libs/select2/select2-bootstrap.css",
         },
         "output_filename" : "pipeline/css/part1.css"
     }
@@ -353,7 +353,7 @@ PIPELINE_JS = {
             "js/libs/jquery-ui-1.10.2.custom.js",
             "js/libs/jquery-migrate-1.2.1.min.js",
             "js/libs/jquery.layout-latest.min.js",
-            # "js/libs/select2/select2.min.js",
+            "js/libs/select2/select2.min.js",
             "js/jquery.dataTables.min.js",
             "js/jquery.sprintf.js_8.txt",
             "js/jquery.timers-1.2.js",
@@ -376,7 +376,7 @@ PIPELINE_JS = {
         "source_filenames" : {
             "js/jquery.dataTables.rowGrouping.js",
             "js/codemirror/addon/selection/active-line.js",
-            # "js/libs/select2/ui-select2.js",
+            "js/libs/select2/ui-select2.js",
             "js/codemirror/python.js",
             "js/codemirror/xml.js",
             "js/codemirror/shell.js",

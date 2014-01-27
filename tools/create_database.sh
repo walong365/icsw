@@ -4,12 +4,8 @@ LIB_DIR="/opt/python-init/lib/python/site-packages"
 C_DIR="${LIB_DIR}/initat/cluster/"
 MIG_DIR="${C_DIR}/backbone/migrations/"
 
-bu_name=${1:-xxx}
-
-CLEAR_MIG=0
-if [ "${bu_name}" == "--clear-migrations" ] ; then
-    CLEAR_MIG=1
-    bu_name=${2:-xxx}
+if [ "${1:-X}" == "--clear-migrations" ] ; then
+    shift
     echo "clearing migrations"
     for mig_dir in static_precompiler reversion django/contrib/auth initat/cluster/backbone initat/cluster/liebherr ; do
 	fm_dir="${LIB_DIR}/${mig_dir}/migrations"
