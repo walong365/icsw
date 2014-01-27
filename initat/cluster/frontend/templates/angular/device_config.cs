@@ -145,7 +145,7 @@ partinfo_template = """
 
 {% endverbatim %}
 
-device_config_module = angular.module("icsw.device.config", ["ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters", "localytics.directives", "restangular"])
+device_config_module = angular.module("icsw.device.config", ["ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters", "localytics.directives", "restangular", "ui.select2"])
 
 angular_module_setup([device_config_module])
 
@@ -658,6 +658,8 @@ info_ctrl = device_config_module.controller("deviceinfo_ctrl", ["$scope", "$comp
 ]).directive("deviceinfo", ($templateCache, $compile, $modal, Restangular, restDataSource, $q) ->
     return {
         restrict : "EA"
+        # bugfix for ui-select2, not working ...
+        priority : 2
         link : (scope, element, attrs) ->
             if attrs["devicepk"]?
                 device_pk = parseInt(attrs["devicepk"])
