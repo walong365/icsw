@@ -212,7 +212,7 @@ device_network_module.controller("network_ctrl", ["$scope", "$compile", "$filter
                         $scope.ip_lut[ip.idx] = ip
             $scope.nd_peer_lut = {}
             for ext_peer in $scope.nd_peers
-                ext_peer.info_string = "#{ext_peer.devname} (#{ext_peer.penalty}) on #{ext_peer.device__name}"
+                ext_peer.info_string = "#{ext_peer.devname} (#{ext_peer.penalty}) on #{ext_peer.device__name} (#{ext_peer.device__device_group__name})"
                 $scope.nd_peer_lut[ext_peer.pk] = ext_peer
             $scope.peer_lut = {}
             for peer in $scope.peers

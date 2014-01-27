@@ -294,13 +294,17 @@ class ext_peer_serializer(serializers.Serializer):
     pk = serializers.IntegerField()
     penalty = serializers.IntegerField()
     device__name = serializers.CharField()
+    device__device_group__name = serializers.CharField()
     devname = serializers.CharField()
 
 class netdevice_peer_list(viewsets.ViewSet):
     display_name = "netdevice_peer_list"
     @rest_logging
     def list(self, request):
-        ext_list = netdevice.objects.filter(Q(peer_s_netdevice__gt=0) | Q(peer_d_netdevice__gt=0) | Q(routing=True)).select_related("device").values("pk", "devname", "penalty", "device__name")
+        ext_list = netdevice.objects.filter(Q(peer_s_netdevice__gt=0) | Q(peer_d_netdevice__gt=0) | Q(routing=True)) \
+            .distinct() \
+            .order_by("device__device_group__name", "device__name", "devname") \
+            .select_related("device", "device__device_group").values("pk", "devname", "penalty", "device__name", "device__device_group__name")
         _ser = ext_peer_serializer(ext_list, many=True)
         return Response(_ser.data)
 

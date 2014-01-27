@@ -2308,7 +2308,7 @@ class peer_information_s_form(ModelForm):
             Fieldset(
                 "Settings",
                 Field("penalty", min=1, max=128),
-                Field("s_netdevice", ng_options="value.pk as value.info_string for value in nd_peers", chosen=True),
+                Field("s_netdevice", ng_options="value.pk as value.info_string group by value.device__device_group__name for value in nd_peers", chosen=True),
             ),
             FormActions(
                 Submit("submit", "", css_class="primaryAction", ng_value="action_string"),
@@ -2319,6 +2319,7 @@ class peer_information_s_form(ModelForm):
         for clear_f in ["s_netdevice"]:
             self.fields[clear_f].queryset = empty_query_set()
             self.fields[clear_f].empty_label = None
+            self.fields[clear_f].label = "Destination"
     class Meta:
         model = peer_information
         fields = ("penalty", "s_netdevice",)
@@ -2337,7 +2338,7 @@ class peer_information_d_form(ModelForm):
             Fieldset(
                 "Settings",
                 Field("penalty", min=1, max=128),
-                Field("d_netdevice", ng_options="value.pk as value.info_string for value in nd_peers", chosen=True),
+                Field("d_netdevice", ng_options="value.pk as value.info_string group by value.device__device_group__name for value in nd_peers", chosen=True),
             ),
             FormActions(
                 Submit("submit", "", css_class="primaryAction", ng_value="action_string"),
@@ -2348,6 +2349,7 @@ class peer_information_d_form(ModelForm):
         for clear_f in ["d_netdevice"]:
             self.fields[clear_f].queryset = empty_query_set()
             self.fields[clear_f].empty_label = None
+            self.fields[clear_f].label = "Destination"
     class Meta:
         model = peer_information
         fields = ("penalty", "d_netdevice",)
