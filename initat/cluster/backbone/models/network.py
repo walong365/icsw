@@ -470,6 +470,10 @@ def netdevice_pre_save(sender, **kwargs):
         # penalty
         _check_integer(cur_inst, "penalty", min_val=1)
         # check mac address
+        if cur_inst.macaddr:
+            cur_inst.macaddr = cur_inst.macaddr.replace("-", ":").lower()
+        if cur_inst.fake_macaddr:
+            cur_inst.fake_macaddr = cur_inst.fake_macaddr.replace("-", ":").lower()
         dummy_mac, mac_re = (":".join(["00"] * cur_inst.network_device_type.mac_bytes),
                              re.compile("^%s$" % (":".join(["[0-9a-f]{2}"] * cur_inst.network_device_type.mac_bytes))))
         # set empty if not set
