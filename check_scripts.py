@@ -1,6 +1,6 @@
 #!/usr/bin/python-init -Ot
 #
-# Copyright (C) 2001,2002,2003,2004,2005,2006,2007,2008,2009,2011,2012,2013 Andreas Lang-Nevyjel, init.at
+# Copyright (C) 2001-2009,2011-2014 Andreas Lang-Nevyjel, init.at
 #
 # this file is part of python-modules-base
 #
@@ -27,6 +27,8 @@ import sys
 
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "initat.cluster.settings")
 
+from lxml import etree # @UnresolvedImport
+from lxml.builder import E # @UnresolvedImport
 import argparse
 import commands
 import logging_tools
@@ -38,8 +40,6 @@ try:
     import config_tools
 except:
     config_tools = None
-from lxml import etree # @UnresolvedImport
-from lxml.builder import E # @UnresolvedImport
 
 EXTRA_SERVER_DIR = "/opt/cluster/etc/extra_servers.d"
 
@@ -92,6 +92,16 @@ INSTANCE_XML = """
         </config_names>
     </instance>
     <instance name="memcached" check_type="simple" pid_file_name="memcached/memcached.pid" any_threads_ok="1" runs_on="system">
+        <config_names>
+            <config_name>server</config_name>
+        </config_names>
+    </instance>
+    <instance name="nginx" check_type="simple" pid_file_name="nginx.pid" any_threads_ok="1" runs_on="system">
+        <config_names>
+            <config_name>server</config_name>
+        </config_names>
+    </instance>
+    <instance name="uwsgi-init" check_type="simple" pid_file_name="uwsgi-init.pid" any_threads_ok="1" runs_on="system">
         <config_names>
             <config_name>server</config_name>
         </config_names>
