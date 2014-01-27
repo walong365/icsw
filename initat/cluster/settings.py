@@ -1,13 +1,13 @@
 # Django settings for cluster project.
 
+from django.core.exceptions import ImproperlyConfigured
+import logging_tools
 import os
 import sys
-from django.core.exceptions import ImproperlyConfigured
 try:
     from initat.cluster.license_tools import check_license, get_all_licenses, License
 except ImportError:
     raise ImproperlyConfigured("cannot initialise license framework")
-import logging_tools
 # set unified name
 logging_tools.UNIFIED_NAME = "cluster.http"
 

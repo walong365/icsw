@@ -559,6 +559,8 @@ class config(models.Model):
             for var_type in ["str", "int", "bool"]:
                 for cur_var in getattr(self, "config_%s_set" % (var_type)).all():
                     log_com("    %-20s : %s" % (cur_var.name, unicode(cur_var)))
+    def natural_key(self):
+        return self.name
     class Meta:
         db_table = u'new_config'
         ordering = ["name"]
@@ -569,6 +571,7 @@ class config(models.Model):
 def config_pre_save(sender, **kwargs):
     if "instance" in kwargs:
         cur_inst = kwargs["instance"]
+        cur_inst.description = cur_inst.description or ""
         _check_empty_string(cur_inst, "name")
         # priority
         _check_integer(cur_inst, "priority", min_val= -9999, max_val=9999)
@@ -705,6 +708,7 @@ def config_str_pre_save(sender, **kwargs):
             list(cur_inst.config.config_blob_set.all().values_list("name", flat=True))
         if cur_inst.name in all_var_names:
             raise ValidationError("name already used")
+        cur_inst.value = cur_inst.value or ""
 
 class config_blob(models.Model):
     idx = models.AutoField(db_column="config_blob_idx", primary_key=True)
@@ -837,7 +841,7 @@ class config_script(models.Model):
     config = models.ForeignKey("config", db_column="new_config_id")
     value = models.TextField(blank=True)
     # to be removed
-    error_text = models.TextField(blank=True)
+    error_text = models.TextField(blank=True, default="")
     device = models.ForeignKey("device", null=True, blank=True)
     date = models.DateTimeField(auto_now_add=True)
     def get_xml(self):
@@ -866,6 +870,7 @@ def config_script_pre_save(sender, **kwargs):
         if cur_inst.name in cur_inst.config.config_script_set.exclude(Q(pk=cur_inst.pk)).values_list("name", flat=True):
             raise ValidationError("name already used")
         _check_integer(cur_inst, "priority")
+        cur_inst.error_text = cur_inst.error_text or ""
 
 class device_variable(models.Model):
     idx = models.AutoField(db_column="device_variable_idx", primary_key=True)
@@ -2476,3 +2481,43 @@ class config_serializer(serializers.ModelSerializer):
     # categories only as flat list, no nesting
     class Meta:
         model = config
+
+class config_str_nat_serializer(serializers.ModelSerializer):
+    config = serializers.SlugRelatedField(slug_field="name")
+    class Meta:
+        model = config_str
+
+class config_int_nat_serializer(serializers.ModelSerializer):
+    config = serializers.SlugRelatedField(slug_field="name")
+    class Meta:
+        model = config_int
+
+class config_bool_nat_serializer(serializers.ModelSerializer):
+    config = serializers.SlugRelatedField(slug_field="name")
+    class Meta:
+        model = config_bool
+
+class config_blob_nat_serializer(serializers.ModelSerializer):
+    config = serializers.SlugRelatedField(slug_field="name")
+    class Meta:
+        model = config_blob
+
+class config_script_nat_serializer(serializers.ModelSerializer):
+    config = serializers.SlugRelatedField(slug_field="name")
+    class Meta:
+        model = config_script
+
+class config_dump_serializer(serializers.ModelSerializer):
+    config_str_set = config_str_nat_serializer(many=True)
+    config_int_set = config_int_nat_serializer(many=True)
+    config_blob_set = config_blob_nat_serializer(many=True)
+    config_bool_set = config_bool_nat_serializer(many=True)
+    config_script_set = config_script_nat_serializer(many=True)
+    mon_check_command_set = mon_check_command_nat_serializer(many=True)
+    # categories only as flat list, no nesting
+    class Meta:
+        model = config
+        fields = ("idx", "name", "description", "priority", "enabled", "categories",
+            "config_str_set", "config_int_set", "config_blob_set", "config_bool_set",
+            "config_script_set", "mon_check_command_set",
+            )

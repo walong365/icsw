@@ -14,7 +14,7 @@ __all__ = [
     "mon_host_cluster", "mon_host_cluster_serializer",
     "mon_service_cluster", "mon_service_cluster_serializer",
     "host_check_command", "host_check_command_serializer",
-    "mon_check_command", "mon_check_command_serializer",
+    "mon_check_command", "mon_check_command_serializer", "mon_check_command_nat_serializer",
     "mon_check_command_type",
     "mon_contact", "mon_contact_serializer",
     "mon_notification", "mon_notification_serializer",
@@ -128,7 +128,7 @@ class mon_check_command(models.Model):
     # categories for this device
     categories = models.ManyToManyField("backbone.category", blank=True)
     # device to exclude
-    exclude_devices = models.ManyToManyField("backbone.device", related_name="mcc_exclude_devices")
+    exclude_devices = models.ManyToManyField("backbone.device", related_name="mcc_exclude_devices", blank=True)
     # event handler settings
     is_event_handler = models.BooleanField(default=False)
     event_handler = models.ForeignKey("self", null=True, default=None, blank=True)
@@ -141,6 +141,11 @@ class mon_check_command(models.Model):
         return "mcc_%s" % (self.name)
 
 class mon_check_command_serializer(serializers.ModelSerializer):
+    class Meta:
+        model = mon_check_command
+
+class mon_check_command_nat_serializer(serializers.ModelSerializer):
+    config = serializers.SlugRelatedField(slug_field="name")
     class Meta:
         model = mon_check_command
 
