@@ -30,12 +30,13 @@ from django.db.models import Q
 from django.http import HttpResponse, HttpResponseRedirect
 from django.utils.decorators import method_decorator
 from django.views.generic import View
-from initat.cluster.backbone.models import config, device, \
-    config_str, config_int, config_bool, config_blob, \
-    config_script, device_config, tree_node, get_related_models, \
-    mon_service_templ, category_tree, mon_check_command
+from rest_framework.renderers import XMLRenderer
+from rest_framework.parsers import XMLParser
+from initat.cluster.backbone.models import config, device, device_config, tree_node, \
+    get_related_models, config_dump_serializer
 from initat.cluster.frontend.forms import config_form, config_str_form, config_int_form, \
     config_bool_form, config_script_form, mon_check_command_form
+from initat.cluster.backbone import models
 from initat.cluster.frontend.helper_functions import contact_server, xml_wrapper
 from initat.core.render import render_me
 from lxml import etree # @UnresolvedImports
@@ -326,49 +327,31 @@ class generate_config(View):
                 request.xml_response["result"].append(res_node)
             request.xml_response.info("build done", logger)
 
-class download_hash(View):
-    @method_decorator(login_required)
-    @method_decorator(xml_wrapper)
-    def post(self, request):
-        _post = request.POST
-        conf_ids = [int(value) for value in _post.getlist("config_ids[]")]
-        logger.info("got download request for %s: %s" % (
-            logging_tools.get_plural("config", len(conf_ids)),
-            ", ".join(["%d" % (val) for val in sorted(conf_ids)])))
-        hash_value = "QQ".join(["%d" % (conf_id) for conf_id in conf_ids])
-        request.xml_response["download_link"] = reverse("config:download_configs", args=[hash_value])
-
 class download_configs(View):
     @method_decorator(login_required)
     def get(self, request, *args, **kwargs):
-        conf_ids = [int(value) for value in kwargs["hash"].split("QQ")]
+        conf_ids = json.loads(kwargs["hash"])
         logger.info("got download request for %s: %s" % (
             logging_tools.get_plural("config", len(conf_ids)),
             ", ".join(["%d" % (val) for val in sorted(conf_ids)])))
-        res_xml = E.configuration()
-        configs = E.configs()
-        res_xml.append(configs)
+        configs = []
+        # res_xml.append(configs)
         conf_list = config.objects.filter(Q(pk__in=conf_ids)).prefetch_related(
             "config_str_set",
             "config_int_set",
             "config_bool_set",
             "config_blob_set",
             "mon_check_command_set",
-            "config_script_set")
+            "config_script_set",
+            "categories",
+            )
         for cur_conf in conf_list:
-            cur_xml = cur_conf.get_xml()
-            # cur_xml.append(cur_conf.config_type.get_xml())
-            configs.append(cur_xml)
-        # remove all pks and keys
-        for pk_el in res_xml.xpath(".//*[@pk]"):
-            del pk_el.attrib["pk"]
-            del pk_el.attrib["key"]
-        # remove attributes from config
-        for pk_el in res_xml.xpath(".//config"):
-            for del_attr in ["parent_config", "num_device_configs", "device_list"]:
-                if del_attr in pk_el.attrib:
-                    del pk_el.attrib[del_attr]
-        act_resp = HttpResponse(etree.tostring(res_xml, pretty_print=True),
+            configs.append(config_dump_serializer(cur_conf).data)
+        xml_tree = etree.fromstring(XMLRenderer().render(configs))
+        # remove all idxs and parent_configs
+        for pk_el in xml_tree.xpath(".//idx|.//parent_config|.//categories|.//date"):
+            pk_el.getparent().remove(pk_el)
+        act_resp = HttpResponse(etree.tostring(xml_tree, pretty_print=True),
                                 mimetype="application/xml")
         act_resp["Content-disposition"] = "attachment; filename=config_%s.xml" % (datetime.datetime.now().strftime("%Y%m%d_%H%M%S"))
         return act_resp
@@ -377,52 +360,52 @@ class upload_config(View):
     @method_decorator(login_required)
     def post(self, request):
         try:
-            default_mst = mon_service_templ.objects.all()[0]
-        except:
-            default_mst = None
-        try:
-            conf_xml = etree.fromstring(request.FILES["config"].read())
+            conf_list = XMLParser().parse(request.FILES["config"])
         except:
             logger.error("cannot interpret upload file: %s" % (process_tools.get_except_info()))
         else:
-            for cur_conf in conf_xml.xpath(".//config"):
-                # # check config_type
-                # conf_type = cur_conf.find("config_type")
-                # try:
-                    # cur_ct = config_type.objects.get(Q(name=conf_type.attrib["name"]))
-                # except config_type.DoesNotExist:
-                    # cur_ct = config_type(**conf_type.attrib)
-                    # logger.info("creating new config_type '%s'" % (unicode(cur_ct)))
-                    # cur_ct.save()
-                try:
-                    new_conf = config.objects.get(Q(name=cur_conf.attrib["name"]))
-                except config.DoesNotExist:
-                    for del_attr in ["categories"]:
-                        if del_attr in cur_conf.attrib:
-                            del cur_conf.attrib[del_attr]
-                    new_conf = config(**cur_conf.attrib)
-                    new_conf.create_default_entries = False
-                    new_conf.save()
-                    logger.info("creating new config '%s'" % (unicode(new_conf)))
-                    for new_obj in cur_conf.xpath(".//config_str|.//config_int|.//config_bool|.//config_blob|.//mon_check_command|.//config_script"):
-                        if "type" in new_obj.attrib:
-                            new_sub_obj = globals()["config_%s" % (new_obj.attrib["type"])]
-                        else:
-                            new_sub_obj = globals()[new_obj.tag]
-                        for del_attr in ["config", "type", "mon_service_templ", "categories"]:
-                            if del_attr in new_obj.attrib:
-                                del new_obj.attrib[del_attr]
-                        new_sub_obj = new_sub_obj(config=new_conf, **new_obj.attrib)
-                        logger.info(
-                            "creating new %s (value '%s') named %s" % (
-                                new_sub_obj._meta.object_name,
-                                unicode(new_sub_obj),
-                                new_sub_obj.name,
-                            )
-                        )
-                        if new_obj.tag == "mon_check_command":
-                            new_sub_obj.mon_service_templ = default_mst
-                        new_sub_obj.save()
+            added = 0
+            sub_added = 0
+            for conf in conf_list:
+                _sets = {}
+                for key in conf.iterkeys():
+                    # remove all subsets, needed because of limitations in DRF
+                    if key.endswith("_set") and conf[key]:
+                        _sets[key] = conf[key]
+                        conf[key] = []
+                _ent = config_dump_serializer(data=conf)
+                if _ent.is_valid():
+                    try:
+                        _ent.object.save()
+                        # pass
+                    except:
+                        logger.error("error saving entry '%s': %s" % (
+                            unicode(_ent),
+                            process_tools.get_except_info()
+                            ))
+                    else:
+                        # add sub-sets
+                        for key in _sets.iterkeys():
+                            for entry in _sets[key]:
+                                _sub_ent = getattr(models, "%s_nat_serializer" % (key[:-4]))(data=entry)
+                                if _sub_ent.is_valid():
+                                    try:
+                                        _sub_ent.object.save()
+                                    except:
+                                        logger.error("error saving subentry '%s': %s" % (
+                                            unicode(_sub_ent),
+                                            process_tools.get_except_info()
+                                            ))
+                                    else:
+                                        sub_added += 1
+                                else:
+                                    logger.error("cannot create %s object: %s" % (
+                                        key,
+                                        unicode(_sub_ent.errors)))
+                        added += 1
+                else:
+                    logger.error("cannot create config object: %s" % (unicode(_ent.errors)))
+            logger.info("uploaded %d, added %d / %d" % (len(conf_list), added, sub_added))
         return HttpResponseRedirect(reverse("config:show_configs"))
 
 class get_device_cvars(View):

@@ -35,7 +35,22 @@
     </script>
 
     <div ng-controller="config_ctrl">
-        <configtable></configtable>    
+        <configtable></configtable>
+        <div class="input-group row panel panel-default">
+            <form action="{% url 'config:upload_config' %}" method="post" enctype="multipart/form-data" class="form-inline">{% csrf_token %}
+                {% verbatim %}
+                <div class="col-md-4">
+                <input type="button" class="btn btn-success btn-sm" value="download selected configs" ng-show="pagSettings.conf.filtered_len > 0" ng-click="download_selected()"></input>
+                </div>
+                <div class="col-md-4">
+                <input ng-model="upload_file" type="file" name="config"></input>
+                </div>
+                <div class="col-md-4">
+                <input ng-show="upload_file" type="submit" class="btn btn-warning" value="upload" class="form-control"></input>
+                </div>
+                {% endverbatim %}
+            </form>
+        </div>
     </div>
 </div>
 

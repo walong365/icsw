@@ -523,6 +523,9 @@ config_ctrl = config_module.controller("config_ctrl", ["$scope", "$compile", "$f
                     if cc.is_event_handler and cc.idx != edit_obj.idx
                         ev_handlers.push(cc)
             return ev_handlers
+        $scope.download_selected = () ->
+            hash = angular.toJson((entry.idx for entry in $scope.pagSettings.filtered_list))
+            window.location = "{% url 'config:download_configs' 1 %}".slice(0, -1) + hash 
         $scope.reload()
 ]).directive("configtable", ($templateCache, $compile, $modal, Restangular) ->
     return {
