@@ -173,6 +173,9 @@ class main_config(object):
             int(srv_com["version"].text),
             int(srv_com["result"].attrib["state"]),
         )
+        # check return state for validity
+        if not server_command.srv_reply_state_is_valid(file_status):
+            self.log("file_state %d is not valid" % (file_status), logging_tools.LOG_LEVEL_CRITICAL)
         file_status = server_command.srv_reply_to_log_level(file_status)
         self.log("file_content_status for %s is %s (%d), version %d" % (
             file_name,
