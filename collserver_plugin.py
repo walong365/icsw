@@ -115,7 +115,7 @@ class win_disk_pdata(perfdata_object):
     PD_NAME = "win_disk"
     @property
     def default_xml_info(self):
-        return self.get_pd_xml_info(0)
+        return self.get_pd_xml_info(["C"])
     def get_pd_xml_info(self, v_list):
         disk = v_list[0]
         return E.perfdata_info(
