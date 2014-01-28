@@ -565,6 +565,9 @@ class config(models.Model):
         db_table = u'new_config'
         ordering = ["name"]
     class CSW_Meta:
+        permissions = (
+            ("modify_config", "modify global configurations", False),
+        )
         fk_ignore_list = ["config_str", "config_int", "config_script", "config_bool", "config_blob", "mon_check_command"]
 
 @receiver(signals.pre_save, sender=config)
@@ -1287,8 +1290,6 @@ class device(models.Model):
             ("all_devices", "access all devices", False),
             ("show_graphs", "Access to device graphs", True),
             ("change_network", "Change network", True),
-            # (""),
-            # ("wf_apc" , "APC control"),
         )
     class Meta:
         db_table = u'device'

@@ -154,6 +154,10 @@ class network(models.Model):
         if add_ip_info:
             r_xml.attrib["ip_count"] = "%d" % (len(self.net_ip_set.all()))
         return r_xml
+    class CSW_Meta:
+        permissions = (
+            ("modify_network", "modify global network settings", False),
+        )
     class Meta:
         db_table = u'network'
         app_label = "backbone"
