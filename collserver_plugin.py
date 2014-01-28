@@ -125,8 +125,22 @@ class win_disk_pdata(perfdata_object):
     def build_values(self, _xml, in_dict):
         return self._wrap(
             _xml,
-            [int(float(in_dict["used"]) * 1000 * 1000 * 1000), int(float(in_dict["total"]) * 1000 * 1000 * 1000)],
+            [in_dict["disk"], int(float(in_dict["used"]) * 1000 * 1000 * 1000), int(float(in_dict["total"]) * 1000 * 1000 * 1000)],
             rsi=1
+        )
+
+class win_load_pdata(perfdata_object):
+    PD_RE = re.compile("^1 min avg Load=(?P<load1>\d+)%\S+ 5 min avg Load=(?P<load5>\d+)%\}S+ 15 min avg Load=(?P<load15>\d+)%\S+$")
+    PD_NAME = "win_load"
+    PD_XML_INFO = E.perfdata_info(
+        perfdata_value("load1", "mean load of the last minute", rrd_spec="GAUGE:0:10000").get_xml(),
+        perfdata_value("load5", "mean load of the 5 minutes", rrd_spec="GAUGE:0:10000").get_xml(),
+        perfdata_value("load15", "mean load of the 15 minutes", rrd_spec="GAUGE:0:10000").get_xml(),
+    )
+    def build_values(self, _xml, in_dict):
+        return self._wrap(
+            _xml,
+            [float(in_dict[key]) for key in ["load1", "load5", "load15"]]
         )
 
 class load_pdata(perfdata_object):
@@ -140,9 +154,7 @@ class load_pdata(perfdata_object):
     def build_values(self, _xml, in_dict):
         return self._wrap(
             _xml,
-            [
-                float(in_dict[key]) for key in ["load1", "load5", "load15"]
-            ]
+            [float(in_dict[key]) for key in ["load1", "load5", "load15"]]
         )
 
 class smc_chassis_psu_pdata(perfdata_object):
