@@ -284,23 +284,23 @@ angular_module_setup = (module_list, url_list=[]) ->
                 )
                 RestangularProvider.setErrorInterceptor((resp) ->
                     error_list = []
-                    console.log resp
                     if typeof(resp.data) == "string"
                         if resp.data
                             resp.data = {"error" : resp.data}
                         else
                             resp.data = {}
                     for key, value of resp.data
-                        if Array.isArray(value)
-                            for sub_val in value
-                                if sub_val.non_field_errors
-                                    error_list.push(key + ": " + sub_val.non_field_errors.join(", "))
-                                else
-                                    error_list.push(key + ": " + String(sub_val))
-                        else
-                            if (typeof(value) == "object" or typeof(value) == "string") and (not key.match(/^_/) or key == "__all__")
-                                key_str = if key == "__all__" then "error: " else "#{key} : "
-                                error_list.push(key_str + if typeof(value) == "string" then value else value.join(", "))
+                        key_str = if key == "__all__" then "error: " else "#{key} : "
+                        if key != "_reset_list"
+                            if Array.isArray(value)
+                                for sub_val in value
+                                    if sub_val.non_field_errors
+                                        error_list.push(key_str + sub_val.non_field_errors.join(", "))
+                                    else
+                                        error_list.push(key_str + String(sub_val))
+                            else
+                                if (typeof(value) == "object" or typeof(value) == "string") and (not key.match(/^_/) or key == "__all__")
+                                    error_list.push(key_str + if typeof(value) == "string" then value else value.join(", "))
                     new_error_list = []
                     for _err in error_list
                         if _err not in new_error_list
