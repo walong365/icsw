@@ -146,6 +146,7 @@ pack_patterns = patterns(
 main_patterns = patterns(
     "initat.cluster.frontend",
     url(r"index$" , main_views.index.as_view(), name="index"),
+    url(r"permission$" , main_views.permissions_denied.as_view(), name="permission_denied"),
 )
 
 rrd_patterns = patterns(

@@ -34,6 +34,7 @@ from initat.cluster.frontend.forms import domain_tree_node_form, network_form, \
     network_type_form, network_device_type_form, netdevice_form, net_ip_form, \
     peer_information_s_form, peer_information_d_form
 from initat.cluster.frontend.helper_functions import xml_wrapper
+from initat.cluster.backbone.render import permission_required_mixin
 from initat.core.render import render_me
 from networkx.readwrite import json_graph
 import config_tools
@@ -56,8 +57,8 @@ class device_network(View):
             }
         )()
 
-class show_cluster_networks(View):
-    @method_decorator(login_required)
+class show_cluster_networks(permission_required_mixin, View):
+    all_required_permissions = ["backbone.modify_network"]
     def get(self, request):
         return render_me(request, "cluster_networks.html", {
             "network_form" : network_form(),
@@ -191,8 +192,8 @@ class copy_network(View):
         else:
             request.xml_response.error("no target_devices", logger)
 
-class get_domain_name_tree(View):
-    @method_decorator(login_required)
+class get_domain_name_tree(permission_required_mixin, View):
+    all_required_permissions = ["backbone.modify_domain_name_tree"]
     def get(self, request):
         return render_me(request, "domain_name_tree.html", {
             "domain_name_tree_form" : domain_tree_node_form(),

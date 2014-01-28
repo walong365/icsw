@@ -38,6 +38,7 @@ from initat.cluster.frontend.forms import config_form, config_str_form, config_i
     config_bool_form, config_script_form, mon_check_command_form
 from initat.cluster.backbone import models
 from initat.cluster.frontend.helper_functions import contact_server, xml_wrapper
+from initat.cluster.backbone.render import permission_required_mixin
 from initat.core.render import render_me
 from lxml import etree # @UnresolvedImports
 from lxml.builder import E # @UnresolvedImports
@@ -50,8 +51,8 @@ import server_command
 
 logger = logging.getLogger("cluster.config")
 
-class show_configs(View):
-    @method_decorator(login_required)
+class show_configs(permission_required_mixin, View):
+    all_required_permissions = ["backbone.modify_config"]
     def get(self, request):
         return render_me(
             request, "config_overview.html", {

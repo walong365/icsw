@@ -34,6 +34,7 @@ from initat.cluster.frontend.forms import device_tree_form, device_group_tree_fo
     device_tree_many_form, device_variable_form, device_variable_new_form
 from initat.cluster.frontend.helper_functions import xml_wrapper
 from initat.core.render import render_me
+from initat.cluster.backbone.render import permission_required_mixin
 from lxml.builder import E # @UnresolvedImports
 import json
 import logging
@@ -42,8 +43,8 @@ import re
 
 logger = logging.getLogger("cluster.device")
 
-class device_tree(View):
-    @method_decorator(login_required)
+class device_tree(permission_required_mixin, View):
+    all_required_permissions = ["backbone.modify_tree"]
     def get(self, request):
         return render_me(
             request,
@@ -361,11 +362,3 @@ class variables(View):
             "device_variable_form"     : device_variable_form(),
             "device_variable_new_form" : device_variable_new_form(),
             })()
-
-# class device_info(View):
-#     @method_decorator(login_required)
-#     @method_decorator(xml_wrapper)
-#     def post(self, request):
-#         # request.xml_response.log(logging_tools.LOG_LEVEL_ERROR, "ok", logger)
-#         cur_dev = device.objects.prefetch_related("netdevice_set", "netdevice_set__net_ip_set").get(Q(pk=request.POST["pk"]))
-#         request.xml_response["permissions"] = request.user.get_all_object_perms_xml(cur_dev)

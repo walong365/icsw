@@ -9,13 +9,14 @@ from django.utils.decorators import method_decorator
 from django.views.generic import View
 from initat.cluster.backbone.models import device_variable, category, \
      category_tree
+from initat.cluster.backbone.render import permission_required_mixin
 from initat.cluster.frontend.forms import category_form
 from initat.cluster.frontend.helper_functions import xml_wrapper
 from initat.core.render import render_me
 from lxml.builder import E # @UnresolvedImport
 import initat.cluster.backbone.models
-import logging
 import json
+import logging
 
 logger = logging.getLogger("cluster.base")
 
@@ -36,7 +37,8 @@ class get_gauge_info(View):
         # gauge_info.append(E.gauge_element("test", value="40"))
         request.xml_response["response"] = gauge_info
 
-class get_category_tree(View):
+class get_category_tree(permission_required_mixin, View):
+    all_required_permissions = ["backbone.modify_category_tree"]
     @method_decorator(login_required)
     def get(self, request):
         return render_me(request, "category_tree.html",
@@ -45,8 +47,8 @@ class get_category_tree(View):
             }
             )()
 
-class prune_category_tree(View):
-    @method_decorator(login_required)
+class prune_category_tree(permission_required_mixin, View):
+    all_required_permissions = ["backbone.modify_category_tree"]
     @method_decorator(xml_wrapper)
     def post(self, request):
         category_tree().prune()

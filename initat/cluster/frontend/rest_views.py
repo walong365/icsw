@@ -527,6 +527,9 @@ class device_tree_list(mixins.ListModelMixin,
         # with_variables = self._get_post_boolean("with_variables", False)
         package_state = self._get_post_boolean("package_state", False)
         _q = device.objects
+        if not self.request.user.is_superuser:
+            if not self.request.user.has_perm("backbone.all_devices"):
+                _q = _q.filter(Q(device_group__in=self.request.user.allowed_device_groups.all()))
         if self._get_post_boolean("all_monitoring_servers", False):
             _q = _q.filter(Q(device_config__config__name__in=["monitor_server", "monitor_slave"]))
         elif self._get_post_boolean("all_mother_servers", False):

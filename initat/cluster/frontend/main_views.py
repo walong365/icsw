@@ -36,3 +36,8 @@ class index(View):
     def get(self, request):
         return render_me(request, "index.html", {"index_view" : True})()
 
+class permissions_denied(View):
+    @method_decorator(login_required)
+    def get(self, request):
+        return render_me(request, "permission_denied.html")()
+

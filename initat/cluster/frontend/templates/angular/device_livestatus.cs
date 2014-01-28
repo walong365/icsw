@@ -128,7 +128,7 @@ device_livestatus_module.controller("livestatus_ctrl", ["$scope", "$compile", "$
         link : (scope, el, attrs) ->
             scope.new_devsel((parseInt(entry) for entry in attrs["devicepk"].split(",")), [])
             scope.get_tr_class = (entry) ->
-                if entry.state > 2
+                if entry.state > 1
                     return "danger"
                 else if entry.state == 1
                     return "warning"
