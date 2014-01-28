@@ -9,62 +9,58 @@ root = exports ? this
 {% verbatim %}
 
 livestatus_templ = """
-    <table class="table table-condensed table-hover table-bordered" style="width:auto;">
-        <thead>
-            <tr>
-                <td colspan="4" paginator entries="entries" pag_settings="pagSettings" per_page="20" paginator_filter="simple" paginator-epp="10,20,50,100,1000"></td>
-            </tr>
-            <tr>
-                <th ng-click="toggle_order('name')"><span ng-class="get_order_glyph('name')"></span>Node</th>
-                <th ng-click="toggle_order('descr')"><span ng-class="get_order_glyph('descr')"></span>Check</th>
-                <th>last check</th>
-                <th ng-click="toggle_order('result')"><span ng-class="get_order_glyph('result')"></span>result</th>
-            </tr>
-        </thead>
-        <tbody>
-            <tr ng-repeat="entry in entries | orderBy:get_order() | paginator2:this.pagSettings" ng-class="get_tr_class(entry)">
-                <td>{{ entry.name }}</td>
-                <td>{{ entry.descr }}</td>
-                <td>{{ get_last_check(entry) }}</td>
-                <td>{{ entry.result }}</td>
-            </tr>
-        </tbody>
-    </table>
+<table class="table table-condensed table-hover table-bordered" style="width:auto;">
+    <thead>
+        <tr>
+            <td colspan="4" paginator entries="entries" pag_settings="pagSettings" per_page="20" paginator_filter="simple" paginator-epp="10,20,50,100,1000"></td>
+        </tr>
+        <tr>
+            <th ng-click="toggle_order('name')"><span ng-class="get_order_glyph('name')"></span>Node</th>
+            <th ng-click="toggle_order('descr')"><span ng-class="get_order_glyph('descr')"></span>Check</th>
+            <th>last check</th>
+            <th ng-click="toggle_order('result')"><span ng-class="get_order_glyph('result')"></span>result</th>
+        </tr>
+    </thead>
+    <tbody>
+        <tr ng-repeat="entry in entries | orderBy:get_order() | paginator2:this.pagSettings" ng-class="get_tr_class(entry)">
+            <td>{{ entry.name }}</td>
+            <td>{{ entry.descr }}</td>
+            <td>{{ get_last_check(entry) }}</td>
+            <td>{{ entry.result }}</td>
+        </tr>
+    </tbody>
+</table>
 """
 
 monconfig_templ = """
-    <div class="row">
-        <tabset ng-show="!reload_pending">
-            <tab heading="action">
-                <div class="well">
-                    <input type="button" class="btn btn-success" value="reload" ng-show="!reload_pending" ng-click="load_data()"></input>
-                </div>
-            </tab>
-            <tab ng-repeat="(key, value) in mc_tables" heading="{{ value.short_name }} ({{ value.entries.length }})">
-                <h3>{{ value.entries.length }} entries for {{ value.short_name }}</h3> 
-                <table class="table table-condensed table-hover table-bordered" style="width:auto;">
-                    <thead>
-                        <tr>
-                            <td colspan="{{ value.attr_list.length }}" paginator entries="value.entries" pag_settings="value.pagSettings" per_page="20" paginator_filter="simple" paginator-epp="10,20,50,100,1000"></td>
-                        </tr>
-                        <tr>
-                            <th ng-repeat="attr in value.attr_list" title="{{ get_long_attr_name(attr) }}" ng-click="value.toggle_order(attr)">
-                                <span ng-class="value.get_order_glyph(attr)"></span>
-                                {{ get_short_attr_name(attr) }}
-                            </th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <tr ng-repeat="entry in value.entries | orderBy:value.get_order() | paginator2:value.pagSettings">
-                            <td ng-repeat="attr in value.attr_list">
-                                {{ entry[attr] }}
-                            </td>
-                        </tr>
-                    </tbody>
-                </table>
-            </tab>
-        </tabset>
-    </div>
+<div class="panel panel-default">
+    <input type="button" class="btn btn-success" value="reload" ng-show="!reload_pending" ng-click="load_data()"></input>
+    <tabset ng-show="!reload_pending">
+        <tab ng-repeat="(key, value) in mc_tables" heading="{{ value.short_name }} ({{ value.entries.length }})">
+            <h3>{{ value.entries.length }} entries for {{ value.short_name }}</h3> 
+            <table class="table table-condensed table-hover table-bordered" style="width:auto;">
+                <thead>
+                    <tr>
+                        <td colspan="{{ value.attr_list.length }}" paginator entries="value.entries" pag_settings="value.pagSettings" per_page="20" paginator_filter="simple" paginator-epp="10,20,50,100,1000"></td>
+                    </tr>
+                    <tr>
+                        <th ng-repeat="attr in value.attr_list" title="{{ get_long_attr_name(attr) }}" ng-click="value.toggle_order(attr)">
+                            <span ng-class="value.get_order_glyph(attr)"></span>
+                            {{ get_short_attr_name(attr) }}
+                        </th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr ng-repeat="entry in value.entries | orderBy:value.get_order() | paginator2:value.pagSettings">
+                        <td ng-repeat="attr in value.attr_list">
+                            {{ entry[attr] }}
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </tab>
+    </tabset>
+</div>
 """
 {% endverbatim %}
 
