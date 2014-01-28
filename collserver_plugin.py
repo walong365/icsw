@@ -133,7 +133,7 @@ class win_disk_pdata(perfdata_object):
         return "%s" % (v_list[0])
 
 class win_load_pdata(perfdata_object):
-    PD_RE = re.compile("^1 min avg Load=(?P<load1>\d+)%\S+ 5 min avg Load=(?P<load5>\d+)%\}S+ 15 min avg Load=(?P<load15>\d+)%\S+$")
+    PD_RE = re.compile("^1 min avg Load=(?P<load1>\d+)%\S+ 5 min avg Load=(?P<load5>\d+)%\S+ 15 min avg Load=(?P<load15>\d+)%\S+$")
     PD_NAME = "win_load"
     PD_XML_INFO = E.perfdata_info(
         perfdata_value("load1", "mean load of the last minute", rrd_spec="GAUGE:0:10000").get_xml(),
