@@ -128,6 +128,9 @@ class win_disk_pdata(perfdata_object):
             [in_dict["disk"], int(float(in_dict["used"]) * 1000 * 1000 * 1000), int(float(in_dict["total"]) * 1000 * 1000 * 1000)],
             rsi=1
         )
+    def get_type_instance(self, v_list):
+        # set PSU index as instance
+        return "%s" % (v_list[0])
 
 class win_load_pdata(perfdata_object):
     PD_RE = re.compile("^1 min avg Load=(?P<load1>\d+)%\S+ 5 min avg Load=(?P<load5>\d+)%\}S+ 15 min avg Load=(?P<load15>\d+)%\S+$")
