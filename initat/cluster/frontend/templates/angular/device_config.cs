@@ -247,7 +247,7 @@ device_config_module.controller("config_ctrl", ["$scope", "$compile", "$filter",
             pre_sel = (dev.idx for dev in $scope.devices when dev.expanded)
             restDataSource.reset()
             wait_list = restDataSource.add_sources([
-                ["{% url 'rest:device_tree_list' %}", {"with_device_configs" : true, "with_meta_devices" : true, "pks" : angular.toJson($scope.devsel_list)}],
+                ["{% url 'rest:device_tree_list' %}", {"with_device_configs" : true, "with_meta_devices" : true, "pks" : angular.toJson($scope.devsel_list), "dolp" : "backbone.change_config"}],
                 ["{% url 'rest:config_list' %}", {}]
             ])
             $q.all(wait_list).then((data) ->
@@ -611,7 +611,7 @@ device_config_module.controller("partinfo_ctrl", ["$scope", "$compile", "$filter
             $scope.reload()
         $scope.reload = () ->
             active_tab = (dev for dev in $scope.entries when dev.tab_active)
-            restDataSource.reload(["{% url 'rest:device_tree_list' %}", {"with_disk_info" : true, "with_meta_devices" : false, "pks" : angular.toJson($scope.devsel_list)}]).then((data) ->
+            restDataSource.reload(["{% url 'rest:device_tree_list' %}", {"with_disk_info" : true, "with_meta_devices" : false, "pks" : angular.toJson($scope.devsel_list), "dolp" : "backbone.change_monitoring"}]).then((data) ->
                 $scope.entries = (dev for dev in data)
                 if active_tab.length
                     for dev in $scope.entries

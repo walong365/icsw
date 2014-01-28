@@ -115,7 +115,9 @@ class show_configs(View):
     @method_decorator(login_required)
     def get(self, request):
         return render_me(
-            request, "device_configs.html",
+            request, "device_configs.html", {
+                "device_object_level_permission" : "backbone.change_config",
+            }
         )()
 
 def _get_group_tree(request, sel_list, **kwargs):
@@ -361,4 +363,5 @@ class variables(View):
         return render_me(request, "device_variables.html", {
             "device_variable_form"     : device_variable_form(),
             "device_variable_new_form" : device_variable_new_form(),
+            "device_object_level_permission" : "backbone.change_variables",
             })()

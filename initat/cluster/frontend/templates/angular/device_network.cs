@@ -174,7 +174,7 @@ device_network_module.controller("network_ctrl", ["$scope", "$compile", "$filter
             $scope.reload()
         $scope.reload= () ->
             wait_list = [
-                restDataSource.reload(["{% url 'rest:device_tree_list' %}", {"with_network" : true, "pks" : angular.toJson($scope.devsel_list)}]),
+                restDataSource.reload(["{% url 'rest:device_tree_list' %}", {"with_network" : true, "pks" : angular.toJson($scope.devsel_list), "dolp" : "backbone.change_network"}]),
                 restDataSource.reload(["{% url 'rest:peer_information_list' %}", {}]),
                 restDataSource.reload(["{% url 'rest:netdevice_speed_list' %}", {}]),
                 restDataSource.reload(["{% url 'rest:network_device_type_list' %}", {}])

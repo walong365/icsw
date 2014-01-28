@@ -38,7 +38,7 @@ class device_info
         # get all pks
         return [@dev_json.idx].concat(@addon_devices)
     has_perm: (perm_name) =>
-        return if @permissions.find("permissions[permission='#{perm_name}']").length then true else false 
+        return if @permissions.find("permissions[permission='#{perm_name}']").length then true else false
     build_div: () =>
         if @addon_devices.length
             num_devs = @addon_devices.length + 1

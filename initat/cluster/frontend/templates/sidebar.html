@@ -149,8 +149,9 @@ sidebar_base = sidebar_module.controller("sidebar_base", ["$scope", "$compile", 
         for tab_short in ["g", "f", "c"]
             $scope.tabs[tab_short] = tab_short == $scope.active_tab
         $scope.rest_data = {}
+        # dolp is the device object level permission
         $scope.rest_map = [
-            {"short" : "device_tree", "url" : "{% url 'rest:device_tree_list' %}", "options" : {"ignore_cdg" : false, "tree_mode" : true, "all_devices" : true, "with_categories" : true}} 
+            {"short" : "device_tree", "url" : "{% url 'rest:device_tree_list' %}", "options" : {"ignore_cdg" : false, "tree_mode" : true, "all_devices" : true, "with_categories" : true, "dolp" : "{{ device_object_level_permission }}"}} 
             {"short" : "domain_tree_node", "url" : "{% url 'rest:domain_tree_node_list' %}"}
             {"short" : "category", "url" : "{% url 'rest:category_list' %}"}
             {"short" : "device_sel", "url" : "{% url 'rest:device_selection_list' %}"}

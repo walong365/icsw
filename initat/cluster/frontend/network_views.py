@@ -54,6 +54,7 @@ class device_network(View):
                 "net_ip_form" : net_ip_form(),
                 "peer_information_s_form" : peer_information_s_form(),
                 "peer_information_d_form" : peer_information_d_form(),
+                "device_object_level_permission" : "backbone.change_network",
             }
         )()
 

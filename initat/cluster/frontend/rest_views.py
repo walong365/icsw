@@ -34,7 +34,8 @@ from initat.cluster.backbone.models import user , group, user_serializer_h, grou
      device_selection_serializer, partition_table_serializer_save, partition_disc_serializer_save, \
      partition_disc_serializer_create, device_serializer_variables, device_serializer_device_configs, \
      device_config, device_config_hel_serializer, home_export_list, csw_permission, \
-     device_serializer_disk_info, device_serializer_network, peer_information, netdevice
+     device_serializer_disk_info, device_serializer_network, peer_information, netdevice, \
+     csw_object_permission
 # from initat.cluster.backbone.forms import * # @UnusedWildImport
 from initat.cluster.frontend import forms
 from rest_framework import mixins, generics, status, viewsets, serializers
@@ -527,7 +528,17 @@ class device_tree_list(mixins.ListModelMixin,
         # with_variables = self._get_post_boolean("with_variables", False)
         package_state = self._get_post_boolean("package_state", False)
         _q = device.objects
+        # permission handling
         if not self.request.user.is_superuser:
+            if self.request.QUERY_PARAMS.get("dolp", ""):
+                # object permissions needed for devices, get a list of all valid pks
+                allowed_pks = self.request.user.get_allowed_object_list(self.request.QUERY_PARAMS["dolp"])
+                dg_list = list(device.objects.filter(Q(pk__in=allowed_pks)).values_list("pk", "device_group", "device_group__device", "device_type__identifier"))
+                # meta_list, device group selected
+                meta_list = Q(device_group__in=[devg_idx for dev_idx, devg_idx, md_idx, dt in dg_list if dt == "MD"])
+                # device list, direct selected
+                device_list = Q(pk__in=set(sum([[dev_idx, md_idx] for dev_idx, devg_idx, md_idx, dt in dg_list if dt != "MD"], [])))
+                _q = _q.filter(meta_list | device_list)
             if not self.request.user.has_perm("backbone.all_devices"):
                 _q = _q.filter(Q(device_group__in=self.request.user.allowed_device_groups.all()))
         if self._get_post_boolean("all_monitoring_servers", False):
