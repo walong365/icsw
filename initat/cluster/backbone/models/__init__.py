@@ -1290,6 +1290,10 @@ class device(models.Model):
             ("all_devices", "access all devices", False),
             ("show_graphs", "Access to device graphs", True),
             ("change_network", "Change network", True),
+            ("change_config", "Change configuration", True),
+            ("change_variables", "Change variables", True),
+            ("change_connection", "Change device connection", True),
+            ("change_monitoring", "Change device monitoring config", True),
         )
     class Meta:
         db_table = u'device'
