@@ -2272,6 +2272,7 @@ class net_ip_form(ModelForm):
         HTML("<h2>IP Address '{% verbatim %}{{ _edit_obj.ip }}{% endverbatim %}'</h2>"),
             Fieldset(
                 "Basic settings",
+                Field("netdevice", wrapper_ng_show="create_mode", ng_options="value.idx as value.devname for value in _current_dev.netdevice_set", chosen=True),
                 Field("ip", wrapper_class="ng-class:form_error('devname')", placeholder="IP address"),
                 Field("network", ng_options="value.idx as value.info_string for value in networks", chosen=True),
                 Field("domain_tree_node", ng_options="value.idx as value.tree_info for value in domain_tree_node", chosen=True),
@@ -2287,12 +2288,12 @@ class net_ip_form(ModelForm):
         )
     def __init__(self, *args, **kwargs):
         ModelForm.__init__(self, *args, **kwargs)
-        for clear_f in ["network", "domain_tree_node"]:
+        for clear_f in ["network", "domain_tree_node", "netdevice"]:
             self.fields[clear_f].queryset = empty_query_set()
             self.fields[clear_f].empty_label = None
     class Meta:
         model = net_ip
-        fields = ("ip", "network", "domain_tree_node", "alias", "alias_excl")
+        fields = ("ip", "network", "domain_tree_node", "alias", "alias_excl", "netdevice",)
 
 class peer_information_s_form(ModelForm):
     helper = FormHelper()
@@ -2308,6 +2309,7 @@ class peer_information_s_form(ModelForm):
             Fieldset(
                 "Settings",
                 Field("penalty", min=1, max=128),
+                Field("d_netdevice", wrapper_ng_show="create_mode", ng_options="value.idx as value.devname for value in _current_dev.netdevice_set", chosen=True),
                 Field("s_netdevice", ng_options="value.pk as value.info_string group by value.device__device_group__name for value in nd_peers", chosen=True),
             ),
             FormActions(
@@ -2316,13 +2318,14 @@ class peer_information_s_form(ModelForm):
         )
     def __init__(self, *args, **kwargs):
         ModelForm.__init__(self, *args, **kwargs)
-        for clear_f in ["s_netdevice"]:
+        for clear_f in ["s_netdevice", "d_netdevice"]:
             self.fields[clear_f].queryset = empty_query_set()
             self.fields[clear_f].empty_label = None
-            self.fields[clear_f].label = "Destination"
+        self.fields["s_netdevice"].label = "Source"
+        self.fields["d_netdevice"].label = "Destination"
     class Meta:
         model = peer_information
-        fields = ("penalty", "s_netdevice",)
+        fields = ("penalty", "s_netdevice", "d_netdevice")
 
 class peer_information_d_form(ModelForm):
     helper = FormHelper()
@@ -2338,6 +2341,7 @@ class peer_information_d_form(ModelForm):
             Fieldset(
                 "Settings",
                 Field("penalty", min=1, max=128),
+                Field("s_netdevice", wrapper_ng_show="create_mode", ng_options="value.idx as value.devname for value in _current_dev.netdevice_set", chosen=True),
                 Field("d_netdevice", ng_options="value.pk as value.info_string group by value.device__device_group__name for value in nd_peers", chosen=True),
             ),
             FormActions(
@@ -2346,10 +2350,11 @@ class peer_information_d_form(ModelForm):
         )
     def __init__(self, *args, **kwargs):
         ModelForm.__init__(self, *args, **kwargs)
-        for clear_f in ["d_netdevice"]:
+        for clear_f in ["s_netdevice", "d_netdevice"]:
             self.fields[clear_f].queryset = empty_query_set()
             self.fields[clear_f].empty_label = None
-            self.fields[clear_f].label = "Destination"
+        self.fields["s_netdevice"].label = "Source"
+        self.fields["d_netdevice"].label = "Destination"
     class Meta:
         model = peer_information
-        fields = ("penalty", "d_netdevice",)
+        fields = ("penalty", "s_netdevice", "d_netdevice",)

@@ -15,22 +15,15 @@ device_networks_template = """
 <table ng-show="devices.length" class="table table-condensed table-hover" style="width:auto;">
     <thead>
         <tr>
-            <th>Info</th>
-            <th>Device</th>
-            <th>Group</th>
-            <th>Comment</th>
-            <th colspan="4">action</th>
-        </tr>
-    </thead>
-    <tbody>
-        <tr dnrow ng-repeat-start="obj in devices" class="success"></tr>
-        <tr ng-show="obj.expanded">
             <th>Devname / IP</th>
             <th>MAC / Network</th>
             <th>Devtype / DTN</th>
             <th>routing / alias</th>
-            <th colspan="4"></th>
+            <th colspan="3">action</th>
         </tr>
+    </thead>
+    <tbody>
+        <tr dnrow ng-repeat-start="obj in devices" class="success"></tr>
         <tr ndiprow ng-repeat-end ng-repeat="ndip_obj in get_ndip_objects(obj)" ng-show="obj.expanded && get_ndip_expanded(ndip_obj)" ng-class="get_ndip_class(ndip_obj)"></tr>
     </tbody>
 </table>
@@ -46,13 +39,19 @@ dn_row_template = """
 </td>
 <th>{{ obj.full_name }}</th>
 <th>{{ obj.device_group_name }}</th>
-<td>{{ obj.comment }}</td>
-<td></td>
-<td>
-    <input type="button" class="btn btn-success btn-xs" value="create nd" ng-click="create_netdevice(obj, $event)" ng-show="enable_modal"></input>
-</td>
-<td></td>
-<td></td>
+<th>{{ obj.comment }}</th>
+<th colspan="3">
+    <div class="input-group-btn" ng-show="enable_modal">
+        <button type="button" class="btn btn-success btn-xs dropdown-toggle" data-toggle="dropdown">
+            Create <span class="caret"></span>
+        </button>
+        <ul class="dropdown-menu">
+            <li ng-click="create_netdevice(obj, $event)"><a href="#">Netdevice</a></li>
+            <li ng-show="obj.netdevice_set.length" ng-click="create_netip(obj, $event)"><a href="#">IP Address</a></li>
+            <li ng-show="obj.netdevice_set.length" ng-click="create_peer_information(obj, $event)"><a href="#">Peer</a></li>
+        </ul>
+    </div>
+</th>
 """
 
 nd_row_template = """
@@ -83,22 +82,11 @@ nd_row_template = """
      </div>"></input>
 </td>
 <td>
-    <div class="input-group-btn" ng-show="enable_modal">
-        <button type="button" class="btn btn-success btn-xs dropdown-toggle" data-toggle="dropdown">
-            Create <span class="caret"></span>
-        </button>
-        <ul class="dropdown-menu">
-            <li ng-click="create_netip(ndip_obj, $event)"><a href="#">IP Address</a></li>
-            <li ng-click="create_peer_information(ndip_obj, $event)"><a href="#">Peer</a></li>
-        </ul>
-    </div>
-</td>
-<td>
     <input type="button" class="btn btn-primary btn-xs" value="modify" ng-click="edit_netdevice(obj, ndip_obj, $event)" ng-show="enable_modal"></input>
 </td>
 <td>
     <input type="button" class="btn btn-danger btn-xs" value="delete" ng-click="delete_netdevice(ndip_obj, $event)" ng-show="enable_modal"></input>
-<td>
+</td>
 """
 
 ip_row_template = """
@@ -106,7 +94,6 @@ ip_row_template = """
 <td>{{ ndip_obj.network | array_lookup:networks:'info_string':'-' }}</td>
 <td>{{ ndip_obj.domain_tree_node | array_lookup:domain_tree_node:'tree_info':'-' }}</td>
 <td><span ng-show="ndip_obj.alias">{{ ndip_obj.alias }} ({{ ndip_obj.alias_excl | yesno1 }})</span></td>
-<td></td>
 <td></td>
 <td>
     <input type="button" class="btn btn-primary btn-xs" value="modify" ng-click="edit_netip(ndip_obj, $event)" ng-show="enable_modal"></input>
@@ -123,7 +110,6 @@ peer_row_template = """
     &nbsp;<span class="label label-primary">{{ get_peer_penalty(ndip_obj) }}</span>&nbsp;
     to {{ get_peer_target(ndip_obj) }}
 </td>
-<td></td>
 <td></td>
 <td>
     <input type="button" class="btn btn-primary btn-xs" value="modify" ng-click="edit_peer_information(ndip_obj, $event)" ng-show="enable_modal"></input>
@@ -288,11 +274,12 @@ device_network_module.controller("network_ctrl", ["$scope", "$compile", "$filter
             )
         $scope.get_vlan_masters = () ->
             return $scope._current_dev.netdevice_set
-        $scope.create_netip = (ndev, event) ->
-            $scope.netip_edit.create_list = ndev.net_ip_set
+        $scope.create_netip = (dev, event) ->
+            $scope._current_dev = dev
+            $scope.netip_edit.create_list = undefined
             $scope.netip_edit.new_object = (scope) ->
                 return {
-                    "netdevice" : ndev.idx
+                    "netdevice" : (entry.idx for entry in dev.netdevice_set)[0]
                     "ip" : "0.0.0.0"
                     "network" : $scope.networks[0].idx
                     "domain_tree_node" : $scope.domain_tree_node[0].idx
@@ -300,6 +287,8 @@ device_network_module.controller("network_ctrl", ["$scope", "$compile", "$filter
             $scope.netip_edit.create(event).then(
                 (new_obj) ->
                     if new_obj != false
+                        # console.log "***", new_obj
+                        $scope.nd_lut[new_obj.netdevice].net_ip_set.push(new_obj)
                         $scope.ip_lut[new_obj.idx] = new_obj
             )
         $scope.edit_netip = (ip, event) ->
@@ -310,13 +299,14 @@ device_network_module.controller("network_ctrl", ["$scope", "$compile", "$filter
                         #console.log "modip"
             )
         $scope.get_peer_src_info = () ->
-            return $scope._src_nd.devname + " on " + $scope.dev_lut[$scope._src_nd.device].name
+            src_nd = $scope.nd_lut[$scope._edit_obj.s_netdevice]
+            return src_nd.devname + " on " + $scope.dev_lut[src_nd.device].name
         $scope.edit_peer_information = (peer, event) ->
             if peer.peer.s_netdevice == peer.netdevice
                 $scope.peer_edit.edit_template = "peer_information_d_form.html"
             else
                 $scope.peer_edit.edit_template = "peer_information_s_form.html"
-            $scope._src_nd = $scope.nd_lut[peer.netdevice]
+            #$scope._src_nd = $scope.nd_lut[peer.netdevice]
             $scope.peer_edit.edit(peer.peer, event).then(
                 (mod_peer) ->
                     if mod_peer != false
@@ -336,12 +326,12 @@ device_network_module.controller("network_ctrl", ["$scope", "$compile", "$filter
                             $scope.nd_lut[peer.d_netdevice].peers = (entry for entry in $scope.nd_lut[peer.d_netdevice].peers when entry.peer.idx != peer.idx)
                         delete $scope.peer_lut[peer.idx]
             )
-        $scope.create_peer_information = (ndip_obj, event) ->
-            $scope._src_nd = ndip_obj
+        $scope.create_peer_information = (dev, event) ->
+            $scope._current_dev = dev
             $scope.peer_edit.create_list = undefined#dev.netdevice_set
             $scope.peer_edit.new_object = (scope) ->
                 return {
-                    "s_netdevice" : ndip_obj.idx
+                    "s_netdevice" : (entry.idx for entry in dev.netdevice_set)[0]
                     "penalty" : 1
                 } 
             $scope.peer_edit.create(event).then(
