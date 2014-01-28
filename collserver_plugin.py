@@ -95,9 +95,9 @@ class perfdata_object(object):
         new_com["info"] = info
         return new_com
 
-class windows_nt_memory_pdata(perfdata_object):
+class win_memory_pdata(perfdata_object):
     PD_RE = re.compile("^Memory usage=(?P<used>\d+\.\d+)Mb;\d+\.\d+;\d+\.\d+;\d+\.\d+;(?P<total>\d+\.\d+)$")
-    PD_NAME = "memory"
+    PD_NAME = "win_memory"
     PD_XML_INFO = E.perfdata_info(
         perfdata_value("used", "memory in use", v_type="i", unit="B", rrd_spec="GAUGE:0:1000000", base=1024).get_xml(),
         perfdata_value("total", "memory total", v_type="i", unit="B", rrd_spec="GAUGE:0:1000000", base=1024).get_xml(),
