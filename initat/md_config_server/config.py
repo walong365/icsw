@@ -173,6 +173,7 @@ class main_config(object):
             int(srv_com["version"].text),
             int(srv_com["result"].attrib["state"]),
         )
+        file_status = server_command.srv_reply_to_log_level(file_status)
         self.log("file_content_status for %s is %s (%d), version %d" % (
             file_name,
             srv_com["result"].attrib["reply"],

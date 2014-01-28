@@ -99,7 +99,7 @@ class special_base(object):
     def _cache_name(self):
         return "/tmp/.md-config-server/%s_%s" % (
             self.host.name,
-            self.host.valid_ip)
+            self.host.valid_ip.ip)
     def _store_cache(self):
         if self.__force_store_cache:
             cache = E.cache(
@@ -232,13 +232,13 @@ class special_base(object):
             return None
         self.log("calling server '%s' for %s, command is '%s', %s, %s" % (
             server_name,
-            self.host.valid_ip,
+            self.host.valid_ip.ip,
             command,
             "args is '%s'" % (", ".join([str(value) for value in args])) if args else "no arguments",
             ", ".join(["%s='%s'" % (key, value) for key, value in kwargs.iteritems()]) if kwargs else "no kwargs",
         ))
         connect_to_localhost = kwargs.pop("connect_to_localhost", False)
-        conn_ip = "127.0.0.1" if connect_to_localhost else self.host.valid_ip
+        conn_ip = "127.0.0.1" if connect_to_localhost else self.host.valid_ip.ip
         if not self.__use_cache:
             # contact the server / device
             srv_reply = None
@@ -490,7 +490,7 @@ class special_supermicro(special_base):
         if len(para_list) != len(para_dict):
             self.log("updating info from BMC")
             srv_result = self.collrelay("smcipmi",
-                "--ip=%s" % (self.host.valid_ip),
+                "--ip=%s" % (self.host.valid_ip.ip),
                 "--user=%s" % (user_name),
                 "--passwd=%s" % (cur_pwd),
                 "counter", connect_to_localhost=True)
