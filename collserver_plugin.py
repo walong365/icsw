@@ -99,8 +99,8 @@ class win_memory_pdata(perfdata_object):
     PD_RE = re.compile("^Memory usage=(?P<used>\d+\.\d+)Mb;\d+\.\d+;\d+\.\d+;\d+\.\d+;(?P<total>\d+\.\d+)$")
     PD_NAME = "win_memory"
     PD_XML_INFO = E.perfdata_info(
-        perfdata_value("used", "memory in use", v_type="i", unit="B", rrd_spec="GAUGE:0:1000000", base=1024).get_xml(),
-        perfdata_value("total", "memory total", v_type="i", unit="B", rrd_spec="GAUGE:0:1000000", base=1024).get_xml(),
+        perfdata_value("used", "memory in use", v_type="i", unit="B", rrd_spec="GAUGE:0:U", base=1024, key="memory.used").get_xml(),
+        perfdata_value("total", "memory total", v_type="i", unit="B", rrd_spec="GAUGE:0:U", base=1024, key="memory.total").get_xml(),
         )
     def build_values(self, _xml, in_dict):
         return self._wrap(
@@ -109,7 +109,26 @@ class win_memory_pdata(perfdata_object):
                 int(float(in_dict[key]) * 1024 * 1024) for key in ["used", "total"]
             ]
         )
-        
+
+class win_disk_pdata(perfdata_object):
+    PD_RE = re.compile("^(?P<disk>.): Used Space=(?P<used>\d+\.\d+)Gb;\d+\.\d+;\d+\.\d+;\d+\.\d+;(?P<total>\d+\.\d+)$")
+    PD_NAME = "win_disk"
+    @property
+    def default_xml_info(self):
+        return self.get_pd_xml_info(0)
+    def get_pd_xml_info(self, v_list):
+        disk = v_list[0]
+        return E.perfdata_info(
+            perfdata_value("used", "space used on %s" % (disk), v_type="i", unit="B", rrd_spec="GAUGE:0:U", key="disk.%s.used" % (disk)).get_xml(),
+            perfdata_value("total", "total size of %s" % (disk), v_type="i", unit="B", rrd_spec="GAUGE:0:U", key="disk.%s.total" % (disk)).get_xml(),
+        )
+    def build_values(self, _xml, in_dict):
+        return self._wrap(
+            _xml,
+            [int(float(in_dict["used"]) * 1000 * 1000 * 1000), int(float(in_dict["total"]) * 1000 * 1000 * 1000)],
+            rsi=1
+        )
+
 class load_pdata(perfdata_object):
     PD_RE = re.compile("^load1=(?P<load1>\S+)\s+load5=(?P<load5>\S+)\s+load15=(?P<load15>\S+)$")
     PD_NAME = "load"
