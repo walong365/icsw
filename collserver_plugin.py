@@ -1,4 +1,22 @@
-#!/usr/bin/python-init -Otu
+#!/usr/bin/python-init -Ot
+#
+# Copyright (C) 2013-2014 Andreas Lang-Nevyjel init.at
+#
+# Send feedback to: <lang-nevyjel@init.at>
+#
+# This program is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License Version 2 as
+# published by the Free Software Foundation.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software
+# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+#
 
 from lxml import etree # @UnresolvedImports
 from lxml.builder import E # @UnresolvedImports
@@ -23,13 +41,15 @@ GRAPHER_PORT = 8003
 
 class perfdata_value(object):
     PD_NAME = "unique_name"
-    def __init__(self, name, info, unit="1", v_type="f", key="", rrd_spec="GAUGE:0:100"):
+    def __init__(self, name, info, unit="1", v_type="f", key="", rrd_spec="GAUGE:0:100", base=1):
         self.name = name
         self.info = info
         self.unit = unit
         self.v_type = v_type
         self.key = key or name
         self.rrd_spec = rrd_spec
+        # base is not used right now
+        self.base = base
     def get_xml(self):
         return E.value(
             name=self.name,
@@ -75,6 +95,21 @@ class perfdata_object(object):
         new_com["info"] = info
         return new_com
 
+class windows_nt_memory_pdata(perfdata_object):
+    PD_RE = re.compile("^Memory usage=(?P<used>\d+\.\d+)Mb;\d+\.\d+;\d+\.\d+;\d+\.\d+;(?P<total>\d+\.\d+)$")
+    PD_NAME = "memory"
+    PD_XML_INFO = E.perfdata_info(
+        perfdata_value("used", "memory in use", v_type="i", unit="B", rrd_spec="GAUGE:0:1000000", base=1024).get_xml(),
+        perfdata_value("total", "memory total", v_type="i", unit="B", rrd_spec="GAUGE:0:1000000", base=1024).get_xml(),
+        )
+    def build_values(self, _xml, in_dict):
+        return self._wrap(
+            _xml,
+            [
+                int(float(in_dict[key]) * 1024 * 1024) for key in ["used", "total"]
+            ]
+        )
+        
 class load_pdata(perfdata_object):
     PD_RE = re.compile("^load1=(?P<load1>\S+)\s+load5=(?P<load5>\S+)\s+load15=(?P<load15>\S+)$")
     PD_NAME = "load"
