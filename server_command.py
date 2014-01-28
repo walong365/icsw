@@ -61,6 +61,9 @@ def srv_reply_to_log_level(srv_reply_state):
         SRV_REPLY_STATE_ERROR : logging_tools.LOG_LEVEL_ERROR,
     }.get(srv_reply_state, logging_tools.LOG_LEVEL_ERROR)
 
+def srv_reply_state_is_valid(srv_reply_state):
+    return srv_reply_state in [SRV_REPLY_STATE_CRITICAL, SRV_REPLY_STATE_ERROR, SRV_REPLY_STATE_OK, SRV_REPLY_STATE_WARN]
+
 def compress(in_str, **kwargs):
     if kwargs.get("marshal", False):
         in_str = marshal.dumps(in_str)
