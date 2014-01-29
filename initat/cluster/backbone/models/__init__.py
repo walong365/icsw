@@ -408,7 +408,7 @@ def partition_disc_pre_save(sender, **kwargs):
             raise ValidationError("illegal name '%s'" % (d_name))
         all_discs = partition_disc.objects.exclude(Q(pk=cur_inst.pk)).filter(Q(partition_table=cur_inst.partition_table)).values_list("disc", flat=True)
         if d_name in all_discs:
-            raise ValidationError("name already used")
+            raise ValidationError("disc name '%s' already used" % (d_name))
         cur_inst.disc = d_name
 
 class partition_table(models.Model):
@@ -710,7 +710,7 @@ def config_str_pre_save(sender, **kwargs):
             list(cur_inst.config.config_bool_set.all().values_list("name", flat=True)) + \
             list(cur_inst.config.config_blob_set.all().values_list("name", flat=True))
         if cur_inst.name in all_var_names:
-            raise ValidationError("name already used")
+            raise ValidationError("name '%s' already used" % (cur_inst.name))
         cur_inst.value = cur_inst.value or ""
 
 class config_blob(models.Model):
@@ -746,7 +746,7 @@ def config_blob_pre_save(sender, **kwargs):
             list(cur_inst.config.config_bool_set.all().values_list("name", flat=True)) + \
             list(cur_inst.config.config_blob_set.exclude(Q(pk=cur_inst.pk)).values_list("name", flat=True))
         if cur_inst.name in all_var_names:
-            raise ValidationError("name already used")
+            raise ValidationError("name '%s' already used" % (cur_inst.name))
 
 class config_bool(models.Model):
     idx = models.AutoField(db_column="config_bool_idx", primary_key=True)
@@ -783,7 +783,7 @@ def config_bool_pre_save(sender, **kwargs):
             list(cur_inst.config.config_bool_set.exclude(Q(pk=cur_inst.pk)).values_list("name", flat=True)) + \
             list(cur_inst.config.config_blob_set.all().values_list("name", flat=True))
         if cur_inst.name in all_var_names:
-            raise ValidationError("name already used")
+            raise ValidationError("name '%s' already used" % (cur_inst.name))
         try:
             if type(cur_inst.value) == bool:
                 pass
@@ -871,7 +871,7 @@ def config_script_pre_save(sender, **kwargs):
         if not cur_inst.value:
             raise ValidationError("value is empty")
         if cur_inst.name in cur_inst.config.config_script_set.exclude(Q(pk=cur_inst.pk)).values_list("name", flat=True):
-            raise ValidationError("name already used")
+            raise ValidationError("name '%s' already used" % (cur_inst.name))
         _check_integer(cur_inst, "priority")
         cur_inst.error_text = cur_inst.error_text or ""
 
