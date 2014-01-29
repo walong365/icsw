@@ -42,6 +42,7 @@ from initat.cluster.backbone.render import permission_required_mixin
 from initat.core.render import render_me
 from lxml import etree # @UnresolvedImports
 from lxml.builder import E # @UnresolvedImports
+import StringIO
 import datetime
 import json
 import logging
@@ -357,14 +358,53 @@ class download_configs(View):
         act_resp["Content-disposition"] = "attachment; filename=config_%s.xml" % (datetime.datetime.now().strftime("%Y%m%d_%H%M%S"))
         return act_resp
 
+IGNORE_WHEN_EMPTY = ["categories"]
+IGNORE_ATTRS = ["mon_service_templ"]
+DEFAULT_MAP = {"description" : "description"}
+
+def interpret_xml(el_name, in_xml, mapping):
+    new_el = getattr(E, el_name)()
+    for key, value in in_xml.attrib.iteritems():
+        if key in IGNORE_ATTRS:
+            pass
+        elif key in IGNORE_WHEN_EMPTY and not value.strip():
+            pass
+        else:
+            if not value.strip() and key in DEFAULT_MAP:
+                value = DEFAULT_MAP[key]
+            new_el.append(getattr(E, key)(mapping.get(key, value)))
+    return new_el
+
 class upload_config(View):
     @method_decorator(login_required)
     def post(self, request):
+        _data = StringIO.StringIO(request.FILES["config"].read())
+        if _data.getvalue().startswith("<configuration>"):
+            # old value
+            _tree = etree.fromstring(_data.getvalue())
+            new_tree = E.root()
+            for _config in _tree.findall(".//config"):
+                c_el = interpret_xml("list-item", _config, {})
+                mapping = {"config" : c_el.findtext("name")}
+                for targ_list in ["mon_check_command", "config_bool", "config_str", "config_int", "config_blob", "config_script"]:
+                    c_el.append(getattr(E, "%s_set" % (targ_list))())
+                new_tree.append(c_el)
+                for sub_el in _config.xpath(".//config_str|.//config_int|.//config_bool|.//config_blob|.//config_script|.//mon_check_command"):
+                    t_list = c_el.find("%s_set" % (sub_el.tag))
+                    if sub_el.tag == "config_script":
+                        sub_el.attrib["description"] = "config script"
+                    t_list.append(interpret_xml("list-item", sub_el, mapping))
+            _data = StringIO.StringIO(etree.tostring(new_tree, pretty_print=False))
+            # print etree.tostring(new_tree, pretty_print=True)
+            # sys.exit(-1)
+            # print etree.tostring(_tree, pretty_print=True)
         try:
-            conf_list = XMLParser().parse(request.FILES["config"])
+            conf_list = XMLParser().parse(_data)
         except:
             logger.error("cannot interpret upload file: %s" % (process_tools.get_except_info()))
         else:
+            # print conf_list, _data.getvalue()
+            # print etree.tostring(conf_list, pretty_print=True)
             added = 0
             sub_added = 0
             for conf in conf_list:
@@ -376,6 +416,7 @@ class upload_config(View):
                         conf[key] = []
                 _ent = config_dump_serializer(data=conf)
                 if _ent.is_valid():
+                    _ent.object.create_default_entries = False
                     try:
                         _ent.object.save()
                         # pass
