@@ -1,6 +1,6 @@
 #!/usr/bin/python-init -Ot
 #
-# Copyright (c) 2013 Andreas Lang-Nevyjel, lang-nevyjel@init.at
+# Copyright (c) 2013-2014 Andreas Lang-Nevyjel, lang-nevyjel@init.at
 #
 # this file is part of collectd-init
 #
@@ -19,6 +19,8 @@
 #
 """ connect to a given collectd-server and fetch some data """
 
+from initat.host_monitoring.hm_classes import mvect_entry
+from lxml import etree # @UnresolvedImports
 import argparse
 import logging_tools
 import os
@@ -27,8 +29,6 @@ import server_command
 import sys
 import time
 import zmq
-from lxml import etree # @UnresolvedImports
-from initat.host_monitoring.hm_classes import mvect_entry
 
 class base_com(object):
     def __init__(self, options, *args):
