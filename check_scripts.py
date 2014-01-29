@@ -86,7 +86,8 @@ INSTANCE_XML = """
             <config_name>mother_server</config_name>
         </config_names>
     </instance>
-    <instance name="collectd" check_type="threads_by_pid_file" any_threads_ok="1" runs_on="system">
+    <!-- collectd is checked via process_name to take the python side-process into account -->
+    <instance name="collectd" check_type="simple" any_threads_ok="1" runs_on="system">
         <config_names>
             <config_name>rrd_server</config_name>
         </config_names>
