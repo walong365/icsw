@@ -8,6 +8,9 @@
 
 #sed -i sX/usr/bin/env\ nodeX/opt/cluster/bin/nodeXg /opt/cluster/lib/node_modules/yuglify/bin/yuglify
 
+# delete modules install via npm
+rm -rf /opt/cluster/lib/node_modules/yuglify/node_modules
+
 # check for product version
 
 if [ -f /etc/init.d/mother ] ; then
@@ -15,13 +18,16 @@ if [ -f /etc/init.d/mother ] ; then
     touch /etc/sysconfig/cluster/.is_corvus
 fi
 
-/opt/python-init/lib/python/site-packages/initat/cluster/manage.py collectstatic --noinput
+/opt/python-init/lib/python/site-packages/initat/cluster/manage.py collectstatic --noinput -c
 
 if [ -d /opt/cluster/etc/uwsgi/reload ] ; then
     touch /opt/cluster/etc/uwsgi/reload/webfrontend.touch
 else
     echo "no reload-dir found, please restart uwsgi-init"
 fi
+
+# restart memcached to clean compiled coffeescript snippets
+/etc/init.d/memcached restart
 
 # migrate static_precompiler if needed
 /opt/python-init/lib/python/site-packages/initat/cluster/manage.py migrate static_precompiler
