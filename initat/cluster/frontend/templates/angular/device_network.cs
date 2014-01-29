@@ -162,10 +162,13 @@ device_network_module.controller("network_ctrl", ["$scope", "$compile", "$filter
             wait_list = [
                 restDataSource.reload(["{% url 'rest:device_tree_list' %}", {"with_network" : true, "pks" : angular.toJson($scope.devsel_list), "dolp" : "backbone.change_network"}]),
                 restDataSource.reload(["{% url 'rest:peer_information_list' %}", {}]),
+                # 2
                 restDataSource.reload(["{% url 'rest:netdevice_speed_list' %}", {}]),
                 restDataSource.reload(["{% url 'rest:network_device_type_list' %}", {}])
+                # 4
                 restDataSource.reload(["{% url 'rest:network_list' %}", {}])
                 restDataSource.reload(["{% url 'rest:domain_tree_node_list' %}", {}])
+                # 6
                 restDataSource.reload(["{% url 'rest:netdevice_peer_list' %}", {}])
                 restDataSource.reload(["{% url 'rest:fetch_forms' %}", {"forms" : angular.toJson(["netdevice_form", "net_ip_form", "peer_information_s_form", "peer_information_d_form"])}]),
             ]
@@ -198,8 +201,8 @@ device_network_module.controller("network_ctrl", ["$scope", "$compile", "$filter
                         $scope.ip_lut[ip.idx] = ip
             $scope.nd_peer_lut = {}
             for ext_peer in $scope.nd_peers
-                ext_peer.info_string = "#{ext_peer.devname} (#{ext_peer.penalty}) on #{ext_peer.device__name} (#{ext_peer.device__device_group__name})"
-                $scope.nd_peer_lut[ext_peer.pk] = ext_peer
+                ext_peer.info_string = "#{ext_peer.devname} (#{ext_peer.penalty}) on #{ext_peer.fqdn} (#{ext_peer.device_group_name})"
+                $scope.nd_peer_lut[ext_peer.idx] = ext_peer
             $scope.peer_lut = {}
             for peer in $scope.peers
                 $scope.peer_lut[peer.idx] = peer
@@ -233,6 +236,9 @@ device_network_module.controller("network_ctrl", ["$scope", "$compile", "$filter
             for nd in dev.netdevice_set
                 num_peers += nd.peers.length
             return num_peers
+        $scope.get_route_peers =() ->
+            console.log $scope.peers[0]
+            return (entry for entry in $scope.nd_peers when entry.routing)
         $scope.get_ndip_objects = (dev) ->
             r_list = []
             for ndev in dev.netdevice_set
@@ -299,6 +305,7 @@ device_network_module.controller("network_ctrl", ["$scope", "$compile", "$filter
                         #console.log "modip"
             )
         $scope.get_peer_src_info = () ->
+            #console.log $scope._edit_obj
             src_nd = $scope.nd_lut[$scope._edit_obj.s_netdevice]
             return src_nd.devname + " on " + $scope.dev_lut[src_nd.device].name
         $scope.edit_peer_information = (peer, event) ->

@@ -291,21 +291,33 @@ class fetch_forms(viewsets.ViewSet):
         _ser = form_serializer(ext_list, many=True)
         return Response(_ser.data)
 
+class ext_peer_object(dict):
+    def __init__(self, *args, **kwargs):
+        dict.__init__(self, **kwargs)
+        self["fqdn"] = "%s%s" % (
+            self["device__name"],
+            ".%s" % (self["device__domain_tree_node__full_name"]) if self["device__domain_tree_node__full_name"] else "",
+            )
+
 class ext_peer_serializer(serializers.Serializer):
-    pk = serializers.IntegerField()
+    idx = serializers.IntegerField(source="pk")
     penalty = serializers.IntegerField()
-    device__name = serializers.CharField()
-    device__device_group__name = serializers.CharField()
+    device_name = serializers.CharField(source="device__name")
+    device_group_name = serializers.CharField(source="device__device_group__name")
     devname = serializers.CharField()
+    routing = serializers.BooleanField()
+    fqdn = serializers.CharField()
 
 class netdevice_peer_list(viewsets.ViewSet):
     display_name = "netdevice_peer_list"
     @rest_logging
     def list(self, request):
-        ext_list = netdevice.objects.filter(Q(peer_s_netdevice__gt=0) | Q(peer_d_netdevice__gt=0) | Q(routing=True)) \
+        ext_list = [ext_peer_object(**_obj) for _obj in netdevice.objects.filter(Q(peer_s_netdevice__gt=0) | Q(peer_d_netdevice__gt=0) | Q(routing=True)) \
             .distinct() \
             .order_by("device__device_group__name", "device__name", "devname") \
-            .select_related("device", "device__device_group").values("pk", "devname", "penalty", "device__name", "device__device_group__name")
+            .select_related("device", "device__device_group", "device__domain_tree_node").values("pk", "devname", "penalty", "device__name", "device__device_group__name", "routing", "device__domain_tree_node__full_name")
+        ]
+        # .filter(Q(net_ip__network__network_type__identifier="x") | Q(net_ip__network__network_type__identifier__in=["p", "o", "s", "b"])) \
         _ser = ext_peer_serializer(ext_list, many=True)
         return Response(_ser.data)
 

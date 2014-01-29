@@ -2310,7 +2310,7 @@ class peer_information_s_form(ModelForm):
                 "Settings",
                 Field("penalty", min=1, max=128),
                 Field("d_netdevice", wrapper_ng_show="create_mode", ng_options="value.idx as value.devname for value in _current_dev.netdevice_set", chosen=True),
-                Field("s_netdevice", ng_options="value.pk as value.info_string group by value.device__device_group__name for value in nd_peers", chosen=True),
+                Field("s_netdevice", ng_options="value.idx as value.info_string group by value.device_group_name for value in get_route_peers()", chosen=True),
             ),
             FormActions(
                 Submit("submit", "", css_class="primaryAction", ng_value="action_string"),
@@ -2342,7 +2342,7 @@ class peer_information_d_form(ModelForm):
                 "Settings",
                 Field("penalty", min=1, max=128),
                 Field("s_netdevice", wrapper_ng_show="create_mode", ng_options="value.idx as value.devname for value in _current_dev.netdevice_set", chosen=True),
-                Field("d_netdevice", ng_options="value.pk as value.info_string group by value.device__device_group__name for value in nd_peers", chosen=True),
+                Field("d_netdevice", ng_options="value.idx as value.info_string group by value.device_group_name for value in get_route_peers()", chosen=True),
             ),
             FormActions(
                 Submit("submit", "", css_class="primaryAction", ng_value="action_string"),
