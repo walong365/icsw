@@ -114,6 +114,10 @@ class server_process(threading_tools.process_pool):
                     elif not is_active and not stale:
                         file_el.attrib["active"] = "1"
                         disabled += 1
+                else:
+                    self.log("file '%s' missing, disabling" % (file_el.attrib["file_name"]), logging_tools.LOG_LEVEL_ERROR)
+                    file_el.attrib["active"] = "0"
+                    disabled += 1
             if enabled or disabled:
                 num_changed += 1
                 self.log("updated active info for %s: %d enabled, %d disabled" % (

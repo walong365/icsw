@@ -227,7 +227,7 @@ class data_store(object):
             parent.remove(struct_ent)
         # print etree.tostring(xml_vect, pretty_print=True)
         # add pde entries
-        pde_keys = sorted([(pde_node.attrib["name"], pde_node.get("type_instance", ""), pde_node) for pde_node in cur_xml.findall("pde")])
+        pde_keys = sorted([(pde_node.attrib["name"], pde_node.get("type_instance", ""), pde_node) for pde_node in cur_xml.findall("pde[@active='1']")])
         for pde_key, type_inst, pde_node in pde_keys:
             ti_str = "/%s" % (type_inst) if type_inst else ""
             for sub_val in pde_node:
