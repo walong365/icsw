@@ -18,11 +18,11 @@ master=True
 ; DO NOT use vacuum. It may introduce a race condition which will
 ; leave instances in an unusable state after an emperor reload.
 vacuum=False
-max-requests=500
+max-requests=150
 harakiri-verbose=1
 processes=2
 post-buffering=1
-workers=16
+workers=8
 show-config=1
 ; reduce mercy period to speed up reload
 worker-reload-mercy=10
