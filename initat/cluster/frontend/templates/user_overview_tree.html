@@ -141,8 +141,7 @@ user_tree_module.controller("user_tree", ["$scope", "$compile", "$filter", "$tem
                 "gid" : gid
                 "active" : true
                 "homestart" : "/home"
-                "object_permissions" : []
-                "permissions" : []
+                "perms" : []
             }
             return r_obj
         $scope.user_edit = new angular_edit_mixin($scope, $templateCache, $compile, $modal, Restangular)
@@ -161,8 +160,7 @@ user_tree_module.controller("user_tree", ["$scope", "$compile", "$filter", "$tem
                 "active" : true
                 "group" : (entry.idx for entry in $scope.group_list)[0]
                 "shell" : "/bin/bash"
-                "object_permissions" : []
-                "permissions" : []
+                "perms" : []
             }
             return r_obj
         #$scope.group_edit.edit_template = "group_edit.html"
@@ -175,14 +173,13 @@ user_tree_module.controller("user_tree", ["$scope", "$compile", "$filter", "$tem
             ["{% url 'rest:home_export_list' %}", {}]
             ["{% url 'rest:csw_object_list' %}", {}]
         ])
-        $scope.init_ocsw_cache = (entry) ->
-            # copy permissions
-            entry.initial_permissions = (_perm for _perm in entry.permissions)
+        $scope.init_csw_cache = (entry, e_type) ->
+            entry.permissions = (_e.csw_permission for _e in entry["#{e_type}_permission_set"])
             entry.ocsw_cache = {}
             for csw in $scope.csw_permission_list
                 entry.ocsw_cache[csw.idx] = []
-            for csw in entry.object_permissions
-                entry.ocsw_cache[csw.csw_permission].push(csw.object_pk)
+            for csw in entry["#{e_type}_object_permission_set"]
+                entry.ocsw_cache[csw.csw_object_permission.csw_permission].push(csw)
         $q.all(wait_list).then(
             (data) ->
                 $scope.group_list = data[0]
@@ -193,7 +190,7 @@ user_tree_module.controller("user_tree", ["$scope", "$compile", "$filter", "$tem
                 $scope.home_export_list = data[4]
                 # beautify permission list
                 for entry in $scope.csw_permission_list
-                    info_str = entry.content_type.app_label + " | " + entry.content_type.name + " | " + entry.name + " | " + (if entry.valid_for_object_level then "G/O" else "G")
+                    info_str = String(entry.idx) + " | " + entry.content_type.app_label + " | " + entry.content_type.name + " | " + entry.name + " | " + (if entry.valid_for_object_level then "G/O" else "G")
                     entry.info = info_str
                     if entry.valid_for_object_level
                         key = entry.content_type.app_label + "." + entry.content_type.model 
@@ -226,8 +223,8 @@ user_tree_module.controller("user_tree", ["$scope", "$compile", "$filter", "$tem
             group_lut = {}
             rest_list = []
             for entry in $scope.group_list
-                # optimise object_permission_list
-                $scope.init_ocsw_cache(entry)
+                # set csw dummy permission list and optimizse object_permission list
+                $scope.init_csw_cache(entry, "group")
                 t_entry = $scope.tree.new_node({folder:true, obj:entry, expand:!entry.parent_group, _node_type:"g"})
                 group_lut[entry.idx] = t_entry
                 if entry.parent_group
@@ -245,8 +242,8 @@ user_tree_module.controller("user_tree", ["$scope", "$compile", "$filter", "$tem
                         _rest_list.push(entry)
                 rest_list = _rest_list
             for entry in $scope.user_list
-                # optimise object_permission_list
-                $scope.init_ocsw_cache(entry)
+                # set csw dummy permission list and optimise object_permission_list
+                $scope.init_csw_cache(entry, "user")
                 t_entry = $scope.tree.new_node({folder:false, obj:entry, _node_type:"u"})
                 group_lut[entry.group].add_child(t_entry)
             $scope.group_lut = group_lut
@@ -258,9 +255,9 @@ user_tree_module.controller("user_tree", ["$scope", "$compile", "$filter", "$tem
         )
         $scope.valid_device_groups = () ->
             return (entry for entry in $scope.device_group_list when entry.enabled == true and entry.cluster_device_group == false)
-        $scope.valid_group_csw_permissions = () ->
+        $scope.valid_group_csw_perms = () ->
             return (entry for entry in $scope.csw_permission_list when entry.codename not in ["admin", "group_admin"])
-        $scope.valid_user_csw_permissions = () ->
+        $scope.valid_user_csw_perms = () ->
             return (entry for entry in $scope.csw_permission_list)
         $scope.get_export_list = () ->
             return (entry for entry in $scope.home_export_list)
@@ -300,7 +297,10 @@ user_tree_module.controller("user_tree", ["$scope", "$compile", "$filter", "$tem
         $scope.change_password = () ->
             $scope.$broadcast("icsw.enter_password")
         $scope.toggle_object_csw = (key, obj_idx, entry_idx) ->
-            remove = obj_idx in $scope._edit_obj.ocsw_cache[entry_idx]
+            if $scope._edit_obj.ocsw_cache[entry_idx].length
+                remove = if (_v for _v in $scope._edit_obj.ocsw_cache[entry_idx] when _v.csw_object_permission.object_pk == obj_idx).length then true else false
+            else
+                remove = false
             $.ajax
                 url     : "{% url 'user:change_object_permission' %}"
                 data    :
@@ -315,17 +315,75 @@ user_tree_module.controller("user_tree", ["$scope", "$compile", "$filter", "$tem
                     if parse_xml_response(xml)
                         # update cache
                         if remove
-                            $scope._edit_obj.ocsw_cache[entry_idx] = (entry for entry in $scope._edit_obj.ocsw_cache[entry_idx] when entry != obj_idx)
-                            $scope._edit_obj.object_permissions = (entry for entry in $scope._edit_obj.object_permissions when (entry.csw_permission != entry_idx or entry.object_pk != obj_idx)) 
+                            $scope._edit_obj.ocsw_cache[entry_idx] = (entry for entry in $scope._edit_obj.ocsw_cache[entry_idx] when entry.csw_object_permission.object_pk != obj_idx)
+                            noty
+                                text : "removed local permission"
+                                type : "warning"
                         else
-                            $scope._edit_obj.ocsw_cache[entry_idx].push(obj_idx)
-                            $scope._edit_obj.object_permissions.push({csw_permission : entry_idx, object_pk : obj_idx})
+                            new_ocsw_obj = {
+                                "level" : 0
+                                "csw_object_permission" : {
+                                    "object_pk" : obj_idx
+                                    "csw_permission" : entry_idx
+                                }
+                            }
+                            if $scope._edit_mode == "u"
+                                new_ocsw_obj["user"] = $scope._edit_obj.idx
+                            else
+                                new_ocsw_obj["group"] = $scope._edit_obj.idx
+                            $scope._edit_obj.ocsw_cache[entry_idx].push(new_ocsw_obj)
+                            noty
+                                text : "added local permission"
                         # trigger redraw
                         $scope.$digest()
         $scope.object_csw_set = (obj_idx, entry_idx) ->
-            return obj_idx in $scope._edit_obj.ocsw_cache[entry_idx]
+            p_list = $scope._edit_obj.ocsw_cache[entry_idx]
+            if p_list.length
+                return if (_v for _v in p_list when _v.csw_object_permission.object_pk == obj_idx).length then true else false
+            else
+                # nothing set
+                return false
         $scope.has_global_perm = (entry_idx) ->
-            return entry_idx in $scope._edit_obj.initial_permissions
+            #console.log "**", entry_idx
+            return entry_idx in $scope._edit_obj.permissions
+        $scope.change_permissions = () ->
+            #console.log $scope._edit_mode
+            if $scope._edit_mode == "u"
+                ug_name = "user"
+                list_url = "{% url 'rest:user_permission_list' %}".slice(1)
+                detail_url = "{% url 'rest:user_permission_detail' 1 %}".slice(1).slice(0, -2)
+            else
+                ug_name = "group"
+                list_url = "{% url 'rest:group_permission_list' %}".slice(1)
+                detail_url = "{% url 'rest:group_permission_detail' 1 %}".slice(1).slice(0, -2)
+            ug_name = {"u" : "user", "g" : "group"}[$scope._edit_mode]
+            ps_name = "#{ug_name}_permission_set"
+            c_perms = (_e.csw_permission for _e in $scope._edit_obj[ps_name])
+            new_perms = (_v for _v in $scope._edit_obj.permissions when _v not in c_perms)
+            old_perms = (_v for _v in c_perms when _v not in $scope._edit_obj.permissions)
+            if new_perms.length
+                new_obj = {
+                    "csw_permission" : new_perms[0]
+                    "level" : 0
+                }
+                new_obj[ug_name] = $scope._edit_obj.idx
+                Restangular.all(list_url).post(new_obj).then(
+                    (data) ->
+                        $scope._edit_obj[ps_name].push(data)
+                )
+            if old_perms.length
+                del_obj = {
+                    "idx" : (_v.idx for _v in $scope._edit_obj[ps_name] when _v.csw_permission == old_perms[0])[0]
+                    "csw_permission" : old_perms[0]
+                }
+                del_obj[ug_name] = $scope._edit_obj.idx
+                Restangular.restangularizeElement(null, del_obj, detail_url)
+                del_obj.remove().then((data) ->
+                    $scope._edit_obj[ps_name] = (_e for _e in $scope._edit_obj[ps_name] when _e.csw_permission != old_perms[0])
+                    noty
+                        text : "removed global permission"
+                        type : "warning"
+                )
 ]).directive("grouptemplate", ($compile, $templateCache) ->
     return {
         restrict : "A"

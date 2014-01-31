@@ -26,8 +26,8 @@ from django.contrib.auth.decorators import login_required
 from django.db.models import get_model, Q
 from django.utils.decorators import method_decorator
 from django.views.generic import View
-from initat.cluster.backbone.models import group, user, \
-     user_variable, csw_permission, csw_object_permission
+from initat.cluster.backbone.models import group, user, user_variable, csw_permission, \
+    csw_object_permission, group_permission, user_permission, group_object_permission, user_object_permission
 from initat.cluster.backbone.render import permission_required_mixin
 from initat.cluster.frontend.forms import group_detail_form, user_detail_form, \
     account_detail_form
@@ -160,22 +160,11 @@ class change_object_permission(View):
     @method_decorator(xml_wrapper)
     def post(self, request):
         _post = request.POST
-        if "auth_type" in _post:
-            auth_pk = int(_post["auth_pk"])
-            auth_obj = {"g" : group, "u" : user}[_post["auth_type"]].objects.get(Q(pk=auth_pk))
-            set_perm = csw_permission.objects.select_related("content_type").get(Q(pk=_post["csw_idx"]))
-            obj_pk = int(_post["obj_idx"])
-            add = True if int(_post["set"]) else False
-        else:
-            key = _post["key"]
-            obj_pk, perm_pk = key.split("__")[1:3]
-            auth_type, auth_pk = _post["auth_key"].split("__")
-            if auth_type == "group":
-                auth_obj = group.objects.get(Q(pk=auth_pk))
-            else:
-                auth_obj = user.objects.get(Q(pk=auth_pk))
-            set_perm = csw_permission.objects.select_related("content_type").get(Q(pk=perm_pk))
-            add = True if int(_post["selected"]) else False
+        auth_pk = int(_post["auth_pk"])
+        auth_obj = {"g" : group, "u" : user}[_post["auth_type"]].objects.get(Q(pk=auth_pk))
+        set_perm = csw_permission.objects.select_related("content_type").get(Q(pk=_post["csw_idx"]))
+        obj_pk = int(_post["obj_idx"])
+        add = True if int(_post["set"]) else False
         perm_model = get_model(set_perm.content_type.app_label, set_perm.content_type.name).objects.get(Q(pk=obj_pk))
         # print perm_model, auth_obj, set_perm
         if add:
@@ -192,7 +181,10 @@ class change_object_permission(View):
                         object_pk=perm_model.pk,
                         )
                     logger.info("created new csw_object_permission %s" % (unicode(csw_objp)))
-                auth_obj.object_permissions.add(csw_objp)
+                if auth_obj._meta.model_name == "user":
+                    user_object_permission.objects.create(user=auth_obj, csw_object_permission=csw_objp)
+                else:
+                    group_object_permission.objects.create(group=auth_obj, csw_object_permission=csw_objp)
                 logger.info("added csw_object_permission %s to %s" % (
                     unicode(csw_objp),
                     unicode(auth_obj),
@@ -224,7 +216,10 @@ class change_object_permission(View):
                         unicode(auth_obj),
                         ))
                 else:
-                    auth_obj.object_permissions.remove(csw_objp)
+                    if auth_obj._meta.model_name == "user":
+                        user_object_permission.objects.filter(Q(csw_object_permission=csw_objp) & Q(user=auth_obj)).delete()
+                    else:
+                        group_object_permission.objects.filter(Q(csw_object_permission=csw_objp) & Q(group=auth_obj)).delete()
                     logger.info("removed csw_object_permission %s from %s" % (
                         unicode(csw_objp),
                         unicode(auth_obj),

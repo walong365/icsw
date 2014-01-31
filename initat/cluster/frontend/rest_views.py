@@ -196,6 +196,7 @@ class list_view(mixins.ListModelMixin,
         return self.list(request, *args, **kwargs)
     @rest_logging
     def post(self, request, *args, **kwargs):
+        print "***", args, kwargs, self.request.QUERY_PARAMS, self.request.POST
         resp = self.create(request, *args, **kwargs)
         if resp.status_code in [200, 201, 202, 203]:
             resp.data["_messages"] = [u"created '%s'" % (unicode(self.object))]
@@ -223,8 +224,8 @@ class list_view(mixins.ListModelMixin,
             "mon_check_command" : ([], ["exclude_devices", "categories"]),
             "mon_host_cluster" : ([], ["devices"]),
             "network" : ([], ["network_device_type"]),
-            "user" : (["group"], ["permissions", "secondary_groups", "object_permissions", "allowed_device_groups"]),
-            "group" : (["parent_group"], ["permissions", "object_permissions", "allowed_device_groups"]),
+            "user" : (["group"], ["user_permission_set", "user_object_permission_set", "user_object_permission_set__csw_object_permission", "secondary_groups", "allowed_device_groups"]),
+            "group" : (["parent_group"], ["group_permission_set", "group_object_permission_set", "group_object_permission_set__csw_object_permission", "allowed_device_groups"]),
             "config" : ([], [
                 "categories", "config_str_set", "config_int_set", "config_blob_set",
                 "config_bool_set", "config_script_set", "mon_check_command_set__categories", "mon_check_command_set__exclude_devices",
@@ -395,102 +396,6 @@ class csw_object_list(viewsets.ViewSet):
             if cur_obj.device_type.identifier == "MD":
                 _lt = "warning"
         return _lt
-
-# class get_object_permissions(View):
-#     @method_decorator(login_required)
-#     def post(self, request):
-#         _post = request.POST
-#         auth_type, auth_pk = _post["auth_key"].split("__")
-#         if auth_type == "group":
-#             auth_obj = group.objects.get(Q(pk=auth_pk))
-#         else:
-#             auth_obj = user.objects.get(Q(pk=auth_pk))
-#         # pprint.pprint(_post)
-#         all_db_perms = csw_permission.objects.filter(Q(valid_for_object_level=True)).select_related("content_type")
-#         all_perms = E.csw_permissions(
-#             *[cur_p.get_xml() for cur_p in all_db_perms])
-#         perm_ct_pks = set([int(pk) for pk in all_perms.xpath(".//csw_permission/@content_type")])
-#         perm_cts = ContentType.objects.filter(Q(pk__in=perm_ct_pks)).order_by("name")
-#         request.xml_response["perms"] = all_perms
-#         request.xml_response["content_types"] = E.content_types(
-#             *[E.content_type(
-#                 unicode(cur_ct),
-#                 self._get_objects(cur_ct, auth_obj, [ct_perm for ct_perm in all_db_perms if ct_perm.content_type_id == cur_ct.pk]),
-#                 name=cur_ct.name,
-#                 app_label=cur_ct.app_label,
-#                 pk="%d" % (cur_ct.pk)
-#                 ) for cur_ct in perm_cts]
-#             )
-#     def _get_objects(self, cur_ct, auth_obj, perm_list):
-#         cur_model = get_model(cur_ct.app_label, cur_ct.name)
-#         model_name = cur_model._meta.object_name
-#         return {
-#             "device" : device_object_emitter,
-#             "group"  : group_object_emitter,
-#             "user"   : user_object_emitter,
-#             }[model_name](cur_model).get_objects(auth_obj, perm_list)
-#
-# class object_emitter(object):
-#     class Meta:
-#         pass
-#     def __init__(self, cur_model):
-#         self.model = cur_model
-#         self.model_name = self.model._meta.object_name
-#         self.query = self.model.objects.all()
-#     def update_query(self):
-#         # add select_related
-#         pass
-#     def get_attrs(self, cur_obj):
-#         return {}
-#     def get_objects(self, auth_obj, perm_list):
-#         self.update_query()
-#         return E.objects(
-#             *[
-#                 E.object(
-#                 unicode(cur_obj),
-#                 perms=self._get_object_perms(
-#                     auth_obj,
-#                     cur_obj,
-#                     perm_list,
-#                     ),
-#                     pk="%d" % (cur_obj.pk),
-#                     **self.get_attrs(cur_obj)
-#                 ) for cur_obj in self.query
-#             ],
-#             object_name=self.model_name,
-#             has_group="1" if getattr(self.Meta, "has_group", False) else "0",
-#             has_second_group="1" if getattr(self.Meta, "has_second_group", False) else "0"
-#         )
-#     def _get_object_perms(self, auth_obj, cur_obj, perm_list):
-#         set_perms = ["%d" % (cur_perm.pk) for cur_perm in perm_list if auth_obj.has_object_perm(
-#             cur_perm,
-#             cur_obj,
-#             ask_parent=False,
-#             )]
-#         return ",".join(set_perms)
-#
-# class device_object_emitter(object_emitter):
-#     class Meta:
-#         has_group = True
-#         has_second_group = True
-#     def update_query(self):
-#         self.query = self.query.filter(Q(enabled=True) & Q(device_group__enabled=True)).select_related("device_group", "device_type")
-#     def get_attrs(self, cur_obj):
-#         return {
-#             "group" : unicode(cur_obj.device_group),
-#             "second_group" : "meta (group)" if cur_obj.device_type.identifier == "MD" else "real"
-#             }
-#
-# class user_object_emitter(object_emitter):
-#     class Meta:
-#         has_group = True
-#     def update_query(self):
-#         self.query = self.query.select_related("group")
-#     def get_attrs(self, cur_obj):
-#         return {"group" : unicode(cur_obj.group)}
-#
-# class group_object_emitter(object_emitter):
-#     pass
 
 class device_tree_list(mixins.ListModelMixin,
                        mixins.CreateModelMixin,

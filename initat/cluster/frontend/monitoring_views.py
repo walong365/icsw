@@ -45,8 +45,8 @@ import server_command
 
 logger = logging.getLogger("cluster.monitoring")
 
-class setup(View):
-    @method_decorator(login_required)
+class setup(permission_required_mixin, View):
+    all_required_permissions = ["backbone.setup_monitoring"]
     def get(self, request):
         # print mon_contact_form()
         return render_me(
@@ -61,8 +61,8 @@ class setup(View):
                 }
         )()
 
-class setup_cluster(View):
-    @method_decorator(login_required)
+class setup_cluster(permission_required_mixin, View):
+    all_required_permissions = ["backbone.setup_monitoring"]
     def get(self, request):
         return render_me(
             request, "monitoring_setup_cluster.html", {
