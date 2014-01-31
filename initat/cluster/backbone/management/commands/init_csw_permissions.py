@@ -3,19 +3,18 @@
 scan all apps in backbone for new CSW rights
 """
 
-import logging_tools
-import pprint
-import time
-from optparse import make_option
-
 from django.contrib.contenttypes.models import ContentType
 from django.core.exceptions import ImproperlyConfigured
+from django.core.exceptions import ValidationError, ImproperlyConfigured
 from django.core.management.base import BaseCommand, CommandError
 from django.db import DEFAULT_DB_ALIAS
 from django.db.models import Q
 from django.utils.datastructures import SortedDict
-
 from initat.cluster.backbone.models import csw_permission
+from optparse import make_option
+import logging_tools
+import pprint
+import time
 
 class Command(BaseCommand):
     option_list = BaseCommand.option_list + (
@@ -86,6 +85,7 @@ class Command(BaseCommand):
         present_perms = csw_permission.objects.all().select_related("content_type")
         p_dict = dict([((cur_perm.content_type.app_label, cur_perm.codename), cur_perm) for cur_perm in present_perms])
         found_perms = set()
+        found_perms_list = []
         full_dict = dict([((cur_perm.content_type.app_label, cur_perm.codename, cur_perm.content_type.model), cur_perm) for cur_perm in present_perms])
         for app, models in app_list.items():
             if models is None:
@@ -100,6 +100,7 @@ class Command(BaseCommand):
                     app_label = model._meta.app_label
                     cur_ct = ContentType.objects.get(app_label=app_label, model=model._meta.object_name)
                     for code_name, name, valid_for_object_level in model.CSW_Meta.permissions:
+                        found_perms_list.append((app_label, code_name))
                         found_perms.add((app_label, code_name))
                         if (app_label, code_name) in p_dict and (app_label, code_name, cur_ct.model) not in full_dict:
                             print "removing permission '%s' from old model %s" % (unicode(p_dict[(app_label, code_name)]), cur_ct.model)
@@ -129,6 +130,10 @@ class Command(BaseCommand):
                     print "found %7s error(s)" % len(errors)
                     if verbosity > 1:
                         pprint.pprint(errors)
+        dup_keys = set([key for key in found_perms if found_perms_list.count(key) > 1])
+        if dup_keys:
+            print "%s found, please fix models: %s" % (logging_tools.get_plural("duplicate key", len(dup_keys)), ", ".join(sorted([str(_v) for _v in dup_keys])))
+            raise ImproperlyConfigured("CSW permissions not unique")
         # find old permissions
         old_perms = set(p_dict.keys()) - found_perms
         if old_perms:

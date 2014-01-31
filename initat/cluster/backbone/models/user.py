@@ -24,6 +24,10 @@ __all__ = [
     "group", "group_serializer", "group_serializer_h",
     "user_device_login",
     "user_variable",
+    "group_permission", "group_permission_serializer",
+    "group_object_permission", "group_object_permission_serializer",
+    "user_permission", "user_permission_serializer",
+    "user_object_permission", "user_object_permission_serializer",
     ]
 
 # auth_cache structure
@@ -43,10 +47,10 @@ class auth_cache(object):
         self._from_db()
     def _from_db(self):
         self.__perm_dict = dict([("%s.%s" % (cur_perm.content_type.app_label, cur_perm.codename), cur_perm) for cur_perm in csw_permission.objects.all().select_related("content_type")])
-        perms = self.auth_obj.permissions.all().select_related("content_type")
+        perms = self.auth_obj.perms.all().select_related("content_type")
         for perm in perms:
             self.__perms.add(("%s.%s" % (perm.content_type.app_label, perm.codename)))
-        obj_perms = self.auth_obj.object_permissions.all().select_related("csw_permission__content_type")
+        obj_perms = self.auth_obj.object_perms.all().select_related("csw_permission__content_type")
         for obj_perm in obj_perms:
             perm_key = "%s.%s" % (obj_perm.csw_permission.content_type.app_label, obj_perm.csw_permission.codename)
             self.__obj_perms.setdefault(perm_key, []).append(obj_perm.object_pk)
@@ -112,16 +116,6 @@ class csw_permission(models.Model):
         unique_together = (("content_type", "codename"),)
         ordering = ("content_type__app_label", "content_type__name", "name",)
         app_label = "backbone"
-    # def get_xml(self):
-    #    r_xml = E.csw_permission(
-    #        pk="%d" % (self.pk),
-    #        key="cswp__%d" % (self.pk),
-    #        name=self.name or "",
-    #        codename=self.codename or "",
-    #        valid_for_object_level="1" if self.valid_for_object_level else "0",
-    #        content_type="%d" % (self.content_type_id),
-    #        )
-    #    return r_xml
     @staticmethod
     def get_permission(in_object, code_name):
         ct = ContentType.objects.get_for_model(in_object)
@@ -130,6 +124,9 @@ class csw_permission(models.Model):
             csw_permission=csw_permission.objects.get(Q(content_type=ct) & Q(codename=code_name)),
             object_pk=cur_pk
             )
+    def get_user_level(self):
+        print dir(self)
+        return 4
     def __unicode__(self):
         return u"%s | %s | %s | %s" % (
             self.content_type.app_label,
@@ -165,6 +162,63 @@ class csw_object_permission_serializer(serializers.ModelSerializer):
     class Meta:
         model = csw_object_permission
 
+# permission intermediate models
+class group_permission(models.Model):
+    idx = models.AutoField(primary_key=True)
+    group = models.ForeignKey("backbone.group")
+    csw_permission = models.ForeignKey(csw_permission)
+    level = models.IntegerField(default=0)
+    date = models.DateTimeField(auto_now_add=True)
+    class Meta:
+        app_label = "backbone"
+
+class group_object_permission(models.Model):
+    idx = models.AutoField(primary_key=True)
+    group = models.ForeignKey("backbone.group")
+    csw_object_permission = models.ForeignKey(csw_object_permission)
+    level = models.IntegerField(default=0)
+    date = models.DateTimeField(auto_now_add=True)
+    class Meta:
+        app_label = "backbone"
+
+class user_permission(models.Model):
+    idx = models.AutoField(primary_key=True)
+    user = models.ForeignKey("backbone.user")
+    csw_permission = models.ForeignKey(csw_permission)
+    level = models.IntegerField(default=0)
+    date = models.DateTimeField(auto_now_add=True)
+    class Meta:
+        app_label = "backbone"
+
+class user_object_permission(models.Model):
+    idx = models.AutoField(primary_key=True)
+    user = models.ForeignKey("backbone.user")
+    csw_object_permission = models.ForeignKey(csw_object_permission)
+    level = models.IntegerField(default=0)
+    date = models.DateTimeField(auto_now_add=True)
+    class Meta:
+        app_label = "backbone"
+
+class group_permission_serializer(serializers.ModelSerializer):
+    class Meta:
+        model = group_permission
+
+class group_object_permission_serializer(serializers.ModelSerializer):
+    # needed to resolve csw_permission
+    csw_object_permission = csw_object_permission_serializer()
+    class Meta:
+        model = group_object_permission
+
+class user_permission_serializer(serializers.ModelSerializer):
+    class Meta:
+        model = user_permission
+
+class user_object_permission_serializer(serializers.ModelSerializer):
+    # needed to resolve csw_permission
+    csw_object_permission = csw_object_permission_serializer()
+    class Meta:
+        model = user_object_permission
+
 def get_label_codename(perm):
     app_label, codename = (None, None)
     if type(perm) in [str, unicode]:
@@ -181,9 +235,9 @@ def get_label_codename(perm):
     return (app_label, codename)
 
 def check_app_permission(auth_obj, app_label):
-    if auth_obj.permissions.filter(Q(content_type__app_label=app_label)).count():
+    if auth_obj.perms.filter(Q(content_type__app_label=app_label)).count():
         return True
-    elif auth_obj.object_permissions.filter(Q(csw_permission__content_type__app_label=app_label)).count():
+    elif auth_obj.object_perms.filter(Q(csw_permission__content_type__app_label=app_label)).count():
         return True
     else:
         return False
@@ -195,16 +249,6 @@ def check_permission(auth_obj, perm):
     if app_label and codename:
         # caching code
         return auth_obj._auth_cache.has_permission(app_label, codename)
-        # old code
-        # try:
-        #    auth_obj.permissions.get(
-        #        Q(codename=codename) &
-        #        Q(content_type__app_label=app_label)
-        #        )
-        # except csw_permission.DoesNotExist:
-        #    return False
-        # else:
-        #    return True
     else:
         return False
 
@@ -290,8 +334,12 @@ class user(models.Model):
     home_dir_created = models.BooleanField(default=False)
     secondary_groups = models.ManyToManyField("group", related_name="secondary", blank=True)
     last_login = models.DateTimeField(null=True)
+    # deprecated
     permissions = models.ManyToManyField(csw_permission, related_name="db_user_permissions", blank=True)
     object_permissions = models.ManyToManyField(csw_object_permission, related_name="db_user_permissions", blank=True)
+    # new model
+    perms = models.ManyToManyField(csw_permission, related_name="db_user_perms", blank=True, through=user_permission)
+    object_perms = models.ManyToManyField(csw_object_permission, related_name="db_user_perms", blank=True, through=user_object_permission)
     is_superuser = models.BooleanField(default=False)
     db_is_auth_for_password = models.BooleanField(default=False)
     def __setattr__(self, key, value):
@@ -342,10 +390,6 @@ class user(models.Model):
             else:
                 r_val = get_all_object_perms(self, obj)
         return r_val
-    def get_all_object_perms_xml(self, obj, ask_parent=True):
-        return E.permissions(
-            *[E.permissions(cur_val, app=cur_val.split(".")[0], permission=cur_val.split(".")[1]) for cur_val in sorted(list(self.get_all_object_perms(obj, ask_parent)))]
-        )
     def get_allowed_object_list(self, perm, ask_parent=True):
         # get all object pks we have an object permission for
         if ask_parent:
@@ -370,44 +414,6 @@ class user(models.Model):
     def get_is_active(self):
         return self.active
     is_active = property(get_is_active)
-#     def get_xml(self, with_permissions=False, with_allowed_device_groups=True, user_perm_dict=None,
-#                 allowed_device_group_dict=None):
-#         user_xml = E.user(
-#             unicode(self),
-#             pk="%d" % (self.pk),
-#             key="user__%d" % (self.pk),
-#             login=self.login,
-#             uid="%d" % (self.uid),
-#             group="%d" % (self.group_id or 0),
-#             aliases=self.aliases or "",
-#             active="1" if self.active else "0",
-#             export="%d" % (self.export_id or 0),
-#             home_dir_created="1" if self.home_dir_created else "0",
-#             first_name=self.first_name or "",
-#             last_name=self.last_name or "",
-#             title=self.title or "",
-#             email=self.email or "",
-#             pager=self.pager or "",
-#             tel=self.tel or "",
-#             comment=self.comment or "",
-#             is_superuser="1" if self.is_superuser else "0",
-#             secondary_groups="::".join(["%d" % (sec_group.pk) for sec_group in self.secondary_groups.all()]),
-#             db_is_auth_for_password="1" if self.db_is_auth_for_password else "0"
-#         )
-#         if with_allowed_device_groups:
-#             if allowed_device_group_dict:
-#                 user_xml.attrib["allowed_device_groups"] = "::".join(["%d" % (cur_pk) for cur_pk in allowed_device_group_dict.get(self.login, [])])
-#             else:
-#                 user_xml.attrib["allowed_device_groups"] = "::".join(["%d" % (cur_pk) for cur_pk in self.allowed_device_groups.all().values_list("pk", flat=True)])
-#         if with_permissions:
-#             if user_perm_dict:
-#                 user_xml.attrib["permissions"] = "::".join(["%d" % (cur_perm.pk) for cur_perm in user_perm_dict.get(self.login, [])])
-#             else:
-#                 user_xml.attrib["permissions"] = "::".join(["%d" % (cur_perm.pk) for cur_perm in csw_permission.objects.filter(Q(db_user_permissions=self))])
-#         else:
-#             # empty field
-#             user_xml.attrib["permissions"] = ""
-#         return user_xml
     class CSW_Meta:
         permissions = (
             ("admin"      , "Administrator", True),
@@ -436,18 +442,21 @@ class user_serializer_h(serializers.HyperlinkedModelSerializer):
         fields = ("url", "login", "uid", "group")
 
 class user_serializer(serializers.ModelSerializer):
-    object_permissions = csw_object_permission_serializer(many=True, read_only=True)
+    # object_perms = csw_object_permission_serializer(many=True, read_only=True)
+    user_permission_set = user_permission_serializer(many=True, read_only=True)
+    user_object_permission_set = user_object_permission_serializer(many=True, read_only=True)
     class Meta:
         model = user
         fields = ("idx", "login", "uid", "group", "first_name", "last_name", "shell",
             "title", "email", "pager", "comment", "tel", "password", "active", "export",
-            "permissions", "secondary_groups", "object_permissions",
+            "secondary_groups", "user_permission_set", "user_object_permission_set",
             "allowed_device_groups", "aliases", "db_is_auth_for_password", "is_superuser",
             )
 
-@receiver(signals.m2m_changed, sender=user.permissions.through)
-def user_permissions_changed(sender, *args, **kwargs):
+@receiver(signals.m2m_changed, sender=user.perms.through)
+def user_perms_changed(sender, *args, **kwargs):
     if kwargs.get("action") == "pre_add" and "instance" in kwargs:
+        print "***++", kwargs
         cur_user = None
         try:
             # hack to get the current logged in user
@@ -504,11 +513,6 @@ def user_post_save(sender, **kwargs):
     if not kwargs["raw"] and "instance" in kwargs:
         _cur_inst = kwargs["instance"]
 
-# @receiver(signals.post_delete, sender=user)
-# def user_post_delete(sender, **kwargs):
-#    if "instance" in kwargs:
-#        cur_inst = kwargs["instance"]
-
 class group(models.Model):
     idx = models.AutoField(db_column="ggroup_idx", primary_key=True)
     active = models.BooleanField(default=True)
@@ -528,8 +532,12 @@ class group(models.Model):
     allowed_device_groups = models.ManyToManyField("device_group", blank=True)
     # parent group
     parent_group = models.ForeignKey("self", null=True, blank=True)
+    # deprecated
     permissions = models.ManyToManyField(csw_permission, related_name="db_group_permissions", blank=True)
     object_permissions = models.ManyToManyField(csw_object_permission, related_name="db_group_permissions")
+    # new model
+    perms = models.ManyToManyField(csw_permission, related_name="db_group_perms", blank=True, through=group_permission)
+    object_perms = models.ManyToManyField(csw_object_permission, related_name="db_group_perms", blank=True, through=group_object_permission)
     def has_perms(self, perms):
         # check if group has all of the perms
         return all([self.has_perm(perm) for perm in perms])
@@ -560,36 +568,6 @@ class group(models.Model):
     def get_is_active(self):
         return self.active
     is_active = property(get_is_active)
-#     def get_xml(self, with_permissions=False, group_perm_dict=None, with_allowed_device_groups=False,
-#                 allowed_device_group_dict=None):
-#         group_xml = E.group(
-#             unicode(self),
-#             pk="%d" % (self.pk),
-#             key="group__%d" % (self.pk),
-#             groupname=unicode(self.groupname),
-#             gid="%d" % (self.gid),
-#             homestart=self.homestart or "",
-#             active="1" if self.active else "0",
-#             parent_group="%d" % (self.parent_group_id or 0),
-#         )
-#         for attr_name in [
-#             "first_name", "last_name", "group_comment",
-#             "title", "email", "pager", "tel", "comment"]:
-#             group_xml.attrib[attr_name] = getattr(self, attr_name)
-#         if with_allowed_device_groups:
-#             if allowed_device_group_dict:
-#                 group_xml.attrib["allowed_device_groups"] = "::".join(["%d" % (cur_pk) for cur_pk in allowed_device_group_dict.get(self.groupname, [])])
-#             else:
-#                 group_xml.attrib["allowed_device_groups"] = "::".join(["%d" % (cur_pk) for cur_pk in self.allowed_device_groups.all().values_list("pk", flat=True)])
-#         if with_permissions:
-#             if group_perm_dict is not None:
-#                 group_xml.attrib["permissions"] = "::".join(["%d" % (cur_perm.pk) for cur_perm in group_perm_dict.get(self.groupname, [])])
-#             else:
-#                 group_xml.attrib["permissions"] = "::".join(["%d" % (cur_perm.pk) for cur_perm in csw_permission.objects.filter(Q(db_group_permissions=self))])
-#         else:
-#             # empty field
-#             group_xml.attrib["permissions"] = ""
-#         return group_xml
     class CSW_Meta:
         permissions = (
             ("group_admin", "Group administrator", True),
@@ -610,12 +588,13 @@ class group_serializer_h(serializers.HyperlinkedModelSerializer):
         fields = ("url", "groupname", "active", "gid")
 
 class group_serializer(serializers.ModelSerializer):
-    object_permissions = csw_object_permission_serializer(many=True, read_only=True)
+    group_permission_set = group_permission_serializer(many=True, read_only=True)
+    group_object_permission_set = group_object_permission_serializer(many=True, read_only=True)
     class Meta:
         model = group
         fields = ("groupname", "active", "gid", "idx", "parent_group",
             "homestart", "tel", "title", "email", "pager", "comment",
-            "allowed_device_groups", "permissions", "object_permissions",
+            "allowed_device_groups", "group_permission_set", "group_object_permission_set",
             )
 
 @receiver(signals.pre_save, sender=group)
@@ -648,9 +627,10 @@ def group_post_delete(sender, **kwargs):
     if "instance" in kwargs:
         _cur_inst = kwargs["instance"]
 
-@receiver(signals.m2m_changed, sender=group.permissions.through)
-def group_permissions_changed(sender, *args, **kwargs):
+@receiver(signals.m2m_changed, sender=group.perms.through)
+def group_perms_changed(sender, *args, **kwargs):
     if kwargs.get("action") == "pre_add" and "instance" in kwargs:
+        print "***", kwargs.get("pk_set")
         for add_pk in kwargs.get("pk_set"):
             if csw_permission.objects.get(Q(pk=add_pk)).codename in ["admin", "group_admin"]:
                 raise ValidationError("right not allowed for group")

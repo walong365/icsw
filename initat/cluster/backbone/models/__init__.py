@@ -1294,6 +1294,8 @@ class device(models.Model):
             ("change_variables", "Change variables", True),
             ("change_connection", "Change device connection", True),
             ("change_monitoring", "Change device monitoring config", True),
+            ("change_location", "Change device location", True),
+            ("change_category", "Change device category", True),
         )
     class Meta:
         db_table = u'device'

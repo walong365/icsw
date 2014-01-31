@@ -137,6 +137,10 @@ class mon_check_command(models.Model):
         db_table = u'ng_check_command'
         unique_together = (("name", "config"))
         app_label = "backbone"
+    class CSW_Meta:
+        permissions = (
+            ("setup_monitoring", "Change monitoring settings", False),
+        )
     def __unicode__(self):
         return "mcc_%s" % (self.name)
 
@@ -696,4 +700,3 @@ def mon_service_esc_templ_pre_save(sender, **kwargs):
             ("last_notification" , 1, 10),
             ("ninterval"         , 0, 60)]:
             _check_integer(cur_inst, attr_name, min_val=min_val, max_val=max_val)
-
