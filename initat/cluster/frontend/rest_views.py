@@ -341,6 +341,7 @@ class rest_home_export_list(mixins.ListModelMixin,
 class csw_object_serializer(serializers.Serializer):
     idx = serializers.IntegerField()
     name = serializers.CharField()
+    group = serializers.CharField()
     tr_class = serializers.CharField()
 
 class csw_object_group_serializer(serializers.Serializer):
@@ -355,9 +356,10 @@ class csw_object_group(object):
         self.object_list = obj_list
 
 class csw_object(object):
-    def __init__(self, idx, name, tr_class):
+    def __init__(self, idx, name, group, tr_class):
         self.idx = idx
         self.name = name
+        self.group = group
         self.tr_class = tr_class
 
 class csw_object_list(viewsets.ViewSet):
@@ -384,12 +386,19 @@ class csw_object_list(viewsets.ViewSet):
             _q = _q.select_related("device_type", "device_group"). \
                 filter(Q(enabled=True, device_group__enabled=True)). \
                 order_by("-device_group__cluster_device_group", "device_group__name", "-device_type__priority", "name")
-        return [csw_object(cur_obj.pk, self._get_name(_key, cur_obj), self._tr_class(_key, cur_obj)) for cur_obj in _q.all()]
+        return [csw_object(cur_obj.pk, self._get_name(_key, cur_obj), self._get_group(_key, cur_obj), self._tr_class(_key, cur_obj)) for cur_obj in _q.all()]
     def _get_name(self, _key, cur_obj):
         if _key == "backbone.device":
             if cur_obj.device_type.identifier == "MD":
                 return unicode(cur_obj)[8:] + (" [CDG]" if cur_obj.device_group.cluster_device_group else " [MD]")
         return unicode(cur_obj)
+    def _get_group(self, _key, cur_obj):
+        if _key == "backbone.device":
+            return unicode(cur_obj.device_group)
+        elif _key == "backbone.user":
+            return unicode(cur_obj.group)
+        else:
+            return "top"
     def _tr_class(self, _key, cur_obj):
         _lt = ""
         if _key == "backbone.device":

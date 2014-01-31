@@ -27,13 +27,15 @@ from django.db.models import get_model, Q
 from django.utils.decorators import method_decorator
 from django.views.generic import View
 from initat.cluster.backbone.models import group, user, user_variable, csw_permission, \
-    csw_object_permission, group_permission, user_permission, group_object_permission, user_object_permission
+    csw_object_permission, group_permission, user_permission, group_object_permission, \
+    user_object_permission, group_object_permission_serializer, user_object_permission_serializer
 from initat.cluster.backbone.render import permission_required_mixin
 from initat.cluster.frontend.forms import group_detail_form, user_detail_form, \
     account_detail_form
 from initat.cluster.frontend.helper_functions import contact_server, xml_wrapper, update_session_object
 from initat.core.render import render_me
-from lxml.builder import E # @UnresolvedImports
+from lxml.builder import E # @UnresolvedImport
+import json
 import config_tools
 import logging
 import server_command
@@ -165,6 +167,7 @@ class change_object_permission(View):
         set_perm = csw_permission.objects.select_related("content_type").get(Q(pk=_post["csw_idx"]))
         obj_pk = int(_post["obj_idx"])
         add = True if int(_post["set"]) else False
+        level = int(_post["level"])
         perm_model = get_model(set_perm.content_type.app_label, set_perm.content_type.name).objects.get(Q(pk=obj_pk))
         # print perm_model, auth_obj, set_perm
         if add:
@@ -182,16 +185,19 @@ class change_object_permission(View):
                         )
                     logger.info("created new csw_object_permission %s" % (unicode(csw_objp)))
                 if auth_obj._meta.model_name == "user":
-                    user_object_permission.objects.create(user=auth_obj, csw_object_permission=csw_objp)
+                    new_obj = user_object_permission.objects.create(user=auth_obj, csw_object_permission=csw_objp, level=level)
+                    new_obj.date = 0
+                    request.xml_response["new_obj"] = json.dumps(user_object_permission_serializer(new_obj).data)
                 else:
-                    group_object_permission.objects.create(group=auth_obj, csw_object_permission=csw_objp)
+                    new_obj = group_object_permission.objects.create(group=auth_obj, csw_object_permission=csw_objp, level=level)
+                    new_obj.date = 0
+                    request.xml_response["new_obj"] = json.dumps(group_object_permission_serializer(new_obj).data)
                 logger.info("added csw_object_permission %s to %s" % (
                     unicode(csw_objp),
                     unicode(auth_obj),
                     ))
             else:
-                # print "there"
-                pass
+                logger.info("permission '%s' for '%s' already set" % (unicode(set_perm), unicode(perm_model)))
         else:
             if auth_obj.has_object_perm(set_perm, perm_model, ask_parent=False):
                 try:
