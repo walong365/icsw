@@ -357,7 +357,8 @@ class group_detail_form(ModelForm):
     helper.field_class = 'col-sm-8'
     helper.ng_model = "_edit_obj"
     helper.ng_submit = "group_edit.modify(this)"
-    permissions = ModelMultipleChoiceField(queryset=empty_query_set(), required=False)
+    permission = ModelChoiceField(queryset=empty_query_set(), required=False)
+    permission_level = ModelChoiceField(queryset=empty_query_set(), required=False)
     helper.layout = Layout(
         HTML("<h2>Details for group {% verbatim %}'{{ _edit_obj.groupname }}'{% endverbatim %}</h2>"),
         Div(
@@ -390,7 +391,9 @@ class group_detail_form(ModelForm):
             "Permissions",
             Field("parent_group", ng_options="value.idx as value.groupname for value in group_list", chosen=True),
             Field("allowed_device_groups", ng_options="value.idx as value.name for value in valid_device_groups()", chosen=True),
-            Field("permissions", wrapper_ng_show="!create_mode", ng_options="value.idx as value.info for value in valid_group_csw_perms()", chosen=True, ng_change="change_permissions()"),
+            Field("permission", wrapper_ng_show="!create_mode", ng_options="value.idx as value.info group by value.content_type.model for value in valid_group_csw_perms(_edit_obj)", chosen=True, ng_change="change_permission()"),
+            Field("permission_level", wrapper_ng_show="!create_mode", ng_options="value.level as value.info for value in ac_levels", chosen=True),
+            HTML("<div permissions ng_if='!create_mode'></div>"),
         ),
         Fieldset(
             "Object permissions",
@@ -408,7 +411,8 @@ class group_detail_form(ModelForm):
     homestart = CharField(widget=TextInput())
     def __init__(self, *args, **kwargs):
         ModelForm.__init__(self, *args, **kwargs)
-        for clear_f in ["parent_group", "allowed_device_groups"]:
+        self.fields["permission"].empty_label = "---"
+        for clear_f in ["parent_group", "allowed_device_groups", "permission_level"]:
             self.fields[clear_f].queryset = empty_query_set()
             self.fields[clear_f].empty_label = None
     class Meta:
@@ -433,7 +437,8 @@ class user_detail_form(ModelForm):
     helper.field_class = 'col-sm-8'
     helper.ng_model = "_edit_obj"
     helper.ng_submit = "user_edit.modify()"
-    permissions = ModelMultipleChoiceField(queryset=empty_query_set(), required=False)
+    permission = ModelChoiceField(queryset=empty_query_set(), required=False)
+    permission_level = ModelChoiceField(queryset=empty_query_set(), required=False)
     helper.layout = Layout(
         HTML("<h2>Details for user {% verbatim %}'{{ _edit_obj.login }}'{% endverbatim %}</h2>"),
         Div(
@@ -477,11 +482,6 @@ class user_detail_form(ModelForm):
             ),
         ),
         Fieldset(
-            "Permissions",
-            Field("allowed_device_groups", ng_options="value.idx as value.name for value in valid_device_groups()", chosen=True),
-            Field("permissions", wrapper_ng_show="!create_mode", ng_options="value.idx as value.info for value in valid_user_csw_perms()", chosen=True, ng_change="change_permissions()"),
-        ),
-        Fieldset(
             "Groups / export entry",
             Field("group", ng_options="value.idx as value.groupname for value in group_list", chosen=True),
             Field("secondary_groups", ng_options="value.idx as value.groupname for value in group_list", chosen=True),
@@ -490,6 +490,13 @@ class user_detail_form(ModelForm):
         Fieldset(
             "Aliases",
             Field("aliases", rows=3),
+        ),
+        Fieldset(
+            "Permissions",
+            Field("allowed_device_groups", ng_options="value.idx as value.name for value in valid_device_groups()", chosen=True),
+            Field("permission", wrapper_ng_show="!create_mode", ng_options="value.idx as value.info group by value.content_type.model for value in valid_user_csw_perms()", chosen=True, ng_change="change_permission()"),
+            Field("permission_level", wrapper_ng_show="!create_mode", ng_options="value.level as value.info for value in ac_levels", chosen=True),
+            HTML("<div permissions ng_if='!create_mode'></div>"),
         ),
         Fieldset(
             "Object permissions",
@@ -510,7 +517,8 @@ class user_detail_form(ModelForm):
     def __init__(self, *args, **kwargs):
         # request = kwargs.pop("request")
         super(user_detail_form, self).__init__(*args, **kwargs)
-        for clear_f in ["group", "secondary_groups", "allowed_device_groups"]:
+        self.fields["permission"].empty_label = "---"
+        for clear_f in ["group", "secondary_groups", "allowed_device_groups", "permission_level"]:
             self.fields[clear_f].queryset = empty_query_set()
             self.fields[clear_f].empty_label = None
         self.fields["export"].queryset = empty_query_set()
