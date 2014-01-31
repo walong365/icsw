@@ -28,6 +28,7 @@ __all__ = [
     "group_object_permission", "group_object_permission_serializer",
     "user_permission", "user_permission_serializer",
     "user_object_permission", "user_object_permission_serializer",
+    "AC_MASK_READ", "AC_MASK_MODIFY", "AC_MASK_DELETE", "AC_MASK_CREATE",
     ]
 
 # auth_cache structure
@@ -189,6 +190,16 @@ class user_permission(models.Model):
     date = models.DateTimeField(auto_now_add=True)
     class Meta:
         app_label = "backbone"
+
+AC_MASK_READ = 0
+AC_MASK_MODIFY = 1
+AC_MASK_CREATE = 2
+AC_MASK_DELETE = 4
+
+AC_READONLY = AC_MASK_READ
+AC_MODIFY = AC_MASK_READ | AC_MASK_MODIFY
+AC_CREATE = AC_MASK_READ | AC_MASK_MODIFY | AC_MASK_CREATE
+AC_FULL = AC_MASK_READ | AC_MASK_MODIFY | AC_MASK_CREATE | AC_MASK_DELETE
 
 class user_object_permission(models.Model):
     idx = models.AutoField(primary_key=True)
