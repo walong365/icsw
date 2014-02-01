@@ -35,11 +35,12 @@ __all__ = [
 class auth_cache(object):
     def __init__(self, auth_obj):
         self.auth_obj = auth_obj
+        self.model_name = self.auth_obj._meta.model_name
         self.cache_key = u"auth_%s_%d" % (
             auth_obj._meta.object_name,
             auth_obj.pk,
             )
-        self.__perms, self.__obj_perms = (set(), {})
+        self.__perms, self.__obj_perms = ({}, {})
         if self.auth_obj.__class__.__name__ == "user":
             self.has_all_perms = self.auth_obj.is_superuser
         else:
@@ -48,13 +49,14 @@ class auth_cache(object):
         self._from_db()
     def _from_db(self):
         self.__perm_dict = dict([("%s.%s" % (cur_perm.content_type.app_label, cur_perm.codename), cur_perm) for cur_perm in csw_permission.objects.all().select_related("content_type")])
-        perms = self.auth_obj.perms.all().select_related("content_type")
-        for perm in perms:
-            self.__perms.add(("%s.%s" % (perm.content_type.app_label, perm.codename)))
-        obj_perms = self.auth_obj.object_perms.all().select_related("csw_permission__content_type")
-        for obj_perm in obj_perms:
-            perm_key = "%s.%s" % (obj_perm.csw_permission.content_type.app_label, obj_perm.csw_permission.codename)
-            self.__obj_perms.setdefault(perm_key, []).append(obj_perm.object_pk)
+        # pprint.pprint(self.__perm_dict)
+        for perm in getattr(self.auth_obj, "%s_permission_set" % (self.model_name)).select_related("csw_permission__content_type"):
+            key = "%s.%s" % (perm.csw_permission.content_type.app_label, perm.csw_permission.codename)
+            self.__perms[key] = perm.level
+        for perm in getattr(self.auth_obj, "%s_object_permission_set" % (self.model_name)).select_related("csw_object_permission__csw_permission__content_type"):
+            key = "%s.%s" % (perm.csw_object_permission.csw_permission.content_type.app_label, perm.csw_object_permission.csw_permission.codename)
+            self.__obj_perms.setdefault(key, {})[perm.csw_object_permission.object_pk] = perm.level
+        # pprint.pprint(self.__perms)
         # pprint.pprint(self.__obj_perms)
     def _get_code_key(self, app_label, code_name):
         code_key = "%s.%s" % (app_label, code_name)
@@ -64,6 +66,13 @@ class auth_cache(object):
     def has_permission(self, app_label, code_name):
         code_key = self._get_code_key(app_label, code_name)
         return code_key in self.__perms
+    def get_object_permission_level(self, app_label, code_name, obj=None):
+        code_key = self._get_code_key(app_label, code_name)
+        _level = self.__perms.get(code_key, -1)
+        if obj is not None:
+            if code_key in self.__obj_perms:
+                _level = self.__obj_perms[code_key].get(obj.pk, _level)
+        return _level
     def has_object_permission(self, app_label, code_name, obj=None):
         code_key = self._get_code_key(app_label, code_name)
         if self.has_permission(app_label, code_name):
@@ -83,10 +92,11 @@ class auth_cache(object):
     def get_allowed_object_list(self, app_label, code_name):
         code_key = self._get_code_key(app_label, code_name)
         if self.has_permission(app_label, code_name) or getattr(self.auth_obj, "is_superuser", False):
-            # at fist check global permission
+            # at fist check global permission, return all devices
             return set(get_model(app_label, self.__perm_dict[code_key].content_type.name).objects.all().values_list("pk", flat=True))
         elif code_key in self.__obj_perms:
-            return set(self.__obj_perms[code_key])
+            # only return devices where the code_key is set
+            return set(self.__obj_perms[code_key].keys())
         else:
             return set()
     def get_all_object_perms(self, obj):
@@ -97,7 +107,7 @@ class auth_cache(object):
             return obj_perms
         else:
             # which permissions are global set ?
-            global_perms = obj_perms & self.__perms
+            global_perms = obj_perms & set(self.__perms.keys())
             # local permissions
             local_perms = set([key for key in obj_perms if obj.pk in self.__obj_perms.get(key, [])])
             return global_perms | local_perms
@@ -125,9 +135,6 @@ class csw_permission(models.Model):
             csw_permission=csw_permission.objects.get(Q(content_type=ct) & Q(codename=code_name)),
             object_pk=cur_pk
             )
-    def get_user_level(self):
-        print dir(self)
-        return 4
     def __unicode__(self):
         return u"%s | %s | %s | %s" % (
             self.content_type.app_label,
@@ -281,6 +288,24 @@ def check_object_permission(auth_obj, perm, obj):
     else:
         return False
 
+def get_object_permission_level(auth_obj, perm, obj):
+    if not hasattr(auth_obj, "_auth_cache"):
+        auth_obj._auth_cache = auth_cache(auth_obj)
+    app_label, code_name = get_label_codename(perm)
+    # print "* cop", auth_obj, perm, obj, app_label, codename
+    if app_label and code_name:
+        if obj is None:
+            # caching code
+            return auth_obj._auth_cache.get_object_permission_level(app_label, code_name)
+        else:
+            if app_label == obj._meta.app_label:
+                # caching code
+                return auth_obj._auth_cache.get_object_permission_level(app_label, code_name, obj)
+            else:
+                return -1
+    else:
+        return -1
+
 def get_all_object_perms(auth_obj, obj):
     # return all allowed permissions for a given object
     if not hasattr(auth_obj, "_auth_cache"):
@@ -390,6 +415,16 @@ class user(models.Model):
         res = check_object_permission(self, perm, obj)
         if not res and ask_parent:
             res = check_object_permission(self.group, perm, obj)
+        return res
+    def get_object_perm_level(self, perm, obj=None, ask_parent=True):
+        # returns -1 if no level is given
+        if not (self.active and self.group.active):
+            return -1
+        elif self.is_superuser:
+            return AC_FULL
+        res = get_object_permission_level(self, perm, obj)
+        if res == -1 and ask_parent:
+            res = get_object_permission_level(self.group, perm, obj)
         return res
     def get_all_object_perms(self, obj, ask_parent=True):
         # return all permissions we have for a given object

@@ -1319,6 +1319,11 @@ class device_serializer(serializers.ModelSerializer):
     is_meta_device = serializers.Field(source="is_meta_device")
     device_type_identifier = serializers.Field(source="device_type_identifier")
     device_group_name = serializers.Field(source="device_group_name")
+    access_level = serializers.SerializerMethodField("get_access_level")
+    def get_access_level(self, obj):
+        if "olp" in self.context:
+            return self.context["request"].user.get_object_perm_level(self.context["olp"], obj)
+        return -1
     class Meta:
         model = device
         fields = ("idx", "name", "device_group", "device_type",
@@ -1327,7 +1332,7 @@ class device_serializer(serializers.ModelSerializer):
             "act_partition_table", "enable_perfdata", "flap_detection_enabled",
             "automap_root_nagvis", "nagvis_parent", "monitor_server", "mon_ext_host",
             "is_meta_device", "device_type_identifier", "device_group_name", "bootserver",
-            "curl", "mon_resolve_name", "uuid",
+            "curl", "mon_resolve_name", "uuid", "access_level",
             )
         read_only_fields = ("uuid",)
 
@@ -1393,7 +1398,7 @@ class device_serializer_network(device_serializer):
             "enable_perfdata", "flap_detection_enabled",
             "automap_root_nagvis", "nagvis_parent", "monitor_server", "mon_ext_host",
             "is_meta_device", "device_type_identifier", "device_group_name", "bootserver",
-            "curl", "netdevice_set",
+            "curl", "netdevice_set", "access_level",
             )
 
 class device_serializer_package_state(device_serializer):
