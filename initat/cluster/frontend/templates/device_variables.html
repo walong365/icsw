@@ -135,7 +135,7 @@ device_variable_module.controller("dv_base", ["$scope", "$compile", "$filter", "
                 else
                     return true
         $scope.new_devsel = (a, b) ->
-            Restangular.all("{% url 'rest:device_tree_list' %}".slice(1)).getList({"with_variables" : true, "dolp" : "backbone.change_variables"}).then((data) ->
+            Restangular.all("{% url 'rest:device_tree_list' %}".slice(1)).getList({"with_variables" : true, "olp" : "backbone.change_variables"}).then((data) ->
                 $scope.base_edit.create_list = data
                 $scope.entries = data
                 for entry in $scope.entries

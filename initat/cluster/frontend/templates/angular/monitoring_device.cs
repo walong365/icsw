@@ -15,7 +15,7 @@ angular_add_simple_list_controller(
     "mon_device_base",
     {
         rest_url            : "{% url 'rest:device_tree_list' %}"
-        rest_options        : {"ignore_meta_devices" : true, "dolp" : "backbone.change_monitoring"}
+        rest_options        : {"ignore_meta_devices" : true, "olp" : "backbone.change_monitoring"}
         edit_template       : "monitoring_device.html"
         rest_map            : [
             {"short" : "mon_device_templ", "url" : "{% url 'rest:mon_device_templ_list' %}"}

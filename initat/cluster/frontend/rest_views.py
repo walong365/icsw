@@ -50,7 +50,6 @@ import logging
 import logging_tools
 import operator
 import process_tools
-import sys
 import time
 import types
 
@@ -196,7 +195,6 @@ class list_view(mixins.ListModelMixin,
         return self.list(request, *args, **kwargs)
     @rest_logging
     def post(self, request, *args, **kwargs):
-        print "***", args, kwargs, self.request.QUERY_PARAMS, self.request.POST
         resp = self.create(request, *args, **kwargs)
         if resp.status_code in [200, 201, 202, 203]:
             resp.data["_messages"] = [u"created '%s'" % (unicode(self.object))]
@@ -413,6 +411,12 @@ class device_tree_list(mixins.ListModelMixin,
     permission_classes = (IsAuthenticated,)
     model = device
     @rest_logging
+    def get_serializer_context(self):
+        ctx = {"request" : self.request}
+        if self.request.QUERY_PARAMS.get("olp", ""):
+            ctx["olp"] = self.request.QUERY_PARAMS["olp"]
+        return ctx
+    @rest_logging
     def get_serializer_class(self):
         if self._get_post_boolean("package_state", False):
             return device_serializer_package_state
@@ -456,9 +460,9 @@ class device_tree_list(mixins.ListModelMixin,
         _q = device.objects
         # permission handling
         if not self.request.user.is_superuser:
-            if self.request.QUERY_PARAMS.get("dolp", ""):
+            if self.request.QUERY_PARAMS.get("olp", ""):
                 # object permissions needed for devices, get a list of all valid pks
-                allowed_pks = self.request.user.get_allowed_object_list(self.request.QUERY_PARAMS["dolp"])
+                allowed_pks = self.request.user.get_allowed_object_list(self.request.QUERY_PARAMS["olp"])
                 dg_list = list(device.objects.filter(Q(pk__in=allowed_pks)).values_list("pk", "device_group", "device_group__device", "device_type__identifier"))
                 # meta_list, device group selected
                 meta_list = Q(device_group__in=[devg_idx for dev_idx, devg_idx, md_idx, dt in dg_list if dt == "MD"])
@@ -581,4 +585,3 @@ for obj_name in REST_LIST:
              "permission_classes"     : (IsAuthenticated,),
              "model"                  : ser_class.Meta.model,
              "serializer_class"       : ser_class})
-
