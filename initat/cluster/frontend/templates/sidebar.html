@@ -41,7 +41,7 @@ class sidebar_tree extends tree_config
         if entry._node_type == "d"
             dev = @scope.dev_lut[entry.obj]
             if dev.device_type_identifier != "MD"
-                new device_info(event, dev.idx).show()
+                new device_info(event, dev.idx).show()                
     get_name: (t_entry) ->
         if t_entry._node_type == "f"
             entry = @scope.fqdn_lut[t_entry.obj]

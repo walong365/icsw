@@ -33,6 +33,10 @@ class device_info
                             $("#simplemodal-container").css("width", "auto")
                         onClose: =>
                             $.simplemodal.close()
+                {% if index_view %}
+                $("div#center_content").hide()
+                $("div#center_deviceinfo").show()
+                {% endif %} 
                 @dev_div.find("a[href='#general']").trigger("click")
     get_pk_list: (with_md=true) =>
         # get all pks
