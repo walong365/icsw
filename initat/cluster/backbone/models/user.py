@@ -7,7 +7,6 @@ from django.db import models
 from django.db.models import Q, signals, get_model
 from django.dispatch import receiver
 from initat.cluster.backbone.models.functions import _check_empty_string, _check_integer
-from lxml.builder import E # @UnresolvedImport
 from rest_framework import serializers
 import base64
 import crypt
@@ -111,6 +110,16 @@ class auth_cache(object):
             # local permissions
             local_perms = set([key for key in obj_perms if obj.pk in self.__obj_perms.get(key, [])])
             return global_perms | local_perms
+    def get_object_access_levels(self, obj, is_superuser):
+        obj_type = obj._meta.model_name
+        # returns a dict with all access levels for the given object
+        obj_perms = [key for key, value in self.__perm_dict.iteritems() if value.content_type.name == obj_type]
+        if is_superuser:
+            ac_dict = {key : AC_FULL for key in obj_perms}
+        else:
+            ac_dict = {key : self.__obj_perms.get(key, {}).get(obj.pk, self.__perms.get(key, -1)) for key in obj_perms}
+            return {key : value for key, value in ac_dict.iteritems() if value >= 0}
+        return ac_dict
 
 class csw_permission(models.Model):
     """
@@ -306,6 +315,11 @@ def get_object_permission_level(auth_obj, perm, obj):
     else:
         return -1
 
+def get_object_access_levels(auth_obj, obj, is_superuser=False):
+    if not hasattr(auth_obj, "_auth_cache"):
+        auth_obj._auth_cache = auth_cache(auth_obj)
+    return auth_obj._auth_cache.get_object_access_levels(obj, is_superuser)
+
 def get_all_object_perms(auth_obj, obj):
     # return all allowed permissions for a given object
     if not hasattr(auth_obj, "_auth_cache"):
@@ -426,6 +440,16 @@ class user(models.Model):
         if res == -1 and ask_parent:
             res = get_object_permission_level(self.group, perm, obj)
         return res
+    def get_object_access_levels(self, obj):
+        # always as parent
+        if not (self.active and self.group.active):
+            return {}
+        elif self.is_superuser:
+            return get_object_access_levels(self, obj, is_superuser=True)
+        else:
+            acc_dict = get_object_access_levels(self.group, obj)
+            acc_dict.update(get_object_access_levels(self, obj))
+            return acc_dict
     def get_all_object_perms(self, obj, ask_parent=True):
         # return all permissions we have for a given object
         if not (self.active and self.group.active):

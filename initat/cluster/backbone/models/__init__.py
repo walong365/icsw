@@ -1320,10 +1320,13 @@ class device_serializer(serializers.ModelSerializer):
     device_type_identifier = serializers.Field(source="device_type_identifier")
     device_group_name = serializers.Field(source="device_group_name")
     access_level = serializers.SerializerMethodField("get_access_level")
+    access_levels = serializers.SerializerMethodField("get_access_levels")
     def get_access_level(self, obj):
         if "olp" in self.context:
             return self.context["request"].user.get_object_perm_level(self.context["olp"], obj)
         return -1
+    def get_access_levels(self, obj):
+        return ",".join(["%s=%d" % (key, value) for key, value in self.context["request"].user.get_object_access_levels(obj).iteritems()])
     class Meta:
         model = device
         fields = ("idx", "name", "device_group", "device_type",
@@ -1332,7 +1335,7 @@ class device_serializer(serializers.ModelSerializer):
             "act_partition_table", "enable_perfdata", "flap_detection_enabled",
             "automap_root_nagvis", "nagvis_parent", "monitor_server", "mon_ext_host",
             "is_meta_device", "device_type_identifier", "device_group_name", "bootserver",
-            "curl", "mon_resolve_name", "uuid", "access_level",
+            "curl", "mon_resolve_name", "uuid", "access_level", "access_levels",
             )
         read_only_fields = ("uuid",)
 
@@ -1392,14 +1395,15 @@ class device_serializer_network(device_serializer):
     netdevice_set = netdevice_serializer(many=True)
     class Meta:
         model = device
-        fields = ("idx", "name", "device_group", "device_type",
+        fields = ("idx", "name", "device_group", "device_type", "uuid",
             "comment", "full_name", "domain_tree_node", "enabled",
             "monitor_checks", "mon_device_templ", "mon_device_esc_templ", "md_cache_mode",
             "enable_perfdata", "flap_detection_enabled",
             "automap_root_nagvis", "nagvis_parent", "monitor_server", "mon_ext_host",
             "is_meta_device", "device_type_identifier", "device_group_name", "bootserver",
-            "curl", "netdevice_set", "access_level",
+            "curl", "netdevice_set", "access_level", "access_levels",
             )
+        read_only_fields = ("uuid",)
 
 class device_serializer_package_state(device_serializer):
     package_device_connection_set = package_device_connection_serializer(many=True)
