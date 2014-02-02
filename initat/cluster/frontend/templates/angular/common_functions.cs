@@ -240,32 +240,65 @@ class rest_data_source
   
 angular_module_setup = (module_list, url_list=[]) ->
     $(module_list).each (idx, cur_mod) ->
+        cur_mod.factory("access_level_service", () ->
+            # see lines 205 ff in backbone/models/user.py
+            to_list = (in_str) ->
+                r_dict = {}
+                for part in in_str.split(",")
+                    kv = part.split("=")
+                    long = kv[0]
+                    short = long.split(".")[1]
+                    r_dict[long] = parseInt(kv[1])
+                    r_dict[short] = parseInt(kv[1])
+                return r_dict
+            check_level = (obj, ac_name, mask) ->
+                if obj.access_levels?
+                    if not obj._all
+                        obj._all = to_list(obj.access_levels)
+                    if ac_name of obj._all
+                        return if obj._all[ac_name] & mask then true else false
+                    else
+                        return false
+                else
+                    return false
+            func_dict = {
+                "acl_delete" : (obj, ac_name) ->
+                    return check_level(obj, ac_name, 4)
+                "acl_create" : (obj, ac_name) ->
+                    return check_level(obj, ac_name, 2)
+                "acl_modify" : (obj, ac_name) ->
+                    return check_level(obj, ac_name, 1)
+            }
+            
+            return {
+                "install" : (scope) ->
+                    scope.acl_create = func_dict["acl_create"]
+                    scope.acl_modify = func_dict["acl_modify"]
+                    scope.acl_delete = func_dict["acl_delete"]
+            }
+        )
         cur_mod.config(['$httpProvider', 
             ($httpProvider) ->
                 $httpProvider.defaults.xsrfCookieName = 'csrftoken'
                 $httpProvider.defaults.xsrfHeaderName = 'X-CSRFToken'
-        ])
-        cur_mod.filter("paginator", ["$filter", ($filter) ->
+        ]).filter("paginator", ["$filter", ($filter) ->
             return (arr, scope) ->
                 if scope.pagSettings.conf.init
                     arr = scope.pagSettings.apply_filter(arr)
                     return arr.slice(scope.pagSettings.conf.start_idx, scope.pagSettings.conf.end_idx + 1)
                 else
                     return arr
-        ])
-        cur_mod.filter("paginator2", ["$filter", ($filter) ->
+        ]).filter("paginator2", ["$filter", ($filter) ->
             return (arr, pag_settings) ->
                 if pag_settings.conf.init
                     arr = pag_settings.apply_filter(arr)
                     return arr.slice(pag_settings.conf.start_idx, pag_settings.conf.end_idx + 1)
                 else
                     return arr
-        ])
-        cur_mod.filter("paginator_filter", ["$filter", ($filter) ->
+        ]).filter("paginator_filter", ["$filter", ($filter) ->
             return (arr, scope) ->
                 return scope.pagSettings.apply_filter(arr)
-        ])
-        cur_mod.config(["RestangularProvider", 
+        ]).config(["RestangularProvider", 
             (RestangularProvider) ->
                 RestangularProvider.setRestangularFields({
                     "id" : "idx"
@@ -311,19 +344,15 @@ angular_module_setup = (module_list, url_list=[]) ->
                                 timeout : false
                     return true
                 )
-        ])
+        ]).service("paginatorSettings", ["$filter", ($filter) ->
         # in fact identical ?
         # cur_mod.service("paginatorSettings", (paginator_class))
-        cur_mod.service("paginatorSettings", ["$filter", ($filter) ->
             return new paginator_root($filter)
-        ])
-        cur_mod.service("restDataSource", ["$q", "Restangular", ($q, Restangular) ->
+        ]).service("restDataSource", ["$q", "Restangular", ($q, Restangular) ->
             return new rest_data_source($q, Restangular)
-        ])
-        cur_mod.service("sharedDataSource", [() ->
+        ]).service("sharedDataSource", [() ->
             return new shared_data_source()
-        ])
-        cur_mod.directive("paginator", ($templateCache) ->
+        ]).directive("paginator", ($templateCache) ->
             link = (scope, element, attrs) ->
                 pagSettings = scope.pagSettings
                 pagSettings.conf.per_page = parseInt(attrs.perPage)

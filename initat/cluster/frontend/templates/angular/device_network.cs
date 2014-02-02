@@ -37,7 +37,7 @@ dn_row_template = """
         </span>
     </button>
 </td>
-<th>{{ obj.full_name }}</th>
+<th>{{ obj.full_name }} {{ acl_create(obj, 'change_network') }}, {{ acl_delete(obj, 'change_network') }}, {{ acl_modify(obj, 'change_network') }}</th>
 <th>{{ obj.device_group_name }}</th>
 <th>{{ obj.comment }}</th>
 <th colspan="3">
@@ -125,8 +125,9 @@ device_network_module = angular.module("icsw.network.device", ["ngResource", "ng
 
 angular_module_setup([device_network_module])
 
-device_network_module.controller("network_ctrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "sharedDataSource", "$q", "$modal",
-    ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, sharedDataSource, $q, $modal) ->
+device_network_module.controller("network_ctrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "sharedDataSource", "$q", "$modal", "access_level_service",
+    ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, sharedDataSource, $q, $modal, access_level_service) ->
+        access_level_service.install($scope)
         $scope.enable_modal = true
         # mixins
         $scope.netdevice_edit = new angular_edit_mixin($scope, $templateCache, $compile, $modal, Restangular, $q)
