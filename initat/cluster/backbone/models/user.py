@@ -19,8 +19,8 @@ import string
 __all__ = [
     "csw_permission", "csw_permission_serializer",
     "csw_object_permission", "csw_object_permission_serializer",
-    "user", "user_serializer", "user_serializer_h",
-    "group", "group_serializer", "group_serializer_h",
+    "user", "user_serializer",
+    "group", "group_serializer",
     "user_device_login",
     "user_variable",
     "group_permission", "group_permission_serializer",
@@ -28,6 +28,7 @@ __all__ = [
     "user_permission", "user_permission_serializer",
     "user_object_permission", "user_object_permission_serializer",
     "AC_MASK_READ", "AC_MASK_MODIFY", "AC_MASK_DELETE", "AC_MASK_CREATE",
+    "AC_MASK_DICT",
     ]
 
 # auth_cache structure
@@ -120,6 +121,8 @@ class auth_cache(object):
             ac_dict = {key : self.__obj_perms.get(key, {}).get(obj.pk, self.__perms.get(key, -1)) for key in obj_perms}
             return {key : value for key, value in ac_dict.iteritems() if value >= 0}
         return ac_dict
+    def get_global_permissions(self):
+        return self.__perms
 
 class csw_permission(models.Model):
     """
@@ -211,6 +214,13 @@ AC_MASK_READ = 0
 AC_MASK_MODIFY = 1
 AC_MASK_CREATE = 2
 AC_MASK_DELETE = 4
+
+AC_MASK_DICT = {
+    "AC_MASK_READ" : AC_MASK_READ,
+    "AC_MASK_MODIFY" : AC_MASK_MODIFY,
+    "AC_MASK_CREATE" : AC_MASK_CREATE,
+    "AC_MASK_DELETE" : AC_MASK_DELETE,
+}
 
 AC_READONLY = AC_MASK_READ
 AC_MODIFY = AC_MASK_READ | AC_MASK_MODIFY
@@ -332,6 +342,12 @@ def get_allowed_object_list(auth_obj, perm):
         auth_obj._auth_cache = auth_cache(auth_obj)
     app_label, code_name = get_label_codename(perm)
     return auth_obj._auth_cache.get_allowed_object_list(app_label, code_name)
+
+def get_global_permissions(auth_obj):
+    # return all global permissions with levels (as dict)
+    if not hasattr(auth_obj, "_auth_cache"):
+        auth_obj._auth_cache = auth_cache(auth_obj)
+    return auth_obj._auth_cache.get_global_permissions()
 
 class user_manager(models.Manager):
     def get_by_natural_key(self, login):
@@ -472,6 +488,12 @@ class user(models.Model):
     def has_any_object_perms(self, perms, obj=None, ask_parent=True):
         # check if user has any of the object perms
         return any([self.has_object_perm(perm, obj, ask_parent=ask_parent) for perm in perms])
+    def get_global_permissions(self):
+        if not (self.active and self.group.active):
+            return {}
+        group_perms = get_global_permissions(self.group)
+        group_perms.update(get_global_permissions(self))
+        return group_perms
     def has_module_perms(self, module_name, ask_parent=True):
         if not (self.active and self.group.active):
             return False
@@ -503,13 +525,6 @@ class user(models.Model):
             self.pk,
             self.first_name or "first",
             self.last_name or "last")
-
-class user_serializer_h(serializers.HyperlinkedModelSerializer):
-    url = serializers.HyperlinkedIdentityField(format='api', view_name="rest:user_detail_h")
-    group = serializers.HyperlinkedRelatedField(view_name="rest:group_detail_h")
-    class Meta:
-        model = user
-        fields = ("url", "login", "uid", "group")
 
 class user_serializer(serializers.ModelSerializer):
     # object_perms = csw_object_permission_serializer(many=True, read_only=True)
@@ -650,12 +665,6 @@ class group(models.Model):
         return "%s (gid=%d)" % (
             self.groupname,
             self.gid)
-
-class group_serializer_h(serializers.HyperlinkedModelSerializer):
-    url = serializers.HyperlinkedIdentityField(format='api', view_name="rest:group_detail_h")
-    class Meta:
-        model = group
-        fields = ("url", "groupname", "active", "gid")
 
 class group_serializer(serializers.ModelSerializer):
     group_permission_set = group_permission_serializer(many=True, read_only=True)

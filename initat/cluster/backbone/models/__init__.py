@@ -1348,7 +1348,7 @@ class device_serializer_cat(device_serializer):
             "act_partition_table", "enable_perfdata", "flap_detection_enabled",
             "automap_root_nagvis", "nagvis_parent", "monitor_server", "mon_ext_host",
             "is_meta_device", "device_type_identifier", "device_group_name", "bootserver",
-            "curl", "categories",
+            "curl", "categories", "access_level", "access_levels",
             )
 
 class device_serializer_variables(device_serializer):
@@ -1361,7 +1361,7 @@ class device_serializer_variables(device_serializer):
             "act_partition_table", "enable_perfdata", "flap_detection_enabled",
             "automap_root_nagvis", "nagvis_parent", "monitor_server", "mon_ext_host",
             "is_meta_device", "device_type_identifier", "device_group_name", "bootserver",
-            "curl", "device_variable_set",
+            "curl", "device_variable_set", "access_level", "access_levels",
             )
 
 class device_serializer_device_configs(device_serializer):
@@ -1374,7 +1374,7 @@ class device_serializer_device_configs(device_serializer):
             "act_partition_table", "enable_perfdata", "flap_detection_enabled",
             "automap_root_nagvis", "nagvis_parent", "monitor_server", "mon_ext_host",
             "is_meta_device", "device_type_identifier", "device_group_name", "bootserver",
-            "curl", "device_config_set",
+            "curl", "device_config_set", "access_level", "access_levels",
             )
 
 class device_serializer_disk_info(device_serializer):
@@ -1388,7 +1388,7 @@ class device_serializer_disk_info(device_serializer):
             "act_partition_table", "enable_perfdata", "flap_detection_enabled",
             "automap_root_nagvis", "nagvis_parent", "monitor_server", "mon_ext_host",
             "is_meta_device", "device_type_identifier", "device_group_name", "bootserver",
-            "curl", "partition_table",
+            "curl", "partition_table", "access_level", "access_levels",
             )
 
 class device_serializer_network(device_serializer):
@@ -1413,6 +1413,7 @@ class device_serializer_package_state(device_serializer):
         fields = ("idx", "name", "device_group", "device_type",
             "comment", "full_name", "domain_tree_node", "enabled",
             "package_device_connection_set", "latest_contact", "is_meta_device",
+            "access_level", "access_levels",
             )
 
 class device_serializer_monitoring(device_serializer):
@@ -1423,7 +1424,7 @@ class device_serializer_monitoring(device_serializer):
             "monitor_checks", "mon_device_templ", "mon_device_esc_templ", "md_cache_mode",
             "act_partition_table", "enable_perfdata", "flap_detection_enabled",
             "automap_root_nagvis", "nagvis_parent", "monitor_server", "mon_ext_host",
-            "mon_resolve_name",
+            "mon_resolve_name", "access_level", "access_levels",
             )
         read_only_fields = ("act_partition_table",)
 
@@ -1432,7 +1433,9 @@ class device_serializer_monitor_server(device_serializer):
     monitor_type = serializers.Field(source="get_monitor_type")
     class Meta:
         model = device
-        fields = ("idx", "name", "full_name", "device_group_name", "monitor_type")
+        fields = ("idx", "name", "full_name", "device_group_name", "monitor_type",
+            "access_level", "access_levels",
+            )
 
 @receiver(signals.pre_save, sender=device)
 def device_pre_save(sender, **kwargs):

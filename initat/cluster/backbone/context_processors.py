@@ -1,6 +1,7 @@
 #!/usr/bin/python-init -Otu
 
 from django.core.exceptions import ImproperlyConfigured
+from initat.cluster.backbone.models import AC_MASK_DICT
 
 class csw_obj_lut(object):
     def __init__(self, user, module_name, perm_name):
@@ -8,10 +9,17 @@ class csw_obj_lut(object):
         self.module_name = module_name
         self.perm_name = perm_name
     def __getitem__(self, obj_name):
+        key = "%s.%s" % (self.module_name, self.perm_name)
         if obj_name == "ANY__":
-            return self.user.has_object_perm("%s.%s" % (self.module_name, self.perm_name))
+            return self.user.has_object_perm(key)
+        elif obj_name in AC_MASK_DICT:
+            _level = self.user.get_object_perm_level(key)
+            if _level >= 0:
+                return _level & AC_MASK_DICT[obj_name]
+            else:
+                return False
         else:
-            raise ImproperlyConfigured("Unknown object level accesscode '%s'" % (obj_name))
+            raise ImproperlyConfigured("Unknown object level accesscode '%s' (key '%s')" % (obj_name, key))
     def __bool__(self):
         return self.user.has_object_perm("%s.%s" % (self.module_name, self.perm_name))
     def __nonzero__(self):
