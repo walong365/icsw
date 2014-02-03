@@ -51,10 +51,10 @@ device_config_template = """
             </span>
         </div>
         <div class="form-inline col-sm-4">
-            <div class="form-group">
+            <div class="form-group" ng-show="acl_create(global_perms, 'backbone.change_network')">
                 <input placeholder="new config" ng-model="new_config_name" class="form-control input-sm"></input>
             </div>
-            <div class="form-group">
+            <div class="form-group" ng-show="acl_create(global_perms, 'backbone.change_network')">
                 <input type="button" class="btn btn-success btn-sm" ng-show="new_config_name" ng-click="create_config()" value="create config"></input>
             </div>
         </div>
@@ -232,8 +232,9 @@ device_config_module.controller("config_vars_ctrl", ["$scope", "$compile", "$fil
     $templateCache.put("devconfvars.html", devconf_vars_template)
 )
 
-device_config_module.controller("config_ctrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "sharedDataSource", "$q", "$modal",
-    ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, sharedDataSource, $q, $modal) ->
+device_config_module.controller("config_ctrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "sharedDataSource", "$q", "$modal", "access_level_service",
+    ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, sharedDataSource, $q, $modal, access_level_service) ->
+        access_level_service.install($scope)
         $scope.devices = []
         $scope.configs = []
         $scope.active_configs = []
@@ -249,8 +250,10 @@ device_config_module.controller("config_ctrl", ["$scope", "$compile", "$filter",
             wait_list = restDataSource.add_sources([
                 ["{% url 'rest:device_tree_list' %}", {"with_device_configs" : true, "with_meta_devices" : true, "pks" : angular.toJson($scope.devsel_list), "olp" : "backbone.change_config"}],
                 ["{% url 'rest:config_list' %}", {}]
+                ["{% url 'rest:global_user_permissions' %}", {}]
             ])
             $q.all(wait_list).then((data) ->
+                access_level_service.set_global_permissions($scope, data[2])
                 for value, idx in data
                     if idx == 0
                         $scope.devices = []
@@ -411,7 +414,7 @@ device_config_module.controller("config_ctrl", ["$scope", "$compile", "$filter",
                         _cls = "glyphicon glyphicon-ok-circle"
                 return _cls
             scope.click = (conf_idx) ->
-                if conf_idx != null
+                if conf_idx != null and scope.acl_create(scope.obj, 'backbone.change_config')
                     meta_dev = scope.meta_devices[scope.devg_md_lut[scope.obj.device_group]]
                     value = 1
                     if conf_idx in scope.obj.local_selected
@@ -482,8 +485,9 @@ class category_tree extends tree_config
         else
             return "TOP"
 
-cat_ctrl = device_config_module.controller("category_ctrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "sharedDataSource", "$q", "$modal",
-    ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, sharedDataSource, $q, $modal) ->
+cat_ctrl = device_config_module.controller("category_ctrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "sharedDataSource", "$q", "$modal", "access_level_service",
+    ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, sharedDataSource, $q, $modal, access_level_service) ->
+        access_level_service.install($scope)
         $scope.cat_tree = new category_tree($scope, {})            
         $scope.reload = (dev_pk) ->
             $scope.device_pk = dev_pk
@@ -492,7 +496,9 @@ cat_ctrl = device_config_module.controller("category_ctrl", ["$scope", "$compile
                 restDataSource.reload(["{% url 'rest:device_tree_list' %}", {"pks" : angular.toJson([$scope.device_pk]), "with_categories" : true}])
             ]
             $q.all(wait_list).then((data) ->
-                sel_list = data[1][0].categories
+                $scope.device = data[1][0]
+                sel_list = $scope.device.categories
+                $scope.cat_tree.change_select = $scope.acl_all($scope.device, "change_category", 7)
                 cat_tree_lut = {}
                 $scope.cat_tree.clear_root_nodes()
                 for entry in data[0]
@@ -557,8 +563,9 @@ class location_tree extends tree_config
         else
             return "TOP"
 
-loc_ctrl = device_config_module.controller("location_ctrl", ["$scope", "restDataSource", "$q",
-    ($scope, restDataSource, $q) ->
+loc_ctrl = device_config_module.controller("location_ctrl", ["$scope", "restDataSource", "$q", "access_level_service",
+    ($scope, restDataSource, $q, access_level_service) ->
+        access_level_service.install($scope)
         $scope.loc_tree = new location_tree($scope, {})
         $scope.reload = (dev_pk) ->
             $scope.device_pk = dev_pk
@@ -567,7 +574,9 @@ loc_ctrl = device_config_module.controller("location_ctrl", ["$scope", "restData
                 restDataSource.reload(["{% url 'rest:device_tree_list' %}", {"pks" : angular.toJson([$scope.device_pk]), "with_categories" : true}])
             ]
             $q.all(wait_list).then((data) ->
-                sel_list = data[1][0].categories
+                $scope.device = data[1][0]
+                sel_list = $scope.device.categories
+                $scope.loc_tree.change_select = $scope.acl_all($scope.device, "change_location", 7)
                 loc_tree_lut = {}
                 $scope.loc_tree.clear_root_nodes()
                 for entry in data[0]

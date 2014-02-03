@@ -1840,8 +1840,8 @@ class device_tree_many_form(ModelForm):
             "Additional settings", [
                 ("curl", None, {}),
                 ("domain_tree_node", "value.idx as value.tree_info for value in rest_data.domain_tree_node", {"chosen" : True}),
-                ("bootserver", "value.idx as value.full_name for value in rest_data.monitor_server", {"chosen" : True}),
-                ("monitor_server", "value.idx as value.full_name for value in rest_data.mother_server", {"chosen" : True}),
+                ("bootserver", "value.idx as value.full_name for value in rest_data.mother_server", {"chosen" : True}),
+                ("monitor_server", "value.idx as value.full_name for value in rest_data.monitor_server", {"chosen" : True}),
             ]
         ),
         (

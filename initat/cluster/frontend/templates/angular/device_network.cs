@@ -37,11 +37,11 @@ dn_row_template = """
         </span>
     </button>
 </td>
-<th>{{ obj.full_name }} {{ acl_create(obj, 'change_network') }}, {{ acl_delete(obj, 'change_network') }}, {{ acl_modify(obj, 'change_network') }}</th>
+<th>{{ obj.full_name }}</th>
 <th>{{ obj.device_group_name }}</th>
 <th>{{ obj.comment }}</th>
 <th colspan="3">
-    <div class="input-group-btn" ng-show="enable_modal">
+    <div class="input-group-btn" ng-show="enable_modal && acl_create(obj, 'change_network')">
         <button type="button" class="btn btn-success btn-sm dropdown-toggle" data-toggle="dropdown">
             Create new <span class="caret"></span>
         </button>
@@ -82,10 +82,10 @@ nd_row_template = """
      </div>"></input>
 </td>
 <td>
-    <input type="button" class="btn btn-primary btn-xs" value="modify" ng-click="edit_netdevice(obj, ndip_obj, $event)" ng-show="enable_modal"></input>
+    <input type="button" class="btn btn-primary btn-xs" value="modify" ng-click="edit_netdevice(obj, ndip_obj, $event)" ng-show="enable_modal && acl_modify(obj, 'change_network')"></input>
 </td>
 <td>
-    <input type="button" class="btn btn-danger btn-xs" value="delete" ng-click="delete_netdevice(ndip_obj, $event)" ng-show="enable_modal"></input>
+    <input type="button" class="btn btn-danger btn-xs" value="delete" ng-click="delete_netdevice(ndip_obj, $event)" ng-show="enable_modal && acl_delete(obj, 'change_network')"></input>
 </td>
 """
 
@@ -96,10 +96,10 @@ ip_row_template = """
 <td><span ng-show="ndip_obj.alias">{{ ndip_obj.alias }} ({{ ndip_obj.alias_excl | yesno1 }})</span></td>
 <td></td>
 <td>
-    <input type="button" class="btn btn-primary btn-xs" value="modify" ng-click="edit_netip(ndip_obj, $event)" ng-show="enable_modal"></input>
+    <input type="button" class="btn btn-primary btn-xs" value="modify" ng-click="edit_netip(ndip_obj, $event)" ng-show="enable_modal && acl_modify(obj, 'change_network')"></input>
 </td>
 <td>
-    <input type="button" class="btn btn-danger btn-xs" value="delete" ng-click="delete_netip(ndip_obj, $event)" ng-show="enable_modal"></input>
+    <input type="button" class="btn btn-danger btn-xs" value="delete" ng-click="delete_netip(ndip_obj, $event)" ng-show="enable_modal && acl_delete(obj, 'change_network')"></input>
 <td>
 """
 
@@ -112,10 +112,10 @@ peer_row_template = """
 </td>
 <td></td>
 <td>
-    <input type="button" class="btn btn-primary btn-xs" value="modify" ng-click="edit_peer_information(ndip_obj, $event)" ng-show="enable_modal"></input>
+    <input type="button" class="btn btn-primary btn-xs" value="modify" ng-click="edit_peer_information(ndip_obj, $event)" ng-show="enable_modal && acl_modify(obj, 'change_network')"></input>
 </td>
 <td>
-    <input type="button" class="btn btn-danger btn-xs" value="delete" ng-click="delete_peer_information(ndip_obj, $event)" ng-show="enable_modal"></input>
+    <input type="button" class="btn btn-danger btn-xs" value="delete" ng-click="delete_peer_information(ndip_obj, $event)" ng-show="enable_modal && acl_delete(obj, 'change_network')"></input>
 </td>
 """
 

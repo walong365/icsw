@@ -166,6 +166,7 @@ rpl.extend([
     url("^device_tree/(?P<pk>[0-9]+)$", rest_views.device_tree_detail.as_view(), name="device_tree_detail"),
     url("^device_selection$", rest_views.device_selection_list.as_view(), name="device_selection_list"),
     url("^home_export_list$", rest_views.rest_home_export_list.as_view(), name="home_export_list"),
+    url("^user_permissions$", rest_views.global_user_permissions.as_view(), name="global_user_permissions"),
     url("^csw_object_list$", rest_views.csw_object_list.as_view({"get" : "list"}), name="csw_object_list"),
     url("^netdevice_peer_list$", rest_views.netdevice_peer_list.as_view({"get" : "list"}), name="netdevice_peer_list"),
     url("^fetch_forms$", rest_views.fetch_forms.as_view({"get" : "list"}), name="fetch_forms"),
@@ -173,11 +174,6 @@ rpl.extend([
 
 rest_patterns = patterns(
     "initat.cluster.frontend",
-    url("^api/$"                     , "rest_views.api_root"              , name="root"),
-    url("^api/user/$"                , rest_views.user_list_h.as_view()   , name="user_list_h"),
-    url("^api/user/(?P<pk>[0-9]+)/$" , rest_views.user_detail_h.as_view() , name="user_detail_h"),
-    url("^api/group/$"               , rest_views.group_list_h.as_view()  , name="group_list_h"),
-    url("^api/group/(?P<pk>[0-9]+)/$", rest_views.group_detail_h.as_view(), name="group_detail_h"),
     *rpl
 )
 # rest_patterns = format_suffix_patterns(rest_patterns)

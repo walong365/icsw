@@ -251,30 +251,55 @@ angular_module_setup = (module_list, url_list=[]) ->
                     r_dict[long] = parseInt(kv[1])
                     r_dict[short] = parseInt(kv[1])
                 return r_dict
-            check_level = (obj, ac_name, mask) ->
+            check_level = (obj, ac_name, mask, any) ->
                 if obj.access_levels?
+                    # object level permissions
                     if not obj._all
                         obj._all = to_list(obj.access_levels)
                     if ac_name of obj._all
-                        return if obj._all[ac_name] & mask then true else false
+                        if any
+                            return if obj._all[ac_name] & mask then true else false
+                        else
+                            return (obj._all[ac_name] & mask) == mask
+                    else
+                        return false
+                else if obj._GLOBAL_
+                    # global permissions
+                    if ac_name of obj
+                        if any
+                            return if obj[ac_name] & mask then true else false
+                        else
+                            return (obj[ac_name] & mask) == mask
                     else
                         return false
                 else
                     return false
             func_dict = {
                 "acl_delete" : (obj, ac_name) ->
-                    return check_level(obj, ac_name, 4)
+                    return check_level(obj, ac_name, 4, true)
                 "acl_create" : (obj, ac_name) ->
-                    return check_level(obj, ac_name, 2)
+                    return check_level(obj, ac_name, 2, true)
                 "acl_modify" : (obj, ac_name) ->
-                    return check_level(obj, ac_name, 1)
+                    return check_level(obj, ac_name, 1, true)
+                "acl_read" : (obj, ac_name) ->
+                    return check_level(obj, ac_name, 0, true)
+                "acl_any" : (obj, ac_name, mask) ->
+                    return check_level(obj, ac_name, mask, true)
+                "acl_all" : (obj, ac_name, mask) ->
+                    return check_level(obj, ac_name, mask, false)
             }
-            
             return {
                 "install" : (scope) ->
+                    scope.global_perms = {"_GLOBAL_" : true}
                     scope.acl_create = func_dict["acl_create"]
                     scope.acl_modify = func_dict["acl_modify"]
                     scope.acl_delete = func_dict["acl_delete"]
+                    scope.acl_read = func_dict["acl_read"]
+                    scope.acl_any = func_dict["acl_any"]
+                    scope.acl_all = func_dict["acl_all"]
+                "set_global_permissions" : (scope, rest_value) ->
+                    for obj in rest_value
+                        scope.global_perms[obj.key] = obj.value
             }
         )
         cur_mod.config(['$httpProvider', 

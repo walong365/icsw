@@ -27,7 +27,7 @@ from django.contrib.contenttypes.models import ContentType
 from django.db.models import get_model, Q
 from initat.core.render import render_string
 from initat.cluster.backbone import models
-from initat.cluster.backbone.models import user , group, user_serializer_h, group_serializer_h, \
+from initat.cluster.backbone.models import user , group, \
      get_related_models, get_change_reset_list, device, device_serializer, \
      device_serializer_package_state, device_serializer_monitoring, domain_name_tree, \
      device_serializer_monitor_server, category_tree, device_serializer_cat, device_selection, \
@@ -61,13 +61,13 @@ for key in dir(models):
     if key.endswith("_serializer") and key not in ["device_selection_serializer"]:
         REST_LIST.append("_".join(key.split("_")[:-1]))
 
-@api_view(('GET',))
-def api_root(request, format=None):
-    return Response({
-        'user'         : reverse('rest:user_list_h', request=request),
-        'group'        : reverse('rest:group_list_h', request=request),
-        # 'network_type' : reverse('rest:network_type_list_h', request=request),
-    })
+# @api_view(('GET',))
+# def api_root(request, format=None):
+#    return Response({
+#        'user'         : reverse('rest:user_list_h', request=request),
+#        'group'        : reverse('rest:group_list_h', request=request),
+#        # 'network_type' : reverse('rest:network_type_list_h', request=request),
+#    })
 
 def csw_exception_handler(exc):
     response = exception_handler(exc)
@@ -548,31 +548,22 @@ class device_selection_list(APIView):
         ser = device_selection_serializer([device_selection(cur_sel) for cur_sel in request.session.get("sel_list", [])], many=True)
         return Response(ser.data)
 
-class user_list_h(generics.ListCreateAPIView):
-    authentication_classes = (BasicAuthentication, SessionAuthentication,)
-    permission_classes = (IsAuthenticated,)
-    model = user
-    serializer_class = user_serializer_h
+class simple_global_perm(object):
+    def __init__(self, key, value):
+        self.key = key
+        self.value = value
 
-class user_detail_h(generics.RetrieveUpdateDestroyAPIView):
-    authentication_classes = (BasicAuthentication, SessionAuthentication,)
-    permission_classes = (IsAuthenticated,)
-    model = user
-    serializer_class = user_serializer_h
+class simple_global_perm_serializer(serializers.Serializer):
+    key = serializers.CharField()
+    value = serializers.IntegerField()
 
-class group_list_h(generics.ListCreateAPIView):
-    authentication_classes = (BasicAuthentication, SessionAuthentication,)
+class global_user_permissions(APIView):
+    authentication_classes = (SessionAuthentication,)
     permission_classes = (IsAuthenticated,)
-    model = group
-    serializer_class = group_serializer_h
+    def get(self, request):
+        ser = simple_global_perm_serializer([simple_global_perm(key, value) for key, value in request.user.get_global_permissions().iteritems()], many=True)
+        return Response(ser.data)
 
-class group_detail_h(generics.RetrieveUpdateDestroyAPIView):
-    authentication_classes = (BasicAuthentication, SessionAuthentication,)
-    permission_classes = (IsAuthenticated,)
-    model = group
-    serializer_class = group_serializer_h
-
-# _models = __import__("initat.cluster.backbone.models")
 for obj_name in REST_LIST:
     ser_name = "%s_serializer" % (obj_name)
     ser_class = getattr(models, ser_name)

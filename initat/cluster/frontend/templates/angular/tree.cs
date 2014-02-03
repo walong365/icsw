@@ -168,6 +168,7 @@ class tree_config
         @show_tree_expand_buttons = true
         @show_icons = true
         @show_select = true
+        @change_select = true
         # only one element can be selected
         @single_select = false
         for key, value of args
@@ -257,16 +258,17 @@ class tree_config
     toggle_expand_node: (entry) -> 
         entry.expand = not entry.expand
     toggle_checkbox_node: (entry) =>
-        entry.set_selected(!entry.selected)
-        if entry.selected and @single_select
-            # remove all other selections
-            cur_idx = entry._idx
-            @iter(
-                (entry) ->
-                    if entry.selected and entry._idx != cur_idx
-                        entry.selected = false
-            )
-        @selection_changed()
+        if @change_select
+            entry.set_selected(!entry.selected)
+            if entry.selected and @single_select
+                # remove all other selections
+                cur_idx = entry._idx
+                @iter(
+                    (entry) ->
+                        if entry.selected and entry._idx != cur_idx
+                            entry.selected = false
+                )
+            @selection_changed()
     toggle_tree_state: (entry, flag, signal=true) =>
         if entry == undefined
             (@toggle_tree_state(_entry, flag, signal) for _entry in @root_nodes)
