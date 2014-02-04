@@ -56,7 +56,7 @@ class colorizer(object):
         self.log("read colorrules from %s" % (global_config["COLORRULES_FILE"]))
         self.match_re_keys = [
             (re.compile("^%s" % (entry.attrib["key"].replace(".", r"\."))),
-             entry) for entry in self.color_rules.xpath(".//entry[@key]")]
+             entry) for entry in self.color_rules.xpath(".//entry[@key]", smart_strings=False)]
         # fast lookup table, store computed lookups
         self.fast_lut = {}
     def _check_color(self, color):
@@ -198,9 +198,9 @@ class graph_process(threading_tools.process_obj):
         return g_key_dict
     def _graph_rrd(self, *args, **kwargs):
         src_id, srv_com = (args[0], server_command.srv_command(source=args[1]))
-        dev_pks = [entry for entry in map(lambda x: int(x), srv_com.xpath(".//device_list/device/@pk")) if entry in self.vector_dict]
+        dev_pks = [entry for entry in map(lambda x: int(x), srv_com.xpath(".//device_list/device/@pk", smart_strings=False)) if entry in self.vector_dict]
         dev_dict = dict([(cur_dev.pk, unicode(cur_dev.full_name)) for cur_dev in device.objects.filter(Q(pk__in=dev_pks))])
-        graph_keys = sorted(srv_com.xpath(".//graph_key_list/graph_key/text()"))
+        graph_keys = sorted(srv_com.xpath(".//graph_key_list/graph_key/text()", smart_strings=False))
         graph_key_dict = self._create_graph_keys(graph_keys)
         self.log("found device pks: %s" % (", ".join(["%d" % (pk) for pk in dev_pks])))
         self.log("graph keys: %s" % (", ".join(graph_keys)))
@@ -211,7 +211,7 @@ class graph_process(threading_tools.process_obj):
         para_dict = {
             "size" : "400x200",
         }
-        for para in srv_com.xpath(".//parameters")[0]:
+        for para in srv_com.xpath(".//parameters", smart_strings=False)[0]:
             para_dict[para.tag] = para.text
         # cast to integer
         para_dict = dict([(key, int(value) if key in [] else value) for key, value in para_dict.iteritems()])

@@ -49,19 +49,19 @@ class data_store(object):
         else:
             # for pure-pde vectors no store name is set
             self.store_name = self.xml_vector.attrib.get("store_name", "")
-            all_mves = self.xml_vector.xpath(".//mve/@name")
+            all_mves = self.xml_vector.xpath(".//mve/@name", smart_strings=False)
             changed = False
             if len(all_mves) != len(set(all_mves)):
                 self.log("found duplicate entries, removing them")
                 removed = 0
                 for cur_mve in all_mves:
-                    sub_list = self.xml_vector.xpath(".//mve[@name='%s']" % (cur_mve))
+                    sub_list = self.xml_vector.xpath(".//mve[@name='%s']" % (cur_mve), smart_strings=False)
                     for sub_entry in sub_list[:-1]:
                         sub_entry.getparent().remove(sub_entry)
                         removed += 1
                         changed = True
                 self.log("removed %d entries" % (removed))
-            for fix_el in self.xml_vector.xpath(".//*[@file_name and not(@active)]"):
+            for fix_el in self.xml_vector.xpath(".//*[@file_name and not(@active)]", smart_strings=False):
                 fix_el.attrib["active"] = "1"
                 changed = True
             if changed:
@@ -78,7 +78,7 @@ class data_store(object):
                 in_vector.attrib["name"]))
             self.store_name = in_vector.attrib["name"]
             self.xml_vector.attrib["store_name"] = self.store_name
-        old_keys = set(self.xml_vector.xpath(".//mve/@name"))
+        old_keys = set(self.xml_vector.xpath(".//mve/@name", smart_strings=False))
         rrd_dir = global_config["RRD_DIR"]
         for entry in in_vector.findall("mve"):
             cur_name = entry.attrib["name"]
@@ -91,7 +91,7 @@ class data_store(object):
                 )
                 self.xml_vector.append(cur_entry)
             self._update_entry(cur_entry, entry, rrd_dir)
-        new_keys = set(self.xml_vector.xpath(".//mve/@name"))
+        new_keys = set(self.xml_vector.xpath(".//mve/@name", smart_strings=False))
         c_keys = old_keys ^ new_keys
         if c_keys:
             self.log("mve: %d keys total, %d keys changed" % (len(new_keys), len(c_keys)))
@@ -100,16 +100,16 @@ class data_store(object):
         self.store()
     def feed_pd(self, host_name, pd_type, pd_info):
         # we ignore the global store name for perfdata stores
-        old_keys = set(self.xml_vector.xpath(".//pde/@name"))
+        old_keys = set(self.xml_vector.xpath(".//pde/@name", smart_strings=False))
         rrd_dir = global_config["RRD_DIR"]
         print host_name, pd_type
         print etree.tostring(pd_info, pretty_print=True)
         type_instance = pd_info.get("type_instance", "")
         # only one entry
         if type_instance:
-            cur_entry = self.xml_vector.xpath(".//pde[@name='%s' and @type_instance='%s']" % (pd_type, type_instance))
+            cur_entry = self.xml_vector.xpath(".//pde[@name='%s' and @type_instance='%s']" % (pd_type, type_instance), smart_strings=False)
         else:
-            cur_entry = self.xml_vector.xpath(".//pde[@name='%s']" % (pd_type))
+            cur_entry = self.xml_vector.xpath(".//pde[@name='%s']" % (pd_type), smart_strings=False)
         cur_entry = cur_entry[0] if cur_entry else None
         if cur_entry is None:
             # create new entry
@@ -129,7 +129,7 @@ class data_store(object):
         else:
             cur_entry.attrib["type_instance"] = pd_info.get("type_instance", "")
         self._update_pd_entry(cur_entry, pd_info, rrd_dir)
-        new_keys = set(self.xml_vector.xpath(".//pde/@name"))
+        new_keys = set(self.xml_vector.xpath(".//pde/@name", smart_strings=False))
         c_keys = old_keys ^ new_keys
         if c_keys:
             self.log("pde: %d keys total, %d keys changed" % (len(new_keys), len(c_keys)))
@@ -200,7 +200,7 @@ class data_store(object):
         web_mode = mode == "web"
         graph_mode = mode == "graph"
         cur_xml = self.xml_vector
-        all_keys = set(cur_xml.xpath(".//mve[@active='1']/@name"))
+        all_keys = set(cur_xml.xpath(".//mve[@active='1']/@name", smart_strings=False))
         xml_vect, lu_dict = (E.machine_vector(), {})
         for key in sorted(all_keys):
             parts = key.split(".")
@@ -221,7 +221,7 @@ class data_store(object):
                 add_entry.attrib["info"] = self._expand_info(add_entry)
             s_xml.append(add_entry)
         # remove structural entries with only one mve-child
-        for struct_ent in xml_vect.xpath(".//entry[not(entry)]"):
+        for struct_ent in xml_vect.xpath(".//entry[not(entry)]", smart_strings=False):
             parent = struct_ent.getparent()
             parent.append(struct_ent[0])
             parent.remove(struct_ent)
@@ -273,7 +273,7 @@ class data_store(object):
                     logging_tools.get_plural("entry", empty_nodes)))
             first_mv = res_list[0][0]
             ref_dict = {"mve" : {}, "value" : {}}
-            for val_el in first_mv.xpath(".//*"):
+            for val_el in first_mv.xpath(".//*", smart_strings=False):
                 if val_el.tag in ["value", "mve"]:
                     ref_dict[val_el.tag][val_el.get("name")] = val_el
                 val_el.attrib["devices"] = "1"
@@ -281,7 +281,7 @@ class data_store(object):
             for other_node in res_list[1:]:
                 if len(other_node):
                     other_mv = other_node[0]
-                    for add_el in other_mv.xpath(".//mve|.//value"):
+                    for add_el in other_mv.xpath(".//mve|.//value", smart_strings=False):
                         add_tag, add_name = (add_el.tag, add_el.get("name"))
                         ref_el = ref_dict[add_tag].get(add_name)
                         if ref_el is not None:

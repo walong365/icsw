@@ -199,8 +199,8 @@ class server_process(threading_tools.process_pool):
         data_store.feed_perfdata(host_name, pd_type, pd_info)
     def _get_node_rrd(self, srv_com):
         node_results = E.node_results()
-        dev_list = srv_com.xpath(".//device_list")[0]
-        pk_list = [int(cur_pk) for cur_pk in dev_list.xpath(".//device/@pk")]
+        dev_list = srv_com.xpath(".//device_list", smart_strings=False)[0]
+        pk_list = [int(cur_pk) for cur_pk in dev_list.xpath(".//device/@pk", smart_strings=False)]
         for dev_pk in pk_list:
             cur_res = E.node_result(pk="%d" % (dev_pk))
             if data_store.has_rrd_xml(dev_pk):
