@@ -149,13 +149,14 @@ class _general(hm_module):
         if not self.enabled:
             return
         res = self.query("SELECT * FROM pg_stat_database;")
-        touched = set()
-        for line in res:
-            db_name = line["datname"]
-            if db_name not in self.databases:
-                self.databases[db_name] = pg_stat(db_name, mv)
-            self.databases[db_name].feed(line, mv)
-            touched.add(db_name)
-        to_remove = set(self.databases.keys()) - touched
-        for rem_db in to_remove:
-            self.databases[rem_db].remove(mv)
+        if res is not None:
+            touched = set()
+            for line in res:
+                db_name = line["datname"]
+                if db_name not in self.databases:
+                    self.databases[db_name] = pg_stat(db_name, mv)
+                self.databases[db_name].feed(line, mv)
+                touched.add(db_name)
+            to_remove = set(self.databases.keys()) - touched
+            for rem_db in to_remove:
+                self.databases[rem_db].remove(mv)
