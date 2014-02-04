@@ -283,7 +283,7 @@ class _general(hm_classes.hm_module):
                     if value.isdigit():
                         _vm_dict[key] = int(value)
             stat_dict["swap"] = [_vm_dict.get("pswpin", 0), _vm_dict.get("pswpout", 0)]
-            stat_dict["pages"] = [_vm_dict.get("pgpgin", 0), _vm_dict("pgpgout", 0)]
+            stat_dict["pages"] = [_vm_dict.get("pgpgin", 0), _vm_dict.get("pgpgout", 0)]
         if os.path.isfile("/proc/diskstats"):
             try:
                 ds_dict = dict([(parts[2].strip(), [int(parts[0]), int(parts[1])] + [long(cur_val) for cur_val in parts[3:]]) for parts in [line.strip().split() for line in open("/proc/diskstats", "r").readlines()] if len(parts) == 14]) # and y[2].strip() in self.valid_block_devs.keys()])
