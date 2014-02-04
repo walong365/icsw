@@ -191,7 +191,7 @@ class server_process(threading_tools.process_pool):
             "reply" : "result not set",
             "state" : "%d" % (server_command.SRV_REPLY_STATE_UNSET)})
         if in_com == "new_config":
-            all_devs = srv_com.xpath(".//ns:device_command/@name")
+            all_devs = srv_com.xpath(".//ns:device_command/@name", smart_strings=False)
             if not all_devs:
                 valid_devs = list(client.name_set)
             else:
@@ -200,7 +200,7 @@ class server_process(threading_tools.process_pool):
                 logging_tools.get_plural("device", len(all_devs)),
                 logging_tools.get_plural("device" , len(valid_devs))))
             for cur_dev in all_devs:
-                srv_com.xpath(".//ns:device_command[@name='%s']" % (cur_dev))[0].attrib["config_sent"] = "1" if cur_dev in valid_devs else "0"
+                srv_com.xpath(".//ns:device_command[@name='%s']" % (cur_dev), smart_strings=False)[0].attrib["config_sent"] = "1" if cur_dev in valid_devs else "0"
             if valid_devs:
                 self._send_update(command="new_config", dev_list=valid_devs)
             srv_com["result"].attrib.update({

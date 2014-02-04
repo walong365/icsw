@@ -159,7 +159,7 @@ class repo_type_rpm_zypper(repo_type):
         new_repos = []
         found_repos = []
         old_repos = set(package_repo.objects.all().values_list("name", flat=True))
-        for repo in repo_xml.xpath(".//repo-list/repo"):
+        for repo in repo_xml.xpath(".//repo-list/repo", smart_strings=False):
             try:
                 cur_repo = package_repo.objects.get(Q(name=repo.attrib["name"]))
             except package_repo.DoesNotExist:
@@ -192,7 +192,7 @@ class repo_type_rpm_zypper(repo_type):
         res_xml = etree.fromstring(s_struct.read())
         cur_search = s_struct.run_info["stuff"]
         cur_search.current_state = "done"
-        cur_search.results = len(res_xml.xpath(".//solvable"))
+        cur_search.results = len(res_xml.xpath(".//solvable", smart_strings=False))
         cur_search.last_search = cluster_timezone.localize(datetime.datetime.now())
         cur_search.save(update_fields=["last_search", "current_state", "results"])
         # all repos
@@ -200,7 +200,7 @@ class repo_type_rpm_zypper(repo_type):
         # delete previous search results
         cur_search.package_search_result_set.all().delete()
         self.log("found for %s: %d" % (cur_search.search_string, cur_search.results))
-        for result in res_xml.xpath(".//solvable"):
+        for result in res_xml.xpath(".//solvable", smart_strings=False):
             if result.attrib["repository"] in repo_dict:
                 new_sr = package_search_result(
                     name=result.attrib["name"],
@@ -338,7 +338,7 @@ class client(object):
         if not os.path.exists(CONFIG_NAME):
             file(CONFIG_NAME, "w").write(etree.tostring(E.package_clients(), pretty_print=True))
         client.xml = etree.fromstring(file(CONFIG_NAME, "r").read())
-        for client_el in client.xml.xpath(".//package_client"):
+        for client_el in client.xml.xpath(".//package_client", smart_strings=False):
             client.register(client_el.text, client_el.attrib["name"])
     @staticmethod
     def get(key):
@@ -365,7 +365,7 @@ class client(object):
                 client.lut[uid] = new_client
                 client.lut[name] = new_client
                 client.srv_process.log("added client %s (%s)" % (name, uid))
-                cur_el = client.xml.xpath(".//package_client[@name='%s']" % (name))
+                cur_el = client.xml.xpath(".//package_client[@name='%s']" % (name), smart_strings=False)
                 if not len(cur_el):
                     client.xml.append(E.package_client(uid, name=name))
                     file(CONFIG_NAME, "w").write(etree.tostring(client.xml, pretty_print=True))
@@ -421,8 +421,8 @@ class client(object):
         )
         srv_com["repo_list"] = resp
     def _package_info(self, srv_com):
-        pdc_xml = srv_com.xpath(".//package_device_connection")[0]
-        info_xml = srv_com.xpath(".//result")
+        pdc_xml = srv_com.xpath(".//package_device_connection", smart_strings=False)[0]
+        info_xml = srv_com.xpath(".//result", smart_strings=False)
         if len(info_xml):
             info_xml = info_xml[0]
             cur_pdc = package_device_connection.objects.select_related("package").get(Q(pk=pdc_xml.attrib["pk"]))
