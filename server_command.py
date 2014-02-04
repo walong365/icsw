@@ -104,7 +104,7 @@ class srv_command(object):
         if "namespace" not in kwargs:
             kwargs["namespaces"] = {"ns" : XML_NS}
         start_el = kwargs.pop("start_el", self.__tree)
-        return start_el.xpath(*args, smart_strings=False, **kwargs)
+        return start_el.xpath(*args, smart_strings=kwargs.pop("smart_strings", False), **kwargs)
     def set_result(self, ret_str, level=SRV_REPLY_STATE_OK):
         if "result" not in self:
             self["result"] = None
@@ -343,7 +343,7 @@ class srv_command(object):
         return etree.tostring(self.__tree, **kwargs)
     def get_log_tuple(self, swap=False):
         # returns the reply / state attribute, mapped to logging_tool levels
-        res_node = self.xpath(".//ns:result")
+        res_node = self.xpath(".//ns:result", smart_strings=False)
         if len(res_node):
             res_node = res_node[0]
             ret_str, ret_state = res_node.attrib["reply"], int(res_node.attrib["state"])

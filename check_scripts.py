@@ -190,12 +190,12 @@ def check_system(opt_ns):
     set_all_nodes = True if (opt_ns.node == ["ALL"] or opt_ns.instance == ["ALL"]) else False
     set_all_system = True if (opt_ns.system == ["ALL"] or opt_ns.instance == ["ALL"]) else False
     if set_all_servers:
-        opt_ns.server = instance_xml.xpath(".//*[@runs_on='server']/@name")
+        opt_ns.server = instance_xml.xpath(".//*[@runs_on='server']/@name", smart_strings=False)
     if set_all_nodes:
-        opt_ns.node = instance_xml.xpath(".//*[@runs_on='node']/@name")
+        opt_ns.node = instance_xml.xpath(".//*[@runs_on='node']/@name", smart_strings=False)
     if set_all_system:
-        opt_ns.system = instance_xml.xpath(".//*[@runs_on='system']/@name")
-    for cur_el in instance_xml.xpath(".//instance[@runs_on]"):
+        opt_ns.system = instance_xml.xpath(".//*[@runs_on='system']/@name", smart_strings=False)
+    for cur_el in instance_xml.xpath(".//instance[@runs_on]", smart_strings=False):
         if cur_el.attrib["name"] in getattr(opt_ns, cur_el.attrib["runs_on"]) or cur_el.attrib["name"] in opt_ns.instance:
             cur_el.attrib["to_check"] = "1"
     act_proc_dict = process_tools.get_proc_list()
@@ -290,7 +290,7 @@ def check_system(opt_ns):
             )
         if entry.attrib["runs_on"] == "server":
             if dev_config is not None:
-                srv_type_list = [_e.replace("-", "_") for _e in entry.xpath(".//config_names/config_name/text()")]
+                srv_type_list = [_e.replace("-", "_") for _e in entry.xpath(".//config_names/config_name/text()", smart_strings=False)]
                 found = False
                 for srv_type in srv_type_list:
                     if srv_type in dev_config:
@@ -416,7 +416,7 @@ def show_xml(opt_ns, res_xml):
             cur_line.append(logging_tools.form_entry(act_struct.findtext("sql_info"), header="DB info"))
         if opt_ns.runlevel:
             if act_struct.find("runlevels") is not None:
-                rlevs = act_struct.xpath("runlevels/runlevel/text()")
+                rlevs = act_struct.xpath("runlevels/runlevel/text()", smart_strings=False)
                 if len(rlevs):
                     cur_line.append(
                         logging_tools.form_entry(

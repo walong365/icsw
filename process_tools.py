@@ -373,12 +373,12 @@ class meta_server_info(object):
                     logging_tools.my_syslog("error parsing XML file %s (meta_server_info): %s" % (
                         name, get_except_info()))
             if xml_struct is not None:
-                self.__name = xml_struct.xpath(".//name/text()")[0]
+                self.__name = xml_struct.xpath(".//name/text()", smart_strings=False)[0]
                 # reads pids
                 self.__pids = []
                 self.__pid_names = {}
                 self.__pid_fuzzy = {}
-                for cur_idx, pid_struct in enumerate(xml_struct.xpath(".//pid_list/pid")):
+                for cur_idx, pid_struct in enumerate(xml_struct.xpath(".//pid_list/pid", smart_strings=False)):
                     self.__pids.extend([int(pid_struct.text)] * int(pid_struct.get("mult", "1")))
                     self.__pid_names[int(pid_struct.text)] = pid_struct.get("name", "proc%d" % (cur_idx + 1))
                     self.__pid_fuzzy[int(pid_struct.text)] = (
@@ -386,7 +386,7 @@ class meta_server_info(object):
                         int(pid_struct.get("fuzzy_ceiling", "0")),
                         )
                 for opt, val_type, def_val in self.__prop_list:
-                    cur_prop = xml_struct.xpath(".//properties/prop[@type and @key='%s']" % (opt))
+                    cur_prop = xml_struct.xpath(".//properties/prop[@type and @key='%s']" % (opt), smart_strings=False)
                     if cur_prop:
                         cur_prop = cur_prop[0]
                         cur_value = cur_prop.text

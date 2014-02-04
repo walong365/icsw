@@ -63,8 +63,8 @@ class disk_info(object):
             for src_type in ["file", "dev"]:
                 if src_type in src_obj.attrib:
                     self.src_type, self.src_ref = (src_type, src_obj.attrib[src_type])
-        self.dev = self.__xml_object.xpath(".//target")[0].attrib["dev"]
-        self.bus = self.__xml_object.xpath(".//target")[0].attrib["bus"]
+        self.dev = self.__xml_object.xpath(".//target", smart_strings=False)[0].attrib["dev"]
+        self.bus = self.__xml_object.xpath(".//target", smart_strings=False)[0].attrib["bus"]
     def get_info(self):
         return "device '%s' on bus '%s', source is %s (%s)" % (
             self.dev,
@@ -96,10 +96,10 @@ class net_info(object):
         self.__xml_object = xml_object
         self.__first_run = True
         self._clear_stats()
-        self.dev = self.__xml_object.xpath(".//target")[0].attrib["dev"]
-        self.model = self.__xml_object.xpath(".//model")[0].attrib["type"]
-        self.source = self.__xml_object.xpath(".//source")[0].attrib["bridge"]
-        self.mac_address = self.__xml_object.xpath(".//mac")[0].attrib["address"]
+        self.dev = self.__xml_object.xpath(".//target", smart_strings=False)[0].attrib["dev"]
+        self.model = self.__xml_object.xpath(".//model", smart_strings=False)[0].attrib["type"]
+        self.source = self.__xml_object.xpath(".//source", smart_strings=False)[0].attrib["bridge"]
+        self.mac_address = self.__xml_object.xpath(".//mac", smart_strings=False)[0].attrib["address"]
     def get_info(self):
         return "device %s (model %s) on %s, MAC is %s" % (
             self.dev,
@@ -137,13 +137,13 @@ class virt_instance(object):
         self.log("Instance name is '%s', ID is %s" % (self.name,
                                                       self.inst_id))
         self.xml_desc = etree.fromstring(self.dom_handle.XMLDesc(0))
-        self.memory = int(self.xml_desc.xpath(".//currentMemory")[0].text) * 1024
-        self.vcpus = int(self.xml_desc.xpath(".//vcpu")[0].text)
+        self.memory = int(self.xml_desc.xpath(".//currentMemory", smart_strings=False)[0].text) * 1024
+        self.vcpus = int(self.xml_desc.xpath(".//vcpu", smart_strings=False)[0].text)
         self.log("memory is %s, %s" % (logging_tools.get_size_str(self.memory),
                                        logging_tools.get_plural("CPU", self.vcpus)))
         self.disk_dict, self.net_dict = ({}, {})
         self.vnc_port = None
-        vnc_entry = self.xml_desc.xpath(".//graphics[@type='vnc']")
+        vnc_entry = self.xml_desc.xpath(".//graphics[@type='vnc']", smart_strings=False)
         if vnc_entry:
             self.vnc_port = int(vnc_entry[0].attrib["port"]) - 5900
             self.log("VNC port is %d" % (self.vnc_port))
@@ -152,11 +152,11 @@ class virt_instance(object):
         # print etree.tostring(self.xml_desc, pretty_print=True)
         for disk_entry in self.xml_desc.findall(".//disk[@device='disk']"):
             cur_disk_info = disk_info(disk_entry)
-            self.disk_dict[disk_entry.xpath(".//target")[0].attrib["dev"]] = cur_disk_info
+            self.disk_dict[disk_entry.xpath(".//target", smart_strings=False)[0].attrib["dev"]] = cur_disk_info
             self.log(cur_disk_info.get_info())
         for net_entry in self.xml_desc.findall(".//interface[@type='bridge']"):
             cur_net_info = net_info(net_entry)
-            self.net_dict[net_entry.xpath(".//target")[0].attrib["dev"]] = cur_net_info
+            self.net_dict[net_entry.xpath(".//target", smart_strings=False)[0].attrib["dev"]] = cur_net_info
             self.log(cur_net_info.get_info())
         self.base_info = base_stats()
     def close(self):

@@ -1,6 +1,6 @@
 #!/usr/bin/python-init -Ot
 #
-# Copyright (C) 2001,2002,2003,2004,2005,2007,2008,2009,2010,2011,2012,2013 Andreas Lang-Nevyjel, init.at
+# Copyright (C) 2001-2014 Andreas Lang-Nevyjel, init.at
 #
 # this file is part of python-modules-base
 #
@@ -486,11 +486,11 @@ class global_cpu_info(object):
                 break
         _xml = kwargs.get("xml", None)
         if _xml is not None:
-            kernel_tuple = _xml.xpath(".//ns0:cpu_info/ns0:kernel_tuple", namespaces={"ns0" : server_command.XML_NS})[0]
+            kernel_tuple = _xml.xpath(".//ns0:cpu_info/ns0:kernel_tuple", namespaces={"ns0" : server_command.XML_NS}, smart_strings=False)[0]
             self.c_stat_kernel, self.c_out_kernel = (int(kernel_tuple.attrib["stat"]), bz2.decompress(base64.b64decode(kernel_tuple.text)))
-            cpuid_tuple = _xml.xpath(".//ns0:cpu_info/ns0:cpuid_tuple", namespaces={"ns0" : server_command.XML_NS})[0]
+            cpuid_tuple = _xml.xpath(".//ns0:cpu_info/ns0:cpuid_tuple", namespaces={"ns0" : server_command.XML_NS}, smart_strings=False)[0]
             self.c_stat_cpuid, self.c_out_cpuid = (int(cpuid_tuple.attrib["stat"]), bz2.decompress(base64.b64decode(cpuid_tuple.text)))
-            proc_dict = _xml.xpath(".//ns0:cpu_info/ns0:proc_dict", namespaces={"ns0" : server_command.XML_NS})[0]
+            proc_dict = _xml.xpath(".//ns0:cpu_info/ns0:proc_dict", namespaces={"ns0" : server_command.XML_NS}, smart_strings=False)[0]
             self.__proc_dict = marshal.loads(bz2.decompress(base64.b64decode(proc_dict.text)))
         else:
             self.c_stat_kernel, self.c_out_kernel = process_tools.getstatusoutput("%s -k -r" % (self.__cpuid_binary))

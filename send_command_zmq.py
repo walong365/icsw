@@ -152,8 +152,8 @@ def main():
                 if "result" in srv_reply:
                     print srv_reply["result"].attrib["reply"]
                     ret_state = int(srv_reply["result"].attrib["state"])
-                elif len(srv_reply.xpath(".//nodestatus")):
-                    print srv_reply.xpath(".//nodestatus")[0].text
+                elif len(srv_reply.xpath(".//nodestatus", smart_strings=False)):
+                    print srv_reply.xpath(".//nodestatus", smart_strings=False)[0].text
                     ret_state = 0
                 else:
                     print "no result tag found in reply"
