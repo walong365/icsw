@@ -1,6 +1,6 @@
 #!/usr/bin/python-init -OtW default
 #
-# Copyright (C) 2001,2002,2003,2004,2005,2006,2007,2008,2012,2013 Andreas Lang-Nevyjel, init.at
+# Copyright (C) 2001-2008,2012-2014 Andreas Lang-Nevyjel, init.at
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -188,7 +188,7 @@ class simple_request(object):
             return "error cannot create partition info"
     def build_config_result(self, result):
         xml_result = server_command.srv_command(source=result)
-        res_node = xml_result.xpath(".//ns:device[@pk='%d']" % (self.cc.device.pk))[0]
+        res_node = xml_result.xpath(".//ns:device[@pk='%d']" % (self.cc.device.pk), smart_strings=False)[0]
         self.log("result node has %s:" % (logging_tools.get_plural("attribute", len(res_node.attrib))))
         for key, value in res_node.attrib.iteritems():
             self.log("   %-10s: %s" % (key, value))

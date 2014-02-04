@@ -1,6 +1,6 @@
 #!/usr/bin/python-init -OtW default
 #
-# Copyright (C) 2001,2002,2003,2004,2005,2006,2007,2008,2012,2013 Andreas Lang-Nevyjel, init.at
+# Copyright (C) 2001-2008,2012-2014 Andreas Lang-Nevyjel, init.at
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -253,7 +253,7 @@ class server_process(threading_tools.process_pool):
                     cur_dev.attrib["internal_state"],
                     dict(cur_dev.attrib),
                     )
-        num_pending = len(cur_com.xpath(".//ns:device[not(@internal_state='done')]"))
+        num_pending = len(cur_com.xpath(".//ns:device[not(@internal_state='done')]", smart_strings=False))
         if not num_pending:
             self.log("nothing pending, sending return")
             self._send_return(cur_com)
@@ -272,7 +272,7 @@ class server_process(threading_tools.process_pool):
         run_idx = upd_dict.get("run_idx", -1)
         if run_idx in self.__pending_commands:
             cur_com = self.__pending_commands[run_idx]
-            cur_dev = cur_com.xpath(".//ns:device[@name='%s']" % (upd_dict["name"]))[0]
+            cur_dev = cur_com.xpath(".//ns:device[@name='%s']" % (upd_dict["name"]), smart_strings=False)[0]
             for key, value in upd_dict.iteritems():
                 if key.endswith("_dict"):
                     new_dict = E.info_dict()
