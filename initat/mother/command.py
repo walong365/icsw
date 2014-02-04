@@ -204,7 +204,7 @@ class external_command_process(threading_tools.process_obj):
             self.register_timer(self._check_commands, 1)
         in_com = server_command.srv_command(source=in_com)
         self.router_obj.check_for_update()
-        for cur_dev in in_com.xpath(".//ns:device"):
+        for cur_dev in in_com.xpath(".//ns:device", smart_strings=False):
             hc_command(cur_dev, self.router_obj)
     def sc_finished(self, sc_com):
         self.log("simple command done")
