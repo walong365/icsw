@@ -32,6 +32,10 @@ import server_command
 
 def client_code():
     from initat.host_monitoring import modules
+    if global_config["VERBOSE"] > 1:
+        print "%d import errors:" % (len(modules.IMPORT_ERRORS))
+        for mod, com, _str in modules.IMPORT_ERRORS:
+            print "%-30s %-20s %s" % (com, mod.split(".")[-1], _str)
     # log_template = logging_tools.get_logger(global_config["LOG_NAME"], global_config["LOG_DESTINATION"], zmq=True, context=)
     conn_str = "tcp://%s:%d" % (global_config["HOST"],
                                 global_config["COM_PORT"])
