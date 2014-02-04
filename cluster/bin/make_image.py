@@ -1,7 +1,7 @@
 #!/usr/bin/python-init -Ot
 # -*- coding: utf-8 -*-
 #
-# Copyright (C) 2001,2002,2003,2004,2005,2012,2013 Andreas Lang, init.at
+# Copyright (C) 2001-2005,2012-2014 Andreas Lang, init.at
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -90,7 +90,7 @@ class package_check(object):
             self.log("error interpreting zypper output '%s'" % (res_str), logging_tools.LOG_LEVEL_ERROR)
             all_packs = set()
         else:
-            all_packs = set(res_xml.xpath(".//solvable[@status='installed' and @kind='package']/@name"))
+            all_packs = set(res_xml.xpath(".//solvable[@status='installed' and @kind='package']/@name", smart_strings=False))
         missing_packages = set(pack_list) - all_packs
         return missing_packages
     def _call(self, cmd_string):

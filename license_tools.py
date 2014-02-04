@@ -48,7 +48,7 @@ LICENSE_CAPS = [
 def check_license(lic_name):
     lic_xml = etree.fromstring(
         open(LICENSE_FILE, "r").read())
-    cur_lic = lic_xml.xpath(".//license[@short='%s']" % (lic_name))
+    cur_lic = lic_xml.xpath(".//license[@short='%s']" % (lic_name), smart_strings=False)
     if len(cur_lic) == 1:
         return True if cur_lic[0].get("enabled", "no").lower() in ["yes", "true", "1"] else False
     elif not cur_lic:
@@ -59,7 +59,7 @@ def check_license(lic_name):
 def get_all_licenses():
     lic_xml = etree.fromstring(
         open(LICENSE_FILE, "r").read())
-    return lic_xml.xpath(".//license/@short")
+    return lic_xml.xpath(".//license/@short", smart_strings=False)
 
 def create_default_license():
     if not os.path.isfile(LICENSE_FILE):
@@ -83,7 +83,7 @@ def create_default_license():
             open(LICENSE_FILE, "r").read())
         changed = False
         for lic_name, info in LICENSE_CAPS:
-            if not len(lic_xml.xpath(".//licenses/license[@short='%s']" % (lic_name))):
+            if not len(lic_xml.xpath(".//licenses/license[@short='%s']" % (lic_name), smart_strings=False)):
                 changed = True
                 lic_xml.find("licenses").append(
                     E.license(lic_name, short=lic_name, info=info, enabled="no")
@@ -130,7 +130,7 @@ GwIDAQAB
     @property
     def _license_parameter(self):
         try:
-            return self.xml.xpath("//license[@short='parameter']")[0]
+            return self.xml.xpath("//license[@short='parameter']", smart_strings=False)[0]
         except:
             raise BadLicenseXML("no license for parameter found")
     def _check_signature(self, element):
@@ -139,8 +139,8 @@ GwIDAQAB
 
         The signature must be base64 encoded.
         """
-        data = element.xpath("./data/text()")[0]
-        signatures = element.xpath("./signature/text()")
+        data = element.xpath("./data/text()", smart_strings=False)[0]
+        signatures = element.xpath("./signature/text()", smart_strings=False)
         if len(signatures):
             signature = base64.decodestring(signatures[0])
             logger.info("Checking signature for data: %s", data)
@@ -163,7 +163,7 @@ GwIDAQAB
 
         Might raise SignatureNotCorrect() or BadLicenseXML().
         """
-        dev_count = self._license_parameter.xpath("./devicecount")
+        dev_count = self._license_parameter.xpath("./devicecount", smart_strings=False)
         if len(dev_count):
             dev_count = dev_count[0]
         else:
