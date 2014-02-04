@@ -35,7 +35,6 @@ import re
 import server_command
 import shutil
 import socket
-import struct
 import sys
 import time
 import zmq

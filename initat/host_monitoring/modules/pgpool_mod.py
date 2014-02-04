@@ -12,8 +12,8 @@ import os
 import psycopg2
 
 CONFIG_DIR = "/etc/sysconfig/host-monitoring.d/"
-CONFIG_FILE = "pgpool.config"
-SECTION = "Database"
+CONFIG_FILE = "database.config"
+SECTION = "pgpool"
 
 DEFAULTS = {
     "HOST": "",
@@ -42,17 +42,17 @@ class PgPoolCommand(hm_command):
     def read_config(self):
         self.config = {}
         parser = SafeConfigParser()
-        parser.add_section(SECTION)
-        # set defaults
-        for key, value in DEFAULTS.iteritems():
-            parser.set(SECTION, key, value)
         if os.path.isfile(os.path.join(CONFIG_DIR, CONFIG_FILE)):
             parser.read(os.path.join(CONFIG_DIR, CONFIG_FILE))
-        self.config["host"] = parser.get(SECTION, "HOST")
-        self.config["port"] = parser.get(SECTION, "PORT")
-        self.config["user"] = parser.get(SECTION, "USER")
-        self.config["password"] = parser.get(SECTION, "PASSWORD")
-        self.config["database"] = parser.get(SECTION, "DATABASE")
+        if parser.has_section(SECTION):
+            self.config["host"] = parser.get(SECTION, "HOST")
+            self.config["port"] = parser.get(SECTION, "PORT")
+            self.config["user"] = parser.get(SECTION, "USER")
+            self.config["password"] = parser.get(SECTION, "PASSWORD")
+            self.config["database"] = parser.get(SECTION, "DATABASE")
+        else:
+            for key, value in DEFAULTS.iteritems():
+                self.config[key.lower()] = value
         # Access via UNIX socket
         if not self.config["host"]:
             del self.config["host"]
@@ -188,3 +188,4 @@ class pgpool_version_command(PgPoolCommand):
         else:
             state, text = (limits.nag_STATE_CRITICAL, "no target version specified")
         return state, text
+
