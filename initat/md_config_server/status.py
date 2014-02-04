@@ -113,7 +113,7 @@ class status_process(threading_tools.process_obj):
         return self.__socket
     def _get_node_status(self, *args, **kwargs):
         src_id, srv_com = (args[0], server_command.srv_command(source=args[1]))
-        pk_list = srv_com.xpath(".//device_list/device/@pk")
+        pk_list = srv_com.xpath(".//device_list/device/@pk", smart_strings=False)
         dev_names = sorted([cur_dev.full_name for cur_dev in device.objects.filter(Q(pk__in=pk_list))])
         try:
             cur_sock = self._open()
