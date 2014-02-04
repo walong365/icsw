@@ -162,6 +162,8 @@ class _general(hm_classes.hm_module):
         # mv.register_entry("blks.out"      , 0, "number of blocks written per second"  , "1/s")
         mv.register_entry("swap.in"       , 0, "number of swap pages brought in"      , "1/s")
         mv.register_entry("swap.out"      , 0, "number of swap pages brought out"     , "1/s")
+        mv.register_entry("pages.in"      , 0, "number of pages brought in"      , "1/s")
+        mv.register_entry("pages.out"     , 0, "number of pages brought out"     , "1/s")
         self._rescan_valid_disk_stuff()
     def _cpuinfo_int(self, srv_com):
         return cpu_database.global_cpu_info().get_send_dict(srv_com)
@@ -273,8 +275,15 @@ class _general(hm_classes.hm_module):
                 stat_dict["ctxt"] = long(line[1])
             elif line[0] == "intr":
                 stat_dict["intr"] = long(line[1])
-            elif line[0] == "swap":
-                stat_dict["swap"] = [long(line[1]), long(line[2])]
+        if os.path.isfile("/proc/vmstat"):
+            _vm_dict = {}
+            for line in [cur_line.strip().split() for cur_line in open("/proc/vmstat", "r").readlines() if cur_line.strip()]:
+                if len(line) == 2:
+                    key, value = line
+                    if value.isdigit():
+                        _vm_dict[key] = int(value)
+            stat_dict["swap"] = [_vm_dict.get("pswpin", 0), _vm_dict.get("pswpout", 0)]
+            stat_dict["pages"] = [_vm_dict.get("pgpgin", 0), _vm_dict("pgpgout", 0)]
         if os.path.isfile("/proc/diskstats"):
             try:
                 ds_dict = dict([(parts[2].strip(), [int(parts[0]), int(parts[1])] + [long(cur_val) for cur_val in parts[3:]]) for parts in [line.strip().split() for line in open("/proc/diskstats", "r").readlines()] if len(parts) == 14]) # and y[2].strip() in self.valid_block_devs.keys()])
@@ -369,6 +378,9 @@ class _general(hm_classes.hm_module):
             if "swap" in stat_dict and "swap" in self.vmstat_dict:
                 for name, idx in [("in", 0), ("out", 1)]:
                     mvect["swap.%s" % (name)] = int(sub_wrap(stat_dict["swap"][idx], self.vmstat_dict["swap"][idx]) / tdiff)
+            if "pages" in stat_dict and "pages" in self.vmstat_dict:
+                for name, idx in [("in", 0), ("out", 1)]:
+                    mvect["pages.%s" % (name)] = int(sub_wrap(stat_dict["pages"][idx], self.vmstat_dict["pages"][idx]) / tdiff)
             # print unique_dev_list
             for act_disk in unique_dev_list:
                 if not self.disk_stat.has_key(act_disk):
