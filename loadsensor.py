@@ -93,7 +93,7 @@ def parse_actual_license_usage(log_template, actual_licenses, act_conf, lc_dict)
                 logging_tools.get_plural("license server", len(all_server_addrs)),
                 logging_tools.get_diff_time_str(q_e_time - q_s_time),
                 ", ".join(all_server_addrs)))
-        for cur_lic in srv_result.xpath(".//license[@name]"):
+        for cur_lic in srv_result.xpath(".//license[@name]", smart_strings=False):
             name = cur_lic.attrib["name"]
             act_lic = actual_licenses.get(name, None)
             if act_lic and act_lic.get_is_used():

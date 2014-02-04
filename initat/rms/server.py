@@ -108,7 +108,7 @@ class rms_mon_process(threading_tools.process_obj):
         src_id, srv_com_str = args
         srv_com = server_command.srv_command(source=srv_com_str)
         job_action = srv_com["action"].text
-        job_id = srv_com.xpath(".//ns:job_list/ns:job/@job_id")[0]
+        job_id = srv_com.xpath(".//ns:job_list/ns:job/@job_id", smart_strings=False)[0]
         self.log("job action '%s' for job '%s'" % (job_action, job_id))
         if job_action in ["force_delete", "delete"]:
             cur_stat, cur_out, log_lines = call_command(
