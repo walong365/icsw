@@ -315,7 +315,7 @@ class generate_config(View):
         result = contact_server(request, "tcp://localhost:8005", srv_com, timeout=30, log_result=False)
         if result:
             request.xml_response["result"] = E.devices()
-            for dev_node in result.xpath(".//ns:device"):
+            for dev_node in result.xpath(".//ns:device", smart_strings=False):
                 res_node = E.device(dev_node.text, **dev_node.attrib)
                 for sub_el in dev_node:
                     res_node.append(sub_el)
@@ -351,7 +351,7 @@ class download_configs(View):
             configs.append(config_dump_serializer(cur_conf).data)
         xml_tree = etree.fromstring(XMLRenderer().render(configs))
         # remove all idxs and parent_configs
-        for pk_el in xml_tree.xpath(".//idx|.//parent_config|.//categories|.//date"):
+        for pk_el in xml_tree.xpath(".//idx|.//parent_config|.//categories|.//date", smart_strings=False):
             pk_el.getparent().remove(pk_el)
         act_resp = HttpResponse(etree.tostring(xml_tree, pretty_print=True),
                                 mimetype="application/xml")
@@ -389,7 +389,7 @@ class upload_config(View):
                 for targ_list in ["mon_check_command", "config_bool", "config_str", "config_int", "config_blob", "config_script"]:
                     c_el.append(getattr(E, "%s_set" % (targ_list))())
                 new_tree.append(c_el)
-                for sub_el in _config.xpath(".//config_str|.//config_int|.//config_bool|.//config_blob|.//config_script|.//mon_check_command"):
+                for sub_el in _config.xpath(".//config_str|.//config_int|.//config_bool|.//config_blob|.//config_script|.//mon_check_command", smart_strings=False):
                     t_list = c_el.find("%s_set" % (sub_el.tag))
                     if sub_el.tag == "config_script":
                         sub_el.attrib["description"] = "config script"
@@ -466,7 +466,7 @@ class get_device_cvars(View):
         result = contact_server(request, "tcp://localhost:8005", srv_com, timeout=30, log_result=False)
         if result:
             request.xml_response["result"] = E.devices()
-            for dev_node in result.xpath(".//ns:device"):
+            for dev_node in result.xpath(".//ns:device", smart_strings=False):
                 res_node = E.device(dev_node.text, **dev_node.attrib)
                 for sub_el in dev_node:
                     res_node.append(sub_el)

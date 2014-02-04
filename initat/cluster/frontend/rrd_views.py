@@ -50,7 +50,7 @@ class device_rrds(View):
         )
         result = contact_server(request, "tcp://localhost:8003", srv_com, timeout=30)
         if result:
-            node_results = result.xpath(".//node_results")
+            node_results = result.xpath(".//node_results", smart_strings=False)
             if len(node_results):
                 node_results = node_results[0]
                 if len(node_results):
@@ -89,7 +89,7 @@ class graph_rrds(View):
         )
         result = contact_server(request, "tcp://localhost:8003", srv_com, timeout=30)
         if result:
-            graph_list = result.xpath(".//graph_list")
+            graph_list = result.xpath(".//graph_list", smart_strings=False)
             if len(graph_list):
                 graph_list = graph_list[0]
                 if len(graph_list):

@@ -151,7 +151,7 @@ class get_node_config(View):
         )
         result = contact_server(request, "tcp://localhost:8010", srv_com, timeout=30)
         if result:
-            node_results = result.xpath(".//config")
+            node_results = result.xpath(".//config", smart_strings=False)
             if len(node_results):
                 request.xml_response["result"] = node_results[0]
             else:
@@ -174,7 +174,7 @@ class get_node_status(View):
         )
         result = contact_server(request, "tcp://localhost:8010", srv_com, timeout=30)
         if result:
-            node_results = result.xpath(".//node_results")
+            node_results = result.xpath(".//node_results", smart_strings=False)
             if len(node_results):
                 node_results = node_results[0]
                 if len(node_results):

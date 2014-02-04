@@ -240,7 +240,7 @@ class get_group_tree(View):
             #                                                           str(device_filter)))
             extra_obj = globals()[extra_name]
             if device_filter:
-                obj_list = extra_obj.objects.filter(Q(device__in=xml_resp.xpath(".//device/@pk")))
+                obj_list = extra_obj.objects.filter(Q(device__in=xml_resp.xpath(".//device/@pk", smart_strings=False)))
             else:
                 obj_list = extra_obj.objects.all()
             extra_list = getattr(E, "%ss" % (extra_name))(

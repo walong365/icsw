@@ -94,10 +94,10 @@ class scan_for_images(View):
             present_img_names = image.objects.all().values_list("name", flat=True)
             # print srv_result.pretty_print()
             if int(srv_result["result"].attrib["state"]) == server_command.SRV_REPLY_STATE_OK:
-                img_list = srv_result.xpath(".//ns:image_list")
+                img_list = srv_result.xpath(".//ns:image_list", smart_strings=False)
                 if len(img_list):
                     f_img_list = E.found_images(src=img_list[0].attrib["image_dir"])
-                    for f_num, f_image in enumerate(srv_result.xpath(".//ns:image")):
+                    for f_num, f_image in enumerate(srv_result.xpath(".//ns:image", smart_strings=False)):
                         f_img_list.append(
                             E.found_image(
                                 f_image.text,
@@ -122,7 +122,7 @@ class use_image(View):
         except image.DoesNotExist:
             srv_com = server_command.srv_command(command="get_image_list")
             srv_result = contact_server(request, "tcp://localhost:8004", srv_com, timeout=10, log_result=False)
-            img_xml = srv_result.xpath(".//ns:image[text() = '%s']" % (img_name))
+            img_xml = srv_result.xpath(".//ns:image[text() = '%s']" % (img_name), smart_strings=False)
             if len(img_xml):
                 img_xml = img_xml[0]
                 print img_xml.attrib
@@ -138,7 +138,7 @@ class use_image(View):
                         img_arch = architecture(
                             architecture=img_xml.attrib["arch"])
                         img_arch.save()
-                    img_source = srv_result.xpath(".//ns:image_list/@image_dir")[0]
+                    img_source = srv_result.xpath(".//ns:image_list/@image_dir", smart_strings=False)[0]
                     new_img = image(
                         name=img_xml.text,
                         source=os.path.join(img_source, img_xml.text),

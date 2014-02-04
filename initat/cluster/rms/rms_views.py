@@ -154,7 +154,7 @@ class get_rms_json(View):
                 change_obj.modify_nodes(my_sge_info, node_list)
         fc_dict = {}
         cur_time = time.time()
-        for file_el in my_sge_info.get_tree().xpath(".//job_list[master/text() = \"MASTER\"]"):
+        for file_el in my_sge_info.get_tree().xpath(".//job_list[master/text() = \"MASTER\"]", smart_strings=False):
             file_contents = file_el.findall(".//file_content")
             if len(file_contents):
                 cur_fcd = []
@@ -247,7 +247,7 @@ class get_file_content(View):
                     srv_com.builder("file", name=io_element.text),
                     )
                 result = contact_server(request, "tcp://localhost:8004", srv_com, timeout=60, connection_id="file_fetch_%s" % (str(job_id)))
-                for cur_file in result.xpath(".//ns:file"):
+                for cur_file in result.xpath(".//ns:file", smart_strings=False):
                     # print etree.tostring(cur_file)
                     if cur_file.attrib["error"] == "1":
                         request.xml_response.error("error reading %s (job %s): %s" % (
