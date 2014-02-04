@@ -202,7 +202,7 @@ class package_device_connection(models.Model):
                 self.installed = "u"
             else:
                 # full stream
-                install_summary = xml.xpath(".//install-summary")
+                install_summary = xml.xpath(".//install-summary", smart_strings=False)
                 if len(install_summary):
                     install_summary = install_summary[0]
                     if not len(install_summary):
@@ -212,18 +212,18 @@ class package_device_connection(models.Model):
                                           "upgrade" : "y",
                                           "erase"   : "n"}[self.target_state]
                     else:
-                        if len(install_summary.xpath(".//to-install")):
+                        if len(install_summary.xpath(".//to-install", smart_strings=False)):
                             self.installed = "y"
-                        elif len(install_summary.xpath(".//to-reinstall")):
+                        elif len(install_summary.xpath(".//to-reinstall", smart_strings=False)):
                             self.installed = "y"
-                        elif len(install_summary.xpath(".//to-upgrade")):
+                        elif len(install_summary.xpath(".//to-upgrade", smart_strings=False)):
                             self.installed = "y"
-                        elif len(install_summary.xpath(".//to-remove")):
+                        elif len(install_summary.xpath(".//to-remove", smart_strings=False)):
                             self.installed = "n"
                         else:
                             self.installed = "u"
                 else:
-                    stdout_el = xml.xpath(".//stdout")
+                    stdout_el = xml.xpath(".//stdout", smart_strings=False)
                     if len(stdout_el):
                         line = stdout_el[0].text.strip()
                         if line.startswith("package") and line.endswith("installed"):

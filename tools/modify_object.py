@@ -1,6 +1,6 @@
 #!/usr/bin/python-init -Otu
 #
-# Copyright (C) 2012,2013 Andreas Lang-Nevyjel
+# Copyright (C) 2012-2014 Andreas Lang-Nevyjel
 #
 # Send feedback to: <lang-nevyjel@init.at>
 # 
@@ -24,9 +24,9 @@ import os
 
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "initat.cluster.settings")
 
+from lxml import etree # @UnresolvedImport
 import argparse
 import requests
-from lxml import etree
 
 class rest_client(object):
     def __init__(self, options):
@@ -76,7 +76,7 @@ class rest_client(object):
         if s_tuple not in self.__search_cache:
             res_nodes = self.list(xml=True).xpath(".//list-item[child::%s[text() = '%s']]" % (
                 self.options.search_field,
-                self.options.search_value))
+                self.options.search_value), smart_strings=False)
             if len(res_nodes):
                 self.__search_cache[s_tuple] = int(res_nodes[0].findtext("idx"))
             else:
@@ -121,7 +121,7 @@ def main():
     my_parser = argparse.ArgumentParser()
     my_parser.add_argument("--host", help="target host [%(default)s]", default="localhost", type=str)
     my_parser.add_argument("--port", help="target port [%(default)d]", default=80, type=int)
-    my_parser.add_argument("--path", help="path to creat url [%(default)s]", default="cluster/rest", type=str)
+    my_parser.add_argument("--path", help="path to create url [%(default)s]", default="cluster/rest", type=str)
     my_parser.add_argument("--model", help="model name [%(default)s]", default="group", type=str)
     my_parser.add_argument("--user", help="username for authentication [%(default)s]", default="notset", type=str)
     my_parser.add_argument("--password", help="password for authentication [%(default)s]", default="notset", type=str)
