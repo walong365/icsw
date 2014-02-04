@@ -666,7 +666,7 @@ else:
                 obj = obj()
                 out_list.append([
                     logging_tools.form_entry("ipd_%s" % (obj.PD_NAME)),
-                    logging_tools.form_entry(" ".join(["%s:%s" % (_e.get("name"), _e.get("rrd_spec")) for _e in obj.default_xml_info.xpath(".//value[@rrd_spec]")])),
+                    logging_tools.form_entry(" ".join(["%s:%s" % (_e.get("name"), _e.get("rrd_spec")) for _e in obj.default_xml_info.xpath(".//value[@rrd_spec]", smart_strings=False)])),
                 ])
     print unicode(out_list)
 

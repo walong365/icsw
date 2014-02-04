@@ -114,7 +114,7 @@ class host_list_com(base_com):
     class Meta:
         command = "host_list"
     def _interpret(self, srv_com):
-        h_list = srv_com.xpath(".//host_list")
+        h_list = srv_com.xpath(".//host_list", smart_strings=False)
         if len(h_list):
             h_list = h_list[0]
             print "got result for %s:" % (logging_tools.get_plural("host", int(h_list.attrib["entries"])))
@@ -134,7 +134,7 @@ class key_list_com(base_com):
     class Meta:
         command = "key_list"
     def _interpret(self, srv_com):
-        h_list = srv_com.xpath(".//host_list")
+        h_list = srv_com.xpath(".//host_list", smart_strings=False)
         if len(h_list):
             h_list = h_list[0]
             out_f = logging_tools.new_form_list()
