@@ -314,18 +314,18 @@ class server_process(threading_tools.process_pool):
             srv_com["result"].attrib.update({"reply" : "no reply set",
                                              "state" : "%d" % (server_command.SRV_REPLY_STATE_UNSET)})
             try:
-                host = srv_com.xpath(".//ns:host")[0].text
-                snmp_version = int(srv_com.xpath(".//ns:snmp_version")[0].text)
-                snmp_community = srv_com.xpath(".//ns:snmp_community")[0].text
-                comline = srv_com.xpath(".//ns:command")[0].text
+                host = srv_com.xpath(".//ns:host", smart_strings=False)[0].text
+                snmp_version = int(srv_com.xpath(".//ns:snmp_version", smart_strings=False)[0].text)
+                snmp_community = srv_com.xpath(".//ns:snmp_community", smart_strings=False)[0].text
+                comline = srv_com.xpath(".//ns:command", smart_strings=False)[0].text
                 timeout = int(srv_com.get(".//ns:timeout", "10"))
             except:
                 self._send_return(body, limits.nag_STATE_CRITICAL, "message format error: %s" % (process_tools.get_except_info()))
             else:
                 envelope = srv_com["identity"].text
                 parameter_ok = True
-                if len(srv_com.xpath(".//ns:arg_list/text()")):
-                    comline = " ".join([comline] + srv_com.xpath(".//ns:arg_list/text()")[0].strip().split())
+                if len(srv_com.xpath(".//ns:arg_list/text()", smart_strings=False)):
+                    comline = " ".join([comline] + srv_com.xpath(".//ns:arg_list/text()", smart_strings=False)[0].strip().split())
         else:
             srv_com = None
             if body.count(";") >= 3:

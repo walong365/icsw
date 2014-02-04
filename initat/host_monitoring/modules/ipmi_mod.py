@@ -209,7 +209,7 @@ class ipmi_sensor_command(hm_classes.hm_command):
                 l_dict[key] = float(getattr(cur_ns, key))
             except:
                 l_dict[key] = None
-        s_list = srv_com.xpath(".//ns:sensor_list")
+        s_list = srv_com.xpath(".//ns:sensor_list", smart_strings=False)
         if s_list:
             s_list = s_list[0]
             if cur_ns.arguments:
@@ -235,10 +235,10 @@ class ipmi_sensor_command(hm_classes.hm_command):
                     )
             else:
                 # list mode
-                keys = s_list.xpath(".//@key")
+                keys = s_list.xpath(".//@key", smart_strings=False)
                 out_list = logging_tools.new_form_list()
                 for key in keys:
-                    el = s_list.xpath("*[@key='%s']" % (key))[0]
+                    el = s_list.xpath("*[@key='%s']" % (key), smart_strings=False)[0]
                     v_list = [
                         logging_tools.form_entry(key, header="key"),
                         logging_tools.form_entry_right(el.attrib["value"], header="value"),

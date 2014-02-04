@@ -470,7 +470,7 @@ class host_connection(object):
             if cur_mes.sent:
                 cur_mes.sent = False
                 # self.__backlog_counter -= 1
-            if len(result.xpath(".//ns:raw")):
+            if len(result.xpath(".//ns:raw", smart_strings=False)):
                 # raw response, no interpret
                 cur_mes.srv_com = result
                 host_connection._send_result(cur_mes, None)
@@ -532,7 +532,7 @@ class host_message(object):
             cur_ns, rest = com_struct.handle_commandline((self.srv_com["arg_list"].text or "").split())
             # print "***", cur_ns, rest
             _e = self.srv_com.builder()
-            _arg_list = self.srv_com.xpath(".//ns:arg_list")
+            _arg_list = self.srv_com.xpath(".//ns:arg_list", smart_strings=False)
             if len(_arg_list):
                 _arg_list[0].text = " ".join(rest)
             else:
@@ -586,7 +586,7 @@ class host_message(object):
         if self.sr_probe:
             self.sr_probe.recv = len(result)
             self.sr_probe = None
-        server_error = result.xpath(".//ns:result[@state != '0']")
+        server_error = result.xpath(".//ns:result[@state != '0']", smart_strings=False)
         if server_error:
             return (int(server_error[0].attrib["state"]),
                     server_error[0].attrib["reply"])
@@ -594,7 +594,7 @@ class host_message(object):
             return self.com_struct.interpret(result, self.ns)
     def interpret_old(self, result):
         if type(result) not in [str, unicode]:
-            server_error = result.xpath(".//ns:result[@state != '0']")
+            server_error = result.xpath(".//ns:result[@state != '0']", smart_strings=False)
         else:
             server_error = None
         if server_error:
@@ -1099,7 +1099,7 @@ class relay_code(threading_tools.process_pool):
                     else:
                         _e = srv_com.builder()
                         srv_com[""].append(_e.host_unresolved(t_host))
-                        cur_host = srv_com.xpath(".//ns:host")
+                        cur_host = srv_com.xpath(".//ns:host", smart_strings=False)
                         if len(cur_host) == 1:
                             cur_host[0].text = ip_addr
                         else:

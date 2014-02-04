@@ -509,8 +509,8 @@ class ipckill_command(hm_classes.hm_command):
                     if not len(cur_typenode):
                         cur_typenode.attrib["info"] = "nothing to do"
     def interpret(self, srv_com, cur_ns):
-        ok_list, error_list = (srv_com.xpath(".//ns:rem_result[@error='0']"),
-                               srv_com.xpath(".//ns:rem_result[@error='1']"))
+        ok_list, error_list = (srv_com.xpath(".//ns:rem_result[@error='0']", smart_strings=False),
+                               srv_com.xpath(".//ns:rem_result[@error='1']", smart_strings=False))
         return limits.nag_STATE_CRITICAL if error_list else limits.nag_STATE_OK, "removed %s%s" % (
             logging_tools.get_plural("entry", len(ok_list)),
             ", error for %s" % (logging_tools.get_plural("entry", len(error_list))) if error_list else "")
@@ -574,8 +574,8 @@ class signal_command(hm_classes.hm_command):
                                                           cmdline=" ".join(struct["cmdline"])))
         srv_com["signal_list"].attrib.update({"signal" : "%d" % (cur_ns.signal)})
     def interpret(self, srv_com, cur_ns):
-        ok_list, error_list = (srv_com.xpath(".//ns:signal[@error='0']/text()"),
-                               srv_com.xpath(".//ns:signal[@error='1']/text()"))
+        ok_list, error_list = (srv_com.xpath(".//ns:signal[@error='0']/text()", smart_strings=False),
+                               srv_com.xpath(".//ns:signal[@error='1']/text()", smart_strings=False))
         cur_sig = int(srv_com["signal_list"].attrib["signal"])
         return limits.nag_STATE_CRITICAL if error_list else limits.nag_STATE_OK, "sent %d[%s] to %s%s" % (
             cur_sig,

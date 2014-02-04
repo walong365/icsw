@@ -1,6 +1,6 @@
 #!/usr/bin/python-init -Ot
 #
-# Copyright (C) 2013 Andreas Lang-Nevyjel, init.at
+# Copyright (C) 2013-2014 Andreas Lang-Nevyjel, init.at
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -62,13 +62,13 @@ class sge_queue_status_command(hm_classes.hm_command):
                 except:
                     srv_com.set_result("error building xml: %s" % (process_tools.get_except_info()), server_command.SRV_REPLY_STATE_ERROR)
                 else:
-                    q_el = cur_xml.xpath(".//host[@name='%s']" % (cur_ns.sge_host))
+                    q_el = cur_xml.xpath(".//host[@name='%s']" % (cur_ns.sge_host), smart_strings=False)
                     if not q_el and not cur_ns.sge_host.count("."):
                         # try with short name if no FQDN is given
-                        q_el = cur_xml.xpath(".//host[starts-with(@name, '%s.')]" % (cur_ns.sge_host))
+                        q_el = cur_xml.xpath(".//host[starts-with(@name, '%s.')]" % (cur_ns.sge_host), smart_strings=False)
                         if not q_el:
                             # last try, only with short name
-                            q_el = cur_xml.xpath(".//host[@name='%s')]" % (cur_ns.sge_host))
+                            q_el = cur_xml.xpath(".//host[@name='%s')]" % (cur_ns.sge_host), smart_strings=False)
                     if q_el:
                         q_el = q_el[0]
                         q_el.attrib["sge_host"] = cur_ns.sge_host
@@ -84,7 +84,7 @@ class sge_queue_status_command(hm_classes.hm_command):
         if "queue_result" in srv_com:
             q_host = srv_com["queue_result"][0]
             q_name = q_host.get("sge_queue", "")
-            q_list = [q_name] if q_name else q_host.xpath(".//queue/@name")
+            q_list = [q_name] if q_name else q_host.xpath(".//queue/@name", smart_strings=False)
             host_name = q_host.attrib["name"]
             ret_state, out_f = (
                 limits.nag_STATE_OK,

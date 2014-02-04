@@ -585,7 +585,7 @@ class ping_command(hm_classes.hm_command):
                 ret_state = max(ret_state, limits.nag_STATE_CRITICAL)
                 ret_f.append("%s: %s" % (target, ping_res.text))
             else:
-                time_f = map(float, srv_com.xpath("ns:times/ns:time/text()", start_el=ping_res))
+                time_f = map(float, srv_com.xpath("ns:times/ns:time/text()", start_el=ping_res, smart_strings=False))
                 if time_f:
                     max_time, min_time, mean_time = (
                         max(time_f),

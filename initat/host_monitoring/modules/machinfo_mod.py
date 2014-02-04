@@ -1054,10 +1054,10 @@ class get_0mq_id_command(hm_classes.hm_command):
                 target_ip = "*"
             self.log("target_ip for get_0mq_id is %s" % (target_ip))
             if target_ip != "*":
-                id_node = zmq_id_xml.xpath(".//zmq_id[@bind_address='%s']" % (target_ip))
+                id_node = zmq_id_xml.xpath(".//zmq_id[@bind_address='%s']" % (target_ip), smart_strings=False)
                 id_node = id_node[0] if len(id_node) else None
             if id_node is None:
-                id_node = zmq_id_xml.xpath(".//zmq_id[@bind_address='*']")
+                id_node = zmq_id_xml.xpath(".//zmq_id[@bind_address='*']", smart_strings=False)
                 id_node = id_node[0] if len(id_node) else None
             if id_node is not None:
                 srv_com["zmq_id"] = id_node.text
@@ -1409,8 +1409,8 @@ class umount_command(hm_classes.hm_command):
                         self.log("ok umounting %s" % (m_point))
                     srv_com["umount_list"].append(cur_umount_node)
     def interpret(self, srv_com, cur_ns):
-        ok_list, error_list = (srv_com.xpath(".//ns:umount_result[@error='0']"),
-                               srv_com.xpath(".//ns:umount_result[@error='1']"))
+        ok_list, error_list = (srv_com.xpath(".//ns:umount_result[@error='0']", smart_strings=False),
+                               srv_com.xpath(".//ns:umount_result[@error='1']", smart_strings=False))
         return limits.nag_STATE_CRITICAL if error_list else limits.nag_STATE_OK, \
                "".join([
                    "tried to unmount %s" % (logging_tools.get_plural("entry", len(ok_list) + len(error_list))),

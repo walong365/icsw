@@ -430,7 +430,7 @@ class server_code(threading_tools.process_pool):
             src_id = data.pop(0)
             data = data[0]
             srv_com = server_command.srv_command(source=data)
-            rest_el = srv_com.xpath(".//ns:arguments/ns:rest")
+            rest_el = srv_com.xpath(".//ns:arguments/ns:rest", smart_strings=False)
             if rest_el:
                 rest_str = rest_el[0].text or u""
             else:

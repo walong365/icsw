@@ -23,7 +23,7 @@ def _set_attributes(xml_el, log_com):
 
 def create_dir(srv_com, log_com):
     created, failed = (0, 0)
-    for dir_entry in srv_com.xpath(".//ns:dir"):
+    for dir_entry in srv_com.xpath(".//ns:dir", smart_strings=False):
         if not os.path.isdir(dir_entry.text):
             try:
                 os.makedirs(dir_entry.text)
@@ -47,7 +47,7 @@ def create_dir(srv_com, log_com):
         )
 
 def set_file_content(srv_com, log_com):
-    for file_entry in srv_com.xpath(".//ns:file"):
+    for file_entry in srv_com.xpath(".//ns:file", smart_strings=False):
         try:
             if "encoding" in file_entry.attrib:
                 codecs.open(file_entry.attrib["name"], "w", file_entry.attrib["encoding"]).write(file_entry.text)
@@ -65,7 +65,7 @@ def set_file_content(srv_com, log_com):
         )
 
 def get_dir_tree(srv_com, log_com):
-    for top_el in srv_com.xpath(".//ns:start_dir"):
+    for top_el in srv_com.xpath(".//ns:start_dir", smart_strings=False):
         top_el.append(E.directory(full_path=top_el.text, start_dir="1"))
         for cur_dir, dir_list, file_list in os.walk(top_el.text):
             add_el = top_el.find(".//directory[@full_path='%s']" % (cur_dir))
@@ -90,7 +90,7 @@ def get_dir_tree(srv_com, log_com):
     
 def remove_dir(srv_com, log_com):
     created, failed = (0, 0)
-    for dir_entry in srv_com.xpath(".//ns:dir"):
+    for dir_entry in srv_com.xpath(".//ns:dir", smart_strings=False):
         if os.path.isdir(dir_entry.text):
             try:
                 if int(dir_entry.get("recursive", "0")):
@@ -115,7 +115,7 @@ def remove_dir(srv_com, log_com):
         )
 
 def get_file_content(srv_com, log_com):
-    for file_entry in srv_com.xpath(".//ns:file"):
+    for file_entry in srv_com.xpath(".//ns:file", smart_strings=False):
         if os.path.isfile(file_entry.attrib["name"]):
             try:
                 if "encoding" in file_entry.attrib:

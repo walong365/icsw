@@ -81,7 +81,7 @@ class get_mvector_command(hm_classes.hm_command):
         if cur_ns.raw:
             return limits.nag_STATE_OK, etree.tostring(cur_vector)
         else:
-            vector_keys = sorted(srv_com.xpath(".//ns:mve/@name", start_el=cur_vector))
+            vector_keys = sorted(srv_com.xpath(".//ns:mve/@name", start_el=cur_vector, smart_strings=False))
             used_keys = [key for key in vector_keys if any([cur_re.search(key) for cur_re in re_list]) or not re_list]
             ret_array = ["Machinevector id %s, %s, %s shown:" % (
                 cur_vector.attrib["version"],
@@ -91,7 +91,7 @@ class get_mvector_command(hm_classes.hm_command):
             out_list = logging_tools.new_form_list()
             for mv_num, mv_key in enumerate(vector_keys):
                 if mv_key in used_keys:
-                    cur_xml = srv_com.xpath("//ns:mve[@name='%s']" % (mv_key), start_el=cur_vector)[0]
+                    cur_xml = srv_com.xpath("//ns:mve[@name='%s']" % (mv_key), start_el=cur_vector, smart_strings=False)[0]
                     out_list.append(hm_classes.mvect_entry(cur_xml.attrib.pop("name"), **cur_xml.attrib).get_form_entry(mv_num))
             ret_array.extend(unicode(out_list).split("\n"))
             return limits.nag_STATE_OK, "\n".join(ret_array)
@@ -190,7 +190,7 @@ class machine_vector(object):
         else:
             send_id = 0
             p_pool = self.module.process_pool
-            for mv_target in xml_struct.xpath(".//mv_target[@enabled='1']"):
+            for mv_target in xml_struct.xpath(".//mv_target[@enabled='1']", smart_strings=False):
                 send_id += 1
                 mv_target.attrib["send_id"] = "%d" % (send_id)
                 mv_target.attrib["sent"] = "0"
@@ -289,7 +289,7 @@ class machine_vector(object):
             self.log("error interpreting data as srv_command: %s" % (process_tools.get_except_info()),
                      logging_tools.LOG_LEVEL_ERROR)
         else:
-            for in_vector in rcv_com.xpath(".//*[@type='vector']"):
+            for in_vector in rcv_com.xpath(".//*[@type='vector']", smart_strings=False):
                 for values_list in in_vector:
                     for cur_value in values_list:
                         self.set_from_external(hm_classes.mvect_entry(**cur_value.attrib))
