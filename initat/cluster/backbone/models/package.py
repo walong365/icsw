@@ -6,14 +6,15 @@ from django.db.models import Q, signals
 from django.dispatch import receiver
 from initat.cluster.backbone.models.functions import _check_empty_string
 from lxml import etree # @UnresolvedImport
+from lxml.builder import E # @UnresolvedImport
 from rest_framework import serializers
 
 __all__ = [
     "package_repo", "package_repo_serializer",
     "package_search", "package_search_serializer",
     "package_search_result", "package_search_result_serializer",
-    "package", "package_serializer",
-    "package_device_connection", "package_device_connection_serializer",
+    "package", # "package_serializer",
+    "package_device_connection", # "package_device_connection_serializer",
     ]
 
 # package related models
@@ -36,6 +37,19 @@ class package_repo(models.Model):
         if self.publish_to_nodes:
             is_d = True if not self.url.startswith("dir:") else False
         return is_d
+    def get_xml(self):
+        return E.package_repo(
+            unicode(self),
+            pk="%d" % (self.pk),
+            key="pr__%d" % (self.pk),
+            name=self.name,
+            alias=self.alias,
+            repo_type=self.repo_type,
+            enabled="1" if self.enabled else "0",
+            autorefresh="1" if self.autorefresh else "0",
+            gpg_check="1" if self.gpg_check else "0",
+            publish_to_nodes="1" if self.publish_to_nodes else "0",
+            url=self.url)
     def repo_str(self):
         return "\n".join([
             "[%s]" % (self.alias),
@@ -148,16 +162,24 @@ class package(models.Model):
     size = models.IntegerField(default=0)
     package_repo = models.ForeignKey("backbone.package_repo", null=True)
     created = models.DateTimeField(auto_now_add=True)
+    def get_xml(self):
+        return E.package(
+            unicode(self),
+            pk="%d" % (self.pk),
+            key="pack__%d" % (self.pk),
+            name=self.name,
+            version=self.version,
+            kind=self.kind,
+            arch=self.arch,
+            size="%d" % (self.size),
+            package_repo="%d" % (self.package_repo_id or 0)
+        )
     def __unicode__(self):
         return "%s-%s" % (self.name, self.version)
     class Meta:
         db_table = u'package'
         unique_together = (("name", "version", "arch", "kind",),)
         app_label = "backbone"
-
-class package_serializer(serializers.ModelSerializer):
-    class Meta:
-        model = package
 
 @receiver(signals.pre_save, sender=package)
 def package_pre_save(sender, **kwargs):
@@ -194,6 +216,25 @@ class package_device_connection(models.Model):
         ("unknown"   , "unknown"),
         ), default="zypper_xml")
     response_str = models.TextField(max_length=65535, default="")
+    # dependencies
+    image_dep = models.BooleanField(default=False)
+    image_list = models.ManyToManyField("backbone.image", blank=True)
+    kernel_dep = models.BooleanField(default=False)
+    kernel_list = models.ManyToManyField("backbone.kernel", blank=True)
+    def get_xml(self, with_package=False):
+        pdc_xml = E.package_device_connection(
+            pk="%d" % (self.pk),
+            key="pdc__%d" % (self.pk),
+            device="%d" % (self.device_id),
+            package="%d" % (self.package_id),
+            target_state="%s" % (self.target_state),
+            installed="%s" % (self.installed),
+            force_flag="1" if self.force_flag else "0",
+            nodeps_flag="1" if self.nodeps_flag else "0",
+        )
+        if with_package:
+            pdc_xml.append(self.package.get_xml())
+        return pdc_xml
     def interpret_response(self):
         if self.response_type == "zypper_xml":
             xml = etree.fromstring(self.response_str)
@@ -267,10 +308,6 @@ class package_device_connection(models.Model):
             self.installed = "u"
     class Meta:
         app_label = "backbone"
-
-class package_device_connection_serializer(serializers.ModelSerializer):
-    class Meta:
-        model = package_device_connection
 
 @receiver(signals.pre_save, sender=package_device_connection)
 def package_device_connection_pre_save(sender, **kwargs):

@@ -1405,17 +1405,6 @@ class device_serializer_network(device_serializer):
             )
         read_only_fields = ("uuid",)
 
-class device_serializer_package_state(device_serializer):
-    package_device_connection_set = package_device_connection_serializer(many=True)
-    latest_contact = serializers.Field(source="latest_contact")
-    class Meta:
-        model = device
-        fields = ("idx", "name", "device_group", "device_type",
-            "comment", "full_name", "domain_tree_node", "enabled",
-            "package_device_connection_set", "latest_contact", "is_meta_device",
-            "access_level", "access_levels",
-            )
-
 class device_serializer_monitoring(device_serializer):
     # only used for updating (no read)
     class Meta:
@@ -2406,7 +2395,7 @@ class wc_files(models.Model):
     device = models.ForeignKey("device")
     tree_node = models.OneToOneField("tree_node", null=True, default=None)
     run_number = models.IntegerField(default=0)
-    config = models.ManyToManyField("config")
+    config = models.ManyToManyField("backbone.config")
     # config = models.CharField(max_length=255, blank=True)
     uid = models.IntegerField(default=0, blank=True)
     gid = models.IntegerField(default=0, blank=True)
@@ -2540,3 +2529,23 @@ class config_dump_serializer(serializers.ModelSerializer):
             "config_str_set", "config_int_set", "config_blob_set", "config_bool_set",
             "config_script_set", "mon_check_command_set",
             )
+
+class package_device_connection_serializer(serializers.ModelSerializer):
+    class Meta:
+        model = package_device_connection
+
+class package_serializer(serializers.ModelSerializer):
+    class Meta:
+        model = package
+
+class device_serializer_package_state(device_serializer):
+    package_device_connection_set = package_device_connection_serializer(many=True)
+    latest_contact = serializers.Field(source="latest_contact")
+    class Meta:
+        model = device
+        fields = ("idx", "name", "device_group", "device_type",
+            "comment", "full_name", "domain_tree_node", "enabled",
+            "package_device_connection_set", "latest_contact", "is_meta_device",
+            "access_level", "access_levels",
+            )
+
