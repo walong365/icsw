@@ -37,9 +37,9 @@
 </script>
 
 <script type="text/ng-template" id="pdc_state.html">
-    <td ng-class="get_td_class()" class="text-right">
+    <div>
         <span ng-show="show_pdc()">
-            {{ pdc.target_state }}
+            <span ng-class="get_glyph_class(pdc.target_state)"></span>
             <div class="btn-group btn-group-xs">
                 <input type="button" class="btn disabled" ng-class="get_btn_class()" value="{{ pdc.installed }}"></input>
                 <input type="button" class="btn disabled" ng-class="{'btn-primary': pdc.force_flag, 'btn-default': !pdc.force_flag}" value="F"></input>
@@ -49,7 +49,7 @@
         <span ng-show="!show_pdc()">
         </span>
         <input type="checkbox" ng-model="pdc.selected" ng-change="change_sel()"></input>
-    </td>
+    </div>
 </script>
 
 <script type="text/ng-template" id="package_repo_row.html">
@@ -186,7 +186,7 @@
                         <div class="form-group">
                             <input ng-model="package_filter" class="form-control input-sm""></input>
                         </div>,
-                        <input ng-show="selected_pdcs_length()" type="button" class="btn btn-success btm-sm" value="action" ng-click="action($event)"></input>
+                        <input ng-show="selected_pdcs_length()" type="button" class="btn btn-success btm-sm" value="action" ng-click="action($event)"></input>&nbsp;
                         <input type="button" class="btn btn-warning btm-sm" value="sync" ng-click="send_sync()"></input>
                     </form>
                 </h3>
@@ -195,15 +195,18 @@
                         <tr>
                             <th>&nbsp;</th>
                             <th>Device</th>
-                            <th ng-repeat="dev in devices">
-                                {{ dev.name }}, {{ latest_contact(dev) }}
-                            </td>
+                            <th ng-repeat="dev in devices">{{ dev.name }}</th>
+                        </th>
+                        <tr>
+                            <th>&nbsp;</th>
+                            <th>contact</th>
+                            <td ng-repeat="dev in devices">{{ latest_contact(dev) }}</td>
                         </th>
                         <tr>
                             <th>Package</th>
                             <th>action</th>
                             <th ng-repeat="dev in devices" class="text-center">
-                                <div class="btn-group btn-group-sm">
+                                <div class="btn-group btn-group-xs">
                                     <input type="button" class="btn btn-primary" ng-click="change_device_sel(dev, 1)" value="S"></input>
                                     <input type="button" class="btn btn-success" ng-click="change_device_sel(dev, 0)" value="T"></input>
                                     <input type="button" class="btn btn-warning" ng-click="change_device_sel(dev, -1)" value="C"></input>
@@ -219,13 +222,13 @@
                                 <span ng-show="pack.always_latest == true">&lt;latest&gt;</span>
                             </td>
                             <td>
-                                <div class="btn-group btn-group-sm">
+                                <div class="btn-group btn-group-xs">
                                     <input type="button" class="btn btn-primary" ng-click="change_package_sel(pack, 1)" value="S"></input>
                                     <input type="button" class="btn btn-success" ng-click="change_package_sel(pack, 0)" value="T"></input>
                                     <input type="button" class="btn btn-warning" ng-click="change_package_sel(pack, -1)" value="C"></input>
                                 </div>
                             </td>
-                            <td ng-repeat="device in devices" istate pdc="state_dict[device.idx][pack.idx]" pdcs="$parent.selected_pdcs"></td>
+                            <td ng-repeat="device in devices" istate pdc="state_dict[device.idx][pack.idx]" pdcs="$parent.selected_pdcs" ng-class="get_td_class(device.idx, pack.idx)"></td>
                         </tr>
                     </tbody>
                 </table>

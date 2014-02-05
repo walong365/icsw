@@ -387,6 +387,19 @@ package_module.controller("install", ["$scope", "$compile", "$filter", "$templat
                     $("#simplemodal-container").css("height", "auto")
                 onClose: (dialog) =>
                     $.simplemodal.close()
+        $scope.get_td_class = (dev_idx, pack_idx) ->
+            pdc = $scope.state_dict[dev_idx][pack_idx]
+            if pdc and pdc.idx
+                _i = pdc.installed
+                _t = pdc.target_state
+                _k = "#{_i}.#{_t}"
+                if _k in ["y.keep", "y.upgrade", "y.install"
+                  "n.erase", "n.keep"]
+                    return "text-center success"
+                else
+                    return "text-center danger"
+            else
+                return "text-center"
         $scope.send_sync = (event) ->
             $.blockUI()
             $.ajax
@@ -422,20 +435,33 @@ package_module.controller("install", ["$scope", "$compile", "$filter", "$templat
                     else
                         return false
                 scope.get_btn_class = () ->
-                    return "btn-" + scope.get_td_class()
-                scope.get_td_class = () ->
                     if scope.pdc and scope.pdc.idx
                         cur = scope.pdc
                         if cur.installed == "y"
-                            return "success"
+                            return "btn-success"
                         else if cur.installed == "u"
-                            return "warning"
+                            return "btn-warning"
                         else if cur.installed == "n"
-                            return "danger"
+                            return "btn-danger"
                         else
-                            return "active"
+                            return "btn-active"
                     else
                         return ""
+                scope.get_glyph_class = (val) ->
+                    if val
+                        if val == "keep"
+                            return "glyphicon glyphicon-minus"
+                        else if val == "install"
+                            return "glyphicon glyphicon-ok"
+                        else if val == "upgrade"
+                            return "glyphicon glyphicon-arrow-up"
+                        else if val == "erase"
+                            return "glyphicon glyphicon-remove"
+                        else
+                            # something strange ...
+                            return "glyphicon glyphicon-asterisk"
+                    else
+                        return "glyphicon"
                 scope.change_sel = () ->
                     pdc = scope.pdc
                     if pdc.idx
