@@ -43,7 +43,7 @@ NET_DEVICES = ["eth", "lo", "myr", "ib", "xenbr", "vmnet", "tun", "tap", TOTAL_D
 # devices for detailed statistics
 DETAIL_DEVICES = ["eth", "tun", "tap"]
 # devices for ethtool
-ETHTOOL_DEVICES = ["eth", "peth", "tun", "tap"]
+ETHTOOL_DEVICES = ["eth", "peth", "tun", "tap", "en"]
 # devices for ibv_devinfo
 IBV_DEVICES = ["ib"]
 # devices to check for xen-host

@@ -154,7 +154,14 @@ class pgpool_pools_command(PgPoolCommand):
         self.parser.add_argument("--max", dest="max", type=int, default=0)
         self.read_config()
     def interpret(self, srv_com, cur_ns):
+        def _val(val):
+            return int(val) if val.isdigit() else val
         result = self.unpack(srv_com[self.key])
+        # import pprint
+        headers = ["pool_pid", "start_time", "pool_id", "backend_id", "database", "username",
+            "create_time", "majorversion", "minorversion", "pool_counter", "pool_backendpid", "pool_connected"]
+        result = [{key : _val(value) for key, value in zip(headers, line)} for line in result]
+        # pprint.pprint(result)
         pool_count = len(result)
         if not cur_ns.min <= pool_count <= cur_ns.max:
             state = limits.nag_STATE_CRITICAL
