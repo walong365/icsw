@@ -138,7 +138,7 @@ class rrd_tree extends tree_config
         @show_selection_buttons = true
         @show_icons = false
         @show_select = true
-        @show_descendants = false
+        @show_descendants = true
         @show_childs = false
     get_name : (t_entry) ->
         if t_entry._node_type == "h"
