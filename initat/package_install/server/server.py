@@ -140,18 +140,14 @@ class server_process(threading_tools.process_pool):
                         cur_client = client.get(c_uid)
                     except KeyError:
                         srv_com.update_source()
-                        srv_com["result"] = None
+                        # srv_com["result"] = None
                         self.log("got command '%s' from %s" % (cur_com, c_uid))
                         # check for normal command
                         if cur_com == "get_0mq_id":
                             srv_com["zmq_id"] = self.bind_id
-                            srv_com["result"].attrib.update({
-                                "reply" : "0MQ_ID is %s" % (self.bind_id),
-                                "state" : "%d" % (server_command.SRV_REPLY_STATE_OK)})
+                            srv_com.set_result("0MQ_ID is %s" % (self.bind_id))
                         elif cur_com == "status":
-                            srv_com["result"].attrib.update({
-                                "reply" : "up and running",
-                                "state" : "%d" % (server_command.SRV_REPLY_STATE_OK)})
+                            srv_com.set_result("up and running")
                         else:
                             self.log(
                                 "unknown uid %s (command %s), not known" % (
@@ -159,9 +155,7 @@ class server_process(threading_tools.process_pool):
                                     cur_com,
                                     ),
                                         logging_tools.LOG_LEVEL_CRITICAL)
-                            srv_com["result"].attrib.update({
-                                "reply" : "unknown command '%s'" % (cur_com),
-                                "state" : "%d" % (server_command.SRV_REPLY_STATE_ERROR)})
+                            srv_com.set_result("unknown command '%s'" % (cur_com), server_command.SRV_REPLY_STATE_ERROR)
                         zmq_sock.send_unicode(c_uid, zmq.SNDMORE)
                         zmq_sock.send_unicode(unicode(srv_com))
                     else:
@@ -173,9 +167,7 @@ class server_process(threading_tools.process_pool):
         in_uid, srv_com = self.__delayed_struct[ext_id]
         del self.__delayed_struct[ext_id]
         self.log("sending delayed return for %s" % (unicode(srv_com)))
-        srv_com["result"].attrib.update({
-            "reply" : ret_str,
-            "state" : "%d" % (ret_state)})
+        srv_com.set_result(ret_str, ret_state)
         zmq_sock = self.socket_dict["router"]
         zmq_sock.send_unicode(unicode(in_uid), zmq.SNDMORE)
         zmq_sock.send_unicode(unicode(srv_com))
@@ -186,10 +178,7 @@ class server_process(threading_tools.process_pool):
             in_uid))
         srv_com.update_source()
         immediate_return = True
-        srv_com["result"] = None
-        srv_com["result"].attrib.update({
-            "reply" : "result not set",
-            "state" : "%d" % (server_command.SRV_REPLY_STATE_UNSET)})
+        srv_com.set_result("result not set", server_command.SRV_REPLY_STATE_UNSET)
         if in_com == "new_config":
             all_devs = srv_com.xpath(".//ns:device_command/@name", smart_strings=False)
             if not all_devs:
@@ -203,16 +192,14 @@ class server_process(threading_tools.process_pool):
                 srv_com.xpath(".//ns:device_command[@name='%s']" % (cur_dev), smart_strings=False)[0].attrib["config_sent"] = "1" if cur_dev in valid_devs else "0"
             if valid_devs:
                 self._send_update(command="new_config", dev_list=valid_devs)
-            srv_com["result"].attrib.update({
-                "reply" : "send update to %d of %s" % (
+            srv_com.set_result(
+                "send update to %d of %s" % (
                     len(valid_devs),
                     logging_tools.get_plural("device", len(all_devs))),
-                "state" : "%d" % (server_command.SRV_REPLY_STATE_OK if len(valid_devs) == len(all_devs) else server_command.SRV_REPLY_STATE_WARN)})
+                    server_command.SRV_REPLY_STATE_OK if len(valid_devs) == len(all_devs) else server_command.SRV_REPLY_STATE_WARN)
         elif in_com == "reload_searches":
             self.send_to_process("repo", "reload_searches")
-            srv_com["result"].attrib.update({
-                "reply" : "ok reloading",
-                "state" : "%d" % (server_command.SRV_REPLY_STATE_OK)})
+            srv_com.set_result("ok reloading")
         elif in_com == "rescan_repos":
             self.__delayed_id += 1
             self.__delayed_struct[self.__delayed_id] = (in_uid, srv_com)
@@ -224,14 +211,10 @@ class server_process(threading_tools.process_pool):
             self.log("sending sync_repos to %s" % (logging_tools.get_plural("device", len(all_devs))))
             if all_devs:
                 self._send_update(command="sync_repos", dev_list=all_devs)
-            srv_com["result"].attrib.update({
-                "reply" : "send sync_repos to %s" % (
-                    logging_tools.get_plural("device", len(all_devs))),
-                "state" : "%d" % (server_command.SRV_REPLY_STATE_OK)})
+            srv_com.set_result("send sync_repos to %s" % (
+                    logging_tools.get_plural("device", len(all_devs))))
         else:
-            srv_com["result"].attrib.update({
-                "reply" : "command %s not known" % (in_com),
-                "state" : "%d" % (server_command.SRV_REPLY_STATE_ERROR)})
+            srv_com.set_result("command %s not known" % (in_com), server_command.SRV_REPLY_STATE_ERROR)
         # print srv_com.pretty_print()
         if immediate_return:
             zmq_sock.send_unicode(unicode(in_uid), zmq.SNDMORE)
