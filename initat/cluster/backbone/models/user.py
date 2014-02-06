@@ -50,9 +50,14 @@ class auth_cache(object):
     def _from_db(self):
         self.__perm_dict = dict([("%s.%s" % (cur_perm.content_type.app_label, cur_perm.codename), cur_perm) for cur_perm in csw_permission.objects.all().select_related("content_type")])
         # pprint.pprint(self.__perm_dict)
-        for perm in getattr(self.auth_obj, "%s_permission_set" % (self.model_name)).select_related("csw_permission__content_type"):
-            key = "%s.%s" % (perm.csw_permission.content_type.app_label, perm.csw_permission.codename)
-            self.__perms[key] = perm.level
+        if self.has_all_perms:
+            for perm in csw_permission.objects.all().select_related("content_type"):
+                key = "%s.%s" % (perm.content_type.app_label, perm.codename)
+                self.__perms[key] = AC_FULL
+        else:
+            for perm in getattr(self.auth_obj, "%s_permission_set" % (self.model_name)).select_related("csw_permission__content_type"):
+                key = "%s.%s" % (perm.csw_permission.content_type.app_label, perm.csw_permission.codename)
+                self.__perms[key] = perm.level
         for perm in getattr(self.auth_obj, "%s_object_permission_set" % (self.model_name)).select_related("csw_object_permission__csw_permission__content_type"):
             key = "%s.%s" % (perm.csw_object_permission.csw_permission.content_type.app_label, perm.csw_object_permission.csw_permission.codename)
             self.__obj_perms.setdefault(key, {})[perm.csw_object_permission.object_pk] = perm.level
