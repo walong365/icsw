@@ -324,9 +324,13 @@ class zypper_install_process(install_process):
                 str(always_latest),
                 )
             )
-        zypper_com = {"install" : "in",
-                      "upgrade" : "up",
-                      "erase"   : "rm"}.get(cur_pdc.attrib["target_state"])
+        zypper_com = {
+            "install" : "in",
+            "upgrade" : "up",
+            "erase"   : "rm"}.get(cur_pdc.attrib["target_state"])
+        # o already installed and cmd == in
+        # o already installed and cmd == up and always_latest flag not set
+        # o not installed and cmd == rm
         if (is_installed and zypper_com in ["in"]) or (is_installed and zypper_com in ["up"] and not always_latest) or (not is_installed and zypper_com in ["rm"]):
             self.log("doing nothing")
             if is_installed:
@@ -334,6 +338,9 @@ class zypper_install_process(install_process):
             else:
                 return True, E.stdout("package %s is not installed" % (package_name))
         else:
+            if not is_installed and zypper_com == "up" and always_latest:
+                zypper_com = "in"
+                self.log("changing zypper_com to '%s' (always_latest flag)" % (zypper_com), logging_tools.LOG_LEVEL_WARN)
             self.log("starting action '%s'" % (zypper_com))
             # flags: xml output, non-interactive
             zypper_com = "/usr/bin/zypper -x -n %s %s %s" % (

@@ -25,7 +25,7 @@ import configfile
 import process_tools
 
 try:
-    from initat.package_install.server.version import VERSION_STRING
+    from initat.package_install.client.version import VERSION_STRING
 except ImportError:
     VERSION_STRING = "?.?"
 

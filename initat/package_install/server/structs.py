@@ -400,8 +400,9 @@ class client(object):
         cur_var.save()
     def _set_version(self, new_vers):
         if new_vers != self.__version:
-            self.log("changed version from '%s' to '%s'" % (self.__version,
-                                                            new_vers))
+            self.log("changed version from '%s' to '%s'" % (
+                self.__version,
+                new_vers))
             self.__version = new_vers
             self._modify_device_variable(
                 PACKAGE_VERSION_VAR_NAME,
