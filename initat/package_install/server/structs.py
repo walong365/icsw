@@ -359,7 +359,15 @@ class client(object):
                         new_client = None
                     else:
                         client.srv_process.log("successfull with short name", logging_tools.LOG_LEVEL_WARN)
-            if client is not None:
+                else:
+                    client.srv_process.log("trying with name '%s'" % (name), logging_tools.LOG_LEVEL_WARN)
+                    try:
+                        new_client = client(uid, name)
+                    except:
+                        new_client = None
+                    else:
+                        client.srv_process.log("successfull with name", logging_tools.LOG_LEVEL_WARN)
+            if new_client is not None:
                 client.uid_set.add(uid)
                 client.name_set.add(name)
                 client.lut[uid] = new_client
@@ -403,9 +411,41 @@ class client(object):
     def _expand_var(self, var):
         return var.replace("%{ROOT_IMPORT_DIR}", global_config["ROOT_IMPORT_DIR"])
     def _get_package_list(self, srv_com):
+        cur_image = self.device.act_image
+        # for testing
+        # cur_image = self.device.new_image
+        cur_kernel = self.device.act_kernel
+        # for testing
+        # cur_kernel = self.device.new_kernel
+        pdc_list = package_device_connection.objects.filter(Q(device=self.device)).prefetch_related("kernel_list", "image_list").select_related("package")
+        # send to client
+        send_list = []
+        for cur_pdc in pdc_list:
+            take = True
+            if cur_pdc.image_dep:
+                if cur_image not in cur_pdc.image_list.all():
+                    self.log("ignoring package '%s' because image '%s' not in image_list '%s'" % (
+                        unicode(cur_pdc.package),
+                        unicode(cur_image),
+                        ", ".join([unicode(_v) for _v in cur_pdc.image_list.all()]),
+                        ))
+                    take = False
+            if cur_pdc.kernel_dep:
+                if cur_kernel not in cur_pdc.kernel_list.all():
+                    self.log("ignoring package '%s' because kernel '%s' not in kernel_list '%s'" % (
+                        unicode(cur_pdc.package),
+                        unicode(cur_kernel),
+                        ", ".join([unicode(_v) for _v in cur_pdc.kernel_list.all()]),
+                        ))
+                    take = False
+            if take:
+                send_list.append(cur_pdc)
+        self.log("%s in source list, %s in send_list" % (
+            logging_tools.get_plural("package", len(pdc_list)),
+            logging_tools.get_plural("package", len(send_list)),))
         resp = srv_com.builder(
             "packages",
-            *[cur_pdc.get_xml(with_package=True) for cur_pdc in package_device_connection.objects.filter(Q(device=self.device)).select_related("package")]
+            *[cur_pdc.get_xml(with_package=True) for cur_pdc in send_list]
         )
         srv_com["package_list"] = resp
     def _get_repo_list(self, srv_com):
