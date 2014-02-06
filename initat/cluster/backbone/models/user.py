@@ -51,6 +51,7 @@ class auth_cache(object):
         self.__perm_dict = dict([("%s.%s" % (cur_perm.content_type.app_label, cur_perm.codename), cur_perm) for cur_perm in csw_permission.objects.all().select_related("content_type")])
         # pprint.pprint(self.__perm_dict)
         if self.has_all_perms:
+            # set all perms
             for perm in csw_permission.objects.all().select_related("content_type"):
                 key = "%s.%s" % (perm.content_type.app_label, perm.codename)
                 self.__perms[key] = AC_FULL
