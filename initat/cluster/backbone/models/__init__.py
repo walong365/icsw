@@ -1281,6 +1281,12 @@ class device(models.Model):
             return int(time.mktime(to_system_tz(lc_obj[0].val_date).timetuple()))
         else:
             return 0
+    def client_version(self):
+        vers_obj = [obj for obj in self.device_variable_set.all() if obj.name == "package_client_version"]
+        if vers_obj:
+            return vers_obj[0].val_str
+        else:
+            return "?.?"
     def __unicode__(self):
         return u"%s%s" % (
             self.name,
@@ -2541,11 +2547,12 @@ class package_serializer(serializers.ModelSerializer):
 class device_serializer_package_state(device_serializer):
     package_device_connection_set = package_device_connection_serializer(many=True)
     latest_contact = serializers.Field(source="latest_contact")
+    client_version = serializers.Field(source="client_version")
     class Meta:
         model = device
         fields = ("idx", "name", "device_group", "device_type",
             "comment", "full_name", "domain_tree_node", "enabled",
             "package_device_connection_set", "latest_contact", "is_meta_device",
-            "access_level", "access_levels",
+            "access_level", "access_levels", "client_version",
             )
 
