@@ -233,6 +233,14 @@ package_module.controller("install", ["$scope", "$compile", "$filter", "$templat
                                 $scope.state_dict[dev.idx][pdc.package] = pdc
                     $scope.reload_promise = $timeout($scope.reload_state, 10000)
             )
+        $scope.$watch("entries", (new_val) ->
+            # init dummy pdc entries when new packages are added / removed to / from the entries list
+            for pack in $scope.entries
+                for dev_idx of $scope.device_lut
+                    dev_idx = parseInt(dev_idx)
+                    # dummy entry for newly added packages
+                    $scope.state_dict[dev_idx][pack.idx]  = {"device" : dev_idx, "package" : pack.idx}
+        )
         $scope.change_package_sel = (cur_p, t_state) ->
             for d_key, d_value of $scope.state_dict
                 csd = d_value[cur_p.idx]
