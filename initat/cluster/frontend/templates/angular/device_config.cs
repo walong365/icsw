@@ -51,10 +51,10 @@ device_config_template = """
             </span>
         </div>
         <div class="form-inline col-sm-4">
-            <div class="form-group" ng-show="acl_create(global_perms, 'backbone.change_network')">
+            <div class="form-group" ng-show="acl_create(global_perms, 'backbone.change_config')">
                 <input placeholder="new config" ng-model="new_config_name" class="form-control input-sm"></input>
             </div>
-            <div class="form-group" ng-show="acl_create(global_perms, 'backbone.change_network')">
+            <div class="form-group" ng-show="acl_create(global_perms, 'backbone.change_config')">
                 <input type="button" class="btn btn-success btn-sm" ng-show="new_config_name" ng-click="create_config()" value="create config"></input>
             </div>
         </div>
@@ -253,25 +253,22 @@ device_config_module.controller("config_ctrl", ["$scope", "$compile", "$filter",
                 ["{% url 'rest:global_user_permissions' %}", {}]
             ])
             $q.all(wait_list).then((data) ->
+                $scope.devices = []
+                $scope.all_devices = []
+                $scope.device_lut = {}
+                $scope.meta_devices = {}
+                $scope.devg_md_lut = {}
+                for entry in data[0]
+                    if entry.idx in $scope.devsel_list
+                        $scope.devices.push(entry)
+                        $scope.device_lut[entry.idx] = entry
+                    if entry.device_type_identifier == "MD"
+                        $scope.meta_devices[entry.idx] = entry
+                        $scope.devg_md_lut[entry.device_group] = entry.idx
+                    $scope.all_devices.push(entry)
+                $scope.configs = data[1]
+                $scope.new_filter_set($scope.name_filter, false)
                 access_level_service.set_global_permissions($scope, data[2])
-                for value, idx in data
-                    if idx == 0
-                        $scope.devices = []
-                        $scope.all_devices = []
-                        $scope.device_lut = {}
-                        $scope.meta_devices = {}
-                        $scope.devg_md_lut = {}
-                        for entry in value
-                            if entry.idx in $scope.devsel_list
-                                $scope.devices.push(entry)
-                                $scope.device_lut[entry.idx] = entry
-                            if entry.device_type_identifier == "MD"
-                                $scope.meta_devices[entry.idx] = entry
-                                $scope.devg_md_lut[entry.device_group] = entry.idx
-                            $scope.all_devices.push(entry)
-                    else if idx == 1
-                        $scope.configs = value
-                        $scope.new_filter_set($scope.name_filter, false)
                 $scope.init_devices(pre_sel)
             )
         $scope.create_config = () ->
