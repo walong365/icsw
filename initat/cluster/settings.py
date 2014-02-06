@@ -391,6 +391,8 @@ PIPELINE_JS = {
             "js/libs/ui-bootstrap-tpls.min.js",
             "js/libs/ui-codemirror.min.js",
             "js/libs/angular-datetimepicker.js",
+            # "js/libs/angular-strap.min.js",
+            # "js/libs/angular-strap.tpl.min.js",
         },
         "output_filename" : "pipeline/js/extra2.js"
     }
