@@ -222,6 +222,7 @@ package_module.controller("install", ["$scope", "$compile", "$filter", "$templat
                     #console.log "reload"
                     for dev in data
                         $scope.device_lut[dev.idx].latest_contact = dev.latest_contact
+                        $scope.device_lut[dev.idx].client_version = dev.client_version
                         for pdc in dev.package_device_connection_set
                             cur_pdc = $scope.state_dict[dev.idx][pdc.package]
                             if cur_pdc.idx
@@ -288,6 +289,7 @@ package_module.controller("install", ["$scope", "$compile", "$filter", "$templat
             #console.log $scope.entries.length, $scope.devices.length
             for dev in $scope.devices
                 dev.latest_contact = 0
+                dev.client_version = "?.?"
                 if not (dev.idx of $scope.state_dict)
                     $scope.state_dict[dev.idx] = {}
                 dev_dict = $scope.state_dict[dev.idx]

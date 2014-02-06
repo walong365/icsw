@@ -199,8 +199,8 @@
                         </th>
                         <tr>
                             <th>&nbsp;</th>
-                            <th>contact</th>
-                            <td ng-repeat="dev in devices">{{ latest_contact(dev) }}</td>
+                            <th>contact (Vers)</th>
+                            <td ng-repeat="dev in devices">{{ latest_contact(dev) }} ({{ dev.client_version }})</td>
                         </th>
                         <tr>
                             <th>Package</th>

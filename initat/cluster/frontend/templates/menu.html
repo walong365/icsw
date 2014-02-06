@@ -44,18 +44,22 @@
                     {% endif %}
                 </ul>
             </li>
-            {% if settings.CLUSTER_LICENSE.boot %}
+            {% if settings.CLUSTER_LICENSE.boot or settings.CLUSTER_LICENSE.package %}
             <li class="dropdown">
                 <a class="dropdown-toggle" data-toggle="dropdown">{% trans "Cluster" %} <b class="caret"></b></a>
                 <ul class="dropdown-menu">
-                    <li><a href="{% url 'boot:show_boot' %}">{% trans "Nodeboot" %}</a></li>
-                    {% if settings.CLUSTER_LICENSE.package %}
-                      <li><a href="{% url 'pack:repo_overview' %}">{% trans "Package install" %}</a></li>
+                    {% if settings.CLUSTER_LICENSE.boot %}
+                        <li><a href="{% url 'boot:show_boot' %}">{% trans "Nodeboot" %}</a></li>
                     {% endif %}
-                    <li class="divider"></li>
-                    <li><a href="{% url 'setup:image_overview' %}">{% trans "Image overview" %}</a></li>
-                    <li><a href="{% url 'setup:kernel_overview' %}">{% trans "Kernel overview" %}</a></li>
-                    <li><a href="{% url 'setup:partition_overview' %}">{% trans "Partition overview" %}</a></li>
+                    {% if settings.CLUSTER_LICENSE.package %}
+                        <li><a href="{% url 'pack:repo_overview' %}">{% trans "Package install" %}</a></li>
+                    {% endif %}
+                    {% if settings.CLUSTER_LICENSE.boot %}
+                        <li class="divider"></li>
+                        <li><a href="{% url 'setup:image_overview' %}">{% trans "Image overview" %}</a></li>
+                        <li><a href="{% url 'setup:kernel_overview' %}">{% trans "Kernel overview" %}</a></li>
+                        <li><a href="{% url 'setup:partition_overview' %}">{% trans "Partition overview" %}</a></li>
+                    {% endif %}
                 </ul>
             </li>
             {% endif %}
