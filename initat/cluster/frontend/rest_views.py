@@ -509,7 +509,10 @@ class device_tree_list(mixins.ListModelMixin,
             _q = _q.filter(Q(enabled=True) & Q(device_group__enabled=True))
         _q = _q.select_related("domain_tree_node", "device_type", "device_group")
         if package_state:
-            _q = _q.prefetch_related("package_device_connection_set", "device_variable_set")
+            _q = _q.prefetch_related("package_device_connection_set", "device_variable_set",
+                "package_device_connection_set__kernel_list",
+                "package_device_connection_set__image_list",
+                )
         if self._get_post_boolean("with_categories", False):
             _q = _q.prefetch_related("categories")
         if self._get_post_boolean("with_variables", False):

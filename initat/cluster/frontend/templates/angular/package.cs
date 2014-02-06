@@ -177,46 +177,33 @@ angular_add_simple_list_controller(
     }
 )
 
-class pdc
-    constructor: (@device, @package) ->
-        @selected = false
-    set_xml_pdc: (xml_pdc) =>
-        # defaults
-        for attr_name in ["installed", "target_state", "response_str", "response_type"]
-            @[attr_name] = xml_pdc.attr(attr_name)
-        @force_flag = parseInt(xml_pdc.attr("force_flag"))
-        @nodeps_flag = parseInt(xml_pdc.attr("nodeps_flag"))
-        @idx = parseInt(xml_pdc.attr("pk"))
-        #console.log xml_pdc[0]
-        #console.log @
-    set_pdc: (pdc) =>
-        for attr_name in ["force_flag", "nodeps_flag", "installed", "target_state", "response_str", "response_type", "idx"]
-            @[attr_name] = pdc[attr_name]
-    update: (pdc) =>
-        for attr_name in ["installed", "package", "response_str", "response_type", "target_state"]
-            @[attr_name] = pdc[attr_name]
-    remove_pdc: =>
-        # clears pdc state
-        delete @idx
-      
+update_pdc = (srv_pdc, client_pdc) ->
+    for attr_name in ["installed", "package", "response_str", "response_type", "target_state"]
+        client_pdc[attr_name] = srv_pdc[attr_name]
+        
 package_module.controller("install", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "restDataSource", "sharedDataSource", "$q", "$timeout",
     ($scope, $compile, $filter, $templateCache, Restangular, restDataSource, sharedDataSource, $q, $timeout) ->
         # devices
         $scope.devices = []
+        # image / kernel list
+        $scope.image_list = []
+        $scope.kernel_list = []
         $scope.package_filter = ""
         # init state dict
         $scope.state_dict = {}
         $scope.selected_pdcs = {}
         $scope.shared_data = sharedDataSource.data
         $scope.device_tree_url = "{% url 'rest:device_tree_list' %}"
-        wait_list = [restDataSource.add_sources([[$scope.device_tree_url, {"ignore_meta_devices" : true}]])[0]]
+        wait_list = restDataSource.add_sources([
+            [$scope.device_tree_url, {"ignore_meta_devices" : true}]
+            ["{% url 'rest:image_list' %}", {}]
+            ["{% url 'rest:kernel_list' %}", {}]
+        ])
         $scope.inst_rest_data = {}
         $q.all(wait_list).then((data) ->
-            for value, idx in data
-                if idx == 0
-                    $scope.set_devices(value)
-                else
-                    $scope.inst_rest_data[$scope.settings.rest_map[idx - 1].short] = value
+            $scope.set_devices(data[0])
+            $scope.image_list = data[1]
+            $scope.kernel_list = data[2]
         )
         #$scope.load_devices = (url, options) ->
         #    return Restangular.all(url.slice(1)).getList(options)
@@ -238,11 +225,11 @@ package_module.controller("install", ["$scope", "$compile", "$filter", "$templat
                         for pdc in dev.package_device_connection_set
                             cur_pdc = $scope.state_dict[dev.idx][pdc.package]
                             if cur_pdc.idx
-                                # copy flags
-                                cur_pdc.update(pdc)
+                                # update only relevant fields
+                                update_pdc(pdc, cur_pdc)
                             else
-                                # copy flags
-                                cur_pdc.set_pdc(pdc)
+                                # use pdc from server
+                                $scope.state_dict[dev.idx][pdc.package] = pdc
                     $scope.reload_promise = $timeout($scope.reload_state, 10000)
             )
         $scope.change_package_sel = (cur_p, t_state) ->
@@ -306,7 +293,7 @@ package_module.controller("install", ["$scope", "$compile", "$filter", "$templat
                 dev_dict = $scope.state_dict[dev.idx]
                 for pack in $scope.entries
                     if not (pack.idx of dev_dict)
-                        dev_dict[pack.idx] = new pdc(dev.idx, pack.idx)
+                        dev_dict[pack.idx] = {"device" : dev.idx, "package" : pack.idx}
             $scope.reload_state()
         # attach / detach calls
         $scope.attach = (obj) ->
@@ -322,9 +309,10 @@ package_module.controller("install", ["$scope", "$compile", "$filter", "$templat
                 }
                 success : (xml) ->
                     parse_xml_response(xml)
-                    $(xml).find("entries package_device_connection").each (idx, cur_pdc) ->
-                        cur_pdc = $(cur_pdc)
-                        $scope.state_dict[cur_pdc.attr("device")][cur_pdc.attr("package")].set_xml_pdc(cur_pdc)
+                    new_pdcs = angular.fromJson($(xml).find("value[name='result']").text())
+                    for new_pdc in new_pdcs
+                        new_pdc.selected = true
+                        $scope.state_dict[new_pdc.device][new_pdc.package] = new_pdc
                     $scope.update_selected_pdcs()
                     $scope.$apply()
         $scope.remove = (obj) ->
@@ -334,7 +322,8 @@ package_module.controller("install", ["$scope", "$compile", "$filter", "$templat
                     if pdc.selected and parseInt(pack_idx) == obj.idx and pdc.idx
                         remove_list.push(pdc.idx)
                         delete $scope.selected_pdcs[pdc.idx]
-                        pdc.remove_pdc()
+                        delete pdc.idx
+                        #pdc.remove_pdc()
             $.ajax
                 url     : "{% url 'pack:remove_package' %}"
                 data    : {
@@ -345,38 +334,57 @@ package_module.controller("install", ["$scope", "$compile", "$filter", "$templat
                     # just to be sure
                     $scope.update_selected_pdcs()
         $scope.target_states = {
-            "---"  : "---"
+            ""  : "---"
             "keep" : "keep",
             "install" : "install",
             "upgrade" : "upgrade",
             "erase" : "erase",
         }
         $scope.flag_states = {
-            "---" : "---",
-            "set" : "set",
-            "clear" : "clear",
+            "" : "---",
+            "1" : "set",
+            "0" : "clear",
+        }
+        $scope.dep_states = {
+            "" : "---",
+            "1" : "enable",
+            "0" : "disable",
         }
         $scope.modify = () ->
             $.simplemodal.close()
-            if $scope.edit_obj["target_state"] != "---" or $scope.edit_obj["nodeps_flag"] != "---" or $scope.edit_obj["force_flag"] != "---"
-                # change selected pdcs
-                change_dict = {"edit_obj" : $scope.edit_obj, "pdc_list" : []}
-                for pdc_idx, pdc of $scope.selected_pdcs
-                    change_dict["pdc_list"].push(pdc_idx)
-                    if $scope.edit_obj["target_state"] != "---"
-                        pdc.target_state = $scope.edit_obj["target_state"]
-                    for f_name in ["nodeps_flag", "force_flag"]
-                        if $scope.edit_obj[f_name] != "---"
-                            pdc[f_name] = if $scope.edit_obj[f_name] == "set" then true else false
-                $.ajax
-                    url     : "{% url 'pack:change_pdc' %}"
-                    data    : {
-                        "change_dict" : angular.toJson(change_dict)
-                    }
-                    success : (xml) ->
-                        parse_xml_response(xml)
+            # change selected pdcs
+            change_dict = {"edit_obj" : $scope.edit_obj, "pdc_list" : []}
+            for pdc_idx, pdc of $scope.selected_pdcs
+                change_dict["pdc_list"].push(parseInt(pdc_idx))
+                if $scope.edit_obj["target_state"]
+                    pdc.target_state = $scope.edit_obj["target_state"]
+                for f_name in ["nodeps_flag", "force_flag", "image_dep", "kernel_dep"]
+                    if $scope.edit_obj[f_name]
+                        pdc[f_name] = if parseInt($scope.edit_obj[f_name]) then true else false
+                if $scope.edit_obj.kernel_change
+                    pdc["kernel_list"] = (_v for _v in $scope.edit_obj.kernel_list)
+                if $scope.edit_obj.image_change
+                    pdc["image_list"] = (_v for _v in $scope.edit_obj.image_list)
+            #console.log change_dict
+            $.ajax
+                url     : "{% url 'pack:change_pdc' %}"
+                data    : {
+                    "change_dict" : angular.toJson(change_dict)
+                }
+                success : (xml) ->
+                    parse_xml_response(xml)
         $scope.action = (event) ->
-            $scope.edit_obj = {"target_state" : "---", "nodeps_flag" : "---", "force_flag" : "---"} 
+            $scope.edit_obj = {
+                "target_state" : ""
+                "nodeps_flag" : ""
+                "force_flag" : ""
+                "kernel_dep" : ""
+                "image_dep" : ""
+                "kernel_change" : false
+                "image_change" : false
+                "kernel_list" : []
+                "image_list" : []
+            } 
             $scope.action_div = $compile($templateCache.get("package_action.html"))($scope)
             $scope.action_div.simplemodal
                 position     : [event.pageY, event.pageX]
@@ -422,6 +430,7 @@ package_module.controller("install", ["$scope", "$compile", "$filter", "$templat
         scope:
             pdc: "=pdc"
             selected_pdcs: "=pdcs"
+            parent: "=parent"
         replace  : true
         transclude : true
         compile : (tElement, tAttrs) ->
@@ -469,6 +478,23 @@ package_module.controller("install", ["$scope", "$compile", "$filter", "$templat
                             scope.selected_pdcs[pdc.idx] = pdc
                         else if not pdc.selected and pdc.idx of scope.selected_pdcs
                             delete scope.selected_pdcs[pdc.idx]
+                scope.get_tooltip = () ->
+                    if scope.pdc and scope.pdc.idx
+                        pdc = scope.pdc
+                        t_field = ["target state : #{pdc.target_state}"]
+                        if pdc.kernel_dep
+                            t_field.push("<hr>")
+                            t_field.push("kernel dependencies enabled (#{pdc.kernel_list.length})")
+                            for _idx in pdc.kernel_list
+                                t_field.push("<br>" + (_k.name for _k in scope.parent.kernel_list when _k.idx == _idx)[0])
+                        if pdc.image_dep
+                            t_field.push("<hr>")
+                            t_field.push("image dependencies enabled (#{pdc.image_list.length})")
+                            for _idx in pdc.image_list
+                                t_field.push("<br>" + (_i.name for _i in scope.parent.image_list when _i.idx == _idx)[0])
+                        return "<div class='text-left'>" + t_field.join("") + "<div>"
+                    else
+                        return ""
                 new_el = $compile($templateCache.get("pdc_state.html"))
                 iElement.append(new_el(scope))
     }

@@ -31,10 +31,12 @@ from django.db.utils import IntegrityError
 from django.utils.decorators import method_decorator
 from django.views.generic import View
 from initat.cluster.backbone.models import package_search, package_search_result, \
-    package, get_related_models, package_device_connection, device
+    package, get_related_models, package_device_connection, device, kernel, image, \
+    package_device_connection_serializer
 from initat.cluster.frontend.helper_functions import contact_server, xml_wrapper
 from initat.core.render import render_me
 from initat.cluster.frontend.forms import package_search_form, package_action_form
+from rest_framework.renderers import JSONRenderer
 from lxml.builder import E # @UnresolvedImports
 import logging
 import logging_tools
@@ -127,7 +129,7 @@ class add_package(View):
     def post(self, request):
         _post = request.POST
         num_ok, num_error = (0, 0)
-        new_entries = E.entries()
+        new_pdcs = []
         for dev_pk, pack_pk in json.loads(_post["add_list"]):
             try:
                 _cur_pdc = package_device_connection.objects.get(Q(device=dev_pk) & Q(package=pack_pk))
@@ -136,7 +138,7 @@ class add_package(View):
                     device=device.objects.get(Q(pk=dev_pk)),
                     package=package.objects.get(Q(pk=pack_pk)))
                 new_pdc.save()
-                new_entries.append(new_pdc.get_xml())
+                new_pdcs.append(new_pdc)
                 num_ok += 1
             else:
                 num_error += 1
@@ -144,7 +146,7 @@ class add_package(View):
             request.xml_response.info("added %s" % (logging_tools.get_plural("connection", num_ok)), logger)
         if num_error:
             request.xml_response.warn("%s already existed" % (logging_tools.get_plural("connection", num_error)), logger)
-        request.xml_response["result"] = new_entries
+        request.xml_response["result"] = JSONRenderer().render(package_device_connection_serializer(new_pdcs, many=True).data)
 
 class remove_package(View):
     @method_decorator(login_required)
@@ -171,19 +173,36 @@ class change_package(View):
     def post(self, request):
         _post = request.POST
         c_dict = json.loads(_post["change_dict"])
+        import pprint
+        pprint.pprint(c_dict)
         edit_obj = c_dict["edit_obj"]
         changed = 0
-        for cur_pdc in package_device_connection.objects.filter(Q(pk__in=c_dict["pdc_list"])):
+        for cur_pdc in package_device_connection.objects.filter(Q(pk__in=c_dict["pdc_list"])).prefetch_related("kernel_list", "image_list"):
             change = False
+            # flags
             for f_name in ["force_flag", "nodeps_flag"]:
-                if edit_obj[f_name] != "---":
-                    t_flag = True if edit_obj[f_name] == "set" else False
+                if edit_obj[f_name]:
+                    t_flag = True if int(edit_obj[f_name]) else False
                     if t_flag != getattr(cur_pdc, f_name):
                         setattr(cur_pdc, f_name, t_flag)
                         change = True
-            if edit_obj["target_state"] != "---" and edit_obj["target_state"] != cur_pdc.target_state:
+            # target state
+            if edit_obj["target_state"] and edit_obj["target_state"] != cur_pdc.target_state:
                 change = True
                 cur_pdc.target_state = edit_obj["target_state"]
+            # dependencies
+            for dep, dep_obj in [("image", image), ("kernel", kernel)]:
+                f_name = "%s_dep" % (dep)
+                if edit_obj[f_name]:
+                    _set = True if int(edit_obj[f_name]) else False
+                    if _set != getattr(cur_pdc, f_name):
+                        setattr(cur_pdc, f_name, _set)
+                        change = True
+                if edit_obj["%s_change" % (dep)]:
+                    l_name = "%s_list" % (dep)
+                    new_list = dep_obj.objects.filter(Q(pk__in=edit_obj[l_name]))
+                    setattr(cur_pdc, l_name, new_list)
+                    change = True
             if change:
                 changed += 1
                 cur_pdc.save()

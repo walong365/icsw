@@ -10,7 +10,7 @@ from django.contrib.auth import authenticate
 from django.core.urlresolvers import reverse
 from django.db.models import Q
 from django.forms import Form, ModelForm, ValidationError, CharField, ModelChoiceField, \
-    ModelMultipleChoiceField, ChoiceField, TextInput, TypedChoiceField, BooleanField
+    ModelMultipleChoiceField, ChoiceField, TextInput, TypedChoiceField, BooleanField, BooleanField
 from django.forms.widgets import TextInput, PasswordInput, SelectMultiple, Textarea
 from django.utils.translation import ugettext_lazy as _
 from initat.cluster.backbone.models import domain_tree_node, device, category, mon_check_command, mon_service_templ, \
@@ -1691,6 +1691,12 @@ class package_action_form(Form):
     target_state = ChoiceField()
     nodeps_flag = ChoiceField()
     force_flag = ChoiceField()
+    image_dep = ChoiceField()
+    image_change = BooleanField(label="change image list")
+    image_list = ModelMultipleChoiceField(queryset=empty_query_set(), required=False)
+    kernel_dep = ChoiceField()
+    kernel_change = BooleanField(label="change kernel list")
+    kernel_list = ModelMultipleChoiceField(queryset=empty_query_set(), required=False)
     helper.layout = Layout(
         HTML("<h2>PDC action</h2>"),
             Fieldset(
@@ -1701,6 +1707,18 @@ class package_action_form(Form):
                 "Flags",
                 Field("nodeps_flag", ng_options="key as value for (key, value) in flag_states", initital="keep", chosen=True),
                 Field("force_flag", ng_options="key as value for (key, value) in flag_states", initial="keep", chosen=True),
+            ),
+            Fieldset(
+                "Image Dependency",
+                Field("image_dep", ng_options="key as value for (key, value) in dep_states", initital="keep", chosen=True),
+                Field("image_change"),
+                Field("image_list", ng_options="img.idx as img.name for img in image_list", initital="keep", chosen=True, wrapper_ng_show="edit_obj.image_change"),
+            ),
+            Fieldset(
+                "Kernel Dependency",
+                Field("kernel_dep", ng_options="key as value for (key, value) in dep_states", initial="keep", chosen=True),
+                Field("kernel_change"),
+                Field("kernel_list", ng_options="val.idx as val.name for val in kernel_list", initital="keep", chosen=True, wrapper_ng_show="edit_obj.kernel_change"),
             ),
             FormActions(
                 Submit("submit", "", css_class="primaryAction", ng_value="submit"),
