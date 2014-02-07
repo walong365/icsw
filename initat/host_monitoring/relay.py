@@ -956,7 +956,7 @@ class relay_code(threading_tools.process_pool):
             ip_addr = self.__forward_lut[target]
         else:
             orig_target = target
-            if target.lower() in ["localhost", "127.0.0.1", "localhost.localdomain"]:
+            if target.lower().startswith("localhost") or target.lower().startswith("127.0.0."):
                 # map localhost to something 0MQ can handle
                 target = process_tools.get_machine_name()
             # step 1: resolve to ip
