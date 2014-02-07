@@ -110,6 +110,7 @@ angular_add_simple_list_controller(
                 "nsn_period" : (entry.idx for entry in $scope.rest_data.mon_period)[0]
                 "nsc_period" : (entry.idx for entry in $scope.rest_data.mon_period)[0]
                 "max_attempts" : 1
+                "ninterval" : 2
                 "check_interval" : 2
                 "retry_interval" : 2
                 "nrecovery" : true
@@ -196,6 +197,7 @@ angular_add_simple_list_controller(
                 "mon_service_templ" : (entry.idx for entry in $scope.rest_data.mon_service_templ)[0]
                 "host_check_command" : (entry.idx for entry in $scope.rest_data.host_check_command)[0]
                 "mon_period" : (entry.idx for entry in $scope.rest_data.mon_period)[0]
+                "not_period" : (entry.idx for entry in $scope.rest_data.mon_period)[0]
                 "max_attempts" : 1
                 "ninterval" : 5
                 "check_interval" : 2
