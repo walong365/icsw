@@ -487,6 +487,7 @@ def main():
     my_parser.add_argument("--mode", type=str, default="show", choices=["show", "stop", "start", "restart"], help="operation mode [%(default)s]")
     my_parser.add_argument("--force", default=False, action="store_true", help="call force-stop if available [%(default)s]")
     my_parser.add_argument("--failed", default=False, action="store_true", help="show only instances in failed state [%(default)s]")
+    my_parser.add_argument("--every", default=0, type=int, help="check again every N seconds, only available for show [%(default)s]")
     opt_ns = my_parser.parse_args()
     if opt_ns.all or opt_ns.almost_all:
         opt_ns.thread = True
@@ -505,7 +506,17 @@ def main():
         sys.exit(1)
 
     if opt_ns.mode == "show":
-        show_xml(opt_ns, ret_xml)
+        while True:
+            try:
+                show_xml(opt_ns, ret_xml)
+                if opt_ns.every:
+                    time.sleep(opt_ns.every)
+                    ret_xml = check_system(opt_ns)
+                else:
+                    break
+            except KeyboardInterrupt:
+                print "exiting..."
+                break
     elif opt_ns.mode in ["start", "stop", "restart"]:
         do_action_xml(opt_ns, ret_xml, opt_ns.mode)
 

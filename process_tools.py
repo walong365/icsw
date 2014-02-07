@@ -59,7 +59,7 @@ except locale.Error:
 
 try:
     import affinity_tools # @UnresolvedImports
-except:
+except IOError:
     affinity_tools = None
 
 def getstatusoutput(cmd):
@@ -1205,10 +1205,12 @@ def get_proc_list(last_dict=None, **kwargs):
     # s_time = time.time()
     s_fields = ["name", "state"]
     i_fields = ["pid", "uid", "gid", "ppid"]
+    proc_name_list = set(kwargs.get("proc_name_list", []))
     add_stat = kwargs.get("add_stat_info", False)
     add_affinity = kwargs.get("add_affinity", False)
+    add_affinity = True
     try:
-        pid_list = [int(key) for key in os.listdir("/proc") if key.isdigit()]
+        pid_list = set([int(key) for key in os.listdir("/proc") if key.isdigit()])
     except:
         p_dict = last_dict
     else:
@@ -1220,40 +1222,66 @@ def get_proc_list(last_dict=None, **kwargs):
                 check_pid = False
             if check_pid:
                 try:
-                    status_lines = [(line.split() + ["", ""])[0 : 2] for line in open("/proc/%d/status" % (pid), "r").read().split("\n")]
-                    stat_fields = open("/proc/%d/stat" % (pid), "r").read().split(")", 1)[1].split()
+                    t_dict = {}
+                    # status_lines = [(line.split() + ["", ""])[0 : 2] for line in open("/proc/%d/status" % (pid), "r").read().split("\n")]
+                    _lnum = 0
+                    for line in open("/proc/%d/status" % (pid), "r").xreadlines():
+                        _parts = line.split()
+                        if not _lnum:
+                            # first line, check for exclusion criteria
+                            if proc_name_list and _parts[1] not in proc_name_list:
+                                # leave inner loop
+                                break
+                        if len(_parts) >= 2:
+                            what, rest = _parts[0:2]
+                            r_what = what.lower()[:-1]
+                            if r_what in s_fields:
+                                t_dict[r_what] = rest
+                            elif r_what in i_fields:
+                                t_dict[r_what] = int(rest)
+                        _lnum += 1
+                    if not _lnum:
+                        # inner loop was not finished, ignore this process
+                        continue
                 except IOError:
                     pass
                 else:
-                    t_dict = {}
-                    for what, rest in status_lines:
-                        r_what = what.lower()[:-1]
-                        if r_what in s_fields:
-                            t_dict[r_what] = rest
-                        elif r_what in i_fields:
-                            t_dict[r_what] = int(rest)
+                    # t_dict = {"name" : status_lines[0][1]}
+                    if proc_name_list and t_dict["name"] not in proc_name_list:
+                        continue
+                    # for what, rest in status_lines:
+                    #    r_what = what.lower()[:-1]
+                    #    if r_what in s_fields:
+                    #        t_dict[r_what] = rest
+                    #    elif r_what in i_fields:
+                    #        t_dict[r_what] = int(rest)
                     try:
-                        t_dict["cmdline"] = [line for line in codecs.open("/proc/%d/cmdline" % (pid), "r", "utf-8").read().split("\x00") if line]
-                    except:
-                        t_dict["cmdline"] = [get_except_info()]
-                    if t_dict["pid"] == pid:
-                        p_dict[pid] = t_dict
-                    try:
-                        t_dict["exe"] = os.readlink("/proc/%d/exe" % (pid))
-                    except:
-                        t_dict["exe"] = None
-                    if len(stat_fields) > 36:
-                        t_dict["last_cpu"] = int(stat_fields[36])
+                        stat_fields = open("/proc/%d/stat" % (pid), "r").read().split(")", 1)[1].split()
+                    except IOError:
+                        pass
                     else:
-                        t_dict["last_cpu"] = 0
-                    if affinity_tools and add_affinity:
                         try:
-                            t_dict["affinity"] = affinity_tools.get_process_affinity_mask(pid)
+                            t_dict["cmdline"] = [line for line in codecs.open("/proc/%d/cmdline" % (pid), "r", "utf-8").read().split("\x00") if line]
                         except:
-                            # process has gone away ?
-                            pass
-                    if add_stat:
-                        t_dict["stat_info"] = get_stat_info(pid)
+                            t_dict["cmdline"] = [get_except_info()]
+                        if t_dict["pid"] == pid:
+                            p_dict[pid] = t_dict
+                        try:
+                            t_dict["exe"] = os.readlink("/proc/%d/exe" % (pid))
+                        except:
+                            t_dict["exe"] = None
+                        if len(stat_fields) > 36:
+                            t_dict["last_cpu"] = int(stat_fields[36])
+                        else:
+                            t_dict["last_cpu"] = 0
+                        if affinity_tools and add_affinity:
+                            try:
+                                t_dict["affinity"] = affinity_tools.get_process_affinity_mask(pid)
+                            except:
+                                # process has gone away ?
+                                pass
+                        if add_stat:
+                            t_dict["stat_info"] = get_stat_info(pid)
     # print time.time()-s_time
     return p_dict
 

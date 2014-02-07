@@ -19,16 +19,42 @@
 #
 """ handles process affinity """
 
+# import process_tools
 import commands
 import cpu_database
-import process_tools
+import os
 import sys
 
-TASKSET_BIN = process_tools.find_file("taskset")
 MAX_CORES = cpu_database.global_cpu_info(parse=True).num_cores()
 MAX_MASK = (1 << MAX_CORES) - 1
 
 CPU_MASKS = dict([(1 << cpu_num, cpu_num) for cpu_num in xrange(MAX_CORES)])
+
+def find_file(file_name, s_path=None):
+    if not s_path:
+        s_path = []
+    elif type(s_path) != list:
+            s_path = [s_path]
+    s_path.extend(["/opt/cluster/sbin", "/opt/cluster/bin", "/bin", "/usr/bin", "/sbin", "/usr/sbin"])
+    found = False
+    for cur_path in s_path:
+        if os.path.isfile(os.path.join(cur_path, file_name)):
+            found = True
+            break
+    if found:
+        return os.path.join(cur_path, file_name)
+    else:
+        return None
+
+TASKSET_BIN = find_file("taskset")
+
+def get_process_affinity_mask(pid):
+    mask = 0
+    if os.path.isfile("/proc/%d/status" % (pid)):
+        lines = [line.split() for line in open("/proc/%d/status" % (pid), "r").read().lower().split("\n") if line.startswith("cpus_allowed")]
+        if lines:
+            mask = int(lines[0][1], 16)
+    return mask
 
 class cpu_container(dict):
     def __init__(self):
