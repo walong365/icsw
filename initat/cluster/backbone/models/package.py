@@ -177,6 +177,10 @@ class package(models.Model):
         )
     def __unicode__(self):
         return "%s-%s" % (self.name, self.version)
+    class CSW_Meta:
+        permissions = (
+            ("package_install", "access package install site", False),
+        )
     class Meta:
         db_table = u'package'
         unique_together = (("name", "version", "arch", "kind",),)

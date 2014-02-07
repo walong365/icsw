@@ -4,12 +4,20 @@ from django.core.exceptions import ImproperlyConfigured
 from initat.cluster.backbone.models import AC_MASK_DICT
 
 class csw_obj_lut(object):
-    def __init__(self, user, module_name, perm_name):
+    __slots__ = ["user", "module_name", "content_name", "perm_name"]
+    def __init__(self, user, module_name, content_name, perm_name):
         self.user = user
         self.module_name = module_name
+        self.content_name = content_name
         self.perm_name = perm_name
+    @property
+    def key(self):
+        print "KEY", "%s.%s.%s" % (self.module_name, self.content_name, self.perm_name)
+        return "%s.%s.%s" % (self.module_name, self.content_name, self.perm_name)
     def __getitem__(self, obj_name):
-        key = "%s.%s" % (self.module_name, self.perm_name)
+        key = self.key
+        if obj_name.count("."):
+            raise ImproperlyConfigured("dot found in obj_name '%s' (key=%s)" % (obj_name, key))
         if obj_name == "ANY__":
             return self.user.has_object_perm(key)
         elif obj_name in AC_MASK_DICT:
@@ -21,16 +29,31 @@ class csw_obj_lut(object):
         else:
             raise ImproperlyConfigured("Unknown object level accesscode '%s' (key '%s')" % (obj_name, key))
     def __bool__(self):
-        return self.user.has_object_perm("%s.%s" % (self.module_name, self.perm_name))
+        return self.user.has_object_perm(self.key)
     def __nonzero__(self):
-        return self.user.has_object_perm("%s.%s" % (self.module_name, self.perm_name))
+        return self.user.has_object_perm(self.key)
 
 class csw_perm_lut(object):
+    __slots__ = ["user", "module_name", "content_name"]
+    def __init__(self, user, module_name, content_name):
+        self.user = user
+        self.module_name = module_name
+        self.content_name = content_name
+    def __getitem__(self, perm_name):
+        return csw_obj_lut(self.user, self.module_name, self.content_name, perm_name)
+        # return self.user.has_object_perm("%s.%s" % (self.module_name, perm_name))
+    def __bool__(self):
+        return self.user.has_content_perms(self.module_name, self.content_name)
+    def __nonzero__(self):
+        return self.user.has_content_perms(self.module_name, self.content_name)
+
+class csw_content_lut(object):
+    __slots__ = ["user", "module_name"]
     def __init__(self, user, module_name):
         self.user = user
         self.module_name = module_name
-    def __getitem__(self, perm_name):
-        return csw_obj_lut(self.user, self.module_name, perm_name)
+    def __getitem__(self, content_name):
+        return csw_perm_lut(self.user, self.module_name, content_name)
         # return self.user.has_object_perm("%s.%s" % (self.module_name, perm_name))
     def __bool__(self):
         return self.user.has_module_perms(self.module_name)
@@ -38,6 +61,7 @@ class csw_perm_lut(object):
         return self.user.has_module_perms(self.module_name)
 
 class csw_perm_proxy(object):
+    __slots__ = ["user"]
     def __init__(self, request):
         if hasattr(request, "user"):
             self.user = request.user
@@ -45,7 +69,7 @@ class csw_perm_proxy(object):
             self.user = None
     def __getitem__(self, module_name):
         if self.user:
-            return csw_perm_lut(self.user, module_name)
+            return csw_content_lut(self.user, module_name)
         else:
             return False
     def __contains__(self, perm_name):

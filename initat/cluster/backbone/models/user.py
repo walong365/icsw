@@ -31,6 +31,12 @@ __all__ = [
     "AC_MASK_DICT",
     ]
 
+def _csw_key(perm):
+    return "%s.%s.%s" % (
+        perm.content_type.app_label,
+        perm.content_type.name,
+        perm.codename)
+
 # auth_cache structure
 class auth_cache(object):
     def __init__(self, auth_obj):
@@ -48,40 +54,38 @@ class auth_cache(object):
         # print self.cache_key
         self._from_db()
     def _from_db(self):
-        self.__perm_dict = dict([("%s.%s" % (cur_perm.content_type.app_label, cur_perm.codename), cur_perm) for cur_perm in csw_permission.objects.all().select_related("content_type")])
+        self.__perm_dict = {_csw_key(cur_perm) : cur_perm for cur_perm in csw_permission.objects.all().select_related("content_type")}
         # pprint.pprint(self.__perm_dict)
+        # print self.__perm_dict.keys()
         if self.has_all_perms:
             # set all perms
             for perm in csw_permission.objects.all().select_related("content_type"):
-                key = "%s.%s" % (perm.content_type.app_label, perm.codename)
-                self.__perms[key] = AC_FULL
+                self.__perms[_csw_key(perm)] = AC_FULL
         else:
             for perm in getattr(self.auth_obj, "%s_permission_set" % (self.model_name)).select_related("csw_permission__content_type"):
-                key = "%s.%s" % (perm.csw_permission.content_type.app_label, perm.csw_permission.codename)
-                self.__perms[key] = perm.level
+                self.__perms[_csw_key(perm.csw_permission)] = perm.level
         for perm in getattr(self.auth_obj, "%s_object_permission_set" % (self.model_name)).select_related("csw_object_permission__csw_permission__content_type"):
-            key = "%s.%s" % (perm.csw_object_permission.csw_permission.content_type.app_label, perm.csw_object_permission.csw_permission.codename)
-            self.__obj_perms.setdefault(key, {})[perm.csw_object_permission.object_pk] = perm.level
+            self.__obj_perms.setdefault(_csw_key(perm.csw_object_permission.csw_permission), {})[perm.csw_object_permission.object_pk] = perm.level
         # pprint.pprint(self.__perms)
         # pprint.pprint(self.__obj_perms)
-    def _get_code_key(self, app_label, code_name):
-        code_key = "%s.%s" % (app_label, code_name)
+    def _get_code_key(self, app_label, content_name, code_name):
+        code_key = "%s.%s.%s" % (app_label, content_name, code_name)
         if code_key not in self.__perm_dict:
-            raise ValueError("wrong permission name %s" % (code_key))
+            raise ImproperlyConfigured("wrong permission name %s" % (code_key))
         return code_key
-    def has_permission(self, app_label, code_name):
-        code_key = self._get_code_key(app_label, code_name)
+    def has_permission(self, app_label, content_name, code_name):
+        code_key = self._get_code_key(app_label, content_name, code_name)
         return code_key in self.__perms
-    def get_object_permission_level(self, app_label, code_name, obj=None):
-        code_key = self._get_code_key(app_label, code_name)
+    def get_object_permission_level(self, app_label, content_name, code_name, obj=None):
+        code_key = self._get_code_key(app_label, content_name, code_name)
         _level = self.__perms.get(code_key, -1)
         if obj is not None:
             if code_key in self.__obj_perms:
                 _level = self.__obj_perms[code_key].get(obj.pk, _level)
         return _level
-    def has_object_permission(self, app_label, code_name, obj=None):
-        code_key = self._get_code_key(app_label, code_name)
-        if self.has_permission(app_label, code_name):
+    def has_object_permission(self, app_label, content_name, code_name, obj=None):
+        code_key = self._get_code_key(app_label, content_name, code_name)
+        if self.has_permission(app_label, content_name, code_name):
             # at fist check global permission
             return True
         elif code_key in self.__obj_perms:
@@ -95,9 +99,9 @@ class auth_cache(object):
                 return True
         else:
             return False
-    def get_allowed_object_list(self, app_label, code_name):
-        code_key = self._get_code_key(app_label, code_name)
-        if self.has_permission(app_label, code_name) or getattr(self.auth_obj, "is_superuser", False):
+    def get_allowed_object_list(self, app_label, content_name, code_name):
+        code_key = self._get_code_key(app_label, content_name, code_name)
+        if self.has_permission(app_label, content_name, code_name) or getattr(self.auth_obj, "is_superuser", False):
             # at fist check global permission, return all devices
             return set(get_model(app_label, self.__perm_dict[code_key].content_type.name).objects.all().values_list("pk", flat=True))
         elif code_key in self.__obj_perms:
@@ -265,17 +269,19 @@ class user_object_permission_serializer(serializers.ModelSerializer):
 def get_label_codename(perm):
     app_label, codename = (None, None)
     if type(perm) in [str, unicode]:
-        if perm.count(".") == 1:
-            app_label, codename = perm.split(".")
+        if perm.count(".") == 2:
+            app_label, content_name, codename = perm.split(".")
+        elif perm.count(".") == 1:
+            raise ImproperlyConfigured("old permission format '%s'" % (perm))
         else:
             raise ImproperlyConfigured("Unknown permission format '%s'" % (perm))
     elif isinstance(perm, csw_permission):
-        app_label, codename = (perm.content_type.app_label, perm.codename)
+        app_label, content_name, codename = (perm.content_type.app_label, perm.content_type.name, perm.codename)
     elif isinstance(perm, csw_object_permission):
-        app_label, codename = (perm.csw_permission.content_type.app_label, perm.csw_permission.codename)
+        app_label, content_name, codename = (perm.csw_permission.content_type.app_label, perm.csw_permission.content_type.name, perm.csw_permission.codename)
     else:
         raise ImproperlyConfigured("Unknown perm '%s'" % (unicode(perm)))
-    return (app_label, codename)
+    return (app_label, content_name, codename)
 
 def check_app_permission(auth_obj, app_label):
     if auth_obj.perms.filter(Q(content_type__app_label=app_label)).count():
@@ -285,29 +291,42 @@ def check_app_permission(auth_obj, app_label):
     else:
         return False
 
+def check_content_permission(auth_obj, app_label, content_name):
+    print "ccp", app_label, content_name
+    if auth_obj.perms.filter(Q(content_type__app_label=app_label) & Q(content_type__name=content_name)).count():
+        return True
+    elif auth_obj.object_perms.filter(Q(csw_permission__content_type__app_label=app_label) & Q(csw_permission__content_type__name=content_name)).count():
+        return True
+    else:
+        # check for valiid app_label / content_name
+        if csw_permission.objects.filter(Q(content_type__app_label=app_label) & Q(content_type__name=content_name)).count():
+            return False
+        else:
+            raise ImproperlyConfigured("unknown app_label / content_name combination '%s.%s" % (app_label, content_name))
+
 def check_permission(auth_obj, perm):
     if not hasattr(auth_obj, "_auth_cache"):
         auth_obj._auth_cache = auth_cache(auth_obj)
-    app_label, codename = get_label_codename(perm)
-    if app_label and codename:
+    app_label, content_name, codename = get_label_codename(perm)
+    if app_label and content_name and codename:
         # caching code
-        return auth_obj._auth_cache.has_permission(app_label, codename)
+        return auth_obj._auth_cache.has_permission(app_label, content_name, codename)
     else:
         return False
 
 def check_object_permission(auth_obj, perm, obj):
     if not hasattr(auth_obj, "_auth_cache"):
         auth_obj._auth_cache = auth_cache(auth_obj)
-    app_label, code_name = get_label_codename(perm)
+    app_label, content_name, code_name = get_label_codename(perm)
     # print "* cop", auth_obj, perm, obj, app_label, codename
-    if app_label and code_name:
+    if app_label and content_name and code_name:
         if obj is None:
             # caching code
-            return auth_obj._auth_cache.has_object_permission(app_label, code_name)
+            return auth_obj._auth_cache.has_object_permission(app_label, content_name, code_name)
         else:
             if app_label == obj._meta.app_label:
                 # caching code
-                return auth_obj._auth_cache.has_object_permission(app_label, code_name, obj)
+                return auth_obj._auth_cache.has_object_permission(app_label, content_name, code_name, obj)
             else:
                 return False
     else:
@@ -316,16 +335,16 @@ def check_object_permission(auth_obj, perm, obj):
 def get_object_permission_level(auth_obj, perm, obj):
     if not hasattr(auth_obj, "_auth_cache"):
         auth_obj._auth_cache = auth_cache(auth_obj)
-    app_label, code_name = get_label_codename(perm)
+    app_label, content_name, code_name = get_label_codename(perm)
     # print "* cop", auth_obj, perm, obj, app_label, codename
-    if app_label and code_name:
+    if app_label and content_name and code_name:
         if obj is None:
             # caching code
-            return auth_obj._auth_cache.get_object_permission_level(app_label, code_name)
+            return auth_obj._auth_cache.get_object_permission_level(app_label, content_name, code_name)
         else:
             if app_label == obj._meta.app_label:
                 # caching code
-                return auth_obj._auth_cache.get_object_permission_level(app_label, code_name, obj)
+                return auth_obj._auth_cache.get_object_permission_level(app_label, content_name, code_name, obj)
             else:
                 return -1
     else:
@@ -346,8 +365,8 @@ def get_allowed_object_list(auth_obj, perm):
     # return all allowed objects for a given permissions
     if not hasattr(auth_obj, "_auth_cache"):
         auth_obj._auth_cache = auth_cache(auth_obj)
-    app_label, code_name = get_label_codename(perm)
-    return auth_obj._auth_cache.get_allowed_object_list(app_label, code_name)
+    app_label, content_name, code_name = get_label_codename(perm)
+    return auth_obj._auth_cache.get_allowed_object_list(app_label, content_name, code_name)
 
 def get_global_permissions(auth_obj):
     # return all global permissions with levels (as dict)
@@ -500,6 +519,15 @@ class user(models.Model):
         group_perms = get_global_permissions(self.group)
         group_perms.update(get_global_permissions(self))
         return group_perms
+    def has_content_perms(self, module_name, content_name, ask_parent=True):
+        if not (self.active and self.group.active):
+            return False
+        elif self.is_superuser:
+            return True
+        res = check_content_permission(self, module_name, content_name)
+        if not res and ask_parent:
+            res = self.group.has_content_perms(module_name, content_name)
+        return res
     def has_module_perms(self, module_name, ask_parent=True):
         if not (self.active and self.group.active):
             return False
@@ -547,7 +575,6 @@ class user_serializer(serializers.ModelSerializer):
 @receiver(signals.m2m_changed, sender=user.perms.through)
 def user_perms_changed(sender, *args, **kwargs):
     if kwargs.get("action") == "pre_add" and "instance" in kwargs:
-        print "***++", kwargs
         cur_user = None
         try:
             # hack to get the current logged in user
@@ -652,6 +679,10 @@ class group(models.Model):
     def get_allowed_object_list(self, perm, ask_parent=True):
         # get all object pks we have an object permission for
         return get_allowed_object_list(self, perm)
+    def has_content_perms(self, module_name, content_name):
+        if not (self.active):
+            return False
+        return check_content_permission(self, module_name, content_name)
     def has_module_perms(self, module_name):
         if not (self.active):
             return False

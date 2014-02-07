@@ -2,9 +2,10 @@
 
 from django.conf import settings
 from django.contrib.auth.decorators import login_required
+from django.core.exceptions import ImproperlyConfigured
+from django.core.urlresolvers import reverse
 from django.shortcuts import redirect
 from django.utils.decorators import method_decorator
-from django.core.urlresolvers import reverse
 import logging
 
 logger = logging.getLogger("cluster.render")
@@ -16,6 +17,8 @@ class permission_required_mixin(object):
     def dispatch(self, request, *args, **kwargs):
         perm_ok = True
         if self.all_required_permissions:
+            if any(len(_perm.count(".")) != 3 for _perm in self.all_required_permissions):
+                raise ImproperlyConfigured("permission format error: %s" % (", ".join(self.all_required_permissions)))
             if not request.user.has_object_perms(self.all_required_permissions):
                 logger.error("user %s has not the required permissions %s" % (
                     unicode(request.user),
@@ -23,6 +26,8 @@ class permission_required_mixin(object):
                     ))
                 perm_ok = False
         if self.any_required_permissions:
+            if any(len(_perm.count(".")) != 3 for _perm in self.any_required_permissions):
+                raise ImproperlyConfigured("permission format error: %s" % (", ".join(self.any_required_permissions)))
             if not request.user.has_any_object_perms(self.any_required_permissions):
                 logger.error("user %s has not any of the required permissions %s" % (
                     unicode(request.user),
