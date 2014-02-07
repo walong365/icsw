@@ -42,4 +42,3 @@ def render_string(request, template_name, in_dict=None):
         template_name,
         in_dict if in_dict is not None else {},
         django.template.RequestContext(request)))
-
