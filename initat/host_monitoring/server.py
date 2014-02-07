@@ -438,11 +438,10 @@ class server_code(threading_tools.process_pool):
             # is a delayed command
             delayed = False
             cur_com = srv_com["command"].text
-            srv_com["result"] = None
+            srv_com.set_result("ok")
             srv_com["result"].attrib.update({
-                "state"      : "%d" % (server_command.SRV_REPLY_STATE_OK),
-                "reply"      : "ok",
-                "start_time" : TIME_FORMAT % (time.time())})
+                "start_time" : TIME_FORMAT % (time.time())
+            })
             if cur_com in self.commands:
                 delayed = self._handle_module_command(srv_com, rest_str)
             else:

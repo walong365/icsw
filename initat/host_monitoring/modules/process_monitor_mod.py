@@ -202,7 +202,16 @@ class procstat_command(hm_classes.hm_command):
         self.parser.add_argument("-c", dest="crit", type=int, default=0)
         self.parser.add_argument("-Z", dest="zombie", default=False, action="store_true", help="ignore zombie processes")
     def __call__(self, srv_com, cur_ns):
-        p_dict = process_tools.get_proc_list()
+        # s_time = time.time()
+        if cur_ns.arguments:
+            name_list = cur_ns.arguments
+            if "cron" in name_list:
+                name_list.append("crond")
+        else:
+            name_list = []
+        p_dict = process_tools.get_proc_list(proc_name_list=name_list)
+        # e_time = time.time()
+        # print e_time - s_time
         # pprint.pprint(p_dict)
         if cur_ns.arguments:
             # try to be smart about cron / crond
@@ -216,6 +225,7 @@ class procstat_command(hm_classes.hm_command):
         srv_com["process_tree"] = base64.b64encode(bz2.compress(marshal.dumps(p_dict)))
         # format 1: base64 encoded compressed dump of p_dict
         srv_com["process_tree"].attrib["format"] = "1"
+        del p_dict
         # print len(srv_com["process_tree"].text)
         # e_time = time.time()
         # print e_time - s_time
