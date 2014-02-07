@@ -32,7 +32,7 @@ from initat.cluster.backbone.models import partition_table, \
 from initat.cluster.frontend.forms import kernel_form, image_form, partition_table_form, \
     partition_form, partition_disc_form, partition_sys_form
 from initat.cluster.frontend.helper_functions import contact_server, xml_wrapper
-from initat.core.render import render_me
+from initat.cluster.backbone.render import render_me
 from lxml.builder import E # @UnresolvedImport
 import logging
 import os

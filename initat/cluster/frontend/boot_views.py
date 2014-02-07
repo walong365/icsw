@@ -32,7 +32,7 @@ from django.views.generic import View
 from initat.cluster.backbone.models import device, cd_connection, \
      kernel, image, partition_table, status, network, devicelog
 from initat.cluster.frontend.helper_functions import contact_server, xml_wrapper
-from initat.core.render import render_me
+from initat.cluster.backbone.render import render_me
 from lxml.builder import E # @UnresolvedImports
 import logging
 import logging_tools

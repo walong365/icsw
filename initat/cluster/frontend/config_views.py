@@ -38,8 +38,7 @@ from initat.cluster.frontend.forms import config_form, config_str_form, config_i
     config_bool_form, config_script_form, mon_check_command_form
 from initat.cluster.backbone import models
 from initat.cluster.frontend.helper_functions import contact_server, xml_wrapper
-from initat.cluster.backbone.render import permission_required_mixin
-from initat.core.render import render_me
+from initat.cluster.backbone.render import permission_required_mixin, render_me
 from lxml import etree # @UnresolvedImports
 from lxml.builder import E # @UnresolvedImports
 import StringIO

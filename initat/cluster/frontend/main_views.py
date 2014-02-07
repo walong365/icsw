@@ -26,7 +26,7 @@
 from django.contrib.auth.decorators import login_required
 from django.utils.decorators import method_decorator
 from django.views.generic import View
-from initat.core.render import render_me
+from initat.cluster.backbone.render import render_me
 import logging
 
 logger = logging.getLogger("cluster.main")

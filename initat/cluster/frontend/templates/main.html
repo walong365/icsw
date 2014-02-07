@@ -75,7 +75,6 @@
 {% block title %}{% trans "Main Page" %}{% endblock %}
 
 {% block main %}
-
 {% block body %}
 {% if user.is_authenticated %}
     <div class="ui-layout-north ">
@@ -102,9 +101,6 @@
 </div>
 {% endblock %}
 {% endblock %}
-
-{% block stylesheets_superfish %}{% endblock %}
-{% block javascript_superfish %}{% endblock %}
 
 {% block footer %}
 
@@ -150,6 +146,10 @@ init_blockUI = ->
     $.blockUI.defaults.overlayCSS.opacity = 0.1
     
 add_handlers_main = ->
+    # attach global permissions to window object (== global variable)
+    window.GLOBAL_PERMISSIONS = {}
+    for entry in {{ GLOBAL_PERMISSIONS|safe }}
+        window.GLOBAL_PERMISSIONS[entry.key] = entry.value
     init_layout()
     init_blockUI()
     # init noty

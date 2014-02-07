@@ -34,8 +34,7 @@ from initat.cluster.frontend.forms import domain_tree_node_form, network_form, \
     network_type_form, network_device_type_form, netdevice_form, net_ip_form, \
     peer_information_s_form, peer_information_d_form
 from initat.cluster.frontend.helper_functions import xml_wrapper
-from initat.cluster.backbone.render import permission_required_mixin
-from initat.core.render import render_me
+from initat.cluster.backbone.render import permission_required_mixin, render_me
 from networkx.readwrite import json_graph
 import config_tools
 import ipvx_tools

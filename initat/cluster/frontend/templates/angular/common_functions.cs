@@ -252,8 +252,10 @@ angular_module_setup = (module_list, url_list=[]) ->
                 if ac_name.split(".").length != 3
                     alert("illegal ac specifier '#{ac_name}'")
                 #console.log ac_name, obj._GLOBAL_, obj.access_levels
-                if obj.access_levels?
+                if obj and obj.access_levels?
                     # object level permissions
+                    # no need to check for global permissions because those are mirrored down
+                    # to the object_level permission on the server
                     if not obj._all
                         obj._all = to_list(obj.access_levels)
                     if ac_name of obj._all
@@ -263,8 +265,9 @@ angular_module_setup = (module_list, url_list=[]) ->
                             return (obj._all[ac_name] & mask) == mask
                     else
                         return false
-                else if obj._GLOBAL_
-                    # global permissions
+                else
+                    # check global permissions
+                    obj = GLOBAL_PERMISSIONS
                     if ac_name of obj
                         if any
                             return if obj[ac_name] & mask then true else false
@@ -272,8 +275,6 @@ angular_module_setup = (module_list, url_list=[]) ->
                             return (obj[ac_name] & mask) == mask
                     else
                         return false
-                else
-                    return false
             func_dict = {
                 "acl_delete" : (obj, ac_name) ->
                     return check_level(obj, ac_name, 4, true)
@@ -287,20 +288,17 @@ angular_module_setup = (module_list, url_list=[]) ->
                     return check_level(obj, ac_name, mask, true)
                 "acl_all" : (obj, ac_name, mask) ->
                     return check_level(obj, ac_name, mask, false)
+
             }
             return {
                 "install" : (scope) ->
-                    scope.global_perms = {"_GLOBAL_" : true}
                     scope.acl_create = func_dict["acl_create"]
                     scope.acl_modify = func_dict["acl_modify"]
                     scope.acl_delete = func_dict["acl_delete"]
                     scope.acl_read = func_dict["acl_read"]
                     scope.acl_any = func_dict["acl_any"]
                     scope.acl_all = func_dict["acl_all"]
-                "set_global_permissions" : (scope, rest_value) ->
-                    for obj in rest_value
-                        scope.global_perms[obj.key] = obj.value
-            }
+           }
         )
         cur_mod.config(['$httpProvider', 
             ($httpProvider) ->

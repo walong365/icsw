@@ -33,8 +33,7 @@ from initat.cluster.backbone.models import device_type, device_group, device, \
 from initat.cluster.frontend.forms import device_tree_form, device_group_tree_form, \
     device_tree_many_form, device_variable_form, device_variable_new_form
 from initat.cluster.frontend.helper_functions import xml_wrapper
-from initat.core.render import render_me
-from initat.cluster.backbone.render import permission_required_mixin
+from initat.cluster.backbone.render import permission_required_mixin, render_me
 from lxml.builder import E # @UnresolvedImports
 import json
 import logging

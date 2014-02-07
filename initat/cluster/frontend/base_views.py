@@ -9,10 +9,9 @@ from django.utils.decorators import method_decorator
 from django.views.generic import View
 from initat.cluster.backbone.models import device_variable, category, \
      category_tree
-from initat.cluster.backbone.render import permission_required_mixin
+from initat.cluster.backbone.render import permission_required_mixin, render_me
 from initat.cluster.frontend.forms import category_form
 from initat.cluster.frontend.helper_functions import xml_wrapper
-from initat.core.render import render_me
 from lxml.builder import E # @UnresolvedImport
 import initat.cluster.backbone.models
 import json

@@ -34,9 +34,8 @@ from initat.cluster.backbone.models import package_search, package_search_result
     package, get_related_models, package_device_connection, device, kernel, image, \
     package_device_connection_serializer
 from initat.cluster.frontend.helper_functions import contact_server, xml_wrapper
-from initat.core.render import render_me
 from initat.cluster.frontend.forms import package_search_form, package_action_form
-from initat.cluster.backbone.render import permission_required_mixin
+from initat.cluster.backbone.render import permission_required_mixin, render_me
 from rest_framework.renderers import JSONRenderer
 from lxml.builder import E # @UnresolvedImports
 import logging

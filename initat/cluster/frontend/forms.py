@@ -210,7 +210,7 @@ class device_info_form(ModelForm):
                         css_class="col-md-6",
                     ),
                     Div(
-                        Submit("modify", "modify", css_class="primaryAction"),
+                        Submit("modify", "modify", css_class="primaryAction", ng_show="acl_modify(_edit_obj, 'backbone.device.change_basic')"),
                         css_class="col-md-6",
                     ),
                     css_class="row",

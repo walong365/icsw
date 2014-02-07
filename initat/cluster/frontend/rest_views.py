@@ -152,6 +152,28 @@ class detail_view(mixins.RetrieveModelMixin,
     #    return serializer_class(instance, data=data, files=files,
     #                            many=many, partial=partial, context=context, allow_add_remove=self.model._meta.object_name in ["config"])
     @rest_logging
+    def get_queryset(self):
+        model_name = self.model._meta.model_name
+        related_fields, prefetch_fields = {
+            "kernel" : ([], ["initrd_build_set", "kernel_build_set", "new_kernel", "act_kernel"]),
+            "image" : ([], ["new_image", "act_image"]),
+            "partition_table" : ([], ["new_partition_table", "act_partition_table", "sys_partition_set",
+                "lvm_lv_set__partition_fs" , "lvm_vg_set", "partition_disc_set__partition_set__partition_fs"]),
+            "mon_period" : ([], ["service_check_period"]),
+            "device" : (["domain_tree_node", "device_type", "device_group"], []),
+            "mon_check_command" : ([], ["exclude_devices", "categories"]),
+            "mon_host_cluster" : ([], ["devices"]),
+            "network" : ([], ["network_device_type"]),
+            "user" : (["group"], ["user_permission_set", "user_object_permission_set__csw_object_permission", "secondary_groups", "allowed_device_groups"]),
+            "group" : (["parent_group"], ["group_permission_set", "group_object_permission_set", "group_object_permission_set__csw_object_permission", "allowed_device_groups"]),
+            "config" : ([], [
+                "categories", "config_str_set", "config_int_set", "config_blob_set",
+                "config_bool_set", "config_script_set", "mon_check_command_set__categories", "mon_check_command_set__exclude_devices",
+                "device_config_set"]),
+            }.get(model_name, ([], []))
+        res = self.model.objects
+        return res.select_related(*related_fields).prefetch_related(*prefetch_fields)
+    @rest_logging
     def put(self, request, *args, **kwargs):
         req_changes = request.DATA
         prev_model = self.model.objects.get(Q(pk=kwargs["pk"]))
@@ -222,7 +244,7 @@ class list_view(mixins.ListModelMixin,
             "mon_check_command" : ([], ["exclude_devices", "categories"]),
             "mon_host_cluster" : ([], ["devices"]),
             "network" : ([], ["network_device_type"]),
-            "user" : (["group"], ["user_permission_set", "user_object_permission_set", "user_object_permission_set__csw_object_permission", "secondary_groups", "allowed_device_groups"]),
+            "user" : (["group"], ["user_permission_set", "user_object_permission_set__csw_object_permission", "secondary_groups", "allowed_device_groups"]),
             "group" : (["parent_group"], ["group_permission_set", "group_object_permission_set", "group_object_permission_set__csw_object_permission", "allowed_device_groups"]),
             "config" : ([], [
                 "categories", "config_str_set", "config_int_set", "config_blob_set",
@@ -549,22 +571,6 @@ class device_selection_list(APIView):
     permission_classes = (IsAuthenticated,)
     def get(self, request):
         ser = device_selection_serializer([device_selection(cur_sel) for cur_sel in request.session.get("sel_list", [])], many=True)
-        return Response(ser.data)
-
-class simple_global_perm(object):
-    def __init__(self, key, value):
-        self.key = key
-        self.value = value
-
-class simple_global_perm_serializer(serializers.Serializer):
-    key = serializers.CharField()
-    value = serializers.IntegerField()
-
-class global_user_permissions(APIView):
-    authentication_classes = (SessionAuthentication,)
-    permission_classes = (IsAuthenticated,)
-    def get(self, request):
-        ser = simple_global_perm_serializer([simple_global_perm(key, value) for key, value in request.user.get_global_permissions().iteritems()], many=True)
         return Response(ser.data)
 
 for obj_name in REST_LIST:

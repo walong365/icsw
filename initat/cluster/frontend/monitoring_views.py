@@ -35,8 +35,7 @@ from initat.cluster.frontend.forms import mon_period_form, mon_notification_form
     mon_service_esc_templ_form, mon_device_esc_templ_form, mon_service_dependency_templ_form, \
     mon_host_dependency_form, mon_service_dependency_form, device_monitoring_form
 from initat.cluster.frontend.helper_functions import contact_server, xml_wrapper
-from initat.core.render import render_me
-from initat.cluster.backbone.render import permission_required_mixin
+from initat.cluster.backbone.render import permission_required_mixin, render_me
 from lxml.builder import E # @UnresolvedImports
 import base64
 import json

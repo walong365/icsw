@@ -31,7 +31,7 @@ from django.views.decorators.cache import never_cache
 from django.views.generic import View
 from initat.cluster.frontend.forms import authentication_form
 from initat.cluster.frontend.helper_functions import update_session_object
-from initat.core.render import render_me
+from initat.cluster.backbone.render import render_me
 import base64
 import logging
 

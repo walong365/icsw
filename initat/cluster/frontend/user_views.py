@@ -29,11 +29,10 @@ from django.views.generic import View
 from initat.cluster.backbone.models import group, user, user_variable, csw_permission, \
     csw_object_permission, group_permission, user_permission, group_object_permission, \
     user_object_permission, group_object_permission_serializer, user_object_permission_serializer
-from initat.cluster.backbone.render import permission_required_mixin
+from initat.cluster.backbone.render import permission_required_mixin, render_me
 from initat.cluster.frontend.forms import group_detail_form, user_detail_form, \
     account_detail_form
 from initat.cluster.frontend.helper_functions import contact_server, xml_wrapper, update_session_object
-from initat.core.render import render_me
 from lxml.builder import E # @UnresolvedImport
 import json
 import config_tools
