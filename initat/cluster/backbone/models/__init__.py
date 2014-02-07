@@ -1295,6 +1295,7 @@ class device(models.Model):
         permissions = (
             ("all_devices", "access all devices", False),
             ("show_graphs", "Access to device graphs", True),
+            ("change_basic", "Change basic settings", True),
             ("change_network", "Change network", True),
             ("change_config", "Change configuration", True),
             ("change_variables", "Change variables", True),

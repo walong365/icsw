@@ -12,7 +12,6 @@ class csw_obj_lut(object):
         self.perm_name = perm_name
     @property
     def key(self):
-        print "KEY", "%s.%s.%s" % (self.module_name, self.content_name, self.perm_name)
         return "%s.%s.%s" % (self.module_name, self.content_name, self.perm_name)
     def __getitem__(self, obj_name):
         key = self.key

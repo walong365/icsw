@@ -6,8 +6,12 @@ from django.core.exceptions import ValidationError, ImproperlyConfigured
 from django.db import models
 from django.db.models import Q, signals, get_model
 from django.dispatch import receiver
+from django.core.cache import cache
 from initat.cluster.backbone.models.functions import _check_empty_string, _check_integer
 from rest_framework import serializers
+from rest_framework.renderers import JSONRenderer
+from rest_framework.parsers import JSONParser
+from StringIO import StringIO
 import base64
 import crypt
 import hashlib
@@ -374,9 +378,31 @@ def get_global_permissions(auth_obj):
         auth_obj._auth_cache = auth_cache(auth_obj)
     return auth_obj._auth_cache.get_global_permissions()
 
+import django.core.serializers
+
+
 class user_manager(models.Manager):
     def get_by_natural_key(self, login):
         return super(user_manager, self).get(Q(login=login))
+    def get_do_not_use(self, *args, **kwargs):
+        # could be used to avoid loading from database, not used right now because of problems
+        # with serialization (cost is too high)
+        if args and type(args[0]) == Q:
+            _q = args[0].children
+            if len(_q) == 1 and len(_q[0]) == 2:
+                if _q[0][0] == "pdk":
+                    _val = _q[0][1]
+                    # get from memcached
+                    _mc_key = "icsw_user_pk_%d" % (int(_val))
+                    _mc_content = cache.get(_mc_key)
+                    if _mc_content:
+                        for _obj in django.core.serializers.deserialize("json", _mc_content):
+                            # the query will still be logged but not executed
+                            return _obj.object
+        _user = super(user_manager, self).get(*args, **kwargs)
+        # store in memcached
+        cache.set(_user.mc_key(), django.core.serializers.serialize("json", [_user]))
+        return _user
     def create_superuser(self, login, email, password):
         # create group
         user_group = group.objects.create(
@@ -433,6 +459,11 @@ class user(models.Model):
     object_perms = models.ManyToManyField(csw_object_permission, related_name="db_user_perms", blank=True, through=user_object_permission)
     is_superuser = models.BooleanField(default=False)
     db_is_auth_for_password = models.BooleanField(default=False)
+    def mc_key(self):
+        if self.pk:
+            return "icsw_user_pk_%d" % (self.pk)
+        else:
+            return "icsw_user_pk_none"
     def __setattr__(self, key, value):
         # catch clearing of export entry via empty ("" or '') key
         if key == "export" and type(value) in [str, unicode]:
@@ -572,6 +603,14 @@ class user_serializer(serializers.ModelSerializer):
             "allowed_device_groups", "aliases", "db_is_auth_for_password", "is_superuser",
             )
 
+class user_flat_serializer(serializers.ModelSerializer):
+    class Meta:
+        model = user
+        fields = ("idx", "login", "uid", "group", "first_name", "last_name", "shell",
+            "title", "email", "pager", "comment", "tel", "password", "active", "export",
+            "aliases", "db_is_auth_for_password", "is_superuser",
+            )
+
 @receiver(signals.m2m_changed, sender=user.perms.through)
 def user_perms_changed(sender, *args, **kwargs):
     if kwargs.get("action") == "pre_add" and "instance" in kwargs:
@@ -630,6 +669,7 @@ def user_pre_save(sender, **kwargs):
 def user_post_save(sender, **kwargs):
     if not kwargs["raw"] and "instance" in kwargs:
         _cur_inst = kwargs["instance"]
+        # cache.delete(_cur_inst.mc_key())
 
 class group(models.Model):
     idx = models.AutoField(db_column="ggroup_idx", primary_key=True)
