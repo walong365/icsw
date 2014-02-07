@@ -44,8 +44,8 @@ logger = logging.getLogger("cluster.user")
 
 class overview(permission_required_mixin, View):
     any_required_permissions = (
-        "backbone.admin",
-        "backbone.group_admin"
+        "backbone.user.admin",
+        "backbone.group.group_admin"
             )
     @method_decorator(login_required)
     def get(self, request, *args, **kwargs):

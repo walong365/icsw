@@ -46,7 +46,7 @@ import server_command
 logger = logging.getLogger("cluster.monitoring")
 
 class setup(permission_required_mixin, View):
-    all_required_permissions = ["backbone.setup_monitoring"]
+    all_required_permissions = ["backbone.mon_check_command.setup_monitoring"]
     def get(self, request):
         # print mon_contact_form()
         return render_me(
@@ -62,7 +62,7 @@ class setup(permission_required_mixin, View):
         )()
 
 class setup_cluster(permission_required_mixin, View):
-    all_required_permissions = ["backbone.setup_monitoring"]
+    all_required_permissions = ["backbone.mon_check_command.setup_monitoring"]
     def get(self, request):
         return render_me(
             request, "monitoring_setup_cluster.html", {
@@ -86,12 +86,12 @@ class setup_escalation(View):
         )()
 
 class device_config(permission_required_mixin, View):
-    all_required_permissions = ["backbone.change_monitoring"]
+    all_required_permissions = ["backbone.mon_check_command.change_monitoring"]
     def get(self, request):
         return render_me(
             request, "monitoring_device.html", {
                 "device_monitoring_form" : device_monitoring_form(),
-                "device_object_level_permission" : "backbone.change_monitoring",
+                "device_object_level_permission" : "backbone.device.change_monitoring",
             }
         )()
 

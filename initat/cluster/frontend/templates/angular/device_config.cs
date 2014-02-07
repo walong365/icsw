@@ -51,10 +51,10 @@ device_config_template = """
             </span>
         </div>
         <div class="form-inline col-sm-4">
-            <div class="form-group" ng-show="acl_create(global_perms, 'backbone.change_config')">
+            <div class="form-group" ng-show="acl_create(global_perms, 'backbone.config.change_config')">
                 <input placeholder="new config" ng-model="new_config_name" class="form-control input-sm"></input>
             </div>
-            <div class="form-group" ng-show="acl_create(global_perms, 'backbone.change_config')">
+            <div class="form-group" ng-show="acl_create(global_perms, 'backbone.config.change_config')">
                 <input type="button" class="btn btn-success btn-sm" ng-show="new_config_name" ng-click="create_config()" value="create config"></input>
             </div>
         </div>
@@ -411,7 +411,7 @@ device_config_module.controller("config_ctrl", ["$scope", "$compile", "$filter",
                         _cls = "glyphicon glyphicon-ok-circle"
                 return _cls
             scope.click = (conf_idx) ->
-                if conf_idx != null and scope.acl_create(scope.obj, 'backbone.change_config')
+                if conf_idx != null and scope.acl_create(scope.obj, 'backbone.device.change_config')
                     meta_dev = scope.meta_devices[scope.devg_md_lut[scope.obj.device_group]]
                     value = 1
                     if conf_idx in scope.obj.local_selected
@@ -495,7 +495,7 @@ cat_ctrl = device_config_module.controller("category_ctrl", ["$scope", "$compile
             $q.all(wait_list).then((data) ->
                 $scope.device = data[1][0]
                 sel_list = $scope.device.categories
-                $scope.cat_tree.change_select = $scope.acl_all($scope.device, "change_category", 7)
+                $scope.cat_tree.change_select = $scope.acl_all($scope.device, "backbone.device.change_category", 7)
                 cat_tree_lut = {}
                 $scope.cat_tree.clear_root_nodes()
                 for entry in data[0]
@@ -573,7 +573,7 @@ loc_ctrl = device_config_module.controller("location_ctrl", ["$scope", "restData
             $q.all(wait_list).then((data) ->
                 $scope.device = data[1][0]
                 sel_list = $scope.device.categories
-                $scope.loc_tree.change_select = $scope.acl_all($scope.device, "change_location", 7)
+                $scope.loc_tree.change_select = $scope.acl_all($scope.device, "backbone.device.change_location", 7)
                 loc_tree_lut = {}
                 $scope.loc_tree.clear_root_nodes()
                 for entry in data[0]

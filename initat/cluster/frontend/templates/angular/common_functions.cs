@@ -246,12 +246,12 @@ angular_module_setup = (module_list, url_list=[]) ->
                 r_dict = {}
                 for part in in_str.split(",")
                     kv = part.split("=")
-                    long = kv[0]
-                    short = long.split(".")[1]
-                    r_dict[long] = parseInt(kv[1])
-                    r_dict[short] = parseInt(kv[1])
+                    r_dict[kv[0]] = parseInt(kv[1])
                 return r_dict
             check_level = (obj, ac_name, mask, any) ->
+                if ac_name.split(".").length != 3
+                    alert("illegal ac specifier '#{ac_name}'")
+                #console.log ac_name, obj._GLOBAL_, obj.access_levels
                 if obj.access_levels?
                     # object level permissions
                     if not obj._all

@@ -469,7 +469,7 @@ class device_tree_list(mixins.ListModelMixin,
                 # device list, direct selected
                 device_list = Q(pk__in=set(sum([[dev_idx, md_idx] for dev_idx, devg_idx, md_idx, dt in dg_list if dt != "MD"], [])))
                 _q = _q.filter(meta_list | device_list)
-            if not self.request.user.has_perm("backbone.all_devices"):
+            if not self.request.user.has_perm("backbone.device.all_devices"):
                 _q = _q.filter(Q(device_group__in=self.request.user.allowed_device_groups.all()))
         if self._get_post_boolean("all_monitoring_servers", False):
             _q = _q.filter(Q(device_config__config__name__in=["monitor_server", "monitor_slave"]))

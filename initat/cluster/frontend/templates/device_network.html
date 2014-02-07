@@ -31,7 +31,7 @@
 
 <div ng-controller="network_ctrl">
     <devicenetworks></devicenetworks>
-{% if csw_perms.backbone.change_network.AC_MASK_CREATE %}
+{% if csw_perms.backbone.device.change_network.AC_MASK_CREATE %}
 {% verbatim %}
         <div class="input-group-btn" ng-show="devices.length > 1">
             <button type="button" class="btn btn-danger btn-md dropdown-toggle" data-toggle="dropdown">

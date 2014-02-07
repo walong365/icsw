@@ -38,7 +38,7 @@ class get_gauge_info(View):
         request.xml_response["response"] = gauge_info
 
 class get_category_tree(permission_required_mixin, View):
-    all_required_permissions = ["backbone.modify_category_tree"]
+    all_required_permissions = ["backbone.user.modify_category_tree"]
     @method_decorator(login_required)
     def get(self, request):
         return render_me(request, "category_tree.html",
@@ -48,7 +48,7 @@ class get_category_tree(permission_required_mixin, View):
             )()
 
 class prune_category_tree(permission_required_mixin, View):
-    all_required_permissions = ["backbone.modify_category_tree"]
+    all_required_permissions = ["backbone.user.modify_category_tree"]
     @method_decorator(xml_wrapper)
     def post(self, request):
         category_tree().prune()

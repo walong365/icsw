@@ -9,37 +9,37 @@
             <li class="dropdown">
                 <a class="dropdown-toggle" data-toggle="dropdown">{% trans "Base" %} <b class="caret"></b></a>
                 <ul class="dropdown-menu">
-                    {% if csw_perms.backbone.modify_tree %}
+                    {% if csw_perms.backbone.user.modify_tree %}
                         <li><a href="{% url 'device:tree' %}">{% trans "Device tree" %}</a></li>
                     {% endif %}
-                    {% if csw_perms.backbone.modify_domain_name_tree %}
+                    {% if csw_perms.backbone.user.modify_domain_name_tree %}
                         <li><a href="{% url 'network:domain_name_tree' %}">{% trans "Domain name tree" %}</a></li>
                     {% endif %}
-                    {% if csw_perms.backbone.modify_category_tree %}
+                    {% if csw_perms.backbone.user.modify_category_tree %}
                         <li><a href="{% url 'base:category_tree' %}">{% trans "Category tree" %}</a></li>
                     {% endif %}
-                    {% if csw_perms.backbone.modify_category_tree or csw_perms.backbone.modify_category_tree or csw_perms.backbone.modify_domain_name_tree or csw_perms.backbone.modify_tree %}
+                    {% if csw_perms.backbone.user.modify_category_tree or csw_perms.backbone.user.modify_category_tree or csw_perms.backbone.user.modify_domain_name_tree or csw_perms.user.backbone.modify_tree %}
                         <li class="divider"></li>
                     {% endif %}
-                    {% if csw_perms.backbone.modify_network %}
+                    {% if csw_perms.backbone.network.modify_network %}
                         <li><a href="{% url 'network:show_networks' %}">{% trans "Networks" %}</a></li>
                     {% endif %}
-                    {% if csw_perms.backbone.modify_config %}
+                    {% if csw_perms.backbone.config.modify_config %}
                         <li><a href="{% url 'config:show_configs' %}">{% trans "Configurations" %}</a></li>
                     {% endif %}
-                    {% if csw_perms.backbone.modify_network or csw_perms.backbone.modify_config %}
+                    {% if csw_perms.backbone.network.modify_network or csw_perms.backbone.config.modify_config %}
                         <li class="divider"></li>
                     {% endif %}
-                    {% if csw_perms.backbone.change_network.ANY__ %}
+                    {% if csw_perms.backbone.device.change_network.ANY__ %}
                         <li><a href="{% url 'network:device_network' %}">{% trans "Device network" %}</a></li>
                     {% endif %}
-                    {% if csw_perms.backbone.change_connection.ANY__ %}
+                    {% if csw_perms.backbone.device.change_connection.ANY__ %}
                         <li><a href="{% url 'device:connections' %}">{% trans "Device connections" %}</a></li>
                     {% endif %}
-                    {% if csw_perms.backbone.change_variables.ANY__ %}
+                    {% if csw_perms.backbone.device.change_variables.ANY__ %}
                         <li><a href="{% url 'device:variables' %}">{% trans "Device variables" %}</a></li>
                     {% endif %}
-                    {% if csw_perms.backbone.change_config.ANY__ %}
+                    {% if csw_perms.backbone.device.change_config.ANY__ %}
                         <li><a href="{% url 'device:show_configs' %}">{% trans "Device configurations" %}</a></li>
                     {% endif %}
                 </ul>
@@ -51,7 +51,7 @@
                     {% if settings.CLUSTER_LICENSE.boot %}
                         <li><a href="{% url 'boot:show_boot' %}">{% trans "Nodeboot" %}</a></li>
                     {% endif %}
-                    {% if settings.CLUSTER_LICENSE.package %}
+                    {% if settings.CLUSTER_LICENSE.package and csw_perms.backbone.package.package_install %}
                         <li><a href="{% url 'pack:repo_overview' %}">{% trans "Package install" %}</a></li>
                     {% endif %}
                     {% if settings.CLUSTER_LICENSE.boot %}
@@ -63,48 +63,48 @@
                 </ul>
             </li>
             {% endif %}
-            {% if csw_perms.backbone.group_admin %}
-            <li class="dropdown">
-                <a class="dropdown-toggle" data-toggle="dropdown">{% trans "Users" %} <b class="caret"></b></a>
-                <ul class="dropdown-menu">
-                    <li><a href="{% url 'user:overview' %}">{% trans "Overview" %}</a></li>
-                </ul>
-            </li>
+            {% if csw_perms.backbone.group.group_admin %}
+                <li class="dropdown">
+                    <a class="dropdown-toggle" data-toggle="dropdown">{% trans "Users" %} <b class="caret"></b></a>
+                    <ul class="dropdown-menu">
+                        <li><a href="{% url 'user:overview' %}">{% trans "Overview" %}</a></li>
+                    </ul>
+                </li>
             {% endif %}
             {% if settings.CLUSTER_LICENSE.monitor %}
-            <li class="dropdown">
-                <a class="dropdown-toggle" data-toggle="dropdown">{% trans "Monitoring" %} <b class="caret"></b></a>
-                <ul class="dropdown-menu">
-                    {% if csw_perms.backbone.setup_monitoring %}
-                        <li><a href="{% url 'mon:setup' %}">{% trans "Basic setup" %}</a></li>
-                        {% if csw_perms.backbone.change_monitoring.ANY__ %}
-                            <li><a href="{% url 'mon:device_config' %}">{% trans "Device settings" %}</a></li>
-                        {% endif %}
-                        {% if settings.CLUSTER_LICENSE.monext %}
+                <li class="dropdown">
+                    <a class="dropdown-toggle" data-toggle="dropdown">{% trans "Monitoring" %} <b class="caret"></b></a>
+                    <ul class="dropdown-menu">
+                        {% if csw_perms.backbone.mon_check_command.setup_monitoring %}
+                            <li><a href="{% url 'mon:setup' %}">{% trans "Basic setup" %}</a></li>
+                            {% if csw_perms.backbone.change_monitoring.ANY__ %}
+                                <li><a href="{% url 'mon:device_config' %}">{% trans "Device settings" %}</a></li>
+                            {% endif %}
+                            {% if settings.CLUSTER_LICENSE.monext %}
+                                <li class="divider"></li>
+                                <li><a href="{% url 'mon:setup_cluster' %}">{% trans "Cluster / Dependency setup" %}</a></li>
+                                <li><a href="{% url 'mon:setup_escalation' %}">{% trans "Escalation setup" %}</a></li>
+                            {% endif %}
                             <li class="divider"></li>
-                            <li><a href="{% url 'mon:setup_cluster' %}">{% trans "Cluster / Dependency setup" %}</a></li>
-                            <li><a href="{% url 'mon:setup_escalation' %}">{% trans "Escalation setup" %}</a></li>
                         {% endif %}
-                        <li class="divider"></li>
-                    {% endif %}
-                    <li><a href="{% url 'mon:call_icinga' %}">{% trans "Icinga (replace)" %}</a></li>
-                    <li><a href="{% url 'mon:call_icinga' %}" target="_blank">{% trans "Icinga (new tab)" %}</a></li>
-                    {% if settings.CLUSTER_LICENSE.ganglia %}
-                        <li><a href="/ganglia-web">{% trans "Ganglia" %}</a></li>
-                    {% endif %}
-                    <li class="text-center">
-                        <input id="create_monitoring_config" type="button" class="btn btn-success" value="rebuild config" ng-click="rebuild_config()"/>
-                    </li>
-                </ul>
-            </li>
+                        <li><a href="{% url 'mon:call_icinga' %}">{% trans "Icinga (replace)" %}</a></li>
+                        <li><a href="{% url 'mon:call_icinga' %}" target="_blank">{% trans "Icinga (new tab)" %}</a></li>
+                        {% if settings.CLUSTER_LICENSE.ganglia %}
+                            <li><a href="/ganglia-web">{% trans "Ganglia" %}</a></li>
+                        {% endif %}
+                        <li class="text-center">
+                            <input id="create_monitoring_config" type="button" class="btn btn-success" value="rebuild config" ng-click="rebuild_config()"/>
+                        </li>
+                    </ul>
+                </li>
             {% endif %}
             {% if settings.CLUSTER_LICENSE.rms %}
-            <li class="dropdown">
-                <a class="dropdown-toggle" data-toggle="dropdown">{% trans "RMS" %} <b class="caret"></b></a>
-                <ul class="dropdown-menu">
-                    <li><a href="{% url 'rms:overview' %}">{% trans "RMS overview" %}</a></li>
-                </ul>
-            </li>
+                <li class="dropdown">
+                    <a class="dropdown-toggle" data-toggle="dropdown">{% trans "RMS" %} <b class="caret"></b></a>
+                    <ul class="dropdown-menu">
+                        <li><a href="{% url 'rms:overview' %}">{% trans "RMS overview" %}</a></li>
+                    </ul>
+                </li>
             {% endif %}
             {% for add_menu in settings.ADDITIONAL_MENU_FILES %}
                 {% include add_menu %}
@@ -136,7 +136,7 @@
             <ul class="dropdown-menu">
                 <li><a href="{% url 'user:account_info' %}">{% trans "Account Info" %}</a></li>
                 <li><a href="{% url 'session:logout' %}">{% trans "Logout" %}</a></li>
-                {% if csw_perms.backbone.modify_config %}
+                {% if csw_perms.backbone.user.admin %}
                     <li><a href="{% url 'admin:index' %}">{% trans "Admin" %}</a></li>
                 {% endif %}
             </ul>

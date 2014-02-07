@@ -44,7 +44,7 @@ import re
 logger = logging.getLogger("cluster.device")
 
 class device_tree(permission_required_mixin, View):
-    all_required_permissions = ["backbone.modify_tree"]
+    all_required_permissions = ["backbone.user.modify_tree"]
     def get(self, request):
         return render_me(
             request,
@@ -116,7 +116,7 @@ class show_configs(View):
     def get(self, request):
         return render_me(
             request, "device_configs.html", {
-                "device_object_level_permission" : "backbone.change_config",
+                "device_object_level_permission" : "backbone.device.change_config",
             }
         )()
 
@@ -134,7 +134,7 @@ def _get_group_tree(request, sel_list, **kwargs):
     all_dgs = device_group.objects
     if permission_tree:
         # rights
-        all_devs = request.user.has_perm("backbone.all_devices")
+        all_devs = request.user.has_perm("backbone.device.all_devices")
         if not all_devs:
             # ignore meta-device
             ignore_cdg = True
@@ -363,5 +363,5 @@ class variables(View):
         return render_me(request, "device_variables.html", {
             "device_variable_form"     : device_variable_form(),
             "device_variable_new_form" : device_variable_new_form(),
-            "device_object_level_permission" : "backbone.change_variables",
+            "device_object_level_permission" : "backbone.device.change_variables",
             })()

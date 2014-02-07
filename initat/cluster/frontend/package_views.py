@@ -36,6 +36,7 @@ from initat.cluster.backbone.models import package_search, package_search_result
 from initat.cluster.frontend.helper_functions import contact_server, xml_wrapper
 from initat.core.render import render_me
 from initat.cluster.frontend.forms import package_search_form, package_action_form
+from initat.cluster.backbone.render import permission_required_mixin
 from rest_framework.renderers import JSONRenderer
 from lxml.builder import E # @UnresolvedImports
 import logging
@@ -45,7 +46,8 @@ import server_command
 
 logger = logging.getLogger("cluster.package")
 
-class repo_overview(View):
+class repo_overview(permission_required_mixin, View):
+    all_required_permissions = ["backbone.package.package_install"]
     @method_decorator(login_required)
     def get(self, request):
         return render_me(request, "package_install.html", {

@@ -53,7 +53,7 @@ import server_command
 logger = logging.getLogger("cluster.config")
 
 class show_configs(permission_required_mixin, View):
-    all_required_permissions = ["backbone.modify_config"]
+    all_required_permissions = ["backbone.config.modify_config"]
     def get(self, request):
         return render_me(
             request, "config_overview.html", {

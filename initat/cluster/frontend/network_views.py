@@ -54,12 +54,12 @@ class device_network(View):
                 "net_ip_form" : net_ip_form(),
                 "peer_information_s_form" : peer_information_s_form(),
                 "peer_information_d_form" : peer_information_d_form(),
-                "device_object_level_permission" : "backbone.change_network",
+                "device_object_level_permission" : "backbone.device.change_network",
             }
         )()
 
 class show_cluster_networks(permission_required_mixin, View):
-    all_required_permissions = ["backbone.modify_network"]
+    all_required_permissions = ["backbone.network.modify_network"]
     def get(self, request):
         return render_me(request, "cluster_networks.html", {
             "network_form" : network_form(),
@@ -194,7 +194,7 @@ class copy_network(View):
             request.xml_response.error("no target_devices", logger)
 
 class get_domain_name_tree(permission_required_mixin, View):
-    all_required_permissions = ["backbone.modify_domain_name_tree"]
+    all_required_permissions = ["backbone.user.modify_domain_name_tree"]
     def get(self, request):
         return render_me(request, "domain_name_tree.html", {
             "domain_name_tree_form" : domain_tree_node_form(),
