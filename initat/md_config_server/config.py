@@ -781,7 +781,7 @@ class main_config(object):
         for th_descr, th in [("low_service", 5.0), ("high_service", 20.0),
                              ("low_host"   , 5.0), ("high_host"   , 20.0)]:
             main_cfg["%s_flap_threshold" % (th_descr)] = th
-        admin_list = list([cur_u.login for cur_u in user.objects.filter(Q(active=True) & Q(group__active=True) & Q(mon_contact__pk__gt=0)) if cur_u.has_perm("backbone.all_devices")])
+        admin_list = list([cur_u.login for cur_u in user.objects.filter(Q(active=True) & Q(group__active=True) & Q(mon_contact__pk__gt=0)) if cur_u.has_perm("backbone.device.all_devices")])
         if admin_list:
             def_user = ",".join(admin_list)
         else:
@@ -904,7 +904,7 @@ class main_config(object):
                         devg_lut.setdefault(cur_dev.device_group.pk, []).append(cur_dev.full_name)
                     for cur_u in user.objects.filter(Q(active=True) & Q(mon_contact__pk__gt=0)).prefetch_related("allowed_device_groups"):
                         # check for admin
-                        if cur_u.has_perm("backbone.all_devices"):
+                        if cur_u.has_perm("backbone.device.all_devices"):
                             target_role = "admins"
                         else:
                             # create special role
