@@ -498,7 +498,10 @@ package_module.controller("install", ["$scope", "$compile", "$filter", "$templat
                             t_field.push("<br>installed: unknown")
                         else if pdc.installed == "y"
                             t_field.push("<br>installed: yes")
-                            t_field.push("<br>installtime: " + moment.unix(pdc.install_time).format("ddd, D. MMM YYYY HH:mm:ss"))
+                            if pdc.install_time
+                                t_field.push("<br>installtime: " + moment.unix(pdc.install_time).format("ddd, D. MMM YYYY HH:mm:ss"))
+                            else
+                                t_field.push("<br>installtime: unknown")
                         else
                             t_field.push("<br>unknown install state '#{pdc.installed}")
                         if pdc.kernel_dep
