@@ -18,7 +18,9 @@ if [ -f /etc/init.d/mother ] ; then
     touch /etc/sysconfig/cluster/.is_corvus
 fi
 
-/opt/python-init/lib/python/site-packages/initat/cluster/manage.py collectstatic --noinput -c
+echo -ne "collecting static ..."
+/opt/python-init/lib/python/site-packages/initat/cluster/manage.py collectstatic --noinput -c > /dev/null
+echo "done"
 
 if [ -d /opt/cluster/etc/uwsgi/reload ] ; then
     touch /opt/cluster/etc/uwsgi/reload/webfrontend.touch
