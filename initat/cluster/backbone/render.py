@@ -46,8 +46,8 @@ class render_me(object):
         else:
             gp_dict = {}
             op_dict = {}
-        import pprint
-        pprint.pprint(gp_dict)
+        # import pprint
+        # pprint.pprint(gp_dict)
         self.my_dict["GLOBAL_PERMISSIONS"] = json.dumps(gp_dict)
         self.my_dict["OBJECT_PERMISSIONS"] = json.dumps(op_dict)
         self.my_dict["CLUSTER_LICENSE"] = json.dumps(settings.CLUSTER_LICENSE)
