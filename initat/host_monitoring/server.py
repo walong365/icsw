@@ -252,7 +252,6 @@ class server_code(threading_tools.process_pool):
             self.__msi_block.add_actual_pid(src_pid, mult=3, process_name=src_process)
             self.__msi_block.save_block()
     def _init_network_sockets(self):
-        self.socket_list = []
         zmq_id_name = "/etc/sysconfig/host-monitoring.d/0mq_id"
         my_0mq_id = uuid_tools.get_uuid().get_urn()
         create_0mq = False
@@ -324,31 +323,8 @@ class server_code(threading_tools.process_pool):
                 key,
                 zmq_id_dict[key][0],
                 " is virtual" if zmq_id_dict[key][1] else ""))
-        for bind_ip, (bind_0mq_id, is_virtual) in zmq_id_dict.iteritems():
-            client = self.zmq_context.socket(zmq.ROUTER)
-            client.setsockopt(zmq.IDENTITY, bind_0mq_id)
-            client.setsockopt(zmq.SNDHWM, 16)
-            client.setsockopt(zmq.RCVHWM, 16)
-            client.setsockopt(zmq.RECONNECT_IVL_MAX, 500)
-            client.setsockopt(zmq.RECONNECT_IVL, 200)
-            client.setsockopt(zmq.TCP_KEEPALIVE, 1)
-            client.setsockopt(zmq.TCP_KEEPALIVE_IDLE, 300)
-            try:
-                client.bind("tcp://%s:%d" % (
-                    bind_ip,
-                    global_config["COM_PORT"]))
-            except zmq.ZMQError:
-                self.log("error binding to %s:%d: %s" % (
-                    "virtual %s" % (bind_ip) if is_virtual else bind_ip,
-                    global_config["COM_PORT"],
-                    process_tools.get_except_info()),
-                         logging_tools.LOG_LEVEL_CRITICAL)
-                if not is_virtual:
-                    raise
-                client.close()
-            else:
-                self.register_poller(client, zmq.POLLIN, self._recv_command)
-                self.socket_list.append(client)
+        self.zmq_id_dict = zmq_id_dict
+        self._bind_external()
         sock_list = [("ipc", "vector" , zmq.PULL  , 512, None, ""),
                      ("ipc", "command", zmq.PULL  , 512, self._recv_ext_command, ""),
                      ("ipc", "result" , zmq.ROUTER, 512, None, process_tools.zmq_identity_str("host_monitor"))]
@@ -388,6 +364,46 @@ class server_code(threading_tools.process_pool):
                 cur_socket.setsockopt(zmq.RCVHWM, hwm_size)
                 if dst_func:
                     self.register_poller(cur_socket, zmq.POLLIN, dst_func)
+    def _unbind_external(self):
+        # experimental code, not used right now
+        for bind_ip, sock in zip(sorted(self.zmq_id_dict.keys()), self.socket_list):
+            # print "unbind", bind_ip
+            sock.unbind("tcp://%s:%d" % (
+                    bind_ip,
+                    global_config["COM_PORT"]))
+            sock.close()
+            del sock
+            # print "done"
+            # time.sleep(1)
+    def _bind_external(self):
+        self.socket_list = []
+        for bind_ip in sorted(self.zmq_id_dict.keys()):
+            bind_0mq_id, is_virtual = self.zmq_id_dict[bind_ip]
+            client = self.zmq_context.socket(zmq.ROUTER)
+            client.setsockopt(zmq.LINGER, 0)
+            client.setsockopt(zmq.IDENTITY, bind_0mq_id)
+            client.setsockopt(zmq.SNDHWM, 16)
+            client.setsockopt(zmq.RCVHWM, 16)
+            client.setsockopt(zmq.RECONNECT_IVL_MAX, 500)
+            client.setsockopt(zmq.RECONNECT_IVL, 200)
+            client.setsockopt(zmq.TCP_KEEPALIVE, 1)
+            client.setsockopt(zmq.TCP_KEEPALIVE_IDLE, 300)
+            try:
+                client.bind("tcp://%s:%d" % (
+                    bind_ip,
+                    global_config["COM_PORT"]))
+            except zmq.ZMQError:
+                self.log("error binding to %s:%d: %s" % (
+                    "virtual %s" % (bind_ip) if is_virtual else bind_ip,
+                    global_config["COM_PORT"],
+                    process_tools.get_except_info()),
+                         logging_tools.LOG_LEVEL_CRITICAL)
+                if not is_virtual:
+                    raise
+                client.close()
+            else:
+                self.register_poller(client, zmq.POLLIN, self._recv_command)
+                self.socket_list.append(client)
     def register_vector_receiver(self, t_func):
         self.register_poller(self.vector_socket, zmq.POLLIN, t_func)
     def _recv_ext_command(self, zmq_sock):
