@@ -2545,6 +2545,11 @@ class package_serializer(serializers.ModelSerializer):
     class Meta:
         model = package
 
+class package_device_connection_wp_serializer(serializers.ModelSerializer):
+    package = package_serializer()
+    class Meta:
+        model = package_device_connection
+
 class device_serializer_package_state(device_serializer):
     package_device_connection_set = package_device_connection_serializer(many=True)
     latest_contact = serializers.Field(source="latest_contact")

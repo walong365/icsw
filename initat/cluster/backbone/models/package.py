@@ -221,6 +221,8 @@ class package_device_connection(models.Model):
         ("unknown"   , "unknown"),
         ), default="zypper_xml")
     response_str = models.TextField(max_length=65535, default="")
+    # install time of package
+    install_time = models.IntegerField(default=0)
     # dependencies
     image_dep = models.BooleanField(default=False)
     image_list = models.ManyToManyField("backbone.image", blank=True)
@@ -242,47 +244,66 @@ class package_device_connection(models.Model):
         return pdc_xml
     def interpret_response(self):
         if self.response_type == "zypper_xml":
+            # print "..", self.response_str
             xml = etree.fromstring(self.response_str)
-            if xml[0].tag == "info":
-                # short when target_state ="keep"
-                self.installed = "u"
+            if xml.find("post_result/stdout") is not None:
+                pp_src, pp_text = ("post", xml.findtext("post_result/stdout"))
+            elif xml.find("pre_result/stdout") is not None:
+                pp_src, pp_text = ("pre", xml.findtext("pre_result/stdout"))
             else:
-                # full stream
-                install_summary = xml.xpath(".//install-summary", smart_strings=False)
-                if len(install_summary):
-                    install_summary = install_summary[0]
-                    if not len(install_summary):
-                        # nohting to do, set according to target state
-                        self.installed = {"keep"    : "u",
-                                          "install" : "y",
-                                          "upgrade" : "y",
-                                          "erase"   : "n"}[self.target_state]
-                    else:
-                        if len(install_summary.xpath(".//to-install", smart_strings=False)):
-                            self.installed = "y"
-                        elif len(install_summary.xpath(".//to-reinstall", smart_strings=False)):
-                            self.installed = "y"
-                        elif len(install_summary.xpath(".//to-upgrade", smart_strings=False)):
-                            self.installed = "y"
-                        elif len(install_summary.xpath(".//to-remove", smart_strings=False)):
-                            self.installed = "n"
-                        else:
-                            self.installed = "u"
+                pp_src, pp_text = ("main", None)
+            if pp_src == "main":
+                if xml[0].tag == "info":
+                    # short when target_state ="keep"
+                    self.installed = "u"
                 else:
-                    stdout_el = xml.xpath(".//stdout", smart_strings=False)
-                    if len(stdout_el):
-                        line = stdout_el[0].text.strip()
-                        if line.startswith("package") and line.endswith("installed"):
-                            if line.count("not installed"):
+                    # full stream
+                    install_summary = xml.xpath(".//install-summary", smart_strings=False)
+                    if len(install_summary):
+                        install_summary = install_summary[0]
+                        if not len(install_summary):
+                            # nohting to do, set according to target state
+                            self.installed = {"keep"    : "u",
+                                              "install" : "y",
+                                              "upgrade" : "y",
+                                              "erase"   : "n"}[self.target_state]
+                        else:
+                            if len(install_summary.xpath(".//to-install", smart_strings=False)):
+                                self.installed = "y"
+                            elif len(install_summary.xpath(".//to-reinstall", smart_strings=False)):
+                                self.installed = "y"
+                            elif len(install_summary.xpath(".//to-upgrade", smart_strings=False)):
+                                self.installed = "y"
+                            elif len(install_summary.xpath(".//to-remove", smart_strings=False)):
                                 self.installed = "n"
                             else:
-                                self.installed = "y"
-                        else:
-                            # unsure
-                            self.installed = "u"
+                                self.installed = "u"
                     else:
-                        self.installed = "u"
-                        print "*** interpret_response (package) ***", etree.tostring(xml, pretty_print=True)
+                        stdout_el = xml.xpath(".//stdout", smart_strings=False)
+                        if len(stdout_el):
+                            line = stdout_el[0].text.strip()
+                            if line.startswith("package") and line.endswith("installed"):
+                                if line.count("not installed"):
+                                    self.installed = "n"
+                                else:
+                                    self.installed = "y"
+                            else:
+                                # unsure
+                                self.installed = "u"
+                        else:
+                            self.installed = "u"
+                            print "*** interpret_response (package) ***", etree.tostring(xml, pretty_print=True)
+            else:
+                pp_lines = pp_text.split("\n")
+                if pp_lines[0].count("not installed"):
+                    self.installed = "n"
+                    self.install_time = 0
+                elif len(pp_lines) == 2 and pp_lines[1].isdigit():
+                    self.installed = "y"
+                    self.install_time = int(pp_lines[1])
+                else:
+                    self.installed = "u"
+                    self.install_time = 0
         elif self.response_type == "yum_flat":
             lines = etree.fromstring(self.response_str).findtext("stdout").strip().split("\n")
             if len(lines) == 1:
