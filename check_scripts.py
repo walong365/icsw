@@ -31,6 +31,7 @@ from lxml import etree # @UnresolvedImport
 from lxml.builder import E # @UnresolvedImport
 import argparse
 import commands
+import datetime
 import logging_tools
 import process_tools
 import stat
@@ -328,7 +329,7 @@ def get_default_ns():
     def_ns = argparse.Namespace(all=True, server=[], node=[], runlevel=True, memory=True, database=True, pid=True, time=True, thread=True)
     return def_ns
 
-def show_xml(opt_ns, res_xml):
+def show_xml(opt_ns, res_xml, iter=0):
     # color strings (green / yellow / red / normal)
     col_str_dict = {0 : "\033[1;32m",
                     1 : "\033[1;33m",
@@ -441,7 +442,13 @@ def show_xml(opt_ns, res_xml):
         cur_line.append(logging_tools.form_entry(rc_strs[cur_state], header="status"))
         if not opt_ns.failed or (opt_ns.failed and cur_state in [1, 7]):
             out_bl.append(cur_line)
-    print str(out_bl)
+    print datetime.datetime.now().strftime("%a, %d. %b %Y %d %H:%M:%S")
+    # _lines = unicode(out_bl).split("\n")
+    # if iter and len(_lines) > 2:
+    #    print "\n".join(_lines[2:])
+    # else:
+    #    print "\n".join(_lines)
+    print unicode(out_bl)
 
 def do_action_xml(opt_ns, res_xml, mode):
     structs = res_xml.findall("instance[@checked='1']")
@@ -506,12 +513,14 @@ def main():
         sys.exit(1)
 
     if opt_ns.mode == "show":
+        _iter = 0
         while True:
             try:
-                show_xml(opt_ns, ret_xml)
+                show_xml(opt_ns, ret_xml, _iter)
                 if opt_ns.every:
                     time.sleep(opt_ns.every)
                     ret_xml = check_system(opt_ns)
+                    _iter += 1
                 else:
                     break
             except KeyboardInterrupt:
