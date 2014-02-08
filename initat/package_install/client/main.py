@@ -68,7 +68,8 @@ def main():
             pass
     try:
         global_config.add_config_entries([
-            ("PACKAGE_SERVER", configfile.str_c_var(file(ps_file_name, "r").read().strip().split("\n")[0].strip()))
+            ("PACKAGE_SERVER", configfile.str_c_var(file(ps_file_name, "r").read().strip().split("\n")[0].strip())),
+            ("VERSION", configfile.str_c_var(VERSION_STRING)),
         ])
     except:
         print "error reading from %s: %s" % (ps_file_name, process_tools.get_except_info())

@@ -34,12 +34,12 @@ import threading_tools
 def get_repo_str(in_repo):
     # copy from initat.cluster.backbone.models.package_repo.repo_str
     return "\n".join([
-        "[%s]" % (in_repo.attrib["alias"]),
-        "name=%s" % (in_repo.attrib["name"]),
-        "enabled=%d" % (int(in_repo.attrib["enabled"])),
-        "autorefresh=%d" % (int(in_repo.attrib["autorefresh"])),
-        "baseurl=%s" % (in_repo.attrib["url"]),
-        "type=%s" % (in_repo.attrib["repo_type"]),
+        "[%s]" % (in_repo.findtext("alias")),
+        "name=%s" % (in_repo.findtext("name")),
+        "enabled=%d" % (1 if in_repo.findtext("enabled") == "True" else 0),
+        "autorefresh=%d" % (1 if in_repo.findtext("autorefresh") == "True" else 0),
+        "baseurl=%s" % (in_repo.findtext("url")),
+        "type=%s" % (in_repo.findtext("repo_type")),
         "keeppackages=0",
         "",
     ])
@@ -110,47 +110,93 @@ class install_process(threading_tools.process_obj):
         if not_init:
             cur_init = not_init[0]
             cur_init.attrib["init"] = "1"
-            cur_com_str = self.build_command(cur_init)
-            if cur_com_str is not None:
+            # delete pre/post command strings
+            pp_attrs = ["pre_command", "post_command"]
+            for pp_attr in pp_attrs:
+                if pp_attr in cur_init.attrib:
+                    del cur_init.attrib[pp_attr]
+            self.build_command(cur_init)
+            pc_set = False
+            for pp_attr in pp_attrs:
+                if pp_attr in cur_init.attrib:
+                    pc_set = True
+                    self.log(" %s is '%s'" % (pp_attr, cur_init.attrib[pp_attr].replace("\n", "\\n")))
+            # only do something if a pre_command ist set
+            if pc_set:
                 simple_command(
-                    cur_com_str,
+                    cur_init.attrib["pre_command"],
                     short_info="package",
                     done_func=self._command_done,
                     log_com=self.log,
                     info="install package",
+                    command_stage="pre",
                     data=cur_init)
             else:
-                self.pdc_done(cur_init, E.info("nothing to do"))
+                cur_init.append(E.main_result(E.info("nothing to do")))
+                self.pdc_done(cur_init)
         else:
             # check for pending commands
             self.handle_pending_commands()
     def _command_done(self, hc_sc):
         cur_out = hc_sc.read()
-        self.log("hc_com '%s' finished with stat %d (%d bytes)" % (
+        self.log("hc_com '%s' (stage %s) finished with stat %d (%d bytes)" % (
             hc_sc.com_str,
+            hc_sc.command_stage,
             hc_sc.result,
             len(cur_out)))
         for line_num, line in enumerate(cur_out.split("\n")):
             self.log(" %3d %s" % (line_num + 1, line))
         hc_sc.terminate()
-        if cur_out.startswith("<?xml"):
+        if cur_out.startswith("<?xml") and hc_sc.command_stage == "main":
             xml_out = etree.fromstring(cur_out)
         else:
             # todo: transform output to XML for sending back to server
+            # pre and post commands
             xml_out = E.stdout(cur_out)
-        send_return = True
-        if hc_sc.com_str.count("rpm -q"):
-            self.log("pre-command finished, deciding what to do")
-            send_return, xml_out = self._decide(hc_sc, cur_out.strip())
-        if send_return:
-            # remove from package_commands
-            self.pdc_done(hc_sc.data, xml_out)
+        # store in xml
+        hc_sc.data.append(getattr(E, "%s_result" % (hc_sc.command_stage))(xml_out))
+        # print "***", hc_sc.command_stage
+        if hc_sc.data.tag == "package_device_connection":
+            # only send something back for package_device_connection commands
+            if hc_sc.command_stage == "pre":
+                self.log("pre-command finished, deciding what to do")
+                post_present = "post_command" in hc_sc.data.attrib
+                if post_present:
+                    send_return = self._pre_decide(hc_sc, cur_out.strip())
+                else:
+                    self.log("nothing to do, sending return")
+                    hc_sc.data.append(E.main_result())
+                    send_return = True
+            elif hc_sc.command_stage == "main":
+                send_return = False
+                post_present = "post_command" in hc_sc.data.attrib
+                if post_present:
+                    simple_command(
+                        hc_sc.data.attrib["post_command"],
+                        short_info="package",
+                        done_func=self._command_done,
+                        log_com=self.log,
+                        info="install package",
+                        command_stage="post",
+                        data=hc_sc.data)
+            elif hc_sc.command_stage == "post":
+                # self._post_decide(hc_sc, cur_out.strip())
+                send_return = True
+            if send_return:
+                # remove from package_commands
+                self.pdc_done(hc_sc.data)
         del hc_sc
-    def pdc_done(self, cur_pdc, xml_info):
+    def pdc_done(self, cur_pdc):
         self.log("pdc done")
         keep_pdc = False
-        if xml_info is not None:
-            cur_pdc.append(E.result(xml_info))
+        # print etree.tostring(cur_pdc, pretty_print=True)
+        if cur_pdc.find("main_result") is not None:
+            xml_info = cur_pdc.find("main_result")
+            if cur_pdc.find("pre_result") is not None:
+                xml_info.append(cur_pdc.find("pre_result"))
+            if cur_pdc.find("post_result") is not None:
+                xml_info.append(cur_pdc.find("post_result"))
+            # print "+++++", xml_info
             # check for out-of date repositories
             # this code makes no sense for flat-text responses
             warn_text = (" ".join([cur_el.text for cur_el in xml_info.findall(".//message[@type='warning']")])).strip().lower()
@@ -191,9 +237,38 @@ class install_process(threading_tools.process_obj):
                 self._handle_repo_list(first_com)
                 self._process_commands()
             elif cur_com in ["package_list"]:
-                if len(first_com.xpath(".//ns:packages/package_device_connection")):
+                # print first_com.pretty_print()
+                if len(first_com.xpath(".//ns:package_list/root/list-item")):
                     # clever enqueue ? FIXME
-                    for cur_pdc in first_com.xpath(".//ns:packages/package_device_connection"):
+                    for _cur_pdc in first_com.xpath(".//ns:package_list/root/list-item"):
+                        # rewrite
+                        cur_pdc = E.package_device_connection()
+                        for entry in _cur_pdc:
+                            if entry.tag in ["target_state", "installed"]:
+                                cur_pdc.attrib[entry.tag] = entry.text
+                            elif entry.tag in ["device", "idx"]:
+                                cur_pdc.attrib[entry.tag] = entry.text
+                                if entry.tag == "idx":
+                                    cur_pdc.attrib["pk"] = entry.text
+                            elif entry.tag in ["force_flag", "nodeps_flag"]:
+                                cur_pdc.attrib[entry.tag] = "1" if entry.text.lower() in ["true"] else "0"
+                            else:
+                                # ignore the rest
+                                # print "ignore: %s='%s'" % (entry.tag, entry.text)
+                                pass
+                        package = E.package()
+                        for entry in _cur_pdc.find("package"):
+                            if entry.tag in ["name", "version", "idx", "package_repo"]:
+                                package.attrib[entry.tag] = entry.text
+                            elif entry.tag in ["device", "idx"]:
+                                package.attrib[entry.tag] = entry.text
+                            elif entry.tag in ["always_latest"]:
+                                package.attrib[entry.tag] = "1" if entry.text.lower() in ["true"] else "0"
+                            else:
+                                # ignore the rest
+                                # print "ignore: %s='%s'" % (entry.tag, entry.text)
+                                pass
+                        cur_pdc.append(package)
                         # set flag to not init
                         cur_pdc.attrib["init"] = "0"
                         # flag to send return to server
@@ -218,20 +293,17 @@ class install_process(threading_tools.process_obj):
                 pack_xml.attrib["version"],
             )
 
-
 class yum_install_process(install_process):
     response_type = "yum_flat"
     def build_command(self, cur_pdc):
         # print etree.tostring(cur_pdc, pretty_print=True)
         if cur_pdc.tag == "special_command":
             if cur_pdc.attrib["command"] == "refresh":
-                yum_com = "/usr/bin/yum -y clean all ; /usr/bin/yum -y makecache"
-            else:
-                yum_com = None
+                cur_pdc.attrib["pre_command"] = "/usr/bin/yum -y clean all ; /usr/bin/yum -y makecache"
         else:
             if cur_pdc.attrib["target_state"] == "keep":
                 # nothing to do
-                yum_com = None
+                pass
             else:
                 pack_xml = cur_pdc[0]
                 # yum_com = {"install" : "install",
@@ -242,11 +314,8 @@ class yum_install_process(install_process):
                 #    pack_xml.attrib["name"],
                 #    pack_xml.attrib["version"],
                 # )
-                yum_com = "/bin/rpm -q %s" % (
-                    self.package_name(pack_xml),
-                    )
-                self.log("transformed pdc to '%s'" % (yum_com))
-        return yum_com
+                cur_pdc.attrib["pre_command"] = "/bin/rpm -q %s --queryformat=\"%%{NAME}\n%%{INSTALLTIME}\"" % (self.package_name(pack_xml))
+                cur_pdc.attrib["post_command"] = "/bin/rpm -q %s --queryformat=\"%%{NAME}\n%%{INSTALLTIME}\"" % (self.package_name(pack_xml))
     def _decide(self, hc_sc, cur_out):
         cur_pdc = hc_sc.data
         is_installed = False if cur_out.count("is not installed") else True
@@ -262,11 +331,12 @@ class yum_install_process(install_process):
                    "erase"   : "erase"}.get(cur_pdc.attrib["target_state"])
         package_name = self.package_name(pack_xml)
         if (is_installed and yum_com in ["install", "upgrade"]) or (not is_installed and yum_com in ["erase"]):
-            self.log("doing nothing")
-            if is_installed:
-                return True, E.stdout("package %s is installed" % (package_name))
-            else:
-                return True, E.stdout("package %s is not installed" % (package_name))
+            self.log("doing nothing, running post_command")
+            # FIXME, handle post command
+            # if is_installed:
+            #    return True, E.stdout("package %s is installed" % (package_name))
+            # else:
+            #    return True, E.stdout("package %s is not installed" % (package_name))
         else:
             self.log("starting action '%s'" % (yum_com))
             yum_com = "/usr/bin/yum -y %s %s" % (
@@ -277,10 +347,11 @@ class yum_install_process(install_process):
                 yum_com,
                 short_info="package",
                 done_func=self._command_done,
+                command_stage="main",
                 log_com=self.log,
                 info="handle package",
                 data=cur_pdc)
-            return False, None
+            # return False, None
     def _handle_repo_list(self, in_com):
         self.log("repo_list handling for yum-based distributions not implemented, FIXME", logging_tools.LOG_LEVEL_ERROR)
 
@@ -290,29 +361,21 @@ class zypper_install_process(install_process):
         # print etree.tostring(cur_pdc, pretty_print=True)
         if cur_pdc.tag == "special_command":
             if cur_pdc.attrib["command"] == "refresh":
-                zypper_com = "/usr/bin/zypper -q -x refresh"
-            else:
-                zypper_com = None
+                cur_pdc.atrib["pre_command"] = "/usr/bin/zypper -q -x refresh"
         else:
+            pack_xml = cur_pdc[0]
             if cur_pdc.attrib["target_state"] == "keep":
-                # nothing to do
-                zypper_com = None
+                # just check install state
+                cur_pdc.attrib["pre_command"] = "/bin/rpm -q %s --queryformat=\"%%{NAME}\n%%{INSTALLTIME}\"" % (self.package_name(pack_xml))
             else:
-                pack_xml = cur_pdc[0]
-                # yum_com = {"install" : "install",
-                #           "upgrade" : "update",
-                #           "erase"   : "erase"}.get(cur_pdc.attrib["target_state"])
-                # yum_com = "/usr/bin/yum -y %s %s-%s" % (
-                #    yum_com,
-                #    pack_xml.attrib["name"],
-                #    pack_xml.attrib["version"],
-                # )
-                zypper_com = "/bin/rpm -q %s" % (self.package_name(pack_xml))
-                self.log("transformed pdc to '%s'" % (zypper_com))
-        return zypper_com
-    def _decide(self, hc_sc, cur_out):
+                cur_pdc.attrib["pre_command"] = "/bin/rpm -q %s --queryformat=\"%%{NAME}\n%%{INSTALLTIME}\"" % (self.package_name(pack_xml))
+                cur_pdc.attrib["post_command"] = "/bin/rpm -q %s --queryformat=\"%%{NAME}\n%%{INSTALLTIME}\"" % (self.package_name(pack_xml))
+    def _pre_decide(self, hc_sc, cur_out):
+        _stage = hc_sc.command_stage
         cur_pdc = hc_sc.data
         is_installed = False if cur_out.count("is not installed") else True
+        cur_pdc.attrib["pre_installed"] = "1" if is_installed else "0"
+        cur_pdc.attrib["pre_zypper_com"] = ""
         pack_xml = cur_pdc[0]
         package_name = self.package_name(pack_xml)
         always_latest = self.get_always_latest(pack_xml)
@@ -327,21 +390,28 @@ class zypper_install_process(install_process):
         zypper_com = {
             "install" : "in",
             "upgrade" : "up",
-            "erase"   : "rm"}.get(cur_pdc.attrib["target_state"])
+            "erase"   : "rm",
+        }.get(cur_pdc.attrib["target_state"])
         # o already installed and cmd == in
         # o already installed and cmd == up and always_latest flag not set
         # o not installed and cmd == rm
         if (is_installed and zypper_com in ["in"]) or (is_installed and zypper_com in ["up"] and not always_latest) or (not is_installed and zypper_com in ["rm"]):
             self.log("doing nothing")
             if is_installed:
-                return True, E.stdout("package %s is installed" % (package_name))
+                cur_pdc.append(E.main_result(
+                    E.stdout("package %s is installed" % (package_name))
+                ))
             else:
-                return True, E.stdout("package %s is not installed" % (package_name))
+                cur_pdc.append(E.main_result(
+                    E.stdout("package %s is not installed" % (package_name))
+                ))
+            return True
         else:
             if not is_installed and zypper_com == "up" and always_latest:
                 zypper_com = "in"
                 self.log("changing zypper_com to '%s' (always_latest flag)" % (zypper_com), logging_tools.LOG_LEVEL_WARN)
             self.log("starting action '%s'" % (zypper_com))
+            cur_pdc.attrib["pre_zypper_com"] = zypper_com
             # flags: xml output, non-interactive
             zypper_com = "/usr/bin/zypper -x -n %s %s %s" % (
                 zypper_com,
@@ -352,12 +422,35 @@ class zypper_install_process(install_process):
                 zypper_com,
                 short_info="package",
                 done_func=self._command_done,
+                command_stage="main",
                 log_com=self.log,
                 info="handle package",
                 data=cur_pdc)
-            return False, None
+            return False
+            # return False, None
+#     def _post_decide(self, hc_sc, cur_out):
+#         _stage = hc_sc.command_stage
+#         cur_pdc = hc_sc.data
+#         print "***", cur_out, hc_sc.data.attrib
+#         # o already installed and cmd == in
+#         # o already installed and cmd == up and always_latest flag not set
+#         # o not installed and cmd == rm
+#         if False:
+#             # if is_installed:
+#             #    return True, E.stdout("package %s is installed" % (package_name))
+#             # else:
+#             #    return True, E.stdout("package %s is not installed" % (package_name))
+#             pass
+#         else:
+#             pass
+#             # flags: xml output, non-interactive
+#             # return False, None
     def _handle_repo_list(self, in_com):
-        in_repos = in_com.xpath(".//ns:repos")[0]
+        # print etree.tostring(in_com.tree, pretty_print=True)
+        # new code
+        in_repos = in_com.xpath(".//ns:repo_list/root")[0]
+        # old code
+        # in_repos = in_com.xpath(".//ns:repos")[0]
         self.log("handling repo_list (%s)" % (logging_tools.get_plural("entry", len(in_repos))))
         # manual comparision, better modify them with zypper, FIXME ?
         repo_dir = "/etc/zypp/repos.d"
@@ -365,9 +458,11 @@ class zypper_install_process(install_process):
         self.log("%s found in %s" % (
             logging_tools.get_plural("repository", len(cur_repo_names)),
             repo_dir))
-        _new_repo_names = in_repos.xpath(".//package_repo/@alias")
+        # _new_repo_names = in_repos.xpath(".//package_repo/@alias")
+        _new_repo_names = in_repos.xpath(".//alias/text()")
         old_repo_dict = dict([(f_name, file(os.path.join(repo_dir, "%s.repo" % (f_name)), "r").read()) for f_name in cur_repo_names])
-        new_repo_dict = dict([(in_repo.attrib["alias"], get_repo_str(in_repo)) for in_repo in in_repos])
+        # new_repo_dict = dict([(in_repo.findtextattrib["alias"], get_repo_str(in_repo)) for in_repo in in_repos])
+        new_repo_dict = dict([(in_repo.findtext("alias"), get_repo_str(in_repo)) for in_repo in in_repos])
         rewrite_repos = False
         if any([old_repo_dict[name] != new_repo_dict[name] for name in set(cur_repo_names) & set (new_repo_dict.keys())]):
             self.log("repository content differs, forcing rewrite")

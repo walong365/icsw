@@ -1,6 +1,6 @@
 #!/usr/bin/python-init -Ot
 #
-# Copyright (C) 2001,2002,2003,2004,2005,2006,2007,2008,2009,2012,2013 Andreas Lang-Nevyjel
+# Copyright (C) 2001-2009,2012-2014 Andreas Lang-Nevyjel
 #
 # this file is part of package-client
 #
@@ -34,6 +34,7 @@ class simple_command(object):
         simple_command.sc_idx += 1
         self.idx = simple_command.sc_idx
         self.com_str = com_str
+        self.command_stage = kwargs["command_stage"]
         # stream_id, None for unsorted
         # streams with the same id are processed strictly in order
         # (for example to feed the DHCP-server)
@@ -45,7 +46,8 @@ class simple_command(object):
         self.info = kwargs.get("info", None)
         self.max_run_time = kwargs.get("max_run_time", 600)
         self.log(
-            "init command %s%s, delay is %s" % (
+            "init %s-command %s%s, delay is %s" % (
+                self.command_stage,
                 "with %s" % (
                     logging_tools.get_plural(
                         "line",
@@ -60,6 +62,7 @@ class simple_command(object):
         if "data" in kwargs:
             self.data = kwargs["data"]
         simple_command.com_list.append(self)
+        # print "add", len(simple_command.com_list)
     @staticmethod
     def setup(process):
         simple_command.process = process
@@ -111,4 +114,3 @@ class simple_command(object):
     def call(self):
         self.start_time = time.time()
         self.popen = subprocess.Popen(self.com_str, shell=True, stderr=subprocess.STDOUT, stdout=subprocess.PIPE)
-

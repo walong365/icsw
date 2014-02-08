@@ -23,9 +23,11 @@
 
 from django.db.models import Q
 from initat.cluster.backbone.models import package_repo, cluster_timezone, \
-     package_search_result, device_variable, device, package_device_connection
+     package_search_result, device_variable, device, package_device_connection, \
+     package_device_connection_wp_serializer, package_repo_serializer
 from initat.package_install.server.config import global_config, CONFIG_NAME, \
     PACKAGE_VERSION_VAR_NAME, LAST_CONTACT_VAR_NAME
+from rest_framework.renderers import XMLRenderer
 from lxml import etree # @UnresolvedImport
 from lxml.builder import E # @UnresolvedImport
 import datetime
@@ -316,6 +318,7 @@ class client(object):
         self.uid = c_uid
         self.name = name
         self.__version = ""
+        self.__client_gen = 0
         self.device = device.objects.get(Q(name=self.name))
         self.__log_template = None
         self.__last_contact = None
@@ -400,9 +403,18 @@ class client(object):
         cur_var.save()
     def _set_version(self, new_vers):
         if new_vers != self.__version:
-            self.log("changed version from '%s' to '%s'" % (
+            try:
+                if new_vers.count("-"):
+                    major, minor = new_vers.split("-")[0].split(".")
+                    if int(major) >= 3 and int(minor) >= 1:
+                        self.__client_gen = 1
+            except:
+                self.log("cannot interpret version '%s'" % (new_vers))
+            self.log("changed version from '%s' to '%s' (generation %d)" % (
                 self.__version,
-                new_vers))
+                new_vers,
+                self.__client_gen,
+                ))
             self.__version = new_vers
             self._modify_device_variable(
                 PACKAGE_VERSION_VAR_NAME,
@@ -444,10 +456,13 @@ class client(object):
         self.log("%s in source list, %s in send_list" % (
             logging_tools.get_plural("package", len(pdc_list)),
             logging_tools.get_plural("package", len(send_list)),))
-        resp = srv_com.builder(
-            "packages",
-            *[cur_pdc.get_xml(with_package=True) for cur_pdc in send_list]
-        )
+        if self.__client_gen == 1:
+            resp = etree.fromstring(XMLRenderer().render(package_device_connection_wp_serializer(send_list, many=True).data))
+        else:
+            resp = srv_com.builder(
+                "packages",
+                *[cur_pdc.get_xml(with_package=True) for cur_pdc in send_list]
+            )
         srv_com["package_list"] = resp
     def _get_repo_list(self, srv_com):
         repo_list = package_repo.objects.filter(Q(publish_to_nodes=True))
@@ -456,22 +471,26 @@ class client(object):
             logging_tools.get_plural("publish repo", len(repo_list)),
             len(send_ok),
             ))
-        resp = srv_com.builder(
-            "repos",
-            *[cur_repo.get_xml() for cur_repo in send_ok]
-        )
+        if self.__client_gen == 1:
+            resp = etree.fromstring(XMLRenderer().render(package_repo_serializer(send_ok, many=True).data))
+        else:
+            resp = srv_com.builder(
+                "repos",
+                *[cur_repo.get_xml() for cur_repo in send_ok]
+            )
         srv_com["repo_list"] = resp
     def _package_info(self, srv_com):
         pdc_xml = srv_com.xpath(".//package_device_connection", smart_strings=False)[0]
-        info_xml = srv_com.xpath(".//result", smart_strings=False)
+        info_xml = srv_com.xpath(".//result|.//main_result", smart_strings=False)
         if len(info_xml):
             info_xml = info_xml[0]
             cur_pdc = package_device_connection.objects.select_related("package").get(Q(pk=pdc_xml.attrib["pk"]))
             cur_pdc.response_type = pdc_xml.attrib["response_type"]
             self.log("got package_info for %s (type is %s)" % (unicode(cur_pdc.package), cur_pdc.response_type))
             cur_pdc.response_str = etree.tostring(info_xml)
+            # print cur_pdc.response_str
             cur_pdc.interpret_response()
-            cur_pdc.save(update_fields=["response_type", "response_str", "installed"])
+            cur_pdc.save(update_fields=["response_type", "response_str", "installed", "install_time"])
         else:
             self.log("got package_info without result", logging_tools.LOG_LEVEL_WARN)
     def new_command(self, srv_com):
