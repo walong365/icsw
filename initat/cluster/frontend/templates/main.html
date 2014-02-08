@@ -51,6 +51,16 @@
 {% block javascript_jquery %}{% endblock %}
 {% block modernizr %}{% endblock %}
 {% block javascript %}
+    <script type="text/javascript">
+    {% inlinecoffeescript %}
+    # attach global permissions and license info to window object (== global variable)
+    window.CLUSTER_LICENSE = {{ CLUSTER_LICENSE | safe }};
+    window.GLOBAL_PERMISSIONS = {{ GLOBAL_PERMISSIONS | safe }}
+    window.OBJECT_PERMISSIONS = {{ OBJECT_PERMISSIONS | safe }}
+    #console.log window.GLOBAL_PERMISSIONS
+    {% endinlinecoffeescript %}
+    </script>
+    
     <!--[if lt IE 9]>{% compressed_js 'js_jquery_old' %}><![endif]-->
     <!--[if gte IE 9]><!-->{% compressed_js 'js_jquery_new' %}<!--<![endif]-->
     {% compressed_js 'js_base' %}
@@ -73,6 +83,9 @@
 
 {% block pre_title %}{{ settings.INIT_PRODUCT_NAME }}&reg; - {% endblock %}
 {% block title %}{% trans "Main Page" %}{% endblock %}
+
+# disable superfish
+{% block javascript_superfish %}{% endblock %}
 
 {% block main %}
 {% block body %}
@@ -146,10 +159,6 @@ init_blockUI = ->
     $.blockUI.defaults.overlayCSS.opacity = 0.1
     
 add_handlers_main = ->
-    # attach global permissions to window object (== global variable)
-    window.GLOBAL_PERMISSIONS = {}
-    for entry in {{ GLOBAL_PERMISSIONS|safe }}
-        window.GLOBAL_PERMISSIONS[entry.key] = entry.value
     init_layout()
     init_blockUI()
     # init noty
