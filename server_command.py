@@ -359,6 +359,8 @@ class srv_command(object):
         else:
             return ret_str, ret_state
     def __del__(self):
+        del self.__tree
+        del self.__builder
         srv_command.srvc_open -= 1
         # print "del", srv_command.srvc_open
     def __len__(self):
