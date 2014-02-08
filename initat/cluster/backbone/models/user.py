@@ -2,18 +2,16 @@
 
 from django.conf import settings
 from django.contrib.contenttypes.models import ContentType
+from django.core.cache import cache
 from django.core.exceptions import ValidationError, ImproperlyConfigured
 from django.db import models
 from django.db.models import Q, signals, get_model
 from django.dispatch import receiver
-from django.core.cache import cache
 from initat.cluster.backbone.models.functions import _check_empty_string, _check_integer
 from rest_framework import serializers
-from rest_framework.renderers import JSONRenderer
-from rest_framework.parsers import JSONParser
-from StringIO import StringIO
 import base64
 import crypt
+import django.core.serializers
 import hashlib
 import inspect
 import os
@@ -57,6 +55,9 @@ class auth_cache(object):
             self.has_all_perms = False
         # print self.cache_key
         self._from_db()
+        # init device <-> device group luts
+        # maps from device to the respective meta-device
+        self.__dg_lut = {}
     def _from_db(self):
         self.__perm_dict = {_csw_key(cur_perm) : cur_perm for cur_perm in csw_permission.objects.all().select_related("content_type")}
         # pprint.pprint(self.__perm_dict)
@@ -114,17 +115,28 @@ class auth_cache(object):
         else:
             return set()
     def get_all_object_perms(self, obj):
-        obj_ct = ContentType.objects.get_for_model(obj)
-        # which permissions are valid for this object ?
-        obj_perms = set([key for key, value in self.__perm_dict.iteritems() if value.content_type == obj_ct])
-        if self.has_all_perms:
-            return obj_perms
+        if obj:
+            obj_ct = ContentType.objects.get_for_model(obj)
+            # which permissions are valid for this object ?
+            obj_perms = set([key for key, value in self.__perm_dict.iteritems() if value.content_type == obj_ct])
         else:
-            # which permissions are global set ?
-            global_perms = obj_perms & set(self.__perms.keys())
-            # local permissions
-            local_perms = set([key for key in obj_perms if obj.pk in self.__obj_perms.get(key, [])])
-            return global_perms | local_perms
+            # copy
+            obj_perms = set(self.__perm_dict.keys())
+        if self.has_all_perms:
+            # return all permissions
+            return {key: AC_FULL for key in obj_perms}
+        else:
+            # which permissions are globaly set ?
+            global_perms = {key: value for key, value in self.__perms.iteritems() if key in obj_perms}
+            # obj_perms = {key: self.__perms[key] for key in obj_perms.iterkeys()}
+            if obj:
+                # local permissions
+                local_perms = {key : max(obj_list.values()) for key, obj_list in self.__obj_perms.iteritems() if key in obj_perms and obj.pk in obj_list}
+            else:
+                local_perms = {key : max(obj_list.values()) for key, obj_list in self.__obj_perms.iteritems() if key in obj_perms}
+            # merge to result permissions
+            result_perms = {key : max(global_perms.get(key, 0), local_perms.get(key, 0)) for key in set(global_perms.keys()) | set(local_perms.keys())}
+            return result_perms
     def get_object_access_levels(self, obj, is_superuser):
         obj_type = obj._meta.model_name
         # returns a dict with all access levels for the given object
@@ -133,8 +145,20 @@ class auth_cache(object):
             ac_dict = {key : AC_FULL for key in obj_perms}
         else:
             ac_dict = {key : self.__obj_perms.get(key, {}).get(obj.pk, self.__perms.get(key, -1)) for key in obj_perms}
-            return {key : value for key, value in ac_dict.iteritems() if value >= 0}
+            # filter values
+            ac_dict = {key : value for key, value in ac_dict.iteritems() if value >= 0}
+            if obj_type == "device":
+                self._fill_dg_lut(obj)
+                # get permissions dict for meta device
+                meta_dict = {key : self.__obj_perms.get(key, {}).get(self.__dg_lut[obj.pk], self.__perms.get(key, -1)) for key in obj_perms}
+                # copy to device permdict
+                for key, value in meta_dict.iteritems():
+                    ac_dict[key] = max(ac_dict.get(key, 0), value)
         return ac_dict
+    def _fill_dg_lut(self, dev):
+        if dev.pk not in self.__dg_lut:
+            for dev_pk, md_pk in dev._default_manager.filter(Q(device_group=dev.device_group_id)).values_list("pk", "device_group__device"):
+                self.__dg_lut[dev_pk] = md_pk
     def get_global_permissions(self):
         return self.__perms
 
@@ -378,9 +402,6 @@ def get_global_permissions(auth_obj):
         auth_obj._auth_cache = auth_cache(auth_obj)
     return auth_obj._auth_cache.get_global_permissions()
 
-import django.core.serializers
-
-
 class user_manager(models.Manager):
     def get_by_natural_key(self, login):
         return super(user_manager, self).get(Q(login=login))
@@ -459,6 +480,9 @@ class user(models.Model):
     object_perms = models.ManyToManyField(csw_object_permission, related_name="db_user_perms", blank=True, through=user_object_permission)
     is_superuser = models.BooleanField(default=False)
     db_is_auth_for_password = models.BooleanField(default=False)
+    @property
+    def is_anonymous(self):
+        return False
     def mc_key(self):
         if self.pk:
             return "icsw_user_pk_%d" % (self.pk)
@@ -525,12 +549,12 @@ class user(models.Model):
     def get_all_object_perms(self, obj, ask_parent=True):
         # return all permissions we have for a given object
         if not (self.active and self.group.active):
-            r_val = set()
+            r_val = {}
         else:
+            r_val = get_all_object_perms(self, obj)
             if ask_parent:
-                r_val = get_all_object_perms(self, obj) | get_all_object_perms(self.group, obj)
-            else:
-                r_val = get_all_object_perms(self, obj)
+                for key, value in get_all_object_perms(self.group, obj).iteritems():
+                    r_val[key] = max(value, r_val.get(key, 0))
         return r_val
     def get_allowed_object_list(self, perm, ask_parent=True):
         # get all object pks we have an object permission for

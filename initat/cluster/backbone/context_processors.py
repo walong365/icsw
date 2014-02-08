@@ -18,6 +18,7 @@ class csw_obj_lut(object):
         if obj_name.count("."):
             raise ImproperlyConfigured("dot found in obj_name '%s' (key=%s)" % (obj_name, key))
         if obj_name == "ANY__":
+            print "cfo", key
             return self.user.has_object_perm(key)
         elif obj_name in AC_MASK_DICT:
             _level = self.user.get_object_perm_level(key)

@@ -1,6 +1,5 @@
 #!/usr/bin/python -Otu
 
-
 from django.conf import settings
 from django.contrib.auth.decorators import login_required
 from django.core.exceptions import ImproperlyConfigured
@@ -8,21 +7,11 @@ from django.core.urlresolvers import reverse
 from django.shortcuts import render_to_response, redirect
 from django.template.loader import render_to_string
 from django.utils.decorators import method_decorator
-from rest_framework import serializers
 import django.template
+import json
 import logging
-from rest_framework.renderers import JSONRenderer
 
 logger = logging.getLogger("cluster.render")
-
-class simple_global_perm(object):
-    def __init__(self, key, value):
-        self.key = key
-        self.value = value
-
-class simple_global_perm_serializer(serializers.Serializer):
-    key = serializers.CharField()
-    value = serializers.IntegerField()
 
 class render_me(object):
     def __init__(self, request, template, *args, **kwargs):
@@ -38,16 +27,30 @@ class render_me(object):
         self.my_dict.update(in_dict)
     def __call__(self, *args):
         return self.render(*args)
+    def _unfold(self, in_dict):
+        _keys = in_dict.keys()
+        # unfold dictionary
+        for _key in _keys:
+            _parts = _key.split(".")
+            in_dict.setdefault(_parts[0], {}).setdefault(_parts[1], {})[_parts[2]] = in_dict[_key]
     def render(self, *args):
         in_dict = {}
         for add_dict in args:
             in_dict.update(add_dict)
         self.my_dict.update(in_dict)
-        if self.request.user:
-            ser = simple_global_perm_serializer([simple_global_perm(key, value) for key, value in self.request.user.get_global_permissions().iteritems()], many=True)
-            self.my_dict["GLOBAL_PERMISSIONS"] = JSONRenderer().render(ser.data)
+        if self.request.user and not self.request.user.is_anonymous:
+            gp_dict = self.request.user.get_global_permissions()
+            op_dict = self.request.user.get_all_object_perms(None)
+            self._unfold(gp_dict)
+            self._unfold(op_dict)
         else:
-            self.my_dict["GLOBAL_PERMISSIONS"] = JSONRenderer().render([])
+            gp_dict = {}
+            op_dict = {}
+        import pprint
+        pprint.pprint(gp_dict)
+        self.my_dict["GLOBAL_PERMISSIONS"] = json.dumps(gp_dict)
+        self.my_dict["OBJECT_PERMISSIONS"] = json.dumps(op_dict)
+        self.my_dict["CLUSTER_LICENSE"] = json.dumps(settings.CLUSTER_LICENSE)
         return render_to_response(
             self.template,
             self.my_dict,
