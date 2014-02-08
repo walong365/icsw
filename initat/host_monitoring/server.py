@@ -420,15 +420,16 @@ class server_code(threading_tools.process_pool):
         self.result_socket.send_unicode(src_id, zmq.SNDMORE)
         self.result_socket.send_unicode(unicode(srv_com))
     def _recv_command(self, zmq_sock):
-        # from guppy import hpy
-        # hp = hpy()
-        # print hp.heap().get_rp()
         data = [zmq_sock.recv()]
         while zmq_sock.getsockopt(zmq.RCVMORE):
             data.append(zmq_sock.recv())
         if len(data) == 2:
             src_id = data.pop(0)
             data = data[0]
+            # zmq_sock.send_unicode(src_id, zmq.SNDMORE)
+            # zmq_sock.send_unicode(data)
+            # del data
+            # return
             srv_com = server_command.srv_command(source=data)
             rest_el = srv_com.xpath(".//ns:arguments/ns:rest", smart_strings=False)
             if rest_el:

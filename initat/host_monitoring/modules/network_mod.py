@@ -130,13 +130,17 @@ class _general(hm_classes.hm_module):
         act_time = time.time()
         time_diff = act_time - self.last_update
         if time_diff < 0:
-            self.log("(net_int) possible clock-skew detected, adjusting (%s since last request)" % (logging_tools.get_diff_time_str(time_diff)),
-                     logging_tools.LOG_LEVEL_WARN)
+            self.log(
+                "(net_int) possible clock-skew detected, adjusting (%s since last request)" % (
+                    logging_tools.get_diff_time_str(time_diff)),
+                 logging_tools.LOG_LEVEL_WARN)
             self.last_update = act_time
         elif time_diff < MIN_UPDATE_TIME:
-            self.log("(net_int) too many update requests, skipping this one (last one %s ago; %d seconds minimum)" % (logging_tools.get_diff_time_str(time_diff),
-                                                                                                                      MIN_UPDATE_TIME),
-                     logging_tools.LOG_LEVEL_WARN)
+            self.log(
+                "(net_int) too many update requests, skipping this one (last one %s ago; %d seconds minimum)" % (
+                    logging_tools.get_diff_time_str(time_diff),
+                    MIN_UPDATE_TIME),
+                 logging_tools.LOG_LEVEL_WARN)
         else:
             self.act_nds.update()
             self.last_update = time.time()
@@ -536,6 +540,8 @@ class ping_sp_struct(hm_classes.subprocess_struct):
             self.srv_com["result"] = res_el
         self.send_return()
         self.terminated = True
+    # def __del__(self):
+    #    print "dp"
 
 class ping_command(hm_classes.hm_command):
     info_str = "ping command"

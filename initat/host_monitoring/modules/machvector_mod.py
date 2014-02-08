@@ -269,12 +269,15 @@ class machine_vector(object):
                 print json.dumps(send_vector)
                 self.__socket_dict[send_id].send_unicode(json.dumps(send_vector))
         except:
+            exc_info = process_tools.get_except_info()
             # ignore errors
             self.log(
                 "error sending to (%s, %d): %s" % (
                     t_host,
                     t_port,
-                    process_tools.get_except_info()), logging_tools.LOG_LEVEL_ERROR)
+                    exc_info), logging_tools.LOG_LEVEL_ERROR)
+            if exc_info.count("int_error"):
+                raise
         # print etree.tostring(send_vector, pretty_print=True)
     def close(self):
         for _s_id, t_sock in self.__socket_dict.iteritems():
