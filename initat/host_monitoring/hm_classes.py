@@ -48,7 +48,7 @@ class subprocess_struct(object):
         "multi_command", "run_info", "src_id"]
     class Meta:
         max_usage = 2
-        twisted = False
+        direct = False
         max_runtime = 300
         use_popen = True
         verbose = False

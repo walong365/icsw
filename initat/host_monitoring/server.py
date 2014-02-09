@@ -21,12 +21,12 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
 
-""" host-monitoring, with 0MQ and twisted support, server code """
+""" host-monitoring, with 0MQ and direct socket support, server code """
 
 from initat.host_monitoring.config import global_config
 from initat.host_monitoring.constants import TIME_FORMAT
 from initat.host_monitoring.hm_inotify import inotify_process
-from initat.host_monitoring.hm_twisted import twisted_process
+from initat.host_monitoring.hm_direct import socket_process
 from lxml import etree # @UnresolvedImport
 from lxml.builder import E # @UnresolvedImport
 import StringIO
@@ -71,7 +71,7 @@ class server_code(threading_tools.process_pool):
                 "out" : (1, "host-monitoring.out"),
                 "err" : (0, "/var/lib/logging-server/py_err")},
                                       zmq_context=self.zmq_context)
-        self.add_process(twisted_process("twisted"), twisted=True, start=True)
+        self.add_process(socket_process("socket"), start=True)
         self.__log_template = logging_tools.get_logger(
             global_config["LOG_NAME"],
             global_config["LOG_DESTINATION"],
@@ -85,7 +85,7 @@ class server_code(threading_tools.process_pool):
         self._init_network_sockets()
         self.register_exception("int_error" , self._sigint)
         self.register_exception("term_error", self._sigint)
-        self.register_func("twisted_ping_result", self._twisted_ping_result)
+        self.register_func("socket_ping_result", self._socket_ping_result)
         self.__callbacks, self.__callback_queue = ({}, {})
         self.register_func("register_callback", self._register_callback)
         self.register_func("callback_result", self._callback_result)
@@ -486,8 +486,8 @@ class server_code(threading_tools.process_pool):
                     if not self.__delayed:
                         self.register_timer(self._check_delayed, 0.1)
                         self.loop_granularity = 10.0
-                    if delayed.Meta.twisted:
-                        self.send_to_process("twisted",
+                    if delayed.Meta.direct:
+                        self.send_to_process("socket",
                                              *delayed.run())
                     else:
                         delayed.run()
@@ -552,7 +552,7 @@ class server_code(threading_tools.process_pool):
                 "reply" : "caught server exception '%s'" % (process_tools.get_except_info()),
                 "state" : "%d" % (server_command.SRV_REPLY_STATE_CRITICAL)})
         return sp_struct
-    def _twisted_ping_result(self, src_proc, src_id, *args):
+    def _socket_ping_result(self, src_proc, src_id, *args):
         ping_id = args[0]
         found = False
         for cur_del in self.__delayed:

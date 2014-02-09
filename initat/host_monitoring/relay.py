@@ -21,13 +21,13 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
 
-""" host-monitoring, with 0MQ and twisted support, relay part """
+""" host-monitoring, with 0MQ and direct socket support, relay part """
 
 # import pprint
 from initat.host_monitoring import limits, hm_classes
 from initat.host_monitoring.config import global_config
 from initat.host_monitoring.constants import MAPPING_FILE_IDS, MAPPING_FILE_TYPES, MASTER_FILE_NAME
-from initat.host_monitoring.hm_twisted import twisted_process
+from initat.host_monitoring.hm_direct import socket_process
 from initat.host_monitoring.tools import my_cached_file
 from lxml import etree # @UnresolvedImport
 from lxml.builder import E # @UnresolvedImport
@@ -426,9 +426,9 @@ class host_connection(object):
                             host_mes.sr_probe = self.sr_probe
                             host_mes.sent = True
             else:
-                # send to twisted-thread for old clients
+                # send to socket-thread for old clients
                 host_connection.relayer_process.send_to_process(
-                    "twisted",
+                    "socket",
                     "connection",
                     host_mes.src_id,
                     unicode(host_mes.srv_com))
@@ -651,7 +651,7 @@ class relay_code(threading_tools.process_pool):
         else:
             self.__io_dict = None
         # we need no icmp capability in relaying
-        self.add_process(twisted_process("twisted", icmp=False), twisted=True, start=True)
+        self.add_process(socket_process("socket", icmp=False), start=True)
         self.__log_template = logging_tools.get_logger(global_config["LOG_NAME"], global_config["LOG_DESTINATION"], zmq=True, context=self.zmq_context)
         self.install_signal_handlers()
         id_discovery.init(self, global_config["BACKLOG_SIZE"], global_config["TIMEOUT"], self.__verbose)
@@ -666,7 +666,7 @@ class relay_code(threading_tools.process_pool):
         self.register_exception("hup_error", self._hup_error)
         self.__delayed = []
         self.register_timer(self._check_timeout, 2)
-        self.register_func("twisted_result", self._twisted_result)
+        self.register_func("socket_result", self._socket_result)
         self.version_dict = {}
         self._show_config()
         if self.objgraph:
@@ -797,7 +797,7 @@ class relay_code(threading_tools.process_pool):
         self.__msi_block = msi_block
     def process_start(self, src_process, src_pid):
         # twisted needs 4 threads if connecting to TCP clients, 3 if not (???)
-        if src_process == "twisted":
+        if src_process == "socket":
             if src_pid in self.__msi_block.get_pids():
                 # add one extra thread
                 mult = 1
@@ -860,7 +860,7 @@ class relay_code(threading_tools.process_pool):
                     if not cur_del.terminated:
                         new_list.append(cur_del)
             self.__delayed = new_list
-    def _twisted_result(self, src_proc, proc_id, src_id, srv_com, data_str):
+    def _socket_result(self, src_proc, proc_id, src_id, srv_com, data_str):
         if src_id in self.__old_send_lut:
             self.__old_send_lut.pop(src_id)._handle_old_result(src_id, data_str)
         else:

@@ -21,22 +21,26 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
 
-""" host-monitoring, with 0MQ and twisted support, twisted part """
+""" host-monitoring for 0MQ >=  4.x.y, direct socket part """
 
-from icmp_twisted import install
+# from icmp_twisted import install
 
-reactor = install()
+# reactor = install()
 
 from initat.host_monitoring.config import global_config
-from twisted.internet.protocol import ClientFactory, Protocol # @UnresolvedImport
-from twisted.python import log # @UnresolvedImport
+# from twisted.internet.protocol import ClientFactory, Protocol # @UnresolvedImport
+# from twisted.python import log # @UnresolvedImport
 import icmp_twisted
 import logging_tools
 import process_tools
 import server_command
 import socket
+import select
 import threading_tools
 import time
+
+Protocol = object
+ClientFactory = object
 
 class tcp_send(Protocol):
     # def __init__(self, log_recv):
@@ -124,16 +128,19 @@ class tcp_factory(ClientFactory):
         self.twisted_process.send_result(cur_proto.src_id, unicode(cur_proto.srv_com), data)
 
 class hm_icmp_protocol(icmp_twisted.icmp_protocol):
-    def __init__(self, tw_process, log_template):
+    def __init__(self, process, log_template):
         self.__log_template = log_template
         icmp_twisted.icmp_protocol.__init__(self)
+        self.__process = process
         self.__work_dict, self.__seqno_dict = ({}, {})
         self.__pings_in_flight = 0
-        self.__twisted_process = tw_process
         self.__debug = global_config["DEBUG"]
         # group dict for ping to multiple hosts
         self.__group_dict = {}
         self.__group_idx = 0
+        self.init_socket()
+        self.__process.register_socket(self.socket, select.POLLIN, self.received)
+        # self.raw_socket.bind("0.0.0.0")
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
         self.__log_template.log(log_level, "[icmp] %s" % (what))
     def __setitem__(self, key, value):
@@ -196,7 +203,6 @@ class hm_icmp_protocol(icmp_twisted.icmp_protocol):
         if key in self:
             value = self[key]
             if value["sent"] < value["num"]:
-                # if value["sent_list"]:
                 # send if last send was at least slide_time ago
                 if value["next_send"] <= cur_time: # or value["recv_ok"] == value["sent"]:
                     # print key, value["recv_ok"], value["sent"], value["next_send"] <= cur_time
@@ -215,10 +221,12 @@ class hm_icmp_protocol(icmp_twisted.icmp_protocol):
                         value["next_send"] = cur_time + value["slide_time"]
                         self.__seqno_dict[self.echo_seqno] = key
                         if value["sent"] < value["num"]:
-                            reactor.callLater(value["slide_time"] + 0.001, self._update, key)
+                            self.__process.register_timer(self._update, value["slide_time"] + 0.001, oneshot=True, data=key)
                         if value["sent"] == 1:
                             # register final timeout
-                            reactor.callLater(value["timeout"], self._update, key)
+                            # print "reg_to", key, value["timeout"]
+                            self.__process.register_timer(self._update, value["timeout"], oneshot=True, data=key)
+                            # reactor.callLater(value["timeout"], self._update, key)
             # check for timeout
             # print value["sent_list"]
             if not from_reply:
@@ -227,18 +235,18 @@ class hm_icmp_protocol(icmp_twisted.icmp_protocol):
                     value["recv_fail"] += 1
                     value["recv_list"][seq_to] = None
             # check for ping finish
-            if value["error_list"] or (value["sent"] == value["num"] and value["recv_ok"] + value["recv_fail"] == value["num"]):
+            if value["error_list"] or (value["sent"] == value["num"] and value["recv_ok"] + value["recv_fail"] == value["num"] or abs(cur_time - value["start"]) > value["timeout"]):
                 all_times = [value["recv_list"][s_key] - value["sent_list"][s_key] for s_key in value["sent_list"].iterkeys() if value["recv_list"].get(s_key, None) != None]
                 if key in self.__group_dict:
                     t_seq_str = self.__group_dict[key]
                     self.__group_dict[t_seq_str][key] = (value["host"], value["sent"], value["recv_ok"], all_times, ", ".join(value["error_list"]))
                     if len([t_key for t_key, value in self.__group_dict[t_seq_str].iteritems() if value == None]) == 0:
                         # group done
-                        self.__twisted_process.send_ping_result(t_seq_str, list(self.__group_dict[t_seq_str].itervalues()))
+                        self.__process.send_ping_result(t_seq_str, list(self.__group_dict[t_seq_str].itervalues()))
                         del self.__group_dict[t_seq_str]
                     del self.__group_dict[key]
                 else:
-                    self.__twisted_process.send_ping_result(key, value["sent"], value["recv_ok"], all_times, ", ".join(value["error_list"]))
+                    self.__process.send_ping_result(key, value["sent"], value["recv_ok"], all_times, ", ".join(value["error_list"]))
                 del self[key]
                 self.__pings_in_flight -= 1
         else:
@@ -246,8 +254,10 @@ class hm_icmp_protocol(icmp_twisted.icmp_protocol):
                 # should only happen for delayed pings or pings with error
                 self.log("got delayed ping reply (%s)" % (key), logging_tools.LOG_LEVEL_WARN)
         # pprint.pprint(self.__work_dict)
-    def received(self, dgram, recv_time=None):
-        if dgram.packet_type == 0 and dgram.ident == self.__twisted_process.pid & 0x7fff:
+    def received(self, sock):
+        recv_time = time.time()
+        dgram = self.parse_datagram(sock.recv(1024))
+        if dgram and dgram.packet_type == 0 and dgram.ident == self.__process.pid & 0x7fff:
             seqno = dgram.seqno
             # if seqno % 3 == 10:
             #    return
@@ -263,26 +273,23 @@ class hm_icmp_protocol(icmp_twisted.icmp_protocol):
                     value["recv_ok"] += 1
                 self._update(self.__seqno_dict[seqno], from_reply=True)
 
-class twisted_process(threading_tools.process_obj):
+class socket_process(threading_tools.process_obj):
     def process_init(self):
         self.__log_template = logging_tools.get_logger(global_config["LOG_NAME"], global_config["LOG_DESTINATION"], zmq=True, context=self.zmq_context)
         self.__relayer_socket = self.connect_to_socket("internal")
-        my_observer = logging_tools.twisted_log_observer(
-            global_config["LOG_NAME"],
-            global_config["LOG_DESTINATION"],
-            zmq=True,
-            context=self.zmq_context)
-        log.startLoggingWithObserver(my_observer, setStdout=False)
-        self.twisted_observer = my_observer
+        # log.startLoggingWithObserver(my_observer, setStdout=False)
         self.tcp_factory = tcp_factory(self)
         self.register_func("connection", self._connection)
         # clear flag for extra twisted thread
         self.__extra_twisted_threads = 0
+        # print self.start_kwargs
         if self.start_kwargs.get("icmp", True):
             self.icmp_protocol = hm_icmp_protocol(self, self.__log_template)
             # reactor.listenWith(icmp_twisted.icmp_port, self.icmp_protocol)
-            reactor.listen_ICMP(self.icmp_protocol)
+            # reactor.listen_ICMP(self.icmp_protocol)
             self.register_func("ping", self._ping)
+        else:
+            self.icmp_protocol = None
     def _connection(self, src_id, srv_com, *args, **kwargs):
         srv_com = server_command.srv_command(source=srv_com)
         try:
@@ -293,7 +300,7 @@ class twisted_process(threading_tools.process_obj):
             try:
                 _cur_con = reactor.connectTCP(srv_com["host"].text, int(srv_com["port"].text), self.tcp_factory)
             except:
-                self.log("exception in _connection (twisted_process): %s" % (process_tools.get_except_info()),
+                self.log("exception in _connection (socket_process): %s" % (process_tools.get_except_info()),
                          logging_tools.LOG_LEVEL_ERROR)
             else:
                 if reactor.threadpool:
@@ -308,11 +315,13 @@ class twisted_process(threading_tools.process_obj):
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
         self.__log_template.log(log_level, what)
     def send_result(self, src_id, srv_com, data):
-        self.send_to_socket(self.__relayer_socket, ["twisted_result", src_id, srv_com, data])
+        self.send_to_socket(self.__relayer_socket, ["socket_result", src_id, srv_com, data])
     def send_ping_result(self, *args):
-        self.send_to_socket(self.__relayer_socket, ["twisted_ping_result"] + list(args))
+        self.send_to_socket(self.__relayer_socket, ["socket_ping_result"] + list(args))
     def loop_post(self):
-        self.twisted_observer.close()
+        # self.twisted_observer.close()
+        if self.icmp_protocol:
+            self.icmp_protocol.close()
         self.__log_template.close()
         self.__relayer_socket.close()
 

@@ -494,7 +494,7 @@ class ping_sp_struct(hm_classes.subprocess_struct):
     seq_num = 0
     class Meta:
         max_usage = 512
-        twisted = True
+        direct = True
         use_popen = False
         id_str = "ping"
     def __init__(self, srv_com, target_spec, num_pings, timeout):

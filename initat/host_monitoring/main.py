@@ -23,9 +23,6 @@
 
 """ host-monitoring, main part """
 
-# install reactor, this line has to be the first imort statement
-import initat.host_monitoring.hm_twisted # @UnusedImport
-
 from initat.host_monitoring import hm_classes
 from initat.host_monitoring.client import client_code
 from initat.host_monitoring.config import global_config
