@@ -22,32 +22,30 @@
 #
 """ node control related parts of mother """
 
-import threading_tools
-import logging_tools
-from initat.mother.config import global_config
-import server_command
-import pprint
-import time
-import os
-import config_tools
-import icmp_twisted
-import copy
-import uuid
-import shutil
-import stat
-import datetime
-import re
-import ipvx_tools
-from lxml import etree # @UnresolvedImport
 from django.db import connection
-from twisted.python import log
-from twisted.internet.error import CannotListenError
+from django.db.models import Q
 from initat.cluster.backbone.models import kernel, device, image, macbootlog, mac_ignore, \
      cluster_timezone, cached_log_status, cached_log_source, log_source, devicelog
-from django.db.models import Q
-import process_tools
 from initat.mother.command_tools import simple_command
-from twisted.internet import reactor
+from initat.mother.config import global_config
+from lxml import etree # @UnresolvedImport
+import config_tools
+import copy
+import datetime
+import icmp_class
+import ipvx_tools
+import logging_tools
+import os
+import pprint
+import process_tools
+import re
+import server_command
+import select
+import shutil
+import stat
+import threading_tools
+import time
+import uuid
 
 class machine(object):
     # store important device-related settings
@@ -1010,12 +1008,14 @@ class host(machine):
         self.set_req_state(in_text)
         self.device.save(update_fields=["reqstate", "reqstate_timestamp"])
 
-class hm_icmp_protocol(icmp_twisted.icmp_protocol):
-    def __init__(self, tw_process, log_template):
+class hm_icmp_protocol(icmp_class.icmp_protocol):
+    def __init__(self, process, log_template):
         self.__log_template = log_template
-        icmp_twisted.icmp_protocol.__init__(self)
+        icmp_class.icmp_protocol.__init__(self)
         self.__work_dict, self.__seqno_dict = ({}, {})
-        self.__twisted_process = tw_process
+        self.__process = process
+        self.init_socket()
+        self.__process.register_socket(self.socket, select.POLLIN, self.received)
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
         self.__log_template.log(log_level, "[icmp] %s" % (what))
     def __setitem__(self, key, value):
@@ -1069,8 +1069,8 @@ class hm_icmp_protocol(icmp_twisted.icmp_protocol):
                     else:
                         value["sent_list"][self.echo_seqno] = cur_time
                         self.__seqno_dict[self.echo_seqno] = key
-                        reactor.callLater(value["slide_time"] + 0.001, self._update)
-                        reactor.callLater(value["timeout"] + value["slide_time"] * value["num"] + 0.001, self._update)
+                        self.__process.register_timer(self._update, value["slide_time"] + 0.001, oneshot=True)
+                        self.__process.register_timer(self._update, value["timeout"], oneshot=True)
             # check for timeout
             for seq_to in [s_key for s_key, s_value in value["sent_list"].iteritems() if abs(s_value - cur_time) > value["timeout"] and s_key not in value["recv_list"]]:
                 value["recv_fail"] += 1
@@ -1078,13 +1078,15 @@ class hm_icmp_protocol(icmp_twisted.icmp_protocol):
             # check for ping finish
             if value["error_list"] or (value["sent"] == value["num"] and value["recv_ok"] + value["recv_fail"] == value["num"]):
                 all_times = [value["recv_list"][s_key] - value["sent_list"][s_key] for s_key in value["sent_list"].iterkeys() if value["recv_list"].get(s_key, None) != None]
-                self.__twisted_process.send_ping_result(key, value) # ["sent"], value["recv_ok"], all_times, ", ".join(value["error_list"]))
+                self.__process.send_ping_result(key, value) # ["sent"], value["recv_ok"], all_times, ", ".join(value["error_list"]))
                 del_keys.append(key)
         for del_key in del_keys:
             del self[del_key]
         # pprint.pprint(self.__work_dict)
-    def received(self, dgram, recv_time):
-        if dgram.packet_type == 0 and dgram.ident == self.__twisted_process.pid & 0x7fff:
+    def received(self, sock):
+        recv_time = time.time()
+        dgram = self.parse_datagram(sock.recv(1024))
+        if dgram and dgram.packet_type == 0 and dgram.ident == self.__process.pid & 0x7fff:
             seqno = dgram.seqno
             if seqno not in self.__seqno_dict:
                 self.log("got result with unknown seqno %d" % (seqno),
@@ -1096,28 +1098,11 @@ class hm_icmp_protocol(icmp_twisted.icmp_protocol):
                     value["recv_ok"] += 1
             self._update()
 
-class twisted_process(threading_tools.process_obj):
+class direct_process(threading_tools.process_obj):
     def process_init(self):
         self.__log_template = logging_tools.get_logger(global_config["LOG_NAME"], global_config["LOG_DESTINATION"], zmq=True, context=self.zmq_context)
-        # self.__relayer_socket = self.connect_to_socket("internal")
-        my_observer = logging_tools.twisted_log_observer(global_config["LOG_NAME"],
-                                                         global_config["LOG_DESTINATION"],
-                                                         zmq=True,
-                                                         context=self.zmq_context)
-        log.startLoggingWithObserver(my_observer, setStdout=False)
-        self.twisted_observer = my_observer
-        # clear flag for extra twisted thread
-        self.__extra_twisted_threads = 0
         self.icmp_protocol = hm_icmp_protocol(self, self.__log_template)
-        try:
-            reactor.listen_ICMP(self.icmp_protocol)
-        except CannotListenError:
-            self.log("cannot listen on ICMP socket: %s" % (process_tools.get_except_info()),
-                     logging_tools.LOG_LEVEL_ERROR)
-            self.send_pool_message("process_exception", process_tools.get_except_info())
-        else:
-            self.register_func("ping", self._ping)
-            # self._ping("qweqwe", "127.0.0.1", 4, 5.0)
+        self.register_func("ping", self._ping)
         self.control_socket = self.connect_to_socket("control")
     def _ping(self, *args, **kwargs):
         self.icmp_protocol.ping(*args, **kwargs)
@@ -1130,7 +1115,6 @@ class twisted_process(threading_tools.process_obj):
         self.send_to_socket(self.control_socket, ["ping_result"] + list(args))
         # self.send_to_socket(self.__relayer_socket, ["twisted_ping_result"] + list(args))
     def loop_post(self):
-        self.twisted_observer.close()
         self.control_socket.close()
         self.__log_template.close()
         # self.__relayer_socket.close()

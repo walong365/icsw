@@ -22,10 +22,6 @@
 #
 """ mother daemon """
 
-from icmp_twisted import install
-
-reactor = install()
-
 import sys
 import os
 
@@ -2903,7 +2899,7 @@ class server_process(threading_tools.process_pool):
             self.add_process(initat.mother.kernel.kernel_sync_process("kernel"), start=True)
             self.add_process(initat.mother.command.external_command_process("command"), start=True)
             self.add_process(initat.mother.control.node_control_process("control"), start=True)
-            self.add_process(initat.mother.control.twisted_process("twisted"), twisted=True, start=True)
+            self.add_process(initat.mother.control.direct_process("direct"), start=True)
             connection.close()
             # self.add_process(build_process("build"), start=True)
             # self.register_func("client_update", self._client_update)
