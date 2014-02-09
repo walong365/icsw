@@ -178,7 +178,8 @@ angular_add_simple_list_controller(
 )
 
 update_pdc = (srv_pdc, client_pdc) ->
-    for attr_name in ["installed", "package", "response_str", "response_type", "target_state", "install_time"]
+    for attr_name in ["installed", "package", "response_str", "response_type", "target_state", "install_time",
+      "installed_name", "installed_version", "installed_release"] 
         client_pdc[attr_name] = srv_pdc[attr_name]
         
 package_module.controller("install", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "restDataSource", "sharedDataSource", "$q", "$timeout",
@@ -502,6 +503,17 @@ package_module.controller("install", ["$scope", "$compile", "$filter", "$templat
                                 t_field.push("<br>installtime: " + moment.unix(pdc.install_time).format("ddd, D. MMM YYYY HH:mm:ss"))
                             else
                                 t_field.push("<br>installtime: unknown")
+                            if pdc.installed_name
+                                inst_name = pdc.installed_name
+                                if pdc.installed_version
+                                    inst_name = "#{inst_name}-#{pdc.installed_version}"
+                                else
+                                    inst_name = "#{inst_name}-?"
+                                if pdc.installed_release
+                                    inst_name = "#{inst_name}-#{pdc.installed_release}"
+                                else
+                                    inst_name = "#{inst_name}-?"
+                                t_field.push("<br>installed: #{inst_name}")
                         else
                             t_field.push("<br>unknown install state '#{pdc.installed}")
                         if pdc.kernel_dep
