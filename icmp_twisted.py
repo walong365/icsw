@@ -1,7 +1,7 @@
 #!/usr/bin/python-init -Ot
 # -*- coding: utf-8 -*-
 #
-# Copyright (C) 2012,2013 Andreas Lang-Nevyjel
+# Copyright (C) 2012-2014 Andreas Lang-Nevyjel
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -21,30 +21,14 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
 
-""" A raw ICMP library for twisted, based on seafelt lib/icmp.py """
+""" A raw ICMP library, based on seafelt lib/icmp.py """
 
 import array
-# import errno
 import logging_tools
 import os
 import socket
 import struct
 import time
-from twisted.internet.selectreactor import SelectReactor
-from twisted.internet import protocol, base, interfaces, error, address, udp
-from zope.interface import implements, Interface
-
-class extended_select_reactor(SelectReactor):
-    def listen_ICMP(self, protocol, interface="", maxPacketSize=8192):
-        cur_p = icmp_port(protocol, interface, maxPacketSize, self)
-        cur_p.startListening()
-        return cur_p
-
-def install():
-    reactor = extended_select_reactor()
-    from twisted.internet.main import installReactor
-    installReactor(reactor)
-    return reactor
 
 def _octets_to_hex(octets):
     return ".".join(["%02x" % (ord(byte)) for byte in octets])
@@ -237,75 +221,18 @@ class icmp_destination_unreachable(icmp_datagram):
     def unpack(self):
         self.original_ippacket = _parse_ip_packet(self.data[4:])
 
-class icmp_transport(Interface):
-    """ transport for ICMP datagram protocol """
-    def write(self, packet, addr):
-        pass
-    def stopListening(self):
-        pass
-
-class icmp_port(udp.Port):
-    addressFamily = socket.AF_INET
-    socketType = socket.SOCK_RAW
-    implements(icmp_transport, interfaces.ISystemHandle)
-    def __init__(self, proto, interface="", max_packet_size=8192, reactor=None):
-        """ Initialise an ICMP Port """
-        base.BasePort.__init__(self, reactor)
-        self.port = None
-        self.protocol = proto
-        self.max_packet_size = max_packet_size
-        self.interface = interface
-        self.logstr = "icmp_port"
-    def getHandle(self):
-        return self.socket
-    def startListening(self):
-        self._bindSocket()
-        self._connect_to_protocol()
-    def _bindSocket(self):
-        try:
-            skt = self.create_internet_socket()
-        except socket.error, le:
-            raise error.CannotListenError, (self.interface, 0, le)
-        self.socket = skt
-        self.fileno = self.socket.fileno
-    def create_internet_socket(self):
-        cur_s = socket.socket(socket.AF_INET, socket.SOCK_RAW, socket.IPPROTO_ICMP)
-        cur_s.setsockopt(socket.SOL_SOCKET, socket.SO_RCVBUF, 262144)
-        return cur_s
-    def _connect_to_protocol(self):
-        self.protocol.makeConnection(self)
-        self.startReading()
-    def doRead(self):
-        try:
-            data, addr = self.socket.recvfrom(self.max_packet_size)
-        except socket.error, se:
-            _no = se.args[0]
-        self.protocol.datagram_received(data, addr)
-    def write(self, datagram, addr):
-        print "W", datagram, addr
-        try:
-            return self.socket.sendto(datagram, addr)
-        except socket.error:
-# #            no = se.args[0]
-# #            if no == errno.EINTR:
-# #                return self.write(datagram)
-# #            elif no == errno.EMSGSIZE:
-# #                raise error.MessageLengthError, "message too long"
-# #            else:
-            raise
-    def writeSequence(self, seq, addr):
-        self.write("".join(seq), addr)
-    def stopListening(self):
-        self.stopReading()
-    def getHost(self):
-        return address.IPv4Address("TCP", *(self.socket.getsockname() + ("INET_UDP",)))
-
-class icmp_protocol(protocol.AbstractDatagramProtocol):
+class icmp_protocol(object): # protocol.AbstractDatagramProtocol):
     def __init__(self, **kwargs):
         # start at seqno 32
         self.echo_seqno = 32L
         self._log_errors = hasattr(self, "log")
+        self.socket = None
         self.t_dict = {}
+    def init_socket(self):
+        self.socket = socket.socket(socket.AF_INET, socket.SOCK_RAW, socket.IPPROTO_ICMP)
+        self.socket.setsockopt(socket.SOL_SOCKET, socket.SO_RCVBUF, 262144)
+    def close(self):
+        self.socket.close()
     def datagram_received(self, datagram, addr):
         recv_time = time.time()
         parsed_dgram = self.parse_datagram(datagram)
@@ -353,5 +280,5 @@ class icmp_protocol(protocol.AbstractDatagramProtocol):
         if ident is None:
             ident = os.getpid() & 0x7FFF
         dgram = icmp_echo(data=data, ident=ident, seqno=self.echo_seqno)
-        self.raw_socket.sendto(dgram.packed(), (str(addr), 0))
+        self.socket.sendto(dgram.packed(), (str(addr), 0))
 

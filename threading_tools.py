@@ -130,13 +130,16 @@ class timer_base(object):
         self.__next_timeout = min([cur_to.next_time for cur_to in self.__timer_list])
     def _handle_timer(self, cur_time):
         new_tl = []
+        min_next = 1.0
         for cur_to in self.__timer_list:
-            if cur_to.next_time <= cur_time:
+            _diff = cur_to.next_time - cur_time
+            if _diff <= 0:
                 cur_to()
                 # also remove if cur_to not in self.__timer_list (due to removal while processing cur_to() )
                 if not cur_to.oneshot and cur_to in self.__timer_list:
                     new_tl.append(cur_to)
             else:
+                # min_next = min(_diff, min_next)
                 new_tl.append(cur_to)
         self.__timer_list = new_tl
         if self.__timer_list:
@@ -381,18 +384,17 @@ class process_obj(multiprocessing.Process, timer_base, poller_obj):
         # unify with loop from process_pool ? FIXME, TODO
         # process all pending messages
         if self.next_timeout:
-            # correct timeout to fullfill next timer event
-            timeout = min((self.next_timeout - time.time()) * 1000, timeout)
+            diff_time = self.next_timeout - time.time()
+            # important to avoid negative timeouts
+            timeout = max(min(diff_time * 1000, timeout), 0)
+            if not timeout:
+                blocking = False
         if blocking:
             _socks = self.poller.poll()
             self._handle_select_list(_socks)
         else:
-            while True:
-                _socks = self.poller.poll(timeout)
-                if not _socks:
-                    break
-                    # cur_mes = cur_q.recv_pyobj(zmq.NOBLOCK)
-                self._handle_select_list(_socks)
+            # no loop to reduce latency for ICMP ping
+            self._handle_select_list(self.poller.poll(timeout))
     def loop(self):
         while self["run_flag"] or self.__exit_locked:
             try:
@@ -402,6 +404,7 @@ class process_obj(multiprocessing.Process, timer_base, poller_obj):
                         self._handle_timer(cur_time)
                     self.step(blocking=False, timeout=self.loop_timer)
                 else:
+                    # print "bl", self.name
                     if self.__busy_loop:
                         self.step()
                     else:
