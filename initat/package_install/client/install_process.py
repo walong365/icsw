@@ -31,6 +31,8 @@ import process_tools
 import server_command
 import threading_tools
 
+RPM_QUERY_FORMAT = "%{NAME}\n%{INSTALLTIME}\n%{VERSION}\n%{RELEASE}\n"
+
 def get_repo_str(in_repo):
     # copy from initat.cluster.backbone.models.package_repo.repo_str
     return "\n".join([
@@ -140,7 +142,7 @@ class install_process(threading_tools.process_obj):
     def _command_done(self, hc_sc):
         cur_out = hc_sc.read()
         self.log("hc_com '%s' (stage %s) finished with stat %d (%d bytes)" % (
-            hc_sc.com_str,
+            hc_sc.com_str.replace("\n", "\\n"),
             hc_sc.command_stage,
             hc_sc.result,
             len(cur_out)))
@@ -244,12 +246,10 @@ class install_process(threading_tools.process_obj):
                         # rewrite
                         cur_pdc = E.package_device_connection()
                         for entry in _cur_pdc:
-                            if entry.tag in ["target_state", "installed"]:
-                                cur_pdc.attrib[entry.tag] = entry.text
-                            elif entry.tag in ["device", "idx"]:
-                                cur_pdc.attrib[entry.tag] = entry.text
+                            if entry.tag in ["target_state", "installed", "device", "idx"]:
+                                cur_pdc.attrib[entry.tag] = entry.text or ""
                                 if entry.tag == "idx":
-                                    cur_pdc.attrib["pk"] = entry.text
+                                    cur_pdc.attrib["pk"] = entry.text or ""
                             elif entry.tag in ["force_flag", "nodeps_flag"]:
                                 cur_pdc.attrib[entry.tag] = "1" if entry.text.lower() in ["true"] else "0"
                             else:
@@ -258,10 +258,8 @@ class install_process(threading_tools.process_obj):
                                 pass
                         package = E.package()
                         for entry in _cur_pdc.find("package"):
-                            if entry.tag in ["name", "version", "idx", "package_repo"]:
-                                package.attrib[entry.tag] = entry.text
-                            elif entry.tag in ["device", "idx"]:
-                                package.attrib[entry.tag] = entry.text
+                            if entry.tag in ["name", "version", "idx", "package_repo", "device"]:
+                                package.attrib[entry.tag] = entry.text or ""
                             elif entry.tag in ["always_latest"]:
                                 package.attrib[entry.tag] = "1" if entry.text.lower() in ["true"] else "0"
                             else:
@@ -314,8 +312,8 @@ class yum_install_process(install_process):
                 #    pack_xml.attrib["name"],
                 #    pack_xml.attrib["version"],
                 # )
-                cur_pdc.attrib["pre_command"] = "/bin/rpm -q %s --queryformat=\"%%{NAME}\n%%{INSTALLTIME}\"" % (self.package_name(pack_xml))
-                cur_pdc.attrib["post_command"] = "/bin/rpm -q %s --queryformat=\"%%{NAME}\n%%{INSTALLTIME}\"" % (self.package_name(pack_xml))
+                cur_pdc.attrib["pre_command"] = "/bin/rpm -q %s --queryformat=\"%s\"" % (self.package_name(pack_xml), RPM_QUERY_FORMAT)
+                cur_pdc.attrib["post_command"] = "/bin/rpm -q %s --queryformat=\"%s\"" % (self.package_name(pack_xml), RPM_QUERY_FORMAT)
     def _decide(self, hc_sc, cur_out):
         cur_pdc = hc_sc.data
         is_installed = False if cur_out.count("is not installed") else True
@@ -366,10 +364,10 @@ class zypper_install_process(install_process):
             pack_xml = cur_pdc[0]
             if cur_pdc.attrib["target_state"] == "keep":
                 # just check install state
-                cur_pdc.attrib["pre_command"] = "/bin/rpm -q %s --queryformat=\"%%{NAME}\n%%{INSTALLTIME}\"" % (self.package_name(pack_xml))
+                cur_pdc.attrib["pre_command"] = "/bin/rpm -q %s --queryformat=\"%s\"" % (self.package_name(pack_xml), RPM_QUERY_FORMAT)
             else:
-                cur_pdc.attrib["pre_command"] = "/bin/rpm -q %s --queryformat=\"%%{NAME}\n%%{INSTALLTIME}\"" % (self.package_name(pack_xml))
-                cur_pdc.attrib["post_command"] = "/bin/rpm -q %s --queryformat=\"%%{NAME}\n%%{INSTALLTIME}\"" % (self.package_name(pack_xml))
+                cur_pdc.attrib["pre_command"] = "/bin/rpm -q %s --queryformat=\"%s\"" % (self.package_name(pack_xml), RPM_QUERY_FORMAT)
+                cur_pdc.attrib["post_command"] = "/bin/rpm -q %s --queryformat=\"%s\"" % (self.package_name(pack_xml), RPM_QUERY_FORMAT)
     def _pre_decide(self, hc_sc, cur_out):
         _stage = hc_sc.command_stage
         cur_pdc = hc_sc.data

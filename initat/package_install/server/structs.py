@@ -490,7 +490,8 @@ class client(object):
             cur_pdc.response_str = etree.tostring(info_xml)
             # print cur_pdc.response_str
             cur_pdc.interpret_response()
-            cur_pdc.save(update_fields=["response_type", "response_str", "installed", "install_time"])
+            cur_pdc.save(update_fields=["response_type", "response_str", "installed", "install_time",
+                "installed_name", "installed_version", "installed_release"])
         else:
             self.log("got package_info without result", logging_tools.LOG_LEVEL_WARN)
     def new_command(self, srv_com):
