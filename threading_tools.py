@@ -156,6 +156,9 @@ class timer_base(object):
     def loop_timer(self):
         return self.__loop_timer
 
+import select
+import socket
+
 class poller_obj(object):
     def __init__(self):
         # poller
@@ -164,6 +167,7 @@ class poller_obj(object):
         # for ZMQ debug
         self.fd_lookup = {}
         self._socket_lut = {}
+        self.__normal_sockets = False
     def register_poller(self, zmq_socket, sock_type, callback):
         if self.debug_zmq:
             self.fd_lookup[zmq_socket._sock] = zmq_socket
@@ -172,7 +176,7 @@ class poller_obj(object):
         for mask in self.poller_handler[zmq_socket].keys():
             cur_mask |= mask
         if self.debug_zmq:
-            self.poller.register(zmq_socket._sock, cur_mask)
+            self.poller.register(zmq_socket.fileno()._sock, cur_mask)
         else:
             self.poller.register(zmq_socket, cur_mask)
     def unregister_poller(self, zmq_socket, sock_type, **kwargs):
@@ -193,22 +197,42 @@ class poller_obj(object):
                 cur_mask |= mask
             self.poller.register(zmq_socket, cur_mask)
     def register_socket(self, n_socket, event_mask, callback):
+        import select
+        # event_mask = {select.POLLOUT: zmq.POLLOUT}.get(event_mask, event_mask)
         self._socket_lut[n_socket.fileno()] = n_socket
-        self.poller_handler.setdefault(n_socket.fileno(), {})[event_mask] = callback
-        self.poller.register(n_socket, event_mask)
+        # self._socket_lut[n_socket] = n_socket.fileno()
+        _fn = n_socket.fileno()
+        self.poller_handler.setdefault(n_socket, {})[event_mask] = callback
+        cur_mask = 0
+        for mask in self.poller_handler[n_socket].keys():
+            cur_mask |= mask
+        self.poller.register(n_socket, cur_mask)
+        self.__normal_sockets = True
     def unregister_socket(self, n_socket):
+        # del self._socket_lut[n_socket]
+        # del self._socket_lut[n_socket.fileno()]
         self.poller.unregister(n_socket)
         if n_socket.fileno() in self._socket_lut:
             del self._socket_lut[n_socket.fileno()]
-        del self.poller.handler[n_socket.fileno()]
+        del self.poller_handler[n_socket]
+    def _do_select(self, timeout):
+        _list = self.poller.poll(timeout)
+        self._handle_select_list(_list)
     def _handle_select_list(self, in_list):
+        # import select
+        # print "**", in_list, zmq.POLLIN, zmq.POLLOUT, select.POLLIN, select.POLLOUT
         for sock, c_type in in_list:
             if self.debug_zmq and type(sock) not in [int, long]:
                 sock = self.fd_lookup[sock]
+            if sock in self._socket_lut:
+                sock = self._socket_lut[sock]
+            # print "..", sock, sock in self.poller_handler
             if sock in self.poller_handler:
+                # print zmq.POLLIN, zmq.POLLOUT, zmq.POLLERR
                 for r_type in set([zmq.POLLIN, zmq.POLLOUT, zmq.POLLERR]):
                     if c_type & r_type:
-                        if r_type in self.poller_handler[sock]:
+                        # the socket could vanish
+                        if r_type in self.poller_handler.get(sock, []):
                             try:
                                 self.poller_handler[sock][r_type](self._socket_lut.get(sock, sock))
                             except:
@@ -220,11 +244,14 @@ class poller_obj(object):
                                 # raise exception, important
                                 raise
                         else:
-                            self.log("r_type %d not found" % (r_type), logging_tools.LOG_LEVEL_CRITICAL)
-                            time.sleep(1)
+                            self.log("r_type %d not found for socket '%s'" % (
+                                r_type,
+                                str(sock),
+                                ), logging_tools.LOG_LEVEL_CRITICAL)
+                            time.sleep(0.5)
             else:
                 self.log("socket %s not found in handler_dict" % (str(sock)), logging_tools.LOG_LEVEL_CRITICAL)
-                time.sleep(1)
+                time.sleep(0.5)
 
 class process_obj(multiprocessing.Process, timer_base, poller_obj):
     def __init__(self, name, **kwargs):
@@ -390,11 +417,9 @@ class process_obj(multiprocessing.Process, timer_base, poller_obj):
             if not timeout:
                 blocking = False
         if blocking:
-            _socks = self.poller.poll()
-            self._handle_select_list(_socks)
-        else:
-            # no loop to reduce latency for ICMP ping
-            self._handle_select_list(self.poller.poll(timeout))
+            timeout = None
+        # no loop to reduce latency for ICMP ping
+        self._do_select(timeout)
     def loop(self):
         while self["run_flag"] or self.__exit_locked:
             try:
