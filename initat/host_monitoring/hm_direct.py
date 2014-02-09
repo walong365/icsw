@@ -23,22 +23,17 @@
 
 """ host-monitoring for 0MQ >=  4.x.y, direct socket part """
 
-# from icmp_twisted import install
-
-# reactor = install()
-
 from initat.host_monitoring.config import global_config
-# from twisted.internet.protocol import ClientFactory, Protocol # @UnresolvedImport
-# from twisted.python import log # @UnresolvedImport
-import icmp_twisted
+import icmp_class
 import logging_tools
 import process_tools
+import select
 import server_command
 import socket
-import select
 import threading_tools
 import time
 
+# to make the module loadable
 Protocol = object
 ClientFactory = object
 
@@ -127,10 +122,10 @@ class tcp_factory(ClientFactory):
     def received(self, cur_proto, data):
         self.twisted_process.send_result(cur_proto.src_id, unicode(cur_proto.srv_com), data)
 
-class hm_icmp_protocol(icmp_twisted.icmp_protocol):
+class hm_icmp_protocol(icmp_class.icmp_protocol):
     def __init__(self, process, log_template):
         self.__log_template = log_template
-        icmp_twisted.icmp_protocol.__init__(self)
+        icmp_class.icmp_protocol.__init__(self)
         self.__process = process
         self.__work_dict, self.__seqno_dict = ({}, {})
         self.__pings_in_flight = 0
