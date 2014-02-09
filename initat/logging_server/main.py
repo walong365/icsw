@@ -45,75 +45,8 @@ PYTHON3 = sys.version_info[0] == 3
 
 if PYTHON3:
     unicode = str
-else:
-    from twisted.internet import reactor # @UnresolvedImport
-    from twisted.internet.protocol import DatagramProtocol # @UnresolvedImport
 
 SEP_STR = "-" * 50
-
-if not PYTHON3:
-    class twisted_log_receiver(DatagramProtocol):
-        def __init__(self, t_process):
-            self.__process = t_process
-        def datagramReceived(self, in_str, addr):
-            if in_str[0:8].isdigit():
-                self.__process.log_recv(in_str[8:])
-            else:
-                self.__process.log("invalid header", logging_tools.LOG_LEVEL_ERROR)
-
-    class twisted_process(threading_tools.process_obj):
-        def process_init(self):
-            self.__log_socket = self.connect_to_socket("receiver")
-            # init twisted reactor
-            # self._got_udp = udp_log_receiver()
-            # tcp_factory = Factory()
-            # tcp_factory.protocol = tcp_log_receiver
-            # reactor.listenUDP(8004, self._got_udp)
-            # reactor.listenTCP(8004, tcp_factory)
-            bind_errors = 0
-            log_recv = twisted_log_receiver(self)
-            for h_name in ["LOG", "ERR", "OUT"]:
-                h_name = global_config["%s_HANDLE" % (h_name)]
-                if os.path.isfile(h_name):
-                    try:
-                        os.unlink(h_name)
-                    except:
-                        self.log(
-                            "error removing (stale) UDS-handle %s: %s" % (
-                                h_name,
-                                process_tools.get_except_info()),
-                            logging_tools.LOG_LEVEL_ERROR)
-                    else:
-                        self.log("remove stale UDS-handle %s" % (h_name))
-                try:
-                    reactor.listenUNIXDatagram(h_name, log_recv)
-                except:
-                    self.log(
-                        "cannot listen to UDS %s: %s" % (
-                            h_name,
-                            process_tools.get_except_info()),
-                        logging_tools.LOG_LEVEL_ERROR)
-                    bind_errors += 1
-                else:
-                    self.log("listening on UDS %s" % (h_name))
-            try:
-                reactor.listenUDP(global_config["LISTEN_PORT"], log_recv)
-            except:
-                self.log(
-                    "cannot listen to UDP port %d: %s" % (
-                        global_config["LISTEN_PORT"],
-                        process_tools.get_except_info()),
-                    logging_tools.LOG_LEVEL_ERROR)
-                bind_errors += 1
-            if bind_errors:
-                self.send_pool_message("startup_error", bind_errors)
-        def log_recv(self, raw_data):
-            self.send_to_socket(self.__log_socket, ["log_recv", raw_data])
-        def loop_post(self):
-            self.log("closing receiver socket")
-            self.__log_socket.close()
-        def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
-            self.send_to_socket(self.__log_socket, ["log", what, log_level])
 
 class log_receiver(threading_tools.process_obj):
     def process_init(self):
@@ -521,8 +454,6 @@ class main_process(threading_tools.process_pool):
         self.add_process(log_receiver("receiver", priority=50), start=True)
         self._log_config()
         self._init_network_sockets()
-        if not PYTHON3:
-            self.add_process(twisted_process("twisted"), twisted=True, start=True)
         self.register_timer(self._update, 60)
     def log(self, what, level=logging_tools.LOG_LEVEL_OK):
         # print(what)
@@ -586,7 +517,7 @@ class main_process(threading_tools.process_pool):
             self.log("Initialising meta-server-info block")
             msi_block = process_tools.meta_server_info("logserver")
             msi_block.add_actual_pid(mult=3, process_name="main")
-            msi_block.add_actual_pid(act_pid=configfile.get_manager_pid(), mult=3 if PYTHON3 else 4, process_name="manager")
+            msi_block.add_actual_pid(act_pid=configfile.get_manager_pid(), mult=3, process_name="manager")
             msi_block.start_command = "/etc/init.d/logging-server start"
             msi_block.stop_command = "/etc/init.d/logging-server force-stop"
             msi_block.kill_pids = True
