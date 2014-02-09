@@ -230,7 +230,9 @@ class tcp_con(object):
             if _len + 8 == len(_data):
                 self.__process.send_result(self.src_id, unicode(self.srv_com), _data[8:])
             else:
-                self.log("wrong header: %s" % (_data[0:8]), logging_tools.LOG_LEVEL_ERROR)
+                self.log("wrong length: %d (header) != %d (body)" % (
+                    _len,
+                    len(_data) - 8), logging_tools.LOG_LEVEL_ERROR)
         else:
             self.log("wrong header: %s" % (_data[0:8]), logging_tools.LOG_LEVEL_ERROR)
         self.close()
