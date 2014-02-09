@@ -32,95 +32,7 @@ import server_command
 import socket
 import threading_tools
 import time
-
-# to make the module loadable
-Protocol = object
-ClientFactory = object
-
-class tcp_send(Protocol):
-    # def __init__(self, log_recv):
-        # Protocol.__init__(self)
-        # self.__log_recv = log_recv
-    def __init__(self, factory, src_id, srv_com):
-        self.factory = factory
-        self.src_id = src_id
-        self.srv_com = srv_com
-        self.__header_size = None
-        self.__chunks = 0
-    def connectionMade(self):
-        com = self.srv_com["command"].text
-        if self.srv_com["arg_list"].text:
-            com = "%s %s" % (com, self.srv_com["arg_list"].text)
-        self.transport.write("%08d%s" % (len(com), com))
-    def dataReceived(self, data):
-        # print data
-        # self.log_recv.datagramReceived(data, None)
-        if self.__header_size is None:
-            if data[0:8].isdigit():
-                d_len = int(data[0:8])
-                self.__header_size = d_len
-                self.__data = ""
-                self._received(data)
-            else:
-                self.factory.log("protocol error", logging_tools.LOG_LEVEL_ERROR)
-                self.transport.loseConnection()
-        else:
-            self._received(data)
-    def _received(self, data):
-        self.__data = "%s%s" % (self.__data, data)
-        if len(self.__data) == self.__header_size + 8:
-            if self.__chunks:
-                self.factory.log("got %d bytes in %d chunks" % (len(self.__data), self.__chunks + 1))
-            self.factory.received(self, self.__data[8:])
-            self.transport.loseConnection()
-        else:
-            self.__chunks += 1
-    def __del__(self):
-        # print "del tcp_send"
-        pass
-
-class tcp_factory(ClientFactory):
-    def __init__(self, t_process):
-        self.twisted_process = t_process
-        self.__to_send = {}
-        self.noisy = False
-    def add_to_send(self, src_id, srv_com):
-        cur_id = "%s:%d" % (socket.gethostbyname(srv_com["host"].text), int(srv_com["port"].text))
-        self.__to_send.setdefault(cur_id, []).append((src_id, srv_com))
-        # print sum([len(value) for value in self.__to_send.itervalues()])
-    def connectionLost(self, reason):
-        print "gone", reason
-    def buildProtocol(self, addr):
-        return tcp_send(self, *self._remove_tuple(addr))
-    def clientConnectionLost(self, connector, reason):
-        if str(reason).lower().count("closed cleanly"):
-            pass
-        else:
-            self.log(
-                "clientConnectionLost, %s: %s" % (
-                    str(connector).strip(),
-                    str(reason).strip()),
-                logging_tools.LOG_LEVEL_ERROR)
-    def clientConnectionFailed(self, connector, reason):
-        self.log(
-            "clientConnectionFailed, %s: %s" % (
-                str(connector).strip(),
-                str(reason).strip()),
-            logging_tools.LOG_LEVEL_ERROR)
-        self._remove_tuple(connector)
-    def _remove_tuple(self, connector):
-        cur_id = "%s:%d" % (connector.host, connector.port)
-        if cur_id in self.__to_send:
-            send_tuple = self.__to_send[cur_id].pop()
-            if not self.__to_send[cur_id]:
-                del self.__to_send[cur_id]
-            return send_tuple
-        else:
-            raise SyntaxError, "nothing found to send for '%s'" % (cur_id)
-    def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
-        self.twisted_process.log("[tcp] %s" % (", ".join([line.strip() for line in what.split("\n")])), log_level)
-    def received(self, cur_proto, data):
-        self.twisted_process.send_result(cur_proto.src_id, unicode(cur_proto.srv_com), data)
+import zmq
 
 class hm_icmp_protocol(icmp_class.icmp_protocol):
     def __init__(self, process, log_template):
@@ -268,12 +180,73 @@ class hm_icmp_protocol(icmp_class.icmp_protocol):
                     value["recv_ok"] += 1
                 self._update(self.__seqno_dict[seqno], from_reply=True)
 
+class tcp_con(object):
+    pending = []
+    def __init__(self, proc, src_id, srv_com):
+        self.__process = proc
+        self.src_id = src_id
+        self.srv_com = srv_com
+        self.s_time = time.time()
+        tcp_con.pending.append(self)
+        self._host, self._port = (socket.gethostbyname(srv_com["host"].text), int(srv_com["port"].text))
+        # cur_id = "%s:%d" % (t_host, t_port)
+        self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM) # , socket.IPPROTO_TCP)
+        self.socket.setblocking(0)
+        self.socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        self.socket.setsockopt(socket.SOL_SOCKET, socket.SO_RCVBUF, 262144)
+        # self.socket.setsockopt(socket.SOCK_STREAM, socket.SO_KEEPALIVE, 1)
+        self.__process.register_socket(self.socket, zmq.POLLOUT, self._send)
+        self.__registered = True
+        try:
+            self.socket.connect((self._host, self._port))
+        except socket.error as _err:
+            errno = _err.errno
+            if errno != 115:
+                self.log("error while bind: %d" % (errno))
+            # if errno
+            # print errno
+            # time.sleep(0.1)
+        # self._send()
+    def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
+        self.__process.log("[%s:%d] %s" % (self._host, self._port, what), log_level)
+    def _send(self, sock):
+        try:
+            self.socket.send(self._send_str(self.srv_com))
+        except:
+            self.log("error sending: %s" % (process_tools.get_except_info()), logging_tools.LOG_LEVEL_ERROR)
+            self.close()
+        else:
+            self.__process.unregister_socket(self.socket)
+            self.__process.register_socket(self.socket, select.POLLIN, self._recv)
+    def _send_str(self, srv_com):
+        com = srv_com["command"].text
+        if srv_com["arg_list"].text:
+            com = "%s %s" % (com, srv_com["arg_list"].text)
+        return "%08d%s" % (len(com), com)
+    def _recv(self, sock):
+        _data = sock.recv(1024)
+        if _data[0:8].isdigit():
+            _len = int(_data[0:8])
+            if _len + 8 == len(_data):
+                self.__process.send_result(self.src_id, unicode(self.srv_com), _data[8:])
+            else:
+                self.log("wrong header: %s" % (_data[0:8]), logging_tools.LOG_LEVEL_ERROR)
+        else:
+            self.log("wrong header: %s" % (_data[0:8]), logging_tools.LOG_LEVEL_ERROR)
+        self.close()
+    def close(self):
+        tcp_con.pending = [_entry for _entry in tcp_con.pending if _entry != self]
+        if self.__registered:
+            self.__registered = False
+            self.__process.unregister_socket(self.socket)
+        self.socket.close()
+        del self.srv_com
+
 class socket_process(threading_tools.process_obj):
     def process_init(self):
         self.__log_template = logging_tools.get_logger(global_config["LOG_NAME"], global_config["LOG_DESTINATION"], zmq=True, context=self.zmq_context)
         self.__relayer_socket = self.connect_to_socket("internal")
         # log.startLoggingWithObserver(my_observer, setStdout=False)
-        self.tcp_factory = tcp_factory(self)
         self.register_func("connection", self._connection)
         # clear flag for extra twisted thread
         self.__extra_twisted_threads = 0
@@ -285,26 +258,19 @@ class socket_process(threading_tools.process_obj):
             self.register_func("ping", self._ping)
         else:
             self.icmp_protocol = None
+        self.register_timer(self._check_timeout, 5)
+    def _check_timeout(self):
+        cur_time = time.time()
+        to_list = [entry for entry in tcp_con.pending if abs(entry.s_time - cur_time) > 20]
+        if to_list:
+            self.log("removing %s (timeout)" % (logging_tools.get_plural("TCP connection", len(to_list))))
+            for _entry in to_list:
+                _entry.log("timeout", logging_tools.LOG_LEVEL_WARN)
+                _entry.close()
     def _connection(self, src_id, srv_com, *args, **kwargs):
         srv_com = server_command.srv_command(source=srv_com)
-        try:
-            self.tcp_factory.add_to_send(src_id, srv_com)
-        except:
-            self.send_result(src_id, unicode(srv_com), "error in lookup: %s" % (process_tools.get_except_info()))
-        else:
-            try:
-                _cur_con = reactor.connectTCP(srv_com["host"].text, int(srv_com["port"].text), self.tcp_factory)
-            except:
-                self.log("exception in _connection (socket_process): %s" % (process_tools.get_except_info()),
-                         logging_tools.LOG_LEVEL_ERROR)
-            else:
-                if reactor.threadpool:
-                    cur_threads = len(reactor.threadpool.threads)
-                    if cur_threads != self.__extra_twisted_threads:
-                        self.log("number of twisted threads changed from %d to %d" % (self.__extra_twisted_threads, cur_threads))
-                        self.__extra_twisted_threads = cur_threads
-                        self.send_pool_message("process_start")
-        # self.send_pool_message("pong", cur_idx)
+        tcp_con(self, src_id, srv_com)
+        # self.__connected.setdefault(cur_id, []).append((src_id, srv_com))
     def _ping(self, *args, **kwargs):
         self.icmp_protocol.ping(*args)
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):

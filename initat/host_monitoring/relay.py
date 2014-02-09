@@ -1336,8 +1336,10 @@ class relay_code(threading_tools.process_pool):
             id_discovery(srv_com, src_id, xml_input)
     def _send_result(self, identity, reply_str, reply_state):
         self.sender_socket.send_unicode(identity, zmq.SNDMORE)
-        self.sender_socket.send_unicode("%d\0%s" % (reply_state,
-                                                    reply_str))
+        self.sender_socket.send_unicode(
+            "%d\0%s" % (
+                reply_state,
+                reply_str))
     def _recv_nhm_result(self, zmq_sock):
         data = []
         while True:
@@ -1467,3 +1469,4 @@ class relay_code(threading_tools.process_pool):
             if not _init_ok:
                 break
         return _init_ok
+

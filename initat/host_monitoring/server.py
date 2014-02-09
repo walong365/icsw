@@ -505,9 +505,10 @@ class server_code(threading_tools.process_pool):
             srv_com["source"].attrib["host"],
             logging_tools.get_diff_time_str(abs(c_time - float(srv_com["result"].attrib["start_time"]))))
         if int(srv_com["result"].attrib["state"]) != server_command.SRV_REPLY_STATE_OK:
-            info_str = "%s, result is %s (%s)" % (info_str,
-                                                  srv_com["result"].attrib["reply"],
-                                                  srv_com["result"].attrib["state"])
+            info_str = "%s, result is %s (%s)" % (
+                info_str,
+                srv_com["result"].attrib["reply"],
+                srv_com["result"].attrib["state"])
             log_level = logging_tools.LOG_LEVEL_WARN
         else:
             log_level = logging_tools.LOG_LEVEL_OK
