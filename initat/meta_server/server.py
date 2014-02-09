@@ -1,7 +1,7 @@
 #!/usr/bin/python-init -Ot
 # -*- coding: utf-8 -*-
 #
-# Copyright (C) 2001,2002,2003,2004,2005,2006,2007,2008,2010,2011,2012,2013 Andreas Lang-Nevyjel
+# Copyright (C) 2001-2008,2010-2014 Andreas Lang-Nevyjel
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -55,9 +55,6 @@ class main_process(threading_tools.process_pool):
                     "err" : (0, "/var/lib/logging-server/py_err")},
                     zmq_context=self.zmq_context)
         self.__log_template = logging_tools.get_logger(global_config["LOG_NAME"], global_config["LOG_DESTINATION"], zmq=True, context=self.zmq_context)
-        # threading_tools.twisted_main_thread.__init__(self, "main")
-        # self.install_signal_handlers()
-        # self.add_thread(twisted_thread("twisted", global_config), start_thread=True)
         self._init_msi_block()
         self._init_network_sockets()
         self.register_exception("int_error", self._sigint)
