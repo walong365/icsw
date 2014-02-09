@@ -21,7 +21,7 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
 
-""" A raw ICMP library, based on seafelt lib/icmp.py """
+""" A raw ICMP baseclass (icmp protocol), based on seafelt lib/icmp.py """
 
 import array
 import logging_tools
