@@ -224,7 +224,7 @@ class tcp_con(object):
             com = "%s %s" % (com, srv_com["arg_list"].text)
         return "%08d%s" % (len(com), com)
     def _recv(self, sock):
-        _data = sock.recv(1024)
+        _data = sock.recv(2048)
         if _data[0:8].isdigit():
             _len = int(_data[0:8])
             if _len + 8 == len(_data):
