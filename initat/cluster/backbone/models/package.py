@@ -223,6 +223,10 @@ class package_device_connection(models.Model):
     response_str = models.TextField(max_length=65535, default="")
     # install time of package
     install_time = models.IntegerField(default=0)
+    # version / release information
+    installed_name = models.CharField(max_length=255, default="")
+    installed_version = models.CharField(max_length=255, default="")
+    installed_release = models.CharField(max_length=255, default="")
     # dependencies
     image_dep = models.BooleanField(default=False)
     image_list = models.ManyToManyField("backbone.image", blank=True)
@@ -295,12 +299,17 @@ class package_device_connection(models.Model):
                             print "*** interpret_response (package) ***", etree.tostring(xml, pretty_print=True)
             else:
                 pp_lines = pp_text.split("\n")
+                self.installed_name, self.installed_release, self.installed_version = ("", "", "")
                 if pp_lines[0].count("not installed"):
                     self.installed = "n"
                     self.install_time = 0
-                elif len(pp_lines) == 2 and pp_lines[1].isdigit():
+                elif len(pp_lines) > 1 and pp_lines[1].isdigit():
                     self.installed = "y"
                     self.install_time = int(pp_lines[1])
+                    self.installed_name = pp_lines[0]
+                    if len(pp_lines) > 3:
+                        self.installed_version = pp_lines[2]
+                        self.installed_release = pp_lines[3]
                 else:
                     self.installed = "u"
                     self.install_time = 0
