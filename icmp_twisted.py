@@ -282,6 +282,7 @@ class icmp_port(udp.Port):
             _no = se.args[0]
         self.protocol.datagram_received(data, addr)
     def write(self, datagram, addr):
+        print "W", datagram, addr
         try:
             return self.socket.sendto(datagram, addr)
         except socket.error:
@@ -352,5 +353,5 @@ class icmp_protocol(protocol.AbstractDatagramProtocol):
         if ident is None:
             ident = os.getpid() & 0x7FFF
         dgram = icmp_echo(data=data, ident=ident, seqno=self.echo_seqno)
-        # self.t_dict[self.echo_seqno] = time.time()
-        return self.transport.write(dgram.packed(), (addr, 0))
+        self.raw_socket.sendto(dgram.packed(), (str(addr), 0))
+

@@ -1,7 +1,7 @@
 #!/usr/bin/python-init -Ot
 # -*- coding: utf-8 -*-
 #
-# Copyright (c) 2009,2010,2011,2012,2013 Andreas Lang-Nevyjel, init.at
+# Copyright (c) 2009-2014 Andreas Lang-Nevyjel, init.at
 #
 # this file is part of python-modules-base
 #
@@ -23,12 +23,7 @@
 import os
 import pickle
 import sys
-try:
-    import zmq
-except:
-    zmq = None
-from twisted.internet.protocol import ConnectedDatagramProtocol
-from twisted.internet import reactor
+import zmq
 
 def zmq_socket_name(sock_name, **kwargs):
     if not sock_name.endswith("_zmq"):
@@ -38,31 +33,16 @@ def zmq_socket_name(sock_name, **kwargs):
             sock_name = "ipc://%s" % (sock_name)
     return sock_name
 
-class error_protocol(ConnectedDatagramProtocol):
-    def __init__(self):
-        self.out_buffer = []
-    def doStart(self):
-        self.sendDatagram()
-    def sendDatagram(self):
-        while self.out_buffer:
-            self.transport.write(self.out_buffer.pop(0))
-    def connectionFailed(self, why):
-        print("conn refused:", why)
-    
 class io_stream(object):
     def __init__(self, sock_name="/tmp/py_log", **kwargs):
         # ignore protocoll
         self.__sock_name = sock_name
-        zmq_context = kwargs.get("zmq_context", None)
-        if zmq_context or kwargs.get("zmq", False):
-            if zmq_context is None:
-                zmq_context = zmq.Context()
-            self.__zmq_sock = zmq_context.socket(zmq.PUSH)
-            self.__zmq_sock.connect(zmq_socket_name(sock_name, check_ipc_prefix=True))
-            self.__protocol = None
-        else:
-            self.__protocol = error_protocol()
-            self.__zmq_sock = None
+        zmq_context = kwargs["zmq_context"]
+        if zmq_context is None:
+            zmq_context = zmq.Context()
+        self.__zmq_sock = zmq_context.socket(zmq.PUSH)
+        self.__zmq_sock.connect(zmq_socket_name(sock_name, check_ipc_prefix=True))
+        self.__protocol = None
     def write(self, err_str):
         pid, t_dict = (os.getpid(), {
             "IOS_type"  : "error",
@@ -80,11 +60,7 @@ class io_stream(object):
                         t_dict[r_what] = int(rest)
                     else:
                         t_dict[r_what] = rest
-        if self.__protocol:
-            self.__protocol.out_buffer.append(pickle.dumps(t_dict))
-            reactor.connectUNIXDatagram(self.__sock_name, self.__protocol)
-        else:
-            self.__zmq_sock.send(pickle.dumps(t_dict))
+        self.__zmq_sock.send(pickle.dumps(t_dict))
     def close(self):
         if self.__zmq_sock:
             self.__zmq_sock.close()
