@@ -1,6 +1,8 @@
 #!/usr/bin/python-init -Otu
 #
-# Copyright (C) 2013 Andreas Lang-Nevyjel
+# -*- coding: utf-8 -*-
+#
+# Copyright (C) 2013-2014 Andreas Lang-Nevyjel
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -19,16 +21,12 @@
 #
 """ migrates from network-based names to domain-base names """
 
-import sys
-import os
-
-os.environ.setdefault("DJANGO_SETTINGS_MODULE", "initat.cluster.settings")
-
-import pprint
-import logging_tools
-from lxml import etree # @UnresolvedImport
+from django.core.management.base import BaseCommand
 from django.db.models import Q
 from initat.cluster.backbone.models import domain_tree_node, network, net_ip, domain_name_tree, device
+from lxml import etree # @UnresolvedImport
+import logging_tools
+import sys
 
 class tree_node(object):
     def __init__(self, name="", depth=0):
@@ -82,6 +80,14 @@ class tree_node(object):
     def __unicode__(self):
         return "%s (PF '%s', %d)" % (self.name or "TOP NODE", self.postfix, self.depth)
 
+class Command(BaseCommand):
+    option_list = BaseCommand.option_list
+    help = ("Migration old device naming scheme to new domain-tree bases naming scheme.")
+    args = ''
+
+    def handle(self, **options):
+        main()
+
 def main():
     cur_dns = domain_tree_node.objects.all()
     if len(cur_dns):
@@ -92,8 +98,6 @@ def main():
         for cur_net in network.objects.all():
             _dns_node = net_tree.feed_name(cur_net.name, cur_net)
         net_tree.create_db_entries()
-    if len(sys.argv) > 1:
-        sys.exit(0)
     cur_dnt = domain_name_tree()
     # check for intermediate nodes
     for key in cur_dnt.keys():
@@ -154,8 +158,5 @@ def main():
                 dom_id = new_dom.pk
             cur_dev.domain_tree_node = cur_dnt[dom_id]
             cur_dev.save()
-    print "Tree structure:"
-    print etree.tostring(cur_dnt.get_xml(), pretty_print=True)
-
-if __name__ == "__main__":
-    main()
+    print "done."
+    # print etree.tostring(cur_dnt.get_xml(), pretty_print=True)

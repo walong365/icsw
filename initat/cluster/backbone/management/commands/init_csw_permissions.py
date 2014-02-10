@@ -5,7 +5,6 @@ scan all apps in backbone for new CSW rights
 
 from django.contrib.contenttypes.models import ContentType
 from django.core.exceptions import ImproperlyConfigured
-from django.core.exceptions import ValidationError, ImproperlyConfigured
 from django.core.management.base import BaseCommand, CommandError
 from django.db import DEFAULT_DB_ALIAS
 from django.db.models import Q
