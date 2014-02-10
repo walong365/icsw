@@ -512,7 +512,7 @@ class main_process(threading_tools.process_pool):
             self.__msi_block.save_block()
     def _init_msi_block(self):
         process_tools.save_pids("logserver/logserver", mult=3)
-        process_tools.append_pids("logserver/logserver", pid=configfile.get_manager_pid(), mult=3 if PYTHON3 else 4)
+        process_tools.append_pids("logserver/logserver", pid=configfile.get_manager_pid(), mult=3)
         if not self.__options.DEBUG:
             self.log("Initialising meta-server-info block")
             msi_block = process_tools.meta_server_info("logserver")
