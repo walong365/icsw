@@ -47,8 +47,8 @@ dn_row_template = """
         </button>
         <ul class="dropdown-menu">
             <li ng-click="create_netdevice(obj, $event)"><a href="#">Netdevice</a></li>
-            <li ng-show="obj.netdevice_set.length" ng-click="create_netip(obj, $event)"><a href="#">IP Address</a></li>
-            <li ng-show="obj.netdevice_set.length" ng-click="create_peer_information(obj, $event)"><a href="#">Peer</a></li>
+            <li ng-show="obj.netdevice_set.length && networks.length" ng-click="create_netip(obj, $event)"><a href="#">IP Address</a></li>
+            <li ng-show="obj.netdevice_set.length && nd_peers.length" ng-click="create_peer_information(obj, $event)"><a href="#">Peer</a></li>
         </ul>
     </div>
 </th>

@@ -18,7 +18,7 @@
                     <li ng-show="check_perm('network.modify_network') || check_perm('config.modify_config')" class="divider"></li>
                     <li ng-show="check_perm('device.change_network')"><a href="{% url 'network:device_network' %}">{% trans "Device network" %}</a></li>
                     <li ng-show="check_perm('device.change_connection')"><a href="{% url 'device:connections' %}">{% trans "Device connections" %}</a></li>
-                    <li ng-show="check_perm('device.change_variable')"><a href="{% url 'device:variables' %}">{% trans "Device variables" %}</a></li>
+                    <li ng-show="check_perm('device.change_variables')"><a href="{% url 'device:variables' %}">{% trans "Device variables" %}</a></li>
                     <li ng-show="check_perm('device.change_config')"><a href="{% url 'device:show_configs' %}">{% trans "Device configurations" %}</a></li>
                 </ul>
             </li>
