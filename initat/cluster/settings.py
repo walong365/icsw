@@ -285,7 +285,7 @@ else:
         ))
 
 # pipeline settings
-PIPELINE_YUGLIFY_BINARY = "/opt/cluster/bin/yuglify"
+PIPELINE_YUGLIFY_BINARY = "/opt/cluster/lib/node_modules/yuglify/bin/yuglify"
 if not os.path.exists(PIPELINE_YUGLIFY_BINARY):
     raise ImproperlyConfigured("no %s found" % (PIPELINE_YUGLIFY_BINARY))
 PIPELINE_YUGLIFY_CSS_ARGUMENTS = "--terminal"
