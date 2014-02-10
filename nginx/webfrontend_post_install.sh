@@ -18,6 +18,10 @@ if [ -f /etc/init.d/mother ] ; then
     touch /etc/sysconfig/cluster/.is_corvus
 fi
 
+# static dir
+STATIC_DIR=/srv/www/htdocs/icsw/static
+[ ! -d ${STATIC_DIR} ] && mkdir -p ${STATIC_DIR}
+
 echo -ne "collecting static ..."
 /opt/python-init/lib/python/site-packages/initat/cluster/manage.py collectstatic --noinput -c > /dev/null
 echo "done"
