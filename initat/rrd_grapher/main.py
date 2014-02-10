@@ -1,6 +1,6 @@
 #!/usr/bin/python-init -Ot
 #
-# Copyright (C) 2007,2008,2009,2013 Andreas Lang-Nevyjel, init.at
+# Copyright (C) 2007-2009,2013-2014 Andreas Lang-Nevyjel, init.at
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -106,7 +106,7 @@ def main():
     _create_dirs()
 
     process_tools.renice()
-    process_tools.fix_directories(global_config["USER"], global_config["GROUP"], ["/var/run/rrd-grapher", global_config["GRAPH_ROOT"]])
+    process_tools.fix_directories(global_config["USER"], global_config["GROUP"], ["/var/run/rrd-grapher", global_config["GRAPH_ROOT"], global_config["RRD_DIR"]])
     global_config.set_uid_gid(global_config["USER"], global_config["GROUP"])
     process_tools.change_user_group(global_config["USER"], global_config["GROUP"], global_config["GROUPS"], global_config=global_config)
     if not global_config["DEBUG"]:
