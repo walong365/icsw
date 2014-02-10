@@ -103,6 +103,12 @@ INSTANCE_XML = """
             <config_name>server</config_name>
         </config_names>
     </instance>
+    <instance name="icinga" check_type="simple" pid_file_name="/opt/icinga/var/icinga.lock" any_threads_ok="1" runs_on="system">
+        <config_names>
+            <config_name>monitor_server</config_name>
+            <config_name>monitor_master</config_name>
+        </config_names>
+    </instance>
     <instance name="uwsgi-init" check_type="simple" pid_file_name="uwsgi-init.pid" any_threads_ok="1" runs_on="system">
         <config_names>
             <config_name>server</config_name>
