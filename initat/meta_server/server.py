@@ -52,8 +52,11 @@ class main_process(threading_tools.process_pool):
             process_tools.set_handles(
                 {
                     "out" : (1, "meta-server.out"),
-                    "err" : (0, "/var/lib/logging-server/py_err")},
-                    zmq_context=self.zmq_context)
+                    "err" : (0, "/var/lib/logging-server/py_err")
+                },
+                zmq_context=self.zmq_context)
+        # check for correct rights
+        self._check_dirs()
         self.__log_template = logging_tools.get_logger(global_config["LOG_NAME"], global_config["LOG_DESTINATION"], zmq=True, context=self.zmq_context)
         self._init_msi_block()
         self._init_network_sockets()
@@ -76,6 +79,20 @@ class main_process(threading_tools.process_pool):
             self.__log_template.log(lev, what)
         else:
             self.__log_cache.append((lev, what))
+    def _check_dirs(self):
+        main_dir = global_config["MAIN_DIR"]
+        if not os.path.isdir(main_dir):
+            self.log("creating %s" % (main_dir))
+            os.mkdir(main_dir)
+        cur_stat = os.stat(main_dir)[stat.ST_MODE]
+        new_stat = cur_stat | stat.S_IWGRP | stat.S_IRGRP | stat.S_IRUSR | stat.S_IWUSR | stat.S_IWOTH | stat.S_IROTH
+        if cur_stat != new_stat:
+            self.log("modifing stat of %s from %o to %o" % (
+                main_dir,
+                cur_stat,
+                new_stat,
+                ))
+            os.chmod(main_dir, new_stat)
     def _init_msi_block(self):
         # store pid name because global_config becomes unavailable after SIGTERM
         self.__pid_name = global_config["PID_NAME"]
