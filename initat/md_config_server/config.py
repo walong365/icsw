@@ -837,7 +837,7 @@ class main_config(object):
                     ("master"          , "true"),
                     # set vacuum to false because of problems with uwsgi 1.9
                     ("vacuum"          , "false"),
-                    ("workers"         , 16),
+                    ("workers"         , 4),
                     ("harakiri-verbose", 1),
                     ("plugins"         , "cgi"),
                     ("socket"          , os.path.join(self.__r_dir_dict["var"], "uwsgi.sock")),
