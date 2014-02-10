@@ -1,6 +1,6 @@
 #!/usr/bin/python-init -Ot
 #
-# Copyright (C) 2001,2002,2003,2004,2005,2006,2007,2008,2009,2011,2012,2013 Andreas Lang-Nevyjel, init.at
+# Copyright (C) 2001-2009,2011-2014 Andreas Lang-Nevyjel, init.at
 #
 # this file is part of python-modules-base
 #
@@ -403,11 +403,11 @@ class configuration(object):
                         # f_obj.add_line(("", "", entry, str(idx), "---"))
                 else:
                     f_obj.append([
-                        logging_tools.form_entry(key, header="bla"),
-                        logging_tools.form_entry(self.is_global(key) and "global" or "local", post_str=" : "),
-                        logging_tools.form_entry(self.pretty_print(key)),
-                        logging_tools.form_entry(self.get_type(key), pre_str=", (", post_str=" from "),
-                        logging_tools.form_entry(self.get_source(key), post_str=")"),
+                        logging_tools.form_entry(key, header="key"),
+                        logging_tools.form_entry(self.is_global(key) and "global" or "local", post_str=" : ", header="global"),
+                        logging_tools.form_entry(self.pretty_print(key), header="value"),
+                        logging_tools.form_entry(self.get_type(key), pre_str=", (", post_str=" from ", header="type"),
+                        logging_tools.form_entry(self.get_source(key), post_str=")", header="source"),
                         ])
                     # f_obj.add_line((key, self.is_global(key) and "global" or "local", str(self.pretty_print(key)), self.get_type(key), self.get_source(key)))
             ret_str = str(f_obj).split("\n")
