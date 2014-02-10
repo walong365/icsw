@@ -210,7 +210,7 @@ class machine(object):
                 if cur_dev.ip_dict[ip].network.network_type.identifier != "s":
                     cur_id_str = "mp_%d" % (cur_id)
                     cur_id += 1
-                    machine.process.send_to_socket(machine.process.twisted_socket, ["ping", cur_id_str, ip, 4, 3.0])
+                    machine.process.send_to_socket(machine.process.direct_socket, ["ping", cur_id_str, ip, 4, 3.0])
                     ping_list.append(srv_com.builder("ping", cur_id_str, pk="%d" % (cur_dev.pk)))
         srv_com["ping_list"] = ping_list
         machine.ping_id = cur_id
@@ -1150,8 +1150,8 @@ class node_control_process(threading_tools.process_obj):
         else:
             self.server_ip = None
             self.log("no IP address in boot-net", logging_tools.LOG_LEVEL_ERROR)
-        # create connection to twisted process
-        self.twisted_socket = self.connect_to_socket("twisted")
+        # create connection to ICMP (direct) process
+        self.direct_socket = self.connect_to_socket("direct")
         self.router_obj = config_tools.router_object(self.log)
         machine.setup(self)
         machine.sync()
@@ -1241,7 +1241,7 @@ class node_control_process(threading_tools.process_obj):
             self.log("error no node with id '%s' found" % (node_id), logging_tools.LOG_LEVEL_ERROR)
     def loop_post(self):
         machine.shutdown()
-        self.twisted_socket.close()
+        self.direct_socket.close()
         self.__log_template.close()
     def set_check_freq(self, cur_to):
         self.log("changing check_freq of check_commands to %d msecs" % (cur_to))
