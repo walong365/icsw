@@ -1057,7 +1057,7 @@ class build_process(threading_tools.process_obj):
         """
         start_time = time.time()
         # get contacts with access to all devices
-        all_access = list([cur_u.login for cur_u in user.objects.filter(Q(active=True) & Q(group__active=True) & Q(mon_contact__pk__gt=0)) if cur_u.has_perm("backbone.all_devices")])
+        all_access = list([cur_u.login for cur_u in user.objects.filter(Q(active=True) & Q(group__active=True) & Q(mon_contact__pk__gt=0)) if cur_u.has_perm("backbone.device.all_devices")])
         self.log("users with access to all devices: %s" % (", ".join(sorted(all_access))))
         server_idxs = [cur_gc.monitor_server.pk]
         # get netip-idxs of own host
