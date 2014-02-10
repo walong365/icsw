@@ -1,7 +1,6 @@
-#! /bin/sh
+#!/bin/bash
 #
-# Copyright (c) 2003,2004,2005,2006,2007,2012,2013 init.at
-#
+# Copyright (c) 2003-2007,2012-2014 Andreas Lang-Nevyjel init.at
 #
 # RedHat stuff
 # chkconfig: 2345 79 21
@@ -27,6 +26,19 @@ else
 fi
 . /etc/init.d/ics_tools.sh
 
+if [ -f /etc/redhat-release ] ; then
+    export RH=1
+    . /etc/init.d/functions
+else
+    export RH=0
+fi
+# check for debian
+if [ -f /etc/debian_version ] ; then
+    export DB=1
+else
+    export DB=0
+fi
+
 ACT_SERVER_TYPE=grapher
 SERVER_BIN=/opt/cluster/sbin/rrd-${ACT_SERVER_TYPE}.py
 SERVER_PID=/var/run/rrd-${ACT_SERVER_TYPE}/rrd-${ACT_SERVER_TYPE}.pid
@@ -41,7 +53,8 @@ test -x ${PYTHON_BIN} || exit 5
 
 rc_reset
 
-id ${SERVER_USER} > /dev/null || { echo "User ${SERVER_USER} for ${SERVER_BIN} not found, exiting..." ; rc_failed 6 ; rc_exit ; }
+id ${SERVER_USER} > /dev/null 2>&1 || { echo "User ${SERVER_USER} for ${SERVER_BIN} not found, exiting..." ; rc_failed 6 ; rc_exit ; }
+
 [ "`id ${SERVER_USER} -g -n`" != "${SERVER_GROUP}" ] && { echo "Group ${SERVER_GROUP} for ${SERVER_BIN} not found, exiting..." ; rc_failed 6 ; rc_exit ; }
 
 export HOSTNAME=`/bin/hostname`
@@ -51,7 +64,7 @@ case "$1" in
         if [ -f ${SERVER_PID} ] ; then
             echo -n " ... already running"
         else
-            ${SERVER_BIN} ${SERVER_ARGS}
+	    ${SERVER_BIN} ${SERVER_ARGS}
         fi
         rc_status -v
         ;;
