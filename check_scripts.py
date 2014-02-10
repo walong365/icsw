@@ -189,7 +189,7 @@ def check_system(opt_ns):
             ("checked", "0"),
             ("to_check", "0"),
             ("process_name", name),
-            ("meta_server_name", name)
+            ("meta_server_name", name),
             ]:
             if not key in cur_el.attrib:
                 cur_el.attrib[key] = def_value
@@ -349,7 +349,9 @@ def show_xml(opt_ns, res_xml, iter=0):
     rc_strs = dict([(key, "%s%s%s" % (col_str_dict[wc], value, col_str_dict[3]))
                     for key, (wc, value) in rc_dict.iteritems()])
     out_bl = logging_tools.new_form_list()
-    for act_struct in res_xml.findall("instance[@checked='1']"):
+    types = ["node", "server", "system"]
+    _list = sum([res_xml.xpath("instance[@checked='1' and @runs_on='%s']" % (_type)) for _type in types], [])
+    for act_struct in _list:
         cur_line = [logging_tools.form_entry(act_struct.attrib["name"], header="Name")]
         cur_line.append(logging_tools.form_entry(act_struct.attrib["runs_on"], header="type"))
         if opt_ns.time or opt_ns.thread:
@@ -511,7 +513,7 @@ def main():
         opt_ns.time = True
         opt_ns.database = True
     if os.getuid():
-        print "Not running as root, information may be incomplete, disabling memory"
+        print "Not running as root, information may be incomplete, disabling display of memory"
         opt_ns.memory = False
     ret_xml = check_system(opt_ns)
     if not len(ret_xml.findall("instance[@checked='1']")):
