@@ -370,6 +370,13 @@
     <field type="IntegerField" name="mac_bytes">6</field>
     <field type="DateTimeField" name="date">2013-10-21T08:50:00</field>
   </object>
+  <object pk="9" model="backbone.network_device_type">
+    <field type="CharField" name="identifier">en</field>
+    <field type="CharField" name="name_re">^en(s|o)\d+$</field>
+    <field type="CharField" name="description">Ethernet new scheme</field>
+    <field type="IntegerField" name="mac_bytes">6</field>
+    <field type="DateTimeField" name="date">2013-10-21T08:50:00</field>
+  </object>
   <object pk="1" model="backbone.network_type">
     <field type="CharField" name="identifier">b</field>
     <field type="CharField" name="description">boot network</field>
