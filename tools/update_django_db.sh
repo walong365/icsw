@@ -18,6 +18,7 @@ if [ -d ${MIG_DIR} ] ; then
     ${C_DIR}/manage.py loaddata ${C_DIR}/backbone/fixtures/initial_new_data.xml
     ${C_DIR}/manage.py init_csw_permissions
     ${C_DIR}/manage.py migrate_to_domain_name
+    ${C_DIR}/manage.py migrate_to_config_catalog
 else
     echo "no migration directory ${MIG_DIR} present, refuse to operate"
 fi

@@ -511,9 +511,27 @@ def partition_table_pre_save(sender, **kwargs):
         if not cur_inst.name.strip():
             raise ValidationError("name must not be zero")
 
+class config_catalog(models.Model):
+    idx = models.AutoField(primary_key=True)
+    name = models.CharField(max_length=256, unique=True, blank=False, null=False)
+    url = models.URLField(max_length=256, default="", blank=True)
+    author = models.CharField(max_length=256, default="", blank=True)
+    # gets increased by one on every download
+    version = models.IntegerField(default=1)
+    # extraction time
+    extraction_time = models.DateTimeField(null=True, blank=True)
+    date = models.DateTimeField(auto_now_add=True)
+    def __unicode__(self):
+        return self.name
+
+class config_catalog_serializer(serializers.ModelSerializer):
+    class Meta:
+        model = config_catalog
+
 class config(models.Model):
     idx = models.AutoField(db_column="new_config_idx", primary_key=True)
     name = models.CharField(unique=True, max_length=192, blank=False)
+    config_catalog = models.ForeignKey(config_catalog, null=True)
     description = models.CharField(max_length=765, default="", blank=True)
     priority = models.IntegerField(null=True, default=0)
     # config_type = models.ForeignKey("config_type", db_column="new_config_type_id")
@@ -674,6 +692,8 @@ def config_post_save(sender, **kwargs):
                 cur_parent = cur_parent.parent_config
             else:
                 break
+        if not cur_inst.config_catalog_id:
+            cur_inst.config_catalog = config_catalog.objects.all()[0]
 
 class config_str(models.Model):
     idx = models.AutoField(db_column="config_str_idx", primary_key=True)
