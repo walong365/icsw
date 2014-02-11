@@ -21,7 +21,7 @@ from initat.cluster.backbone.models import domain_tree_node, device, category, m
      mon_service_esc_templ, mon_device_esc_templ, mon_service_dependency_templ, package_search, \
      mon_service_dependency, mon_host_dependency, package_device_connection, partition, \
      partition_disc, sys_partition, device_variable, config, config_str, config_int, config_bool, \
-     config_script, netdevice, net_ip, peer_information
+     config_script, netdevice, net_ip, peer_information, config_catalog
 from initat.cluster.frontend.widgets import device_tree_widget
 
 # import PAM
@@ -2020,15 +2020,46 @@ class config_form(ModelForm):
             ),
             Fieldset(
                 "Categories",
+                Field("config_catalog", ng_options="value.idx as value.name for value in this.config_catalogs", chosen=True),
                 HTML("<div category edit_obj='{% verbatim %}{{_edit_obj }}{% endverbatim %}' mode='conf'></div>"),
             ),
             FormActions(
                 Submit("submit", "", css_class="primaryAction", ng_value="action_string"),
             ),
         )
+    def __init__(self, *args, **kwargs):
+        ModelForm.__init__(self, *args, **kwargs)
+        for clear_f in ["config_catalog"]:
+            self.fields[clear_f].queryset = empty_query_set()
+            self.fields[clear_f].empty_label = None
     class Meta:
         model = config
-        fields = ("name", "description", "enabled", "priority", "parent_config",)
+        fields = ("name", "description", "enabled", "priority", "parent_config", "config_catalog",)
+
+class config_catalog_form(ModelForm):
+    helper = FormHelper()
+    helper.form_id = "form"
+    helper.form_name = "form"
+    helper.form_class = 'form-horizontal'
+    helper.label_class = 'col-sm-3'
+    helper.field_class = 'col-sm-7'
+    helper.ng_model = "_edit_obj"
+    helper.ng_submit = "cur_edit.modify(this)"
+    helper.layout = Layout(
+        HTML("<h2>Config catalog '{% verbatim %}{{ _edit_obj.name }}{% endverbatim %}'</h2>"),
+            Fieldset(
+                "Basic settings",
+                Field("name", wrapper_class="ng-class:form_error('name')"),
+                Field("author"),
+                Field("url"),
+            ),
+            FormActions(
+                Submit("submit", "", css_class="primaryAction", ng_value="action_string"),
+            ),
+        )
+    class Meta:
+        model = config_catalog
+        fields = ("name", "author", "url",)
 
 class config_str_form(ModelForm):
     helper = FormHelper()

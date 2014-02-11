@@ -14,6 +14,10 @@
         {% crispy config_form config_form.helper %}
     </script>
 
+    <script type="text/ng-template" id="config_catalog_template.html">
+        {% crispy config_catalog_form config_catalog_form.helper %}
+    </script>
+
     <script type="text/ng-template" id="config_str_template.html">
         {% crispy config_str_form config_str_form.helper %}
     </script>
@@ -35,22 +39,29 @@
     </script>
 
     <div ng-controller="config_ctrl">
-        <configtable></configtable>
-        <div class="input-group row panel panel-default">
-            <form action="{% url 'config:upload_config' %}" method="post" enctype="multipart/form-data" class="form-inline">{% csrf_token %}
-                {% verbatim %}
-                <div class="col-md-4">
-                <input type="button" class="btn btn-success btn-sm" value="download selected configs" ng-show="pagSettings.conf.filtered_len > 0" ng-click="download_selected()"></input>
+        <tabset>
+            <tab heading="configurations">
+                <configtable></configtable>
+                <div class="input-group row panel panel-default">
+                    <form action="{% url 'config:upload_config' %}" method="post" enctype="multipart/form-data" class="form-inline">{% csrf_token %}
+                        {% verbatim %}
+                        <div class="col-md-4">
+                        <input type="button" class="btn btn-success btn-sm" value="download selected configs" ng-show="pagSettings.conf.filtered_len > 0" ng-click="download_selected()"></input>
+                        </div>
+                        <div class="col-md-4">
+                        <input ng-model="upload_file" type="file" name="config"></input>
+                        </div>
+                        <div class="col-md-4">
+                        <input ng-show="upload_file" type="submit" class="btn btn-warning" value="upload" class="form-control"></input>
+                        </div>
+                        {% endverbatim %}
+                    </form>
                 </div>
-                <div class="col-md-4">
-                <input ng-model="upload_file" type="file" name="config"></input>
-                </div>
-                <div class="col-md-4">
-                <input ng-show="upload_file" type="submit" class="btn btn-warning" value="upload" class="form-control"></input>
-                </div>
-                {% endverbatim %}
-            </form>
-        </div>
+            </tab>
+            <tab heading="catalogs">
+                <catalogtable></catalogtable>
+            </tab>
+        </tabset>
     </div>
 </div>
 

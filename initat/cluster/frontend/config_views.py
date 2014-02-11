@@ -35,7 +35,7 @@ from rest_framework.parsers import XMLParser
 from initat.cluster.backbone.models import config, device, device_config, tree_node, \
     get_related_models, config_dump_serializer
 from initat.cluster.frontend.forms import config_form, config_str_form, config_int_form, \
-    config_bool_form, config_script_form, mon_check_command_form
+    config_bool_form, config_script_form, mon_check_command_form, config_catalog_form
 from initat.cluster.backbone import models
 from initat.cluster.frontend.helper_functions import contact_server, xml_wrapper
 from initat.cluster.backbone.render import permission_required_mixin, render_me
@@ -57,6 +57,7 @@ class show_configs(permission_required_mixin, View):
         return render_me(
             request, "config_overview.html", {
                 "config_form" : config_form(),
+                "config_catalog_form" : config_catalog_form(),
                 "config_str_form" : config_str_form(),
                 "config_int_form" : config_int_form(),
                 "config_bool_form" : config_bool_form(),

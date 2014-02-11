@@ -8,12 +8,39 @@ root = exports ? this
 
 {% verbatim %}
 
+catalog_table_template = """
+<h2>{{ config_catalogs.length }} catalogs, <input type="button" class="btn btn-sm btn-success" value="create new catalog" ng-click="catalog_edit.create($event)"></input></h2>
+<table class="table table-condensed table-hover table-bordered" style="width:auto;">
+    <thead>
+        <tr>
+            <th>name</th>
+            <th>URL</th>
+            <th>Author</th>
+            <th>Version</th>
+            <th>#configs<th>
+            <th colspan="2">action</th>
+        </tr>
+    </thead>
+    <tbody>
+        <tr ng-repeat="catalog in config_catalogs">
+            <td>{{ catalog.name }}</td>
+            <td>{{ catalog.url }}</td>
+            <td>{{ catalog.author }}</td>
+            <td>{{ catalog.version }}</td>
+            <td>{{ get_num_configs(catalog) }}</td>
+            <td><input type="button" class="btn btn-primary btn-sm" ng-click="edit_catalog(catalog, $event)" value="modify"></input></td>
+            <td><input type="button" ng-show="get_num_configs(catalog) == 0" class="btn btn-danger btn-sm" ng-click="delete_catalog(catalog)" value="delete"></input></td>
+        </tr>
+    </tbody>
+</table>
+"""
+
 config_table_template = """
 <h2>{{ entries.length }} configurations, shown: {{ pagSettings.conf.filtered_len }}, <input type="button" class="btn btn-sm btn-success" value="create new config" ng-click="config_edit.create($event)"></input></h2>
 <table class="table table-condensed table-hover table-bordered" style="width:auto;">
     <thead>
         <tr>
-            <td colspan="12">
+            <td colspan="13">
                 <div class="row" style="width:900px;">
                     <div class="col-sm-4">
                         <div class="input-group">
@@ -41,6 +68,7 @@ config_table_template = """
             <th>Name</th>
             <th>Pri</th>
             <th>enabled</th>
+            <th>Catalog</th>
             <th>Description</th>
             <th>parent</th>
             <th>var</th>
@@ -54,6 +82,7 @@ config_table_template = """
         <tr ng-repeat-start="config in pagSettings.filtered_list.slice(pagSettings.conf.start_idx, pagSettings.conf.end_idx + 1)" ng-class="get_config_row_class(config)">
             <td>{{ config.name }}</td>
             <td class="text-right">{{ config.priority }}</td>
+            <td>{{ config.config_catalog | array_lookup:this.config_catalogs:'name':'-' }}</td>
             <td class="text-center">{{ config.enabled | yesno1 }}</td>
             <td>{{ config.description }}</td>
             <td>{{ show_parent_config(config) }}</td>
@@ -258,6 +287,8 @@ config_ctrl = config_module.controller("config_ctrl", ["$scope", "$compile", "$f
                 cf.filter_name = true
             #console.log "fc"
         $scope.entries = []
+        $scope.config_catalogs = []
+        # config edit
         $scope.config_edit = new angular_edit_mixin($scope, $templateCache, $compile, $modal, Restangular)
         $scope.config_edit.create_template = "config_template.html"
         $scope.config_edit.edit_template = "config_template.html"
@@ -271,6 +302,21 @@ config_ctrl = config_module.controller("config_ctrl", ["$scope", "$compile", "$f
                 "name" : "new config", "description" : "", "priority" : 0, "mon_check_command_set" : [], "config_script_set" : [],
                 "config_str_set" : [], "config_int_set" : [], "config_blob_set" : [], "config_bool_set" : [], "enabled" : true,
                 "parent_config" : undefined, "categories" : [],
+                "config_catalog" : (entry.idx for entry in scope.config_catalogs)[0]
+            }
+            return new_obj
+        # catalog edit
+        $scope.catalog_edit = new angular_edit_mixin($scope, $templateCache, $compile, $modal, Restangular, $q)
+        $scope.catalog_edit.create_template = "config_catalog_template.html"
+        $scope.catalog_edit.edit_template = "config_catalog_template.html"
+        $scope.catalog_edit.create_rest_url = Restangular.all("{% url 'rest:config_catalog_list'%}".slice(1))
+        $scope.catalog_edit.modify_rest_url = "{% url 'rest:config_catalog_detail' 1 %}".slice(1).slice(0, -2)
+        $scope.catalog_edit.create_list = $scope.config_catalogs
+        $scope.catalog_edit.new_object_at_tail = false
+        $scope.catalog_edit.use_promise = true
+        $scope.catalog_edit.new_object = (scope) ->
+            new_obj = {
+                "name" : "new catalog", "author" : "{{ request.user }}", "url" : "http://localhost/",
             }
             return new_obj
         $scope.var_edit = new angular_edit_mixin($scope, $templateCache, $compile, $modal, Restangular, $q)
@@ -298,6 +344,7 @@ config_ctrl = config_module.controller("config_ctrl", ["$scope", "$compile", "$f
                 restDataSource.reload(["{% url 'rest:config_list' %}", {}]),
                 restDataSource.reload(["{% url 'rest:mon_service_templ_list' %}", {}]),
                 restDataSource.reload(["{% url 'rest:category_list' %}", {}]),
+                restDataSource.reload(["{% url 'rest:config_catalog_list' %}", {}]),
             ]
             $q.all(wait_list).then((data) ->
                 $scope.mon_service_templ = data[1]
@@ -305,8 +352,11 @@ config_ctrl = config_module.controller("config_ctrl", ["$scope", "$compile", "$f
                 #console.log data
                 ($scope._set_fields(entry, true) for entry in data[0])
                 $scope.entries = data[0]
+                $scope.config_catalogs = data[3]
                 $scope.config_edit.create_list = $scope.entries
                 $scope.config_edit.delete_list = $scope.entries
+                $scope.catalog_edit.create_list = $scope.config_catalogs
+                $scope.catalog_edit.delete_list = $scope.config_catalogs
             )
         $scope._set_fields = (entry, init=false) ->
             entry.script_sel = 0
@@ -525,32 +575,41 @@ config_ctrl = config_module.controller("config_ctrl", ["$scope", "$compile", "$f
             return ev_handlers
         $scope.download_selected = () ->
             hash = angular.toJson((entry.idx for entry in $scope.pagSettings.filtered_list))
-            window.location = "{% url 'config:download_configs' 1 %}".slice(0, -1) + hash 
+            window.location = "{% url 'config:download_configs' 1 %}".slice(0, -1) + hash
+        $scope.get_num_configs = (cat) ->
+            return (entry for entry in $scope.entries when entry.config_catalog == cat.idx).length 
+        $scope.edit_catalog = (cat, event) ->
+            $scope.catalog_edit.edit(cat, event).then(
+                (mod_obj) ->
+            )
+        $scope.delete_catalog = (cat) ->
+            $scope.catalog_edit.delete_obj(cat).then((res) ->
+            )
         $scope.reload()
-]).directive("configtable", ($templateCache, $compile, $modal, Restangular) ->
+]).directive("catalogtable", ($templateCache, $compile, $modal, Restangular) ->
+    return {
+        restrict : "EA"
+        template : $templateCache.get("catalog_table.html")
+    }
+).directive("configtable", ($templateCache, $compile, $modal, Restangular) ->
     return {
         restrict : "EA"
         template : $templateCache.get("config_table.html")
-        link : (scope, el, attrs) ->
-            #scope.new_devsel((parseInt(entry) for entry in attrs["devicepk"].split(",")), [])
     }
 ).directive("vartable", ($templateCache, $compile, $modal, Restangular) ->
     return {
         restrict : "EA"
         template : $templateCache.get("var_table.html")
-        link : (scope, el, attrs) ->
     }
 ).directive("scripttable", ($templateCache, $compile, $modal, Restangular) ->
     return {
         restrict : "EA"
         template : $templateCache.get("script_table.html")
-        link : (scope, el, attrs) ->
     }
 ).directive("montable", ($templateCache, $compile, $modal, Restangular) ->
     return {
         restrict : "EA"
         template : $templateCache.get("mon_table.html")
-        link : (scope, el, attrs) ->
     }
 ).directive("category", ($templateCache, $compile, $modal, Restangular, restDataSource) ->
     return {
@@ -584,6 +643,7 @@ config_ctrl = config_module.controller("config_ctrl", ["$scope", "$compile", "$f
 ).run(($templateCache) ->
     $templateCache.put("simple_confirm.html", simple_modal_template)
     $templateCache.put("config_table.html", config_table_template)
+    $templateCache.put("catalog_table.html", catalog_table_template)
     $templateCache.put("var_table.html", var_table_template)
     $templateCache.put("script_table.html", script_table_template)
     $templateCache.put("mon_table.html", mon_table_template)
