@@ -90,8 +90,6 @@ class _general(hm_classes.hm_module):
             self.check_ipmi_settings()
             self.popen = None
             self.process_pool.register_timer(self._update_ipmi, 20, instant=True)
-        # print "*" * 20
-
     def _update_ipmi(self):
         if self.it_command:
             if self.popen:
@@ -131,6 +129,8 @@ class _general(hm_classes.hm_module):
             self.log(
                 "cmd %s not found" % (cmd_name),
                 logging_tools.LOG_LEVEL_WARN)
+    def init_machine_vector(self, mv):
+        self.ipmi_result = False
     def update_machine_vector(self, mv):
         if self.ipmi_result:
             new_keys = set(self.ipmi_result) - self.registered_mvs

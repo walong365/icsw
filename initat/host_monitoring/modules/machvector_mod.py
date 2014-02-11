@@ -53,8 +53,10 @@ class _general(hm_classes.hm_module):
         hm_classes.hm_module.__init__(self, *args, **kwargs)
     def init_module(self):
         if hasattr(self.process_pool, "register_vector_receiver"):
-            self.process_pool.register_timer(self._update_machine_vector, 10, instant=True)
+            # at first init the machine_vector
             self._init_machine_vector()
+            # then start the polling loop
+            self.process_pool.register_timer(self._update_machine_vector, 10, instant=True)
     def close_module(self):
         if hasattr(self.process_pool, "register_vector_receiver"):
             self.machine_vector.close()
@@ -266,7 +268,7 @@ class machine_vector(object):
             if send_format == "xml":
                 self.__socket_dict[send_id].send_unicode(unicode(etree.tostring(send_vector)))
             else:
-                print json.dumps(send_vector)
+                # print json.dumps(send_vector)
                 self.__socket_dict[send_id].send_unicode(json.dumps(send_vector))
         except:
             exc_info = process_tools.get_except_info()
