@@ -553,11 +553,8 @@ def main():
     except:
         pass
     global_config.write_file()
-    # process_tools.renice()
-    # not very beautiful ...
-    # configfile.enable_config_access(global_config["USER"], global_config["GROUP"])
+    process_tools.renice()
     process_tools.change_user_group(global_config["USER"], global_config["GROUP"])
-    # global_config.set_uid_gid(global_config["USER"], global_config["GROUP"])
     process_tools.create_lockfile(global_config["LOCKFILE_NAME"])
     if not options.DEBUG:
         process_tools.become_daemon(mother_hook=process_tools.wait_for_lockfile,
