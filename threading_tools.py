@@ -364,6 +364,7 @@ class process_obj(multiprocessing.Process, timer_base, poller_obj):
         self._close_sockets()
         self.loop_post()
         self.zmq_finish()
+        return 0
     def loop_post(self):
         pass
     def zmq_finish(self):

@@ -33,7 +33,7 @@ import sys
 import threading
 import traceback
 from collections import OrderedDict
-from multiprocessing import Manager, current_process
+from multiprocessing import Manager, current_process, util, forking, managers
 from multiprocessing.managers import BaseManager, BaseProxy, DictProxy, Server
 # hack for python3
 if sys.version_info[0] == 3:
@@ -610,6 +610,7 @@ class my_server(Server):
         current_process()._manager_server = self
         # print("*", os.getpid(), os.getuid())
         _run = True
+        import time
         try:
             while _run:
                 try:
@@ -619,19 +620,56 @@ class my_server(Server):
                         except (OSError, IOError):
                             continue
                         t = threading.Thread(target=self.handle_request, args=(c,))
+                        # file("/tmp/bla", "a").write("get %d\n" % (time.time()))
                         t.daemon = True
                         t.start()
                 except (KeyboardInterrupt, SystemExit):
+                    # file("/tmp/bla", "a").write("xxx\n")
                     # print "+++", process_tools.get_except_info()
                     pass
+                except:
+                    # file("/tmp/bla", "a").write("%s\n" % (process_tools.get_except_info()))
+                    raise
         finally:
             # print "***", process_tools.get_except_info()
             self.stop = 999
+            # print "exit"
             self.listener.close()
+        # file("/tmp/bla", "a").write("fin\n")
 
 class config_manager(BaseManager):
     # monkey-patch Server
     _Server = my_server
+    @staticmethod
+    def _finalize_manager(process, address, authkey, state, _Client):
+        '''
+        Shutdown the manager process; will be registered as a finalizer
+        '''
+        if process.is_alive():
+            util.info('sending shutdown message to manager')
+            try:
+                conn = _Client(address, authkey=authkey)
+                try:
+                    forking.dispatch(conn, None, 'shutdown')
+                finally:
+                    conn.close()
+            except Exception:
+                pass
+            process.join(timeout=0.2)
+            if process.is_alive():
+                util.info('manager still alive')
+                if hasattr(process, 'terminate'):
+                    util.info('trying to `terminate()` manager process')
+                    process.terminate()
+                    process.join(timeout=0.1)
+                    if process.is_alive():
+                        util.info('manager still alive after terminate')
+
+        state.value = managers.State.SHUTDOWN
+        try:
+            del BaseProxy._address_to_local[address]
+        except KeyError:
+            pass
 
 config_manager.register("config", configuration, config_proxy, exposed=[
     "parse_file", "add_config_entries", "set_uid_gid",
