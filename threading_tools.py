@@ -379,7 +379,11 @@ class process_obj(multiprocessing.Process, timer_base, poller_obj, process_base)
         self.__exit_locked = True
     def unlock_exit(self):
         self.__exit_locked = False
-    def set_process_pool(self, p_pool):
+    @property
+    def process_pool(self):
+        return self.__process_pool
+    @process_pool.setter
+    def process_pool(self, p_pool):
         self.__process_pool = p_pool
     def getName(self):
         return self.name
@@ -598,6 +602,40 @@ class process_pool(timer_base, poller_obj, process_base):
         self.process_init()
         self.set_stack_size(kwargs.get("stack_size", DEFAULT_STACK_SIZE))
         self.__processes_stopped = set()
+        # clock ticks per second
+        self.__sc_clk_tck = float(os.sysconf(os.sysconf_names["SC_CLK_TCK"]))
+        self.__cpu_usage = []
+    def check_cpu_usage(self):
+        _excess = False
+        _pids = [self.pid] + [value.pid for value in self.processes.itervalues()]
+        try:
+            usage = [sum([int(_val) for _val in file("/proc/%d/stat" % (_pid), "r").read().split()[13:15]], 0) for _pid in _pids]
+        except:
+            # some problems, ignore
+            pass
+        else:
+            cur_time = time.time()
+            self.__cpu_usage = self.__cpu_usage[-4:] + [(cur_time, usage)]
+            try:
+                if len(self.__cpu_usage) > 2:
+                    pid_count = len(self.__cpu_usage[0][1])
+                    _usage = [0] * pid_count
+                    _prev_time = None
+                    _p = None
+                    # max. number of usage
+                    _uf = []
+                    for _cur_time, _t in self.__cpu_usage:
+                        if _prev_time:
+                            _uf.append(max([max(_a, _b) for _a, _b in zip(_usage, [(_v0 - _v1) / (_cur_time - _prev_time) / self.__sc_clk_tck for _v0, _v1 in zip(_t, _p)])]))
+                            # print _usage
+                        _prev_time = _cur_time
+                        _p = _t
+                    if len(_uf) > 3 and min(_uf) > 0.95:
+                        self.log("exczess values: %s" % (str(_uf)))
+                        _excess = True
+            except:
+                pass
+        return _excess
     @property
     def processes(self):
         return self.__processes
@@ -655,7 +693,7 @@ class process_pool(timer_base, poller_obj, process_base):
                      logging_tools.LOG_LEVEL_CRITICAL)
             return None
         else:
-            t_obj.set_process_pool(self)
+            t_obj.process_pool = self
             self.__processes[t_obj.getName()] = t_obj
             # process_queue.setsockopt(zmq.SNDBUF, 65536)
             # process_queue.setsockopt(zmq.RCVBUF, 65536)
