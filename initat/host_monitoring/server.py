@@ -97,6 +97,7 @@ class server_code(threading_tools.process_pool):
             self.register_timer(self._objgraph_run, 30, instant=True)
         if not self._init_commands():
             self._sigint("error init")
+        self.register_timer(self._check_cpu_usage, 30, instant=True)
     def log(self, what, lev=logging_tools.LOG_LEVEL_OK):
         if self.__log_template:
             while self.__log_cache:
@@ -435,7 +436,13 @@ class server_code(threading_tools.process_pool):
         _call_proc, _proc_pid, src_id, srv_com = args
         self.result_socket.send_unicode(src_id, zmq.SNDMORE)
         self.result_socket.send_unicode(unicode(srv_com))
+    def _check_cpu_usage(self):
+        if self.check_cpu_usage():
+            self.log("excess cpu usage detected", logging_tools.LOG_LEVEL_CRITICAL)
+            self.log("shooting myself in the head ...", logging_tools.LOG_LEVEL_CRITICAL)
+            os.kill(self.pid, 9)
     def _recv_command(self, zmq_sock):
+        # print [(key, value.pid) for key, value in self.processes.iteritems()]
         data = [zmq_sock.recv()]
         while zmq_sock.getsockopt(zmq.RCVMORE):
             data.append(zmq_sock.recv())
