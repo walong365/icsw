@@ -67,8 +67,8 @@ config_table_template = """
         <tr>
             <th>Name</th>
             <th>Pri</th>
-            <th>enabled</th>
             <th>Catalog</th>
+            <th>enabled</th>
             <th>Description</th>
             <th>parent</th>
             <th>var</th>

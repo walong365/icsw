@@ -103,11 +103,13 @@ class paginator_class
         else
             return ""
     page_back: () =>
-        @conf.act_page--
-        @activate_page()
+        if @conf.act_page > 1
+            @conf.act_page--
+            @activate_page()
     page_forward: () =>
-        @conf.act_page++
-        @activate_page()
+        if @conf.act_page < @conf.num_pages
+            @conf.act_page++
+            @activate_page()
     get_filtered_pl: () =>
         # return a filtered page list around the current page
         s_page = @conf.act_page
