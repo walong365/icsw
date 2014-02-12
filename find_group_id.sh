@@ -1,5 +1,5 @@
 #!/bin/bash
-# Copyright (C) 2001,2002,2003,2004,2005,2006,2007 Andreas Lang-Nevyjel
+# Copyright (C) 2001-2007,2014 Andreas Lang-Nevyjel
 #
 # Send feedback to: <lang-nevyjel@init.at>
 # 
@@ -27,3 +27,4 @@ while true ; do
 done
 
 echo $start_id
+

@@ -26,7 +26,6 @@ import io_stream_helper
 import logging_tools
 import multiprocessing
 import os
-import pickle
 import process_tools
 import signal
 import sys
@@ -35,7 +34,7 @@ import threading
 import traceback
 import zmq
 try:
-    from threading_tools_ancient import thread_obj, thread_pool, twisted_main_thread
+    from threading_tools_ancient import thread_obj, thread_pool, twisted_main_thread # @UnusedImport
 except:
     pass
 
@@ -79,6 +78,90 @@ def get_except_info():
 
 def get_act_thread_name():
     return threading.currentThread().getName()
+
+# debug objects for ZMQ debugging
+class debug_zmq_sock(object):
+    def __init__(self, zmq_sock):
+        self._sock = zmq_sock
+    def register(self, ctx):
+        self.ctx = ctx
+        ctx._sockets_open.add(self.fileno())
+    def bind(self, name):
+        self.ctx.log("bind %d to %s" % (self.fileno(), name))
+        return self._sock.bind(name)
+    def connect(self, name):
+        self.ctx.log("connect %d to %s" % (self.fileno(), name))
+        return self._sock.connect(name)
+    def send(self, *args, **kwargs):
+        return self._sock.send(*args, **kwargs)
+    def send_pyobj(self, *args, **kwargs):
+        return self._sock.send_pyobj(*args, **kwargs)
+    def send_unicode(self, *args, **kwargs):
+        return self._sock.send_unicode(*args, **kwargs)
+    def recv(self, *args, **kwargs):
+        return self._sock.recv(*args, **kwargs)
+    def recv_pyobj(self, *args, **kwargs):
+        return self._sock.recv_pyobj(*args, **kwargs)
+    def recv_unicode(self, *args, **kwargs):
+        return self._sock.recv_unicode(*args, **kwargs)
+    def setsockopt(self, *args):
+        return self._sock.setsockopt(*args)
+    def getsockopt(self, *args):
+        return self._sock.getsockopt(*args)
+    def fileno(self):
+        return self._sock.getsockopt(zmq.FD)
+    def poll(self, **kwargs):
+        return self._sock.poll(**kwargs)
+    def close(self):
+        self.ctx.log("close %d" % (self.fileno()))
+        self.ctx._sockets_open.remove(self.fileno())
+        if self.ctx._sockets_open:
+            self.ctx.log("    still open: %s" % (", ".join(["%d" % (cur_fd) for cur_fd in self.ctx._sockets_open])))
+        return self._sock.close()
+
+class debug_zmq_ctx(zmq.Context):
+    ctx_idx = 0
+    def __init__(self, *args, **kwargs):
+        self.zmq_idx = debug_zmq_ctx.ctx_idx
+        debug_zmq_ctx.ctx_idx += 1
+        zmq.Context.__init__(self, *args, **kwargs)
+        self._sockets_open = set()
+    def __setattr__(self, key, value):
+        if key in ["zmq_idx", "_sockets_open"]:
+            # not defined in zmq.Context
+            self.__dict__[key] = value
+        else:
+            super(debug_zmq_ctx, self).__setattr__(key, value)
+    def __delattr__(self, key):
+        if key in ["zmq_idx", "_sockets_open"]:
+            # not defined in zmq.Context
+            if key in self.__dict__:
+                del self.__dict__[key]
+        else:
+            super(debug_zmq_ctx, self).__delattr__(key)
+    def log(self, out_str):
+        t_name = threading.currentThread().name
+        print("[[zmq_idx=%d, t_name=%-20s]] %s" % (self.zmq_idx, t_name, out_str))
+    def _interpret_sock_type(self, s_type):
+        l_type = ""
+        for _s_type in ["XPUB", "XSUB", "REP", "REQ", "ROUTER", "SUB", "DEALER", "PULL", "PUB", "PUSH"]:
+            if getattr(zmq, _s_type) == s_type:
+                l_type = _s_type
+        return "%d%s" % (s_type, "=%s" % (l_type) if l_type else "")
+    def socket(self, sock_type, *args, **kwargs):
+        ret_socket = super(debug_zmq_ctx, self).socket(sock_type, *args, **kwargs)
+        self._sockets_open.add(ret_socket.fd)
+        self.log("socket(%s) == %d, now open: %s" % (
+            self._interpret_sock_type(sock_type),
+            ret_socket.fd,
+            ", ".join(["%d" % (cur_fd) for cur_fd in self._sockets_open])))
+        ret_sock = debug_zmq_sock(ret_socket)
+        ret_sock.register(self)
+        return ret_sock
+    def term(self):
+        self.log("term, %s open" % (logging_tools.get_plural("socket", len(self._sockets_open))))
+        del self._sockets_open
+        super(debug_zmq_ctx, self).term()
 
 class _timer_obj(object):
     def __init__(self, step, next_time, cb_func, **kwargs):
@@ -130,7 +213,7 @@ class timer_base(object):
         self.__next_timeout = min([cur_to.next_time for cur_to in self.__timer_list])
     def _handle_timer(self, cur_time):
         new_tl = []
-        min_next = 1.0
+        # min_next = 1.0
         for cur_to in self.__timer_list:
             _diff = cur_to.next_time - cur_time
             if _diff <= 0:
@@ -155,9 +238,6 @@ class timer_base(object):
     @property
     def loop_timer(self):
         return self.__loop_timer
-
-import select
-import socket
 
 class poller_obj(object):
     def __init__(self):
@@ -253,11 +333,23 @@ class poller_obj(object):
                 self.log("socket %s not found in handler_dict" % (str(sock)), logging_tools.LOG_LEVEL_CRITICAL)
                 time.sleep(0.5)
 
-class process_obj(multiprocessing.Process, timer_base, poller_obj):
+class process_base(object):
+    def set_stack_size(self, s_size):
+        try:
+            threading.stack_size(s_size)
+        except:
+            self.log("Error setting stack_size to %s: %s" % (logging_tools.get_size_str(s_size, long_version=True),
+                                                             get_except_info()),
+                     logging_tools.LOG_LEVEL_ERROR)
+        else:
+            self.log("setting stack_size to %s" % (logging_tools.get_size_str(s_size, long_version=True)))
+
+class process_obj(multiprocessing.Process, timer_base, poller_obj, process_base):
     def __init__(self, name, **kwargs):
         multiprocessing.Process.__init__(self, target=self._code, name=name)
         timer_base.__init__(self, loop_timer=kwargs.get("loop_timer", 0))
         poller_obj.__init__(self)
+        self.__stack_size = kwargs.get("stack_size", DEFAULT_STACK_SIZE)
         # flags
         self.__flags = {}
         # function table
@@ -356,6 +448,7 @@ class process_obj(multiprocessing.Process, timer_base, poller_obj):
         self._init_sockets()
         # call process_init (set pid and stuff)
         self.process_init()
+        self.set_stack_size(self.__stack_size)
         self.process_running()
         self.loop_start()
         self.loop()
@@ -464,90 +557,7 @@ class process_obj(multiprocessing.Process, timer_base, poller_obj):
             if self.cb_func:
                 self.cb_func()
 
-class debug_zmq_sock(object):
-    def __init__(self, zmq_sock):
-        self._sock = zmq_sock
-    def register(self, ctx):
-        self.ctx = ctx
-        ctx._sockets_open.add(self.fileno())
-    def bind(self, name):
-        self.ctx.log("bind %d to %s" % (self.fileno(), name))
-        return self._sock.bind(name)
-    def connect(self, name):
-        self.ctx.log("connect %d to %s" % (self.fileno(), name))
-        return self._sock.connect(name)
-    def send(self, *args, **kwargs):
-        return self._sock.send(*args, **kwargs)
-    def send_pyobj(self, *args, **kwargs):
-        return self._sock.send_pyobj(*args, **kwargs)
-    def send_unicode(self, *args, **kwargs):
-        return self._sock.send_unicode(*args, **kwargs)
-    def recv(self, *args, **kwargs):
-        return self._sock.recv(*args, **kwargs)
-    def recv_pyobj(self, *args, **kwargs):
-        return self._sock.recv_pyobj(*args, **kwargs)
-    def recv_unicode(self, *args, **kwargs):
-        return self._sock.recv_unicode(*args, **kwargs)
-    def setsockopt(self, *args):
-        return self._sock.setsockopt(*args)
-    def getsockopt(self, *args):
-        return self._sock.getsockopt(*args)
-    def fileno(self):
-        return self._sock.getsockopt(zmq.FD)
-    def poll(self, **kwargs):
-        return self._sock.poll(**kwargs)
-    def close(self):
-        self.ctx.log("close %d" % (self.fileno()))
-        self.ctx._sockets_open.remove(self.fileno())
-        if self.ctx._sockets_open:
-            self.ctx.log("    still open: %s" % (", ".join(["%d" % (cur_fd) for cur_fd in self.ctx._sockets_open])))
-        return self._sock.close()
-
-class debug_zmq_ctx(zmq.Context):
-    ctx_idx = 0
-    def __init__(self, *args, **kwargs):
-        self.zmq_idx = debug_zmq_ctx.ctx_idx
-        debug_zmq_ctx.ctx_idx += 1
-        zmq.Context.__init__(self, *args, **kwargs)
-        self._sockets_open = set()
-    def __setattr__(self, key, value):
-        if key in ["zmq_idx", "_sockets_open"]:
-            # not defined in zmq.Context
-            self.__dict__[key] = value
-        else:
-            super(debug_zmq_ctx, self).__setattr__(key, value)
-    def __delattr__(self, key):
-        if key in ["zmq_idx", "_sockets_open"]:
-            # not defined in zmq.Context
-            if key in self.__dict__:
-                del self.__dict__[key]
-        else:
-            super(debug_zmq_ctx, self).__delattr__(key)
-    def log(self, out_str):
-        t_name = threading.currentThread().name
-        print("[[zmq_idx=%d, t_name=%-20s]] %s" % (self.zmq_idx, t_name, out_str))
-    def _interpret_sock_type(self, s_type):
-        l_type = ""
-        for _s_type in ["XPUB", "XSUB", "REP", "REQ", "ROUTER", "SUB", "DEALER", "PULL", "PUB", "PUSH"]:
-            if getattr(zmq, _s_type) == s_type:
-                l_type = _s_type
-        return "%d%s" % (s_type, "=%s" % (l_type) if l_type else "")
-    def socket(self, sock_type, *args, **kwargs):
-        ret_socket = super(debug_zmq_ctx, self).socket(sock_type, *args, **kwargs)
-        self._sockets_open.add(ret_socket.fd)
-        self.log("socket(%s) == %d, now open: %s" % (
-            self._interpret_sock_type(sock_type),
-            ret_socket.fd,
-            ", ".join(["%d" % (cur_fd) for cur_fd in self._sockets_open])))
-        ret_sock = debug_zmq_sock(ret_socket)
-        ret_sock.register(self)
-        return ret_sock
-    def term(self):
-        self.log("term, %s open" % (logging_tools.get_plural("socket", len(self._sockets_open))))
-        del self._sockets_open
-        super(debug_zmq_ctx, self).term()
-
-class process_pool(timer_base, poller_obj):
+class process_pool(timer_base, poller_obj, process_base):
     def __init__(self, name, **kwargs):
         self.debug_zmq = kwargs.get("zmq_debug", False)
         timer_base.__init__(self)
@@ -634,15 +644,6 @@ class process_pool(timer_base, poller_obj):
         if type(f_str) != type([]):
             f_str = [f_str]
         self.__ignore_funcs.extend(f_str)
-    def set_stack_size(self, s_size):
-        try:
-            threading.stack_size(s_size)
-        except:
-            self.log("Error setting stack_size to %s: %s" % (logging_tools.get_size_str(s_size, long_version=True),
-                                                             get_except_info()),
-                     logging_tools.LOG_LEVEL_ERROR)
-        else:
-            self.log("setting stack_size to %s" % (logging_tools.get_size_str(s_size, long_version=True)))
     def _close_pp_sockets(self):
         for _sock_name, zmq_sock in self.__sockets.items():
             zmq_sock.close()

@@ -1,3 +1,0 @@
-# global settings for cluster
-
-GLOBAL_LOCK_FILE=/cluster/GLOBAL_CLUSTER_LOCK

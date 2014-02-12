@@ -1,7 +1,7 @@
 #!/usr/bin/python-init -Ot
 # -*- coding: utf-8 -*-
 #
-# Copyright (C) 2001,2002,2003,2004,2005,2006,2007,2008,2009,2010,2011,2012,2013 Andreas Lang-Nevyjel
+# Copyright (C) 2001-2014 Andreas Lang-Nevyjel
 #
 # this file is part of python-modules-base
 #
@@ -275,49 +275,15 @@ def get_logger(name, destination, **kwargs):
         if (cur_pid, act_dest) not in act_logger.handler_strings:
             act_dest = act_dest[1]
             act_logger.handler_strings.append((cur_pid, act_dest))
-            if kwargs.get("zmq", False):
-                if "context" not in kwargs:
-                    cur_context = zmq.Context()
-                else:
-                    cur_context = kwargs["context"]
-
-                pub = cur_context.socket(zmq.PUSH)
-                pub.setsockopt(zmq.LINGER, 0)
-                pub.connect(rewrite_log_destination(act_dest if act_dest.endswith("_zmq") else "%s_zmq" % (act_dest)))
-                act_logger.addHandler(zmq_handler(pub, act_logger))
+            if "context" not in kwargs:
+                cur_context = zmq.Context()
             else:
-                if act_dest.count("zmq"):
-                    raise ValueError("requested ZMQ-type destination '%s' without ZMQ-Protocol" % (act_dest))
-                if act_dest.startswith("uds:"):
-                    if is_linux:
-                        # linux, ok
-                        if act_logger.handlers:
-                            # FIXME, handlers already set / used
-                            pass
-                        else:
-                            act_logger.addHandler(local_uds_handler(act_dest[4:]))
-                    else:
-                        # Windows
-                        # Formatter
-                        # dont forget to correct the bug in logging/__init__.py line 772 (2.6.3): \n -> \r\n
-                        act_form = logging.Formatter("%(asctime)s : %(levelname)-5s (%(threadName)s) %(message)s",
-                                                     "%a %b %d %H:%M:%S %Y")
-                        dst_file = os.path.abspath("c:\\var\\log\\%s.log" % (name))
-                        if not os.path.isdir(os.path.dirname(dst_file)):
-                            os.makedirs(os.path.dirname(dst_file))
-                        new_h = logging.handlers.RotatingFileHandler(
-                            dst_file,
-                            maxBytes=kwargs.get("max_bytes", 100000),
-                            backupCount=kwargs.get("backup_count", 500),
-                            encoding="utf-8")
-                        new_h.setFormatter(act_form)
-                        act_logger.addHandler(new_h)
-                elif act_dest.startswith("udp:"):
-                    act_logger.addHandler(udp_handler(act_dest[4:]))
-                elif act_dest == "threadqueue":
-                    act_logger.addHandler(queue_handler(kwargs["target_queue"], **kwargs))
-                elif act_dest == "stdout":
-                    act_logger.addHandler(logging.StreamHandler())
+                cur_context = kwargs["context"]
+
+            pub = cur_context.socket(zmq.PUSH)
+            pub.setsockopt(zmq.LINGER, 0)
+            pub.connect(rewrite_log_destination(act_dest if act_dest.endswith("_zmq") else "%s_zmq" % (act_dest)))
+            act_logger.addHandler(zmq_handler(pub, act_logger))
     if log_adapter:
         # by using the log_adapter we also add thread-safety to the logger
         act_adapter = log_adapter(act_logger, {})
@@ -511,94 +477,6 @@ class queue_handler(logging.Handler):
             self.__target_queue.put((self.__pre_tuple, record))
         except:
             self.handleError(record)
-
-class udp_handler(logging.handlers.DatagramHandler):
-    def __init__(self, target_str):
-        # parse target_str
-        if target_str.count(":"):
-            host, port = target_str.split(":")
-            port = int(port)
-        else:
-            # default port is logging_server port
-            host, port = (target_str,
-                          8011)
-        logging.handlers.DatagramHandler.__init__(self, host, port)
-    def makePickle(self, record):
-        ei = record.exc_info
-        if ei:
-            dummy = self.format(record) # just to get traceback text into record.exc_text
-            record.exc_info = None # to avoid Unpickleable error
-        out_str = pickle.dumps(record.__dict__, 1)
-        if ei:
-            record.exc_info = ei # for next handler
-        return "%08d" % (len(out_str)) + out_str
-
-class local_uds_handler(logging.Handler):
-    """ local unix domain socket handler """
-    def __init__(self, address, **kwargs):
-        self.__address = address
-        logging.Handler.__init__(self)
-        self.__unix_socket = True
-        self._connect_unixsocket()
-    def _connect_unixsocket(self):
-        self.socket = socket.socket(socket.AF_UNIX, socket.SOCK_DGRAM)
-        # syslog may require either DGRAM or STREAM sockets
-        try:
-            self.socket.connect(self.__address)
-        except socket.error:
-            self.socket.close()
-            self.socket = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
-            try:
-                self.socket.connect(self.__address)
-            except socket.error:
-                self.socket = None
-                pass
-        if self.socket:
-            self.socket.setblocking(False)
-    def close(self):
-        if hasattr(self, "socket"):
-            if self.socket:
-                self.socket.close()
-                del self.socket
-    def makePickle(self, record):
-        """
-        Pickles the record in binary format with a length prefix, and
-        returns it ready for transmission across the socket.
-        """
-        ei = record.exc_info
-        if ei:
-            dummy = self.format(record) # just to get traceback text into record.exc_text
-            record.exc_info = None # to avoid Unpickleable error
-        p_str = pickle.dumps(record.__dict__, 1)
-        if ei:
-            record.exc_info = ei # for next handler
-        return "%08d%s" % (len(p_str), p_str)
-    def handleError(self, record):
-        my_syslog("%s:%s" % (record.threadName, record.msg), record.levelno)
-    def emit(self, record):
-        """
-        Emit a record.
-        """
-        if not self.socket:
-            self._connect_unixsocket()
-        msg = self.makePickle(record)
-        if self.socket:
-            # add unique id to record in case of multi-thread (process) logging via the same unixsocket FIXME
-            to_send = 8000
-            while msg:
-                try:
-                    _just_sent = self.socket.send(msg[:to_send])
-                except socket.error:
-                    self._connect_unixsocket()
-                except (KeyboardInterrupt, SystemExit):
-                    raise
-                except:
-                    self.handleError(record)
-                    msg = None
-                else:
-                    msg = msg[to_send:]
-        else:
-            my_syslog(record)
 
 class progress_counter(object):
     def __init__(self, action, total_count, **kwargs):
