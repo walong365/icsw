@@ -238,7 +238,7 @@ class server_process(threading_tools.process_pool):
             conn_str = "tcp://*:%d" % (bind_port)
             try:
                 client.bind(conn_str)
-            except zmq.core.error.ZMQError:
+            except zmq.ZMQError:
                 self.log(
                     "error binding to %s{%d}: %s" % (
                         conn_str,
