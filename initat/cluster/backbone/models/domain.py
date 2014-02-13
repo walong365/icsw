@@ -245,16 +245,18 @@ def _migrate_mon_type(cat_tree):
 def _migrate_location_type(cat_tree):
     device_location = get_model("backbone", "device_location")
     device = get_model("backbone", "device")
-    # read all monitoring_config_types
-    all_loc_ct = dict([(pk, "%s/%s" % (
-        TOP_LOCATION_CATEGORY,
-        cur_name)) for pk, cur_name in device_location.objects.all().values_list("pk", "location")])
-    mig_dict = dict([(key, cat_tree.add_category(value)) for key, value in all_loc_ct.iteritems()])
-    for cur_dev in device.objects.all():
-        if cur_dev.device_location_id:
-            cur_dev.categories.add(mig_dict[cur_dev.device_location_id])
-            cur_dev.device_location = None
-            cur_dev.save()
+    # just to be sure ...
+    if device_location and device:
+        # read all monitoring_config_types
+        all_loc_ct = dict([(pk, "%s/%s" % (
+            TOP_LOCATION_CATEGORY,
+            cur_name)) for pk, cur_name in device_location.objects.all().values_list("pk", "location")])
+        mig_dict = dict([(key, cat_tree.add_category(value)) for key, value in all_loc_ct.iteritems()])
+        for cur_dev in device.objects.all():
+            if cur_dev.device_location_id:
+                cur_dev.categories.add(mig_dict[cur_dev.device_location_id])
+                cur_dev.device_location = None
+                cur_dev.save()
 
 class category_tree(object):
     # helper structure
@@ -303,7 +305,7 @@ class category_tree(object):
             _migrate_mon_type(self)
         if not TOP_LOCATION_CATEGORY in self.__category_lut:
             _migrate_location_type(self)
-        for check_name in [TOP_CONFIG_CATEGORY, TOP_DEVICE_CATEGORY]:
+        for check_name in [TOP_CONFIG_CATEGORY, TOP_DEVICE_CATEGORY, TOP_MONITORING_CATEGORY, TOP_LOCATION_CATEGORY]:
             if not check_name in self.__category_lut:
                 self.add_category(check_name)
         for cur_node in self.__node_dict.itervalues():
