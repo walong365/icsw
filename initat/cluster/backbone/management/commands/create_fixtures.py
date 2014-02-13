@@ -30,6 +30,7 @@ class Command(BaseCommand):
     help = ("Creates the cluster fixtures.")
 
     def handle(self, **options):
+        print "creating fixtures..."
         # log source
         factories.LogSource(identifier="user", name="Cluster user", description="Clusteruser")
         # device type
