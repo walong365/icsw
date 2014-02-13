@@ -250,6 +250,7 @@ device_config_module.controller("config_ctrl", ["$scope", "$compile", "$filter",
             wait_list = restDataSource.add_sources([
                 ["{% url 'rest:device_tree_list' %}", {"with_device_configs" : true, "with_meta_devices" : true, "pks" : angular.toJson($scope.devsel_list), "olp" : "backbone.device.change_config"}],
                 ["{% url 'rest:config_list' %}", {}]
+                ["{% url 'rest:config_catalog_list' %}", {}]
             ])
             $q.all(wait_list).then((data) ->
                 $scope.devices = []
@@ -266,12 +267,14 @@ device_config_module.controller("config_ctrl", ["$scope", "$compile", "$filter",
                         $scope.devg_md_lut[entry.device_group] = entry.idx
                     $scope.all_devices.push(entry)
                 $scope.configs = data[1]
+                $scope.config_catalogs = data[2]
                 $scope.new_filter_set($scope.name_filter, false)
                 $scope.init_devices(pre_sel)
             )
         $scope.create_config = () ->
             new_obj = {
                 "name" : $scope.new_config_name
+                "config_catalog" : $scope.config_catalogs[0].idx
             }
             Restangular.all("{% url 'rest:config_list' %}".slice(1)).post(new_obj).then((new_data) ->
                 $scope.new_config_name = ""
