@@ -53,12 +53,15 @@ device_config_template = """
         <div class="form-inline col-sm-4">
             <div class="form-group" ng-show="acl_create(null, 'backbone.config.modify_config') && config_catalogs.length > 0">
                 <input placeholder="new config" ng-model="new_config_name" class="form-control input-sm"></input>
+                <div class="btn-group" ng-show="new_config_name">
+                    <button type="button" class="btn btn-sm btn-success dropdown-toggle" data-toggle="dropdown">
+                        Create in catalog <span class="caret"></span>
+                    </button>
+                    <ul class="dropdown-menu">
+                        <li ng-repeat="entry in config_catalogs" ng-click="create_config(entry.idx)"><a href="#">{{ entry.name }}</a></li>
+                    </ul>
+                </div>
             </div>
-            <div class="form-group" ng-show="acl_create(null, 'backbone.config.modify_config') && config_catalogs.length > 0">
-                <input type="button" class="btn btn-success btn-sm" ng-show="new_config_name" ng-click="create_config()" value="create config"></input>
-                <select ng-model="config_catalog" ng-options="entry.idx as entry.name for entry in config_catalogs"></select>
-            </div>
-            
         </div>
     </div>
     <table ng-show="devices.length" class="table table-condensed table-hover" style="width:auto;">
@@ -271,14 +274,13 @@ device_config_module.controller("config_ctrl", ["$scope", "$compile", "$filter",
                     $scope.all_devices.push(entry)
                 $scope.configs = data[1]
                 $scope.config_catalogs = data[2]
-                $scope.config_catalog = $scope.config_catalogs[0].idx
                 $scope.new_filter_set($scope.name_filter, false)
                 $scope.init_devices(pre_sel)
             )
-        $scope.create_config = () ->
+        $scope.create_config = (cur_cat) ->
             new_obj = {
                 "name" : $scope.new_config_name
-                "config_catalog" : $scope.config_catalog
+                "config_catalog" : cur_cat
             }
             Restangular.all("{% url 'rest:config_list' %}".slice(1)).post(new_obj).then((new_data) ->
                 $scope.new_config_name = ""

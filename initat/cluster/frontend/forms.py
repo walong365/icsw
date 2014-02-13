@@ -206,7 +206,7 @@ class device_info_form(ModelForm):
                 "Info",
                 Div(
                     Div(
-                        Button("uuid", "show UUID info", css_class="btn-info", ng_click="toggle_uuid()"),
+                        Button("uuid", "UUID info", css_class="btn-info", ng_click="toggle_uuid()"),
                         css_class="col-md-6",
                     ),
                     Div(
