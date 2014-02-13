@@ -28,14 +28,10 @@ from initat.host_monitoring.client import client_code
 from initat.host_monitoring.config import global_config
 from initat.host_monitoring.relay import relay_code
 from initat.host_monitoring.server import server_code
+from initat.host_monitoring.version import VERSION_STRING
 import configfile
 import process_tools
 import sys
-
-try:
-    from host_monitoring_version import VERSION_STRING
-except ImportError:
-    VERSION_STRING = "?.?"
 
 def show_command_info():
     from initat.host_monitoring import modules
