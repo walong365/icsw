@@ -181,7 +181,7 @@ class server_process(threading_tools.process_pool):
         bind_str = "tcp://*:%d" % (global_config["COM_PORT"])
         try:
             client.bind(bind_str)
-        except zmq.core.error.ZMQError:
+        except zmq.ZMQError:
             self.log(
                 "error binding to %d: %s" % (
                     global_config["COM_PORT"],
