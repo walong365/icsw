@@ -1,6 +1,6 @@
 #!/usr/bin/python-init -Ot
 #
-# Copyright (C) 2001,2002,2003,2004,2005,2006,2007,2008,2012,2013 Andreas Lang-Nevyjel
+# Copyright (C) 2001-2008,2012-2014 Andreas Lang-Nevyjel
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -19,12 +19,14 @@
 #
 """ cluster-server, quota handling """
 
-import os
-from initat.cluster_server.config import global_config
+from django.db.models import Q
+from initat.cluster.backbone.models import user
 from initat.cluster_server.background.base import bg_stuff
+from initat.cluster_server.config import global_config
 from initat.host_monitoring import hm_classes
 import commands
 import logging_tools
+import os
 import process_tools
 import pwd
 import time
@@ -117,33 +119,33 @@ class quota_stuff(bg_stuff):
         self.__admin_mail_sent = None
         # load value cache
         self.__load_values = {}
-    def _resolve_uids(self, dc, uid_list):
+    def _resolve_uids(self, uid_list):
         if uid_list:
-            dc.execute("SELECT u.uid, u.login, u.uservname, u.usernname, u.useremail FROM user u WHERE %s" % (" OR ".join(["u.uid=%d" % (x) for x in uid_list])))
-            for db_rec in dc.fetchall():
-                if self.__user_dict.has_key(db_rec["uid"]):
+            for db_rec in user.objects.filter(Q(uid__in=uid_list)):
+                if self.__user_dict.has_key(db_rec.uid):
                     # check for new settings
                     for key, value in [("source"    , "SQL"),
-                                       ("uid"       , db_rec["uid"]),
-                                       ("login"     , db_rec["login"]),
-                                       ("email"     , db_rec["useremail"]),
-                                       ("firstname" , db_rec["uservname"]),
-                                       ("lastname"  , db_rec["usernname"])]:
+                                       ("uid"       , db_rec.uid),
+                                       ("login"     , db_rec.login),
+                                       ("email"     , db_rec.email),
+                                       ("firstname" , db_rec.first_name),
+                                       ("lastname"  , db_rec.last_name)]:
                         self.__user_dict[db_rec["uid"]][key] = value
                 else:
                     # new record
                     self.__user_dict[db_rec["uid"]] = {"source"    : "SQL",
-                                                       "uid"       : db_rec["uid"],
-                                                       "login"     : db_rec["login"],
-                                                       "email"     : db_rec["useremail"],
-                                                       "firstname" : db_rec["uservname"],
-                                                       "lastname"  : db_rec["usernname"]}
+                                                       "uid"       : db_rec.uid,
+                                                       "login"     : db_rec.login,
+                                                       "email"     : db_rec.email,
+                                                       "firstname" : db_rec.first_name,
+                                                       "lastname"  : db_rec.las_name}
                 act_dict = self.__user_dict[db_rec["uid"]]
-                act_dict["info"] = "uid %d, login %s (from SQL), (%s %s, %s)" % (act_dict["uid"],
-                                                                                 act_dict["login"],
-                                                                                 act_dict["firstname"] or "<vname not set>",
-                                                                                 act_dict["lastname"] or "<nname not set>",
-                                                                                 act_dict["email"] or "<email not set>")
+                act_dict["info"] = "uid %d, login %s (from SQL), (%s %s, %s)" % (
+                    act_dict["uid"],
+                    act_dict["login"],
+                    act_dict["firstname"] or "<vname not set>",
+                    act_dict["lastname"] or "<nname not set>",
+                    act_dict["email"] or "<email not set>")
         missing_uids = [key for key in uid_list if not self.__user_dict.has_key(key)]
         for missing_uid in missing_uids:
             try:
@@ -180,7 +182,7 @@ class quota_stuff(bg_stuff):
                              "quota.%s.%s.used:i:%d" % (dev_name, u_name, block_dict["used"])])
         return ret_list
     def _call(self, cur_time, builder):
-        dc = self.server_process.get_dc()
+        # dc = self.server_process.get_dc()
         sep_str = "-" * 64
         # vector to report
         my_vector = None
@@ -242,7 +244,7 @@ class quota_stuff(bg_stuff):
                             prob_devs.setdefault(dev, mtab_dict.get(dev, ("unknown mountpoint",
                                                                           "unknown fstype",
                                                                           "unknown flags")))
-            self._resolve_uids(dc, list(set(prob_users.keys() + list(missing_uids))))
+            self._resolve_uids(list(set(prob_users.keys() + list(missing_uids))))
             if prob_devs:
                 mail_lines, email_users = ({"admins" : []},
                                            ["admins"])
@@ -347,6 +349,5 @@ class quota_stuff(bg_stuff):
         qc_etime = time.time()
         self.log("quotacheck took %s" % (logging_tools.get_diff_time_str(qc_etime - cur_time)))
         self.log(sep_str)
-        dc.release()
         return my_vector
 

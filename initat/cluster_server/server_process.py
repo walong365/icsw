@@ -1,6 +1,6 @@
 #!/usr/bin/python-init -Ot
 #
-# Copyright (C) 2001,2002,2003,2004,2005,2006,2007,2008,2012,2013 Andreas Lang-Nevyjel
+# Copyright (C) 2001-2008,2012-2014 Andreas Lang-Nevyjel
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -105,7 +105,7 @@ class server_process(threading_tools.process_pool):
         self.__cap_list = []
         for key, _value in self.__server_cap_dict.iteritems():
             _sql_info = config_tools.server_check(server_type=key)
-            if key == "dummy":
+            if _sql_info.effective_device:
                 self.__cap_list.append(key)
             self.log("capability %s: %s" % (key, "enabled" if key in self.__cap_list else "disabled"))
     def _int_error(self, err_cause):
