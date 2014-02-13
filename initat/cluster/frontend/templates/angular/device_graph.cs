@@ -19,39 +19,47 @@ rrd_graph_template = """
             </span>
             <input type="text" class="form-control input-sm" ng-model="from_date"></input>
             <span class="input-group-btn">
-                <button type="button" class="btn btn-sm dropdown-toggle btn-primary" data-toggle="dropdown">
-                   <span class="glyphicon glyphicon-calendar"></span>
-                </button>
-                <ul class="dropdown-menu" role="menu">
-                    <datetimepicker ng-model="from_date" datetimepicker-config="{ dropdownSelector: '.my-toggle-select' }">
-                    </datetimepicker>
-                </ul>
+                <div class="btn-group">
+                    <button type="button" class="btn btn-sm dropdown-toggle btn-primary" data-toggle="dropdown">
+                       <span class="glyphicon glyphicon-calendar"></span>
+                    </button>
+                    <ul class="dropdown-menu" role="menu">
+                        <datetimepicker ng-model="from_date" datetimepicker-config="{ dropdownSelector: '.my-toggle-select' }">
+                        </datetimepicker>
+                    </ul>
+                </div>
             </span>
             <input type="text" class="form-control input-sm" ng-model="to_date"></input>
             <span class="input-group-btn">
-                <button type="button" class="btn btn-sm dropdown-toggle btn-primary" data-toggle="dropdown">
-                   <span class="glyphicon glyphicon-calendar"></span>
-                </button>
-                <ul class="dropdown-menu" role="menu">
-                    <datetimepicker ng-model="to_date" datetimepicker-config="{ dropdownSelector: '.my-toggle-select' }">
-                    </datetimepicker>
-                </ul>
+                <div class="btn-group">
+                    <button type="button" class="btn btn-sm dropdown-toggle btn-primary" data-toggle="dropdown">
+                       <span class="glyphicon glyphicon-calendar"></span>
+                    </button>
+                    <ul class="dropdown-menu" role="menu">
+                        <datetimepicker ng-model="to_date" datetimepicker-config="{ dropdownSelector: '.my-toggle-select' }">
+                        </datetimepicker>
+                    </ul>
+                </div>
             </span>
             <div class="input-group-btn">
-                <button type="button" class="btn btn-sm btn-success dropdown-toggle" data-toggle="dropdown">
-                    {{ cur_dim }} <span class="caret"></span>
-                </button>
-                <ul class="dropdown-menu">
-                    <li ng-repeat="dim in all_dims" ng-click="set_active_dim(dim)"><a href="#">{{ dim }}</a></li>
-                </ul>
+                <div class="btn-group">
+                    <button type="button" class="btn btn-sm btn-success dropdown-toggle" data-toggle="dropdown">
+                        {{ cur_dim }} <span class="caret"></span>
+                    </button>
+                    <ul class="dropdown-menu">
+                        <li ng-repeat="dim in all_dims" ng-click="set_active_dim(dim)"><a href="#">{{ dim }}</a></li>
+                    </ul>
+                </div>
             </div>&nbsp;
             <div class="input-group-btn">
-                <button type="button" class="btn btn-sm btn-primary dropdown-toggle" data-toggle="dropdown">
-                    timerange <span class="caret"></span>
-                </button>
-                <ul class="dropdown-menu">
-                    <li ng-repeat="tr in all_timeranges" ng-click="set_active_tr(tr)"><a href="#">{{ tr.name }}</a></li>
-                </ul>
+                <div class="btn-group">
+                    <button type="button" class="btn btn-sm btn-primary dropdown-toggle" data-toggle="dropdown">
+                        timerange <span class="caret"></span>
+                    </button>
+                    <ul class="dropdown-menu">
+                        <li ng-repeat="tr in all_timeranges" ng-click="set_active_tr(tr)"><a href="#">{{ tr.name }}</a></li>
+                    </ul>
+                </div>
             </div>
         </div>
         <div class="row">

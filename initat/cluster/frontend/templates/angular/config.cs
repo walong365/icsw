@@ -110,18 +110,20 @@ config_table_template = """
             <td class="text-center">{{ get_num_cats(config) }}</td>
             <td>
                 <div class="input-group-btn">
-                    <button type="button" class="btn btn-warning btn-sm dropdown-toggle" data-toggle="dropdown">
-                        Create <span class="caret"></span>
-                    </button>
-                    <ul class="dropdown-menu">
-                        <li ng-click="create_script(config, $event)"><a href="#">Script</a></li>
-                        <li class="divider"></li>
-                        <li ng-click="create_var(config, 'str', $event)"><a href="#">String var</a></li>
-                        <li ng-click="create_var(config, 'int', $event)"><a href="#">Integer var</a></li>
-                        <li ng-click="create_var(config, 'bool', $event)"><a href="#">Bool var</a></li>
-                        <li class="divider"></li>
-                        <li ng-click="create_mon(config, $event)"><a href="#">Check command</a></li>
-                    </ul>
+                    <div class="btn-group">
+                        <button type="button" class="btn btn-warning btn-sm dropdown-toggle" data-toggle="dropdown">
+                            Create <span class="caret"></span>
+                        </button>
+                        <ul class="dropdown-menu">
+                            <li ng-click="create_script(config, $event)"><a href="#">Script</a></li>
+                            <li class="divider"></li>
+                            <li ng-click="create_var(config, 'str', $event)"><a href="#">String var</a></li>
+                            <li ng-click="create_var(config, 'int', $event)"><a href="#">Integer var</a></li>
+                            <li ng-click="create_var(config, 'bool', $event)"><a href="#">Bool var</a></li>
+                            <li class="divider"></li>
+                            <li ng-click="create_mon(config, $event)"><a href="#">Check command</a></li>
+                        </ul>
+                    </div>
                 </div>
             </td>
             <td class="text-center">

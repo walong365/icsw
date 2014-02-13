@@ -25,22 +25,23 @@
 
 # do not remove mon_check_command, is access via globals()
 from django.contrib.auth.decorators import login_required
+from django.core.cache import cache
 from django.core.urlresolvers import reverse
 from django.db.models import Q
 from django.http import HttpResponse, HttpResponseRedirect
 from django.utils.decorators import method_decorator
 from django.views.generic import View
-from rest_framework.renderers import XMLRenderer
-from rest_framework.parsers import XMLParser
+from initat.cluster.backbone import models
 from initat.cluster.backbone.models import config, device, device_config, tree_node, \
     get_related_models, config_dump_serializer
+from initat.cluster.backbone.render import permission_required_mixin, render_me
 from initat.cluster.frontend.forms import config_form, config_str_form, config_int_form, \
     config_bool_form, config_script_form, mon_check_command_form, config_catalog_form
-from initat.cluster.backbone import models
 from initat.cluster.frontend.helper_functions import contact_server, xml_wrapper
-from initat.cluster.backbone.render import permission_required_mixin, render_me
 from lxml import etree # @UnresolvedImports
 from lxml.builder import E # @UnresolvedImports
+from rest_framework.parsers import XMLParser
+from rest_framework.renderers import XMLRenderer
 import StringIO
 import datetime
 import json
@@ -403,6 +404,7 @@ class upload_config(View):
         except:
             logger.error("cannot interpret upload file: %s" % (process_tools.get_except_info()))
         else:
+            print cache.get("x")
             # print conf_list, _data.getvalue()
             # print etree.tostring(conf_list, pretty_print=True)
             added = 0

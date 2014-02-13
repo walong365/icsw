@@ -42,14 +42,16 @@ dn_row_template = """
 <th>{{ obj.comment }}</th>
 <th colspan="3">
     <div class="input-group-btn" ng-show="enable_modal && acl_create(obj, 'backbone.device.change_network')">
-        <button type="button" class="btn btn-success btn-sm dropdown-toggle" data-toggle="dropdown">
-            Create new <span class="caret"></span>
-        </button>
-        <ul class="dropdown-menu">
-            <li ng-click="create_netdevice(obj, $event)"><a href="#">Netdevice</a></li>
-            <li ng-show="obj.netdevice_set.length && networks.length" ng-click="create_netip(obj, $event)"><a href="#">IP Address</a></li>
-            <li ng-show="obj.netdevice_set.length && nd_peers.length" ng-click="create_peer_information(obj, $event)"><a href="#">Peer</a></li>
-        </ul>
+        <div class="btn-group">
+            <button type="button" class="btn btn-success btn-sm dropdown-toggle" data-toggle="dropdown">
+                Create new <span class="caret"></span>
+            </button>
+            <ul class="dropdown-menu">
+                <li ng-click="create_netdevice(obj, $event)"><a href="#">Netdevice</a></li>
+                <li ng-show="obj.netdevice_set.length && networks.length" ng-click="create_netip(obj, $event)"><a href="#">IP Address</a></li>
+                <li ng-show="obj.netdevice_set.length && nd_peers.length" ng-click="create_peer_information(obj, $event)"><a href="#">Peer</a></li>
+            </ul>
+        </div>
     </div>
 </th>
 """

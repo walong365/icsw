@@ -34,12 +34,14 @@
 {% if csw_perms.backbone.device.change_network.AC_MASK_CREATE %}
 {% verbatim %}
         <div class="input-group-btn" ng-show="devices.length > 1">
-            <button type="button" class="btn btn-danger btn-md dropdown-toggle" data-toggle="dropdown">
-                Copy network from<span class="caret"></span>
-            </button>
-            <ul class="dropdown-menu">
-                <li ng-click="copy_network(obj, $event)" ng-repeat="obj in devices"><a href="#">{{ obj.full_name }}</a></li>
-            </ul>
+            <div class="btn-group">
+                <button type="button" class="btn btn-danger btn-md dropdown-toggle" data-toggle="dropdown">
+                    Copy network from<span class="caret"></span>
+                </button>
+                <ul class="dropdown-menu">
+                    <li ng-click="copy_network(obj, $event)" ng-repeat="obj in devices"><a href="#">{{ obj.full_name }}</a></li>
+                </ul>
+            </div>
         </div>
 {% endverbatim %}
 {% endif %}
