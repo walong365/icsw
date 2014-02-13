@@ -513,7 +513,8 @@ def partition_table_pre_save(sender, **kwargs):
 
 class config_catalog(models.Model):
     idx = models.AutoField(primary_key=True)
-    name = models.CharField(max_length=256, unique=True, blank=False, null=False)
+    # MySQL restriction
+    name = models.CharField(max_length=254, unique=True, blank=False, null=False)
     url = models.URLField(max_length=256, default="", blank=True)
     author = models.CharField(max_length=256, default="", blank=True)
     # gets increased by one on every download

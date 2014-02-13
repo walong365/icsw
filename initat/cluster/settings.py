@@ -303,11 +303,16 @@ STATICFILES_FINDERS = (
 if DEBUG:
     STATICFILES_FINDERS = tuple(list(STATICFILES_FINDERS) + ["pipeline.finders.PipelineFinder"])
 
-STATICFILES_DIRS = (
-    ("icinga", "/opt/icinga/share/images/logos"),
-    ("admin", "/opt/python-init/lib/python/site-packages/django/contrib/admin/static/admin"),
+STATICFILES_DIRS = []
+if os.path.isdir("/opt/icinga/share/images/logos"):
+    STATICFILES_DIRS.append(
+        ("icinga", "/opt/icinga/share/images/logos")
+        )
+STATICFILES_DIRS.append(
+    ("admin", "/opt/python-init/lib/python/site-packages/django/contrib/admin/static/admin")
     # ("frontend", os.path.join(FILE_ROOT, "frontend", "media")),
 )
+STATICFILES_DIRS = list(STATICFILES_DIRS)
 
 PIPELINE_CSS = {
     "part1" : {
