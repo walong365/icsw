@@ -210,7 +210,7 @@ class server_process(threading_tools.process_pool):
             client.setsockopt(zmq.TCP_KEEPALIVE_IDLE, 300)
             try:
                 client.bind("tcp://*:%d" % (global_config["COM_PORT"]))
-            except zmq.core.error.ZMQError:
+            except zmq.ZMQError:
                 self.log("error binding to %d: %s" % (
                     global_config["COM_PORT"],
                     process_tools.get_except_info()),
