@@ -902,7 +902,7 @@ class relay_code(threading_tools.process_pool):
             try:
                 process_tools.bind_zmq_socket(cur_socket, sock_name)
                 # client.bind("tcp://*:8888")
-            except zmq.core.error.ZMQError:
+            except zmq.ZMQError:
                 self.log("error binding %s: %s" % (
                     short_sock_name,
                     process_tools.get_except_info()),
@@ -939,7 +939,7 @@ class relay_code(threading_tools.process_pool):
             global_config["COM_PORT"])
         try:
             client.bind(conn_str)
-        except zmq.core.error.ZMQError:
+        except zmq.ZMQError:
             self.log("error binding to *:%d: %s" % (
                 global_config["COM_PORT"],
                 process_tools.get_except_info()),
