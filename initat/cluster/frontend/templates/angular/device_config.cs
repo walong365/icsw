@@ -51,12 +51,14 @@ device_config_template = """
             </span>
         </div>
         <div class="form-inline col-sm-4">
-            <div class="form-group" ng-show="acl_create(null, 'backbone.config.modify_config')">
+            <div class="form-group" ng-show="acl_create(null, 'backbone.config.modify_config') && config_catalogs.length > 0">
                 <input placeholder="new config" ng-model="new_config_name" class="form-control input-sm"></input>
             </div>
-            <div class="form-group" ng-show="acl_create(null, 'backbone.config.modify_config')">
+            <div class="form-group" ng-show="acl_create(null, 'backbone.config.modify_config') && config_catalogs.length > 0">
                 <input type="button" class="btn btn-success btn-sm" ng-show="new_config_name" ng-click="create_config()" value="create config"></input>
+                <select ng-model="config_catalog" ng-options="entry.idx as entry.name for entry in config_catalogs"></select>
             </div>
+            
         </div>
     </div>
     <table ng-show="devices.length" class="table table-condensed table-hover" style="width:auto;">
@@ -145,7 +147,7 @@ partinfo_template = """
 
 {% endverbatim %}
 
-device_config_module = angular.module("icsw.device.config", ["ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters", "localytics.directives", "restangular", "ui.select2"])
+device_config_module = angular.module("icsw.device.config", ["ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters", "localytics.directives", "restangular"])
 
 angular_module_setup([device_config_module])
 
@@ -237,6 +239,7 @@ device_config_module.controller("config_ctrl", ["$scope", "$compile", "$filter",
         access_level_service.install($scope)
         $scope.devices = []
         $scope.configs = []
+        $scope.config_catalogs = []
         $scope.active_configs = []
         $scope.name_filter = ""
         $scope.new_config_name = ""
@@ -268,13 +271,14 @@ device_config_module.controller("config_ctrl", ["$scope", "$compile", "$filter",
                     $scope.all_devices.push(entry)
                 $scope.configs = data[1]
                 $scope.config_catalogs = data[2]
+                $scope.config_catalog = $scope.config_catalogs[0].idx
                 $scope.new_filter_set($scope.name_filter, false)
                 $scope.init_devices(pre_sel)
             )
         $scope.create_config = () ->
             new_obj = {
                 "name" : $scope.new_config_name
-                "config_catalog" : $scope.config_catalogs[0].idx
+                "config_catalog" : $scope.config_catalog
             }
             Restangular.all("{% url 'rest:config_list' %}".slice(1)).post(new_obj).then((new_data) ->
                 $scope.new_config_name = ""
