@@ -15,7 +15,7 @@ if [ -d ${MIG_DIR} ] ; then
     done
     ${C_DIR}/manage.py schemamigration backbone --auto
     ${C_DIR}/manage.py migrate --no-initial-data backbone 
-    ${C_DIR}/manage.py loaddata ${C_DIR}/backbone/fixtures/initial_new_data.xml
+    ${C_DIR}/manage.py create_fixtures
     ${C_DIR}/manage.py init_csw_permissions
     ${C_DIR}/manage.py migrate_to_domain_name
     ${C_DIR}/manage.py migrate_to_config_catalog

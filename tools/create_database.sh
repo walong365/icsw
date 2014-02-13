@@ -72,7 +72,7 @@ if [ -z "$1" ]; then
     ${C_DIR}/manage.py createsuperuser
 fi
 ${C_DIR}/manage.py init_csw_permissions
-${C_DIR}/manage.py loaddata ${C_DIR}/backbone/fixtures/initial_new_data.xml
+${C_DIR}/manage.py create_fixtures
 ${C_DIR}/manage.py migrate_to_domain_name
 ${C_DIR}/manage.py migrate_to_config_catalog
 ${C_DIR}/manage.py create_cdg --name system

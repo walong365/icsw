@@ -1038,7 +1038,7 @@ class device(models.Model):
     mon_device_esc_templ = models.ForeignKey("backbone.mon_device_esc_templ", null=True, blank=True)
     mon_ext_host = models.ForeignKey("backbone.mon_ext_host", null=True, blank=True)
     # deprecated
-    device_location = models.ForeignKey("device_location", null=True)
+    # device_location = models.ForeignKey("device_location", null=True)
     # device_class = models.ForeignKey("device_class")
     # rrd_class = models.ForeignKey("rrd_class", null=True)
     # save_rrd_vectors = models.BooleanField()
@@ -1691,21 +1691,21 @@ def device_group_post_save(sender, **kwargs):
             cur_inst.enabled = True
             cur_inst.save()
 
-class device_location(models.Model):
-    idx = models.AutoField(db_column="device_location_idx", primary_key=True)
-    location = models.CharField(max_length=192, blank=False, unique=True)
-    date = models.DateTimeField(auto_now_add=True)
-    def get_xml(self):
-        return E.device_location(
-            unicode(self),
-            pk="%d" % (self.pk),
-            key="dl__%d" % (self.pk),
-            location=unicode(self.location)
-        )
-    def __unicode__(self):
-        return self.location
-    class Meta:
-        db_table = u'device_location'
+# class device_location(models.Model):
+#     idx = models.AutoField(db_column="device_location_idx", primary_key=True)
+#     location = models.CharField(max_length=192, blank=False, unique=True)
+#     date = models.DateTimeField(auto_now_add=True)
+#     def get_xml(self):
+#         return E.device_location(
+#             unicode(self),
+#             pk="%d" % (self.pk),
+#             key="dl__%d" % (self.pk),
+#             location=unicode(self.location)
+#         )
+#     def __unicode__(self):
+#         return self.location
+#     class Meta:
+#         db_table = u'device_location'
 
 # #class device_relationship(models.Model):
 # #    idx = models.AutoField(db_column="device_relationship_idx", primary_key=True)
