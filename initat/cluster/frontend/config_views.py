@@ -404,7 +404,7 @@ class upload_config(View):
         except:
             logger.error("cannot interpret upload file: %s" % (process_tools.get_except_info()))
         else:
-            print cache.get("x")
+            # print cache.get("x")
             # print conf_list, _data.getvalue()
             # print etree.tostring(conf_list, pretty_print=True)
             added = 0

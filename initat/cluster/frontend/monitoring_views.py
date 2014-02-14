@@ -40,6 +40,7 @@ from lxml.builder import E # @UnresolvedImports
 import base64
 import json
 import logging
+import logging_tools
 import server_command
 
 logger = logging.getLogger("cluster.monitoring")
@@ -99,7 +100,7 @@ class create_config(View):
     @method_decorator(xml_wrapper)
     def post(self, request):
         srv_com = server_command.srv_command(command="rebuild_host_config", cache_mode="ALWAYS")
-        result = contact_server(request, "tcp://localhost:8010", srv_com)
+        result = contact_server(request, "tcp://localhost:8010", srv_com, connection_id="wf_mdrc")
         if result:
             request.xml_response["result"] = E.devices()
 
@@ -163,10 +164,7 @@ class get_node_status(View):
     @method_decorator(xml_wrapper)
     def post(self, request):
         _post = request.POST
-        if "pk_list" in _post:
-            pk_list = json.loads(_post["pk_list"])
-        else:
-            pk_list = request.POST.getlist("pks[]")
+        pk_list = json.loads(_post["pk_list"])
         srv_com = server_command.srv_command(command="get_node_status")
         srv_com["device_list"] = E.device_list(
             *[E.device(pk="%d" % (int(cur_pk))) for cur_pk in pk_list]
@@ -184,7 +182,5 @@ class get_node_status(View):
                             **node_result.attrib
                         ) for node_result in node_results]
                     )
-                else:
-                    request.xml_response.error("no node_results", logger=logger)
             else:
                 request.xml_response.error("no node_results", logger=logger)
