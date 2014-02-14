@@ -29,7 +29,53 @@ __all__ = [
     "mon_period", "mon_period_serializer",
     "mon_service_templ", "mon_service_templ_serializer",
     "mon_service_esc_templ", "mon_service_esc_templ_serializer",
+    # distribution models
+    "mon_dist_master", "mon_dist_master_serializer",
+    "mon_dist_slave", "mon_dist_slave_serializer",
     ]
+
+# distribution models, one per run
+class mon_dist_master(models.Model):
+    idx = models.AutoField(primary_key=True)
+    device = models.ForeignKey("backbone.device")
+    version = models.IntegerField(default=0)
+    build_start = models.DateTimeField(default=None, null=True)
+    build_end = models.DateTimeField(default=None, null=True)
+    # version of of master relayer / md-config-server / icinga
+    relayer_version = models.CharField(max_length=128, default="")
+    md_version = models.CharField(max_length=128, default="")
+    icinga_version = models.CharField(max_length=128, default="")
+    date = models.DateTimeField(auto_now_add=True)
+    class Meta:
+        app_label = "backbone"
+
+class mon_dist_slave(models.Model):
+    idx = models.AutoField(primary_key=True)
+    mon_dist_master = models.ForeignKey("backbone.mon_dist_master")
+    device = models.ForeignKey("backbone.device")
+    # start of first sync
+    sync_start = models.DateTimeField(default=None, null=True)
+    # end of last sync
+    sync_end = models.DateTimeField(default=None, null=True)
+    # number of distribute runs (==sync)
+    num_runs = models.IntegerField(default=0)
+    # version of of master relayer / md-config-server / icinga
+    relayer_version = models.CharField(max_length=128, default="")
+    icinga_version = models.CharField(max_length=128, default="")
+    # files transfered / number of transfered commands
+    num_files = models.IntegerField(default=0)
+    num_transfers = models.IntegerField(default=0)
+    date = models.DateTimeField(auto_now_add=True)
+    class Meta:
+        app_label = "backbone"
+
+class mon_dist_master_serializer(serializers.ModelSerializer):
+    class Meta:
+        model = mon_dist_master
+
+class mon_dist_slave_serializer(serializers.ModelSerializer):
+    class Meta:
+        model = mon_dist_slave
 
 class mon_host_cluster(models.Model):
     idx = models.AutoField(primary_key=True)
