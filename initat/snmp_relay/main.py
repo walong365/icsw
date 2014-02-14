@@ -24,7 +24,7 @@ import process_tools
 import sys
 from initat.snmp_relay.config import global_config
 from initat.snmp_relay.server import server_process
-from intiat.snmp_relay.version import VERSION_STRING
+from initat.snmp_relay.version import VERSION_STRING
 
 def main():
     # read global configfile
