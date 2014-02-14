@@ -1,7 +1,7 @@
 #!/usr/bin/python-init -Ot
 # -*- coding: utf-8 -*-
 #
-# Copyright (c) 2001,2002,2003,2004,2005,2006,2007,2009,2010,2012,2013 Andreas Lang-Nevyjel, init.at
+# Copyright (c) 2001-2007,2009-2014 Andreas Lang-Nevyjel, init.at
 #
 # this file is part of python-modules-base
 #
@@ -214,13 +214,18 @@ def bind_zmq_socket(zmq_socket, name):
     else:
         logging_tools.my_syslog("zmq_socket bound to %s" % (name))
 
-def submit_at_command(com, diff_time=0):
+def submit_at_command(com, diff_time=0, as_root=False):
     pre_time_str = "now"
     diff_time_str = diff_time and "+%d minutes" % (diff_time) or ""
     time_str = "%s%s" % (pre_time_str, diff_time_str)
+    if as_root and os.getuid():
+        _esc = "sudo "
+    else:
+        _esc = ""
     cstat, cout = getstatusoutput(
-        "echo %s | /usr/bin/at %s" % (
+        "echo %s | %s /usr/bin/at %s" % (
             com,
+            _esc,
             time_str))
     log_f = [
         "Starting command '%s' at time '%s' resulted in stat %d" % (
