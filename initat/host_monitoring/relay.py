@@ -29,6 +29,7 @@ from initat.host_monitoring.config import global_config
 from initat.host_monitoring.constants import MAPPING_FILE_IDS, MAPPING_FILE_TYPES, MASTER_FILE_NAME
 from initat.host_monitoring.hm_direct import socket_process
 from initat.host_monitoring.tools import my_cached_file
+from initat.host_monitoring.version import VERSION_STRING
 from lxml import etree # @UnresolvedImport
 from lxml.builder import E # @UnresolvedImport
 import StringIO
@@ -666,6 +667,8 @@ class relay_code(threading_tools.process_pool):
         self.register_exception("hup_error", self._hup_error)
         self.__delayed = []
         self.register_timer(self._check_timeout, 2)
+        self.register_timer(self._contact_master, 10, instant=True)
+        self.__last_master_contact = None
         self.register_func("socket_result", self._socket_result)
         self.version_dict = {}
         self._show_config()
@@ -732,6 +735,16 @@ class relay_code(threading_tools.process_pool):
             self.master_ip = None
             self.master_port = None
             self.master_uuid = None
+    def _contact_master(self):
+        if self.master_ip:
+            srv_com = server_command.srv_command(
+                command="relayer_info",
+                host=self.master_ip,
+                port="%d" % (self.master_port),
+                relayer_version=VERSION_STRING,
+                uuid=uuid_tools.get_uuid().get_urn(),
+            )
+            self._send_to_nhm_service(None, srv_com, None, register=False)
     def _register_master(self, master_ip, master_uuid, master_port, write=True):
         self.master_ip = master_ip
         self.master_uuid = master_uuid
@@ -929,8 +942,9 @@ class relay_code(threading_tools.process_pool):
         client = self.zmq_context.socket(zmq.ROUTER)
         uuid = "%s:relayer" % (uuid_tools.get_uuid().get_urn())
         client.setsockopt(zmq.IDENTITY, uuid)
-        client.setsockopt(zmq.SNDHWM, 10)
-        client.setsockopt(zmq.RCVHWM, 10)
+        # AL 2014-02-13, increased SNDHWM / RCVHWM from 10 to 128
+        client.setsockopt(zmq.SNDHWM, 128)
+        client.setsockopt(zmq.RCVHWM, 128)
         client.setsockopt(zmq.RECONNECT_IVL_MAX, 500)
         client.setsockopt(zmq.RECONNECT_IVL, 200)
         client.setsockopt(zmq.TCP_KEEPALIVE, 1)
@@ -1232,21 +1246,24 @@ class relay_code(threading_tools.process_pool):
             t_dir = srv_com["directory"].text
             self.log("clearing directory %s" % (t_dir))
             num_rem = 0
-            for entry in os.listdir(t_dir):
-                f_path = os.path.join(t_dir, entry)
-                # remove from version_dict
-                self._clear_version(f_path)
-                if os.path.isfile(f_path):
-                    try:
-                        os.unlink(f_path)
-                    except:
-                        self.log("cannot remove %s: %s" % (
-                            f_path,
-                            process_tools.get_except_info()
-                            ),
-                            logging_tools.LOG_LEVEL_ERROR)
-                    else:
-                        num_rem += 1
+            if os.path.isdir(t_dir):
+                for entry in os.listdir(t_dir):
+                    f_path = os.path.join(t_dir, entry)
+                    # remove from version_dict
+                    self._clear_version(f_path)
+                    if os.path.isfile(f_path):
+                        try:
+                            os.unlink(f_path)
+                        except:
+                            self.log("cannot remove %s: %s" % (
+                                f_path,
+                                process_tools.get_except_info()
+                                ),
+                                logging_tools.LOG_LEVEL_ERROR)
+                        else:
+                            num_rem += 1
+            else:
+                self.log("directory '%s' does not exist" % (t_dir), logging_tools.LOG_LEVEL_ERROR)
             self.log("removed %s in %s" % (logging_tools.get_plural("file", num_rem), t_dir))
         elif cur_com == "call_command":
             # also check for version ? compare with file versions ? deleted files ? FIXME
@@ -1263,14 +1280,10 @@ class relay_code(threading_tools.process_pool):
                                   srv_com["identity"].text,
                                   int(srv_com["master_port"].text))
         else:
-            # add cache ?
+            # add to cache ?
             srv_com["host"] = self.master_ip
             srv_com["port"] = "%d" % (self.master_port)
             self._send_to_nhm_service(None, srv_com, None, register=False)
-            # we nerver send dummy returns, usefull with -s flag in ccollclientzmq
-            # send_return = True
-        # if send_return:
-            # self._send_result(src_id, "processed direct command", server_command.SRV_REPLY_STATE_OK)
     def _ext_com_result(self, sub_s):
         self.log("external command gave:")
         for line_num, line in enumerate(sub_s.read().split("\n")):
