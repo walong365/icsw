@@ -91,8 +91,8 @@ class live_socket(object):
 class status_process(threading_tools.process_obj):
     def process_init(self):
         self.__log_template = logging_tools.get_logger(global_config["LOG_NAME"], global_config["LOG_DESTINATION"], zmq=True, context=self.zmq_context, init_logger=True)
-        self.register_func("get_node_status", self._get_node_status)
         connection.close()
+        self.register_func("get_node_status", self._get_node_status)
         self.__socket = None
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
         self.__log_template.log(log_level, what)
@@ -115,10 +115,10 @@ class status_process(threading_tools.process_obj):
         src_id, srv_com = (args[0], server_command.srv_command(source=args[1]))
         pk_list = srv_com.xpath(".//device_list/device/@pk", smart_strings=False)
         dev_names = sorted([cur_dev.full_name for cur_dev in device.objects.filter(Q(pk__in=pk_list))])
+        self.log("querying %s: %s" % (logging_tools.get_plural("device", len(dev_names)), ", ".join(sorted(dev_names))))
         try:
             cur_sock = self._open()
             if cur_sock:
-                srv_com.set_result("status for %s" % (logging_tools.get_plural("device", len(dev_names))))
                 query = cur_sock.services.columns("host_name", "description", "state", "plugin_output", "last_check").filter("host_name", "=", dev_names)
                 result = query.call()
                 node_results = {}
@@ -135,6 +135,10 @@ class status_process(threading_tools.process_obj):
                     except:
                         self.log("error processing livestatus entry '%s': %s" % (str(entry), process_tools.get_except_info()),
                             logging_tools.LOG_LEVEL_CRITICAL)
+                if len(node_results) == len(dev_names):
+                    srv_com.set_result("status for %s" % (logging_tools.get_plural("device", len(dev_names))))
+                else:
+                    srv_com.set_result("status for %s (%d requested)" % (logging_tools.get_plural("device", len(node_results.keys())), len(dev_names)), server_command.SRV_REPLY_STATE_WARN)
                 srv_com["result"] = E.node_results(
                     *[E.node_result(
                         *[E.result(**entry) for _sort_val, entry in sorted(value)],

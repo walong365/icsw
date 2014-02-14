@@ -23,13 +23,9 @@
 
 from django.db import connection
 from django.db.models import Q
-from initat.cluster.backbone.models import device, device_group, device_variable, mon_device_templ, \
-     mon_ext_host, mon_check_command, mon_period, mon_contact, \
-     mon_contactgroup, mon_service_templ, netdevice, network, network_type, net_ip, \
-     user, mon_host_cluster, mon_service_cluster, config, md_check_data_store, category, \
-     TOP_MONITORING_CATEGORY, mon_notification, config_str, config_int, host_check_command, \
-     mon_host_dependency_templ, mon_host_dependency, mon_service_dependency_templ, \
-     mon_service_templ, mon_service_dependency, net_ip
+from initat.cluster.backbone.models import device, device_group, device_variable, mon_ext_host, \
+    mon_check_command, mon_contactgroup, netdevice, network_type, user, config, \
+    mon_host_dependency_templ, mon_host_dependency, mon_service_dependency, net_ip
 from initat.md_config_server import special_commands, constants
 from initat.md_config_server.config import global_config, main_config, var_cache, all_commands, \
     all_service_groups, time_periods, all_contacts, all_contact_groups, all_host_groups, all_hosts, \
@@ -59,39 +55,45 @@ class build_process(threading_tools.process_obj):
         connection.close()
         self.__mach_loggers = {}
         self.version = int(time.time())
+        self.syncer_socket = self.connect_to_socket("syncer")
         self.log("initial config_version is %d" % (self.version))
-        # slave configs
-        slave_servers = device.objects.filter(Q(device_config__config__name="monitor_slave")).select_related("domain_tree_node")
-        master_server = device.objects.get(Q(pk=global_config["SERVER_IDX"]))
         self.router_obj = config_tools.router_object(self.log)
-        self.__gen_config = main_config(self, master_server, distributed=True if len(slave_servers) else False)
-        self.__gen_config_built = False
-        self.send_pool_message("external_cmd_file", self.__gen_config.get_command_name())
-        self.__slave_configs, self.__slave_lut = ({}, {})
-        if len(slave_servers):
-            self.log("found %s: %s" % (logging_tools.get_plural("slave_server", len(slave_servers)),
-                                       ", ".join(sorted([cur_dev.full_name for cur_dev in slave_servers]))))
-            for cur_dev in slave_servers:
-                self.__slave_configs[cur_dev.pk] = main_config(
-                    self,
-                    cur_dev,
-                    slave_name=cur_dev.full_name,
-                    master_server=master_server,
-                )
-                self.__slave_lut[cur_dev.full_name] = cur_dev.pk
-        else:
-            self.log("no slave-servers found")
         self.register_func("rebuild_config", self._rebuild_config)
         self.register_func("sync_http_users", self._sync_http_users)
-        self.register_func("file_content_info", self._file_content_info)
-        self.register_func("check_for_redistribute", self._check_for_redistribute)
         self.register_func("build_host_config", self._build_host_config)
+        self.register_func("check_for_slaves", self._check_for_slaves)
+        self.register_func("reload_md_daemon", self._reload_md_daemon)
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
         self.__log_template.log(log_level, what)
     def loop_post(self):
         for mach_logger in self.__mach_loggers.itervalues():
             mach_logger.close()
+        self.syncer_socket.close()
         self.__log_template.close()
+    def _check_for_slaves(self, **kwargs):
+        master_server = device.objects.get(Q(pk=global_config["SERVER_IDX"]))
+        slave_servers = device.objects.filter(Q(device_config__config__name="monitor_slave")).select_related("domain_tree_node")
+        # slave configs
+        self.__gen_config = main_config(self, master_server, distributed=True if len(slave_servers) else False)
+        self.send_pool_message("external_cmd_file", self.__gen_config.get_command_name())
+        self.__gen_config_built = False
+        self.__slave_configs, self.__slave_lut = ({}, {})
+        if len(slave_servers):
+            self.log(
+                "found %s: %s" % (
+                    logging_tools.get_plural("slave_server", len(slave_servers)),
+                    ", ".join(sorted([cur_dev.full_name for cur_dev in slave_servers]))))
+            for cur_dev in slave_servers:
+                _slave_c = main_config(
+                    self,
+                    cur_dev,
+                    slave_name=cur_dev.full_name,
+                    master_server=master_server,
+                )
+                self.__slave_configs[cur_dev.pk] = _slave_c
+                self.__slave_lut[cur_dev.full_name] = cur_dev.pk
+        else:
+            self.log("no slave-servers found")
     def send_command(self, src_id, srv_com):
         self.send_pool_message("send_command", "urn:uuid:%s:relayer" % (src_id), srv_com)
     def mach_log(self, what, lev=logging_tools.LOG_LEVEL_OK, mach_name=None, **kwargs):
@@ -117,7 +119,7 @@ class build_process(threading_tools.process_obj):
             mach_name = self.__cached_mach_name
             self.__mach_loggers[mach_name].close()
             del self.__mach_loggers[mach_name]
-    def _check_nagios_config(self):
+    def _check_md_config(self):
         c_stat, out = commands.getstatusoutput("%s/bin/%s -v %s/etc/%s.cfg" % (
             global_config["MD_BASEDIR"],
             global_config["MD_TYPE"],
@@ -128,14 +130,14 @@ class build_process(threading_tools.process_obj):
                 global_config["MD_TYPE"],
                 c_stat),
                      logging_tools.LOG_LEVEL_ERROR)
-            ret_stat = 0
+            ret_stat = False
         else:
             self.log("Checking the %s-configuration returned no error" % (global_config["MD_TYPE"]))
-            ret_stat = 1
+            ret_stat = True
         return ret_stat, out
-    def _reload_nagios(self):
+    def _reload_md_daemon(self, **kwargs):
         start_daemon, restart_daemon = (False, False)
-        cs_stat, cs_out = self._check_nagios_config()
+        cs_stat, cs_out = self._check_md_config()
         if not cs_stat:
             self.log("Checking the %s-config resulted in an error, not trying to (re)start" % (global_config["MD_TYPE"]), logging_tools.LOG_LEVEL_ERROR)
             self.log("error_output has %s" % (logging_tools.get_plural("line", cs_out.split("\n"))),
@@ -181,32 +183,23 @@ class build_process(threading_tools.process_obj):
                             self.log("Successfully signaled pid %d with SIGHUP (%d)" % (pid, signal.SIGHUP))
             else:
                 self.log(
-                    "Nagios LockFile '%s' not found, trying to start %s" % (
+                    "%s LockFile '%s' not found, trying to start %s" % (
+                        global_config["MD_TYPE"],
                         self.__nagios_lock_file_name,
                         global_config["MD_TYPE"]),
                     logging_tools.LOG_LEVEL_WARN)
                 start_daemon = True
         if start_daemon:
             self.log("Trying to start %s via at-command" % (global_config["MD_TYPE"]))
-            sub_stat, log_lines = process_tools.submit_at_command("/etc/init.d/%s start" % (global_config["MD_TYPE"]))
+            sub_stat, log_lines = process_tools.submit_at_command("/etc/init.d/%s start" % (global_config["MD_TYPE"]), as_root=True)
         elif restart_daemon:
             self.log("Trying to restart %s via at-command" % (global_config["MD_TYPE"]))
-            sub_stat, log_lines = process_tools.submit_at_command("/etc/init.d/%s restart" % (global_config["MD_TYPE"]))
+            sub_stat, log_lines = process_tools.submit_at_command("/etc/init.d/%s restart" % (global_config["MD_TYPE"]), as_root=True)
         else:
             log_lines = []
         if log_lines:
             for log_line in log_lines:
                 self.log(log_line)
-    def _check_for_redistribute(self, *args, **kwargs):
-        for slave_config in self.__slave_configs.itervalues():
-            slave_config.check_for_resend()
-    def _file_content_info(self, *args, **kwargs):
-        srv_com = server_command.srv_command(source=args[0])
-        slave_name = srv_com["slave_name"].text
-        if slave_name in self.__slave_lut:
-            self.__slave_configs[self.__slave_lut[slave_name]].file_content_info(srv_com)
-        else:
-            self.log("unknown slave_name '%s'" % (slave_name), logging_tools.LOG_LEVEL_ERROR)
     def _sync_http_users(self, *args, **kwargs):
         self.log("syncing http-users")
         self.__gen_config._create_access_entries()
@@ -229,7 +222,7 @@ class build_process(threading_tools.process_obj):
             if len(host_deps):
                 self.mon_host_dep = host_deps[0]
             else:
-                self.log("not mon_host_dependencies found", logging_tools.LOG_LEVEL_ERROR)
+                self.log("no mon_host_dependencies found", logging_tools.LOG_LEVEL_ERROR)
                 hdep_from_topo = False
         h_list = list(args)
         single_build = True if len(args) > 0 else False
@@ -242,9 +235,6 @@ class build_process(threading_tools.process_obj):
             cache_mode,
             str(hdep_from_topo),
             ))
-        if not single_build:
-            self.version += 1
-            self.log("config_version for full build is %d" % (self.version))
         if self.gc["DEBUG"]:
             cur_query_count = len(connection.queries)
         cdg = device.objects.get(Q(device_group__cluster_device_group=True))
@@ -260,7 +250,14 @@ class build_process(threading_tools.process_obj):
                 name="_SYS_GAUGE_",
                 description="mon config rebuild on %s" % (self.__gen_config.monitor_server.full_name),
                 var_type="i")
-        # fetch SNMP-stuff of cluster and initialise var cache
+            # bump version
+            if int(time.time()) > self.version:
+                self.version = int(time.time())
+            else:
+                self.version += 1
+            self.log("config_version for full build is %d" % (self.version))
+            self.send_to_socket(self.syncer_socket, ["build_info", "start_build", self.version])
+        # fetch SNMP-stuff from cluster and initialise var cache
         var_stack = var_cache(cdg)
         rebuild_gen_config = False
         if not h_list:
@@ -325,15 +322,18 @@ class build_process(threading_tools.process_obj):
                     # refresh implies _write_entries
                     cur_gc.refresh()
                     if not cur_gc.master:
+                        # write config to disk
                         cur_gc._write_entries()
-                        cur_gc.distribute(self.version)
+                        # start syncing
+                        self.send_to_socket(self.syncer_socket, ["build_info", "sync_slave", cur_gc.monitor_server.full_name])
             if build_dv:
                 build_dv.delete()
         if not single_build:
             cfgs_written = self.__gen_config._write_entries()
             if bc_valid and (cfgs_written or rebuild_gen_config):
                 # send reload to remote instance ?
-                self._reload_nagios()
+                self._reload_md_daemon()
+            self.send_to_socket(self.syncer_socket, ["build_info", "end_build", self.version])
         else:
             cur_gc = self.__gen_config
             res_node = E.config(
@@ -548,6 +548,7 @@ class build_process(threading_tools.process_obj):
                                    single_build,
                                    ):
         start_time = time.time()
+        # time.sleep(10)
         # lookup table for host_check_commands
         mcc_lut = {key : (v0, v1, v2) for key, v0, v1, v2 in mon_check_command.objects.all().values_list("pk", "name", "description", "config__name")}
         # lookup table for config -> mon_check_commands
@@ -656,52 +657,8 @@ class build_process(threading_tools.process_obj):
                             act_host["address"] = "%s.%s" % (v_ip.alias, v_ip.domain_tree_node.full_name)
                         else:
                             act_host["address"] = host.full_name
-                    # check for parents
-                    parents = []
-                    # rule 1: APC Masterswitches have their bootserver set as parent
-                    if host.device_type.identifier in ["AM", "IBC"] and host.bootserver_id:
-                        parents.append(all_hosts_dict[host.bootserver_id].full_name)
-                    # rule 2: Devices connected to an apc have this apc set as parent
-                    # elif all_ms_connections.has_key(host.pk):
-                        # for pd in all_ms_connections[host.pk]:
-                            # if all_hosts_dict[pd]["name"] not in parents:
-                                # # disable circular references
-                                # if host["identifier"] == "H" and all_hosts_dict[pd]["bootserver"] == host["device_idx"]:
-                                    # self.mach_log("Disabling parent %s to prevent circular reference" % (all_hosts_dict[pd]["name"]))
-                                # else:
-                                    # parents.append(all_hosts_dict[pd]["name"])
-                    # rule 3: Devices connected to an ibc have this ibc set as parent
-                    # elif all_ib_connections.has_key(host.pk):
-                        # for pd in all_ib_connections[host.pk]:
-                            # if all_hosts_dict[pd]["name"] not in parents:
-                                # # disable circular references
-                                # if host["identifier"] == "H" and all_hosts_dict[pd]["bootserver"] == host["device_idx"]:
-                                    # self.mach_log("Disabling parent %s to prevent circular reference" % (all_hosts_dict[pd]["name"]))
-                                # else:
-                                    # parents.append(all_hosts_dict[pd]["name"])
-                    # rule 4: Devices have their xen/vmware-parent set as parent
-                    # elif all_dev_relationships.has_key(host.pk) and all_hosts_dict.has_key(all_dev_relationships[host.pk]["host_device"]):
-                        # act_rel = all_dev_relationships[host.pk]
-                        # # disable circular references
-                        # if host["identifier"] == "H" and host["name"] == global_config["SERVER_SHORT_NAME"]:
-                            # self.mach_log("Disabling parent %s to prevent circular reference" % (all_hosts_dict[act_rel["host_device"]]["name"]))
-                        # else:
-                            # parents.append(all_hosts_dict[act_rel["host_device"]]["name"])
-                    # rule 5: Check routing
-                    else:
-                        self.mach_log("No direct parent(s) found, registering trace")
-                        if host.bootserver_id != host.pk and host.bootserver_id:
-                            traces.append((1, 0, [host.pk]))
-                        if traces and len(traces[0][2]) > 1:
-                            act_host["possible_parents"] = traces
-                            # print traces, host["name"], all_hosts_dict[traces[1]]["name"]
-                            # parents += [all_hosts_dict[traces[1]]["name"]]
-                        # print "No parent set for %s" % (host["name"])
-                    if parents:
-                        self.mach_log("settings %s: %s" % (
-                            logging_tools.get_plural("parent", len(parents)),
-                            ", ".join(sorted(parents))))
-                        act_host["parents"] = ",".join(parents)
+                    if traces and len(traces[0][2]) > 1:
+                        act_host["possible_parents"] = traces
                     act_host["retain_status_information"] = 1 if self.gc["RETAIN_HOST_STATUS"] else 0
                     act_host["max_check_attempts"] = act_def_dev.max_attempts
                     act_host["retry_interval"] = act_def_dev.retry_interval

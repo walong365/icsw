@@ -27,16 +27,14 @@ os.environ.setdefault("DJANGO_SETTINGS_MODULE", "initat.cluster.settings")
 
 from django.db import connection, connections
 from django.db.models import Q
-from initat.cluster.backbone.models import device, device_group, device_variable, mon_device_templ, \
-     mon_ext_host, mon_check_command, mon_period, mon_contact, \
-     mon_contactgroup, mon_service_templ, netdevice, network, network_type, net_ip, \
-     user, mon_host_cluster, mon_service_cluster, config, md_check_data_store, category, \
-     category_tree, TOP_MONITORING_CATEGORY, mon_notification, config_str, config_int, host_check_command
+from initat.cluster.backbone.models import mon_notification, config_str, config_int
 from initat.host_monitoring.hm_classes import mvect_entry
 from initat.md_config_server import constants
 from initat.md_config_server.build import build_process
+from initat.md_config_server.syncer import syncer_process
 from initat.md_config_server.config import global_config
 from initat.md_config_server.status import status_process, live_socket
+# from intiat.md_config_server.version import VERSION_STRING
 import cluster_location
 import codecs
 import commands
@@ -49,12 +47,6 @@ import threading_tools
 import time
 import uuid_tools
 import zmq
-
-try:
-    from md_config_server.version import VERSION_STRING
-except ImportError:
-    VERSION_STRING = "?.?"
-
 
 class server_process(threading_tools.process_pool):
     def __init__(self):
@@ -85,18 +77,14 @@ class server_process(threading_tools.process_pool):
         self.register_func("send_command", self._send_command)
         self.__external_cmd_file = None
         self.register_func("external_cmd_file", self._set_external_cmd_file)
-        # self.add_process(db_verify_process("db_verify"), start=True)
-        self.add_process(build_process("build"), start=True)
         self.add_process(status_process("status"), start=True)
-        self.register_timer(self._check_db, 3600, instant=True)
+        self.add_process(syncer_process("syncer"), start=True)
+        # wait for the processes to start
+        time.sleep(0.5)
         self.register_timer(self._check_for_redistribute, 30 if global_config["DEBUG"] else 300)
         self.register_timer(self._update, 30, instant=True)
-        if global_config["BUILD_CONFIG_ON_STARTUP"] or global_config["INITIAL_CONFIG_RUN"]:
-            self.send_to_process("build", "rebuild_config", cache_mode="DYNAMIC")
-    def _check_db(self):
-        self.send_to_process("db_verify", "validate")
     def _check_for_redistribute(self):
-        self.send_to_process("build", "check_for_redistribute")
+        self.send_to_process("syncer", "check_for_redistribute")
     def _update(self):
         res_dict = {}
         if self.__enable_livestatus:
@@ -385,6 +373,15 @@ class server_process(threading_tools.process_pool):
         self.log("got sighup", logging_tools.LOG_LEVEL_WARN)
         self.send_to_process("build", "rebuild_config", cache_mode="DYNAMIC")
     def process_start(self, src_process, src_pid):
+        if src_process == "syncer":
+            self.send_to_process("syncer", "check_for_slaves")
+            self.add_process(build_process("build"), start=True)
+        elif src_process == "build":
+            self.send_to_process("build", "check_for_slaves")
+            if global_config["RELOAD_ON_STARTUP"]:
+                self.send_to_process("build", "reload_md_daemon")
+            if global_config["BUILD_CONFIG_ON_STARTUP"] or global_config["INITIAL_CONFIG_RUN"]:
+                self.send_to_process("build", "rebuild_config", cache_mode="DYNAMIC")
         mult = 3
         process_tools.append_pids(self.__pid_name, src_pid, mult=mult)
         if self.__msi_block:
@@ -397,7 +394,7 @@ class server_process(threading_tools.process_pool):
             self.log("Initialising meta-server-info block")
             msi_block = process_tools.meta_server_info("md-config-server")
             msi_block.add_actual_pid(mult=3, fuzzy_ceiling=3, process_name="main")
-            msi_block.add_actual_pid(act_pid=configfile.get_manager_pid(), mult=4, process_name="manager")
+            msi_block.add_actual_pid(act_pid=configfile.get_manager_pid(), mult=5, process_name="manager")
             msi_block.start_command = "/etc/init.d/md-config-server start"
             msi_block.stop_command = "/etc/init.d/md-config-server force-stop"
             msi_block.kill_pids = True
@@ -461,6 +458,7 @@ class server_process(threading_tools.process_pool):
         client.setsockopt(zmq.IDENTITY, "%s:monitor_master" % (uuid_tools.get_uuid().get_urn()))
         client.setsockopt(zmq.SNDHWM, 1024)
         client.setsockopt(zmq.RCVHWM, 1024)
+        client.setsockopt(zmq.LINGER, 0)
         client.setsockopt(zmq.TCP_KEEPALIVE, 1)
         client.setsockopt(zmq.TCP_KEEPALIVE_IDLE, 300)
         try:
@@ -515,15 +513,12 @@ class server_process(threading_tools.process_pool):
                     self.send_to_process("build", "sync_http_users")
                 elif cur_com in ["ocsp-event", "ochp-event"]:
                     self._handle_ocp_event(srv_com)
-                elif cur_com in ["file_content_result"]:
-                    self.send_to_process("build", "file_content_info", unicode(srv_com))
+                elif cur_com in ["file_content_result", "relayer_info"]:
+                    self.send_to_process("syncer", cur_com, unicode(srv_com))
                 else:
-                    self.log("got unknown command '%s'" % (cur_com), logging_tools.LOG_LEVEL_ERROR)
+                    self.log("got unknown command '%s' from '%s'" % (cur_com, srv_com["source"].attrib["host"]), logging_tools.LOG_LEVEL_ERROR)
                 if send_return:
-                    srv_com["result"] = None
-                    # blabla
-                    srv_com["result"].attrib.update({"reply" : "ok processed command %s" % (cur_com),
-                                                     "state" : "%d" % (server_command.SRV_REPLY_STATE_OK)})
+                    srv_com.set_result("ok processed command %s" % (cur_com))
                     self.com_socket.send_unicode(src_id, zmq.SNDMORE)
                     self.com_socket.send_unicode(unicode(srv_com))
                 else:

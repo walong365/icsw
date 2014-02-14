@@ -24,15 +24,15 @@
 from django.conf import settings
 from django.db.models import Q
 from initat.cluster.backbone.models import device, device_group, device_variable, mon_device_templ, \
-     mon_ext_host, mon_check_command, mon_period, mon_contact, \
-     mon_contactgroup, mon_service_templ, netdevice, network, network_type, net_ip, \
-     user, mon_host_cluster, mon_service_cluster, config, md_check_data_store, category, \
-     category_tree, TOP_MONITORING_CATEGORY, mon_notification, config_str, config_int, host_check_command
-from initat.md_config_server import constants
+     mon_check_command, mon_period, mon_contact, mon_contactgroup, mon_service_templ, \
+     user, category_tree, TOP_MONITORING_CATEGORY, mon_notification, host_check_command , \
+     mon_dist_master, mon_dist_slave, cluster_timezone
+from initat.host_monitoring.version import VERSION_STRING
 from lxml.builder import E # @UnresolvedImport
 import ConfigParser
 import base64
 import binascii
+import datetime
 import cluster_location
 import codecs
 import config_tools
@@ -85,12 +85,16 @@ class var_cache(dict):
                     info_dict[key_n] += 1
         return ret_dict, info_dict
 
-class main_config(object):
-    def __init__(self, b_proc, monitor_server, **kwargs):
-        self.__build_process = b_proc
+class sync_config(object):
+    def __init__(self, proc, monitor_server, **kwargs):
+        """
+        holds information about remote monitoring sattelites
+        """
+        self.__process = proc
         self.__slave_name = kwargs.get("slave_name", None)
         self.__main_dir = global_config["MD_BASEDIR"]
         self.distributed = kwargs.get("distributed", False)
+        self.master = True if not self.__slave_name else False
         if self.__slave_name:
             self.__dir_offset = os.path.join("slaves", self.__slave_name)
             master_cfg = config_tools.device_with_config("monitor_server")
@@ -99,7 +103,7 @@ class main_config(object):
                 server_type="monitor_slave",
                 fetch_network_info=True)
             self.slave_uuid = monitor_server.uuid
-            route = master_cfg["monitor_server"][0].get_route_to_other_device(self.__build_process.router_obj, slave_cfg, allow_route_to_other_networks=True)
+            route = master_cfg["monitor_server"][0].get_route_to_other_device(self.__process.router_obj, slave_cfg, allow_route_to_other_networks=True)
             if not route:
                 self.slave_ip = None
                 self.master_ip = None
@@ -114,8 +118,238 @@ class main_config(object):
                 ))
             # target config version directory for distribute
             self.__tcv_dict = {}
+        else:
+            self.__dir_offset = ""
+        self.monitor_server = monitor_server
+        self.__dict = {}
+        self._create_directories()
+        # flags
+        # config state, one of
+        # u .... unknown
+        # b .... building
+        # d .... done
+        self.config_state = "u"
+        # version of config build
+        self.config_version_build = 0
+        # version of config in send state
+        self.config_version_send = 0
+        # version of config installed
+        self.config_version_installed = 0
+        # start of send
+        self.send_time = 0
+        # lut: send_time -> config_version_send
+        self.send_time_lut = {}
+        # lut: config_version_send -> number transmitted
+        self.num_send = {}
+        # distribution state
+        self.dist_ok = True
+        # flag for reload after sync
+        self.reload_after_sync_flag = False
+        # relayer info
+        self.relayer_version = VERSION_STRING if self.master else "?.?-0"
+        self.icinga_version = "?.?-0"
+    def reload_after_sync(self):
+        self.reload_after_sync_flag = True
+        self._check_for_ras()
+    def set_relayer_info(self, srv_com):
+        _relay_version = srv_com["relayer_version"].text
+        if _relay_version != self.relayer_version:
+            self.log("changing relayer version from '%s' to '%s'" % (self.relayer_version, _relay_version))
+            self.relayer_version = _relay_version
+    def log(self, what, level=logging_tools.LOG_LEVEL_OK):
+        self.__process.log("[sc%s] %s" % (
+            " %s" % (self.__slave_name) if self.__slave_name else "",
+            what), level)
+    def _create_directories(self):
+        dir_names = [
+            "",
+            "etc",
+            "var",
+            "share",
+            "var/archives",
+            "ssl",
+            "bin",
+            "sbin",
+            "lib",
+            "var/spool",
+            "var/spool/checkresults"]
+        if process_tools.get_sys_bits() == 64:
+            dir_names.append("lib64")
+        # dir dict for writing on disk
+        self.__w_dir_dict = dict([(dir_name, os.path.normpath(os.path.join(self.__main_dir, self.__dir_offset, dir_name))) for dir_name in dir_names])
+        # dir dict for referencing
+        self.__r_dir_dict = dict([(dir_name, os.path.normpath(os.path.join(self.__main_dir, dir_name))) for dir_name in dir_names])
+    def check_for_resend(self):
+        if not self.dist_ok and self.config_version_build != self.config_version_installed and abs(self.send_time - time.time()) > 60:
+            self.log("resending files")
+            self.distribute()
+    def start_build(self, b_version, master=None):
+        # generate datbase entry for build
+        self.config_version_build = b_version
+        if self.master:
+            _md = mon_dist_master(
+                device=self.monitor_server,
+                version=self.config_version_build,
+                build_start=cluster_timezone.localize(datetime.datetime.now()),
+                relayer_version=self.relayer_version,
+                )
+        else:
+            self.__md_master = master
+            _md = mon_dist_slave(
+                device=self.monitor_server,
+                mon_dist_master=self.__md_master,
+                relayer_version=self.relayer_version,
+                )
+        _md.save()
+        self.__md_struct = _md
+        return self.__md_struct
+    def end_build(self):
+        self.__md_struct.build_end = cluster_timezone.localize(datetime.datetime.now())
+        self.__md_struct.save()
+    def distribute(self):
+        if self.slave_ip:
+            self.config_version_send = self.config_version_build
+            if self.config_version_send:
+                self.send_time = int(time.time())
+                # to distinguish between iterations during a single build
+                self.send_time_lut[self.send_time] = self.config_version_send
+                self.dist_ok = False
+                self.log("start send to slave (version %d)" % (self.config_version_send))
+                # number of atomic commands
+                num_com = 0
+                # send content of /etc
+                dir_offset = len(self.__w_dir_dict["etc"])
+                for cur_dir, _dir_names, file_names in os.walk(self.__w_dir_dict["etc"]):
+                    rel_dir = cur_dir[dir_offset + 1:]
+                    # send a clear_directory message
+                    srv_com = server_command.srv_command(
+                        command="clear_directory",
+                        host="DIRECT",
+                        slave_name=self.__slave_name,
+                        port="0",
+                        version="%d" % (self.send_time),
+                        directory=os.path.join(self.__r_dir_dict["etc"], rel_dir),
+                        )
+                    self.__process.send_command(self.monitor_server.uuid, unicode(srv_com))
+                    num_com += 1
+                    for cur_file in sorted(file_names):
+                        full_r_path = os.path.join(self.__w_dir_dict["etc"], rel_dir, cur_file)
+                        full_w_path = os.path.join(self.__r_dir_dict["etc"], rel_dir, cur_file)
+                        if os.path.isfile(full_r_path):
+                            self.__tcv_dict[full_w_path] = self.config_version_send
+                            srv_com = server_command.srv_command(
+                                command="file_content",
+                                host="DIRECT",
+                                slave_name=self.__slave_name,
+                                port="0",
+                                uid="%d" % (os.stat(full_r_path)[stat.ST_UID]),
+                                gid="%d" % (os.stat(full_r_path)[stat.ST_GID]),
+                                version="%d" % (self.send_time),
+                                file_name="%s" % (full_w_path),
+                                content=base64.b64encode(file(full_r_path, "r").read())
+                            )
+                            self.__process.send_command(self.monitor_server.uuid, unicode(srv_com))
+                            num_com += 1
+                            # the root of all evil for 'gc not defined errors'
+                            # self.__process.step()
+                self.num_send[self.config_version_send] = num_com
+                self._show_pending_info()
+            else:
+                self.log("no send version set", logging_tools.LOG_LEVEL_ERROR)
+        else:
+            self.log("slave has no valid IP-address, skipping send", logging_tools.LOG_LEVEL_ERROR)
+    def _show_pending_info(self):
+        pend_keys = [key for key, value in self.__tcv_dict.iteritems() if type(value) != bool]
+        error_keys = [key for key, value in self.__tcv_dict.iteritems() if value == False]
+        self.log("%d total, %s pending, %s error" % (
+            len(self.__tcv_dict),
+            logging_tools.get_plural("remote file", len(pend_keys)),
+            logging_tools.get_plural("remote file", len(error_keys))),
+                 )
+        if not pend_keys and not error_keys:
+            _dist_time = abs(time.time() - self.send_time)
+            self.log("actual distribution_set %d is OK (in %s, %.2f / sec)" % (
+                self.config_version_send,
+                logging_tools.get_diff_time_str(_dist_time),
+                self.num_send[self.config_version_send] / _dist_time,
+                ))
+            self.config_version_installed = self.config_version_send
             self.dist_ok = True
-            self.__send_version = None
+            self._check_for_ras()
+    def _check_for_ras(self):
+        if self.reload_after_sync_flag and self.dist_ok:
+            self.reload_after_sync_flag = False
+            self.log("sending reload")
+            srv_com = server_command.srv_command(
+                command="call_command",
+                host="DIRECT",
+                port="0",
+                version="%d" % (self.config_version_send),
+                cmdline="/etc/init.d/icinga reload")
+            self.__process.send_command(self.monitor_server.uuid, unicode(srv_com))
+    def file_content_info(self, srv_com):
+        file_name, version, file_status = (
+            srv_com["file_name"].text,
+            int(srv_com["version"].text),
+            int(srv_com["result"].attrib["state"]),
+        )
+        # check return state for validity
+        if not server_command.srv_reply_state_is_valid(file_status):
+            self.log("file_state %d is not valid" % (file_status), logging_tools.LOG_LEVEL_CRITICAL)
+        file_status = server_command.srv_reply_to_log_level(file_status)
+        self.log("file_content_status for %s is %s (%d), version %d (dist: %d)" % (
+            file_name,
+            srv_com["result"].attrib["reply"],
+            file_status,
+            version,
+            self.send_time_lut.get(version, 0),
+            ), file_status)
+        if version in self.send_time_lut:
+            target_vers = self.send_time_lut[version]
+            if version == self.send_time:
+                if type(self.__tcv_dict[file_name]) in [int, long]:
+                    if self.__tcv_dict[file_name] == target_vers:
+                        if file_status in [logging_tools.LOG_LEVEL_OK, logging_tools.LOG_LEVEL_WARN]:
+                            self.__tcv_dict[file_name] = True
+                        else:
+                            self.__tcv_dict[file_name] = False
+                    else:
+                        self.log("key %s waits for different version: %d != %d" % (file_name, version, self.__tcv_dict[file_name]), logging_tools.LOG_LEVEL_ERROR)
+                else:
+                    self.log("key %s already set to %s" % (file_name, str(self.__tcv_dict[file_name])), logging_tools.LOG_LEVEL_ERROR)
+            else:
+                self.log("version is from an older distribution run", logging_tools.LOG_LEVEL_ERROR)
+        else:
+            self.log("version %d not known in send_time_lut" % (version), logging_tools.LOG_LEVEL_ERROR)
+        self._show_pending_info()
+
+class main_config(object):
+    def __init__(self, proc, monitor_server, **kwargs):
+        self.__process = proc
+        self.__slave_name = kwargs.get("slave_name", None)
+        self.__main_dir = global_config["MD_BASEDIR"]
+        self.distributed = kwargs.get("distributed", False)
+        if self.__slave_name:
+            self.__dir_offset = os.path.join("slaves", self.__slave_name)
+            master_cfg = config_tools.device_with_config("monitor_server")
+            slave_cfg = config_tools.server_check(
+                short_host_name=monitor_server.name,
+                server_type="monitor_slave",
+                fetch_network_info=True)
+            self.slave_uuid = monitor_server.uuid
+            route = master_cfg["monitor_server"][0].get_route_to_other_device(self.__process.router_obj, slave_cfg, allow_route_to_other_networks=True)
+            if not route:
+                self.slave_ip = None
+                self.master_ip = None
+                self.log("no route to slave %s found" % (unicode(monitor_server)), logging_tools.LOG_LEVEL_ERROR)
+            else:
+                self.slave_ip = route[0][3][1][0]
+                self.master_ip = route[0][2][1][0]
+                self.log("IP-address of slave %s is %s (master: %s)" % (
+                    unicode(monitor_server),
+                    self.slave_ip,
+                    self.master_ip
+                ))
         else:
             self.__dir_offset = ""
             # self.__min_dir = os.path.join(self.__main_dir, "slaves", self.__slave_name)
@@ -160,118 +394,13 @@ class main_config(object):
     def keys(self):
         return self.__dict.keys()
     def log(self, what, level=logging_tools.LOG_LEVEL_OK):
-        self.__build_process.log("[mc%s] %s" % (
+        self.__process.log("[mc%s] %s" % (
             " %s" % (self.__slave_name) if self.__slave_name else "",
             what), level)
     def get_command_name(self):
         return os.path.join(
             self.__r_dir_dict["var"],
             "ext_com" if global_config["MD_TYPE"] == "nagios" else "icinga.cmd")
-    def file_content_info(self, srv_com):
-        file_name, version, file_status = (
-            srv_com["file_name"].text,
-            int(srv_com["version"].text),
-            int(srv_com["result"].attrib["state"]),
-        )
-        # check return state for validity
-        if not server_command.srv_reply_state_is_valid(file_status):
-            self.log("file_state %d is not valid" % (file_status), logging_tools.LOG_LEVEL_CRITICAL)
-        file_status = server_command.srv_reply_to_log_level(file_status)
-        self.log("file_content_status for %s is %s (%d), version %d" % (
-            file_name,
-            srv_com["result"].attrib["reply"],
-            file_status,
-            version,
-            ), file_status)
-        if type(self.__tcv_dict[file_name]) in [int, long]:
-            if self.__tcv_dict[file_name] == version:
-                if file_status in [logging_tools.LOG_LEVEL_OK, logging_tools.LOG_LEVEL_WARN]:
-                    self.__tcv_dict[file_name] = True
-                else:
-                    self.__tcv_dict[file_name] = False
-            else:
-                self.log("key %s has waits for different version: %d != %d" % (file_name, version, self.__tcv_dict[file_name]), logging_tools.LOG_LEVEL_ERROR)
-        else:
-            self.log("key %s already set to %s" % (file_name, str(self.__tcv_dict[file_name])), logging_tools.LOG_LEVEL_ERROR)
-        self._show_pending_info()
-    def check_for_resend(self):
-        if not self.dist_ok and self.__send_version and abs(self.send_time - time.time()) > 60:
-            self.log("resending files")
-            self.distribute()
-    def distribute(self, cur_version=None):
-        if cur_version:
-            self.__send_version = cur_version
-        if self.slave_ip:
-            send_version = self.__send_version
-            if send_version:
-                self.send_time = time.time()
-                self.dist_ok = False
-                self.log("start send to slave (version %d)" % (send_version))
-                self.__build_process.send_pool_message("register_slave", self.slave_ip, self.monitor_server.uuid)
-                srv_com = server_command.srv_command(
-                    command="register_master",
-                    host="DIRECT",
-                    port="0",
-                    master_ip=self.master_ip,
-                    master_port="%d" % (constants.SERVER_COM_PORT))
-                # Todo ?
-                time.sleep(0.2)
-                self.__build_process.send_command(self.monitor_server.uuid, unicode(srv_com))
-                # send content of /etc
-                dir_offset = len(self.__w_dir_dict["etc"])
-                for cur_dir, _dir_names, file_names in os.walk(self.__w_dir_dict["etc"]):
-                    rel_dir = cur_dir[dir_offset + 1:]
-                    # send a clear_directory message
-                    srv_com = server_command.srv_command(
-                        command="clear_directory",
-                        host="DIRECT",
-                        slave_name=self.__slave_name,
-                        port="0",
-                        version="%d" % (send_version),
-                        directory=os.path.join(self.__r_dir_dict["etc"], rel_dir),
-                        )
-                    self.__build_process.send_command(self.monitor_server.uuid, unicode(srv_com))
-                    for cur_file in sorted(file_names):
-                        full_r_path = os.path.join(self.__w_dir_dict["etc"], rel_dir, cur_file)
-                        full_w_path = os.path.join(self.__r_dir_dict["etc"], rel_dir, cur_file)
-                        if os.path.isfile(full_r_path):
-                            self.__tcv_dict[full_w_path] = send_version
-                            srv_com = server_command.srv_command(
-                                command="file_content",
-                                host="DIRECT",
-                                slave_name=self.__slave_name,
-                                port="0",
-                                uid="%d" % (os.stat(full_r_path)[stat.ST_UID]),
-                                gid="%d" % (os.stat(full_r_path)[stat.ST_GID]),
-                                version="%d" % (send_version),
-                                file_name="%s" % (full_w_path),
-                                content=base64.b64encode(file(full_r_path, "r").read())
-                            )
-                            self.__build_process.send_command(self.monitor_server.uuid, unicode(srv_com))
-                            self.__build_process.step()
-                srv_com = server_command.srv_command(
-                    command="call_command",
-                    host="DIRECT",
-                    port="0",
-                    version="%d" % (send_version),
-                    cmdline="/etc/init.d/icinga reload")
-                self.__build_process.send_command(self.monitor_server.uuid, unicode(srv_com))
-                self._show_pending_info()
-            else:
-                self.log("no send version set", logging_tools.LOG_LEVEL_ERROR)
-        else:
-            self.log("slave has no valid IP-address, skipping send", logging_tools.LOG_LEVEL_ERROR)
-    def _show_pending_info(self):
-        pend_keys = [key for key, value in self.__tcv_dict.iteritems() if type(value) != bool]
-        error_keys = [key for key, value in self.__tcv_dict.iteritems() if value == False]
-        self.log("%d total, %s pending, %s error" % (
-            len(self.__tcv_dict),
-            logging_tools.get_plural("remote file", len(pend_keys)),
-            logging_tools.get_plural("remote file", len(error_keys))),
-                 )
-        if not pend_keys and not error_keys:
-            self.log("actual distribution_set %d is OK" % (self.__send_version))
-            self.dist_ok = True
     def _create_directories(self):
         dir_names = [
             "",
