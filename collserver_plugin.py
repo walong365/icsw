@@ -31,6 +31,7 @@ import threading
 import time
 import uuid_tools
 import zmq
+
 if __name__ != "__main__":
     import collectd # @UnresolvedImport
 
