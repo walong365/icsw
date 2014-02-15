@@ -25,7 +25,7 @@
 
 from initat.host_monitoring import limits, hm_classes
 from initat.host_monitoring.config import global_config
-from initat.host_monitoring.constants import MAPPING_FILE_IDS, MAPPING_FILE_TYPES, MASTER_FILE_NAME
+from initat.host_monitoring.constants import MAPPING_FILE_IDS, MAPPING_FILE_TYPES, MASTER_FILE_NAME, ICINGA_TOP_DIR
 from initat.host_monitoring.hm_direct import socket_process
 from initat.host_monitoring.tools import my_cached_file
 from initat.host_monitoring.version import VERSION_STRING
@@ -1222,72 +1222,19 @@ class relay_code(threading_tools.process_pool):
         send_return = False
         if self.__verbose:
             self.log("got DIRECT command %s" % (cur_com))
-        if cur_com == "file_content":
-            t_file = srv_com["file_name"].text
-            new_vers = int(srv_com["version"].text)
-            ret_com = server_command.srv_command(
-                command="file_content_result",
-                version="%d" % (new_vers),
-                slave_name=srv_com["slave_name"].text,
-                file_name=t_file,
-            )
-            ret_com["result"] = None
-            if self._check_version(t_file, new_vers):
-                content = base64.b64decode(srv_com["content"].text)
-                t_dir = os.path.dirname(t_file)
-                if not os.path.exists(t_dir):
-                    try:
-                        os.makedirs(t_dir)
-                    except:
-                        self.log("error creating directory %s: %s" % (t_dir, process_tools.get_except_info()),
-                                 logging_tools.LOG_LEVEL_ERROR)
-                    else:
-                        self.log("created directory %s" % (t_dir))
-                try:
-                    file(t_file, "w").write(content)
-                    os.chown(t_file, int(srv_com["uid"].text), int(srv_com["gid"].text))
-                except:
-                    self.log("error creating file %s: %s" % (
-                        t_file,
-                        process_tools.get_except_info()),
-                             logging_tools.LOG_LEVEL_ERROR)
-                    ret_com.set_result(
-                        "file not created: %s" % (process_tools.get_except_info()),
-                        logging_tools.LOG_LEVEL_ERROR,
-                        )
-                else:
-                    self.log("created %s (%d bytes)" % (
-                        t_file,
-                        len(content)))
-                    ret_com.set_result("file created")
+        if cur_com in ["file_content", "file_content_bulk"]:
+            if cur_com == "file_content":
+                ret_com = self._file_content(srv_com)
             else:
-                ret_com.set_result("file not newer", logging_tools.LOG_LEVEL_WARN)
+                ret_com = self._file_content_bulk(srv_com)
+            # set values
             ret_com["host"] = self.master_ip
             ret_com["port"] = "%d" % (self.master_port)
             self._send_to_nhm_service(None, ret_com, None, register=False)
         elif cur_com == "clear_directory":
-            t_dir = srv_com["directory"].text
-            self.log("clearing directory %s" % (t_dir))
-            num_rem = 0
-            if os.path.isdir(t_dir):
-                for entry in os.listdir(t_dir):
-                    f_path = os.path.join(t_dir, entry)
-                    # remove from version_dict
-                    self._clear_version(f_path)
-                    if os.path.isfile(f_path):
-                        try:
-                            os.unlink(f_path)
-                        except:
-                            self.log("cannot remove %s: %s" % (
-                                f_path,
-                                process_tools.get_except_info()
-                                ),
-                                logging_tools.LOG_LEVEL_ERROR)
-                        else:
-                            num_rem += 1
-            else:
-                self.log("directory '%s' does not exist" % (t_dir), logging_tools.LOG_LEVEL_ERROR)
-            self.log("removed %s in %s" % (logging_tools.get_plural("file", num_rem), t_dir))
+            self._clear_directory(srv_com)
+        elif cur_com == "clear_directories":
+            self._clear_directories(srv_com)
         elif cur_com == "call_command":
             # also check for version ? compare with file versions ? deleted files ? FIXME
             cmdline = srv_com["cmdline"].text
@@ -1505,4 +1452,83 @@ class relay_code(threading_tools.process_pool):
             if not _init_ok:
                 break
         return _init_ok
-
+    # file handling commands
+    def _clear_directory(self, srv_com):
+        t_dir = srv_com["directory"].text
+        self._clear_dir(t_dir)
+    def _clear_directories(self, srv_com):
+        print srv_com.pretty_print()
+        for dir_name in srv_com.xpath(".//ns:directories/ns:directory/text()"):
+            self._clear_dir(dir_name)
+    def _clear_dir(self, t_dir):
+        if not t_dir.startswith(ICINGA_TOP_DIR):
+            self.log("refuse to operate outside '%s'" % (ICINGA_TOP_DIR), logging_tools.LOG_LEVEL_CRITICAL)
+        else:
+            self.log("clearing directory %s" % (t_dir))
+            num_rem = 0
+            if os.path.isdir(t_dir):
+                for entry in os.listdir(t_dir):
+                    f_path = os.path.join(t_dir, entry)
+                    # remove from version_dict
+                    self._clear_version(f_path)
+                    if os.path.isfile(f_path):
+                        try:
+                            os.unlink(f_path)
+                        except:
+                            self.log("cannot remove %s: %s" % (
+                                f_path,
+                                process_tools.get_except_info()
+                                ),
+                                logging_tools.LOG_LEVEL_ERROR)
+                        else:
+                            num_rem += 1
+            else:
+                self.log("directory '%s' does not exist" % (t_dir), logging_tools.LOG_LEVEL_ERROR)
+            self.log("removed %s in %s" % (logging_tools.get_plural("file", num_rem), t_dir))
+    def _file_content(self, srv_com):
+        t_file = srv_com["file_name"].text
+        new_vers = int(srv_com["version"].text)
+        ret_com = server_command.srv_command(
+            command="file_content_result",
+            version="%d" % (new_vers),
+            slave_name=srv_com["slave_name"].text,
+            file_name=t_file,
+        )
+        if not t_file.startswith(ICINGA_TOP_DIR):
+            self.log("refuse to operate outside '%s'" % (ICINGA_TOP_DIR), logging_tools.LOG_LEVEL_CRITICAL)
+            ret_com.set_result("refuse to operate outside '%s'" % (ICINGA_TOP_DIR), server_command.SRV_REPLY_STATE_CRITICAL)
+        else:
+            if self._check_version(t_file, new_vers):
+                content = base64.b64decode(srv_com["content"].text)
+                t_dir = os.path.dirname(t_file)
+                if not os.path.exists(t_dir):
+                    try:
+                        os.makedirs(t_dir)
+                    except:
+                        self.log("error creating directory %s: %s" % (t_dir, process_tools.get_except_info()),
+                                 logging_tools.LOG_LEVEL_ERROR)
+                    else:
+                        self.log("created directory %s" % (t_dir))
+                try:
+                    file(t_file, "w").write(content)
+                    os.chown(t_file, int(srv_com["uid"].text), int(srv_com["gid"].text))
+                except:
+                    self.log("error creating file %s: %s" % (
+                        t_file,
+                        process_tools.get_except_info()),
+                             logging_tools.LOG_LEVEL_ERROR)
+                    ret_com.set_result(
+                        "file not created: %s" % (process_tools.get_except_info()),
+                        server_command.SRV_REPLY_STATE_ERROR
+                        )
+                else:
+                    self.log("created %s (%d bytes)" % (
+                        t_file,
+                        len(content)))
+                    ret_com.set_result("file created")
+            else:
+                ret_com.set_result("file not newer", server_command.SRV_REPLY_STATE_WARN)
+        return ret_com
+    def _file_content_bulk(self, srv_com):
+        _file_list = srv_com["file_list"][0]
+        print etree.tostring(_file_list)
