@@ -2583,3 +2583,12 @@ class device_serializer_package_state(device_serializer):
             "access_level", "access_levels", "client_version",
             )
 
+class mon_dist_slave_serializer(serializers.ModelSerializer):
+    class Meta:
+        model = mon_dist_slave
+
+class mon_dist_master_serializer(serializers.ModelSerializer):
+    mon_dist_slave_set = mon_dist_slave_serializer(many=True)
+    class Meta:
+        model = mon_dist_master
+
