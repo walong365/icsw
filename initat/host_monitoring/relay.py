@@ -668,7 +668,8 @@ class relay_code(threading_tools.process_pool):
         self.register_exception("hup_error", self._hup_error)
         self.__delayed = []
         self.register_timer(self._check_timeout, 2)
-        self.register_timer(self._contact_master, 10, instant=True)
+        # report to master every 10 minutes
+        self.register_timer(self._contact_master, 600, instant=True)
         self.__last_master_contact = None
         self.register_func("socket_result", self._socket_result)
         self.version_dict = {}
