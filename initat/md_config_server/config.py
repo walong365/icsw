@@ -404,12 +404,12 @@ class sync_config(object):
         self.log("handling '%s" % (cmd))
         version = int(srv_com["version"].text)
         file_status = int(srv_com["result"].attrib["state"])
+        file_status = server_command.srv_reply_to_log_level(file_status)
         if cmd == "file_content_result":
             file_name = srv_com["file_name"]
             # check return state for validity
             if not server_command.srv_reply_state_is_valid(file_status):
                 self.log("file_state %d is not valid" % (file_status), logging_tools.LOG_LEVEL_CRITICAL)
-            file_status = server_command.srv_reply_to_log_level(file_status)
             self.log("file_content_status for %s is %s (%d), version %d (dist: %d)" % (
                 file_name,
                 srv_com["result"].attrib["reply"],
@@ -419,7 +419,7 @@ class sync_config(object):
                 ), file_status)
             file_names = [file_name]
         elif cmd == "file_content_bulk_result":
-            num_ok, num_failed = (int(srv_com["num_ok"]), int(srv_com["num_failed"]))
+            num_ok, num_failed = (int(srv_com["num_ok"].text), int(srv_com["num_failed"].text))
             self.log("%d ok / %d failed" % (num_ok, num_failed))
             failed_list = marshal.loads(bz2.decompress(base64.b64decode(srv_com["failed_list"].text)))
             ok_list = marshal.loads(bz2.decompress(base64.b64decode(srv_com["ok_list"].text)))
@@ -427,7 +427,7 @@ class sync_config(object):
                 self.log("ok list: %s" % (", ".join(sorted(ok_list))))
             if failed_list:
                 self.log("failed list: %s" % (", ".join(sorted(failed_list))))
-            file_names = [ok_list]
+            file_names = ok_list
         for file_name in file_names:
             if version in self.send_time_lut:
                 target_vers = self.send_time_lut[version]
