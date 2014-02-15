@@ -67,6 +67,16 @@ monitoring_build_info_module.controller("info_ctrl", ["$scope", "$compile", "$fi
                     return "---"
             else
                 return "---"
+        $scope.get_line_class = (build) ->
+            if build.build_start and build.build_end
+                r_class = ""
+            else
+                r_class = "danger"
+            for slave in build.mon_dist_slave_set
+                if not slave.sync_start or not slave.sync_end
+                    if not r_class
+                        r_class = "warning"
+            return r_class
         $scope.reload()
 ])
 
