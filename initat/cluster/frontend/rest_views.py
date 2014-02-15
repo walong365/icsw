@@ -170,6 +170,7 @@ class detail_view(mixins.RetrieveModelMixin,
                 "categories", "config_str_set", "config_int_set", "config_blob_set",
                 "config_bool_set", "config_script_set", "mon_check_command_set__categories", "mon_check_command_set__exclude_devices",
                 "device_config_set"]),
+            "mon_dist_master" : ([], ["mon_dist_slave_set"]),
             }.get(model_name, ([], []))
         res = self.model.objects
         return res.select_related(*related_fields).prefetch_related(*prefetch_fields)

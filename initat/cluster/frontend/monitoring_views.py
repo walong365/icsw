@@ -75,8 +75,16 @@ class setup_cluster(permission_required_mixin, View):
                 }
         )()
 
-class setup_escalation(View):
-    @method_decorator(login_required)
+class build_info(permission_required_mixin, View):
+    all_required_permissions = ["backbone.mon_check_command.setup_monitoring"]
+    def get(self, request):
+        return render_me(
+            request, "monitoring_build_info.html", {
+                }
+        )()
+
+class setup_escalation(permission_required_mixin, View):
+    all_required_permissions = ["backbone.mon_check_command.setup_monitoring"]
     def get(self, request):
         return render_me(
             request, "monitoring_setup_escalation.html", {

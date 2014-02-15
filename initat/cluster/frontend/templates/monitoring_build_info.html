@@ -1,0 +1,61 @@
+{% extends "main.html" %}
+
+{% load i18n coffeescript crispy_forms_tags %}
+
+{% block angular %}{% include "angular/monitoring_build_info.cs" %}{% endblock %}
+
+{% block title %}{% trans "Monitoring - build info" %}{% endblock %}
+
+{% block content %}
+
+<div id="icsw.monitoring_build_info">
+
+{% verbatim %}
+
+<div ng-controller="info_ctrl">
+    <h2>Build info ({{ masters.length }} builds)</h2>
+    <table class="table table-condensed table-hover" style="width:auto;">
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>on</th>
+                <th>start</th>
+                <th>runtime</th>
+                <th>MDVers</th>
+                <th>RelVers</th>
+                <th>slaves</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr><td colspan="12" paginator entries="masters" pag_settings="pagSettings" per_page="3"></td></tr>
+            <tr ng-repeat="build in masters | paginator:this">
+                <td>{{ build.version }}</td>
+                <td>{{ build.device | follow_fk:this:'servers':'full_name' }}</td>
+                <td>{{ get_time(build.build_start) }}</td>
+                <td>{{ get_runtime(build) }}</td>
+                <td>{{ build.md_version }}</td>
+                <td>{{ build.relayer_version }}</td>
+                <td>{{ build.mon_dist_slave_set.length }}</td>
+            </tr>
+        </tbody>
+    </table>
+
+</div>
+
+{% endverbatim %}
+
+</div>
+
+<script>
+
+{% inlinecoffeescript %}
+
+angular.element(document).ready(() ->
+    angular.bootstrap($("div[id='icsw.monitoring_build_info']"), ["icsw.monitoring_build_info"])
+)
+
+{% endinlinecoffeescript %}
+
+</script>
+
+{% endblock %}
