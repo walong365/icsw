@@ -216,7 +216,7 @@ class sync_config(object):
         cur_time = time.time()
         if self.slave_ip:
             self.config_version_send = self.config_version_build
-            if self.__md_struct.num_runs:
+            if not self.__md_struct.num_runs:
                 self.__md_struct.sync_start = cluster_timezone.localize(datetime.datetime.now())
             self.__md_struct.num_runs += 1
             self.send_time = int(cur_time)
@@ -226,6 +226,7 @@ class sync_config(object):
             self.log("start send to slave (version %d)" % (self.config_version_send))
             # number of atomic commands
             num_com = 0
+            size_raw, size_data = (0, 0)
             # send content of /etc
             dir_offset = len(self.__w_dir_dict["etc"])
             for cur_dir, _dir_names, file_names in os.walk(self.__w_dir_dict["etc"]):
@@ -240,12 +241,15 @@ class sync_config(object):
                     directory=os.path.join(self.__r_dir_dict["etc"], rel_dir),
                     )
                 self.__process.send_command(self.monitor_server.uuid, unicode(srv_com))
+                size_raw += len(unicode(srv_com))
                 num_com += 1
                 for cur_file in sorted(file_names):
                     full_r_path = os.path.join(self.__w_dir_dict["etc"], rel_dir, cur_file)
                     full_w_path = os.path.join(self.__r_dir_dict["etc"], rel_dir, cur_file)
                     if os.path.isfile(full_r_path):
                         self.__tcv_dict[full_w_path] = self.config_version_send
+                        _content = file(full_r_path, "r").read()
+                        size_data += len(_content)
                         srv_com = server_command.srv_command(
                             command="file_content",
                             host="DIRECT",
@@ -255,15 +259,18 @@ class sync_config(object):
                             gid="%d" % (os.stat(full_r_path)[stat.ST_GID]),
                             version="%d" % (self.send_time),
                             file_name="%s" % (full_w_path),
-                            content=base64.b64encode(file(full_r_path, "r").read())
+                            content=base64.b64encode(_content)
                         )
                         self.__process.send_command(self.monitor_server.uuid, unicode(srv_com))
+                        size_raw += len(unicode(srv_com))
                         num_com += 1
                         # the root of all evil for 'gc not defined errors'
                         # self.__process.step()
             self.num_send[self.config_version_send] = num_com
             self.__md_struct.num_files = num_com
             self.__md_struct.num_transfers = num_com
+            self.__md_struct.size_raw = size_raw
+            self.__md_struct.size_data = size_data
             self.__md_struct.save()
             self._show_pending_info()
         else:
