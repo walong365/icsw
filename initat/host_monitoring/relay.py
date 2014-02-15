@@ -23,7 +23,6 @@
 
 """ host-monitoring, with 0MQ and direct socket support, relay part """
 
-# import pprint
 from initat.host_monitoring import limits, hm_classes
 from initat.host_monitoring.config import global_config
 from initat.host_monitoring.constants import MAPPING_FILE_IDS, MAPPING_FILE_TYPES, MASTER_FILE_NAME
@@ -35,6 +34,7 @@ from lxml.builder import E # @UnresolvedImport
 import StringIO
 import argparse
 import base64
+import commands
 import configfile
 import logging_tools
 import os
@@ -640,6 +640,7 @@ class relay_code(threading_tools.process_pool):
         self.renice(global_config["NICE_LEVEL"])
         # pending_connection.init(self)
         self.__global_timeout = global_config["TIMEOUT"]
+        self._get_mon_version()
         host_connection.init(self, global_config["BACKLOG_SIZE"], self.__global_timeout, self.__verbose)
         # init lut
         self.__old_send_lut = {}
@@ -700,6 +701,18 @@ class relay_code(threading_tools.process_pool):
             for line in lines:
                 self.log(u" - %s" % (line))
         sys.stdout = cur_stdout
+    def _get_mon_version(self):
+        _icinga_bin = "/opt/icinga/bin/icinga"
+        self.__mon_version = "???"
+        if os.path.isfile(_icinga_bin):
+            cur_stat, cur_out = commands.getstatusoutput("%s -v" % (_icinga_bin))
+            if cur_stat:
+                self.log("error getting mon_versio (%d): %s" % (cur_stat, cur_out), logging_tools.LOG_LEVEL_ERROR)
+            else:
+                lines = [line.lower() for line in cur_out.split("\n") if line.lower().startswith("icinga")]
+                if lines:
+                    self.__mon_version = lines.pop(0).strip().split()[-1]
+        self.log("got mon_version '%s'" % (self.__mon_version))
     def _hup_error(self, err_cause):
         self.log("got SIGHUP (%s), setting all clients with connmode TCP to unknown" % (err_cause), logging_tools.LOG_LEVEL_WARN)
         num_c = 0
@@ -743,6 +756,7 @@ class relay_code(threading_tools.process_pool):
                 port="%d" % (self.master_port),
                 relayer_version=VERSION_STRING,
                 uuid=uuid_tools.get_uuid().get_urn(),
+                mon_version=self.__mon_version,
             )
             self._send_to_nhm_service(None, srv_com, None, register=False)
     def _register_master(self, master_ip, master_uuid, master_port, write=True):
