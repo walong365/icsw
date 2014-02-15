@@ -513,7 +513,7 @@ class server_process(threading_tools.process_pool):
                     self.send_to_process("build", "sync_http_users")
                 elif cur_com in ["ocsp-event", "ochp-event"]:
                     self._handle_ocp_event(srv_com)
-                elif cur_com in ["file_content_result", "relayer_info"]:
+                elif cur_com in ["file_content_result", "relayer_info", "file_content_bulk_result"]:
                     self.send_to_process("syncer", cur_com, unicode(srv_com))
                 else:
                     self.log("got unknown command '%s' from '%s'" % (cur_com, srv_com["source"].attrib["host"]), logging_tools.LOG_LEVEL_ERROR)

@@ -45,6 +45,7 @@ class syncer_process(threading_tools.process_obj):
         self.__register_timer = False
         self.register_func("send_register_msg", self._send_register_msg)
         self.register_func("file_content_result", self._file_content_result)
+        self.register_func("file_content_bulk_result", self._file_content_result)
         self.register_func("relayer_info", self._relayer_info)
         self.register_func("check_for_slaves", self._check_for_slaves)
         self.register_func("check_for_redistribute", self._check_for_redistribute)

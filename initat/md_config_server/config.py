@@ -37,6 +37,7 @@ import binascii
 import datetime
 import cluster_location
 import codecs
+import marshal
 import config_tools
 import configfile
 import logging_tools
@@ -399,39 +400,52 @@ class sync_config(object):
                 cmdline="/etc/init.d/icinga reload")
             self.__process.send_command(self.monitor_server.uuid, unicode(srv_com))
     def file_content_info(self, srv_com):
-        file_name, version, file_status = (
-            srv_com["file_name"].text,
-            int(srv_com["version"].text),
-            int(srv_com["result"].attrib["state"]),
-        )
-        # check return state for validity
-        if not server_command.srv_reply_state_is_valid(file_status):
-            self.log("file_state %d is not valid" % (file_status), logging_tools.LOG_LEVEL_CRITICAL)
-        file_status = server_command.srv_reply_to_log_level(file_status)
-        self.log("file_content_status for %s is %s (%d), version %d (dist: %d)" % (
-            file_name,
-            srv_com["result"].attrib["reply"],
-            file_status,
-            version,
-            self.send_time_lut.get(version, 0),
-            ), file_status)
-        if version in self.send_time_lut:
-            target_vers = self.send_time_lut[version]
-            if version == self.send_time:
-                if type(self.__tcv_dict[file_name]) in [int, long]:
-                    if self.__tcv_dict[file_name] == target_vers:
-                        if file_status in [logging_tools.LOG_LEVEL_OK, logging_tools.LOG_LEVEL_WARN]:
-                            self.__tcv_dict[file_name] = True
+        cmd = srv_com["command"].text
+        self.log("handling '%s" % (cmd))
+        version = int(srv_com["version"].text)
+        file_status = int(srv_com["result"].attrib["state"])
+        if cmd == "file_content_result":
+            file_name = srv_com["file_name"]
+            # check return state for validity
+            if not server_command.srv_reply_state_is_valid(file_status):
+                self.log("file_state %d is not valid" % (file_status), logging_tools.LOG_LEVEL_CRITICAL)
+            file_status = server_command.srv_reply_to_log_level(file_status)
+            self.log("file_content_status for %s is %s (%d), version %d (dist: %d)" % (
+                file_name,
+                srv_com["result"].attrib["reply"],
+                file_status,
+                version,
+                self.send_time_lut.get(version, 0),
+                ), file_status)
+            file_names = [file_name]
+        elif cmd == "file_content_bulk_result":
+            num_ok, num_failed = (int(srv_com["num_ok"]), int(srv_com["num_failed"]))
+            self.log("%d ok / %d failed" % (num_ok, num_failed))
+            failed_list = marshal.loads(bz2.decompress(base64.b64decode(srv_com["failed_list"].text)))
+            ok_list = marshal.loads(bz2.decompress(base64.b64decode(srv_com["ok_list"].text)))
+            if ok_list:
+                self.log("ok list: %s" % (", ".join(sorted(ok_list))))
+            if failed_list:
+                self.log("failed list: %s" % (", ".join(sorted(failed_list))))
+            file_names = [ok_list]
+        for file_name in file_names:
+            if version in self.send_time_lut:
+                target_vers = self.send_time_lut[version]
+                if version == self.send_time:
+                    if type(self.__tcv_dict[file_name]) in [int, long]:
+                        if self.__tcv_dict[file_name] == target_vers:
+                            if file_status in [logging_tools.LOG_LEVEL_OK, logging_tools.LOG_LEVEL_WARN]:
+                                self.__tcv_dict[file_name] = True
+                            else:
+                                self.__tcv_dict[file_name] = False
                         else:
-                            self.__tcv_dict[file_name] = False
+                            self.log("key %s waits for different version: %d != %d" % (file_name, version, self.__tcv_dict[file_name]), logging_tools.LOG_LEVEL_ERROR)
                     else:
-                        self.log("key %s waits for different version: %d != %d" % (file_name, version, self.__tcv_dict[file_name]), logging_tools.LOG_LEVEL_ERROR)
+                        self.log("key %s already set to %s" % (file_name, str(self.__tcv_dict[file_name])), logging_tools.LOG_LEVEL_ERROR)
                 else:
-                    self.log("key %s already set to %s" % (file_name, str(self.__tcv_dict[file_name])), logging_tools.LOG_LEVEL_ERROR)
+                    self.log("version is from an older distribution run", logging_tools.LOG_LEVEL_ERROR)
             else:
-                self.log("version is from an older distribution run", logging_tools.LOG_LEVEL_ERROR)
-        else:
-            self.log("version %d not known in send_time_lut" % (version), logging_tools.LOG_LEVEL_ERROR)
+                self.log("version %d not known in send_time_lut" % (version), logging_tools.LOG_LEVEL_ERROR)
         self._show_pending_info()
 
 class main_config(object):
