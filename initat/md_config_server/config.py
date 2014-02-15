@@ -27,7 +27,8 @@ from initat.cluster.backbone.models import device, device_group, device_variable
      mon_check_command, mon_period, mon_contact, mon_contactgroup, mon_service_templ, \
      user, category_tree, TOP_MONITORING_CATEGORY, mon_notification, host_check_command , \
      mon_dist_master, mon_dist_slave, cluster_timezone
-from initat.host_monitoring.version import VERSION_STRING
+from initat.host_monitoring.version import VERSION_STRING as RELAYER_VERSION_STRING
+from initat.md_config_server.version import VERSION_STRING
 from lxml.builder import E # @UnresolvedImport
 import ConfigParser
 import base64
@@ -146,7 +147,7 @@ class sync_config(object):
         # flag for reload after sync
         self.reload_after_sync_flag = False
         # relayer info
-        self.relayer_version = VERSION_STRING if self.master else "?.?-0"
+        self.relayer_version = RELAYER_VERSION_STRING if self.master else "?.?-0"
         self.icinga_version = "?.?-0"
     def reload_after_sync(self):
         self.reload_after_sync_flag = True
@@ -192,6 +193,7 @@ class sync_config(object):
                 version=self.config_version_build,
                 build_start=cluster_timezone.localize(datetime.datetime.now()),
                 relayer_version=self.relayer_version,
+                md_version=VERSION_STRING,
                 )
         else:
             self.__md_master = master
@@ -207,58 +209,63 @@ class sync_config(object):
         self.__md_struct.build_end = cluster_timezone.localize(datetime.datetime.now())
         self.__md_struct.save()
     def distribute(self):
+        cur_time = time.time()
         if self.slave_ip:
             self.config_version_send = self.config_version_build
-            if self.config_version_send:
-                self.send_time = int(time.time())
-                # to distinguish between iterations during a single build
-                self.send_time_lut[self.send_time] = self.config_version_send
-                self.dist_ok = False
-                self.log("start send to slave (version %d)" % (self.config_version_send))
-                # number of atomic commands
-                num_com = 0
-                # send content of /etc
-                dir_offset = len(self.__w_dir_dict["etc"])
-                for cur_dir, _dir_names, file_names in os.walk(self.__w_dir_dict["etc"]):
-                    rel_dir = cur_dir[dir_offset + 1:]
-                    # send a clear_directory message
-                    srv_com = server_command.srv_command(
-                        command="clear_directory",
-                        host="DIRECT",
-                        slave_name=self.__slave_name,
-                        port="0",
-                        version="%d" % (self.send_time),
-                        directory=os.path.join(self.__r_dir_dict["etc"], rel_dir),
+            if self.__md_struct.num_runs:
+                self.__md_struct.sync_start = cluster_timezone.localize(datetime.datetime.now())
+            self.__md_struct.num_runs += 1
+            self.send_time = int(cur_time)
+            # to distinguish between iterations during a single build
+            self.send_time_lut[self.send_time] = self.config_version_send
+            self.dist_ok = False
+            self.log("start send to slave (version %d)" % (self.config_version_send))
+            # number of atomic commands
+            num_com = 0
+            # send content of /etc
+            dir_offset = len(self.__w_dir_dict["etc"])
+            for cur_dir, _dir_names, file_names in os.walk(self.__w_dir_dict["etc"]):
+                rel_dir = cur_dir[dir_offset + 1:]
+                # send a clear_directory message
+                srv_com = server_command.srv_command(
+                    command="clear_directory",
+                    host="DIRECT",
+                    slave_name=self.__slave_name,
+                    port="0",
+                    version="%d" % (self.send_time),
+                    directory=os.path.join(self.__r_dir_dict["etc"], rel_dir),
+                    )
+                self.__process.send_command(self.monitor_server.uuid, unicode(srv_com))
+                num_com += 1
+                for cur_file in sorted(file_names):
+                    full_r_path = os.path.join(self.__w_dir_dict["etc"], rel_dir, cur_file)
+                    full_w_path = os.path.join(self.__r_dir_dict["etc"], rel_dir, cur_file)
+                    if os.path.isfile(full_r_path):
+                        self.__tcv_dict[full_w_path] = self.config_version_send
+                        srv_com = server_command.srv_command(
+                            command="file_content",
+                            host="DIRECT",
+                            slave_name=self.__slave_name,
+                            port="0",
+                            uid="%d" % (os.stat(full_r_path)[stat.ST_UID]),
+                            gid="%d" % (os.stat(full_r_path)[stat.ST_GID]),
+                            version="%d" % (self.send_time),
+                            file_name="%s" % (full_w_path),
+                            content=base64.b64encode(file(full_r_path, "r").read())
                         )
-                    self.__process.send_command(self.monitor_server.uuid, unicode(srv_com))
-                    num_com += 1
-                    for cur_file in sorted(file_names):
-                        full_r_path = os.path.join(self.__w_dir_dict["etc"], rel_dir, cur_file)
-                        full_w_path = os.path.join(self.__r_dir_dict["etc"], rel_dir, cur_file)
-                        if os.path.isfile(full_r_path):
-                            self.__tcv_dict[full_w_path] = self.config_version_send
-                            srv_com = server_command.srv_command(
-                                command="file_content",
-                                host="DIRECT",
-                                slave_name=self.__slave_name,
-                                port="0",
-                                uid="%d" % (os.stat(full_r_path)[stat.ST_UID]),
-                                gid="%d" % (os.stat(full_r_path)[stat.ST_GID]),
-                                version="%d" % (self.send_time),
-                                file_name="%s" % (full_w_path),
-                                content=base64.b64encode(file(full_r_path, "r").read())
-                            )
-                            self.__process.send_command(self.monitor_server.uuid, unicode(srv_com))
-                            num_com += 1
-                            # the root of all evil for 'gc not defined errors'
-                            # self.__process.step()
-                self.num_send[self.config_version_send] = num_com
-                self._show_pending_info()
-            else:
-                self.log("no send version set", logging_tools.LOG_LEVEL_ERROR)
+                        self.__process.send_command(self.monitor_server.uuid, unicode(srv_com))
+                        num_com += 1
+                        # the root of all evil for 'gc not defined errors'
+                        # self.__process.step()
+            self.num_send[self.config_version_send] = num_com
+            self.__md_struct.num_files = num_com
+            self.__md_struct.num_transfers = num_com
+            self.__md_struct.save()
+            self._show_pending_info()
         else:
             self.log("slave has no valid IP-address, skipping send", logging_tools.LOG_LEVEL_ERROR)
     def _show_pending_info(self):
+        cur_time = time.time()
         pend_keys = [key for key, value in self.__tcv_dict.iteritems() if type(value) != bool]
         error_keys = [key for key, value in self.__tcv_dict.iteritems() if value == False]
         self.log("%d total, %s pending, %s error" % (
@@ -267,7 +274,7 @@ class sync_config(object):
             logging_tools.get_plural("remote file", len(error_keys))),
                  )
         if not pend_keys and not error_keys:
-            _dist_time = abs(time.time() - self.send_time)
+            _dist_time = abs(cur_time - self.send_time)
             self.log("actual distribution_set %d is OK (in %s, %.2f / sec)" % (
                 self.config_version_send,
                 logging_tools.get_diff_time_str(_dist_time),
@@ -275,6 +282,8 @@ class sync_config(object):
                 ))
             self.config_version_installed = self.config_version_send
             self.dist_ok = True
+            self.__md_struct.sync_end = cluster_timezone.localize(datetime.datetime.now())
+            self.__md_struct.save()
             self._check_for_ras()
     def _check_for_ras(self):
         if self.reload_after_sync_flag and self.dist_ok:
