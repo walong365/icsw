@@ -399,6 +399,19 @@ class sync_config(object):
                 version="%d" % (self.config_version_send),
                 cmdline="/etc/init.d/icinga reload")
             self.__process.send_command(self.monitor_server.uuid, unicode(srv_com))
+    def _parse_list(self, in_list):
+        # return top_dir and simplified list
+        if in_list:
+            in_list = [os.path.normpath(_entry) for _entry in in_list]
+            _parts = in_list[0].split("/")
+            while _parts:
+                _top = u"/".join(_parts)
+                if all([_entry.startswith(_top) for _entry in in_list]):
+                    break
+                _parts.pop(-1)
+            return (_top, [_entry[len(_top):] for _entry in in_list])
+        else:
+            return ("", [])
     def file_content_info(self, srv_com):
         cmd = srv_com["command"].text
         self.log("handling '%s" % (cmd))
@@ -424,9 +437,15 @@ class sync_config(object):
             failed_list = marshal.loads(bz2.decompress(base64.b64decode(srv_com["failed_list"].text)))
             ok_list = marshal.loads(bz2.decompress(base64.b64decode(srv_com["ok_list"].text)))
             if ok_list:
-                self.log("ok list: %s" % (", ".join(sorted(ok_list))))
+                _ok_dir, _ok_list = self._parse_list(ok_list)
+                self.log("ok list (beneath %s): %s" % (
+                    _ok_dir,
+                    ", ".join(sorted(_ok_list))))
             if failed_list:
-                self.log("failed list: %s" % (", ".join(sorted(failed_list))))
+                _failed_dir, _failed_list = self._parse_list(failed_list)
+                self.log("failed list (beneath %s): %s" % (
+                    _failed_dir,
+                    ", ".join(sorted(_failed_list))))
             file_names = ok_list
         for file_name in file_names:
             if version in self.send_time_lut:
@@ -775,22 +794,31 @@ class main_config(object):
                 nagvis_main_cfg.add_section(sect_name)
                 for key, value in var_list:
                     nagvis_main_cfg.set(sect_name, key, unicode(value))
-            with open(os.path.join(global_config["NAGVIS_DIR"], "etc", "nagvis.ini.php")    , "wb") as nvm_file:
-                nvm_file.write("; <?php return 1; ?>\n")
-                nagvis_main_cfg.write(nvm_file)
+            try:
+                nv_target = os.path.join(global_config["NAGVIS_DIR"], "etc", "nagvis.ini.php")
+                with open(nv_target, "wb") as nvm_file:
+                    nvm_file.write("; <?php return 1; ?>\n")
+                    nagvis_main_cfg.write(nvm_file)
+            except IOError:
+                self.log("error creating %s: %s" % (
+                    nv_target,
+                    process_tools.get_except_info()), logging_tools.LOG_LEVEL_ERROR)
             # clear SALT
             config_php = os.path.join(global_config["NAGVIS_DIR"], "share", "server", "core", "defines", "global.php")
-            lines = file(config_php, "r").read().split("\n")
-            new_lines, save = ([], False)
-            for cur_line in lines:
-                if cur_line.lower().count("auth_password_salt") and len(cur_line) > 60:
-                    # remove salt
-                    cur_line = "define('AUTH_PASSWORD_SALT', '');"
-                    save = True
-                new_lines.append(cur_line)
-            if save:
-                self.log("saving %s" % (config_php))
-                file(config_php, "w").write("\n".join(new_lines))
+            if os.path.exists(config_php):
+                lines = file(config_php, "r").read().split("\n")
+                new_lines, save = ([], False)
+                for cur_line in lines:
+                    if cur_line.lower().count("auth_password_salt") and len(cur_line) > 60:
+                        # remove salt
+                        cur_line = "define('AUTH_PASSWORD_SALT', '');"
+                        save = True
+                    new_lines.append(cur_line)
+                if save:
+                    self.log("saving %s" % (config_php))
+                    file(config_php, "w").write("\n".join(new_lines))
+            else:
+                self.log("config.php '%s' does not exist" % (config_php), logging_tools.LOG_LEVEL_ERROR)
         else:
             self.log("no nagvis_directory '%s' found" % (global_config["NAGVIS_DIR"]), logging_tools.LOG_LEVEL_ERROR)
     def _create_base_config_entries(self):
