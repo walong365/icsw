@@ -148,15 +148,28 @@ class sync_config(object):
         self.reload_after_sync_flag = False
         # relayer info
         self.relayer_version = RELAYER_VERSION_STRING if self.master else "?.?-0"
-        self.icinga_version = "?.?-0"
+        self.mon_version = "?.?-0"
+        if not self.master:
+            # try to get relayer / mon_version from latest build
+            _latest_build = mon_dist_slave.objects.filter(Q(device=self.monitor_server)).order_by("-pk")
+            if len(_latest_build):
+                _latest_build = _latest_build[0]
+                self.mon_version = _latest_build.mon_version
+                self.relayer_version = _latest_build.relayer_version
+                self.log("recovered MonVer %s / RelVer %s from DB" % (self.mon_version, self.relayer_version))
     def reload_after_sync(self):
         self.reload_after_sync_flag = True
         self._check_for_ras()
     def set_relayer_info(self, srv_com):
-        _relay_version = srv_com["relayer_version"].text
-        if _relay_version != self.relayer_version:
-            self.log("changing relayer version from '%s' to '%s'" % (self.relayer_version, _relay_version))
-            self.relayer_version = _relay_version
+        for key in ["relayer_version", "mon_version"]:
+            if key in srv_com:
+                _new_vers = srv_com[key].text
+                if _new_vers != getattr(self, key):
+                    self.log("changing %s from '%s' to '%s'" % (
+                        key,
+                        getattr(self, key),
+                        _new_vers))
+                    setattr(self, key, _new_vers)
     def log(self, what, level=logging_tools.LOG_LEVEL_OK):
         self.__process.log("[sc%s] %s" % (
             " %s" % (self.__slave_name) if self.__slave_name else "",
@@ -205,6 +218,7 @@ class sync_config(object):
                 device=self.monitor_server,
                 mon_dist_master=self.__md_master,
                 relayer_version=self.relayer_version,
+                mon_version=self.mon_version,
                 )
         _md.save()
         self.__md_struct = _md
