@@ -25,8 +25,11 @@ import commands
 import os
 import sys
 
-MAX_CORES = cpu_database.global_cpu_info(parse=True).num_cores()
-MAX_MASK = (1 << MAX_CORES) - 1
+if "FAKEROOTKEY" in os.environ:
+    MAX_CORES = 2
+else:
+    MAX_CORES = cpu_database.global_cpu_info(parse=True).num_cores()
+    MAX_MASK = (1 << MAX_CORES) - 1
 
 CPU_MASKS = dict([(1 << cpu_num, cpu_num) for cpu_num in xrange(MAX_CORES)])
 
