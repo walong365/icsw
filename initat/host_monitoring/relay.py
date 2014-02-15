@@ -34,9 +34,11 @@ from lxml.builder import E # @UnresolvedImport
 import StringIO
 import argparse
 import base64
+import bz2
 import commands
 import configfile
 import logging_tools
+import marshal
 import os
 import process_tools
 import resource
@@ -658,7 +660,6 @@ class relay_code(threading_tools.process_pool):
         self.install_signal_handlers()
         id_discovery.init(self, global_config["BACKLOG_SIZE"], global_config["TIMEOUT"], self.__verbose)
         self._init_filecache()
-        self._init_master()
         self._init_msi_block()
         self._change_rlimits()
         self._init_network_sockets()
@@ -672,6 +673,7 @@ class relay_code(threading_tools.process_pool):
         self.register_func("socket_result", self._socket_result)
         self.version_dict = {}
         self._show_config()
+        self._init_master()
         if self.objgraph:
             self.register_timer(self._objgraph_run, 30, instant=True)
         if not self._init_commands():
@@ -779,6 +781,8 @@ class relay_code(threading_tools.process_pool):
         id_discovery.set_mapping(conn_str, self.master_uuid)
         if not self.__rmt_set:
             self.__rmt_set = True
+            # force connection
+            self._contact_master()
             # report to master after 5 seconds
             self.register_timer(self._contact_master, 5, instant=False, oneshot=True)
             # report to master every 10 minutes
@@ -1494,12 +1498,59 @@ class relay_code(threading_tools.process_pool):
             slave_name=srv_com["slave_name"].text,
             file_name=t_file,
         )
+        success = self._store_file(
+            t_file,
+            new_vers,
+            int(srv_com["uid"].text),
+            int(srv_com["gid"].text),
+            base64.b64decode(srv_com["content"].text),
+            )
+        if success:
+            ret_com.set_result("stored content")
+        else:
+            ret_com.set_result("cannot create file (please check logs on relayer)", server_command.SRV_REPLY_STATE_ERROR)
+    def _file_content_bulk(self, srv_com):
+        new_vers = int(srv_com["version"].text)
+        _file_list = srv_com["file_list"][0]
+        _bulk = bz2.decompress(base64.b64decode(srv_com["bulk"].text))
+        cur_offset = 0
+        num_ok, num_failed = (0, 0)
+        ok_list, failed_list = ([], [])
+        for _entry in srv_com.xpath(".//ns:file_list/ns:file"):
+            _uid, _gid = (int(_entry.get("uid")), int(_entry.get("gid")))
+            _size = int(_entry.get("size"))
+            path = _entry.text
+            content = _bulk[cur_offset:cur_offset + _size]
+            _success = self._store_file(path, new_vers, _uid, _gid, content)
+            if _success:
+                num_ok += 1
+                ok_list.append(path)
+            else:
+                num_failed += 1
+                failed_list.append(path)
+            cur_offset += _size
+        # print etree.tostring(_file_list), len(_bulk)
+        ret_com = server_command.srv_command(
+            command="file_content_bulk_result",
+            version="%d" % (new_vers),
+            slave_name=srv_com["slave_name"].text,
+            num_ok="%d" % (num_ok),
+            num_failed="%d" % (num_failed),
+            ok_list=base64.b64encode(bz2.compress(marshal.dumps(ok_list))),
+            failed_list=base64.b64encode(bz2.compress(marshal.dumps(failed_list))),
+        )
+        if num_failed:
+            ret_com.set_result("cannot create all files (%d, please check logs on relayer)" % (num_failed), server_command.SRV_REPLY_STATE_ERROR)
+        else:
+            ret_com.set_result("all %d files created" % (num_ok))
+        return ret_com
+    def _store_file(self, t_file, new_vers, uid, gid, content):
+        success = False
         if not t_file.startswith(ICINGA_TOP_DIR):
             self.log("refuse to operate outside '%s'" % (ICINGA_TOP_DIR), logging_tools.LOG_LEVEL_CRITICAL)
-            ret_com.set_result("refuse to operate outside '%s'" % (ICINGA_TOP_DIR), server_command.SRV_REPLY_STATE_CRITICAL)
+            # ret_com.set_result("refuse to operate outside '%s'" % (ICINGA_TOP_DIR), server_command.SRV_REPLY_STATE_CRITICAL)
         else:
             if self._check_version(t_file, new_vers):
-                content = base64.b64decode(srv_com["content"].text)
                 t_dir = os.path.dirname(t_file)
                 if not os.path.exists(t_dir):
                     try:
@@ -1511,24 +1562,18 @@ class relay_code(threading_tools.process_pool):
                         self.log("created directory %s" % (t_dir))
                 try:
                     file(t_file, "w").write(content)
-                    os.chown(t_file, int(srv_com["uid"].text), int(srv_com["gid"].text))
+                    os.chown(t_file, uid, gid)
                 except:
                     self.log("error creating file %s: %s" % (
                         t_file,
                         process_tools.get_except_info()),
                              logging_tools.LOG_LEVEL_ERROR)
-                    ret_com.set_result(
-                        "file not created: %s" % (process_tools.get_except_info()),
-                        server_command.SRV_REPLY_STATE_ERROR
-                        )
                 else:
                     self.log("created %s (%d bytes)" % (
                         t_file,
                         len(content)))
-                    ret_com.set_result("file created")
+                    success = True
             else:
-                ret_com.set_result("file not newer", server_command.SRV_REPLY_STATE_WARN)
-        return ret_com
-    def _file_content_bulk(self, srv_com):
-        _file_list = srv_com["file_list"][0]
-        print etree.tostring(_file_list)
+                success = True
+                self.log("file %s not newer" % (t_file), server_command.SRV_REPLY_STATE_WARN)
+        return success
