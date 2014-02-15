@@ -48,7 +48,6 @@ if sys.platform in ["linux2", "linux3", "linux"]:
     from io_stream_helper import io_stream
     from lxml import etree # @UnresolvedImports
     from lxml.builder import E # @UnresolvedImports
-    import cpu_database
     import grp
     import pwd
 
@@ -1603,6 +1602,8 @@ def _read_issue_file(f_name):
     return ret_dict
 
 def fetch_sysinfo(root_dir="/"):
+    # late import due to strange build problem on Debian (once again) systems
+    import cpu_database
     log_lines, sys_dict = ([], {})
     try:
         isl = [x.strip().lower() for x in open("%s/etc/issue" % (root_dir), "r").read().split("\n")]
