@@ -391,7 +391,10 @@ class upload_config(View):
                     c_el.append(getattr(E, "%s_set" % (targ_list))())
                 new_tree.append(c_el)
                 for sub_el in _config.xpath(".//config_str|.//config_int|.//config_bool|.//config_blob|.//config_script|.//mon_check_command", smart_strings=False):
-                    t_list = c_el.find("%s_set" % (sub_el.tag))
+                    if "type" in sub_el.attrib:
+                        t_list = c_el.find("config_%s_set" % (sub_el.get("type")))
+                    else:
+                        t_list = c_el.find("%s_set" % (sub_el.tag))
                     if sub_el.tag == "config_script":
                         sub_el.attrib["description"] = "config script"
                     t_list.append(interpret_xml("list-item", sub_el, mapping))
@@ -474,3 +477,4 @@ class get_device_cvars(View):
                     res_node.append(sub_el)
                 request.xml_response["result"].append(res_node)
                 request.xml_response.log(int(dev_node.attrib["state_level"]), dev_node.attrib["info_str"], logger=logger)
+
