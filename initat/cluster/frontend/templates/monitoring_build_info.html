@@ -24,14 +24,8 @@
                 <th>MDVers</th>
                 <th>RelVers</th>
                 <th>#slaves</th>
-                <th ng-repeat-start="slave_idx in all_slaves">
+                <th colspan="4" class="text-center" ng-repeat="slave_idx in all_slaves">
                     {{ slave_idx | follow_fk:this:'servers':'full_name' }}
-                </th>
-                <th>
-                    time
-                </th>
-                <th ng-repeat-end>
-                    size
                 </th>
             </tr>
         </thead>
@@ -45,14 +39,17 @@
                 <td class="text-center">{{ build.md_version }}</td>
                 <td class="text-center">{{ build.relayer_version }}</td>
                 <td class="text-center">{{ build.mon_dist_slave_set.length }}</td>
-                <td ng-repeat-start="slave in get_slaves(build)">
+                <td class="text-center" ng-repeat-start="slave in get_slaves(build)">
                     {{ slave.relayer_version || '---' }} / {{ slave.mon_version || '---' }}
                 </td>
-                <td>
+                <td class="text-center">
                     {{ get_sync_time(slave) }} <span ng-show="slave.num_runs > 1">({{ slave.num_runs}} )</span>
                 </td>
-                <td ng-repeat-end>
-                    {{ slave.size_raw | get_size:1:1024 }} ({{ slave.num_transfers }}) / {{ slave.size_data | get_size:1:1024 }} ({{ slave.num_files }})
+                <td class="text-right">
+                    {{ slave.size_raw | get_size:1:1024 }} ({{ slave.num_transfers }})
+                </td>
+                <td ng-repeat-end class="text-right">
+                    {{ slave.size_data | get_size:1:1024 }} ({{ slave.num_files }})
                 </td>
             </tr>
         </tbody>

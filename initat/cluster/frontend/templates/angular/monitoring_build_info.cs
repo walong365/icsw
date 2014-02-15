@@ -32,7 +32,6 @@ monitoring_build_info_module.controller("info_ctrl", ["$scope", "$compile", "$fi
                             slave_list.push(slave.device)
                 $scope.all_slaves = slave_list
                 $scope.servers = build_lut(data[1])
-                console.log $scope.servers
             )
         $scope.get_diff_time = (dt) ->
             if dt
