@@ -668,8 +668,6 @@ class relay_code(threading_tools.process_pool):
         self.register_exception("hup_error", self._hup_error)
         self.__delayed = []
         self.register_timer(self._check_timeout, 2)
-        # report to master every 10 minutes
-        self.register_timer(self._contact_master, 600, instant=True)
         self.__last_master_contact = None
         self.register_func("socket_result", self._socket_result)
         self.version_dict = {}
@@ -707,12 +705,13 @@ class relay_code(threading_tools.process_pool):
         self.__mon_version = "N/A"
         if os.path.isfile(_icinga_bin):
             cur_stat, cur_out = commands.getstatusoutput("%s -v" % (_icinga_bin))
-            if cur_stat:
-                self.log("error getting mon_versio (%d): %s" % (cur_stat, cur_out), logging_tools.LOG_LEVEL_ERROR)
-            else:
-                lines = [line.lower() for line in cur_out.split("\n") if line.lower().startswith("icinga")]
-                if lines:
-                    self.__mon_version = lines.pop(0).strip().split()[-1]
+            lines = cur_out.split("\n")
+            self.log("'%s -v' gave %d, first 5 lines:" % (_icinga_bin, cur_stat))
+            for _line in lines[:5]:
+                self.log("  %s" % (_line))
+            lines = [line.lower() for line in lines if line.lower().startswith("icinga")]
+            if lines:
+                self.__mon_version = lines.pop(0).strip().split()[-1]
         self.log("got mon_version '%s'" % (self.__mon_version))
     def _hup_error(self, err_cause):
         self.log("got SIGHUP (%s), setting all clients with connmode TCP to unknown" % (err_cause), logging_tools.LOG_LEVEL_WARN)
@@ -741,6 +740,8 @@ class relay_code(threading_tools.process_pool):
         # try:
         #    resource.setrlimit(resource.RLIMIT_OFILE, 4069)
     def _init_master(self):
+        # register_to_master_timer set ?
+        self.__rmt_set = False
         if os.path.isfile(MASTER_FILE_NAME):
             master_xml = etree.fromstring(file(MASTER_FILE_NAME, "r").read())
             self._register_master(master_xml.attrib["ip"], master_xml.attrib["uuid"], int(master_xml.attrib["port"]), write=False)
@@ -759,6 +760,7 @@ class relay_code(threading_tools.process_pool):
                 uuid=uuid_tools.get_uuid().get_urn(),
                 mon_version=self.__mon_version,
             )
+            self.log("send master info (Rel %s, Mon %s)" % (VERSION_STRING, self.__mon_version))
             self._send_to_nhm_service(None, srv_com, None, register=False)
     def _register_master(self, master_ip, master_uuid, master_port, write=True):
         self.master_ip = master_ip
@@ -775,6 +777,12 @@ class relay_code(threading_tools.process_pool):
         conn_str = "tcp://%s:%d" % (self.master_ip, self.master_port)
         self.log("registered master at %s (%s)" % (conn_str, self.master_uuid))
         id_discovery.set_mapping(conn_str, self.master_uuid)
+        if not self.__rmt_set:
+            self.__rmt_set = True
+            # report to master after 5 seconds
+            self.register_timer(self._contact_master, 5, instant=False, oneshot=True)
+            # report to master every 10 minutes
+            self.register_timer(self._contact_master, 600, instant=False)
     def _init_filecache(self):
         self.__client_dict = {}
         self.__last_tried = {}
