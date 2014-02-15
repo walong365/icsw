@@ -20,16 +20,12 @@
 """ handles process affinity """
 
 # import process_tools
+import cpu_database
 import commands
 import os
 import sys
 
-if os.getuid():
-    # workaround for build-bug in Debian systems
-    MAX_CORES = len([True for line in file("/proc/cpuinfo", "r").xreadlines() if line.startswith("processor")])
-else:
-    import cpu_database 
-    MAX_CORES = cpu_database.global_cpu_info(parse=True).num_cores()
+MAX_CORES = cpu_database.global_cpu_info(parse=True).num_cores()
 MAX_MASK = (1 << MAX_CORES) - 1
 
 CPU_MASKS = dict([(1 << cpu_num, cpu_num) for cpu_num in xrange(MAX_CORES)])
