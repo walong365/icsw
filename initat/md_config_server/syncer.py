@@ -122,7 +122,7 @@ class syncer_process(threading_tools.process_obj):
         if "uuid" in srv_com:
             uuid = srv_com["uuid"].text.split(":")[-1]
             if uuid == self.__master_config.monitor_server.uuid:
-                self.__master_conifig.set_relayer_info(srv_com)
+                self.__master_config.set_relayer_info(srv_com)
             elif uuid in self.__slave_lut:
                 _pk = self.__slave_lut[uuid]
                 self.__slave_configs[_pk].set_relayer_info(srv_com)

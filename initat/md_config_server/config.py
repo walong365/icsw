@@ -31,6 +31,7 @@ from initat.host_monitoring.version import VERSION_STRING as RELAYER_VERSION_STR
 from initat.md_config_server.version import VERSION_STRING
 from lxml.builder import E # @UnresolvedImport
 import ConfigParser
+import bz2
 import base64
 import binascii
 import datetime
@@ -160,7 +161,7 @@ class sync_config(object):
     def _relayer_gen(self):
         # return the relayer generation
         # 0 ... old one, no bulk transfers
-        # 1 ... supports bulk transfer
+        # 1 ... supports bulk transfer (file_content_bulk and clear_directories)
         _r_gen = 0
         _r_vers = self.relayer_version
         if _r_vers.count("-"):
@@ -246,7 +247,13 @@ class sync_config(object):
     def end_build(self):
         self.__md_struct.build_end = cluster_timezone.localize(datetime.datetime.now())
         self.__md_struct.save()
+    def _send(self, srv_com):
+        self.__process.send_command(self.monitor_server.uuid, unicode(srv_com))
+        self.__size_raw += len(unicode(srv_com))
+        self.__num_com += 1
     def distribute(self):
+        # max uncompressed send size
+        MAX_SEND_SIZE = 65536
         cur_time = time.time()
         if self.slave_ip:
             self.config_version_send = self.config_version_build
@@ -263,56 +270,102 @@ class sync_config(object):
                 _r_gen,
                 ))
             # number of atomic commands
-            num_com = 0
-            size_raw, size_data = (0, 0)
+            self.__num_com = 0
+            self.__size_raw, size_data = (0, 0)
             # send content of /etc
             dir_offset = len(self.__w_dir_dict["etc"])
-            for cur_dir, _dir_names, file_names in os.walk(self.__w_dir_dict["etc"]):
-                rel_dir = cur_dir[dir_offset + 1:]
-                # send a clear_directory message
-                srv_com = server_command.srv_command(
-                    command="clear_directory",
-                    host="DIRECT",
-                    slave_name=self.__slave_name,
-                    port="0",
-                    version="%d" % (self.send_time),
-                    directory=os.path.join(self.__r_dir_dict["etc"], rel_dir),
-                    )
-                self.__process.send_command(self.monitor_server.uuid, unicode(srv_com))
-                size_raw += len(unicode(srv_com))
-                num_com += 1
-                for cur_file in sorted(file_names):
-                    full_r_path = os.path.join(self.__w_dir_dict["etc"], rel_dir, cur_file)
-                    full_w_path = os.path.join(self.__r_dir_dict["etc"], rel_dir, cur_file)
-                    if os.path.isfile(full_r_path):
-                        self.__tcv_dict[full_w_path] = self.config_version_send
-                        _content = file(full_r_path, "r").read()
-                        size_data += len(_content)
-                        srv_com = server_command.srv_command(
-                            command="file_content",
-                            host="DIRECT",
-                            slave_name=self.__slave_name,
-                            port="0",
-                            uid="%d" % (os.stat(full_r_path)[stat.ST_UID]),
-                            gid="%d" % (os.stat(full_r_path)[stat.ST_GID]),
-                            version="%d" % (self.send_time),
-                            file_name="%s" % (full_w_path),
-                            content=base64.b64encode(_content)
+            if _r_gen == 0:
+                # generation 0 transfer
+                for cur_dir, _dir_names, file_names in os.walk(self.__w_dir_dict["etc"]):
+                    rel_dir = cur_dir[dir_offset + 1:]
+                    # send a clear_directory message
+                    srv_com = server_command.srv_command(
+                        command="clear_directory",
+                        host="DIRECT",
+                        slave_name=self.__slave_name,
+                        port="0",
+                        version="%d" % (self.send_time),
+                        directory=os.path.join(self.__r_dir_dict["etc"], rel_dir),
                         )
-                        self.__process.send_command(self.monitor_server.uuid, unicode(srv_com))
-                        size_raw += len(unicode(srv_com))
-                        num_com += 1
-                        # the root of all evil for 'gc not defined errors'
-                        # self.__process.step()
-            self.num_send[self.config_version_send] = num_com
-            self.__md_struct.num_files = num_com
-            self.__md_struct.num_transfers = num_com
-            self.__md_struct.size_raw = size_raw
+                    self._send(srv_com)
+                    for cur_file in sorted(file_names):
+                        full_r_path = os.path.join(self.__w_dir_dict["etc"], rel_dir, cur_file)
+                        full_w_path = os.path.join(self.__r_dir_dict["etc"], rel_dir, cur_file)
+                        if os.path.isfile(full_r_path):
+                            self.__tcv_dict[full_w_path] = self.config_version_send
+                            _content = file(full_r_path, "r").read()
+                            size_data += len(_content)
+                            srv_com = server_command.srv_command(
+                                command="file_content",
+                                host="DIRECT",
+                                slave_name=self.__slave_name,
+                                port="0",
+                                uid="%d" % (os.stat(full_r_path)[stat.ST_UID]),
+                                gid="%d" % (os.stat(full_r_path)[stat.ST_GID]),
+                                version="%d" % (self.send_time),
+                                file_name="%s" % (full_w_path),
+                                content=base64.b64encode(_content)
+                            )
+                            self._send(srv_com)
+            else:
+                # generation 1 transfer
+                del_dirs = []
+                for cur_dir, _dir_names, file_names in os.walk(self.__w_dir_dict["etc"]):
+                    rel_dir = cur_dir[dir_offset + 1:]
+                    del_dirs.append(os.path.join(self.__r_dir_dict["etc"], rel_dir))
+                if del_dirs:
+                    srv_com = server_command.srv_command(
+                        command="clear_directories",
+                        host="DIRECT",
+                        slave_name=self.__slave_name,
+                        port="0",
+                        version="%d" % (self.send_time),
+                        )
+                    _bld = srv_com.builder()
+                    srv_com["directories"] = _bld.directories(*[_bld.directory(del_dir) for del_dir in del_dirs])
+                    self._send(srv_com)
+                _send_list, _send_size = ([], 0)
+                for cur_dir, _dir_names, file_names in os.walk(self.__w_dir_dict["etc"]):
+                    rel_dir = cur_dir[dir_offset + 1:]
+                    for cur_file in sorted(file_names):
+                        full_r_path = os.path.join(self.__w_dir_dict["etc"], rel_dir, cur_file)
+                        full_w_path = os.path.join(self.__r_dir_dict["etc"], rel_dir, cur_file)
+                        if os.path.isfile(full_r_path):
+                            self.__tcv_dict[full_w_path] = self.config_version_send
+                            _content = file(full_r_path, "r").read()
+                            size_data += len(_content)
+                            if _send_size + len(_content) > MAX_SEND_SIZE:
+                                self._send(self._build_file_content(_send_list))
+                                _send_list, _send_size = ([], 0)
+                            # format: uid, gid, path, content_len, content
+                            _send_list.append((os.stat(full_r_path)[stat.ST_UID], os.stat(full_r_path)[stat.ST_GID], full_w_path, len(_content), _content))
+                if _send_list:
+                    self._send(self._build_file_content(_send_list))
+                    _send_list, _send_size = ([], 0)
+            self.num_send[self.config_version_send] = self.__num_com
+            self.__md_struct.num_files = self.__num_com
+            self.__md_struct.num_transfers = self.__num_com
+            self.__md_struct.size_raw = self.__size_raw
             self.__md_struct.size_data = size_data
             self.__md_struct.save()
             self._show_pending_info()
         else:
             self.log("slave has no valid IP-address, skipping send", logging_tools.LOG_LEVEL_ERROR)
+    def _build_file_content(self, _send_list):
+        srv_com = server_command.srv_command(
+            command="file_content_bulk",
+            host="DIRECT",
+            slave_name=self.__slave_name,
+            port="0",
+            version="%d" % (self.send_time),
+        )
+        _bld = srv_com.builder()
+
+        srv_com["file_list"] = _bld.file_list(
+            *[_bld.file(_path, uid="%d" % (_uid), gid="%d" % (_gid), size="%d" % (_size)) for _uid, _gid, _path, _size, _content in _send_list]
+            )
+        srv_com["bulk"] = base64.b64encode(bz2.compress("".join([_parts[-1] for _parts in _send_list])))
+        return srv_com
     def _show_pending_info(self):
         cur_time = time.time()
         pend_keys = [key for key, value in self.__tcv_dict.iteritems() if type(value) != bool]
