@@ -157,6 +157,26 @@ class sync_config(object):
                 self.mon_version = _latest_build.mon_version
                 self.relayer_version = _latest_build.relayer_version
                 self.log("recovered MonVer %s / RelVer %s from DB" % (self.mon_version, self.relayer_version))
+    def _relayer_gen(self):
+        # return the relayer generation
+        # 0 ... old one, no bulk transfers
+        # 1 ... supports bulk transfer
+        _r_gen = 0
+        _r_vers = self.relayer_version
+        if _r_vers.count("-"):
+            _r_vers = _r_vers.split("-")[0]
+            if _r_vers.count(".") == 1:
+                _r_vers = [int(_part.strip()) for _part in _r_vers.split(".") if _part.strip() and _part.strip().isdigit()]
+                if len(_r_vers) == 2:
+                    major, minor = _r_vers
+                    if major < 5:
+                        pass
+                    elif major > 5:
+                        _r_gen = 1
+                    else:
+                        if minor > 1:
+                            _r_gen = 1
+        return _r_gen
     def reload_after_sync(self):
         self.reload_after_sync_flag = True
         self._check_for_ras()
@@ -237,7 +257,11 @@ class sync_config(object):
             # to distinguish between iterations during a single build
             self.send_time_lut[self.send_time] = self.config_version_send
             self.dist_ok = False
-            self.log("start send to slave (version %d)" % (self.config_version_send))
+            _r_gen = self._relayer_gen()
+            self.log("start send to slave (version %d, generation is %d)" % (
+                self.config_version_send,
+                _r_gen,
+                ))
             # number of atomic commands
             num_com = 0
             size_raw, size_data = (0, 0)
