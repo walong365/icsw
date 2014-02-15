@@ -193,8 +193,8 @@ class sync_config(object):
                         _new_vers))
                     setattr(self, key, _new_vers)
     def log(self, what, level=logging_tools.LOG_LEVEL_OK):
-        self.__process.log("[sc%s] %s" % (
-            " %s" % (self.__slave_name) if self.__slave_name else "",
+        self.__process.log("[sc %s] %s" % (
+            self.__slave_name if self.__slave_name else "master",
             what), level)
     def _create_directories(self):
         dir_names = [
