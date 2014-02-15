@@ -17,27 +17,43 @@
     <table class="table table-condensed table-hover" style="width:auto;">
         <thead>
             <tr>
-                <th>ID</th>
                 <th>on</th>
                 <th>start</th>
                 <th>runtime</th>
                 <th>MonVers</th>
                 <th>MDVers</th>
                 <th>RelVers</th>
-                <th>slaves</th>
+                <th>#slaves</th>
+                <th ng-repeat-start="slave_idx in all_slaves">
+                    {{ slave_idx | follow_fk:this:'servers':'full_name' }}
+                </th>
+                <th>
+                    time
+                </th>
+                <th ng-repeat-end>
+                    size
+                </th>
             </tr>
         </thead>
         <tbody>
             <tr><td colspan="12" paginator entries="masters" pag_settings="pagSettings" per_page="3"></td></tr>
             <tr ng-repeat="build in masters | paginator:this">
-                <td>{{ build.version }}</td>
                 <td>{{ build.device | follow_fk:this:'servers':'full_name' }}</td>
                 <td>{{ get_time(build.build_start) }} ({{ get_diff_time(build.build_start) }} ago)</td>
                 <td>{{ get_runtime(build) }}</td>
                 <td>{{ build.mon_version }}</td>
-                <td>{{ build.md_version }}</td>
-                <td>{{ build.relayer_version }}</td>
-                <td>{{ build.mon_dist_slave_set.length }}</td>
+                <td class="text-center">{{ build.md_version }}</td>
+                <td class="text-center">{{ build.relayer_version }}</td>
+                <td class="text-center">{{ build.mon_dist_slave_set.length }}</td>
+                <td ng-repeat-start="slave in get_slaves(build)">
+                    {{ slave.relayer_version || '---' }} / {{ slave.mon_version || '---' }}
+                </td>
+                <td>
+                    {{ get_sync_time(slave) }} <span ng-show="slave.num_runs > 1">({{ slave.num_runs}} )</span>
+                </td>
+                <td ng-repeat-end>
+                    {{ slave.size_raw | get_size:1:1024 }} ({{ slave.num_transfers }}) / {{ slave.size_data | get_size:1:1024 }} ({{ slave.num_files }})
+                </td>
             </tr>
         </tbody>
     </table>
