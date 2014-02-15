@@ -1,6 +1,6 @@
 #!/usr/bin/python-init -Ot
 #
-# Copyright (c) 2008,2009,2013 Andreas Lang-Nevyjel, init.at
+# Copyright (c) 2008-2009,2013-2014 Andreas Lang-Nevyjel, init.at
 #
 # this file is part of python-modules-base
 #
@@ -21,11 +21,15 @@
 
 # import process_tools
 import commands
-import cpu_database
 import os
 import sys
 
-MAX_CORES = cpu_database.global_cpu_info(parse=True).num_cores()
+if os.getuid():
+    # workaround for build-bug in Debian systems
+    MAX_CORES = len([True for line in file("/proc/cpuinfo", "r").xreadlines() if line.startswith("processor")])
+else:
+    import cpu_database 
+    MAX_CORES = cpu_database.global_cpu_info(parse=True).num_cores()
 MAX_MASK = (1 << MAX_CORES) - 1
 
 CPU_MASKS = dict([(1 << cpu_num, cpu_num) for cpu_num in xrange(MAX_CORES)])
