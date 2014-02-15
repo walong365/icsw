@@ -47,10 +47,14 @@ class mon_dist_slave(models.Model):
     num_runs = models.IntegerField(default=0)
     # version of of master relayer / md-config-server / icinga
     relayer_version = models.CharField(max_length=128, default="")
-    icinga_version = models.CharField(max_length=128, default="")
+    mon_version = models.CharField(max_length=128, default="")
     # files transfered / number of transfered commands
     num_files = models.IntegerField(default=0)
     num_transfers = models.IntegerField(default=0)
+    # pure data
+    size_data = models.IntegerField(default=0)
+    # with overhead
+    size_raw = models.IntegerField(default=0)
     date = models.DateTimeField(auto_now_add=True)
     class Meta:
         app_label = "backbone"
