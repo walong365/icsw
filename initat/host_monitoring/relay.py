@@ -1223,7 +1223,6 @@ class relay_code(threading_tools.process_pool):
         # only DIRECT command from ccollclientzmq
         # print "*", src_id
         cur_com = srv_com["command"].text
-        send_return = False
         if self.__verbose:
             self.log("got DIRECT command %s" % (cur_com))
         if cur_com in ["file_content", "file_content_bulk"]:
