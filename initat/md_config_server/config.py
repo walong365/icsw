@@ -188,12 +188,16 @@ class sync_config(object):
         # generate datbase entry for build
         self.config_version_build = b_version
         if self.master:
+            _mon_version = global_config["MD_VERSION_STRING"]
+            if _mon_version.split(".")[-1] in ["x86_64", "i586", "i686"]:
+                _mon_version = ".".join(_mon_version.split(".")[:-1])
             _md = mon_dist_master(
                 device=self.monitor_server,
                 version=self.config_version_build,
                 build_start=cluster_timezone.localize(datetime.datetime.now()),
                 relayer_version=self.relayer_version,
                 md_version=VERSION_STRING,
+                mon_version=_mon_version,
                 )
         else:
             self.__md_master = master
