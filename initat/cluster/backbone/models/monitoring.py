@@ -64,7 +64,7 @@ class mon_dist_master(models.Model):
     # version of of master relayer / md-config-server / icinga
     relayer_version = models.CharField(max_length=128, default="")
     md_version = models.CharField(max_length=128, default="")
-    icinga_version = models.CharField(max_length=128, default="")
+    mon_version = models.CharField(max_length=128, default="")
     date = models.DateTimeField(auto_now_add=True)
     class Meta:
         app_label = "backbone"
