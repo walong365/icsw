@@ -21,6 +21,7 @@
                 <th>on</th>
                 <th>start</th>
                 <th>runtime</th>
+                <th>MonVers</th>
                 <th>MDVers</th>
                 <th>RelVers</th>
                 <th>slaves</th>
@@ -31,8 +32,9 @@
             <tr ng-repeat="build in masters | paginator:this">
                 <td>{{ build.version }}</td>
                 <td>{{ build.device | follow_fk:this:'servers':'full_name' }}</td>
-                <td>{{ get_time(build.build_start) }}</td>
+                <td>{{ get_time(build.build_start) }} ({{ get_diff_time(build.build_start) }} ago)</td>
                 <td>{{ get_runtime(build) }}</td>
+                <td>{{ build.mon_version }}</td>
                 <td>{{ build.md_version }}</td>
                 <td>{{ build.relayer_version }}</td>
                 <td>{{ build.mon_dist_slave_set.length }}</td>

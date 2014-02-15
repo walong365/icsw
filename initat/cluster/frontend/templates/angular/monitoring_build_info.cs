@@ -18,6 +18,11 @@ monitoring_build_info_module.controller("info_ctrl", ["$scope", "$compile", "$fi
         $scope.pagSettings = paginatorSettings.get_paginator("masters", $scope)
         $scope.masters = []
         $scope.slaves = []
+        $scope.get_diff_time = (dt) ->
+            if dt
+                return moment(dt).fromNow()
+            else
+                return "???"
         $scope.get_time = (dt) ->
             if dt
                 return moment(dt).format(DT_FORM)
