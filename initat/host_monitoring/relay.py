@@ -704,7 +704,7 @@ class relay_code(threading_tools.process_pool):
         sys.stdout = cur_stdout
     def _get_mon_version(self):
         _icinga_bin = "/opt/icinga/bin/icinga"
-        self.__mon_version = "???"
+        self.__mon_version = "N/A"
         if os.path.isfile(_icinga_bin):
             cur_stat, cur_out = commands.getstatusoutput("%s -v" % (_icinga_bin))
             if cur_stat:
