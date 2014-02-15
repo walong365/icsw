@@ -31,15 +31,11 @@ from initat.md_config_server.constants import SERVER_COM_PORT, IDOMOD_PROCESS_TI
     IDOMOD_PROCESS_SERVICE_CHECK_DATA, IDOMOD_PROCESS_HOST_CHECK_DATA, BROKER_TIMED_EVENTS, \
     BROKER_SERVICE_CHECKS, BROKER_HOST_CHECKS
 from initat.md_config_server.server import server_process
+from initat.md_config_server.version import VERSION_STRING
 import cluster_location
 import config_tools
 import configfile
 import process_tools
-
-try:
-    from md_config_server.version import VERSION_STRING
-except ImportError:
-    VERSION_STRING = "?.?"
 
 def main():
     long_host_name, mach_name = process_tools.get_fqdn()
