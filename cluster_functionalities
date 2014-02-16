@@ -1,7 +1,0 @@
-# name of functionality ; name of configs ; name of runlevel-links
-boot;mother.*:cluster.config.server.*:config.server.*;mother:cluster-config-server:xinetd:nfsserver:dhcpd
-rms;sge.server.*;sgemaster:sge-server
-monitoring;nagios.master:nagios.slave:nagios.config.server.*;host-relay:nagios:nagios-config-server
-history;rrd.server.*;rrd-server
-install;package.server.*;package-server
-logcheck;logcheck.server.*;logcheck-server
