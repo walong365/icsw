@@ -22,21 +22,17 @@
 #
 """ logging tools """
 
-try:
-    import bz2
-except:
-    bz2 = None
-import pickle
+import bz2
 import datetime
 import gzip
 import inspect
 import logging
 import logging.handlers
 import os
+import pickle
 import pprint
 import re
 import stat
-import socket
 import sys
 import threading
 import time

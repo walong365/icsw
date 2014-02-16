@@ -1,7 +1,7 @@
 #!/usr/bin/python-init -Ot
 # -*- coding: utf-8 -*-
 #
-# Copyright (C) 2001,2002,2003,2004,2005,2006,2007,2008,2009,2010,2013 Andreas Lang-Nevyjel
+# Copyright (C) 2001-2010,2013-2014 Andreas Lang-Nevyjel
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -54,13 +54,6 @@ class error_rec(object):
             self.__err_time = datetime.datetime(*time.strptime(l_date)[0:6])
             self.__err_date = datetime.datetime(*time.strptime(l_date)[0:3])
         self.__lines.append((state, line))
-    def set_header_parts(self, fl):
-        fl.set_header_string(0, ["Idx", "Time", "Pid", "Lines", "user", "group", "source"])
-        fl.set_format_string("Idx"  , "d", "")
-        fl.set_format_string("Pid"  , "d", "")
-        fl.set_format_string("Lines", "d", "")
-        fl.set_format_string("user" , "s", "")
-        fl.set_format_string("group", "s", "")
     def get_err_time_str(self):
         diff_time = self.__err_date.now() - self.__err_date
         if diff_time.days == 0:
@@ -71,13 +64,14 @@ class error_rec(object):
             t_str = self.__err_time.strftime("%a, %d. %b %Y %H:%M:%S")
         return t_str
     def get_form_parts(self):
-        return [self.__idx,
-                self.get_err_time_str(),
-                self.__pid,
-                len(self.__lines),
-                "%d (%s)" % (self.__uid, self.__uname),
-                "%d (%s)" % (self.__gid, self.__gname),
-                self.__source_name]
+        return [
+                logging_tools.form_entry(self.__idx, header="idx"),
+                logging_tools.form_entry(self.get_err_time_str(), header="time"),
+                logging_tools.form_entry(self.__pid, header="PID"),
+                logging_tools.form_entry(len(self.__lines), header="lines"),
+                logging_tools.form_entry("%d (%s)" % (self.__uid, self.__uname), header="user"),
+                logging_tools.form_entry("%d (%s)" % (self.__gid, self.__gname), header="group"),
+                logging_tools.form_entry(self.__source_name, header="source")]
     def get_header(self):
         return "Error %d occured %s, pid %d, uid/gid is (%d/%d [%s/%s]), source %s, %s:" % (
             self.__idx,
@@ -124,8 +118,9 @@ def main():
     try:
         err_lines = [line.strip() for line in file(err_file_name, "r").read().split("\n") if line.count("from pid")]
     except IOError:
-        print "Cannot read '%s': %s" % (err_file_name,
-                                        process_tools.get_except_info())
+        print "Cannot read '%s': %s" % (
+            err_file_name,
+            process_tools.get_except_info())
         sys.exit(1)
     print "Found error_file %s with %s" % (err_file_name, logging_tools.get_plural("line", len(err_lines)))
     errs_found, act_err = ([], None)
@@ -191,10 +186,9 @@ def main():
     print "Found %s" % (logging_tools.get_plural("error record", len(errs_found)))
     if options.overview:
         if errs_found:
-            out_list = logging_tools.form_list()
-            errs_found[0].set_header_parts(out_list)
+            out_list = logging_tools.new_form_list()
             for err in errs_found:
-                out_list.add_line(err.get_form_parts())
+                out_list.append(err.get_form_parts())
             print str(out_list)
     elif options.stat:
         uid_dict = {}
@@ -202,11 +196,7 @@ def main():
             uid_dict.setdefault(err.get_uid(), []).append(err)
         all_uids = uid_dict.keys()
         all_uids.sort()
-        out_list = logging_tools.form_list()
-        out_list.set_header_string(0, ["uid", "uname", "# err", "# sources", "sources"])
-        out_list.set_format_string("uid", "d", "")
-        out_list.set_format_string("# err", "d", "")
-        out_list.set_format_string("# sources", "d", "")
+        out_list = logging_tools.new_form_list()
         for uid in all_uids:
             uid_stuff = uid_dict[uid]
             diff_sources = []
@@ -214,11 +204,15 @@ def main():
                 if err.get_source_name() not in diff_sources:
                     diff_sources.append(err.get_source_name())
             diff_sources.sort()
-            out_list.add_line((uid,
-                               uid_stuff[0].get_uname(),
-                               len(uid_stuff),
-                               len(diff_sources),
-                               ", ".join(diff_sources)))
+            out_list.append(
+                (
+                    logging_tools.form_entry(uid, header="uid"),
+                    logging_tools.form_entry(uid_stuff[0].get_uname(), header="uname"),
+                    logging_tools.form_entry(len(uid_stuff), header="# err"),
+                    logging_tools.form_entry(len(diff_sources), header="# sources"),
+                    logging_tools.form_entry(", ".join(diff_sources), header="sources"),
+                )
+            )
         print unicode(out_list)
     elif options.num:
         idx_l = idx_dict.keys()
@@ -236,8 +230,9 @@ def main():
                 print act_err.get_header()
                 print act_err.show_lines()
             else:
-                print "Index %d not in index_list %s" % (idx,
-                                                         logging_tools.compress_num_list(idx_dict.keys()))
+                print "Index %d not in index_list %s" % (
+                    idx,
+                    logging_tools.compress_num_list(idx_dict.keys()))
 
 if __name__ == "__main__":
     main()
