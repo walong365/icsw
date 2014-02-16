@@ -1,11 +1,11 @@
 #!/usr/bin/python-init -Ot
 #
-# Copyright (C) 2005,2006,2007,2008 Andreas Lang-Nevyjel, init.at
+# Copyright (C) 2005-2008,2014 Andreas Lang-Nevyjel, init.at
 #
 # this file is part of cluster-backbone
 #
 # Send feedback to: <lang-nevyjel@init.at>
-# 
+#
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License Version 2 as
 # published by the Free Software Foundation.
@@ -22,21 +22,16 @@
 """ change password from the commandline """
 
 import sys
-import mysql_tools
+import argparse
 import logging_tools
 import getopt
 import os
-import os.path
 import pwd
 import termios
 import crypt
 import random
-import net_tools
 import server_command
 import process_tools
-import MySQLdb
-
-SQL_ACCESS = "cluster_full_access"
 
 def show_help(script):
     print "Usage : %s [OPTIONS] username" % (os.path.basename(script))
@@ -80,58 +75,21 @@ def get_pass(prompt=">"):
     return passwd
 
 def main():
-    script = sys.argv[0]
-    try:
-        opts, args = getopt.getopt(sys.argv[1:], "hpil", ["help"])
-    except getopt.GetoptError, why:
-        print "Error parsing commandline : %s" % (str(why))
-        sys.exit(1)
-    mode = ("i")
-    for opt, arg in opts:
-        if opt in ["-h", "--help"]:
-            show_help(script)
-            sys.exit(0)
-        if opt == "-p":
-            mode = "p"
-        if opt == "-i":
-            mode = "i"
-        if opt == "-l":
-            mode = "l"
-    if len(args) > 1:
-        show_help(script)
-        sys.exit(1)
-    elif len(args) == 1:
-        user_name = args[0]
-    else:
-        user_name = pwd.getpwuid(os.getuid())[0]
+    my_parser = argparse.ArgumentParser()
+    my_parser.add_argument("--mode", dest="mode", choices=["info", "list", "change"], default="info", help="set mode [%(default)s]")
+    my_parser.add_argument("username", nargs="?", default=pwd.getpwuid(os.getuid())[0], help="set username [%(default)s]")
+    options = my_parser.parse_args()
+    if options.mode in ["info", "change"] and not options.username:
+        print "Need username for %s mode" % (options.mode)
+        sys.exit(-1)
+    print options
     # get name of directory server
     ds_file_name = "/etc/sysconfig/cluster/directory_server"
     if not os.path.isfile(ds_file_name):
         print "No directory server specified in '%s', please contact your admin" % (ds_file_name)
         sys.exit(1)
-    try:
-        ds_name = file(ds_file_name, "r").read().split()[0]
-    except:
-        print "Error reading name of directory server: %s" % (process_tools.get_except_info())
-        sys.exit(1)
-    # get type of directory server
-    dt_file_name = "/etc/sysconfig/cluster/directory_server_type"
-    ds_type = "yp"
-    if not os.path.isfile(dt_file_name):
-        print "No directory server type specified in '%s', using %s" % (dt_file_name,
-                                                                        ds_type)
-    else:
-        try:
-            ds_type = file(dt_file_name, "r").read().split()[0]
-        except:
-            print "Error reading type of directory server: %s" % (process_tools.get_except_info())
-            sys.exit(1)
-    db_con = mysql_tools.dbcon_container(with_logging=False)
-    try:
-        dc = db_con.get_connection(SQL_ACCESS)
-    except MySQLdb.OperationalError:
-        sys.stderr.write(" Cannot connect to SQL-Server ")
-        sys.exit(1)
+    print "functionality not ready, please contact lang-nevyjel@init.at"
+    sys.exit(0)
     if mode == "l":
         errnum = list_mode(dc)
     else:
@@ -204,7 +162,7 @@ def main():
     dc.release()
     del db_con
     sys.exit(errnum)
-        
+
 if __name__ == "__main__":
     main()
-    
+
