@@ -1,7 +1,7 @@
 #!/usr/bin/python-init -Otu
 # -*- coding: utf-8 -*-
 #
-# Copyright (C) 2001,2002,2003,2004,2005,2006,2007,2008,2009,2012,2013 Andreas Lang-Nevyjel, init.at
+# Copyright (C) 2001-2009,2012-2014 Andreas Lang-Nevyjel, init.at
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -3454,7 +3454,7 @@ def main():
         log_lines = process_tools.kill_running_processes(prog_name + ".py", exclude=configfile.get_manager_pid())
     cluster_location.read_config_from_db(global_config, "mother_server", [
         ("TFTP_LINK"                 , configfile.str_c_var("/tftpboot")),
-        ("TFTP_DIR"                  , configfile.str_c_var("/usr/local/share/cluster/tftpboot")),
+        ("TFTP_DIR"                  , configfile.str_c_var("/opt/cluster/system/tftpboot")),
         ("CLUSTER_DIR"               , configfile.str_c_var("/opt/cluster")),
         ("NODE_PORT"                 , configfile.int_c_var(2001)),
         # in 10th of seconds
