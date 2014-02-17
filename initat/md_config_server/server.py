@@ -495,7 +495,7 @@ class server_process(threading_tools.process_pool):
                 self.com_socket.send_unicode("internal error")
             else:
                 cur_com = srv_com["command"].text
-                if self.__verbose or cur_com not in ["ocsp-event", "ochp-event"]:
+                if self.__verbose or cur_com not in ["ocsp-event", "ochp-event", "file_content_result"]:
                     self.log("got command '%s' from '%s'" % (
                         cur_com,
                         srv_com["source"].attrib["host"]))

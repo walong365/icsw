@@ -419,7 +419,7 @@ class sync_config(object):
         file_status = int(srv_com["result"].attrib["state"])
         file_status = server_command.srv_reply_to_log_level(file_status)
         if cmd == "file_content_result":
-            file_name = srv_com["file_name"]
+            file_name = srv_com["file_name"].text
             # check return state for validity
             if not server_command.srv_reply_state_is_valid(file_status):
                 self.log("file_state %d is not valid" % (file_status), logging_tools.LOG_LEVEL_CRITICAL)
