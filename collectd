@@ -42,7 +42,7 @@ fi
 # check for debian
 if [ -f /etc/debian_version ] ; then
     export DB=1
-    export PYTHONPATH="/opt/python-init/lib/python/:/opt/python-init/lib/python/lib-dynload:/opt/python-init/lib/python/site-packages:$(ls -1td /opt/python-init/lib/python/site-packages/lxml*egg |tail -n 1)"
+    export PYTHONPATH="/opt/python-init/lib/python/:/opt/python-init/lib/python/lib-dynload:/opt/python-init/lib/python/site-packages:$(ls -d /opt/python-init/lib/python/site-packages/lxml*egg/lxml/html |cut -d "/" -f 1-7)"
 else
     export DB=0
 fi
