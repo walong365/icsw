@@ -27,12 +27,8 @@ import sys
 
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "initat.cluster.settings")
 
-from django.conf import settings
 from initat.cluster.backbone.models import config_str
 import argparse
-from django.db.models import Q
-import datetime
-import process_tools
 import re
 
 def _show_var(var):
