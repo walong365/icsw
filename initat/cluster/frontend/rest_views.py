@@ -35,7 +35,7 @@ from initat.cluster.backbone.models import user , group, \
      partition_disc_serializer_create, device_serializer_variables, device_serializer_device_configs, \
      device_config, device_config_hel_serializer, home_export_list, csw_permission, \
      device_serializer_disk_info, device_serializer_network, peer_information, netdevice, \
-     csw_object_permission
+     csw_object_permission, cd_connection
 # from initat.cluster.backbone.forms import * # @UnusedWildImport
 from initat.cluster.frontend import forms
 from rest_framework import mixins, generics, status, viewsets, serializers
@@ -513,6 +513,9 @@ class device_tree_list(mixins.ListModelMixin,
                 ignore_md = False
             if "pks" in self.request.QUERY_PARAMS:
                 dev_keys = json.loads(self.request.QUERY_PARAMS["pks"])
+                if self._get_post_boolean("cd_connections", False):
+                    cd_con_pks = set(sum([[_v[0], _v[1]] for _v in cd_connection.objects.all().values_list("parent", "child")], []))
+                    dev_keys = list(set(dev_keys) | cd_con_pks)
             else:
                 # only selected ones
                 # normally (frontend in-sync with backend) meta-devices have the same selection state

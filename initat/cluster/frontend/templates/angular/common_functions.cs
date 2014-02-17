@@ -887,7 +887,6 @@ class angular_edit_mixin
                         return "Really delete object ?"
         c_modal.result.then(
             () =>
-                console.log "yes"
                 # add restangular elements
                 @Restangular.restangularizeElement(null, obj, @modify_rest_url)
                 obj.remove().then(

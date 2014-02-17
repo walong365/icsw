@@ -21,7 +21,7 @@ from initat.cluster.backbone.models import domain_tree_node, device, category, m
      mon_service_esc_templ, mon_device_esc_templ, mon_service_dependency_templ, package_search, \
      mon_service_dependency, mon_host_dependency, package_device_connection, partition, \
      partition_disc, sys_partition, device_variable, config, config_str, config_int, config_bool, \
-     config_script, netdevice, net_ip, peer_information, config_catalog
+     config_script, netdevice, net_ip, peer_information, config_catalog, cd_connection
 from initat.cluster.frontend.widgets import device_tree_widget
 
 # import PAM
@@ -2421,3 +2421,37 @@ class peer_information_d_form(ModelForm):
     class Meta:
         model = peer_information
         fields = ("penalty", "s_netdevice", "d_netdevice",)
+
+class cd_connection_form(ModelForm):
+    helper = FormHelper()
+    helper.form_id = "form"
+    helper.form_name = "form"
+    helper.form_class = 'form-horizontal'
+    helper.label_class = 'col-sm-4'
+    helper.field_class = 'col-sm-7'
+    helper.ng_model = "_edit_obj"
+    helper.ng_submit = "cur_edit.modify(this)"
+    helper.layout = Layout(
+        HTML("<h2>Connection {% verbatim %}{{ get_cd_info() }}{% endverbatim %}</h2>"),
+            Fieldset(
+                "Settings",
+                Field("connection_info"),
+                Field("parameter_i1", min=0, max=256),
+                Field("parameter_i2", min=0, max=256),
+                Field("parameter_i3", min=0, max=256),
+                Field("parameter_i4", min=0, max=256),
+            ),
+            FormActions(
+                Submit("submit", "", css_class="primaryAction", ng_value="action_string"),
+            )
+        )
+    def __init__(self, *args, **kwargs):
+        ModelForm.__init__(self, *args, **kwargs)
+        # for clear_f in ["s_netdevice", "d_netdevice"]:
+        #    self.fields[clear_f].queryset = empty_query_set()
+        #    self.fields[clear_f].empty_label = None
+        # self.fields["s_netdevice"].label = "Source"
+        # self.fields["d_netdevice"].label = "Destination"
+    class Meta:
+        model = cd_connection
+        fields = ("connection_info", "parameter_i1", "parameter_i2", "parameter_i3", "parameter_i4",)

@@ -256,42 +256,6 @@ class connections(View):
     def post(self, request):
         pass
 
-class create_connection(View):
-    @method_decorator(login_required)
-    @method_decorator(xml_wrapper)
-    def post(self, request):
-        _post = request.POST
-        drag_dev, target_dev = (
-            device.objects.get(Q(pk=_post["drag_id"].split("__")[1])),
-            device.objects.get(Q(pk=_post["target"].split("__")[1])))
-        t_type = _post["target_type"]
-        request.xml_response.info("dragged '%s' over '%s' (field %s)" % (
-            unicode(drag_dev),
-            unicode(target_dev),
-            t_type))
-        new_cd = cd_connection(
-            parent=target_dev if t_type == "master" else drag_dev,
-            child=drag_dev if t_type == "master" else target_dev,
-            created_by=request.user,
-            connection_info="webfrontend")
-        try:
-            new_cd.save()
-        except ValidationError, what:
-            request.xml_response.error("error creating: %s" % (unicode(what.messages[0])), logger)
-        else:
-            request.xml_response.info("added connection", logger=logger)
-            request.xml_response["new_connection"] = new_cd.get_xml()
-
-class delete_connection(View):
-    @method_decorator(login_required)
-    @method_decorator(xml_wrapper)
-    def post(self, request):
-        _post = request.POST
-        del_pk = _post["pk"]
-        del_con = cd_connection.objects.get(Q(pk=del_pk))
-        request.xml_response.info("removing %s" % (unicode(del_con)))
-        del_con.delete()
-
 class manual_connection(View):
     @method_decorator(login_required)
     @method_decorator(xml_wrapper)
