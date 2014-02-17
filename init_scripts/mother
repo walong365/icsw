@@ -38,7 +38,6 @@ SERVER_PID=/var/run/mother/mother.pid
 SERVER_USER="idmother"
 SERVER_GROUP="idg"
 META_FILE="/var/lib/meta-server/mother"
-. /etc/sysconfig/cluster/cluster_settings
 
 test -x ${SERVER_BIN} || exit 5
 test -x ${PYTHON_BIN} || exit 5
@@ -53,9 +52,6 @@ case "$1" in
         echo -n "Starting mother.py"
         if [ -f ${SERVER_PID} ] ; then
             echo -n " ... already running"
-        elif [ -f ${GLOBAL_LOCK_FILE} ] ; then
-            echo -n " ... global lock detected"
-            rc_failed 6
         else
             #${SERVER_BIN} ${SERVER_ARGS} -f -u ${SERVER_USER} -g ${SERVER_GROUP}
                 # right now mother must have root-attributes in oder to use raw sockets (for pinging and stuff)
