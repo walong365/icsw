@@ -43,14 +43,17 @@ class render_me(object):
             op_dict = self.request.user.get_all_object_perms(None)
             self._unfold(gp_dict)
             self._unfold(op_dict)
+            _user = {"idx" : self.request.user.pk, "pk" : self.request.user.pk}
         else:
             gp_dict = {}
             op_dict = {}
+            _user = {}
         # import pprint
         # pprint.pprint(gp_dict)
         self.my_dict["GLOBAL_PERMISSIONS"] = json.dumps(gp_dict)
         self.my_dict["OBJECT_PERMISSIONS"] = json.dumps(op_dict)
         self.my_dict["CLUSTER_LICENSE"] = json.dumps(settings.CLUSTER_LICENSE)
+        self.my_dict["CURRENT_USER"] = json.dumps(_user)
         return render_to_response(
             self.template,
             self.my_dict,

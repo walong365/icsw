@@ -1533,22 +1533,6 @@ class cd_connection(models.Model):
     parameter_i3 = models.IntegerField(default=0)
     parameter_i4 = models.IntegerField(default=0)
     date = models.DateTimeField(auto_now_add=True)
-    def get_xml(self):
-        return E.cd_connection(
-            unicode(self),
-            pk="%d" % (self.pk),
-            key="cd_connection__%d" % (self.pk),
-            parent="%d" % (self.parent_id),
-            parent_name=unicode(self.parent),
-            child="%d" % (self.child_id),
-            child_name=unicode(self.child),
-            created_by="%d" % (self.created_by_id or 0),
-            connection_info=self.connection_info,
-            parameter_i1="%d" % (self.parameter_i1),
-            parameter_i2="%d" % (self.parameter_i2),
-            parameter_i3="%d" % (self.parameter_i3),
-            parameter_i4="%d" % (self.parameter_i4),
-            )
     def __unicode__(self):
         return "%s (via %s) %s" % (
             unicode(self.parent),
@@ -1562,7 +1546,7 @@ def cd_connection_pre_save(sender, **kwargs):
     if "instance" in kwargs:
         cur_inst = kwargs["instance"]
         for par_idx in xrange(1, 5):
-            _check_integer(cur_inst, "parameter_i%d" % (par_idx), min_val=0, max_val=100)
+            _check_integer(cur_inst, "parameter_i%d" % (par_idx), min_val=0, max_val=256)
         try:
             cd_connection.objects.get(Q(parent=cur_inst.parent_id) & Q(child=cur_inst.child_id))
         except cd_connection.DoesNotExist:
@@ -1572,6 +1556,10 @@ def cd_connection_pre_save(sender, **kwargs):
         else:
             if cur_inst.pk is None:
                 raise ValidationError("connection already exists")
+
+class cd_connection_serializer(serializers.ModelSerializer):
+    class Meta:
+        model = cd_connection
 
 class device_group(models.Model):
     idx = models.AutoField(db_column="device_group_idx", primary_key=True)
