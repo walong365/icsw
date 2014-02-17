@@ -188,10 +188,10 @@ def main():
     if not (config_dict["dist_dir"] or config_dict["copy_to"]):
         if os.path.isfile("/etc/debian_version"):
             config_dict["dist_dir"] = "/packages/debian"
-            config_dict["copy_to"] = "/usr/local/share/cluster/packages/debian"
+            config_dict["copy_to"] = "/opt/cluster/system/packages/debian"
         else:
             config_dict["dist_dir"] = "/packages/RPMs"
-            config_dict["copy_to"] = "/usr/local/share/cluster/packages/RPMs"
+            config_dict["copy_to"] = "/opt/cluster/system/packages/RPMs"
     long_package_name = None
     delete, list_grps = (False, False)
     script_dict = {}
