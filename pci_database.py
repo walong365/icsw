@@ -1,6 +1,6 @@
 #!/usr/bin/python-init -Ot
 #
-# Copyright (C) 2001,2002,2003,2004,2005,2006,2011,2013 Andreas Lang-Nevyjel
+# Copyright (C) 2001-2006,2011,2013-2014 Andreas Lang-Nevyjel
 #
 # this file is part of python-modules-base
 #
@@ -18,7 +18,7 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
 
-import os.path
+import os
 import re
 import struct
 import sys
