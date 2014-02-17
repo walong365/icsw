@@ -10,6 +10,12 @@ partition_table_module = angular.module("icsw.partition_table", ["ngResource", "
 
 angular_module_setup([partition_table_module])
 
+class part_edit_mixin extends angular_edit_mixin
+    constructor : (scope, templateCache, compile, modal, Restangular) ->
+        super(scope, templateCache, compile, modal, Restangular)
+        @change_signal = "icsw.part_changed"
+         
+
 angular_add_simple_list_controller(
     partition_table_module,
     "partition_table_base",
@@ -20,8 +26,15 @@ angular_add_simple_list_controller(
         use_modal           : false
         template_cache_list : ["partition_table_row.html", "partition_table_head.html"]
         rest_map            : [
-            {"short" : "partition_fs"      , "url" : "{% url 'rest:partition_fs_list' %}"}
+            {"short" : "partition_fs", "url" : "{% url 'rest:partition_fs_list' %}"}
         ]
+        new_object : {
+            "name" : "new_part"
+            "sys_partition_set" : []
+            "lvm_vg_set" : []
+            "partition_disc_set" : []
+            "lvm_lv_set" : []
+        }
         post_delete : ($scope) ->
             $scope.close_modal()
         fn:
@@ -32,11 +45,6 @@ angular_add_simple_list_controller(
     }
 )
 
-class part_edit_mixin extends angular_edit_mixin
-    constructor : (scope, templateCache, compile, modal, Restangular) ->
-        super(scope, templateCache, compile, modal, Restangular)
-        @change_signal = "icsw.part_changed"
-         
 partition_table_module.directive("disklayout", ($compile, $modal, $templateCache, Restangular) ->
     return {
         restrict : "EA"
@@ -44,7 +52,8 @@ partition_table_module.directive("disklayout", ($compile, $modal, $templateCache
         compile: (tElement, tAttrs) ->
             return (scope, element, attrs) ->
                 scope.$on("icsw.part_changed", (args) ->
-                    scope.validate()
+                    if not scope.create_mode
+                        scope.validate()
                 )
                 scope.get_partition_fs = () ->
                     for entry in scope.rest_data.partition_fs
@@ -76,7 +85,8 @@ partition_table_module.directive("disklayout", ($compile, $modal, $templateCache
                 scope.error_list = []
                 # watch edit_obj and validate if changed
                 scope.$watch("edit_obj", () ->
-                    scope.validate()
+                    if not scope.create_mode
+                        scope.validate()
                 )
                 scope.layout_edit = new part_edit_mixin(scope, $templateCache, $compile, $modal, Restangular)
                 scope.layout_edit.create_template = "partition_disc.html"
@@ -100,9 +110,7 @@ partition_table_module.directive("disklayout", ($compile, $modal, $templateCache
                     }
                 element.replaceWith($compile($templateCache.get("layout.html"))(scope))
     }
-)
-
-partition_table_module.directive("partclean", ($compile, $templateCache) ->
+).directive("partclean", ($compile, $templateCache) ->
     return {
         restrict : "EA"
         replace : true
@@ -112,9 +120,7 @@ partition_table_module.directive("partclean", ($compile, $templateCache) ->
                 # console.log element.parent().find("tr[class*='icsw_dyn']").length
                 element.parent().find("tr[class*='icsw_dyn']").remove()
     }
-)
-
-partition_table_module.directive("partdisc", ($compile, $templateCache, $modal, Restangular) ->
+).directive("partdisc", ($compile, $templateCache, $modal, Restangular) ->
     return {
         restrict : "EA"
         #replace : true
@@ -144,9 +150,7 @@ partition_table_module.directive("partdisc", ($compile, $templateCache, $modal, 
                 element.replaceWith($compile($templateCache.get("part_disc.html"))(scope))
                 #element.append($compile($templateCache.get("part_disc.html"))(scope))
     }
-)
-
-partition_table_module.directive("part", ($compile, $templateCache, $modal, Restangular) ->
+).directive("part", ($compile, $templateCache, $modal, Restangular) ->
     return {
         restrict : "EA"
         template : $templateCache.get("part.html")
@@ -159,9 +163,7 @@ partition_table_module.directive("part", ($compile, $templateCache, $modal, Rest
             #element.replaceWith($compile($templateCache.get("part.html"))(scope))
             #element.append($compile($templateCache.get("part.html"))(scope))
     }
-)
-
-partition_table_module.directive("partsys", ($compile, $templateCache, $modal, Restangular) ->
+).directive("partsys", ($compile, $templateCache, $modal, Restangular) ->
     return {
         restrict : "EA"
         template : $templateCache.get("sys_part.html")

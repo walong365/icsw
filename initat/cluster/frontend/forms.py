@@ -797,7 +797,7 @@ class partition_table_form(ModelForm):
             ),
             Fieldset(
                 "Detailed partition layout",
-                HTML('<div disklayout ng-if="modal_active && !settings.use_modal">'),
+                HTML('<div disklayout ng-if="!create_mode && modal_active && !settings.use_modal">'),
             ),
         )
     )

@@ -145,7 +145,10 @@
     <tab heading="Partitions">
         <div ng-controller="partition_table_base">
             <div class="col-sm-12">
-                <h2>Partition tables ({{entries.length}} entries), <input class="btn btn-primary" type="button" ng-click="reload()" value="reload"/></h2>
+                <h2>Partition tables ({{entries.length}} entries),
+                    <input class="btn btn-primary" type="button" ng-click="reload()" value="reload"/>&nbsp;
+                    <input class="btn btn-warning" type="button" ng-click="create()" value="create new"/>
+                </h2>
                 <table class="table table-condensed table-hover" style="width:auto;">
                     <thead partitiontablehead></thead>
                     <tbody>
@@ -156,7 +159,13 @@
                     </tfoot>
                 </table>
             </div>
-            <div edittemplate ng-if="modal_active && !settings.use_modal" class="col-sm-12">
+            <div ng-if="modal_active && !settings.use_modal" class="col-sm-12">
+                <div class="panel panel-default">
+                    <div class="panel-body">
+                        <div edittemplate ng-if="modal_active && !settings.use_modal" class="col-sm-12">
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
     </tab>
@@ -179,3 +188,4 @@ angular.element(document).ready(() ->
 </script>
 
 {% endblock %}
+

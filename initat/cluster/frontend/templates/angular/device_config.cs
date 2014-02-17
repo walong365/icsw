@@ -437,11 +437,13 @@ device_config_module.controller("config_ctrl", ["$scope", "$compile", "$filter",
                             parse_xml_response(xml)
                             # at first remove all selections
                             for entry in scope.devices
-                                if conf_idx in entry.local_selected
-                                    entry.local_selected = (_v for _v in entry.local_selected when _v != conf_idx) 
+                                if entry.device_group == scope.obj.device_group
+                                    if conf_idx in entry.local_selected
+                                        entry.local_selected = (_v for _v in entry.local_selected when _v != conf_idx) 
                             for idx, entry of scope.meta_devices
-                                if conf_idx in entry.local_selected
-                                    entry.local_selected = (_v for _v in entry.local_selected when _v != conf_idx)
+                                if entry.device_group == scope.obj.device_group
+                                    if conf_idx in entry.local_selected
+                                        entry.local_selected = (_v for _v in entry.local_selected when _v != conf_idx)
                             # set selection where needed 
                             $(xml).find("device_configs device_config").each (idx, cur_dc) =>
                                 cur_dc = $(cur_dc)
