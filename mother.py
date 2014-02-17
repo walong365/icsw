@@ -68,7 +68,7 @@ try:
 except ImportError:
     VERSION_STRING = "??.??-??"
 
-SQL_ACCESS = "cluster_full_access"
+# SQL_ACCESS = "cluster_full_access"
 
 # definition of device state for
 # <STATE>:<IP>:<NET>:<STRING>
@@ -81,35 +81,35 @@ SQL_ACCESS = "cluster_full_access"
 # --------- connection objects ------------------------------------
 
 
-class all_devices(object):
-    def db_sync(self, dc, new_names=[], new_ips=[]):
-        if new_names:
-            sql_add_str = "AND (%s)" % (" OR ".join(["d.name='%s'" % (x) for x in new_names]))
-        elif new_ips:
-            sql_add_str = "AND (%s)" % (" OR ".join(["ip.ip='%s'" % (x) for x in new_ips]))
-        else:
-            sql_add_str = ""
-        sql_str = "SELECT d.name, d.device_mode, d.device_idx, dt.identifier, d.recvstate, d.reqstate FROM device d, device_type dt WHERE dt.device_type_idx=d.device_type AND d.bootserver=%d %s ORDER BY d.name" % (self.__loc_config["MOTHER_SERVER_IDX"], sql_add_str)
-        dc.execute(sql_str)
-        for mach in dc.fetchall():
-            name = mach["name"]
-            if not self.__lut.has_key(name):
-                if mach["identifier"] == "H":
-                    newmach = machine(name, mach["device_idx"], dc, self)
-                    newmach.set_recv_req_state(mach["recvstate"], mach["reqstate"])
-                    newmach.set_device_mode(mach["device_mode"])
-                elif mach["identifier"] == "S":
-                    newmach = switch(name, mach["device_idx"], dc, self)
-                    newmach.set_recv_req_state(mach["recvstate"], mach["reqstate"])
-                elif mach["identifier"] == "AM":
-                    napc = apc(name, mach["device_idx"], dc, self)
-                    napc.set_recv_req_state(mach["recvstate"], mach["reqstate"])
-                elif mach["identifier"] == "IBC":
-                    napc = ibc(name, mach["device_idx"], dc, self)
-                    napc.set_recv_req_state(mach["recvstate"], mach["reqstate"])
-            else:
-                self.log("Device %s already in internal dictionaries, checking network settings ..." % (name))
-                self.__lut[name].check_network_settings(dc)
+# class all_devices(object):
+#     def db_sync(self, dc, new_names=[], new_ips=[]):
+#         if new_names:
+#             sql_add_str = "AND (%s)" % (" OR ".join(["d.name='%s'" % (x) for x in new_names]))
+#         elif new_ips:
+#             sql_add_str = "AND (%s)" % (" OR ".join(["ip.ip='%s'" % (x) for x in new_ips]))
+#         else:
+#             sql_add_str = ""
+#         sql_str = "SELECT d.name, d.device_mode, d.device_idx, dt.identifier, d.recvstate, d.reqstate FROM device d, device_type dt WHERE dt.device_type_idx=d.device_type AND d.bootserver=%d %s ORDER BY d.name" % (self.__loc_config["MOTHER_SERVER_IDX"], sql_add_str)
+#         dc.execute(sql_str)
+#         for mach in dc.fetchall():
+#             name = mach["name"]
+#             if not self.__lut.has_key(name):
+#                 if mach["identifier"] == "H":
+#                     newmach = machine(name, mach["device_idx"], dc, self)
+#                     newmach.set_recv_req_state(mach["recvstate"], mach["reqstate"])
+#                     newmach.set_device_mode(mach["device_mode"])
+#                 elif mach["identifier"] == "S":
+#                     newmach = switch(name, mach["device_idx"], dc, self)
+#                     newmach.set_recv_req_state(mach["recvstate"], mach["reqstate"])
+#                 elif mach["identifier"] == "AM":
+#                     napc = apc(name, mach["device_idx"], dc, self)
+#                     napc.set_recv_req_state(mach["recvstate"], mach["reqstate"])
+#                 elif mach["identifier"] == "IBC":
+#                     napc = ibc(name, mach["device_idx"], dc, self)
+#                     napc.set_recv_req_state(mach["recvstate"], mach["reqstate"])
+#             else:
+#                 self.log("Device %s already in internal dictionaries, checking network settings ..." % (name))
+#                 self.__lut[name].check_network_settings(dc)
 
 class machine(object):
     # def __init__(self, name, idx, ips={}, log_queue=None):
@@ -172,7 +172,7 @@ class machine(object):
 # #    def get_use_count(self):
 # #        return self.use_count
     def device_log_entry(self, user, status, what, sql_queue, log_src_idx):
-        sql_str, sql_tuple = mysql_tools.get_device_log_entry_part(self.device_idx, log_src_idx, user, self.__loc_config["LOG_STATUS"][status]["log_status_idx"], what)
+        # sql_str, sql_tuple = mysql_tools.get_device_log_entry_part(self.device_idx, log_src_idx, user, self.__loc_config["LOG_STATUS"][status]["log_status_idx"], what)
         sql_queue.put(("insert_value", ("devicelog", sql_str, sql_tuple)))
     def parse_received_str(self, in_str, dc, sql_queue, node_idx):
         self.device_log_entry(0, "i", in_str, sql_queue, node_idx)
@@ -3437,7 +3437,7 @@ def main():
         ("SERVER_PULL_PORT"    , configfile.int_c_var(8001, help_string="server pull port [%(default)d]")),
     ])
     global_config.parse_file()
-    options = global_config.handle_commandline(
+    _options = global_config.handle_commandline(
         description="%s, version is %s" % (
             prog_name,
             VERSION_STRING),
@@ -3451,7 +3451,7 @@ def main():
     if global_config["CHECK"]:
         sys.exit(0)
     if global_config["KILL_RUNNING"]:
-        log_lines = process_tools.kill_running_processes(prog_name + ".py", exclude=configfile.get_manager_pid())
+        _log_lines = process_tools.kill_running_processes(prog_name + ".py", exclude=configfile.get_manager_pid())
     cluster_location.read_config_from_db(global_config, "mother_server", [
         ("TFTP_LINK"                 , configfile.str_c_var("/tftpboot")),
         ("TFTP_DIR"                  , configfile.str_c_var("/opt/cluster/system/tftpboot")),
@@ -3465,26 +3465,10 @@ def main():
         ("CONFIG_DIR"   , configfile.str_c_var("%s/%s" % (global_config["TFTP_DIR"], "config"))),
         ("ETHERBOOT_DIR", configfile.str_c_var("%s/%s" % (global_config["TFTP_DIR"], "etherboot"))),
         ("KERNEL_DIR"   , configfile.str_c_var("%s/%s" % (global_config["TFTP_DIR"], "kernels")))])
-# #    if fixit:
-# #        process_tools.fix_directories(user, group, [g_config["LOG_DIR"], "/var/lib/mother", "/var/run/mother"])
-#    if fixit:
-#        process_tools.fix_directories(user, group, [g_config["LOG_DIR"], "/var/lib/mother", "/var/run/mother", g_config["ETHERBOOT_DIR"], g_config["KERNEL_DIR"]])
-# #    ret_state = 256
-# #    if num_servers > 1:
-# #        print "Database error for host %s (mother_server): too many entries found (%d)" % (loc_config["SERVER_SHORT_NAME"], num_servers)
-# #        dc.release()
-# #    else:
     global_config.add_config_entries([
         ("LOG_SOURCE_IDX", configfile.int_c_var(cluster_location.log_source.create_log_source_entry("mother", "Mother Server", device=sql_info.device).pk)),
         ("NODE_SOURCE_IDX", configfile.int_c_var(cluster_location.log_source.create_log_source_entry("node", "Clusternode").pk)),
     ])
-# #        loc_config["LOG_SOURCE_IDX"] = process_tools.create_log_source_entry(dc, loc_config["MOTHER_SERVER_IDX"], "mother", "Mother Server")
-# #        if not loc_config["LOG_SOURCE_IDX"]:
-# #            print "Too many log_sources with my id present, exiting..."
-# #            dc.release()
-# #        else:
-# #            loc_config["NODE_SOURCE_IDX"] = process_tools.create_log_source_entry(dc, 0, "node", "Cluster node", "String written by one of the nodes")
-# #            loc_config["LOG_STATUS"] = process_tools.get_all_log_status(dc)
     process_tools.renice()
     if not global_config["DEBUG"]:
         # become daemon and wait 2 seconds

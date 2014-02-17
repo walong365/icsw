@@ -1,7 +1,7 @@
 #!/usr/bin/python-init -Otu
 # -*- coding: utf-8 -*-
 #
-# Copyright (C) 2012 Andreas Lang-Nevyjel, init.at
+# Copyright (C) 2012,2014 Andreas Lang-Nevyjel, init.at
 #
 # Send feedback to: <lang-nevyjel@init.at>
 # 
@@ -21,7 +21,8 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
 """ classes for handling external command """
-import commands
+
+# import commands
 import time
 import subprocess
 import logging_tools

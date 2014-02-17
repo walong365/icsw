@@ -28,15 +28,12 @@ from initat.cluster.backbone.models import device, network, cd_connection, devic
 from initat.mother.command_tools import simple_command
 from initat.mother.config import global_config
 from lxml import etree # @UnresolvedImports
-import commands
 import config_tools
 import logging_tools
 import process_tools
 import re
 import server_command
-import subprocess
 import threading_tools
-import time
 
 class hc_command(object):
     def __init__(self, xml_struct, router_obj):
