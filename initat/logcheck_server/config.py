@@ -20,9 +20,10 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
-""" logcheck-server (to be run on a syslog_server) """
+""" logcheck-server, global config """
 
-from initat.logcheck_server import main
-import sys
+import configfile
+import process_tools
 
-sys.exit(main.main())
+global_config = configfile.get_global_config(process_tools.get_programm_name())
+
