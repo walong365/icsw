@@ -1,7 +1,7 @@
 #!/usr/bin/python-init -Otu
 # -*- coding: utf-8 -*-
 #
-# Copyright (C) 2001,2002,2003,2004,2005,2006,2007,2008,2011,2012,2013 Andreas Lang-Nevyjel
+# Copyright (C) 2001-2008,2011-2014 Andreas Lang-Nevyjel
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -57,8 +57,6 @@ SCAN_TEXT_PREFIX = ".scan"
 
 LOGREADER_DATE_VARNAME = "logsrv_logreader_date"
 LOGREADER_OFFSET_VARNAME = "logsrv_logreader_offset"
-
-SQL_ACCESS = "cluster_full_access"
 
 class machine(object):
     # def __init__(self, name, idx, ips={}, log_queue=None):
@@ -489,92 +487,6 @@ class server_process(threading_tools.process_pool):
         self.log("restarting %s gave %d:" % (syslog_rc, stat))
         for line in out_f:
             self.log(line)
-
-class server_thread_pool(threading_tools.thread_pool):
-    def __init__(self, db_con, g_config, loc_config):
-        self.__log_cache, self.__log_queue = ([], None)
-        self.__db_con = db_con
-        self.__glob_config, self.__loc_config = (g_config, loc_config)
-        threading_tools.thread_pool.__init__(self, "main", blocking_loop=False)
-        self.__msi_block = self._init_msi_block()
-        self.register_exception("int_error", self._int_error)
-        self.register_exception("term_error", self._int_error)
-        self.register_exception("hup_error", self._hup_error)
-        self.register_func("new_pid", self._new_pid)
-        self.register_func("remove_pid", self._remove_pid)
-        self.register_func("request_exit", self._request_exit)
-        # syslog_check_counter
-        self.__syslog_check_counter, self.__syslog_check_num = (0, self.__glob_config["SYSLOG_CHECK_ERROR"])
-        self.__bind_state_dict = {}
-        self.__ns = net_tools.network_server(timeout=2, log_hook=self.log, poll_verbose=self.__loc_config["VERBOSE"] > 1)
-        self.__ns.add_object(net_tools.unix_domain_bind(self._new_ud_recv, socket=self.__glob_config["SYSLOG_SOCKET"], mode=0666, bind_state_call=self._bind_state_call))[0]
-        self.__ns.add_object(net_tools.tcp_bind(self._new_tcp_con, port=self.__glob_config["COMPORT"], bind_retries=5, bind_state_call=self._bind_state_call, timeout=15))
-        # run_idx for syslog-check
-        self.__run_idx = 0
-        # prepare directories
-        self._prepare_directories()
-        # log config
-        self._log_config()
-        # enable syslog_config
-        self._enable_syslog_config()
-        dc = self.__db_con.get_connection(SQL_ACCESS)
-        # re-insert config
-        self._re_insert_config(dc)
-        self.__ad_struct = all_devices(self.__log_queue, self.__glob_config, self.__loc_config, self.__db_con)
-        self.__ad_struct.db_sync()
-        self.__com_queue = self.add_thread(com_thread(self.__glob_config, self.__loc_config, self.__db_con, self.__log_queue), start_thread=True).get_thread_queue()
-        self.__queue_dict = {"logging_queue" : self.__log_queue,
-                             "com_queue"     : self.__com_queue}
-        self.__com_queue.put(("set_queue_dict", self.__queue_dict))
-        self.__com_queue.put(("set_netserver", self.__ns))
-        dc.release()
-        lc_run_time = self.__glob_config["LOGCHECK_RUN_TIME"]
-        try:
-            self.__lc_hour, self.__lc_min = [int(x) for x in lc_run_time.split(":")]
-        except:
-            self.__lc_hour, self.__lc_min = (2, 0)
-            self.log("Cannot parse logcheck_run_time '%s', using %02d:%02d: %s" % (lc_run_time,
-                                                                                   self.__lc_hour,
-                                                                                   self.__lc_min,
-                                                                                   process_tools.get_except_info()),
-                     logging_tools.LOG_LEVEL_ERROR)
-        self.__last_update_wday, self.__logcheck_queue = (None, None)
-        force_start_logcheck = self.__glob_config["INITIAL_LOGCHECK"]
-        if not self.__loc_config["INIT_SCAN"]:
-            force_start_logcheck = False
-        if self.__loc_config["FORCE_INIT_PARSE"]:
-            force_start_logcheck = True
-        if force_start_logcheck:
-            act_time = time.localtime()
-            act_hour, act_min = (act_time[3], act_time[4])
-            if abs(act_hour - self.__lc_hour) < 3:
-                force_start_logcheck = False
-                self.log("act_time %02d:%02d to close to logcheck_time %02d:%02d, no initial logcheck_run" % (act_hour,
-                                                                                                              act_min,
-                                                                                                              self.__lc_hour,
-                                                                                                              self.__lc_min))
-                self.__last_update_wday = act_time[6]
-        self.log("last_update_weekday is %s, force_start_logcheck is %s" % (str(self.__last_update_wday) or "<not set>",
-                                                                            force_start_logcheck and "enabled" or "disabled"))
-        self.__force_start_logcheck = True
-    def _bind_state_call(self, **args):
-        id_str = "%s_%s" % (args["type"], str(args["port"]))
-        self.__bind_state_dict[id_str] = args["state"]
-        num_ok = self.__bind_state_dict.values().count("ok")
-        num_not_ok = len(self.__bind_state_dict.keys()) - num_ok
-        self.log("bind_state_dict has now %s, %d ok%s" % (logging_tools.get_plural("key", len(self.__bind_state_dict.keys())),
-                                                          num_ok,
-                                                          num_not_ok and ", %d not ok" % (num_not_ok) or ""))
-        if num_ok + num_not_ok == 2:
-            if num_not_ok:
-                self.log("Unable to bind to all sockets, exiting ...", logging_tools.LOG_LEVEL_CRITICAL)
-                self._int_error("bind error")
-            else:
-                self.log("Successfully bound to all sockets, setting timeout to 60 seconds, testing connection")
-                self.__ns.set_timeout(10)
-            # clear bind_state dict
-            for k in self.__bind_state_dict.keys():
-                del self.__bind_state_dict[k]
 
 global_config = configfile.get_global_config(process_tools.get_programm_name())
 
