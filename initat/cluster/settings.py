@@ -1,4 +1,5 @@
 # Django settings for cluster project.
+# -*- coding: utf-8 -*-
 
 from django.core.exceptions import ImproperlyConfigured
 import logging_tools
@@ -30,10 +31,12 @@ ADMINS = (
 # determine product name
 if os.path.isfile("/etc/sysconfig/cluster/.is_corvus"):
     INIT_PRODUCT_NAME = "Corvus"
-    INIT_PRODUCT_FAMILY = "Corvus albicollis" # Geierrabe
+    # INIT_PRODUCT_FAMILY = "Corvus albicollis" # Geierrabe
+    INIT_PRODUCT_FAMILY = "Corvus woodfordi" # Buntschnabelkrähe
 else:
     INIT_PRODUCT_NAME = "Noctua"
-    INIT_PRODUCT_FAMILY = "Strigidae bubo bubo" # Uhu
+    # INIT_PRODUCT_FAMILY = "Strigidae bubo bubo" # Uhu
+    INIT_PRODUCT_FAMILY = "Strigidae pulsatrix perspicillata" # Brillenkauz
 
 ALLOWED_HOSTS = ["*"]
 

@@ -41,9 +41,6 @@ class cs_timer(object):
         self.start_time = cur_time
         return log_str
 
-def only_wf_perms(in_list):
-    return [entry.split("_", 1)[1] for entry in in_list if entry.startswith("backbone.wf_")]
-
 cluster_timezone = pytz.timezone(settings.TIME_ZONE)
 system_timezone = pytz.timezone(time.tzname[0])
 
