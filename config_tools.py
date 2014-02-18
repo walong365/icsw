@@ -1,6 +1,6 @@
 #!/usr/bin/python-init -OtW error
 #
-# Copyright (C) 2007,2008,2012,2013 Andreas Lang-Nevyjel, init.at
+# Copyright (C) 2007-2008,2012-2014 Andreas Lang-Nevyjel, init.at
 #
 # this file is part of python-modules-base
 #
@@ -144,6 +144,8 @@ class topology_object(object):
     def __init__(self, log_com, graph_mode="all", **kwargs):
         self.__log_com = log_com
         self.nx = None
+        # ignore device-internal links
+        self.ignore_self = kwargs.get("ignore_self", True)
         self.__graph_mode = graph_mode
         if self.__graph_mode.startswith("sel"):
             self.__dev_pks = kwargs["dev_list"]
@@ -168,30 +170,30 @@ class topology_object(object):
         if self.__graph_mode == "none":
             self.dev_dict = {}
         else:
-            self.dev_dict = dict([(cur_dev.pk, cur_dev) for cur_dev in dev_sel])
+            self.dev_dict = {cur_dev.pk : cur_dev for cur_dev in dev_sel}
             if self.__graph_mode.startswith("selp"):
                 # add further rings
                 for _idx in range(int(self.__graph_mode[-1])):
                     new_dev_pks = set(device.objects.filter(Q(netdevice__peer_s_netdevice__d_netdevice__device__in=self.dev_dict.keys())).values_list("idx", flat=True)) | \
                         set(device.objects.filter(Q(netdevice__peer_d_netdevice__s_netdevice__device__in=self.dev_dict.keys())).values_list("idx", flat=True))
                     if new_dev_pks:
-                        self.dev_dict.update(dict([(value.pk, value) for value in device.objects.filter(Q(enabled=True) & Q(device_group__enabled=True) & Q(pk__in=new_dev_pks)).select_related("domain_tree_node")]))
+                        self.dev_dict.update({value.pk : value for value in device.objects.filter(Q(enabled=True) & Q(device_group__enabled=True) & Q(pk__in=new_dev_pks)).select_related("domain_tree_node")})
                     else:
                         break
             elif self.__graph_mode == "core":
                 p_list = set(sum([[(s_val, d_val), (d_val, s_val)] for s_val, d_val in peer_information.objects.all().values_list("s_netdevice_id", "d_netdevice_id") if s_val != d_val], []))
-                nd_dict = dict([(value[0], value[1]) for value in netdevice.objects.all().values_list("pk", "device")])
+                nd_dict = {value[0] : value[1] for value in netdevice.objects.all().values_list("pk", "device")}
                 # remove all devices which have only a single selection to the current dev_dict
                 while True:
                     dev_list = [nd_dict[s_val] for s_val, d_val in p_list]
                     rem_devs = set([key for key in dev_list if dev_list.count(key) == 1])
                     rem_nds = set([key for key, value in nd_dict.iteritems() if value in rem_devs])
                     p_list = [(s_val, d_val) for s_val, d_val in p_list if s_val not in rem_nds and d_val not in rem_nds]
-                    self.dev_dict = dict([(key, value) for key, value in self.dev_dict.iteritems() if key not in rem_devs])
+                    self.dev_dict = {key : value for key, value in self.dev_dict.iteritems() if key not in rem_devs}
                     if not rem_devs:
                         break
-        nd_dict = dict([(value[0], value[1]) for value in netdevice.objects.all().values_list("pk", "device")])
-        ip_dict = dict([(value[0], (value[1], value[2])) for value in net_ip.objects.all().values_list("pk", "netdevice", "network")])
+        nd_dict = {value[0] : value[1] for value in netdevice.objects.all().values_list("pk", "device")}
+        ip_dict = {value[0] : (value[1], value[2]) for value in net_ip.objects.all().values_list("pk", "netdevice", "network")}
         # reorder ip_dict
         nd_lut = {}
         for net_ip_pk, (nd_pk, nw_pk) in ip_dict.iteritems():
@@ -203,6 +205,7 @@ class topology_object(object):
         # peer dict
         self.peer_dict, self.simple_peer_dict = ({}, {})
         all_peers = peer_information.objects.all().values_list("s_netdevice_id", "d_netdevice_id", "penalty")
+        foreign_devs = set()
         for s_nd_id, d_nd_id, penalty in all_peers:
             if nd_dict[s_nd_id] in self.dev_dict and nd_dict[d_nd_id] in self.dev_dict:
                 src_device_id = nd_dict[s_nd_id]
@@ -210,12 +213,17 @@ class topology_object(object):
                 src_device_id, dst_device_id = (
                     min(src_device_id, dst_device_id),
                     max(src_device_id, dst_device_id))
+                if src_device_id != dst_device_id:
+                    foreign_devs.add(src_device_id)
+                    foreign_devs.add(dst_device_id)
                 # print (src_device_id, dst_device_id), penalty
                 # self.simple_peer_dict.setdefault((src_device_id, dst_device_id), set()).update(set(nd_lut.get(s_nd_id, [])) | set(nd_lut.get(d_nd_id, [])))
                 self.simple_peer_dict.setdefault((src_device_id, dst_device_id), []).append(penalty) # set()).update(set(nd_lut.get(s_nd_id, [])) | set(nd_lut.get(d_nd_id, [])))
         if self.nx:
             del self.nx
         self.nx = networkx.Graph()
+        if self.ignore_self:
+            self.dev_dict = {key: value for key, value in self.dev_dict.iteritems() if key in foreign_devs}
         self.add_nodes()
         self.add_edges()
         # add num_nds / num_peers (only nds)
