@@ -548,7 +548,7 @@ device_network_module.controller("graph_ctrl", ["$scope", "$compile", "$filter",
                             fixed = true
                             d.fixed = fixed
                             d3.select(@).select("circle").classed("fixed", fixed)
-                    ) 
+                    )
                     .on("dragend", (d) ->
                         if d.x != scope.start_coords[0] or d.y != scope.start_coords[1]
                             # node was moved, set fixed
