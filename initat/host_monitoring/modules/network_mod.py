@@ -61,11 +61,11 @@ ARGUS_MAX_FILE_SIZE = 32 * 1024 * 1024
 
 class argus_proc(object):
     def __init__(self, proc, interface, arg_path):
-        if not os.path.isdir(ARGUS_TARGET):
-            os.mkdir(ARGUS_TARGET)
         self.interface = interface
-        self.target_file = os.path.join(ARGUS_TARGET, datetime.datetime.now().strftime("argus_%%s_%Y-%m-%d_%H:%M:%S") % (self.interface))
+        _now = datetime.datetime.now()
+        self.target_file = os.path.join(ARGUS_TARGET, _now.strftime("argus_%%s_%Y-%m-%d_%H:%M:%S") % (self.interface))
         self.command = "%s -i %s -w %s" % (arg_path, interface, self.target_file)
+        self.create_day = _now.day()
         self.popen = None
         self.proc = proc
         self.start_time = time.time()
@@ -83,6 +83,9 @@ class argus_proc(object):
                     logging_tools.get_size_str(cur_size),
                     logging_tools.get_size_str(ARGUS_MAX_FILE_SIZE),
                 ), logging_tools.LOG_LEVEL_WARN)
+            elif datetime.datetime.now().day != self.create_day:
+                _wrap = True
+                self.log("wrapping because of new day has started")
         return _wrap
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
         self.proc.log("[ar %s] %s" % (self.interface, what), log_level)
@@ -147,6 +150,8 @@ class _general(hm_classes.hm_module):
             self.log("no argus found", logging_tools.LOG_LEVEL_WARN)
         if global_config["RUN_ARGUS"] and argus_path:
             self.log("argus monitoring is enabled")
+            if not os.path.isdir(ARGUS_TARGET):
+                os.mkdir(ARGUS_TARGET)
             self.__bzip2_path = process_tools.find_file("bzip2")
             self.__argus_path = argus_path
             self.__argus_interfaces = set()
@@ -171,21 +176,24 @@ class _general(hm_classes.hm_module):
     def _compress_files(self):
         if os.path.isdir(ARGUS_TARGET) and self.__bzip2_path:
             _in_flight = [struct.target_file for struct in self.__argus_map.itervalues()]
-            _files = [entry for entry in os.listdir(ARGUS_TARGET) if not entry.count(".") and entry not in _in_flight]
-            if _files:
-                cur_time = time.time()
-                _to_delete = [entry for entry in os.listdir(ARGUS_TARGET) if abs(os.stat(os.path.join(ARGUS_TARGET, entry))[stat.ST_CTIME] - cur_time) > ARGUS_MAX_AGE]
-                _to_compress = [entry for entry in _files if entry not in _to_delete]
-                if _to_delete:
-                    self.log("%s to delete: %s" % (
-                        logging_tools.get_plural("file", len(_to_delete)),
-                        ", ".join(sorted(_to_delete))
-                        ))
-                    [os.unlink(os.path.join(ARGUS_TARGET, _file)) for _file in _to_delete]
-                if _to_compress:
-                    self.__compress_jobs.extend([compress_job(self.__bzip2_path, _file) for _file in _to_compress])
+            try:
+                _files = [entry for entry in os.listdir(ARGUS_TARGET) if not entry.count(".") and entry not in _in_flight]
+                if _files:
+                    cur_time = time.time()
+                    _to_delete = [entry for entry in os.listdir(ARGUS_TARGET) if abs(os.stat(os.path.join(ARGUS_TARGET, entry))[stat.ST_CTIME] - cur_time) > ARGUS_MAX_AGE]
+                    _to_compress = [entry for entry in _files if entry not in _to_delete]
+                    if _to_delete:
+                        self.log("%s to delete: %s" % (
+                            logging_tools.get_plural("file", len(_to_delete)),
+                            ", ".join(sorted(_to_delete))
+                            ))
+                        [os.unlink(os.path.join(ARGUS_TARGET, _file)) for _file in _to_delete]
+                    if _to_compress:
+                        self.__compress_jobs.extend([compress_job(self.__bzip2_path, _file) for _file in _to_compress])
+            except:
+                self.log("error handling compressed / old files: %s" % (process_tools.get_except_info()), logging_tools.LOG_LEVEL_ERROR)
     def stop_module(self):
-        for cur_if, _struct in self.__argus_map.iteritems():
+        for _cur_if, _struct in self.__argus_map.iteritems():
             # _struct.terminate()
             if _struct.finished() is None:
                 _struct.terminate()
@@ -201,8 +209,10 @@ class _general(hm_classes.hm_module):
         _new_if = _current_if - self.__argus_interfaces
         if self._check_free_space():
             for new_if in _new_if:
-                self.__argus_map[new_if] = argus_proc(self, new_if, self.__argus_path)
-                self.__argus_interfaces.add(new_if)
+                _operstate = "/sys/class/net/%s/operstate" % (new_if)
+                if os.path.isfile(_operstate) and file(_operstate, "r").read().strip() not in ["down"]:
+                    self.__argus_map[new_if] = argus_proc(self, new_if, self.__argus_path)
+                    self.__argus_interfaces.add(new_if)
         _failed = set()
         for cur_if, _struct in self.__argus_map.iteritems():
             _stop = False
