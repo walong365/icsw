@@ -849,8 +849,8 @@ class host(machine):
             ip_to_write, ip_to_write_src = (self.maint_ip.ip, "maint_ip")
         elif self.bootnetdevice and self.bootnetdevice.dhcp_device:
             # FIXME
-            if len(mach.ip_dict.keys()) == 1:
-                ip_to_write, ip_to_write_src = (mach.ip_dict.keys()[0], "first ip of ip_dict.keys()")
+            if self.ip_dict:
+                ip_to_write, ip_to_write_src = (self.ip_dict.keys()[0], "first ip of ip_dict.keys()")
             else:
                 ip_to_write, ip_to_write_src = (None, "")
         else:
@@ -892,7 +892,7 @@ class host(machine):
             if om_shell_com == "write":
                 om_array.extend(['set hardware-address = %s' % (self.device.bootnetdevice.macaddr),
                                  'set hardware-type = 1',
-                                 'set ip-address=%s' % (self.maint_ip.ip)])
+                                 'set ip-address=%s' % (ip_to_write)])
                 om_array.extend(['set statements = "' +
                                  'supersede host-name = \\"%s\\" ;' % (self.device.name) +
                                  'if substring (option vendor-class-identifier, 0, 9) = \\"PXEClient\\" { ' +
