@@ -168,7 +168,11 @@ class _general(hm_classes.hm_module):
             self.__compress_jobs = []
             self._compress_files()
         else:
+            self.__argus_map = {}
             self.__argus_path = None
+    @property
+    def argus_map(self):
+        return self.__argus_map
     def _check_free_space(self):
         _stat = os.statvfs(ARGUS_TARGET)
         _cur_free = _stat.f_bavail * _stat.f_bsize
@@ -712,6 +716,24 @@ class ping_sp_struct(hm_classes.subprocess_struct):
     # def __del__(self):
     #    print "dp"
 
+class argus_status_command(hm_classes.hm_command):
+    info_str = "checks argus processes"
+    def __init__(self, name):
+        hm_classes.hm_command.__init__(self, name)
+        self.parser.add_argument("-w", dest="warn", type=int, help="warning level, minimum processes")
+        self.parser.add_argument("-c", dest="crit", type=int, help="critical level, minimum processes")
+    def __call__(self, srv_com, cur_ns):
+        # if not cur_ns.arguments:
+        srv_com["argus_interfaces"] = self.module.argus_map.keys()
+    def interpret(self, srv_com, cur_ns):
+        arg_list = srv_com["*argus_interfaces"]
+        proc_l = limits.limits(cur_ns.warn, cur_ns.crit)
+        ret_state, _str = proc_l.check_floor(len(arg_list))
+        return ret_state, "%s running: %s" % (
+            logging_tools.get_plural("argus process", len(arg_list)),
+            ", ".join(sorted(arg_list))
+        )
+
 class ping_command(hm_classes.hm_command):
     info_str = "ping command"
     def __init__(self, name):
@@ -730,7 +752,7 @@ class ping_command(hm_classes.hm_command):
             target_host = args[0]
             num_pings, timeout = (3, 5.0)
         else:
-            srv_com.set_resul("wrong number of arguments (%d)" % (len(args)), server_command.SRV_REPLY_STATE_ERROR)
+            srv_com.set_result("wrong number of arguments (%d)" % (len(args)), server_command.SRV_REPLY_STATE_ERROR)
             cur_sps, target_host = (None, None)
         if target_host:
             num_pings, timeout = (
