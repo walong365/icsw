@@ -1034,11 +1034,6 @@ class device(models.Model):
     mon_device_templ = models.ForeignKey("backbone.mon_device_templ", null=True, blank=True)
     mon_device_esc_templ = models.ForeignKey("backbone.mon_device_esc_templ", null=True, blank=True)
     mon_ext_host = models.ForeignKey("backbone.mon_ext_host", null=True, blank=True)
-    # deprecated
-    # device_location = models.ForeignKey("device_location", null=True)
-    # device_class = models.ForeignKey("device_class")
-    # rrd_class = models.ForeignKey("rrd_class", null=True)
-    # save_rrd_vectors = models.BooleanField()
     etherboot_valid = models.BooleanField(default=False)
     kernel_append = models.CharField(max_length=384, blank=True)
     newkernel = models.CharField(max_length=192, blank=True)
@@ -1047,10 +1042,7 @@ class device(models.Model):
     act_kernel = models.ForeignKey("kernel", null=True, related_name="act_kernel")
     act_kernel_build = models.IntegerField(null=True, blank=True)
     kernelversion = models.CharField(max_length=192, blank=True)
-    stage1_flavour = models.CharField(max_length=48, blank=True)
-    # removed 20121030 by AL
-# #    dom0_memory = models.IntegerField(null=True, blank=True)
-# #    xen_guest = models.BooleanField()
+    stage1_flavour = models.CharField(max_length=48, blank=True, default="CPIO")
     newimage = models.CharField(max_length=765, blank=True)
     new_image = models.ForeignKey("image", null=True, related_name="new_image")
     actimage = models.CharField(max_length=765, blank=True)
@@ -1087,8 +1079,6 @@ class device(models.Model):
     last_boot = models.CharField(max_length=192, blank=True)
     last_kernel = models.CharField(max_length=192, blank=True)
     root_passwd = models.CharField(max_length=192, blank=True)
-    # remove, no longer needed
-    # device_mode = models.BooleanField()
     # link to monitor_server (or null for master)
     monitor_server = models.ForeignKey("device", null=True, blank=True)
     monitor_checks = models.BooleanField(default=True, db_column="nagios_checks", verbose_name="Checks enabled")
@@ -1157,142 +1147,99 @@ class device(models.Model):
             key="dev__%d" % (self.pk),
             name=self.name
         )
-    def get_xml(self, full=True, **kwargs):
-        r_xml = E.device(
-            unicode(self),
-            E.devicelogs(),
-            # all master connections
-            E.connections(),
-            name=self.name,
-            comment=self.comment,
-            pk="%d" % (self.pk),
-            key="dev__%d" % (self.pk),
-            # states
-            recvstate=self.recvstate,
-            reqstate=self.reqstate,
-            device_type="%d" % (self.device_type_id),
-            device_group="%d" % (self.device_group_id),
-            new_kernel="%d" % (self.new_kernel_id or 0),
-            act_kernel="%d" % (self.act_kernel_id or 0),
-            new_image="%d" % (self.new_image_id or 0),
-            act_image="%d" % (self.act_image_id or 0),
-            stage1_flavour=unicode(self.stage1_flavour),
-            kernel_append=unicode(self.kernel_append),
-            monitor_server="%d" % (self.monitor_server_id or 0),
-            # target state
-            new_state="%d" % (self.new_state_id or 0),
-            full_new_state="%d__%d" % (self.new_state_id or 0,
-                                       self.prod_link_id or 0),
-            boot_dev_name="%s" % (self.bootnetdevice.devname if self.bootnetdevice else "---"),
-            boot_dev_macaddr="%s" % (self.bootnetdevice.macaddr if self.bootnetdevice else ""),
-            boot_dev_driver="%s" % (self.bootnetdevice.driver if self.bootnetdevice else ""),
-            greedy_mode="0" if not self.dhcp_mac else "1",
-            bootserver="%d" % (self.bootserver_id or 0),
-            nagvis_parent="%d" % (self.nagvis_parent_id or 0),
-            dhcp_write="1" if self.dhcp_write else "0",
-            partition_table="%d" % (self.partition_table_id if self.partition_table_id else 0),
-            act_partition_table="%d" % (self.act_partition_table_id if self.act_partition_table_id else 0),
-            mon_device_templ="%d" % (self.mon_device_templ_id or 0),
-            mon_device_esc_templ="%d" % (self.mon_device_esc_templ_id or 0),
-            monitor_checks="1" if self.monitor_checks else "0",
-            mon_ext_host="%d" % (self.mon_ext_host_id or 0),
-            curl=unicode(self.curl),
-            enable_perfdata="1" if self.enable_perfdata else "0",
-            automap_root_nagvis="1" if self.automap_root_nagvis else "0",
-            uuid=self.uuid or "",
-            enabled="1" if self.enabled else "0",
-            # to correct string entries
-            md_cache_mode="%d" % (int(self.md_cache_mode)),
-            domain_tree_node="%d" % (self.domain_tree_node_id or 0),
-            uptime="%d" % (self.uptime or 0),
-            categories="::".join(["%d" % (cur_cat.pk) for cur_cat in self.categories.all()]),
-            flap_detection_enabled="1" if self.flap_detection_enabled else "0",
-        )
-        if kwargs.get("full_name", False):
-            r_xml.attrib["full_name"] = self.full_name
-            r_xml.text = u"%s%s" % (
-                self.full_name,
-                " (%s)" % (self.comment) if self.comment else "")
-        if kwargs.get("with_monitoring", False):
-            r_xml.attrib.update(
-                {
-                    "devs_mon_host_cluster" : "::".join(["%d" % (cur_mhc.pk) for cur_mhc in self.devs_mon_host_cluster.all()]),
-                    "devs_mon_service_cluster" : "::".join(["%d" % (cur_mhc.pk) for cur_mhc in self.devs_mon_service_cluster.all()]),
-                }
-            )
-        if full:
-            r_xml.extend([
-                E.netdevices(*[ndev.get_xml() for ndev in self.netdevice_set.all()])
-            ])
-        if kwargs.get("add_state", False):
-            mother_xml = kwargs["mother_xml"]
-            if mother_xml is None:
-                # no info from mother, set defaults
-                r_xml.attrib.update({
-                    "net_state" : "unknown",
-                    "network"   : "unknown"})
-            else:
-                now, recv_ts, req_ts, uptime_ts = (
+    def get_master_cons(self):
+        return [entry for entry in self.cd_cons if entry.parent_id == self.pk]
+    def get_slave_cons(self):
+        return [entry for entry in self.cd_cons if entry.child_id == self.pk]
+    def valid_state(self):
+        _rs = ""
+        if self.mother_xml is not None:
+            if int(self.mother_xml.get("ok", "0")):
+                now, recv_ts, req_ts = (
                     cluster_timezone.localize(datetime.datetime.now()).astimezone(pytz.UTC),
                     self.recvstate_timestamp,
                     self.reqstate_timestamp,
+                )
+                if recv_ts is not None:
+                    recv_timeout = (now - recv_ts).seconds
+                else:
+                    recv_timeout = 3600
+                if req_ts is not None:
+                    req_timeout = (now - req_ts).seconds
+                else:
+                    req_timeout = 3600
+                if req_timeout > recv_timeout:
+                    # recv_state is newer
+                    _rs = "recv"
+                else:
+                    # req_state is newer
+                    _rs = "req"
+        return _rs
+    def net_state(self):
+        _rs = "down"
+        if self.mother_xml is not None:
+            if int(self.mother_xml.get("ok", "0")):
+                now, recv_ts, req_ts = (
+                    cluster_timezone.localize(datetime.datetime.now()).astimezone(pytz.UTC),
+                    self.recvstate_timestamp,
+                    self.reqstate_timestamp,
+                )
+                if recv_ts is not None:
+                    recv_timeout = (now - recv_ts).seconds
+                else:
+                    recv_timeout = 3600
+                if req_ts is not None:
+                    req_timeout = (now - req_ts).seconds
+                else:
+                    req_timeout = 3600
+                if min(req_timeout, recv_timeout) > 20:
+                    # too long ago, deem as outdated (not reachable by mother)
+                    _rs = "ping"
+                else:
+                    _rs = "up"
+        return _rs
+    def network(self):
+        _rs = "unknown"
+        if self.mother_xml is not None:
+            if int(self.mother_xml.get("ok", "0")):
+                _rs = self.mother_xml.attrib["network"]
+        return _rs
+    def get_uptime(self):
+        _rs = 0
+        if self.mother_xml is not None:
+            if int(self.mother_xml.get("ok", "0")):
+                now, uptime_ts = (
+                    cluster_timezone.localize(datetime.datetime.now()).astimezone(pytz.UTC),
                     self.uptime_timestamp,
                 )
-                # determine if the node is down / pingable / responding to hoststatus requests
-                if not int(mother_xml.get("ok", "0")):
-                    # not pingable, down
-                    r_xml.attrib["net_state"] = "down"
-                    r_xml.attrib["network"] = "unknown"
+                if uptime_ts is not None:
+                    uptime_timeout = (now - uptime_ts).seconds
                 else:
-                    r_xml.attrib["network"] = mother_xml.attrib["network"]
-                    if recv_ts is not None:
-                        recv_timeout = (now - recv_ts).seconds
-                    else:
-                        recv_timeout = 3600
-                    if req_ts is not None:
-                        req_timeout = (now - req_ts).seconds
-                    else:
-                        req_timeout = 3600
-                    if req_timeout > recv_timeout:
-                        # recv_state is newer
-                        r_xml.attrib["valid_state"] = "recv"
-                    else:
-                        # req_state is newer
-                        r_xml.attrib["valid_state"] = "req"
-                    if min(req_timeout, recv_timeout) > 20:
-                        # too long ago, deem as outdated (not reachable by mother)
-                        r_xml.attrib["net_state"] = "ping"
-                    else:
-                        r_xml.attrib["net_state"] = "up"
-                    # uptime setting
-                    if uptime_ts is not None:
-                        uptime_timeout = (now - uptime_ts).seconds
-                    else:
-                        uptime_timeout = 3600
-                    if uptime_timeout > 30:
-                        # too long ago, outdated
-                        r_xml.attrib["uptime_valid"] = "0"
-                    else:
-                        r_xml.attrib["uptime_valid"] = "1"
-                        r_xml.attrib["uptime"] = "%d" % (self.uptime)
-        if kwargs.get("with_variables", False):
-            r_xml.append(
-                E.device_variables(
-                    *[cur_dv.get_xml() for cur_dv in self.device_variable_set.all()]
+                    uptime_timeout = 3600
+                if uptime_timeout > 30:
+                    # too long ago, outdated
+                    _rs = 0
+                else:
+                    _rs = self.uptime
+        return _rs
+    def uptime_valid(self):
+        _rs = False
+        if self.mother_xml is not None:
+            if int(self.mother_xml.get("ok", "0")):
+                now, uptime_ts = (
+                    cluster_timezone.localize(datetime.datetime.now()).astimezone(pytz.UTC),
+                    self.uptime_timestamp,
                 )
-            )
-        if kwargs.get("with_partition", False):
-            if self.act_partition_table_id:
-                r_xml.append(
-                    self.act_partition_table.get_xml()
-                )
-        if kwargs.get("with_md_cache", False):
-            r_xml.append(
-                E.md_check_data_stores(
-                    *[cur_md.get_xml() for cur_md in self.md_check_data_store_set.all()]
-                )
-            )
-        return r_xml
+                if uptime_ts is not None:
+                    uptime_timeout = (now - uptime_ts).seconds
+                else:
+                    uptime_timeout = 3600
+                if uptime_timeout > 30:
+                    # too long ago, outdated
+                    _rs = False
+                else:
+                    _rs = True
+        return _rs
     def latest_contact(self):
         lc_obj = [obj for obj in self.device_variable_set.all() if obj.name == "package_server_last_contact"]
         if lc_obj:
@@ -1316,6 +1263,7 @@ class device(models.Model):
             ("change_basic", "Change basic settings", True),
             ("change_network", "Change network", True),
             ("change_config", "Change configuration", True),
+            ("change_boot", "Change boot settings", True),
             ("change_variables", "Change variables", True),
             ("change_connection", "Change device connection", True),
             ("change_monitoring", "Change device monitoring config", True),
@@ -1427,6 +1375,8 @@ class device_serializer_network(device_serializer):
             "automap_root_nagvis", "nagvis_parent", "monitor_server", "mon_ext_host",
             "is_meta_device", "device_type_identifier", "device_group_name", "bootserver",
             "curl", "netdevice_set", "access_level", "access_levels",
+            # for device.boot
+            "new_state", "prod_link",
             )
         read_only_fields = ("uuid",)
 
@@ -2083,6 +2033,10 @@ def log_source_lookup(identifier, log_dev):
 def short_log_source_lookup(idx):
     return log_source.objects.get(Q(pk=idx))
 
+class log_source_serializer(serializers.ModelSerializer):
+    class Meta:
+        model = log_source
+
 cached_log_source = memoize(log_source_lookup, {}, 2)
 cached_short_log_source = memoize(short_log_source_lookup, {}, 2)
 
@@ -2094,6 +2048,10 @@ class log_status(models.Model):
     date = models.DateTimeField(auto_now_add=True)
     class Meta:
         db_table = u'log_status'
+
+class log_status_serializer(serializers.ModelSerializer):
+    class Meta:
+        model = log_status
 
 def log_status_lookup(key):
     if type(key) in [str, unicode]:
@@ -2356,6 +2314,8 @@ class status(models.Model):
     # allow mother to set bools according to status
     allow_boolean_modify = models.BooleanField(default=True)
     date = models.DateTimeField(auto_now_add=True)
+    def info_string(self):
+        return unicode(self)
     def __unicode__(self):
         # print ".", self.status
         return u"%s (%s)%s" % (
@@ -2376,6 +2336,11 @@ class status(models.Model):
         )
     class Meta:
         db_table = u'status'
+
+class status_serializer(serializers.ModelSerializer):
+    info_string = serializers.Field(source="info_string")
+    class Meta:
+        model = status
 
 class tree_node(models.Model):
     idx = models.AutoField(primary_key=True)
@@ -2576,4 +2541,39 @@ class mon_dist_master_serializer(serializers.ModelSerializer):
     mon_dist_slave_set = mon_dist_slave_serializer(many=True)
     class Meta:
         model = mon_dist_master
+
+class cd_connection_serializer_boot(serializers.ModelSerializer):
+    parent = device_serializer()
+    child = device_serializer()
+    class Meta:
+        model = cd_connection
+
+class device_serializer_boot(device_serializer):
+    bootnetdevice = netdevice_serializer()
+    valid_state = serializers.Field(source="valid_state")
+    uptime = serializers.Field(source="get_uptime")
+    uptime_valid = serializers.Field(source="uptime_valid")
+    network = serializers.Field(source="network")
+    net_state = serializers.Field(source="net_state")
+    master_connections = cd_connection_serializer_boot(source="get_master_cons", many=True)
+    slave_connections = cd_connection_serializer_boot(source="get_slave_cons", many=True)
+    class Meta:
+        model = device
+        fields = ("idx" , "name", "full_name", "device_group_name", "access_level", "access_levels",
+            # meta-fields
+            "valid_state", "network", "net_state", "uptime", "uptime_valid",
+            "recvstate", "reqstate",
+            # target state
+            "new_state", "prod_link",
+            # partition
+            "act_partition_table", "partition_table",
+            # image
+            "act_image", "new_image",
+            # kernel
+            "act_kernel", "new_kernel", "stage1_flavour", "kernel_append",
+            # boot device
+            "dhcp_mac", "dhcp_write", "dhcp_written", "dhcp_error", "bootnetdevice", "bootnetdevice",
+            # connections
+            "master_connections", "slave_connections",
+            )
 

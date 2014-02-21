@@ -158,6 +158,8 @@ class network(models.Model):
         permissions = (
             ("modify_network", "modify global network settings", False),
         )
+    def get_identifier(self):
+        return self.network_type.identifier
     class Meta:
         db_table = u'network'
         app_label = "backbone"
@@ -310,6 +312,7 @@ class network_type_serializer(serializers.ModelSerializer):
 
 class network_serializer(serializers.ModelSerializer):
     info_string = serializers.Field(source="info_string")
+    network_type_identifier = serializers.Field(source="get_identifier")
     class Meta:
         model = network
 
