@@ -65,7 +65,7 @@ class argus_proc(object):
         _now = datetime.datetime.now()
         self.target_file = os.path.join(ARGUS_TARGET, _now.strftime("argus_%%s_%Y-%m-%d_%H:%M:%S") % (self.interface))
         self.command = "%s -i %s -w %s" % (arg_path, interface, self.target_file)
-        self.create_day = _now.day()
+        self.create_day = _now.day
         self.popen = None
         self.proc = proc
         self.start_time = time.time()
@@ -152,6 +152,14 @@ class _general(hm_classes.hm_module):
             self.log("argus monitoring is enabled")
             if not os.path.isdir(ARGUS_TARGET):
                 os.mkdir(ARGUS_TARGET)
+            # kill all argus jobs
+            kill_pids = [_pid for _pid, _value in process_tools.get_proc_list().iteritems() if _value.get("name", "???") == "argus"]
+            if kill_pids:
+                self.log("killing %s: %s" % (
+                    logging_tools.get_plural("argus process", len(kill_pids)),
+                    ", ".join(["%d" % (_pid) for _pid in sorted(kill_pids)]),
+                    ))
+                [os.kill(_pid, 9) for _pid in kill_pids]
             self.__bzip2_path = process_tools.find_file("bzip2")
             self.__argus_path = argus_path
             self.__argus_interfaces = set()
