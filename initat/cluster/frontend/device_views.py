@@ -29,12 +29,11 @@ from django.db.models import Q
 from django.utils.decorators import method_decorator
 from django.views.generic import View
 from initat.cluster.backbone.models import device_type, device_group, device, \
-     cd_connection, domain_name_tree, category_tree, domain_tree_node
+     cd_connection, domain_tree_node
 from initat.cluster.frontend.forms import device_tree_form, device_group_tree_form, \
     device_tree_many_form, device_variable_form, device_variable_new_form
 from initat.cluster.frontend.helper_functions import xml_wrapper
 from initat.cluster.backbone.render import permission_required_mixin, render_me
-from lxml.builder import E # @UnresolvedImports
 import json
 import logging
 import logging_tools
@@ -118,135 +117,6 @@ class show_configs(View):
                 "device_object_level_permission" : "backbone.device.change_config",
             }
         )()
-
-def _get_group_tree(request, sel_list, **kwargs):
-    ignore_md = kwargs.get("ignore_meta_devices", False)
-    ignore_cdg = kwargs.get("ignore_cdg", True)
-    with_variables = kwargs.get("with_variables", False)
-    with_monitoring = kwargs.get("with_monitoring", False)
-    # show only nodes where the user has permissions for
-    permission_tree = kwargs.get("permission_tree", False)
-    # use FQDNs
-    full_name = kwargs.get("full_name", False)
-    devg_resp = E.device_groups()
-    # sel_pks = [int(value.split("__")[1]) for value in sel_list]
-    all_dgs = device_group.objects
-    if permission_tree:
-        # rights
-        all_devs = request.user.has_perm("backbone.device.all_devices")
-        if not all_devs:
-            # ignore meta-device
-            ignore_cdg = True
-            all_dgs = all_dgs.filter(Q(pk__in=request.user.allowed_device_groups.all()))
-    if ignore_cdg:
-        all_dgs = all_dgs.exclude(Q(cluster_device_group=True))
-    all_dgs = all_dgs.filter(Q(enabled=True)).prefetch_related(
-        "device_group",
-        "device_group__device_type",
-        "device_group__netdevice_set",
-        "device_group__bootnetdevice",
-        "device_group__categories",
-        # "device_group__mon_host_cluster_set"
-    )
-    if with_monitoring:
-        all_dgs = all_dgs.prefetch_related(
-            "device_group__devs_mon_host_cluster",
-            "device_group__devs_mon_service_cluster")
-    if with_variables:
-        all_dgs = all_dgs.prefetch_related(
-            "device_group__device_variable_set")
-    if full_name:
-        all_dgs = all_dgs.prefetch_related(
-            "device_group__domain_tree_node"
-        )
-    device_type_dict = dict([(cur_dt.pk, cur_dt) for cur_dt in device_type.objects.all()])
-    meta_dev_type_id = [key for key, value in device_type_dict.iteritems() if value.identifier == "MD"][0]
-    # selected ........ device or device_group selected
-    # tree_selected ... device is selected
-    for cur_dg in all_dgs:
-        cur_xml = cur_dg.get_xml(full=False, with_variables=with_variables, with_monitoring=with_monitoring, full_name=full_name)
-        if cur_xml.attrib["key"] in sel_list:
-            cur_xml.attrib["selected"] = "selected"
-            cur_xml.attrib["tree_selected"] = "selected"
-        any_sel = False
-        for cur_dev in cur_xml.find("devices"):
-            if ignore_md and int(cur_dev.attrib["device_type"]) == meta_dev_type_id:
-                cur_dev.getparent().remove(cur_dev)
-            else:
-                cur_dev.attrib["title"] = "%s (%s%s)" % (
-                    cur_dev.attrib["full_name" if full_name else "name"],
-                    device_type_dict[int(cur_dev.attrib["device_type"])].identifier,
-                    ", %s" % (cur_dev.attrib["comment"]) if cur_dev.attrib["comment"] else ""
-                )
-                if int(cur_dev.attrib["device_type"]) == meta_dev_type_id:
-                    if cur_xml.attrib["key"] in sel_list:
-                        cur_dev.attrib["tree_selected"] = "selected"
-                    cur_dev.attrib["meta_device"] = "1"
-                else:
-                    cur_dev.attrib["meta_device"] = "0"
-                if cur_dev.attrib["key"] in sel_list or cur_xml.attrib["key"] in sel_list:
-                    # if permission_tree or (cur_dev.attrib["key"] in sel_list or cur_xml.attrib["key"] in sel_list):
-                    cur_dev.attrib["selected"] = "selected"
-                    any_sel = True
-                if cur_dev.attrib["key"] in sel_list:
-                    cur_dev.attrib["tree_selected"] = "selected"
-                if permission_tree:
-                    any_sel = True
-        if any_sel:
-            # add when any device is selected
-            devg_resp.append(cur_xml)
-        elif not ignore_cdg and int(cur_xml.attrib.get("is_cdg")):
-            # or add the CDG when the CDG should not be ignored
-            devg_resp.append(cur_xml)
-    return E.repsonse(devg_resp)
-
-def get_post_boolean(_post, name, default):
-    if name in _post:
-        p_val = _post[name]
-        if p_val.lower() in ["1", "true"]:
-            return True
-        else:
-            return False
-    else:
-        return default
-
-class get_group_tree(View):
-    @method_decorator(login_required)
-    @method_decorator(xml_wrapper)
-    def post(self, request):
-        _post = request.POST
-        ignore_md = get_post_boolean(_post, "ignore_meta_devices", False)
-        ignore_cdg = get_post_boolean(_post, "ignore_cdg"         , True)
-        with_variables = get_post_boolean(_post, "with_variables"     , False)
-        permission_tree = get_post_boolean(_post, "permission_tree"    , False)
-        with_monitoring = get_post_boolean(_post, "with_monitoring"    , False)
-        full_name = get_post_boolean(_post, "full_name"          , False)
-        if "sel_list[]" in _post:
-            sel_list = _post.getlist("sel_list[]", [])
-        else:
-            sel_list = request.session.get("sel_list", [])
-        xml_resp = _get_group_tree(request, sel_list, ignore_meta_devices=ignore_md,
-                                   ignore_cdg=ignore_cdg, with_variables=with_variables,
-                                   permission_tree=permission_tree, with_monitoring=with_monitoring,
-                                   full_name=full_name)
-        extra_re = re.compile("^extra_t(\d+)$")
-        for extra_key in [key for key in _post.keys() if extra_re.match(key)]:
-            extra_name = _post[extra_key]
-            device_filter = True if "%s_device" % (extra_key) in _post else False
-            kwargs = {"mon_ext_host" : {"with_images" : True}}.get(extra_name, {})
-            select_rel_dict = {"cd_connection" : ["parent", "child"]}
-            # request.log("adding extra data %s (device filter : %s)" % (extra_name,
-            #                                                           str(device_filter)))
-            extra_obj = globals()[extra_name]
-            if device_filter:
-                obj_list = extra_obj.objects.filter(Q(device__in=xml_resp.xpath(".//device/@pk", smart_strings=False)))
-            else:
-                obj_list = extra_obj.objects.all()
-            extra_list = getattr(E, "%ss" % (extra_name))(
-                *[cur_obj.get_xml(**kwargs) for cur_obj in obj_list.select_related(*select_rel_dict.get(extra_name, []))]
-            )
-            xml_resp.append(extra_list)
-        request.xml_response["response"] = xml_resp
 
 class connections(View):
     @method_decorator(login_required)

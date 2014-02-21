@@ -2455,3 +2455,80 @@ class cd_connection_form(ModelForm):
     class Meta:
         model = cd_connection
         fields = ("connection_info", "parameter_i1", "parameter_i2", "parameter_i3", "parameter_i4",)
+
+class boot_form(Form):
+    helper = FormHelper()
+    helper.form_id = "form"
+    helper.form_name = "form"
+    helper.form_class = 'form-horizontal'
+    helper.label_class = 'col-sm-4'
+    helper.field_class = 'col-sm-7'
+    helper.ng_submit = "cur_edit.modify(this)"
+    image = ModelMultipleChoiceField(queryset=empty_query_set(), required=False)
+    helper.layout = Layout(
+        HTML("<h2>Connection {% verbatim %}{{ get_cd_info() }}{% endverbatim %}</h2>"),
+            Fieldset(
+                "Settings",
+                Field("image"),
+            ),
+            FormActions(
+                Submit("submit", "", css_class="primaryAction", ng_value="action_string"),
+            )
+        )
+
+class boot_single_form(Form):
+    helper = FormHelper()
+    helper.form_id = "form"
+    helper.form_name = "form"
+    helper.form_class = 'form-horizontal'
+    helper.label_class = 'col-sm-4'
+    helper.field_class = 'col-sm-7'
+    helper.ng_model = "_edit_obj"
+    helper.ng_submit = "cur_edit.modify(this)"
+    target_state = ModelChoiceField(queryset=empty_query_set(), required=False)
+    new_kernel = ModelChoiceField(queryset=empty_query_set(), required=False)
+    new_image = ModelChoiceField(queryset=empty_query_set(), required=False)
+    stage1_flavour = ModelChoiceField(queryset=empty_query_set(), required=False)
+    partition_table = ModelChoiceField(queryset=empty_query_set(), required=False)
+    kernel_append = CharField(max_length=384, required=False)
+    macaddr = CharField(max_length=177, required=False)
+    driver = CharField(max_length=384, required=False)
+    dhcp_mac = BooleanField(required=False, label="Greedy")
+    dhcp_write = BooleanField(required=False)
+    helper.layout = Layout(
+        HTML("<h2>{% verbatim %}Device setting for {{ device_info_str }}{% endverbatim %}</h2>"),
+            Fieldset(
+                "basic settings",
+                Field("target_state", ng_options="value.idx as value.info for value in valid_states", chosen=True, wrapper_ng_show="bo_enabled['t']"),
+                Field("new_kernel", ng_options="value.idx as value.name for value in kernels", chosen=True, wrapper_ng_show="bo_enabled['k']"),
+                Field("stage1_flavour", ng_options="value.val as value.name for value in stage1_flavours", chosen=True, wrapper_ng_show="bo_enabled['k']"),
+                Field("kernel_append", wrapper_ng_show="bo_enabled['k']"),
+                Field("new_image", ng_options="value.idx as value.name for value in images", chosen=True, wrapper_ng_show="bo_enabled['i']"),
+                Field("partition_table", ng_options="value.idx as value.name for value in partitions", chosen=True, wrapper_ng_show="bo_enabled['p']"),
+            ),
+            Fieldset(
+                "bootdevice settings",
+                Div(
+                    Div(
+                        # disable enabled-flag for clusterdevicegroup
+                        Field("dhcp_mac", wrapper_ng_show="bo_enabled['b']"),
+                        css_class="col-md-6",
+                    ),
+                    Div(
+                        Field("dhcp_write", wrapper_ng_show="bo_enabled['b']"),
+                        css_class="col-md-6",
+                    ),
+                    css_class="row"
+                ),
+                Field("macaddr", wrapper_ng_show="bo_enabled['b'] && _edit_obj.bootnetdevice"),
+                Field("driver", wrapper_ng_show="bo_enabled['b'] && _edit_obj.bootnetdevice"),
+            ),
+            FormActions(
+                Submit("submit", "", css_class="primaryAction", ng_value="action_string"),
+            )
+        )
+    def __init__(self, *args, **kwargs):
+        Form.__init__(self, *args, **kwargs)
+        for clear_f in ["target_state", "partition_table", "new_image", "new_kernel", "stage1_flavour"]:
+            self.fields[clear_f].queryset = empty_query_set()
+            self.fields[clear_f].empty_label = "not set"

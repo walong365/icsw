@@ -225,6 +225,8 @@ def update_session_object(request):
                 request.session[attr_name] = default
 
 def contact_server(request, conn_str, send_com, **kwargs):
+    _xml_req = kwargs.get("xml_request", hasattr(request, "xml_response"))
+    _log_lines = []
     result = net_tools.zmq_connection(
         kwargs.get("connection_id", "webfrontend"),
         timeout=kwargs.get("timeout", 10)).add_connection(conn_str, send_com)
@@ -232,14 +234,24 @@ def contact_server(request, conn_str, send_com, **kwargs):
         # TODO: check if result is et
         if kwargs.get("log_result", True):
             log_str, log_level = result.get_log_tuple()
-            request.xml_response.log(log_level, log_str)
+            if _xml_req:
+                request.xml_response.log(log_level, log_str)
+            else:
+                _log_lines.append((log_level, log_str))
     else:
         if kwargs.get("log_error", True):
-            request.xml_response.error("error contacting server %s, %s" % (
+            _err_str = "error contacting server %s, %s" % (
                 conn_str,
                 send_com["command"].text
-                ))
-    return result
+            )
+            if _xml_req:
+                request.xml_response.error(_err_str)
+            else:
+                _log_lines.append((logging_tools.LOG_LEVEL_ERROR, _err_str))
+    if _xml_req:
+        return result
+    else:
+        return result, _log_lines
 
 if __name__ == "__main__":
     print "Loadable module, exiting..."

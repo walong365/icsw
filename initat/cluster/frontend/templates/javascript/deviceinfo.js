@@ -59,7 +59,7 @@ class device_info
             <li><a href='#general'>General</a></li>
             <li><a href='#category'>Category</a></li>
             <li><a href='#location'>Location</a></li>
-            <li><a href='#network'>Network#{addon_text}</a></li>
+            <li><a href='#di_network'>Network#{addon_text}</a></li>
             <li><a href='#config'>Config#{addon_text}</a></li>
             <li><a href='#disk'>Disk#{addon_text}</a></li>
             <li><a href='#livestatus'>Livestatus#{addon_text}</a></li>
@@ -104,7 +104,7 @@ urn:uuid:{{ _edit_obj.uuid }}
                     </div>
                 </div>
             </div>
-            <div class="tab-pane" id="network">
+            <div class="tab-pane" id="di_network">
                 <div id='icsw.network.device'>
                     <div ng-controller='network_ctrl'>
                         <devicenetworks devicepk='#{pk_list}' disablemodal='#{dis_modal}'>

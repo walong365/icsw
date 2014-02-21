@@ -65,18 +65,12 @@ config_patterns = patterns(
 
 boot_patterns = patterns(
     "initat.cluster.frontend",
-    url("^show_boot$"          , boot_views.show_boot.as_view()       , name="show_boot"),
-    url("^xml/get_options"     , boot_views.get_html_options.as_view(), name="get_html_options"),
-    url("^xml/get_addon_info$" , boot_views.get_addon_info.as_view()  , name="get_addon_info"),
-    url("^xml/get_boot_info$"  , boot_views.get_boot_info.as_view()   , name="get_boot_info"),
-    url("^xml/get_devlog_info$", boot_views.get_devlog_info.as_view() , name="get_devlog_info"),
-    url("^xml/set_kernel"      , boot_views.set_kernel.as_view()      , name="set_kernel"),
-    url("^xml/set_target_state", boot_views.set_target_state.as_view(), name="set_target_state"),
-    url("^xml/set_boot"        , boot_views.set_boot.as_view()        , name="set_boot"),
-    url("^xml/set_part"        , boot_views.set_partition.as_view()   , name="set_partition"),
-    url("^xml/set_image"       , boot_views.set_image.as_view()       , name="set_image"),
-    url("^soft_control$"       , boot_views.soft_control.as_view()    , name="soft_control"),
-    url("^hard_control$"       , boot_views.hard_control.as_view()    , name="hard_control"),
+    url("^show_boot$"          , boot_views.show_boot.as_view()         , name="show_boot"),
+    url("^xml/get_boot_infojs$", boot_views.get_boot_info_json.as_view(), name="get_boot_info_json"),
+    url("^xml/get_devlog_info$", boot_views.get_devlog_info.as_view()   , name="get_devlog_info"),
+    url("^soft_control$"       , boot_views.soft_control.as_view()      , name="soft_control"),
+    url("^hard_control$"       , boot_views.hard_control.as_view()      , name="hard_control"),
+    url("^update_device/(\d+)$", boot_views.update_device.as_view()     , name="update_device"),
 )
 
 device_patterns = patterns(
@@ -84,7 +78,6 @@ device_patterns = patterns(
     url("^device_tree$"       , device_views.device_tree.as_view()      , name="tree"),
     url("^set_selection$"     , device_views.set_selection.as_view()    , name="set_selection"),
     url("^config$"            , device_views.show_configs.as_view()     , name="show_configs"),
-    url("^get_group_tree$"    , device_views.get_group_tree.as_view()   , name="get_group_tree"),
     url("^connections"        , device_views.connections.as_view()      , name="connections"),
     url("manual_connection"   , device_views.manual_connection.as_view(), name="manual_connection"),
     url("variables$"          , device_views.variables.as_view()        , name="variables"),

@@ -329,6 +329,11 @@ angular_module_setup = (module_list, url_list=[]) ->
                     "id" : "idx"
                 })
                 RestangularProvider.setResponseInterceptor((data, operation, what, url, response, deferred) ->
+                    if data.log_lines
+                        for entry in data.log_lines
+                            noty
+                                type : {20 : "success", 30 : "warning", 40 : "error", 50 : "alert"}[entry[0]] 
+                                text : entry[1]
                     if data._change_list
                         $(data._change_list).each (idx, entry) ->
                             noty
@@ -777,6 +782,8 @@ class angular_edit_mixin
             @scope.$emit(@change_signal)
     edit : (obj, event) =>
         @create_or_edit(event, false, obj)
+    modify_data_before_put: (data) =>
+        # dummy, override in app
     create_or_edit : (event, create_or_edit, obj) =>
         @scope._edit_obj = obj
         @scope.pre_edit_obj = angular.copy(obj)
@@ -830,7 +837,6 @@ class angular_edit_mixin
             if @scope.create_mode
                 @create_rest_url.post(@scope.new_obj).then(
                     (new_data) =>
-                        #console.log @create_list, new_data
                         if @create_list
                             if @new_object_at_tail
                                 @create_list.push(new_data)
@@ -841,14 +847,15 @@ class angular_edit_mixin
                         if @use_promise
                             return @_prom.resolve(new_data)
                         else
-                            @send_change_signal()                
+                            @send_change_signal()       
                     () ->        
                         if @use_promise
                             return @_prom.resolve(false)
                 )
             else
+                @modify_data_before_put(@scope._edit_obj)
                 @scope._edit_obj.put().then(
-                    (data) => 
+                    (data) =>
                         handle_reset(data, @scope._edit_obj, null)
                         @_modal_close_ok = true
                         @close_modal()

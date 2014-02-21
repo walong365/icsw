@@ -449,10 +449,10 @@ device_network_module.controller("network_ctrl", ["$scope", "$compile", "$filter
         restrict : "EA"
         template : $templateCache.get("devicenetworks.html")
         link : (scope, el, attrs) ->
-            if attrs["devicepk"]?
-                scope.new_devsel((parseInt(entry) for entry in attrs["devicepk"].split(",")), [])
             if attrs["disablemodal"]?
                 scope.enable_modal = if parseInt(attrs["disablemodal"]) then false else true
+            if attrs["devicepk"]?
+                scope.new_devsel((parseInt(entry) for entry in attrs["devicepk"].split(",")), [])
     }
 ).directive("dnrow", ($templateCache) ->
     return {

@@ -24,197 +24,62 @@
 """ boot views """
 
 from django.contrib.auth.decorators import login_required
-from django.core.exceptions import ValidationError
 from django.db import transaction
 from django.db.models import Q
+from django.http import HttpResponse
 from django.utils.decorators import method_decorator
 from django.views.generic import View
 from initat.cluster.backbone.models import device, cd_connection, \
-     kernel, image, partition_table, status, network, devicelog
-from initat.cluster.frontend.helper_functions import contact_server, xml_wrapper
+     kernel, image, partition_table, status, network, devicelog, device_serializer_boot
 from initat.cluster.backbone.render import render_me
-from lxml.builder import E # @UnresolvedImports
+from initat.cluster.frontend.forms import boot_form, boot_single_form
+from initat.cluster.frontend.helper_functions import contact_server, xml_wrapper
+from rest_framework.authentication import SessionAuthentication
+from rest_framework.permissions import IsAuthenticated
+from rest_framework.renderers import JSONRenderer
+from rest_framework.response import Response
+from rest_framework.views import APIView
+import json
 import logging
 import logging_tools
 import server_command
+import time
 
 logger = logging.getLogger("cluster.boot")
-
-# ordering is important
-OPTION_LIST = [
-    ("t", "target state", None),
-    ("s", "soft control", None),
-    ("h", "hard control", None),
-    ("b", "bootdevice"  , None),
-    ("k", "kernel"      , kernel),
-    ("i", "image"       , image),
-    ("p", "partition"   , None),
-    ("l", "devicelog"   , None),
-]
 
 class show_boot(View):
     @method_decorator(login_required)
     def get(self, request):
         return render_me(
-            request, "boot_overview.html",
+            request, "boot_overview.html", {
+                "boot_form" : boot_form(),
+                "boot_single_form" : boot_single_form(),
+            }
         )()
 
-class get_html_options(View):
-    @method_decorator(login_required)
-    @method_decorator(xml_wrapper)
-    def post(self, request):
-        xml_resp = E.options()
-        for short, long_opt, _t_obj in OPTION_LIST:
-            xml_resp.append(E.option(long_opt, short=short))
-        request.xml_response["response"] = xml_resp
-
-class get_addon_info(View):
+class get_boot_info_json(View):
     @method_decorator(login_required)
     @method_decorator(xml_wrapper)
     def post(self, request):
         _post = request.POST
-        addon_type = _post["type"]
-        addon_long, addon_class = [(long_opt, t_class) for short, long_opt, t_class in OPTION_LIST if short == addon_type][0]
-        logger.info("requested addon dictionary '%s'" % (addon_long))
-        addon_list = E.list()
-        if addon_class:
-            for obj in addon_class.objects.all(): # filter(Q(enabled=True)):
-                addon_list.append(obj.get_xml())
-        if addon_type == "t":
-            prod_nets = network.objects.filter(Q(network_type__identifier="p"))
-            # add all states without production net
-            for t_state in status.objects.filter(Q(prod_link=False)):
-                addon_list.append(t_state.get_xml())
-            # add all states with production net
-            for prod_net in prod_nets:
-                for t_state in status.objects.filter(Q(prod_link=True)):
-                    addon_list.append(t_state.get_xml(prod_net))
-        if addon_type == "p":
-            for cur_part in partition_table.objects.filter(Q(enabled=True) & Q(nodeboot=True)).prefetch_related(
-                "partition_disc_set",
-                "partition_disc_set__partition_set",
-                "partition_disc_set__partition_set__partition_fs",
-                ).order_by("name"):
-                addon_list.append(cur_part.get_xml(validate=True))
-        logger.info("returning %s" % (logging_tools.get_plural("object", len(addon_list))))
-        request.xml_response["response"] = addon_list
-
-def strip_dict(in_dict):
-    return in_dict.keys()[0].split("__")[1], dict([("__".join(key.split("__")[2:]), value) for key, value in in_dict.iteritems()])
-
-class set_boot(View):
-    @method_decorator(login_required)
-    @method_decorator(xml_wrapper)
-    def post(self, request):
-        _post = request.POST
-        dev_id, _post = strip_dict(_post)
-        with transaction.atomic():
-            cur_dev = device.objects.get(Q(pk=dev_id))
-            boot_mac = _post["boot_dev_macaddr"]
-            boot_driver = _post["boot_dev_driver"]
-            dhcp_write = True if int(_post["write_dhcp"])  else False
-            dhcp_mac = True if int(_post["greedy_mode"]) else False
-            any_error = False
-            cur_dev.dhcp_mac = dhcp_mac
-            cur_dev.dhcp_write = dhcp_write
-            if cur_dev.bootnetdevice:
-                bnd = cur_dev.bootnetdevice
-                bnd.driver = boot_driver
-                bnd.macaddr = boot_mac
-                try:
-                    bnd.save()
-                except ValidationError:
-                    any_error = True
-                    request.xml_response.error("cannot save boot settings", logger)
-            cur_dev.save()
-        if not any_error:
-            request.xml_response.info("updated bootdevice settings of %s" % (unicode(cur_dev)), logger)
-        srv_com = server_command.srv_command(command="alter_macaddr")
-        srv_com["devices"] = srv_com.builder(
-            "devices",
-            srv_com.builder("device", name=cur_dev.name, pk="%d" % (cur_dev.pk)))
-        contact_server(request, "tcp://localhost:8000", srv_com, timeout=10, log_result=False, log_error=False)
-
-class set_partition(View):
-    @method_decorator(login_required)
-    @method_decorator(xml_wrapper)
-    def post(self, request):
-        _post = request.POST
-        cur_dev = device.objects.get(Q(pk=_post["dev_id"].split("__")[1]))
-        if not int(_post["new_part"]):
-            cur_dev.partition_table = None
-        else:
-            cur_dev.partition_table = partition_table.objects.get(Q(pk=_post["new_part"]))
-        cur_dev.save()
-
-class set_image(View):
-    @method_decorator(login_required)
-    @method_decorator(xml_wrapper)
-    def post(self, request):
-        _post = request.POST
-        cur_dev = device.objects.get(Q(pk=_post["dev_id"].split("__")[1]))
-        if not int(_post["new_image"]):
-            cur_dev.new_image = None
-        else:
-            cur_dev.new_image = image.objects.get(Q(pk=_post["new_image"]))
-        cur_dev.save()
-
-class set_kernel(View):
-    @method_decorator(login_required)
-    @method_decorator(xml_wrapper)
-    def post(self, request):
-        _post = request.POST
-        dev_id, _post = strip_dict(_post)
-        with transaction.atomic():
-            cur_dev = device.objects.get(Q(pk=dev_id))
-            if int(_post["new_kernel"]) == 0:
-                cur_dev.new_kernel = None
-            else:
-                cur_dev.new_kernel = kernel.objects.get(Q(pk=_post["new_kernel"]))
-            cur_dev.stage1_flavour = _post["kernel_flavour"]
-            cur_dev.kernel_append = _post["kernel_append"]
-            cur_dev.save()
-        # very important
-        srv_com = server_command.srv_command(command="refresh")
-        srv_com["devices"] = srv_com.builder(
-            "devices",
-            srv_com.builder("device", pk="%d" % (cur_dev.pk)))
-        contact_server(request, "tcp://localhost:8000", srv_com, timeout=10, connection_id="webfrontend_refresh")
-        request.xml_response.info("updated kernel settings of %s" % (unicode(cur_dev)), logger)
-
-class set_target_state(View):
-    @method_decorator(login_required)
-    @method_decorator(xml_wrapper)
-    def post(self, request):
-        _post = request.POST
-        with transaction.atomic():
-            cur_dev = device.objects.get(Q(pk=_post["dev_id"].split("__")[1]))
-            t_state, t_prod_net = [int(value) for value in _post["new_state"].split("__")]
-            if t_state == 0:
-                cur_dev.new_state = None
-                cur_dev.prod_link = None
-            else:
-                cur_dev.new_state = status.objects.get(Q(pk=t_state))
-                if t_prod_net:
-                    cur_dev.prod_link = network.objects.get(Q(pk=t_prod_net))
-                else:
-                    cur_dev.prod_link = None
-            cur_dev.save()
-        srv_com = server_command.srv_command(command="refresh")
-        srv_com["devices"] = srv_com.builder(
-            "devices",
-            srv_com.builder("device", pk="%d" % (cur_dev.pk)))
-        contact_server(request, "tcp://localhost:8000", srv_com, timeout=10, log_result=False)
-        request.xml_response.info("updated target state of %s" % (unicode(cur_dev)), logger)
-
-class get_boot_info(View):
-    @method_decorator(login_required)
-    @method_decorator(xml_wrapper)
-    def post(self, request):
-        _post = request.POST
-        option_dict = dict([(short, True if _post.get("opt_%s" % (short)) in ["true"] else False) for short, _long_opt, _t_class in OPTION_LIST])
+        # option_dict = dict([(short, True if _post.get("opt_%s" % (short)) in ["true"] else False) for short, _long_opt, _t_class in OPTION_LIST])
         sel_list = _post.getlist("sel_list[]")
-        dev_result = device.objects.filter(Q(pk__in=sel_list))
+        dev_result = device.objects.filter(Q(pk__in=sel_list)).prefetch_related(
+            "bootnetdevice__net_ip_set__network__network_device_type",
+            "categories",
+            "domain_tree_node",
+        ).select_related(
+            "device_group",
+            "device_type",
+        )
+        cd_cons = cd_connection.objects.filter(Q(child__in=sel_list) | Q(parent__in=sel_list)).select_related(
+            "child__device_group",
+            "child__device_type",
+            "child__domain_tree_node",
+            "parent__device_group",
+            "parent__device_type",
+            "parent__domain_tree_node",
+            )
         call_mother = True if int(_post["call_mother"]) else False
         # to speed up things while testing
         result = None
@@ -225,10 +90,8 @@ class get_boot_info(View):
                 *[srv_com.builder("device", pk="%d" % (cur_dev.pk)) for cur_dev in dev_result])
             result = contact_server(request, "tcp://localhost:8000", srv_com, timeout=10, log_result=False, connection_id="webfrontend_status")
             # result = net_tools.zmq_connection("boot_full_webfrontend", timeout=10).add_connection("tcp://localhost:8000", srv_com)
-        xml_resp = E.boot_info()
-        # lut for connections
-        dev_lut = {}
         for cur_dev in dev_result:
+            cur_dev.cd_cons = cd_cons
             # recv/reqstate are written by mother, here we 'salt' this information with the device XML (pingstate)
             if call_mother:
                 if result is not None:
@@ -240,56 +103,153 @@ class get_boot_info(View):
                         dev_node = None
                 else:
                     dev_node = None
-                dev_info = cur_dev.get_xml(full=False, add_state=True, mother_xml=dev_node)
+                cur_dev.mother_xml = dev_node
             else:
-                dev_info = cur_dev.get_xml(full=False)
-            dev_lut[cur_dev.pk] = dev_info
-            xml_resp.append(dev_info)
-        # add option-dict related stuff
-        # print etree.tostring(xml_resp, pretty_print=True)
-        if option_dict.get("h", False):
-            # device connections
-            for cur_cd in cd_connection.objects.filter(Q(child__in=dev_result)).select_related("child", "parent"):
-                dev_lut[cur_cd.child_id].find("connections").append(cur_cd.get_xml())
-        request.xml_response["response"] = xml_resp
+                cur_dev.mother_xml = False
+        ctx = {"request" : request}
+        request.xml_response["response"] = JSONRenderer().render(device_serializer_boot(dev_result, many=True, context=ctx).data)
+
+class update_device(APIView):
+    authentication_classes = (SessionAuthentication,)
+    permission_classes = (IsAuthenticated,)
+    def put(self, request, pk):
+        dev_data = request.DATA
+        # import pprint
+        # pprint.pprint(dev_data)
+        _en = dev_data["bo_enabled"]
+        _changed = False
+        _mother_commands = set()
+        _all_update_list = set()
+        if int(pk):
+            pk_list = [int(pk)]
+        else:
+            pk_list = dev_data["device_pks"]
+        with transaction.atomic():
+            all_devs = list(device.objects.filter(Q(pk__in=pk_list)) \
+                .select_related("domain_tree_node", "device_group") \
+                .prefetch_related("categories") \
+                .order_by("device_group__name", "name"))
+            for cur_dev in all_devs:
+                update_list = set()
+                if _en["t"]:
+                    new_new_state, new_prod_link = (None, None)
+                    if dev_data["new_state"]:
+                        new_new_state = status.objects.get(Q(pk=dev_data["new_state"]))
+                        if dev_data["prod_link"]:
+                            new_prod_link = network.objects.get(Q(pk=dev_data["prod_link"]))
+                    if new_new_state != cur_dev.new_state or new_prod_link != cur_dev.prod_link:
+                        cur_dev.new_state = new_new_state
+                        cur_dev.prod_link = new_prod_link
+                        update_list.add("target state")
+                        _mother_commands.add("refresh")
+                if _en["i"]:
+                    new_image = image.objects.get(Q(pk=dev_data["new_image"])) if dev_data.get("new_image", None) else None
+                    if new_image != cur_dev.new_image:
+                        cur_dev.new_image = new_image
+                        print "***"
+                        update_list.add("image")
+                if _en["k"]:
+                    new_kernel = kernel.objects.get(Q(pk=dev_data["new_kernel"])) if dev_data.get("new_kernel", None) else None
+                    new_stage1_flavour = dev_data.get("stage1_flavour", "")
+                    new_kernel_append = dev_data.get("kernel_append", "")
+                    if new_kernel != cur_dev.new_kernel or new_stage1_flavour != cur_dev.stage1_flavour or new_kernel_append != cur_dev.kernel_append:
+                        cur_dev.new_kernel = new_kernel
+                        cur_dev.stage1_flavour = new_stage1_flavour
+                        cur_dev.kernel_append = new_kernel_append
+                        update_list.add("kernel")
+                        _mother_commands.add("refresh")
+                if _en["p"]:
+                    new_part = partition_table.objects.get(Q(pk=dev_data["partition_table"])) if dev_data["partition_table"] else None
+                    if new_part != cur_dev.partition_table:
+                        cur_dev.partition_table = new_part
+                        update_list.add("partition")
+                if _en["b"]:
+                    new_dhcp_mac, new_dhcp_write = (dev_data["dhcp_mac"], dev_data["dhcp_write"])
+                    _bc = False
+                    if new_dhcp_mac != cur_dev.dhcp_mac or new_dhcp_write != cur_dev.dhcp_write:
+                        cur_dev.dhcp_mac = new_dhcp_mac
+                        cur_dev.dhcp_write = new_dhcp_write
+                        _bc = True
+                    if cur_dev.bootnetdevice:
+                        new_driver, new_macaddr = (dev_data["driver"], dev_data["macaddr"])
+                        if new_driver != cur_dev.bootnetdevice.driver or new_macaddr != cur_dev.bootnetdevice.macaddr:
+                            cur_dev.bootnetdevice.driver = new_driver
+                            cur_dev.bootnetdevice.macaddr = new_macaddr
+                            _bc = True
+                    if _bc:
+                        update_list.add("bootdevice")
+                        _mother_commands.add("alter_macaddr")
+                if update_list:
+                    _changed = True
+                    _all_update_list |= update_list
+                if _changed:
+                    cur_dev.save()
+                    if cur_dev.bootnetdevice:
+                        cur_dev.bootnetdevice.save()
+                    # print cur_dev.new_kernel, cur_dev.new_image
+        _lines = []
+        if _mother_commands:
+            for _mother_com in _mother_commands:
+                srv_com = server_command.srv_command(command=_mother_com)
+                srv_com["devices"] = srv_com.builder(
+                    "devices",
+                    srv_com.builder("device", name=cur_dev.name, pk="%d" % (cur_dev.pk)))
+                _res, _log_lines = contact_server(request, "tcp://localhost:8000", srv_com, timeout=10, connection_id="webfrontend_refresh")
+                print "*", _mother_com, _log_lines
+                _lines.extend(_log_lines)
+        if _all_update_list:
+            if len(all_devs) > 1:
+                dev_info_str = "%s: %s" % (logging_tools.get_plural("device", len(all_devs)), ", ".join([unicode(cur_dev) for cur_dev in all_devs]))
+            else:
+                dev_info_str = unicode(all_devs[0])
+            _lines.append((logging_tools.LOG_LEVEL_OK, "updated %s for '%s'" % (", ".join(_all_update_list), dev_info_str)))
+        response = Response(
+            {
+                "log_lines" : _lines
+            }
+        )
+        return response
 
 class get_devlog_info(View):
     @method_decorator(login_required)
     @method_decorator(xml_wrapper)
     def post(self, request):
         _post = request.POST
-        lp_dict = dict([(int(key.split("__")[1]), int(_post[key])) for key in _post.keys() if key.startswith("dev__")])
-        dev_result = device.objects.filter(Q(pk__in=lp_dict.keys()))
+        # import pprint
+        _pk_log_list = json.loads(_post["sel_list"])
+        lp_dict = dict([(key, latest) for key, latest in _pk_log_list])
+        devs = device.objects.filter(Q(pk__in=lp_dict.keys()))
         oldest_pk = min(lp_dict.values() + [0])
         logger.info("request devlogs for %s, oldest devlog_pk is %d" % (
             logging_tools.get_plural("device", len(lp_dict)),
             oldest_pk))
-        xml_resp = E.devlog_info()
-        # lut for device_logs
-        dev_lut, dev_dict = ({}, {})
-        for cur_dev in dev_result:
-            # recv/reqstate are written by mother, here we 'salt' this information with the device XML (pingstate)
-            dev_info = cur_dev.get_xml(full=False)
-            dev_lut[cur_dev.pk] = dev_info
-            dev_dict[cur_dev.pk] = cur_dev
-            xml_resp.append(dev_info)
-        dev_logs = devicelog.objects.filter(Q(pk__gt=oldest_pk) & Q(device__in=dev_result)).select_related("log_source", "log_status", "user")
+        _lines = []
+        dev_logs = devicelog.objects \
+            .filter(Q(pk__gt=oldest_pk) & Q(device__in=devs)) \
+            .select_related("log_source", "log_status", "user") \
+            .order_by("pk")
         logs_transfered = dict([(key, 0) for key in lp_dict.iterkeys()])
         for dev_log in dev_logs:
             if dev_log.pk > lp_dict[dev_log.device_id]:
                 logs_transfered[dev_log.device_id] += 1
-                dev_lut[dev_log.device_id].find("devicelogs").append(dev_log.get_xml())
-        logs_transfered = dict([(key, value) for key, value in logs_transfered.iteritems() if value])
-        logger.info("transfered logs: %s" % (", ".join(["%s: %d" % (unicode(dev_dict[pk]), logs_transfered[pk]) for pk in logs_transfered.iterkeys()]) or "none"))
-        request.xml_response["response"] = xml_resp
+                _lines.append([
+                    dev_log.pk,
+                    dev_log.device_id,
+                    dev_log.log_source_id,
+                    dev_log.user_id,
+                    dev_log.log_status_id,
+                    dev_log.text,
+                    time.mktime(dev_log.date.timetuple())
+                ])
+        return HttpResponse(json.dumps({"devlog_lines" : _lines}), content_type="application/json")
 
 class soft_control(View):
     @method_decorator(login_required)
     @method_decorator(xml_wrapper)
     def post(self, request):
         _post = request.POST
-        cur_dev = device.objects.get(Q(pk=_post["key"].split("__")[1]))
-        soft_state = _post["key"].split("__")[-1]
+        cur_dev = device.objects.get(Q(pk=_post["dev_pk"]))
+        soft_state = _post["command"]
         logger.info("sending soft_control '%s' to device %s" % (soft_state, unicode(cur_dev)))
         srv_com = server_command.srv_command(command="soft_control")
         srv_com["devices"] = srv_com.builder(
@@ -305,13 +265,11 @@ class hard_control(View):
     @method_decorator(xml_wrapper)
     def post(self, request):
         _post = request.POST
-        cd_id, command = (_post["cd_id"],
-                          _post["value"])
-        cur_cd_con = cd_connection.objects.get(Q(pk=cd_id.split("__")[-1]))
-        target_dev = device.objects.select_related("child", "parent").get(Q(pk=cd_id.split("__")[1]))
+        cur_cd_con = cd_connection.objects.select_related("child", "parent").get(Q(pk=_post["cd_pk"]))
+        command = _post["command"]
         logger.info("got hc command '%s' for device '%s' (controling device: %s)" % (
             command,
-            unicode(target_dev),
+            unicode(cur_cd_con.child),
             unicode(cur_cd_con.parent)))
         srv_com = server_command.srv_command(command="hard_control")
         srv_com["devices"] = srv_com.builder(
