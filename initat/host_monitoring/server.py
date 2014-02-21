@@ -617,7 +617,19 @@ class server_code(threading_tools.process_pool):
             if not _init_ok:
                 break
         return _init_ok
+    def _close_modules(self):
+        for cur_mod in self.module_list:
+            if hasattr(cur_mod, "stop_module"):
+                self.log("calling stop_module() for %s" % (cur_mod.name))
+                try:
+                    cur_mod.stop_module()
+                except:
+                    exc_info = process_tools.exception_info()
+                    for log_line in exc_info.log_lines:
+                        self.log(log_line, logging_tools.LOG_LEVEL_CRITICAL)
+                    _init_ok = False
     def loop_post(self):
+        self._close_modules()
         for cur_sock in self.socket_list:
             cur_sock.close()
         self.vector_socket.close()

@@ -142,14 +142,14 @@ class subprocess_struct(object):
         if self.cb_func:
             self.cb_func(self)
         else:
-            self.srv_com["result"].attrib.update({
-                "reply" : "default process() call",
-                "state" : "%d" % (server_command.SRV_REPLY_STATE_ERROR)})
+            self.srv_com.set_result("default process() call", server_command.SRV_REPLY_STATE_ERROR)
     def terminate(self):
         self.popen.kill()
-        self.srv_com["result"].attrib.update({
-            "reply" : "runtime (%s) exceeded" % (logging_tools.get_plural("second", self.Meta.max_runtime)),
-            "state" : "%d" % (server_command.SRV_REPLY_STATE_ERROR)})
+        if self.srv_com:
+            self.srv_com.set_result(
+                "runtime (%s) exceeded" % (logging_tools.get_plural("second", self.Meta.max_runtime)),
+                server_command.SRV_REPLY_STATE_ERROR
+            )
     def send_return(self):
         if not self.__return_sent:
             self.__return_sent = True

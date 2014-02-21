@@ -21,15 +21,15 @@
 
 from initat.host_monitoring import hm_classes
 from initat.host_monitoring import limits
-from lxml import etree # @UnresolvedImports
-from lxml.builder import E # @UnresolvedImports
+from initat.host_monitoring.config import global_config
 import commands
+import datetime
 import logging_tools
 import os
-import pprint
 import process_tools
 import re
 import server_command
+import stat
 import subprocess
 import sys
 import time
@@ -50,6 +50,65 @@ IBV_DEVICES = ["ib"]
 XEN_DEVICES = ["vif"]
 # minimum update time
 MIN_UPDATE_TIME = 4
+# argus path
+ARGUS_TARGET = "/tmp/argus"
+# min free size: 128 MB
+ARGUS_MIN_FREE = 128 * 1024 * 1024
+# max age of files : 4 weeks
+ARGUS_MAX_AGE = 3600 * 24 * 7 * 4
+# max file size before wrap: 32 MB
+ARGUS_MAX_FILE_SIZE = 32 * 1024 * 1024
+
+class argus_proc(object):
+    def __init__(self, proc, interface, arg_path):
+        if not os.path.isdir(ARGUS_TARGET):
+            os.mkdir(ARGUS_TARGET)
+        self.interface = interface
+        self.target_file = os.path.join(ARGUS_TARGET, datetime.datetime.now().strftime("argus_%%s_%Y-%m-%d_%H:%M:%S") % (self.interface))
+        self.command = "%s -i %s -w %s" % (arg_path, interface, self.target_file)
+        self.popen = None
+        self.proc = proc
+        self.start_time = time.time()
+        # if not a popen call
+        self.terminated = False
+        self.log("commandline is '%s'" % (self.command))
+        self.run()
+    def check_file_size(self):
+        _wrap = False
+        if os.path.isfile(self.target_file):
+            cur_size = os.stat(self.target_file)[stat.ST_SIZE]
+            if cur_size > ARGUS_MAX_FILE_SIZE:
+                _wrap = True
+                self.log("wrapping because file os too big (%s > %s)" % (
+                    logging_tools.get_size_str(cur_size),
+                    logging_tools.get_size_str(ARGUS_MAX_FILE_SIZE),
+                ), logging_tools.LOG_LEVEL_WARN)
+        return _wrap
+    def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
+        self.proc.log("[ar %s] %s" % (self.interface, what), log_level)
+    def run(self):
+        self.popen = subprocess.Popen(self.command, shell=True, stderr=subprocess.PIPE, stdout=subprocess.PIPE)
+        self.log("pid is %d" % (self.popen.pid))
+    def communicate(self):
+        if self.popen:
+            return self.popen.communicate()
+        else:
+            return ("", "")
+    def finished(self):
+        self.result = self.popen.poll()
+        return self.result
+    def terminate(self):
+        self.popen.kill()
+
+class compress_job(object):
+    def __init__(self, cmd, f_name):
+        self.command = "%s %s" % (cmd, os.path.join(ARGUS_TARGET, f_name))
+        self.run()
+    def run(self):
+        self.popen = subprocess.Popen(self.command, shell=True, stderr=subprocess.PIPE, stdout=subprocess.PIPE)
+    def finished(self):
+        self.result = self.popen.poll()
+        return self.result
 
 class _general(hm_classes.hm_module):
     class Meta:
@@ -80,9 +139,101 @@ class _general(hm_classes.hm_module):
         else:
             self.log("no iptables found", logging_tools.LOG_LEVEL_WARN)
         self.iptables_path = iptables_path
+        # check for argus
+        argus_path = process_tools.find_file("argus")
+        if argus_path:
+            self.log("argus found at %s" % (argus_path))
+        else:
+            self.log("no argus found", logging_tools.LOG_LEVEL_WARN)
+        if global_config["RUN_ARGUS"] and argus_path:
+            self.log("argus monitoring is enabled")
+            self.__bzip2_path = process_tools.find_file("bzip2")
+            self.__argus_path = argus_path
+            self.__argus_interfaces = set()
+            self.__argus_map = {}
+            self.__argus_ignore = re.compile("^(lo|vnet.*|usb.*)$")
+            self.__compress_jobs = []
+            self._compress_files()
+        else:
+            self.__argus_path = None
+    def _check_free_space(self):
+        _stat = os.statvfs(ARGUS_TARGET)
+        _cur_free = _stat.f_bavail * _stat.f_bsize
+        if _cur_free > ARGUS_MIN_FREE:
+            return True
+        else:
+            self.log("not enough free space for %s: %s < %s" % (
+                ARGUS_TARGET,
+                logging_tools.get_size_str(_cur_free),
+                logging_tools.get_size_str(ARGUS_MIN_FREE),
+                ))
+            return False
+    def _compress_files(self):
+        if os.path.isdir(ARGUS_TARGET) and self.__bzip2_path:
+            _in_flight = [struct.target_file for struct in self.__argus_map.itervalues()]
+            _files = [entry for entry in os.listdir(ARGUS_TARGET) if not entry.count(".") and entry not in _in_flight]
+            if _files:
+                cur_time = time.time()
+                _to_delete = [entry for entry in os.listdir(ARGUS_TARGET) if abs(os.stat(os.path.join(ARGUS_TARGET, entry))[stat.ST_CTIME] - cur_time) > ARGUS_MAX_AGE]
+                _to_compress = [entry for entry in _files if entry not in _to_delete]
+                if _to_delete:
+                    self.log("%s to delete: %s" % (
+                        logging_tools.get_plural("file", len(_to_delete)),
+                        ", ".join(sorted(_to_delete))
+                        ))
+                    [os.unlink(os.path.join(ARGUS_TARGET, _file)) for _file in _to_delete]
+                if _to_compress:
+                    self.__compress_jobs.extend([compress_job(self.__bzip2_path, _file) for _file in _to_compress])
+    def stop_module(self):
+        for cur_if, _struct in self.__argus_map.iteritems():
+            # _struct.terminate()
+            if _struct.finished() is None:
+                _struct.terminate()
+            self._handle_argus_stop(_struct)
+        # time.sleep(60)
+    def _handle_argus_stop(self, struct):
+        for log_type, data in zip([logging_tools.LOG_LEVEL_OK, logging_tools.LOG_LEVEL_ERROR], struct.communicate()):
+            for line in data.split("\n"):
+                if line.strip():
+                    struct.log(line, log_type)
+    def _check_argus(self):
+        _current_if = set([_val.strip() for _val in [line.split(":")[0] for line in file("/proc/net/dev", "r").read().split("\n") if not line.count("|")] if _val.strip() and not self.__argus_ignore.match(_val.strip())])
+        _new_if = _current_if - self.__argus_interfaces
+        if self._check_free_space():
+            for new_if in _new_if:
+                self.__argus_map[new_if] = argus_proc(self, new_if, self.__argus_path)
+                self.__argus_interfaces.add(new_if)
+        _failed = set()
+        for cur_if, _struct in self.__argus_map.iteritems():
+            _stop = False
+            if _struct.finished() is None:
+                if _struct.check_file_size():
+                    # filesize is too big (or too old), wrap
+                    _struct.terminate()
+                    _struct.finished()
+                    _stop = True
+            else:
+                _stop = True
+            if _stop:
+                self._handle_argus_stop(_struct)
+                _failed.add(cur_if)
+                self._compress_files()
+        if self.__compress_jobs:
+            _done = [entry for entry in self.__compress_jobs if entry.finished() is not None]
+            self.log("%s, %d done" % (
+                logging_tools.get_plural("compress job", len(self.__compress_jobs)),
+                len(_done)))
+            self.__compress_jobs = [entry for entry in self.__compress_jobs if entry.result is None]
+        if _failed:
+            for _entry in _failed:
+                self.log("removed interface %s" % (_entry), logging_tools.LOG_LEVEL_WARN)
+                del self.__argus_map[_entry]
+                self.__argus_interfaces.remove(_entry)
     def init_machine_vector(self, mv):
         self.act_nds = netspeed(self.ethtool_path, self.ibv_devinfo_path) # self.bonding_devices)
     def update_machine_vector(self, mv):
+        if self.__argus_path:
+            self._check_argus()
         try:
             self._net_int(mv)
         except:

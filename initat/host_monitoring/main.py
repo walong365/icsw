@@ -59,6 +59,7 @@ def main():
         ("BACKLOG_SIZE"        , configfile.int_c_var(5, help_string="backlog size for 0MQ sockets [%(default)d]")),
         ("VERBOSE"             , configfile.int_c_var(0, help_string="set verbose level [%(default)d]", short_options="v", only_commandline=True)),
         ("OBJGRAPH"            , configfile.bool_c_var(False, help_string="enable objgraph [%(default)c]", only_commandline=True)),
+        ("RUN_ARGUS"           , configfile.bool_c_var(False, help_string="enable argus [%(default)c]")),
         ("NICE_LEVEL"          , configfile.int_c_var(10, help_string="nice level [%(default)d]")),
         ("PID_NAME"            , configfile.str_c_var("%s/%s" % (prog_name,
                                                                  prog_name)))])
