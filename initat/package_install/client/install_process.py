@@ -359,7 +359,7 @@ class zypper_install_process(install_process):
         # print etree.tostring(cur_pdc, pretty_print=True)
         if cur_pdc.tag == "special_command":
             if cur_pdc.attrib["command"] == "refresh":
-                cur_pdc.atrib["pre_command"] = "/usr/bin/zypper -q -x refresh"
+                cur_pdc.attrib["pre_command"] = "/usr/bin/zypper -q -x refresh"
         else:
             pack_xml = cur_pdc[0]
             if cur_pdc.attrib["target_state"] == "keep":
