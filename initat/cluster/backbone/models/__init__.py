@@ -1936,10 +1936,13 @@ class kernel(models.Model):
 
 class kernel_serializer(serializers.ModelSerializer):
     class Meta:
+        # why not all fields ? FIXME, check
         model = kernel
         fields = ("idx", "name", "enabled", "kernel_version", "version",
             "release", "bitcount", "initrd_build_set", "kernel_build_set",
-            "new_kernel", "act_kernel", "comment", "target_module_list", "module_list")
+            "new_kernel", "act_kernel", "comment", "target_module_list", "module_list",
+            "stage1_lo_present", "stage1_cpio_present", "stage1_cramfs_present", "stage2_present",
+            )
 
 class initrd_build(models.Model):
     idx = models.AutoField(primary_key=True)
