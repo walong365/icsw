@@ -1822,7 +1822,7 @@ class image(models.Model):
     device = models.IntegerField(null=True)
     build_lock = models.BooleanField(default=False)
     # size in Byte
-    size = models.IntegerField(default=0)
+    size = models.BigIntegerField(default=0)
     size_string = models.TextField(blank=True, default="")
     sys_vendor = models.CharField(max_length=192, blank=True)
     sys_version = models.CharField(max_length=192, blank=True)

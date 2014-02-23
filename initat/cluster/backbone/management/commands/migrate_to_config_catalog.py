@@ -37,7 +37,7 @@ class Command(BaseCommand):
                 name="local",
                 url="http://www.initat.org/",
                 author="Andreas Lang-Nevyjel")
-            print "created %s" % (unicode(def_cc))
+            print "created config_catalog '%s'" % (unicode(def_cc))
             for conf in config.objects.all():
                 conf.config_catalog = def_cc
                 conf.save()
