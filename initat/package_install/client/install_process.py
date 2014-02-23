@@ -187,6 +187,11 @@ class install_process(threading_tools.process_obj):
             if send_return:
                 # remove from package_commands
                 self.pdc_done(hc_sc.data)
+        else:
+            # remove other commands (for instance refresh)
+            new_list = [cur_com for cur_com in self.package_commands if cur_com != hc_sc.data]
+            self.package_commands = new_list
+            self._process_commands()
         del hc_sc
     def pdc_done(self, cur_pdc):
         self.log("pdc done")
@@ -280,6 +285,10 @@ class install_process(threading_tools.process_obj):
                     self.log("empty package_list, removing")
             else:
                 self.log("unknown command '%s', ignoring..." % (cur_com), logging_tools.LOG_LEVEL_CRITICAL)
+        else:
+            self.log("handle_pending_commands: %d pending, %d package" % (
+                len(self.pending_commands),
+                len(self.package_commands)))
     def get_always_latest(self, pack_xml):
         return int(pack_xml.attrib.get("always_latest", "0"))
     def package_name(self, pack_xml):
