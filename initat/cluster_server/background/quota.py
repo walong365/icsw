@@ -130,7 +130,7 @@ class quota_stuff(bg_stuff):
                                        ("email"     , db_rec.email),
                                        ("firstname" , db_rec.first_name),
                                        ("lastname"  , db_rec.last_name)]:
-                        self.__user_dict[db_rec["uid"]][key] = value
+                        self.__user_dict[db_rec.uid][key] = value
                 else:
                     # new record
                     self.__user_dict[db_rec["uid"]] = {"source"    : "SQL",
@@ -138,8 +138,8 @@ class quota_stuff(bg_stuff):
                                                        "login"     : db_rec.login,
                                                        "email"     : db_rec.email,
                                                        "firstname" : db_rec.first_name,
-                                                       "lastname"  : db_rec.las_name}
-                act_dict = self.__user_dict[db_rec["uid"]]
+                                                       "lastname"  : db_rec.last_name}
+                act_dict = self.__user_dict[db_rec.uid]
                 act_dict["info"] = "uid %d, login %s (from SQL), (%s %s, %s)" % (
                     act_dict["uid"],
                     act_dict["login"],
