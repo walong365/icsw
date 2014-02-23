@@ -27,22 +27,22 @@ import os
 
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "initat.cluster.settings")
 
+from django.db import connection
+from django.db.models import Q
+from initat.cluster.backbone.models import image
+from lxml import etree # @UnresolvedImports
 import config_tools
 import configfile
 import logging_tools
 import pprint
 import process_tools
 import shutil
-import subprocess
 import stat
 import statvfs
+import subprocess
 import tempfile
 import threading_tools
 import time
-from django.db import connection
-from django.db.models import Q
-from initat.cluster.backbone.models import image
-from lxml import etree # @UnresolvedImports
 
 global_config = configfile.get_global_config(process_tools.get_programm_name())
 
