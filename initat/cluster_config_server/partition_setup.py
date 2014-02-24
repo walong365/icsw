@@ -29,7 +29,7 @@ class partition_setup(object):
     def __init__(self, conf):
         root_dev = None
         part_valid = False
-        part_list = partition.objects.filter(Q(partition_disc__partition_table=conf.conf_dict["device"].act_partition_table)).select_related("partition_disc", "partition_disc__partition_table", "partition_fs")
+        part_list = partition.objects.filter(Q(partition_disc__partition_table=conf.conf_dict["device"].partition_table)).select_related("partition_disc", "partition_disc__partition_table", "partition_fs")
         if len(part_list):
             part_valid = True
             disc_dict, fstab, sfdisk, parted = ({}, [], [], [])
@@ -110,7 +110,7 @@ class partition_setup(object):
                 old_pnum = act_pnum
             print "  creating partition info for partition_table '%s' (root_device %s, partition postfix is '%s')" % (pt_name, root_dev, part_pf)
             if part_valid:
-                for sys_part in sys_partition.objects.filter(Q(partition_table=conf.conf_dict["device"].act_partition_table)):
+                for sys_part in sys_partition.objects.filter(Q(partition_table=conf.conf_dict["device"].partition_table)):
                     fstab.append("%-20s %-10s %-10s %-10s %d %d" % (
                         sys_part.name,
                         sys_part.mountpoint,
