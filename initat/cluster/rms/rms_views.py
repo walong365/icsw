@@ -5,9 +5,9 @@ from django.contrib.auth.decorators import login_required
 from django.http import HttpResponse
 from django.utils.decorators import method_decorator
 from django.views.generic import View
+from initat.cluster.backbone.render import render_me
 from initat.cluster.frontend.helper_functions import contact_server, xml_wrapper
 from initat.cluster.rms.rms_addons import *
-from initat.core.render import render_me
 from lxml import etree # @UnresolvedImport
 from lxml.builder import E # @UnresolvedImport
 import json
@@ -67,7 +67,17 @@ def get_node_options(request):
 class overview(View):
     @method_decorator(login_required)
     def get(self, request):
+        res = _rms_headers(request)
+        if sge_tools is not None:
+            for change_obj in RMS_ADDONS:
+                change_obj.modify_headers(res)
+        header_dict = {}
+        for _entry in res:
+            _sub_list = header_dict.setdefault(_entry.tag, [])
+            for _header in _entry[0]:
+                _sub_list.append(_header.tag)
         return render_me(request, "rms_overview.html", {
+            "RMS_HEADERS" : json.dumps(header_dict)
         })()
 
 def _rms_headers(request):
@@ -109,7 +119,7 @@ def _value_to_str(in_value):
     else:
         return in_value
 
-def _sort_list(in_list, _post):
+def _sort_list(in_list, _post, angular_mode=False):
     # for key in sorted(_post):
     #    print key, _post[key]
     start_idx = int(_post.get("iDisplayStart", "0"))
@@ -131,7 +141,11 @@ def _sort_list(in_list, _post):
     # reformat
     show_list = [[_value_to_str(value) for value in line] for line in in_list[start_idx : start_idx + num_disp]]
     # print show_list
-    return {"sEcho"                : int(_post.get("sEcho", "28")),
+    if angular_mode:
+        return show_list
+    else:
+        return {
+            "sEcho"                : int(_post.get("sEcho", "28")),
             "iTotalRecords"        : total_data_len,
             "iTotalDisplayRecords" : filter_data_len,
             "aaData"               : show_list}
@@ -140,6 +154,7 @@ class get_rms_json(View):
     @method_decorator(login_required)
     def post(self, request):
         _post = request.POST
+        angular_mode = "angular" in _post
         my_sge_info.update()
         run_job_list = sge_tools.build_running_list(my_sge_info, get_job_options(request), user=request.user)
 
@@ -173,38 +188,11 @@ class get_rms_json(View):
                     )
                 fc_dict[file_el.attrib["full_id"]] = list(reversed(sorted(cur_fcd, cmp=lambda x, y: cmp(x[3], y[3]))))
         json_resp = {
-            "run_table"  : _sort_list(run_job_list, _post),
-            "wait_table" : _sort_list(wait_job_list, _post),
-            "node_table" : _sort_list(node_list, _post),
+            "run_table"  : _sort_list(run_job_list, _post, angular_mode),
+            "wait_table" : _sort_list(wait_job_list, _post, angular_mode),
+            "node_table" : _sort_list(node_list, _post, angular_mode),
             "files"      : fc_dict,
         }
-        return HttpResponse(json.dumps(json_resp), mimetype="application/json")
-
-class get_run_jobs_xml(View):
-    @method_decorator(login_required)
-    def post(self, request):
-        _post = request.POST
-        my_sge_info.update()
-        run_job_list = sge_tools.build_running_list(my_sge_info, get_job_options(request), user=request.user)
-        json_resp = _sort_list(run_job_list, _post)
-        return HttpResponse(json.dumps(json_resp), mimetype="application/json")
-
-class get_wait_jobs_xml(View):
-    @method_decorator(login_required)
-    def post(self, request):
-        _post = request.POST
-        my_sge_info.update()
-        wait_job_list = sge_tools.build_waiting_list(my_sge_info, get_job_options(request), user=request.user)
-        json_resp = _sort_list(wait_job_list, _post)
-        return HttpResponse(json.dumps(json_resp), mimetype="application/json")
-
-class get_node_xml(View):
-    @method_decorator(login_required)
-    def post(self, request):
-        _post = request.POST
-        my_sge_info.update()
-        node_list = sge_tools.build_node_list(my_sge_info, get_node_options(request))
-        json_resp = _sort_list(node_list, _post)
         return HttpResponse(json.dumps(json_resp), mimetype="application/json")
 
 class control_job(View):

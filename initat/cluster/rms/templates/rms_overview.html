@@ -4,11 +4,34 @@
 
 {% block title %}{% trans "RMS Overview" %}{% endblock %}
 
+{% block angular %}{% include "angular/rms.cs" %}{% endblock %}
+
 {% block content %}
 
-<h1 class="center">RMS Overview, <input type="button" id="reload_button" value="reload"></input></h1>
+{% verbatim %}
 
-<div id="top_rms_div"></div>
+<div id="icsw.rms">
+    <h2>RMS Overview</h2>
+    <div ng-controller="rms_ctrl">
+        <tabset>
+            <tab heading="running ({{ run_list.length }})">
+                <running></running>
+            </tab>
+            <tab heading="waiting ({{ wait_list.length }})">
+                <waiting></waiting>
+            </tab>
+            <tab heading="node ({{ node_list.length }})">
+                <node></node>
+            </tab>
+        </tabset>
+    </div>
+</div>
+
+{% endverbatim %}
+
+<!-- <h1 class="center">RMS Overview, <input type="button" id="reload_button" value="reload"></input></h1> -->
+
+<div id="top_rms_divx"></div>
 
  <script type="text/javascript">
 
@@ -22,6 +45,10 @@ addHandlers = ->
     my_view.setup()
 
 $(document).ready(addHandlers);
+
+angular.element(document).ready(() ->
+    angular.bootstrap($("div[id='icsw.rms']"), ["icsw.rms"])
+)
 
 {% endinlinecoffeescript %}
 
