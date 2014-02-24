@@ -17,6 +17,11 @@ class DeviceType(factory.django.DjangoModelFactory):
     FACTORY_FOR = device_type
     FACTORY_DJANGO_GET_OR_CREATE = ("identifier",)
     priority = 0
+    @factory.post_generation
+    def priority(self, create, extracted, **kwargs):
+        if self.priority != extracted:
+            self.priority = extracted
+            self.save()
 
 class PartitionFS(factory.django.DjangoModelFactory):
     FACTORY_FOR = partition_fs

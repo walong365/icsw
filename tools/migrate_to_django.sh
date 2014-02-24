@@ -40,6 +40,15 @@ echo "SELECT * FROM user" | mysql_session.sh cdbase -X > ${user_xml}
 echo "protecting ${group_xml} and ${user_xml}"
 chmod 0400 ${group_xml} ${user_xml}
 
+C_DIR="/opt/python-init/lib/python/site-packages"
+echo "clearing migrations"
+for mig_dir in static_precompiler reversion django/contrib/auth initat/cluster/backbone initat/cluster/liebherr ; do
+    fm_dir="${LIB_DIR}/${mig_dir}/migrations"
+    if [ -d ${fm_dir} ] ; then
+	echo "clearing migration dir ${fm_dir}"
+	rm -rf ${fm_dir}
+    fi
+done
 C_DIR="/opt/python-init/lib/python/site-packages/initat/cluster/"
 CLUSTER_DIR=/opt/cluster
 MIG_DIR="${C_DIR}/backbone/migrations/"
@@ -53,7 +62,7 @@ else
     echo "sync database via django"
 
     # put old models file in place, a little hacky but working
-    cp -a ${C_DIR}/backbone/models.py ${C_DIR}/backbone/models_new.py
+    mv ${C_DIR}/backbone/models ${C_DIR}/backbone/models_new
     cp -a ${C_DIR}/backbone/models_old_csw.py ${C_DIR}/backbone/models.py
     # delete all created pyo/pyc models files
     rm -f ${C_DIR}/backbone/models.py?
@@ -83,12 +92,19 @@ else
 
     # restore new models file
     cp -a ${C_DIR}/backbone/models.py ${C_DIR}/backbone/models_old_csw.py
-    cp -a ${C_DIR}/backbone/models_new.py ${C_DIR}/backbone/models.py
+    mv ${C_DIR}/backbone/models_new ${C_DIR}/backbone/models
+    rm ${C_DIR}/backbone/models.py
     # delete all created pyo/pyc models files
     rm -f ${C_DIR}/backbone/models.py?
     # restore fixture file
     cp -a ${C_DIR}/backbone/fixtures/initial_data.xml ${C_DIR}/backbone/fixtures/initial_data_old_csw.xml
     cp -a ${C_DIR}/backbone/fixtures/initial_data_new.xml ${C_DIR}/backbone/fixtures/initial_data.xml
+
+    
+    ${C_DIR}/manage.py syncdb
+    echo "please comment all relations of csw_permission in models/user.py"
+    echo "please comment unique_together for device [name, domain_tree]"
+    echo "please comment unique_together for package [name, version, ...]"
 
     echo "database migrated. Now please call"
     echo " - ${CLUSTER_DIR}/sbin/create_django_users.py                           to migrate the users or"
@@ -97,5 +113,7 @@ else
     echo " - ${CLUSTER_DIR}/sbin/fix_models.py ${dump_name}.data                  to fix wrong foreign keys (from 0 to None)"
     echo " - ${CLUSTER_DIR}/bin/migrate_to_domain_name.py --init                  to init the domain name system"
     echo " - ${CLUSTER_DIR}/bin/migrate_to_domain_name.py                         to migrate existing network names to the new domain name system"
+    echo
+    
 fi
 

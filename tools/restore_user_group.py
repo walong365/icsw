@@ -1,6 +1,6 @@
 #!/usr/bin/python-init -Otu
 #
-# Copyright (C) 2013 Andreas Lang-Nevyjel
+# Copyright (C) 2013-2014 Andreas Lang-Nevyjel
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -24,12 +24,12 @@ import sys
 
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "initat.cluster.settings")
 
-import codecs
-import logging_tools
-import pprint
 from django.db.models import Q
 from initat.cluster.backbone.models import group, user
 from lxml import etree # @UnresolvedImport
+import codecs
+import logging_tools
+import pprint
 
 def main():
     if len(sys.argv) != 3:
@@ -121,6 +121,13 @@ def main():
                     if dst_key == "password":
                         new_val = "CRYPT:%s" % (new_val)
                     setattr(db_obj, dst_key, new_val)
+            if c_type == "group":
+                db_obj.homestart = str(db_obj.homestart)
+                if not db_obj.homestart.startswith("/"):
+                    db_obj.homestart = "/%s" % (db_obj.homestart)
+            elif c_type == "user":
+                if db_obj.aliases == "None":
+                    db_obj.aliases = ""
             db_obj.save()
             if c_type == "group":
                 # store by primary value and db_pk
