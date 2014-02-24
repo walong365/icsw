@@ -104,14 +104,24 @@ class argus_proc(object):
         self.popen.kill()
 
 class compress_job(object):
-    def __init__(self, cmd, f_name):
+    def __init__(self, proc, cmd, f_name):
+        self.f_name = f_name
         self.command = "%s %s" % (cmd, os.path.join(ARGUS_TARGET, f_name))
+        self.proc = proc
+        self.log("start")
         self.run()
+    def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
+        self.proc.log("[compress %s] %s" % (self.f_name, what), log_level)
     def run(self):
         self.popen = subprocess.Popen(self.command, shell=True, stderr=subprocess.PIPE, stdout=subprocess.PIPE)
     def finished(self):
         self.result = self.popen.poll()
         return self.result
+    def communicate(self):
+        if self.popen:
+            return self.popen.communicate()
+        else:
+            return ("", "")
 
 class _general(hm_classes.hm_module):
     class Meta:
@@ -190,10 +200,12 @@ class _general(hm_classes.hm_module):
             _in_flight = [struct.target_file for struct in self.__argus_map.itervalues()]
             try:
                 _files = [entry for entry in os.listdir(ARGUS_TARGET) if not entry.count(".") and entry not in _in_flight]
+                _bz2_files = [entry for entry in os.listdir(ARGUS_TARGET) if entry.endswith(".bz2")]
                 if _files:
                     cur_time = time.time()
                     _to_delete = [entry for entry in os.listdir(ARGUS_TARGET) if abs(os.stat(os.path.join(ARGUS_TARGET, entry))[stat.ST_CTIME] - cur_time) > ARGUS_MAX_AGE]
                     _to_compress = [entry for entry in _files if entry not in _to_delete]
+                    _to_delete.extend([entry for entry in _bz2_files if entry[:-4] in _to_compress])
                     if _to_delete:
                         self.log("%s to delete: %s" % (
                             logging_tools.get_plural("file", len(_to_delete)),
@@ -201,7 +213,7 @@ class _general(hm_classes.hm_module):
                             ))
                         [os.unlink(os.path.join(ARGUS_TARGET, _file)) for _file in _to_delete]
                     if _to_compress:
-                        self.__compress_jobs.extend([compress_job(self.__bzip2_path, _file) for _file in _to_compress])
+                        self.__compress_jobs.extend([compress_job(self, self.__bzip2_path, _file) for _file in _to_compress])
             except:
                 self.log("error handling compressed / old files: %s" % (process_tools.get_except_info()), logging_tools.LOG_LEVEL_ERROR)
     def stop_module(self):
@@ -209,9 +221,9 @@ class _general(hm_classes.hm_module):
             # _struct.terminate()
             if _struct.finished() is None:
                 _struct.terminate()
-            self._handle_argus_stop(_struct)
+            self._handle_ended_job(_struct)
         # time.sleep(60)
-    def _handle_argus_stop(self, struct):
+    def _handle_ended_job(self, struct):
         for log_type, data in zip([logging_tools.LOG_LEVEL_OK, logging_tools.LOG_LEVEL_ERROR], struct.communicate()):
             for line in data.split("\n"):
                 if line.strip():
@@ -237,7 +249,7 @@ class _general(hm_classes.hm_module):
             else:
                 _stop = True
             if _stop:
-                self._handle_argus_stop(_struct)
+                self._handle_ended_job(_struct)
                 _failed.add(cur_if)
                 self._compress_files()
         if self.__compress_jobs:
@@ -245,6 +257,8 @@ class _general(hm_classes.hm_module):
             self.log("%s, %d done" % (
                 logging_tools.get_plural("compress job", len(self.__compress_jobs)),
                 len(_done)))
+            for _cj in _done:
+                self._handle_ended_job(_cj)
             self.__compress_jobs = [entry for entry in self.__compress_jobs if entry.result is None]
         if _failed:
             for _entry in _failed:
