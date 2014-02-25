@@ -25,7 +25,7 @@
 from django.db import connection
 from django.db.models import Q
 from initat.cluster.backbone.models import kernel, device, image, macbootlog, mac_ignore, \
-     cluster_timezone, cached_log_status, cached_log_source, log_source, devicelog
+     cluster_timezone, cached_log_status, cached_log_source, log_source, devicelog, partition_table
 from initat.mother.command_tools import simple_command
 from initat.mother.config import global_config
 from lxml import etree # @UnresolvedImport
@@ -809,7 +809,7 @@ class host(machine):
                         else:
                             num_ok += 1
                             if obj_name:
-                                set_obj = gobals()[obj_name].objects.get(Q(name=line))
+                                set_obj = globals()[obj_name].objects.get(Q(name=line))
                                 print set_obj
     # #                            self.__dc.execute("SELECT x.%s_idx FROM %s x WHERE x.name=%%s" % (orig_db, orig_db), line)
     # #                            if self.__dc.rowcount:
