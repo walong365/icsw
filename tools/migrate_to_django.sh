@@ -40,7 +40,7 @@ echo "SELECT * FROM user" | mysql_session.sh cdbase -X > ${user_xml}
 echo "protecting ${group_xml} and ${user_xml}"
 chmod 0400 ${group_xml} ${user_xml}
 
-C_DIR="/opt/python-init/lib/python/site-packages"
+LIB_DIR="/opt/python-init/lib/python/site-packages"
 echo "clearing migrations"
 for mig_dir in static_precompiler reversion django/contrib/auth initat/cluster/backbone initat/cluster/liebherr ; do
     fm_dir="${LIB_DIR}/${mig_dir}/migrations"
