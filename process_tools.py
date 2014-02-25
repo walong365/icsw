@@ -515,6 +515,7 @@ class meta_server_info(object):
     def get_pids(self):
         return self.__pids
     def set_pids(self, in_pids):
+        # dangerous, pid_fuzzy not set
         self.__pids = in_pids
     pids = property(get_pids, set_pids)
     def get_unique_pids(self):
@@ -592,12 +593,13 @@ class meta_server_info(object):
             # search pids
             pids_found = [key for key, value in act_dict.items() if value["name"] == self.__exe_name]
             self.__pids = sum([[key] * act_pids.get(key, 1) for key in pids_found], [])
+            self.__pid_names.update({key : self.__exe_name for key in pids_found})
         self.__pids_found = dict([(cur_pid, act_pids[cur_pid]) for cur_pid in self.__pids if cur_pid in act_pids.keys()])
         # structure for check_scripts
         self.pids_found = sum([[cur_pid] * act_pids.get(cur_pid, 0) for cur_pid in self.__pids_found.iterkeys()], [])
         self.__pids_expected = dict([(cur_pid, (
-            self.__pids.count(cur_pid) + self.__pid_fuzzy[cur_pid][0],
-            self.__pids.count(cur_pid) + self.__pid_fuzzy[cur_pid][1])
+            self.__pids.count(cur_pid) + self.__pid_fuzzy.get(cur_pid, (0, 0))[0],
+            self.__pids.count(cur_pid) + self.__pid_fuzzy.get(cur_pid, (0, 0))[1])
             ) for cur_pid in self.__pids])
         # print self.__name, self.__pids_found, self.__pids_expected, self.__pid_fuzzy
         bound_dict = {}
