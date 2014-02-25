@@ -26,9 +26,6 @@ import sys
 
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "initat.cluster.settings")
 
-import logging_tools
-import process_tools
-import time
 from django.db.models import Q
 from initat.cluster.backbone.models import wc_files, tree_node
 from initat.cluster_config_server.base_objects import new_config_object, dir_object, copy_object, \
@@ -36,6 +33,10 @@ from initat.cluster_config_server.base_objects import new_config_object, dir_obj
 from initat.cluster_config_server.generators import do_fstab, do_nets, do_routes, do_ssh, do_uuid, \
     do_etc_hosts, do_hosts_equiv
 from initat.cluster_config_server.partition_setup import partition_setup
+import base64
+import logging_tools
+import process_tools
+import time
 
 class tree_node_g(object):
     """ tree node representation for intermediate creation of tree_node structure """
@@ -135,6 +136,9 @@ class tree_node_g(object):
         cur_tn.save()
         cur_tn.node = self
         # print "wn", self.path, "**", "".join(self.content_node.content)
+        _c = "".join(self.content_node.content)
+        if self.content_node.binary:
+            _c = base64.b64encode(_c)
         cur_wc = wc_files(
             device=cur_bc.conf_dict["device"],
             dest=self.path,
@@ -145,7 +149,8 @@ class tree_node_g(object):
             gid=self.content_node.gid,
             dest_type=self.content_node.c_type,
             source=self.content_node.source,
-            content="".join(self.content_node.content))
+            binary=self.content_node.binary,
+            content=_c)
         cur_wc.save()
         node_list.append((cur_tn, cur_wc))
         if self.is_dir:

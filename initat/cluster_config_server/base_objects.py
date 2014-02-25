@@ -31,6 +31,7 @@ class new_config_object(object):
         self.dest = destination
         self.c_type = c_type
         self.content = []
+        self.binary = False
         self.source_configs = set()
         self.source = kwargs.get("source", "")
         self.uid, self.gid = (0, 0)
@@ -79,6 +80,8 @@ class new_config_object(object):
             self.content.append(line.tostring())
         return self
     def bin_append(self, in_bytes):
+        # force binary
+        self.binary = True
         if type(in_bytes) == type(array.array("b")):
             self.content.append(in_bytes.tostring())
         else:
