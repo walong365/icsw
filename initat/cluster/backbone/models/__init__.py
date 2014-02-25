@@ -2395,8 +2395,9 @@ class wc_files(models.Model):
     dest = models.CharField(max_length=1024)
     # error
     error_flag = models.BooleanField(default=False)
-    # content, defaults to the empty string
+    # content, defaults to the empty string, base64-encoded for binary data
     content = models.TextField(blank=True, default="")
+    binary = models.BooleanField(default=False)
     date = models.DateTimeField(auto_now_add=True)
     def get_xml(self):
         try:
