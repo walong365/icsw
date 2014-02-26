@@ -2,7 +2,7 @@
 
 from django.core.exceptions import ValidationError
 from django.db import models
-from django.db.models import Q, signals
+from django.db.models import Q, signals, get_model
 from django.dispatch import receiver
 from initat.cluster.backbone.models.functions import _check_empty_string, \
     _check_integer
@@ -258,6 +258,16 @@ class net_ip(models.Model):
         )
     def __unicode__(self):
         return self.ip
+    @property
+    def full_name(self):
+        if not self.domain_tree_node_id:
+            self.domain_tree_node = get_model("backbone", "domain_tree_node").objects.get(Q(depth=0))
+            self.save()
+        if self.domain_tree_node.full_name:
+            return ".".join([self.netdevice.device.name, self.domain_tree_node.full_name])
+        else:
+            return self.netdevice.device.name
+        return
     class Meta:
         db_table = u"netip"
         app_label = "backbone"
