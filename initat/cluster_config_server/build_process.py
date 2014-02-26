@@ -23,7 +23,8 @@
 
 from django.db import connection
 from django.db.models import Q
-from initat.cluster.backbone.models import device, network, config, cached_log_status, log_source
+from initat.cluster.backbone.models import device, network, config, cached_log_status, log_source, \
+    net_ip
 from initat.cluster_config_server.build_client import build_client
 from initat.cluster_config_server.build_container import generated_tree, build_container
 from initat.cluster_config_server.config import global_config
@@ -261,7 +262,8 @@ class build_process(threading_tools.process_obj):
                                 actual_server.device.name), logging_tools.LOG_LEVEL_WARN)
                     if act_server:
                         server_ip = routing_info[2][1][0]
-                        conf_dict[server_type] = act_server.device.full_name
+                        # map from server_ip to localized name
+                        conf_dict[server_type] = net_ip.objects.get(Q(ip=server_ip)).full_name
                         conf_dict["%s_ip" % (server_type)] = server_ip
                         cur_c.log("  %20s: %-25s (IP %15s)%s" % (
                             server_type,
