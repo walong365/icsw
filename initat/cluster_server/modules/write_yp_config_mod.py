@@ -1,6 +1,6 @@
 #!/usr/bin/python -Ot
 #
-# Copyright (C) 2007,2012,2013 Andreas Lang-Nevyjel
+# Copyright (C) 2007,2012-2014 Andreas Lang-Nevyjel
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -21,7 +21,7 @@
 
 from django.db.models import Q
 from initat.cluster.backbone.models import user, group, device_config, \
-    config_str, home_export_list
+    config_str, home_export_list, device
 from initat.cluster_server.config import global_config
 import commands
 import cs_base_class
@@ -73,22 +73,31 @@ class write_yp_config(cs_base_class.server_com):
         # normal exports
         exp_entries = device_config.objects.filter(
             Q(config__name__icontains="export") &
-            Q(device__device_type__identifier="H")).prefetch_related("config__config_str_set").select_related("device")
+            Q(device__device_type__identifier__in=["H", "MD"])).prefetch_related("config__config_str_set").select_related(
+                "device",
+                "device__device_type",
+                "device__device_group",
+                )
         export_dict = {}
         ei_dict = {}
         for entry in exp_entries:
-            dev_name, act_pk = (entry.device.name,
-                                entry.config.pk)
-            ei_dict.setdefault(
-                dev_name, {}).setdefault(
-                    act_pk, {
-                        "export"       : None,
-                        "import"       : None,
-                        "node_postfix" : "",
-                        "options"      : "-soft"})
-            for c_str in entry.config.config_str_set.all():
-                if c_str.name in ei_dict[dev_name][act_pk]:
-                    ei_dict[dev_name][act_pk][c_str.name] = c_str.value
+            act_pk = entry.config.pk
+            if entry.device.device_type.identifier == "H":
+                dev_names = [entry.device.name]
+            else:
+                # expand meta devices
+                dev_names = device.objects.filter(Q(device_type__identifier="H") & Q(device_group=entry.device.device_group)).values_list("name", flat=True)
+            for dev_name in dev_names:
+                ei_dict.setdefault(
+                    dev_name, {}).setdefault(
+                        act_pk, {
+                            "export"       : None,
+                            "import"       : None,
+                            "node_postfix" : "",
+                            "options"      : "-soft"})
+                for c_str in entry.config.config_str_set.all():
+                    if c_str.name in ei_dict[dev_name][act_pk]:
+                        ei_dict[dev_name][act_pk][c_str.name] = c_str.value
         for mach, aeid_d in ei_dict.iteritems():
             for _aeid_idx, aeid in aeid_d.iteritems():
                 if aeid["export"] and aeid["import"]:
@@ -203,8 +212,10 @@ class write_yp_config(cs_base_class.server_com):
         ext_keys["services.byservicename"] = sbs
         # generate ypservers map
         temp_map_dir = "_ics_tmd"
-        ext_keys["ypservers"] = [(global_config["SERVER_FULL_NAME"],
-                                  global_config["SERVER_FULL_NAME"])]
+        ext_keys["ypservers"] = [
+            (
+                global_config["SERVER_FULL_NAME"],
+                global_config["SERVER_FULL_NAME"])]
         # pprint.pprint(ext_keys)
         temp_map_dir = "/var/yp/%s" % (temp_map_dir)
         if not os.path.isdir("/var/yp"):
