@@ -1,6 +1,6 @@
 #!/usr/bin/python-init -Ot
 #
-# Copyright (C) 2001,2002,2003,2004,2005,2006,2007,2008,2009,2010,2012 Andreas Lang-Nevyjel
+# Copyright (C) 2001-2010,2012,2014 Andreas Lang-Nevyjel
 #
 # this file is part of cluster-backbone
 #
@@ -31,7 +31,6 @@ from initat.cluster.backbone.models import kernel, initrd_build
 import argparse
 import commands
 import config_tools
-import copy
 import datetime
 import fnmatch
 import gzip
@@ -236,7 +235,6 @@ def get_module_dependencies(kern_dir, mod_list):
         while True:
             cur_size = len(matches_found)
             m_iter += 1
-            # next_dep = copy.deepcopy(auto_dep)
             if verbose:
                 print " - %2d %s" % (m_iter, ", ".join(sorted(list(matches_found))))
             for cur_match in list(matches_found):
@@ -425,6 +423,7 @@ def populate_it(stage_num, temp_dir, in_dir_dict, in_file_dict, stage_add_dict, 
             if c_found:
                 print "  for choice_idx %d (%s) we found %d of %d: %s" % (c_idx, ", ".join(p_cns), len(c_found), len(p_cns), ", ".join(c_found))
             else:
+                # better error handling, fixme
                 print "  for choice_idx %d (%s) we found nothing of %d" % (c_idx, ", ".join(p_cns), len(p_cns))
                 sev_dict[{0 : "W", 1 : err_sev}[file_dict[p_cns[0]]]] += 1
     pam_lib_list = []
@@ -1034,7 +1033,10 @@ def main_normal():
                     my_kernel.master_server = kernel_server_idx
                     my_kernel.save()
                 else:
-                    print "server_device_idx for kernel_server differs from master_server from DB, exiting (override with --set-master-server)"
+                    print "server_device_idx (%d) for kernel_server differs from master_server from DB (%s), exiting (override with --set-master-server)" % (
+                        kernel_server_idx,
+                        my_kernel.master_server,
+                        )
                     sys.exit(0)
     # build list of modules
     act_mods = []
