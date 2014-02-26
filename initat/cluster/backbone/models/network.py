@@ -276,13 +276,13 @@ def net_ip_pre_save(sender, **kwargs):
             if len(match_list):
                 cur_inst.network = match_list[0][1]
         if not cur_inst.network_id:
-            raise ValidationError("no matching network found")
+            raise ValidationError("no matching network found for '%s'" % (cur_inst.ip))
         if not ipv_addr.network_matches(cur_inst.network):
             match_list = ipv_addr.find_matching_network(network.objects.all())
             if match_list:
                 cur_inst.network = match_list[0][1]
             else:
-                raise ValidationError("no maching network found")
+                raise ValidationError("no maching network found for '%s'" % (cur_inst.ip))
         dev_ips = net_ip.objects.exclude(Q(pk=cur_inst.pk)).filter(Q(netdevice__device=cur_inst.netdevice.device)).values_list("ip", flat=True)
         if cur_inst.ip in dev_ips:
             raise ValidationError("Address already %s used, device %s" % (cur_inst.ip, unicode(cur_inst.netdevice.device)))
