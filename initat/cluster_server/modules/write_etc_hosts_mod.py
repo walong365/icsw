@@ -54,7 +54,7 @@ class write_etc_hosts(cs_base_class.server_com):
         dev_r = cluster_location.device_recognition()
         server_idxs = list(set(server_idxs) | set(dev_r.device_dict.keys()))
         # get all peers to local machine and local netdevices
-        my_idxs = netdevice.objects.filter(Q(device__in=server_idxs)).values_list("pk", flat=True)
+        my_idxs = netdevice.objects.filter(Q(device__in=server_idxs) & Q(device__enabled=True) & Q(device__device_group__enabled=True)).values_list("pk", flat=True)
         # ref_table
         route_obj = router_object(cur_inst.log)
         all_paths = []
