@@ -73,7 +73,7 @@
 
 <script type="text/ng-template" id="part_disc.html">
     <tr class="success icsw_dyn">
-        <th colspan="10">Disc: {{ disc.disc }}, {{ disc.partition_set.length }} partitions</th>
+        <th colspan="10">Disc: {{ disc.disc }}, {{ disc.partition_set.length }} partitions, label_type is {{ disc.label_type }}</th>
         <th><input type="button" class="btn btn-success btn-sm" ng-click="disc_edit.create($event)" value="create part"/></th>
         <th><input type="button" class="btn btn-primary btn-sm" ng-click="disc_edit.edit(disc, $event)" value="modify"/></th>
         <th><input type="button" class="btn btn-danger btn-sm" ng-click="disc_edit.delete_obj(disc)" value="delete"/></th>

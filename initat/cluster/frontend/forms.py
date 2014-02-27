@@ -821,6 +821,10 @@ class partition_disc_form(ModelForm):
                 "Base data",
                 Field("disc", wrapper_class="ng-class:cur_edit.form_error('disc')", placeholder="discname"),
             ),
+            Fieldset(
+                "label type",
+                Field("label_type", ng_options="value.label as value.info_string for value in valid_label_types()"),
+            ),
             FormActions(
                 Submit("submit", "", css_class="primaryAction", ng_value="action_string"),
             ),
@@ -828,7 +832,7 @@ class partition_disc_form(ModelForm):
     )
     class Meta:
         model = partition_disc
-        fields = ["disc"]
+        fields = ["disc", "label_type"]
 
 class partition_form(ModelForm):
     helper = FormHelper()

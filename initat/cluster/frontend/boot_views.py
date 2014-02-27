@@ -29,7 +29,7 @@ from django.db.models import Q
 from django.http import HttpResponse
 from django.utils.decorators import method_decorator
 from django.views.generic import View
-from initat.cluster.backbone.models import device, cd_connection, \
+from initat.cluster.backbone.models import device, cd_connection, cluster_timezone, \
      kernel, image, partition_table, status, network, devicelog, device_serializer_boot
 from initat.cluster.backbone.render import render_me
 from initat.cluster.frontend.forms import boot_form, boot_single_form
@@ -40,10 +40,12 @@ from rest_framework.renderers import JSONRenderer
 from rest_framework.response import Response
 from rest_framework.views import APIView
 import json
+import datetime
 import logging
 import logging_tools
 import server_command
 import time
+import pytz
 
 logger = logging.getLogger("cluster.boot")
 
@@ -79,7 +81,7 @@ class get_boot_info_json(View):
             "parent__device_group",
             "parent__device_type",
             "parent__domain_tree_node",
-            )
+        )
         call_mother = True if int(_post["call_mother"]) else False
         # to speed up things while testing
         result = None
@@ -239,7 +241,7 @@ class get_devlog_info(View):
                     dev_log.user_id,
                     dev_log.log_status_id,
                     dev_log.text,
-                    time.mktime(dev_log.date.timetuple())
+                    time.mktime(cluster_timezone.normalize(dev_log.date).timetuple()),
                 ])
         return HttpResponse(json.dumps({"devlog_lines" : _lines}), content_type="application/json")
 

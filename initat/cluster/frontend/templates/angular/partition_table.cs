@@ -96,6 +96,7 @@ partition_table_module.directive("disklayout", ($compile, $modal, $templateCache
                     return {
                         "partition_table" : scope.edit_obj.idx
                         "disc"            : "/dev/sd"
+                        "label_type"      : "gpt"
                     }
                 scope.sys_edit = new part_edit_mixin(scope, $templateCache, $compile, $modal, Restangular)
                 scope.sys_edit.create_template = "partition_sys.html"
@@ -147,6 +148,17 @@ partition_table_module.directive("disklayout", ($compile, $modal, $templateCache
                         "mount_options" : "defaults"
                         "partition_hex" : "82"
                     }
+                scope.valid_label_types = () ->
+                    return [
+                        {
+                            "label" : "msdos",
+                            "info_string" : "MSDOS",
+                        },
+                        {
+                            "label" : "gpt",
+                            "info_string" : "GPT",
+                        },
+                    ]
                 element.replaceWith($compile($templateCache.get("part_disc.html"))(scope))
                 #element.append($compile($templateCache.get("part_disc.html"))(scope))
     }

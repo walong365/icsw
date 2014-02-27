@@ -90,20 +90,24 @@ device_row_template = """
 device_log_row_template = """
 <table ng-show="devices.length" class="table table-condensed table-hover table-striped" style="width:auto;">
     <tr>
-        <th colspan="5">
+        <th>Source</th>
+        <th>User</th>
+        <th>Status</th>
+        <th>
             <form class="form-inline">
                 Number of log lines: {{ dev.num_logs }}, show
                 <select ng-model="num_show" class="form-control input-sm" ng-options="value as value for value in [5, 10, 20]">
                 </select>
             </form>
         </th>
+        <th>when</th>
     </tr>
     <tr ng-repeat="line in get_log_lines()">
-        <td>{{ line[2] | follow_fk:this:'log_source_lut':'name' }}</td>
-        <td>{{ line[3] || '---' }}</td>
-        <td>{{ line[4] | follow_fk:this:'log_status_lut':'name' }}</td>
+        <td style="white-space:nowrap;">{{ line[2] | follow_fk:this:'log_source_lut':'name' }}</td>
+        <td style="white-space:nowrap;">{{ line[3] || '---' }}</td>
+        <td style="white-space:nowrap;">{{ line[4] | follow_fk:this:'log_status_lut':'name' }}</td>
         <td>{{ line[5] }}</td>
-        <td>{{ get_date(line[6]) }}</td>
+        <td style="white-space:nowrap;">{{ get_date(line[6]) }}</td>
     </tr>
 </table>
 """
@@ -326,6 +330,7 @@ device_boot_module.controller("boot_ctrl", ["$scope", "$compile", "$filter", "$t
                                     cur_dev.latest_log = Math.max(entry[0], cur_dev.latest_log)
                                     cur_dev.log_lines.splice(0, 0, entry)
                                     cur_dev.log_lines = cur_dev.log_lines
+                                $scope.$digest()
         $scope.soft_control = (dev, command) ->
             $.ajax
                 url     : "{% url 'boot:soft_control' %}"
