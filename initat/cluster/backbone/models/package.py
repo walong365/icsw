@@ -70,8 +70,13 @@ class package_repo(models.Model):
             gpg_check="1" if self.gpg_check else "0",
             publish_to_nodes="1" if self.publish_to_nodes else "0",
             url=self.url)
+    def get_service_name(self):
+        if self.service_id:
+            return self.service.name
+        else:
+            return ""
     def repo_str(self):
-        return "\n".join([
+        _vf = [
             "[%s]" % (self.alias),
             "name=%s" % (self.name),
             "enabled=%d" % (1 if self.enabled else 0),
@@ -80,12 +85,16 @@ class package_repo(models.Model):
             "type=%s" % (self.repo_type),
             "keeppackages=0",
             "",
-        ])
+        ]
+        if self.service_id:
+            _vf.append("service=%s" % (self.service.name))
+        return "\n".join(_vf)
     class Meta:
         ordering = ("name",)
         app_label = "backbone"
 
 class package_repo_serializer(serializers.ModelSerializer):
+    service_name = serializers.Field(source="get_service_name")
     class Meta:
         model = package_repo
 
