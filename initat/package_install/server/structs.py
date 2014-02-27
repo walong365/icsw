@@ -24,7 +24,8 @@
 from django.db.models import Q
 from initat.cluster.backbone.models import package_repo, cluster_timezone, \
      package_search_result, device_variable, device, package_device_connection, \
-     package_device_connection_wp_serializer, package_repo_serializer
+     package_device_connection_wp_serializer, package_repo_serializer, \
+     package_service
 from initat.package_install.server.config import global_config, CONFIG_NAME, \
     PACKAGE_VERSION_VAR_NAME, LAST_CONTACT_VAR_NAME
 from rest_framework.renderers import XMLRenderer
@@ -151,7 +152,8 @@ class repo_type_rpm_yum(repo_type):
 class repo_type_rpm_zypper(repo_type):
     REPO_TYPE_STR = "rpm"
     REPO_SUBTYPE_STR = "zypper"
-    SCAN_REPOS = "zypper --xml lr"
+    # changed on 2014-02-27, query services (includes repositories)
+    SCAN_REPOS = "zypper --xml ls -r -d"
     REPO_CLASS = rpm_repository
     def search_package(self, s_string):
         return "zypper --xml search -s %s" % (s_string)
@@ -161,7 +163,23 @@ class repo_type_rpm_zypper(repo_type):
         new_repos = []
         found_repos = []
         old_repos = set(package_repo.objects.all().values_list("name", flat=True))
-        for repo in repo_xml.xpath(".//repo-list/repo", smart_strings=False):
+        for repo in repo_xml.xpath(".//repo", smart_strings=False):
+            if repo.getparent().tag == "service":
+                service_xml = repo.getparent()
+                try:
+                    cur_srv = package_service.objects.get(Q(name=service_xml.attrib["name"]))
+                except package_service.DoesNotExist:
+                    cur_srv = package_service(
+                        name=service_xml.attrib["name"],
+                        alias=service_xml.attrib["alias"],
+                        url=service_xml.attrib["url"],
+                        type=service_xml.attrib["type"],
+                        enabled=True if int(service_xml.attrib["enabled"]) else False,
+                        autorefresh=True if int(service_xml.attrib["autorefresh"]) else False,
+                    )
+                    cur_srv.save()
+            else:
+                cur_srv = None
             try:
                 cur_repo = package_repo.objects.get(Q(name=repo.attrib["name"]))
             except package_repo.DoesNotExist:
@@ -175,6 +193,7 @@ class repo_type_rpm_zypper(repo_type):
             cur_repo.autorefresh = True if int(repo.attrib["autorefresh"]) else False
             cur_repo.gpg_check = True if int(repo.attrib["gpgcheck"]) else False
             cur_repo.url = repo.findtext("url")
+            cur_repo.service = cur_srv
             cur_repo.save()
         self.log("found %s" % (logging_tools.get_plural("new repository", len(new_repos))))
         if old_repos:
