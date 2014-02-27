@@ -15,7 +15,25 @@ __all__ = [
     "package_search_result", "package_search_result_serializer",
     "package", # "package_serializer",
     "package_device_connection", # "package_device_connection_serializer",
+    "package_service", "package_service_serializer",
     ]
+
+class package_service(models.Model):
+    idx = models.AutoField(primary_key=True)
+    name = models.CharField(unique=True, max_length=128, blank=False)
+    enabled = models.BooleanField(default=True)
+    alias = models.CharField(max_length=128, default=True)
+    autorefresh = models.BooleanField(default=True)
+    url = models.CharField(max_length=256, default="")
+    type = models.CharField(max_length=64, default="ris")
+    created = models.DateTimeField(auto_now_add=True)
+    class Meta:
+        ordering = ("name",)
+        app_label = "backbone"
+
+class package_service_serializer(serializers.ModelSerializer):
+    class Meta:
+        model = package_service
 
 # package related models
 class package_repo(models.Model):
@@ -28,7 +46,9 @@ class package_repo(models.Model):
     gpg_check = models.BooleanField(default=True)
     url = models.CharField(max_length=384, default="")
     created = models.DateTimeField(auto_now_add=True)
+    service = models.ForeignKey(package_service, null=True)
     publish_to_nodes = models.BooleanField(default=False, verbose_name="PublishFlag")
+    # service = models.CharField(max_length=128, default="")
     def __unicode__(self):
         return self.name
     @property
