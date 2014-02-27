@@ -187,6 +187,8 @@ class hm_module(object):
         pass
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
         self.process_pool.log("[%s] %s" % (self.name, what), log_level)
+    def __unicode__(self):
+        return u"module %s, priority %d" % (self.name, self.Meta.priority)
 
 class hm_command(object):
     def __init__(self, name, **kwargs):

@@ -1,10 +1,12 @@
+#!/usr/bin/python-init -Otu
+
+from initat.host_monitoring import hm_classes
 import imp
 import os
 import pkgutil
 import pprint
 import process_tools
 import sys
-from initat.host_monitoring import hm_classes
 
 __all__ = [
     cur_entry for cur_entry in [
@@ -30,7 +32,7 @@ for mod_name in __all__:
 
 _new_hm_list.sort(reverse=True)
 
-for _pri, new_hm_mod in _new_hm_list:
+for _pri, new_hm_mod in sorted(_new_hm_list, reverse=True):
     new_mod = new_hm_mod.obj
     module_list.append(new_hm_mod)
     #if hasattr(new_mod, "init_m_vect"):

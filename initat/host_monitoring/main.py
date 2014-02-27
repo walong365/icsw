@@ -39,11 +39,17 @@ def show_command_info():
         print "Import errors:"
         for mod_name, com_name, error_str in modules.IMPORT_ERRORS:
             print "%-24s %-32s %s" % (mod_name.split(".")[-1], com_name, error_str)
-    for com_name in sorted(modules.command_dict.keys()):
-        cur_com = modules.command_dict[com_name]
-        if isinstance(cur_com, hm_classes.hm_command):
-            # print "\n".join(["", "command %s" % (com_name), ""])
-            cur_com.parser.print_help()
+    valid_names = sorted(modules.command_dict.keys())
+    for mod in modules.module_list:
+        print
+        print unicode(mod)
+        print
+        c_names = [name for name in valid_names if modules.command_dict[name].module == mod]
+        for com_name in c_names:
+            cur_com = modules.command_dict[com_name]
+            if isinstance(cur_com, hm_classes.hm_command):
+                # print "\n".join(["", "command %s" % (com_name), ""])
+                cur_com.parser.print_help()
     sys.exit(0)
 
 def main():
@@ -55,7 +61,7 @@ def main():
         ("LOG_DESTINATION"     , configfile.str_c_var("uds:/var/lib/logging-server/py_log_zmq")),
         ("LOG_NAME"            , configfile.str_c_var(prog_name)),
         ("KILL_RUNNING"        , configfile.bool_c_var(True)),
-        ("SHOW-COMMAND-INFO"   , configfile.bool_c_var(False, help_string="show command info", only_commandline=True)),
+        ("SHOW_COMMAND_INFO"   , configfile.bool_c_var(False, help_string="show command info", only_commandline=True)),
         ("BACKLOG_SIZE"        , configfile.int_c_var(5, help_string="backlog size for 0MQ sockets [%(default)d]")),
         ("VERBOSE"             , configfile.int_c_var(0, help_string="set verbose level [%(default)d]", short_options="v", only_commandline=True)),
         ("OBJGRAPH"            , configfile.bool_c_var(False, help_string="enable objgraph [%(default)c]", only_commandline=True)),
@@ -97,7 +103,7 @@ def main():
     global_config.write_file()
     if global_config["KILL_RUNNING"]:
         process_tools.kill_running_processes(exclude=configfile.get_manager_pid())
-    if global_config["SHOW-COMMAND-INFO"]:
+    if global_config["SHOW_COMMAND_INFO"]:
         show_command_info()
     if not options.DEBUG and prog_name in ["collserver", "collrelay"]:
         process_tools.become_daemon()
