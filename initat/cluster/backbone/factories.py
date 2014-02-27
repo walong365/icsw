@@ -30,6 +30,11 @@ class PartitionFS(factory.django.DjangoModelFactory):
 class LogStatus(factory.django.DjangoModelFactory):
     FACTORY_FOR = log_status
     FACTORY_DJANGO_GET_OR_CREATE = ("identifier", "log_level",)
+    @factory.post_generation
+    def name(self, create, extracted, **kwargs):
+        if self.name != extracted:
+            self.name = extracted
+            self.save()
 
 class HWEntryType(factory.django.DjangoModelFactory):
     FACTORY_FOR = hw_entry_type

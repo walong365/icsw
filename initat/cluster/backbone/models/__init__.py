@@ -329,6 +329,7 @@ class partition_disc(models.Model):
     idx = models.AutoField(db_column="partition_disc_idx", primary_key=True)
     partition_table = models.ForeignKey("partition_table")
     disc = models.CharField(max_length=192)
+    label_type = models.CharField(max_length=128, default="gpt", choices=[("gpt", "GPT"), ("msdos", "MSDOS")])
     priority = models.IntegerField(null=True, default=0)
     date = models.DateTimeField(auto_now_add=True)
     def get_xml(self):
@@ -361,15 +362,21 @@ class partition_disc(models.Model):
         ext_parts = [cur_p for cur_p in my_parts if cur_p.partition_fs_id and cur_p.partition_fs.name == "ext"]
         if my_parts:
             max_pnum = max([cur_p.pnum for cur_p in my_parts])
-            if len(ext_parts) == 0:
-                if  max_pnum > 4:
-                    p_list.append((logging_tools.LOG_LEVEL_ERROR, "too many partitions (%d), only 4 without ext allowed" % (max_pnum), False))
-            elif len(ext_parts) > 1:
-                p_list.append((logging_tools.LOG_LEVEL_ERROR, "too many ext partitions (%d) defined" % (len(ext_parts)), False))
+            if self.label_type == "msdos":
+                # msdos label validation path
+                if len(ext_parts) == 0:
+                    if max_pnum > 4:
+                        p_list.append((logging_tools.LOG_LEVEL_ERROR, "too many partitions (%d), only 4 without ext allowed" % (max_pnum), False))
+                elif len(ext_parts) > 1:
+                    p_list.append((logging_tools.LOG_LEVEL_ERROR, "too many ext partitions (%d) defined" % (len(ext_parts)), False))
+                else:
+                    ext_part = ext_parts[0]
+                    if ext_part.pnum != 4:
+                        p_list.append((logging_tools.LOG_LEVEL_ERROR, "extended partition must have pnum 4", False))
             else:
-                ext_part = ext_parts[0]
-                if ext_part.pnum != 4:
-                    p_list.append((logging_tools.LOG_LEVEL_ERROR, "extended partition must have pnum 4", False))
+                # gpt label validation path
+                if len(ext_parts):
+                    p_list.append((logging_tools.LOG_LEVEL_ERROR, "no extended partitions allowed for GPT label", False))
         return p_list
     class Meta:
         db_table = u'partition_disc'
@@ -385,7 +392,7 @@ class partition_disc_serializer(serializers.ModelSerializer):
 class partition_disc_serializer_save(serializers.ModelSerializer):
     class Meta:
         model = partition_disc
-        fields = ("disc",)
+        fields = ("disc", "label_type",)
 
 class partition_disc_serializer_create(serializers.ModelSerializer):
     # partition_set = partition_serializer(many=True)
