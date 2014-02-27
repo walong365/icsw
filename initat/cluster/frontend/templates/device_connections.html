@@ -121,8 +121,10 @@ device_connection_module.controller("connection_ctrl", ["$scope", "$compile", "$
                 }
                 success : (xml) =>
                     $.unblockUI()
-                    if parse_xml_response(xml, 30)
-                        $scope.reload()
+                    # show info
+                    parse_xml_response(xml, 30)
+                    # reload (even on error)
+                    $scope.reload()
         # mixins
         $scope.cd_edit = new angular_edit_mixin($scope, $templateCache, $compile, $modal, Restangular, $q)
         $scope.cd_edit.create_template = "cd_connection_form.html"

@@ -132,30 +132,31 @@ class manual_connection(View):
     def post(self, request):
         _post = request.POST
         re_dict = {
-            "drag"   : _post["source"],
+            "source" : _post["source"],
             "target" : _post["target"],
         }
         t_type = _post["mode"]
-        logger.info("mode is '%s', drag_str is '%s', target_str is '%s'" % (
+        logger.info("mode is '%s', source_str is '%s', target_str is '%s'" % (
             t_type,
-            re_dict["drag"],
+            re_dict["source"],
             re_dict["target"]))
         # # (hash) is our magic sign for \d
         for key in re_dict.keys():
             val = re_dict[key]
             if val.count("#"):
                 parts = val.split("#")
-                val = "(%s)(%s)(%s)" % (parts[0], "#" * (len(parts) - 1), parts[-1])
-                val = val.replace("#", "\d")
+                val = ("(%s)(%s)(%s)" % (parts[0], "#" * (len(parts) - 1), parts[-1])).replace("()", "").replace("#", "\d")
             re_dict[key] = re.compile("^%s$" % (val))
         # all cd / non-cd devices
-        cd_devices = device.objects.filter(Q(device_type__identifier='CD'))
-        non_cd_devices = device.objects.exclude(Q(device_type__identifier='CD'))
+        cd_devices = device.objects.filter(Q(enabled=True) & Q(device_group__enabled=True) & Q(device_type__identifier='CD'))
+        non_cd_devices = device.objects.exclude(Q(device_type__identifier='CD')).filter(Q(enabled=True) & Q(device_group__enabled=True))
+        logger.info("cd / non-cd devices: %d / %d" % (cd_devices.count(), non_cd_devices.count()))
         # iterate over non-cd-device
         # pprint.pprint(re_dict)
         match_dict = {}
-        for key, dev_list in [("drag", non_cd_devices),
-                              ("target", cd_devices)]:
+        for key, dev_list in [
+            ("source", cd_devices),
+            ("target", non_cd_devices)]:
             match_dict[key] = {}
             for cur_dev in dev_list:
                 cur_m = re_dict[key].match(cur_dev.name)
@@ -165,15 +166,15 @@ class manual_connection(View):
                         d_key = int(d_key)
                     match_dict[key][d_key] = (cur_m.groups(), cur_dev)
         # matching keys
-        m_keys = set(match_dict["drag"].keys()) & set(match_dict["target"].keys())
+        m_keys = set(match_dict["source"].keys()) & set(match_dict["target"].keys())
         logger.info(
             "%s: %s" % (logging_tools.get_plural("matching key", len(m_keys)),
                         ", ".join(sorted([str(key) for key in m_keys]))))
         created_cons = []
         for m_key in m_keys:
             new_cd = cd_connection(
-                parent=match_dict["target" if t_type == "slave" else "drag"][m_key][1],
-                child=match_dict["drag" if t_type == "slave" else "target"][m_key][1],
+                parent=match_dict["target" if t_type == "slave" else "source"][m_key][1],
+                child=match_dict["source" if t_type == "slave" else "target"][m_key][1],
                 created_by=request.user,
                 connection_info="manual")
             try:
