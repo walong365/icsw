@@ -17,6 +17,7 @@ device_boot_template = """
         <input ng-repeat="entry in boot_options" type="button" ng-class="get_bo_class(entry[0])" value="{{ entry[1] }}" ng-click="toggle_bo(entry[0])"></input>
     </div>
     <input type="button" class="btn btn-sn btn-warning" ng-show="num_selected && any_type_1_selected" value="modify" ng-click="modify_many($event)"></input>
+    <input class="form-control" ng-model="device_sel_filter" placeholder="selection..." ng-change="change_sel_filter()"></input>
 </form>
 <table ng-show="devices.length" class="table table-condensed table-hover" style="width:auto;">
     <thead>
@@ -124,6 +125,7 @@ device_boot_module.controller("boot_ctrl", ["$scope", "$compile", "$filter", "$t
         $scope.enable_modal = true
         $scope.num_selected = 0
         $scope.any_type_1_selected = false
+        $scope.device_sel_filter = ""
         $scope.boot_options = [
             # 1 ... option to modify globally
             # 2 ... local option
@@ -142,6 +144,17 @@ device_boot_module.controller("boot_ctrl", ["$scope", "$compile", "$filter", "$t
             {"val" : "cramfs", "name" : "CramFS"},
             {"val" : "lo", "name" : "ext2 via Loopback"},
         ]
+        $scope.change_sel_filter = () ->
+            if $scope.cur_sel_timeout
+                $timeout.cancel($scope.cur_sel_timeout)
+            $scope.cur_sel_timeout = $timeout($scope.set_sel_filter, 500)
+        $scope.set_sel_filter = () ->
+            try
+                cur_re = new RegExp($scope.device_sel_filter, "gi")
+            catch exc
+                cur_re = new RegExp("^$", "gi")
+            for dev in $scope.devices
+                dev.selected = if dev.name.match(cur_re) then true else false
         $scope.bo_enabled = {}
         $scope.type_1_options = () ->
             return (entry for entry in $scope.boot_options when entry[2] == 1)
