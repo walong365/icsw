@@ -189,6 +189,7 @@ class repo_type_rpm_zypper(repo_type):
             old_repos -= set([cur_repo.name])
             cur_repo.alias = repo.attrib["alias"]
             cur_repo.repo_type = repo.attrib.get("type", "")
+            cur_repo.priority = int(repo.attrib.get("priority", "99"))
             cur_repo.enabled = True if int(repo.attrib["enabled"]) else False
             cur_repo.autorefresh = True if int(repo.attrib["autorefresh"]) else False
             cur_repo.gpg_check = True if int(repo.attrib["gpgcheck"]) else False

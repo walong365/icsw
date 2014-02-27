@@ -43,6 +43,8 @@ def get_repo_str(in_repo):
         "baseurl=%s" % (in_repo.findtext("url")),
         "type=%s" % (in_repo.findtext("repo_type") or "NONE"),
     ]
+    if in_repo.findtext("priority"):
+        _vf.append("priority=%d" % (int(in_repo.findtext("priority"))))
     if in_repo.findtext("service_name"):
         _vf.append("service=%s" % (in_repo.findtext("service_name")))
     else:
