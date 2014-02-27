@@ -61,9 +61,9 @@
     <td>{{ obj.gpg_check | yesno1 }}</td>
     <td>{{ obj.publish_to_nodes | yesno1 }}</td>
     <td>{{ obj.url }}</td>
-    <td>{{ obj.service | follow_fk:this.rest_data:'package_service':'name':'---' }}</td>
-    <td><input type="button" class="btn btn-primary" ng-click="fn.toggle(obj)" value="toggle"/></td>
-    <td><input type="button" class="btn btn-danger" ng-click="delete(obj)" value="delete"/></td>
+    <td>{{ fn.get_service_name(this, obj) }}</td>
+    <td><input type="button" class="btn btn-sm btn-primary" ng-click="fn.toggle(obj)" value="toggle"/></td>
+    <td><input type="button" class="btn btn-sm btn-danger" ng-click="delete(obj)" value="delete"/></td>
 </script>
 
 <script type="text/ng-template" id="package_search_head.html">
@@ -110,8 +110,8 @@
     <td>{{ obj.kind }}</td>
     <td>{{ obj.package_repo | array_lookup:this.rest_data.package_repo:"name" }}</td>
     <td>{{ obj.arch }}</td>
-    <td><input type="button" ng-show="obj.copied == 0" class="btn btn-primary" ng-click="fn.take(this, obj, true)" value="take exact"/></td>
-    <td><input type="button" ng-show="obj.copied == 0" class="btn btn-primary" ng-click="fn.take(this, obj, false)" value="take latest"/></td>
+    <td><input type="button" ng-show="obj.copied == 0" class="btn btn-sm btn-primary" ng-click="fn.take(this, obj, true)" value="take exact"/></td>
+    <td><input type="button" ng-show="obj.copied == 0" class="btn btn-sm btn-primary" ng-click="fn.take(this, obj, false)" value="take latest"/></td>
     <td><input type="button" class="btn btn-danger" ng-click="delete(obj)" value="delete"/></td>
 </script>
 
@@ -141,14 +141,14 @@
 <tabset>
     <tab heading="Package repositories">
         <div ng-controller="package_repo_base">
-            <h3>Repositories ({{entries.length}} entries),
+            <h3>Repositories ({{ entries.length }} entries, {{ rest_data.service.length }} services),
                 <input type="button" class="btn btn-primary" value="Rescan" ng-click="fn.rescan(this)"/>,
                 <input type="button" class="btn btn-warning" value="Sync to clients" ng-click="fn.sync(this)"/>
             </h3>
             <table class="table table-condensed table-hover" style="width:auto;">
                 <thead packagerepohead></thead>
                 <tbody>
-                    <tr><td colspan="9" paginator entries="entries" pag_settings="pagSettings" per_page="10"></td></tr>
+                    <tr><td colspan="9" paginator entries="entries" pag_settings="pagSettings" per_page="10" paginator-epp="10,20,50,100"></td></tr>
                     <tr packagereporow ng-repeat="obj in entries | orderBy:'-name':true | paginator:this"></tr>
                 </tbody>
             </table>

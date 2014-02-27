@@ -52,14 +52,14 @@ config_table_template = """
                         </div>
                     </div>
                     <div class="col-sm-3">
-                        <div class="input-group">
-                        name: <input type="checkbox" ng-model="pagSettings.conf.filter_settings.filter_name"></input>
-                        script: <input type="checkbox" ng-model="pagSettings.conf.filter_settings.filter_script"></input>
-                        var: <input type="checkbox" ng-model="pagSettings.conf.filter_settings.filter_var"></input>
-                        mon: <input type="checkbox" ng-model="pagSettings.conf.filter_settings.filter_mon"></input>
+                        <div class="input-group btn-group">
+                            <input type="button" ng-class="get_filter_class('name')" value="name" ng-click="change_filter_setting('name')"></input>
+                            <input type="button" ng-class="get_filter_class('script')" value="script" ng-click="change_filter_setting('script')"></input>
+                            <input type="button" ng-class="get_filter_class('var')" value="var" ng-click="change_filter_setting('var')"></input>
+                            <input type="button" ng-class="get_filter_class('mon')" value="mon" ng-click="change_filter_setting('mon')"></input>
                         </div>
                     </div>
-                    <div class="col-sm-5" paginator entries="entries" pag_settings="pagSettings" per_page="15" paginator_filter="func" paginator_filter_func="filter_conf">
+                    <div class="col-sm-5" paginator entries="entries" pag_settings="pagSettings" per_page="15" paginator_filter="func" paginator-epp="15,30,100,200" paginator_filter_func="filter_conf">
                     </div>
                 </div>
             </td>
@@ -287,9 +287,15 @@ config_ctrl = config_module.controller("config_ctrl", ["$scope", "$compile", "$f
                     $scope.filter_re = new RegExp("^$", "gi")
             if not cf.filter_name and not cf.filter_script and not cf.filter_var and not cf.filter_mon
                 cf.filter_name = true
-            #console.log "fc"
         $scope.entries = []
         $scope.config_catalogs = []
+        $scope.get_filter_class = (name) ->
+            if $scope.pagSettings.conf.filter_settings["filter_#{name}"]
+                return "btn btn-sm btn-success"
+            else
+                return "btn btn-sm"
+        $scope.change_filter_setting = (name) ->
+            $scope.pagSettings.conf.filter_settings["filter_#{name}"] = ! $scope.pagSettings.conf.filter_settings["filter_#{name}"]
         # config edit
         $scope.config_edit = new angular_edit_mixin($scope, $templateCache, $compile, $modal, Restangular)
         $scope.config_edit.create_template = "config_template.html"

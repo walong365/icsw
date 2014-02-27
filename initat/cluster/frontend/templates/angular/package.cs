@@ -21,6 +21,11 @@ angular_add_simple_list_controller(
             {"short" : "service", "url" : "{% url 'rest:package_service_list' %}"}
         ]
         fn :
+            get_service_name : ($scope, repo) ->
+                if repo.service
+                    return (entry for entry in $scope.rest_data["service"] when entry.idx == repo.service)[0].name
+                else
+                    return "---"
             toggle : (obj) ->
                 obj.publish_to_nodes = if obj.publish_to_nodes then false else true
                 obj.put()
