@@ -69,7 +69,7 @@ class config_control(object):
         if self.__log_template is None:
             self.__log_template = logging_tools.get_logger(
                 "%s.%s" % (global_config["LOG_NAME"],
-                           self.device.name.replace(".", r"\.")),
+                           self.device.full_name.replace(".", r"\.")),
                 global_config["LOG_DESTINATION"],
                 zmq=True,
                 context=config_control.srv_process.zmq_context,

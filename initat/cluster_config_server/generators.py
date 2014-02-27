@@ -1,6 +1,6 @@
 #!/usr/bin/python-init -OtW default
 #
-# Copyright (C) 2001,2002,2003,2004,2005,2006,2007,2008,2012,2013 Andreas Lang-Nevyjel, init.at
+# Copyright (C) 2001-2008,2012-2014 Andreas Lang-Nevyjel, init.at
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -357,7 +357,6 @@ def do_fstab(conf):
     act_ps = partition_setup(conf)
     fstab_co = conf.add_file_object("/etc/fstab")
     fstab_co += act_ps.fstab
-
 
 # generate /etc/hosts for nodes, including routing-info
 def do_etc_hosts(conf):
