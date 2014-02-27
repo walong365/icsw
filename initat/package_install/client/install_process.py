@@ -35,16 +35,20 @@ RPM_QUERY_FORMAT = "%{NAME}\n%{INSTALLTIME}\n%{VERSION}\n%{RELEASE}\n"
 
 def get_repo_str(in_repo):
     # copy from initat.cluster.backbone.models.package_repo.repo_str
-    return "\n".join([
+    _vf = [
         "[%s]" % (in_repo.findtext("alias")),
         "name=%s" % (in_repo.findtext("name")),
         "enabled=%d" % (1 if in_repo.findtext("enabled") == "True" else 0),
         "autorefresh=%d" % (1 if in_repo.findtext("autorefresh") == "True" else 0),
         "baseurl=%s" % (in_repo.findtext("url")),
-        "type=%s" % (in_repo.findtext("repo_type")),
-        "keeppackages=0",
-        "",
-    ])
+        "type=%s" % (in_repo.findtext("repo_type") or "NONE"),
+    ]
+    if in_repo.findtext("service_name"):
+        _vf.append("service=%s" % (in_repo.findtext("service_name")))
+    else:
+        _vf.append("keeppackages=0")
+    _vf.append("")
+    return "\n".join(_vf)
 
 def get_srv_command(**kwargs):
     return server_command.srv_command(
