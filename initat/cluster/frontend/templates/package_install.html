@@ -31,7 +31,8 @@
         <th>AutoRefresh</th>
         <th>GPGcheck</th>
         <th>publish</th>
-        <th>URL</th>   
+        <th>URL</th>
+        <th>Service</th>
         <th colspan="2" class="text-center">action</th>   
     </tr>
 </script>
@@ -60,6 +61,7 @@
     <td>{{ obj.gpg_check | yesno1 }}</td>
     <td>{{ obj.publish_to_nodes | yesno1 }}</td>
     <td>{{ obj.url }}</td>
+    <td>{{ obj.service | follow_fk:this.rest_data:'package_service':'name':'---' }}</td>
     <td><input type="button" class="btn btn-primary" ng-click="fn.toggle(obj)" value="toggle"/></td>
     <td><input type="button" class="btn btn-danger" ng-click="delete(obj)" value="delete"/></td>
 </script>

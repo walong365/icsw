@@ -17,6 +17,9 @@ angular_add_simple_list_controller(
         rest_url            : "{% url 'rest:package_repo_list' %}"
         delete_confirm_str  : (obj) -> return "Really delete Package repository '#{obj.name}' ?"
         template_cache_list : ["package_repo_row.html", "package_repo_head.html"]
+        rest_map            : [
+            {"short" : "service", "url" : "{% url 'rest:package_service_list' %}"}
+        ]
         fn :
             toggle : (obj) ->
                 obj.publish_to_nodes = if obj.publish_to_nodes then false else true
