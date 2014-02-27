@@ -948,6 +948,7 @@ class host(machine):
         self.device.dhcp_error = error_str
         self.device.save(update_fields=["dhcp_written", "dhcp_error"])
     def feed_dhcp(self, in_dict, in_line):
+        self.refresh_device()
         if in_dict["key"] == "discover":
             # dhcp feed, in most cases discover
             self.log("set macaddress of bootnetdevice to '%s'" % (in_dict["macaddr"]))
@@ -965,9 +966,8 @@ class host(machine):
                 macaddr=in_dict["macaddr"],
                 entry_type=in_dict["key"],
                 ip_action="SET").save()
-            # no change dhcp-server
+            # no change to dhcp-server
             self.handle_mac_command("alter")
-
         else:
             change_fields = set()
             if self.device.dhcp_mac:
