@@ -32,6 +32,7 @@
         <th>GPGcheck</th>
         <th>publish</th>
         <th>URL</th>
+        <th>Pri</th>
         <th>Service</th>
         <th colspan="2" class="text-center">action</th>   
     </tr>
@@ -61,6 +62,7 @@
     <td>{{ obj.gpg_check | yesno1 }}</td>
     <td>{{ obj.publish_to_nodes | yesno1 }}</td>
     <td>{{ obj.url }}</td>
+    <td>{{ obj.priority }}</td>
     <td>{{ fn.get_service_name(this, obj) }}</td>
     <td><input type="button" class="btn btn-sm btn-primary" ng-click="fn.toggle(obj)" value="toggle"/></td>
     <td><input type="button" class="btn btn-sm btn-danger" ng-click="delete(obj)" value="delete"/></td>
