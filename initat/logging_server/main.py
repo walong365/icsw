@@ -552,6 +552,7 @@ def main():
         os.chmod("/var/log/cluster/sockets", stat.S_IRWXU | stat.S_IRWXG | stat.S_IRWXO)
     except:
         pass
+    _ret_state = 0
     global_config.write_file()
     process_tools.renice()
     process_tools.change_user_group(global_config["USER"], global_config["GROUP"])
@@ -566,4 +567,4 @@ def main():
     if not options.DEBUG:
         process_tools.handles_write_endline()
     process_tools.delete_lockfile(lockfile_name, None, 0)
-    return 0
+    return _ret_state
