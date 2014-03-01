@@ -216,7 +216,7 @@ def update_session_object(request):
         # copy layout vars from user_vars
         for var_name, attr_name, default in [
             ("east[isClosed]", "east_closed" , True),
-            ("west[isClosed]", "west_closed" , True),
+            ("west[isClosed]", "west_closed" , False),
             ("sidebar_mode"  , "sidebar_mode", "group"),
         ]:
             if var_name in request.session.get("user_vars", {}):
