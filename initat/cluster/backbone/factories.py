@@ -3,7 +3,7 @@
 import factory
 from initat.cluster.backbone.models import netdevice_speed, log_source, \
     device_type, partition_fs, log_status, hw_entry_type, status, network_device_type, \
-    network_type, host_check_command
+    network_type, host_check_command, config, mon_check_command, category
 
 class NetDeviceSpeed(factory.django.DjangoModelFactory):
     FACTORY_FOR = netdevice_speed
@@ -65,3 +65,12 @@ class NetworkType(factory.django.DjangoModelFactory):
 class HostCheckCommand(factory.django.DjangoModelFactory):
     FACTORY_FOR = host_check_command
     FACTORY_DJANGO_GET_OR_CREATE = ("name",)
+
+class Config(factory.django.DjangoModelFactory):
+    FACTORY_FOR = config
+    FACTORY_DJANGO_GET_OR_CREATE = ("name",)
+
+class MonCheckCommand(factory.django.DjangoModelFactory):
+    FACTORY_FOR = mon_check_command
+    FACTORY_DJANGO_GET_OR_CREATE = ("name",)
+
