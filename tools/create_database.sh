@@ -37,6 +37,7 @@ fi
 
 if [ "${1:-X}" = "--no-initial-data" ] ; then
     ID_FLAGS="--no-initial-data"
+    shift
 else
     ID_FLAGS=""
 fi
@@ -65,7 +66,7 @@ ${C_DIR}/manage.py migrate reversion
 ${C_DIR}/manage.py migrate static_precompiler
 ${C_DIR}/manage.py syncdb --noinput ${ID_FLAGS}
 ${C_DIR}/manage.py migrate ${ID_FLAGS}
-if [ -z "$1" ]; then
+if [ "${1:-x}" != "--auto" ]; then
     echo ""
     echo "creating superuser"
     echo ""
