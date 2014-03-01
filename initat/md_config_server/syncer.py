@@ -19,6 +19,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
+
 """
 
 syncer process for md-config-server
@@ -32,8 +33,8 @@ from django.db.models import Q
 from initat.cluster.backbone.models import device
 from initat.md_config_server import constants
 from initat.md_config_server.config import global_config, sync_config
-import logging_tools
 import config_tools
+import logging_tools
 import server_command
 import threading_tools
 
