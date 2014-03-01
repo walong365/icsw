@@ -3,7 +3,17 @@
 import factory
 from initat.cluster.backbone.models import netdevice_speed, log_source, \
     device_type, partition_fs, log_status, hw_entry_type, status, network_device_type, \
-    network_type, host_check_command, config, mon_check_command, category
+    network_type, host_check_command, config, mon_check_command, device_group, \
+    device, mon_period, mon_service_templ, mon_device_templ, user, group, mon_contact, \
+    network, netdevice, net_ip
+
+class Device(factory.django.DjangoModelFactory):
+    FACTORY_FOR = device
+    FACTORY_DJANGO_GET_OR_CREATE = ("name",)
+
+class DeviceGroup(factory.django.DjangoModelFactory):
+    FACTORY_FOR = device_group
+    FACTORY_DJANGO_GET_OR_CREATE = ("name",)
 
 class NetDeviceSpeed(factory.django.DjangoModelFactory):
     FACTORY_FOR = netdevice_speed
@@ -73,4 +83,40 @@ class Config(factory.django.DjangoModelFactory):
 class MonCheckCommand(factory.django.DjangoModelFactory):
     FACTORY_FOR = mon_check_command
     FACTORY_DJANGO_GET_OR_CREATE = ("name",)
+
+class MonPeriod(factory.django.DjangoModelFactory):
+    FACTORY_FOR = mon_period
+    FACTORY_DJANGO_GET_OR_CREATE = ("name",)
+
+class MonServiceTempl(factory.django.DjangoModelFactory):
+    FACTORY_FOR = mon_service_templ
+    FACTORY_DJANGO_GET_OR_CREATE = ("name",)
+
+class MonDeviceTempl(factory.django.DjangoModelFactory):
+    FACTORY_FOR = mon_device_templ
+    FACTORY_DJANGO_GET_OR_CREATE = ("name",)
+
+class User(factory.django.DjangoModelFactory):
+    FACTORY_FOR = user
+    FACTORY_DJANGO_GET_OR_CREATE = ("login",)
+
+class Group(factory.django.DjangoModelFactory):
+    FACTORY_FOR = group
+    FACTORY_DJANGO_GET_OR_CREATE = ("groupname",)
+
+class MonContact(factory.django.DjangoModelFactory):
+    FACTORY_FOR = mon_contact
+    FACTORY_DJANGO_GET_OR_CREATE = ("user",)
+
+class Network(factory.django.DjangoModelFactory):
+    FACTORY_FOR = network
+    FACTORY_DJANGO_GET_OR_CREATE = ("identifier",)
+
+class NetDevice(factory.django.DjangoModelFactory):
+    FACTORY_FOR = netdevice
+    FACTORY_DJANGO_GET_OR_CREATE = ("device", "devname",)
+
+class NetIp(factory.django.DjangoModelFactory):
+    FACTORY_FOR = net_ip
+    FACTORY_DJANGO_GET_OR_CREATE = ("ip", "network",)
 
