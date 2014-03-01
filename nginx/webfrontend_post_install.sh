@@ -22,19 +22,24 @@ fi
 STATIC_DIR=/srv/www/htdocs/icsw/static
 [ ! -d ${STATIC_DIR} ] && mkdir -p ${STATIC_DIR}
 
-echo -ne "collecting static ..."
-/opt/python-init/lib/python/site-packages/initat/cluster/manage.py collectstatic --noinput -c > /dev/null
-echo "done"
+if [ -f /etc/sysconfig/cluster/db.cf ] ; then
+    # already configured; run collectstatic
 
-if [ -d /opt/cluster/etc/uwsgi/reload ] ; then
-    touch /opt/cluster/etc/uwsgi/reload/webfrontend.touch
-else
-    echo "no reload-dir found, please restart uwsgi-init"
+    echo -ne "collecting static ..."
+    /opt/python-init/lib/python/site-packages/initat/cluster/manage.py collectstatic --noinput -c > /dev/null
+    echo "done"
+
+    if [ -d /opt/cluster/etc/uwsgi/reload ] ; then
+	touch /opt/cluster/etc/uwsgi/reload/webfrontend.touch
+    else
+	echo "no reload-dir found, please restart uwsgi-init"
+    fi
+
+    # restart memcached to clean compiled coffeescript snippets
+    /etc/init.d/memcached restart
+
+    # migrate static_precompiler if needed
+    /opt/python-init/lib/python/site-packages/initat/cluster/manage.py migrate static_precompiler
 fi
 
-# restart memcached to clean compiled coffeescript snippets
-/etc/init.d/memcached restart
-
-# migrate static_precompiler if needed
-/opt/python-init/lib/python/site-packages/initat/cluster/manage.py migrate static_precompiler
 
