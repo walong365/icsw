@@ -94,7 +94,7 @@ class server_process(threading_tools.process_pool):
         self.__process_dict = {}
         for idx in xrange(num_processes):
             proc_name = "snmp_%d" % (idx)
-            new_proc = snmp_process(proc_name)
+            new_proc = snmp_process(proc_name, global_config=global_config)
             proc_socket = self.add_process(new_proc, start=True)
             self.__process_dict[proc_name] = {
                 "socket"     : proc_socket,

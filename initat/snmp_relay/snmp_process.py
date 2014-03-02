@@ -17,9 +17,11 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
-""" SNMP relayer, SNMP process """
+"""
+SNMP relayer, SNMP process
+also used by the control process of mother
+"""
 
-from initat.snmp_relay.config import global_config
 from pyasn1.codec.ber import encoder, decoder # @UnresolvedImport
 from pyasn1.type.error import ValueConstraintError # @UnresolvedImport
 from pysnmp.carrier.asynsock.dgram import udp # @UnresolvedImport
@@ -39,7 +41,7 @@ class snmp_batch(object):
         self.key = snmp_batch.batch_key
         self.proc = proc
         snmp_ver, snmp_host, snmp_community, self.envelope, self.transform_single_key, self.__timeout = scheme_data[0:6]
-        self.__verbose = global_config["VERBOSE"]
+        self.__verbose = kwargs.pop("VERBOSE", False)
         self._clear_errors()
         self._set_target(snmp_ver, snmp_host, snmp_community)
         if self.__verbose > 2:
@@ -279,17 +281,21 @@ class snmp_batch(object):
             return False
 
 class snmp_process(threading_tools.process_obj):
-    def __init__(self, name):
+    def __init__(self, name, global_config):
+        self.__log_name, self.__log_destination = (
+            global_config["LOG_NAME"],
+            global_config["LOG_DESTINATION"],
+        )
+        self.__verbose = global_config["VERBOSE"]
         threading_tools.process_obj.__init__(self, name, busy_loop=True)
     def process_init(self):
         self.__log_template = logging_tools.get_logger(
-            global_config["LOG_NAME"],
-            global_config["LOG_DESTINATION"],
+            self.__log_name,
+            self.__log_destination,
             zmq=True,
             context=self.zmq_context)
         self.register_func("fetch_snmp", self._fetch_snmp)
         self._init_dispatcher()
-        self.__verbose = global_config["VERBOSE"]
         self.__job_dict = {}
         self.__req_id_lut = {}
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
@@ -346,7 +352,7 @@ class snmp_process(threading_tools.process_obj):
         # print "send_msg"
         self.__disp.sendMessage(*next_tuple)
     def _fetch_snmp(self, *scheme_data, **kwargs):
-        self._inject(snmp_batch(self, *scheme_data, **kwargs))
+        self._inject(snmp_batch(self, *scheme_data, verbose=self.__verbose, **kwargs))
     def _timer_func(self, act_time):
         timed_out = [key for key, cur_job in self.__job_dict.iteritems() if cur_job.timer_func(act_time)]
         for to_key in timed_out:
