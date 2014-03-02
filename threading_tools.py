@@ -256,7 +256,7 @@ class poller_obj(object):
         for mask in self.poller_handler[zmq_socket].keys():
             cur_mask |= mask
         if self.debug_zmq:
-            self.poller.register(zmq_socket.fileno()._sock, cur_mask)
+            self.poller.register(zmq_socket._sock, cur_mask)
         else:
             self.poller.register(zmq_socket, cur_mask)
     def unregister_poller(self, zmq_socket, sock_type, **kwargs):
@@ -277,10 +277,7 @@ class poller_obj(object):
                 cur_mask |= mask
             self.poller.register(zmq_socket, cur_mask)
     def register_socket(self, n_socket, event_mask, callback):
-        import select
-        # event_mask = {select.POLLOUT: zmq.POLLOUT}.get(event_mask, event_mask)
         self._socket_lut[n_socket.fileno()] = n_socket
-        # self._socket_lut[n_socket] = n_socket.fileno()
         _fn = n_socket.fileno()
         self.poller_handler.setdefault(n_socket, {})[event_mask] = callback
         cur_mask = 0
@@ -393,11 +390,25 @@ class process_obj(multiprocessing.Process, timer_base, poller_obj, process_base)
         self.__flags[fn] = state
     def __getitem__(self, fn):
         return self.__flags[fn]
-    def send_to_socket(self, t_socket, data):
-        t_socket.send_pyobj({"name"   : self.name,
-                             "pid"    : self.pid,
-                             "type"   : data[0],
-                             "args"   : data[1:]})
+    def send_to_socket(self, t_socket, data, *args):
+        if args:
+            t_socket.send_pyobj(
+                {
+                    "name"   : self.name,
+                    "pid"    : self.pid,
+                    "type"   : data,
+                    "args"   : args,
+                }
+            )
+        else:
+            t_socket.send_pyobj(
+                {
+                    "name"   : self.name,
+                    "pid"    : self.pid,
+                    "type"   : data[0],
+                    "args"   : data[1:],
+                }
+            )
     def send_pool_message(self, *args):
         self.__pp_queue.send_pyobj({
             "name" : self.name,
