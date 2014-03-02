@@ -110,7 +110,7 @@ class snmp_batch(object):
         for _v in self.iterator:
             pass
         self.proc.unregister_batch(self)
-        self.proc.send_pool_message("snmp_finished", self.envelope, self.__error_list, self.__received, self.snmp)
+        self.proc.send_return(self.envelope, self.__error_list, self.__received, self.snmp)
     def __del__(self):
         if self.__verbose > 3:
             self.log("__del__")
@@ -294,7 +294,9 @@ class snmp_process(threading_tools.process_obj):
             self.__log_destination,
             zmq=True,
             context=self.zmq_context)
+        self.__return_socket = None
         self.register_func("fetch_snmp", self._fetch_snmp)
+        self.register_func("register_return", self._register_return)
         self._init_dispatcher()
         self.__job_dict = {}
         self.__req_id_lut = {}
@@ -349,8 +351,10 @@ class snmp_process(threading_tools.process_obj):
             self.send_next(cur_batch, next_tuple)
     def send_next(self, cur_batch, next_tuple):
         self.__req_id_lut[cur_batch.request_id] = cur_batch
-        # print "send_msg"
         self.__disp.sendMessage(*next_tuple)
+    def _register_return(self, proc_name, **kwargs):
+        self.__return_socket = self.connect_to_socket(proc_name)
+        self.send_to_socket(self.__return_socket, "helloxx", "hello2", "hello3")
     def _fetch_snmp(self, *scheme_data, **kwargs):
         self._inject(snmp_batch(self, *scheme_data, verbose=self.__verbose, **kwargs))
     def _timer_func(self, act_time):
@@ -374,4 +378,10 @@ class snmp_process(threading_tools.process_obj):
         return whole_msg
     def loop_post(self):
         self.__log_template.close()
-
+        if self.__return_socket:
+            self.__return_socket.close()
+    def send_return(self, envelope, error_list, received, snmp):
+        if self.__return_socket:
+            self.send_to_socket(self.__return_socket, "snmp_finished", envelope, error_list, received, snmp)
+        else:
+            self.send_pool_message("snmp_finished", envelope, error_list, received, snmp)
