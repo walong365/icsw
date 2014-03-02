@@ -92,9 +92,10 @@ class server_process(threading_tools.process_pool):
         # pending schemes
         self.__pending_schemes = {}
         self.__process_dict = {}
+        conf_dict = {key: global_config[key] for key in ["LOG_NAME", "LOG_DESTINATION", "VERBOSE"]}
         for idx in xrange(num_processes):
             proc_name = "snmp_%d" % (idx)
-            new_proc = snmp_process(proc_name, global_config=global_config)
+            new_proc = snmp_process(proc_name, conf_dict=conf_dict)
             proc_socket = self.add_process(new_proc, start=True)
             self.__process_dict[proc_name] = {
                 "socket"     : proc_socket,

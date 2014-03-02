@@ -281,12 +281,12 @@ class snmp_batch(object):
             return False
 
 class snmp_process(threading_tools.process_obj):
-    def __init__(self, name, global_config):
+    def __init__(self, name, conf_dict):
         self.__log_name, self.__log_destination = (
-            global_config["LOG_NAME"],
-            global_config["LOG_DESTINATION"],
+            conf_dict["LOG_NAME"],
+            conf_dict["LOG_DESTINATION"],
         )
-        self.__verbose = global_config["VERBOSE"]
+        self.__verbose = conf_dict["VERBOSE"]
         threading_tools.process_obj.__init__(self, name, busy_loop=True)
     def process_init(self):
         self.__log_template = logging_tools.get_logger(
