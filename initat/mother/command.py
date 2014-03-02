@@ -20,7 +20,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
-""" external commands (dhcp, ipmi) parts of mother """
+""" external commands (dhcp, ipmi, SNMP) parts of mother """
 
 from django.db import connection
 from django.db.models import Q

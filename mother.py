@@ -27,12 +27,11 @@ import os
 
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "initat.cluster.settings")
 
-# SNMP imports
-# transition fix
 from django.db import connection
 from django.db.models import Q
 from initat.cluster.backbone.models import network, status
 from initat.mother.config import global_config
+from initat.snmp_relay.snmp_process import snmp_process
 from lxml import etree # @UnresolvedImports
 from lxml.builder import E # @UnresolvedImports
 from pysnmp.carrier.asynsock import dgram
@@ -2900,6 +2899,8 @@ class server_process(threading_tools.process_pool):
             self.add_process(initat.mother.command.external_command_process("command"), start=True)
             self.add_process(initat.mother.control.node_control_process("control"), start=True)
             self.add_process(initat.mother.control.direct_process("direct"), start=True)
+            conf_dict = {key: global_config[key] for key in ["LOG_NAME", "LOG_DESTINATION", "VERBOSE"]}
+            self.add_process(snmp_process("snmp_process", conf_dict=conf_dict), start=True)
             connection.close()
             # self.add_process(build_process("build"), start=True)
             # self.register_func("client_update", self._client_update)
@@ -3416,7 +3417,7 @@ class server_process(threading_tools.process_pool):
         return nb_ok
 
 def main():
-    long_host_name, mach_name = process_tools.get_fqdn()
+    _long_host_name, mach_name = process_tools.get_fqdn()
     prog_name = global_config.name()
     global_config.add_config_entries([
         ("DEBUG"               , configfile.bool_c_var(False, help_string="enable debug mode [%(default)s]", short_options="d", only_commandline=True)),

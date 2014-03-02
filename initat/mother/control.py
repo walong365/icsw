@@ -1146,6 +1146,7 @@ class node_control_process(threading_tools.process_obj):
             self.log("no IP address in boot-net", logging_tools.LOG_LEVEL_ERROR)
         # create connection to ICMP (direct) process
         self.direct_socket = self.connect_to_socket("direct")
+        self.snmp_socket = self.connect_to_socket("snmp_process")
         self.router_obj = config_tools.router_object(self.log)
         machine.setup(self)
         machine.sync()
@@ -1166,6 +1167,8 @@ class node_control_process(threading_tools.process_obj):
             "request"  : re.compile("^(?P<program>\S+): DHCPREQUEST for (?P<ip>\S+) .*from (?P<macaddr>\S+) via .*$"),
             "answer"   : re.compile("^(?P<program>\S+): DHCPACK on (?P<ip>\S+) to (?P<macaddr>\S+) via .*$")}
         self.pending_list = []
+        self.send_to_socket(self.snmp_socket, "register_return", "control")
+        self.send_to_socket(self.snmp_socket, "ping", "test")
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
         self.__log_template.log(log_level, what)
     def _refresh(self, *args, **kwargs):
@@ -1236,6 +1239,7 @@ class node_control_process(threading_tools.process_obj):
     def loop_post(self):
         machine.shutdown()
         self.direct_socket.close()
+        self.snmp_socket.close()
         self.__log_template.close()
     def set_check_freq(self, cur_to):
         self.log("changing check_freq of check_commands to %d msecs" % (cur_to))
