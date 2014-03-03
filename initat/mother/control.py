@@ -25,7 +25,8 @@
 from django.db import connection
 from django.db.models import Q
 from initat.cluster.backbone.models import kernel, device, image, macbootlog, mac_ignore, \
-     cluster_timezone, cached_log_status, cached_log_source, log_source, devicelog, partition_table
+     cluster_timezone, cached_log_status, cached_log_source, log_source, devicelog, \
+     partition_table, user
 from initat.mother.command_tools import simple_command
 from initat.mother.config import global_config
 from lxml import etree # @UnresolvedImport
@@ -54,6 +55,7 @@ class machine(object):
         self.name = dev.name
         self.full_name = dev.full_name
         self.pk = dev.pk
+        self.__log_source_idx = global_config["LOG_SOURCE_IDX"]
         self.__log_template = logging_tools.get_logger(
             "%s.%s" % (global_config["LOG_NAME"],
                        self.name.replace(".", r"\.")),
@@ -72,7 +74,7 @@ class machine(object):
         for add_key in del_keys:
             machine.del_lut_key(self, add_key)
         self.__log_template.close()
-    def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
+    def log(self, what, log_level=logging_tools.LOG_LEVEL_OK, device_log=False):
         self.__log_template.log(log_level, what)
     @staticmethod
     def setup(c_process):
@@ -196,27 +198,37 @@ class machine(object):
                 getattr(cur_mach, com_name)(cur_dev, *args, **kwargs)
     @staticmethod
     def ping(srv_com):
+        # send ping(s) to all valid IPs of then selected devices
         keys = set(map(lambda x: int(x), srv_com.xpath(".//ns:device/@pk", smart_strings=False))) & set(machine.__unique_keys)
         cur_id = machine.ping_id
         ping_list = srv_com.builder("ping_list")
         for u_key in keys:
             cur_dev = machine.get_device(u_key)
             dev_node = srv_com.xpath(".//ns:device[@pk='%d']" % (cur_dev.pk), smart_strings=False)[0]
-            dev_node.attrib.update({"tried"  : "%d" % (len(cur_dev.ip_dict)),
-                                    "ok"     : "0",
-                                    "failed" : "0"})
+            tried = 0
             for ip in cur_dev.ip_dict.iterkeys():
                 # omit slave networks
                 if cur_dev.ip_dict[ip].network.network_type.identifier != "s":
+                    tried += 1
                     cur_id_str = "mp_%d" % (cur_id)
                     cur_id += 1
+                    # init ping
                     machine.process.send_to_socket(machine.process.direct_socket, ["ping", cur_id_str, ip, 4, 3.0])
                     ping_list.append(srv_com.builder("ping", cur_id_str, pk="%d" % (cur_dev.pk)))
+            dev_node.attrib.update(
+                {
+                    "tried"  : "%d" % (tried),
+                    "ok"     : "0",
+                    "failed" : "0",
+                }
+            )
         srv_com["ping_list"] = ping_list
         machine.ping_id = cur_id
+        # return True if at least one ping has been sent, otherwise false
         return True if len(ping_list) else False
     @staticmethod
     def interpret_result(srv_com, id_str, res_dict):
+        # interpret ping result
         node = srv_com.xpath(".//ns:ping[text() = '%s']" % (id_str), smart_strings=False)[0]
         pk = int(node.attrib["pk"])
         ping_list = node.getparent()
@@ -1102,16 +1114,11 @@ class direct_process(threading_tools.process_obj):
         self.icmp_protocol.ping(*args, **kwargs)
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
         self.__log_template.log(log_level, what)
-    def send_result(self, src_id, srv_com, data):
-        print "sr", src_id, srv_com, data
-        # self.send_to_socket(self.__relayer_socket, ["twisted_result", src_id, srv_com, data])
     def send_ping_result(self, *args):
         self.send_to_socket(self.control_socket, ["ping_result"] + list(args))
-        # self.send_to_socket(self.__relayer_socket, ["twisted_ping_result"] + list(args))
     def loop_post(self):
         self.control_socket.close()
         self.__log_template.close()
-        # self.__relayer_socket.close()
 
 class node_control_process(threading_tools.process_obj):
     def process_init(self):
@@ -1146,7 +1153,6 @@ class node_control_process(threading_tools.process_obj):
             self.log("no IP address in boot-net", logging_tools.LOG_LEVEL_ERROR)
         # create connection to ICMP (direct) process
         self.direct_socket = self.connect_to_socket("direct")
-        self.snmp_socket = self.connect_to_socket("snmp_process")
         self.router_obj = config_tools.router_object(self.log)
         machine.setup(self)
         machine.sync()
@@ -1165,10 +1171,9 @@ class node_control_process(threading_tools.process_obj):
             "discover" : re.compile("(?P<program>\S+): DHCPDISCOVER from (?P<macaddr>\S+) via .*$"),
             "offer"    : re.compile("^(?P<program>\S+): DHCPOFFER on (?P<ip>\S+) to (?P<macaddr>\S+) via .*$"),
             "request"  : re.compile("^(?P<program>\S+): DHCPREQUEST for (?P<ip>\S+) .*from (?P<macaddr>\S+) via .*$"),
-            "answer"   : re.compile("^(?P<program>\S+): DHCPACK on (?P<ip>\S+) to (?P<macaddr>\S+) via .*$")}
+            "answer"   : re.compile("^(?P<program>\S+): DHCPACK on (?P<ip>\S+) to (?P<macaddr>\S+) via .*$"),
+        }
         self.pending_list = []
-        self.send_to_socket(self.snmp_socket, "register_return", "control")
-        self.send_to_socket(self.snmp_socket, "ping", "test")
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
         self.__log_template.log(log_level, what)
     def _refresh(self, *args, **kwargs):
@@ -1190,8 +1195,22 @@ class node_control_process(threading_tools.process_obj):
         # soft_control takes the same path as ping but uses a different hoststatus command (not status)
         self.log("got soft_control from id %s" % (zmq_id))
         in_com = server_command.srv_command(source=in_com)
+        # set zmq_id in structure
         in_com["command"].attrib["zmq_id"] = zmq_id
+        # log soft control
+        if "user_id" in in_com:
+            log_user = user.objects.get(Q(pk=in_com["user_id"].text))
+        else:
+            log_user = None
+        for xml_dev in in_com.xpath(".//ns:devices/ns:device"):
+            u_key = int(xml_dev.attrib["pk"])
+            dev = machine.get_device(u_key)
+            if dev is None:
+                devicelog.new_log(device.objects.get(Q(pk=u_key)), self.mother_src, logging_tools.LOG_LEVEL_ERROR, "not a device", user=log_user)
+            else:
+                devicelog.new_log(dev.device, self.mother_src, logging_tools.LOG_LEVEL_OK, "soft control '%s'" % (xml_dev.attrib["soft_command"]), user=log_user)
         if not machine.ping(in_com):
+            # no pings send
             self._add_ping_info(in_com)
         else:
             self.pending_list.append(in_com)
@@ -1205,10 +1224,12 @@ class node_control_process(threading_tools.process_obj):
             self.pending_list.append(in_com)
         machine.iterate("read_dot_files", device_keys=[int(_val) for _val in in_com.xpath(".//ns:devices/ns:device/@pk")])
     def _ping_result(self, id_str, res_dict, **kwargs):
+        # a ping has finished
         new_pending = []
         # print "pr", id_str
         for cur_com in self.pending_list:
             if len(cur_com.xpath(".//ns:ping[text() = '%s']" % (id_str), smart_strings=False)):
+                # interpret result
                 machine.interpret_result(cur_com, id_str, res_dict)
                 if not cur_com.xpath(".//ns:ping_list", smart_strings=False):
                     self._add_ping_info(cur_com)
@@ -1239,7 +1260,6 @@ class node_control_process(threading_tools.process_obj):
     def loop_post(self):
         machine.shutdown()
         self.direct_socket.close()
-        self.snmp_socket.close()
         self.__log_template.close()
     def set_check_freq(self, cur_to):
         self.log("changing check_freq of check_commands to %d msecs" % (cur_to))

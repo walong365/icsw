@@ -24,10 +24,10 @@
 
 from django.db import connection
 from django.db.models import Q
-from initat.cluster.backbone.models import device, network, cd_connection, device_variable, netdevice
+from initat.cluster.backbone.models import network, cd_connection, device_variable, \
+    netdevice, devicelog, user
 from initat.mother.command_tools import simple_command
 from initat.mother.config import global_config
-from lxml import etree # @UnresolvedImports
 import config_tools
 import logging_tools
 import process_tools
@@ -36,10 +36,11 @@ import server_command
 import threading_tools
 
 class hc_command(object):
-    def __init__(self, xml_struct, router_obj):
+    def __init__(self, user_id, xml_struct, router_obj):
         cur_cd = cd_connection.objects.select_related("child", "parent").prefetch_related("parent__device_variable_set").get(Q(pk=xml_struct.get("cd_con")))
         self.cd_obj = cur_cd
         command = xml_struct.get("command")
+        self.user = user.objects.get(Q(pk=user_id)) if user_id else None
         self.curl_base = self.cd_obj.parent.curl.split(":")[0]
         self.log("got command %s for %s (curl is '%s', target: %s)" % (
             command,
@@ -66,11 +67,13 @@ class hc_command(object):
         com_ip = self.get_ip_to_host(self.cd_obj.parent, router_obj)
         if not com_ip:
             self.log("cannot reach device %s" % (unicode(self.cd_obj.parent)),
-                     logging_tools.LOG_LEVEL_ERROR)
+                     logging_tools.LOG_LEVEL_ERROR,
+                     dev=cur_cd.child)
         else:
-            com_str = self._build_com_str(var_dict, com_ip, command)
+            com_str = self._build_com_str(var_dict, com_ip, command, dev=cur_cd.child)
             if com_str:
                 self.log("com_str is '%s'" % (com_str))
+                # devicelog.new_log()
                 simple_command(com_str,
                                short_info="True",
                                done_func=self.hc_done,
@@ -78,7 +81,7 @@ class hc_command(object):
                                info="hard_control")
             else:
                 self.log("com_str is None, strange...", logging_tools.LOG_LEVEL_ERROR)
-    def _build_com_str(self, var_dict, com_ip, command):
+    def _build_com_str(self, var_dict, com_ip, command, dev=None):
         if self.curl_base == "ipmi":
             com_str = "%s %s -H %s -U %s -P %s chassis power %s" % (
                 process_tools.find_file("ipmitool"),
@@ -102,7 +105,7 @@ class hc_command(object):
                  "cycle" : "cycle"}.get(command, "status")
             )
         else:
-            self.log("cannot handle curl_base '%s'" % (self.curl_base), logging_tools.LOG_LEVEL_CRITICAL)
+            self.log("cannot handle curl_base '%s'" % (self.curl_base), logging_tools.LOG_LEVEL_CRITICAL, dev=dev)
             com_str = None
         return com_str
     def hc_done(self, hc_sc):
@@ -147,8 +150,16 @@ class hc_command(object):
     def setup(proc):
         hc_command.process = proc
         hc_command.process.log("init hc_command")
-    def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
+    def log(self, what, log_level=logging_tools.LOG_LEVEL_OK, dev=None):
         hc_command.process.log("[hc] %s" % (what), log_level)
+        if dev is not None:
+            devicelog.new_log(
+                dev,
+                global_config["LOG_SOURCE_IDX"],
+                log_level,
+                "[hc] %s" % (what),
+                user=self.user,
+            )
 
 class external_command_process(threading_tools.process_obj):
     def process_init(self):
@@ -172,10 +183,14 @@ class external_command_process(threading_tools.process_obj):
         self.register_func("delay_command", self._delay_command)
         self.register_func("hard_control", self._hard_control)
         self.register_timer(self._check_commands, 10)
+        self.snmp_socket = self.connect_to_socket("snmp_process")
         hc_command.setup(self)
+        self.send_to_socket(self.snmp_socket, "register_return", "command")
+        self.send_to_socket(self.snmp_socket, "ping", "test")
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
         self.__log_template.log(log_level, what)
     def loop_post(self):
+        self.snmp_socket.close()
         self.__log_template.close()
     def _delay_command(self, *args, **kwargs):
         if simple_command.idle():
@@ -202,7 +217,7 @@ class external_command_process(threading_tools.process_obj):
         in_com = server_command.srv_command(source=in_com)
         self.router_obj.check_for_update()
         for cur_dev in in_com.xpath(".//ns:device", smart_strings=False):
-            hc_command(cur_dev, self.router_obj)
+            hc_command(in_com.get("user_id", None), cur_dev, self.router_obj)
     def sc_finished(self, sc_com):
         self.log("simple command done")
         print sc_com.read()
