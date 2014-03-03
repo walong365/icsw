@@ -225,6 +225,8 @@ def update_session_object(request):
                 request.session[attr_name] = default
 
 def contact_server(request, conn_str, send_com, **kwargs):
+    if request.user:
+        send_com["user_id"] = request.user.pk
     _xml_req = kwargs.get("xml_request", hasattr(request, "xml_response"))
     _log_lines = []
     result = net_tools.zmq_connection(

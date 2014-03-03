@@ -105,7 +105,7 @@ device_log_row_template = """
     </tr>
     <tr ng-repeat="line in get_log_lines()">
         <td style="white-space:nowrap;">{{ line[2] | follow_fk:this:'log_source_lut':'name' }}</td>
-        <td style="white-space:nowrap;">{{ line[3] || '---' }}</td>
+        <td style="white-space:nowrap;">{{ line[3] | follow_fk:this:'user_lut':'login':'---' }}</td>
         <td style="white-space:nowrap;">{{ line[4] | follow_fk:this:'log_status_lut':'name' }}</td>
         <td>{{ line[5] }}</td>
         <td style="white-space:nowrap;">{{ get_date(line[6]) }}</td>
@@ -216,6 +216,8 @@ device_boot_module.controller("boot_ctrl", ["$scope", "$compile", "$filter", "$t
                 # 6
                 restDataSource.reload(["{% url 'rest:log_source_list' %}", {}])
                 restDataSource.reload(["{% url 'rest:log_status_list' %}", {}])
+                # 8
+                restDataSource.reload(["{% url 'rest:user_list' %}", {}])
             ]
             $q.all(wait_list).then((data) ->
                 $scope.devices = (dev for dev in data[0])
@@ -231,6 +233,7 @@ device_boot_module.controller("boot_ctrl", ["$scope", "$compile", "$filter", "$t
                     dev.log_lines = []
                 $scope.log_source_lut = build_lut(data[6])
                 $scope.log_status_lut = build_lut(data[7])
+                $scope.user_lut = build_lut(data[8])
                 $scope.device_lut = build_lut($scope.devices)
                 $scope.kernels = data[1]
                 $scope.images = data[2]
