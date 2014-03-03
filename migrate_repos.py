@@ -99,9 +99,10 @@ def main():
         try:
             cur_repo = repo(os.path.join(REPO_DIR, r_name), opts)
         except:
-            print "error reading repo %s: %s" % (
+            print "error handling repo %s: %s" % (
                 r_name,
-                process_tools.get_except_info())
+                process_tools.get_except_info(),
+            )
 
 if __name__ == "__main__":
     main()
