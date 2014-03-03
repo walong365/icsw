@@ -236,7 +236,8 @@ class server_process(threading_tools.process_pool):
             proc_struct = self.__process_dict[p_name]
             proc_struct["call_count"] = 0
             proc_struct["state"] = "running"
-            proc_struct["socket"] = self.add_process(snmp_process(p_name), start=True)
+            conf_dict = {key: global_config[key] for key in ["LOG_NAME", "LOG_DESTINATION", "VERBOSE"]}
+            proc_struct["socket"] = self.add_process(snmp_process(p_name, conf_dict=conf_dict), start=True)
     def _snmp_finished(self, src_proc, src_pid, *args, **kwargs):
         proc_struct = self.__process_dict[src_proc]
         proc_struct["in_use"] = False
