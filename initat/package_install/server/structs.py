@@ -28,9 +28,10 @@ from initat.cluster.backbone.models import package_repo, cluster_timezone, \
      package_service
 from initat.package_install.server.config import global_config, CONFIG_NAME, \
     PACKAGE_VERSION_VAR_NAME, LAST_CONTACT_VAR_NAME
-from rest_framework.renderers import XMLRenderer
 from lxml import etree # @UnresolvedImport
 from lxml.builder import E # @UnresolvedImport
+from rest_framework.renderers import XMLRenderer
+import commands
 import datetime
 import logging_tools
 import os
@@ -163,6 +164,7 @@ class repo_type_rpm_zypper(repo_type):
         new_repos = []
         found_repos = []
         old_repos = set(package_repo.objects.all().values_list("name", flat=True))
+        priority_found = False
         for repo in repo_xml.xpath(".//repo", smart_strings=False):
             if repo.getparent().tag == "service":
                 service_xml = repo.getparent()
@@ -189,6 +191,8 @@ class repo_type_rpm_zypper(repo_type):
             old_repos -= set([cur_repo.name])
             cur_repo.alias = repo.attrib["alias"]
             cur_repo.repo_type = repo.attrib.get("type", "")
+            if "priority" in repo.attrib:
+                priority_found = True
             cur_repo.priority = int(repo.attrib.get("priority", "99"))
             cur_repo.enabled = True if int(repo.attrib["enabled"]) else False
             cur_repo.autorefresh = True if int(repo.attrib["autorefresh"]) else False
@@ -196,6 +200,31 @@ class repo_type_rpm_zypper(repo_type):
             cur_repo.url = repo.findtext("url")
             cur_repo.service = cur_srv
             cur_repo.save()
+        if not priority_found:
+            self.log("no priorities defined in XML-output, rescanning using normal output", logging_tools.LOG_LEVEL_ERROR)
+            _zypper_com = "/usr/bin/zypper lr -p"
+            _stat, _out = commands.getstatusoutput(_zypper_com)
+            if _stat:
+                self.log("error scanning via '%s' (%d): %s" % (_zypper_com, _stat, _out))
+            else:
+                _lines = _out.strip().split("\n")[2:]
+                for _line in _lines:
+                    _parts = [_p.strip() for _p in _line.split("|")]
+                    if len(_parts) == 6:
+                        _name, _pri = (_parts[2], int(_parts[5]))
+                        try:
+                            cur_repo = package_repo.objects.get(Q(name=_name))
+                        except package_repo.DoesNotExist:
+                            self.log("no repository with name '%s' found" % (_name), logging_tools.LOG_LEVEL_ERROR)
+                        else:
+                            if _pri != cur_repo.priority:
+                                self.log("changing priority of %s from %d to %d" % (
+                                    cur_repo.name,
+                                    cur_repo.priority,
+                                    _pri,
+                                    ))
+                            cur_repo.priority = _pri
+                            cur_repo.save()
         self.log("found %s" % (logging_tools.get_plural("new repository", len(new_repos))))
         if old_repos:
             self.log("found %s: %s" % (logging_tools.get_plural("old repository", len(old_repos)),
