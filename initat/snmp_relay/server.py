@@ -122,7 +122,7 @@ class server_process(threading_tools.process_pool):
     def _init_msi_block(self):
         self.__pid_name = global_config["PID_NAME"]
         process_tools.save_pids(global_config["PID_NAME"], mult=3)
-        cf_pids = 2 + global_config["SNMP_PROCESSES"]
+        cf_pids = 2 # + global_config["SNMP_PROCESSES"]
         process_tools.append_pids(global_config["PID_NAME"], pid=configfile.get_manager_pid(), mult=cf_pids)
         if global_config["DAEMONIZE"]:
             self.log("Initialising meta-server-info block")
@@ -140,6 +140,7 @@ class server_process(threading_tools.process_pool):
     def process_start(self, src_process, src_pid):
         process_tools.append_pids(self.__pid_name, src_pid, mult=3)
         if self.__msi_block:
+
             self.__msi_block.add_actual_pid(src_pid, mult=3, fuzzy_ceiling=3, process_name=src_process)
             self.__msi_block.save_block()
     def _int_error(self, err_cause):
