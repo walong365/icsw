@@ -137,10 +137,11 @@ class domain_tree_node(models.Model):
         return [self.pk] + sum([pk_list for _sub_name, pk_list in sorted([(key, sum([sub_value.get_sorted_pks() for sub_value in value], [])) for key, value in self._sub_tree.iteritems()])], [])
     def __unicode__(self):
         if self.depth:
-            if self.depth > 2:
-                return u"%s%s%s (%s)" % (r"| " * (self.depth - 1), r"+-", self.name, self.full_name)
-            else:
-                return u"%s%s (%s)" % (r"+-" * (self.depth), self.name, self.full_name)
+            return self.full_name
+            # if self.depth > 2:
+            #    return u"%s%s%s (%s)" % (r"| " * (self.depth - 1), r"+-", self.name, self.full_name)
+            # else:
+            #    return u"%s%s (%s)" % (r"+-" * (self.depth), self.name, self.full_name)
         else:
             return u"[TLN]"
     class Meta:
@@ -159,7 +160,7 @@ def domain_tree_node_pre_save(sender, **kwargs):
         cur_inst = kwargs["instance"]
         cur_inst.name = cur_inst.name.strip()
         if cur_inst.name and cur_inst.name.count("."):
-            parts = cur_inst.name.split(".")
+            parts = list(reversed(cur_inst.name.split(".")))
             cur_parent = cur_inst.parent
             for cur_part in parts[:-1]:
                 try:

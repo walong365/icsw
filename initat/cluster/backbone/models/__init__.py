@@ -1707,13 +1707,13 @@ class devicelog(models.Model):
             log_src = cached_short_log_source(log_src)
         if log_stat and type(log_stat) in [int, long]:
             log_stat = cached_log_status(log_stat)
-        cur_log = devicelog(
+        cur_log = devicelog.objects.create(
             device=cur_dev,
             log_source=log_src or cluster_log_source,
             user=kwargs.get("user", None),
             log_status=log_stat,
-            text=text)
-        cur_log.save()
+            text=text,
+        )
         return cur_log
     def get_xml(self):
         return E.devicelog(
