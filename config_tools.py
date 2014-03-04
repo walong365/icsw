@@ -49,7 +49,11 @@ class router_object(object):
         for node_pair, penalty in self.simple_peer_dict.iteritems():
             src_node, dst_node = node_pair
             self.nx.add_edge(src_node, dst_node, weight=penalty)
+    @property
+    def latest_update(self):
+        return self.__latest_update
     def _update(self):
+        self.__latest_update = time.time()
         # the concept of marking the current route setup dirty is flawed (too many dependencies)
         # and is therefore removed
         # latest_gen = route_generation.objects.all().order_by("-generation")
@@ -222,7 +226,8 @@ class topology_object(object):
         if self.nx:
             del self.nx
         self.nx = networkx.Graph()
-        if self.ignore_self:
+        if self.ignore_self and not self.__graph_mode.startswith("sel"):
+            # only ignore self-references when the graph_modes is not selected*
             self.dev_dict = {key: value for key, value in self.dev_dict.iteritems() if key in foreign_devs}
         self.add_nodes()
         self.add_edges()
