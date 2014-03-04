@@ -583,6 +583,10 @@ angular_add_simple_list_controller = (module, name, settings) ->
                                 $scope.close_modal()
                             (resp) -> handle_reset(resp.data, $scope.entries, $scope.edit_obj.idx)
                         )
+                else
+                    noty
+                        text : "form validation problem"
+                        type : "warning"
             $scope.form_error = (field_name) ->
                 if $scope.form[field_name].$valid
                     return ""

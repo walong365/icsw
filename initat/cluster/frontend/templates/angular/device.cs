@@ -90,6 +90,10 @@ device_tree_base = device_module.controller("device_tree_base", ["$scope", "$com
                             $scope.object_modified(data)
                         (resp) -> handle_reset(resp.data, cur_f, $scope.edit_obj.idx)
                     )
+            else
+                noty
+                    text : "form validation problem"
+                    type : "warning"
         $scope.form_error = (field_name) ->
             if $scope.form[field_name].$valid
                 return ""
