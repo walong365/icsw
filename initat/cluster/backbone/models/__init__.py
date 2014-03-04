@@ -1099,6 +1099,13 @@ class device(models.Model):
     uuid = models.TextField(default="", max_length=64) # , unique=True)
     # cluster url
     curl = models.CharField(default="ssh://", max_length=512)
+    # , choices=[
+    #    ("ssh://", "ssh://"),
+    #    ("snmp://", "snmp://"),
+    #    ("ipmi://", "ipmi://"),
+    #    ("ilo4://", "ilo4://"),
+    #    ]
+    # )
     date = models.DateTimeField(auto_now_add=True)
     # slaves
     master_connections = models.ManyToManyField("self", through="cd_connection", symmetrical=False, related_name="slave_connections")
