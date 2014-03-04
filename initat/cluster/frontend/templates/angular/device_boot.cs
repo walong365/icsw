@@ -69,7 +69,7 @@ device_row_template = """
     </td>
     <td ng-show="bo_enabled['h']">
         <div class="btn-group" ng-repeat="cd_con in dev.slave_connections">
-            <button type="button" class="btn btn-warning btn-xs dropdown-toggle" data-toggle="dropdown">
+            <button type="button" ng-class="get_hc_class(cd_con)" ng-disabled="get_hc_disabled(cd_con)" data-toggle="dropdown">
                 {{ cd_con.parent.full_name }} <span class="caret"></span>
             </button>
             <ul class="dropdown-menu">
@@ -194,6 +194,8 @@ device_boot_module.controller("boot_ctrl", ["$scope", "$compile", "$filter", "$t
                 $scope._edit_obj.bootnetdevice.driver = $scope._edit_obj.driver
                 $scope._edit_obj.bootnetdevice.macaddr = $scope._edit_obj.macaddr
         $scope.devsel_list = []
+        # dict if controlling devices are reachable
+        $scope.cd_reachable = {}
         $scope.devices = []
         # at least one boot_info received
         $scope.info_ok = false
@@ -328,6 +330,11 @@ device_boot_module.controller("boot_ctrl", ["$scope", "$compile", "$filter", "$t
                                 # master connections
                                 for _kv in ["master_connections", "slave_connections"]
                                     dev[_kv] = entry[_kv]
+                            cd_result = $(xml).find("value[name='cd_response']")
+                            if cd_result.length
+                                $scope.cd_reachable = angular.fromJson(cd_result.text())
+                            else
+                                $scope.cd_reachable = {}
                             $scope.$digest()
                 if $scope.bo_enabled["l"]
                     send_data = {
@@ -403,6 +410,22 @@ device_boot_module.controller("boot_ctrl", ["$scope", "$compile", "$filter", "$t
                 () ->
                     true
             )
+        $scope.get_hc_class = (cd_con) ->
+            if cd_con.parent.idx of $scope.cd_reachable
+                if $scope.cd_reachable[cd_con.parent.idx]
+                    return "btn btn-success btn-xs dropdown-toggle"
+                else
+                    return "btn btn-danger btn-xs dropdown-toggle"
+            else          
+                return "btn btn-xs dropdown-toggle"
+        $scope.get_hc_disabled = (cd_con) ->
+            if cd_con.parent.idx of $scope.cd_reachable
+                if $scope.cd_reachable[cd_con.parent.idx]
+                    return false
+                else
+                    return true
+            else
+                return false
         install_devsel_link($scope.new_devsel, true, true, false)
 ]).directive("boottable", ($templateCache) ->
     return {
