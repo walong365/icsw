@@ -421,7 +421,7 @@ device_network_module.controller("network_ctrl", ["$scope", "$compile", "$filter
             if ndip_obj.target of $scope.nd_lut
                 t_penalty = $scope.nd_lut[ndip_obj.target].penalty
             else
-                if ndip_obj of $scope.nd_peer_lut
+                if ndip_obj.target of $scope.nd_peer_lut
                     t_penalty = $scope.nd_peer_lut[ndip_obj.target].penalty
                 else
                     return "N/A"
@@ -431,7 +431,7 @@ device_network_module.controller("network_ctrl", ["$scope", "$compile", "$filter
                 peer = $scope.nd_lut[ndip_obj.target]
                 return "#{peer.devname} (#{peer.penalty}) on " + String($scope.dev_lut[peer.device].name)
             else
-                if ndip_obj of $scope.nd_peer_lut
+                if ndip_obj.target of $scope.nd_peer_lut
                     peer = $scope.nd_peer_lut[ndip_obj.target]
                     return "#{peer.devname} (#{peer.penalty}) on #{peer.device_name}"
                 else
