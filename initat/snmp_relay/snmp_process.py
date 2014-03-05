@@ -34,6 +34,43 @@ import pyasn1 # @UnresolvedImport
 import threading_tools
 import time
 
+class simple_snmp_oid(object):
+    def __init__(self, *oid, **kwargs):
+        self._target_value = kwargs.get("target_value", None)
+        if type(oid[0]) in [tuple, list] and len(oid) == 1:
+            oid = oid[0]
+        # store oid in tuple-form
+        if type(oid) == type(""):
+            self._oid = tuple([int(val) for val in oid.split(".")])
+        else:
+            self._oid = oid
+        self._oid_len = len(self._oid)
+        self._str_oid = ".".join(["%d" % (i_val) for i_val in self._oid])
+    def has_max_oid(self):
+        return False
+    def __str__(self):
+        return self._str_oid
+    def __iter__(self):
+        # reset iteration idx
+        self.__idx = -1
+        return self
+    def next(self):
+        self.__idx += 1
+        if self.__idx == self._oid_len:
+            raise StopIteration
+        else:
+            return self._oid[self.__idx]
+    def get_value(self, p_mod):
+        if self._target_value is not None:
+            if type(self._target_value) in [str, unicode]:
+                return p_mod.OctetString(self._target_value)
+            elif type(self._target_value) in [int, long]:
+                return p_mod.Integer(self._target_value)
+            else:
+                return p_mod.Null("")
+        else:
+            return p_mod.Null("")
+
 class snmp_batch(object):
     batch_key = 0
     def __init__(self, proc, *scheme_data, **kwargs):
@@ -75,12 +112,21 @@ class snmp_batch(object):
         for key, header_list in self.kh_list:
             if self.run_ok() and header_list:
                 if key == "T":
+                    # get table (bulk)
                     if self.__verbose > 1:
                         self.log("bulk-walk tables (%s): %s" % (self.__snmp_host, self.oid_pretty_print(header_list)))
                     yield self.get_tables(header_list)
                     if self.__verbose > 1:
                         self.log("bulk-walk tables: done")
+                elif key == "S":
+                    # set value, header_list is now a list of (mib, value) tuples
+                    if self.__verbose > 1:
+                        self.log("set mib (%s): %s" % (self.__snmp_host, self.oid_pretty_print(header_list)))
+                    yield self.get_tables(header_list, set=True)
+                    if self.__verbose > 1:
+                        self.log("set mib: done")
                 else:
+                    # get table, single walk
                     if self.__verbose > 1:
                         self.log("get tables (%s): %s" % (self.__snmp_host, self.oid_pretty_print(header_list)))
                     yield self.get_tables(header_list, single_values=True)
@@ -115,6 +161,7 @@ class snmp_batch(object):
         if self.__verbose > 3:
             self.log("__del__")
     def get_tables(self, base_oids, **kwargs):
+        self._set = kwargs.get("set", False)
         # table header
         self.__head_vars = [self.__p_mod.ObjectIdentifier(base_oid) for base_oid in base_oids]
         self.__max_head_vars = [self.__p_mod.ObjectIdentifier(base_oid.get_max_oid()) if base_oid.has_max_oid() else None for base_oid in base_oids]
@@ -130,7 +177,9 @@ class snmp_batch(object):
         # who many times the timer_func was called
         self.__timer_count = 0
         self.__single_values = kwargs.get("single_values", False)
-        if self.__single_values:
+        if self._set:
+            self.__req_pdu = self.__p_mod.SetRequestPDU()
+        elif self.__single_values:
             # PDU for single values
             self.__req_pdu = self.__p_mod.GetRequestPDU()
         else:
@@ -139,7 +188,10 @@ class snmp_batch(object):
         self.__p_mod.apiPDU.setDefaults(self.__req_pdu)
         self.__next_names = [value for value, _max_value in self.__act_head_vars]
         self.__act_domain, self.__act_address = (udp.domainName, (self.__snmp_host, 161))
-        self.__p_mod.apiPDU.setVarBinds(self.__req_pdu, [(head_var, self.__p_mod.Null("")) for head_var, _max_head_var in self.__act_head_vars])
+        if self._set:
+            self.__p_mod.apiPDU.setVarBinds(self.__req_pdu, [(head_var, base_oid.get_value(self.__p_mod)) for (head_var, _max_head_var), base_oid in zip(self.__act_head_vars, base_oids)])
+        else:
+            self.__p_mod.apiPDU.setVarBinds(self.__req_pdu, [(head_var, self.__p_mod.Null("")) for head_var, _max_head_var in self.__act_head_vars])
         if self.__p_mod.apiPDU.getErrorStatus(self.__req_pdu):
             self.log("Something went seriously wrong: %s" % (self.__p_mod.apiPDU.getErrorStatus(self.__req_pdu).prettyPrint()),
                     logging_tools.LOG_LEVEL_CRITICAL)
@@ -154,7 +206,7 @@ class snmp_batch(object):
         self.__start_time = time.time()
         # start of init get
         self.__start_get_time = time.time()
-        self.__single_value = self.__single_values
+        # self.__single_value = self.__single_values
         # self.__act_scheme.set_single_value(self.__single_values)
         # self.__disp.sendMessage(encoder.encode(self.__req_msg), self.__act_domain, self.__act_address)
         self.request_id = self.__p_mod.apiPDU.getRequestID(self.__req_pdu)
@@ -167,7 +219,7 @@ class snmp_batch(object):
         header, key, value = in_value
         # if header in self.__waiting_for:
         self.__received.add(header)
-        if self.__single_value:
+        if self.__single_values:
             self.__snmp_dict[header] = value
         else:
             if self.transform_single_key and len(key) == 1:
@@ -221,7 +273,8 @@ class snmp_batch(object):
             # Stop on EOM
             if not terminate:
                 for _oid, val in var_bind_table[-1]:
-                    if val is not None:
+                    # continue when val is not None and mode==GET is active
+                    if (val is not None) and not self._set:
                         terminate = False
                         break
                 else:
@@ -242,6 +295,7 @@ class snmp_batch(object):
             # print "done"
             self.proc._inject(self)
     def _next_send(self):
+        # not working for set-requests, FIXME
         self.__p_mod.apiPDU.setVarBinds(self.__req_pdu, [(var_x, self.__p_mod.Null("")) for var_x in self.__next_names])
         self.__p_mod.apiPDU.setRequestID(self.__req_pdu, self.__p_mod.getNextRequestID())
         self.request_id = self.__p_mod.apiPDU.getRequestID(self.__req_pdu)

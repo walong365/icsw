@@ -28,6 +28,7 @@ import socket
 import sys
 import time
 from initat.host_monitoring import limits
+from initat.snmp_relay.snmp_process import simple_snmp_oid
 
 # maximum cache time, 15 minutes
 MAX_CACHE_TIME = 15 * 60
@@ -119,22 +120,17 @@ class net_object(object):
     def get_snmp_tree(self, oid):
         return self.__cache_tree[oid]["tree"]
 
-class snmp_oid(object):
-    def __init__(self, oid, **kwargs):
+class snmp_oid(simple_snmp_oid):
+    def __init__(self, *oid, **kwargs):
+        simple_snmp_oid.__init__(self, *oid)
         self.single_value = kwargs.get("single_value", False)
         # store oid in tuple-form
-        if type(oid) == type(""):
-            self.__oid = tuple([int(val) for val in oid.split(".")])
+        self._max_oid = kwargs.get("max_oid", None)
+        if self._max_oid:
+            self._max_oid_len = len(self._max_oid)
+            self._str_max_oid = ".".join(["%d" % (i_val) for i_val in self._max_oid])
         else:
-            self.__oid = oid
-        self.__oid_len = len(self.__oid)
-        self.__str_oid = ".".join(["%d" % (i_val) for i_val in self.__oid])
-        self.__max_oid = kwargs.get("max_oid", None)
-        if self.__max_oid:
-            self.__max_oid_len = len(self.__max_oid)
-            self.__str_max_oid = ".".join(["%d" % (i_val) for i_val in self.__max_oid])
-        else:
-            self.__max_oid_len, self.__str_max_oid = (0, "")
+            self._max_oid_len, self._str_max_oid = (0, "")
         self.cache_it = kwargs.get("cache", False)
         if self.cache_it:
             # time after which cache invalidates
@@ -145,18 +141,6 @@ class snmp_oid(object):
         return True if self.__max_oid else False
     def get_max_oid(self):
         return self.__str_max_oid
-    def __str__(self):
-        return self.__str_oid
-    def __iter__(self):
-        # reset iteration idx
-        self.__idx = -1
-        return self
-    def next(self):
-        self.__idx += 1
-        if self.__idx == self.__oid_len:
-            raise StopIteration
-        else:
-            return self.__oid[self.__idx]
 
 class snmp_scheme(object):
     def __init__(self, name, **kwargs):
@@ -249,8 +233,10 @@ class snmp_scheme(object):
             self.net_obj.add_to_pending_requests(act_oids)
             # self.net_obj.release()
             self.__act_oids = act_oids
-            self.__waiting_for, self.__received = (self.__act_oids,
-                                                   set())
+            self.__waiting_for, self.__received = (
+                self.__act_oids,
+                set()
+            )
             self.__info_tuple = (cache_ok, num_cached, num_refresh, len(pending), len(hot_enough))
         return self.__info_tuple
     def snmp_start(self):
@@ -297,9 +283,11 @@ class snmp_scheme(object):
         try:
             act_state, act_str = self.process_return()
         except:
-            act_state, act_str = (limits.nag_STATE_CRITICAL,
-                                  "error in process_return() for %s: %s" % (self.name,
-                                                                            process_tools.get_except_info()))
+            act_state, act_str = (
+                limits.nag_STATE_CRITICAL,
+                "error in process_return() for %s: %s" % (
+                    self.name,
+                    process_tools.get_except_info()))
         self.send_return(act_state, act_str)
     def error(self):
         pass
