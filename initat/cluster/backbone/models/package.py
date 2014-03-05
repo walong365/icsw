@@ -46,7 +46,7 @@ class package_repo(models.Model):
     gpg_check = models.BooleanField(default=True)
     url = models.CharField(max_length=384, default="")
     created = models.DateTimeField(auto_now_add=True)
-    service = models.ForeignKey(package_service, null=True)
+    service = models.ForeignKey(package_service, null=True, blank=True)
     publish_to_nodes = models.BooleanField(default=False, verbose_name="PublishFlag")
     priority = models.IntegerField(default=99)
     # service = models.CharField(max_length=128, default="")
