@@ -156,7 +156,15 @@ class install_process(threading_tools.process_obj):
             self.log(" %3d %s" % (line_num + 1, line))
         hc_sc.terminate()
         if cur_out.startswith("<?xml") and hc_sc.command_stage == "main":
-            xml_out = etree.fromstring(cur_out)
+            try:
+                xml_out = etree.fromstring(cur_out)
+            except:
+                self.log("error parsing XML string (%d bytes, first 100: '%s'): %s" % (
+                    len(cur_out),
+                    cur_out[:100],
+                    process_tools.get_except_info()),
+                    logging_tools.LOG_LEVEL_ERROR)
+                xml_out = E.stdout(cur_out)
         else:
             # todo: transform output to XML for sending back to server
             # pre and post commands
