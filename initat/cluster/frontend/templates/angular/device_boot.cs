@@ -80,7 +80,7 @@ device_row_template = """
             <span ng-show="!$last">,</span>
         </div>
         <span ng-show="!dev.master_connections">
-           not
+            waiting...
         </span>
     </td>
     <td ng-show="any_type_1_selected">
