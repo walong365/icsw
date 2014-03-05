@@ -86,7 +86,7 @@ class repo(dict):
                                 # to no migrate to devel repos
                                 baseurl=os.path.join(self["baseurl"], new_repo),
                                 )
-                    elif target_pf and not rest.endswith(target_pf):
+                    elif rest and target_pf and not rest.endswith(target_pf):
                         repo_m = REPO_RE.match(rest)
                         new_url = "%s/%s%s" % (b_url[:-(len(rest) + 1)], repo_m.group("name"), target_pf)
                         if rest not in NO_SUB_REPOS:
