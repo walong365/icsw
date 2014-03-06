@@ -335,7 +335,9 @@ class netdevice_peer_list(viewsets.ViewSet):
     display_name = "netdevice_peer_list"
     @rest_logging
     def list(self, request):
-        ext_list = [ext_peer_object(**_obj) for _obj in netdevice.objects.filter(Q(peer_s_netdevice__gt=0) | Q(peer_d_netdevice__gt=0) | Q(routing=True)) \
+        ext_list = [ext_peer_object(**_obj) for _obj in netdevice.objects \
+            .filter(Q(device__enabled=True) & Q(device__device_group__enabled=True)) \
+            .filter(Q(peer_s_netdevice__gt=0) | Q(peer_d_netdevice__gt=0) | Q(routing=True)) \
             .distinct() \
             .order_by("device__device_group__name", "device__name", "devname") \
             .select_related("device", "device__device_group", "device__domain_tree_node").values("pk", "devname", "penalty", "device__name", "device__device_group__name", "routing", "device__domain_tree_node__full_name")

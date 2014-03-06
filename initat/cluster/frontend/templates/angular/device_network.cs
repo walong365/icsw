@@ -421,15 +421,21 @@ device_network_module.controller("network_ctrl", ["$scope", "$compile", "$filter
             if ndip_obj.target of $scope.nd_lut
                 t_penalty = $scope.nd_lut[ndip_obj.target].penalty
             else
-                t_penalty = $scope.nd_peer_lut[ndip_obj.target].penalty
+                if ndip_obj.target of $scope.nd_peer_lut
+                    t_penalty = $scope.nd_peer_lut[ndip_obj.target].penalty
+                else
+                    return "N/A"
             return t_penalty + ndip_obj.peer.penalty + $scope.nd_lut[ndip_obj.netdevice].penalty
         $scope.get_peer_target = (ndip_obj) ->
             if ndip_obj.target of $scope.nd_lut
                 peer = $scope.nd_lut[ndip_obj.target]
                 return "#{peer.devname} (#{peer.penalty}) on " + String($scope.dev_lut[peer.device].name)
             else
-                peer = $scope.nd_peer_lut[ndip_obj.target]
-                return "#{peer.devname} (#{peer.penalty}) on #{peer.device__name}"
+                if ndip_obj.target of $scope.nd_peer_lut
+                    peer = $scope.nd_peer_lut[ndip_obj.target]
+                    return "#{peer.devname} (#{peer.penalty}) on #{peer.device_name}"
+                else
+                    return "N/A (disabled device ?)"
         $scope.copy_network = (src_obj, event) ->
             if confirm("Overwrite all networks with the one from #{src_obj.full_name} ?")
                 $.blockUI()

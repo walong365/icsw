@@ -40,12 +40,10 @@ from rest_framework.renderers import JSONRenderer
 from rest_framework.response import Response
 from rest_framework.views import APIView
 import json
-import datetime
 import logging
 import logging_tools
 import server_command
 import time
-import pytz
 
 logger = logging.getLogger("cluster.boot")
 
@@ -84,14 +82,14 @@ class get_boot_info_json(View):
         )
         call_mother = True if int(_post["call_mother"]) else False
         # to speed up things while testing
-        result = None
         if call_mother:
             srv_com = server_command.srv_command(command="status")
             srv_com["devices"] = srv_com.builder(
                 "devices",
                 *[srv_com.builder("device", pk="%d" % (cur_dev.pk)) for cur_dev in dev_result])
             result = contact_server(request, "tcp://localhost:8000", srv_com, timeout=10, log_result=False, connection_id="webfrontend_status")
-            # result = net_tools.zmq_connection("boot_full_webfrontend", timeout=10).add_connection("tcp://localhost:8000", srv_com)
+        else:
+            result = None
         for cur_dev in dev_result:
             cur_dev.cd_cons = cd_cons
             # recv/reqstate are written by mother, here we 'salt' this information with the device XML (pingstate)
@@ -108,6 +106,11 @@ class get_boot_info_json(View):
                 cur_dev.mother_xml = dev_node
             else:
                 cur_dev.mother_xml = False
+        if result is not None and result.xpath(".//ns:cd_ping_list/ns:cd_ping"):
+            cd_result = {}
+            for cd_ping in result.xpath(".//ns:cd_ping_list/ns:cd_ping"):
+                cd_result[int(cd_ping.attrib["pk"])] = True if int(cd_ping.attrib["reachable"]) else False
+            request.xml_response["cd_response"] = json.dumps(cd_result)
         ctx = {"request" : request}
         request.xml_response["response"] = JSONRenderer().render(device_serializer_boot(dev_result, many=True, context=ctx).data)
 

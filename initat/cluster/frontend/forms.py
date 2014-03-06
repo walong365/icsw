@@ -184,6 +184,7 @@ class device_info_form(ModelForm):
                 Field("domain_tree_node", ng_options="value.idx as value.tree_info for value in domain_tree_node", chosen=True),
                 # Field("domain_tree_node", ng_options="value.idx as value.tree_info for value in domain_tree_node", ui_select2=True),
                 Field("comment"),
+                Field("curl"),
             ),
             Fieldset(
                 "Monitor settings",
@@ -229,7 +230,7 @@ class device_info_form(ModelForm):
     class Meta:
         model = device
         fields = ["name", "comment", "monitor_checks", "domain_tree_node", "mon_device_templ",
-                  "enable_perfdata", "flap_detection_enabled", "mon_resolve_name"]
+                  "enable_perfdata", "flap_detection_enabled", "mon_resolve_name", "curl"]
 
 class dummy_password_form(Form):
     helper = FormHelper()
@@ -2458,7 +2459,8 @@ class cd_connection_form(ModelForm):
         # self.fields["d_netdevice"].label = "Destination"
     class Meta:
         model = cd_connection
-        fields = ("connection_info", "parameter_i1", "parameter_i2", "parameter_i3", "parameter_i4",)
+        fields = ("connection_info", "parameter_i1", "parameter_i2", "parameter_i3",
+            "parameter_i4",)
 
 class boot_form(Form):
     helper = FormHelper()

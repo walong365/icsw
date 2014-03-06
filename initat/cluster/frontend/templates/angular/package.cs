@@ -234,7 +234,8 @@ package_module.controller("install", ["$scope", "$compile", "$filter", "$templat
                         $scope.device_lut[dev.idx].client_version = dev.client_version
                         for pdc in dev.package_device_connection_set
                             cur_pdc = $scope.state_dict[dev.idx][pdc.package]
-                            if cur_pdc.idx
+                            # cur_pdc can be undefined, FIXME
+                            if cur_pdc and cur_pdc.idx
                                 # update only relevant fields
                                 update_pdc(pdc, cur_pdc)
                             else

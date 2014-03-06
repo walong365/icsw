@@ -69,7 +69,7 @@ device_row_template = """
     </td>
     <td ng-show="bo_enabled['h']">
         <div class="btn-group" ng-repeat="cd_con in dev.slave_connections">
-            <button type="button" class="btn btn-warning btn-xs dropdown-toggle" data-toggle="dropdown">
+            <button type="button" ng-class="get_hc_class(cd_con)" ng-disabled="get_hc_disabled(cd_con)" data-toggle="dropdown">
                 {{ cd_con.parent.full_name }} <span class="caret"></span>
             </button>
             <ul class="dropdown-menu">
@@ -80,7 +80,7 @@ device_row_template = """
             <span ng-show="!$last">,</span>
         </div>
         <span ng-show="!dev.master_connections">
-           not
+            waiting...
         </span>
     </td>
     <td ng-show="any_type_1_selected">
@@ -105,7 +105,7 @@ device_log_row_template = """
     </tr>
     <tr ng-repeat="line in get_log_lines()">
         <td style="white-space:nowrap;">{{ line[2] | follow_fk:this:'log_source_lut':'name' }}</td>
-        <td style="white-space:nowrap;">{{ line[3] || '---' }}</td>
+        <td style="white-space:nowrap;">{{ line[3] | follow_fk:this:'user_lut':'login':'---' }}</td>
         <td style="white-space:nowrap;">{{ line[4] | follow_fk:this:'log_status_lut':'name' }}</td>
         <td>{{ line[5] }}</td>
         <td style="white-space:nowrap;">{{ get_date(line[6]) }}</td>
@@ -194,6 +194,8 @@ device_boot_module.controller("boot_ctrl", ["$scope", "$compile", "$filter", "$t
                 $scope._edit_obj.bootnetdevice.driver = $scope._edit_obj.driver
                 $scope._edit_obj.bootnetdevice.macaddr = $scope._edit_obj.macaddr
         $scope.devsel_list = []
+        # dict if controlling devices are reachable
+        $scope.cd_reachable = {}
         $scope.devices = []
         # at least one boot_info received
         $scope.info_ok = false
@@ -216,6 +218,8 @@ device_boot_module.controller("boot_ctrl", ["$scope", "$compile", "$filter", "$t
                 # 6
                 restDataSource.reload(["{% url 'rest:log_source_list' %}", {}])
                 restDataSource.reload(["{% url 'rest:log_status_list' %}", {}])
+                # 8
+                restDataSource.reload(["{% url 'rest:user_list' %}", {}])
             ]
             $q.all(wait_list).then((data) ->
                 $scope.devices = (dev for dev in data[0])
@@ -231,6 +235,7 @@ device_boot_module.controller("boot_ctrl", ["$scope", "$compile", "$filter", "$t
                     dev.log_lines = []
                 $scope.log_source_lut = build_lut(data[6])
                 $scope.log_status_lut = build_lut(data[7])
+                $scope.user_lut = build_lut(data[8])
                 $scope.device_lut = build_lut($scope.devices)
                 $scope.kernels = data[1]
                 $scope.images = data[2]
@@ -325,6 +330,11 @@ device_boot_module.controller("boot_ctrl", ["$scope", "$compile", "$filter", "$t
                                 # master connections
                                 for _kv in ["master_connections", "slave_connections"]
                                     dev[_kv] = entry[_kv]
+                            cd_result = $(xml).find("value[name='cd_response']")
+                            if cd_result.length
+                                $scope.cd_reachable = angular.fromJson(cd_result.text())
+                            else
+                                $scope.cd_reachable = {}
                             $scope.$digest()
                 if $scope.bo_enabled["l"]
                     send_data = {
@@ -400,6 +410,22 @@ device_boot_module.controller("boot_ctrl", ["$scope", "$compile", "$filter", "$t
                 () ->
                     true
             )
+        $scope.get_hc_class = (cd_con) ->
+            if cd_con.parent.idx of $scope.cd_reachable
+                if $scope.cd_reachable[cd_con.parent.idx]
+                    return "btn btn-success btn-xs dropdown-toggle"
+                else
+                    return "btn btn-danger btn-xs dropdown-toggle"
+            else          
+                return "btn btn-xs dropdown-toggle"
+        $scope.get_hc_disabled = (cd_con) ->
+            if cd_con.parent.idx of $scope.cd_reachable
+                if $scope.cd_reachable[cd_con.parent.idx]
+                    return false
+                else
+                    return true
+            else
+                return false
         install_devsel_link($scope.new_devsel, true, true, false)
 ]).directive("boottable", ($templateCache) ->
     return {
