@@ -508,6 +508,7 @@ class process_obj(multiprocessing.Process, timer_base, poller_obj, process_base)
                 *cur_mes["args"],
                 src_pid=src_pid,
                 src_process=src_process,
+                func_name=mes_type,
                 **cur_mes.get("kwargs", {}))
             self.any_message_received()
         else:
