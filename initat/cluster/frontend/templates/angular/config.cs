@@ -139,17 +139,17 @@ config_table_template = """
             </td>
         </tr>
         <tr ng-show="config.var_expanded">
-            <td colspan="12">
+            <td colspan="13">
                 <vartable></vartable>
             </td>
         </tr>
         <tr ng-show="config.script_expanded">
-            <td colspan="12">
+            <td colspan="13">
                 <scripttable></scripttable>
             </td>
         </tr>
         <tr ng-repeat-end ng-show="config.mon_expanded">
-            <td colspan="12">
+            <td colspan="13">
                 <montable></montable>
             </td>
         </tr>
