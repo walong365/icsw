@@ -5,7 +5,7 @@ from initat.cluster.backbone.models import netdevice_speed, log_source, \
     device_type, partition_fs, log_status, hw_entry_type, status, network_device_type, \
     network_type, host_check_command, config, mon_check_command, device_group, \
     device, mon_period, mon_service_templ, mon_device_templ, user, group, mon_contact, \
-    network, netdevice, net_ip
+    network, netdevice, net_ip, device_config
 
 class Device(factory.django.DjangoModelFactory):
     FACTORY_FOR = device
@@ -120,3 +120,6 @@ class NetIp(factory.django.DjangoModelFactory):
     FACTORY_FOR = net_ip
     FACTORY_DJANGO_GET_OR_CREATE = ("ip", "network",)
 
+class DeviceConfig(factory.django.DjangoModelFactory):
+    FACTORY_FOR = device_config
+    FACTORY_DJANGO_GET_OR_CREATE = ("device", "config",)
