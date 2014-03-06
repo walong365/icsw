@@ -54,17 +54,20 @@ class build_process(threading_tools.process_obj):
         self.__nagios_lock_file_name = "%s/var/%s" % (global_config["MD_BASEDIR"], global_config["MD_LOCK_FILE"])
         connection.close()
         self.__mach_loggers = {}
-        # generic config is None
-        self.__gen_config = None
         self.version = int(time.time())
         self.syncer_socket = self.connect_to_socket("syncer")
         self.log("initial config_version is %d" % (self.version))
         self.router_obj = config_tools.router_object(self.log)
-        self.register_func("rebuild_config", self._rebuild_config)
-        self.register_func("sync_http_users", self._sync_http_users)
-        self.register_func("build_host_config", self._build_host_config)
         self.register_func("check_for_slaves", self._check_for_slaves)
-        self.register_func("reload_md_daemon", self._reload_md_daemon)
+
+        self.register_func("build_host_config", self._check_call)
+        self.register_func("sync_http_users", self._check_call)
+        self.register_func("rebuild_config", self._check_call)
+        self.register_func("reload_md_daemon", self._check_call)
+        # store pending commands
+        self.__pending_commands = []
+        # ready (check_for_slaves called)
+        self.__ready = False
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
         self.__log_template.log(log_level, what)
     def loop_post(self):
@@ -96,6 +99,12 @@ class build_process(threading_tools.process_obj):
                 self.__slave_lut[cur_dev.full_name] = cur_dev.pk
         else:
             self.log("no slave-servers found")
+        self.__ready = True
+        if self.__pending_commands:
+            self.log("processing %s" % (logging_tools.get_plural("pending command", len(self.__pending_commands))))
+            while self.__pending_commands:
+                _pc = self.__pending_commands.pop(0)
+                self._check_call(*_pc["args"], **_pc["kwargs"])
     def send_command(self, src_id, srv_com):
         self.send_pool_message("send_command", "urn:uuid:%s:relayer" % (src_id), srv_com)
     def mach_log(self, what, lev=logging_tools.LOG_LEVEL_OK, mach_name=None, **kwargs):
@@ -137,6 +146,16 @@ class build_process(threading_tools.process_obj):
             self.log("Checking the %s-configuration returned no error" % (global_config["MD_TYPE"]))
             ret_stat = True
         return ret_stat, out
+    def _check_call(self, *args, **kwargs):
+        if self.__ready:
+            getattr(self, "_%s" % (kwargs["func_name"]))(*args, **kwargs)
+        else:
+            self.__pending_commands.append(
+                {
+                    "args" : args,
+                    "kwargs" : kwargs,
+                }
+            )
     def _reload_md_daemon(self, **kwargs):
         start_daemon, restart_daemon = (False, False)
         cs_stat, cs_out = self._check_md_config()
