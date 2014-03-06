@@ -555,6 +555,7 @@ class configuration(object):
     def handle_commandline(self, **kwargs):
         proxy_call = kwargs.pop("proxy_call", False)
         add_writeback_option = kwargs.pop("add_writeback_option", True)
+        add_exit_after_writeback_option = kwargs.pop("add_exit_after_writeback_option", False)
         pos_arguments = kwargs.pop("positional_arguments", False)
         partial = kwargs.pop("partial", False)
         self.exit_code = None
@@ -572,6 +573,8 @@ class configuration(object):
         if argparse_entries:
             if add_writeback_option:
                 my_parser.add_argument("--writeback", dest="writeback", default=False, action="store_true", help="write back changes to configfile [%(default)s]")
+                if add_exit_after_writeback_option:
+                    my_parser.add_argument("--exit-after-writeback", dest="exit_after_writeback", default=False, action="store_true", help="exit after config file is written [%(default)s]")
             if pos_arguments:
                 my_parser.add_argument("arguments", nargs="+", help="additional arguments")
             try:
