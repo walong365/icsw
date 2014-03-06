@@ -54,9 +54,12 @@ def main():
             prog_name,
             VERSION_STRING),
         add_writeback_option=True,
+        add_exit_after_writeback_option=True,
         positional_arguments=False,
         partial=False)
     global_config.write_file()
+    if _options.exit_after_writeback and _options.writeback:
+        sys.exit(0)
     ps_file_name = global_config["PACKAGE_SERVER_FILE"]
     if not os.path.isfile(ps_file_name):
         try:

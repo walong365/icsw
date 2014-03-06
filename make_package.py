@@ -1,6 +1,6 @@
 #!/usr/bin/python-init -Otu
 #
-# Copyright (C) 2001,2002,2003,2004,2005,2006,2007 Andreas Lang-Nevyjel
+# Copyright (C) 2001-2007,2014 Andreas Lang-Nevyjel
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -28,13 +28,13 @@ except ImportError:
 import sys
 import getopt
 import os
-import os.path
 import commands
 import time
 import shutil
 import logging_tools
 import process_tools
 import rpm_build_tools
+import argparse
 
 def check_for_association(dc, p_idx, name, version, release, set_dict):
     dc.execute("SELECT p.*, p.package_idx, ip.inst_package_idx, ip.last_build, ip.location, ip.package FROM package p, inst_package ip WHERE ip.package=p.package_idx AND p.name='%s' AND p.version='%s' AND p.release='%s'" % (name, version, release))
@@ -119,7 +119,7 @@ def list_packages(list_arg, dc):
         for pack in all_packs:
             out_fm.add_line([pack["name"], pack["version"], pack["release"], pack["packager"], time.ctime(pack["last_build"]), pack["architecture"], str(pack["size"]), pack["summary"]])
         print str(out_fm)
-    
+
 def delete_package(dc, name, version, release):
     sql_str = "SELECT p.* FROM inst_package ip, package p WHERE ip.package=p.package_idx AND p.name='%s' AND p.version='%s' AND p.release='%s'" % (name, version, release)
     dc.execute(sql_str)
@@ -155,7 +155,7 @@ def check_auto_incr_release(dc, name, version):
     else:
         release = 1
     return release
-    
+
 def main():
     try:
         opts, args = getopt.getopt(sys.argv[1:], "n:v:r:g:hl:a:D:C:P:u:g:G:Lms:d:", ["help", "del", "doc=", "exclude-dir-names="] + ["%s-script=" % (script_t) for script_t in rpm_build_tools.SCRIPT_TYPES])
@@ -286,7 +286,7 @@ def main():
     if not dc and (list_arg or list_grps or delete or release == "AUTO_INCR"):
         print "No (needed) SQL Server connection"
         sys.exit(5)
-    #pwd_field = pwd.getpwnam(os.getlogin())
+    # pwd_field = pwd.getpwnam(os.getlogin())
     if not long_package_name:
         build_it = False
         if list_grps:
@@ -326,9 +326,9 @@ def main():
                         elif ret == "yes":
                             break
         if build_it:
-            build_p["version"]       = version
-            build_p["release"]       = release
-            build_p["name"]          = name
+            build_p["version"] = version
+            build_p["release"] = release
+            build_p["name"] = name
             build_p["package_group"] = package_group
             # set scripts
             for key, value in script_dict.iteritems():
@@ -406,6 +406,6 @@ def main():
     if dc:
         dc.release()
     print "done"
-    
+
 if __name__ == "__main__":
     main()
