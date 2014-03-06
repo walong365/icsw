@@ -54,6 +54,8 @@ class build_process(threading_tools.process_obj):
         self.__nagios_lock_file_name = "%s/var/%s" % (global_config["MD_BASEDIR"], global_config["MD_LOCK_FILE"])
         connection.close()
         self.__mach_loggers = {}
+        # generic config is None
+        self.__gen_config = None
         self.version = int(time.time())
         self.syncer_socket = self.connect_to_socket("syncer")
         self.log("initial config_version is %d" % (self.version))
@@ -248,7 +250,7 @@ class build_process(threading_tools.process_obj):
                 device=cdg,
                 is_public=False,
                 name="_SYS_GAUGE_",
-                description="mon config rebuild on %s" % (self.__gen_config.monitor_server.full_name),
+                description="mon config rebuild on %s" % (self.__gen_config.monitor_server.full_name if self.__gen_config else "unknown"),
                 var_type="i")
             # bump version
             if int(time.time()) > self.version:
