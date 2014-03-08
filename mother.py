@@ -29,7 +29,7 @@ os.environ.setdefault("DJANGO_SETTINGS_MODULE", "initat.cluster.settings")
 
 from django.db import connection
 from django.db.models import Q
-from initat.cluster.backbone.models import network, status
+from initat.cluster.backbone.models import network, status, log_source
 from initat.mother.config import global_config
 from initat.snmp_relay.snmp_process import snmp_process
 from lxml import etree # @UnresolvedImports
@@ -3283,8 +3283,8 @@ def main():
         ("ETHERBOOT_DIR", configfile.str_c_var("%s/%s" % (global_config["TFTP_DIR"], "etherboot"))),
         ("KERNEL_DIR"   , configfile.str_c_var("%s/%s" % (global_config["TFTP_DIR"], "kernels")))])
     global_config.add_config_entries([
-        ("LOG_SOURCE_IDX", configfile.int_c_var(cluster_location.log_source.create_log_source_entry("mother", "Mother Server", device=sql_info.device).pk)),
-        ("NODE_SOURCE_IDX", configfile.int_c_var(cluster_location.log_source.create_log_source_entry("node", "Clusternode").pk)),
+        ("LOG_SOURCE_IDX", configfile.int_c_var(log_source.create_log_source_entry("mother", "Mother Server", device=sql_info.device).pk)),
+        ("NODE_SOURCE_IDX", configfile.int_c_var(log_source.create_log_source_entry("node", "Clusternode").pk)),
     ])
     process_tools.renice()
     if not global_config["DEBUG"]:
