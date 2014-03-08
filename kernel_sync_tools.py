@@ -1,7 +1,7 @@
 #!/usr/bin/python-init -Otu
 # -*- coding: utf-8 -*-
 #
-# Copyright (C) 2007,2008,2009,2012,2013 Andreas Lang-Nevyjel, init.at
+# Copyright (C) 2007-2009,2012-2014 Andreas Lang-Nevyjel, init.at
 #
 # Send feedback to: <lang-nevyjel@init.at>
 # 
@@ -22,22 +22,22 @@
 #
 """ kernel sync tools """
 
-import sys
-import os
-import time
-import threading
+from django.db.models import Q
+from initat.cluster.backbone.models import kernel, kernel_build, kernel_log, device, cluster_timezone
 import commands
-import stat
-import process_tools
 import datetime
-import logging_tools
-import pprint
-import server_command
 import gzip
 import hashlib
+import logging_tools
+import os
+# import pprint
+import process_tools
+import server_command
+import stat
+import sys
 import tempfile
-from initat.cluster.backbone.models import kernel, kernel_build, kernel_log, device, cluster_timezone
-from django.db.models import Q
+import threading
+import time
 
 KNOWN_INITRD_FLAVOURS = ["lo", "cpio", "cramfs"]
 

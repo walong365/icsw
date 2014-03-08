@@ -1,6 +1,6 @@
 #!/usr/bin/python-init -Ot
 #
-# Copyright (C) 2012 Andreas Lang-Nevyjel
+# Copyright (C) 2012,2014 Andreas Lang-Nevyjel
 #
 # this file is part of cluster-backbone
 #
@@ -21,12 +21,12 @@
 #
 """ handles module dependencies """
 
-import sys
-import os
-import fnmatch
-import logging_tools
 import commands
 import copy
+import fnmatch
+import logging_tools
+import os
+import sys
 
 class dependency_handler(object):
     def __init__(self, kernel_dir, **kwargs):
@@ -50,7 +50,7 @@ class dependency_handler(object):
         mod_dict = {}
         # lut: module with with postfix -> full path
         file_dict = {}
-        for act_dir, dir_names, file_names in os.walk(self.kernel_dir):
+        for act_dir, _dir_names, file_names in os.walk(self.kernel_dir):
             for f_name in file_names:
                 mod_name = f_name[:-3] if f_name.endswith(".ko") else (f_name[:-2] if f_name.endswith(".o") else f_name)
                 #print f_name, mod_name
@@ -79,7 +79,7 @@ class dependency_handler(object):
             # simplify
             dep_lines2 = [line.replace("//", "/").replace("//", "/").split(":") for line in dep_lines2]
             dep_dict = dict([(key, value.strip().split()) for key, value in [entry for entry in dep_lines2 if len(entry) == 2]])
-            kernel_mod_dict = dict([(os.path.basename(key), key) for key in dep_dict.iterkeys()])
+            # kernel_mod_dict = dict([(os.path.basename(key), key) for key in dep_dict.iterkeys()])
             kernel_lut_dict = dict([(key, os.path.basename(key)) for key in dep_dict.iterkeys()])
             dep_dict = dict([(os.path.basename(key), set([kernel_lut_dict[m_path] for m_path in value])) for key, value in dep_dict.iteritems()])
             first_found = copy.deepcopy(matches_found)

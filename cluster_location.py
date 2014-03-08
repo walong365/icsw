@@ -2,7 +2,7 @@
 #
 # Copyright (C) 2012-2014 Andreas Lang-Nevyjel, init.at
 #
-# this file is part of cluster-backbone-sql
+# this file is part of cluster-backbone
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -32,13 +32,20 @@ import netifaces
 import process_tools
 import socket
 
+_VAR_LUT = {
+    "int" : config_int,
+    "str" : config_str,
+    "blob" : config_blob,
+    "bool" : config_bool,
+}
+
 def read_config_from_db(g_config, server_type, init_list=[], host_name="", **kwargs):
     if not host_name:
         # AL 20120401 **kwargs delete, FIXME ?
         host_name = process_tools.get_machine_name()
     g_config.add_config_entries(init_list, database=True)
     if not kwargs.get("dummy_run", False):
-        num_serv, serv_idx, s_type, s_str, config_idx, real_config_name = is_server(server_type.replace("%", ""), True, False, host_name.split(".")[0])
+        num_serv, serv_idx, _s_type, _s_str, _config_idx, real_config_name = is_server(server_type.replace("%", ""), True, False, host_name.split(".")[0])
         # print num_serv, serv_idx, s_type, s_str, config_idx, real_config_name
         if num_serv:
             # dict of local vars without specified host
@@ -48,7 +55,7 @@ def read_config_from_db(g_config, server_type, init_list=[], host_name="", **kwa
                           "blob",
                           "bool"]:
                 # very similiar code appears in config_tools.py
-                src_sql_obj = globals()["config_%s" % (short)].objects
+                src_sql_obj = _VAR_LUT[short].objects
                 if init_list and not kwargs.get("read_all", False):
                     src_sql_obj = src_sql_obj.filter(Q(name__in=[var_name for var_name, _var_value in init_list]))
                 for db_rec in src_sql_obj.filter(

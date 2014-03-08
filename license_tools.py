@@ -28,7 +28,7 @@ from lxml.builder import E # @UnresolvedImport
 import base64
 import logging
 import os
-import sys
+# import sys
 import tempfile
 
 logger = logging.getLogger(__name__)
