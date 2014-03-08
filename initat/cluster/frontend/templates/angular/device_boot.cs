@@ -290,6 +290,7 @@ device_boot_module.controller("boot_ctrl", ["$scope", "$compile", "$filter", "$t
                     success : (xml) =>
                         $scope.update_info_timeout = $timeout($scope.update_info, 10000)
                         parse_xml_response(xml)
+                        # hm, the way to go ?
                         if true
                             $scope.info_ok = true
                             _resp = angular.fromJson($(xml).find("value[name='response']").text())
