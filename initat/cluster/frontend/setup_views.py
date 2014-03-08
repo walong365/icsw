@@ -89,7 +89,7 @@ class scan_for_images(View):
     def post(self, request):
         _post = request.POST
         srv_com = server_command.srv_command(command="get_image_list")
-        srv_result = contact_server(request, "tcp://localhost:8004", srv_com, timeout=10, log_result=True)
+        srv_result = contact_server(request, "server", srv_com, timeout=10, log_result=True)
         if srv_result:
             present_img_names = image.objects.all().values_list("name", flat=True)
             # print srv_result.pretty_print()
@@ -121,7 +121,7 @@ class use_image(View):
             _cur_img = image.objects.get(Q(name=img_name))
         except image.DoesNotExist:
             srv_com = server_command.srv_command(command="get_image_list")
-            srv_result = contact_server(request, "tcp://localhost:8004", srv_com, timeout=10, log_result=False)
+            srv_result = contact_server(request, "server", srv_com, timeout=10, log_result=False)
             img_xml = srv_result.xpath(".//ns:image[text() = '%s']" % (img_name), smart_strings=False)
             if len(img_xml):
                 img_xml = img_xml[0]
@@ -167,5 +167,5 @@ class rescan_kernels(View):
     def post(self, request):
         _post = request.POST
         srv_com = server_command.srv_command(command="rescan_kernels")
-        _srv_result = contact_server(request, "tcp://localhost:8000", srv_com, timeout=180, log_result=True)
+        _srv_result = contact_server(request, "mother", srv_com, timeout=180, log_result=True)
 

@@ -108,16 +108,9 @@ class create_config(View):
     @method_decorator(xml_wrapper)
     def post(self, request):
         srv_com = server_command.srv_command(command="rebuild_host_config", cache_mode="ALWAYS")
-        result = contact_server(request, "tcp://localhost:8010", srv_com, connection_id="wf_mdrc")
+        result = contact_server(request, "md-config", srv_com, connection_id="wf_mdrc")
         if result:
             request.xml_response["result"] = E.devices()
-
-# class rebuild_config(View):
-#    @method_decorator(login_required)
-#    @method_decorator(xml_wrapper)
-#    def post(self, request):
-#        srv_com = server_command.srv_command(command="rebuild_config")
-#        _result = contact_server(request, "tcp://localhost:8010", srv_com, timeout=30)
 
 class call_icinga(View):
     @method_decorator(login_required)
@@ -141,7 +134,7 @@ class fetch_partition(View):
         srv_com = server_command.srv_command(command="fetch_partition_info")
         srv_com["server_key:device_pk"] = "%d" % (part_dev.pk)
         srv_com["server_key:device_pk"] = "%d" % (part_dev.pk)
-        _result = contact_server(request, "tcp://localhost:8004", srv_com, timeout=30)
+        _result = contact_server(request, "server", srv_com, timeout=30)
 
 
 class get_node_config(View):
@@ -157,7 +150,7 @@ class get_node_config(View):
         srv_com["device_list"] = E.device_list(
             *[E.device(pk="%d" % (int(cur_pk))) for cur_pk in pk_list]
         )
-        result = contact_server(request, "tcp://localhost:8010", srv_com, timeout=30)
+        result = contact_server(request, "md-config", srv_com, timeout=30)
         if result:
             node_results = result.xpath(".//config", smart_strings=False)
             if len(node_results):
@@ -177,7 +170,7 @@ class get_node_status(View):
         srv_com["device_list"] = E.device_list(
             *[E.device(pk="%d" % (int(cur_pk))) for cur_pk in pk_list]
         )
-        result = contact_server(request, "tcp://localhost:8010", srv_com, timeout=30)
+        result = contact_server(request, "md-config", srv_com, timeout=30)
         if result:
             node_results = result.xpath(".//node_results", smart_strings=False)
             if len(node_results):

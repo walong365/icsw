@@ -207,7 +207,7 @@ class control_job(View):
         srv_com["job_list"] = srv_com.builder(
             "job_list",
             srv_com.builder("job", job_id=job_id))
-        contact_server(request, "tcp://localhost:8009", srv_com, timeout=10)
+        contact_server(request, "rms", srv_com, timeout=10)
 
 class get_file_content(View):
     @method_decorator(login_required)
@@ -234,7 +234,7 @@ class get_file_content(View):
                     "file_list",
                     srv_com.builder("file", name=io_element.text),
                     )
-                result = contact_server(request, "tcp://localhost:8004", srv_com, timeout=60, connection_id="file_fetch_%s" % (str(job_id)))
+                result = contact_server(request, "server", srv_com, timeout=60, connection_id="file_fetch_%s" % (str(job_id)))
                 for cur_file in result.xpath(".//ns:file", smart_strings=False):
                     # print etree.tostring(cur_file)
                     if cur_file.attrib["error"] == "1":

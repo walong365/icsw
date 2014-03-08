@@ -48,7 +48,7 @@ class device_rrds(View):
             *[E.device(pk="%d" % (int(dev_pk))) for dev_pk in dev_pks],
             merge_results="1"
         )
-        result = contact_server(request, "tcp://localhost:8003", srv_com, timeout=30)
+        result = contact_server(request, "grapher", srv_com, timeout=30)
         if result:
             node_results = result.xpath(".//node_results", smart_strings=False)
             if len(node_results):
@@ -87,7 +87,7 @@ class graph_rrds(View):
                                 end_time.strftime("%Y-%m-%d %H:%M"))),
             E.size(_post.get("size", "400x200"))
         )
-        result = contact_server(request, "tcp://localhost:8003", srv_com, timeout=30)
+        result = contact_server(request, "grapher", srv_com, timeout=30)
         if result:
             graph_list = result.xpath(".//graph_list", smart_strings=False)
             if len(graph_list):

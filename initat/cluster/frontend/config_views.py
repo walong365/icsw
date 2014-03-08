@@ -313,7 +313,7 @@ class generate_config(View):
         srv_com["devices"] = srv_com.builder(
             "devices",
             *[srv_com.builder("device", pk="%d" % (cur_dev.pk)) for cur_dev in dev_list])
-        result = contact_server(request, "tcp://localhost:8005", srv_com, timeout=30, log_result=False)
+        result = contact_server(request, "config", srv_com, timeout=30, log_result=False)
         if result:
             request.xml_response["result"] = E.devices()
             for dev_node in result.xpath(".//ns:device", smart_strings=False):
@@ -468,7 +468,7 @@ class get_device_cvars(View):
         srv_com["devices"] = srv_com.builder(
             "devices",
             *[srv_com.builder("device", pk="%d" % (int(cur_pk))) for cur_pk in pk_list])
-        result = contact_server(request, "tcp://localhost:8005", srv_com, timeout=30, log_result=False)
+        result = contact_server(request, "config", srv_com, timeout=30, log_result=False)
         if result:
             request.xml_response["result"] = E.devices()
             for dev_node in result.xpath(".//ns:device", smart_strings=False):

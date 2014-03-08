@@ -87,9 +87,10 @@ class get_boot_info_json(View):
             srv_com["devices"] = srv_com.builder(
                 "devices",
                 *[srv_com.builder("device", pk="%d" % (cur_dev.pk)) for cur_dev in dev_result])
-            result = contact_server(request, "tcp://localhost:8000", srv_com, timeout=10, log_result=False, connection_id="webfrontend_status")
+            result = contact_server(request, "mother", srv_com, timeout=10, log_result=False, connection_id="webfrontend_status")
         else:
             result = None
+        # print result.pretty_print()
         for cur_dev in dev_result:
             cur_dev.cd_cons = cd_cons
             # recv/reqstate are written by mother, here we 'salt' this information with the device XML (pingstate)
@@ -199,8 +200,8 @@ class update_device(APIView):
                 srv_com["devices"] = srv_com.builder(
                     "devices",
                     srv_com.builder("device", name=cur_dev.name, pk="%d" % (cur_dev.pk)))
-                _res, _log_lines = contact_server(request, "tcp://localhost:8000", srv_com, timeout=10, connection_id="webfrontend_refresh")
-                print "*", _mother_com, _log_lines
+                _res, _log_lines = contact_server(request, "mother", srv_com, timeout=10, connection_id="webfrontend_refresh")
+                # print "*", _mother_com, _log_lines
                 _lines.extend(_log_lines)
         if _all_update_list:
             if len(all_devs) > 1:
@@ -260,8 +261,7 @@ class soft_control(View):
         srv_com["devices"] = srv_com.builder(
             "devices",
             srv_com.builder("device", soft_command=soft_state, pk="%d" % (cur_dev.pk)))
-        result = contact_server(request, "tcp://localhost:8000", srv_com, timeout=10, log_result=False)
-        # result = net_tools.zmq_connection("boot_webfrontend", timeout=10).add_connection("tcp://localhost:8000", srv_com)
+        result = contact_server(request, "mother", srv_com, timeout=10, log_result=False)
         if result:
             request.xml_response.info("sent %s to %s" % (soft_state, unicode(cur_dev)), logger)
 
@@ -280,4 +280,4 @@ class hard_control(View):
         srv_com["devices"] = srv_com.builder(
             "devices",
             srv_com.builder("device", command=command, cd_con="%d" % (cur_cd_con.pk)))
-        contact_server(request, "tcp://localhost:8000", srv_com, timeout=10)
+        contact_server(request, "mother", srv_com, timeout=10)

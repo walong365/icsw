@@ -66,16 +66,16 @@ class sync_users(View):
             logger.info("trying to create user_home for '%s'" % (unicode(create_user)))
             srv_com = server_command.srv_command(command="create_user_home")
             srv_com["server_key:username"] = create_user.login
-            _result = contact_server(request, "tcp://localhost:8004", srv_com, timeout=30)
+            _result = contact_server(request, "server", srv_com, timeout=30)
         # check for configs, can be optimised ?
         if config_tools.server_check(server_type="ldap_server").effective_device:
             srv_com = server_command.srv_command(command="sync_ldap_config")
-            _result = contact_server(request, "tcp://localhost:8004", srv_com, timeout=30)
+            _result = contact_server(request, "server", srv_com, timeout=30)
         if config_tools.server_check(server_type="yp_server").effective_device:
             srv_com = server_command.srv_command(command="write_yp_config")
-            _result = contact_server(request, "tcp://localhost:8004", srv_com, timeout=30)
+            _result = contact_server(request, "server", srv_com, timeout=30)
         srv_com = server_command.srv_command(command="sync_http_users")
-        _result = contact_server(request, "tcp://localhost:8010", srv_com)
+        _result = contact_server(request, "md-config", srv_com)
 
 class save_layout_state(View):
     @method_decorator(login_required)

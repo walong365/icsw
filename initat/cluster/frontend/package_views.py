@@ -58,13 +58,13 @@ class repo_overview(permission_required_mixin, View):
         cur_mode = request.POST.get("mode", None)
         if cur_mode in ["rescan_repos", "reload_searches", "sync_repos", "new_config"]:
             srv_com = server_command.srv_command(command=cur_mode)
-            _result = contact_server(request, "tcp://localhost:8007", srv_com, timeout=10, log_result=True)
+            _result = contact_server(request, "package", srv_com, timeout=10, log_result=True)
         else:
             request.xml_response.error("unknown mode '%s'" % (cur_mode))
 
 def reload_searches(request):
     srv_com = server_command.srv_command(command="reload_searches")
-    return contact_server(request, "tcp://localhost:8007", srv_com, timeout=5, log_result=False)
+    return contact_server(request, "package", srv_com, timeout=5, log_result=False)
 
 class retry_search(View):
     @method_decorator(login_required)
@@ -209,7 +209,7 @@ class change_package(View):
                 cur_pdc.save()
         request.xml_response.info("%s updated" % (logging_tools.get_plural("PDC", changed)), logger)
         srv_com = server_command.srv_command(command="new_config")
-        result = contact_server(request, "tcp://localhost:8007", srv_com, timeout=10, log_result=False)
+        result = contact_server(request, "package", srv_com, timeout=10, log_result=False)
         if result:
             # print result.pretty_print()
             request.xml_response.info("sent sync to server", logger)
@@ -256,7 +256,7 @@ class synchronize(View):
     @method_decorator(xml_wrapper)
     def post(self, request):
         srv_com = server_command.srv_command(command="new_config")
-        result = contact_server(request, "tcp://localhost:8007", srv_com, timeout=10, log_result=False)
+        result = contact_server(request, "package", srv_com, timeout=10, log_result=False)
         if result:
             # print result.pretty_print()
             request.xml_response.info("sent sync to server", logger)
