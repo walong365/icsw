@@ -62,6 +62,8 @@ DATABASE_ROUTERS = ["initat.cluster.backbone.routers.db_router"]
 NEW_CONF_FILE = "/etc/sysconfig/cluster/db.cf"
 OLD_CONF_FILE = "/etc/sysconfig/cluster/mysql.cf"
 
+SLAVE_MODE = os.path.exists("/etc/sysconfig/cluster/is_slave")
+
 if os.path.isfile(NEW_CONF_FILE):
     try:
         conf_content = file(NEW_CONF_FILE, "r").read()
@@ -262,6 +264,8 @@ else:
         # cluster
         "initat.core",
     )
+    if SLAVE_MODE:
+        INSTALLED_APPS = tuple([_entry for _entry in list(INSTALLED_APPS) if _entry not in ["crispy_forms"]])
 
 # needed by some modules
 ZMQ_LOGGING = True
@@ -289,8 +293,9 @@ else:
 
 # pipeline settings
 PIPELINE_YUGLIFY_BINARY = "/opt/cluster/lib/node_modules/yuglify/bin/yuglify"
-if not os.path.exists(PIPELINE_YUGLIFY_BINARY):
-    raise ImproperlyConfigured("no %s found" % (PIPELINE_YUGLIFY_BINARY))
+if not SLAVE_MODE:
+    if not os.path.exists(PIPELINE_YUGLIFY_BINARY):
+        raise ImproperlyConfigured("no %s found" % (PIPELINE_YUGLIFY_BINARY))
 PIPELINE_YUGLIFY_CSS_ARGUMENTS = "--terminal"
 PIPELINE_YUGLIFY_JS_ARGUMENTS = "--terminal"
 STATICFILES_STORAGE = "pipeline.storage.PipelineCachedStorage"
