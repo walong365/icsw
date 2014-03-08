@@ -24,6 +24,9 @@ module to operate with config and ip relationsships in the database. This
 module gets included from configfile
 """
 
+from django.db.models import Q
+from initat.cluster.backbone.models import config, device, net_ip, device_config, \
+     config_str, config_blob, config_int, config_bool, netdevice, peer_information
 import array
 import configfile
 import logging_tools
@@ -31,11 +34,6 @@ import networkx
 import process_tools
 import sys
 import time
-
-from initat.cluster.backbone.models import config, device, net_ip, device_config, \
-     device_group, config_str, config_blob, config_int, config_bool, netdevice, \
-     peer_information
-from django.db.models import Q
 
 class router_object(object):
     def __init__(self, log_com):
@@ -121,7 +119,10 @@ class router_object(object):
     def add_penalty(self, in_path):
         return (self.get_penalty(in_path), in_path)
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
-        self.__log_com("[router] %s" % (what), log_level)
+        if hasattr(self.__log_com, "log"):
+            self.__log_com.log(log_level, "[router] %s" % (what))
+        else:
+            self.__log_com("[router] %s" % (what), log_level)
     def get_ndl_ndl_pathes(self, s_list, d_list, **kwargs):
         """
         returns all pathes between s_list and d_list (:: net_device)
@@ -250,6 +251,13 @@ class topology_object(object):
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
         self.__log_com("[topology] %s" % (what), log_level)
 
+_VAR_LUT = {
+    "int" : config_int,
+    "str" : config_str,
+    "blob" : config_blob,
+    "bool" : config_bool,
+}
+
 def get_config_var_list(config_obj, config_dev):
     r_dict = {}
     # dict of local vars without specified host
@@ -258,7 +266,7 @@ def get_config_var_list(config_obj, config_dev):
                   "int",
                   "blob",
                   "bool"]:
-        src_sql_obj = globals()["config_%s" % (short)].objects
+        src_sql_obj = _VAR_LUT[short].objects
         for db_rec in src_sql_obj.filter(
             (Q(device=0) | Q(device=None) | Q(device=config_dev.pk)) &
             (Q(config=config_obj)) &
@@ -560,8 +568,6 @@ class server_check(object):
                 self.device.pk,
                 self.server_origin,
                 self.server_info_str)
-
-from django.db import connection
 
 class device_with_config(dict):
     def __init__(self, config_name, **kwargs):
