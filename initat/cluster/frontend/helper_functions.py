@@ -30,10 +30,8 @@ from lxml.builder import E # @UnresolvedImports
 import email.mime
 import logging_tools
 import net_tools
-import pprint
 import process_tools
 import smtplib
-import sys
 
 class xml_response(object):
     """
@@ -153,18 +151,10 @@ class xml_response(object):
         """
         creates a new xml response
         """
-        return HttpResponse(unicode(self),
-                            mimetype="application/xml")
-
-def keyword_check(*kwarg_list):
-    def decorator(func):
-        def _wrapped_view(*args, **kwargs):
-            diff_set = set(kwargs.keys()) - set(kwarg_list)
-            if diff_set:
-                raise KeyError, "Invalid keyword arguments: %s" % (str(diff_set))
-            return func(*args, **kwargs)
-        return _wrapped_view
-    return decorator
+        return HttpResponse(
+            unicode(self),
+            mimetype="application/xml",
+        )
 
 class xml_wrapper(object):
     def __init__(self, func):
@@ -254,7 +244,3 @@ def contact_server(request, conn_str, send_com, **kwargs):
         return result
     else:
         return result, _log_lines
-
-if __name__ == "__main__":
-    print "Loadable module, exiting..."
-    sys.exit(-1)
