@@ -217,7 +217,6 @@ class hc_command(object):
                 com_ip = ip_list[0]
         return com_ip
     def snmp_finished(self, *args):
-        print args
         hc_command.unregister(self)
     @staticmethod
     def g_log(what, log_level=logging_tools.LOG_LEVEL_OK):
