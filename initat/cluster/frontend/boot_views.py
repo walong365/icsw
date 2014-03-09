@@ -279,5 +279,5 @@ class hard_control(View):
         srv_com = server_command.srv_command(command="hard_control")
         srv_com["devices"] = srv_com.builder(
             "devices",
-            srv_com.builder("device", command=command, cd_con="%d" % (cur_cd_con.pk)))
+            srv_com.builder("device", command=command, pk="%d" % (cur_cd_con.parent_id), cd_con="%d" % (cur_cd_con.pk)))
         contact_server(request, "mother", srv_com, timeout=10)

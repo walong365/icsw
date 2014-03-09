@@ -70,7 +70,7 @@ device_row_template = """
     <td ng-show="bo_enabled['h']">
         <div class="btn-group" ng-repeat="cd_con in dev.slave_connections">
             <button type="button" ng-class="get_hc_class(cd_con)" ng-disabled="get_hc_disabled(cd_con)" data-toggle="dropdown">
-                {{ cd_con.parent.full_name }} <span class="caret"></span>
+                {{ get_hc_info(cd_con) }} <span class="caret"></span>
             </button>
             <ul class="dropdown-menu">
                 <li ng-click="hard_control(cd_con, 'cycle')"><a href="#">cycle</a></li>
@@ -428,6 +428,19 @@ device_boot_module.controller("boot_ctrl", ["$scope", "$compile", "$filter", "$t
                     return true
             else
                 return false
+        $scope.get_hc_info = (cd_con) ->
+            r_str = cd_con.parent.full_name
+            info_f = (cd_con["parameter_i#{i}"] for i in [1, 2, 3, 4])
+            info_f.reverse()
+            for i in [1..4]
+                if info_f.length and info_f[0] == 0
+                    info_f.splice(0, 1)
+            info_f.reverse()
+            if info_f.length
+                info_str = info_f.join("/")
+                return "#{r_str} (#{info_str})"
+            else
+                return r_str
         install_devsel_link($scope.new_devsel, true, true, false)
 ]).directive("boottable", ($templateCache) ->
     return {

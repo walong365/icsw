@@ -188,10 +188,13 @@ device_connection_module.controller("connection_ctrl", ["$scope", "$compile", "$
             _ms_pks = (entry.child for entry in dev.master_list).concat((entry.parent for entry in dev.slave_list))
             valid_pks = (pk for pk in $scope.devsel_list when pk != dev.idx and pk not in _ms_pks)
             if only_cds
-                valid_pks = (pk for pk in valid_pks when $scope.devices[pk].device_type_identifier == "CD")
+                valid_pks = (pk for pk in valid_pks when pk of $scope.devices and $scope.devices[pk].device_type_identifier == "CD")
             return valid_pks
         $scope.get_device_info = (pk) ->
-            return $scope.devices[pk].full_name
+            if pk of $scope.devices
+                return $scope.devices[pk].full_name
+            else
+                return "#{pk} ?"
         $scope.create_master = (dev, pk) ->
             new_obj = {
                 "parent" : dev.idx
