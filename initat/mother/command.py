@@ -114,7 +114,7 @@ class hc_command(object):
                      dev=cur_cd.child)
         else:
             if self.curl_base in ["ipmi", "ilo4"]:
-                com_str = self._build_com_str(var_dict, com_ip, command, parent=cur_cd.parent, child=cur_cd.child)
+                com_str = self._build_com_str(var_dict, com_ip, command)
                 self.log("com_str is '%s'" % (com_str))
                 self.log("sending com_str to '%s'" % (unicode(self.cd_obj.parent)), dev=self.cd_obj.child)
                 simple_command(com_str,
