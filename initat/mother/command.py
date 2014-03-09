@@ -43,13 +43,27 @@ class snmp_scheme(object):
         _list = []
         if command == "cycle":
             _list = self.cycle()
+        elif command == "on":
+            _list = self.on()
+        elif command == "off":
+            _list = self.off()
         if _list:
             _list = ["S", _list]
-        print "*", _list
         return _list
 
 class apcv1_scheme(snmp_scheme):
     def cycle(self):
+        # cdc ... controlling device connection
+        return [
+            (simple_snmp_oid((1, 3, 6, 1, 4, 1, 318, 1, 1, 12, 3, 3, 1, 1, 4, self.cdc.parameter_i1), target_value=3)),
+        ]
+    def on(self):
+        # cdc ... controlling device connection
+        # delayed on : 5, delayed off : 6, delayed cycle : 7
+        return [
+            (simple_snmp_oid((1, 3, 6, 1, 4, 1, 318, 1, 1, 12, 3, 3, 1, 1, 4, self.cdc.parameter_i1), target_value=1)),
+        ]
+    def off(self):
         # cdc ... controlling device connection
         return [
             (simple_snmp_oid((1, 3, 6, 1, 4, 1, 318, 1, 1, 12, 3, 3, 1, 1, 4, self.cdc.parameter_i1), target_value=2)),
@@ -206,7 +220,7 @@ class hc_command(object):
         print args
         hc_command.unregister(self)
     @staticmethod
-    def g_log(what, log_level=logging_tools.LOG_LEVEL_OK): 
+    def g_log(what, log_level=logging_tools.LOG_LEVEL_OK):
         hc_command.process.log("[hc] %s" % (what), log_level)
     @staticmethod
     def register(cur_hc):
