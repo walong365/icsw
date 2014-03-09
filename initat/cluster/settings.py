@@ -172,7 +172,7 @@ SESSION_ENGINE = "django.contrib.sessions.backends.cache"
 SESSION_COOKIE_HTTPONLY = True
 
 # Make this unique, and don't share it with anybody.
-SECRET_KEY = "av^t8g^st(phckz=9u#68k6p&amp;%3@h*z!mt=mo@3t!!ls^+4%ic"
+# SECRET_KEY = "av^t8g^st(phckz=9u#68k6p&amp;%3@h*z!mt=mo@3t!!ls^+4%ic"
 
 # List of callables that know how to import templates from various sources.
 TEMPLATE_CONTEXT_PROCESSORS = (
