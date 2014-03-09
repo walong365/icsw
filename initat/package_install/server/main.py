@@ -26,12 +26,13 @@ import sys
 
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "initat.cluster.settings")
 
+from initat.cluster.backbone.models import log_source
+from initat.package_install.server.config import global_config, P_SERVER_PUB_PORT, PACKAGE_CLIENT_PORT
+from initat.package_install.server.server import server_process
 import cluster_location
 import config_tools
 import configfile
 import process_tools
-from initat.package_install.server.config import global_config, P_SERVER_PUB_PORT, PACKAGE_CLIENT_PORT
-from initat.package_install.server.server import server_process
 
 try:
     from initat.package_install.server.version import VERSION_STRING
@@ -73,7 +74,7 @@ def main():
     if global_config["KILL_RUNNING"]:
         _log_lines = process_tools.kill_running_processes(prog_name + ".py", exclude=configfile.get_manager_pid())
     global_config.add_config_entries([("SERVER_IDX", configfile.int_c_var(sql_info.effective_device.pk, database=False))])
-    global_config.add_config_entries([("LOG_SOURCE_IDX", configfile.int_c_var(cluster_location.log_source.create_log_source_entry("package-server", "Cluster PackageServer", device=sql_info.effective_device).pk))])
+    global_config.add_config_entries([("LOG_SOURCE_IDX", configfile.int_c_var(log_source.create_log_source_entry("package-server", "Cluster PackageServer", device=sql_info.effective_device).pk))])
     process_tools.fix_directories(global_config["USER"], global_config["GROUP"], ["/var/run/package-server"])
     process_tools.renice()
     process_tools.fix_sysconfig_rights()
