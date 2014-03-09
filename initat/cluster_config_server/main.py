@@ -1,6 +1,6 @@
 #!/usr/bin/python-init -OtW default
 #
-# Copyright (C) 2001,2002,2003,2004,2005,2006,2007,2008,2012,2013 Andreas Lang-Nevyjel, init.at
+# Copyright (C) 2001-2008,2012-2014 Andreas Lang-Nevyjel, init.at
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -26,14 +26,14 @@ import sys
 
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "initat.cluster.settings")
 
+from initat.cluster_config_server.cluster_config_server_version import VERSION_STRING
+from initat.cluster_config_server.config import global_config, SERVER_PUB_PORT, SERVER_PULL_PORT, NCS_PORT
+from initat.cluster_config_server.server import server_process
+from initat.cluster.backbone.models import log_source
+import cluster_location
 import config_tools
 import configfile
-import cluster_location
 import process_tools
-
-from initat.cluster_config_server.config import global_config, SERVER_PUB_PORT, SERVER_PULL_PORT, NCS_PORT
-from initat.cluster_config_server.cluster_config_server_version import VERSION_STRING
-from initat.cluster_config_server.server import server_process
 
 def main():
     long_host_name, _mach_name = process_tools.get_fqdn()
@@ -84,7 +84,7 @@ def main():
         ("CONFIG_DIR" , configfile.str_c_var("%s/%s" % (global_config["TFTP_DIR"], "config"))),
         ("IMAGE_DIR"  , configfile.str_c_var("%s/%s" % (global_config["TFTP_DIR"], "images"))),
         ("KERNEL_DIR" , configfile.str_c_var("%s/%s" % (global_config["TFTP_DIR"], "kernels")))])
-    global_config.add_config_entries([("LOG_SOURCE_IDX", configfile.int_c_var(cluster_location.log_source.create_log_source_entry("config-server", "Cluster ConfigServer", device=sql_info.effective_device).pk))])
+    global_config.add_config_entries([("LOG_SOURCE_IDX", configfile.int_c_var(log_source.create_log_source_entry("config-server", "Cluster ConfigServer", device=sql_info.effective_device).pk))])
     process_tools.renice()
     process_tools.fix_directories(global_config["USER"], global_config["GROUP"], ["/var/run/cluster-config-server"])
     global_config.set_uid_gid(global_config["USER"], global_config["GROUP"])
