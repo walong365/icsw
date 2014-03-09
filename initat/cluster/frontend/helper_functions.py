@@ -355,8 +355,10 @@ class srv_type_routing(object):
                 _devlist.extend([etree.fromstring(_dev_dict[_pk]) for _pk in _pk_list])
                 # print "T", _key, _tree.pretty_print()
             return [(key, value) for key, value in _srv_dict.iteritems()]
-        else:
+        elif len(_cl_dict) == 1:
             return [(_cl_dict.keys()[0], in_com)]
+        else:
+            return []
     def start_result_feed(self):
         self.result = None
     def feed_result(self, orig_com, result, request, conn_str, log_lines, log_result, log_error):
@@ -381,8 +383,24 @@ class srv_type_routing(object):
             if self.result is None:
                 self.result = result
             else:
-                # merge result, TODO
-                pass
+                # merge result
+                # possible sub-structs
+                for _sub_name in ["devices", "cd_ping_list"]:
+                    _s2_name = "%s:%s" % (_sub_name, _sub_name) 
+                    if _s2_name in result:
+                        # preset in result to merge
+                        if _s2_name not in self.result:
+                            # add to main part if not present
+                            self.result[_sub_name] = self.result.builder(_sub_name)
+                        add_list = self.result[_s2_name]
+                        _merged = 0
+                        for entry in result.xpath(".//ns:%s/ns:%s/*" % (_sub_name, _sub_name)):
+                            _merged += 1
+                            add_list.append(entry)
+                        self.logger.info("merged %s of %s" % (
+                            logging_tools.get_plural("element", _merged),
+                            _sub_name,
+                            ))
 
 def contact_server(request, srv_type, send_com, **kwargs):
     # log lines
@@ -400,16 +418,19 @@ def contact_server(request, srv_type, send_com, **kwargs):
             kwargs.get("connection_id", "webfrontend"),
             timeout=kwargs.get("timeout", 10))
         send_list = cur_router.check_for_split_send(srv_type, send_com)
-        _conn_strs = []
-        for _send_id, _send_com in send_list:
-            _conn_str = cur_router.get_connection_string(srv_type, server_id=_send_id)
-            _conn_strs.append(conn_str)
-            _conn.add_connection(_conn_str, _send_com, multi=True)
-        log_result = kwargs.get("log_result", True)
-        log_error = kwargs.get("log_error", True)
-        cur_router.start_result_feed()
-        [cur_router.feed_result(send_com, _res, request if _xml_req else None, _conn_str, _log_lines, log_result, log_error) for _res, _conn_str in zip(_conn.loop(), _conn_strs)]
-        result = cur_router.result
+        if send_list:
+            _conn_strs = []
+            for _send_id, _send_com in send_list:
+                _conn_str = cur_router.get_connection_string(srv_type, server_id=_send_id)
+                _conn_strs.append(conn_str)
+                _conn.add_connection(_conn_str, _send_com, multi=True)
+            log_result = kwargs.get("log_result", True)
+            log_error = kwargs.get("log_error", True)
+            cur_router.start_result_feed()
+            [cur_router.feed_result(send_com, _res, request if _xml_req else None, _conn_str, _log_lines, log_result, log_error) for _res, _conn_str in zip(_conn.loop(), _conn_strs)]
+            result = cur_router.result
+        else:
+            result = None
     else:
         result = None
         _err_str = "srv_type '%s' not defined in routing" % (srv_type)
