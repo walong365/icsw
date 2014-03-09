@@ -186,12 +186,16 @@ class config_control(object):
                         dir_key = "EXPORT"
                     vs_struct.fetch_config_vars()
                     if vs_struct.has_key(dir_key):
+                        # save image versoin info
+                        self.device.imageversion = "%s.%s" % (cur_img.version, cur_img.release)
+                        self.device.save(update_fields=["imageversion"])
                         return "ok %s %s %s %s %s" % (
                             s_req.server_ip,
                             os.path.join(vs_struct[dir_key], "images", cur_img.name),
                             cur_img.version,
                             cur_img.release,
-                            cur_img.builds)
+                            cur_img.builds,
+                        )
                     else:
                         return "error key %s not found" % (dir_key)
                 else:
