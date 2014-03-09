@@ -153,8 +153,11 @@ device_boot_module.controller("boot_ctrl", ["$scope", "$compile", "$filter", "$t
                 cur_re = new RegExp($scope.device_sel_filter, "gi")
             catch exc
                 cur_re = new RegExp("^$", "gi")
+            $scope.num_selected = 0
             for dev in $scope.devices
                 dev.selected = if dev.name.match(cur_re) then true else false
+                if dev.selected
+                    $scope.num_selected++
         $scope.bo_enabled = {}
         $scope.type_1_options = () ->
             return (entry for entry in $scope.boot_options when entry[2] == 1)
@@ -318,7 +321,7 @@ device_boot_module.controller("boot_ctrl", ["$scope", "$compile", "$filter", "$t
                                         _list = (_entry for _entry in _list when _entry.network == dev.prod_link)
                                     dev.target_state = _list[0].idx
                                 # copy image
-                                for _kv in ["new_image", "act_image"]
+                                for _kv in ["new_image", "act_image", "imageversion"]
                                     dev[_kv] = entry[_kv]
                                 # copy kernel
                                 for _kv in ["new_kernel", "act_kernel", "stage1_flavour", "kernel_append"]
@@ -480,7 +483,15 @@ device_boot_module.controller("boot_ctrl", ["$scope", "$compile", "$filter", "$t
                         #console.log dev.new_state, dev.prod_link
                     else if entry[0] == "i"
                         # image
-                        return scope.get_info_str(dev.act_image, dev.new_image, scope.image_lut)
+                        img_str = scope.get_info_str(dev.act_image, dev.new_image, scope.image_lut)
+                        # check version
+                        cur_vers = dev.imageversion
+                        if dev.act_image
+                            img_info = scope.image_lut[dev.act_image]
+                            img_vers = "#{img_info.version}.#{img_info.release}"
+                            if img_vers != cur_vers
+                                img_str = "#{img_str} (#{cur_vers} / #{img_vers})"
+                        return img_str
                     else if entry[0] == "k"
                         # kernel
                         _k_str = scope.get_info_str(dev.act_kernel, dev.new_kernel, scope.kernel_lut)
