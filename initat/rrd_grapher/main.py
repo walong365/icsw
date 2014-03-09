@@ -27,6 +27,7 @@ import sys
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "initat.cluster.settings")
 
 from django.conf import settings
+from initat.cluster.backbone.models import log_source
 from initat.rrd_grapher.config import global_config
 from initat.rrd_grapher.server import server_process
 import cluster_location
@@ -96,7 +97,7 @@ def main():
 
     global_config.add_config_entries(
         [
-            ("LOG_SOURCE_IDX", configfile.int_c_var(cluster_location.log_source.create_log_source_entry("rrd-server", "Cluster RRDServer", device=sql_info.effective_device).pk)),
+            ("LOG_SOURCE_IDX", configfile.int_c_var(log_source.create_log_source_entry("rrd-server", "Cluster RRDServer", device=sql_info.effective_device).pk)),
             ("GRAPH_ROOT"    , configfile.str_c_var(
                 os.path.abspath(os.path.join(
                     settings.STATIC_ROOT_DEBUG if global_config["DEBUG"] else settings.STATIC_ROOT, # if (not global_config["DEBUG"] or options.SERVER_PATH) else "/usr/local/share/home/local/development/git/webfrontend/django/initat/cluster",
