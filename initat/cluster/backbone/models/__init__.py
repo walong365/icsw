@@ -1885,7 +1885,7 @@ class image_serializer(serializers.ModelSerializer):
         model = image
         fields = ("idx", "name", "enabled", "version", "release",
             "sys_vendor", "sys_version", "sys_release", "size_string", "size", "architecture",
-            "new_image", "act_image"
+            "new_image", "act_image",
             )
 
 class kernel(models.Model):
@@ -2586,7 +2586,7 @@ class device_serializer_boot(device_serializer):
             # partition
             "act_partition_table", "partition_table",
             # image
-            "act_image", "new_image",
+            "act_image", "new_image", "imageversion",
             # kernel
             "act_kernel", "new_kernel", "stage1_flavour", "kernel_append",
             # boot device
