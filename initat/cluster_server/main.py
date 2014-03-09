@@ -25,6 +25,7 @@ import sys
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "initat.cluster.settings")
 
 from django.conf import settings
+from initat.cluster.backbone.models import log_source
 from initat.cluster_server.config import global_config
 from initat.cluster_server.server_process import server_process
 import cluster_location
@@ -79,7 +80,7 @@ def main():
         sys.exit(5)
     if global_config["CHECK"]:
         sys.exit(0)
-    global_config.add_config_entries([("LOG_SOURCE_IDX", configfile.int_c_var(cluster_location.log_source.create_log_source_entry("cluster-server", "Cluster Server", device=sql_info.effective_device).pk))])
+    global_config.add_config_entries([("LOG_SOURCE_IDX", configfile.int_c_var(log_source.create_log_source_entry("cluster-server", "Cluster Server", device=sql_info.effective_device).pk))])
     if not global_config["LOG_SOURCE_IDX"]:
         print "Too many log_source with my id present, exiting..."
         sys.exit(5)
