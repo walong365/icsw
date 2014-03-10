@@ -1,6 +1,6 @@
 #!/usr/bin/python-init -Otu
 #
-# Copyright (C) 2007,2008 Andreas Lang-Nevyjel
+# Copyright (C) 2007-2008,2014 Andreas Lang-Nevyjel
 #
 # Send feedback to: <lang-nevyjel@init.at>
 # 
@@ -17,21 +17,20 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
+""" parallel bonnie runs """
 
-import sys
-import time
-import threading_tools
-import process_tools
-import logging_tools
-import getopt
-import os
-import os.path
-import pwd
-import grp
-import configfile
-import pprint
 import commands
+import configfile
+import getopt
+import grp
+import logging_tools
+import os
+import process_tools
+import pwd
 import server_command
+import sys
+import threading_tools
+import time
 
 class slave_thread(threading_tools.thread_obj):
     def __init__(self, loc_config, num, max_num, logger):

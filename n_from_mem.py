@@ -1,6 +1,6 @@
 #!/usr/bin/python-init -Otu
 #
-# Copyright (C) 2007,2008,2009,2012 Andreas Lang-Nevyjel
+# Copyright (C) 2007-2009,2012,2014 Andreas Lang-Nevyjel
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -22,8 +22,8 @@
 """ calculates N for HPL from memory """
 
 import argparse
-import sys
 import math
+import sys
 
 class my_opt_parser(argparse.ArgumentParser):
     def __init__(self):

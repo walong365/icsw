@@ -1,11 +1,11 @@
 #!/usr/bin/python-init -Otu
 #
-# Copyright (C) 2007,2008 Andreas Lang-Nevyjel
+# Copyright (C) 2007-2008,2014 Andreas Lang-Nevyjel
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
 # this file is part of cbc_tools
-# 
+#
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License Version 2 as
 # published by the Free Software Foundation.
@@ -21,14 +21,11 @@
 #
 """ reads raw data from bonnie_runs and shows them """
 
-import sys
-import time
 import logging_tools
 import os
-import os.path
-import pprint
 import process_tools
 import server_command
+import sys
 
 class aggreg(object):
     def __init__(self):
@@ -47,20 +44,6 @@ class aggreg(object):
             return 0
         else:
             return float(in_str) * mult
-    def _str_to_int(self, in_str, def_mult):
-        if in_str.lower().endswith("m"):
-            mult = 1024 * 1024
-            in_str = in_str[:-1]
-        elif in_str.lower().endswith("g"):
-            mult = 1024 * 1024 * 1024
-            in_str = in_str[:-1]
-        else:
-            mult = 1
-        mult *= def_mult
-        if in_str.count("+"):
-            return 0
-        else:
-            return int(in_str) * mult
     def _str_to_float(self, in_str, def_mult):
         if in_str.lower().endswith("m"):
             mult = 1024 * 1024
@@ -77,7 +60,7 @@ class aggreg(object):
             return float(in_str) * mult
     def get_perc_graph(self, in_value):
         return ("#" * int(in_value / 5))
-    
+
 class sum_aggreg(aggreg):
     def __init__(self, **args):
         aggreg.__init__(self)
@@ -105,7 +88,7 @@ class sum_aggreg(aggreg):
                                 self.__add_str)
     def value(self):
         return sum(self.__values)
-        
+
 class max_aggreg(aggreg):
     def __init__(self, **args):
         aggreg.__init__(self)
@@ -124,7 +107,7 @@ class max_aggreg(aggreg):
                           " %s" % (self.__add_str) if self.__add_str else "")
     def value(self):
         return max(self.__values)
-        
+
 class res_line(object):
     def __init__(self):
         self.__out_keys = ["size",
@@ -183,7 +166,7 @@ class res_line(object):
                 self[key] += recs.pop(0)
     def get_out_keys(self):
         return self.__out_keys
-        
+
 def main():
     if len(sys.argv) != 2:
         print "Need file to parse"
@@ -269,14 +252,13 @@ def main():
                     top_value = act_struct.value()
                 act_val = act_struct.value()
                 act_perc = 100 * act_val / top_value
-                out_list.add_line([key, 
+                out_list.add_line([key,
                                    t_num,
                                    act_struct,
                                    "%7.2f %%" % (act_perc),
                                    act_struct.get_perc_graph(act_perc)])
             out_list.add_line(["-" * 50])
         print out_list
-                    
+
 if __name__ == "__main__":
     main()
-    

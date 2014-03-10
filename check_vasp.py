@@ -1,9 +1,29 @@
 #!/usr/bin/python-init -Otu
+#
+# Copyright (C) 2013-2014 Andreas Lang-Nevyjel
+#
+# Send feedback to: <lang-nevyjel@init.at>
+#
+# this file is part of cbc_tools
+#
+# This program is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License Version 2 as
+# published by the Free Software Foundation.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software
+# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+#
+""" parses and improves VASP xml files """
 
+from lxml import etree # @UnresolvedImport
+from lxml.builder import E # @UnresolvedImport
 import os
-import sys
-from lxml import etree
-from lxml.builder import E
 
 outcar_name = "OUTCAR"
 vasprun_name = "vasprun.xml"
@@ -18,10 +38,10 @@ class target_file(object):
         while True:
             c_file = "%s.xml" % (f_name if not add_iter else "%s.%d" % (f_name, add_iter))
             if not os.path.isfile(c_file):
-                 break
+                break
             add_iter += 1
         return c_file
-        
+
 class outcar(target_file):
     def __init__(self, f_name):
         res = E.vasp_info(E.timing())
@@ -29,7 +49,6 @@ class outcar(target_file):
         loop_nodes = E.loop()
         loopp_nodes = E.loopplus()
         res.find("timing").extend([loop_nodes, loopp_nodes])
-        loop_times = []
         for line_num, line in enumerate(file(f_name, "r").read().split("\n")):
             s_line = line.strip()
             s_parts = s_line.split()
@@ -68,7 +87,7 @@ class vasprun(target_file):
                         for val in node.text.split():
                             node.append(E.val(val))
                     node.text = ""
-        
+
 def main():
     if os.path.isfile(outcar_name):
         outcar(outcar_name)

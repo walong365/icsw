@@ -1,6 +1,6 @@
 #!/usr/bin/python-init -Otu
 #
-# Copyright (c) 2007,2008,2009,2012 Andreas Lang-Nevyjel, lang-nevyjel@init.at
+# Copyright (c) 2007-2009,2012,2014 Andreas Lang-Nevyjel, lang-nevyjel@init.at
 #
 # this file is part of cbc-tools
 #
@@ -17,8 +17,8 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
+""" simple compile tools """
 
-import sys
 import commands
 import os
 
@@ -69,13 +69,8 @@ def get_short_version_for_intel(intel_path, command):
             for path_part in intel_path.split("/"):
                 if take_part:
                     take_part = False
-                    small_version ="%s.%s" % (small_version,
+                    small_version = "%s.%s" % (small_version,
                                               path_part)
                 elif path_part == small_version:
                     take_part = True
     return icom_out_lines, small_version
-
-if __name__ == "__main__":
-    print "Loadable module, exiting ..."
-    sys.exit(-1)
-    
