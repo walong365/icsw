@@ -1,6 +1,6 @@
 #!/usr/bin/python-init -Ot
 #
-# Copyright (C) 2001,2002,2003,2004,2005,2006,2007,2008,2009,2011,2012,2013 Andreas Lang-Nevyjel, init.at
+# Copyright (C) 2001-2009,2011-2014 Andreas Lang-Nevyjel, init.at
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -20,18 +20,18 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
 
+import os
+import sys
+
+os.environ.setdefault("DJANGO_SETTINGS_MODULE", "initat.cluster.settings")
+
+from initat.rms.config import global_config, COM_PORT
+from initat.rms.rms_server_version import VERSION_STRING
+from initat.rms.server import server_process, call_command
 import cluster_location
 import config_tools
 import configfile
-import os
 import process_tools
-import sys
-from initat.rms.server import server_process, call_command
-try:
-    from initat.rms.rms_server_version import VERSION_STRING
-except ImportError:
-    VERSION_STRING = "?.?"
-from initat.rms.config import global_config, COM_PORT
 
 def main():
     long_host_name, _mach_name = process_tools.get_fqdn()
