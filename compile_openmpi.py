@@ -1,6 +1,6 @@
 #!/usr/bin/python-init -Otu
 #
-# Copyright (c) 2007,2008,2009,2012 Andreas Lang-Nevyjel, init.at
+# Copyright (c) 2007-2009,2012,2014 Andreas Lang-Nevyjel, init.at
 #
 # this file is part of cbc-tools
 #
@@ -20,19 +20,18 @@
 """ compiles openmpi """
 
 import argparse
-import sys
-import os
-import os.path
-import tempfile
-import tarfile
 import commands
-import cpu_database
-import time
-import shutil
-import logging_tools
-import rpm_build_tools
-import subprocess
 import compile_tools
+import cpu_database
+import logging_tools
+import os
+import rpm_build_tools
+import shutil
+import subprocess
+import sys
+import tarfile
+import tempfile
+import time
 
 OPENMPI_VERSION_FILE = "/opt/cluster/share/openmpi_versions"
 
@@ -281,7 +280,7 @@ class openmpi_builder(object):
             os.makedirs(targ_dir)
         file("%s/%s" % (targ_dir, self.modulefile_name), "w").write("\n".join(mod_lines))
     def _create_mpi_selector_file(self):
-        self.mpi_selector_sh_name  = "%s.sh" % (self.parser.package_name)
+        self.mpi_selector_sh_name = "%s.sh" % (self.parser.package_name)
         self.mpi_selector_csh_name = "%s.csh" % (self.parser.package_name)
         self.mpi_selector_dir = "/var/mpi-selector/data"
         sh_lines = ['#PATH',
@@ -291,13 +290,13 @@ class openmpi_builder(object):
                     'fi',
                     '# LD_LIBRARY_PATH',
                     'if test -z "`echo $LD_LIBRARY_PATH | grep %s/lib64`"; then' % (self.parser.openmpi_dir),
-                    '    if [ -d "%s/lib64" ] ; then' %  (self.parser.openmpi_dir),
+                    '    if [ -d "%s/lib64" ] ; then' % (self.parser.openmpi_dir),
                     '        LD_LIBRARY_PATH=%s/lib64:${LD_LIBRARY_PATH}' % (self.parser.openmpi_dir),
                     '        export LD_LIBRARY_PATH',
                     '    fi',
                     'fi',
                     'if test -z "`echo $LD_LIBRARY_PATH | grep %s/lib`"; then' % (self.parser.openmpi_dir),
-                    '    if [ -d "%s/lib" ] ; then' %  (self.parser.openmpi_dir),
+                    '    if [ -d "%s/lib" ] ; then' % (self.parser.openmpi_dir),
                     '        LD_LIBRARY_PATH=%s/lib:${LD_LIBRARY_PATH}' % (self.parser.openmpi_dir),
                     '        export LD_LIBRARY_PATH',
                     '    fi',
@@ -412,4 +411,4 @@ def main():
 
 if __name__ == "__main__":
     main()
-    #print "update to use ***FLAGS=-O{1,2}!"
+    # print "update to use ***FLAGS=-O{1,2}!"

@@ -36,12 +36,16 @@ def get_add_paths_for_intel(intel_path):
     return add_path_dict
 
 def get_short_version_for_intel(intel_path, command):
-    stat, icom_out = commands.getstatusoutput("%s/%s -V" % (get_intel_path("%s/bin" % (intel_path)),
-                                                            command))
+    stat, icom_out = commands.getstatusoutput("%s/%s -V" % (
+        get_intel_path("%s/bin" % (intel_path)),
+        command,
+    ))
     if stat:
-        raise ValueError, "Cannot get Version from %s (%d): %s" % (command,
-                                                                   stat,
-                                                                   icom_out)
+        raise ValueError, "Cannot get Version from %s (%d): %s" % (
+            command,
+            stat,
+            icom_out,
+        )
     icom_out_lines = icom_out.split("\n")
     first_line = icom_out_lines[0]
     small_version = first_line.split("_")[-1]
@@ -57,9 +61,11 @@ def get_short_version_for_intel(intel_path, command):
         else:
             small_version = first_line.split()[-1]
     if small_version.count(" "):
-        print "Small_version '%s' contains spaces (from first line '%s' of %s -V, exiting" % (small_version,
-                                                                                              first_line,
-                                                                                              command)
+        print "Small_version '%s' contains spaces (from first line '%s' of %s -V, exiting" % (
+            small_version,
+            first_line,
+            command,
+        )
         small_version = ""
     else:
         small_parts = small_version.split(".")
