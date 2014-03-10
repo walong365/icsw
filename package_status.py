@@ -1,6 +1,6 @@
 #!/usr/bin/python-init -Ot
 #
-# Copyright (C) 2001,2002,2003,2004,2005,2006,2007,2009 Andreas Lang-Nevyjel
+# Copyright (C) 2001-2007,2009,2014 Andreas Lang-Nevyjel lang-nevyjel@init.at
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -19,28 +19,20 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
+""" shows package status """
 
-import sys
-try:
-    import mysql_tools
-except ImportError:
-    print "No mysql_tools found, exiting ..."
-    sys.exit(-1)
 import getopt
-import configfile
 import logging_tools
 import os
-import os.path
-import commands
-import time
 import re
-import copy
+import sys
+import time
 
 SQL_ACCESS = "cluster_full_access"
 
 def main():
     try:
-        opts, args = getopt.getopt(sys.argv[1:], "d:g:s:thnSGH",["help"])
+        opts, args = getopt.getopt(sys.argv[1:], "d:g:s:thnSGH", ["help"])
     except getopt.GetoptError, why:
         print "Error parsing commandline %s: %s" % (" ".join(sys.argv[1:]), str(why))
         sys.exit(-1)
@@ -74,12 +66,12 @@ def main():
             show_only_ea = 1
         if opt == "-G":
             group_by_devgroup = 1
-    #print "*",args
+    # print "*",args
     dbcon = mysql_tools.dbcon_container()
     dc = dbcon.get_connection(SQL_ACCESS)
     sql_str = "SELECT d.name, dg.name AS dgname FROM device d, device_group dg, device_type dt WHERE d.device_group = dg.device_group_idx AND d.device_type = dt.device_type_idx AND dt.identifier='H'"
     dc.execute(sql_str)
-    dev_dict= {"" : {"num_tot"  : 0,
+    dev_dict = {"" : {"num_tot"  : 0,
                      "num_p"    : 0,
                      "packages" : {}}}
     group_dict = {}
@@ -114,7 +106,7 @@ def main():
         if add_it:
             dev_dict[act_dev]["packages"].setdefault(act_pack, {}).setdefault(act_ver, {}).setdefault(act_rel, {})[act_arch] = x
             dev_dict[act_dev]["num_tot"] += 1
-            dev_dict[""]["packages"].setdefault(act_pack, {}).setdefault(act_ver, {}).setdefault(act_rel, {})[act_arch] = x#.setdefault(act_arch, [])
+            dev_dict[""]["packages"].setdefault(act_pack, {}).setdefault(act_ver, {}).setdefault(act_rel, {})[act_arch] = x # .setdefault(act_arch, [])
             dev_dict[""]["num_tot"] += 1
     dc.release()
     if group_by_devgroup:
@@ -149,16 +141,18 @@ def main():
                             else:
                                 i_time = "???"
                             out_list.add_line((host, p_name, t_state, flags, p_ver, p_rel, i_stuff["architecture"], i_time, stat_str))
-                            #print "  %-35s %s %12s %10s-%-10s %10s %21s, %s" % (p_name, t_state, flags, p_ver, p_rel, i_stuff["architecture"], i_time, stat_str)
+                            # print "  %-35s %s %12s %10s-%-10s %10s %21s, %s" % (p_name, t_state, flags, p_ver, p_rel, i_stuff["architecture"], i_time, stat_str)
                         else:
                             out_list.add_line((host, p_name, t_state, flags, p_ver, p_rel, i_stuff["architecture"], stat_str))
-                            #print "  %-35s %s %12s %10s-%-10s %10s %s" % (p_name, t_state, flags, p_ver, p_rel, i_stuff["architecture"], stat_str)
+                            # print "  %-35s %s %12s %10s-%-10s %10s %s" % (p_name, t_state, flags, p_ver, p_rel, i_stuff["architecture"], stat_str)
         if out_list:
             out_list.set_format_string(4, "s", "")
             out_list.set_format_string(6, "s", "")
             if show_headers:
                 print "device %20s : %4d packages (%4d with unique names) associated" % (host, dev_dict[host]["num_p"], dev_dict[host]["num_tot"])
             print out_list
-                        
+
 if __name__ == "__main__":
+    print "not ready right now, please wait for rewrite"
+    sys.exit(1)
     main()

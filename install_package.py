@@ -1,6 +1,6 @@
 #!/usr/bin/python-init -Ot
 #
-# Copyright (C) 2001,2002,2003,2004,2005,2006,2007,2009 Andreas Lang-Nevyjel
+# Copyright (C) 2001-2007,2009,2014 Andreas Lang-Nevyjel lang-nevyjel@init.at
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -21,20 +21,14 @@
 #
 """ commandline client to install packages """
 
-import sys
-try:
-    import mysql_tools
-except ImportError:
-    print "No mysql_tools found, exiting ..."
-    sys.exit(-1)
 import getopt
 import logging_tools
+import net_tools
 import os
-import os.path
-import time
 import re
 import server_command
-import net_tools
+import sys
+import time
 
 SQL_ACCESS = "cluster_full_access"
 
@@ -180,13 +174,13 @@ def main():
         for db_rec in dc.fetchall():
             if ass_mode == "del":
                 out_list.setdefault("Removing instp_device entry", []).append(dev_dict[db_rec["device"]]["name"])
-                #print "Removing instp_device entry for device '%s' ..." % 
+                # print "Removing instp_device entry for device '%s' ..." %
                 if not dryrun:
                     dc.execute("DELETE FROM instp_device WHERE instp_device_idx=%d" % (db_rec["instp_device_idx"]))
             else:
                 dev_dict[db_rec["device"]]["ipds"] = db_rec
                 out_list.setdefault("instp_device entry present, ok for association mode '%s'" % (ass_mode), []).append(dev_dict[db_rec["device"]]["name"])
-                #print "instp_device entry for device '%s' present, ok for association_mode '%s'" % (dev_dict[x["device"]]["name"], ass_mode)
+                # print "instp_device entry for device '%s' present, ok for association_mode '%s'" % (dev_dict[x["device"]]["name"], ass_mode)
         for what, dev_list in out_list.iteritems():
             print "%s for devices %s" % (what, logging_tools.compress_list(dev_list))
         # check for ass_mode set
@@ -195,14 +189,14 @@ def main():
             if not ds["ipds"]:
                 if ass_mode == "set":
                     out_list.setdefault("Adding instp_device entry", []).append(ds["name"])
-                    #print "Adding instp_device entry for device '%s' ..." % (ds["name"])
+                    # print "Adding instp_device entry for device '%s' ..." % (ds["name"])
                     if not dryrun:
                         dc.execute("INSERT INTO instp_device SET inst_package=%s, device=%s", (use_pack["inst_package_idx"], d_idx))
                         dc.execute("SELECT i.* FROM instp_device i WHERE i.instp_device_idx=%d" % (dc.insert_id()))
                         ds["ipds"] = dc.fetchone()
                 else:
                     out_list.setdefault("instp_device entry not present, ok for association mode '%s'" % (ass_mode), []).append(ds["name"])
-                    #print "instp_device entry for device '%s' not set, ok for association_mode '%s'" % (ds["name"], ass_mode)
+                    # print "instp_device entry for device '%s' not set, ok for association_mode '%s'" % (ds["name"], ass_mode)
         for what, dev_list in out_list.iteritems():
             print "%s for devices %s" % (what, logging_tools.compress_list(dev_list))
         # check for change in target_state
@@ -292,7 +286,9 @@ def main():
                                             logging_tools.get_plural("device", len(value)),
                                             logging_tools.compress_list(value))
     sys.exit(stat)
-  
+
 if __name__ == "__main__":
+    print "not ready right now, please wait for rewrite"
+    sys.exit(1)
     main()
-    
+

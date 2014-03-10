@@ -21,20 +21,16 @@
 #
 """ fronted for creating packages """
 
-try:
-    import mysql_tools
-except ImportError:
-    mysql_tools = None
-import sys
-import getopt
-import os
+import argparse
 import commands
-import time
-import shutil
+import getopt
 import logging_tools
+import os
 import process_tools
 import rpm_build_tools
-import argparse
+import shutil
+import sys
+import time
 
 def check_for_association(dc, p_idx, name, version, release, set_dict):
     dc.execute("SELECT p.*, p.package_idx, ip.inst_package_idx, ip.last_build, ip.location, ip.package FROM package p, inst_package ip WHERE ip.package=p.package_idx AND p.name='%s' AND p.version='%s' AND p.release='%s'" % (name, version, release))
@@ -408,4 +404,7 @@ def main():
     print "done"
 
 if __name__ == "__main__":
+    print "not ready right now, please wait for rewrite"
+    sys.exit(1)
     main()
+
