@@ -43,7 +43,7 @@
                 <a class="dropdown-toggle" data-toggle="dropdown">{% trans "Monitoring" %} <b class="caret"></b></a>
                 <ul class="dropdown-menu">
                     <li ng-show="check_perm('mon_check_command.setup_monitoring')"><a href="{% url 'mon:setup' %}">{% trans "Basic setup" %}</a></li>
-                    <li ng-show="check_perm('mon_check_command.setup_monitoring') && check_perm('mon_check_command.change_monitoring')"><a href="{% url 'mon:device_config' %}">{% trans "Device settings" %}</a></li>
+                    <li ng-show="check_perm('mon_check_command.setup_monitoring') && check_perm('device.change_monitoring')"><a href="{% url 'mon:device_config' %}">{% trans "Device settings" %}</a></li>
                     <li ng-show="CLUSTER_LICENSE.monext && check_perm('mon_check_command.setup_monitoring')" class="divider"></li>
                     <li ng-show="CLUSTER_LICENSE.monext && check_perm('mon_check_command.setup_monitoring')"><a href="{% url 'mon:setup_cluster' %}">{% trans "Cluster / Dependency setup" %}</a></li>
                     <li ng-show="CLUSTER_LICENSE.monext && check_perm('mon_check_command.setup_monitoring')"><a href="{% url 'mon:setup_escalation' %}">{% trans "Escalation setup" %}</a></li>
