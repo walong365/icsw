@@ -241,7 +241,6 @@ def net_ip_pre_save(sender, **kwargs):
         except:
             raise ValidationError("not a valid IPv4 address")
         if not cur_inst.network_id:
-            print "***"
             match_list = ipv_addr.find_matching_network(network.objects.all())
             if len(match_list):
                 cur_inst.network = match_list[0][1]
@@ -265,10 +264,18 @@ def net_ip_pre_save(sender, **kwargs):
                 raise ValidationError("IP already used more than once in network (force_unique_ips == True)")
             else:
                 raise ValidationError("IP already used for %s (enforce_unique_ips == True)" % (unicode(present_ip.netdevice.device)))
+
+@receiver(signals.pre_delete, sender=net_ip)
+def net_ip_pre_delete(sender, **kwargs):
+    cur_inst = kwargs["instance"]
+    if "instance" in kwargs:
+        cur_inst = kwargs["instance"]
         if cur_inst.network.network_type.identifier == "b":
-            # set boot netdevice
-            cur_inst.netdevice.device.bootnetdevice = cur_inst.netdevice
-            cur_inst.netdevice.device.save()
+            cur_dev = cur_inst.netdevice.device
+            if cur_inst.netdevice == cur_dev.bootnetdevice:
+                # remove bootnetdevice
+                cur_dev.bootnetdevice = None
+                cur_dev.save()
 
 @receiver(signals.post_save, sender=net_ip)
 def net_ip_post_save(sender, **kwargs):
@@ -279,6 +286,15 @@ def net_ip_post_save(sender, **kwargs):
             cur_inst.alias = "localhost"
             cur_inst.alias_excl = True
             cur_inst.save()
+    if not kwargs["raw"]:
+        if cur_inst.network.network_type.identifier == "b":
+            # check for single boot IP
+            num_boot_ips = net_ip.objects.filter(Q(network__network_type__identifier="b") & Q(netdevice__device=cur_inst.netdevice.device)).count()
+            # set boot netdevice
+            cur_inst.netdevice.device.bootnetdevice = cur_inst.netdevice
+            cur_inst.netdevice.device.save()
+            if num_boot_ips > 1:
+                raise ValidationError("too many IP-adresses in a boot network defined")
 
 class network_device_type_serializer(serializers.ModelSerializer):
     info_string = serializers.Field(source="info_string")
