@@ -159,4 +159,3 @@ def main():
             cur_dev.domain_tree_node = cur_dnt[dom_id]
             cur_dev.save()
     print "done."
-    # print etree.tostring(cur_dnt.get_xml(), pretty_print=True)

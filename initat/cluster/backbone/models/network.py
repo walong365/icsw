@@ -32,20 +32,17 @@ class network_device_type(models.Model):
     name_re = models.CharField(max_length=128, default="^.*$")
     description = models.CharField(max_length=192)
     mac_bytes = models.PositiveIntegerField(default=6)
+    allow_virtual_interfaces = models.BooleanField(default=True)
     date = models.DateTimeField(auto_now_add=True)
-    def get_xml(self):
-        return E.network_device_type(
-            unicode(self),
-            pk="%d" % (self.pk),
-            key="nwdt__%d" % (self.pk),
-            name_re=self.name_re,
-            identifier=self.identifier,
-            description=self.description,
-            mac_bytes="%d" % (self.mac_bytes)
-        )
     class Meta:
         db_table = u'network_device_type'
         app_label = "backbone"
+    def match(self, devname):
+        if self.allow_virtual_interfaces and devname.count(":") == 1:
+            _m_name = devname.split(":")[0]
+        else:
+            _m_name = devname
+        return re.match(self.name_re, _m_name)
     def info_string(self):
         return unicode(self)
     def __unicode__(self):
@@ -96,13 +93,6 @@ class network_type(models.Model):
             ("l", "local")))
     description = models.CharField(max_length=192, blank=False)
     date = models.DateTimeField(auto_now_add=True)
-    def get_xml(self):
-        return E.network_type(
-            unicode(self),
-            pk="%d" % (self.pk),
-            key="nwt__%d" % (self.pk),
-            identifier=self.identifier,
-            description=self.description)
     class Meta:
         db_table = u'network_type'
         app_label = "backbone"
@@ -136,24 +126,7 @@ class network(models.Model):
     end_range = models.IPAddressField(default="0.0.0.0")
     date = models.DateTimeField(auto_now_add=True)
     network_device_type = models.ManyToManyField("backbone.network_device_type")
-    def get_xml(self, add_ip_info=False):
-        r_xml = E.network(
-            unicode(self),
-            pk="%d" % (self.pk),
-            key="nw_%d" % (self.pk),
-            penalty="%d" % (self.penalty),
-            identifier=self.identifier,
-            network_type="%d" % (self.network_type_id),
-            master_network="%d" % (self.master_network_id or 0),
-            network=self.network,
-            netmask=self.netmask,
-            broadcast=self.broadcast,
-            gateway=self.gateway,
-            network_device_type="::".join(["%d" % (ndev_type.pk) for ndev_type in self.network_device_type.all()]),
-        )
-        if add_ip_info:
-            r_xml.attrib["ip_count"] = "%d" % (len(self.net_ip_set.all()))
-        return r_xml
+    enforce_unique_ips = models.BooleanField(default=False)
     class CSW_Meta:
         permissions = (
             ("modify_network", "modify global network settings", False),
@@ -243,19 +216,6 @@ class net_ip(models.Model):
             )
     def get_hex_ip(self):
         return "".join(["%02X" % (int(part)) for part in self.ip.split(".")])
-    def get_xml(self):
-        return E.net_ip(
-            unicode(self),
-            pk="%d" % (self.pk),
-            ip=self.ip,
-            key="ip__%d" % (self.pk),
-            network="%d" % (self.network_id),
-            netdevice="%d" % (self.netdevice_id),
-            penalty="%d" % (self.penalty or 1),
-            alias=self.alias or "",
-            alias_excl="1" if self.alias_excl else "0",
-            domain_tree_node="%d" % (self.domain_tree_node_id or 0),
-        )
     def __unicode__(self):
         return self.ip
     @property
@@ -296,6 +256,15 @@ def net_ip_pre_save(sender, **kwargs):
         dev_ips = net_ip.objects.exclude(Q(pk=cur_inst.pk)).filter(Q(netdevice__device=cur_inst.netdevice.device)).values_list("ip", flat=True)
         if cur_inst.ip in dev_ips:
             raise ValidationError("Address already %s used, device %s" % (cur_inst.ip, unicode(cur_inst.netdevice.device)))
+        if cur_inst.network.enforce_unique_ips:
+            try:
+                present_ip = net_ip.objects.exclude(Q(pk=cur_inst.pk)).get(Q(network=cur_inst.network) & Q(ip=cur_inst.ip))
+            except net_ip.DoesNotExist:
+                pass
+            except net_ip.MultipleObjectsReturned:
+                raise ValidationError("IP already used more than once in network (force_unique_ips == True)")
+            else:
+                raise ValidationError("IP already used for %s (enforce_unique_ips == True)" % (unicode(present_ip.netdevice.device)))
         if cur_inst.network.network_type.identifier == "b":
             # set boot netdevice
             cur_inst.netdevice.device.bootnetdevice = cur_inst.netdevice
@@ -379,7 +348,7 @@ class netdevice(models.Model):
             vlan_id=self.vlan_id,
             )
     def find_matching_network_device_type(self):
-        match_list = [ndt for ndt in network_device_type.objects.all() if re.match(ndt.name_re, self.devname)]
+        match_list = [ndt for ndt in network_device_type.objects.all() if ndt.match(self.devname)]
         if len(match_list) == 0:
             return None
         elif len(match_list) == 1:
@@ -415,41 +384,6 @@ class netdevice(models.Model):
         return ",".join(["FIXME"])
     def __unicode__(self):
         return self.devname
-    def get_xml(self):
-        self.vlan_id = self.vlan_id or 0
-        return E.netdevice(
-            self.devname,
-            E.net_ips(*[cur_ip.get_xml() for cur_ip in self.net_ip_set.all()]),
-            E.peers(*[cur_peer.get_xml() for cur_peer in peer_information.objects.filter(
-                Q(s_netdevice=self) | Q(d_netdevice=self)
-                ).distinct().select_related(
-                    "s_netdevice",
-                    "s_netdevice__device",
-                    "d_netdevice",
-                    "d_netdevice__device",
-                    "s_netdevice__device__domain_tree_node",
-                    "d_netdevice__device__domain_tree_node")]),
-            devname=self.devname,
-            description=self.description or "",
-            driver=self.driver or "",
-            driver_options=self.driver_options or "",
-            pk="%d" % (self.pk),
-            key="nd__%d" % (self.pk),
-            ethtool_autoneg="%d" % (self.ethtool_autoneg),
-            ethtool_duplex="%d" % (self.ethtool_duplex),
-            ethtool_speed="%d" % (self.ethtool_speed),
-            macaddr=self.macaddr or ":".join(["00"] * 6),
-            fake_macaddr=self.fake_macaddr or ":".join(["00"] * 6),
-            penalty="%d" % (self.penalty or 1),
-            dhcp_device="1" if self.dhcp_device else "0",
-            routing="1" if self.routing else "0",
-            device="%d" % (self.device_id),
-            vlan_id="%d" % (self.vlan_id),
-            netdevice_speed="%d" % (self.netdevice_speed_id),
-            network_device_type="%d" % (self.network_device_type_id),
-            nd_type="%d" % (self.network_device_type_id),
-            master_device="%d" % (self.master_device_id or 0),
-            )
 
 @receiver(signals.pre_delete, sender=netdevice)
 def netdevice_pre_delete(sender, **kwargs):
@@ -535,15 +469,6 @@ class netdevice_speed(models.Model):
     check_via_ethtool = models.BooleanField(default=True)
     full_duplex = models.BooleanField(default=True)
     date = models.DateTimeField(auto_now_add=True)
-    def get_xml(self):
-        return E.netdevice_speed(
-            unicode(self),
-            pk="%d" % (self.pk),
-            key="nds__%d" % (self.pk),
-            speed_bps="%d" % (self.speed_bps),
-            check_via_ethtool="1" if self.check_via_ethtool else "0",
-            full_duplex="1" if self.full_duplex else "0",
-        )
     class Meta:
         db_table = u'netdevice_speed'
         ordering = ("speed_bps", "full_duplex")
@@ -575,30 +500,12 @@ def network_type_pre_save(sender, **kwargs):
         if not(cur_inst.identifier.strip()):
             raise ValidationError("identifer must not be empty")
 
-
 class peer_information(models.Model):
     idx = models.AutoField(db_column="peer_information_idx", primary_key=True)
     s_netdevice = models.ForeignKey("backbone.netdevice", related_name="peer_s_netdevice")
     d_netdevice = models.ForeignKey("backbone.netdevice", related_name="peer_d_netdevice")
     penalty = models.IntegerField(default=0)
     date = models.DateTimeField(auto_now_add=True)
-    def get_xml(self):
-        return E.peer_information(
-            pk="%d" % (self.pk),
-            # why routing and not pi ?
-            key="routing__%d" % (self.pk),
-            from_devname=self.s_netdevice.devname,
-            to_devname=self.d_netdevice.devname,
-            from_device=self.s_netdevice.device.name,
-            to_device=self.d_netdevice.device.name,
-            from_device_full=self.s_netdevice.device.full_name,
-            to_device_full=self.d_netdevice.device.full_name,
-            s_netdevice="%d" % (self.s_netdevice_id),
-            d_netdevice="%d" % (self.d_netdevice_id),
-            from_penalty="%d" % (self.s_netdevice.penalty),
-            to_penalty="%d" % (self.d_netdevice.penalty),
-            penalty="%d" % (self.penalty or 1)
-        )
     def __unicode__(self):
         return u"%s [%d] %s" % (self.s_netdevice.devname, self.penalty, self.d_netdevice.devname)
     class Meta:
