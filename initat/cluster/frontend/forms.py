@@ -413,9 +413,12 @@ class group_detail_form(ModelForm):
     def __init__(self, *args, **kwargs):
         ModelForm.__init__(self, *args, **kwargs)
         self.fields["permission"].empty_label = "---"
-        for clear_f in ["parent_group", "allowed_device_groups", "permission_level", "object"]:
+        for clear_f in ["allowed_device_groups", "permission_level", "object"]:
             self.fields[clear_f].queryset = empty_query_set()
             self.fields[clear_f].empty_label = None
+        for clear_f in ["parent_group"]:
+            self.fields[clear_f].queryset = empty_query_set()
+            self.fields[clear_f].empty_label = "--- no parent"
     class Meta:
         model = group
         fields = ["groupname", "gid", "active", "homestart",
