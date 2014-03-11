@@ -695,13 +695,18 @@ class network_form(ModelForm):
                 Field("master_network", ng_options="value.idx as value.identifier for value in fn.get_production_networks(this)", wrapper_ng_show="fn.is_slave_network(this, edit_obj.network_type)", chosen=True),
                 Field("network_device_type", ng_options="value.idx as value.identifier for value in rest_data.network_device_types", chosen=True),
             ),
+            Fieldset(
+                "Flags",
+                Field("enforce_unique_ips"),
+            ),
             FormActions(
                 Submit("submit", "", css_class="primaryAction", ng_value="get_action_string()"),
             ),
         )
     class Meta:
         model = network
-        fields = ["identifier", "network", "netmask", "broadcast", "gateway", "master_network", "network_type", "network_device_type"]
+        fields = ("identifier", "network", "netmask", "broadcast", "gateway", "master_network", \
+            "network_type", "network_device_type", "enforce_unique_ips",)
 
 class network_type_form(ModelForm):
     helper = FormHelper()
@@ -744,13 +749,17 @@ class network_device_type_form(ModelForm):
                 Field("name_re", wrapper_class="ng-class:form_error('name_re')", placeholder="Regular expression"),
                 Field("mac_bytes", placeholder="MAC bytes", min=6, max=24),
             ),
+            Fieldset(
+                "Flags",
+                Field("allow_virtual_interfaces"),
+            ),
             FormActions(
                 Submit("submit", "", css_class="primaryAction", ng_value="get_action_string()"),
             ),
         )
     class Meta:
         model = network_device_type
-        fields = ("identifier", "description", "mac_bytes", "name_re",)
+        fields = ("identifier", "description", "mac_bytes", "name_re", "allow_virtual_interfaces",)
 
 class partition_table_form(ModelForm):
     helper = FormHelper()

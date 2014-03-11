@@ -35,8 +35,8 @@
 <script type="text/ng-template" id="network_type_row.html">
     <td>{{ settings.network_types[obj.identifier] }}</td>
     <td>{{ obj.description  }}</td>
-    <td><input type="button" class="btn btn-primary" ng-click="edit($event, obj)" value="modify"/></td>
-    <td><input type="button" class="btn btn-danger" ng-click="delete(obj)" value="delete"/></td>
+    <td><input type="button" class="btn btn-primary btn-sm" ng-click="edit($event, obj)" value="modify"/></td>
+    <td><input type="button" class="btn btn-danger btn-sm" ng-click="delete(obj)" value="delete"/></td>
 </script>
 
 <script type="text/ng-template" id="network_device_type_head.html">
@@ -44,7 +44,8 @@
         <th>Id</th>   
         <th>Description</th>
         <th>RegExp</th> 
-        <th>MAC</th>   
+        <th>MAC</th>
+        <th>virtIF</th>   
         <th colspan="2" class="text-center">action</th>   
     </tr>
 </script>
@@ -54,8 +55,9 @@
     <td>{{ obj.description  }}</td>
     <td>{{ obj.name_re }}</td>
     <td>{{ obj.mac_bytes }}</td>
-    <td><input type="button" class="btn btn-primary" ng-click="edit($event, obj)" value="modify"/></td>
-    <td><input type="button" class="btn btn-danger" ng-click="delete(obj)" value="delete"/></td>
+    <td>{{ obj.allow_virtual_interfaces | yesno1 }}</td>
+    <td><input type="button" class="btn btn-primary btn-sm" ng-click="edit($event, obj)" value="modify"/></td>
+    <td><input type="button" class="btn btn-danger btn-sm" ng-click="delete(obj)" value="delete"/></td>
 </script>
 
 <script type="text/ng-template" id="network_head.html">
@@ -64,10 +66,11 @@
         <th>Network definition</th>   
         <th>Gateway</th>
         <th>Pri</th>
+        <th>uniqueIP</th>
         <th>Type</th>
         <th>Master</th>
         <th>devtype(s)</th>   
-        <th colspan="2" class="text-center">action</th>   
+        <th colspan="2" class="text-center">action</th>
     </tr>
 </script>
 
@@ -80,11 +83,12 @@
         <span ng-bind-html="obj.gateway | ip_fixed_width"></span>
     </td>
     <td>{{ obj.penalty }}</td>
+    <td>{{ obj.enforce_unique_ips | yesno1 }}</td>
     <td>{{ obj.network_type | array_lookup:this.rest_data.network_types:'description' }}</td>
     <td>{{ obj.master_network | array_lookup:this.entries:'identifier':'---' }}</td>
     <td>{{ obj.network_device_type | resolve_n2m:this.rest_data.network_device_types:'identifier':'---' }}</td>
-    <td><input type="button" class="btn btn-primary" ng-click="edit($event, obj)" value="modify"/></td>
-    <td><input type="button" class="btn btn-danger" ng-click="delete(obj)" value="delete"/></td>
+    <td><input type="button" class="btn btn-primary btn-sm" ng-click="edit($event, obj)" value="modify"/></td>
+    <td><input type="button" class="btn btn-danger btn-sm" ng-click="delete(obj)" value="delete"/></td>
 </script>
 
 <tabset>

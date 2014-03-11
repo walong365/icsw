@@ -45,6 +45,7 @@ angular_add_simple_list_controller(
             "description" : "new network device type"
             "name_re"     : "^eth.*$"
             "mac_bytes"   : 6
+            "allow_virtual_interfaces" : true
         }
         object_created  : (new_obj) -> new_obj.identifier = ""
     }
@@ -66,6 +67,7 @@ angular_add_simple_list_controller(
             return {
                 "identifier"   : "",
                 "network_type" : (entry["idx"] for key, entry of $scope.rest_data.network_types when typeof(entry) == "object" and entry and entry["identifier"] == "o")[0]
+                "enforce_unique_ips" : true
             }
         object_created  : (new_obj) -> new_obj.identifier = ""
         fn : 
