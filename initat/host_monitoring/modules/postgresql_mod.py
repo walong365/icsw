@@ -20,16 +20,11 @@
 """ monitors postgres performance values """
 
 from ConfigParser import SafeConfigParser
-from initat.host_monitoring import hm_classes, limits
-from initat.host_monitoring import limits
-from initat.host_monitoring.hm_classes import hm_command, hm_module
-from initat.host_monitoring.server import server_command
-import cPickle
+from initat.host_monitoring.hm_classes import hm_module
 import logging_tools
 import os
-import pprint
-import time
 import process_tools
+import time
 try:
     import psycopg2
 except:
@@ -160,3 +155,4 @@ class _general(hm_module):
             to_remove = set(self.databases.keys()) - touched
             for rem_db in to_remove:
                 self.databases[rem_db].remove(mv)
+                del self.database[rem_db]
