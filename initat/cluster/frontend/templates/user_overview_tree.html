@@ -259,6 +259,21 @@ user_tree_module.controller("user_tree", ["$scope", "$compile", "$filter", "$tem
         $scope.$on("icsw.user.userchange", () ->
             $scope.rebuild_tree()
         )
+        $scope.get_parent_group_list = (cur_group) ->
+            _list = []
+            for _group in $scope.group_list
+                if _group.idx != cur_group.idx
+                    add = true
+                    # check if cur_group is not a parent
+                    _cur_p = _group.parent_group
+                    while _cur_p
+                        _cur_p = $scope.group_lut[_cur_p].obj
+                        if _cur_p.idx == cur_group.idx
+                            add = false
+                        _cur_p = _cur_p.parent_group
+                    if add
+                        _list.push(_group)
+            return _list
         $scope.valid_device_groups = () ->
             return (entry for entry in $scope.device_group_list when entry.enabled == true and entry.cluster_device_group == false)
         $scope.valid_group_csw_perms = () ->

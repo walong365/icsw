@@ -390,7 +390,7 @@ class group_detail_form(ModelForm):
         ),
         Fieldset(
             "Permissions",
-            Field("parent_group", ng_options="value.idx as value.groupname for value in group_list", chosen=True),
+            Field("parent_group", ng_options="value.idx as value.groupname for value in get_parent_group_list(_edit_obj)", chosen=True),
             Field("allowed_device_groups", ng_options="value.idx as value.name for value in valid_device_groups()", chosen=True),
             Field("permission", wrapper_ng_show="!create_mode", ng_options="value.idx as value.info group by value.content_type.model for value in valid_group_csw_perms(_edit_obj)", chosen=True),
             Field("object", wrapper_ng_show="!create_mode && _edit_obj.permission", ng_options="value.idx as value.name group by value.group for value in object_list()", chosen=True),
@@ -419,7 +419,7 @@ class group_detail_form(ModelForm):
     class Meta:
         model = group
         fields = ["groupname", "gid", "active", "homestart",
-                  "title", "email", "pager", "tel", "comment",
+                  "email", "pager", "tel", "comment",
                   "allowed_device_groups", "parent_group"]
 
 class export_choice_field(ModelChoiceField):
