@@ -418,7 +418,7 @@ class group_detail_form(ModelForm):
             self.fields[clear_f].empty_label = None
         for clear_f in ["parent_group"]:
             self.fields[clear_f].queryset = empty_query_set()
-            self.fields[clear_f].empty_label = "--- no parent"
+            self.fields[clear_f].empty_label = "---"
     class Meta:
         model = group
         fields = ["groupname", "gid", "active", "homestart",
