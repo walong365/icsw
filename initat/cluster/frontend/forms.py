@@ -379,7 +379,6 @@ class group_detail_form(ModelForm):
             Div(
                 Fieldset(
                     "Additional data",
-                    Field("title"),
                     Field("email"),
                     Field("pager"),
                     Field("tel"),
