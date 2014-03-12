@@ -1,6 +1,6 @@
 #!/usr/bin/python -Otu
 #
-# Copyright (C) 2007,2008,2011,2012,2013 Andreas Lang-Nevyjel
+# Copyright (C) 2007,2008,2011-2014 Andreas Lang-Nevyjel
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -21,7 +21,6 @@
 from config_tools import router_object
 from django.db.models import Q
 from initat.cluster.backbone.models import net_ip, netdevice, device, device_variable, domain_tree_node
-from initat.cluster_server.config import global_config
 import cluster_location
 import codecs
 import cs_base_class
@@ -29,10 +28,8 @@ import ipvx_tools
 import logging_tools
 import networkx
 import os
-import pprint
 import process_tools
 import server_command
-import sys
 
 SSH_KNOWN_HOSTS_FILENAME = "/etc/ssh/ssh_known_hosts"
 ETC_HOSTS_FILENAME = "/etc/hosts"
@@ -112,13 +109,16 @@ class write_etc_hosts(cs_base_class.server_com):
         name_dict = {}
         # ip dictionary
         ip_dict = {}
-        # connection keys
-        # con_keys = set(ref_table)
-        # build dict, ip->[list of hosts]
-        tl_dtn = domain_tree_node.objects.get(Q(depth=0))
+        # min_target_dict
+        min_target_dict = {}
         for cur_path in all_paths:
             min_value = route_obj.get_penalty(cur_path)
             target_nd = nd_lut[cur_path[-1]]
+            min_target_dict[target_nd] = min(min_target_dict.get(target_nd, 999999999), min_value)
+        tl_dtn = domain_tree_node.objects.get(Q(depth=0))
+        for cur_path in all_paths:
+            target_nd = nd_lut[cur_path[-1]]
+            min_value = min_target_dict[target_nd]
             for cur_ip in nd_lut[cur_path[-1]].net_ip_set.all():
                 # get names
                 host_names = []
