@@ -390,13 +390,15 @@ class _general(hm_classes.hm_module):
         for ent, loc_dir in bdir_dict.iteritems():
             b_dict[ent] = {"interfaces" : os.listdir("%s/brif" % (loc_dir))}
             for key in ["address", "addr_len", "features", "flags", "mtu"]:
-                value = file("%s/%s" % (loc_dir, key), "r").read().strip()
-                if value.isdigit():
-                    b_dict[ent][key] = int(value)
-                elif value.startswith("0x"):
-                    b_dict[ent][key] = int(value, 16)
-                else:
-                    b_dict[ent][key] = value
+                _f_name = os.path.join(loc_dir, key)
+                if os.path.exists(_f_name):
+                    value = file(_f_name, "r").read().strip()
+                    if value.isdigit():
+                        b_dict[ent][key] = int(value)
+                    elif value.startswith("0x"):
+                        b_dict[ent][key] = int(value, 16)
+                    else:
+                        b_dict[ent][key] = value
         return b_dict
     def _check_for_networks(self):
         n_dict = {}
@@ -424,11 +426,12 @@ class _general(hm_classes.hm_module):
                                 if value.isdigit():
                                     value = int(value)
                                 f_dict[key] = value
-                        dev_dict = {"idx"      : int(act_net_num),
-                                    "flags"    : flags[1:-1].split(","),
-                                    "features" : f_dict,
-                                    "links"    : {},
-                                    "inet"     : []}
+                        dev_dict = {
+                            "idx"      : int(act_net_num),
+                            "flags"    : flags[1:-1].split(","),
+                            "features" : f_dict,
+                            "links"    : {},
+                            "inet"     : []}
                         n_dict[act_net_name.strip()] = dev_dict
                     else:
                         self.log("cannot parse line %s" % (line), logging_tools.LOG_LEVEL_ERROR)
@@ -1254,12 +1257,13 @@ class bridge_info_command(hm_classes.hm_command):
         out_f = ["found %s:" % (logging_tools.get_plural("bridge", len(br_names)))]
         for br_name in br_names:
             br_stuff = bridge_dict[br_name]
-            out_f.append("%-16s: mtu %4d, flags 0x%x, features 0x%x, %s: %s" % (br_name,
-                                                                                br_stuff["mtu"],
-                                                                                br_stuff["flags"],
-                                                                                br_stuff["features"],
-                                                                                logging_tools.get_plural("interface", len(br_stuff["interfaces"])),
-                                                                                ", ".join(sorted(br_stuff["interfaces"]))))
+            out_f.append("%-16s: mtu %4d, flags 0x%x, features 0x%x, %s: %s" % (
+                br_name,
+                br_stuff["mtu"],
+                br_stuff["flags"],
+                br_stuff["features"],
+                logging_tools.get_plural("interface", len(br_stuff["interfaces"])),
+                ", ".join(sorted(br_stuff["interfaces"]))))
         return limits.nag_STATE_OK, "%s" % ("\n".join(out_f))
 
 class network_info_command(hm_classes.hm_command):
@@ -1282,8 +1286,15 @@ class network_info_command(hm_classes.hm_command):
                     logging_tools.form_entry(", ".join(["%s=%s" % (key, str(net_stuff["features"][key])) for key in sorted(net_stuff["features"].keys())]) if net_stuff["features"] else "none", header="features")
                     ]
                 )
+            for link_key in sorted(net_stuff["links"]):
+                link_stuff = net_stuff["links"][link_key]
+                if type(link_stuff[0]) == bool:
+                    link_str = ""
+                else:
+                    link_str = " ".join(link_stuff)
+                out_list.append([logging_tools.form_entry("  - link/%s%s" % (link_key, ": %s" % (link_str) if link_str else ""))])
             for net in net_stuff["inet"]:
-                out_list.append([logging_tools.form_entry("  - %s" % (net))])
+                out_list.append([logging_tools.form_entry("  - inet %s" % (net))])
         return limits.nag_STATE_OK, "found %s:\n%s" % (logging_tools.get_plural("network device", len(net_names)),
                                                        str(out_list))
 
