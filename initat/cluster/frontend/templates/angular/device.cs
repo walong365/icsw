@@ -32,6 +32,7 @@ angular_add_simple_list_controller(
 
 device_tree_base = device_module.controller("device_tree_base", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "sharedDataSource", "$q", "$timeout", 
     ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, sharedDataSource, $q, $timeout) ->
+        $scope.initial_load = true
         # init pagSettings /w. filter
         $scope.settings = {}
         $scope.settings.filter_settings = {"dg_filter" : "b", "en_filter" : "b", "sel_filter" : "b", "mon_filter" : "i", "boot_filter" : "i", "str_filter" : ""}
@@ -44,6 +45,7 @@ device_tree_base = device_module.controller("device_tree_base", ["$scope", "$com
             {"short" : "mother_server", "url" : "{% url 'rest:device_tree_list' %}", "options" : {"all_mother_servers" : true}}
             {"short" : "monitor_server", "url" : "{% url 'rest:device_tree_list' %}", "options" : {"all_monitoring_servers" : true}}
             {"short" : "domain_tree_node", "url" : "{% url 'rest:domain_tree_node_list' %}"}
+            {"short" : "device_sel", "url" : "{% url 'rest:device_selection_list' %}"}
         ]
         $scope.edit_map = {
             "device"       : "device_tree.html",
@@ -54,8 +56,9 @@ device_tree_base = device_module.controller("device_tree_base", ["$scope", "$com
         $scope.entries = []
         $scope.reload = () ->
             $.blockUI()
-            # store selected state
-            $scope.sel_cache = (entry.idx for entry in $scope.entries when entry.selected)
+            # store selected state when not first load
+            if not $scope.initial_load
+                $scope.sel_cache = (entry.idx for entry in $scope.entries when entry.selected)
             wait_list = []
             for value, idx in $scope.rest_map
                 $scope.rest_data[value.short] = restDataSource.reload([value.url, value.options])
@@ -185,10 +188,14 @@ device_tree_base = device_module.controller("device_tree_base", ["$scope", "$com
                 $scope.mon_master = mon_masters[0].idx
             else
                 $scope.mon_master = -1
+            if $scope.initial_load
+                # for initial load use device_sel as preselection
+                $scope.sel_cache = (entry.idx for entry in $scope.rest_data["device_sel"] when entry.sel_type == "d")
             for pk in $scope.sel_cache
                 if pk of $scope.device_lut
                     # ignore deleted devices
                     $scope.device_lut[pk].selected = true
+            $scope.initial_load = false
         $scope.num_selected = () ->
             if $scope.entries
                 return (true for entry in $scope.entries when entry.selected and not entry.is_meta_device).length
@@ -208,6 +215,10 @@ device_tree_base = device_module.controller("device_tree_base", ["$scope", "$com
             # apply filter
             $scope.pagSettings.conf.filter_settings.str_filter = $scope.str_filter
             # console.log $scope.pagSettings.conf.filter_settings
+        $scope.select_shown = () ->
+            for entry in $scope.entries
+                if not entry.is_meta_device
+                    entry.selected = entry._show
         $scope.pagSettings.conf.filter_changed = () ->
             aft_dict = {
                 "b" : [true, false]
@@ -253,10 +264,10 @@ device_tree_base = device_module.controller("device_tree_base", ["$scope", "$com
                         mon_flag = parseInt(mon_f) == entry.monitor_server
                 # string filter
                 if entry.is_meta_device
-                    sf_flag = entry.name.match(str_re) or entry.comment.match(str_re)
+                    sf_flag = if (entry.name.match(str_re) or entry.comment.match(str_re)) then true else false
                 else
-                    sf_flag = entry.full_name.match(str_re) or entry.comment.match(str_re)
-                entry._show = entry.is_meta_device in md_list and en_flag and sel_flag and mon_flag and sf_flag
+                    sf_flag = if (entry.full_name.match(str_re) or entry.comment.match(str_re)) then true else false
+                entry._show = (entry.is_meta_device in md_list) and en_flag and sel_flag and mon_flag and sf_flag
         $scope.filter_pag = (entry, scope) ->
             return entry._show
         $scope.object_modified = (mod_obj) ->
@@ -305,6 +316,14 @@ device_tree_base = device_module.controller("device_tree_base", ["$scope", "$com
                     new_obj.device_group = (entry.idx for entry in $scope.rest_data.device_group when entry.cluster_device_group == false)[0]
                     new_obj.domain_tree_node = (entry.idx for entry in $scope.rest_data.domain_tree_node when entry.depth == 0)[0]
             return new_obj
+        $scope.update_selected = () ->
+            $.ajax
+                url     : "{% url 'device:set_selection' %}"
+                data    : {
+                    "angular_sel" : angular.toJson((entry.idx for entry in $scope.entries when entry.selected))
+                }
+                success : (xml) ->
+                    parse_xml_response(xml)
 ])
 
 device_module.directive("devicetreerow", ($templateCache, $compile) ->
@@ -319,6 +338,14 @@ device_module.directive("devicetreerow", ($templateCache, $compile) ->
                     new_el = $compile($templateCache.get("device_tree_meta_row.html"))
             else
                 new_el = $compile($templateCache.get("device_tree_row.html"))
+            scope.get_dev_sel_class = () ->
+                if scope.obj.selected
+                    return "btn btn-xs btn-success"
+                else
+                    return "btn btn-xs"
+            scope.toggle_dev_sel = () ->
+                scope.obj.selected = !scope.obj.selected
+                scope.update_selected()
             scope.change_dg_sel = (flag) ->
                 for entry in scope.entries
                     if entry.device_group == scope.obj.device_group
@@ -328,6 +355,7 @@ device_module.directive("devicetreerow", ($templateCache, $compile) ->
                             entry.selected = false
                         else
                             entry.selected = not entry.selected
+                scope.update_selected()
             element.append(new_el(scope))
     }
 ).directive("devicetreehead", ($templateCache) ->

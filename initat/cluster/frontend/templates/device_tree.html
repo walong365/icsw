@@ -44,7 +44,7 @@
     <td>{{ obj.device_group_obj.domain_tree_node | array_lookup:this.rest_data.domain_tree_node | show_dtn }}</td>
     <td></td>
     <td colspan=4></td>
-    <td><input type="button" class="btn btn-primary" ng-click="edit('device_group', $event, obj.device_group_obj)" value="modify"/></td>
+    <td><input type="button" class="btn btn-primary btn-sm" ng-click="edit('device_group', $event, obj.device_group_obj)" value="modify"/></td>
     <td></td>
 </script> 
 
@@ -61,10 +61,10 @@
     <td>{{ obj.device_group_obj.enabled | yesno1 }}</td>
     <td>{{ obj.device_group_obj.num_devices }} devices</td>
     <td colspan="3" class="text-right">
-        <input type="button btn-success" class="btn btn-success" ng-click="create('device', $event, obj.device_group_obj)" value="create device"/>
+        <input type="button btn-success" class="btn btn-success btn-sm" ng-click="create('device', $event, obj.device_group_obj)" value="create device"/>
     </td>
     <td>
-        <input type="button" class="btn btn-primary" ng-click="edit('device_group', $event, obj.device_group_obj)" value="modify"/>
+        <input type="button" class="btn btn-primary btn-sm" ng-click="edit('device_group', $event, obj.device_group_obj)" value="modify"/>
     </td>
     <td>
         <input ng-show="!obj.device_group_obj.num_devices" type="button" class="btn btn-danger" ng-click="delete('device_group', obj.device_group_obj)" value="delete"/>
@@ -73,7 +73,7 @@
 
 <script type="text/ng-template" id="device_tree_row.html">
     <td>{{ obj.name }}</td>
-    <td><input type="checkbox" ng-model="obj.selected"></input></td>
+    <td><input type="button" ng-class="get_dev_sel_class()" ng-model="obj.selected" ng-click="toggle_dev_sel()" value="sel"></input></td>
     <td>{{ obj.comment }}</td>
     <td>{{ obj.domain_tree_node | array_lookup:this.rest_data.domain_tree_node | show_dtn }}</td>
     <td>
@@ -84,8 +84,8 @@
     <td>{{ obj.monitor_server | array_lookup:this.rest_data.monitor_server:"full_name" }}</td>
     <td>{{ obj.bootserver | array_lookup:this.rest_data.mother_server:"full_name" }}</td>
     <td>{{ obj.curl }}</td>
-    <td><input type="button" class="btn btn-primary btn-sm" ng-click="edit('device', $event, obj)" value="modify"/></td>
-    <td><input type="button" class="btn btn-danger btn-sm" ng-click="delete('device', obj)" value="delete"/></td>
+    <td><input type="button" class="btn btn-primary btn-xs" ng-click="edit('device', $event, obj)" value="modify"/></td>
+    <td><input type="button" class="btn btn-danger btn-xs" ng-click="delete('device', obj)" value="delete"/></td>
 </script> 
 
 <div ng-controller="device_tree_base">
@@ -132,13 +132,19 @@
         </div>
         <div class="form-group">
             <label class="control-label">BootServer:</label>
-            <select class="form-control input-sm" ng-model="pagSettings.conf.filter_settings.boot_filter">
+            <select class="form-control" ng-model="pagSettings.conf.filter_settings.boot_filter">
                 <option value="i">ignore</option>
                 <option ng-repeat="obj in rest_data.mother_server" ng-value="obj.idx">{{ obj.full_name }}</option>
-            </select>,&nbsp;
+            </select>
         </div>
+    </form>
+    <from class="form-inline">
+        <label class="control-label">Filter:</label>
         <div class="form-group">
             <input class="form-control input-sm" ng-model="str_filter" ng-change="update_filter()" placeholder="filter"></input>
+        </div>
+        <div class="form-group">
+            <input type="button" class="btn btn-sm btn-primary" value="select shown" ng-click="select_shown()"></input>
         </div>
     </form>
     <table class="table table-hover table-condensed table-striped" style="width:auto;">
