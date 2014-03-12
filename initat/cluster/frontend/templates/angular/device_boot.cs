@@ -48,7 +48,7 @@ device_boot_template = """
 </table>
 <form class="form-inline">
     <div class="btn-group">
-        <input type="button" ng-class="{'btn btn-sm btn-success' : show_mbl, 'btn btn-sm' : !show_mbl}" value="show macbootlog" ng-click="show_mbl = !show_mbl"></input>
+        <input type="button" ng-class="{'btn btn-sm btn-success' : show_mbl, 'btn btn-sm' : !show_mbl}" value="macbootlog" ng-click="show_mbl = !show_mbl"></input>
     </div>
 </form>
 <div ng-show="show_mbl">
@@ -66,7 +66,7 @@ device_boot_template = """
         </thead>
         <tbody>
             <tr ng-repeat="mbl in mbl_entries">
-                <td>{{ mbl.device }}</td>
+                <td>{{ mbl.device_name }}</td>
                 <td>{{ mbl.entry_type }}</td>
                 <td>{{ mbl.ip_action }}</td>
                 <td>{{ mbl.macaddr }}</td>

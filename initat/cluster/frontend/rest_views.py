@@ -252,6 +252,7 @@ class list_view(mixins.ListModelMixin,
                 "config_bool_set", "config_script_set", "mon_check_command_set__categories", "mon_check_command_set__exclude_devices",
                 "device_config_set"]),
             "mon_dist_master" : ([], ["mon_dist_slave_set"]),
+            "macbootlog" : (["device__domain_tree_node"], []),
             }.get(model_name, ([], []))
         res = self.model.objects.all()
         filter_list = []
