@@ -2104,11 +2104,17 @@ class macbootlog(models.Model):
     date = models.DateTimeField(auto_now_add=True)
     def get_created(self):
         return time.mktime(cluster_timezone.normalize(self.date).timetuple())
+    def get_device_name(self):
+        if self.device_id:
+            return self.device.full_name
+        else:
+            return ""
     class Meta:
         db_table = u'macbootlog'
 
 class macbootlog_serializer(serializers.ModelSerializer):
     created = serializers.Field(source="get_created")
+    device_name = serializers.Field(source="get_device_name")
     class Meta:
         model = macbootlog
 
