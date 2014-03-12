@@ -2085,9 +2085,14 @@ cached_log_status = memoize(log_status_lookup, {}, 1)
 class mac_ignore(models.Model):
     idx = models.AutoField(db_column="mac_ignore_idx", primary_key=True)
     macaddr = models.CharField(max_length=192, db_column="macadr", default="00:00:00:00:00:00")
+    user = models.ForeignKey("backbone.user", null=True)
     date = models.DateTimeField(auto_now_add=True)
     class Meta:
         db_table = u'mac_ignore'
+
+class mac_ignore_serializer(serializers.ModelSerializer):
+    class Meta:
+        model = mac_ignore
 
 class macbootlog(models.Model):
     idx = models.AutoField(db_column="macbootlog_idx", primary_key=True)
@@ -2097,8 +2102,15 @@ class macbootlog(models.Model):
     macaddr = models.CharField(max_length=192, db_column="macadr", default="00:00:00:00:00:00")
     log_source = models.ForeignKey("log_source", null=True)
     date = models.DateTimeField(auto_now_add=True)
+    def get_created(self):
+        return time.mktime(cluster_timezone.normalize(self.date).timetuple())
     class Meta:
         db_table = u'macbootlog'
+
+class macbootlog_serializer(serializers.ModelSerializer):
+    created = serializers.Field(source="get_created")
+    class Meta:
+        model = macbootlog
 
 class ms_outlet(models.Model):
     idx = models.AutoField(db_column="msoutlet_idx", primary_key=True)
