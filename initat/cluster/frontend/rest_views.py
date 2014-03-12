@@ -255,11 +255,20 @@ class list_view(mixins.ListModelMixin,
             }.get(model_name, ([], []))
         res = self.model.objects.all()
         filter_list = []
+        special_dict = {}
         for key, value in self.request.QUERY_PARAMS.iteritems():
-            filter_list.append(Q(**{key : value}))
+            if key.startswith("_"):
+                special_dict[key[1:]] = value
+            else:
+                filter_list.append(Q(**{key : value}))
         if filter_list:
             res = res.filter(reduce(operator.iand, filter_list))
-        return res.select_related(*related_fields).prefetch_related(*prefetch_fields)
+        res = res.select_related(*related_fields).prefetch_related(*prefetch_fields)
+        if "order_by" in special_dict:
+            res = res.order_by(special_dict["order_by"])
+        if "num_entries" in special_dict:
+            res = res[0:special_dict["num_entries"]]
+        return res
 
 class device_tree_detail(detail_view):
     model = device

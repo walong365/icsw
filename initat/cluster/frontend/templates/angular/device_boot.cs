@@ -8,6 +8,8 @@ root = exports ? this
 
 {% verbatim %}
 
+DT_FORM = "dd, D. MMM YYYY HH:mm:ss"
+
 device_boot_template = """
 <h2>
     Boot config for {{ devices.length }} devices<span ng-show="num_selected">, {{ num_selected }} selected</span>
@@ -16,7 +18,7 @@ device_boot_template = """
     <div class="btn-group">
         <input ng-repeat="entry in boot_options" type="button" ng-class="get_bo_class(entry[0])" value="{{ entry[1] }}" ng-click="toggle_bo(entry[0])"></input>
     </div>
-    <input type="button" class="btn btn-sn btn-warning" ng-show="num_selected && any_type_1_selected" value="modify" ng-click="modify_many($event)"></input>
+    <input type="button" class="btn btn-sm btn-warning" ng-show="num_selected && any_type_1_selected" value="modify" ng-click="modify_many($event)"></input>
     <input class="form-control" ng-model="device_sel_filter" placeholder="selection..." ng-change="change_sel_filter()"></input>
 </form>
 <table ng-show="devices.length" class="table table-condensed table-hover" style="width:auto;">
@@ -44,6 +46,36 @@ device_boot_template = """
         </tr>
     </tbody>
 </table>
+<form class="form-inline">
+    <div class="btn-group">
+        <input type="button" ng-class="{'btn btn-sm btn-success' : show_mbl, 'btn btn-sm' : !show_mbl}" value="show macbootlog" ng-click="show_mbl = !show_mbl"></input>
+    </div>
+</form>
+<div ng-show="show_mbl">
+    <h4>Showing {{ mbl_entries.length }} Macbootlog entries</h4>
+    <table class="table table-condensed table-hower" style="width:auto;">
+        <thead>
+            <tr>
+                <th>Device</th>
+                <th>type</th>
+                <th>IP</th>
+                <th>MAC</th>
+                <th>Logsource</th>
+                <th>created</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr ng-repeat="mbl in mbl_entries">
+                <td>{{ mbl.device }}</td>
+                <td>{{ mbl.entry_type }}</td>
+                <td>{{ mbl.ip_action }}</td>
+                <td>{{ mbl.macaddr }}</td>
+                <td style="white-space:nowrap;">{{ mbl.log_source | follow_fk:this:'log_source_lut':'name' }}</td>
+                <td>{{ get_mbl_created(mbl) }}</td>
+            </tr>
+        </tbody>
+    </table>
+</div>
 """
 
 device_row_template = """
@@ -123,6 +155,7 @@ device_boot_module.controller("boot_ctrl", ["$scope", "$compile", "$filter", "$t
     ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, sharedDataSource, $q, $modal, access_level_service, $timeout) ->
         access_level_service.install($scope)
         $scope.enable_modal = true
+        $scope.mbl_entries = []
         $scope.num_selected = 0
         $scope.any_type_1_selected = false
         $scope.device_sel_filter = ""
@@ -208,7 +241,7 @@ device_boot_module.controller("boot_ctrl", ["$scope", "$compile", "$filter", "$t
             $scope.info_ok = false
             $scope.devsel_list = _dev_sel
             $scope.reload()
-        $scope.reload= () ->
+        $scope.reload = () ->
             wait_list = [
                 restDataSource.reload(["{% url 'rest:device_tree_list' %}", {"with_network" : true, "pks" : angular.toJson($scope.devsel_list), "olp" : "backbone.device.change_boot"}]),
                 # 1
@@ -444,6 +477,15 @@ device_boot_module.controller("boot_ctrl", ["$scope", "$compile", "$filter", "$t
                 return "#{r_str} (#{info_str})"
             else
                 return r_str
+        $scope.fetch_macbootlog_entries = () ->
+            Restangular.all("{% url 'rest:macbootlog_list' %}".slice(1)).getList({"_num_entries" : 50, "_order_by" : "-pk"}).then(
+                (data) ->
+                    $scope.mbl_entries = data
+                    $timeout($scope.fetch_macbootlog_entries, 5000)
+            )
+        $scope.get_mbl_created = (mbl) ->
+            return moment.unix(mbl.created).format(DT_FORM)
+        $scope.fetch_macbootlog_entries()
         install_devsel_link($scope.new_devsel, true, true, false)
 ]).directive("boottable", ($templateCache) ->
     return {
