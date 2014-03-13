@@ -45,7 +45,7 @@ class simple_snmp_oid(object):
         else:
             self._oid = oid
         self._oid_len = len(self._oid)
-        self._str_oid = ".".join(["%d" % (i_val) for i_val in self._oid])
+        self._str_oid = ".".join(["%d" % (i_val) if type(i_val) in [int, long] else i_val for i_val in self._oid])
     def has_max_oid(self):
         return False
     def __str__(self):
