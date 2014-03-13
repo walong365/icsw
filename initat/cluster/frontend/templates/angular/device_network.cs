@@ -52,6 +52,14 @@ dn_row_template = """
                 <li ng-show="obj.netdevice_set.length && nd_peers.length" ng-click="create_peer_information(obj, $event)"><a href="#">Peer</a></li>
             </ul>
         </div>
+        <div class="btn-group">
+            <button type="button" class="btn btn-warning btn-sm dropdown-toggle" data-toggle="dropdown" ng-show="enable_modal && acl_create(obj, 'backbone.device.change_network') && no_objects_defined(obj)">
+               scan via <span class="caret"></span>
+            </button>
+            <ul class="dropdown-menu">
+                 <li ng-click="scan_device_network(obj, $event)"><a href="#">HostMonitor</a></li>
+            </ul>
+        </div>
     </div>
 </th>
 """
@@ -176,6 +184,9 @@ device_network_module.controller("network_ctrl", ["$scope", "$compile", "$filter
         $scope.peer_edit.modify_rest_url = "{% url 'rest:peer_information_detail' 1 %}".slice(1).slice(0, -2)
         $scope.peer_edit.new_object_at_tail = false
         $scope.peer_edit.use_promise = true
+
+        $scope.scan_mixin = new angular_modal_mixin($scope, $templateCache, $compile, $modal, Restangular, $q)
+        $scope.scan_mixin.template = "device_network_scan_form.html"
         
         $scope.devsel_list = []
         $scope.devices = []
@@ -194,7 +205,15 @@ device_network_module.controller("network_ctrl", ["$scope", "$compile", "$filter
                 restDataSource.reload(["{% url 'rest:domain_tree_node_list' %}", {}])
                 # 6
                 restDataSource.reload(["{% url 'rest:netdevice_peer_list' %}", {}])
-                restDataSource.reload(["{% url 'rest:fetch_forms' %}", {"forms" : angular.toJson(["netdevice_form", "net_ip_form", "peer_information_s_form", "peer_information_d_form"])}]),
+                restDataSource.reload(["{% url 'rest:fetch_forms' %}", {
+                    "forms" : angular.toJson([
+                        "netdevice_form"
+                        "net_ip_form"
+                        "peer_information_s_form"
+                        "peer_information_d_form"
+                        "device_network_scan_form"
+                     ])
+                }]),
             ]
             $q.all(wait_list).then((data) ->
                 $scope.devices = (dev for dev in data[0])
@@ -250,6 +269,8 @@ device_network_module.controller("network_ctrl", ["$scope", "$compile", "$filter
             dev.expanded = !dev.expanded
         $scope.get_num_netdevices = (dev) ->
             return dev.netdevice_set.length
+        $scope.no_objects_defined = (dev) ->
+            return if (dev.netdevice_set.length == 0) then true else false
         $scope.get_num_netips = (dev) ->
             num_ip = 0
             for nd in dev.netdevice_set
@@ -261,7 +282,6 @@ device_network_module.controller("network_ctrl", ["$scope", "$compile", "$filter
                 num_peers += nd.peers.length
             return num_peers
         $scope.get_route_peers =() ->
-            #console.log $scope.peers[0]
             return (entry for entry in $scope.nd_peers when entry.routing)
         $scope.get_ndip_objects = (dev) ->
             r_list = []
@@ -270,6 +290,42 @@ device_network_module.controller("network_ctrl", ["$scope", "$compile", "$filter
                 r_list = r_list.concat(ndev.net_ip_set)
                 r_list = r_list.concat(ndev.peers)
             return r_list
+        $scope.scan_device_network = (dev, event) ->
+            dev.scan_address = dev.full_name
+            dev.strict_mode = true
+            $scope.scan_device = dev
+            $scope.scan_mixin.edit(dev, event).then(
+                (mod_obj) ->
+                    true #console.log "*", mod_obj
+            )
+        $scope.fetch_device_network = () ->
+            $.blockUI()
+            $.ajax
+                url     : "{% url 'device:scan_device_network' %}"
+                data    : {
+                    "info" : angular.toJson({
+                        "pk" : $scope.scan_device.idx
+                        "scan_address" : $scope.scan_device.scan_address
+                        "strict_mode" : $scope.scan_device.strict_mode
+                    }) 
+                }
+                success : (xml) ->
+                    parse_xml_response(xml)
+                    
+                    Restangular.all("{% url 'rest:device_tree_list' %}".slice(1)).getList({"with_network" : true, "pks" : angular.toJson([$scope.scan_device.idx]), "olp" : "backbone.device.change_network"}).then(
+                        (data) ->
+                            new_dev = data[0]
+                            new_dev.expanded = true
+                            cur_devs = []
+                            for dev in $scope.devices
+                                if dev.idx == new_dev.idx
+                                    cur_devs.push(new_dev)
+                                else
+                                    cur_devs.push(dev)
+                            $scope.devices = cur_devs
+                            $scope.build_luts()
+                            $.unblockUI()
+                    )
         $scope.create_netdevice = (dev, event) ->
             $scope._current_dev = dev
             $scope.netdevice_edit.create_list = dev.netdevice_set

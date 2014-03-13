@@ -32,9 +32,10 @@ from initat.cluster.backbone.models import device_type, device_group, device, \
      cd_connection, domain_tree_node
 from initat.cluster.frontend.forms import device_tree_form, device_group_tree_form, \
     device_tree_many_form, device_variable_form, device_variable_new_form
-from initat.cluster.frontend.helper_functions import xml_wrapper
+from initat.cluster.frontend.helper_functions import xml_wrapper, contact_server
 from initat.cluster.backbone.render import permission_required_mixin, render_me
 import json
+import server_command
 import logging
 import logging_tools
 import re
@@ -199,3 +200,16 @@ class variables(View):
             "device_variable_new_form" : device_variable_new_form(),
             "device_object_level_permission" : "backbone.device.change_variables",
             })()
+
+class scan_device_network(View):
+    @method_decorator(login_required)
+    @method_decorator(xml_wrapper)
+    def post(self, request):
+        _data = json.loads(request.POST["info"])
+        _dev = device.objects.get(Q(pk=_data["pk"]))
+        logger.info("scanning network settings from %s" % (unicode(_dev)))
+        srv_com = server_command.srv_command(command="scan_network_info")
+        srv_com["server_key:pk"] = "%d" % (_dev.pk)
+        srv_com["server_key:scan_address"] = _data["scan_address"]
+        srv_com["server_key:strict_mode"] = "1" if _data["strict_mode"] else "0"
+        _result = contact_server(request, "server", srv_com, timeout=30)

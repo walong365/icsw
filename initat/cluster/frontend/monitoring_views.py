@@ -136,7 +136,6 @@ class fetch_partition(View):
         srv_com["server_key:device_pk"] = "%d" % (part_dev.pk)
         _result = contact_server(request, "server", srv_com, timeout=30)
 
-
 class get_node_config(View):
     @method_decorator(login_required)
     @method_decorator(xml_wrapper)

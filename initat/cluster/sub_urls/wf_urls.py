@@ -72,13 +72,14 @@ boot_patterns = patterns(
 
 device_patterns = patterns(
     "initat.cluster.frontend",
-    url("^device_tree$"       , device_views.device_tree.as_view()      , name="tree"),
-    url("^set_selection$"     , device_views.set_selection.as_view()    , name="set_selection"),
-    url("^config$"            , device_views.show_configs.as_view()     , name="show_configs"),
-    url("^connections"        , device_views.connections.as_view()      , name="connections"),
-    url("manual_connection"   , device_views.manual_connection.as_view(), name="manual_connection"),
-    url("variables$"          , device_views.variables.as_view()        , name="variables"),
-    url("change_devices$"     , device_views.change_devices.as_view()   , name="change_devices"),
+    url("^device_tree$"       , device_views.device_tree.as_view()        , name="tree"),
+    url("^set_selection$"     , device_views.set_selection.as_view()      , name="set_selection"),
+    url("^config$"            , device_views.show_configs.as_view()       , name="show_configs"),
+    url("^connections"        , device_views.connections.as_view()        , name="connections"),
+    url("manual_connection"   , device_views.manual_connection.as_view()  , name="manual_connection"),
+    url("variables$"          , device_views.variables.as_view()          , name="variables"),
+    url("change_devices$"     , device_views.change_devices.as_view()     , name="change_devices"),
+    url("scan_device_network$", device_views.scan_device_network.as_view(), name="scan_device_network"),
 )
 
 network_patterns = patterns(

@@ -922,8 +922,48 @@ class angular_edit_mixin
         if @use_promise
             return ret.promise
 
+class angular_modal_mixin
+    constructor : (@scope, @templateCache, @compile, @modal, @Restangular, @q) ->
+        @min_width = "600px"
+    edit : (obj, event) =>
+        @scope._edit_obj = obj
+        @scope.cur_edit = @
+        @_prom = @q.defer()
+        @edit_div = @compile(@templateCache.get(@template))(@scope)
+        @edit_div.simplemodal
+            #opacity      : 50
+            position     : [event.pageY, event.pageX]
+            minWidth : @min_width
+            #autoResize   : true
+            #autoPosition : true
+            onShow: (dialog) => 
+                dialog.container.draggable()
+                $("#simplemodal-container").css("height", "auto")
+                @_modal_close_ok = false
+                @scope.modal_active = true
+            onClose: (dialog) =>
+                @close_modal()
+        return @_prom.promise
+    close_modal : () =>
+        $.simplemodal.close()
+        @scope.modal_active = false
+    form_error : (field_name) =>
+        if @scope.form[field_name].$valid
+            return ""
+        else
+            return "has-error"
+    modify : () ->
+        if not @scope.form.$invalid
+            @close_modal()
+            return @_prom.resolve(@scope._edit_obj)
+        else
+            noty
+                text : "form validation problem"
+                type : "warning"
+
 root = exports ? this
 root.angular_edit_mixin = angular_edit_mixin
+root.angular_modal_mixin = angular_modal_mixin
 root.angular_module_setup = angular_module_setup
 root.handle_reset = handle_reset
 root.angular_add_simple_list_controller = angular_add_simple_list_controller
