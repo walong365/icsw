@@ -1,9 +1,9 @@
 #!/usr/bin/python -Ot
 #
-# Copyright (C) 2007,2012,2013 Andreas Lang-Nevyjel
+# Copyright (C) 2007,2012-2014 Andreas Lang-Nevyjel
 #
 # Send feedback to: <lang-nevyjel@init.at>
-# 
+#
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License Version 2 as
 # published by the Free Software Foundation.
@@ -28,11 +28,11 @@ class ipv4(object):
             in_value = list(in_value)
         if type(in_value) in [str, unicode]:
             # value is a string
-            if len([x for x in [int(y) for y in in_value.strip().split(".") if y.isdigit()] if x >=0 and x <= 255]) == 4:
+            if len([x for x in [int(y) for y in in_value.strip().split(".") if y.isdigit()] if x >= 0 and x <= 255]) == 4:
                 self.parts = [int(y) for y in in_value.strip().split(".")]
                 self.inv_parts = [x for x in self.parts]
                 self.inv_parts.reverse()
-                #print "+",in_value, self.parts, self.inv_parts, "*<br>"
+                # print "+",in_value, self.parts, self.inv_parts, "*<br>"
             else:
                 raise ValueError, "error parsing IP address '%s'" % (in_value)
         elif type(in_value) == type([]):
@@ -64,7 +64,7 @@ class ipv4(object):
             bits = 32
             while (not (bin_mask & 1)) and bin_mask:
                 bits -= 1
-                bin_mask = bin_mask/2
+                bin_mask = bin_mask / 2
         else:
             bits = 0
         return bits
@@ -140,7 +140,3 @@ def get_network_name_from_mask(mask):
     return {"255.255.255.0" : "C",
             "255.255.0.0"   : "B",
             "255.0.0.0"     : "A"}.get(mask, mask)
-
-if __name__ == "__main__":
-    print "Loadable module, exiting ..."
-    sys.exit(0)

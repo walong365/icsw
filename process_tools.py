@@ -107,10 +107,15 @@ def get_except_info(exc_info=None, **kwargs):
         except:
             frame_info = []
     # print frame.f_lineno, frame.f_code.co_name
-    return u"%s (%s, %s)" % (
+    _exc_list = exc_info[1]
+    exc_name = _exc_list.__class__.__name__
+    if exc_name == "ValidationError":
+        # special handling of Django ValidationErrors
+        _exc_list = ", ".join(_exc_list.messages)
+    return u"%s (%s%s)" % (
         unicode(exc_info[0]),
-        unicode(exc_info[1]),
-        ", ".join(frame_info) if frame_info else "no frame_info")
+        unicode(_exc_list),
+        ", %s" % (", ".join(frame_info)) if frame_info else "")
 
 class exception_info(object):
     def __init__(self, **kwargs):

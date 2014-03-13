@@ -1,12 +1,12 @@
 #!/usr/bin/python-init -Ot
 # -*- coding: utf-8 -*-
 #
-# Copyright (C) 2006,2007,2009,2010,2011,2012,2013 Andreas Lang-Nevyjel init.at
+# Copyright (C) 2006-2014 Andreas Lang-Nevyjel init.at
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
 # this file is part of python-modules-base
-# 
+#
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License Version 2 as
 # published by the Free Software Foundation.
@@ -22,29 +22,29 @@
 #
 """ network middleware """
 
-import sys
-import os
-import socket
-import select
-import logging_tools
-import threading
-import time
 import icmp
 import ip
-import zmq
-import server_command
+import logging_tools
 import operator
+import os
+import select
+import server_command
+import socket
+import sys
+import threading
+import time
+import zmq
 
 SHOW_DEL = False
 
 # flags for report_problem
-NET_EMPTY_READ         = 1
-NET_TIMEOUT            = 2
-NET_POLL_ERROR         = 4
-NET_NOT_CONNECTED      = 8
+NET_EMPTY_READ = 1
+NET_TIMEOUT = 2
+NET_POLL_ERROR = 4
+NET_NOT_CONNECTED = 8
 NET_CONNECTION_REFUSED = 16
-NET_EMPTY_SEND         = 32
-NET_MESSAGE_TOO_LONG   = 64
+NET_EMPTY_SEND = 32
+NET_MESSAGE_TOO_LONG = 64
 
 # copy from process_tools
 def get_except_info(exc_info=None):
@@ -79,6 +79,7 @@ class zmq_connection(object):
         self.__add_list = []
         self.__socket_dict = {}
         self.__registered = set()
+        self.__dummy_fd = -1
     def register_poller(self, zmq_socket, sock_fd, poll_type, callback):
         self.poller_handler.setdefault(zmq_socket, {})[poll_type] = callback
         if sock_fd in self.__registered:
@@ -96,29 +97,38 @@ class zmq_connection(object):
         new_sock.setsockopt(zmq.LINGER, self.__linger_time)
         new_sock.setsockopt(zmq.TCP_KEEPALIVE, 1)
         new_sock.setsockopt(zmq.TCP_KEEPALIVE_IDLE, 300)
-        #print new_sock.getsockopt(zmq.NOBLOCK)
-        #new_sock.setsockopt(zmq.NOBLOCK, 1)
-        #print new_sock.getsockopt(zmq.NOBLOCK)
+        # print new_sock.getsockopt(zmq.NOBLOCK)
+        # new_sock.setsockopt(zmq.NOBLOCK, 1)
+        # print new_sock.getsockopt(zmq.NOBLOCK)
         new_sock.setsockopt(zmq.IDENTITY, self.identity)
-        new_sock.connect(conn_str)
         if isinstance(command, server_command.srv_command):
             c_type = "sc"
         else:
             c_type = None
-        #self.register_poller(new_sock, zmq.POLLOUT, self.__show)
-        sock_fd = new_sock.getsockopt(zmq.FD)
-        self.register_poller(new_sock, sock_fd, zmq.POLLIN, self.__receive)
-        #self.register_poller(new_sock, sock_fd, zmq.POLLERR, self.__show)
-        self.__socket_dict[sock_fd] = new_sock
-        self.__results[sock_fd] = None
-        self.__pending.add(sock_fd)
-        self.__add_list.append((sock_fd, c_type))
-        new_sock.send_unicode(unicode(command))
-        if not kwargs.get("multi", False):
-            return self.loop()[0]
+        try:
+            new_sock.connect(conn_str)
+        except:
+            self.__dummy_fd -= 1
+            cur_fd = self.__dummy_fd
+            self.__add_list.append((cur_fd, c_type))
+            _result = server_command.srv_command(source=unicode(command))
+            _result.set_result("error connecting: %s" % (get_except_info()), server_command.SRV_REPLY_STATE_CRITICAL)
+            self.__results[cur_fd] = unicode(_result)
+        else:
+            # self.register_poller(new_sock, zmq.POLLOUT, self.__show)
+            sock_fd = new_sock.getsockopt(zmq.FD)
+            self.register_poller(new_sock, sock_fd, zmq.POLLIN, self.__receive)
+            # self.register_poller(new_sock, sock_fd, zmq.POLLERR, self.__show)
+            self.__socket_dict[sock_fd] = new_sock
+            self.__results[sock_fd] = None
+            self.__pending.add(sock_fd)
+            self.__add_list.append((sock_fd, c_type))
+            new_sock.send_unicode(unicode(command))
+            if not kwargs.get("multi", False):
+                return self.loop()[0]
     def loop(self):
         start_time = time.time()
-        while True:
+        while self.__pending:
             socks = self.poller.poll(timeout=max(self.__timeout, 1) * 1000)
             for sock, c_type in socks:
                 try:
@@ -135,7 +145,7 @@ class zmq_connection(object):
                     self._close_socket(sock_fd)
             if not self.__pending:
                 break
-        #self.context.term()
+        # self.context.term()
         return [self._interpret_result(com_type, self.__results[cur_fd]) for cur_fd, com_type in self.__add_list]
     def __show(self, sock_fd):
         print sock_fd
@@ -159,7 +169,7 @@ class icmp_host(object):
         self.__handler = icmp_handler
         self.name = h_name
         self.__flood_ping = flood_ping
-        self.__fast_mode  = fast_mode
+        self.__fast_mode = fast_mode
         self.__send_rate = send_rate
         try:
             fq_name, aliases, ip_list = socket.gethostbyname_ex(h_name)
@@ -190,7 +200,7 @@ class icmp_host(object):
     def packets_left(self):
         return self.__packets and True or False
     def reply_received(self):
-        #print "recv from", self.ip
+        # print "recv from", self.ip
         self.__packets_received += 1
         if self.__send_times:
             # keep packet-time
@@ -206,7 +216,7 @@ class icmp_host(object):
             self._host_finished()
             return 1000. * self.__timeout
         else:
-            #print self.__send_times
+            # print self.__send_times
             while self.__send_times:
                 if abs(act_time - self.__send_times[0]) > self.__timeout:
                     self.__packets_timeout += 1
@@ -218,7 +228,7 @@ class icmp_host(object):
                 else:
                     break
             if self.__send_times:
-                #print "TO", (abs(self.__timeout - abs(act_time - self.__send_times[0])))
+                # print "TO", (abs(self.__timeout - abs(act_time - self.__send_times[0])))
                 rv = 1000. * min([abs(self.__timeout - abs(act_time - self.__send_times[0])), self.__send_rate])
             else:
                 rv = 1000. * min([self.__timeout, self.__send_rate])
@@ -250,7 +260,7 @@ class icmp_host(object):
                                                                            max(self.__packet_times),
                                                                            sum(self.__packet_times) / len(self.__packet_times))
         self.__handler = None
-        
+
 class icmp_client(object):
     def __init__(self, **args):
         self.socket = None
@@ -350,10 +360,10 @@ class icmp_client(object):
                     self.__host_results[h_name] = self.__hosts_to_work[host_ip]._remove_host()
                 del self.__hosts_to_work[host_ip]
             self.__send_ips = []
-        #self.__host_results[
+        # self.__host_results[
         if not self.__send_ips:
             self.socket.remove_icmp_client(self)
-            # remove icmp_hosts 
+            # remove icmp_hosts
             del self.__hosts_to_work
             if self.__finish_call:
                 self.__finish_call(self)
@@ -367,11 +377,11 @@ class icmp_client(object):
         return self.__host_results
     def is_flood_ping(self):
         return self.__flood_ping
-    
+
 def ping_hosts(h_list, num_ping, timeout):
     def _log(what, level):
         pass
-    #print h_list, num_ping, timeout
+    # print h_list, num_ping, timeout
     ping_s = network_send(timeout=1, log_hook=_log)
     try:
         ping_obj = icmp_bind(exit_on_finish=True)
@@ -397,10 +407,10 @@ def add_proto_1_header(what, p1_head=True):
         return "%08d%s" % (len(what), str(what))
     else:
         return str(what)
-    
+
 class buffer_object(object):
     def __init__(self):
-        #print "Init buffer object"
+        # print "Init buffer object"
         self.in_buffer, self.out_buffer = ("", "")
         self.socket = None
         self.init_time = time.time()
@@ -422,7 +432,7 @@ class buffer_object(object):
         self.in_buffer += what
         self.add_to_out_buffer("ok")
     def add_to_out_buffer(self, what):
-        #print "add_to_out_buffer skel", what
+        # print "add_to_out_buffer skel", what
         # not thread safe
         self.out_buffer += what
         if self.out_buffer:
@@ -444,23 +454,23 @@ class buffer_object(object):
         self.socket.delete()
         self.close()
     def close(self):
-        #print "Closing buffer object"
+        # print "Closing buffer object"
         self.lock()
         self.socket.close()
         self.unlock()
     def setup_done(self):
         pass
 
-POLL_IN  = select.POLLIN | select.POLLPRI
+POLL_IN = select.POLLIN | select.POLLPRI
 POLL_OUT = select.POLLOUT
 POLL_ERR = select.POLLERR | select.POLLHUP | select.POLLNVAL
 
 def poll_flag_to_str(flags):
-    f_str = [s for f, s in [(select.POLLIN  , "POLLIN"  ),
-                            (select.POLLPRI , "POLLPRI" ),
-                            (select.POLLOUT , "POLLOUT" ),
-                            (select.POLLERR , "POLLERR" ),
-                            (select.POLLHUP , "POLLHUP" ),
+    f_str = [s for f, s in [(select.POLLIN  , "POLLIN"),
+                            (select.POLLPRI , "POLLPRI"),
+                            (select.POLLOUT , "POLLOUT"),
+                            (select.POLLERR , "POLLERR"),
+                            (select.POLLHUP , "POLLHUP"),
                             (select.POLLNVAL, "POLLNVAL")] if flags & f]
     return f_str and "|".join(f_str) or "<none set>"
 
@@ -487,7 +497,7 @@ class buffer_object_p1(buffer_object):
             if len(self.in_buffer) >= self.__body_len:
                 self.in_buffer = self.in_buffer[self.__body_len:]
                 self.__work_queue.put(("R", self))
-                #self.send_if_connected("ok")
+                # self.send_if_connected("ok")
                 self.__header_ok = False
             else:
                 proc = False
@@ -501,8 +511,8 @@ class buffer_object_p1(buffer_object):
             suc = False
         self.unlock()
         return suc
-            #send_str = "ok"
-            #self.add_to_out_buffer("%08d%s" % (len(send_str), send_str))
+            # send_str = "ok"
+            # self.add_to_out_buffer("%08d%s" % (len(send_str), send_str))
 
 class poll_object(object):
     def __init__(self, **args):
@@ -623,7 +633,7 @@ class epoll_object(object):
             else:
                 break
         return p_res
-        
+
 class uds_con_object(socket.socket):
     def __init__(self, udomain_send_call, **args):
         self.__server = None
@@ -665,7 +675,7 @@ class uds_con_object(socket.socket):
         self.__poll_object.poll_unregister(self.fileno())
         self.__poll_object = None
         self.__server = None
-        #print "Uds server clear"
+        # print "Uds server clear"
     def delete(self):
         # to be called before del
         self.__connect_state_call = None
@@ -674,9 +684,9 @@ class uds_con_object(socket.socket):
         self.__target_name = None
         # remove self-reference
         self._step = None
-        #print "-"*40
-        #print "\n".join(["%-40s %-100s: %d" % (z, str(x), sys.getrefcount(x)) for x, z in [(getattr(self, y), y) for y in dir(self)]])
-        #print "-"*40
+        # print "-"*40
+        # print "\n".join(["%-40s %-100s: %d" % (z, str(x), sys.getrefcount(x)) for x, z in [(getattr(self, y), y) for y in dir(self)]])
+        # print "-"*40
     def __del__(self):
         if SHOW_DEL:
             print "*del uds_con_object"
@@ -746,7 +756,7 @@ class uds_con_object(socket.socket):
             return 1000 * self.__rebind_wait_time
         else:
             self.__bind_ok = True
-            self.__connect_state_call(state="ok", log_level=logging_tools.LOG_LEVEL_OK, socket=self.__target_name, type="uds") 
+            self.__connect_state_call(state="ok", log_level=logging_tools.LOG_LEVEL_OK, socket=self.__target_name, type="uds")
             self._step = self._send
             new_buffer = self.__unix_domain_send_call(self)
             self.link_buffer(new_buffer)
@@ -828,7 +838,7 @@ class udp_con_object(socket.socket):
     def unregister(self):
         self.__server.unregister(self.fileno())
         self.__server = None
-        #print "Uds server clear"
+        # print "Uds server clear"
     def delete(self):
         # to be called before del
         self.__connect_state_call = None
@@ -836,9 +846,9 @@ class udp_con_object(socket.socket):
         self.__target_name = None
         # remove self-reference
         self._step = None
-        #print "-"*40
-        #print "\n".join(["%-40s %-100s: %d" % (z, str(x), sys.getrefcount(x)) for x, z in [(getattr(self, y), y) for y in dir(self)]])
-        #print "-"*40
+        # print "-"*40
+        # print "\n".join(["%-40s %-100s: %d" % (z, str(x), sys.getrefcount(x)) for x, z in [(getattr(self, y), y) for y in dir(self)]])
+        # print "-"*40
     def __del__(self):
         if SHOW_DEL:
             print "*del uds_con_object"
@@ -905,7 +915,7 @@ class udp_con_object(socket.socket):
             return 1000 * self.__rebind_wait_time
         else:
             self.__bind_ok = True
-            self.__connect_state_call(state="ok", log_level=logging_tools.LOG_LEVEL_OK, host=self.__target_host, port=self.__target_port, type="udp", socket=self) 
+            self.__connect_state_call(state="ok", log_level=logging_tools.LOG_LEVEL_OK, host=self.__target_host, port=self.__target_port, type="udp", socket=self)
             self._step = self._send
             new_buffer = self.__udp_send_call(self)
             self.link_buffer(new_buffer)
@@ -917,7 +927,7 @@ class udp_con_object(socket.socket):
                 try:
                     diff_send = self.send(self.__buffer.get_out_buffer())
                 except socket.error, val:
-                    #print "*", val
+                    # print "*", val
                     try:
                         errno, what = val
                     except:
@@ -978,7 +988,7 @@ class tcp_con_object(socket.socket):
     def set_in_buffer_size(self, sz=4096):
         # maximum size of one read
         self.__ib_size = sz
-    def register(self, server):#, act_poll_object):
+    def register(self, server): # , act_poll_object):
         self.__server = server
         if self.__timeout is None:
             self.__timeout = self.__server.get_timeout()
@@ -1010,7 +1020,7 @@ class tcp_con_object(socket.socket):
                     self.__timeout_call(self)
                 return 0
             else:
-                #self.__poll_object.register_handle(self.fileno(), POLL_IN | POLL_OUT)
+                # self.__poll_object.register_handle(self.fileno(), POLL_IN | POLL_OUT)
                 return min(1000 * (self.__timeout - idle_time), self.__send_error_timeout)
     def set_init_time(self):
         # initialisation time
@@ -1025,7 +1035,7 @@ class tcp_con_object(socket.socket):
         self.__server.register(self.fileno(), POLL_IN)
     def close(self):
         # called from buffer
-        #print "close", self.fileno()
+        # print "close", self.fileno()
         self.__server.remove_object(self, True)
         self.unlink_buffer()
     def link_buffer(self, buff_obj):
@@ -1063,7 +1073,7 @@ class tcp_con_object(socket.socket):
                 return 1000 * self.__rebind_wait_time
         else:
             self.__bind_ok = True
-            self.__connect_state_call(state="ok", log_level=logging_tools.LOG_LEVEL_OK, host=self.__target_name, port=self.__target_port, type="tcp", socket=self) 
+            self.__connect_state_call(state="ok", log_level=logging_tools.LOG_LEVEL_OK, host=self.__target_name, port=self.__target_port, type="tcp", socket=self)
             self._step = self._send
             new_buffer = self.__tcp_send_call(self)
             self.link_buffer(new_buffer)
@@ -1119,10 +1129,10 @@ class tcp_con_object(socket.socket):
             return 1000 * self.__timeout
         else:
             return 0
-    
+
 class com_socket(object):
     def __init__(self, sock, **args):
-        #print "Init com_socket"
+        # print "Init com_socket"
         self.__socket = sock
         self.__socket.setblocking(0)
         self.__socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
@@ -1191,7 +1201,7 @@ class com_socket(object):
         self.__server.trigger()
     def close(self):
         # called from buffer
-        #print "close", self.fileno()
+        # print "close", self.fileno()
         self.__server.remove_object(self, True)
         self.unlink_buffer()
     def check_for_timeout(self, act_time, set_activity=False):
@@ -1199,7 +1209,7 @@ class com_socket(object):
         # directly via a poll-interrupt or after the main loop to check)
         # returns 0 for timeout reached or time left in milliseconds
         idle_time = act_time - self.__last_activity
-        #print "CFT", idle_time, self.__timeout
+        # print "CFT", idle_time, self.__timeout
         if set_activity:
             self.__last_activity = act_time
         if idle_time >= self.__timeout:
@@ -1244,7 +1254,7 @@ class com_socket(object):
             return 1000 * self.__timeout
         else:
             return 0
-        
+
 class tcp_bind(socket.socket):
     def __init__(self, new_buffer_object_call, **args):
         socket.socket.__init__(self, socket.AF_INET, socket.SOCK_STREAM)
@@ -1281,12 +1291,12 @@ class tcp_bind(socket.socket):
             self.__log_buffer = []
         else:
             self.__log_buffer.append(("(delayed) %s" % (what), level))
-    def register(self, server):#, act_poll_object):
+    def register(self, server): # , act_poll_object):
         self.__server = server
         # overide if timeout was not set
         if self.__timeout is None:
             self.__timeout = self.__server.get_timeout()
-        #self.__poll_object = act_poll_object
+        # self.__poll_object = act_poll_object
         self._step = self._bind_port
         self.__server.register(self.fileno(), POLL_IN)
         self.log("registered %s" % (self.info_str()))
@@ -1308,12 +1318,12 @@ class tcp_bind(socket.socket):
                 self.__bind_state_call(state="warn", log_level=logging_tools.LOG_LEVEL_WARN, port=self.__port, type="tcp")
                 self.__bind_retries -= 1
             else:
-                self.__bind_state_call(state="error", log_level=logging_tools.LOG_LEVEL_ERROR,  port=self.__port, type="tcp")
+                self.__bind_state_call(state="error", log_level=logging_tools.LOG_LEVEL_ERROR, port=self.__port, type="tcp")
                 self.close()
             return 1000 * self.__rebind_wait_time
         else:
             self.__bind_ok = True
-            self.__bind_state_call(state="ok", log_level=logging_tools.LOG_LEVEL_OK, port=self.__port, type="tcp") 
+            self.__bind_state_call(state="ok", log_level=logging_tools.LOG_LEVEL_OK, port=self.__port, type="tcp")
             try:
                 self.listen(5)
             except socket.error, val:
@@ -1349,7 +1359,7 @@ class tcp_bind(socket.socket):
 class udp_bind(socket.socket):
     def __init__(self, udp_receive_call, **args):
         socket.socket.__init__(self, socket.AF_INET, socket.SOCK_DGRAM)
-        #self.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        # self.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         self.setblocking(0)
         # log_buffer if __net_server is not set
         self.__log_buffer = []
@@ -1381,12 +1391,12 @@ class udp_bind(socket.socket):
             self.__log_buffer = []
         else:
             self.__log_buffer.append(("(delayed) %s" % (what), level))
-    def register(self, server):#, act_poll_object):
+    def register(self, server): # , act_poll_object):
         self.__server = server
         # overide if timeout was not set
         if self.__timeout is None:
             self.__timeout = self.__server.get_timeout()
-        #self.__poll_object = act_poll_object
+        # self.__poll_object = act_poll_object
         self._step = self._bind_port
         self.__server.register(self.fileno(), POLL_OUT)
         self.log("registered %s" % (self.info_str()))
@@ -1408,13 +1418,13 @@ class udp_bind(socket.socket):
                 self.__bind_state_call(state="warn", log_level=logging_tools.LOG_LEVEL_WARN, port=self.__port, type="udp")
                 self.__bind_retries -= 1
             else:
-                self.__bind_state_call(state="error", log_level=logging_tools.LOG_LEVEL_ERROR,  port=self.__port, type="udp")
+                self.__bind_state_call(state="error", log_level=logging_tools.LOG_LEVEL_ERROR, port=self.__port, type="udp")
                 self.close()
             return 1000 * self.__rebind_wait_time
         else:
             self.__server.register(self.fileno(), POLL_IN)
             self.__bind_ok = True
-            self.__bind_state_call(state="ok", log_level=logging_tools.LOG_LEVEL_OK, port=self.__port, type="udp") 
+            self.__bind_state_call(state="ok", log_level=logging_tools.LOG_LEVEL_OK, port=self.__port, type="udp")
             self._step = self._recvfrom
             return None
     def _recvfrom(self):
@@ -1438,7 +1448,7 @@ class udp_bind(socket.socket):
 class unix_domain_bind(socket.socket):
     def __init__(self, udomain_receive_call, **args):
         socket.socket.__init__(self, socket.AF_UNIX, socket.SOCK_DGRAM)
-        #self.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        # self.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         self.setblocking(0)
         # log_buffer if __net_server is not set
         self.__log_buffer = []
@@ -1481,12 +1491,12 @@ class unix_domain_bind(socket.socket):
             self.__log_buffer = []
         else:
             self.__log_buffer.append(("(delayed) %s" % (what), level))
-    def register(self, server):#, act_poll_object):
+    def register(self, server): # , act_poll_object):
         self.__server = server
         # overide if timeout was not set
         if self.__timeout is None:
             self.__timeout = self.__server.get_timeout()
-        #self.__poll_object = act_poll_object
+        # self.__poll_object = act_poll_object
         self._step = self._bind_port
         self.__server.register(self.fileno(), POLL_OUT)
         self.log("registered %s" % (self.info_str()))
@@ -1500,7 +1510,7 @@ class unix_domain_bind(socket.socket):
     def _bind_port(self):
         try:
             socket_name, socket_mode = (self.__socket, self.__mode)
-            #print "_bind_port", socket_name, socket_mode
+            # print "_bind_port", socket_name, socket_mode
             try:
                 os.unlink(socket_name)
             except:
@@ -1516,13 +1526,13 @@ class unix_domain_bind(socket.socket):
                 self.__bind_state_call(state="warn", log_level=logging_tools.LOG_LEVEL_WARN, port=self.__socket, type="unix domain")
                 self.__bind_retries -= 1
             else:
-                self.__bind_state_call(state="error", log_level=logging_tools.LOG_LEVEL_ERROR,  port=self.__socket, type="unix domain")
+                self.__bind_state_call(state="error", log_level=logging_tools.LOG_LEVEL_ERROR, port=self.__socket, type="unix domain")
                 self.close()
             return 1000 * self.__rebind_wait_time
         else:
             self.__server.register(self.fileno(), POLL_IN)
             self.__bind_ok = True
-            self.__bind_state_call(state="ok", log_level=logging_tools.LOG_LEVEL_OK, port=self.__socket, type="unix domain") 
+            self.__bind_state_call(state="ok", log_level=logging_tools.LOG_LEVEL_OK, port=self.__socket, type="unix domain")
             self._step = self._recvfrom
             return None
     def _recvfrom(self):
@@ -1553,8 +1563,8 @@ class icmp_bind(socket.socket):
         self.__log_buffer = []
         # net_server
         self.__server = None
-        ## poll object
-        #self.__poll_object = None
+        # # poll object
+        # self.__poll_object = None
         bind_state_call = args.get("bind_state_call", None)
         if bind_state_call:
             bind_state_call(state="ok", log_level=logging_tools.LOG_LEVEL_OK, type="icmp")
@@ -1602,7 +1612,7 @@ class icmp_bind(socket.socket):
                     self.__request_exit = True
         self.__ic_lock.release()
     def register_packets_to_send(self, ic, num_p):
-        #print "registering %d" % (num_p)
+        # print "registering %d" % (num_p)
         self.__ic_lock.acquire()
         was_sending = self.__packets_to_send and True or False
         self.__packets_to_send += num_p
@@ -1656,9 +1666,9 @@ class icmp_bind(socket.socket):
             self.__log_buffer = []
         else:
             self.__log_buffer.append(("(delayed) %s" % (what), level))
-    def register(self, server):#, act_poll_object):
+    def register(self, server): # , act_poll_object):
         self.__server = server
-        #self.__poll_object = act_poll_object
+        # self.__poll_object = act_poll_object
         # overide if timeout was not set
         if self.__timeout is None:
             self.__timeout = self.__server.get_timeout()
@@ -1674,18 +1684,18 @@ class icmp_bind(socket.socket):
     def unregister(self):
         self.__server.unregister(self.fileno())
         self._step = None
-##     def ready_to_recv(self):
-##         self.__recv_count += 1
-##         if not self.__receiving:
-##             if self.__sending:
-##                 self.__poll_object.register_handle(self.fileno(), POLL_OUT)
-##         self._change_poll()
-##     def ready_to_send(self):
-##         self.__send_count += 1
-##         self._change_poll()
-##     def _change_poll(self):
-##         # called from buffer
-##         self.__server.trigger()
+# #     def ready_to_recv(self):
+# #         self.__recv_count += 1
+# #         if not self.__receiving:
+# #             if self.__sending:
+# #                 self.__poll_object.register_handle(self.fileno(), POLL_OUT)
+# #         self._change_poll()
+# #     def ready_to_send(self):
+# #         self.__send_count += 1
+# #         self._change_poll()
+# #     def _change_poll(self):
+# #         # called from buffer
+# #         self.__server.trigger()
     def _icmp_receive(self, d_read, frm):
         source_host, source_port = frm
         try:
@@ -1694,7 +1704,7 @@ class icmp_bind(socket.socket):
             print "*** error _icmp_receive : %s" % (get_except_info())
         else:
             if reply_p.id == self.__icmp_id:
-                #print source_host, len(d_read), reply_p.id, self.__icmp_id, reply_p.seq
+                # print source_host, len(d_read), reply_p.id, self.__icmp_id, reply_p.seq
                 seq = reply_p.seq
                 if seq in self.__seq_lut:
                     self.__icmp_clients[self.__seq_lut[seq]].reply_received(source_host)
@@ -1702,7 +1712,7 @@ class icmp_bind(socket.socket):
                     if seq in self.__seq_lut:
                         del self.__seq_lut[seq]
     def _recvsend(self, p_type):
-        #print "+-" * 20
+        # print "+-" * 20
         if p_type & POLL_IN:
             try:
                 d_read, frm = self.recvfrom(65535)
@@ -1742,12 +1752,12 @@ class network_server(epoll_object):
         # log hook
         self.__log_hook = args.get("log_hook", None)
         # polling object
-        #self.__poll_object = poll_object(poll_verbose=args.get("poll_verbose", False),
+        # self.__poll_object = poll_object(poll_verbose=args.get("poll_verbose", False),
         #                                 log_handle = self.log)
         # exit when no objects present ?
         self.__exit_when_empty = args.get("exit_when_empty", False)
         # register receiving pipe
-        #self.__poll_object.poll_register(self.__pipe_recv, POLL_IN)
+        # self.__poll_object.poll_register(self.__pipe_recv, POLL_IN)
         self.register(self.__pipe_recv, POLL_IN)
         # add (requeue) lock
         self.__change_lock = threading.RLock()
@@ -1768,7 +1778,7 @@ class network_server(epoll_object):
             self.log("setting timeout of network_server to %.4f seconds" % (to))
         self.__timeout = to
         self.__local_wait_times.append(1000 * self.__timeout)
-        #self._pipe_send("new_timeout")
+        # self._pipe_send("new_timeout")
     def get_timeout(self):
         return self.__timeout
     def close_objects(self):
@@ -1778,7 +1788,7 @@ class network_server(epoll_object):
     def add_object(self, obj_list, immediate=False):
         if type(obj_list) != type([]):
             obj_list = [obj_list]
-        #self.__objects
+        # self.__objects
         self.__change_lock.acquire()
         self.__add_list.extend([x for x in obj_list])
         self.__change_lock.release()
@@ -1804,21 +1814,21 @@ class network_server(epoll_object):
         self.__change_lock.acquire()
         for add_obj in self.__add_list:
             self.__objects[add_obj.fileno()] = add_obj
-            add_obj.register(self)#, self.__poll_object)
+            add_obj.register(self) # , self.__poll_object)
         self.__add_list = []
         self.__change_lock.release()
     def _del_object(self):
         del_objs = []
         self.__change_lock.acquire()
-        #self.log("list 0: %s" % (["%d" % (x.fileno()) for x in self.__del_list]))
+        # self.log("list 0: %s" % (["%d" % (x.fileno()) for x in self.__del_list]))
         for del_obj in self.__del_list:
             act_fno = del_obj.fileno()
-            #self.log("remove %d" % (act_fno))
+            # self.log("remove %d" % (act_fno))
             del_objs.append(act_fno)
             del self.__objects[act_fno]
             del_obj.unregister()
         self.__del_list = []
-        #self.log("list 1: %s" % (["%d" % (x.fileno()) for x in self.__del_list]))
+        # self.log("list 1: %s" % (["%d" % (x.fileno()) for x in self.__del_list]))
         self.__change_lock.release()
         return del_objs
     def _pipe_send(self, what):
@@ -1843,7 +1853,7 @@ class network_server(epoll_object):
                     else:
                         new_com = self.__pipe_buffer[1 : gt_idx]
                         if results and results[-1] == new_com:
-                            #print " * _pipe_read * present", new_com
+                            # print " * _pipe_read * present", new_com
                             pass
                         else:
                             results.append(new_com)
@@ -1880,14 +1890,14 @@ class network_server(epoll_object):
                 self.log("next_timeout < 0 (%.4f), forcing break" % (next_timeout), logging_tools.LOG_LEVEL_ERROR)
                 break
             # result of poll
-            #poll_result = self.__poll_object.poll(next_timeout)
+            # poll_result = self.__poll_object.poll(next_timeout)
             poll_result = self.poll(next_timeout)
             # list of wait_times
             local_wait_times = []
             # keys present in poll_result
             polled_keys = [x for x, y in poll_result]
             for key, poll_type in poll_result:
-                #self.log("polling %d %d" % (key, poll_type))
+                # self.log("polling %d %d" % (key, poll_type))
                 if key == self.__pipe_recv:
                     for command in self._pipe_read():
                         if command == "new_object":
@@ -1901,12 +1911,12 @@ class network_server(epoll_object):
                         elif command == "new_timeout":
                             print time_to_consume, self.__timeout * 1000
                         else:
-                            print "Got unknown command '%s' via pipe, exiting ..."  % (command)
+                            print "Got unknown command '%s' via pipe, exiting ..." % (command)
                             sys.exit(-1)
                 elif key in del_objs:
                     print "do", key, poll_type
                 else:
-                    #print "key", key, poll_type
+                    # print "key", key, poll_type
                     local_wait_times.append(self.__objects[key](poll_type))
             act_time = time.time()
             for key in [x for x in self.__objects.keys() if x not in polled_keys]:
@@ -1963,10 +1973,10 @@ class network_send(epoll_object):
         else:
             print "NSend (%d): %s" % (level, what)
     def set_timeout(self, to):
-##         if type(to) == type(0):
-##             self.log("setting timeout to %s" % (logging_tools.get_plural("second", to)))
-##         else:
-##             self.log("setting timeout to %.4f seconds" % (to))
+# #         if type(to) == type(0):
+# #             self.log("setting timeout to %s" % (logging_tools.get_plural("second", to)))
+# #         else:
+# #             self.log("setting timeout to %.4f seconds" % (to))
         self.__timeout = to
         self.__local_wait_times.append(1000 * self.__timeout)
     def get_timeout(self):
@@ -1981,7 +1991,7 @@ class network_send(epoll_object):
         if immediate:
             for add_obj in obj_list:
                 self.__objects[add_obj.fileno()] = add_obj
-                add_obj.register(self)#, self.__poll_object)
+                add_obj.register(self) # , self.__poll_object)
         else:
             self.__change_lock.acquire()
             self.__add_list.extend(obj_list)
@@ -1993,9 +2003,9 @@ class network_send(epoll_object):
             while self.__add_list:
                 add_obj = self.__add_list.pop(0)
                 self.__objects[add_obj.fileno()] = add_obj
-                add_obj.register(self)#, self.__poll_object)
+                add_obj.register(self) # , self.__poll_object)
             self.__change_lock.release()
-    #def get_registered_handles(self):
+    # def get_registered_handles(self):
     #    return [x for x in self.get_registered_handles() if x not in [self.__pipe_recv]]
     def get_num_objects(self):
         return len(self.__objects.keys())
@@ -2183,7 +2193,7 @@ class multiple_connections(network_send):
                                        "mode"      : t_stuff.get("mode", args.get("mode", "tcp")),
                                        "ret_str"   : "not set",
                                        "idx"       : idx}
-        #pprint.pprint(self.__target_dict)
+        # pprint.pprint(self.__target_dict)
         for idx, t_stuff in self.__target_dict.iteritems():
             if t_stuff["mode"] == "tcp":
                 self.add_object(tcp_con_object(self._new_tcp_con, connect_state_call=self._connect_state_call, connect_timeout_call=self._connect_timeout, target_host=t_stuff["host"], target_port=t_stuff["port"], bind_retries=args.get("bind_retries", 1), rebind_wait_time=args.get("rebind_wait_time", 2), timeout=t_stuff["timeout"], add_data=idx))
@@ -2210,7 +2220,7 @@ class multiple_connections(network_send):
         if args["state"] == "error":
             self.set_error(args["socket"].get_add_data(), NET_CONNECTION_REFUSED, "Error cannot connect")
     def _new_tcp_con(self, sock):
-        return simple_con_obj(self, **self.__target_dict[sock.get_add_data()])#t_h, t_p, t_stuff["mode"], t_stuff["command"], t_stuff["protocoll"])
+        return simple_con_obj(self, **self.__target_dict[sock.get_add_data()]) # t_h, t_p, t_stuff["mode"], t_stuff["command"], t_stuff["protocoll"])
     def set_result(self, idx, data):
         self.__target_dict[idx]["ret_str"] = data
     def set_error(self, idx, errnum, data):
