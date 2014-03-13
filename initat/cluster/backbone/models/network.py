@@ -188,6 +188,16 @@ def network_pre_save(sender, **kwargs):
         elif change_attr == "gateway":
             # do nothing
             pass
+        # check netmask
+        _mask = 0
+        any_match = False
+        for _idx in xrange(32, 0, -1):
+            _mask = _mask + 2 ** (_idx - 1)
+            if _mask == ip_dict["netmask"].value():
+                any_match = True
+                break
+        if not any_match:
+            raise ValidationError("netmask is not valid")
         ip_dict["network"] = ip_dict["network"] & ip_dict["netmask"]
         # always correct gateway
         ip_dict["gateway"] = (ip_dict["gateway"] & ~ip_dict["netmask"]) | ip_dict["network"]
@@ -432,7 +442,7 @@ def netdevice_pre_save(sender, **kwargs):
         # change network_device_type
         nd_type = cur_inst.find_matching_network_device_type()
         if not nd_type:
-            raise ValidationError("no matching device_type found for '%s' (%s)" % (unicode(cur_inst), cur_inst.pk))
+            raise ValidationError("no matching device_type found for '%s' (%s)" % (unicode(cur_inst), cur_inst.pk or "new nd"))
         cur_inst.network_device_type = nd_type
         # fix None as vlan_id
         _check_integer(cur_inst, "vlan_id", none_to_zero=True, min_val=0)

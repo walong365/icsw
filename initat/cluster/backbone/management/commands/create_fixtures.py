@@ -74,7 +74,7 @@ class Command(BaseCommand):
         factories.Status(status="boot", prod_link=True) # # FIXME ?
         factories.Status(status="installation", prod_link=True, do_install=True) # # FIXME ?
         # network device type
-        factories.NetworkDeviceType(identifier="lo", name_re="^lo$", description="loopback devices", mac_bytes=6)
+        factories.NetworkDeviceType(identifier="lo", name_re="^lo\d*$", description="loopback devices", mac_bytes=6)
         factories.NetworkDeviceType(identifier="eth", name_re="^eth\d+$", description="ethernet devices", mac_bytes=6)
         factories.NetworkDeviceType(identifier="myri", name_re="^myri\d+$", description="myrinet devices", mac_bytes=6)
         factories.NetworkDeviceType(identifier="xenbr", name_re="^xenbr\d+$", description="xen bridge devices", mac_bytes=6)
