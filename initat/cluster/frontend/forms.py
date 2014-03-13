@@ -2279,6 +2279,8 @@ class netdevice_form(ModelForm):
                 Field("devname", wrapper_class="ng-class:form_error('devname')", placeholder="devicename"),
                 Field("description"),
                 Field("netdevice_speed", ng_options="value.idx as value.info_string for value in netdevice_speeds", chosen=True),
+                Field("is_bridge", wrapper_ng_show="!_edit_obj.vlan_id && !_edit_obj.bridge_device"),
+                Field("bridge_device", ng_options="value.idx as value.devname for value in get_bridge_masters(_edit_obj)", chosen=True, wrapper_ng_show="!_edit_obj.is_bridge && get_bridge_masters(_edit_obj).length"),
             ),
             Fieldset(
                 "Routing settings",
@@ -2334,9 +2336,9 @@ class netdevice_form(ModelForm):
             ),
             Fieldset(
                 "VLAN settings",
-                Field("master_device", ng_options="value.idx as value.devname for value in get_vlan_masters()", chosen=True),
+                Field("master_device", ng_options="value.idx as value.devname for value in get_vlan_masters(_edit_obj)", chosen=True),
                 Field("vlan_id", min=0, max=255),
-                ng_show="_edit_obj.show_vlan",
+                ng_show="_edit_obj.show_vlan && !_edit_obj.is_bridge",
             ),
             FormActions(
                 Submit("submit", "", css_class="primaryAction", ng_value="action_string"),
@@ -2352,8 +2354,9 @@ class netdevice_form(ModelForm):
             self.fields[clear_f].empty_label = "---"
     class Meta:
         model = netdevice
-        fields = ("devname", "netdevice_speed", "description", "driver", "driver_options",
-            "macaddr", "fake_macaddr", "dhcp_device", "vlan_id", "master_device", "routing", "penalty")
+        fields = ("devname", "netdevice_speed", "description", "driver", "driver_options", "is_bridge",
+            "macaddr", "fake_macaddr", "dhcp_device", "vlan_id", "master_device", "routing", "penalty",
+            "bridge_device")
 
 class net_ip_form(ModelForm):
     helper = FormHelper()

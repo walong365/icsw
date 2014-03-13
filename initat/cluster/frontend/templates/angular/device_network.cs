@@ -16,6 +16,7 @@ device_networks_template = """
     <thead>
         <tr>
             <th>Devname / IP</th>
+            <th>Bridge</th>
             <th>MAC / Network</th>
             <th>Devtype / DTN</th>
             <th>routing / alias</th>
@@ -37,7 +38,7 @@ dn_row_template = """
         </span>
     </button>
 </td>
-<th>{{ obj.full_name }}</th>
+<th colspan="2">{{ obj.full_name }}</th>
 <th>{{ obj.device_group_name }}</th>
 <th>{{ obj.comment }}</th>
 <th colspan="3">
@@ -73,6 +74,7 @@ nd_row_template = """
     </button>
     {{ get_netdevice_name(ndip_obj) }}
 </td>
+<td>{{ get_bridge_info(ndip_obj, obj) }}</td>
 <td>{{ ndip_obj.macaddr }}</td>
 <td>{{ ndip_obj.network_device_type | array_lookup:network_device_types:'info_string':'-' }}</td>
 <td>{{ ndip_obj.routing | yesno2 }} ({{ ndip_obj.penalty }})</td>
@@ -101,6 +103,7 @@ nd_row_template = """
 
 ip_row_template = """
 <td>{{ ndip_obj.ip }}</td>
+<td></td>
 <td>{{ ndip_obj.network | array_lookup:networks:'info_string':'-' }}</td>
 <td>{{ ndip_obj.domain_tree_node | array_lookup:domain_tree_node:'tree_info':'-' }}</td>
 <td><span ng-show="ndip_obj.alias">{{ ndip_obj.alias }} ({{ ndip_obj.alias_excl | yesno1 }})</span></td>
@@ -253,12 +256,22 @@ device_network_module.controller("network_ctrl", ["$scope", "$compile", "$filter
                     $scope.nd_lut[peer.s_netdevice].peers.push({"peer" : peer, "netdevice" : peer.s_netdevice, "target" : peer.d_netdevice})
                 if peer.d_netdevice of $scope.nd_lut and peer.s_netdevice != peer.d_netdevice
                     $scope.nd_lut[peer.d_netdevice].peers.push({"peer" : peer, "netdevice" : peer.d_netdevice, "target" : peer.s_netdevice})
+        $scope.get_bridge_info = (nd, dev) ->
+            if nd.is_bridge
+                return "yes" + " (" + (sub_nd.devname for sub_nd in dev.netdevice_set when sub_nd.bridge_device == nd.idx).join(", ") + ")"
+            else if nd.bridge_device
+                return "slave (" + $scope.nd_lut[nd.bridge_device].devname + ")"
+            else
+                return ""
         $scope.get_netdevice_name = (nd) ->
             nd_name = nd.devname
             if nd.description
                 nd_name = "#{nd_name} (#{nd.description})"
             if nd.vlan_id
-                nd_name = "#{nd_name}, VLAN #{nd.vlan_id} on " + String($scope.nd_lut[nd.master_device].devname)
+                if nd.master_device
+                    nd_name = "#{nd_name}, VLAN #{nd.vlan_id} on " + String($scope.nd_lut[nd.master_device].devname)
+                else
+                    nd_name = "#{nd_name}, VLAN #{nd.vlan_id}"
             return nd_name
         $scope.get_expand_class = (dev) ->
             if dev.expanded
@@ -376,8 +389,10 @@ device_network_module.controller("network_ctrl", ["$scope", "$compile", "$filter
                 ndev.device_group_name = $scope._current_dev.device_group_name
                 $scope.nd_peers.push(ndev)
             $scope.build_luts()
-        $scope.get_vlan_masters = () ->
-            return $scope._current_dev.netdevice_set
+        $scope.get_vlan_masters = (cur_nd) ->
+            return (entry for entry in $scope._current_dev.netdevice_set when entry.idx != cur_nd.idx and not entry.is_bridge)
+        $scope.get_bridge_masters = (cur_nd) ->
+            return (entry for entry in $scope._current_dev.netdevice_set when entry.idx != cur_nd.idx and entry.is_bridge)
         $scope.create_netip = (dev, event) ->
             $scope._current_dev = dev
             $scope.netip_edit.create_list = undefined
