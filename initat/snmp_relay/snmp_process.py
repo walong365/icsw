@@ -39,6 +39,8 @@ class simple_snmp_oid(object):
         self._target_value = kwargs.get("target_value", None)
         if type(oid[0]) in [tuple, list] and len(oid) == 1:
             oid = oid[0]
+        if type(oid) == tuple and len(oid) == 1 and type(oid[0]) in [str, unicode]:
+            oid = oid[0]
         # store oid in tuple-form
         if type(oid) == type(""):
             self._oid = tuple([int(val) for val in oid.split(".")])

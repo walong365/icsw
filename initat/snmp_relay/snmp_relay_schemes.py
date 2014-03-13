@@ -1,6 +1,6 @@
 #!/usr/bin/python-init -Otu
 #
-# Copyright (C) 2009,2010,2011,2013 Andreas Lang-Nevyjel
+# Copyright (C) 2009-2014 Andreas Lang-Nevyjel
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -138,9 +138,9 @@ class snmp_oid(simple_snmp_oid):
             # timer after which cache should be refreshed
             self.refresh_timeout = kwargs.get("refresh_timeout", self.cache_timeout / 2)
     def has_max_oid(self):
-        return True if self.__max_oid else False
+        return True if self._max_oid else False
     def get_max_oid(self):
-        return self.__str_max_oid
+        return self._str_max_oid
 
 class snmp_scheme(object):
     def __init__(self, name, **kwargs):
