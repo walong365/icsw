@@ -20,9 +20,8 @@
 
 from django.db.models import Q
 from initat.cluster.backbone.models import device, partition, partition_disc, partition_table, \
-     partition_fs, lvm_lv, lvm_vg, sys_partition, get_related_models, netdevice, net_ip
+     partition_fs, lvm_lv, lvm_vg, sys_partition, net_ip
 from initat.cluster_server.config import global_config
-from lxml import etree # @UnresolvedImport
 import base64
 import bz2
 import config_tools
@@ -30,8 +29,6 @@ import cs_base_class
 import logging_tools
 import net_tools
 import partition_tools
-import pickle
-import pprint
 import process_tools
 import server_command
 import sys
@@ -87,8 +84,8 @@ class fetch_partition_info(cs_base_class.server_com):
                 )
         res_list = zmq_con.loop()
         cur_inst.log("length of result list: %d" % (len(res_list)))
-        num_errors, ret_f = (0, [])
-        for idx, (result, target_dev) in enumerate(zip(res_list, result_devs)):
+        num_errors, num_warnings, ret_f = (0, 0, [])
+        for _idx, (result, target_dev) in enumerate(zip(res_list, result_devs)):
             res_state = -1 if result is None else int(result["result"].attrib["state"])
             if res_state:
                 num_errors += 1
@@ -111,7 +108,7 @@ class fetch_partition_info(cs_base_class.server_com):
                     ret_f.append(u"%s: error missing keys in dict" % (target_dev))
                 else:
                     try:
-                        old_stuff = bz2.decompress(base64.b64decode(lvm_dict.text))
+                        _old_stuff = bz2.decompress(base64.b64decode(lvm_dict.text))
                     except:
                         lvm_info = partition_tools.lvm_struct("xml", xml=lvm_dict)
                     else:
@@ -253,7 +250,7 @@ class fetch_partition_info(cs_base_class.server_com):
                                     if new_part.mountpoint in prev_th_dict:
                                         new_part.warn_threshold, new_part.crit_threshold = prev_th_dict[new_part.mountpoint]
                                     new_part.save()
-                                part_name = "%s%s" % (dev, part)
+                                _part_name = "%s%s" % (dev, part)
                     for part, part_stuff in sys_dict.iteritems():
                         self.log("handling part %s (sys)" % (part))
                         if type(part_stuff) == type({}):
@@ -332,9 +329,11 @@ class fetch_partition_info(cs_base_class.server_com):
                     logging_tools.get_plural("volumegroup", len(lvm_info.lv_dict.get("vg", {}).keys())),
                     logging_tools.get_plural("logical volume", len(lvm_info.lv_dict.get("lv", {}).keys()))))
         if num_errors:
-            cur_inst.srv_com.set_result(u"ok %s" % (";".join(ret_f)), server_command.SRV_REPLY_STATE_ERROR)
+            cur_inst.srv_com.set_result(u"error %s" % ("; ".join(ret_f)), server_command.SRV_REPLY_STATE_ERROR)
+        elif num_warnings:
+            cur_inst.srv_com.set_result(u"warning %s" % ("; ".join(ret_f)), server_command.SRV_REPLY_STATE_WARN)
         else:
-            cur_inst.srv_com.set_result(u"ok %s" % (";".join(ret_f)), server_command.SRV_REPLY_STATE_OK)
+            cur_inst.srv_com.set_result(u"ok %s" % ("; ".join(ret_f)), server_command.SRV_REPLY_STATE_OK)
 
 if __name__ == "__main__":
     print "Loadable module, exiting ..."

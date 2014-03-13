@@ -20,7 +20,7 @@
 
 from config_tools import router_object
 from django.db.models import Q
-from initat.cluster.backbone.models import net_ip, netdevice, device, device_variable, domain_tree_node
+from initat.cluster.backbone.models import netdevice, device, device_variable, domain_tree_node
 import cluster_location
 import codecs
 import cs_base_class
@@ -44,7 +44,7 @@ class write_etc_hosts(cs_base_class.server_com):
         # get additional idx if host is virtual server
         # is_server, serv_idx, server_type, server_str, config_idx, real_server_name = cluster_location.is_server(self.dc, self.Meta.actual_configs[0], True, False)
 
-        is_server, serv_idx, server_type, server_str, config_idx, real_server_name = cluster_location.is_server("server", True, False)
+        is_server, serv_idx, _server_type, _server_str, _config_idx, _real_server_name = cluster_location.is_server("server", True, False)
         if is_server and serv_idx != self.server_idx:
             server_idxs.append(serv_idx)
         # recognize for which devices i am responsible
@@ -62,7 +62,7 @@ class write_etc_hosts(cs_base_class.server_com):
         # fetch key-information
         ssh_vars = device_variable.objects.filter(Q(name="ssh_host_rsa_key_pub")).select_related("device")
         rsa_key_dict = {}
-        for db_rec in ssh_vars:
+        for _db_rec in ssh_vars:
             pass
             # not handled FIXME
             # print "* ssh_var *", db_rec
@@ -150,7 +150,7 @@ class write_etc_hosts(cs_base_class.server_com):
                 min_value = all_values[0]
                 out_names = []
                 for val in all_values:
-                    for act_val, act_list in [(x_value, x_list) for x_value, x_list in h_list if x_value == val]:
+                    for _act_val, act_list in [(x_value, x_list) for x_value, x_list in h_list if x_value == val]:
                         out_names.extend([value for value in act_list if value not in out_names])
                 # print min_value, ip, out_names
                 loc_dict.setdefault(min_value, []).append([ipvx_tools.ipv4(ip)] + out_names)
