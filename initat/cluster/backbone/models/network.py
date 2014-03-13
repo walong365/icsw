@@ -343,6 +343,7 @@ class netdevice(models.Model):
     network_device_type = models.ForeignKey("backbone.network_device_type")
     description = models.CharField(max_length=765, blank=True)
     is_bridge = models.BooleanField(default=False)
+    bridge_device = models.ForeignKey("self", null=True, related_name="bridge_slaves", blank=True)
     bridge_name = models.CharField(max_length=765, blank=True)
     vlan_id = models.IntegerField(null=True, blank=True, default=0)
     # for VLAN devices
@@ -478,8 +479,8 @@ def netdevice_pre_save(sender, **kwargs):
                 raise ValidationError("cannot be my own VLAN master")
             if cur_inst.master_device.master_device_id:
                 raise ValidationError("cannot chain VLAN devices")
-        if cur_inst.vlan_id and not cur_inst.master_device_id:
-            raise ValidationError("need a VLAN master")
+        # if cur_inst.vlan_id and not cur_inst.master_device_id:
+        #    raise ValidationError("need a VLAN master")
 
 @receiver(signals.post_save, sender=netdevice)
 def netdevice_post_save(sender, **kwargs):
