@@ -379,10 +379,10 @@ class group_detail_form(ModelForm):
             Div(
                 Fieldset(
                     "Additional data",
-                    Field("email"),
-                    Field("pager"),
-                    Field("tel"),
-                    Field("comment"),
+                    Field("email", placeholder="email address"),
+                    Field("pager", placeholder="mobile number"),
+                    Field("tel", placeholder="telefon number"),
+                    Field("comment", placeholder="comment"),
                 ),
                 css_class="col-md-6",
             ),
@@ -463,7 +463,7 @@ class user_detail_form(ModelForm):
                     "Additional data",
                     Field("title", placeholder="title"),
                     Field("email", placeholder="email address"),
-                    Field("pager", placeholder="pager number"),
+                    Field("pager", placeholder="mobile number"),
                     Field("tel", placeholder="telefon number"),
                     Field("comment", placeholder="comment"),
                 ),
