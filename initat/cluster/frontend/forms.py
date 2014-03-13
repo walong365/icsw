@@ -2267,6 +2267,10 @@ class netdevice_form(ModelForm):
     ethtool_autoneg = ChoiceField(choices=[(0, "default"), (1, "on"), (2, "off")])
     ethtool_duplex = ChoiceField(choices=[(0, "default"), (1, "on"), (2, "off")])
     dhcp_device = BooleanField(required=False, label="force write DHCP address")
+    show_ethtool = BooleanField(required=False)
+    show_hardware = BooleanField(required=False)
+    show_mac = BooleanField(required=False)
+    show_vlan = BooleanField(required=False)
     routing = BooleanField(required=False)
     helper.layout = Layout(
         HTML("<h2>Netdevice '{% verbatim %}{{ _edit_obj.devname }}{% endverbatim %}'</h2>"),
@@ -2292,12 +2296,24 @@ class netdevice_form(ModelForm):
                 ),
             ),
             Fieldset(
+                "buttons",
+                Button("show ethtool", "show ethtool", ng_click="_edit_obj.show_ethtool = !_edit_obj.show_ethtool", ng_class="{'btn btn-sm btn-success' : !_edit_obj.show_ethtool, 'btn btn-sm' : _edit_obj.show_ethtool}"),
+                Button("show hardware", "show hardware", ng_click="_edit_obj.show_hardware = !_edit_obj.show_hardware", ng_class="{'btn btn-sm btn-success' : !_edit_obj.show_hardware, 'btn btn-sm' : _edit_obj.show_hardware}"),
+                Button("show vlan", "show vlan", ng_click="_edit_obj.show_vlan = !_edit_obj.show_vlan", ng_class="{'btn btn-sm btn-success' : !_edit_obj.show_vlan, 'btn btn-sm' : _edit_obj.show_vlan}"),
+                Button("show mac", "show mac", ng_click="_edit_obj.show_mac = !_edit_obj.show_mac", ng_class="{'btn btn-sm btn-success' : !_edit_obj.show_mac, 'btn btn-sm' : _edit_obj.show_mac}"),
+            ),
+            Fieldset(
                 "hardware settings",
                 Field("driver"),
                 Field("driver_options"),
+                ng_show="_edit_obj.show_hardware",
+            ),
+            Fieldset(
+                "ethtool settings (for cluster boot)",
                 Field("ethtool_autoneg", ng_change="update_ethtool(_edit_obj)"),
                 Field("ethtool_duplex", ng_change="update_ethtool(_edit_obj)"),
                 Field("ethtool_speed", ng_change="update_ethtool(_edit_obj)"),
+                ng_show="_edit_obj.show_ethtool",
             ),
             Fieldset(
                 "MAC Address settings",
@@ -2314,11 +2330,13 @@ class netdevice_form(ModelForm):
                     css_class="row",
                 ),
                 Field("dhcp_device"),
+                ng_show="_edit_obj.show_mac",
             ),
             Fieldset(
                 "VLAN settings",
                 Field("master_device", ng_options="value.idx as value.devname for value in get_vlan_masters()", chosen=True),
                 Field("vlan_id", min=0, max=255),
+                ng_show="_edit_obj.show_vlan",
             ),
             FormActions(
                 Submit("submit", "", css_class="primaryAction", ng_value="action_string"),

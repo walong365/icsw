@@ -330,7 +330,7 @@ device_network_module.controller("network_ctrl", ["$scope", "$compile", "$filter
             $scope._current_dev = dev
             $scope.netdevice_edit.create_list = dev.netdevice_set
             $scope.netdevice_edit.new_object = (scope) ->
-                return {
+                _dev = {
                     "device" : dev.idx
                     "devname" : "eth0"
                     "netdevice_speed" : (entry.idx for entry in $scope.netdevice_speeds when entry.speed_bps == 1000000000 and entry.full_duplex)[0]
@@ -343,6 +343,8 @@ device_network_module.controller("network_ctrl", ["$scope", "$compile", "$filter
                     # dummy value
                     "network_device_type" : $scope.network_device_types[0].idx
                 } 
+                $scope.set_edit_flags(_dev)
+                return _dev
             $scope.netdevice_edit.create(event).then(
                 (new_obj) ->
                     if new_obj != false
@@ -354,11 +356,17 @@ device_network_module.controller("network_ctrl", ["$scope", "$compile", "$filter
             )
         $scope.edit_netdevice = (dev, ndev, event) ->
             $scope._current_dev = dev
+            $scope.set_edit_flags(ndev)
             $scope.netdevice_edit.edit(ndev, event).then(
                 (mod_ndev) ->
                     if mod_ndev != false
                         $scope.check_for_peer_change(mod_ndev)
             )
+        $scope.set_edit_flags = (dev) ->
+            dev.show_mac = true
+            dev.show_hardware = true
+            dev.show_ethtool = true
+            dev.show_vlan = true
         $scope.check_for_peer_change = (ndev) ->
             # at first remove from list
             $scope.nd_peers = (entry for entry in $scope.nd_peers when entry.idx != ndev.idx)
