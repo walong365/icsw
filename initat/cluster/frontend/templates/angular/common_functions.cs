@@ -831,6 +831,7 @@ class angular_edit_mixin
                 #@scope._edit_obj.pnum = 99
                 #console.log @scope._edit_obj, @scope.pre_edit_obj
         @scope.modal_active = false
+        @edit_div.remove()
     form_error : (field_name) =>
         if @scope.form[field_name].$valid
             return ""

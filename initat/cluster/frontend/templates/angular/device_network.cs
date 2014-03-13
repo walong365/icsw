@@ -350,15 +350,24 @@ device_network_module.controller("network_ctrl", ["$scope", "$compile", "$filter
                         new_obj.expanded = false
                         new_obj.peers = []
                         $scope.nd_lut[new_obj.idx] = new_obj
+                        $scope.check_for_peer_change(new_obj)
             )
         $scope.edit_netdevice = (dev, ndev, event) ->
             $scope._current_dev = dev
             $scope.netdevice_edit.edit(ndev, event).then(
                 (mod_ndev) ->
                     if mod_ndev != false
-                        true
-                        #console.log "mod"
+                        $scope.check_for_peer_change(mod_ndev)
             )
+        $scope.check_for_peer_change = (ndev) ->
+            # at first remove from list
+            $scope.nd_peers = (entry for entry in $scope.nd_peers when entry.idx != ndev.idx)
+            if ndev.routing
+                ndev.fqdn = $scope._current_dev.full_name
+                ndev.device_name = $scope._current_dev.name
+                ndev.device_group_name = $scope._current_dev.device_group_name
+                $scope.nd_peers.push(ndev)
+            $scope.build_luts()
         $scope.get_vlan_masters = () ->
             return $scope._current_dev.netdevice_set
         $scope.create_netip = (dev, event) ->
@@ -388,7 +397,10 @@ device_network_module.controller("network_ctrl", ["$scope", "$compile", "$filter
         $scope.get_peer_src_info = () ->
             #console.log $scope._edit_obj
             src_nd = $scope.nd_lut[$scope._edit_obj.s_netdevice]
-            return src_nd.devname + " on " + $scope.dev_lut[src_nd.device].name
+            if src_nd
+                return src_nd.devname + " on " + $scope.dev_lut[src_nd.device].name
+            else
+                return "???"
         $scope.edit_peer_information = (peer, event) ->
             if peer.peer.s_netdevice == peer.netdevice
                 $scope.peer_edit.edit_template = "peer_information_d_form.html"
