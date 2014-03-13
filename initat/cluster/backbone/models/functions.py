@@ -76,17 +76,26 @@ def get_related_models(in_obj, m2m=False, detail=False, check_all=False, ignore_
         ignore_list = []
     else:
         ignore_list = fk_ignore_list
+    # copy ignore_list to static list because some entries can be referenced more than once
+    # (peer_information for instance [in netdevice])
+    ignore_list_static = [entry for entry in ignore_list]
     for rel_obj in in_obj._meta.get_all_related_objects():
         rel_field_name = rel_obj.field.name
+        _rel_name = rel_obj.model._meta.object_name
         # print rel_obj.model._meta.object_name, rel_obj.model._meta.object_name in ignore_list, ignore_list
-        if rel_obj.model._meta.object_name not in ignore_list:
+        if _rel_name not in ignore_list_static:
             ref_list = [entry for entry in rel_obj.model.objects.filter(Q(**{rel_field_name : in_obj})) if entry not in ignore_objs]
+            if ref_list:
+                print ref_list, ignore_list
             if detail:
                 used_objs.extend(ref_list)
             else:
                 used_objs += len(ref_list)
         else:
-            ignore_list.remove(rel_obj.model._meta.object_name)
+            # _rel_name can be missing from ignore list in case the object references the target more than once
+            # (again peer_information in netdevice)
+            if _rel_name in ignore_list:
+                ignore_list.remove(_rel_name)
     if m2m:
         for m2m_obj in in_obj._meta.get_all_related_many_to_many_objects():
             m2m_field_name = m2m_obj.field.name

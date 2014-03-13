@@ -374,6 +374,8 @@ class netdevice(models.Model):
             return sorted([(len(ndt.name_re), ndt) for ndt in match_list])[0][1]
     def get_dummy_macaddr(self):
         return ":".join(["00"] * self.network_device_type.mac_bytes)
+    class CSW_Meta:
+        fk_ignore_list = ["net_ip", "peer_information"]
     class Meta:
         db_table = u'netdevice'
         ordering = ("devname",)
