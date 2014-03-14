@@ -35,8 +35,8 @@
     <td>{{ obj.create_short_names | yesno1 }}</td>
     <td>{{ obj.always_create_ip | yesno1 }}</td>
     <td>{{ obj.write_nameserver_config | yesno1 }}</td>
-    <td><input type="button" class="btn btn-primary btn-sm" ng-click="edit($event, obj)" value="modify" ng-show="obj.depth"/></td>
-    <td><input type="button" class="btn btn-danger btn-sm" ng-click="delete(obj)" value="delete" ng-show="obj.depth > 0"/></td>
+    <td><input type="button" class="btn btn-primary btn-xs" ng-click="edit($event, obj)" value="modify" ng-show="obj.depth"/></td>
+    <td><input type="button" class="btn btn-danger btn-xs" ng-click="delete(obj)" value="delete" ng-show="obj.depth > 0"/></td>
 </script>
 
 <div ng-controller="dnt_base">

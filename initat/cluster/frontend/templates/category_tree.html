@@ -33,8 +33,8 @@
     <td><span ng-show="obj.depth > 1">{{ obj.num_refs || '---' }}</span></td>
     <td><span ng-show="fn.is_location(obj)">{{ obj.latitude }}</span></td>
     <td><span ng-show="fn.is_location(obj)">{{ obj.longitude }}</span></td>
-    <td><input type="button" class="btn btn-primary btn-sm" ng-click="edit($event, obj)" value="modify" ng-show="obj.depth > 1"/></td>
-    <td><input type="button" class="btn btn-danger btn-sm" ng-click="delete(obj)" value="delete" ng-show="obj.depth > 1"/></td>
+    <td><input type="button" class="btn btn-primary btn-xs" ng-click="edit($event, obj)" value="modify" ng-show="obj.depth > 1"/></td>
+    <td><input type="button" class="btn btn-danger btn-xs" ng-click="delete(obj)" value="delete" ng-show="obj.depth > 1"/></td>
 </script>
 
 <div ng-controller="cat_base">
