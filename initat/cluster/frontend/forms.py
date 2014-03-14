@@ -2279,8 +2279,16 @@ class netdevice_form(ModelForm):
                 Field("devname", wrapper_class="ng-class:form_error('devname')", placeholder="devicename"),
                 Field("description"),
                 Field("netdevice_speed", ng_options="value.idx as value.info_string for value in netdevice_speeds", chosen=True),
-                Field("is_bridge", wrapper_ng_show="!_edit_obj.vlan_id && !_edit_obj.bridge_device"),
-                Field("bridge_device", ng_options="value.idx as value.devname for value in get_bridge_masters(_edit_obj)", chosen=True, wrapper_ng_show="!_edit_obj.is_bridge && get_bridge_masters(_edit_obj).length"),
+                Field(
+                    "is_bridge",
+                    wrapper_ng_show="!_edit_obj.vlan_id && !_edit_obj.bridge_device",
+                    ng_disabled="has_bridge_slaves(_edit_obj)",
+                ),
+                Field("bridge_device",
+                    ng_options="value.idx as value.devname for value in get_bridge_masters(_edit_obj)",
+                    chosen=True,
+                    wrapper_ng_show="!_edit_obj.is_bridge && get_bridge_masters(_edit_obj).length",
+                ),
             ),
             Fieldset(
                 "Routing settings",

@@ -74,7 +74,7 @@ nd_row_template = """
     </button>
     {{ get_netdevice_name(ndip_obj) }}
 </td>
-<td>{{ get_bridge_info(ndip_obj, obj) }}</td>
+<td>{{ get_bridge_info(ndip_obj) }}</td>
 <td>{{ ndip_obj.macaddr }}</td>
 <td>{{ ndip_obj.network_device_type | array_lookup:network_device_types:'info_string':'-' }}</td>
 <td>{{ ndip_obj.routing | yesno2 }} ({{ ndip_obj.penalty }})</td>
@@ -256,13 +256,24 @@ device_network_module.controller("network_ctrl", ["$scope", "$compile", "$filter
                     $scope.nd_lut[peer.s_netdevice].peers.push({"peer" : peer, "netdevice" : peer.s_netdevice, "target" : peer.d_netdevice})
                 if peer.d_netdevice of $scope.nd_lut and peer.s_netdevice != peer.d_netdevice
                     $scope.nd_lut[peer.d_netdevice].peers.push({"peer" : peer, "netdevice" : peer.d_netdevice, "target" : peer.s_netdevice})
-        $scope.get_bridge_info = (nd, dev) ->
+        $scope.get_bridge_info = (nd) ->
+            dev = $scope.dev_lut[nd.device]
             if nd.is_bridge
-                return "yes" + " (" + (sub_nd.devname for sub_nd in dev.netdevice_set when sub_nd.bridge_device == nd.idx).join(", ") + ")"
+                slaves = (sub_nd.devname for sub_nd in dev.netdevice_set when sub_nd.bridge_device == nd.idx)
+                if slaves.length
+                    return "yes" + " (" + slaves.join(", ") + ")"
+                else
+                    return "yes"
             else if nd.bridge_device
                 return "slave (" + $scope.nd_lut[nd.bridge_device].devname + ")"
             else
                 return ""
+        $scope.has_bridge_slaves = (nd) ->
+            dev = $scope.dev_lut[nd.device]
+            if nd.is_bridge
+                return if (sub_nd.devname for sub_nd in dev.netdevice_set when sub_nd.bridge_device == nd.idx).length then true else false
+            else
+                return false
         $scope.get_netdevice_name = (nd) ->
             nd_name = nd.devname
             if nd.description
