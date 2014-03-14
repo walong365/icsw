@@ -43,12 +43,15 @@ device_config_template = """
             <div class="form-group">
                 <input class="form-control" ng-model="name_filter" placeholder="filter"></input>
             </div>,
-            <span class="checkbox">
-                <label>
-                    only selected:
-                    <input title="show only configs selected anywhere in the curren selection" type="checkbox" ng-model="only_selected"></input>
-                </label>
-            </span>
+            <div class="form-group">
+                <input
+                    type="button"
+                    ng-class="{'btn btn-sm btn-success' : only_selected, 'btn btn-sm' : !only_selected}"
+                    ng-click="only_selected = !only_selected"
+                    value="only selected"
+                    title="show only configs selected anywhere in the curren selection"
+                ></input>
+            </div>
         </div>
         <div class="form-inline col-sm-4">
             <div class="form-group" ng-show="acl_create(null, 'backbone.config.modify_config') && config_catalogs.length > 0">

@@ -76,11 +76,12 @@
             <div class="form-group">
                 <input class="form-control" ng-model="var_filter" placeholder="filter"></input>
             </div>,
-            <div class="checkbox">
-                <label>
-                    Hide empty:
-                    <input type="checkbox" ng-model="pagSettings.conf.filter_settings.hide_empty"></input>
-                </label>
+            <div class="form-group">
+                <input type="button"
+                    ng-class="{'btn btn-sm btn-success' : pagSettings.conf.filter_settings.hide_empty, 'btn btn-sm' : !pagSettings.conf.filter_settings.hide_empty}"
+                    ng-click="pagSettings.conf.filter_settings.hide_empty=!pagSettings.conf.filter_settings.hide_empty"
+                    value="hide empty"
+                ></input>
             </div>
         </div>
     </div>
@@ -126,7 +127,7 @@ device_variable_module.controller("dv_base", ["$scope", "$compile", "$filter", "
         $scope.pagSettings = paginatorSettings.get_paginator("dv_base", $scope)
         $scope.pagSettings.conf.filter_mode = "func"
         $scope.pagSettings.conf.filter_settings = {
-            "hide_empty" : true
+            "hide_empty" : false
         } 
         $scope.pagSettings.conf.filter_func = () ->
             return (entry) ->
