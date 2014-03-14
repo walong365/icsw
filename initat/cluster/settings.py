@@ -353,14 +353,6 @@ PIPELINE_JS = {
         },
         "output_filename" : "pipeline/js/jquery_new.js"
     },
-    "js_jquery_old" : {
-        "source_filenames" : {
-            "js/libs/modernizr-2.7.js",
-            "js/plugins.js",
-            "js/libs/jquery-1.11.0.js",
-        },
-        "output_filename" : "pipeline/js/jquery_old.js"
-    },
     "js_base" : {
         "source_filenames" : {
             "js/libs/jquery-ui-1.10.2.custom.js",
@@ -407,7 +399,7 @@ PIPELINE_JS = {
             # "js/libs/angular-strap.min.js",
             # "js/libs/angular-strap.tpl.min.js",
         },
-        "output_filename" : "pipeline/js/extra2.js"
+        "output_filename" : "pipeline/js/extra1.js"
     }
 }
 
