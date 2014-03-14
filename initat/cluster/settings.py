@@ -355,9 +355,9 @@ PIPELINE_JS = {
     },
     "js_jquery_old" : {
         "source_filenames" : {
-            "js/libs/modernizr-2.7.1.min.js",
+            "js/libs/modernizr-2.7.js",
             "js/plugins.js",
-            "js/libs/jquery-1.11.0.min.js",
+            "js/libs/jquery-1.11.0.js",
         },
         "output_filename" : "pipeline/js/jquery_old.js"
     },
