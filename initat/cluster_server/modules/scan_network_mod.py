@@ -31,25 +31,35 @@ import sys
 IGNORE_LIST = ["tun", "tap", "vnet"]
 
 class nd_struct(object):
-    def __init__(self, dev_name, in_dict, dev, default_nds, cur_inst):
+    def __init__(self, dev_name, in_dict, br_dict):
         self.dev_name = dev_name
-        self.device = dev
         self.in_dict = in_dict
-        self.default_nds = default_nds
-        self.cur_inst = cur_inst
+        self.br_dict = br_dict
+        self.nd = None
+        nd_struct.dict[self.dev_name] = self
+    @staticmethod
+    def setup(cur_inst, device, default_nds):
+        nd_struct.cur_inst = cur_inst
+        nd_struct.device = device
+        nd_struct.default_nds = default_nds
+        nd_struct.dict = {}
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
-        self.cur_inst.log("[nd %s] %s" % (self.dev_name, what), log_level)
+        nd_struct.cur_inst.log("[nd %s] %s" % (self.dev_name, what), log_level)
     def create(self):
         cur_nd = netdevice(
-            device=self.device,
+            device=nd_struct.device,
             devname=self.dev_name,
-            netdevice_speed=self.default_nds,
+            netdevice_speed=nd_struct.default_nds,
             routing=False,
             penalty=1,
             dhcp_device=False,
+            is_bridge=True if self.br_dict else False,
             )
         cur_nd.save()
+        self.nd = cur_nd
         self.log("created netdevice")
+        if self.br_dict:
+            self.dev_name, self.br_dict.get("interfaces", [])
         if "ether" in self.in_dict.get("links", {}):
             _ether = self.in_dict["links"]["ether"]
             _mac = _ether[0].split()[0]
@@ -66,6 +76,14 @@ class nd_struct(object):
                 )
             new_ip.save()
             self.log("added IP %s (network %s)" % (new_ip.ip, unicode(new_ip.network)))
+    def link_bridge_slaves(self):
+        for _slave_name in self.br_dict.get("interfaces", []):
+            if _slave_name in nd_struct.dict:
+                _slave_nd = nd_struct.dict[_slave_name].nd
+                if _slave_nd is not None:
+                    _slave_nd.bridge_device = self.nd
+                    self.log("enslaving %s" % (_slave_name))
+                    _slave_nd.save()
 
 class scan_network_info(cs_base_class.server_com):
     class Meta:
@@ -126,13 +144,16 @@ class scan_network_info(cs_base_class.server_com):
                     cur_inst.log("removing current network devices")
                     target_dev.netdevice_set.all().delete()
                     all_ok = True
-                    for dev_name in sorted(networks):
+                    _all_devs = set(networks)
+                    _br_devs = set(bridges)
+                    nd_struct.setup(cur_inst, target_dev, default_nds)
+                    for dev_name in sorted(list(_all_devs & _br_devs)) + sorted(list(_all_devs - _br_devs)):
                         if any([dev_name.startswith(_ignore_pf) for _ignore_pf in IGNORE_LIST]):
                             cur_inst.log("ignoring device %s" % (dev_name))
                             num_ignored += 1
                             continue
                         _struct = networks[dev_name]
-                        cur_nd = nd_struct(dev_name, _struct, target_dev, default_nds, cur_inst)
+                        cur_nd = nd_struct(dev_name, _struct, bridges.get(dev_name, None))
                         try:
                             cur_nd.create()
                         except:
@@ -146,6 +167,7 @@ class scan_network_info(cs_base_class.server_com):
                             num_errors += 1
                         else:
                             num_taken += 1
+                    [nd_struct.dict[_bridge_name].link_bridge_slaves() for _bridge_name in _br_devs & set(nd_struct.dict.keys())]
                     if not all_ok and strict_mode:
                         self.log("removing netdevices because strict_mode is enabled", logging_tools.LOG_LEVEL_WARN)
                         num_taken -= target_dev.netdevice_set.all().count()
