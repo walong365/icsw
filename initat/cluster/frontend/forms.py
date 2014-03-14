@@ -22,9 +22,6 @@ from initat.cluster.backbone.models import domain_tree_node, device, category, m
      mon_service_dependency, mon_host_dependency, package_device_connection, partition, \
      partition_disc, sys_partition, device_variable, config, config_str, config_int, config_bool, \
      config_script, netdevice, net_ip, peer_information, config_catalog, cd_connection
-from initat.cluster.frontend.widgets import device_tree_widget
-
-# import PAM
 
 # empty query set
 
@@ -312,42 +309,6 @@ class device_fqdn_comment(ModelMultipleChoiceField):
 class event_handler_list(ModelChoiceField):
     def label_from_instance(self, obj):
         return u"%s on %s" % (obj.name, obj.config.name)
-
-class moncc_template_flags_form(ModelForm):
-    mon_service_templ = ModelChoiceField(queryset=mon_service_templ.objects.all(), empty_label=None)
-    event_handler = event_handler_list(
-        queryset=mon_check_command.objects.filter(Q(is_event_handler=True)).select_related("config")
-    )
-    exclude_devices = device_fqdn_comment(
-        queryset=device.objects.exclude(
-            Q(device_type__identifier__in=["MD"])
-            ).filter(
-            Q(enabled=True) &
-            Q(device_group__enabled=True)).select_related("device_group", "domain_tree_node").order_by("device_group__name", "name"),
-        widget=device_tree_widget
-        )
-    helper = FormHelper()
-    helper.form_id = "form"
-    helper.form_class = 'form-horizontal'
-    helper.label_class = 'col-sm-2'
-    helper.field_class = 'col-sm-8'
-    helper.layout = Layout(
-        Div(
-            HTML("Templates and flags"),
-            Field("mon_service_templ"),
-            Field("exclude_devices"),
-            FormActions(
-                Field("enable_perfdata"),
-                Field("volatile"),
-                Field("is_event_handler"),
-                Field("event_handler_enabled"),
-                ),
-        )
-    )
-    class Meta:
-        model = mon_check_command
-        fields = ["mon_service_templ", "enable_perfdata", "volatile", "exclude_devices",
-            "event_handler", "event_handler_enabled", "is_event_handler"]
 
 class group_detail_form(ModelForm):
     helper = FormHelper()
