@@ -8,11 +8,10 @@
 
 <div class="col-md-4 col-md-offset-4">
     {% with "images/product/"|add:settings.INIT_PRODUCT_NAME|lower|add:"-trans.png" as gfx_name %}
-    <img width="100%" src="{% static gfx_name %}" alt="{{ settings.INIT_PRODUCT_NAME }} logo">
+    <img width="{{ settings.LOGIN_IMAGE_SIZE }}" src="{% static gfx_name %}" alt="{{ settings.INIT_PRODUCT_NAME }} logo">
     </img>
     {% endwith %}
 </div>
-
 <div class="col-md-4 col-md-offset-4">
     <div class="well"  style="margin-top:60px;"> 
         {% crispy login_form %}
