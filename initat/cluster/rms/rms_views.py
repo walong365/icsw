@@ -1,12 +1,15 @@
 # rms views
 
 from django.conf import settings
+from django.db.models import Q
 from django.contrib.auth.decorators import login_required
 from django.http import HttpResponse
+from initat.cluster.backbone.models import user_variable
 from django.utils.decorators import method_decorator
 from django.views.generic import View
 from initat.cluster.backbone.render import render_me
-from initat.cluster.frontend.helper_functions import contact_server, xml_wrapper
+from initat.cluster.frontend.helper_functions import contact_server, xml_wrapper, \
+    update_session_object
 from initat.cluster.rms.rms_addons import *
 from lxml import etree # @UnresolvedImport
 from lxml.builder import E # @UnresolvedImport
@@ -214,41 +217,120 @@ class get_file_content(View):
     @method_decorator(xml_wrapper)
     def post(self, request):
         _post = request.POST
-        file_parts = _post["file_id"].split(":")
-        std_type = file_parts[1]
-        job_id = file_parts[2]
-        # my_sge_info.update()
-        job_info = my_sge_info.get_job(job_id)
-        if job_info is None:
-            my_sge_info.update()
+        if "file_ids" in _post:
+            file_id_list = []
+            for file_id in json.loads(_post["file_ids"]):
+                file_parts = file_id.split(".")
+                std_type = file_parts[2]
+                job_id = "%s.%s" % (file_parts[0], file_parts[1]) if file_parts[1] else file_parts[0]
+                file_id_list.append((file_id, job_id, std_type))
+        elif _post["file_id"].count(":"):
+            file_parts = _post["file_id"].split(":")
+            std_type = file_parts[1]
+            job_id = file_parts[2]
+            file_id_list = [(_post["file_id"], job_id, std_type)]
+        else:
+            file_parts = _post["file_id"].split(".")
+            std_type = file_parts[2]
+            job_id = "%s.%s" % (file_parts[0], file_parts[1])
+            file_id_list = [(_post["file_id"], job_id, std_type)]
+        # already refreshed ?
+        _refreshed = False
+        fetch_lut = {}
+        for src_id, job_id, std_type in file_id_list:
+            # my_sge_info.update()
             job_info = my_sge_info.get_job(job_id)
+            if job_info is None and not _refreshed:
+                # refresh only once
+                _refreshed = True
+                my_sge_info.update()
+                job_info = my_sge_info.get_job(job_id)
+            if job_info is not None:
+                io_element = job_info.find(".//%s" % (std_type))
+                if io_element is None or io_element.get("error", "0") == "1":
+                    request.xml_response.error("%s not defined for job %s" % (std_type, job_id), logger)
+                else:
+                    fetch_lut[io_element.text] = src_id
         # print "*", job_id, job_info
-        if job_info is not None:
+        if fetch_lut:
+            _resp_list = []
             # print etree.tostring(job_info)
-            io_element = job_info.find(".//%s" % (std_type))
-            if io_element is None or io_element.get("error", "0") == "1":
-                request.xml_response.error("%s not defined for job %s" % (std_type, job_id), logger)
-            else:
-                srv_com = server_command.srv_command(command="get_file_content")
-                srv_com["file_list"] = srv_com.builder(
-                    "file_list",
-                    srv_com.builder("file", name=io_element.text),
-                    )
-                result = contact_server(request, "server", srv_com, timeout=60, connection_id="file_fetch_%s" % (str(job_id)))
-                for cur_file in result.xpath(".//ns:file", smart_strings=False):
-                    # print etree.tostring(cur_file)
-                    if cur_file.attrib["error"] == "1":
-                        request.xml_response.error("error reading %s (job %s): %s" % (
-                            cur_file.attrib["name"],
-                            job_id,
-                            cur_file.attrib["error_str"]), logger)
-                    else:
-                        file_resp = E.file_info(
+            srv_com = server_command.srv_command(command="get_file_content")
+            srv_com["file_list"] = srv_com.builder(
+                "file_list",
+                *[srv_com.builder("file", name=_file_name) for _file_name in fetch_lut.iterkeys()]
+                )
+            result = contact_server(request, "server", srv_com, timeout=60, connection_id="file_fetch_%s" % (str(job_id)))
+            for cur_file in result.xpath(".//ns:file", smart_strings=False):
+                # print etree.tostring(cur_file)
+                if cur_file.attrib["error"] == "1":
+                    request.xml_response.error("error reading %s (job %s): %s" % (
+                        cur_file.attrib["name"],
+                        job_id,
+                        cur_file.attrib["error_str"]), logger)
+                else:
+                    _resp_list.append(
+                        E.file_info(
                             cur_file.text or "",
+                            id=fetch_lut[cur_file.attrib["name"]],
                             name=cur_file.attrib["name"],
                             lines=cur_file.attrib["lines"],
                             size_str=logging_tools.get_size_str(int(cur_file.attrib["size"]), True),
                         )
-                        request.xml_response["response"] = file_resp
+                    )
+            if len(_resp_list):
+                request.xml_response["response"] = _resp_list
         else:
-            request.xml_response.error("%s not found for job %s" % (std_type, job_id), logger)
+            request.xml_response.error("nothing found for %s" % (logging_tools.get_plural("job", len(file_id_list))), logger) # %s not found for job %s" % (std_type, job_id), logger)
+
+class set_user_setting(View):
+    @method_decorator(login_required)
+    def post(self, request):
+        if "user_vars" not in request.session:
+            request.session["user_vars"] = {}
+        user_vars = request.session["user_vars"]
+        _post = request.POST
+        data = json.loads(_post["data"])
+        var_name = "_rms_wf_%s" % (data["table"])
+        if var_name in user_vars:
+            cur_dis = user_vars[var_name].value.split(",")
+        else:
+            cur_dis = []
+        row = data["row"]
+        _save = False
+        if data["enabled"] and row in cur_dis:
+            cur_dis.remove(row)
+            _save = True
+        elif not data["enabled"] and row not in cur_dis:
+            cur_dis.append(row)
+            _save = True
+        if _save:
+            try:
+                user_vars[var_name] = user_variable.objects.get(Q(name=var_name) & Q(user=request.user))
+            except user_variable.DoesNotExist:
+                user_vars[var_name] = user_variable.objects.create(
+                    user=request.user,
+                    name=var_name,
+                    value=",".join(cur_dis)
+                )
+            else:
+                user_vars[var_name].value = ",".join(cur_dis)
+                user_vars[var_name].save()
+            update_session_object(request)
+            request.session.save()
+        json_resp = {}
+        return HttpResponse(json.dumps(json_resp), mimetype="application/json")
+
+class get_user_setting(View):
+    @method_decorator(login_required)
+    def post(self, request):
+        user_vars = request.session.get("user_vars", {})
+        json_resp = {}
+        for t_name in ["running", "waiting", "node"]:
+            var_name = "_rms_wf_%s" % (t_name)
+            if var_name in user_vars:
+                json_resp[t_name] = user_vars[var_name].value.split(",")
+            else:
+                json_resp[t_name] = []
+        return HttpResponse(json.dumps(json_resp), mimetype="application/json")
+

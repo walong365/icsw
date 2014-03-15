@@ -29,7 +29,10 @@ rms_patterns = patterns(
     url(r"get_rms_json"    , rms_views.get_rms_json.as_view()     , name="get_rms_json"),
     url(r"control_job"     , rms_views.control_job.as_view()      , name="control_job"),
     url(r"get_file_content", rms_views.get_file_content.as_view() , name="get_file_content"),
+    url(r"set_user_setting", rms_views.set_user_setting.as_view() , name="set_user_setting"),
+    url(r"get_user_setting", rms_views.get_user_setting.as_view() , name="get_user_setting"),
 )
+
 
 base_patterns = patterns(
     "initat.cluster.setup",

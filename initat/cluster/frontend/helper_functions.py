@@ -386,7 +386,7 @@ class srv_type_routing(object):
                 # merge result
                 # possible sub-structs
                 for _sub_name in ["devices", "cd_ping_list"]:
-                    _s2_name = "%s:%s" % (_sub_name, _sub_name) 
+                    _s2_name = "%s:%s" % (_sub_name, _sub_name)
                     if _s2_name in result:
                         # preset in result to merge
                         if _s2_name not in self.result:
