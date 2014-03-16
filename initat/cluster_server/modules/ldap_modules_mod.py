@@ -61,20 +61,37 @@ import time
         read only = No
         inherit acls = Yes
         path = /tmp/%S
+        
+config old .config to new ldap.d base:
+slaptest -f /etc/openldap/slapd.conf -F /etc/openldap/slapd.d
+
+{0}config.ldif needs an access entry:
+
+dn: olcDatabase={0}config
+objectClass: olcDatabaseConfig
+olcDatabase: {0}config
+olcAccess: {0}to *  by dn.base="gidNumber=0+uidNumber=0,cn=peercred,cn=externa
+ l,cn=auth" manage  by * none
+
 """
 
-class init_ldap_config(cs_base_class.server_com):
-    class Meta:
-        needed_configs = ["ldap_server"]
+class ldap_mixin(object):
+    def _get_ldap_err_str(self, dn):
+        err_dict = sys.exc_info()[1].args[0]
+        return "%s (%s)" % (
+            dn,
+            " / ".join(["%s: %s" % (_val, err_dict[_val]) for _val in ["info", "desc"] if err_dict.has_key(_val)]),
+        )
     def _add_entry(self, ld, dn, in_dict):
-        # rewrite to string
+        if self.dryrun:
+            return True, ""
         for key, value in in_dict.iteritems():
             if type(value) == list:
                 in_dict[key] = [str(sub_val) for sub_val in value]
         try:
             ld.add_s(dn, ldap.modlist.addModlist(in_dict))
         except ldap.LDAPError:
-            success, err_str = (False, self._get_ldap_err_str())
+            success, err_str = (False, self._get_ldap_err_str(dn))
         else:
             success, err_str = (True, "")
         return success, err_str
@@ -86,6 +103,75 @@ class init_ldap_config(cs_base_class.server_com):
         else:
             success, err_str = (True, "")
         return success, err_str
+    def _modify_entry(self, ld, dn, change_list):
+        if self.dryrun:
+            return True, ""
+        new_list = []
+        for val_0, val_1, val_list in change_list:
+            if type(val_list) == list:
+                val_list = [str(sub_val) for sub_val in val_list]
+            new_list.append((val_0, val_1, val_list))
+        try:
+            ld.modify_s(dn, new_list)
+        except ldap.LDAPError:
+            success, err_str = (False, self._get_ldap_err_str(dn))
+        else:
+            success, err_str = (True, "")
+        return success, err_str
+
+class setup_ldap_server(cs_base_class.server_com, ldap_mixin):
+    class Meta:
+        needed_configs = ["ldap_server"]
+    def _call(self, cur_inst):
+        ldap_base = "/etc/openldap/slapd.d"
+        if not os.path.isdir(ldap_base):
+            cur_inst.srv_com.set_result("no ldap_base dir '{}' found".format(ldap_base), server_command.SRV_REPLY_STATE_ERROR)
+        else:
+            par_dict = dict([(cur_var.name, cur_var.value) for cur_var in config_str.objects.filter(Q(config__name="ldap_server"))])
+            # self.dc.execute("SELECT cs.value, cs.name FROM new_config c INNER JOIN config_str cs INNER JOIN device_config dc INNER JOIN device d INNER JOIN device_group dg LEFT JOIN " + \
+                                   # "device d2 ON d2.device_idx=dg.device WHERE d.device_group=dg.device_group_idx AND (dc.device=d2.device_idx OR dc.device=d.device_idx) AND dc.new_config=c.new_config_idx AND c.name='ldap_server' AND cs.new_config=c.new_config_idx")
+            # par_dict = dict([(x["name"], x["value"]) for x in self.dc.fetchall()])
+            errors = []
+            needed_keys = set(["base_dn", "admin_cn", "root_passwd"])
+            missed_keys = needed_keys - set(par_dict.keys())
+            if len(missed_keys):
+                cur_inst.srv_com.set_result(
+                    "%s missing: %s" % (
+                        logging_tools.get_plural("config_key", len(missed_keys)),
+                        ", ".join(missed_keys)),
+                    server_command.SRV_REPLY_ERROR)
+            else:
+                # step one: hash root_password
+                cmd_stat, root_hash = commands.getstatusoutput("slappasswd -h {SSHA} -s %s" % (par_dict["root_passwd"]))
+                if cmd_stat:
+                    cur_inst.srv_com.set_result(
+                        "error hashing root-password (%d): %s" % (cmd_stat, root_hash),
+                        server_command.SRV_REPLY_ERROR,
+                        )
+                else:
+                    c_list = [
+                        "dn:  olcDatabase={1}bdb,cn=config",
+                        # "olcRootDN: gidNumber=0+uidNumber=0,cn=peercred,cn=external,cn=auth",
+                        # "dn:  olcDatabase={1}bdb,cn=config",
+                        "changetype: modify",
+                        "replace: olcSuffix",
+                        "olcSuffix: {}".format(par_dict["base_dn"]),
+                        "-",
+                        "replace: olcRootDN",
+                        "olcRootDN: dc={0},{1}".format(par_dict["admin_cn"], par_dict["base_dn"]),
+                        "-",
+                        "add: olcRootPW",
+                        "olcRootPW: {}".format(root_hash),
+                        "",
+                    ]
+                    file("/tmp/x", "w").write("\n".join(c_list))
+                    print "\n".join(c_list)
+                    print par_dict
+                    print root_hash, cmd_stat
+
+class init_ldap_config(cs_base_class.server_com, ldap_mixin):
+    class Meta:
+        needed_configs = ["ldap_server"]
     def call_command(self, command, *args):
         success, result = (False, [])
         bin_com = process_tools.find_file(command)
@@ -97,9 +183,6 @@ class init_ldap_config(cs_base_class.server_com):
                 success = True
                 result = c_out.split("\n")
         return success, result
-    def _get_ldap_err_str(self):
-        err_dict = sys.exc_info()[1].args[0]
-        return " / ".join(["%s: %s" % (x, err_dict[x]) for x in ["info", "desc"] if err_dict.has_key(x)])
     def _call(self, cur_inst):
         # fetch configs
         par_dict = dict([(cur_var.name, cur_var.value) for cur_var in config_str.objects.filter(Q(config__name="ldap_server"))])
@@ -119,7 +202,7 @@ class init_ldap_config(cs_base_class.server_com):
                 ld_read = ldap.initialize("ldap://localhost")
                 ld_read.simple_bind_s("", "")
             except ldap.LDAPError:
-                ldap_err_str = self._get_ldap_err_str()
+                ldap_err_str = self._get_ldap_err_str("read_access")
                 self.log("cannot initialize read_cursor: %s" % (ldap_err_str),
                                 logging_tools.LOG_LEVEL_ERROR)
                 errors.append(ldap_err_str)
@@ -134,7 +217,7 @@ class init_ldap_config(cs_base_class.server_com):
                         par_dict["root_passwd"]
                     )
                 except ldap.LDAPError:
-                    ldap_err_str = self._get_ldap_err_str()
+                    ldap_err_str = self._get_ldap_err_str("write_access")
                     self.log(
                         "cannot initialize write_cursor: %s" % (ldap_err_str),
                         logging_tools.LOG_LEVEL_ERROR)
@@ -240,50 +323,9 @@ class init_ldap_config(cs_base_class.server_com):
                 "reply" : "ok init ldap tree",
                 "state" : "%d" % (server_command.SRV_REPLY_STATE_OK)})
 
-class sync_ldap_config(cs_base_class.server_com):
+class sync_ldap_config(cs_base_class.server_com, ldap_mixin):
     class Meta:
         needed_configs = ["ldap_server"]
-    def _add_entry(self, ld, dn, in_dict):
-        if self.dryrun:
-            return True, ""
-        for key, value in in_dict.iteritems():
-            if type(value) == list:
-                in_dict[key] = [str(sub_val) for sub_val in value]
-        try:
-            ld.add_s(dn, ldap.modlist.addModlist(in_dict))
-        except ldap.LDAPError:
-            success, err_str = (False, self._get_ldap_err_str(dn))
-        else:
-            success, err_str = (True, "")
-        return success, err_str
-    def _modify_entry(self, ld, dn, change_list):
-        if self.dryrun:
-            return True, ""
-        new_list = []
-        for val_0, val_1, val_list in change_list:
-            if type(val_list) == list:
-                val_list = [str(sub_val) for sub_val in val_list]
-            new_list.append((val_0, val_1, val_list))
-        try:
-            ld.modify_s(dn, new_list)
-        except ldap.LDAPError:
-            success, err_str = (False, self._get_ldap_err_str(dn))
-        else:
-            success, err_str = (True, "")
-        return success, err_str
-    def _delete_entry(self, ld, dn):
-        if self.dryrun:
-            return True, ""
-        try:
-            ld.delete_s(dn)
-        except ldap.LDAPError:
-            success, err_str = (False, self._get_ldap_err_str(dn))
-        else:
-            success, err_str = (True, "")
-        return success, err_str
-    def _get_ldap_err_str(self, dn):
-        err_dict = sys.exc_info()[1].args[0]
-        return "%s (%s)" % (dn, " / ".join(["%s: %s" % (x, err_dict[x]) for x in ["info", "desc"] if err_dict.get(x, None)]))
     def _call(self, cur_inst):
         # fetch configs
         par_dict = dict([(cur_var.name, cur_var.value) for cur_var in config_str.objects.filter(Q(config__name="ldap_server"))])
