@@ -59,6 +59,13 @@ def get_process_affinity_mask(pid):
             mask = int(lines[0][1], 16)
     return mask
 
+def get_process_affinity_mask_from_status_lines(lines):
+    mask = 0
+    lines = [line.split() for line in lines if line.startswith("cpus_allowed")]
+    if lines:
+        mask = int(lines[0][1], 16)
+    return mask
+
 class cpu_container(dict):
     def __init__(self):
         dict.__init__(self)
