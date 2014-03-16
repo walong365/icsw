@@ -1330,6 +1330,63 @@ class iptables_info_command(hm_classes.hm_command):
                 detail_level,
                 logging_tools.get_plural("rule", num_lines))
 
+class ntpq_struct(hm_classes.subprocess_struct):
+    class Meta:
+        max_usage = 2
+        id_str = "ntpq"
+        verbose = False
+    def __init__(self, log_com, srv_com):
+        self.__log_com = log_com
+        hm_classes.subprocess_struct.__init__(
+            self,
+            srv_com,
+            "/usr/sbin/ntpq -p",
+        )
+    def log(self, what, level=logging_tools.LOG_LEVEL_OK):
+        self.__log_com("[ntpq] %s" % (what), level)
+    def process(self):
+        if self.run_info["result"]:
+            self.srv_com.set_result(
+                "error (%d): %s" % (self.run_info["result"], self.read().strip()),
+                server_command.SRV_REPLY_STATE_ERROR,
+            )
+        else:
+            output = self.read()
+            self.srv_com["output"] = output
+
+class ntp_status_command(hm_classes.hm_command):
+    info_str = "show NTP status"
+    def __call__(self, srv_com, cur_ns):
+        cur_ntpq_s = ntpq_struct(
+            self.log,
+            srv_com,
+        )
+        return cur_ntpq_s
+    def interpret(self, srv_com, cur_ns):
+        _lines = srv_com["*output"].split("\n")
+        if len(_lines) > 1:
+            _peers = {}
+            _peer_types = {}
+            for _line in _lines[2:]:
+                if _line.strip():
+                    peer_name = _line[1:].split()[0]
+                    _peers[peer_name] = _line[0]
+                    _peer_types.setdefault(_line[0], []).append(peer_name)
+            ret_state = limits.nag_STATE_OK
+            active_peers = set()
+            if "*" in _peer_types:
+                active_peers |= set(_peer_types["*"])
+            else:
+                ret_state = max(ret_state, limits.nag_STATE_WARNING)
+            inactive_peers = set(_peers) - active_peers
+            return limits.nag_STATE_OK, "%s defined, active: %s, inactive: %s" % (
+                logging_tools.get_plural("peer", len(_peers)),
+                ", ".join(sorted(active_peers)) or "---",
+                ", ".join(sorted(inactive_peers)) or "---",
+            )
+        else:
+            return limits.nag_STATE_CRITICAL, _lines[0]
+
 if __name__ == "__main__":
     print "This is a loadable module."
     sys.exit(0)
