@@ -158,7 +158,7 @@ class _general(hm_classes.hm_module):
         mv.register_entry("proc.paging"         , 0, "processes paging")
         mv.register_entry("proc.dead"           , 0, "processes dead")
     def update_machine_vector(self, mv):
-        pdict = process_tools.get_proc_list(add_stat_info=self.check_affinity)
+        pdict = process_tools.get_proc_list(add_stat_info=self.check_affinity, add_cmdline=False, add_exe=False)
         if self.check_affinity:
             self.af_struct.feed(pdict)
         pids = pdict.keys()
