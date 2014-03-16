@@ -98,7 +98,7 @@ device_livestatus_module.controller("livestatus_ctrl", ["$scope", "$compile", "$
             return _class
         $scope.load_data = () ->
             $timeout($scope.load_data, 20000)
-            $.ajax
+            call_ajax
                 url  : "{% url 'mon:get_node_status' %}"
                 data : {
                     "pk_list" : angular.toJson($scope.devsel_list)
@@ -211,7 +211,7 @@ device_livestatus_module.controller("monconfig_ctrl", ["$scope", "$compile", "$f
         $scope.load_data = () ->
             #$timeout($scope.load_data, 20000)
             $scope.reload_pending = true
-            $.ajax
+            call_ajax
                 url  : "{% url 'mon:get_node_config' %}"
                 data : {
                     "pk_list" : angular.toJson($scope.devsel_list)

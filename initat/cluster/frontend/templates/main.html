@@ -127,7 +127,7 @@
 {% inlinecoffeescript %}
 
 save_layout_state = (my_layout, p_name) ->
-    $.ajax
+    call_ajax
         url  : "{% url 'user:save_layout_state' %}"
         data : 
             my_layout.state

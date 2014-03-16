@@ -320,7 +320,7 @@ device_boot_module.controller("boot_ctrl", ["$scope", "$compile", "$filter", "$t
                     "sel_list" : $scope.devsel_list
                     "call_mother" : 1
                 }
-                $.ajax
+                call_ajax
                     url     : "{% url 'boot:get_boot_info_json' %}"
                     data    : send_data
                     success : (xml) =>
@@ -378,7 +378,7 @@ device_boot_module.controller("boot_ctrl", ["$scope", "$compile", "$filter", "$t
                     send_data = {
                         "sel_list" : angular.toJson(([dev.idx, dev.latest_log] for dev in $scope.devices))
                     }
-                    $.ajax
+                    call_ajax
                         url      : "{% url 'boot:get_devlog_info' %}"
                         data     : send_data
                         dataType : "json"
@@ -393,7 +393,7 @@ device_boot_module.controller("boot_ctrl", ["$scope", "$compile", "$filter", "$t
                                     cur_dev.log_lines = cur_dev.log_lines
                                 $scope.$digest()
         $scope.soft_control = (dev, command) ->
-            $.ajax
+            call_ajax
                 url     : "{% url 'boot:soft_control' %}"
                 data    : {
                     "dev_pk" : dev.idx
@@ -402,7 +402,7 @@ device_boot_module.controller("boot_ctrl", ["$scope", "$compile", "$filter", "$t
                 success : (xml) =>
                     parse_xml_response(xml)
         $scope.hard_control = (cd_con, command) ->
-            $.ajax
+            call_ajax
                 url     : "{% url 'boot:hard_control' %}"
                 data    : {
                     "cd_pk" : cd_con.idx

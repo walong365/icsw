@@ -219,7 +219,7 @@ user_tree_module.controller("user_tree", ["$scope", "$compile", "$filter", "$tem
         )
         $scope.sync_users = () ->
             $.blockUI()
-            $.ajax
+            call_ajax
                 url     : "{% url 'user:sync_users' %}"
                 title   : "syncing users"
                 success : (xml) =>
@@ -331,7 +331,7 @@ user_tree_module.controller("user_tree", ["$scope", "$compile", "$filter", "$tem
             $scope.$broadcast("icsw.enter_password")
         $scope.create_object_permission = () ->
             perm = $scope.csw_permission_lut[$scope._edit_obj.permission]
-            $.ajax
+            call_ajax
                 url     : "{% url 'user:change_object_permission' %}"
                 data    :
                     # group or user

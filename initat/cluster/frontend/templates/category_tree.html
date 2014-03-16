@@ -153,7 +153,7 @@ angular_add_simple_list_controller(
                 scope.hide_modal()
                 if confirm("Really prune the tree (remove all empty nodes) ?")
                     $.blockUI()
-                    $.ajax
+                    call_ajax
                         url     : "{% url 'base:prune_categories' %}"
                         success : (xml) ->
                             parse_xml_response(xml)

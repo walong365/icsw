@@ -211,7 +211,7 @@ sidebar_base = sidebar_module.controller("sidebar_base", ["$scope", "$compile", 
             # cast to string to compare the arrays
             if String(cur_sel) != String($scope.cur_sel)
                 $scope.cur_sel = cur_sel
-                $.ajax
+                call_ajax
                     url     : "{% url 'device:set_selection' %}"
                     data    : {
                         "angular_sel" : angular.toJson(cur_sel)

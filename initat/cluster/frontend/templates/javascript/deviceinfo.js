@@ -10,7 +10,7 @@ class device_info
     constructor: (@event, @dev_key, @addon_devices=[]) ->
     show: () =>
         @replace_div = {% if index_view %}true{% else %}false{% endif %}
-        $.ajax
+        call_ajax
             url     : "{% url 'rest:device_detail' 1 %}".slice(0, -2) + "?pk=#{@dev_key}"
             method  : "GET"
             dataType  : "json"

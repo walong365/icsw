@@ -186,7 +186,7 @@ class header_struct
         @togglec = _c
     change_entry : (entry) =>
         @toggle[entry] = ! @toggle[entry]
-        $.ajax
+        call_ajax
             url      : "{% url 'rms:set_user_setting' %}"
             dataType : "json"
             data:
@@ -281,7 +281,7 @@ rms_module.controller("rms_ctrl", ["$scope", "$compile", "$filter", "$templateCa
         }
         $scope.reload= () ->
             $scope.update_info_timeout = $timeout($scope.reload, 5000)
-            $.ajax
+            call_ajax
                 url      : "{% url 'rms:get_rms_json' %}"
                 dataType : "json"
                 data:
@@ -297,7 +297,7 @@ rms_module.controller("rms_ctrl", ["$scope", "$compile", "$filter", "$templateCa
                     for _id in $scope.io_list
                         fetch_list.push($scope.io_dict[_id].get_id())
                     if fetch_list.length
-                        $.ajax
+                        call_ajax
                             url     : "{% url 'rms:get_file_content' %}"
                             data    :
                                 "file_ids" : angular.toJson(fetch_list)
@@ -356,7 +356,7 @@ rms_module.controller("rms_ctrl", ["$scope", "$compile", "$filter", "$templateCa
         $scope.close_io = (io_struct) ->
             $scope.io_list = (entry for entry in $scope.io_list when entry != io_struct.get_id())
             delete $scope.io_dict[io_struct.get_id()]
-        $.ajax
+        call_ajax
             url      : "{% url 'rms:get_user_setting' %}"
             dataType : "json"
             success  : (json) =>

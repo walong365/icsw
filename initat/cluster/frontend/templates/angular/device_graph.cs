@@ -243,7 +243,7 @@ device_rrd_module.controller("rrd_ctrl", ["$scope", "$compile", "$filter", "$tem
             $scope.reload()
         $scope.reload = () ->
             $scope.vector_valid = false
-            $.ajax
+            call_ajax
                 url  : "{% url 'rrd:device_rrds' %}"
                 data : {
                     "pks" : angular.toJson($scope.devsel_list)
@@ -327,7 +327,7 @@ device_rrd_module.controller("rrd_ctrl", ["$scope", "$compile", "$filter", "$tem
             $scope.to_date = $scope.to_date_mom.format(DT_FORM)
             $scope.draw_graph()
         $scope.draw_graph = () =>
-            $.ajax
+            call_ajax
                 url  : "{% url 'rrd:graph_rrds' %}"
                 data : {
                     "keys"       : angular.toJson($scope.cur_selected)

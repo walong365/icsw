@@ -135,7 +135,7 @@ menu_controller = menu_module.controller("menu_base", ["$scope", "$timeout", "$w
             $scope.cur_time = moment().format("ddd, Do MMMM YYYY HH:mm:ss")
             $timeout($scope.show_time, 1000)
         $scope.update_progress_bar = () ->
-            $.ajax
+            call_ajax
                 url     : "{% url 'base:get_gauge_info' %}",
                 hidden  : true,
                 success : (xml) =>
@@ -167,7 +167,7 @@ menu_controller = menu_module.controller("menu_base", ["$scope", "$timeout", "$w
         $scope.show_time()
         #$scope.update_progress_bar()
         $scope.rebuild_config = () ->
-            $.ajax
+            call_ajax
                 url     : "{% url 'mon:create_config' %}"
                 title   : "create config"
                 success : (xml) =>

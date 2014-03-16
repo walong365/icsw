@@ -60,7 +60,7 @@ partition_table_module.directive("disklayout", ($compile, $modal, $templateCache
                         entry.full_info = "#{entry.name}" + if entry.need_mountpoint then " (need mountpoint)" else "" 
                     return scope.rest_data.partition_fs
                 scope.validate = () ->
-                    $.ajax
+                    call_ajax
                         url : "{% url 'setup:validate_partition' %}"
                         data : {
                             "pt_pk" : scope.edit_obj.idx

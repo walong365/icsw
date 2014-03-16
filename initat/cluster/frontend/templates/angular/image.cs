@@ -33,7 +33,7 @@ image_module.controller("image", ["$scope", "$compile", "$templateCache", "Resta
             return if num_refs == 0 then true else false
         $scope.scan_for_images = () =>
             $.blockUI()
-            $.ajax
+            call_ajax
                 url     : "{% url 'setup:rescan_images' %}"
                 title   : "scanning for new images"
                 success : (xml) =>
@@ -54,7 +54,7 @@ image_module.controller("image", ["$scope", "$compile", "$templateCache", "Resta
                     )
         $scope.take_image = (obj) =>
             $.blockUI()
-            $.ajax
+            call_ajax
                 url     : "{% url 'setup:use_image' %}"
                 data    : 
                     "img_name" : obj.name

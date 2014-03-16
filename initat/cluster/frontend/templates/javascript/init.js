@@ -52,7 +52,7 @@ class ajax_struct
         
 my_ajax_struct = new ajax_struct("div#ajax_info")
 
-$.ajaxSetup
+default_ajax_dict = 
     type       : "POST"
     timeout    : 50000
     dataType   : "xml"
@@ -72,6 +72,12 @@ $.ajaxSetup
                 # if status is != 0 an error has occured
                 alert("*** #{status} ***\nxhr.status : #{xhr.status}\nxhr.statusText : #{xhr.statusText}")
         return false
+
+call_ajax = (in_dict) ->
+    for key of default_ajax_dict
+        if key not of in_dict
+            in_dict[key] = default_ajax_dict[key]
+    $.ajax(in_dict)
 
 parse_xml_response = (xml, min_level) ->
     success = false
@@ -131,7 +137,7 @@ create_dict = (top_el, id_prefix, use_name=false, django_save=false) ->
     return $.param(out_dict, traditional=true)
 
 store_user_var = (var_name, var_value, var_type="str") -> 
-    $.ajax
+    call_ajax
         url  : "{% url 'user:set_user_var' %}"
         data : 
             key   : var_name
@@ -140,7 +146,7 @@ store_user_var = (var_name, var_value, var_type="str") ->
             
 load_user_var = (var_name) ->
     ret_dict = {}
-    $.ajax
+    call_ajax
         url     : "{% url 'user:get_user_var' %}"
         data    :
             var_name : var_name
@@ -169,6 +175,7 @@ root.load_user_var            = load_user_var
 root.create_dict              = create_dict
 root.create_dict_unserialized = create_dict_unserialized
 root.my_ajax_struct           = my_ajax_struct
+root.call_ajax                = call_ajax
 root.remove_by_idx = remove_by_idx
 
 {% endinlinecoffeescript %}

@@ -58,7 +58,7 @@ class int_file_info
             @cur_cm.setCursor(cur_line)
         @header_line.text("File '" + file_info.attr("name") + "', " + file_info.attr("lines") + " lines in " + file_info.attr("size_str"))
     reload: () =>
-        $.ajax
+        call_ajax
             url     : "{% url 'rms:get_file_content' %}"
             data    :
                 "file_id" : @file_id
@@ -77,7 +77,7 @@ class ext_file_info
     # external file info
     constructor: (@event, @file_id) ->
     show: () =>
-        $.ajax
+        call_ajax
             url     : "{% url 'rms:get_file_content' %}"
             data    :
                 "file_id" : @file_id
@@ -142,7 +142,7 @@ class rms_view
     setup: () =>
         # flag for first run :-)
         @first_run = true
-        $.ajax
+        call_ajax
             url : "{% url 'rms:get_header_xml' %}"
             success : (xml) =>
                 if parse_xml_response(xml)
@@ -215,7 +215,7 @@ class rms_view
             @reload_button.on("click", @reload_tables)
         @reload_tables()
     reload_tables: () =>
-        $.ajax
+        call_ajax
             url      : "{% url 'rms:get_rms_json' %}"
             dataType : "json"
             success  : (json) =>
@@ -500,7 +500,7 @@ class rms_view
         if full_job_id.match(/^.*\.$/)
             full_job_id = full_job_id[..-2]
         if confirm("really #{action_name} job #{full_job_id} ?")
-            $.ajax
+            call_ajax
                 url     : "{% url 'rms:control_job' %}"
                 data    : {
                     "control_id" : el_id

@@ -115,7 +115,7 @@ config_gen_ctrl = config_gen_module.controller("config_gen_ctrl", ["$scope", "$c
         $scope.generate_config = () ->
             $scope.result_trees = []
             $.blockUI()
-            $.ajax
+            call_ajax
                 url     : "{% url 'config:generate_config' %}"
                 data    : {
                     "pk_list" : angular.toJson($scope.devsel_list)

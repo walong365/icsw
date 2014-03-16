@@ -28,7 +28,7 @@ kernel_module.controller("kernel", ["$scope", "$compile", "$templateCache", "Res
             return if num_refs == 0 then true else false
         $scope.scan_for_kernels = () =>
             $.blockUI()
-            $.ajax
+            call_ajax
                 url     : "{% url 'setup:rescan_kernels' %}"
                 title   : "scanning for new kernels"
                 success : (xml) =>

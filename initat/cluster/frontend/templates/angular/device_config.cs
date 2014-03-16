@@ -193,7 +193,7 @@ device_config_module.controller("config_vars_ctrl", ["$scope", "$compile", "$fil
         $scope.var_filter = ""
         $scope.new_devsel = (_dev_sel, _devg_sel) ->
             $scope.devsel_list = _dev_sel
-            $.ajax
+            call_ajax
                 url     : "{% url 'config:get_device_cvars' %}"
                 data    :
                     "keys" : angular.toJson($scope.devsel_list)
@@ -428,7 +428,7 @@ device_config_module.controller("config_ctrl", ["$scope", "$compile", "$filter",
                         value = 0
                     if conf_idx in meta_dev.local_selected
                         value = 0
-                    $.ajax
+                    call_ajax
                         url  : "{% url 'config:alter_config_cb' %}"
                         data : {
                             "conf_pk" : conf_idx
@@ -524,7 +524,7 @@ cat_ctrl = device_config_module.controller("category_ctrl", ["$scope", "$compile
                 $scope.cat_tree.show_selected(false)
             )
         $scope.new_selection = (sel_list) =>
-            $.ajax
+            call_ajax
                 url     : "{% url 'base:change_category' %}"
                 data    :
                     "obj_type" : "device"
@@ -602,7 +602,7 @@ loc_ctrl = device_config_module.controller("location_ctrl", ["$scope", "restData
                 $scope.loc_tree.show_selected(false)
             )
         $scope.new_selection = (sel_list) =>
-            $.ajax
+            call_ajax
                 url     : "{% url 'base:change_category' %}"
                 data    :
                     "obj_type" : "device"
@@ -641,7 +641,7 @@ device_config_module.controller("partinfo_ctrl", ["$scope", "$compile", "$filter
         $scope.fetch = (pk) ->
             if pk?
                 $.blockUI()
-                $.ajax
+                call_ajax
                     url     : "{% url 'mon:fetch_partition' %}"
                     data    : {
                         "pk" : pk

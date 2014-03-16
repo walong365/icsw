@@ -138,7 +138,7 @@ device_tree_base = device_module.controller("device_tree_base", ["$scope", "$com
             $scope.create_or_edit(event, false, edit_obj)
         $scope.modify_many = () ->
             #console.log "mm", $scope.edit_obj
-            $.ajax
+            call_ajax
                 url     : "{% url 'device:change_devices' %}"
                 data    : {
                     "change_dict" : angular.toJson($scope.edit_obj)
@@ -151,7 +151,7 @@ device_tree_base = device_module.controller("device_tree_base", ["$scope", "$com
                             $scope.reload()
         $scope.delete_many = (event) ->
             if confirm("Really delete " + $scope.num_selected() + " devices ?")
-                $.ajax
+                call_ajax
                     url     : "{% url 'device:change_devices' %}"
                     data    : {
                         "change_dict" : angular.toJson({"delete" : true})
@@ -317,7 +317,7 @@ device_tree_base = device_module.controller("device_tree_base", ["$scope", "$com
                     new_obj.domain_tree_node = (entry.idx for entry in $scope.rest_data.domain_tree_node when entry.depth == 0)[0]
             return new_obj
         $scope.update_selected = () ->
-            $.ajax
+            call_ajax
                 url     : "{% url 'device:set_selection' %}"
                 data    : {
                     "angular_sel" : angular.toJson((entry.idx for entry in $scope.entries when entry.selected))

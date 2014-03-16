@@ -31,7 +31,7 @@ angular_add_simple_list_controller(
                 obj.put()
             rescan : ($scope) ->
                 $.blockUI()
-                $.ajax
+                call_ajax
                     url     : "{% url 'pack:repo_overview' %}"
                     data    : {
                         "mode" : "rescan_repos"
@@ -42,7 +42,7 @@ angular_add_simple_list_controller(
                             $scope.reload()
             sync : () ->
                 $.blockUI()
-                $.ajax
+                call_ajax
                     url     : "{% url 'pack:repo_overview' %}"
                     data    : {
                         "mode" : "sync_repos"
@@ -71,7 +71,7 @@ angular_add_simple_list_controller(
                 $scope.shared_data.result_obj = undefined
         object_created  : (new_obj, srv_data) -> 
             new_obj.search_string = ""
-            $.ajax
+            call_ajax
                 url     : "{% url 'pack:repo_overview' %}"
                 data    : {
                     "mode" : "reload_searches"
@@ -84,7 +84,7 @@ angular_add_simple_list_controller(
             retry : ($scope, obj) ->
                 if $scope.shared_data.result_obj and $scope.shared_data.result_obj.idx == obj.idx
                     $scope.shared_data.result_obj = undefined
-                $.ajax
+                call_ajax
                     url     : "{% url 'pack:retry_search' %}"
                     data    : {
                         "pk" : obj.idx
@@ -171,7 +171,7 @@ angular_add_simple_list_controller(
         fn:
             take : ($scope, obj, exact) ->
                 obj.copied = 1
-                $.ajax
+                call_ajax
                     url     : "{% url 'pack:use_package' %}"
                     data    : {
                         "pk"    : obj.idx
@@ -322,7 +322,7 @@ package_module.controller("install", ["$scope", "$compile", "$filter", "$templat
                 for pack_idx, pdc of dev_dict
                     if pdc.selected and parseInt(pack_idx) == obj.idx
                         attach_list.push([parseInt(dev_idx), obj.idx])
-            $.ajax
+            call_ajax
                 url     : "{% url 'pack:add_package' %}"
                 data    : {
                     "add_list" : angular.toJson(attach_list)
@@ -344,7 +344,7 @@ package_module.controller("install", ["$scope", "$compile", "$filter", "$templat
                         delete $scope.selected_pdcs[pdc.idx]
                         delete pdc.idx
                         #pdc.remove_pdc()
-            $.ajax
+            call_ajax
                 url     : "{% url 'pack:remove_package' %}"
                 data    : {
                     "remove_list" : angular.toJson(remove_list)
@@ -386,7 +386,7 @@ package_module.controller("install", ["$scope", "$compile", "$filter", "$templat
                 if $scope.edit_obj.image_change
                     pdc["image_list"] = (_v for _v in $scope.edit_obj.image_list)
             #console.log change_dict
-            $.ajax
+            call_ajax
                 url     : "{% url 'pack:change_pdc' %}"
                 data    : {
                     "change_dict" : angular.toJson(change_dict)
@@ -430,7 +430,7 @@ package_module.controller("install", ["$scope", "$compile", "$filter", "$templat
                 return "text-center"
         $scope.send_sync = (event) ->
             $.blockUI()
-            $.ajax
+            call_ajax
                 url     : "{% url 'pack:repo_overview' %}"
                 data    : {
                     "mode" : "new_config"

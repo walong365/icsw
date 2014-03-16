@@ -324,7 +324,7 @@ device_network_module.controller("network_ctrl", ["$scope", "$compile", "$filter
             )
         $scope.fetch_device_network = () ->
             $.blockUI()
-            $.ajax
+            call_ajax
                 url     : "{% url 'device:scan_device_network' %}"
                 data    : {
                     "info" : angular.toJson({
@@ -541,7 +541,7 @@ device_network_module.controller("network_ctrl", ["$scope", "$compile", "$filter
         $scope.copy_network = (src_obj, event) ->
             if confirm("Overwrite all networks with the one from #{src_obj.full_name} ?")
                 $.blockUI()
-                $.ajax
+                call_ajax
                     url     : "{% url 'network:copy_network' %}"
                     data    : {
                         "source_dev" : src_obj.idx
@@ -683,7 +683,7 @@ device_network_module.controller("graph_ctrl", ["$scope", "$compile", "$filter",
                 $.blockUI(
                     message : "loading, please wait..."
                 )
-                $.ajax
+                call_ajax
                     url      : "{% url 'network:json_network' %}"
                     data     : 
                         "graph_mode" : scope.graph_sel
