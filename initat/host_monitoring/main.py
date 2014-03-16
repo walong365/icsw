@@ -78,6 +78,7 @@ def main():
             ("NO_INOTIFY" , configfile.bool_c_var(False, info="disable inotify process", help_string="disable inotify proces [%(default)s]", action="store_true")),
             ("AFFINITY"   , configfile.bool_c_var(False, info="enable process_affinity tools", help_string="enables pinning of processes to certain cores", action="store_true")),
             ("TRACK_IPMI" , configfile.bool_c_var(False, info="enable tracking of IPMI sensors", help_string="enable tracking of IPMI sensor data", action="store_true")),
+            ("INOTIFY_IDLE_TIMEOUT", configfile.int_c_var(5, info="seconds to wait between two inotify() checks", help_string="loop timer for inotify_check [%(default)d]")),
         ])
     elif prog_name == "collclient":
         global_config.add_config_entries([

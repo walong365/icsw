@@ -1,7 +1,7 @@
 #!/usr/bin/python-init -Otu
 # -*- coding: utf-8 -*-
 #
-# Copyright (C) 2013 Andreas Lang-Nevyjel
+# Copyright (C) 2013,2014 Andreas Lang-Nevyjel
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -35,8 +35,6 @@ import threading_tools
 import time
 import uuid_tools
 import zmq
-
-IDLE_TIMEOUT = 1
 
 class file_watcher(object):
     def __init__(self, process_obj, **args):
@@ -352,6 +350,7 @@ class inotify_process(threading_tools.process_obj):
         self.__log_template = logging_tools.get_logger(global_config["LOG_NAME"], global_config["LOG_DESTINATION"], zmq=True, context=self.zmq_context)
         self.__relayer_socket = self.connect_to_socket("internal")
         self.__watcher = inotify_tools.inotify_watcher()
+        self.__idle_timeout = global_config["INOTIFY_IDLE_TIMEOUT"]
         # self.__watcher.add_watcher("internal", "/etc/sysconfig/host-monitoring.d", inotify_tools.IN_CREATE | inotify_tools.IN_MODIFY, self._trigger)
         self.__file_watcher_dict = {}
         self.__target_dict = {}
@@ -360,12 +359,13 @@ class inotify_process(threading_tools.process_obj):
         self.send_pool_message("register_callback", "unregister_file_watch", "fw_handle")
         self.register_func("fw_handle", self._fw_handle)
         self.cb_func = self._check
+        self.log("idle_timeout is %d" % (self.__idle_timeout))
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
         self.__log_template.log(log_level, what)
     def _trigger(self, event):
         print event, "*", dir(event)
     def _check(self):
-        self.__watcher.check((IDLE_TIMEOUT) * 1000)
+        self.__watcher.check(self.__idle_timeout * 1000)
         remove_ids = []
         for fw_id, fw_struct in self.__file_watcher_dict.iteritems():
             if not fw_struct.inotify():
