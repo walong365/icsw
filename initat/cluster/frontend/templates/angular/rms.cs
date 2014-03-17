@@ -364,17 +364,17 @@ rms_module.controller("rms_ctrl", ["$scope", "$compile", "$filter", "$templateCa
                                     $scope.io_dict[_id].feed(xml)
                                 $scope.$digest()
         $scope.get_io_link_class = (job, io_type) ->
-            io_id = "#{job[0]}.#{job[1]}.#{io_type}"
+            io_id = "#{job.job_id}.#{job.task_id}.#{io_type}"
             if io_id in $scope.io_list
                 return "btn btn-xs btn-success"
             else
                 return "btn btn-xs"
         $scope.activate_io = (job, io_type) ->
-            io_id = "#{job[0]}.#{job[1]}.#{io_type}"
+            io_id = "#{job.job_id}.#{job.task_id}.#{io_type}"
             if io_id not in $scope.io_list
                 # create new tab
                 $scope.io_list.push(io_id)
-                $scope.io_dict[io_id] = new io_struct(job[0], job[1], io_type)
+                $scope.io_dict[io_id] = new io_struct(job.job_id, job.task_id, io_type)
             # activate tab
             $scope.io_dict[io_id].active = true
         $scope.close_io = (io_struct) ->
