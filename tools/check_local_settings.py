@@ -40,16 +40,19 @@ if __name__ == "__main__":
     except:
         SECRET_KEY = None
     try:
-        from local_settings import LOGIN_IMAGE_SIZE # @UnresolvedImports
+        from local_settings import LOGIN_SCREEN_TYPE # @UnresolvedImports
     except:
-        LOGIN_IMAGE_SIZE = "100%"
+        LOGIN_SCREEN_TYPE = "big"
+    if LOGIN_SCREEN_TYPE not in ["big", "medium"]:
+        LOGIN_SCREEN_TYPE = "big"
     if SECRET_KEY in [None, "None"]:
         chars = 'abcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*(-_=+)'
         SECRET_KEY = get_random_string(50, chars)
     file(LS_FILE, "w").write("\n".join(
         [
             "SECRET_KEY = \"%s\"" % (SECRET_KEY),
-            "LOGIN_IMAGE_SIZE = \"%s\"" % (LOGIN_IMAGE_SIZE),
+            "# possible values: big, medium",
+            "LOGIN_SCREEN_TYPE = \"%s\"" % (LOGIN_SCREEN_TYPE),
             "",
         ]
         ))
