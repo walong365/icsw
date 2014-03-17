@@ -73,6 +73,22 @@ olcDatabase: {0}config
 olcAccess: {0}to *  by dn.base="gidNumber=0+uidNumber=0,cn=peercred,cn=externa
  l,cn=auth" manage  by * none
 
+
+adding cluster.ldif:
+
+ldapadd -Y EXTERNAL -H ldapi:/// -D cn=config -f /tmp/x/cn\=config/cn\=schema/cn\=\{0\}cluster.ldif
+
+cluster.ldif
+dn: cn=cluster,cn=schema,cn=config
+objectClass: olcSchemaConfig
+cn: cluster
+olcObjectClasses: {0}( 1.3.6.4.1.1.2.0 NAME 'clusterGroup' DESC 'group was cre
+ ated from cluster-server' SUP top AUXILIARY )
+olcObjectClasses: {1}( 1.3.6.4.1.1.2.1 NAME 'clusterAccount' DESC 'account was
+  created from cluster-server' SUP top AUXILIARY )
+olcObjectClasses: {2}( 1.3.6.4.1.1.2.2 NAME 'clusterAutomount' DESC 'automount
+  was created from cluster-server' SUP top AUXILIARY )
+
 """
 
 class ldap_mixin(object):
@@ -158,7 +174,7 @@ class setup_ldap_server(cs_base_class.server_com, ldap_mixin):
                         "olcSuffix: {}".format(par_dict["base_dn"]),
                         "-",
                         "replace: olcRootDN",
-                        "olcRootDN: dc={0},{1}".format(par_dict["admin_cn"], par_dict["base_dn"]),
+                        "olcRootDN: cn={0},{1}".format(par_dict["admin_cn"], par_dict["base_dn"]),
                         "-",
                         "add: olcRootPW",
                         "olcRootPW: {}".format(root_hash),
@@ -190,6 +206,7 @@ class init_ldap_config(cs_base_class.server_com, ldap_mixin):
                                # "device d2 ON d2.device_idx=dg.device WHERE d.device_group=dg.device_group_idx AND (dc.device=d2.device_idx OR dc.device=d.device_idx) AND dc.new_config=c.new_config_idx AND c.name='ldap_server' AND cs.new_config=c.new_config_idx")
         # par_dict = dict([(x["name"], x["value"]) for x in self.dc.fetchall()])
         errors = []
+        self.dryrun = False
         needed_keys = set(["base_dn", "admin_cn", "root_passwd"])
         missed_keys = needed_keys - set(par_dict.keys())
         if len(missed_keys):
@@ -593,7 +610,7 @@ class sync_ldap_config(cs_base_class.server_com, ldap_mixin):
                             self.log("cannot add user %s: %s" % (user_to_add, err_str),
                                      logging_tools.LOG_LEVEL_ERROR)
                     else:
-                        self.log("cannot add user %s: user (or group) active or not homestart defined in group" % (user_to_add),
+                        self.log("cannot add user %s: user (or group) active or no homestart defined in group" % (user_to_add),
                                  logging_tools.LOG_LEVEL_WARN)
                 # modify users
                 for user_to_change in users_to_change:
@@ -642,7 +659,6 @@ class sync_ldap_config(cs_base_class.server_com, ldap_mixin):
                 for mach, aeid_d in ei_dict.iteritems():
                     for aeid_idx, aeid in aeid_d.iteritems():
                         if aeid["export"] and aeid["import"]:
-                            aeid["import"] = cs_tools.hostname_expand(mach, aeid["import"])
                             export_dict[aeid["import"]] = (aeid["options"], "%s%s:%s" % (mach, aeid["node_postfix"], aeid["export"]))
                 # home-exports
                 home_exp_dict = home_export_list().exp_dict
