@@ -833,7 +833,7 @@ class user_variable(models.Model):
         ("b", "boolean"),
         ("n", "none")])
     name = models.CharField(max_length=189)
-    value = models.CharField(max_length=64, default="")
+    value = models.CharField(max_length=512, default="")
     date = models.DateTimeField(auto_now_add=True)
     def to_db_format(self):
         cur_val = self.value

@@ -373,6 +373,8 @@ class netdevice(models.Model):
             is_bridge=self.is_bridge,
             bridge_name=self.bridge_name,
             vlan_id=self.vlan_id,
+            # hm ...
+            # bridge_device=self.bridge_device,
             )
     def find_matching_network_device_type(self):
         match_list = [ndt for ndt in network_device_type.objects.all() if ndt.match(self.devname)]
