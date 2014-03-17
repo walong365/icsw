@@ -55,7 +55,7 @@ node_table = """
         <tr headers struct="node_struct"></tr>
     </thead>
     <tbody>
-        <tr rmsline ng-repeat="data in node_list | paginator2:this.pagNode" struct="node_struct"></tr>
+        <tr rmsnodeline ng-repeat="data in node_list | paginator2:this.pagNode" struct="node_struct"></tr>
     </tbody>
     <tfoot>
         <tr headertoggle ng-show="header_filter_set" struct="node_struct"></tr>
@@ -95,68 +95,111 @@ rmsline = """
 </td>
 """
 
-rmsrunline = """
-<td ng-show="running_struct.toggle['job_id']">
-    {{ data[0] }}
+rmsnodeline = """
+<td ng-show="node_struct.toggle['host']">
+    {{ data.host }}
 </td>
-<td ng-show="running_struct.toggle['task_id']">
-    {{ data[1] }}
+<td ng-show="node_struct.toggle['queues']">
+    {{ data.queues }}
 </td>
-<td ng-show="running_struct.toggle['name']">
-    {{ data[2] }}
+<td ng-show="node_struct.toggle['state']">
+    {{ data.state }}
 </td>
-<td ng-show="running_struct.toggle['real_user']">
-    {{ data[3] }}
+<td ng-show="node_struct.toggle['complex']">
+    {{ data.complex }}
 </td>
-<td ng-show="running_struct.toggle['granted_pe']">
-    {{ data[4] }}
+<td ng-show="node_struct.toggle['pe_list']">
+    {{ data.pe_list }}
 </td>
-<td ng-show="running_struct.toggle['owner']">
-    {{ data[5] }}
-</td>
-<td ng-show="running_struct.toggle['state']">
-    <b>{{ data[6] }}</b>
-</td>
-<td ng-show="running_struct.toggle['complex']">
-    {{ data[7] }}
-</td>
-<td ng-show="running_struct.toggle['queue_name']">
-    {{ data[8] }}
-</td>
-<td ng-show="running_struct.toggle['start_time']">
-    {{ data[9] }}
-</td>
-<td ng-show="running_struct.toggle['run_time']">
-    {{ data[10] }}
-</td>
-<td ng-show="running_struct.toggle['left_time']">
-    {{ data[11] }}
-</td>
-<td ng-show="running_struct.toggle['load']">
-    {{ data[12] }}
-</td>
-<td ng-show="running_struct.toggle['stdout']">
-    <span ng-switch on="valid_file(data[13])">
+<td ng-show="node_struct.toggle['load']">
+    <span ng-switch on="valid_load(data.load)">
         <span ng-switch-when="1">
-            <input type="button" ng-class="get_io_link_class(data, 'stdout')" ng-value="data[13]" ng-click="activate_io(data, 'stdout')"></input>
+            <div class="pull-left"><b>{{ data.load }}</b>&nbsp;</div>
+            <div class="pull-right" style="width:140px; height:10px;">
+                <progressbar value="get_load(data.load)"></progressbar>
+            </div>
         </span>
         <span ng-switch-when="0">
-            {{ data[13] }}
+            <b>{{ data.load }}</b>
+        </span>    
+    </span>
+</td>
+<td ng-show="node_struct.toggle['slots_used']">
+    {{ data.slots_used }}
+</td>
+<td ng-show="node_struct.toggle['slots_reserved']">
+    {{ data.slots_reserved }}
+</td>
+<td ng-show="node_struct.toggle['slots_total']">
+    {{ data.slots_total }}
+</td>
+<td ng-show="node_struct.toggle['jobs']">
+    {{ data.jobs }}
+</td>
+"""
+
+rmsrunline = """
+<td ng-show="running_struct.toggle['job_id']">
+    {{ data.job_id }}
+</td>
+<td ng-show="running_struct.toggle['task_id']">
+    {{ data.task_id }}
+</td>
+<td ng-show="running_struct.toggle['name']">
+    {{ data.name }}
+</td>
+<td ng-show="running_struct.toggle['real_user']">
+    {{ data.real_user }}
+</td>
+<td ng-show="running_struct.toggle['granted_pe']">
+    {{ data.granted_pe }}
+</td>
+<td ng-show="running_struct.toggle['owner']">
+    {{ data.owner }}
+</td>
+<td ng-show="running_struct.toggle['state']">
+    <b>{{ data.state }}</b>
+</td>
+<td ng-show="running_struct.toggle['complex']">
+    {{ data.complex }}
+</td>
+<td ng-show="running_struct.toggle['queue_name']">
+    {{ data.queue_name }}
+</td>
+<td ng-show="running_struct.toggle['start_time']">
+    {{ data.start_time }}
+</td>
+<td ng-show="running_struct.toggle['run_time']">
+    {{ data.run_time }}
+</td>
+<td ng-show="running_struct.toggle['left_time']">
+    {{ data.left_time }}
+</td>
+<td ng-show="running_struct.toggle['load']">
+    {{ data.load }}
+</td>
+<td ng-show="running_struct.toggle['stdout']">
+    <span ng-switch on="valid_file(data.stdout)">
+        <span ng-switch-when="1">
+            <input type="button" ng-class="get_io_link_class(data, 'stdout')" ng-value="data.stdout" ng-click="activate_io(data, 'stdout')"></input>
+        </span>
+        <span ng-switch-when="0">
+            {{ data.stdout }}
         </span>
     </span>
 </td>
 <td ng-show="running_struct.toggle['stderr']">
-    <span ng-switch on="valid_file(data[14])">
+    <span ng-switch on="valid_file(data.stderr)">
         <span ng-switch-when="1">
-            <input type="button" ng-class="get_io_link_class(data, 'stderr')" ng-value="data[14]" ng-click="activate_io(data, 'stderr')"></input>
+            <input type="button" ng-class="get_io_link_class(data, 'stderr')" ng-value="data.stderr" ng-click="activate_io(data, 'stderr')"></input>
         </span>
         <span ng-switch-when="0">
-            {{ data[14] }}
+            {{ data.stderr }}
         </span>
     </span>
 </td>
 <td ng-show="running_struct.toggle['files']">
-    {{ data[15] }}
+    {{ data.files }}
 </td>
 """
 {% endverbatim %}
@@ -164,6 +207,8 @@ rmsrunline = """
 rms_module = angular.module("icsw.rms", ["ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters", "localytics.directives", "restangular", "ui.codemirror"])
 
 angular_module_setup([rms_module])
+
+LOAD_RE = /(\d+.\d+).*/
 
 class header_struct
     constructor: (@table, @headers) ->
@@ -206,6 +251,8 @@ class header_struct
             return "btn btn-sm btn-success"
         else
             return "btn btn-sm"
+    map_headers : (simple_list) =>
+        return (_.zipObject(@headers, _line) for _line in simple_list)
         
 class io_struct
     constructor : (@job_id, @task_id, @type) ->
@@ -280,7 +327,8 @@ rms_module.controller("rms_ctrl", ["$scope", "$compile", "$filter", "$templateCa
             "node" : $scope.node_struct
         }
         $scope.reload= () ->
-            $scope.update_info_timeout = $timeout($scope.reload, 5000)
+            # refresh every 10 seconds
+            $scope.update_info_timeout = $timeout($scope.reload, 10000)
             call_ajax
                 url      : "{% url 'rms:get_rms_json' %}"
                 dataType : "json"
@@ -288,9 +336,17 @@ rms_module.controller("rms_ctrl", ["$scope", "$compile", "$filter", "$templateCa
                     "angular" : true
                 success  : (json) =>
                     $scope.$apply(() ->
-                        $scope.run_list = json.run_table
-                        $scope.wait_list = json.wait_table
-                        $scope.node_list = json.node_table
+                        $scope.run_list = $scope.running_struct.map_headers(json.run_table)
+                        $scope.wait_list = $scope.waiting_struct.map_headers(json.wait_table)
+                        $scope.node_list = $scope.node_struct.map_headers(json.node_table)
+                        # calculate max load
+                        valid_loads = (parseFloat(entry.load) for entry in $scope.node_list when entry.load.match(LOAD_RE))
+                        if valid_loads.length
+                            $scope.max_load = _.max(valid_loads)
+                            # round to next multiple of 4
+                            $scope.max_load = 4 * parseInt(($scope.max_load + 3.9999) / 4)
+                        else
+                            $scope.max_load = 4
                     )
                     # fetch file ids
                     fetch_list = []
@@ -307,38 +363,6 @@ rms_module.controller("rms_ctrl", ["$scope", "$compile", "$filter", "$templateCa
                                 for _id in $scope.io_list
                                     $scope.io_dict[_id].feed(xml)
                                 $scope.$digest()
-        $scope.valid_file = (std_val) ->
-             # to be improved, transfer raw data (error = -1, 0 = no file, > 0 = file with content)
-             if std_val == "---" or std_val == "err" or std_val == "0 B"
-                 return 0
-             else
-                 return 1
-        $scope.render_helper = {
-            "host" : (name) ->
-                return ["", "<b>#{name}</b>"]
-            "load" : (load) ->
-                if $scope.cur_table == "node"
-                    cur_m = load.match(/(\d+\.\d+).*/)
-                    if cur_m
-                        max_load = 16.0
-                        load = Math.min(cur_m[0], max_load)
-                        load_val = $.sprintf("%3.2f", load)
-                        width = parseInt(98 * load / max_load)
-                        ret_el = "<div>
-                            <div class='leftfloat load_value'><b>#{load_val}</b></div>
-                            <div class='load_outer'><div class='load_inner' style='width: #{width}px;'></div></div>
-                        </div>"
-                        return ["", ret_el]
-                    else
-                        return ["", "<b>#{load}</b>"]
-                else
-                    return ["", load]
-            "stdout" : (val) ->
-                if val == "---" or val == "err"
-                    return ["", "<b>#{val}</b>"]
-                else
-                    return ["s", "<input type='button' class='btn btn-xs btn-success' value='#{val}' ng-click='click()'></input>"]
-        }
         $scope.get_io_link_class = (job, io_type) ->
             io_id = "#{job[0]}.#{job[1]}.#{io_type}"
             if io_id in $scope.io_list
@@ -412,6 +436,26 @@ rms_module.controller("rms_ctrl", ["$scope", "$compile", "$filter", "$templateCa
         restrict : "EA"
         template : $templateCache.get("rmsrunline.html")
         link : (scope, el, attrs) ->
+            scope.valid_file = (std_val) ->
+                 # to be improved, transfer raw data (error = -1, 0 = no file, > 0 = file with content)
+                 if std_val == "---" or std_val == "err" or std_val == "error" or std_val == "0 B"
+                     return 0
+                 else
+                     return 1
+    }
+).directive("rmsnodeline", ($templateCache, $sce) ->
+    return {
+        restrict : "EA"
+        template : $templateCache.get("rmsnodeline.html")
+        link : (scope, el, attrs) ->
+            scope.valid_load = (load) ->
+                return if load.match(LOAD_RE) then 1 else 0
+            scope.get_load = (load) ->
+                cur_m = load.match(LOAD_RE)
+                if cur_m
+                    return parseInt(100 * load / scope.max_load)
+                else
+                    return 0
     }
 ).directive("headertoggle", ($templateCache) ->
     return {
@@ -428,6 +472,7 @@ rms_module.controller("rms_ctrl", ["$scope", "$compile", "$filter", "$templateCa
     $templateCache.put("headers.html", headers)
     $templateCache.put("rmsline.html", rmsline)
     $templateCache.put("rmsrunline.html", rmsrunline)
+    $templateCache.put("rmsnodeline.html", rmsnodeline)
     $templateCache.put("header_toggle.html", header_toggle)
     $templateCache.put("iostruct.html", iostruct)
 )

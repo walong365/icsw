@@ -51,6 +51,13 @@
 {% block javascript_jquery %}{% endblock %}
 {% block modernizr %}{% endblock %}
 {% block javascript %}
+    <!--[if lt IE 9]>
+        <script type="text/javascript" src='{% static "js/libs/jquery-1.11.0.js" %}'></script>
+        <script type="text/javascript" src='{% static "js/libs/modernizr-2.7.1.js" %}'></script>
+        <script type="text/javascript" src='{% static "js/plugins.js" %}'></script>
+        <script type="text/javascript" src='{% static "js/libs/html5shiv.js" %}'></script>
+    <![endif]-->
+    <!--[if gte IE 9]><!-->{% compressed_js 'js_jquery_new' %}<!--<![endif]-->
     <script type="text/javascript">
     {% inlinecoffeescript %}
     # attach global permissions and license info to window object (== global variable)
@@ -59,15 +66,9 @@
     window.OBJECT_PERMISSIONS = {{ OBJECT_PERMISSIONS | safe }}
     window.CURRENT_USER = {{ CURRENT_USER | safe }}
     #console.log window.GLOBAL_PERMISSIONS
+    Modernizr.load()
     {% endinlinecoffeescript %}
     </script>
-    <!--[if lt IE 9]>
-        <script type="text/javascript" src='{% static "js/libs/jquery-1.11.0.js" %}'></script>
-        <script type="text/javascript" src='{% static "js/libs/modernizr-2.7.1.js" %}'></script>
-        <script type="text/javascript" src='{% static "js/plugins.js" %}'></script>
-        <script type="text/javascript" src='{% static "js/libs/html5shiv.js" %}'></script>
-    <![endif]-->
-    <!--[if gte IE 9]><!-->{% compressed_js 'js_jquery_new' %}<!--<![endif]-->
     {% compressed_js 'js_base' %}
     {% compressed_js 'js_extra1' %}
 
