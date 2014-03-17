@@ -66,14 +66,18 @@ ${C_DIR}/manage.py migrate reversion
 ${C_DIR}/manage.py migrate static_precompiler
 ${C_DIR}/manage.py syncdb --noinput ${ID_FLAGS}
 ${C_DIR}/manage.py migrate ${ID_FLAGS}
-if [ "${1:-x}" != "--auto" ]; then
-    echo ""
-    echo "creating superuser"
-    echo ""
-    ${C_DIR}/manage.py createsuperuser
+if [ "${ID_FLAGS}" == "--no-initial-data" ] ; then
+    echo "skipping initial data insert"
+else
+    if [ "${1:-x}" != "--auto" ]; then
+	echo ""
+	echo "creating superuser"
+	echo ""
+	${C_DIR}/manage.py createsuperuser
+    fi
+    ${C_DIR}/manage.py init_csw_permissions
+    ${C_DIR}/manage.py create_fixtures
+    ${C_DIR}/manage.py migrate_to_domain_name
+    ${C_DIR}/manage.py migrate_to_config_catalog
+    ${C_DIR}/manage.py create_cdg --name system
 fi
-${C_DIR}/manage.py init_csw_permissions
-${C_DIR}/manage.py create_fixtures
-${C_DIR}/manage.py migrate_to_domain_name
-${C_DIR}/manage.py migrate_to_config_catalog
-${C_DIR}/manage.py create_cdg --name system
