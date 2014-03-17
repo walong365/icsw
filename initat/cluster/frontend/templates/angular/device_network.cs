@@ -118,7 +118,7 @@ ip_row_template = """
 
 peer_row_template = """
 <td></td>
-<td colspan="3">
+<td colspan="4">
     with penalty {{ ndip_obj.peer.penalty }}
     &nbsp;<span class="label label-primary">{{ get_peer_penalty(ndip_obj) }}</span>&nbsp;
     to {{ get_peer_target(ndip_obj) }}
