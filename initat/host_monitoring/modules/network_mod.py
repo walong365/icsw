@@ -1381,16 +1381,17 @@ class ntp_status_command(hm_classes.hm_command):
                 primary_peer = None
                 ret_state = max(ret_state, limits.nag_STATE_CRITICAL)
             if "+" in _peer_types:
-                active_peers = set(_peer_types["+"])
+                good_peers = set(_peer_types["+"])
             else:
-                active_peers = set()
-            inactive_peers = set(_peers) - active_peers - set(primary_peer)
-            return ret_state, "%s defined, primary: %s, active: %s, inactive: %s" % (
+                good_peers = set()
+            ignored_peers = set(_peers) - (good_peers | set([primary_peer]))
+            return ret_state, "%s defined, %s" % (
                 logging_tools.get_plural("peer", len(_peers)),
-                primary_peer or "---",
-                ", ".join(sorted(active_peers)) or "---",
-                ", ".join(sorted(inactive_peers)) or "---",
-            )
+                ", ".join([entry for entry in [
+                    "primary is %s" % (primary_peer) if primary_peer else "",
+                    "good: %s" % (", ".join(sorted(good_peers))) if good_peers else "",
+                    "ignored: %s" % (", ".join(sorted(ignored_peers))) if ignored_peers else "",
+                ] if entry]))
         else:
             return limits.nag_STATE_CRITICAL, _lines[0]
 
