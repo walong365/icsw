@@ -82,7 +82,20 @@ class package_check(object):
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
         self.__log_com("[pc] %s" % (what), log_level)
     def check(self, pack_list):
-        self.log("checking image at path %s" % (self.__image.source))
+        if os.path.isfile(os.path.join(self.__image.source, "etc", "SuSE-release")):
+            return self.check_zypper(pack_list)
+        elif os.path.isfile(os.path.join(self.__image.source, "etc", "redhat-release")):
+            return self.check_yum(pack_list)
+        else:
+            self.log("image type not identifier", logging_tools.LOG_LEVEL_ERROR)
+            return set(pack_list)
+    def check_yum(self, pack_list):
+        self.log("checking image at path %s with yum (rpm)" % (self.__image.source))
+        res_set = set([line.strip() for line in self._call("rpm -qa --root {} --queryformat=\"%{{NAME}}\\n\"".format(self.__image.source)).split("\n")])
+        missing_packages = set(pack_list) - res_set
+        return missing_packages
+    def check_zypper(self, pack_list):
+        self.log("checking image at path %s with zypper" % (self.__image.source))
         res_str = self._call("zypper -x -R %s --no-refresh search -i | xmllint --recover - 2>/dev/null " % (self.__image.source))
         try:
             res_xml = etree.fromstring(res_str)
