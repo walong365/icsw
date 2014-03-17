@@ -116,7 +116,7 @@ rmsnodeline = """
         <span ng-switch-when="1">
             <div class="pull-left"><b>{{ data.load }}</b>&nbsp;</div>
             <div class="pull-right" style="width:140px; height:10px;">
-                <progressbar value="get_load(data.load)"></progressbar>
+                <progressbar value="get_load(data.load)" animate="false"></progressbar>
             </div>
         </span>
         <span ng-switch-when="0">
@@ -200,6 +200,9 @@ rmsrunline = """
 </td>
 <td ng-show="running_struct.toggle['files']">
     {{ data.files }}
+</td>
+<td ng-show="running_struct.toggle['nodelist']">
+    {{ data.nodelist }}
 </td>
 """
 {% endverbatim %}
