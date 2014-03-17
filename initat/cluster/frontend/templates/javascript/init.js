@@ -52,28 +52,29 @@ class ajax_struct
         
 my_ajax_struct = new ajax_struct("div#ajax_info")
 
-default_ajax_dict = 
-    type       : "POST"
-    timeout    : 50000
-    dataType   : "xml"
-    headers    : { "X-CSRFToken" : $.cookie("csrftoken") }
-    beforeSend : (xhr, settings) ->
-        if not settings.hidden
-            xhr.inituuid = my_ajax_struct.new_connection(settings)
-    complete   : (xhr, textstatus) ->
-        my_ajax_struct.close_connection(xhr.inituuid)
-    dataFilter : (data, data_type) ->
-        return data
-    error      : (xhr, status, except) ->
-        if status == "timeout"
-            alert("timeout")
-        else
-            if xhr.status 
-                # if status is != 0 an error has occured
-                alert("*** #{status} ***\nxhr.status : #{xhr.status}\nxhr.statusText : #{xhr.statusText}")
-        return false
-
 call_ajax = (in_dict) ->
+    default_ajax_dict = { 
+        type       : "POST"
+        timeout    : 50000
+        dataType   : "xml"
+        headers    : { "X-CSRFToken" : $.cookie("csrftoken") }
+        beforeSend : (xhr, settings) ->
+            if not settings.hidden
+                xhr.inituuid = my_ajax_struct.new_connection(settings)
+        complete   : (xhr, textstatus) ->
+            my_ajax_struct.close_connection(xhr.inituuid)
+        dataFilter : (data, data_type) ->
+            return data
+        error      : (xhr, status, except) ->
+            if status == "timeout"
+                alert("timeout")
+            else
+                if xhr.status 
+                    # if status is != 0 an error has occured
+                    alert("*** #{status} ***\nxhr.status : #{xhr.status}\nxhr.statusText : #{xhr.statusText}")
+            return false
+    }
+    
     for key of default_ajax_dict
         if key not of in_dict
             in_dict[key] = default_ajax_dict[key]

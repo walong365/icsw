@@ -29,6 +29,7 @@ from django.core.cache import cache
 from django.db.models import Q
 from django.http import HttpResponse
 from initat.cluster.backbone.models import device
+from initat.cluster.backbone import routing
 from lxml import etree # @UnresolvedImports
 from lxml.builder import E # @UnresolvedImports
 import email.mime
@@ -221,194 +222,13 @@ def update_session_object(request):
             else:
                 request.session[attr_name] = default
 
-_SRV_TYPE_PORT_MAPPING = {
-    "mother"    : 8000,
-    "grapher"   : 8003,
-    "server"    : 8004,
-    "config"    : 8005,
-    "package"   : 8007,
-    "rms"       : 8009,
-    "md-config" : 8010,
-    "cransys"   : 8013,
-}
-
-_SRV_NAME_TYPE_MAPPING = {
-    "mother"    : ["mother_server"],
-    "grapher"   : ["rrd_server"],
-    "server"    : ["server"],
-    "config"    : ["config_server"],
-    "package"   : ["package_server"],
-    # sge_server is deprecated, still in use
-    "rms"       : ["rms_server", "sge_server"],
-    "md-config" : ["monitor_server"],
-    "cransys"   : ["cransys_server"],
-}
-
-_NODE_SPLIT = ["mother", "config"]
-
-class srv_type_routing(object):
-    def __init__(self):
-        self.logger = logging.getLogger("cluster.srv_routing")
-        self._routing_key = "_WF_ROUTING"
-        _resolv_dict = cache.get(self._routing_key)
-        if _resolv_dict is None:
-            _resolv_dict = self._build_resolv_dict()
-        else:
-            _resolv_dict = json.loads(_resolv_dict)
-        self._resolv_dict = _resolv_dict
-    def has_type(self, srv_type):
-        return srv_type in self._resolv_dict
-    def get_connection_string(self, srv_type, server_id=None):
-        # server list
-        _srv_list = self._resolv_dict[srv_type]
-        if server_id:
-            # filter
-            _found_srv = [entry for entry in _srv_list if entry[2] == server_id]
-            if not _found_srv:
-                self.logger.critical("no server_id %d found for srv_type %s, taking first one" % (server_id, srv_type))
-                _found_srv = _srv_list
-        else:
-            _found_srv = _srv_list
-        # no server id, take first one
-        return "tcp://%s:%d" % (
-            _found_srv[0][1],
-            _SRV_TYPE_PORT_MAPPING[srv_type],
-        )
-    def _build_resolv_dict(self):
-        # local device
-        _myself = server_check(server_type="", fetch_network_info=True)
-        _router = router_object(self.logger)
-        conf_names = sum(_SRV_NAME_TYPE_MAPPING.values(), [])
-        # build reverse lut
-        _rv_lut = {}
-        for key, value in _SRV_NAME_TYPE_MAPPING.iteritems():
-            _rv_lut.update({_name : key for _name in value})
-        # resolve dict
-        _resolv_dict = {}
-        # get all config
-        for _conf_name in conf_names:
-            _srv_type = _rv_lut[_conf_name]
-            _sc = device_with_config(config_name=_conf_name)
-            if _conf_name in _sc:
-                for _dev in _sc[_conf_name]:
-                    # routing info
-                    if _dev.effective_device.pk == _myself.device.pk:
-                        _first_ip = "127.0.0.1"
-                    else:
-                        _ri = _dev.get_route_to_other_device(_router, _myself, allow_route_to_other_networks=True)
-                        _first_ri = _ri[0]
-                        _first_ip = _first_ri[2][1][0]
-                    _resolv_dict.setdefault(_srv_type, []).append(
-                        (
-                            _dev.effective_device.full_name,
-                            _first_ip,
-                            _dev.effective_device.pk
-                        )
-                    )
-                    self.logger.debug("adding device '%s' (IP %s, %d) to srv_type %s" % (
-                        _dev.effective_device.full_name,
-                        _first_ip,
-                        _dev.effective_device.pk,
-                        _srv_type,
-                        )
-                    )
-        # missing routes
-        _missing_srv = set(_SRV_NAME_TYPE_MAPPING.keys()) - set(_resolv_dict.keys())
-        if _missing_srv:
-            for _srv_type in sorted(_missing_srv):
-                self.logger.warning("no device for srv_type '%s' found" % (_srv_type))
-        # valid for 15 minutes
-        cache.set(self._routing_key, json.dumps(_resolv_dict), 60 * 15)
-        return _resolv_dict
-    def check_for_split_send(self, srv_type, in_com):
-        if srv_type in _NODE_SPLIT:
-            return self._split_send(srv_type, in_com)
-        else:
-            return [(None, in_com)]
-    def _split_send(self, srv_type, in_com):
-        cur_devs = in_com.xpath(".//ns:devices/ns:devices/ns:device")
-        _dev_dict = {}
-        for _dev in cur_devs:
-            _pk = int(_dev.attrib["pk"])
-            _dev_dict[_pk] = etree.tostring(_dev)
-        _pk_list = _dev_dict.keys()
-        _cl_dict = {}
-        for _value in device.objects.filter(Q(pk__in=_pk_list)).values_list("pk", "bootserver", "name"):
-            if _value[1]:
-                _cl_dict.setdefault(_value[1], []).append(_value[0])
-            else:
-                self.logger.error("device %d (%s) has no bootserver associated" % (
-                    _value[0],
-                    _value[2],
-                ))
-        # do we need more than one server connection ?
-        if len(_cl_dict) > 1:
-            _srv_keys = _cl_dict.keys()
-            _srv_dict = {key : server_command.srv_command(source=etree.tostring(in_com.tree)) for key in _srv_keys}
-            # clear devices
-            [_value.delete_subtree("devices") for _value in _srv_dict.itervalues()]
-            # add devices where needed
-            for _key, _pk_list in _cl_dict.iteritems():
-                _tree = _srv_dict[_key]
-                _devlist = _tree.builder("devices")
-                _tree["devices"] = _devlist
-                _devlist.extend([etree.fromstring(_dev_dict[_pk]) for _pk in _pk_list])
-                # print "T", _key, _tree.pretty_print()
-            return [(key, value) for key, value in _srv_dict.iteritems()]
-        elif len(_cl_dict) == 1:
-            return [(_cl_dict.keys()[0], in_com)]
-        else:
-            return []
-    def start_result_feed(self):
-        self.result = None
-    def feed_result(self, orig_com, result, request, conn_str, log_lines, log_result, log_error):
-        if result is None:
-            if log_error:
-                _err_str = "error contacting server %s, %s" % (
-                    conn_str,
-                    orig_com["command"].text
-                )
-                if request:
-                    request.xml_response.error(_err_str)
-                else:
-                    log_lines.append((logging_tools.LOG_LEVEL_ERROR, _err_str))
-        else:
-            # TODO: check if result is et
-            if log_result:
-                log_str, log_level = result.get_log_tuple()
-                if request:
-                    request.xml_response.log(log_level, log_str)
-                else:
-                    log_lines.append((log_level, log_str))
-            if self.result is None:
-                self.result = result
-            else:
-                # merge result
-                # possible sub-structs
-                for _sub_name in ["devices", "cd_ping_list"]:
-                    _s2_name = "%s:%s" % (_sub_name, _sub_name)
-                    if _s2_name in result:
-                        # preset in result to merge
-                        if _s2_name not in self.result:
-                            # add to main part if not present
-                            self.result[_sub_name] = self.result.builder(_sub_name)
-                        add_list = self.result[_s2_name]
-                        _merged = 0
-                        for entry in result.xpath(".//ns:%s/ns:%s/*" % (_sub_name, _sub_name)):
-                            _merged += 1
-                            add_list.append(entry)
-                        self.logger.info("merged %s of %s" % (
-                            logging_tools.get_plural("element", _merged),
-                            _sub_name,
-                            ))
-
 def contact_server(request, srv_type, send_com, **kwargs):
     # log lines
     _log_lines = []
     # xml request
     _xml_req = kwargs.get("xml_request", hasattr(request, "xml_response"))
     # simple mapping
-    cur_router = srv_type_routing()
+    cur_router = routing.srv_type_routing()
     if cur_router.has_type(srv_type):
         conn_str = cur_router.get_connection_string(srv_type)
         # print send_com.pretty_print()
