@@ -285,7 +285,7 @@ def net_ip_pre_delete(sender, **kwargs):
             if cur_inst.netdevice == cur_dev.bootnetdevice:
                 # remove bootnetdevice
                 cur_dev.bootnetdevice = None
-                cur_dev.save()
+                cur_dev.save(update_fields=["bootnetdevice"])
 
 @receiver(signals.post_save, sender=net_ip)
 def net_ip_post_save(sender, **kwargs):
@@ -393,6 +393,8 @@ class netdevice(models.Model):
         db_table = u'netdevice'
         ordering = ("devname",)
         app_label = "backbone"
+    def delete(self, *args, **kwargs):
+        super(netdevice, self).delete(*args, **kwargs)
     @property
     def ethtool_autoneg(self):
         return (self.ethtool_options or 0) & 3
@@ -418,13 +420,12 @@ class netdevice(models.Model):
 
 @receiver(signals.pre_delete, sender=netdevice)
 def netdevice_pre_delete(sender, **kwargs):
-    # too late here, handled by delete_netdevice in network_views
     pass
     # if "instance" in kwargs:
-        # cur_inst = kwargs["instance"]
-        # for cur_dev in device.objects.filter(Q(bootnetdevice=cur_inst.pk)):
-            # cur_dev.bootnetdevice = None
-            # cur_dev.save(update_fields=["bootnetdevice"])
+    #    cur_inst = kwargs["instance"]
+    #    for cur_dev in get_model("backbone", "device").objects.filter(Q(bootnetdevice=cur_inst.pk)):
+    #        cur_dev.bootnetdevice = None
+    #        cur_dev.save(update_fields=["bootnetdevice"])
 
 class netdevice_serializer(serializers.ModelSerializer):
     net_ip_set = net_ip_serializer(many=True)

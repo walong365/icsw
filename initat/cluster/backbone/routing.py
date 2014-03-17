@@ -34,7 +34,6 @@ import logging
 import logging_tools
 import server_command
 
-
 _SRV_TYPE_PORT_MAPPING = {
     "mother"    : 8000,
     "grapher"   : 8003,
@@ -91,9 +90,13 @@ class srv_type_routing(object):
     @property
     def resolv_dict(self):
         return self._resolv_dict
+    @property
+    def local_device(self):
+        return self._local_device
     def _build_resolv_dict(self):
         # local device
         _myself = server_check(server_type="", fetch_network_info=True)
+        self._local_device = _myself.device
         _router = router_object(self.logger)
         conf_names = sum(_SRV_NAME_TYPE_MAPPING.values(), [])
         # build reverse lut
@@ -109,40 +112,53 @@ class srv_type_routing(object):
             if _conf_name in _sc:
                 for _dev in _sc[_conf_name]:
                     # routing info
-                    if _dev.effective_device.pk == _myself.device.pk:
-                        _first_ip = "127.0.0.1"
+                    if _dev.effective_device.device_type.identifier == "MD":
+                        self.logger.error("device '%s' (srv_type %s) has an illegal device_type %s" % (
+                            _dev.effective_device.full_name,
+                            _srv_type,
+                            _dev.effective_device.device_type.identifier,
+                            ))
                     else:
-                        _ri = _dev.get_route_to_other_device(_router, _myself, allow_route_to_other_networks=True)
-                        if _ri:
-                            _first_ri = _ri[0]
-                            _first_ip = _first_ri[2][1][0]
+                        if _dev.effective_device.pk == _myself.device.pk:
+                            _first_ip = "127.0.0.1"
+                            _penalty = 1
                         else:
-                            _first_ip = None
-                    if _first_ip:
-                        _resolv_dict.setdefault(_srv_type, []).append(
-                            (
+                            _ri = _dev.get_route_to_other_device(_router, _myself, allow_route_to_other_networks=True)
+                            if _ri:
+                                _first_ri = _ri[0]
+                                _first_ip = _first_ri[2][1][0]
+                                _penalty = _first_ri[0]
+                            else:
+                                _first_ip = None
+                        if _first_ip:
+                            _resolv_dict.setdefault(_srv_type, []).append(
+                                (
+                                    _dev.effective_device.full_name,
+                                    _first_ip,
+                                    _dev.effective_device.pk,
+                                    _penalty,
+                                )
+                            )
+                            self.logger.debug("adding device '%s' (IP %s, %d) to srv_type %s" % (
                                 _dev.effective_device.full_name,
                                 _first_ip,
-                                _dev.effective_device.pk
+                                _dev.effective_device.pk,
+                                _srv_type,
+                                )
                             )
-                        )
-                        self.logger.debug("adding device '%s' (IP %s, %d) to srv_type %s" % (
-                            _dev.effective_device.full_name,
-                            _first_ip,
-                            _dev.effective_device.pk,
-                            _srv_type,
-                            )
-                        )
-                    else:
-                        self.logger.error("no route to device '%s' found (srv_type %s)" % (
-                            _dev.effective_device.full_name,
-                            _srv_type,
-                        ))
+                        else:
+                            self.logger.error("no route to device '%s' found (srv_type %s)" % (
+                                _dev.effective_device.full_name,
+                                _srv_type,
+                            ))
         # missing routes
         _missing_srv = set(_SRV_NAME_TYPE_MAPPING.keys()) - set(_resolv_dict.keys())
         if _missing_srv:
             for _srv_type in sorted(_missing_srv):
                 self.logger.warning("no device for srv_type '%s' found" % (_srv_type))
+        # sort entry
+        for key, value in _resolv_dict.iteritems():
+            _resolv_dict[key] = [_v2[1] for _v2 in sorted([(_v[3], _v) for _v in value])]
         # valid for 15 minutes
         cache.set(self._routing_key, json.dumps(_resolv_dict), 60 * 15)
         return _resolv_dict
