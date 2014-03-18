@@ -358,17 +358,18 @@ class main_process(threading_tools.process_pool):
             scr1_name = record_name[8:].replace("\.", "#").replace(".", "/").replace("#", ".")
             for path_part in os.path.dirname(scr1_name).split(os.path.sep):
                 if path_part:
+                    path_part = "%{}.d".format(path_part)
                     if sub_dirs:
-                        sub_dirs.append("%s/%s.d" % (sub_dirs[-1], path_part))
+                        sub_dirs.append(os.path.join(sub_dirs[-1], path_part))
                     else:
-                        sub_dirs.append("%s.d" % (path_part))
+                        sub_dirs.append(path_part)
             if sub_dirs:
-                h_name = "%s/%s" % (sub_dirs[-1], os.path.basename(scr1_name))
+                h_name = os.path.join(sub_dirs[-1], os.path.basename(scr1_name))
             else:
                 h_name = os.path.basename(scr1_name)
         else:
             logger_name = record_name
-            h_name = "%s/%s" % (record.host, record_name)
+            h_name = os.path.join(record.host, record_name)
         if h_name in self.__handles:
             if not (set([record_process, record_parent_process]) &
                     set([self.__handles[h_name].process_id,
@@ -377,7 +378,7 @@ class main_process(threading_tools.process_pool):
         if not h_name in self.__handles:
             self.log("logger '%s' (logger_type %s) requested" % (logger_name,
                                                                  "init.at" if init_logger else "native"))
-            full_name = "%s/%s" % (global_config["LOG_DESTINATION"], h_name)
+            full_name = os.path.join(global_config["LOG_DESTINATION"], h_name)
             base_dir, base_name = (os.path.dirname(full_name),
                                    os.path.basename(full_name))
             self.log("attempting to create log_file '%s' in dir '%s'" % (base_name, base_dir))
@@ -387,7 +388,7 @@ class main_process(threading_tools.process_pool):
                 if not sub_dirs:
                     sub_dirs.append(new_sub_dir)
                 else:
-                    sub_dirs.append("%s/%s" % (sub_dirs[-1], new_sub_dir))
+                    sub_dirs.append(os.path.join(sub_dirs[-1], new_sub_dir))
             # create sub_dirs
             for sub_dir in sub_dirs:
                 act_dir = os.path.join(global_config["LOG_DESTINATION"], sub_dir)
@@ -395,10 +396,14 @@ class main_process(threading_tools.process_pool):
                     try:
                         os.makedirs(act_dir)
                     except OSError:
-                        self.log("cannot create directory %s: %s" % (act_dir,
-                                                                     process_tools.get_except_info()))
+                        self.log(
+                            "cannot create directory %s: %s" % (
+                                act_dir,
+                                process_tools.get_except_info(),
+                            )
+                        )
                     else:
-                        self.log("created directory %s" % (act_dir))
+                        self.log("created directory {}".format(act_dir))
             # init logging config
             # logging.config.fileConfig("logging.conf", {"file_name" : full_name})
             # base_logger = logging.getLogger("init.at")
