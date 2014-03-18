@@ -27,6 +27,11 @@ fi
 setup() {
     [ ! -d /var/run/logserver ] && mkdir /var/run/logserver 
     [ ! -d /var/lock/logserver ] && mkdir /var/lock/logserver 
+    if [ ! -d /var/log/cluster/logging-server ] ; then
+        mkdir -p /var/log/cluster/logging-server
+        chown idlog.idg /var/log/cluster/
+        chown -R idlog.idg /var/log/cluster/logging-server
+    fi
     chmod 0750 /var/run/logserver
     chown idlog.idg /var/run/logserver /var/lock/logserver 
 }
