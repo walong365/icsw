@@ -55,10 +55,26 @@ partition_table_module.directive("disklayout", ($compile, $modal, $templateCache
                     if not scope.create_mode
                         scope.validate()
                 )
+                scope.valid_label_types = () ->
+                    return [
+                        {
+                            "label" : "msdos",
+                            "info_string" : "MSDOS",
+                        },
+                        {
+                            "label" : "gpt",
+                            "info_string" : "GPT",
+                        },
+                    ]
                 scope.get_partition_fs = () ->
                     for entry in scope.rest_data.partition_fs
                         entry.full_info = "#{entry.name}" + if entry.need_mountpoint then " (need mountpoint)" else "" 
                     return scope.rest_data.partition_fs
+                scope.partition_need_mountpoint = (part) ->
+                    if part.partition_fs
+                        return (entry.need_mountpoint for entry in scope.rest_data.partition_fs when entry.idx == part.partition_fs)[0]
+                    else
+                        return true
                 scope.validate = () ->
                     call_ajax
                         url : "{% url 'setup:validate_partition' %}"
@@ -92,11 +108,14 @@ partition_table_module.directive("disklayout", ($compile, $modal, $templateCache
                 scope.layout_edit.create_template = "partition_disc.html"
                 scope.layout_edit.create_rest_url = Restangular.all("{% url 'rest:partition_disc_list' %}".slice(1))
                 scope.layout_edit.create_list = scope.edit_obj.partition_disc_set
+                scope.layout_edit.modify_data_after_post = (new_disc) ->
+                    new_disc.partition_set = []
+                    new_disc.sys_partition_set = []
                 scope.layout_edit.new_object = (scope) ->
                     return {
-                        "partition_table" : scope.edit_obj.idx
-                        "disc"            : "/dev/sd"
-                        "label_type"      : "gpt"
+                        "partition_table"   : scope.edit_obj.idx
+                        "disc"              : "/dev/sd"
+                        "label_type"        : "gpt"
                     }
                 scope.sys_edit = new part_edit_mixin(scope, $templateCache, $compile, $modal, Restangular)
                 scope.sys_edit.create_template = "partition_sys.html"
@@ -148,17 +167,6 @@ partition_table_module.directive("disklayout", ($compile, $modal, $templateCache
                         "mount_options" : "defaults"
                         "partition_hex" : "82"
                     }
-                scope.valid_label_types = () ->
-                    return [
-                        {
-                            "label" : "msdos",
-                            "info_string" : "MSDOS",
-                        },
-                        {
-                            "label" : "gpt",
-                            "info_string" : "GPT",
-                        },
-                    ]
                 element.replaceWith($compile($templateCache.get("part_disc.html"))(scope))
                 #element.append($compile($templateCache.get("part_disc.html"))(scope))
     }

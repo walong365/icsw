@@ -23,22 +23,15 @@
 
 """ helper functions for the init.at clustersoftware """
 
-from config_tools import server_check, device_with_config, router_object
 from django.conf import settings
-from django.core.cache import cache
-from django.db.models import Q
 from django.http import HttpResponse
-from initat.cluster.backbone.models import device
 from initat.cluster.backbone import routing
 from lxml import etree # @UnresolvedImports
 from lxml.builder import E # @UnresolvedImports
 import email.mime
-import json
-import logging
 import logging_tools
 import net_tools
 import process_tools
-import server_command
 import smtplib
 
 class xml_response(object):

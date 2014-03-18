@@ -263,7 +263,7 @@ class get_file_content(View):
             result = contact_server(request, "server", srv_com, timeout=60, connection_id="file_fetch_%s" % (str(job_id)))
             for cur_file in result.xpath(".//ns:file", smart_strings=False):
                 # print etree.tostring(cur_file)
-                if cur_file.attrib["error"] == "1":
+                if cur_file.attrib.get("error", "1") == "1":
                     request.xml_response.error("error reading %s (job %s): %s" % (
                         cur_file.attrib["name"],
                         job_id,

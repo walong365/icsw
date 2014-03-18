@@ -788,6 +788,8 @@ class angular_edit_mixin
         @create_or_edit(event, false, obj)
     modify_data_before_put: (data) =>
         # dummy, override in app
+    modify_data_after_post: (data) =>
+        # dummy, override in app
     create_or_edit : (event, create_or_edit, obj) =>
         @scope._edit_obj = obj
         @scope.pre_edit_obj = angular.copy(obj)
@@ -831,7 +833,8 @@ class angular_edit_mixin
                 #@scope._edit_obj.pnum = 99
                 #console.log @scope._edit_obj, @scope.pre_edit_obj
         @scope.modal_active = false
-        @edit_div.remove()
+        if @edit_div
+            @edit_div.remove()
     form_error : (field_name) =>
         if @scope.form[field_name].$valid
             return ""
@@ -847,6 +850,7 @@ class angular_edit_mixin
                                 @create_list.push(new_data)
                             else
                                 @create_list.splice(0, 0, new_data)
+                        @modify_data_after_post(new_data)
                         @close_modal()
                         @_modal_close_ok = true
                         if @use_promise

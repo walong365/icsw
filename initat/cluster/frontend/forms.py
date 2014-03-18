@@ -829,7 +829,7 @@ class partition_form(ModelForm):
             ),
             Fieldset(
                 "Mount options",
-                Field("mountpoint"),
+                Field("mountpoint", wrapper_ng_show="partition_need_mountpoint(_edit_obj)"),
                 Field("mount_options"),
                 Field("bootable"),
                 Field("fs_freq", min=0, max=1),
@@ -1666,13 +1666,13 @@ class package_action_form(Form):
     helper.field_class = 'col-sm-7'
     helper.ng_model = "edit_obj"
     target_state = ChoiceField()
-    nodeps_flag = ChoiceField()
-    force_flag = ChoiceField()
-    image_dep = ChoiceField()
-    image_change = BooleanField(label="change image list")
+    nodeps_flag = ChoiceField(required=False)
+    force_flag = ChoiceField(required=False)
+    image_dep = ChoiceField(required=False)
+    image_change = BooleanField(label="change image list", required=False)
     image_list = ModelMultipleChoiceField(queryset=empty_query_set(), required=False)
-    kernel_dep = ChoiceField()
-    kernel_change = BooleanField(label="change kernel list")
+    kernel_dep = ChoiceField(required=False)
+    kernel_change = BooleanField(label="change kernel list", required=False)
     kernel_list = ModelMultipleChoiceField(queryset=empty_query_set(), required=False)
     helper.layout = Layout(
         HTML("<h2>PDC action</h2>"),
@@ -1860,7 +1860,6 @@ class device_tree_many_form(ModelForm):
                         ),
                         css_class="row",
                     ) for f_name, ng_options, f_options in el_list
-
                 ]
             )
         )
@@ -2539,6 +2538,95 @@ class boot_single_form(Form):
         for clear_f in ["target_state", "partition_table", "new_image", "new_kernel", "stage1_flavour"]:
             self.fields[clear_f].queryset = empty_query_set()
             self.fields[clear_f].empty_label = "not set"
+
+class boot_many_form(Form):
+    helper = FormHelper()
+    helper.form_id = "form"
+    helper.form_name = "form"
+    helper.form_class = 'form-horizontal'
+    helper.label_class = 'col-sm-4'
+    helper.field_class = 'col-sm-7'
+    helper.ng_model = "_edit_obj"
+    helper.ng_submit = "cur_edit.modify(this)"
+    target_state = ModelChoiceField(queryset=empty_query_set(), required=False)
+    new_kernel = ModelChoiceField(queryset=empty_query_set(), required=False)
+    new_image = ModelChoiceField(queryset=empty_query_set(), required=False)
+    stage1_flavour = ModelChoiceField(queryset=empty_query_set(), required=False)
+    partition_table = ModelChoiceField(queryset=empty_query_set(), required=False)
+    kernel_append = CharField(max_length=384, required=False)
+    macaddr = CharField(max_length=177, required=False)
+    driver = CharField(max_length=384, required=False)
+    dhcp_mac = BooleanField(required=False, label="Greedy")
+    dhcp_write = BooleanField(required=False)
+    change_target_state = BooleanField(required=False, label="target state")
+    change_new_kernel = BooleanField(required=False, label="kernel")
+    change_new_image = BooleanField(required=False, label="image")
+    change_partition_table = BooleanField(required=False, label="partition")
+    change_dhcp_mac = BooleanField(required=False, label="bootdevice")
+    helper.layout = Layout(
+        HTML("<h2>Change boot settings of {%verbatim %}{{ device_info_str }}{% endverbatim %}</h2>"),
+    )
+    for fs_string, el_list in [
+        (
+            "Basic settings", [
+                ("target_state", "value.idx as value.info for value in valid_states", {"chosen" : True}, "t", "target_state"),
+                ("new_kernel", "value.idx as value.name for value in kernels", {"chosen" : True}, "k", "new_kernel"),
+                ("stage1_flavour", "value.val as value.name for value in stage1_flavours", {"chosen" : True}, "k", ""),
+                ("kernel_append", None, {}, "k", ""),
+                ("new_image", "value.idx as value.name for value in images", {"chosen" : True}, "i", "new_image"),
+                ("partition_table", "value.idx as value.name for value in partitions", {"chosen" : True}, "p", "partition_table"),
+                ("dhcp_mac", None, {}, "b", "dhcp_mac"),
+                ("dhcp_write", None, {}, "b", ""),
+                ("macaddr", None, {}, "b", ""),
+                ("driver", None, {}, "b", ""),
+            ]
+        ),
+        ]:
+        helper.layout.append(
+            Fieldset(
+                fs_string,
+                *[
+                    Div(
+                        Div(
+                            Field(
+                               "change_%s" % (en_field),
+                               wrapper_ng_show="bo_enabled['%s']" % (en_flag),
+                            ) if en_field else HTML(""),
+                            css_class="col-md-3",
+                        ),
+                        Div(
+                            Field(
+                                f_name,
+                                wrapper_ng_show="_edit_obj.change_%s && bo_enabled['%s']" % (
+                                    {
+                                        "k" : "new_kernel",
+                                        "i" : "new_image",
+                                        "p" : "partition_table",
+                                        "b" : "dhcp_mac",
+                                        "t" : "target_state",
+                                    }[en_flag],
+                                    en_flag,
+                                ),
+                                ng_options=ng_options if ng_options else None,
+                                **f_options),
+                            css_class="col-md-9",
+                        ),
+                        css_class="row",
+                    ) for f_name, ng_options, f_options, en_flag, en_field in el_list
+                ]
+            )
+        )
+    helper.layout.append(
+        FormActions(
+            Submit("submit", "Modify many", css_class="primaryAction"),
+        ),
+    )
+    def __init__(self, *args, **kwargs):
+        Form.__init__(self, *args, **kwargs)
+        for clear_f in ["target_state", "partition_table", "new_image", "new_kernel", "stage1_flavour"]:
+            self.fields[clear_f].queryset = empty_query_set()
+            self.fields[clear_f].empty_label = "not set"
+            self.fields[clear_f].required = False
 
 class device_network_scan_form(Form):
     helper = FormHelper()

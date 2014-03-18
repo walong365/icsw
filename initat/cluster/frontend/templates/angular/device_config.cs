@@ -277,8 +277,8 @@ device_config_module.controller("config_ctrl", ["$scope", "$compile", "$filter",
                     $scope.all_devices.push(entry)
                 $scope.configs = data[1]
                 $scope.config_catalogs = data[2]
-                $scope.new_filter_set($scope.name_filter, false)
                 $scope.init_devices(pre_sel)
+                $scope.new_filter_set($scope.name_filter, false)
             )
         $scope.create_config = (cur_cat) ->
             new_obj = {
@@ -362,6 +362,7 @@ device_config_module.controller("config_ctrl", ["$scope", "$compile", "$filter",
                 if $scope.only_selected and entry.show
                     sel = false
                     for cur_dev in $scope.all_devices
+                        #console.log cur_dev.full_name, cur_dev.local_selected
                         if entry.idx in cur_dev.local_selected
                             sel = true
                     entry.show = sel

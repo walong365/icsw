@@ -4,8 +4,6 @@
 
 {% inlinecoffeescript %}
 
-root = exports ? this
-
 {% verbatim %}
 
 DT_FORM = "dd, D. MMM YYYY HH:mm:ss"
@@ -80,7 +78,7 @@ device_boot_template = """
 
 device_row_template = """
     <td>{{ dev.device_group_name }}</td>
-    <td>{{ dev.full_name }}</td>
+    <td ng-class="get_device_name_class(dev)">{{ dev.full_name }} ({{ get_bootserver_info(dev) }})</td>
     <td><input type="button" ng-class="get_dev_sel_class(dev)" ng-click="toggle_dev_sel(dev)" value="sel"></button></td>
     <td ng-class="dev.recvreq_state">{{ dev.recvreq_str }}</td>
     <td ng-class="dev.network_state">{{ dev.network }}</td>
@@ -206,6 +204,16 @@ device_boot_module.controller("boot_ctrl", ["$scope", "$compile", "$filter", "$t
                 return "btn btn-xs btn-success"
             else
                 return "btn btn-xs"
+        $scope.get_device_name_class = (dev) ->
+            if dev.bootserver of $scope.mother_servers
+                return ""
+            else
+                return "warning"
+        $scope.get_bootserver_info = (dev) ->
+            if dev.bootserver of $scope.mother_servers
+                return $scope.mother_servers[dev.bootserver].full_name
+            else
+                return "N/A"
         $scope.toggle_dev_sel = (dev) ->
             dev.selected = !dev.selected
             if dev.selected
@@ -214,7 +222,6 @@ device_boot_module.controller("boot_ctrl", ["$scope", "$compile", "$filter", "$t
                 $scope.num_selected--
         # mixins
         $scope.device_edit = new angular_edit_mixin($scope, $templateCache, $compile, $modal, Restangular, $q)
-        $scope.device_edit.edit_template = "boot_single_form.html"
         $scope.device_edit.modify_rest_url = "{% url 'boot:update_device' 1 %}".slice(1).slice(0, -2)
         $scope.device_edit.use_promise = true
         $scope.device_edit.modify_data_before_put = (data) ->
@@ -256,6 +263,7 @@ device_boot_module.controller("boot_ctrl", ["$scope", "$compile", "$filter", "$t
                 restDataSource.reload(["{% url 'rest:log_status_list' %}", {}])
                 # 8
                 restDataSource.reload(["{% url 'rest:user_list' %}", {}])
+                restDataSource.reload(["{% url 'rest:device_tree_list' %}", {"all_mother_servers" : true}])
             ]
             $q.all(wait_list).then((data) ->
                 $scope.devices = (dev for dev in data[0])
@@ -279,6 +287,7 @@ device_boot_module.controller("boot_ctrl", ["$scope", "$compile", "$filter", "$t
                 $scope.kernel_lut = build_lut($scope.kernels)
                 $scope.image_lut = build_lut($scope.images)
                 $scope.partition_lut = build_lut($scope.partitions)
+                $scope.mother_servers = build_lut(data[9])
                 if $scope.update_info_timeout
                     $timeout.cancel($scope.update_info_timeout)
                 prod_nets = (entry for entry in data[5] when entry.network_type_identifier == "p")
@@ -412,6 +421,7 @@ device_boot_module.controller("boot_ctrl", ["$scope", "$compile", "$filter", "$t
                     parse_xml_response(xml)
         $scope.modify_device = (dev, event) ->
             $scope.device_info_str = dev.full_name
+            $scope.device_edit.edit_template = "boot_single_form.html"
             dev.bo_enabled = $scope.bo_enabled
             if dev.bootnetdevice
                 dev.macaddr = dev.bootnetdevice.macaddr
@@ -424,20 +434,23 @@ device_boot_module.controller("boot_ctrl", ["$scope", "$compile", "$filter", "$t
             )
         $scope.modify_many = (event) ->
             $scope.device_info_str = "#{$scope.num_selected} devices"
+            $scope.device_edit.edit_template = "boot_many_form.html"
+            sel_devices = (dev for dev in $scope.devices when dev.selected)
             dev = {
                 "idx" : 0
                 "bo_enabled" : $scope.bo_enabled
                 # not really needed because bootnetdevice is not set
                 "macaddr" : ""
-                "driver" : ""
-                "partition_table" : null
-                "new_image" : null
-                "new_kernel" : null
-                "stage1_flavour" : "cpio"
-                "kernel_append" : ""
-                "dhcp_mac" : false
-                "dhcp_write" : false
-                "device_pks" : (dev.idx for dev in $scope.devices when dev.selected)
+                "target_state" : (dev.target_state for dev in sel_devices)[0]
+                "driver" : (dev.bootnetdevice.driver for dev in sel_devices when dev.bootnetdevice).concat((""))[0]
+                "partition_table" : (dev.partition_table for dev in sel_devices)[0]
+                "new_image" : (dev.new_image for dev in sel_devices)[0]
+                "new_kernel" : (dev.new_kernel for dev in sel_devices)[0]
+                "stage1_flavour" : (dev.stage1_flavour for dev in sel_devices).concat(("cpio"))[0]
+                "kernel_append" : (dev.kernel_append for dev in sel_devices).concat((""))[0]
+                "dhcp_mac" : (dev.dhcp_mac for dev in sel_devices).concat((""))[0]
+                "dhcp_write" : (dev.dhcp_write for dev in sel_devices).concat((""))[0]
+                "device_pks" : (dev.idx for dev in sel_devices)
             }
             $scope.device_edit.edit(dev, event).then(
                 (mod_dev) ->

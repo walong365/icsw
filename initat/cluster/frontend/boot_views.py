@@ -32,7 +32,7 @@ from django.views.generic import View
 from initat.cluster.backbone.models import device, cd_connection, cluster_timezone, \
      kernel, image, partition_table, status, network, devicelog, device_serializer_boot
 from initat.cluster.backbone.render import render_me
-from initat.cluster.frontend.forms import boot_form, boot_single_form
+from initat.cluster.frontend.forms import boot_form, boot_single_form, boot_many_form
 from initat.cluster.frontend.helper_functions import contact_server, xml_wrapper
 from rest_framework.authentication import SessionAuthentication
 from rest_framework.permissions import IsAuthenticated
@@ -54,6 +54,7 @@ class show_boot(View):
             request, "boot_overview.html", {
                 "boot_form" : boot_form(),
                 "boot_single_form" : boot_single_form(),
+                "boot_many_form" : boot_many_form(),
             }
         )()
 
@@ -119,6 +120,13 @@ class update_device(APIView):
     authentication_classes = (SessionAuthentication,)
     permission_classes = (IsAuthenticated,)
     def put(self, request, pk):
+        _change_lut = {
+            "b" : "change_dhcp_mac",
+            "t" : "change_target_state",
+            "p" : "change_partition_table",
+            "i" : "change_new_image",
+            "k" : "change_new_kernel",
+        }
         dev_data = request.DATA
         # import pprint
         # pprint.pprint(dev_data)
@@ -128,8 +136,15 @@ class update_device(APIView):
         _all_update_list = set()
         if int(pk):
             pk_list = [int(pk)]
+            # many = False
         else:
             pk_list = dev_data["device_pks"]
+            # many = True
+            # update enabled list
+            for short_key in _en.iterkeys():
+                if short_key in _change_lut:
+                    if not dev_data.get(_change_lut[short_key], False):
+                        _en[short_key] = False
         with transaction.atomic():
             all_devs = list(device.objects.filter(Q(pk__in=pk_list)) \
                 .select_related("domain_tree_node", "device_group") \
@@ -180,7 +195,9 @@ class update_device(APIView):
                         new_driver, new_macaddr = (dev_data["driver"], dev_data["macaddr"])
                         if new_driver != cur_dev.bootnetdevice.driver or new_macaddr != cur_dev.bootnetdevice.macaddr:
                             cur_dev.bootnetdevice.driver = new_driver
-                            cur_dev.bootnetdevice.macaddr = new_macaddr
+                            # ignore empty macaddr (for many changes)
+                            if new_macaddr.strip():
+                                cur_dev.bootnetdevice.macaddr = new_macaddr
                             _bc = True
                     if _bc:
                         update_list.add("bootdevice")
