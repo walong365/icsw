@@ -314,8 +314,9 @@ def partition_pre_save(sender, **kwargs):
         _check_integer(cur_inst, "warn_threshold", none_to_zero=True, min_val=0, max_val=100)
         _check_integer(cur_inst, "crit_threshold", none_to_zero=True, min_val=0, max_val=100)
         # mountpoint
-        if cur_inst.mountpoint.strip() and not cur_inst.mountpoint.startswith("/"):
-            raise ValidationError("mountpoint must start with '/'")
+        if cur_inst.partition_fs.need_mountpoint():
+            if cur_inst.mountpoint.strip() and not cur_inst.mountpoint.startswith("/"):
+                raise ValidationError("mountpoint must start with '/'")
         # fs_freq
         _check_integer(cur_inst, "fs_freq", min_val=0, max_val=1)
         # fs_passno

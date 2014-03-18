@@ -161,6 +161,11 @@ if DEBUG:
     STATIC_ROOT = STATIC_ROOT_DEBUG
 else:
     STATIC_ROOT = "/srv/www/htdocs/icsw/static"
+if not os.path.isdir(STATIC_ROOT_DEBUG):
+    try:
+        os.makedirs(STATIC_ROOT_DEBUG)
+    except:
+        pass
 # STATIC_ROOT = "/opt/python-init/lib/python2.7/site-packages/initat/cluster/"
 
 # URL prefix for static files.

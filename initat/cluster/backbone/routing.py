@@ -93,6 +93,9 @@ class srv_type_routing(object):
     @property
     def local_device(self):
         return self._local_device
+    @property
+    def not_bootserver_devices(self):
+        return self.__no_bootserver_devices
     def _build_resolv_dict(self):
         # local device
         _myself = server_check(server_type="", fetch_network_info=True)
@@ -168,6 +171,7 @@ class srv_type_routing(object):
         else:
             return [(None, in_com)]
     def _split_send(self, srv_type, in_com):
+        self.__no_bootserver_devices = set()
         cur_devs = in_com.xpath(".//ns:devices/ns:devices/ns:device")
         _dev_dict = {}
         for _dev in cur_devs:
@@ -179,6 +183,7 @@ class srv_type_routing(object):
             if _value[1]:
                 _cl_dict.setdefault(_value[1], []).append(_value[0])
             else:
+                self.__no_bootserver_devices.add(_value[0])
                 self.logger.error("device %d (%s) has no bootserver associated" % (
                     _value[0],
                     _value[2],
@@ -215,7 +220,7 @@ class srv_type_routing(object):
                 else:
                     log_lines.append((logging_tools.LOG_LEVEL_ERROR, _err_str))
         else:
-            # TODO: check if result is et
+            # TODO: check if result is set
             if log_result:
                 log_str, log_level = result.get_log_tuple()
                 if request:
