@@ -16,7 +16,7 @@ cp -a angular.min.js.map ${TARG_DIR}/
 git add ${TARG_DIR}/angular-${ANG_VERS}.min.js
 git add ${TARG_DIR}/angular.min.js.map
 
-for cm in cookies resource route sanitize ; do
+for cm in cookies resource route sanitize animate ; do
     cp -a angular-${cm}.min.js* ${TARG_DIR}
 done
 
