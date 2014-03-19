@@ -395,6 +395,7 @@ PIPELINE_JS = {
             "js/libs/angular-resource.min.js",
             "js/libs/angular-cookies.min.js",
             "js/libs/angular-sanitize.min.js",
+            "js/libs/angular-animate.min.js",
             "js/libs/angular-chosen-1.0.5/chosen.js",
             "js/libs/restangular.min.js",
             "js/libs/ui-bootstrap.min.js",
