@@ -358,7 +358,7 @@ class main_process(threading_tools.process_pool):
             scr1_name = record_name[8:].replace("\.", "#").replace(".", "/").replace("#", ".")
             for path_part in os.path.dirname(scr1_name).split(os.path.sep):
                 if path_part:
-                    path_part = "%{}.d".format(path_part)
+                    path_part = "{}.d".format(path_part)
                     if sub_dirs:
                         sub_dirs.append(os.path.join(sub_dirs[-1], path_part))
                     else:
