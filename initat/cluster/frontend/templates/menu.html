@@ -83,6 +83,13 @@
     </div>
     <ul class="nav navbar-nav navbar-right">
         <li>
+            <p class="navbar-text">
+                <button type="button" class="btn btn-success btn-xs" title="show cluster information" ng-click="redirect_to_info()">
+                    <span class="glyphicon glyphicon-info-sign"></span>
+                </button>
+            </p>
+        </li>
+        <li>
             <p class="navbar-text visible-md visible-lg"">
                 {% verbatim %}{{ cur_time }}{% endverbatim %}, 
                 <span title="{{ user }}">user '{{ user.login }}'</span>{% ifnotequal user.login request.session.login_name %} (via alias {{ request.session.login_name }}){% endifnotequal %}
@@ -163,6 +170,9 @@ menu_controller = menu_module.controller("menu_base", ["$scope", "$timeout", "$w
                     )
         $scope.redirect_to_init = () ->
             window.location = "http://www.init.at"
+            return false
+        $scope.redirect_to_info = () ->
+            window.location = "{% url 'main:info_page' %}"
             return false
         $scope.show_time()
         #$scope.update_progress_bar()

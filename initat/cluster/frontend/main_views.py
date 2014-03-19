@@ -27,7 +27,11 @@ from django.contrib.auth.decorators import login_required
 from django.utils.decorators import method_decorator
 from django.views.generic import View
 from initat.cluster.backbone.render import render_me
+from initat.cluster.backbone import routing
+from initat.cluster.frontend.helper_functions import contact_server, xml_wrapper
+import server_command
 import logging
+import json
 
 logger = logging.getLogger("cluster.main")
 
@@ -40,4 +44,31 @@ class permissions_denied(View):
     @method_decorator(login_required)
     def get(self, request):
         return render_me(request, "permission_denied.html")()
+
+class info_page(View):
+    @method_decorator(login_required)
+    def get(self, request):
+        cur_routing = routing.srv_type_routing(force=True)
+        return render_me(request, "info_page.html", {
+            "routing" : json.dumps(cur_routing.resolv_dict),
+            "local_device" : unicode(cur_routing.local_device.full_name),
+        })()
+
+class get_server_info(View):
+    @method_decorator(login_required)
+    @method_decorator(xml_wrapper)
+    def post(self, request):
+        cur_routing = routing.srv_type_routing()
+        _server_list = []
+        for _server in cur_routing.resolv_dict.get("server", []):
+            srv_com = server_command.srv_command(command="server_status")
+            _res = contact_server(request, "server", srv_com, timeout=10, connection_id="server_status") # , target_server_id=_server[3])
+            if _res.tree is not None:
+                # dirty stuff
+                _res["command"].attrib["server_name"] = _server[0]
+                _server_list.append(_res.tree)
+            else:
+                srv_com["command"].attrib["server_name"] = _server[0]
+                _server_list.append(srv_com.tree)
+        request.xml_response["result"] = _server_list
 

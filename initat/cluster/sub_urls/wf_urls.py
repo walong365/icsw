@@ -138,8 +138,10 @@ pack_patterns = patterns(
 
 main_patterns = patterns(
     "initat.cluster.frontend",
-    url(r"index$" , main_views.index.as_view(), name="index"),
-    url(r"permission$" , main_views.permissions_denied.as_view(), name="permission_denied"),
+    url(r"^index$"      , main_views.index.as_view()             , name="index"),
+    url(r"^permission$" , main_views.permissions_denied.as_view(), name="permission_denied"),
+    url(r"^info$"       , main_views.info_page.as_view()         , name="info_page"),
+    url(r"^server_info$", main_views.get_server_info.as_view()   , name="get_server_info"),
 )
 
 rrd_patterns = patterns(

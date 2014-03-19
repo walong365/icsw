@@ -52,9 +52,9 @@ class show_boot(View):
     def get(self, request):
         return render_me(
             request, "boot_overview.html", {
-                "boot_form" : boot_form(),
+                "boot_form"        : boot_form(),
                 "boot_single_form" : boot_single_form(),
-                "boot_many_form" : boot_many_form(),
+                "boot_many_form"   : boot_many_form(),
             }
         )()
 

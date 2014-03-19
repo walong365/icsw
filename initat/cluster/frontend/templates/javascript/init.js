@@ -53,7 +53,7 @@ class ajax_struct
 my_ajax_struct = new ajax_struct("div#ajax_info")
 
 call_ajax = (in_dict) ->
-    default_ajax_dict = { 
+    default_ajax_dict = 
         type       : "POST"
         timeout    : 50000
         dataType   : "xml"
@@ -73,8 +73,6 @@ call_ajax = (in_dict) ->
                     # if status is != 0 an error has occured
                     alert("*** #{status} ***\nxhr.status : #{xhr.status}\nxhr.statusText : #{xhr.statusText}")
             return false
-    }
-    
     for key of default_ajax_dict
         if key not of in_dict
             in_dict[key] = default_ajax_dict[key]

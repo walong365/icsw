@@ -223,7 +223,7 @@ def contact_server(request, srv_type, send_com, **kwargs):
     # simple mapping
     cur_router = routing.srv_type_routing()
     if cur_router.has_type(srv_type):
-        conn_str = cur_router.get_connection_string(srv_type)
+        conn_str = cur_router.get_connection_string(srv_type, server_id=kwargs.get("target_server_id", None))
         # print send_com.pretty_print()
         if request.user:
             send_com["user_id"] = request.user.pk
