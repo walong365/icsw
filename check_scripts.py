@@ -332,7 +332,7 @@ def check_system(opt_ns):
     return instance_xml
 
 def get_default_ns():
-    def_ns = argparse.Namespace(all=True, server=[], node=[], runlevel=True, memory=True, database=True, pid=True, time=True, thread=True)
+    def_ns = argparse.Namespace(all=True, instance=[], system=[], server=[], node=[], runlevel=True, memory=True, database=True, pid=True, time=True, thread=True)
     return def_ns
 
 def show_xml(opt_ns, res_xml, iter=0):
