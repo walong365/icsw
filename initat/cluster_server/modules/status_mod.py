@@ -27,6 +27,7 @@ import cluster_location
 import cs_base_class
 import logging_tools
 import server_command
+import process_tools
 
 class status(cs_base_class.server_com):
     class Meta:
@@ -59,3 +60,27 @@ class server_status(cs_base_class.server_com):
             "checked system",
             )
 
+class server_control(cs_base_class.server_com):
+    def _call(self, cur_inst):
+        cmd = cur_inst.srv_com["*control"]
+        instance = cur_inst.srv_com["*instance"]
+        cur_inst.log("command {} for instance {}".format(cmd, instance))
+        inst_xml = check_scripts.get_instance_xml().find("instance[@name='{}']".format(instance))
+        if inst_xml is None:
+            cur_inst.srv_com.set_result(
+                "instance {} not found".format(instance),
+                server_command.SRV_REPLY_STATE_ERROR,
+                )
+        else:
+            if "init_script_name" in inst_xml.attrib:
+                _at_cmd = "/etc/init.d/{} {}".format(inst_xml.get("init_script_name"), cmd)
+                cur_inst.log("at command is '{}'".format(_at_cmd))
+                process_tools.submit_at_command(_at_cmd)
+                cur_inst.srv_com.set_result(
+                    "sent {} to instance {}".format(cmd, instance)
+                )
+            else:
+                cur_inst.srv_com.set_result(
+                    "instance {} has not init script".format(instance),
+                    server_command.SRV_REPLY_STATE_ERROR,
+                )
