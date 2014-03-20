@@ -62,15 +62,15 @@ class get_server_info(View):
         _server_list = []
         for _server in cur_routing.resolv_dict.get("server", []):
             srv_com = server_command.srv_command(command="server_status")
-            _res = contact_server(request, "server", srv_com, timeout=10, connection_id="server_status", target_server_id=_server[3])
+            _res = contact_server(request, "server", srv_com, timeout=10, connection_id="server_status", target_server_id=_server[2])
             if _res.tree is not None:
                 # dirty stuff
                 _res["command"].attrib["server_name"] = _server[0]
-                _res["command"].attrib["server_id"] = "{:d}".format(_server[3])
+                _res["command"].attrib["server_id"] = "{:d}".format(_server[2])
                 _server_list.append(_res.tree)
             else:
                 srv_com["command"].attrib["server_name"] = _server[0]
-                srv_com["command"].attrib["server_id"] = "{:d}".format(_server[3])
+                srv_com["command"].attrib["server_id"] = "{:d}".format(_server[2])
                 _server_list.append(srv_com.tree)
         request.xml_response["result"] = _server_list
 
