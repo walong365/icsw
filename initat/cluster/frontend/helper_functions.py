@@ -223,7 +223,6 @@ def contact_server(request, srv_type, send_com, **kwargs):
     # simple mapping
     cur_router = routing.srv_type_routing()
     if cur_router.has_type(srv_type):
-        conn_str = cur_router.get_connection_string(srv_type, server_id=kwargs.get("target_server_id", None))
         # print send_com.pretty_print()
         if request.user:
             send_com["user_id"] = request.user.pk
@@ -234,8 +233,12 @@ def contact_server(request, srv_type, send_com, **kwargs):
         if send_list:
             _conn_strs = []
             for _send_id, _send_com in send_list:
-                _conn_str = cur_router.get_connection_string(srv_type, server_id=_send_id)
-                _conn_strs.append(conn_str)
+                if _send_id is None:
+                    # no split send, decide based on target_server_id
+                    _conn_str = cur_router.get_connection_string(srv_type, server_id=kwargs.get("target_server_id", None))
+                else:
+                    _conn_str = cur_router.get_connection_string(srv_type, server_id=_send_id)
+                _conn_strs.append(_conn_str)
                 _conn.add_connection(_conn_str, _send_com, multi=True)
             log_result = kwargs.get("log_result", True)
             log_error = kwargs.get("log_error", True)
