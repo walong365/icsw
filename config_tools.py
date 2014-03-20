@@ -514,7 +514,10 @@ class server_check(object):
         self._fetch_network_info()
         other._fetch_network_info()
         # format of return list: value, network_id, (self.netdevice_idx, [list of self.ips]), (other.netdevice_idx, [list of other.ips])
-        ret_list = []
+        # routing list, common network identifiers
+        c_ret_list = []
+        # routing list, non-common network identifier
+        nc_ret_list = []
         if self.netdevice_idx_list and other.netdevice_idx_list:
             # skip if any of both netdevice_idx_lists are empty
             # get peer_information
@@ -534,7 +537,7 @@ class server_check(object):
                             if filter_ip not in source_ip_lut[act_id] and filter_ip not in dest_ip_lut[act_id]:
                                 add_actual = False
                         if add_actual:
-                            ret_list.append((penalty,
+                            c_ret_list.append((penalty,
                                              act_id,
                                              (s_nd_pk, source_ip_lut[act_id]),
                                              (d_nd_pk, dest_ip_lut[act_id])))
@@ -547,11 +550,11 @@ class server_check(object):
                                     if filter_ip not in source_ip_lut[src_id] and filter_ip not in dest_ip_lut[dst_id]:
                                         add_actual = False
                                 if add_actual:
-                                    ret_list.append((penalty,
+                                    nc_ret_list.append((penalty,
                                                      dst_id,
                                                      (s_nd_pk, source_ip_lut[src_id]),
                                                      (d_nd_pk, dest_ip_lut[dst_id])))
-        return ret_list
+        return sorted(c_ret_list) + sorted(nc_ret_list)
     def report(self):
         # print self.effective_device
         if self.effective_device:
