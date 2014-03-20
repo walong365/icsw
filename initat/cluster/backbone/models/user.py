@@ -598,6 +598,7 @@ class user(models.Model):
     class CSW_Meta:
         permissions = (
             ("admin"      , "Administrator", True),
+            ("server_control", "start and stop server processes", True),
             ("modify_tree", "modify device tree", False),
             ("modify_domain_name_tree", "modify domain name tree", False),
             ("modify_category_tree", "modify category tree", False),
