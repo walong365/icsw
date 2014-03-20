@@ -161,7 +161,7 @@ INSTANCE_XML = """
 </instances>
 """
 
-def check_system(opt_ns):
+def get_instance_xml():
     instance_xml = etree.fromstring(INSTANCE_XML)
     # check for additional instances
     if os.path.isdir(EXTRA_SERVER_DIR):
@@ -193,6 +193,10 @@ def check_system(opt_ns):
             ]:
             if not key in cur_el.attrib:
                 cur_el.attrib[key] = def_value
+    return instance_xml
+
+def check_system(opt_ns):
+    instance_xml = get_instance_xml()
     set_all_servers = True if (opt_ns.server == ["ALL"] or opt_ns.instance == ["ALL"]) else False
     set_all_nodes = True if (opt_ns.node == ["ALL"] or opt_ns.instance == ["ALL"]) else False
     set_all_system = True if (opt_ns.system == ["ALL"] or opt_ns.instance == ["ALL"]) else False
@@ -220,6 +224,7 @@ def check_system(opt_ns):
     else:
         dev_config = None
     for entry in instance_xml.findall("instance[@to_check='1']"):
+        name = entry.attrib["name"]
         entry.attrib["checked"] = "1"
         if entry.attrib["init_script_name"] in stat_dict:
             entry.append(
@@ -266,24 +271,39 @@ def check_system(opt_ns):
                     num_started = len(act_pids)
                     if diff_threads:
                         act_state = 7
-                        num_found = num_started + diff_threads
+                        num_found = num_started
+                        num_diff = diff_threads
                     else:
                         act_state = 0
                         num_found = num_started
+                        num_diff = 0
                     # print ms_block.pids, ms_block.pid_check_string
                 else:
                     pid_time = os.stat(pid_file_name)[stat.ST_CTIME]
                     act_pids = [int(line.strip()) for line in file(pid_file_name, "r").read().split("\n") if line.strip().isdigit()]
                     act_state, num_started, num_found = check_processes(name, act_pids, pid_thread_dict, True if int(entry.attrib["any_threads_ok"]) else False)
                     diff_dict = {}
-                entry.append(E.state_info(*[E.diff_info(pid="%d" % (key), diff="%d" % (value)) for key, value in diff_dict.iteritems()], num_started="%d" % (num_started), num_found="%d" % (num_found), pid_time="%d" % (pid_time), state="%d" % (act_state)))
+                entry.append(
+                    E.state_info(
+                        *[
+                            E.diff_info(
+                                pid="%d" % (key),
+                                diff="%d" % (value)
+                            ) for key, value in diff_dict.iteritems()],
+                            num_started="%d" % (num_started),
+                            num_found="%d" % (num_found),
+                            num_diff="%d" % (num_diff),
+                            pid_time="%d" % (pid_time),
+                            state="%d" % (act_state)
+                        )
+                    )
             else:
                 if os.path.isfile(init_script_name):
                     if pid_file_name == "":
                         found_procs = {key : (value, pid_thread_dict.get(value["pid"], 1)) for key, value in act_proc_dict.iteritems() if value["name"] == entry.attrib["process_name"]}
                         act_pids = sum([[key] * value[1] for key, value in found_procs.iteritems()], [])
                         threads_found = sum([value[1] for value in found_procs.itervalues()])
-                        entry.append(E.state_info(num_started="%d" % (threads_found), num_found="%d" % (threads_found), state="0"))
+                        entry.append(E.state_info(num_started="%d" % (threads_found), num_found="%d" % (threads_found), num_diff="0", state="0"))
                     else:
                         entry.append(E.state_info("no threads", state="7"))
                 else:
@@ -359,9 +379,10 @@ def show_xml(opt_ns, res_xml, iter=0):
             if "num_started" not in s_info.attrib:
                 cur_line.append(logging_tools.form_entry(s_info.text))
             else:
-                num_started, num_found, pid_time, any_ok = (
+                num_started, num_found, num_diff, pid_time, any_ok = (
                     int(s_info.get("num_started")),
                     int(s_info.get("num_found")),
+                    int(s_info.get("num_diff")),
                     int(s_info.get("pid_time", "0")),
                     True if int(act_struct.attrib["any_threads_ok"]) else False)
                 # print etree.tostring(act_struct, pretty_print=True)
@@ -373,16 +394,15 @@ def show_xml(opt_ns, res_xml, iter=0):
                         diff_str = ", [diff: %s]" % (", ".join(["%d: %d" % (int(cur_diff.attrib["pid"]), int(cur_diff.attrib["diff"])) for cur_diff in diffs_found]))
                     else:
                         diff_str = ""
-                    num_miss = num_started - num_found
-                    if num_miss > 0:
+                    if num_diff < 0:
                         ret_str = "%s %s missing%s" % (
-                            logging_tools.get_plural("thread", num_miss),
-                            num_miss == 1 and "is" or "are",
+                            logging_tools.get_plural("thread", -num_diff),
+                            num_diff == 1 and "is" or "are",
                             diff_str,
                             )
-                    elif num_miss < 0:
+                    elif num_diff > 0:
                         ret_str = "%s too much%s" % (
-                            logging_tools.get_plural("thread", -num_miss),
+                            logging_tools.get_plural("thread", num_diff),
                             diff_str,
                         )
                     else:
