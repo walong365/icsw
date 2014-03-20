@@ -88,7 +88,7 @@
                     <span class="glyphicon glyphicon-info-sign" style="font-size:12px;"></span>
                 </button>
                 &nbsp;
-                <button type="button" class="btn btn-primary btn-xs" title="show cluster handbook" ng-click="redirect_to_handbook()">
+                <button ng-show="HANDBOOK_PRESENT" type="button" class="btn btn-primary btn-xs" title="show cluster handbook" ng-click="redirect_to_handbook()">
                     <span class="glyphicon glyphicon-question-sign" style="font-size:12px;"></span>
                 </button>
             </p>
@@ -128,6 +128,7 @@ menu_controller = menu_module.controller("menu_base", ["$scope", "$timeout", "$w
         $scope.CLUSTER_LICENSE = $window.CLUSTER_LICENSE
         $scope.GLOBAL_PERMISSIONS = $window.GLOBAL_PERMISSIONS
         $scope.OBJECT_PERMISSIONS = $window.OBJECT_PERMISSIONS
+        $scope.HANDBOOK_PRESENT = {% if settings.HANDBOOK_PRESENT %}1{% else %}0{% endif %}
         $scope.check_perm = (p_name) ->
             if p_name.split(".").length == 2
                 p_name = "backbone.#{p_name}"
