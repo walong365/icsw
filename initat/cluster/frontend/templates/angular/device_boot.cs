@@ -153,8 +153,11 @@ device_boot_module.controller("boot_ctrl", ["$scope", "$compile", "$filter", "$t
                 cur_re = new RegExp($scope.device_sel_filter, "gi")
             catch exc
                 cur_re = new RegExp("^$", "gi")
+            $scope.num_selected = 0
             for dev in $scope.devices
                 dev.selected = if dev.name.match(cur_re) then true else false
+                if dev.selected
+                    $scope.num_selected++
         $scope.bo_enabled = {}
         $scope.type_1_options = () ->
             return (entry for entry in $scope.boot_options when entry[2] == 1)
