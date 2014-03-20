@@ -137,6 +137,7 @@ class copy_network(View):
                     # remove all netdevices
                     cur_nd.delete()
                 vlan_master_dict = {}
+                bridge_master_dict = {}
                 src_dict, dst_dict = ({}, {})
                 # copy from source
                 for cur_nd in source_dev.netdevice_set.all().prefetch_related(
@@ -149,6 +150,8 @@ class copy_network(View):
                     src_dict[cur_nd.devname] = cur_nd
                     if cur_nd.master_device_id:
                         vlan_master_dict[cur_nd.devname] = cur_nd.master_device.devname
+                    if cur_nd.bridge_device_id:
+                        bridge_master_dict[cur_nd.devname] = cur_nd.bridge_device.devname
                     new_nd = cur_nd.copy()
                     dst_dict[new_nd.devname] = new_nd
                     if new_nd.devname in mac_dict:
@@ -191,6 +194,10 @@ class copy_network(View):
                 for dst_name, src_name in vlan_master_dict.items():
                     dst_dict[dst_name].master_device = dst_dict[src_name]
                     dst_dict[dst_name].save()
+                # bridge masters
+                for dst_name, src_name in bridge_master_dict.items():
+                    dst_dict[dst_name].bridge_device = dst_dict[src_name]
+                    dst_dict[dst_name].save()
             request.xml_response.info("copied network settings", logger)
         else:
             request.xml_response.error("no target_devices", logger)
@@ -201,3 +208,4 @@ class get_domain_name_tree(permission_required_mixin, View):
         return render_me(request, "domain_name_tree.html", {
             "domain_name_tree_form" : domain_tree_node_form(),
             })()
+

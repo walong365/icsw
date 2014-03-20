@@ -26,12 +26,12 @@
 from django.contrib.auth.decorators import login_required
 from django.utils.decorators import method_decorator
 from django.views.generic import View
-from initat.cluster.backbone.render import render_me
 from initat.cluster.backbone import routing
+from initat.cluster.backbone.render import render_me
 from initat.cluster.frontend.helper_functions import contact_server, xml_wrapper
-import server_command
-import logging
 import json
+import logging
+import server_command
 
 logger = logging.getLogger("cluster.main")
 
@@ -62,13 +62,30 @@ class get_server_info(View):
         _server_list = []
         for _server in cur_routing.resolv_dict.get("server", []):
             srv_com = server_command.srv_command(command="server_status")
-            _res = contact_server(request, "server", srv_com, timeout=10, connection_id="server_status") # , target_server_id=_server[3])
+            _res = contact_server(request, "server", srv_com, timeout=10, connection_id="server_status", target_server_id=_server[3])
             if _res.tree is not None:
                 # dirty stuff
                 _res["command"].attrib["server_name"] = _server[0]
+                _res["command"].attrib["server_id"] = "{:d}".format(_server[3])
                 _server_list.append(_res.tree)
             else:
                 srv_com["command"].attrib["server_name"] = _server[0]
+                srv_com["command"].attrib["server_id"] = "{:d}".format(_server[3])
                 _server_list.append(srv_com.tree)
         request.xml_response["result"] = _server_list
 
+class server_control(View):
+    @method_decorator(login_required)
+    @method_decorator(xml_wrapper)
+    def post(self, request):
+        _cmd = json.loads(request.POST["cmd"])
+        # import pprint
+        # pprint.pprint(_cmd)
+        logger.info("got server_control '{0}' for instance {1} (server_id {2:d})".format(
+            _cmd["type"],
+            _cmd["instance"],
+            _cmd["server_id"],
+        ))
+        srv_com = server_command.srv_command(command="server_control", control=_cmd["type"], instance=_cmd["instance"])
+        # cur_routing = routing.srv_type_routing()
+        request.xml_response["result"] = contact_server(request, "server", srv_com, timeout=10, connection_id="server_control", target_server_id=_cmd["server_id"])
