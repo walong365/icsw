@@ -24,6 +24,9 @@ module to operate with config and ip relationsships in the database. This
 module gets included from configfile
 """
 
+from django.db.models import Q
+from initat.cluster.backbone.models import config, device, net_ip, device_config, \
+     config_str, config_blob, config_int, config_bool, netdevice, peer_information
 import array
 import configfile
 import logging_tools
@@ -31,11 +34,6 @@ import networkx
 import process_tools
 import sys
 import time
-
-from initat.cluster.backbone.models import config, device, net_ip, device_config, \
-     device_group, config_str, config_blob, config_int, config_bool, netdevice, \
-     peer_information
-from django.db.models import Q
 
 class router_object(object):
     def __init__(self, log_com):
@@ -121,7 +119,10 @@ class router_object(object):
     def add_penalty(self, in_path):
         return (self.get_penalty(in_path), in_path)
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
-        self.__log_com("[router] %s" % (what), log_level)
+        if hasattr(self.__log_com, "log"):
+            self.__log_com.log(log_level, "[router] %s" % (what))
+        else:
+            self.__log_com("[router] %s" % (what), log_level)
     def get_ndl_ndl_pathes(self, s_list, d_list, **kwargs):
         """
         returns all pathes between s_list and d_list (:: net_device)
@@ -250,6 +251,13 @@ class topology_object(object):
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
         self.__log_com("[topology] %s" % (what), log_level)
 
+_VAR_LUT = {
+    "int" : config_int,
+    "str" : config_str,
+    "blob" : config_blob,
+    "bool" : config_bool,
+}
+
 def get_config_var_list(config_obj, config_dev):
     r_dict = {}
     # dict of local vars without specified host
@@ -258,7 +266,7 @@ def get_config_var_list(config_obj, config_dev):
                   "int",
                   "blob",
                   "bool"]:
-        src_sql_obj = globals()["config_%s" % (short)].objects
+        src_sql_obj = _VAR_LUT[short].objects
         for db_rec in src_sql_obj.filter(
             (Q(device=0) | Q(device=None) | Q(device=config_dev.pk)) &
             (Q(config=config_obj)) &
@@ -506,7 +514,10 @@ class server_check(object):
         self._fetch_network_info()
         other._fetch_network_info()
         # format of return list: value, network_id, (self.netdevice_idx, [list of self.ips]), (other.netdevice_idx, [list of other.ips])
-        ret_list = []
+        # routing list, common network identifiers
+        c_ret_list = []
+        # routing list, non-common network identifier
+        nc_ret_list = []
         if self.netdevice_idx_list and other.netdevice_idx_list:
             # skip if any of both netdevice_idx_lists are empty
             # get peer_information
@@ -526,7 +537,7 @@ class server_check(object):
                             if filter_ip not in source_ip_lut[act_id] and filter_ip not in dest_ip_lut[act_id]:
                                 add_actual = False
                         if add_actual:
-                            ret_list.append((penalty,
+                            c_ret_list.append((penalty,
                                              act_id,
                                              (s_nd_pk, source_ip_lut[act_id]),
                                              (d_nd_pk, dest_ip_lut[act_id])))
@@ -539,11 +550,11 @@ class server_check(object):
                                     if filter_ip not in source_ip_lut[src_id] and filter_ip not in dest_ip_lut[dst_id]:
                                         add_actual = False
                                 if add_actual:
-                                    ret_list.append((penalty,
+                                    nc_ret_list.append((penalty,
                                                      dst_id,
                                                      (s_nd_pk, source_ip_lut[src_id]),
                                                      (d_nd_pk, dest_ip_lut[dst_id])))
-        return ret_list
+        return sorted(c_ret_list) + sorted(nc_ret_list)
     def report(self):
         # print self.effective_device
         if self.effective_device:
@@ -560,8 +571,6 @@ class server_check(object):
                 self.device.pk,
                 self.server_origin,
                 self.server_info_str)
-
-from django.db import connection
 
 class device_with_config(dict):
     def __init__(self, config_name, **kwargs):
