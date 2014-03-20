@@ -382,7 +382,9 @@ class zypper_install_process(install_process):
         # print etree.tostring(cur_pdc, pretty_print=True)
         if cur_pdc.tag == "special_command":
             if cur_pdc.attrib["command"] == "refresh":
-                cur_pdc.attrib["pre_command"] = "/usr/bin/zypper -q -x refresh"
+                cur_pdc.attrib["pre_command"] = "/usr/bin/zypper -q -x --gpg-auto-import-keys refresh"
+            else:
+                self.log("unknown special command '%s'" % (cur_pdc.attrib["command"]), logging_tools.LOG_LEVEL_ERROR)
         else:
             pack_xml = cur_pdc[0]
             if cur_pdc.attrib["target_state"] == "keep":
@@ -511,4 +513,3 @@ class zypper_install_process(install_process):
                 else:
                     self.log("created %s" % (f_name))
             self.package_commands.append(E.special_command(send_return="0", command="refresh", init="0"))
-
