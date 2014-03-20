@@ -451,6 +451,8 @@ AUTO_CREATE_NEW_DOMAINS = True
 
 LOCAL_CONFIG = "/etc/sysconfig/cluster/local_settings.py"
 
+HANDBOOK_PRESENT = os.path.exists("/opt/cluster/share/doc/handbook/main.html")
+
 PASSWORD_HASH_FUNCTION = "SHA1"
 
 LOGIN_SCREEN_TYPE = "big"
