@@ -37,6 +37,10 @@ import threading_tools
 import time
 import uuid_tools
 import zmq
+try:
+    import rrdtool # @UnresolvedImport
+except ImportError:
+    rrdtool = None
 
 class server_process(threading_tools.process_pool):
     def __init__(self):
@@ -107,6 +111,18 @@ class server_process(threading_tools.process_pool):
                 if os.path.isfile(f_name):
                     c_time = os.stat(f_name)[stat.ST_CTIME]
                     stale = abs(cur_time - c_time) > MAX_DT
+                    if stale and rrdtool:
+                        # check via rrdtool
+                        try:
+                            rrd_info = rrdtool.info(f_name)
+                        except:
+                            self.log("cannot get info for {} via rrdtool: {}".format(
+                                f_name,
+                                process_tools.get_except_info()
+                                ), logging_tools.LOG_LEVEL_ERROR)
+                        else:
+                            c_time = abs(int["last_update"])
+                            stale = abs(cur_time - c_time) > MAX_DT
                     is_active = True if int(file_el.attrib["active"]) else False
                     if is_active and stale:
                         file_el.attrib["active"] = "0"
