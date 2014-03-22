@@ -55,19 +55,19 @@ def show_command_info():
 def main():
     prog_name = global_config.name()
     global_config.add_config_entries([
-        # ("MAILSERVER"          , configfile.str_c_var("localhost", info="Mail Server")),
-        ("DEBUG"               , configfile.bool_c_var(False, help_string="enable debug mode [%(default)s]", short_options="d", only_commandline=True)),
-        ("ZMQ_DEBUG"           , configfile.bool_c_var(False, help_string="enable 0MQ debugging [%(default)s]", only_commandline=True)),
-        ("LOG_DESTINATION"     , configfile.str_c_var("uds:/var/lib/logging-server/py_log_zmq")),
-        ("LOG_NAME"            , configfile.str_c_var(prog_name)),
-        ("KILL_RUNNING"        , configfile.bool_c_var(True)),
-        ("SHOW_COMMAND_INFO"   , configfile.bool_c_var(False, help_string="show command info", only_commandline=True)),
-        ("BACKLOG_SIZE"        , configfile.int_c_var(5, help_string="backlog size for 0MQ sockets [%(default)d]")),
-        ("VERBOSE"             , configfile.int_c_var(0, help_string="set verbose level [%(default)d]", short_options="v", only_commandline=True)),
-        ("OBJGRAPH"            , configfile.bool_c_var(False, help_string="enable objgraph [%(default)c]", only_commandline=True)),
-        ("RUN_ARGUS"           , configfile.bool_c_var(False, help_string="enable argus [%(default)c]")),
-        ("NICE_LEVEL"          , configfile.int_c_var(10, help_string="nice level [%(default)d]")),
-        ("PID_NAME"            , configfile.str_c_var("%s/%s" % (prog_name,
+        ("DEBUG"                  , configfile.bool_c_var(False, help_string="enable debug mode [%(default)s]", short_options="d", only_commandline=True)),
+        ("ZMQ_DEBUG"              , configfile.bool_c_var(False, help_string="enable 0MQ debugging [%(default)s]", only_commandline=True)),
+        ("LOG_DESTINATION"        , configfile.str_c_var("uds:/var/lib/logging-server/py_log_zmq")),
+        ("LOG_NAME"               , configfile.str_c_var(prog_name)),
+        ("KILL_RUNNING"           , configfile.bool_c_var(True)),
+        ("SHOW_COMMAND_INFO"      , configfile.bool_c_var(False, help_string="show command info", only_commandline=True)),
+        ("MACHVECTOR_POLL_COUNTER", configfile.int_c_var(30, help_string="machvector poll counter")),
+        ("BACKLOG_SIZE"           , configfile.int_c_var(5, help_string="backlog size for 0MQ sockets [%(default)d]")),
+        ("VERBOSE"                , configfile.int_c_var(0, help_string="set verbose level [%(default)d]", short_options="v", only_commandline=True)),
+        ("OBJGRAPH"               , configfile.bool_c_var(False, help_string="enable objgraph [%(default)c]", only_commandline=True)),
+        ("RUN_ARGUS"              , configfile.bool_c_var(False, help_string="enable argus [%(default)c]")),
+        ("NICE_LEVEL"             , configfile.int_c_var(10, help_string="nice level [%(default)d]")),
+        ("PID_NAME"               , configfile.str_c_var("%s/%s" % (prog_name,
                                                                  prog_name)))])
     if prog_name == "collserver":
         global_config.add_config_entries([

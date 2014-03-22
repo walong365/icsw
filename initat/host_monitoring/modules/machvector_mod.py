@@ -23,6 +23,7 @@
 
 from initat.host_monitoring import hm_classes
 from initat.host_monitoring import limits
+from initat.host_monitoring.config import global_config
 from lxml import etree # @UnresolvedImports
 from lxml.builder import E # @UnresolvedImports
 import commands
@@ -55,8 +56,10 @@ class _general(hm_classes.hm_module):
         if hasattr(self.process_pool, "register_vector_receiver"):
             # at first init the machine_vector
             self._init_machine_vector()
-            # then start the polling loop
-            self.process_pool.register_timer(self._update_machine_vector, 10, instant=True)
+            # then start the polling loop, 30 seconds default timeout (defined in main.py) poll time
+            _mpc = global_config["MACHVECTOR_POLL_COUNTER"]
+            self.log("machvector poll_counter is {:d} seconds".format(_mpc))
+            self.process_pool.register_timer(self._update_machine_vector, _mpc, instant=True)
     def close_module(self):
         if hasattr(self.process_pool, "register_vector_receiver"):
             self.machine_vector.close()
