@@ -16,7 +16,6 @@ device_boot_template = """
     <div class="btn-group">
         <input ng-repeat="entry in boot_options" type="button" ng-class="get_bo_class(entry[0])" value="{{ entry[1] }}" ng-click="toggle_bo(entry[0])"></input>
     </div>
-    <input type="button" class="btn btn-sm btn-warning" ng-show="num_selected && any_type_1_selected" value="modify" ng-click="modify_many($event)"></input>
     <input class="form-control" ng-model="device_sel_filter" placeholder="selection..." ng-change="change_sel_filter()"></input>
 </form>
 <table ng-show="devices.length" class="table table-condensed table-hover" style="width:auto;">
@@ -43,6 +42,42 @@ device_boot_template = """
             </td>
         </tr>
     </tbody>
+    <tfoot ng-show="devices.length > 1">
+        <tr>
+            <td colspan="2">Global actions</td>
+            <td><input type="button" class="btn btn-xs btn-primary" ng-click="toggle_dev_sel()" value="sel"></button></td>
+            <td></td>
+            <td></td>
+            <td ng-repeat="entry in type_1_options()" ng-show="bo_enabled[entry[0]]"></td>
+            <td ng-show="bo_enabled['s']">
+                <div class="btn-group" ng-show="num_selected">
+                    <button type="button" class="btn btn-warning btn-xs dropdown-toggle" data-toggle="dropdown">
+                        action ({{ num_selected }})<span class="caret"></span>
+                    </button>
+                    <ul class="dropdown-menu">
+                        <li ng-click="soft_control('', 'reboot')"><a href="#">reboot</a></li>
+                        <li ng-click="soft_control('', 'halt')"><a href="#">halt</a></li>
+                        <li ng-click="soft_control('', 'poweroff')"><a href="#">poweroff</a></li>
+                    </ul>
+                </div>
+            </td>
+            <td ng-show="bo_enabled['h']">
+                <div class="btn-group" ng-show="num_selected_hc()">
+                    <button type="button" class="btn btn-xs btn-warning" data-toggle="dropdown">
+                        control ({{ num_selected_hc() }}) <span class="caret"></span>
+                    </button>
+                    <ul class="dropdown-menu">
+                        <li ng-click="hard_control('', 'cycle')"><a href="#">cycle</a></li>
+                        <li ng-click="hard_control('', 'on')"><a href="#">on</a></li>
+                        <li ng-click="hard_control('', 'off')"><a href="#">off</a></li>
+                    </ul>
+                </div>
+            </td>
+            <td>
+                <input type="button" class="btn btn-xs btn-warning" ng-show="num_selected && any_type_1_selected" value="modify {{ num_selected }}" ng-click="modify_many($event)"></input>
+            </td>
+        </tr>
+    </tfoot>
 </table>
 <form class="form-inline">
     <div class="btn-group">
@@ -214,12 +249,21 @@ device_boot_module.controller("boot_ctrl", ["$scope", "$compile", "$filter", "$t
                 return $scope.mother_servers[dev.bootserver].full_name
             else
                 return "N/A"
+        $scope.num_selected_hc = () ->
+            num_hc = 0
+            for dev in $scope.devices
+                if dev.selected and dev.slave_connections.length
+                    num_hc += dev.slave_connections.length
+            return num_hc
         $scope.toggle_dev_sel = (dev) ->
-            dev.selected = !dev.selected
-            if dev.selected
-                $scope.num_selected++
+            if dev
+                dev.selected = !dev.selected
+                if dev.selected
+                    $scope.num_selected++
+                else
+                    $scope.num_selected--
             else
-                $scope.num_selected--
+                ($scope.toggle_dev_sel(dev) for dev in $scope.devices)
         # mixins
         $scope.device_edit = new angular_edit_mixin($scope, $templateCache, $compile, $modal, Restangular, $q)
         $scope.device_edit.modify_rest_url = "{% url 'boot:update_device' 1 %}".slice(1).slice(0, -2)
@@ -402,20 +446,32 @@ device_boot_module.controller("boot_ctrl", ["$scope", "$compile", "$filter", "$t
                                     cur_dev.log_lines = cur_dev.log_lines
                                 $scope.$digest()
         $scope.soft_control = (dev, command) ->
+            if dev
+                dev_pk_list = [dev.idx]
+            else
+                dev_pk_list = (dev.idx for dev in $scope.devices when dev.selected)
             call_ajax
                 url     : "{% url 'boot:soft_control' %}"
                 data    : {
-                    "dev_pk" : dev.idx
-                    "command" : command
+                    "dev_pk_list" : angular.toJson(dev_pk_list)
+                    "command"     : command
                 }
                 success : (xml) =>
                     parse_xml_response(xml)
         $scope.hard_control = (cd_con, command) ->
+            if cd_con
+                cd_pk_list = [cd_con.idx]
+            else
+                cd_pk_list = []
+                for dev in $scope.devices
+                    if dev.selected and dev.slave_connections.length
+                        for slave_con in dev.slave_connections
+                            cd_pk_list.push(slave_con.idx)
             call_ajax
                 url     : "{% url 'boot:hard_control' %}"
                 data    : {
-                    "cd_pk" : cd_con.idx
-                    "command" : command
+                    "cd_pk_list" : angular.toJson(cd_pk_list)
+                    "command"    : command
                 }
                 success : (xml) =>
                     parse_xml_response(xml)

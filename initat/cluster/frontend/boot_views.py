@@ -271,13 +271,20 @@ class soft_control(View):
     @method_decorator(xml_wrapper)
     def post(self, request):
         _post = request.POST
-        cur_dev = device.objects.get(Q(pk=_post["dev_pk"]))
+        dev_pk_list = json.loads(_post["dev_pk_list"])
+        cur_devs = device.objects.filter(Q(pk__in=dev_pk_list))
         soft_state = _post["command"]
-        logger.info("sending soft_control '%s' to device %s" % (soft_state, unicode(cur_dev)))
+        logger.info("sending soft_control '{}' to {}: {}".format(
+            soft_state,
+            logging_tools.get_plural("device", len(dev_pk_list)),
+            ", ".join(sorted([unicode(cur_dev) for cur_dev in cur_devs]))
+        ))
         srv_com = server_command.srv_command(command="soft_control")
         srv_com["devices"] = srv_com.builder(
             "devices",
-            srv_com.builder("device", soft_command=soft_state, pk="%d" % (cur_dev.pk)))
+            *[
+                srv_com.builder("device", soft_command=soft_state, pk="%d" % (cur_dev.pk))
+                for cur_dev in cur_devs])
         result = contact_server(request, "mother", srv_com, timeout=10, log_result=False)
         if result:
             request.xml_response.info("sent %s to %s" % (soft_state, unicode(cur_dev)), logger)
@@ -287,14 +294,21 @@ class hard_control(View):
     @method_decorator(xml_wrapper)
     def post(self, request):
         _post = request.POST
-        cur_cd_con = cd_connection.objects.select_related("child", "parent").get(Q(pk=_post["cd_pk"]))
+        cd_con_pks = json.loads(_post["cd_pk_list"])
+        cur_cd_cons = cd_connection.objects.select_related("child", "parent").filter(Q(pk__in=cd_con_pks))
         command = _post["command"]
-        logger.info("got hc command '%s' for device '%s' (controling device: %s)" % (
+        logger.info("got hc command '{}' for {}:".format(
             command,
-            unicode(cur_cd_con.child),
-            unicode(cur_cd_con.parent)))
+            logging_tools.get_plural("device", len(cd_con_pks))))
+        for cur_cd_con in cur_cd_cons:
+            logger.info("  device {} (controlling device: {})".format(
+                unicode(cur_cd_con.child),
+                unicode(cur_cd_con.parent)))
         srv_com = server_command.srv_command(command="hard_control")
         srv_com["devices"] = srv_com.builder(
             "devices",
-            srv_com.builder("device", command=command, pk="%d" % (cur_cd_con.parent_id), cd_con="%d" % (cur_cd_con.pk)))
+            *[
+                srv_com.builder("device", command=command, pk="%d" % (cur_cd_con.parent_id), cd_con="%d" % (cur_cd_con.pk))
+                for cur_cd_con in cur_cd_cons
+            ])
         contact_server(request, "mother", srv_com, timeout=10)
