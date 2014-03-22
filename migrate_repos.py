@@ -34,7 +34,7 @@ import re
 
 REPO_DIR = "/etc/zypp/repos.d"
 KV_RE = re.compile("^\s*(?P<key>\S+)\s*=\s*(?P<value>.*)\s*$")
-NEW_REPOS = set(["base", "cluster", "extra"])
+NEW_REPOS = set(["cluster", "extra"])
 NO_SUB_REPOS = set(["extra"])
 URL_RE = re.compile("^(http|dir)://.*(www.initat.org|local/packages).*/RPMs/(?P<dist>[^/]+)($|/(?P<rest>.*?)/*$)")
 REPO_RE = re.compile("^(?P<name>.*?)(-(?P<version>[^-]+))*$")
