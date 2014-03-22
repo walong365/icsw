@@ -121,7 +121,7 @@ class server_process(threading_tools.process_pool):
                                 process_tools.get_except_info()
                                 ), logging_tools.LOG_LEVEL_ERROR)
                         else:
-                            c_time = abs(int["last_update"])
+                            c_time = int(rrd_info["last_update"])
                             stale = abs(cur_time - c_time) > MAX_DT
                     is_active = True if int(file_el.attrib["active"]) else False
                     if is_active and stale:
