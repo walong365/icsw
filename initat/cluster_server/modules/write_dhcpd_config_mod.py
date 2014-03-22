@@ -105,7 +105,7 @@ class write_dhcpd_config(cs_base_class.server_com):
                 local_found_dict = found_dict.get(act_net.pk, {})
                 for key in ["domain-name-servers", "ntp-servers", "nis-servers"]:
                     if key in local_found_dict:
-                        dhcpd_c.append("    {}option {} {};".format(
+                        dhcpd_c.append("    {}    option {} {};".format(
                             comment_sign,
                             key,
                             ", ".join(["%s" % (cur_dev.name) for cur_dev, ip_list in local_found_dict[key]])))
