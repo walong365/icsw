@@ -35,7 +35,7 @@ from initat.cluster.backbone.models import user , group, \
      partition_disc_serializer_create, device_serializer_variables, device_serializer_device_configs, \
      device_config, device_config_hel_serializer, home_export_list, csw_permission, \
      device_serializer_disk_info, device_serializer_network, peer_information, netdevice, \
-     csw_object_permission, cd_connection
+     csw_object_permission, cd_connection, device_serializer_only_boot
 # from initat.cluster.backbone.forms import * # @UnusedWildImport
 from initat.cluster.frontend import forms
 from rest_framework import mixins, generics, status, viewsets, serializers
@@ -286,6 +286,8 @@ class device_tree_detail(detail_view):
     def get_serializer_class(self):
         if self._get_post_boolean("tree_mode", False):
             return device_serializer
+        if self._get_post_boolean("only_boot", False):
+            return device_serializer_only_boot
         else:
             return device_serializer_monitoring
 

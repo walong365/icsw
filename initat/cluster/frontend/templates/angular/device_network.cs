@@ -38,7 +38,11 @@ dn_row_template = """
         </span>
     </button>
 </td>
-<th colspan="2">{{ obj.full_name }}</th>
+<th>{{ obj.full_name }}</th>
+<th ng_class="get_bootdevice_info_class(obj)">
+    {{ get_bootdevice_info(obj) }}
+    <input type="button" class="btn btn-xs btn-warning" ng-show="get_num_bootips(obj)" ng-value="get_boot_value(obj)" ng-click="edit_boot_settings(obj, $event)"></input>
+</th>
 <th>{{ obj.device_group_name }}</th>
 <th>{{ obj.comment }}</th>
 <th colspan="3">
@@ -69,8 +73,8 @@ nd_row_template = """
 <td>
     <button class="btn btn-info btn-xs" ng-disabled="ndip_obj.net_ip_set.length + ndip_obj.peers.length == 0" ng-click="toggle_expand(ndip_obj)">
         <span ng-class="get_expand_class(ndip_obj)">
-        {{ ndip_obj.net_ip_set.length }} / {{ ndip_obj.peers.length }}
-        </span>  
+        {{ ndip_obj.net_ip_set.length }} / {{ ndip_obj.peers.length }} {{ get_netdevice_boot_info(ndip_obj) }}
+        </span>
     </button>
     {{ get_netdevice_name(ndip_obj) }}
 </td>
@@ -188,6 +192,13 @@ device_network_module.controller("network_ctrl", ["$scope", "$compile", "$filter
         $scope.peer_edit.new_object_at_tail = false
         $scope.peer_edit.use_promise = true
 
+        $scope.boot_edit = new angular_edit_mixin($scope, $templateCache, $compile, $modal, Restangular, $q)
+        $scope.boot_edit.edit_template = "device_boot_form.html"
+        $scope.boot_edit.put_parameters = {"only_boot" : true}
+        $scope.boot_edit.modify_rest_url = "{% url 'rest:device_tree_detail' 1 %}".slice(1).slice(0, -2)
+        $scope.boot_edit.new_object_at_tail = false
+        $scope.boot_edit.use_promise = true
+
         $scope.scan_mixin = new angular_modal_mixin($scope, $templateCache, $compile, $modal, Restangular, $q)
         $scope.scan_mixin.template = "device_network_scan_form.html"
         
@@ -215,6 +226,7 @@ device_network_module.controller("network_ctrl", ["$scope", "$compile", "$filter
                         "peer_information_s_form"
                         "peer_information_d_form"
                         "device_network_scan_form"
+                        "device_boot_form"
                      ])
                 }]),
             ]
@@ -228,6 +240,7 @@ device_network_module.controller("network_ctrl", ["$scope", "$compile", "$filter
                 $scope.netdevice_speeds = data[2]
                 $scope.network_device_types = data[3]
                 $scope.networks = data[4]
+                $scope.network_lut = build_lut($scope.networks)
                 $scope.domain_tree_node = data[5]
                 $scope.nd_peers = data[6]
                 $scope.build_luts()
@@ -284,6 +297,14 @@ device_network_module.controller("network_ctrl", ["$scope", "$compile", "$filter
                 else
                     nd_name = "#{nd_name}, VLAN #{nd.vlan_id}"
             return nd_name
+        $scope.get_netdevice_boot_info = (nd) ->
+            num_boot = (true for net_ip in nd.net_ip_set when $scope.network_lut[net_ip.network].network_type_identifier == "b").length
+            if num_boot == 0
+                return ""
+            else if num_boot == 1
+                return "(b)"
+            else
+                return "(#{num_boot})"
         $scope.get_expand_class = (dev) ->
             if dev.expanded
                 return "glyphicon glyphicon-chevron-down"
@@ -385,6 +406,12 @@ device_network_module.controller("network_ctrl", ["$scope", "$compile", "$filter
                 (mod_ndev) ->
                     if mod_ndev != false
                         $scope.check_for_peer_change(mod_ndev)
+            )
+        $scope.edit_boot_settings = (dev, event) ->
+            $scope._current_dev = dev
+            $scope.boot_edit.edit(dev, event).then(
+                (mod_dev) ->
+                    true
             )
         $scope.set_edit_flags = (dev) ->
             dev.show_mac = true
@@ -551,6 +578,32 @@ device_network_module.controller("network_ctrl", ["$scope", "$compile", "$filter
                         $.unblockUI()
                         parse_xml_response(xml)
                         $scope.reload()
+        $scope.get_bootdevice_info = (obj) ->
+            num_bootips = $scope.get_num_bootips(obj)
+            if num_bootips == 0
+                return "---"
+            else if num_bootips == 1
+                return "1 boot-IP"
+            else
+                return "#{num_bootips} boot-IPs"
+        $scope.get_bootdevice_info_class = (obj) ->
+            num_bootips = $scope.get_num_bootips(obj)
+            if num_bootips == 0
+                return ""
+            else if num_bootips == 1
+                return "success"
+            else
+                return "danger"
+        $scope.get_num_bootips = (obj) ->
+            num_bootips = 0
+            for net_dev in obj.netdevice_set
+                for net_ip in net_dev.net_ip_set
+                    #console.log net_ip.ip, $scope.network_lut[net_ip.network].network_type_identifier
+                    if $scope.network_lut[net_ip.network].network_type_identifier == "b"
+                        num_bootips++
+            return num_bootips
+        $scope.get_boot_value = (obj) ->
+            return "boot (" + (if obj.dhcp_write then "write" else "no write") + " / " + (if obj.dhcp_mac then "greedy" else "not greedy") + ")"
         install_devsel_link($scope.new_devsel, true, true, false)
 ]).directive("devicenetworks", ($templateCache) ->
     return {

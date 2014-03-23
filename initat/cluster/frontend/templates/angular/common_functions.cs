@@ -774,6 +774,7 @@ class angular_edit_mixin
         @use_modal = true
         @new_object_at_tail = true
         @use_promise = false
+        @put_parameters = {}
         @min_width = "600px"
     create : (event) =>
         if @new_object
@@ -863,7 +864,7 @@ class angular_edit_mixin
                 )
             else
                 @modify_data_before_put(@scope._edit_obj)
-                @scope._edit_obj.put().then(
+                @scope._edit_obj.put(@put_parameters).then(
                     (data) =>
                         handle_reset(data, @scope._edit_obj, null)
                         @_modal_close_ok = true

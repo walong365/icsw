@@ -163,6 +163,34 @@ class domain_tree_node_form(ModelForm):
         model = domain_tree_node
         fields = ["name", "node_postfix", "create_short_names", "always_create_ip", "write_nameserver_config", "comment", "parent", ]
 
+class device_boot_form(ModelForm):
+    helper = FormHelper()
+    helper.form_id = "id_dtn_detail_form"
+    helper.form_name = "form"
+    helper.form_class = 'form-horizontal'
+    helper.label_class = 'col-sm-3'
+    helper.field_class = 'col-sm-9'
+    helper.ng_model = "_edit_obj"
+    helper.ng_submit = "cur_edit.modify(this)"
+    dhcp_mac = BooleanField(required=False, label="Greedy flag")
+    dhcp_write = BooleanField(required=False, label="write DHCP address (when valid)")
+    helper.layout = Layout(
+        Div(
+            HTML("<h2>Boot / DHCP settings for '{% verbatim %}{{ _edit_obj.name }}{% endverbatim %}'</h2>"),
+            Fieldset(
+                "DHCP settings",
+                Field("dhcp_mac"),
+                Field("dhcp_write"),
+            ),
+            FormActions(
+                Submit("submit", "Modify", css_class="primaryAction"),
+            )
+        )
+    )
+    class Meta:
+        model = device
+        fields = ["dhcp_mac", "dhcp_write"]
+
 class device_info_form(ModelForm):
     domain_tree_node = ModelChoiceField(domain_tree_node.objects.none(), empty_label=None)
     helper = FormHelper()
