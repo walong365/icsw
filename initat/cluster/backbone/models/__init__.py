@@ -1327,6 +1327,11 @@ class device_serializer(serializers.ModelSerializer):
             )
         read_only_fields = ("uuid",)
 
+class device_serializer_only_boot(serializers.ModelSerializer):
+    class Meta:
+        model = device
+        fields = ("idx", "dhcp_mac", "dhcp_write",)
+
 class device_serializer_cat(device_serializer):
     class Meta:
         model = device
@@ -1391,7 +1396,7 @@ class device_serializer_network(device_serializer):
             "is_meta_device", "device_type_identifier", "device_group_name", "bootserver",
             "curl", "netdevice_set", "access_level", "access_levels",
             # for device.boot
-            "new_state", "prod_link",
+            "new_state", "prod_link", "dhcp_mac", "dhcp_write",
             )
         read_only_fields = ("uuid",)
 
