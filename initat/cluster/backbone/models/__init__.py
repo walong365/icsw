@@ -1662,7 +1662,7 @@ class cluster_setting(models.Model):
     name = models.CharField(max_length=64, default="GLOBAL", unique=True)
     login_screen_type = models.CharField(max_length=64, default="big", choices=[
         ("big", "big (full screen)"),
-        ("normal", "normal (side by side)"),
+        ("medium", "medium (side by side)"),
         ])
     # also present in /etc/sysconfig/cluster/local_settings.py
     secret_key = models.CharField(max_length=64, default="")
@@ -1673,10 +1673,6 @@ class cluster_setting(models.Model):
             self.login_screen_type,
             self.secret_key,
         )
-
-class cluster_setting_serializer(serializers.ModelSerializer):
-    class Meta:
-        model = cluster_setting
 
 # license related
 class cluster_license(models.Model):
@@ -1691,17 +1687,28 @@ class cluster_license(models.Model):
             self.name,
             "enabled" if self.enabled else "disabled",
         )
+    class Meta:
+        ordering = ("name",)
+
+@receiver(signals.post_save, sender=cluster_license)
+def cluster_license_post_save(sender, **kwargs):
+    cluster_license_cache(force=True)
 
 class cluster_license_serializer(serializers.ModelSerializer):
     class Meta:
         model = cluster_license
 
+class cluster_setting_serializer(serializers.ModelSerializer):
+    cluster_license_set = cluster_license_serializer(many=True)
+    class Meta:
+        model = cluster_setting
+
 class cluster_license_cache(object):
-    def __init__(self):
+    def __init__(self, force=False):
         self.__CLC_NAME = "__ICSW_CLC"
         _cur_c = cache.get(self.__CLC_NAME)
         _lic_dict = {_name : False for _name, _descr in LICENSE_CAPS}
-        if not _cur_c:
+        if not _cur_c or force:
             for cur_lic in cluster_license.objects.filter(Q(cluster_setting__name="GLOBAL")):
                 _lic_dict[cur_lic.name] = cur_lic.enabled
             cache.set(self.__CLC_NAME, marshal.dumps(_lic_dict), 300)
