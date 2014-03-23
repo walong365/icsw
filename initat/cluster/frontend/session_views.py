@@ -25,13 +25,15 @@
 
 from django.contrib.auth import login, logout
 from django.core.urlresolvers import reverse
+from django.db.models import Q
 from django.http import HttpResponseRedirect
 from django.utils.decorators import method_decorator
 from django.views.decorators.cache import never_cache
 from django.views.generic import View
+from initat.cluster.backbone.models import cluster_setting
+from initat.cluster.backbone.render import render_me
 from initat.cluster.frontend.forms import authentication_form
 from initat.cluster.frontend.helper_functions import update_session_object
-from initat.cluster.backbone.render import render_me
 import base64
 import logging
 
@@ -42,21 +44,32 @@ class redirect_to_main(View):
     def get(self, request):
         return HttpResponseRedirect(reverse("session:login"))
 
+def _get_login_screen_type():
+    try:
+        cur_cs = cluster_setting.objects.get(Q(name='GLOBAL'))
+    except cluster_setting.DoesNotExist:
+        _lst = "big"
+    else:
+        _lst = cur_cs.login_screen_type
+    return _lst
+
 class sess_logout(View):
     def get(self, request):
         from_logout = request.user.is_authenticated()
         logout(request)
         login_form = authentication_form()
         return render_me(request, "login.html", {
-            "login_form"  : login_form,
-            "from_logout" : from_logout,
-            "app_path"    : reverse("session:login")})()
+            "LOGIN_SCREEN_TYPE" : _get_login_screen_type(),
+            "login_form"        : login_form,
+            "from_logout"       : from_logout,
+            "app_path"          : reverse("session:login")})()
 
 class sess_login(View):
     def get(self, request):
         return render_me(request, "login.html", {
-            "login_form" : authentication_form(),
-            "app_path"   : reverse("session:login")})()
+            "LOGIN_SCREEN_TYPE" : _get_login_screen_type(),
+            "login_form"        : authentication_form(),
+            "app_path"          : reverse("session:login")})()
     def post(self, request):
         _post = request.POST
         login_form = authentication_form(data=_post)
@@ -70,5 +83,6 @@ class sess_login(View):
             update_session_object(request)
             return HttpResponseRedirect(reverse("main:index"))
         return render_me(request, "login.html", {
-            "login_form" : login_form,
-            "app_path"   : reverse("session:login")})()
+            "LOGIN_SCREEN_TYPE" : _get_login_screen_type(),
+            "login_form"        : login_form,
+            "app_path"          : reverse("session:login")})()

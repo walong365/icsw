@@ -49,10 +49,10 @@ login_module.controller("login_ctrl", ["$scope",
     ($scope) ->
         $scope.medium_screen = () ->
             $("input#id_username").focus()
-            return "{{ settings.LOGIN_SCREEN_TYPE }}" == "medium"
+            return "{{ LOGIN_SCREEN_TYPE }}" == "medium"
         $scope.big_screen = () ->
             $("input#id_username").focus()
-            return "{{ settings.LOGIN_SCREEN_TYPE }}" == "big"
+            return "{{ LOGIN_SCREEN_TYPE }}" == "big"
 ])
 
 # bootstrap angular

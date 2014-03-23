@@ -127,12 +127,6 @@
             {% include 'sidebar.html' %}
         </div>
     {% endif %}
-    {% if settings.CLUSTER_LICENSE.docu %}
-        <div class="ui-layout-east " >
-            <iframe src="{% url 'doc:show' 'index.html' %}" width="100%" height="100%" frameborder="0" >
-            </iframe>
-        </div>
-    {% endif %}
     <div class="ui-layout-center" id="pane-center">
         {% block content %}
         {% endblock %}
@@ -170,7 +164,7 @@
                     north__spacing_open : 0
                     south__initClosed   : true
                     west__initClosed    : {% if request.session.west_closed %}true{% else %}false{% endif %}
-                    east__initClosed    : {% if request.session.east_closed %}true{% else %}false{% endif %}
+                    east__initClosed    : true
                     onopen : (p_name) ->
                         save_layout_state(my_layout, p_name)
                     onclose : (p_name) ->
