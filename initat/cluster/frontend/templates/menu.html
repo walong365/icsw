@@ -107,6 +107,9 @@
                 {% if csw_perms.backbone.user.admin %}
                     <li><a href="{% url 'admin:index' %}">{% trans "Admin" %}</a></li>
                 {% endif %}
+                {% if user.is_superuser %}
+                    <li><a href="{% url 'user:global_settings' %}">{% trans "Settings" %}</a></li>
+                {% endif %}
             </ul>
         </li>
         <li>

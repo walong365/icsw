@@ -28,10 +28,11 @@ from django.utils.decorators import method_decorator
 from django.views.generic import View
 from initat.cluster.backbone.models import group, user, user_variable, csw_permission, \
     csw_object_permission, group_permission, user_permission, group_object_permission, \
-    user_object_permission, group_object_permission_serializer, user_object_permission_serializer
+    user_object_permission, group_object_permission_serializer, user_object_permission_serializer, \
+    cluster_setting
 from initat.cluster.backbone.render import permission_required_mixin, render_me
 from initat.cluster.frontend.forms import group_detail_form, user_detail_form, \
-    account_detail_form
+    account_detail_form, global_settings_form
 from initat.cluster.frontend.helper_functions import contact_server, xml_wrapper, update_session_object
 from lxml.builder import E # @UnresolvedImport
 import json
@@ -245,4 +246,12 @@ class account_info(View):
         return render_me(request, "account_info.html", {
             "form" : cur_form,
             "user" : cur_user,
+            })()
+
+class global_settings(View):
+    @method_decorator(login_required)
+    @method_decorator(xml_wrapper)
+    def get(self, request):
+        return render_me(request, "global_settings.html", {
+            "form" : global_settings_form()
             })()

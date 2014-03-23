@@ -117,6 +117,7 @@ user_patterns = patterns(
     url("^get_user_var$"            , user_views.get_user_var.as_view()          , name="get_user_var"),
     url("^change_obj_perm$"         , user_views.change_object_permission.as_view(), name="change_object_permission"),
     url("^account_info$"            , user_views.account_info.as_view()          , name="account_info"),
+    url("^global_settings$"         , user_views.global_settings.as_view()       , name="global_settings"),
 )
 
 pack_patterns = patterns(
