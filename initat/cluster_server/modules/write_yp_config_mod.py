@@ -27,7 +27,6 @@ import commands
 import cs_base_class
 import cs_tools
 import logging_tools
-import mysql_tools
 import os
 import pprint
 import re
@@ -188,12 +187,13 @@ class write_yp_config(cs_base_class.server_com):
                                 auto_master.append((e2["homestart"], homestart))
                             ext_keys[homestart].append((e2["home"], "%s %s:%s/%s" % (entry["options"], entry["name"], cs_tools.hostname_expand(entry["name"], entry["homeexport"]), e2["home"])))
                         else:
-                            mysql_tools.device_log_entry(self.dc,
-                                                         global_config["SERVER_IDX"],
-                                                         global_config["LOG_SOURCE_IDX"],
-                                                         0,
-                                                         global_config["LOG_STATUS"]["e"]["log_status_idx"],
-                                                         "refuse to create automont-map for / (homedir-export)")
+                            pass
+                            # mysql_tools.device_log_entry(self.dc,
+                            #                             global_config["SERVER_IDX"],
+                            #                             global_config["LOG_SOURCE_IDX"],
+                            #                             0,
+                            #                             global_config["LOG_STATUS"]["e"]["log_status_idx"],
+                            #                             "refuse to create automont-map for / (homedir-export)")
         ext_keys["auto.master"] = auto_master
         nis_name = par_dict["domainname"]
         # parse /etc/services for the services.byname and services.byservicename maps
