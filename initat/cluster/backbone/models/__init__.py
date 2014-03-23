@@ -1715,7 +1715,6 @@ class cluster_license_cache(object):
         else:
             _lic_dict.update(marshal.loads(_cur_c))
         self._lic_dict = _lic_dict
-        print self._lic_dict
     @property
     def licenses(self):
         return self._lic_dict
