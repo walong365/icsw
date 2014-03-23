@@ -1,6 +1,7 @@
 #!/usr/bin/python-init
 
 from django.conf import settings
+from django.core.cache import cache
 from django.core.exceptions import ValidationError, ImproperlyConfigured
 from django.db import models
 from django.db.models import Q, signals
@@ -16,6 +17,7 @@ import datetime
 import ipvx_tools
 import logging
 import logging_tools
+import marshal
 import process_tools
 import pytz
 import re
@@ -27,6 +29,15 @@ from initat.cluster.backbone.models.monitoring import * # @UnusedWildImport
 from initat.cluster.backbone.models.network import * # @UnusedWildImport
 from initat.cluster.backbone.models.package import * # @UnusedWildImport
 from initat.cluster.backbone.models.user import * # @UnusedWildImport
+
+LICENSE_CAPS = [
+    ("monitor", "Monitoring services"),
+    ("monext" , "Extended monitoring services"),
+    ("boot"   , "boot/config facility for nodes"),
+    ("package", "Package installation"),
+    ("rms"    , "Resource Management system"),
+    ("docu"   , "show documentation"),
+]
 
 ALLOWED_CFS = ["MAX", "MIN", "AVERAGE"]
 
@@ -1646,30 +1657,61 @@ def device_group_post_save(sender, **kwargs):
             cur_inst.enabled = True
             cur_inst.save()
 
-# class device_location(models.Model):
-#     idx = models.AutoField(db_column="device_location_idx", primary_key=True)
-#     location = models.CharField(max_length=192, blank=False, unique=True)
-#     date = models.DateTimeField(auto_now_add=True)
-#     def get_xml(self):
-#         return E.device_location(
-#             unicode(self),
-#             pk="%d" % (self.pk),
-#             key="dl__%d" % (self.pk),
-#             location=unicode(self.location)
-#         )
-#     def __unicode__(self):
-#         return self.location
-#     class Meta:
-#         db_table = u'device_location'
+class cluster_setting(models.Model):
+    idx = models.AutoField(db_column="device_rsync_config_idx", primary_key=True)
+    name = models.CharField(max_length=64, default="GLOBAL", unique=True)
+    login_screen_type = models.CharField(max_length=64, default="big", choices=[
+        ("big", "big (full screen)"),
+        ("normal", "normal (side by side)"),
+        ])
+    # also present in /etc/sysconfig/cluster/local_settings.py
+    secret_key = models.CharField(max_length=64, default="")
+    date = models.DateTimeField(auto_now_add=True)
+    def __unicode__(self):
+        return "cs {}, login_screen_type is {}, secret_key is '{}'".format(
+            self.name,
+            self.login_screen_type,
+            self.secret_key,
+        )
 
-# #class device_relationship(models.Model):
-# #    idx = models.AutoField(db_column="device_relationship_idx", primary_key=True)
-# #    host_device = models.ForeignKey("device", related_name="host_device")
-# #    domain_device = models.ForeignKey("device", related_name="domain_device")
-# #    relationship = models.CharField(max_length=9, blank=True)
-# #    date = models.DateTimeField(auto_now_add=True)
-# #    class Meta:
-# #        db_table = u'device_relationship'
+class cluster_setting_serializer(serializers.ModelSerializer):
+    class Meta:
+        model = cluster_setting
+
+# license related
+class cluster_license(models.Model):
+    idx = models.AutoField(db_column="device_rsync_config_idx", primary_key=True)
+    cluster_setting = models.ForeignKey("cluster_setting")
+    name = models.CharField(max_length=64, default="", unique=True)
+    enabled = models.BooleanField(default=False)
+    description = models.CharField(max_length=256, default="")
+    date = models.DateTimeField(auto_now_add=True)
+    def __unicode__(self):
+        return "clic {} (is {})".format(
+            self.name,
+            "enabled" if self.enabled else "disabled",
+        )
+
+class cluster_license_serializer(serializers.ModelSerializer):
+    class Meta:
+        model = cluster_license
+
+class cluster_license_cache(object):
+    def __init__(self):
+        self.__CLC_NAME = "__ICSW_CLC"
+        _cur_c = cache.get(self.__CLC_NAME)
+        _lic_dict = {_name : False for _name, _descr in LICENSE_CAPS}
+        if not _cur_c:
+            for cur_lic in cluster_license.objects.filter(Q(cluster_setting__name="GLOBAL")):
+                _lic_dict[cur_lic.name] = cur_lic.enabled
+            cache.set(self.__CLC_NAME, marshal.dumps(_lic_dict), 300)
+        else:
+            _lic_dict.update(marshal.loads(_cur_c))
+        self._lic_dict = _lic_dict
+        print self._lic_dict
+    @property
+    def licenses(self):
+        return self._lic_dict
 
 class device_rsync_config(models.Model):
     idx = models.AutoField(db_column="device_rsync_config_idx", primary_key=True)

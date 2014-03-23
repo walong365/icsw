@@ -13,6 +13,9 @@ if [ -d ${MIG_DIR} ] ; then
             ${C_DIR}/manage.py migrate ${sync_app}
 	fi
     done
+    if [ -x /opt/cluster/sbin/check_local_settings.py ] ; then
+	/opt/cluster/sbin/check_local_settings.py
+    fi
     ${C_DIR}/manage.py schemamigration backbone --auto
     ${C_DIR}/manage.py migrate --no-initial-data backbone 
     ${C_DIR}/manage.py create_fixtures

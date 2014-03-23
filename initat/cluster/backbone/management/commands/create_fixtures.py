@@ -23,13 +23,52 @@
 
 from django.core.management.base import BaseCommand
 from django.db.models import Q
+from django.utils.crypto import get_random_string
 from initat.cluster.backbone import factories
+from initat.cluster.backbone.models import LICENSE_CAPS
+from lxml import etree # @UnresolvedImport
+from lxml.builder import E # @UnresolvedImport
+import os
+import sys
+
+# old local_settings.py
+
+LOCAL_CONFIG = "/etc/sysconfig/cluster/local_settings.py"
 
 class Command(BaseCommand):
     option_list = BaseCommand.option_list
     help = ("Creates the cluster fixtures.")
     def handle(self, **options):
         print "creating fixtures..."
+        # global settings
+
+        # default values
+        LOGIN_SCREEN_TYPE = "big"
+        chars = 'abcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*(-_=+)'
+        SECRET_KEY = get_random_string(50, chars)
+        if os.path.isfile(LOCAL_CONFIG):
+            # try to read from LOCAL_CONFIG
+            local_dir = os.path.dirname(LOCAL_CONFIG)
+            sys.path.append(local_dir)
+            from local_settings import SECRET_KEY # @UnresolvedImport
+            sys.path.remove(local_dir)
+        cur_gs = factories.ClusterSetting(name="GLOBAL", secret_key=SECRET_KEY, login_screen_type=LOGIN_SCREEN_TYPE)
+        LICENSE_FILE = "/etc/sysconfig/cluster/cluster_license"
+        # default: disable all
+        _lic_dict = {name : False for name, _descr in LICENSE_CAPS}
+        try:
+            cur_lic = etree.fromstring(file(LICENSE_FILE, "r").read())
+        except:
+            pass
+        else:
+            for lic_name, _lic_descr in LICENSE_CAPS:
+                _lic = cur_lic.xpath(".//license[@short='{}']".format(lic_name))
+                if len(_lic):
+                    _lic = _lic[0]
+                    _lic_dict[lic_name] = True if _lic.get("enabled", "no").lower() in ["yes"] else False
+        # create fixtures
+        for lic_name, lic_descr in LICENSE_CAPS:
+            factories.ClusterLicense(cluster_setting=cur_gs, name=lic_name, description=lic_descr, enabled=_lic_dict[lic_name])
         # log source
         factories.LogSource(identifier="user", name="Cluster user", description="Clusteruser")
         # device type

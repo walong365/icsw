@@ -33,26 +33,17 @@ def main():
 
 if __name__ == "__main__":
     LS_DIR = os.path.dirname(LS_FILE)
-    _secret_key = None
     sys.path.append(LS_DIR)
     try:
         from local_settings import SECRET_KEY # @UnresolvedImports
     except:
         SECRET_KEY = None
-    try:
-        from local_settings import LOGIN_SCREEN_TYPE # @UnresolvedImports
-    except:
-        LOGIN_SCREEN_TYPE = "big"
-    if LOGIN_SCREEN_TYPE not in ["big", "medium"]:
-        LOGIN_SCREEN_TYPE = "big"
     if SECRET_KEY in [None, "None"]:
         chars = 'abcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*(-_=+)'
         SECRET_KEY = get_random_string(50, chars)
     file(LS_FILE, "w").write("\n".join(
         [
             "SECRET_KEY = \"%s\"" % (SECRET_KEY),
-            "# possible values: big, medium",
-            "LOGIN_SCREEN_TYPE = \"%s\"" % (LOGIN_SCREEN_TYPE),
             "",
         ]
         ))

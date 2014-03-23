@@ -7,6 +7,7 @@ from django.core.urlresolvers import reverse
 from django.shortcuts import render_to_response, redirect
 from django.template.loader import render_to_string
 from django.utils.decorators import method_decorator
+from initat.cluster.backbone.models import cluster_license_cache
 import django.template
 import json
 import logging
@@ -48,11 +49,16 @@ class render_me(object):
             gp_dict = {}
             op_dict = {}
             _user = {}
+        # license cache
+        cur_clc = cluster_license_cache()
         # import pprint
         # pprint.pprint(gp_dict)
         self.my_dict["GLOBAL_PERMISSIONS"] = json.dumps(gp_dict)
         self.my_dict["OBJECT_PERMISSIONS"] = json.dumps(op_dict)
-        self.my_dict["CLUSTER_LICENSE"] = json.dumps(settings.CLUSTER_LICENSE)
+        # store as json for angular
+        self.my_dict["CLUSTER_LICENSE"] = json.dumps(cur_clc.licenses)
+        # store as dict for django templates
+        self.my_dict["DJANGO_CLUSTER_LICENSE"] = cur_clc.licenses
         self.my_dict["CURRENT_USER"] = json.dumps(_user)
         return render_to_response(
             self.template,

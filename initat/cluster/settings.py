@@ -5,10 +5,7 @@ from django.core.exceptions import ImproperlyConfigured
 import logging_tools
 import os
 import sys
-try:
-    from initat.cluster.license_tools import check_license, get_all_licenses, License
-except ImportError:
-    raise ImproperlyConfigured("cannot initialise license framework")
+from django.utils.crypto import get_random_string
 # set unified name
 logging_tools.UNIFIED_NAME = "cluster.http"
 
@@ -449,32 +446,25 @@ INSTALLED_APPS = tuple(INSTALLED_APPS)
 
 AUTO_CREATE_NEW_DOMAINS = True
 
-LOCAL_CONFIG = "/etc/sysconfig/cluster/local_settings.py"
-
 HANDBOOK_PRESENT = os.path.exists("/opt/cluster/share/doc/handbook/main.html")
 
 PASSWORD_HASH_FUNCTION = "SHA1"
 
 LOGIN_SCREEN_TYPE = "big"
 
+LOCAL_CONFIG = "/etc/sysconfig/cluster/local_settings.py"
 if os.path.isfile(LOCAL_CONFIG):
     local_dir = os.path.dirname(LOCAL_CONFIG)
     sys.path.append(local_dir)
-    from local_settings import *
+    from local_settings import SECRET_KEY # @UnresolvedImport
     sys.path.remove(local_dir)
+else:
+    chars = 'abcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*(-_=+)'
+    SECRET_KEY = get_random_string(50, chars)
 
 # validate settings
 if PASSWORD_HASH_FUNCTION not in ["SHA1", "CRYPT"]:
     raise ImproperlyConfigured("password hash function '%s' not known" % (PASSWORD_HASH_FUNCTION))
-
-c_license = License()
-# check licenses
-all_lics = get_all_licenses()
-CLUSTER_LICENSE = {}
-for cur_lic in all_lics:
-    CLUSTER_LICENSE[cur_lic] = check_license(cur_lic)
-CLUSTER_LICENSE["device_count"] = 10000 # c_license.get_device_count()
-del c_license
 
 INSTALLED_APPS = tuple(list(INSTALLED_APPS) + ["rest_framework"])
 
