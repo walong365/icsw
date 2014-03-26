@@ -23,7 +23,7 @@ device_boot_template = """
         <tr>
             <th>Group</th>
             <th>Device</th>
-            <th>sel</th>
+            <th class="center">sel</th>
             <th>state</th>
             <th>network</th>
             <th ng-repeat="entry in boot_options" ng-show="bo_enabled[entry[0]] && entry[2] < 3">
@@ -45,7 +45,13 @@ device_boot_template = """
     <tfoot ng-show="devices.length > 1">
         <tr>
             <td colspan="2">Global actions</td>
-            <td><input type="button" class="btn btn-xs btn-primary" ng-click="toggle_dev_sel()" value="sel"></button></td>
+            <td>
+                <div class="btn-group btn-group-xs">
+                    <input type="button" class="btn btn-success" value="S" ng-click="toggle_gdev_sel(1)" title="select all devices"></input>
+                    <input type="button" class="btn btn-primary" value="T" ng-click="toggle_gdev_sel(0)" title="toggle device selection"></input>
+                    <input type="button" class="btn btn-warning" value="C" ng-click="toggle_gdev_sel(-1)" title="clear device selection"></input>
+                </div>
+            </td>
             <td></td>
             <td></td>
             <td ng-repeat="entry in type_1_options()" ng-show="bo_enabled[entry[0]]"></td>
@@ -114,7 +120,7 @@ device_boot_template = """
 device_row_template = """
     <td>{{ dev.device_group_name }}</td>
     <td ng-class="get_device_name_class(dev)">{{ dev.full_name }} ({{ get_bootserver_info(dev) }})</td>
-    <td><input type="button" ng-class="get_dev_sel_class(dev)" ng-click="toggle_dev_sel(dev)" value="sel"></button></td>
+    <td class="center"><input type="button" ng-class="get_dev_sel_class(dev)" ng-click="toggle_dev_sel(dev, 0)" value="sel"></button></td>
     <td ng-class="dev.recvreq_state">{{ dev.recvreq_str }}</td>
     <td ng-class="dev.network_state">{{ dev.network }}</td>
     <td ng-repeat="entry in type_1_options()" ng-show="bo_enabled[entry[0]]" ng-class="get_td_class(entry)">
@@ -255,15 +261,16 @@ device_boot_module.controller("boot_ctrl", ["$scope", "$compile", "$filter", "$t
                 if dev.selected and dev.slave_connections.length
                     num_hc += dev.slave_connections.length
             return num_hc
-        $scope.toggle_dev_sel = (dev) ->
-            if dev
+        $scope.toggle_gdev_sel = (sel_mode) ->
+            ($scope.toggle_dev_sel(dev, sel_mode) for dev in $scope.devices)
+        $scope.toggle_dev_sel = (dev, sel_mode) ->
+            if sel_mode == 1
+                dev.selected = true
+            else if sel_mode == -1
+                dev.selected = false
+            else if sel_mode == 0
                 dev.selected = !dev.selected
-                if dev.selected
-                    $scope.num_selected++
-                else
-                    $scope.num_selected--
-            else
-                ($scope.toggle_dev_sel(dev) for dev in $scope.devices)
+            $scope.num_selected = (dev for dev in $scope.devices when dev.selected).length
         # mixins
         $scope.device_edit = new angular_edit_mixin($scope, $templateCache, $compile, $modal, Restangular, $q)
         $scope.device_edit.modify_rest_url = "{% url 'boot:update_device' 1 %}".slice(1).slice(0, -2)
