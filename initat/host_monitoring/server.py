@@ -250,7 +250,7 @@ class server_code(threading_tools.process_pool):
     def process_start(self, src_process, src_pid):
         process_tools.append_pids(self.__pid_name, src_pid, mult=3)
         if self.__msi_block:
-            self.__msi_block.add_actual_pid(src_pid, mult=3, process_name=src_process)
+            self.__msi_block.add_actual_pid(src_pid, mult=3, process_name=src_process, fuzzy_ceiling=3)
             self.__msi_block.save_block()
     def _init_network_sockets(self):
         zmq_id_name = "/etc/sysconfig/host-monitoring.d/0mq_id"
