@@ -149,10 +149,12 @@ class _general(hm_module):
             for line in res:
                 db_name = line["datname"]
                 if db_name not in self.databases:
+                    self.log("adding mv for database {}".format(db_name))
                     self.databases[db_name] = pg_stat(db_name, mv)
                 self.databases[db_name].feed(line, mv)
                 touched.add(db_name)
             to_remove = set(self.databases.keys()) - touched
             for rem_db in to_remove:
+                self.log("remove mv for database {}".format(rem_db))
                 self.databases[rem_db].remove(mv)
                 del self.database[rem_db]
