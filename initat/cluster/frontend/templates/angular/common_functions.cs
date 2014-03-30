@@ -967,6 +967,80 @@ class angular_modal_mixin
                 text : "form validation problem"
                 type : "warning"
 
+# codemirror ui
+angular.module("ui.codemirror", []).constant("uiCodemirrorConfig", {}).directive("uiCodemirror", [
+    "uiCodemirrorConfig", "$timeout", (uiCodemirrorConfig, $timeout) ->
+        return {
+            restrict: "EA"
+            require: "?ngModel"
+            compile: (tElement) ->
+                return (scope, iElement, iAttrs, ngModel) ->
+                    value = scope.$eval(iAttrs.ngModel)
+                    scope.code_mirror = new window.CodeMirror(
+                        (cm_el) ->
+                            #angular.forEach(tElement.prop("attributes"), (a) ->
+                            #    if a.name == "ui-codemirror"
+                            #        cm_el.setAttribute("ui-codemirror-opts", a.textContent)
+                            #    else
+                            #        cm_el.setAttribute(a.name, a.textContent)
+                            #)
+                            #if tElement.parent().length <= 0
+                            #    tElement.wrap("<div>")
+                            #tElement.replaceWith(cm_el)
+                            iElement.replaceWith(cm_el)
+                        { value: value }
+                    )
+                    opts = angular.extend(
+                        {},
+                        uiCodemirrorConfig.codemirror || {},
+                        scope.$eval(iAttrs.uiCodemirror),
+                        scope.$eval(iAttrs.uiCodemirrorOpts)
+                    )
+                    update_options = (newValues) ->
+                        for key of newValues
+                            if newValues.hasOwnProperty(key)
+                                scope.code_mirror.setOption(key, newValues[key])
+                    update_options(opts)
+                    if angular.isDefined(scope.$eval(iAttrs.uiCodemirror))
+                        scope.$watch(iAttrs.uiCodemirror, update_options, true)
+                    if ngModel
+                        #ngModel.$formatters.push((value) ->
+                        #    if angular.isUndefined(value) || value is null
+                        #        return ""
+                        #    else if angular.isObject(value) || angular.isArray(value)
+                        #        throw new Error("ui-codemirror cannot use an object or an array as a model")
+                        #    else
+                        #        return value
+                        #)
+                        ngModel.$render = () ->
+                            #console.log "render"
+                            scope.code_mirror.doc.setValue(ngModel.$viewValue || "")
+                    if iAttrs.uiRefresh
+                        scope.$watch(iAttrs.uiRefresh, (new_val, old_val) ->
+                            # store cursor position / scroll info, not really working right now ?
+                            #console.log "sc", new_val, old_val
+                            cur_cursor = scope.code_mirror.doc.getCursor()
+                            cur_cinfo = scope.code_mirror.getScrollInfo()
+                            #console.log "***", scope.$eval(iAttrs.ngModel).length
+                            scope.code_mirror.doc.setValue(scope.$eval(iAttrs.ngModel))
+                            #if new_val != old_val
+                            scope.code_mirror.refresh()
+                            scope.code_mirror.doc.setCursor(cur_cursor)
+                            #console.log cur_cinfo
+                            #code_mirror.scrollIntoView(cur_cinfo)
+                        )
+                    #if angular.isFunction(opts.onLoad)
+                    #    opts.onLoad(codeMirror)
+                    scope.code_mirror.on("change", (instance) ->
+                        newValue = instance.getValue()
+                        if ngModel && newValue != ngModel.$viewValue
+                            ngModel.$setViewValue(newValue)
+                        if !scope.$$phase
+                            scope.$apply()
+                    )
+        }
+])
+
 root = exports ? this
 root.angular_edit_mixin = angular_edit_mixin
 root.angular_modal_mixin = angular_modal_mixin

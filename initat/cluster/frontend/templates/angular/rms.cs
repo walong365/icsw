@@ -55,7 +55,7 @@ node_table = """
         <tr headers struct="node_struct"></tr>
     </thead>
     <tbody>
-        <tr rmsnodeline ng-repeat="data in node_list | paginator2:this.pagNode" struct="node_struct"></tr>
+        <tr rmsnodeline ng-repeat="data in node_list | paginator2:this.pagNode" struct="node_struct" ng-class="get_class(data)"></tr>
     </tbody>
     <tfoot>
         <tr headertoggle ng-show="header_filter_set" struct="node_struct"></tr>
@@ -64,14 +64,15 @@ node_table = """
 """
 
 iostruct = """
-    <h4>File {{ io_struct.file_name() }} ({{ io_struct.file_size() }} in {{ io_struct.file_lines() }} lines), 
+    <h4>
+        {{ io_struct.get_file_info() }}, 
         <input type="button" class="btn btn-sm btn-warning" value="close" ng-click="close_io(io_struct)"></input>
     </h4>
-    <!-- <textarea ui-codemirror="editorOptions" ng-model="io_struct.text" ui-refresh="io_struct.refresh_cm"> -->
-    <textarea ng-model="io_struct.text" ng-show="io_struct.valid">{{ io_struct.text }}
-    </textarea>
-    <div ng-if="!io_struct.valid">
-        <h5>nothing found</h5>
+    <div ng-show="io_struct.valid"> 
+        <tt>
+            <textarea ui-codemirror="editorOptions" ng-model="io_struct.text" ui-refresh="io_struct.refresh">
+            </textarea>
+        </tt>
     </div>
 """
 
@@ -262,6 +263,8 @@ class io_struct
         @resp_xml = undefined
         @text = ""
         @valid = false
+        @waiting = true
+        @refresh = 0
     get_name : () =>
         if @task_id
             return "#{@job_id}.#{@task_id} (#{@type})"
@@ -270,21 +273,20 @@ class io_struct
     get_id : () ->
         return "#{@job_id}.#{@task_id}.#{@type}"
     file_name : () ->
-        if @resp_xml
-            return @resp_xml.attr("name")
-        else
-            return "---"
+        return @resp_xml.attr("name")
     file_lines : () ->
-        if @resp_xml
-            return @resp_xml.attr("lines")
-        else
-            return "---"
+        return @resp_xml.attr("lines")
     file_size : () ->
-        if @resp_xml
-            return @resp_xml.attr("size_str")
+        return @resp_xml.attr("size_str")
+    get_file_info : () ->
+        if @valid
+            return "File " + @file_name() + " (" + @file_size() + " in " + @file_lines() + " lines)"
+        else if @waiting
+            return "waiting for data"
         else
-            return "---"
+            return "nothing found"
     feed : (xml) =>
+        @waiting = false
         found_xml = $(xml).find("response file_info[id='" + @get_id() + "']")
         if found_xml.length
             @valid = true
@@ -294,7 +296,16 @@ class io_struct
             @valid = false
             @resp_xml = undefined
             @text = ""
+        @refresh++
           
+rms_module.value('ui.config', {
+    codemirror : {
+        mode : 'text/x-php'
+        lineNumbers: true
+        matchBrackets: true
+    }
+})
+
 rms_module.controller("rms_ctrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "sharedDataSource", "$q", "$modal", "access_level_service", "$timeout", "$sce", 
     ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, sharedDataSource, $q, $modal, access_level_service, $timeout, $sce) ->
         access_level_service.install($scope)
@@ -305,14 +316,8 @@ rms_module.controller("rms_ctrl", ["$scope", "$compile", "$filter", "$templateCa
         $scope.header_filter_set = false
         $scope.editorOptions = {
             lineWrapping : false
-            lineNumbers: true
-            mode: 
-                name : "python"
-                version : 2
-            matchBrackets: true
-            minHeight : 200
-            width: "800px"
-            height: "600px"
+            lineNumbers : true
+            readOnly : true
             styleActiveLine: true
             indentUnit : 4
         }
@@ -330,6 +335,8 @@ rms_module.controller("rms_ctrl", ["$scope", "$compile", "$filter", "$templateCa
             "node" : $scope.node_struct
         }
         $scope.reload= () ->
+            if $scope.update_info_timeout
+                $timeout.cancel($scope.update_info_timeout)
             # refresh every 10 seconds
             $scope.update_info_timeout = $timeout($scope.reload, 10000)
             call_ajax
@@ -380,6 +387,8 @@ rms_module.controller("rms_ctrl", ["$scope", "$compile", "$filter", "$templateCa
                 $scope.io_dict[io_id] = new io_struct(job.job_id, job.task_id, io_type)
             # activate tab
             $scope.io_dict[io_id].active = true
+            # reload
+            $scope.reload()
         $scope.close_io = (io_struct) ->
             $scope.io_list = (entry for entry in $scope.io_list when entry != io_struct.get_id())
             delete $scope.io_dict[io_struct.get_id()]
@@ -410,6 +419,14 @@ rms_module.controller("rms_ctrl", ["$scope", "$compile", "$filter", "$templateCa
         restrict : "EA"
         template : $templateCache.get("node_table.html")
         link : (scope, el, attrs) ->
+            scope.get_class = (data) ->
+                parts = data.state.split("")
+                if _.indexOf(parts, "d") >= 0
+                    return "warning"
+                else if _.indexOf(parts, "a") >= 0 or _.indexOf(parts, "u") >= 0
+                    return "danger"
+                else
+                    return ""
     }
 ).directive("iostruct", ($templateCache) ->
     return {

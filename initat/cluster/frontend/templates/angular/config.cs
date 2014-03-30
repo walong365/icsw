@@ -269,9 +269,10 @@ config_ctrl = config_module.controller("config_ctrl", ["$scope", "$compile", "$f
                 name : "python"
                 version : 2
             matchBrackets: true
-            minHeight : 200
-            width: "800px"
-            height: "600px"
+            # codemirror 3.x, not working for 4.x
+            #minHeight : "200px"
+            #width: "800px"
+            #height: "600px"
             styleActiveLine: true
             indentUnit : 4
         }

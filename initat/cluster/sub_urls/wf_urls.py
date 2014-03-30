@@ -185,6 +185,8 @@ doc_patterns = patterns(
 my_url_patterns = patterns(
     "",
     url(r"^$"         , session_views.redirect_to_main.as_view()),
+    # redirect old entry point
+    url(r"^main.py$"  , session_views.redirect_to_main.as_view()),
     url(r"^base/"     , include(base_patterns      , namespace="base")),
     url(r"^session/"  , include(session_patterns   , namespace="session")),
     url(r"^config/"   , include(config_patterns    , namespace="config")),

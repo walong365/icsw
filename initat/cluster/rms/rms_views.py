@@ -261,23 +261,24 @@ class get_file_content(View):
                 *[srv_com.builder("file", name=_file_name) for _file_name in fetch_lut.iterkeys()]
                 )
             result = contact_server(request, "server", srv_com, timeout=60, connection_id="file_fetch_%s" % (str(job_id)))
-            for cur_file in result.xpath(".//ns:file", smart_strings=False):
-                # print etree.tostring(cur_file)
-                if cur_file.attrib.get("error", "1") == "1":
-                    request.xml_response.error("error reading %s (job %s): %s" % (
-                        cur_file.attrib["name"],
-                        job_id,
-                        cur_file.attrib["error_str"]), logger)
-                else:
-                    _resp_list.append(
-                        E.file_info(
-                            cur_file.text or "",
-                            id=fetch_lut[cur_file.attrib["name"]],
-                            name=cur_file.attrib["name"],
-                            lines=cur_file.attrib["lines"],
-                            size_str=logging_tools.get_size_str(int(cur_file.attrib["size"]), True),
+            if result is not None:
+                for cur_file in result.xpath(".//ns:file", smart_strings=False):
+                    # print etree.tostring(cur_file)
+                    if cur_file.attrib.get("error", "1") == "1":
+                        request.xml_response.error("error reading %s (job %s): %s" % (
+                            cur_file.attrib["name"],
+                            job_id,
+                            cur_file.attrib["error_str"]), logger)
+                    else:
+                        _resp_list.append(
+                            E.file_info(
+                                cur_file.text or "",
+                                id=fetch_lut[cur_file.attrib["name"]],
+                                name=cur_file.attrib["name"],
+                                lines=cur_file.attrib["lines"],
+                                size_str=logging_tools.get_size_str(int(cur_file.attrib["size"]), True),
+                            )
                         )
-                    )
             if len(_resp_list):
                 request.xml_response["response"] = _resp_list
         else:
