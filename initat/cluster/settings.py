@@ -397,7 +397,8 @@ PIPELINE_JS = {
             "js/libs/restangular.min.js",
             "js/libs/ui-bootstrap.min.js",
             "js/libs/ui-bootstrap-tpls.min.js",
-            "js/libs/ui-codemirror.min.js",
+            # now in common_function as coffeescript
+            # "js/libs/ui-codemirror.min.js",
             "js/libs/angular-datetimepicker.js",
             # "js/libs/angular-strap.min.js",
             # "js/libs/angular-strap.tpl.min.js",
