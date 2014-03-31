@@ -1,7 +1,7 @@
 #!/usr/bin/python-init -Otu
 # -*- coding: utf-8 -*-
 #
-# Copyright (C) 2005,2007,2008,2009,2010,2012 Andreas Lang-Nevyjel, init.at
+# Copyright (C) 2005-2010,2012-2014 Andreas Lang-Nevyjel, init.at
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -23,7 +23,7 @@
 """ python interface to emulate a loadsensor for SGE """
 
 import commands
-import license_tool
+import license_tool # @UnresolvedImport
 import logging_tools
 import os
 import process_tools
@@ -65,7 +65,7 @@ def raw_read(fd):
         if len(in_byte):
             if ord(in_byte) == 10:
                 break
-            ret_str = "%s%s" % (ret_str, in_byte)
+            ret_str = "{}{}".format(ret_str, in_byte)
     return ret_str
 
 def parse_actual_license_usage(log_template, actual_licenses, act_conf, lc_dict):
