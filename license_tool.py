@@ -1,6 +1,6 @@
 #!/usr/bin/python-init -Otu
 #
-# Copyright (C) 2012,2013 Andreas Lang-Nevyjel
+# Copyright (C) 2012-2014 Andreas Lang-Nevyjel
 #
 # Send feedback to: <lang-nevyjel@init.at>
 # encoding: -*- utf8 -*-
@@ -23,14 +23,14 @@
 
 """ ask license server and return XML-represenation of license situation """
 
-import sys
-import subprocess
-import logging_tools
-import time
-from lxml import etree
-from lxml.builder import E
-import datetime
+from lxml import etree # @UnresolvedImport
+from lxml.builder import E # @UnresolvedImport
 import argparse
+import datetime
+import logging_tools
+import subprocess
+import sys
+import time
 
 class license_check(object):
     def __init__(self, **kwargs):
@@ -150,7 +150,7 @@ class license_check(object):
         ret_struct.attrib["run_time"] = "%.3f" % (e_time - s_time)
         self.log("done, %d lines in %s" % (line_num, logging_tools.get_diff_time_str(e_time - s_time)))
         return ret_struct
-        
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--port", type=int, default=1055, help="license server [%(default)d]")
@@ -190,4 +190,4 @@ def main():
 
 if __name__ == "__main__":
     main()
-    
+
