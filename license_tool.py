@@ -23,8 +23,8 @@
 
 """ ask license server and return an XML-represenation of license situation """
 
-from lxml import etree
-from lxml.builder import E
+from lxml import etree # @UnresolvedImport
+from lxml.builder import E # @UnresolvedImport
 import argparse
 import datetime
 import logging_tools
@@ -155,7 +155,7 @@ class license_check(object):
         ret_struct.attrib["run_time"] = "%.3f" % (e_time - s_time)
         self.log("done, %d lines in %s" % (line_num, logging_tools.get_diff_time_str(e_time - s_time)))
         return ret_struct
-        
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--port", type=int, default=1055, help="license server [%(default)d]")
@@ -196,4 +196,4 @@ def main():
 
 if __name__ == "__main__":
     main()
-    
+

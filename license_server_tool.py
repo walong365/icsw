@@ -1,6 +1,6 @@
 #!/usr/bin/python-init -Otu
 #
-# Copyright (C) 2007,2012,2013 Andreas Lang-Nevyjel
+# Copyright (C) 2007,2012-2014 Andreas Lang-Nevyjel
 #
 # Send feedback to: <lang-nevyjel@init.at>
 # encoding: -*- utf8 -*-
@@ -21,12 +21,12 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
 
-import sys
+import commands
+import getopt
 import logging_tools
 import os
 import process_tools
-import getopt
-import commands
+import sys
 import time
 
 DEFAULT_CFG_DIR = "/etc/sysconfig/init-license-server.d"
