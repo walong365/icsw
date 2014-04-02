@@ -1,7 +1,7 @@
 #!/bin/bash
-# -*- coding: iso-8859-1 -*-
+# -*- coding: utf-8 -*-
 #
-# Copyright (C) 2001,2002,2003,2004,2005,2006,2007,2008,2012,2013 Andreas Lang-Nevyjel, init.at
+# Copyright (C) 2001-2008,2012-2014 Andreas Lang-Nevyjel, init.at
 #
 # Send feedback to: <lang-nevyjel@init.at>
 # 
@@ -20,6 +20,9 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
+
+echo "deprecated, please use the version in cluster-backbone-tools"
+exit -1
 
 if [ "$#" -lt "2" ] ; then
     echo "Need at least two parameters (kernel_name and local kernel_dir, optional the xen-version)"
