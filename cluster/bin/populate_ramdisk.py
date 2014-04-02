@@ -809,8 +809,107 @@ def main():
     # check runmode
     if script_basename.endswith("local.py"):
         main_local()
+    elif script_basename == "copy_local_kernel.sh":
+        main_copy()
     else:
         main_normal()
+
+class copy_arg_parser(argparse.ArgumentParser):
+    def __init__(self):
+        im_dir = os.getenv("IMAGE_ROOT", "/")
+        kern_dir = os.path.join(im_dir, "lib", "modules")
+        argparse.ArgumentParser.__init__(self, epilog="searching kernels in '{}' (root directory can be changed by setting IMAGE_ROOT)".format(kern_dir))
+        local_kernels = [entry for entry in os.listdir(kern_dir) if os.path.isdir(os.path.join(kern_dir, entry, "kernel"))]
+        if not local_kernels:
+            print "No kernels found beneath {}, exiting ...".format(kern_dir)
+            sys.exit(1)
+        self.add_argument("--target-dir", type=str, default="/opt/cluster/system/tftpboot/kernels", help="set target directory [%(default)s]")
+        self.add_argument("kernel", nargs="?", choices=local_kernels, type=str, default=local_kernels[0], help="kernel to copy [%(default)s]")
+        self.add_argument("--clean", default=False, action="store_true", help="clear target directory if it already exists [%(default)s]")
+    def parse(self):
+        args = self.parse_args()
+        args.image_root = os.getenv("IMAGE_ROOT", "/")
+        return args
+
+def main_copy():
+    global verbose
+    copy_args = copy_arg_parser().parse()
+    lib_dir = os.path.join(copy_args.image_root, "lib", "modules", copy_args.kernel)
+    firm_dir = os.path.join(copy_args.image_root, "lib", "firmware")
+    # firm_dir_local = os.path.join(firm_dir, copy_args.kernel)
+    target_dir = os.path.join(copy_args.target_dir, copy_args.kernel)
+    do_it = True
+    if not os.path.isdir(copy_args.target_dir):
+        print "system target directory {} does not exist".format(
+            copy_args.target_dir,
+            )
+        do_it = False
+    if not os.path.isdir(lib_dir):
+        print "source directory {} missing".format(lib_dir)
+        do_it = False
+    if os.path.isdir(target_dir):
+        if copy_args.clean:
+            shutil.rmtree(target_dir)
+        else:
+            print "target directory {} already exists".format(target_dir)
+            do_it = False
+    system_map_file = os.path.join(copy_args.image_root, "boot", "System.map-{}".format(copy_args.kernel))
+    vmlinuz_file = os.path.join(copy_args.image_root, "boot", "vmlinuz-{}".format(copy_args.kernel))
+    config_file = os.path.join(copy_args.image_root, "boot", "config-{}".format(copy_args.kernel))
+    if not os.path.isfile(system_map_file):
+        print "system.map file {} does not exist".format(system_map_file)
+        do_it = False
+    if not os.path.isfile(vmlinuz_file):
+        print "vmlinuz file {} does not exist".format(vmlinuz_file)
+        do_it = False
+    # print "*", copy_args
+    if not do_it:
+        sys.exit(2)
+    else:
+        print "copying kernel from source directory {} to target directory {}".format(
+            lib_dir,
+            target_dir,
+            )
+        print "  system.map : {}".format(system_map_file)
+        print "  vmlinuz    : {}".format(vmlinuz_file)
+        print "  config     : {}".format(config_file)
+        # previous source / build link
+        build_lt = get_link_target(lib_dir, "build")
+        source_lt = get_link_target(lib_dir, "source")
+        os.makedirs(target_dir)
+        print "\nCopying system.map and vmlinuz"
+        shutil.copy(system_map_file, target_dir)
+        shutil.copy(vmlinuz_file, target_dir)
+        if os.path.isfile(config_file):
+            print "\ncopying config file"
+            shutil.copy(config_file, os.path.join(target_dir, ".config"))
+        # modules
+        t_lib_dir = os.path.join(target_dir, "lib", "modules", copy_args.kernel)
+        print "\nCopying modules {} -> {}".format(lib_dir, t_lib_dir)
+        shutil.copytree(lib_dir, t_lib_dir)
+        # firmware
+        t_firm_dir = os.path.join(target_dir, "lib", "firmware")
+        print "\nCopying firmware {} -> {}".format(firm_dir, t_firm_dir)
+        shutil.copytree(firm_dir, t_firm_dir)
+        # local firmware
+        # print "\nCopying local firmware {} -> {}".format(firm_dir_local, t_firm_dir)
+        # shutil.copytree(firm_dir_local, t_firm_dir)
+        print "\nGenerating dummy initrd_lo.gz"
+        file(os.path.join(target_dir, "initrd_lo.gz"), "w").close()
+        # print build_lt, source_lt
+        if build_lt:
+            os.symlink(build_lt, os.path.join(lib_dir, "build"))
+        if source_lt:
+            os.symlink(source_lt, os.path.join(lib_dir, "source"))
+
+def get_link_target(lib_dir, link_name):
+    link_file = os.path.join(lib_dir, link_name)
+    if os.path.islink(link_file):
+        link_target = os.readlink(link_file)
+        os.unlink(link_file)
+    else:
+        link_target = ""
+    return link_target
 
 class local_arg_parser(argparse.ArgumentParser):
     def __init__(self):
