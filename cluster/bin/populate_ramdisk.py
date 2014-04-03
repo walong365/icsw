@@ -33,13 +33,13 @@ import commands
 import config_tools
 import datetime
 import fnmatch
+import net_tools
 import gzip
 import logging_tools
 import module_dependency_tools
-# import pprint
 import process_tools
 import re
-# import server_command
+import server_command
 import shutil
 import stat
 import statvfs
@@ -393,8 +393,8 @@ def populate_it(stage_num, temp_dir, in_dir_dict, in_file_dict, stage_add_dict, 
     for _dir, severity in [(os.path.normpath("/%s" % (x)), {
         0 : "W",
         1 : "E"}[y]) for x, y in dir_dict.iteritems()]:
-        if not os.path.isdir(dir):
-            print " %s dir '%s' not found" % (severity, dir)
+        if not os.path.isdir(_dir):
+            print " %s dir '%s' not found" % (severity, _dir)
             sev_dict[severity] += 1
     if verbose:
         print "checking availability of %d files ..." % (len(file_dict.keys()))
@@ -828,6 +828,8 @@ class copy_arg_parser(argparse.ArgumentParser):
         self.add_argument("kernel", nargs="?", choices=local_kernels, type=str, default=local_kernels[0], help="kernel to copy [%(default)s]")
         self.add_argument("--clean", default=False, action="store_true", help="clear target directory if it already exists [%(default)s]")
         self.add_argument("--init", default=False, action="store_true", help="init system directories if missing [%(default)s]")
+        self.add_argument("--rescan", default=False, action="store_true", help="rescan kernels after successfull copy [%(default)s]")
+        self.add_argument("--build", default=False, action="store_true", help="build initial ramdisk after rescan [%(default)s]")
     def parse(self):
         args = self.parse_args()
         args.image_root = os.getenv("IMAGE_ROOT", "/")
@@ -883,8 +885,8 @@ def main_copy():
         source_lt = get_link_target(lib_dir, "source")
         os.makedirs(target_dir)
         print "\nCopying system.map and vmlinuz"
-        shutil.copy(system_map_file, target_dir)
-        shutil.copy(vmlinuz_file, target_dir)
+        shutil.copy(system_map_file, os.path.join(target_dir, "System.map"))
+        shutil.copy(vmlinuz_file, os.path.join(target_dir, "bzImage"))
         if os.path.isfile(config_file):
             print "\ncopying config file"
             shutil.copy(config_file, os.path.join(target_dir, ".config"))
@@ -906,6 +908,30 @@ def main_copy():
             os.symlink(build_lt, os.path.join(lib_dir, "build"))
         if source_lt:
             os.symlink(source_lt, os.path.join(lib_dir, "source"))
+        if copy_args.rescan:
+            rescan_kernels()
+            if copy_args.build:
+                sys.argv = ["populate_ramdisk.py", "-i", "-v", "-v", target_dir]
+                print sys.argv
+                main_normal()
+
+def rescan_kernels():
+    srv_com = server_command.srv_command(command="rescan_kernels")
+    _conn_str = "tcp://localhost:8000"
+    # connection object
+    _conn = net_tools.zmq_connection(
+        "copy_local_kernel",
+        timeout=30,
+        )
+    result = _conn.add_connection(_conn_str, srv_com)
+    if result is None:
+        res_str, res_state = (
+            "got no result (conn_str is {})".format(_conn_str),
+            logging_tools.LOG_LEVEL_CRITICAL,
+        )
+    else:
+        res_str, res_state = result.get_log_tuple()
+    print "[{}] {}".format(logging_tools.map_log_level_to_log_status(res_state), res_str)
 
 def get_link_target(lib_dir, link_name):
     link_file = os.path.join(lib_dir, link_name)
