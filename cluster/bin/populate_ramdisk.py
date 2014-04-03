@@ -911,9 +911,9 @@ def main_copy():
         if copy_args.rescan:
             rescan_kernels()
             if copy_args.build:
-                sys.argv = ["populate_ramdisk.py", "-i", "-v", "-v", target_dir]
-                print sys.argv
+                sys.argv = ["populate_ramdisk.py", "-i", "--set-master-server", target_dir]
                 main_normal()
+                rescan_kernels()
 
 def rescan_kernels():
     srv_com = server_command.srv_command(command="rescan_kernels")
@@ -1218,6 +1218,9 @@ def main_normal():
     if build_arch_64bit and not my_args.kernel_64_bit:
         print "build_architecture under %s is 64bit and Kernel 32 bit, exiting" % (my_args.root_dir)
         sys.exit(1)
+    # modules.tar.bz2 present ?
+    mod_bz2_file = os.path.join(my_args.kernel_dir, "modules.tar.bz2")
+    mod_bz2_present = os.path.exists(mod_bz2_file)
     # check for kernel version
     if os.path.isdir("%s/lib/modules" % (my_args.kernel_dir)):
         kverdirs = os.listdir("%s/lib/modules" % (my_args.kernel_dir))
@@ -1228,6 +1231,7 @@ def main_normal():
             print "No KernelVersionDirectory found below '%s/lib/modules'" % (my_args.kernel_dir)
             sys.exit(1)
         kverdir = kverdirs[0]
+
         if my_args.do_depmod_call:
             lib_dir = os.path.join(my_args.kernel_dir, "lib", "modules", kverdir)
             # content of modules.dep
@@ -1246,20 +1250,22 @@ def main_normal():
             if os.path.isfile(mdep_file):
                 post_content = file(mdep_file, "r").read()
                 if pre_content != post_content:
-                    print "modules.dep file '%s' has changed, rebuilding modules.tar.bz2" % (mdep_file)
-                    modbz2_file = os.path.join(my_args.kernel_dir, "modules.tar.bz2")
-                    if os.path.exists(modbz2_file):
-                        os.unlink(modbz2_file)
-                    t_stat, t_out = commands.getstatusoutput("cd %s ; tar cpsjf modules.tar.bz2 lib" % (my_args.kernel_dir))
-                    print "... gave (%d) %s" % (t_stat, t_out)
-                    if t_stat:
-                        sys.exit(t_stat)
+                    mod_bz2_present = False
+                    print "modules.dep file '{}' has changed, rebuilding {}".format(mdep_file, mod_bz2_file)
             else:
                 print "no modules.dep file '%s' found, exiting" % (mdep_file)
                 sys.exit(1)
     else:
         kverdir = os.path.basename(os.path.normpath(my_args.kernel_dir))
         print "No lib/modules directory found under '%s', setting kernel_version to %s" % (my_args.kernel_dir, kverdir)
+    if not mod_bz2_present:
+        print "(re)creating {}".format(mod_bz2_file)
+        if os.path.exists(mod_bz2_file):
+            os.unlink(mod_bz2_file)
+        t_stat, t_out = commands.getstatusoutput("cd {} ; tar cpsjf modules.tar.bz2 lib".format(my_args.kernel_dir))
+        print "... gave (%d) %s" % (t_stat, t_out)
+        if t_stat:
+            sys.exit(t_stat)
     bit_dict = {0 : "32",
                 1 : "64"}
     # check availability of stages
