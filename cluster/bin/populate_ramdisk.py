@@ -36,10 +36,10 @@ import fnmatch
 import gzip
 import logging_tools
 import module_dependency_tools
-import pprint
+# import pprint
 import process_tools
 import re
-import server_command
+# import server_command
 import shutil
 import stat
 import statvfs
@@ -199,7 +199,7 @@ def get_module_dependencies(kern_dir, mod_list):
     mod_dict = {}
     # lut: module with with postfix -> full path
     file_dict = {}
-    for act_dir, dir_names, file_names in os.walk(kern_dir):
+    for act_dir, _dir_names, file_names in os.walk(kern_dir):
         for f_name in file_names:
             mod_name = f_name[:-3] if f_name.endswith(".ko") else (f_name[:-2] if f_name.endswith(".o") else f_name)
             # print f_name, mod_name
@@ -228,7 +228,7 @@ def get_module_dependencies(kern_dir, mod_list):
         # simplify
         dep_lines2 = [line.replace("//", "/").replace("//", "/").split(":") for line in dep_lines2]
         dep_dict = dict([(key, value.strip().split()) for key, value in [entry for entry in dep_lines2 if len(entry) == 2]])
-        kernel_mod_dict = dict([(os.path.basename(key), key) for key in dep_dict.iterkeys()])
+        _kernel_mod_dict = dict([(os.path.basename(key), key) for key in dep_dict.iterkeys()])
         kernel_lut_dict = dict([(key, os.path.basename(key)) for key in dep_dict.iterkeys()])
         dep_dict = dict([(os.path.basename(key), set([kernel_lut_dict[m_path] for m_path in value])) for key, value in dep_dict.iteritems()])
         m_iter = 0
@@ -276,22 +276,22 @@ def which(file_name, sp):
         full = [full]
         # follow symlinks
         while os.path.islink(act):
-            next = os.path.normpath(os.readlink(act))
-            if not next.startswith("/"):
-                next = os.path.normpath("%s/%s" % (os.path.dirname(act), next))
+            _next = os.path.normpath(os.readlink(act))
+            if not _next.startswith("/"):
+                _next = os.path.normpath("%s/%s" % (os.path.dirname(act), _next))
             if verbose > 1:
-                print "  following link from %s to %s" % (act, next)
-            act = next
+                print "  following link from %s to %s" % (act, _next)
+            act = _next
             full += [act]
     if full:
-        return [os.path.normpath(x) for x in full]
+        return [os.path.normpath(entry) for entry in full]
     else:
         return full
 
 def get_lib_list(in_f):
-    stat, out = commands.getstatusoutput("ldd %s" % (" ".join(in_f)))
+    _stat, out = commands.getstatusoutput("ldd %s" % (" ".join(in_f)))
     lib_l = []
-    out_l = [x.strip() for x in out.split("\n")]
+    out_l = [line.strip() for line in out.split("\n")]
     found_list = []
     for out_line in out_l:
         if out_line.endswith(":") and out_line[:-1] in in_f:
@@ -378,7 +378,7 @@ def populate_it(stage_num, temp_dir, in_dir_dict, in_file_dict, stage_add_dict, 
             0 : "",
             1 : "64"}[root_64bit])
     dir_dict[pam_dir] = 1
-    for syslog_dir in rsyslog_dirs:
+    for rsyslog_dir in rsyslog_dirs:
         dir_dict[rsyslog_dir] = 0
     dir_dict["/etc/xinetd.d"] = 0
     sev_dict = {"W" : 0,
@@ -390,8 +390,9 @@ def populate_it(stage_num, temp_dir, in_dir_dict, in_file_dict, stage_add_dict, 
     if verbose:
         print "checking availability of %d directories ..." % (len(dir_dict.keys()))
     # check availability of directories
-    for dir, severity in [(os.path.normpath("/%s" % (x)), {0 : "W",
-                                                           1 : "E"}[y]) for x, y in dir_dict.iteritems()]:
+    for _dir, severity in [(os.path.normpath("/%s" % (x)), {
+        0 : "W",
+        1 : "E"}[y]) for x, y in dir_dict.iteritems()]:
         if not os.path.isdir(dir):
             print " %s dir '%s' not found" % (severity, dir)
             sev_dict[severity] += 1
@@ -611,7 +612,7 @@ def populate_it(stage_num, temp_dir, in_dir_dict, in_file_dict, stage_add_dict, 
     if strip_files:
         free_stat = os.statvfs(temp_dir)
         free_before = free_stat[statvfs.F_BFREE] * free_stat[statvfs.F_BSIZE]
-        strip_stat, strip_out = commands.getstatusoutput("strip -s %s" % (" ".join(strip_files)))
+        _strip_stat, _strip_out = commands.getstatusoutput("strip -s %s" % (" ".join(strip_files)))
         free_stat = os.statvfs(temp_dir)
         free_after = free_stat[statvfs.F_BFREE] * free_stat[statvfs.F_BSIZE]
         print "size saved by stripping: %s" % (get_size_str(free_after - free_before))
@@ -751,7 +752,7 @@ def populate_it(stage_num, temp_dir, in_dir_dict, in_file_dict, stage_add_dict, 
     for sfile_name, sfile_content in sfile_dict.iteritems():
         file("%s/%s" % (temp_dir, sfile_name), "w").write("\n".join(sfile_content + [""]))
     # ldconfig call
-    ld_stat, out = commands.getstatusoutput("chroot %s /sbin/ldconfig" % (temp_dir))
+    ld_stat, _out = commands.getstatusoutput("chroot %s /sbin/ldconfig" % (temp_dir))
     if ld_stat:
         print "Error calling /sbin/ldconfig"
         sev_dict["E"] += 1
@@ -826,6 +827,7 @@ class copy_arg_parser(argparse.ArgumentParser):
         self.add_argument("--target-dir", type=str, default="/opt/cluster/system/tftpboot/kernels", help="set target directory [%(default)s]")
         self.add_argument("kernel", nargs="?", choices=local_kernels, type=str, default=local_kernels[0], help="kernel to copy [%(default)s]")
         self.add_argument("--clean", default=False, action="store_true", help="clear target directory if it already exists [%(default)s]")
+        self.add_argument("--init", default=False, action="store_true", help="init system directories if missing [%(default)s]")
     def parse(self):
         args = self.parse_args()
         args.image_root = os.getenv("IMAGE_ROOT", "/")
@@ -840,10 +842,13 @@ def main_copy():
     target_dir = os.path.join(copy_args.target_dir, copy_args.kernel)
     do_it = True
     if not os.path.isdir(copy_args.target_dir):
-        print "system target directory {} does not exist".format(
-            copy_args.target_dir,
-            )
-        do_it = False
+        if copy_args.init:
+            os.makedirs(copy_args.target_dir)
+        else:
+            print "system target directory {} does not exist".format(
+                copy_args.target_dir,
+                )
+            do_it = False
     if not os.path.isdir(lib_dir):
         print "source directory {} missing".format(lib_dir)
         do_it = False
@@ -932,7 +937,7 @@ class local_arg_parser(argparse.ArgumentParser):
 def main_local():
     global verbose
     local_args = local_arg_parser().parse()
-    script = sys.argv[0]
+    _script = sys.argv[0]
     stage_add_dict = {0 : local_args.stage_0_files,
                       1 : local_args.stage_1_files,
                       2 : []}
@@ -950,7 +955,6 @@ def main_local():
     sys.exit(stage_ok)
 
 def do_show_kernels(dev_assoc):
-    kern_dict = {}
     out_list = logging_tools.new_form_list(none_string="---")
     if dev_assoc:
         all_kernels = kernel.objects.prefetch_related("new_kernel", "new_kernel__bootnetdevice").all().order_by("name")
@@ -1461,7 +1465,7 @@ def main_normal():
         print "Compressing stage2 ............. ",
         s_time = time.time()
         o_s2_size = 0
-        for dir_name, dir_list, file_list in os.walk(stage_targ_dirs[1]):
+        for dir_name, _dir_list, file_list in os.walk(stage_targ_dirs[1]):
             for file_name in ["%s/%s" % (dir_name, x) for x in file_list]:
                 if os.path.isfile(file_name):
                     o_s2_size += os.stat(file_name)[stat.ST_SIZE]
@@ -1505,7 +1509,7 @@ def main_normal():
                 print "removing directory %s ..." % (del_dir)
             shutil.rmtree(del_dir)
     if not my_args.supress_transfer:
-        uuid_connected = [my_uuid]
+        _uuid_connected = [my_uuid]
         print "command_stack is not longer available, please copy from hand"
     end_time = time.time()
     if my_build:
