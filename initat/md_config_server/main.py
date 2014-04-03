@@ -26,6 +26,7 @@ import os
 
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "initat.cluster.settings")
 
+from initat.cluster.backbone.models import log_source
 from initat.md_config_server.config import global_config
 from initat.md_config_server.constants import SERVER_COM_PORT, IDOMOD_PROCESS_TIMED_EVENT_DATA, \
     IDOMOD_PROCESS_SERVICE_CHECK_DATA, IDOMOD_PROCESS_HOST_CHECK_DATA, BROKER_TIMED_EVENTS, \
@@ -78,7 +79,7 @@ def main():
             ignore_names=["nagios", "icinga"],
             exclude=configfile.get_manager_pid())
 
-    global_config.add_config_entries([("LOG_SOURCE_IDX", configfile.int_c_var(cluster_location.log_source.create_log_source_entry("mon-server", "Cluster MonitoringServer", device=sql_info.device).pk))])
+    global_config.add_config_entries([("LOG_SOURCE_IDX", configfile.int_c_var(log_source.create_log_source_entry("mon-server", "Cluster MonitoringServer", device=sql_info.device).pk))])
 
     cluster_location.read_config_from_db(global_config, "monitor_server", [
         ("COM_PORT"                     , configfile.int_c_var(SERVER_COM_PORT)),
