@@ -107,10 +107,15 @@ def get_except_info(exc_info=None, **kwargs):
         except:
             frame_info = []
     # print frame.f_lineno, frame.f_code.co_name
-    return u"%s (%s, %s)" % (
+    _exc_list = exc_info[1]
+    exc_name = _exc_list.__class__.__name__
+    if exc_name == "ValidationError":
+        # special handling of Django ValidationErrors
+        _exc_list = ", ".join(_exc_list.messages)
+    return u"%s (%s%s)" % (
         unicode(exc_info[0]),
-        unicode(exc_info[1]),
-        ", ".join(frame_info) if frame_info else "no frame_info")
+        unicode(_exc_list),
+        ", %s" % (", ".join(frame_info)) if frame_info else "")
 
 class exception_info(object):
     def __init__(self, **kwargs):
@@ -304,26 +309,30 @@ def get_stat_info(pid=0):
         except:
             pass
         else:
-            # parse stat_line
-            pid_part, rest_part = [part.strip() for part in stat_line.split("(", 1)]
-            # handle more than one closing parentheses
-            s_parts = rest_part.split(")")
-            rest_part = s_parts.pop(-1).strip()
-            com_part = (")".join(s_parts)).strip()
-            stat_parts = rest_part.split()
-            stat_keys = [
-                "state*", "ppid", "pgrp", "session",
-                "tty_nr", "tpgid", "flags",
-                "minflt", "cminflt", "maxflt", "cmaxflt",
-                "utime", "stime", "cutime", "cstime",
-                "priority", "nice", "num_threads",
-                "itrealvalue", "starttime",
-                "vsize", "rss", "rlim"
-            ]
-            stat_dict = dict([(key.replace("*", ""), value if key.endswith("*") else int(value))
-                              for key, value in zip(stat_keys, stat_parts)])
-            stat_dict["pid"] = int(pid_part)
-            stat_dict["comm"] = com_part
+            stat_dict = _build_stat_dict(stat_line)
+    return stat_dict
+
+def _build_stat_dict(content):
+    # parse stat_line
+    pid_part, rest_part = [part.strip() for part in content.split("(", 1)]
+    # handle more than one closing parentheses
+    s_parts = rest_part.split(")")
+    rest_part = s_parts.pop(-1).strip()
+    com_part = (")".join(s_parts)).strip()
+    stat_parts = rest_part.split()
+    stat_keys = [
+        "state*", "ppid", "pgrp", "session",
+        "tty_nr", "tpgid", "flags",
+        "minflt", "cminflt", "maxflt", "cmaxflt",
+        "utime", "stime", "cutime", "cstime",
+        "priority", "nice", "num_threads",
+        "itrealvalue", "starttime",
+        "vsize", "rss", "rlim"
+    ]
+    stat_dict = {key.replace("*", "") : value if key.endswith("*") else int(value)
+                      for key, value in zip(stat_keys, stat_parts)}
+    stat_dict["pid"] = int(pid_part)
+    stat_dict["comm"] = com_part
     return stat_dict
 
 def beautify_mem_info(mi=None, short=0):
@@ -1213,8 +1222,9 @@ def get_proc_list(last_dict=None, **kwargs):
     i_fields = ["pid", "uid", "gid", "ppid"]
     proc_name_list = set(kwargs.get("proc_name_list", []))
     add_stat = kwargs.get("add_stat_info", False)
-    add_affinity = kwargs.get("add_affinity", False)
-    add_affinity = True
+    add_affinity = kwargs.get("add_affinity", False) and affinity_tools
+    add_cmdline = kwargs.get("add_cmdline", True)
+    add_exe = kwargs.get("add_exe", True)
     try:
         pid_list = set([int(key) for key in os.listdir("/proc") if key.isdigit()])
     except:
@@ -1229,8 +1239,8 @@ def get_proc_list(last_dict=None, **kwargs):
             if check_pid:
                 try:
                     t_dict = {}
-                    # status_lines = [(line.split() + ["", ""])[0 : 2] for line in open("/proc/%d/status" % (pid), "r").read().split("\n")]
                     _lnum = 0
+                    _affinity_lines = []
                     for line in open("/proc/%d/status" % (pid), "r").xreadlines():
                         _parts = line.split()
                         if not _lnum:
@@ -1245,6 +1255,8 @@ def get_proc_list(last_dict=None, **kwargs):
                                 t_dict[r_what] = rest
                             elif r_what in i_fields:
                                 t_dict[r_what] = int(rest)
+                            if add_affinity:
+                                _affinity_lines.append(line.strip().lower())
                         _lnum += 1
                     if not _lnum:
                         # inner loop was not finished, ignore this process
@@ -1261,33 +1273,36 @@ def get_proc_list(last_dict=None, **kwargs):
                     #        t_dict[r_what] = rest
                     #    elif r_what in i_fields:
                     #        t_dict[r_what] = int(rest)
-                    try:
-                        stat_fields = open("/proc/%d/stat" % (pid), "r").read().split(")", 1)[1].split()
-                    except IOError:
-                        pass
-                    else:
+                    if add_cmdline:
                         try:
                             t_dict["cmdline"] = [line for line in codecs.open("/proc/%d/cmdline" % (pid), "r", "utf-8").read().split("\x00") if line]
                         except:
                             t_dict["cmdline"] = [get_except_info()]
-                        if t_dict["pid"] == pid:
-                            p_dict[pid] = t_dict
+                    if add_exe:
                         try:
                             t_dict["exe"] = os.readlink("/proc/%d/exe" % (pid))
                         except:
                             t_dict["exe"] = None
-                        if len(stat_fields) > 36:
-                            t_dict["last_cpu"] = int(stat_fields[36])
+                    if t_dict["pid"] == pid:
+                        p_dict[pid] = t_dict
+                    if affinity_tools and add_affinity:
+                        try:
+                            t_dict["affinity"] = affinity_tools.get_process_affinity_mask_from_status_lines(_affinity_lines)
+                        except:
+                            # process has gone away ?
+                            pass
+                    if add_stat:
+                        try:
+                            stat_content = open("/proc/%d/stat" % (pid), "r").read().strip()
+                        except IOError:
+                            pass
                         else:
-                            t_dict["last_cpu"] = 0
-                        if affinity_tools and add_affinity:
-                            try:
-                                t_dict["affinity"] = affinity_tools.get_process_affinity_mask(pid)
-                            except:
-                                # process has gone away ?
-                                pass
-                        if add_stat:
-                            t_dict["stat_info"] = get_stat_info(pid)
+                            stat_fields = stat_content.split(")", 1)[1].split()
+                            if len(stat_fields) > 36:
+                                t_dict["last_cpu"] = int(stat_fields[36])
+                            else:
+                                t_dict["last_cpu"] = 0
+                            t_dict["stat_info"] = _build_stat_dict(stat_content)
     # print time.time()-s_time
     return p_dict
 
