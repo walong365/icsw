@@ -2007,7 +2007,7 @@ class kernel_serializer(serializers.ModelSerializer):
         # why not all fields ? FIXME, check
         model = kernel
         fields = ("idx", "name", "enabled", "kernel_version", "version",
-            "release", "bitcount", "initrd_build_set", "kernel_build_set",
+            "release", "bitcount", "initrd_build_set", "kernel_build_set", "initrd_built",
             "new_kernel", "act_kernel", "comment", "target_module_list", "module_list",
             "stage1_lo_present", "stage1_cpio_present", "stage1_cramfs_present", "stage2_present",
             )
