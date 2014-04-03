@@ -10,6 +10,8 @@ kernel_module = angular.module("icsw.kernel", ["ngResource", "ngCookies", "ngSan
 
 angular_module_setup([kernel_module])
 
+DT_FORM = "YYYY-MM-DD HH:mm"
+
 angular_add_simple_list_controller(
     kernel_module,
     "kernel_base",
@@ -18,6 +20,14 @@ angular_add_simple_list_controller(
         edit_template       : "kernel.html"
         delete_confirm_str  : (obj) -> return "Really delete kernel '#{obj.name}' ?"
         template_cache_list : ["kernel_row.html", "kernel_head.html"]
+        fn : 
+            get_initrd_built : (kernel) ->
+                if kernel.initrd_built
+                    return moment(kernel.initrd_built).format(DT_FORM)
+                else
+                    return "N/A"
+            get_flag_value : (kernel, flag_name) ->
+                return if kernel[flag_name] then "yes" else "no"
     }
 )
 

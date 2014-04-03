@@ -623,42 +623,90 @@ class kernel_form(ModelForm):
     helper.ng_model = "edit_obj"
     helper.layout = Layout(
         HTML("<h2>Kernel details</h2>"),
-            Fieldset(
-                "Base data",
-                Field("name", readonly=True),
-                Field("initrd_built", readonly=True),
-                Field("comment", rows=5),
-                Field("target_module_list", rows=3),
-                Field("module_list", readonly=True, rows=3),
-                ),
-            Div(
-                Div(
-                    FormActions(
-                        Field("stage1_lo_present", disabled=True),
-                        Field("stage1_cpio_present", disabled=True),
-                        Field("stage1_cramfs_present", disabled=True),
-                        Field("stage2_present", disabled=True),
-                    ),
-                    css_class="col-md-6",
-                ),
-                Div(
-                    FormActions(
-                        Field("enabled"),
-                    ),
-                    css_class="col-md-6",
-                ),
-                css_class="row",
+        Fieldset(
+            "Base data",
+            Field("name", readonly=True),
+            Field("comment", rows=5),
+            Field("target_module_list", rows=3),
+            Field("module_list", readonly=True, rows=3),
             ),
+        HTML("""
+        <div class='form-group'>
+            <label class='control-label col-sm-3'>
+                initrd built
+            </label>
+            <div class='col-sm-7'>
+                {% verbatim %}{{ fn.get_initrd_built(edit_obj) }}{% endverbatim %}
+            </div>
+        </div>
+        """),
+        Div(
             FormActions(
-                Submit("submit", "", ng_value="get_action_string()", css_class="primaryAction"),
+                Field("enabled"),
             ),
-        )
+        ),
+        HTML("""
+        <div class='form-group'>
+            <label class='control-label col-sm-6'>
+                stage1 lo present
+            </label>
+            <div class='col-sm-6'>
+                {% verbatim %}<input
+                    type="button"
+                    disabled="disabled"
+                    ng-class="{'btn btn-sm btn-danger' : !edit_obj.stage1_lo_present, 'btn btn-sm btn-success' : edit_obj.stage1_lo_present}"
+                    ng-value="fn.get_flag_value(edit_obj, 'stage1_lo_present')"
+                    ></input>{% endverbatim %}
+            </div>
+        </div>
+        <div class='form-group'>
+            <label class='control-label col-sm-6'>
+                stage1 cpio present
+            </label>
+            <div class='col-sm-6'>
+                {% verbatim %}<input
+                    type="button"
+                    disabled="disabled"
+                    ng-class="{'btn btn-sm btn-danger' : !edit_obj.stage1_cpio_present, 'btn btn-sm btn-success' : edit_obj.stage1_cpio_present}"
+                    ng-value="fn.get_flag_value(edit_obj, 'stage1_cpio_present')"
+                    ></input>{% endverbatim %}
+            </div>
+        </div>
+        <div class='form-group'>
+            <label class='control-label col-sm-6'>
+                stage1 cramfs present
+            </label>
+            <div class='col-sm-6'>
+                {% verbatim %}<input
+                    type="button"
+                    disabled="disabled"
+                    ng-class="{'btn btn-sm btn-danger' : !edit_obj.stage1_cramfs_present, 'btn btn-sm btn-success' : edit_obj.stage1_cramfs_present}"
+                    ng-value="fn.get_flag_value(edit_obj, 'stage1_cramfs_present')"
+                    ></input>{% endverbatim %}
+            </div>
+        </div>
+        <div class='form-group'>
+            <label class='control-label col-sm-6'>
+                stage2 present
+            </label>
+            <div class='col-sm-6'>
+                {% verbatim %}<input
+                    type="button"
+                    disabled="disabled"
+                    ng-class="{'btn btn-sm btn-danger' : !edit_obj.stage2_present, 'btn btn-sm btn-success' : edit_obj.stage2_present}"
+                    ng-value="fn.get_flag_value(edit_obj, 'stage2_present')"
+                    ></input>{% endverbatim %}
+            </div>
+        </div>
+        """),
+        FormActions(
+            Submit("submit", "", ng_value="get_action_string()", css_class="primaryAction"),
+        ),
+    )
     class Meta:
         model = kernel
         fields = ["name", "comment", "enabled",
-            "stage1_lo_present", "stage1_cpio_present", "stage1_cramfs_present", "stage2_present",
-            "module_list", "target_module_list", "initrd_built",
-            ]
+            "module_list", "target_module_list"]
 
 class image_form(ModelForm):
     helper = FormHelper()
