@@ -17,37 +17,35 @@
     <table class="table table-condensed table-hover" style="width:auto;">
         <thead>
             <tr>
-                <th>on</th>
+                <th>device (#slaves)</th>
                 <th>start</th>
                 <th>runtime</th>
-                <th>MonVers</th>
-                <th>MDVers</th>
-                <th>RelVers</th>
-                <th>#slaves</th>
-                <th colspan="4" class="text-center" ng-repeat="slave_idx in all_slaves">
-                    {{ slave_idx | follow_fk:this:'servers':'full_name' }}
-                </th>
+                <th title="monitoring daemon version">MDVer</th>
+                <th title="monitoring config daemon version">MCDVer</th>
+                <th title="relayer version">RelVer</th>
+                <th>raw size (transfers)</th>
+                <th>data size (files)</th>
             </tr>
         </thead>
         <tbody>
             <tr><td colspan="12" paginator entries="masters" pag_settings="pagSettings" per_page="15"></td></tr>
             <tr ng-repeat-start="build in masters | paginator:this" ng-class="get_line_class(build)">
-                <th>{{ build.device | follow_fk:this:'servers':'full_name' }}</th>
+                <th>{{ build.device | follow_fk:this:'servers':'full_name' }} ({{ build.mon_dist_slave_set.length }})</th>
                 <td>{{ get_time(build.build_start) }} ({{ get_diff_time(build.build_start) }})</td>
                 <td>{{ get_runtime(build) }}</td>
                 <td>{{ build.mon_version }}</td>
                 <td class="text-center">{{ build.md_version }}</td>
                 <td class="text-center">{{ build.relayer_version }}</td>
-                <td class="text-center">{{ build.mon_dist_slave_set.length }}</td>
+                <td colspan="2"></td>
             </tr>
             <tr ng-repeat-end ng-repeat="slave in get_slaves(build)">
-                <td>{{ slave.device | follow_fk:this:'servers':'full_name' }}</td>
+                <td>({{ $index + 1 }}) {{ slave.device | follow_fk:this:'servers':'full_name' }}</td>
                 <td>{{ get_time(slave.sync_start) }} ({{ get_diff_time(slave.sync_start) }})</td>
                 <td class="text-center">
                     {{ get_sync_time(slave) }} <span ng-show="slave.num_runs > 1">({{ slave.num_runs}} )</span>
                 </td>
                 <td class="text-center">{{ slave.mon_version || '---' }}</td>
-                <td>&nbsp;</td>
+                <td></td>
                 <td class="text-center">{{ slave.relayer_version || '---' }}</td>
                 <td class="text-right">
                     {{ slave.size_raw | get_size:1:1024 }} ({{ slave.num_transfers }})

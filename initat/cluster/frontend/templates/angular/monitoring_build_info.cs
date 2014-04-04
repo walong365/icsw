@@ -18,6 +18,8 @@ monitoring_build_info_module.controller("info_ctrl", ["$scope", "$compile", "$fi
         $scope.pagSettings = paginatorSettings.get_paginator("masters", $scope)
         $scope.masters = []
         $scope.reload = () ->
+            # force reload
+            restDataSource.reset()
             wait_list = restDataSource.add_sources([
                 ["{% url 'rest:mon_dist_master_list' %}", {}]
                 #["{% url 'rest:mon_dist_slave_list' %}", {}]
