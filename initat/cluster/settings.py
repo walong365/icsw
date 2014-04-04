@@ -2,10 +2,10 @@
 # -*- coding: utf-8 -*-
 
 from django.core.exceptions import ImproperlyConfigured
+from django.utils.crypto import get_random_string
 import logging_tools
 import os
 import sys
-from django.utils.crypto import get_random_string
 # set unified name
 logging_tools.UNIFIED_NAME = "cluster.http"
 
@@ -270,7 +270,7 @@ else:
         INSTALLED_APPS = tuple([_entry for _entry in list(INSTALLED_APPS) if _entry not in ["crispy_forms"]])
 
 # needed by some modules
-ZMQ_LOGGING = True
+# ZMQ_LOGGING = True
 
 # crispy settings, bootstrap3 is angularized via a patch
 CRISPY_ALLOWED_TEMPLATE_PACKS = ('bootstrap3')
