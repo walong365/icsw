@@ -347,11 +347,7 @@ class srv_command(object):
         if len(res_node):
             res_node = res_node[0]
             ret_str, ret_state = res_node.attrib["reply"], int(res_node.attrib["state"])
-            ret_state = {
-                SRV_REPLY_STATE_OK       : logging_tools.LOG_LEVEL_OK,
-                SRV_REPLY_STATE_WARN     : logging_tools.LOG_LEVEL_WARN,
-                SRV_REPLY_STATE_ERROR    : logging_tools.LOG_LEVEL_ERROR,
-                SRV_REPLY_STATE_CRITICAL : logging_tools.LOG_LEVEL_CRITICAL}.get(ret_state, logging_tools.LOG_LEVEL_CRITICAL)
+            ret_state = srv_reply_to_log_level(ret_state)
         else:
             ret_str, ret_state = ("no result element found", logging_tools.LOG_LEVEL_CRITICAL)
         if swap:
