@@ -1003,7 +1003,7 @@ angular.module("ui.codemirror", []).constant("uiCodemirrorConfig", {}).directive
                     update_options(opts)
                     if angular.isDefined(scope.$eval(iAttrs.uiCodemirror))
                         scope.$watch(iAttrs.uiCodemirror, update_options, true)
-                    if ngModel
+                    #if ngModel
                         #ngModel.$formatters.push((value) ->
                         #    if angular.isUndefined(value) || value is null
                         #        return ""
@@ -1012,18 +1012,16 @@ angular.module("ui.codemirror", []).constant("uiCodemirrorConfig", {}).directive
                         #    else
                         #        return value
                         #)
-                        ngModel.$render = () ->
-                            #console.log "render"
-                            scope.code_mirror.doc.setValue(ngModel.$viewValue || "")
+                        #ngModel.$render = () ->
+                        #    #console.log "render"
+                        #    scope.code_mirror.doc.setValue(ngModel.$viewValue || "")
                     if iAttrs.uiRefresh
                         scope.$watch(iAttrs.uiRefresh, (new_val, old_val) ->
                             # store cursor position / scroll info, not really working right now ?
                             #console.log "sc", new_val, old_val
                             cur_cursor = scope.code_mirror.doc.getCursor()
                             cur_cinfo = scope.code_mirror.getScrollInfo()
-                            #console.log "***", scope.$eval(iAttrs.ngModel).length
                             scope.code_mirror.doc.setValue(scope.$eval(iAttrs.ngModel))
-                            #if new_val != old_val
                             scope.code_mirror.refresh()
                             scope.code_mirror.doc.setCursor(cur_cursor)
                             #console.log cur_cinfo

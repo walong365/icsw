@@ -285,18 +285,20 @@ class io_struct
             return "waiting for data"
         else
             return "nothing found"
-    feed : (xml) =>
+    feed : (xml) => 
         @waiting = false
         found_xml = $(xml).find("response file_info[id='" + @get_id() + "']")
         if found_xml.length
             @valid = true
             @resp_xml = found_xml
-            @text = @resp_xml.text()
+            if @text != @resp_xml.text()
+                @text = @resp_xml.text()
+                @refresh++
         else
             @valid = false
             @resp_xml = undefined
             @text = ""
-        @refresh++
+            @refresh++
           
 rms_module.value('ui.config', {
     codemirror : {
