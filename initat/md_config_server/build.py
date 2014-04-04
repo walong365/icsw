@@ -232,13 +232,15 @@ class build_process(threading_tools.process_obj, version_check_mixin):
         self.log("starting single build with %s: %s" % (
             logging_tools.get_plural("device", len(dev_names)),
             ", ".join(sorted(dev_names))))
-        # from mixin
-        self._check_md_version()
-        self._check_relay_version()
         srv_com["result"] = self._rebuild_config(*dev_names)
         srv_com.set_result("rebuilt config for %s" % (", ".join(dev_names)), server_command.SRV_REPLY_STATE_OK)
         self.send_pool_message("send_command", src_id, unicode(srv_com))
     def _rebuild_config(self, *args, **kwargs):
+        single_build = True if len(args) > 0 else False
+        if not single_build:
+            # from mixin
+            self._check_md_version()
+            self._check_relay_version()
         # copy from global_config (speedup)
         self.gc = configfile.gc_proxy(global_config)
         hdep_from_topo = self.gc["USE_HOST_DEPENDENCIES"] and self.gc["HOST_DEPENDENCIES_FROM_TOPOLOGY"]
@@ -250,7 +252,6 @@ class build_process(threading_tools.process_obj, version_check_mixin):
                 self.log("no mon_host_dependencies found", logging_tools.LOG_LEVEL_ERROR)
                 hdep_from_topo = False
         h_list = list(args)
-        single_build = True if len(args) > 0 else False
         cache_mode = kwargs.get("cache_mode", "???")
         if cache_mode not in special_commands.CACHE_MODES:
             # take first cache mode
