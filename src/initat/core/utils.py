@@ -1,30 +1,37 @@
 # -*- coding: utf-8 -*-
 
-import os
-import math
-import resource
-import time
-import datetime
-import logging_tools
-import optparse
-import argparse
-import process_tools
-import smtplib
-import xml.dom.minidom
-import decimal
-import codecs
-import random
-import csv
-import cStringIO
-import commands
-import email
-import email.mime
-import email.header
-import hashlib
-from email.utils import parseaddr, formataddr
+from django.conf import settings
+from django.core.cache import cache
+from django.http import HttpResponse
+from django.utils.safestring import mark_safe
 from email.mime.text import MIMEText
+from email.utils import parseaddr, formataddr
 from lxml import etree
 from lxml.builder import E
+import argparse
+import cStringIO
+import codecs
+import commands
+import csv
+import datetime
+import decimal
+import django
+import email
+import email.header
+import email.mime
+import hashlib
+import logging_tools
+import math
+import optparse
+import os
+import process_tools
+import random
+import resource
+import reversion
+import smtplib
+import time
+import xml.dom.minidom
+import zmq
 
 # to reduce dependencies (cluster-server for example)
 try:
@@ -33,43 +40,25 @@ try:
 except:
     openpyxl = None
 
-import django
-from django.conf import settings
-from django.http import HttpResponse
-from django.core.cache import cache
-from django.utils.safestring import mark_safe
-
-import reversion
-
-
-if settings.ZMQ_LOGGING:
-    import zmq
-else:
-    zmq = None
-
 DEBUG_FILE = "/tmp/lp_debug"
 TEMP_DIR = "/tmp/xlsx_olim"
 
 
 def generate_md5_key(*args):
-    new_key = hashlib.md5()  # pylint: disable-msg=E1101
+    new_key = hashlib.md5() # pylint: disable-msg=E1101
     for cur_arg in args:
-        new_key.update(unicode(cur_arg))  # pylint: disable-msg=E1101
+        new_key.update(unicode(cur_arg)) # pylint: disable-msg=E1101
     return new_key.hexdigest()
-
 
 class logging_pool(object):
     idle_pool = []
     created = 0
     logger_dict = {}
-    if zmq:
-        zmq_context = zmq.Context()
-    else:
-        zmq_context = None
+    zmq_context = zmq.Context()
 
     @staticmethod
     def debug(what):
-        if False:  # not settings.IS_WINDOWS:
+        if False: # not settings.IS_WINDOWS:
             if not os.path.isfile(DEBUG_FILE):
                 file(DEBUG_FILE, "w").write("%s\n" % (str(datetime.datetime.now())))
                 os.chmod(DEBUG_FILE, 0666)
@@ -90,7 +79,7 @@ class logging_pool(object):
             cur_logger = logging_tools.get_logger("%s" % (log_name),
                                                   ["udp:%s" % (kwargs.get("logging_server", "10.240.2.62") or "10.240.2.62")] if settings.IS_WINDOWS else ["uds:/var/lib/logging-server/py_log"],
                                                   init_logger=True,
-                                                  zmq=True if zmq else False,
+                                                  zmq=True,
                                                   context=logging_pool.zmq_context)
             cur_logger.log_command("ignore_process_id")
             if "max_file_size" in kwargs:
@@ -289,7 +278,7 @@ def build_simple_xml_node(master, key, value):
 def build_simple_xml(head_name, in_dict):
     act_dom = xml.dom.minidom.Document()
     head_info = act_dom.createElement(head_name)
-    #head_info.setAttribute("version", "1.0")
+    # head_info.setAttribute("version", "1.0")
     act_dom.appendChild(head_info)
     for key, value in in_dict.iteritems():
         if isinstance(value, list):
@@ -598,7 +587,7 @@ def create_email(**kwargs):
     if body_type == "text":
         msg_root = email.mime.text.MIMEText(kwargs["Body"], _charset=header_cs)
     else:
-        msg_root = email.MIMEMultipart.MIMEMultipart(header_cs)  # pylint: disable-msg=E1101
+        msg_root = email.MIMEMultipart.MIMEMultipart(header_cs) # pylint: disable-msg=E1101
         msg_root.preamble = "This is a multi-part message in MIME-format."
     if "Subject" in kwargs:
         msg_root["Subject"] = email.header.Header(kwargs["Subject"].encode(header_cs),
@@ -608,9 +597,9 @@ def create_email(**kwargs):
         msg_root["From"] = formataddr((str(email.header.Header(unicode(from_name), header_cs)), from_addr.encode("ascii")))
     if "To" in kwargs:
         if isinstance(kwargs["To"], list):
-            #for to_name, to_addr in [parseaddr(cur_addr) for cur_addr in kwargs["To"]]:
-                #msg_root["To"] = formataddr((str(email.header.Header(unicode(to_name), header_cs)), to_addr.encode("ascii")))
-            #list with str contains more email_addrs split with , or ; ["addr, addr"]
+            # for to_name, to_addr in [parseaddr(cur_addr) for cur_addr in kwargs["To"]]:
+                # msg_root["To"] = formataddr((str(email.header.Header(unicode(to_name), header_cs)), to_addr.encode("ascii")))
+            # list with str contains more email_addrs split with , or ; ["addr, addr"]
             for cur_addrs in kwargs["To"]:
                 for to_name, to_addr in [parseaddr(cur_addr) for cur_addr in sum([sub_split.split(",") for sub_split in cur_addrs.split(";")], [])]:
                     msg_root["To"] = formataddr((str(email.header.Header(unicode(to_name), header_cs)), to_addr.encode("ascii")))
@@ -620,7 +609,7 @@ def create_email(**kwargs):
         else:
             raise TypeError("unknown type for To-argument '%s': %s" % (str(kwargs["To"]),
                                                                        type(kwargs["To"])))
-    #msg_root.add_header("content-transfer-encoding", "quoted-printable")
+    # msg_root.add_header("content-transfer-encoding", "quoted-printable")
     if "Body" in kwargs:
         body_txt = kwargs["Body"]
         if body_type == "html":
@@ -628,9 +617,9 @@ def create_email(**kwargs):
                                         media_path=settings.MEDIA_URL,
                                         media_root=settings.MEDIA_ROOT,
                                         remove_content_type_line=True)
-        #for text mails the body is added at the top
+        # for text mails the body is added at the top
         if body_type != "text":
-            msg_body = email.MIMEText.MIMEText(body_txt,  # pylint: disable-msg=E1101
+            msg_body = email.MIMEText.MIMEText(body_txt, # pylint: disable-msg=E1101
                                                body_type,
                                                header_cs)
             msg_root.attach(msg_body)
@@ -690,7 +679,7 @@ def add_month(in_date, diff):
             next_date = in_date.replace(year=next_year,
                                         month=next_month,
                                         day=next_day)
-        except Exception:  # pylint: disable-msg=W0703
+        except Exception: # pylint: disable-msg=W0703
             next_day -= 1
         else:
             break
@@ -709,7 +698,7 @@ def next_bill_date(in_date, interval):
     while True:
         try:
             next_date = next_date.replace(day=next_date.day + 1)
-        except Exception:  # pylint: disable-msg=W0703
+        except Exception: # pylint: disable-msg=W0703
             break
     return next_date
 
@@ -829,10 +818,10 @@ class MemoryProfile(object):
 
     def measure(self):
         mem = self._memory_usage()
-        #print mem
+        # print mem
         if mem > self.max_usage:
             self.max_usage = mem
-            #print "Found new max: %s" % mem
+            # print "Found new max: %s" % mem
 
 
 def sql_iterator(queryset, step=2000):
