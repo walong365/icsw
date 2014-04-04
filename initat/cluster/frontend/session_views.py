@@ -23,18 +23,19 @@
 
 """ basic session views """
 
-from django.contrib.auth import login, logout
+from django.contrib.auth import login, logout, authenticate
 from django.core.urlresolvers import reverse
 from django.db.models import Q
 from django.http import HttpResponseRedirect
 from django.utils.decorators import method_decorator
 from django.views.decorators.cache import never_cache
 from django.views.generic import View
-from initat.cluster.backbone.models import cluster_setting
+from initat.cluster.backbone.models import cluster_setting, user
 from initat.cluster.backbone.render import render_me
 from initat.cluster.frontend.forms import authentication_form
 from initat.cluster.frontend.helper_functions import update_session_object
 import base64
+import json
 import logging
 
 logger = logging.getLogger("cluster.setup")
@@ -53,6 +54,20 @@ def _get_login_screen_type():
         _lst = cur_cs.login_screen_type
     return _lst
 
+def _get_login_hints():
+    # show login hints ?
+    _hints, _valid = ([], True)
+    if user.objects.all().count() < 3:
+        for user_name in user.objects.all().values_list("login", flat=True):
+            for ck_pwd in [user_name, "{}{}".format(user_name, user_name)]:
+                if authenticate(username=user_name, password=ck_pwd) is not None:
+                    _hints.append((user_name, ck_pwd))
+                else:
+                    _valid = False
+    if not _valid:
+        _hints = []
+    return json.dumps(_hints)
+
 class sess_logout(View):
     def get(self, request):
         from_logout = request.user.is_authenticated()
@@ -62,6 +77,7 @@ class sess_logout(View):
             "LOGIN_SCREEN_TYPE" : _get_login_screen_type(),
             "login_form"        : login_form,
             "from_logout"       : from_logout,
+            "login_hints"       : _get_login_hints(),
             "app_path"          : reverse("session:login")})()
 
 class sess_login(View):
@@ -69,6 +85,7 @@ class sess_login(View):
         return render_me(request, "login.html", {
             "LOGIN_SCREEN_TYPE" : _get_login_screen_type(),
             "login_form"        : authentication_form(),
+            "login_hints"       : _get_login_hints(),
             "app_path"          : reverse("session:login")})()
     def post(self, request):
         _post = request.POST
