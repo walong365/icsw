@@ -1,6 +1,6 @@
 #!/usr/bin/python-init -Ot
 #
-# Copyright (C) 2008,2009,2012,2013 Andreas Lang-Nevyjel, init.at
+# Copyright (C) 2008-2014 Andreas Lang-Nevyjel, init.at
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -17,7 +17,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
-""" partition stuff """
+""" tools for handling partition tables (LVM and UUID / label stuff) """
 
 import commands
 import logging_tools
@@ -26,8 +26,26 @@ import process_tools
 import re
 import sys
 
+class uuid_label_struct(dict):
+    def __init__(self):
+        # after init can be used like
+        # _uls = uuid_label_struct()
+        # print _uls[UUID]
+        dict.__init__(self)
+        c_stat, c_out = commands.getstatusoutput("/sbin/blkid")
+        if not c_stat:
+            for _line in c_out.split("\n"):
+                if _line.count(":"):
+                    part, _rest = _line.split(":", 1)
+                    _dict = dict([_part.split("=", 1) for _part in _rest.strip().split()])
+                    _dict = {key : value[1:-1] if value.startswith('"') else value for key, value in _dict.iteritems()}
+                    _dict["part"] = part
+                    for key in set(_dict) & set(["UUID"]):
+                        self[_dict[key]] = _dict
+
 class lvm_object(dict):
     def __init__(self, lv_type, in_dict):
+        dict.__init__(self)
         self.lv_type = lv_type
         self.__ignore_list = ["percent"]
         self.__int_keys = ["major", "minor", "kernel_major", "kernel_minor", "used", "max_pv", "max_lv", "stripes", "free"]
