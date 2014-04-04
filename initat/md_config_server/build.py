@@ -31,6 +31,7 @@ from initat.md_config_server.config import global_config, main_config, var_cache
     all_service_groups, time_periods, all_contacts, all_contact_groups, all_host_groups, all_hosts, \
     all_hosts_extinfo, all_services, config_dir, device_templates, service_templates, nag_config, \
     all_host_dependencies
+from initat.md_config_server.mixins import version_check_mixin
 from lxml.builder import E # @UnresolvedImport
 import codecs
 import commands
@@ -47,7 +48,7 @@ import stat
 import threading_tools
 import time
 
-class build_process(threading_tools.process_obj):
+class build_process(threading_tools.process_obj, version_check_mixin):
     def process_init(self):
         self.__log_template = logging_tools.get_logger(global_config["LOG_NAME"], global_config["LOG_DESTINATION"], zmq=True, context=self.zmq_context, init_logger=True)
         self.__hosts_pending, self.__hosts_waiting = (set(), set())
@@ -231,6 +232,9 @@ class build_process(threading_tools.process_obj):
         self.log("starting single build with %s: %s" % (
             logging_tools.get_plural("device", len(dev_names)),
             ", ".join(sorted(dev_names))))
+        # from mixin
+        self._check_md_version()
+        self._check_relay_version()
         srv_com["result"] = self._rebuild_config(*dev_names)
         srv_com.set_result("rebuilt config for %s" % (", ".join(dev_names)), server_command.SRV_REPLY_STATE_OK)
         self.send_pool_message("send_command", src_id, unicode(srv_com))
