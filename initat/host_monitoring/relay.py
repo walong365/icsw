@@ -310,7 +310,7 @@ class host_connection(object):
         host_connection.backlog_size = backlog_size
         host_connection.timeout = timeout
         host_connection.verbose = verbose
-        # rotuer socket
+        # router socket
         new_sock = host_connection.relayer_process.zmq_context.socket(zmq.ROUTER)
         id_str = "relayer_rtr_%s" % (process_tools.get_machine_name())
         new_sock.setsockopt(zmq.IDENTITY, id_str)
@@ -714,7 +714,7 @@ class relay_code(threading_tools.process_pool):
             lines = [line.lower() for line in lines if line.lower().startswith("icinga")]
             if lines:
                 self.__mon_version = lines.pop(0).strip().split()[-1]
-        self.log("got mon_version '%s'" % (self.__mon_version))
+        self.log("mon_version is '%s'" % (self.__mon_version))
     def _hup_error(self, err_cause):
         self.log("got SIGHUP (%s), setting all clients with connmode TCP to unknown" % (err_cause), logging_tools.LOG_LEVEL_WARN)
         num_c = 0
@@ -754,6 +754,8 @@ class relay_code(threading_tools.process_pool):
             self.master_uuid = None
     def _contact_master(self):
         if self.master_ip:
+            # updated monitoring version
+            self._get_mon_version()
             srv_com = server_command.srv_command(
                 command="relayer_info",
                 host=self.master_ip,
@@ -1379,7 +1381,6 @@ class relay_code(threading_tools.process_pool):
         try:
             self.commands[srv_com["command"].text](srv_com)
         except:
-            exc_info = process_tools.exception_info()
             for log_line in process_tools.exception_info().log_lines:
                 self.log(log_line, logging_tools.LOG_LEVEL_ERROR)
                 srv_com.set_result(
