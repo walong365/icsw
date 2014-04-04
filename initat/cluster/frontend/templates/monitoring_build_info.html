@@ -32,7 +32,7 @@
         <tbody>
             <tr><td colspan="12" paginator entries="masters" pag_settings="pagSettings" per_page="15"></td></tr>
             <tr ng-repeat-start="build in masters | paginator:this" ng-class="get_line_class(build)">
-                <td>{{ build.device | follow_fk:this:'servers':'full_name' }}</td>
+                <th>{{ build.device | follow_fk:this:'servers':'full_name' }}</th>
                 <td>{{ get_time(build.build_start) }} ({{ get_diff_time(build.build_start) }})</td>
                 <td>{{ get_runtime(build) }}</td>
                 <td>{{ build.mon_version }}</td>

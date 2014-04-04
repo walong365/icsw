@@ -12,8 +12,8 @@ angular_module_setup([monitoring_build_info_module])
 
 DT_FORM = "dd, D. MMM YYYY HH:mm:ss"
 
-monitoring_build_info_module.controller("info_ctrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "sharedDataSource", "$q", "$modal", "access_level_service",
-    ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, sharedDataSource, $q, $modal, access_level_service) ->
+monitoring_build_info_module.controller("info_ctrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "sharedDataSource", "$q", "$modal", "access_level_service", "$timeout",
+    ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, sharedDataSource, $q, $modal, access_level_service, $timeout) ->
         access_level_service.install($scope)
         $scope.pagSettings = paginatorSettings.get_paginator("masters", $scope)
         $scope.masters = []
@@ -24,6 +24,7 @@ monitoring_build_info_module.controller("info_ctrl", ["$scope", "$compile", "$fi
                 ["{% url 'rest:device_tree_list' %}", {"all_monitoring_servers" : true}]
             ])
             $q.all(wait_list).then((data) ->
+                $timeout($scope.reload, 5000)
                 $scope.masters = data[0]
                 slave_list = []
                 for master in $scope.masters
