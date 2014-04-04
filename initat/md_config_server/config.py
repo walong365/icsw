@@ -266,8 +266,9 @@ class sync_config(object):
             self.send_time_lut[self.send_time] = self.config_version_send
             self.dist_ok = False
             _r_gen = self._relayer_gen()
-            self.log("start send to slave (version %d, generation is %d)" % (
+            self.log("start send to slave (version {:d} [{:d}], generation is {:d})".format(
                 self.config_version_send,
+                self.send_time,
                 _r_gen,
                 ))
             # number of atomic commands
@@ -301,10 +302,10 @@ class sync_config(object):
                                 host="DIRECT",
                                 slave_name=self.__slave_name,
                                 port="0",
-                                uid="%d" % (os.stat(full_r_path)[stat.ST_UID]),
-                                gid="%d" % (os.stat(full_r_path)[stat.ST_GID]),
-                                version="%d" % (self.send_time),
-                                file_name="%s" % (full_w_path),
+                                uid="{:d}".format(os.stat(full_r_path)[stat.ST_UID]),
+                                gid="{:d}".format(os.stat(full_r_path)[stat.ST_GID]),
+                                version="{:d}".format(self.send_time),
+                                file_name="{}".format(full_w_path),
                                 content=base64.b64encode(_content)
                             )
                             self._send(srv_com)
@@ -414,10 +415,16 @@ class sync_config(object):
             return ("", [])
     def file_content_info(self, srv_com):
         cmd = srv_com["command"].text
-        self.log("handling '%s" % (cmd))
         version = int(srv_com["version"].text)
-        file_status = int(srv_com["result"].attrib["state"])
-        file_status = server_command.srv_reply_to_log_level(file_status)
+        file_reply, file_status = srv_com.get_log_tuple()
+        self.log(
+            "handling {} (version {:d}, reply is {})".format(
+                cmd,
+                version,
+                file_reply,
+            ),
+            file_status
+        )
         if cmd == "file_content_result":
             file_name = srv_com["file_name"].text
             # check return state for validity
@@ -447,7 +454,9 @@ class sync_config(object):
                     _failed_dir,
                     ", ".join(sorted(_failed_list))))
             file_names = ok_list
+        err_dict = {}
         for file_name in file_names:
+            err_str = None
             if version in self.send_time_lut:
                 target_vers = self.send_time_lut[version]
                 if version == self.send_time:
@@ -458,13 +467,20 @@ class sync_config(object):
                             else:
                                 self.__tcv_dict[file_name] = False
                         else:
-                            self.log("key %s waits for different version: %d != %d" % (file_name, version, self.__tcv_dict[file_name]), logging_tools.LOG_LEVEL_ERROR)
+                            err_str = "waits for different version: {:d} != {:d}".format(version, self.__tcv_dict[file_name])
                     else:
-                        self.log("key %s already set to %s" % (file_name, str(self.__tcv_dict[file_name])), logging_tools.LOG_LEVEL_ERROR)
+                        err_str = "already set to {}".format(str(self.__tcv_dict[file_name]))
                 else:
-                    self.log("version is from an older distribution run", logging_tools.LOG_LEVEL_ERROR)
+                    err_str = "version is from an older distribution run ({:d} != {:d})".format(version, self.send_time)
             else:
-                self.log("version %d not known in send_time_lut" % (version), logging_tools.LOG_LEVEL_ERROR)
+                err_str = "version {:d} not known in send_time_lut".format(version)
+            if err_str:
+                err_dict.setdefault(err_str, []).append(file_name)
+        for err_key in sorted(err_dict.keys()):
+            self.log("[{:4d}] {} : {}".format(
+                len(err_dict[err_key]),
+                err_key,
+                ", ".join(sorted(err_dict[err_key]))), logging_tools.LOG_LEVEL_ERROR)
         self._show_pending_info()
 
 class main_config(object):
