@@ -1212,10 +1212,10 @@ class relay_code(threading_tools.process_pool):
             )
     def _check_version(self, key, new_vers):
         if new_vers == self.version_dict.get(key):
-            self.log("no newer version for %s (%d)" % (key, new_vers))
+            self.log("no newer version for {} ({:d})".format(key, new_vers))
             return False
         else:
-            self.log("newer version for %s (%d -> %d)" % (key, self.version_dict.get(key, 0), new_vers))
+            self.log("newer version for {} ({:d} -> {:d})".format(key, self.version_dict.get(key, 0), new_vers))
             self.version_dict[key] = new_vers
             return True
     def _clear_version(self, key):
@@ -1234,7 +1234,7 @@ class relay_code(threading_tools.process_pool):
                 ret_com = self._file_content_bulk(srv_com)
             # set values
             ret_com["host"] = self.master_ip
-            ret_com["port"] = "%d" % (self.master_port)
+            ret_com["port"] = "{:d}".format(self.master_port)
             self._send_to_nhm_service(None, ret_com, None, register=False)
         elif cur_com == "clear_directory":
             self._clear_directory(srv_com)
@@ -1516,6 +1516,12 @@ class relay_code(threading_tools.process_pool):
         cur_offset = 0
         num_ok, num_failed = (0, 0)
         ok_list, failed_list = ([], [])
+        self.log(
+            "got {} (version {:d})".format(
+                logging_tools.get_plural("bulk file", len(srv_com.xpath(".//ns:file_list/ns:file"))),
+                new_vers,
+            )
+        )
         for _entry in srv_com.xpath(".//ns:file_list/ns:file"):
             _uid, _gid = (int(_entry.get("uid")), int(_entry.get("gid")))
             _size = int(_entry.get("size"))
@@ -1532,23 +1538,22 @@ class relay_code(threading_tools.process_pool):
         # print etree.tostring(_file_list), len(_bulk)
         ret_com = server_command.srv_command(
             command="file_content_bulk_result",
-            version="%d" % (new_vers),
+            version="{:d}".format(new_vers),
             slave_name=srv_com["slave_name"].text,
-            num_ok="%d" % (num_ok),
-            num_failed="%d" % (num_failed),
+            num_ok="{:d}".format(num_ok),
+            num_failed="{:d}".format(num_failed),
             ok_list=base64.b64encode(bz2.compress(marshal.dumps(ok_list))),
             failed_list=base64.b64encode(bz2.compress(marshal.dumps(failed_list))),
         )
         if num_failed:
-            ret_com.set_result("cannot create all files (%d, please check logs on relayer)" % (num_failed), server_command.SRV_REPLY_STATE_ERROR)
+            ret_com.set_result("cannot create all files ({:d}, please check logs on relayer)".format(num_failed), server_command.SRV_REPLY_STATE_ERROR)
         else:
-            ret_com.set_result("all %d files created" % (num_ok))
+            ret_com.set_result("all {:d} files created".format(num_ok))
         return ret_com
     def _store_file(self, t_file, new_vers, uid, gid, content):
         success = False
         if not t_file.startswith(ICINGA_TOP_DIR):
-            self.log("refuse to operate outside '%s'" % (ICINGA_TOP_DIR), logging_tools.LOG_LEVEL_CRITICAL)
-            # ret_com.set_result("refuse to operate outside '%s'" % (ICINGA_TOP_DIR), server_command.SRV_REPLY_STATE_CRITICAL)
+            self.log("refuse to operate outside '{}'".format(ICINGA_TOP_DIR), logging_tools.LOG_LEVEL_CRITICAL)
         else:
             if self._check_version(t_file, new_vers):
                 t_dir = os.path.dirname(t_file)
@@ -1556,24 +1561,30 @@ class relay_code(threading_tools.process_pool):
                     try:
                         os.makedirs(t_dir)
                     except:
-                        self.log("error creating directory %s: %s" % (t_dir, process_tools.get_except_info()),
+                        self.log("error creating directory {}: {}".format(t_dir, process_tools.get_except_info()),
                                  logging_tools.LOG_LEVEL_ERROR)
                     else:
-                        self.log("created directory %s" % (t_dir))
+                        self.log("created directory {}".format(t_dir))
                 try:
                     file(t_file, "w").write(content)
                     os.chown(t_file, uid, gid)
                 except:
-                    self.log("error creating file %s: %s" % (
-                        t_file,
-                        process_tools.get_except_info()),
-                             logging_tools.LOG_LEVEL_ERROR)
+                    self.log(
+                        "error creating file {}: {}".format(
+                            t_file,
+                            process_tools.get_except_info()
+                        ),
+                        logging_tools.LOG_LEVEL_ERROR
+                    )
                 else:
-                    self.log("created %s (%d bytes)" % (
-                        t_file,
-                        len(content)))
+                    self.log(
+                        "created {} ({})".format(
+                            t_file,
+                            logging_tools.get_size_str(len(content))
+                        )
+                    )
                     success = True
             else:
                 success = True
-                self.log("file %s not newer" % (t_file), server_command.SRV_REPLY_STATE_WARN)
+                self.log("file {} not newer".format(t_file), server_command.SRV_REPLY_STATE_WARN)
         return success
