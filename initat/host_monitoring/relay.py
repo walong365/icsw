@@ -1212,12 +1212,15 @@ class relay_code(threading_tools.process_pool):
             )
     def _check_version(self, key, new_vers):
         if new_vers == self.version_dict.get(key):
-            self.log("no newer version for {} ({:d})".format(key, new_vers))
-            return False
+            renew, log_str = (False, "no newer version ({:d})".format(new_vers))
         else:
-            self.log("newer version for {} ({:d} -> {:d})".format(key, self.version_dict.get(key, 0), new_vers))
+            renew = True
+            if key in self.version_dict:
+                log_str = "newer version ({:d} -> {:d})".format(self.version_dict.get(key, 0), new_vers)
+            else:
+                log_str = "new version ({:d})".format(new_vers)
             self.version_dict[key] = new_vers
-            return True
+        return renew, log_str
     def _clear_version(self, key):
         if key in self.version_dict:
             del self.version_dict[key]
@@ -1546,16 +1549,19 @@ class relay_code(threading_tools.process_pool):
             failed_list=base64.b64encode(bz2.compress(marshal.dumps(failed_list))),
         )
         if num_failed:
-            ret_com.set_result("cannot create all files ({:d}, please check logs on relayer)".format(num_failed), server_command.SRV_REPLY_STATE_ERROR)
+            log_str, log_state = ("cannot create all files ({:d}, please check logs on relayer)".format(num_failed), server_command.SRV_REPLY_STATE_ERROR)
         else:
-            ret_com.set_result("all {:d} files created".format(num_ok))
+            log_str, log_state = ("all {:d} files created".format(num_ok), server_command.SRV_REPLY_STATE_OK)
+        ret_com.set_result(log_str, log_state)
+        self.log(log_str, server_command.srv_reply_to_log_level(log_state))
         return ret_com
     def _store_file(self, t_file, new_vers, uid, gid, content):
         success = False
         if not t_file.startswith(ICINGA_TOP_DIR):
             self.log("refuse to operate outside '{}'".format(ICINGA_TOP_DIR), logging_tools.LOG_LEVEL_CRITICAL)
         else:
-            if self._check_version(t_file, new_vers):
+            renew, log_str = self._check_version(t_file, new_vers)
+            if renew:
                 t_dir = os.path.dirname(t_file)
                 if not os.path.exists(t_dir):
                     try:
@@ -1578,13 +1584,14 @@ class relay_code(threading_tools.process_pool):
                     )
                 else:
                     self.log(
-                        "created {} ({})".format(
+                        "created {} [{}, {}]".format(
                             t_file,
-                            logging_tools.get_size_str(len(content))
+                            logging_tools.get_size_str(len(content)).strip(),
+                            log_str,
                         )
                     )
                     success = True
             else:
                 success = True
-                self.log("file {} not newer".format(t_file), server_command.SRV_REPLY_STATE_WARN)
+                self.log("file {} not newer [{}]".format(t_file, log_str), server_command.SRV_REPLY_STATE_WARN)
         return success
