@@ -575,9 +575,9 @@ class _general(hm_classes.hm_module):
             if not real_root_dev_name:
                 # try to get root-dev-name from /dev/root
                 if os.path.islink("/dev/root"):
-                    real_root_dev_name = os.readlink("/dev/root")
-                    if real_root_dev_name.startswith("/dev/"):
-                        real_root_dev_name = real_root_dev_name[5:]
+                    real_root_dev_name = os.path.normpath(os.path.join("/dev", os.readlink("/dev/root")))
+                    # if real_root_dev_name.startswith("/dev/"):
+                    #    real_root_dev_name = real_root_dev_name[5:]
             # still no real_root_dev_name: try /etc/mtab
             if not real_root_dev_name:
                 if os.path.isfile("/etc/mtab"):
@@ -586,7 +586,19 @@ class _general(hm_classes.hm_module):
                         real_root_dev_name = root_list[0]
                         if real_root_dev_name.startswith("/dev/"):
                             real_root_dev_name = real_root_dev_name[5:]
+            # resolve real_root_dev_name if /dev/disk/by-uuid
+            # print real_root_dev_name
+            # hm, not needed ?
+            if False:
+                if real_root_dev_name.startswith("/dev/disk/by-uuid"):
+                    _real_root_dev_name = os.path.join(real_root_dev_name, os.readlink(real_root_dev_name))
+                    self.log("real_root_dev_name is {}, following link to {}".format(
+                        real_root_dev_name,
+                        _real_root_dev_name,))
+                    real_root_dev_name = _real_root_dev_name
             if not ret_str:
+                # build blkid dict
+                uls_obj = partition_tools.uuid_label_struct()
                 # partition lookup dict
                 part_lut = {}
                 part_bin = self.parted_path
@@ -733,7 +745,7 @@ class _general(hm_classes.hm_module):
                         # if part.startswith("/dev/disk"):
                         #    part = dd_lut["fw_lut"][part]
                         if part in parts_found:
-                            # already touches
+                            # already touched
                             continue
                         parts_found.append(part)
                         if fstype in ["subfs", "autofs"]:
@@ -788,7 +800,7 @@ class _general(hm_classes.hm_module):
                                                 "/dev/mapper",
                                                 os.readlink("/dev/mapper/%s%s" % (vg_name, "-%s" % (lv_name) if lv_name is not None else ""))))
                                         dev_dict.setdefault("/dev/mapper/%s" % (vg_name), {})[lv_name] = {
-                                            "mountpoint" : mp,
+                                            "    mountpoint" : mp,
                                             "fstype"     : fstype,
                                             "options"    : opts,
                                             "dump"       : dump,
@@ -798,13 +810,14 @@ class _general(hm_classes.hm_module):
                                             "lut"        : my_disk_lut[dm_name],
                                         }
                                     else:
-                                        act_lv = self.local_lvm_info.lv_dict["lv"][lv_name]
-                                        act_lv["mount_options"] = {
-                                            "mountpoint" : mp,
-                                            "fstype"     : fstype,
-                                            "options"    : opts,
-                                            "dump"       : dump,
-                                            "fsck"       : fsck}
+                                        if "lv" in self.local_lvm_info.lv_dict:
+                                            act_lv = self.local_lvm_info.lv_dict["lv"][lv_name]
+                                            act_lv["mount_options"] = {
+                                                "mountpoint" : mp,
+                                                "fstype"     : fstype,
+                                                "options"    : opts,
+                                                "dump"       : dump,
+                                                "fsck"       : fsck}
                             else:
                                 dev, part_num = part_lut[part]
                                 dev_dict[dev][part_num]["mountpoint"] = mp
@@ -821,7 +834,6 @@ class _general(hm_classes.hm_module):
                                         dev_dict[dev][part_num]["info"] = "Linux swap / Solaris"
                                 # add lookup
                                 dev_dict[dev][part_num]["lut"] = my_disk_lut[part]
-
                         else:
                             if part == mp:
                                 part = "none"
