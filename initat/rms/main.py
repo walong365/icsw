@@ -130,7 +130,7 @@ def main():
         process_tools.set_handles({"out" : (1, "sge-server.out"),
                                    "err" : (0, "/var/lib/logging-server/py_err")})
     else:
-        print "Debugging SGE-server"
+        print "Debugging RMS-server"
     ret_state = server_process().loop()
     sys.exit(ret_state)
 

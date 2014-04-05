@@ -92,9 +92,14 @@ class rms_mon_process(threading_tools.process_obj):
     def _get_config(self, *args, **kwargs):
         src_id, srv_com_str = args
         srv_com = server_command.srv_command(source=srv_com_str)
+        if "needed_dicts" in srv_com:
+            needed_dicts = srv_com["*needed_dicts"]
+        else:
+            needed_dicts = None
+        self.log("get_config, needed_dicts is {}".format(", ".join(needed_dicts) if needed_dicts else "all"))
         # needed_dicts = opt_dict.get("needed_dicts", ["hostgroup", "queueconf", "qhost", "complexes"])
         # update_list = opt_dict.get("update_list", [])
-        self.__sge_info.update()
+        self.__sge_info.update(update_list=needed_dicts)
         srv_com["sge"] = self.__sge_info.get_tree() # file_dict=self.__job_content_dict)
         self.send_to_socket(self.__main_socket, ["command_result", src_id, unicode(srv_com)])
         del srv_com
