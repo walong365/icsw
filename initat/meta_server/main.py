@@ -55,7 +55,7 @@ def main():
         ("SERVER_FULL_NAME"    , configfile.str_c_var(long_host_name)),
         ("PID_NAME"            , configfile.str_c_var("meta-server"))])
     global_config.parse_file()
-    options = global_config.handle_commandline(description="meta-server, version is %s" % (VERSION_STRING))
+    options = global_config.handle_commandline(description="meta-server, version is {}".format(VERSION_STRING))
     global_config.write_file()
     if global_config["KILL_RUNNING"]:
         if global_config.single_process_mode():
@@ -66,7 +66,7 @@ def main():
     if not options.DEBUG:
         process_tools.become_daemon()
     else:
-        print "Debugging meta-server on %s" % (global_config["SERVER_FULL_NAME"])
+        print "Debugging meta-server on {}".format(global_config["SERVER_FULL_NAME"])
     main_process().loop()
     sys.exit(0)
 
