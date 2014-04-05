@@ -917,7 +917,7 @@ class logfile(logging.handlers.BaseRotatingHandler):
         file_list = [entry for entry in os.listdir(cur_dir) if entry.startswith(base_name) and entry != base_name]
         for cur_file in file_list:
             f_name = os.path.join(cur_dir, cur_file)
-            act_age = abs(time.time() - os.stat(f_name)[stat.ST_MTIME]) / (24 * 3600)
+            act_age = int(abs(time.time() - os.stat(f_name)[stat.ST_MTIME]) / (24 * 3600))
             if act_age > self.max_age:
                 try:
                     os.unlink(f_name)
