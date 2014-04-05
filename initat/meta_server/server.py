@@ -63,7 +63,7 @@ class main_process(threading_tools.process_pool):
         self.register_exception("int_error", self._sigint)
         self.register_exception("term_error", self._sigint)
         # init stuff for mailing
-        self.__new_mail = mail_tools.mail(None, "%s@%s" % (global_config["FROM_NAME"], global_config["FROM_ADDR"]), global_config["TO_ADDR"])
+        self.__new_mail = mail_tools.mail(None, "{}@{}".format(global_config["FROM_NAME"], global_config["FROM_ADDR"]), global_config["TO_ADDR"])
         self.__new_mail.set_server(global_config["MAILSERVER"], global_config["MAILSERVER"])
         # check
         self.__check_dict = {}
@@ -82,7 +82,7 @@ class main_process(threading_tools.process_pool):
     def _check_dirs(self):
         main_dir = global_config["MAIN_DIR"]
         if not os.path.isdir(main_dir):
-            self.log("creating %s" % (main_dir))
+            self.log("creating {}".format(main_dir))
             os.mkdir(main_dir)
         cur_stat = os.stat(main_dir)[stat.ST_MODE]
         new_stat = cur_stat | stat.S_IWGRP | stat.S_IRGRP | stat.S_IRUSR | stat.S_IWUSR | stat.S_IWOTH | stat.S_IROTH
@@ -122,7 +122,7 @@ class main_process(threading_tools.process_pool):
         client = self.zmq_context.socket(zmq.ROUTER)
         # client.setsockopt(zmq.IDENTITY, "ms")
         try:
-            client.bind("tcp://*:%d" % (global_config["COM_PORT"]))
+            client.bind("tcp://*:{:d}".format(global_config["COM_PORT"]))
         except zmq.ZMQError:
             self.log("error binding to %d: %s" % (global_config["COM_PORT"],
                                                   process_tools.get_except_info()),
