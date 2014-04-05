@@ -213,7 +213,7 @@ class sge_info(object):
         if self.__is_active:
             self._sanitize_sge_dict()
         self.__job_dict = {}
-        self._init_update(kwargs.get("init_dicts", {}))
+        self._init_update()
         if kwargs.get("run_initial_update", True) and self.__is_active:
             self.update()
     def __del__(self):
@@ -243,8 +243,9 @@ class sge_info(object):
         else:
             logging_tools.my_syslog("[si] {}".format(what), log_level)
     def get_tree(self, **kwargs):
+        # return etree.fromstring(etree.tostring(self.__tree))
+        r_tree = copy.deepcopy(self.__tree)
         if "file_dict" in kwargs:
-            r_tree = copy.deepcopy(self.__tree)
             for job_id, file_dict in kwargs["file_dict"].iteritems():
                 job_el = r_tree.xpath(".//job_list[@full_id='{}' and master/text() = \"MASTER\"]".format(job_id), smart_strings=False)
                 if len(job_el):
@@ -255,9 +256,7 @@ class sge_info(object):
                             file_info.remove(sub_el)
                         for _f_name, f_el in file_dict.iteritems():
                             file_info.append(f_el)
-            return r_tree
-        else:
-            return self.__tree
+        return r_tree
     def get(self, key, def_value):
         return self.__act_dicts.get(key, def_value)
     # extended job id
@@ -334,11 +333,12 @@ class sge_info(object):
     @property
     def tree(self):
         return self.__tree
-    def _init_update(self, start_dict):
+    def _init_update(self):
         self.__tree = E.rms_info()
         for key in self.__valid_dicts:
             self.__tree.append(getattr(E, key)())
     def update(self, **kwargs):
+        # self._init_update()
         upd_list = kwargs.get("update_list", self.__valid_dicts)
         # determine which dicts to update
         if self.__verbose:
@@ -399,7 +399,7 @@ class sge_info(object):
                     pass
                 else:
                     if "sge" in srv_reply:
-                        self.__tree = srv_reply["sge"][0]
+                        self.__tree = etree.fromstring(etree.tostring(srv_reply["sge"][0]))
                         # valid return
                     dicts_to_update -= server_update
             e_time = time.time()
@@ -428,6 +428,18 @@ class sge_info(object):
                             logging_tools.get_diff_time_str(e_time - s_time)
                         )
                     )
+        if self.__verbose:
+            self.log(
+                "tree size {:d}, memory usage {}".format(
+                    len(etree.tostring(self.__tree)),
+                    logging_tools.get_size_str(process_tools.get_mem_info()),
+                )
+            )
+        # s_time = time.time()
+        # hm, fixes the memory issue but not very beautifull ...
+        self.__tree = etree.fromstring(etree.tostring(self.__tree))
+        # e_time = time.time()
+        # print e_time - s_time
     def _sanitize_sge_dict(self):
         for key_name, file_name, default_value in [
             ("SGE_ROOT", "/etc/sge_root", "NO_SGE_ROOT_SET"),
@@ -461,13 +473,18 @@ class sge_info(object):
         upd_cause = "unknown"
         cur_time = time.time()
         if cur_el is not None:
-            do_upd = abs(int(cur_el.get("valid_until", "0"))) < cur_time or force
-            if do_upd:
-                # remove previous xml subtree
-                cur_el.getparent().remove(cur_el)
-                upd_cause = "timeout [{:d} < {:d}]".format(
-                    int(cur_el.get("valid_until", "0")),
-                    int(cur_time))
+            if force:
+                do_upd = True
+                upd_cause = "forced update"
+            else:
+                do_upd = abs(int(cur_el.get("valid_until", "0"))) < cur_time
+                if do_upd:
+                    # remove previous xml subtree
+                    cur_el.getparent().remove(cur_el)
+                    upd_cause = "timeout [{:d} < {:d}]".format(
+                        int(cur_el.get("valid_until", "0")),
+                        int(cur_time)
+                    )
         else:
             do_upd = True
             upd_cause = "missing"
@@ -1195,6 +1212,14 @@ def build_node_list(s_info, options):
             node_list.append(cur_node)
     return node_list
 
+def _stress_test():
+    a = sge_info(always_direct=True, verbose=True)
+    _iters = 100
+    for x in xrange(_iters):
+        a.update(force_update=True)
+    print("{:d} iterations done".format(_iters))
+    time.sleep(3600)
+
 if __name__ == "__main__":
-    print "This is a loadable module, exiting..."
-    sys.exit(0)
+    _stress_test()
+
