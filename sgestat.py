@@ -105,7 +105,7 @@ class window(object):
         self.callback = kwargs.get("callback", None)
         self.tree = kwargs.get("tree", None)
         self.cb_args = kwargs.get("args", [])
-        self.top_text = urwid.Text(("banner", "Init cluster"), align="left")
+        self.top_text = urwid.Text(("banner", "CORVUS by init.at"), align="left")
         self.main_text = urwid.Text("Wait please...", align="left")
         self.bottom_text = urwid.Text("", align="left")
         if self.tree:

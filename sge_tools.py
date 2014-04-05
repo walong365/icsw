@@ -337,9 +337,25 @@ class sge_info(object):
         self.__tree = E.rms_info()
         for key in self.__valid_dicts:
             self.__tree.append(getattr(E, key)())
+    def _direct_call(self, dict_name):
+        s_time = time.time()
+        new_el = self.__update_call_dict[dict_name]()
+        new_el.attrib["last_update"] = "{:d}".format(int(time.time()))
+        new_el.attrib["valid_until"] = "{:d}".format(int(time.time()) + self.__timeout_dicts[dict_name])
+        e_time = time.time()
+        if self.__verbose > 0:
+            self.log(
+                "{} (direct) took {}".format(
+                    dict_name,
+                    logging_tools.get_diff_time_str(e_time - s_time)
+                )
+            )
+        return new_el
     def update(self, **kwargs):
         # self._init_update()
         upd_list = kwargs.get("update_list", self.__valid_dicts)
+        if upd_list is None:
+            upd_list = self.__valid_dicts
         # determine which dicts to update
         if self.__verbose:
             self.log("dicts to update (upd_list): {}".format(", ".join(upd_list) or "none"))
@@ -352,6 +368,10 @@ class sge_info(object):
         server_update = set([dict_name for dict_name in dicts_to_update if (self.__update_pref_dict[dict_name] + ["not set"])[0] == "server"])
         if self.__verbose:
             self.log("dicts to update from server: {}".format(", ".join(server_update) or "none"))
+        # direct results
+        _direct_results = {}
+        # server contacted ?
+        _sc = False
         if server_update and not self.__always_direct:
             # get everything from server
             srv_name = self.__server
@@ -374,9 +394,19 @@ class sge_info(object):
                 client.setsockopt(zmq.LINGER, 100)
                 client.connect("tcp://{}:{:d}".format(srv_name, self.__server_port))
             srv_com = server_command.srv_command(command="get_config")
+            srv_com["needed_dicts"] = list(server_update)
+            # print srv_com.pretty_print()
             my_poller = zmq.Poller()
             my_poller.register(client, zmq.POLLIN)
             client.send_unicode(unicode(srv_com))
+            _sc = True
+        # server contacted, make direct calls
+        if not self.__never_direct:
+            if self.__verbose:
+                self.log("dicts to update manually (s1): {}".format(", ".join(dicts_to_update - server_update)))
+            for dict_name in dicts_to_update - server_update:
+                _direct_results[dict_name] = self._direct_call(dict_name)
+        if _sc:
             timeout_secs = kwargs.get("timeout", 5)
             try:
                 poll_result = my_poller.poll(timeout=timeout_secs * 1000)
@@ -409,25 +439,11 @@ class sge_info(object):
                         ", ".join(server_update),
                         srv_name,
                         logging_tools.get_diff_time_str(e_time - s_time)))
-        if not self.__never_direct:
-            if self.__verbose:
-                self.log("dicts to update manually: {}".format(", ".join(dicts_to_update)))
-            for dict_name in dicts_to_update:
-                s_time = time.time()
-                for prev_el in self.__tree.findall(dict_name):
-                    prev_el.getparent().remove(prev_el)
-                new_el = self.__update_call_dict[dict_name]()
-                new_el.attrib["last_update"] = "{:d}".format(int(time.time()))
-                new_el.attrib["valid_until"] = "{:d}".format(int(time.time()) + self.__timeout_dicts[dict_name])
-                self.__tree.append(new_el)
-                e_time = time.time()
-                if self.__verbose > 0:
-                    self.log(
-                        "{} (direct) took {}".format(
-                            dict_name,
-                            logging_tools.get_diff_time_str(e_time - s_time)
-                        )
-                    )
+        # copy direct results to tree
+        for dict_name, new_el in _direct_results.iteritems():
+            for prev_el in self.__tree.findall(dict_name):
+                prev_el.getparent().remove(prev_el)
+            self.__tree.append(new_el)
         if self.__verbose:
             self.log(
                 "tree size {:d}, memory usage {}".format(
@@ -476,6 +492,9 @@ class sge_info(object):
             if force:
                 do_upd = True
                 upd_cause = "forced update"
+            elif "valid_until" not in cur_el.attrib:
+                do_upd = True
+                upd_cause = "first call"
             else:
                 do_upd = abs(int(cur_el.get("valid_until", "0"))) < cur_time
                 if do_upd:
