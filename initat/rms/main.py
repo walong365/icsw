@@ -93,30 +93,35 @@ def main():
             else:
                 print "error: Cannot read %s from file %s, exiting..." % (v_name, v_src)
                 sys.exit(2)
-    stat, sge_dict["SGE_ARCH"], log_lines = call_command("/%s/util/arch" % (sge_dict["SGE_ROOT"]))
+    stat, sge_dict["SGE_ARCH"], _log_lines = call_command("/%s/util/arch" % (sge_dict["SGE_ROOT"]))
     if stat:
         if global_config["FORCE"]:
             sge_dict["SGE_ARCH"] = "lx26_amd64"
         else:
             print "error Cannot evaluate SGE_ARCH"
             sys.exit(1)
-    cluster_location.read_config_from_db(global_config, "sge_server", [
-        ("CHECK_ITERATIONS"               , configfile.int_c_var(3)),
-        ("COM_PORT"                       , configfile.int_c_var(COM_PORT)),
-        ("RETRY_AFTER_CONNECTION_PROBLEMS", configfile.int_c_var(0)),
-        ("FROM_ADDR"                      , configfile.str_c_var("sge_server")),
-        ("TO_ADDR"                        , configfile.str_c_var("lang-nevyjel@init.at")),
-        ("SGE_ARCH"                       , configfile.str_c_var(sge_dict["SGE_ARCH"])), # , fixed=True)),
-        ("SGE_ROOT"                       , configfile.str_c_var(sge_dict["SGE_ROOT"])), # , fixed=True)),
-        ("SGE_CELL"                       , configfile.str_c_var(sge_dict["SGE_CELL"])), # , fixed=True)),
-        ("MONITOR_JOBS"                   , configfile.bool_c_var(True)),
-        ("TRACE_FAIRSHARE"                , configfile.bool_c_var(False)),
-        ("STRICT_MODE"                    , configfile.bool_c_var(False)),
-        ("APPEND_SERIAL_COMPLEX"          , configfile.bool_c_var(True)),
-        ("CLEAR_ITERATIONS"               , configfile.int_c_var(1)),
-        ("CHECK_ACCOUNTING_TIMEOUT"       , configfile.int_c_var(300))],
-                                         dummy_run=global_config["DUMMY_RUN"])
-    pid_dir = "/var/run/%s" % (os.path.dirname(global_config["PID_NAME"]))
+    cluster_location.read_config_from_db(
+        global_config,
+        "sge_server",
+        [
+            ("CHECK_ITERATIONS"               , configfile.int_c_var(3)),
+            ("COM_PORT"                       , configfile.int_c_var(COM_PORT)),
+            ("RETRY_AFTER_CONNECTION_PROBLEMS", configfile.int_c_var(0)),
+            ("FROM_ADDR"                      , configfile.str_c_var("sge_server")),
+            ("TO_ADDR"                        , configfile.str_c_var("lang-nevyjel@init.at")),
+            ("SGE_ARCH"                       , configfile.str_c_var(sge_dict["SGE_ARCH"])), # , fixed=True)),
+            ("SGE_ROOT"                       , configfile.str_c_var(sge_dict["SGE_ROOT"])), # , fixed=True)),
+            ("SGE_CELL"                       , configfile.str_c_var(sge_dict["SGE_CELL"])), # , fixed=True)),
+            ("MONITOR_JOBS"                   , configfile.bool_c_var(True)),
+            ("TRACE_FAIRSHARE"                , configfile.bool_c_var(False)),
+            ("STRICT_MODE"                    , configfile.bool_c_var(False)),
+            ("APPEND_SERIAL_COMPLEX"          , configfile.bool_c_var(True)),
+            ("CLEAR_ITERATIONS"               , configfile.int_c_var(1)),
+            ("CHECK_ACCOUNTING_TIMEOUT"       , configfile.int_c_var(300))
+        ],
+        dummy_run=global_config["DUMMY_RUN"]
+    )
+    pid_dir = "/var/run/{}".format(os.path.dirname(global_config["PID_NAME"]))
     if pid_dir not in ["/var/run", "/var/run/"]:
         process_tools.fix_directories(global_config["USER"], global_config["GROUP"], [pid_dir])
     process_tools.change_user_group(global_config["USER"], global_config["GROUP"], global_config["GROUPS"], global_config=global_config)
