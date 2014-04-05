@@ -45,9 +45,9 @@ def get_uuid():
             except:
                 pass
         try:
-            file(UUID_NAME, "w").write("%s\n" % (the_uuid.get_urn()))
+            file(UUID_NAME, "w").write("{}\n".format(the_uuid.get_urn()))
         except IOError:
-            print "Cannot write uuid to %s" % (UUID_NAME)
+            print "Cannot write uuid to {}".format(UUID_NAME)
         else:
             pass
     return the_uuid

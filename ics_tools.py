@@ -56,7 +56,7 @@ def check_threads(pid_file, options): # overview_mode, full_status):
                     dict([(pid, pids.count(pid)) for pid in pids]),
                     dict([(pid, 0) for pid in pids]))
                 for pid in unique_pids.keys():
-                    stat_f = "/proc/%d/status" % (pid)
+                    stat_f = "/proc/{:d}/status".format(pid)
                     if os.path.isfile(stat_f):
                         stat_dict = dict([
                             (part[0].lower(), part[1].strip()) for part in [
@@ -77,9 +77,9 @@ def check_threads(pid_file, options): # overview_mode, full_status):
                 num_miss = num_started - num_found
             if num_miss:
                 if not options.overview_mode:
-                    ret_str = ", ".join(["%d: %s" % (
+                    ret_str = ", ".join(["{:d}: {}".format(
                         cur_pid,
-                        "%d %s" % (
+                        "{:d} {}".format(
                             abs(bound_dict[cur_pid]),
                             "missing" if bound_dict[cur_pid] < 0 else "too many",
                         ) if bound_dict[cur_pid] else "OK",
@@ -89,15 +89,15 @@ def check_threads(pid_file, options): # overview_mode, full_status):
                     if num_started == 1:
                         ret_str = "the thread is running"
                     else:
-                        ret_str = "all %d threads running" % (num_started)
+                        ret_str = "all {:d} threads running".format(num_started)
                     if options.full_status:
                         diff_time = max(0, time.mktime(time.localtime()) - pid_time)
                         diff_days = int(diff_time / (3600 * 24))
                         diff_hours = int((diff_time - 3600 * 24 * diff_days) / 3600)
                         diff_mins = int((diff_time - 3600 * (24 * diff_days + diff_hours)) / 60)
                         diff_secs = int(diff_time - 60 * (60 * (24 * diff_days + diff_hours) + diff_mins))
-                        ret_str += " for %s%02d:%02d:%02d (%s)" % (
-                            diff_days and "%s, " % (logging_tools.get_plural("day", diff_days)) or "",
+                        ret_str += " for {}{:02d}:{:02d}:{:02d} ({})".format(
+                            diff_days and "{}, ".format(logging_tools.get_plural("day", diff_days)) or "",
                             diff_hours, diff_mins, diff_secs,
                             time.strftime("%a, %d. %b %Y, %H:%M:%S", time.localtime(pid_time)))
                 ret_state = 0
