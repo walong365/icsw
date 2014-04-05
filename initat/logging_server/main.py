@@ -67,11 +67,11 @@ class main_process(threading_tools.process_pool):
         self.register_timer(self._update, 60)
         os.umask(2)
         self.__num_write, self.__num_close, self.__num_open = (0, 0, 0)
-        self.log("logging_process %s is now awake (pid %d)" % (self.name, self.pid))
+        self.log("logging_process {} is now awake (pid {:d})".format(self.name, self.pid))
         int_names = ["log", "log_py", "err_py"]
         for name in int_names:
             _handle = self.get_python_handle(name)
-        self.log("opened handles for %s" % (", ".join(self.__handles.keys())))
+        self.log("opened handles for {}".format(", ".join(self.__handles.keys())))
         self._flush_log_cache()
         self.__last_stat_time = time.time()
         # error gather dict
@@ -86,7 +86,7 @@ class main_process(threading_tools.process_pool):
                     for cur_handle in cur_dst.handlers:
                         if not os.path.exists(cur_handle.baseFilename):
                             self.log(
-                                "reopening file %s for %s" % (
+                                "reopening file {} for {}".format(
                                     cur_handle.baseFilename,
                                     dst))
                             cur_handle.stream = cur_handle._open()
@@ -107,7 +107,7 @@ class main_process(threading_tools.process_pool):
         else:
             logging_tools.my_syslog(what, level)
     def _startup_error(self, src_name, src_pid, num_errors):
-        self.log("%s during startup, exiting" % (logging_tools.get_plural("bind error", num_errors)),
+        self.log("{} during startup, exiting".format(logging_tools.get_plural("bind error", num_errors)),
                  logging_tools.LOG_LEVEL_ERROR)
         self._int_error("bind problem")
     def _int_error(self, err_cause):
@@ -119,16 +119,16 @@ class main_process(threading_tools.process_pool):
     def _log_config(self):
         self.log("Config info:")
         for line, log_level in global_config.get_log(clear=True):
-            self.log(" - clf: [%d] %s" % (log_level, line))
+            self.log(" - clf: [{:d}] {}".format(log_level, line))
         conf_info = global_config.get_config_info()
-        self.log("Found %d valid config-lines:" % (len(conf_info)))
+        self.log("Found {:d} valid config-lines:".format(len(conf_info)))
         for conf in conf_info:
-            self.log("Config : %s" % (conf))
+            self.log("Config : {}".format(conf))
     def _remove_handles(self):
         any_removed = False
         for act_hname in self.__open_handles:
             if os.path.exists(act_hname):
-                self.log("removing previous handle %s" % (act_hname))
+                self.log("removing previous handle {}".format(act_hname))
                 os.unlink(act_hname)
                 any_removed = True
         if any_removed:
@@ -164,9 +164,9 @@ class main_process(threading_tools.process_pool):
     def loop_end(self):
         self._check_error_dict(force=True)
         self.__num_write += 3
-        self.log("closing %d handles" % (len(self.__handles.keys())))
-        self.log("logging process exiting (pid %d)" % (self.pid))
-        self.log("statistics (open/close/written): %d / %d / %d" % (self.__num_open, self.__num_close, self.__num_write))
+        self.log("closing {:d} handles".format(len(self.__handles.keys())))
+        self.log("logging process exiting (pid {:d})".format(self.pid))
+        self.log("statistics (open/close/written): {:d} / {:d} / {:d}".format(self.__num_open, self.__num_close, self.__num_write))
         key_list = list(self.__handles.keys())
         for close_key in key_list:
             self.remove_handle(close_key)
@@ -195,9 +195,9 @@ class main_process(threading_tools.process_pool):
                 error_f = []
                 for key in sorted(in_dict.keys()):
                     try:
-                        error_f.append(u"  %-20s : %s" % (key, unicode(in_dict[key])))
+                        error_f.append(u"  {:<20s} : {}".format(key, unicode(in_dict[key])))
                     except:
-                        error_f.append(u"  error logging key '%s' : %s" % (
+                        error_f.append(u"  error logging key '{}' : {}".format(
                             key,
                             process_tools.get_except_info(),
                             ))
@@ -215,25 +215,25 @@ class main_process(threading_tools.process_pool):
                 gname = grp.getgrgid(in_dict.get("gid", -1))[0]
             except:
                 gname = "<unknown>"
-            pid_str = "%s (uid %d [%s], gid %d [%s])" % (
+            pid_str = "{} (uid {:d} [{}], gid {:d} [{}])".format(
                 in_dict.get("name", "N/A"),
                 in_dict.get("uid", 0),
                 uname,
                 in_dict.get("gid", 0),
                 gname)
             for err_line in error_f:
-                self.log("from pid %d (%s): %s" % (
+                self.log("from pid {:d} ({}): {}".format(
                     in_dict.get("pid", 0),
                     pid_str,
                     err_line.rstrip()),
                          logging_tools.LOG_LEVEL_ERROR,
                          "err_py")
         except:
-            self.log("error in handling error_dict: %s" % (process_tools.get_except_info()),
+            self.log("error in handling error_dict: {}".format(process_tools.get_except_info()),
                      logging_tools.LOG_LEVEL_ERROR)
     def _get_process_info(self, es_dict):
         p_dict = es_dict.get("proc_dict", {})
-        return "name %s, ppid %d, uid %d, gid %d" % (
+        return "name {}, ppid {:d}, uid {:d}, gid {:d}".format(
             p_dict.get("name", "N/A"),
             p_dict.get("ppid", 0),
             p_dict.get("uid", -1),
@@ -246,12 +246,12 @@ class main_process(threading_tools.process_pool):
         for ep, es in self.__eg_dict.items():
             t_diff = s_time - es["last_update"]
             if force or (t_diff < 0 or t_diff > 60):
-                subject = "Python error for pid %d on %s@%s (%s)" % (
+                subject = "Python error for pid {:d} on {}@{} ({})".format(
                     ep,
                     global_config["LONG_HOST_NAME"], c_name,
                     process_tools.get_machine_name())
-                msg_body = "\n".join(["Processinfo %s" % (self._get_process_info(es))] +
-                                     ["%3d %s" % (line_num + 1, line) for line_num, line in enumerate(es["errors"])])
+                msg_body = "\n".join(["Processinfo {}".format(self._get_process_info(es))] +
+                                     ["{:3d} {}".format(line_num + 1, line) for line_num, line in enumerate(es["errors"])])
                 self._send_mail(subject, msg_body)
                 mails_sent += 1
                 ep_dels.append(ep)
@@ -259,12 +259,14 @@ class main_process(threading_tools.process_pool):
             del self.__eg_dict[epd]
         e_time = time.time()
         if mails_sent:
-            self.log("Sent %s in %.2f seconds" % (logging_tools.get_plural("mail", mails_sent),
-                                                  e_time - s_time))
+            self.log(
+                "Sent {} in {:.2f} seconds".format(
+                    logging_tools.get_plural("mail", mails_sent),
+                    e_time - s_time))
     def _send_mail(self, subject, msg_body):
         new_mail = mail_tools.mail(
             subject,
-            "%s@%s" % (global_config["FROM_NAME"], global_config["FROM_ADDR"]),
+            "{}@{}".format(global_config["FROM_NAME"], global_config["FROM_ADDR"]),
             global_config["TO_ADDR"],
             msg_body)
         new_mail.set_server(global_config["MAILSERVER"],
@@ -272,41 +274,43 @@ class main_process(threading_tools.process_pool):
         try:
             send_stat, log_lines = new_mail.send_mail()
             for log_line in log_lines:
-                self.log(" - (%d) %s" % (send_stat, log_line),
+                self.log(" - ({:d}) {}".format(send_stat, log_line),
                          logging_tools.LOG_LEVEL_OK)
         except:
-            self.log("error sending mail: %s" % (process_tools.get_except_info()),
+            self.log("error sending mail: {}".format(process_tools.get_except_info()),
                      logging_tools.LOG_LEVEL_CRITICAL)
     def any_message_received(self):
         act_time = time.time()
         self.__num_write += 1
         if not self.__last_stat_time or abs(act_time - self.__last_stat_time) > self.__stat_timer or self.__num_write % 10000 == 0:
             self.__last_stat_time = act_time
-            self.log("logstat (open/close/written): %d / %d / %d, mem_used is %s" % (
+            self.log("logstat (open/close/written): {:d} / {:d} / {:d}, mem_used is {}".format(
                 self.__num_open,
                 self.__num_close,
                 self.__num_write,
                 process_tools.beautify_mem_info()))
             self.__num_open, self.__num_close, self.__num_write = (0, 0, 0)
     def remove_handle(self, h_name):
-        self.log("closing handle %s" % (h_name))
+        self.log("closing handle {}".format(h_name))
         self.__num_close += 1
         handle = self.__handles[h_name]
         if isinstance(handle, logging.Logger):
-            handle.info("key / name : %s / %s" % (h_name, handle.handle_name))
-            handle.info("closed %s by pid %d [logger]" % (h_name, self.pid))
+            handle.info("key / name : {} / {}".format(h_name, handle.handle_name))
+            handle.info("closed {} by pid {:d} [logger]".format(h_name, self.pid))
             for sub_h in handle.handlers:
                 handle.removeHandler(sub_h)
                 sub_h.close()
         else:
-            handle.write("closed %s by pid %d [plain]" % (h_name, self.pid))
+            handle.write("closed {} by pid {:d} [plain]".format(h_name, self.pid))
             handle.close()
         del self.__handles[h_name]
     def _update(self, **kwargs):
         c_handles = sorted([key for key, value in self.__handles.items() if isinstance(value, logging_tools.logfile) and value.check_for_temp_close()])
         if c_handles:
-            self.log("temporarily closing %s: %s" % (logging_tools.get_plural("handle", len(c_handles)),
-                                                     ", ".join(c_handles)))
+            self.log(
+                "temporarily closing {}: {}".format(
+                    logging_tools.get_plural("handle", len(c_handles)),
+                    ", ".join(c_handles)))
         for c_handle in c_handles:
             self.remove_handle(c_handle)
         self._check_error_dict()
@@ -319,7 +323,7 @@ class main_process(threading_tools.process_pool):
         if in_dict:
             # pprint.pprint(in_dict)
             if "IOS_type" in in_dict:
-                self.log("got error_dict (pid %d)" % (in_dict["pid"]),
+                self.log("got error_dict (pid {:d})".format(in_dict["pid"]),
                          logging_tools.LOG_LEVEL_ERROR)
                 self._feed_error(in_dict)
                 log_com, ret_str, python_log_com = (None, "", False)
@@ -329,7 +333,7 @@ class main_process(threading_tools.process_pool):
             if in_str == "meta-server-test":
                 log_com, ret_str, python_log_com = (None, "", False)
             else:
-                raise ValueError("Unable to dePickle or deMarshal string (%s)" % (unicode(in_str[0:10])))
+                raise ValueError("Unable to dePickle or deMarshal string ({})".format(unicode(in_str[0:10])))
         return log_com, ret_str, python_log_com
     def get_python_handle(self, record):
         if type(record) == type(""):
@@ -337,7 +341,7 @@ class main_process(threading_tools.process_pool):
             sub_dirs = []
             record_host = "localhost"
             record_name, record_process, record_parent_process = (
-                "init.at.%s" % (record),
+                "init.at.{}".format(record),
                 os.getpid(),
                 os.getppid())
         else:
@@ -353,7 +357,7 @@ class main_process(threading_tools.process_pool):
         init_logger = record_name.startswith("init.at.")
         if init_logger:
             # init.at logger, create subdirectories
-            logger_name = "%s.%s" % (record_host, record_name)
+            logger_name = "{}.{}".format(record_host, record_name)
             # generate list of dirs and file_name
             scr1_name = record_name[8:].replace("\.", "#").replace(".", "/").replace("#", ".")
             for path_part in os.path.dirname(scr1_name).split(os.path.sep):
@@ -376,12 +380,14 @@ class main_process(threading_tools.process_pool):
                          self.__handles[h_name].parent_process_id])) and not self.__handles[h_name].ignore_process_id:
                 self.remove_handle(h_name)
         if not h_name in self.__handles:
-            self.log("logger '%s' (logger_type %s) requested" % (logger_name,
-                                                                 "init.at" if init_logger else "native"))
+            self.log(
+                "logger '{}' (logger_type {}) requested".format(
+                    logger_name,
+                    "init.at" if init_logger else "native"))
             full_name = os.path.join(global_config["LOG_DESTINATION"], h_name)
             base_dir, base_name = (os.path.dirname(full_name),
                                    os.path.basename(full_name))
-            self.log("attempting to create log_file '%s' in dir '%s'" % (base_name, base_dir))
+            self.log("attempting to create log_file '{}' in dir '{}'".format(base_name, base_dir))
             # add new sub_dirs
             sub_dirs = []
             for new_sub_dir in os.path.dirname(h_name).split("/"):
@@ -397,7 +403,7 @@ class main_process(threading_tools.process_pool):
                         os.makedirs(act_dir)
                     except OSError:
                         self.log(
-                            "cannot create directory %s: %s" % (
+                            "cannot create directory {}: {}".format(
                                 act_dir,
                                 process_tools.get_except_info(),
                             )
@@ -429,8 +435,8 @@ class main_process(threading_tools.process_pool):
             logger.handle_name = h_name
             self.__handles[h_name] = logger
             logger.info(SEP_STR)
-            logger.info("opened %s (file %s in %s) by pid %s" % (full_name, base_name, base_dir, self.pid))
-            self.log("added handle %s (file %s in dir %s), total open: %s" % (
+            logger.info("opened {} (file {} in {}) by pid {}".format(full_name, base_name, base_dir, self.pid))
+            self.log("added handle {} (file {} in dir {}), total open: {}".format(
                 h_name,
                 base_name,
                 base_dir,
@@ -446,7 +452,7 @@ class main_process(threading_tools.process_pool):
             log_com, in_str, python_log_com = self.decode_in_str(in_str)
         except:
             self.log(
-                "error reconstructing log-command (len of in_str: %d): %s" % (
+                "error reconstructing log-command (len of in_str: {:d}): {}".format(
                     len(in_str),
                     process_tools.get_except_info()),
                 logging_tools.LOG_LEVEL_ERROR)
@@ -498,20 +504,20 @@ class main_process(threading_tools.process_pool):
                         elif log_msg.lower() == "ignore_process_id":
                             handle.ignore_process_id = True
                         else:
-                            self.log("unknown command '%s'" % (log_msg),
+                            self.log("unknown command '{}'".format(log_msg),
                                      logging_tools.LOG_LEVEL_ERROR)
                 if not is_command or (is_command and global_config["LOG_COMMANDS"]):
                     try:
                         handle.handle(log_com)
                     except:
                         self.log(
-                            "error handling log_com '%s': %s" % (
+                            "error handling log_com '{}': {}".format(
                                 str(log_com),
                                 process_tools.get_except_info()),
                             logging_tools.LOG_LEVEL_ERROR)
                 del log_com
             elif in_str:
-                self.log("error reconstructing log-command (len of in_str: %d): no log_com (possibly very long log_str)" % (len(in_str)),
+                self.log("error reconstructing log-command (len of in_str: {:d}): no log_com (possibly very long log_str)".format(len(in_str)),
                          logging_tools.LOG_LEVEL_ERROR)
             else:
                 # error_dict
@@ -545,7 +551,7 @@ def main():
         ("LONG_HOST_NAME"      , configfile.str_c_var(long_host_name)),
         ("MAX_LINE_LENGTH"     , configfile.int_c_var(0))])
     global_config.parse_file()
-    options = global_config.handle_commandline(description="logging server, version is %s" % (version.VERSION_STRING))
+    options = global_config.handle_commandline(description="logging server, version is {}".format(version.VERSION_STRING))
     if global_config["KILL_RUNNING"]:
         process_tools.kill_running_processes()
     # daemon has to be a local variable, otherwise system startup can be severly damaged
