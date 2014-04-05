@@ -1,6 +1,6 @@
 #!/usr/bin/python -Ot
 #
-# Copyright (C) 2007,2012,2013 Andreas Lang-Nevyjel
+# Copyright (C) 2007,2012-2014 Andreas Lang-Nevyjel
 #
 # Send feedback to: <lang-nevyjel@init.at>
 # 
@@ -19,7 +19,7 @@
 #
 
 from django.db.models import Q
-from initat.cluster.backbone.models import user, group, config, device_config, config_str
+from initat.cluster.backbone.models import user, config_str
 from initat.cluster_server.config import global_config
 import commands
 import cs_base_class
@@ -47,20 +47,20 @@ class create_user_home(cs_base_class.server_com):
         try:
             cur_user = user.objects.select_related("group").get(Q(login=cur_inst.option_dict["username"]))
         except user.DoesNotExist:
-            cur_inst.srv_com["result"].attrib.update({
-                "state" : "%d" % (server_command.SRV_REPLY_STATE_ERROR),
-                "reply" : "error cannot find user '%s'" % (cur_inst.option_dict["username"])
-            })
+            cur_inst.srv_com.set_result(
+                "cannot find user '{}'".format(cur_inst.option_dict["username"]),
+                server_command.SRV_REPLY_STATE_ERROR
+            )
         else:
             # get homedir and / or createdir of export entry
             hd_exports = config_str.objects.filter(
                 (Q(name="homeexport") | Q(name="createdir")) &
                 Q(config__device_config=cur_user.export))
             if not len(hd_exports):
-                cur_inst.srv_com["result"].attrib.update({
-                    "state" : "%d" % (server_command.SRV_REPLY_STATE_ERROR),
-                    "reply" : "no createdir / homeexport found for user '%s'" % (cur_inst.option_dict["username"])
-                })
+                cur_inst.srv_com.set_result(
+                    "no createdir / homeexport found for user '{}'".format(cur_inst.option_dict["username"]),
+                    server_command.SRV_REPLY_STATE_ERROR
+                )
             else:
                 exp_dict = dict([(hd_export.name, hd_export.value) for hd_export in hd_exports])
                 self.log("export dict: %s" %  (", ".join(["%s='%s'" % (key, value) for key, value in exp_dict.iteritems()])))
@@ -148,165 +148,54 @@ class create_user_home(cs_base_class.server_com):
                                 pc_out))
                         cur_user.home_dir_created = True
                         cur_user.save()
-                        cur_inst.srv_com["result"].attrib.update({
-                            "state" : "%d" % (server_command.SRV_REPLY_STATE_OK),
-                            "reply" : "ok created homedirectory '%s' for user '%s" % (full_home, unicode(user))
-                            })
+                        cur_inst.srv_com.set_result(
+                            "created homedirectory '{}' for user '{}'".format(
+                                full_home,
+                                unicode(user)
+                            )
+                        )
                     else:
                         if hdir_exists:
                             cur_user.home_dir_created = True
                             cur_user.save()
-                            cur_inst.srv_com["result"].attrib.update({
-                                "state" : "%d" % (server_command.SRV_REPLY_STATE_OK),
-                                "reply" : hdir_err_str,
-                                })
+                            cur_inst.srv_com.set_result(
+                                hdir_err_str,
+                            )
                         else:
-                            cur_inst.srv_com["result"].attrib.update({
-                                "state" : "%d" % (server_command.SRV_REPLY_STATE_ERROR),
-                                "reply" : "error %s" % (hdir_err_str)
-                                })
+                            cur_inst.srv_com.set_result(
+                                hdir_err_str,
+                                server_command.SRV_REPLY_STATE_ERROR
+                            )
                 else:
-                    cur_inst.srv_com["result"].attrib.update({
-                        "state" : "%d" % (server_command.SRV_REPLY_STATE_ERROR),
-                        "reply" : "error no homestart directory '%s'" % (home_start)
-                    })
+                    cur_inst.srv_com.set_result(
+                        "no homestart directory '{}'".format(home_start),
+                        server_command.SRV_REPLY_STATE_ERROR
+                    )
 
-class delete_user_home(cs_base_class.server_com):
-    class Meta:
-        needed_option_keys = ["username"]
-    def _call(self, cur_inst):
-        user = cur_inst.option_dict["username"]
-        self.dc.execute("SELECT u.login, u.uid, u.home, cs.value, g.gid FROM user u, ggroup g, device_config dc, new_config c, config_str cs WHERE cs.new_config=c.new_config_idx AND cs.name='homeexport' AND u.login='%s' AND u.ggroup=g.ggroup_idx AND u.export=dc.device_config_idx AND dc.new_config=c.new_config_idx" % (user))
-        if self.dc.rowcount == 1:
-            dset = self.dc.fetchone()
-            full_home = os.path.normpath("%s/%s" % (cs_tools.hostname_expand(global_config["SERVER_SHORT_NAME"], dset["value"]), dset["home"]))
-            if os.path.isdir(full_home):
-                shutil.rmtree(full_home, 1)
-                cur_inst.srv_com["result"].attrib.update({
-                    "state" : "%d" % (server_command.SRV_REPLY_STATE_OK),
-                    "reply" : "ok delete homedirectory '%s' for user '%s'" % (full_home, user)
-                })
-            else:
-                cur_inst.srv_com["result"].attrib.update({
-                    "state" : "%d" % (server_command.SRV_REPLY_STATE_ERROR),
-                    "reply" : "error no homedirecotry '%s' for user '%s'" % (full_home, user)
-                })
-        else:
-            cur_inst.srv_com["result"].attrib.update({
-                "state" : "%d" % (server_command.SRV_REPLY_STATE_ERROR),
-                "reply" : "error cannot find user '%s'" % (user)
-            })
-
-class create_user_scratch(cs_base_class.server_com):
-    class Meta:
-        needed_option_keys = ["username"]
-    def _call(self, cur_inst):
-        def change_own(arg, t_dir, entries):
-            uid, gid = arg
-            for entry in entries:
-                fname = "%s/%s" % (t_dir, entry)
-                os.chown(fname, uid, gid)
-        user = cur_inst.option_dict["username"]
-        self.dc.execute("SELECT u.login, u.uid, u.scratch, cs.value, g.gid FROM user u, ggroup g, device_config dc, new_config c, config_str cs WHERE cs.new_config=c.new_config_idx AND cs.name='scratchexport' AND u.login='%s' AND u.ggroup=g.ggroup_idx AND u.export_scr = dc.device_config_idx AND dc.new_config=c.new_config_idx" % (user))
-        if self.dc.rowcount == 1:
-            dset = self.dc.fetchone()
-            scratch_start = cs_tools.hostname_expand(global_config["SERVER_SHORT_NAME"], dset["value"])
-            uid = dset["uid"]
-            gid = dset["gid"]
-            if os.path.isdir(scratch_start):
-                full_scratch = os.path.normpath("%s/%s" % (scratch_start, dset["scratch"]))
-                hdir_ok = True
-                try:
-                    os.mkdir(full_scratch)
-                except:
-                    hdir_ok = False
-                    hdir_err_str = "cannot create scratch-directory : %s" % (sys.exc_info()[0])
-                else:
-                    pass
-                if hdir_ok:
-                    os.chown(full_scratch, uid, gid)
-                    os.path.walk(full_scratch, change_own, (uid, gid))
-                    cur_inst.srv_com["result"].attrib.update({
-                        "state" : "%d" % (server_command.SRV_REPLY_STATE_OK),
-                        "reply" : "ok create scratchdirectory '%s' for user '%s" % (full_scratch, user)
-                    })
-                else:
-                    cur_inst.srv_com["result"].attrib.update({
-                        "state" : "%d" % (server_command.SRV_REPLY_STATE_ERROR),
-                        "reply" : "error %s" % (hdir_err_str)
-                    })
-            else:
-                cur_inst.srv_com["result"].attrib.update({
-                    "state" : "%d" % (server_command.SRV_REPLY_STATE_ERROR),
-                    "reply" : "error no scratchstart directory '%s'" % (scratch_start)
-                })
-        else:
-            cur_inst.srv_com["result"].attrib.update({
-                "state" : "%d" % (server_command.SRV_REPLY_STATE_ERROR),
-                "reply" : "error cannot find user '%s'" % (user)
-            })
-
-class delete_user_scratch(cs_base_class.server_com):
-    class Meta:
-        needed_option_keys = ["username"]
-    def _call(self, cur_inst):
-        user = cur_inst.option_dict["username"]
-        self.dc.execute("SELECT u.login, u.uid, u.home, cs.value, g.gid FROM user u, ggroup g, device_config dc, new_config c, config_str cs WHERE cs.new_config=c.new_config_idx AND cs.name='scratchexport' AND u.login='%s' AND u.ggroup=g.ggroup_idx AND u.export_scr=dc.device_config_idx AND dc.new_config=c.new_config_idx" % (user))
-        if self.dc.rowcount == 1:
-            dset = self.dc.fetchone()
-            full_scratch = os.path.normpath("%s/%s" % (cs_tools.hostname_expand(global_config["SERVER_SHORT_NAME"], dset["value"]), dset["home"]))
-            if os.path.isdir(full_scratch):
-                shutil.rmtree(full_scratch, 1)
-                cur_inst.srv_com["result"].attrib.update({
-                    "state" : "%d" % (server_command.SRV_REPLY_STATE_OK),
-                    "reply" : "ok delete scratchdirectory '%s' for user '%s'" % (full_scratch, user)
-                })
-            else:
-                cur_inst.srv_com["result"].attrib.update({
-                    "state" : "%d" % (server_command.SRV_REPLY_STATE_ERROR),
-                    "reply" : "error no scratchdirecotry '%s' for user '%s'" % (full_scratch, user)
-                })
-        else:
-            cur_inst.srv_com["result"].attrib.update({
-                "state" : "%d" % (server_command.SRV_REPLY_STATE_ERROR),
-                "reply" : "error cannot find user '%s'" % (user)
-            })
-
-class create_all_user_scratches(cs_base_class.server_com):
-    def _call(self, cur_inst):
-        def change_own(arg, t_dir, entries):
-            uid, gid = arg
-            for entry in entries:
-                fname = "%s/%s" % (t_dir, entry)
-                os.chown(fname, uid, gid)
-        self.dc.execute("SELECT u.login, u.uid, u.scratch, cs.value, g.gid FROM user u, ggroup g, device_config dc, new_config c, config_str cs WHERE cs.new_config=c.new_config_idx AND cs.name='scratchexport' AND u.ggroup=g.ggroup_idx AND u.export_scr = dc.device_config_idx AND dc.device=%d AND dc.new_config=c.new_config_idx ORDER BY u.login" % (global_config["SERVER_IDX"]))
-        if self.dc.rowcount:
-            error_dict, ok_list = ({}, [])
-            for dset in self.dc.fetchall():
-                scratch_start = cs_tools.hostname_expand(global_config["SERVER_SHORT_NAME"], dset["value"])
-                uid = dset["uid"]
-                gid = dset["gid"]
-                if os.path.isdir(scratch_start):
-                    full_scratch = os.path.normpath("%s/%s" % (scratch_start, dset["scratch"]))
-                    try:
-                        os.mkdir(full_scratch)
-                    except:
-                        error_dict.setdefault("cannot create scratch-directory", []).append(dset["login"])
-                    else:
-                        os.chown(full_scratch, uid, gid)
-                        os.path.walk(full_scratch, change_own, (uid, gid))
-                        ok_list.append(dset["login"])
-                else:
-                    error_dict.setdefault("error no scratchstart directory '%s'" % (scratch_start), []).append(dset["login"])
-            cur_inst.srv_com["result"].attrib.update({
-                "state" : "%d" % (server_command.SRV_REPLY_STATE_OK),
-                "reply" : "ok created user scratches"
-            })
-        else:
-            cur_inst.srv_com["result"].attrib.update({
-                "state" : "%d" % (server_command.SRV_REPLY_STATE_ERROR),
-                "reply" : "error no users scratch-directories on this server"
-            })
+# class delete_user_home(cs_base_class.server_com):
+#    class Meta:
+#        needed_option_keys = ["username"]
+#    def _call(self, cur_inst):
+#        user = cur_inst.option_dict["username"]
+#        self.dc.execute("SELECT u.login, u.uid, u.home, cs.value, g.gid FROM user u, ggroup g, device_config dc, new_config c, config_str cs WHERE cs.new_config=c.new_config_idx AND cs.name='homeexport' AND u.login='%s' AND u.ggroup=g.ggroup_idx AND u.export=dc.device_config_idx AND dc.new_config=c.new_config_idx" % (user))
+#        if self.dc.rowcount == 1:
+#            dset = self.dc.fetchone()
+#            full_home = os.path.normpath("%s/%s" % (cs_tools.hostname_expand(global_config["SERVER_SHORT_NAME"], dset["value"]), dset["home"]))
+#            if os.path.isdir(full_home):
+#                shutil.rmtree(full_home, 1)
+#                cur_inst.srv_com.set_result(
+#                    "deleted homedirectory '{}' for user '{}'".format(full_home, user)
+#                )
+#            else:
+#                cur_inst.srv_com.set_result(
+#                    "no homedirecotry '{}' for user '{}'".format(full_home, user),
+#                    server_command.SRV_REPLY_STATE_ERROR
+#                )
+#        else:
+#            cur_inst.srv_com.set_result(
+#                "cannot find user '{}'".format(user),
+#                server_command.SRV_REPLY_STATE_ERROR
+#            )
 
 class create_sge_user(cs_base_class.server_com):
     class Meta:

@@ -215,13 +215,16 @@ class write_yp_config(cs_base_class.server_com):
         ext_keys["ypservers"] = [
             (
                 global_config["SERVER_FULL_NAME"],
-                global_config["SERVER_FULL_NAME"])]
+                global_config["SERVER_FULL_NAME"],
+            )
+        ]
         # pprint.pprint(ext_keys)
         temp_map_dir = "/var/yp/%s" % (temp_map_dir)
         if not os.path.isdir("/var/yp"):
-            cur_inst.srv_com["result"].attrib.update({
-                "reply" : "error no /var/yp directory",
-                "state" : "%d" % (server_command.SRV_REPLY_STATE_ERROR)})
+            cur_inst.srv_com.set_result(
+                "no /var/yp directory",
+                server_command.SRV_REPLY_STATE_ERROR
+            )
         else:
             if os.path.isdir(temp_map_dir):
                 shutil.rmtree(temp_map_dir, 1)
@@ -233,7 +236,7 @@ class write_yp_config(cs_base_class.server_com):
                 map_name = "%s/%s" % (temp_map_dir, mapname)
                 # print map_name
                 gdbf = gdbm.open(map_name, "n", 0600)
-                gdbf["YP_INPUT_NAME"] = "%s.mysql" % (mapname)
+                gdbf["YP_INPUT_NAME"] = "{}.dbl".format(mapname)
                 gdbf["YP_OUTPUT_NAME"] = map_name
                 gdbf["YP_MASTER_NAME"] = global_config["SERVER_FULL_NAME"]
                 gdbf["YP_LAST_MODIFIED"] = str(int(time.time()))
@@ -252,11 +255,17 @@ class write_yp_config(cs_base_class.server_com):
             else:
                 cstat, cout = commands.getstatusoutput("/usr/lib/yp/makedbm -c")
             if cstat:
-                cur_inst.srv_com["result"].attrib.update({
-                    "reply" : "error wrote %d yp-maps, reloading gave :'%s'" % (num_maps, cout),
-                    "state" : "%d" % (server_command.SRV_REPLY_STATE_ERROR)})
+                cur_inst.srv_com.set_result(
+                    "wrote {}, reloading gave: '{}'".format(
+                        logging_tools.get_plural("YP-map", num_maps),
+                        cout,
+                    ),
+                    server_command.SRV_REPLY_STATE_ERROR
+                )
             else:
-                cur_inst.srv_com["result"].attrib.update({
-                    "reply" : "ok wrote %d yp-maps and successfully reloaded configuration" % (num_maps),
-                    "state" : "%d" % (server_command.SRV_REPLY_STATE_OK)})
+                cur_inst.srv_com.set_result(
+                    "wrote {} and successfully reloaded configuration".format(
+                        logging_tools.get_plural("YP-map", num_maps),
+                    ),
+                )
 

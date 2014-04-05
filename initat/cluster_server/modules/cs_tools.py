@@ -1,9 +1,9 @@
 #!/usr/bin/python -Ot
 #
-# Copyright (C) 2007,2013 Andreas Lang-Nevyjel
+# Copyright (C) 2007,2013-2014 Andreas Lang-Nevyjel
 #
 # Send feedback to: <lang-nevyjel@init.at>
-# 
+#
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License Version 2 as
 # published by the Free Software Foundation.
@@ -19,7 +19,6 @@
 #
 
 import re
-import sys
 
 def hostname_expand(hname, in_str):
     host_re = re.compile("^(?P<pre>.*)(?P<type>%h)(?P<post>.*)$")
@@ -27,6 +26,9 @@ def hostname_expand(hname, in_str):
     while hre:
         hre = host_re.match(in_str)
         if hre:
-            in_str = "%s%s%s" % (hre.group("pre"), hname, hre.group("post"))
+            in_str = "{}{}{}".format(
+                hre.group("pre"),
+                hname,
+                hre.group("post")
+            )
     return in_str
-        

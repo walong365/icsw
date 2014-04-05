@@ -1,6 +1,6 @@
 #!/usr/bin/python-init -Ot
 #
-# Copyright (C) 2007,2009,2013 Andreas Lang-Nevyjel
+# Copyright (C) 2007-2009,2013-2014 Andreas Lang-Nevyjel
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -19,39 +19,36 @@
 #
 
 from django.db.models import Q
-from initat.cluster.backbone.models import net_ip, netdevice, device, device_variable, \
+from initat.cluster.backbone.models import net_ip, device, \
     domain_tree_node, config, network, device_type
 from initat.cluster_server.config import global_config
 import commands
 import config_tools
-import configfile
 import cs_base_class
 import grp
 import ipvx_tools
 import logging_tools
-import networkx
 import os
 import process_tools
 import pwd
 import server_command
-import sys
 import time
 
 class write_nameserver_config(cs_base_class.server_com):
     class Meta:
         needed_configs = ["name_server"]
     def _call(self, cur_inst):
-        log_lines, sys_dict = process_tools.fetch_sysinfo("/")
+        _log_lines, sys_dict = process_tools.fetch_sysinfo("/")
         sys_version = sys_dict["version"]
         if sys_version.startswith("8") or sys_version == "sles8":
             named_dir = "/var/named"
         else:
             named_dir = "/var/lib/named"
         if not os.path.isdir(named_dir):
-            cur_inst.srv_com["result"].attrib.update({
-                "reply" : "error no named_dir %s" % (named_dir),
-                "state" : "%d" % (server_command.SRV_REPLY_STATE_ERROR)
-                })
+            cur_inst.srv_com.set_result(
+                "error no named_dir {}".format(named_dir),
+                server_command.SRV_REPLY_STATE_ERROR
+            )
             return
         cur_config = config.objects.get(Q(name="name_server"))
         act_conf_dict = config_tools.get_config_var_list(
@@ -102,7 +99,7 @@ class write_nameserver_config(cs_base_class.server_com):
             ncf_lines.append("  forwarders {\n%s\n  };" % ("\n".join(["    %s;" % (x) for x in forwarders if x])))
         ncf_lines.append("  listen-on {")
         server_idxs = [self.server_idx]
-        my_netdev_idxs = netdevice.objects.filter(Q(device__in=server_idxs)).values_list("pk", flat=True)
+        # my_netdev_idxs = netdevice.objects.filter(Q(device__in=server_idxs)).values_list("pk", flat=True)
         my_ips = net_ip.objects.filter(Q(netdevice__device__in=server_idxs)).values_list("ip", flat=True)
         for my_ip in my_ips:
             ncf_lines.append("    %s;" % (my_ip))
@@ -122,17 +119,17 @@ class write_nameserver_config(cs_base_class.server_com):
             ncf_lines.append("  secret \"%s\" ;" % (act_conf_dict["SECRET"].value))
         ncf_lines.extend(["};"])
         # ncf_lines.extend(["logging{",
-                          # "  channel simple_log {",
-                          # "    file \"/var/log/named/bind.log\" versions 3 size 5m;",
-                          # "    severity warning;",
-                          # "    print-time yes;",
-                          # "    print-severity yes;",
-                          # "    print-category yes;",
-                          # "  };",
-                          # "  category default{",
-                          # "    simple_log;",
-                          # "  };",
-                          # "};"])
+        # "  channel simple_log {",
+        # "    file \"/var/log/named/bind.log\" versions 3 size 5m;",
+        # "    severity warning;",
+        # "    print-time yes;",
+        # "    print-severity yes;",
+        # "    print-category yes;",
+        # "  };",
+        # "  category default{",
+        # "    simple_log;",
+        # "  };",
+        # "};"])
         ncf_lines.extend(["\nzone \".\" IN {",
                           "  type hint;",
                           "  file \"root.hint\";",
@@ -140,8 +137,8 @@ class write_nameserver_config(cs_base_class.server_com):
         ncf_lines.extend(["\ninclude \"/etc/named.conf.include\";"])
         # print ncf_lines
         real_config_name = "name_server" # self.act_config_name.replace("%", "")
-        other_conf = {"name_server" : "name_slave",
-                      "name_slave"  : "name_server"}[real_config_name]
+        # other_conf = {"name_server" : "name_slave",
+        #              "name_slave"  : "name_server"}[real_config_name]
         # get peers
         # sql_str = "SELECT i.ip, d.name FROM netip i INNER JOIN netdevice n INNER JOIN device_config dc INNER JOIN new_config c INNER JOIN network nw INNER JOIN network_type nt INNER JOIN hopcount h INNER JOIN device d INNER JOIN device_group dg " + \
         #          "LEFT JOIN device d2 ON d2.device_idx=dg.device WHERE d.device_group=dg.device_group_idx AND n.device=d.device_idx AND i.network=nw.network_idx AND nw.network_type=nt.network_type_idx AND nt.identifier='p' AND " + \
@@ -343,7 +340,7 @@ class write_nameserver_config(cs_base_class.server_com):
                         for ret in print_ips:
                             host_part = str(ipvx_tools.ipv4(ret.ip) & (~ipvx_tools.ipv4(net.network))).split(".")
                             host_part.reverse()
-                            for idx in range(network_parts):
+                            for _idx in range(network_parts):
                                 host_part.pop(-1)
                             fiand = ".".join(reversed(host_part))
                             out_names = []
@@ -370,13 +367,16 @@ class write_nameserver_config(cs_base_class.server_com):
         os.chown(ncname, named_uid, named_gid)
         cstat, cout = commands.getstatusoutput("/usr/sbin/rndc reload")
         if cstat:
-            cur_inst.srv_com["result"].attrib.update({
-                "reply" : "error wrote nameserver-config (%d networks), reloading gave :'%s'" % (len(nets), cout),
-                "state" : "%d" % (server_command.SRV_REPLY_STATE_ERROR)
-                })
+            cur_inst.srv_com.set_result(
+                "wrote nameserver-config ({}), reloading gave: '{}".format(
+                    logging_tools.get_plural("network", len(nets)),
+                    cout
+                ),
+                server_command.SRV_REPLY_STATE_ERROR
+            )
         else:
-            cur_inst.srv_com["result"].attrib.update({
-                "reply" : "ok wrote nameserver-config (%d networks) and successfully reloaded configuration" % (len(nets)),
-                "state" : "%d" % (server_command.SRV_REPLY_STATE_OK)
-                })
-
+            cur_inst.srv_com.set_result(
+                "wrote nameserver-config ({}) and successfully reloaded configuration".format(
+                    logging_tools.get_plural("network", len(nets)),
+                )
+            )

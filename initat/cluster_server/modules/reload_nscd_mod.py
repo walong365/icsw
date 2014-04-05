@@ -1,6 +1,6 @@
 #!/usr/bin/python -Ot
 #
-# Copyright (C) 2007,2012,2013 Andreas Lang-Nevyjel
+# Copyright (C) 2007,2012-2014 Andreas Lang-Nevyjel
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -28,11 +28,11 @@ class reload_nscd(cs_base_class.server_com):
         for log_line in log_f:
             self.log(log_line)
         if cstat:
-            cur_inst.srv_com["result"].attrib.update({
-                "reply" : "error unable to submit at-command (%d, please check logs) to restart nscd" % (cstat),
-                "state" : "%d" % (server_command.SRV_REPLY_STATE_ERROR)})
+            cur_inst.srv_com.set_result(
+                "unable to submit at-command ({:d}, please check logs) to restart nscd".format(cstat),
+                server_command.SRV_REPLY_STATE_ERROR
+            )
         else:
-            cur_inst.srv_com["result"].attrib.update({
-                "reply" : "ok successfully restarted nscd",
-                "state" : "%d" % (server_command.SRV_REPLY_STATE_OK)})
-
+            cur_inst.srv_com.set_result(
+                "ok successfully restarted nscd",
+            )

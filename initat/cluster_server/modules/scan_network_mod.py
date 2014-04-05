@@ -119,7 +119,7 @@ class scan_network_info(cs_base_class.server_com):
         nds_list = netdevice_speed.objects.filter(Q(speed_bps__in=[1000000000, 100000000])).order_by("-speed_bps", "-full_duplex", "-check_via_ethtool")
         default_nds = nds_list[0]
         cur_inst.log("default nds is %s" % (unicode(default_nds)))
-        for idx, (result, target_dev) in enumerate(zip(res_list, [scan_dev])):
+        for _idx, (result, target_dev) in enumerate(zip(res_list, [scan_dev])):
             cur_inst.log("device %s ..." % (unicode(target_dev)))
             # print idx, result, target_dev
             res_state = -1 if result is None else int(result["result"].attrib["state"])

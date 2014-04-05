@@ -1,6 +1,6 @@
 #!/usr/bin/python -Otu
 #
-# Copyright (C) 2007,2008,2011-2014 Andreas Lang-Nevyjel
+# Copyright (C) 2007-2008,2011-2014 Andreas Lang-Nevyjel
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -29,7 +29,6 @@ import logging_tools
 import networkx
 import os
 import process_tools
-import server_command
 
 SSH_KNOWN_HOSTS_FILENAME = "/etc/ssh/ssh_known_hosts"
 ETC_HOSTS_FILENAME = "/etc/hosts"
@@ -202,6 +201,6 @@ class write_etc_hosts(cs_base_class.server_com):
                 skh_f.write("%s %s\n" % (",".join(name_dict.get(ssh_key_node, [ssh_key_node])), rsa_key_dict[ssh_key_node]))
             skh_f.close()
             file_list.append(SSH_KNOWN_HOSTS_FILENAME)
-        cur_inst.srv_com["result"].attrib.update({
-            "reply" : "ok wrote %s" % (", ".join(sorted(file_list))),
-            "state" : "%d" % (server_command.SRV_REPLY_STATE_OK)})
+        cur_inst.srv_com.set_result(
+            "wrote %s" % (", ".join(sorted(file_list)))
+        )

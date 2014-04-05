@@ -25,9 +25,12 @@ from initat.cluster_server.config import global_config
 import check_scripts
 import cluster_location
 import cs_base_class
+import initat.cluster_server
 import logging_tools
-import server_command
+import os
 import process_tools
+import server_command
+import uuid_tools
 
 class status(cs_base_class.server_com):
     class Meta:
@@ -84,3 +87,88 @@ class server_control(cs_base_class.server_com):
                     "instance {} has not init script".format(instance),
                     server_command.SRV_REPLY_STATE_ERROR,
                 )
+
+# merged from modify_service_mod
+class modify_service(cs_base_class.server_com):
+    class Meta:
+        needed_option_keys = ["service", "mode"]
+    def _call(self, cur_inst):
+        full_service_name = "/etc/init.d/{}".format(self.option_dict["service"])
+        if self.option_dict["mode"] in ["start", "stop", "restart"]:
+            if os.path.isfile(full_service_name):
+                at_com = "%s %s" % (full_service_name, self.option_dict["mode"])
+                cstat, _c_logs = process_tools.submit_at_command(at_com, self.option_dict.get("timediff", 0))
+                if cstat:
+                    cur_inst.srv_com.set_result(
+                        "error unable to submit '{}' to at-daemon".format(at_com),
+                        server_command.SRV_REPLY_STATE_ERROR
+                    )
+                else:
+                    cur_inst.srv_com.set_result(
+                        "ok submitted {} to at-daemon".format(at_com),
+                    )
+            else:
+                cur_inst.srv_com.set_result(
+                    "error unknown service '{}'".format(full_service_name),
+                    server_command.SRV_REPLY_STATE_ERROR
+                )
+        else:
+            cur_inst.srv_com.set_result(
+                "error unknown mode '{}'".format(self.option_dict["mode"]),
+                server_command.SRV_REPLY_STATE_ERROR
+            )
+
+# merged from check_server_mod, still needed ?
+class check_server(cs_base_class.server_com):
+    def _call(self, cur_inst):
+        def_ns = check_scripts.get_default_ns()
+        # def_ns["full_status"] = True
+        # def_ns["mem_info"] = True
+        ret_dict = check_scripts.check_system(def_ns)
+        pub_coms = sorted([com_name for com_name, com_struct in initat.cluster_server.command_dict.iteritems() if com_struct.Meta.public_via_net])
+        priv_coms = sorted([com_name for com_name, com_struct in initat.cluster_server.command_dict.iteritems() if not com_struct.Meta.public_via_net])
+        # FIXME, sql info not transfered
+        for _key, value in ret_dict.iteritems():
+            if type(value) == dict and "sql" in value:
+                value["sql"] = str(value["sql"])
+        cur_inst.srv_com.set_result(
+            "returned server info",
+        )
+        cur_inst.srv_com["result:server_info"] = {
+            "version"          : global_config["VERSION"],
+            "uuid"             : uuid_tools.get_uuid().get_urn(),
+            "server_status"    : ret_dict,
+            "public_commands"  : pub_coms,
+            "private_commands" : priv_coms}
+
+# merged from version_mod
+class version(cs_base_class.server_com):
+    class Meta:
+        show_execution_time = False
+    def _call(self, cur_inst):
+        cur_inst.srv_com["version"] = global_config["VERSION"]
+        cur_inst.srv_com.set_result(
+            "version is {}".format(global_config["VERSION"])
+        )
+
+# mergef from get_uuid_mod
+class get_uuid(cs_base_class.server_com):
+    class Meta:
+        show_execution_time = False
+    def _call(self, cur_inst):
+        cur_inst.srv_com["uuid"] = uuid_tools.get_uuid().get_urn()
+        cur_inst.srv_com.set_result(
+            "uuid is {}".format(uuid_tools.get_uuid().get_urn()),
+        )
+
+class get_0mq_id(cs_base_class.server_com):
+    class Meta:
+        show_execution_time = False
+    def _call(self, cur_inst):
+        zmq_id = "%s:clusterserver:" % (uuid_tools.get_uuid().get_urn())
+        cur_inst.srv_com["zmq_id"] = zmq_id
+        cur_inst.srv_com.set_result(
+            "0MQ_ID is {}".format(zmq_id),
+        )
+
+

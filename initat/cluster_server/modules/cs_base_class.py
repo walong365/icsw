@@ -1,6 +1,6 @@
 #!/usr/bin/python-init -Ot
 #
-# Copyright (C) 2007,2012,2013 Andreas Lang-Nevyjel
+# Copyright (C) 2007,2012-2014 Andreas Lang-Nevyjel
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -28,7 +28,6 @@ import logging_tools
 import pprint
 import process_tools
 import server_command
-import sys
 import threading_tools
 import time
 
@@ -63,7 +62,7 @@ class bg_process(threading_tools.process_obj):
             int(loc_inst.srv_com["result"].attrib["state"]),
             loc_inst.srv_com["result"].attrib["reply"],
         )
-        self.log("state (%d): %s" % (ret_state, ret_str))
+        self.log("state ({:d}): {}".format(ret_state, ret_str))
         self.send_pool_message("bg_finished", com_name)
         self._exit_process()
     def loop_post(self):
@@ -78,7 +77,7 @@ class com_instance(object):
         self.Meta = meta_struct
         self.zmq_context = zmq_context
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
-        self.sc_obj.log("[ci] %s" % (what), log_level)
+        self.sc_obj.log("[ci] {}".format(what), log_level)
     def write_start_log(self):
         if self.Meta.write_log:
             self.log("Got command %s (options %s) from host %s (port %d) to %s, %s: %s" % (
@@ -99,7 +98,7 @@ class com_instance(object):
                 self.Meta.cur_running += 1
                 com_instance.bg_idx += 1
                 new_bg_name = "bg_%s_%d" % (self.sc_obj.name, com_instance.bg_idx)
-                new_bgt = self.sc_obj.process_pool.add_process(bg_process(new_bg_name), start=True)
+                # new_bgt = self.sc_obj.process_pool.add_process(bg_process(new_bg_name), start=True)
                 self.sc_obj.process_pool.send_to_process(
                     new_bg_name,
                     "set_option_dict",
@@ -230,6 +229,3 @@ class server_com(object):
     def __call__(self, srv_com, option_dict):
         return com_instance(self, srv_com, option_dict, self.Meta, self.process_pool.zmq_context)
 
-if __name__ == "__main__":
-    print "Loadable module, exiting ..."
-    sys.exit(0)

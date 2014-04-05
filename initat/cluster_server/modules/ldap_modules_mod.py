@@ -20,12 +20,11 @@
 """ tools for modifying LDAP servers """
 
 from django.db.models import Q
-from initat.cluster.backbone.models import user, group, device_config, device, config, \
+from initat.cluster.backbone.models import user, group, device_config, \
     config_str, home_export_list
 from initat.cluster_server.config import global_config
 import commands
 import cs_base_class
-import cs_tools
 import ldap
 import ldap.modlist # important, do not remove
 import logging_tools
@@ -144,10 +143,6 @@ class setup_ldap_server(cs_base_class.server_com, ldap_mixin):
             cur_inst.srv_com.set_result("no ldap_base dir '{}' found".format(ldap_base), server_command.SRV_REPLY_STATE_ERROR)
         else:
             par_dict = dict([(cur_var.name, cur_var.value) for cur_var in config_str.objects.filter(Q(config__name="ldap_server"))])
-            # self.dc.execute("SELECT cs.value, cs.name FROM new_config c INNER JOIN config_str cs INNER JOIN device_config dc INNER JOIN device d INNER JOIN device_group dg LEFT JOIN " + \
-                                   # "device d2 ON d2.device_idx=dg.device WHERE d.device_group=dg.device_group_idx AND (dc.device=d2.device_idx OR dc.device=d.device_idx) AND dc.new_config=c.new_config_idx AND c.name='ldap_server' AND cs.new_config=c.new_config_idx")
-            # par_dict = dict([(x["name"], x["value"]) for x in self.dc.fetchall()])
-            errors = []
             needed_keys = set(["base_dn", "admin_cn", "root_passwd"])
             missed_keys = needed_keys - set(par_dict.keys())
             if len(missed_keys):
@@ -202,9 +197,6 @@ class init_ldap_config(cs_base_class.server_com, ldap_mixin):
     def _call(self, cur_inst):
         # fetch configs
         par_dict = dict([(cur_var.name, cur_var.value) for cur_var in config_str.objects.filter(Q(config__name="ldap_server"))])
-        # self.dc.execute("SELECT cs.value, cs.name FROM new_config c INNER JOIN config_str cs INNER JOIN device_config dc INNER JOIN device d INNER JOIN device_group dg LEFT JOIN " + \
-                               # "device d2 ON d2.device_idx=dg.device WHERE d.device_group=dg.device_group_idx AND (dc.device=d2.device_idx OR dc.device=d.device_idx) AND dc.new_config=c.new_config_idx AND c.name='ldap_server' AND cs.new_config=c.new_config_idx")
-        # par_dict = dict([(x["name"], x["value"]) for x in self.dc.fetchall()])
         errors = []
         self.dryrun = False
         needed_keys = set(["base_dn", "admin_cn", "root_passwd"])
@@ -305,40 +297,45 @@ class init_ldap_config(cs_base_class.server_com, ldap_mixin):
                                                                                                    samba_dn))
                         local_sid = self.call_command("net", "getlocalsid")[1][0].split()[-1]
                         self.log("local SID is %s" % (local_sid))
-                        ok, err_str = self._add_entry(ld_write,
-                                                      samba_dn,
-                                                      {"objectClass" : ["sambaDomain"],
-                                                       # "structuralObjectClass" : "sambaDomain",
-                                                       "sambaDomainName"               : par_dict["sambadomain"],
-                                                       "sambaSID"                      : local_sid,
-                                                       "sambaAlgorithmicRidBase"       : "1000",
-                                                       "sambaMinPwdLength"             : "5",
-                                                       "sambaPwdHistoryLength"         : "0",
-                                                       "sambaLogonToChgPwd"            : "0",
-                                                       "sambaMaxPwdAge"                : "-1",
-                                                       "sambaMinPwdAge"                : "0",
-                                                       "sambaLockoutDuration"          : "30",
-                                                       "sambaLockoutObservationWindow" : "30",
-                                                       "sambaLockoutThreshold"         : "0",
-                                                       "sambaForceLogoff"              : "-1",
-                                                       "sambaRefuseMachinePwdChange"   : "0",
-                                                       })
+                        ok, err_str = self._add_entry(
+                            ld_write,
+                            samba_dn,
+                            {
+                                "objectClass" : ["sambaDomain"],
+                                # "structuralObjectClass" : "sambaDomain",
+                                "sambaDomainName"               : par_dict["sambadomain"],
+                                "sambaSID"                      : local_sid,
+                                "sambaAlgorithmicRidBase"       : "1000",
+                                "sambaMinPwdLength"             : "5",
+                                "sambaPwdHistoryLength"         : "0",
+                                "sambaLogonToChgPwd"            : "0",
+                                "sambaMaxPwdAge"                : "-1",
+                                "sambaMinPwdAge"                : "0",
+                                "sambaLockoutDuration"          : "30",
+                                "sambaLockoutObservationWindow" : "30",
+                                "sambaLockoutThreshold"         : "0",
+                                "sambaForceLogoff"              : "-1",
+                                "sambaRefuseMachinePwdChange"   : "0",
+                           }
+                        )
                         if ok:
-                            self.log("added entry %s" % (samba_dn))
+                            self.log("added entry {}".format(samba_dn))
                         else:
                             errors.append(err_str)
-                            self.log("cannot add entry %s: %s" % (samba_dn, err_str),
-                                            logging_tools.LOG_LEVEL_ERROR)
+                            self.log(
+                                "cannot add entry %s: %s" % (samba_dn, err_str),
+                                logging_tools.LOG_LEVEL_ERROR)
                 ld_read.unbind_s()
                 ld_write.unbind_s()
         if errors:
-            cur_inst.srv_com["result"].attrib.update({
-                "reply" : "error init LDAP tree: %s" % (", ".join(errors)),
-                "state" : "%d" % (server_command.SRV_REPLY_STATE_ERROR)})
+            cur_inst.srv_com.set_result(
+                "error init LDAP tree: {}".format(", ".join(errors)),
+                server_command.SRV_REPLY_STATE_ERROR,
+            )
         else:
-            cur_inst.srv_com["result"].attrib.update({
-                "reply" : "ok init ldap tree",
-                "state" : "%d" % (server_command.SRV_REPLY_STATE_OK)})
+            cur_inst.srv_com.set_result(
+                "ok init ldap tree",
+            )
 
 class sync_ldap_config(cs_base_class.server_com, ldap_mixin):
     class Meta:
@@ -371,13 +368,16 @@ class sync_ldap_config(cs_base_class.server_com, ldap_mixin):
             else:
                 try:
                     ld_write = ldap.initialize("ldap://localhost")
-                    ld_write.simple_bind_s("cn=%s,%s" % (par_dict["admin_cn"],
-                                                         par_dict["base_dn"]),
-                                           par_dict["root_passwd"])
+                    ld_write.simple_bind_s(
+                        "cn={},{}".format(
+                            par_dict["admin_cn"],
+                            par_dict["base_dn"]),
+                        par_dict["root_passwd"])
                 except ldap.LDAPError:
                     ldap_err_str = self._get_ldap_err_str("write_access")
-                    self.log("cannot initialize write_cursor: %s" % (ldap_err_str),
-                                    logging_tools.LOG_LEVEL_ERROR)
+                    self.log(
+                        "cannot initialize write_cursor: {}".format(ldap_err_str),
+                        logging_tools.LOG_LEVEL_ERROR)
                     errors.append(ldap_err_str)
                     ld_write = None
                     ld_read.unbind_s()
@@ -386,7 +386,7 @@ class sync_ldap_config(cs_base_class.server_com, ldap_mixin):
                 self.log("using LDAP_SCHEMATA_VERSION %d" % (ldap_version))
                 # fetch user / group info
                 all_groups = dict([(cur_g.pk, cur_g) for cur_g in group.objects.all()])
-                all_users = dict([(cur_u.pk, cur_u) for cur_u in user.objects.prefetch_related("secondary_groups").all()])
+                all_users = dict([(cur_u.pk, cur_u) for cur_u in user.objects.all().prefetch_related("secondary_groups")])
                 devlog_dict = {}
                 # for db_rec in self.dc.fetchall():
                     # devlog_dict.setdefault(db_rec["user"], []).append(db_rec["name"])
@@ -439,7 +439,7 @@ class sync_ldap_config(cs_base_class.server_com, ldap_mixin):
                         g_stuff.attributes["sambaSID"] = "%s-%d" % (
                             samba_sid,
                             g_stuff["gid"] * 2 + 1)
-                for u_idx, u_stuff in all_users.iteritems():
+                for _u_idx, u_stuff in all_users.iteritems():
                     u_stuff.dn = "uid=%s,ou=People,%s%s" % (
                         u_stuff.login,
                         sub_ou_str,
@@ -725,10 +725,10 @@ class sync_ldap_config(cs_base_class.server_com, ldap_mixin):
                                                     master_map_pfix : ["auto.master"]}})
                     if ldap_version > 0:
                         ldap_add_list = [("nisMapName", ["auto.master"])]
-                        ldap_add_list_1 = [("nisMapName", ["map_name"])]
+                        # ldap_add_list_1 = [("nisMapName", ["map_name"])]
                     else:
                         ldap_add_list = []
-                        ldap_add_list_1 = []
+                        # ldap_add_list_1 = []
                     for mount_point in mount_points:
                         map_name = "auto.%s" % (map_lut[mount_point])
                         auto_maps.append({"dn"       : "%s=%s,ou=Automount,%s%s" % (master_map_pfix,
@@ -745,7 +745,7 @@ class sync_ldap_config(cs_base_class.server_com, ldap_mixin):
                                                           ("cn"            , [mount_point]),
                                                           (mount_point_name, ["ldap://%s/%s=%s,ou=Automount,%s%s" % (self.server_device_name, master_map_pfix, map_name, sub_ou_str, par_dict["base_dn"])]),
                                                           ("description"   , ["automounter map created by cluster-server on %s" % (self.server_device_name)])] + ldap_add_list)})
-                        sub_keys = [k for k, v in export_dict.iteritems() if k.startswith("%s/" % (mount_point))]
+                        sub_keys = [key for key, value in export_dict.iteritems() if key.startswith("{}/".format(mount_point))]
                         for sub_key in sub_keys:
                             sub_mount_point = os.path.basename(sub_key)
                             mount_opts, mount_src = export_dict[sub_key]
@@ -813,13 +813,14 @@ class sync_ldap_config(cs_base_class.server_com, ldap_mixin):
                 ld_read.unbind_s()
                 ld_write.unbind_s()
         if errors:
-            cur_inst.srv_com["result"].attrib.update({
-                "reply" : "error synced LDAP tree: %s" % (", ".join(errors)),
-                "state" : "%d" % (server_command.SRV_REPLY_STATE_ERROR)})
+            cur_inst.srv_com.set_result(
+                "error synced LDAP tree: {}".format(", ".join(errors)),
+                server_command.SRV_REPLY_STATE_ERROR
+            )
         else:
-            cur_inst.srv_com["result"].attrib.update({
-                "reply" : "ok synced LDAP tree",
-                "state" : "%d" % (server_command.SRV_REPLY_STATE_OK)})
+            cur_inst.srv_com.set_result(
+                "ok synced LDAP tree",
+            )
 
 if __name__ == "__main__":
     print "Loadable module, exiting ..."
