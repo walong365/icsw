@@ -78,6 +78,7 @@ class rms_mon_process(threading_tools.process_obj):
             run_initial_update=False,
             verbose=True if global_config["DEBUG"] else False,
             is_active=True,
+            always_direct=True,
             sge_dict=dict([(key, global_config[key]) for key in ["SGE_ARCH", "SGE_ROOT", "SGE_CELL"]]))
         self._update()
         # set environment
@@ -94,14 +95,7 @@ class rms_mon_process(threading_tools.process_obj):
         # needed_dicts = opt_dict.get("needed_dicts", ["hostgroup", "queueconf", "qhost", "complexes"])
         # update_list = opt_dict.get("update_list", [])
         self.__sge_info.update()
-        srv_com["sge"] = self.__sge_info.get_tree(file_dict=self.__job_content_dict)
-        # needed_dicts = ["hostgroup", "queueconf", "qhost"]#, "complexes"]
-        # update_list = []
-        # for key in needed_dicts:
-        #    if key == "qhost":
-        #        srv_com["sge:%s" % (key)] = dict([(sub_key, self.__sge_info[key][sub_key].get_value_dict()) for sub_key in self.__sge_info[key]])
-        #    else:
-        #        srv_com["sge:%s" % (key)] = self.__sge_info[key]
+        srv_com["sge"] = self.__sge_info.get_tree() # file_dict=self.__job_content_dict)
         self.send_to_socket(self.__main_socket, ["command_result", src_id, unicode(srv_com)])
         del srv_com
     def _job_control(self, *args , **kwargs):
