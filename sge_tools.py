@@ -81,11 +81,11 @@ def compress_list(ql, queues=None, postfix=""):
     # not exactly the same as the version in logging_tools
     def add_p(np, ap, s_str, e_str):
         if s_str == e_str:
-            return "%s%s%s%s" % (np, s_str, ap, postfix)
+            return "{}{}{}{}".format(np, s_str, ap, postfix)
         elif int(s_str) + 1 == int(e_str):
-            return "%s%s%s-%s%s" % (np, s_str, ap, e_str, ap)
+            return "{}{}{}-{}{}".format(np, s_str, ap, e_str, ap)
         else:
-            return "%s%s%s-%s%s" % (np, s_str, ap, e_str, ap)
+            return "{}{}{}-{}{}".format(np, s_str, ap, e_str, ap)
     if not queues or queues == "-":
         q_list = []
     else:
@@ -155,9 +155,11 @@ def sec_to_str(in_sec):
             diff_m = int(dt / 60)
             dt -= diff_m * 60
             # if diff_d:
-            out_f = "%s%02d:%02d:%02d" % (diff_d and "%2d:" % (diff_d) or "", diff_h, diff_m, dt)
-            # else:
-            #    out_f = "%2d:%02d:%02d" % (diff_h, diff_m, dt)
+            out_f = "{}{:02d}:{:02d}:{:02d}".format(
+                diff_d and "{:2d}:".format(diff_d) or "",
+                diff_h,
+                diff_m,
+                dt)
         else:
             out_f = "????"
     return out_f
@@ -415,8 +417,8 @@ class sge_info(object):
                 for prev_el in self.__tree.findall(dict_name):
                     prev_el.getparent().remove(prev_el)
                 new_el = self.__update_call_dict[dict_name]()
-                new_el.attrib["last_update"] = "{:d}".format(time.time())
-                new_el.attrib["valid_until"] = "{:d}".format(time.time() + self.__timeout_dicts[dict_name])
+                new_el.attrib["last_update"] = "{:d}".format(int(time.time()))
+                new_el.attrib["valid_until"] = "{:d}".format(int(time.time()) + self.__timeout_dicts[dict_name])
                 self.__tree.append(new_el)
                 e_time = time.time()
                 if self.__verbose > 0:
@@ -463,9 +465,9 @@ class sge_info(object):
             if do_upd:
                 # remove previous xml subtree
                 cur_el.getparent().remove(cur_el)
-                upd_cause = "timeout [{:d} < {:d]".format(
+                upd_cause = "timeout [{:d} < {:d}]".format(
                     int(cur_el.get("valid_until", "0")),
-                    cur_time)
+                    int(cur_time))
         else:
             do_upd = True
             upd_cause = "missing"
@@ -788,7 +790,7 @@ def create_stdout_stderr(act_job, info):
         if int(stdoe_el.attrib["found"]):
             ret_el.text = logging_tools.get_size_str(int(stdoe_el.attrib["size"]))
         else:
-            ret_el.text = "error"
+            ret_el.text = "N/A"
     else:
         ret_el.text = "---"
     return ret_el
@@ -858,7 +860,7 @@ def build_running_list(s_info, options, **kwargs):
                 eff = int((num_nodes / (max_load * float(num_nodes - 1)) * mean_load + 1. / float(1 - num_nodes)) * 100)
             else:
                 eff = 0
-        cur_job.append(E.load("%.2f (%3d %%)" % (mean_load, eff)))
+        cur_job.append(E.load("{:.2f} ({:3d} {{}})".format(mean_load, eff)))
         if options.show_stdoutstderr:
             cur_job.append(create_stdout_stderr(act_job, "stdout"))
             cur_job.append(create_stdout_stderr(act_job, "stderr"))
@@ -1060,7 +1062,7 @@ def build_node_list(s_info, options):
                     E.virtual_free(act_h.findtext("resourcevalue[@name='virtual_free']") or "")
                 ])
             cur_node.extend([
-                E.load("%.2f" % (_load_to_float(act_h.findtext("resourcevalue[@name='load_avg']"))), **{"type" : "float", "format" : "%.2f"}),
+                E.load("{:2f}".format(_load_to_float(act_h.findtext("resourcevalue[@name='load_avg']"))), **{"type" : "float", "format" : "{:.2f}"}),
                 E.slots_used(shorten_list([m_queue.findtext("queuevalue[@name='slots_used']") for m_queue in m_queue_list])),
                 E.slots_reserved(shorten_list([m_queue.findtext("queuevalue[@name='slots_resv']") for m_queue in m_queue_list])),
                 E.slots_total(shorten_list([m_queue.findtext("queuevalue[@name='slots']") for m_queue in m_queue_list])),
@@ -1152,7 +1154,7 @@ def build_node_list(s_info, options):
                 ])
             # print etree.tostring(act_h, pretty_print=True)
             cur_node.extend([
-                E.load("%.2f" % (_load_to_float(act_h.findtext("resourcevalue[@name='load_avg']")))),
+                E.load("{:.2f}".format(_load_to_float(act_h.findtext("resourcevalue[@name='load_avg']")))),
                 E.slots_used(m_queue.findtext("queuevalue[@name='slots_used']")),
                 E.slots_reserved(m_queue.findtext("queuevalue[@name='slots_resv']")),
                 E.slots_total(m_queue.findtext("queuevalue[@name='slots']")),

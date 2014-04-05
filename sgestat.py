@@ -1,6 +1,6 @@
 #!/usr/bin/python-init -Ot
 #
-# Copyright (C) 2001,2002,2003,2004,2005,2006,2007,2008,2012,2013 Andreas Lang-Nevyjel, init.at
+# Copyright (C) 2001-2008,2012-2014 Andreas Lang-Nevyjel, init.at
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -37,7 +37,7 @@ def check_environment():
             if os.path.isfile(v_src):
                 os.environ[v_name] = open(v_src, "r").read().strip()
             else:
-                print "error Cannot assign environment-variable '%s', exiting..." % (v_name)
+                print "error Cannot assign environment-variable '{}', exiting ...".format(v_name)
                 sys.exit(1)
 
 def sjs(s_info, opt_dict):
@@ -51,10 +51,12 @@ def sjs(s_info, opt_dict):
     for run_job in run_list:
         r_out_list.append([logging_tools.form_entry(cur_el.text, header=cur_el.tag, left=cur_el.tag in left_justified) for cur_el in run_job])
     if len(run_list) == int(run_list.get("total")):
-        ret_list.append("%s" % (logging_tools.get_plural("running job", len(run_list))))
+        ret_list.append("{}".format(logging_tools.get_plural("running job", len(run_list))))
     else:
-        ret_list.append("%s, showing only %d (due to filter)" % (logging_tools.get_plural("running job", int(run_list.get("total"))),
-                                                                 len(run_list)))
+        ret_list.append(
+            "{}, showing only {:d} (due to filter)".format(
+                logging_tools.get_plural("running job", int(run_list.get("total"))),
+                len(run_list)))
     if r_out_list:
         ret_list.append(str(r_out_list))
     # waiting jobs
@@ -64,10 +66,12 @@ def sjs(s_info, opt_dict):
     for wait_job in wait_list:
         w_out_list.append([logging_tools.form_entry(cur_el.text, header=cur_el.tag, left=cur_el.tag in left_justified) for cur_el in wait_job])
     if len(wait_list) == int(wait_list.get("total")):
-        ret_list.append("%s" % (logging_tools.get_plural("waiting job", len(wait_list))))
+        ret_list.append("{}".format(logging_tools.get_plural("waiting job", len(wait_list))))
     else:
-        ret_list.append("%s, showing only %d (due to filter)" % (logging_tools.get_plural("waiting job", int(wait_list.get("total"))),
-                                                                 len(wait_list)))
+        ret_list.append(
+            "{}, showing only {:d} (due to filter)".format(
+                logging_tools.get_plural("waiting job", int(wait_list.get("total"))),
+                len(wait_list)))
     if w_out_list:
         ret_list.append(str(w_out_list))
     if opt_dict.interactive:
@@ -155,7 +159,7 @@ class window(object):
         if not handled:
             self._update_screen()
     def _update_screen(self):
-        self.top_text.set_text(("streak", "time: %s" % (time.ctime())))
+        self.top_text.set_text(("streak", "time: {}".format(time.ctime())))
         self.main_text.set_text(("banner", str(self.get_data())))
     def set_question_text(self, in_text):
         self.bottom_text.set_text(("bg", in_text))
@@ -173,7 +177,7 @@ class dt_tree(object):
     def back_to_top(self):
         self.cur_node = self.head_node
     def get_cur_text(self):
-        return "%s (%s)" % (
+        return "{} ({})".format(
             self.cur_node.question,
             "/".join(sorted(self.cur_node.get_triggers())))
     def handle_input(self, in_char, w_obj):
@@ -250,9 +254,10 @@ class my_opt_parser(argparse.ArgumentParser):
         self.add_argument("-v", dest="verbose", help="set verbose mode [%(default)s]", action="store_true", default=False)
 
 def log_com(what, level):
-    print "%s [%s] %s" % (time.ctime(),
-                          logging_tools.get_log_level_str(level),
-                          what)
+    print "{} [{}] {}".format(
+        time.ctime(),
+        logging_tools.get_log_level_str(level),
+        what)
 
 def get_server():
     srv_name = "localhost"
@@ -325,10 +330,10 @@ def main():
         else:
             sns(act_si, options)
     else:
-        print "Unknown runmode %s" % (run_mode)
+        print "Unknown runmode {}".format(run_mode)
     e_time = time.time()
     if not options.interactive:
-        print "took %s / %s" % (
+        print "took {} / {}".format(
             logging_tools.get_diff_time_str(s_time - c_time),
             logging_tools.get_diff_time_str(e_time - s_time))
 
