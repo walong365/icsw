@@ -815,7 +815,13 @@ def main():
     else:
         main_normal()
 
-class copy_arg_parser(argparse.ArgumentParser):
+class base_arg_mixin(object):
+    def add_base_args(self):
+        self.add_argument("-m", "--modules", dest="modules", default="", type=str, help="comma-separated list of kernel-modules to include in the first stage [%(default)s]")
+    def base_parse(self, cur_args):
+        cur_args.modules = list(set([entry.strip() for entry in cur_args.modules.strip().split(",") if entry.strip()]))
+
+class copy_arg_parser(argparse.ArgumentParser, base_arg_mixin):
     def __init__(self):
         im_dir = os.getenv("IMAGE_ROOT", "/")
         kern_dir = os.path.join(im_dir, "lib", "modules")
@@ -829,11 +835,33 @@ class copy_arg_parser(argparse.ArgumentParser):
         self.add_argument("--clean", default=False, action="store_true", help="clear target directory if it already exists [%(default)s]")
         self.add_argument("--init", default=False, action="store_true", help="init system directories if missing [%(default)s]")
         self.add_argument("--rescan", default=False, action="store_true", help="rescan kernels after successfull copy [%(default)s]")
-        self.add_argument("--build", default=False, action="store_true", help="build initial ramdisk after rescan [%(default)s]")
+        self.add_argument("--build", default=False, action="store_true", help="build initial ramdisk, implies rescan [%(default)s]")
+        self.add_base_args()
     def parse(self):
-        args = self.parse_args()
-        args.image_root = os.getenv("IMAGE_ROOT", "/")
-        return args
+        cur_args = self.parse_args()
+        if cur_args.build:
+            cur_args.rescan = True
+        cur_args.image_root = os.getenv("IMAGE_ROOT", "/")
+        self.base_parse(cur_args)
+        return cur_args
+
+class local_arg_parser(argparse.ArgumentParser, base_arg_mixin):
+    def __init__(self):
+        argparse.ArgumentParser.__init__(self)
+        self.add_argument("-s", dest="stage_num", type=int, default=1, choices=[1, 2, 3], help="set stage to build [%(default)d]")
+        self.add_argument("-l", dest="show_content", default=False, action="store_true", help="list dirs and files [%(default)s]")
+        self.add_argument("-i", dest="ignore_errors", default=False, action="store_true", help="ignore errors (missing files), [%(default)s]")
+        self.add_argument("-0", dest="stage_0_files", default="", type=str, help="add to stage_dict (key 0) [%(default)s]")
+        self.add_argument("-1", dest="stage_1_files", default="", type=str, help="add to stage_dict (key 1) [%(default)s]")
+        self.add_argument("-d", dest="temp_dir", default="", type=str, help="temporary directory for creating of the stage-disc [%(default)s]")
+        self.add_argument("-v", "--verbose", dest="verbose", default=0, action="count", help="increase verbosity [%(default)d]")
+        self.add_base_args()
+    def parse(self):
+        cur_args = self.parse_args()
+        cur_args.stage_0_files = [entry.strip() for entry in cur_args.stage_0_files.strip().split(",") if entry.strip()]
+        cur_args.stage_1_files = [entry.strip() for entry in cur_args.stage_1_files.strip().split(",") if entry.strip()]
+        self.base_parse(cur_args)
+        return cur_args
 
 def main_copy():
     global verbose
@@ -876,7 +904,7 @@ def main_copy():
         print "copying kernel from source directory {} to target directory {}".format(
             lib_dir,
             target_dir,
-            )
+        )
         print "  system.map : {}".format(system_map_file)
         print "  vmlinuz    : {}".format(vmlinuz_file)
         print "  config     : {}".format(config_file)
@@ -912,6 +940,8 @@ def main_copy():
             rescan_kernels()
             if copy_args.build:
                 sys.argv = ["populate_ramdisk.py", "-i", "--set-master-server", target_dir]
+                if copy_args.modules:
+                    sys.argv.extend(["-m", ",".join(copy_args.modules)])
                 main_normal()
                 rescan_kernels()
 
@@ -941,24 +971,6 @@ def get_link_target(lib_dir, link_name):
     else:
         link_target = ""
     return link_target
-
-class local_arg_parser(argparse.ArgumentParser):
-    def __init__(self):
-        argparse.ArgumentParser.__init__(self)
-        self.add_argument("-s", dest="stage_num", type=int, default=1, choices=[1, 2, 3], help="set stage to build [%(default)d]")
-        self.add_argument("-l", dest="show_content", default=False, action="store_true", help="list dirs and files [%(default)s]")
-        self.add_argument("-i", dest="ignore_errors", default=False, action="store_true", help="ignore errors (missing files), [%(default)s]")
-        self.add_argument("-0", dest="stage_0_files", default="", type=str, help="add to stage_dict (key 0) [%(default)s]")
-        self.add_argument("-1", dest="stage_1_files", default="", type=str, help="add to stage_dict (key 1) [%(default)s]")
-        self.add_argument("-d", dest="temp_dir", default="", type=str, help="temporary directory for creating of the stage-disc [%(default)s]")
-        self.add_argument("-v", "--verbose", dest="verbose", default=0, action="count", help="increase verbosity [%(default)d]")
-        self.add_argument("-m", "--modules", dest="modules", default="", type=str, help="comma-separated list of kernel-modules to include in the first stage [%(default)s]")
-    def parse(self):
-        cur_args = self.parse_args()
-        cur_args.stage_0_files = [entry.strip() for entry in cur_args.stage_0_files.strip().split(",") if entry.strip()]
-        cur_args.stage_1_files = [entry.strip() for entry in cur_args.stage_1_files.strip().split(",") if entry.strip()]
-        cur_args.modules = [entry.strip() for entry in cur_args.modules.strip().split(",") if entry.strip()]
-        return cur_args
 
 def main_local():
     global verbose
