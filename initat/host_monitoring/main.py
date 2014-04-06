@@ -30,6 +30,7 @@ from initat.host_monitoring.relay import relay_code
 from initat.host_monitoring.server import server_code
 from initat.host_monitoring.version import VERSION_STRING
 import configfile
+import os
 import process_tools
 import sys
 
@@ -67,8 +68,10 @@ def main():
         ("OBJGRAPH"               , configfile.bool_c_var(False, help_string="enable objgraph [%(default)c]", only_commandline=True)),
         ("RUN_ARGUS"              , configfile.bool_c_var(False, help_string="enable argus [%(default)c]")),
         ("NICE_LEVEL"             , configfile.int_c_var(10, help_string="nice level [%(default)d]")),
-        ("PID_NAME"               , configfile.str_c_var("%s/%s" % (prog_name,
-                                                                 prog_name)))])
+        ("PID_NAME"               , configfile.str_c_var(
+            os.path.join(
+                prog_name,
+                prog_name)))])
     if prog_name == "collserver":
         global_config.add_config_entries([
             ("COM_PORT"   , configfile.int_c_var(2001, info="listening Port", help_string="port to communicate [%(default)i]", short_options="p")),
@@ -95,7 +98,7 @@ def main():
             ])
     global_config.parse_file()
     options = global_config.handle_commandline(
-        description="%s, version is %s" % (
+        description="{}, version is {}".format(
             prog_name,
             VERSION_STRING),
         add_writeback_option=prog_name in ["collserver", "collrelay"],
