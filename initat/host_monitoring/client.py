@@ -33,12 +33,13 @@ import server_command
 def client_code():
     from initat.host_monitoring import modules
     if global_config["VERBOSE"] > 1:
-        print "%d import errors:" % (len(modules.IMPORT_ERRORS))
+        print "{:d} import errors:".format(len(modules.IMPORT_ERRORS))
         for mod, com, _str in modules.IMPORT_ERRORS:
-            print "%-30s %-20s %s" % (com, mod.split(".")[-1], _str)
+            print "{:<30s} {:<20s} {}".format(com, mod.split(".")[-1], _str)
     # log_template = logging_tools.get_logger(global_config["LOG_NAME"], global_config["LOG_DESTINATION"], zmq=True, context=)
-    conn_str = "tcp://%s:%d" % (global_config["HOST"],
-                                global_config["COM_PORT"])
+    conn_str = "tcp://{}:{:d}".format(
+        global_config["HOST"],
+        global_config["COM_PORT"])
     arg_stuff = global_config.get_argument_stuff()
     arg_list = arg_stuff["arg_list"]
     com_name = arg_list.pop(0)
@@ -51,15 +52,16 @@ def client_code():
         try:
             cur_ns, rest = com_struct.handle_commandline(arg_list)
         except ValueError, what:
-            ret_state, ret_str = (limits.nag_STATE_CRITICAL, "error parsing: %s" % (what[1]))
+            ret_state, ret_str = (limits.nag_STATE_CRITICAL, "error parsing: {}".format(what[1]))
         else:
             if hasattr(cur_ns, "arguments"):
                 for arg_index, arg in enumerate(cur_ns.arguments):
-                    srv_com["arguments:arg%d" % (arg_index)] = arg
+                    srv_com["arguments:arg{:d}".format(arg_index)] = arg
             srv_com["arguments:rest"] = " ".join(rest)
             result = net_tools.zmq_connection(
-                "%s:%d" % (global_config["IDENTITY_STRING"],
-                           os.getpid()),
+                "{}:{:d}".format(
+                    global_config["IDENTITY_STRING"],
+                    os.getpid()),
                 timeout=global_config["TIMEOUT"]).add_connection(conn_str, srv_com)
             if result:
                 error_result = result.xpath(".//ns:result[@state != '0']", smart_strings=False)
@@ -75,12 +77,12 @@ def client_code():
     else:
         c_matches = difflib.get_close_matches(com_name, modules.command_dict.keys())
         if c_matches:
-            cm_str = "close matches: %s" % (", ".join(c_matches))
+            cm_str = "close matches: {}".format(", ".join(c_matches))
         else:
             cm_str = "no matches found"
         ret_state, ret_str = (
             limits.nag_STATE_CRITICAL,
-            "unknown command %s, %s" % (com_name, cm_str)
+            "unknown command {}, {}".format(com_name, cm_str)
         )
     print ret_str
     return ret_state

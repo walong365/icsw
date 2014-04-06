@@ -95,7 +95,7 @@ class subprocess_struct(object):
         self.run_info = run_info
         if run_info["comline"]:
             if self.Meta.verbose:
-                self.log("popen '%s'" % (run_info["comline"]))
+                self.log("popen '{}'".format(run_info["comline"]))
             self.popen = subprocess.Popen(run_info["comline"], shell=True, stderr=subprocess.STDOUT, stdout=subprocess.PIPE)
             self.started()
     def set_send_stuff(self, srv_proc, src_id, zmq_sock):
@@ -123,7 +123,7 @@ class subprocess_struct(object):
                         self.__nfts = cur_time
                         self.log("not finished")
                 else:
-                    self.log("finished with %s" % (str(self.run_info["result"])))
+                    self.log("finished with {}".format(str(self.run_info["result"])))
             fin = False
             if self.run_info["result"] is not None:
                 self.process()
@@ -147,7 +147,7 @@ class subprocess_struct(object):
         self.popen.kill()
         if self.srv_com:
             self.srv_com.set_result(
-                "runtime (%s) exceeded" % (logging_tools.get_plural("second", self.Meta.max_runtime)),
+                "runtime ({}) exceeded".format(logging_tools.get_plural("second", self.Meta.max_runtime)),
                 server_command.SRV_REPLY_STATE_ERROR
             )
     def send_return(self):
@@ -186,15 +186,15 @@ class hm_module(object):
     def close_module(self):
         pass
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
-        self.process_pool.log("[%s] %s" % (self.name, what), log_level)
+        self.process_pool.log("[{}] {}".format(self.name, what), log_level)
     def __unicode__(self):
-        return u"module %s, priority %d" % (self.name, self.Meta.priority)
+        return u"module {}, priority {:d}".format(self.name, self.Meta.priority)
 
 class hm_command(object):
     def __init__(self, name, **kwargs):
         self.name = name
-        self.parser = argparse.ArgumentParser(description="help for command %s" % (self.name))
-        self.server_parser = argparse.ArgumentParser(description="help for command %s" % (self.name))
+        self.parser = argparse.ArgumentParser(description="help for command {}".format(self.name))
+        self.server_parser = argparse.ArgumentParser(description="help for command {}".format(self.name))
         parg_flag = kwargs.get("positional_arguments", False)
         self.server_arguments = kwargs.get("server_arguments", False)
         # used to pass commandline arguments to the server
@@ -214,7 +214,7 @@ class hm_command(object):
         self.server_parser.exit = self._parser_exit
         self.server_parser.error = self._parser_error
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
-        self.module.process_pool.log("[%s] %s" % (self.name, what), log_level)
+        self.module.process_pool.log("[{}] {}".format(self.name, what), log_level)
     def _parser_exit(self, status=0, message=None):
         raise ValueError, (status, message)
     # self.parser_exit, self.parser_message = (status, message)
@@ -290,20 +290,22 @@ class hmb_command(object):
             self.source_host, self.source_port = addr
             if self.log_level:
                 start_time = time.time()
-                self.module_info.log("calling %s in module %s from %s (%s)" % (
+                self.module_info.log("calling {} in module {} from {} ({})".format(
                     self.name,
                     self.module_name,
-                    self.source_port and "%s (port %d)" % (self.source_host, self.source_port) or self.source_host,
-                    args and "args: %s" % (" ".join(args)) or "no args"))
+                    self.source_port and "{} (port {:d})".format(self.source_host, self.source_port) or self.source_host,
+                    args and "args: {}".format(" ".join(args)) or "no args"))
             self.logger = logger
             result = self.server_call(args)
             self.logger = None
             if self.log_level:
                 end_time = time.time()
-                self.module_info.log("  - %s took %s" % (self.name,
-                                                         logging_tools.get_diff_time_str(end_time - start_time)))
+                self.module_info.log(
+                    "  - {} took {}".format(
+                        self.name,
+                        logging_tools.get_diff_time_str(end_time - start_time)))
         except:
-            result = "error server throw an exception: %s" % (process_tools.get_except_info())
+            result = "error server throw an exception: {}".format(process_tools.get_except_info())
             self.module_info.log(result, logging_tools.LOG_LEVEL_CRITICAL)
             exc_info = process_tools.exception_info()
             for line in exc_info.log_lines:
@@ -381,7 +383,7 @@ class mvect_entry(object):
         act_line = []
         sub_keys = (self.name.split(".") + ["", "", "", "", ""])[0:6]
         for key_idx, sub_key in zip(xrange(6), sub_keys):
-            act_line.append(logging_tools.form_entry("%s%s" % ("" if (key_idx == 0 or sub_key == "") else ".", sub_key), header="key%d" % (key_idx)))
+            act_line.append(logging_tools.form_entry("{}{}".format("" if (key_idx == 0 or sub_key == "") else ".", sub_key), header="key{:d}".format(key_idx)))
         # check for unknow
         if self.value is None:
             # unknown value
@@ -391,8 +393,8 @@ class mvect_entry(object):
         act_line.extend([logging_tools.form_entry_right(val_str, header="value"),
                          logging_tools.form_entry_right(act_pf, header=" "),
                          logging_tools.form_entry(self.unit, header="unit"),
-                         logging_tools.form_entry("(%3d)" % (idx), header="idx"),
-                         logging_tools.form_entry("%d" % (self.valid_until) if self.valid_until else "---", header="valid_until"),
+                         logging_tools.form_entry("({:3d})".format(idx), header="idx"),
+                         logging_tools.form_entry("{:d}".format(self.valid_until) if self.valid_until else "---", header="valid_until"),
                          logging_tools.form_entry(self._build_info_string(), header="info")])
         return act_line
     def _get_val_str(self, val):
@@ -403,17 +405,17 @@ class mvect_entry(object):
                 act_pf = pf_list.pop(0)
                 val = float(val) / self.base
         if self.v_type == "i":
-            val_str = "%10d    " % (val)
+            val_str = "{:>10d}    ".format(val)
         elif self.v_type == "f":
-            val_str = "%14.3f" % (val)
+            val_str = "{:>14.3f}".format(val)
         else:
-            val_str = "%-14s" % (str(val))
+            val_str = "{:<14s}".format(str(val))
         return act_pf, val_str
     def _build_info_string(self):
         ret_str = self.info
         ref_p = self.name.split(".")
         for idx in xrange(len(ref_p)):
-            ret_str = ret_str.replace("$%d" % (idx + 1), ref_p[idx])
+            ret_str = ret_str.replace("${:d}".format(idx + 1), ref_p[idx])
         return ret_str
     def build_simple_xml(self, builder):
         return builder("m", n=self.name, v=str(self.value))
@@ -431,7 +433,7 @@ class mvect_entry(object):
             ("base"       , 1),
             ("factor"     , 1)]:
             if getattr(self, key) != ns_value:
-                kwargs[key] = "%d" % (getattr(self, key))
+                kwargs[key] = "{:d}".format(getattr(self, key))
         return builder("mve", **kwargs)
     def build_json(self):
         return {
