@@ -45,7 +45,7 @@ def main():
     parser.add_argument("--kv", help="key-value pair, colon-separated [key:value]", action="append")
     parser.add_argument("--kva", help="key-attribute pair, colon-separated [key:attribute:value]", action="append")
     parser.add_argument("--kv-path", help="path to store key-value pairs under", type=str, default="")
-    parser.add_argument("--split", help="set read socket (for split-socket command), [%(default)s]", default="")
+    parser.add_argument("--split", help="set read socket (for split-socket command), [%(default)s]", type=str, default="")
     # parser.add_argument("arguments", nargs="+", help="additional arguments")
     ret_state = 1
     args, other_args = parser.parse_known_args()
@@ -54,7 +54,8 @@ def main():
     other_args = args.arguments + other_args
     identity_str = process_tools.zmq_identity_str(args.identity_string)
     zmq_context = zmq.Context(1)
-    client = zmq_context.socket(zmq.DEALER) # if not args.split else zmq.PUB) # ROUTER)#DEALER)
+    s_type = "DEALER" if not args.split else "PUSH"
+    client = zmq_context.socket(getattr(zmq, s_type))
     client.setsockopt(zmq.IDENTITY, identity_str)
     client.setsockopt(zmq.LINGER, args.timeout)
     if args.protocoll == "ipc":
@@ -71,7 +72,10 @@ def main():
     else:
         recv_sock = None
     if args.verbose:
-        print "Identity_string is '{}', connection_string is '{}'".format(identity_str, conn_str)
+        print "socket_type is {}\nIdentity_string is '{}'\nconnection_string is '{}'".format(
+            s_type,
+            identity_str,
+            conn_str)
         if args.split:
             print "receive connection string is '{}'".format(recv_conn_str)
     client.connect(conn_str)

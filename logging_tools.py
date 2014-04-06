@@ -139,7 +139,7 @@ def get_size_str(in_s, long_version=False, divider=1024, strip_spaces=False):
         in_s = in_s / float(divider)
         pf_str = pf_f.pop(0)
     ret_str = "{} {}{}".format(
-        pf_str and "%6.2f" % (in_s) or "{:4d}".format(in_s),
+        pf_str and "{:6.2f}".format(float(in_s)) or "{:4d}".format(int(in_s)),
         pf_str,
         b_str)
     if strip_spaces:
