@@ -19,11 +19,9 @@
 #
 """ handles process affinity """
 
-# import process_tools
 import cpu_database
 import commands
 import os
-import sys
 
 if "FAKEROOTKEY" in os.environ:
     MAX_CORES = 2

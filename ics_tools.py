@@ -28,6 +28,7 @@ import process_tools
 import stat
 import sys
 import time
+from __future__ import print_function
 
 MS_DIR = "/var/lib/meta-server"
 
@@ -120,7 +121,7 @@ def main():
     else:
         pid_file = os.getenv("SERVER_PID")
     ret_state, ret_str = check_threads(pid_file, options)
-    print ret_str,
+    print(ret_str, end="")
     sys.exit(ret_state)
 
 if __name__ == "__main__":
