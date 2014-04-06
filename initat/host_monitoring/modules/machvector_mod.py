@@ -244,6 +244,16 @@ class machine_vector(object):
                 self.log("removed old external directory {}".format(old_dir))
     def _send_vector(self, *args, **kwargs):
         cur_xml = self.__xml_struct.find(".//mv_target[@send_id='{:d}']".format(args[0]))
+        _err_c = int(cur_xml.get("_err_c", "0"))
+        if _err_c:
+            _err_c -= 1
+            if _err_c:
+                cur_xml.attrib["_err_c"] = "{:d}".format(_err_c)
+            else:
+                self.log("clearing error counter")
+                del cur_xml.attrib["_err_c"]
+            if _err_c > 0:
+                return
         cur_id = int(cur_xml.attrib["sent"])
         full = cur_id % int(cur_xml.attrib.get("full_info_every", "10")) == 0
         cur_id += 1
@@ -285,6 +295,10 @@ class machine_vector(object):
                     exc_info), logging_tools.LOG_LEVEL_ERROR)
             if exc_info.count("int_error"):
                 raise
+            else:
+                _err_c = 10
+                self.log("setting error_counter to {:d}".format(_err_c), logging_tools.LOG_LEVEL_WARN)
+                cur_xml.attrib["error_counter"] = "{:d}".format(_err_c)
         # print etree.tostring(send_vector, pretty_print=True)
     def close(self):
         for _s_id, t_sock in self.__socket_dict.iteritems():

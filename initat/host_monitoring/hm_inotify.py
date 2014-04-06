@@ -40,6 +40,7 @@ class file_watcher(object):
     def __init__(self, process_obj, **args):
         self.__process = process_obj
         self.mode = args.get("mode", "content")
+        self.comment = args.get("comment", "")
         # verbose flag
         self.__verbose = global_config["VERBOSE"]
         # exit flag
@@ -325,10 +326,13 @@ class file_watcher(object):
                 self.content[f_name] = new_content
                 if self.target_port:
                     # send content
-                    self.log("init sending of {} to {} (port {:d})".format(
-                        logging_tools.get_plural("byte", len(self.content.get(f_name, ""))),
-                        self.target_server,
-                        self.target_port))
+                    self.log(
+                        "init sending of {} to {} (port {:d})".format(
+                            logging_tools.get_plural("byte", len(self.content.get(f_name, ""))),
+                            self.target_server,
+                            self.target_port
+                        )
+                    )
                     try:
                         file_stat = os.stat(f_name)
                         send_com = server_command.srv_command(
@@ -337,6 +341,7 @@ class file_watcher(object):
                                 uid="{:d}".format(file_stat[stat.ST_UID]),
                                 gid="{:d}".format(file_stat[stat.ST_GID]),
                                 mode="{:d}".format(file_stat[stat.ST_MODE]),
+                                comment=self.comment,
                                 content=self.content.get(f_name, ""),
                                 last_change="{:d}".format(int(file_stat[stat.ST_MTIME])),
                                 id=self.fw_id,
@@ -418,7 +423,7 @@ class inotify_process(threading_tools.process_obj):
         needed_keys = {
             "register_file_watch" : set(["id", "mode", "target_server", "target_port", "dir", "match"]),
             "unregister_file_watch" : set(["id"]),
-            }.get(in_com, set())
+        }.get(in_com, set())
         if needed_keys & found_keys == needed_keys:
             # set default return value
             srv_com.set_result(

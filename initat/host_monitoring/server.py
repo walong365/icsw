@@ -424,11 +424,10 @@ class server_code(threading_tools.process_pool):
                 src_id,
                 unicode(srv_com))
         else:
-            srv_com["result"] = None
-            srv_com["result"].attrib.update({
-                "reply" : "got unknown command %s" % (srv_com["command"].text),
-                "state" : "%d" % (server_command.SRV_REPLY_STATE_ERROR)
-                })
+            srv_com.set_result(
+                "got unknown command {}".format(srv_com["command"].text),
+                server_command.SRV_REPLY_STATE_ERROR
+            )
             self.result_socket.send_unicode(src_id, zmq.SNDMORE)
             self.result_socket.send_unicode(unicode(srv_com))
         # print "."
@@ -454,6 +453,7 @@ class server_code(threading_tools.process_pool):
             # del data
             # return
             srv_com = server_command.srv_command(source=data)
+            # print srv_com.pretty_print()
             rest_el = srv_com.xpath(".//ns:arguments/ns:rest", smart_strings=False)
             if rest_el:
                 rest_str = rest_el[0].text or u""
@@ -474,20 +474,23 @@ class server_code(threading_tools.process_pool):
                     cm_str = "close matches: %s" % (", ".join(c_matches))
                 else:
                     cm_str = "no matches found"
-                srv_com["result"].attrib.update(
-                    {"reply" : "unknown command '%s', %s" % (cur_com, cm_str),
-                     "state" : "%d" % (server_command.SRV_REPLY_STATE_ERROR)})
+                srv_com.set_result(
+                    "unknown command '{}', {}".format(cur_com, cm_str),
+                     server_command.SRV_REPLY_STATE_ERROR
+                )
             if delayed:
                 # delayed is a subprocess_struct
                 delayed.set_send_stuff(self, src_id, zmq_sock)
                 com_usage = len([True for cur_del in self.__delayed if cur_del.command == cur_com])
                 # print "CU", com_usage, [cur_del.target_host for cur_del in self.__delayed]
                 if com_usage > delayed.Meta.max_usage:
-                    srv_com["result"].attrib.update(
-                        {"reply" : "delay limit %d reached for '%s'" % (
+                    srv_com.set_result(
+                        "delay limit {:d} reached for '{}'".format(
                             delayed.Meta.max_usage,
-                            cur_com),
-                         "state" : "%d" % (server_command.SRV_REPLY_STATE_ERROR)})
+                            cur_com
+                        ),
+                        server_command.SRV_REPLY_STATE_ERROR
+                    )
                     delayed = None
                 else:
                     if not self.__delayed:
@@ -512,7 +515,7 @@ class server_code(threading_tools.process_pool):
             srv_com["source"].attrib["host"],
             logging_tools.get_diff_time_str(abs(c_time - float(srv_com["result"].attrib["start_time"]))))
         if int(srv_com["result"].attrib["state"]) != server_command.SRV_REPLY_STATE_OK:
-            info_str = "%s, result is %s (%s)" % (
+            info_str = "{}, result is {} ({})".format(
                 info_str,
                 srv_com["result"].attrib["reply"],
                 srv_com["result"].attrib["state"])
@@ -556,9 +559,10 @@ class server_code(threading_tools.process_pool):
             exc_info = process_tools.exception_info()
             for log_line in exc_info.log_lines:
                 self.log(log_line, logging_tools.LOG_LEVEL_ERROR)
-            srv_com["result"].attrib.update({
-                "reply" : "caught server exception '%s'" % (process_tools.get_except_info()),
-                "state" : "%d" % (server_command.SRV_REPLY_STATE_CRITICAL)})
+            srv_com.set_result(
+                "caught server exception '{}'".format(process_tools.get_except_info()),
+                server_command.SRV_REPLY_STATE_CRITICAL
+            )
         return sp_struct
     def _socket_ping_result(self, src_proc, src_id, *args):
         ping_id = args[0]
