@@ -87,7 +87,7 @@ class get_mvector_command(hm_classes.hm_command):
         else:
             vector_keys = sorted(srv_com.xpath(".//ns:mve/@name", start_el=cur_vector, smart_strings=False))
             used_keys = [key for key in vector_keys if any([cur_re.search(key) for cur_re in re_list]) or not re_list]
-            ret_array = ["Machinevector id %s, %s, %s shown:" % (
+            ret_array = ["Machinevector id {}, {}, {} shown:".format(
                 cur_vector.attrib["version"],
                 logging_tools.get_plural("key", len(vector_keys)),
                 logging_tools.get_plural("key", len(used_keys)),
@@ -95,7 +95,7 @@ class get_mvector_command(hm_classes.hm_command):
             out_list = logging_tools.new_form_list()
             for mv_num, mv_key in enumerate(vector_keys):
                 if mv_key in used_keys:
-                    cur_xml = srv_com.xpath("//ns:mve[@name='%s']" % (mv_key), start_el=cur_vector, smart_strings=False)[0]
+                    cur_xml = srv_com.xpath("//ns:mve[@name='{}']".format(mv_key), start_el=cur_vector, smart_strings=False)[0]
                     out_list.append(hm_classes.mvect_entry(cur_xml.attrib.pop("name"), **cur_xml.attrib).get_form_entry(mv_num))
             ret_array.extend(unicode(out_list).split("\n"))
             return limits.nag_STATE_OK, "\n".join(ret_array)
@@ -111,7 +111,7 @@ class alert_object(object):
     def init_buffer(self, num_dp):
         self.__val_buffer = []
         self.__num_dp = num_dp
-        self.log("init val_buffer, max_size is %d" % (num_dp))
+        self.log("init val_buffer, max_size is {:d}".format(num_dp))
     def add_value(self, val):
         self.__val_buffer.append(val)
         if len(self.__val_buffer) > self.__num_dp:
@@ -123,21 +123,21 @@ class alert_object(object):
             else:
                 alert = len([1 for x in self.__val_buffer if x < self.__th]) == self.__num_dp
             if alert:
-                self.log("*** alert, threshold %.2f, %s: %s" % (self.__th, logging_tools.get_plural("value", self.__num_dp), ", ".join(["%.2f" % (x) for x in self.__val_buffer])))
+                self.log("*** alert, threshold {:.2f}, {}: {}".format(self.__th, logging_tools.get_plural("value", self.__num_dp), ", ".join(["{:.2f}".format(x) for x in self.__val_buffer])))
                 act_com = self.__command
                 for src, dst in [("%k", self.__key),
-                                 ("%v", ", ".join(["%.2f" % (x) for x in self.__val_buffer])),
-                                 ("%t", "%.2f" % (self.__th)),
+                                 ("%v", ", ".join(["{:.2f}".format(float(x)) for x in self.__val_buffer])),
+                                 ("%t", "{:.2f}".format(float(self.__th))),
                                  ("%c" , self.__th_class)]:
                     act_com = act_com.replace(src, dst)
                 stat, out = commands.getstatusoutput(act_com)
                 lines = [x.rstrip() for x in out.split("\n") if x.rstrip()]
-                self.log("*** calling command '%s' returned %d (%s):" % (act_com, stat, logging_tools.get_plural("line", len(lines))))
+                self.log("*** calling command '{}' returned {:d} ({}):".format(act_com, stat, logging_tools.get_plural("line", len(lines))))
                 for line in lines:
-                    self.log("*** - %s" % (line))
+                    self.log("*** - {}".format(line))
         # print self.__key, self.__val_buffer
     def log(self, what):
-        self.__logger.info("[mvect / ao %s, cl %s] %s" % (self.__key, self.__th_class, what))
+        self.__logger.info("[mvect / ao {}, cl {}] {}".format(self.__key, self.__th_class, what))
 
 class machine_vector(object):
     def __init__(self, module):
@@ -156,7 +156,7 @@ class machine_vector(object):
         # read machine vector config
         self.conf_name = os.path.join("/etc/sysconfig/host-monitoring.d", MACHVECTOR_NAME)
         if not os.path.isfile(self.conf_name):
-            self.log("create %s" % (self.conf_name))
+            self.log("create {}".format(self.conf_name))
             # create default file
             def_xml = E.mv_targets(
                 E.mv_target(
@@ -186,7 +186,7 @@ class machine_vector(object):
         try:
             xml_struct = etree.fromstring(file(self.conf_name, "r").read())
         except:
-            self.log("cannot read %s: %s" % (
+            self.log("cannot read {}: {}".format(
                 self.conf_name,
                 process_tools.get_except_info()),
                      logging_tools.LOG_LEVEL_ERROR)
@@ -196,7 +196,7 @@ class machine_vector(object):
             p_pool = self.module.process_pool
             for mv_target in xml_struct.xpath(".//mv_target[@enabled='1']", smart_strings=False):
                 send_id += 1
-                mv_target.attrib["send_id"] = "%d" % (send_id)
+                mv_target.attrib["send_id"] = "{:d}".format(send_id)
                 mv_target.attrib["sent"] = "0"
                 p_pool.register_timer(self._send_vector, int(mv_target.get("send_every", "30")), data=send_id, instant=int(mv_target.get("immediate", "0")) == 1)
                 # zmq sending, not needed any more (now using UDP/collectd)
@@ -209,10 +209,10 @@ class machine_vector(object):
                     # to stop 0MQ trashing the target socket
                     t_sock.setsockopt(zmq.RECONNECT_IVL, 1000)
                     t_sock.setsockopt(zmq.RECONNECT_IVL_MAX, 30000)
-                    target_str = "tcp://%s:%d" % (
+                    target_str = "tcp://{}:{:d}".format(
                         mv_target.get("target", "127.0.0.1"),
                         int(mv_target.get("port", "8002")))
-                    self.log("creating zmq.PUSH socket for %s" % (target_str))
+                    self.log("creating zmq.PUSH socket for {}".format(target_str))
                     t_sock.connect(target_str)
                 else:
                     t_sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
@@ -223,11 +223,11 @@ class machine_vector(object):
         for module in module.process_pool.module_list:
             if hasattr(module, "init_machine_vector"):
                 if self.__verbosity:
-                    self.log("calling init_machine_vector for module '%s'" % (module.name))
+                    self.log("calling init_machine_vector for module '{}'".format(module.name))
                 try:
                     module.init_machine_vector(self)
                 except:
-                    self.log("error: %s" % (process_tools.get_except_info()), logging_tools.LOG_LEVEL_CRITICAL)
+                    self.log("error: {}".format(process_tools.get_except_info()), logging_tools.LOG_LEVEL_CRITICAL)
                     raise
         # delete external directories
         old_dir = "/tmp/.machvect_es"
@@ -235,17 +235,19 @@ class machine_vector(object):
             try:
                 shutil.rmtree(old_dir)
             except:
-                self.log("error removing old external directory %s: %s" % (old_dir,
-                                                                           process_tools.get_except_info()),
-                         logging_tools.LOG_LEVEL_ERROR)
+                self.log(
+                    "error removing old external directory {}: {}".format(
+                        old_dir,
+                        process_tools.get_except_info()),
+                    logging_tools.LOG_LEVEL_ERROR)
             else:
-                self.log("removed old external directory %s" % (old_dir))
+                self.log("removed old external directory {}".format(old_dir))
     def _send_vector(self, *args, **kwargs):
-        cur_xml = self.__xml_struct.find(".//mv_target[@send_id='%d']" % (args[0]))
+        cur_xml = self.__xml_struct.find(".//mv_target[@send_id='{:d}']".format(args[0]))
         cur_id = int(cur_xml.attrib["sent"])
         full = cur_id % int(cur_xml.attrib.get("full_info_every", "10")) == 0
         cur_id += 1
-        cur_xml.attrib["sent"] = "%d" % (cur_id)
+        cur_xml.attrib["sent"] = "{:d}".format(cur_id)
         try:
             fqdn, _short_name = process_tools.get_fqdn()
         except:
@@ -277,7 +279,7 @@ class machine_vector(object):
             exc_info = process_tools.get_except_info()
             # ignore errors
             self.log(
-                "error sending to (%s, %d): %s" % (
+                "error sending to ({}, {:d}): {}".format(
                     t_host,
                     t_port,
                     exc_info), logging_tools.LOG_LEVEL_ERROR)
@@ -288,12 +290,12 @@ class machine_vector(object):
         for _s_id, t_sock in self.__socket_dict.iteritems():
             t_sock.close()
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
-        self.module.process_pool.log("[mvect] %s" % (what), log_level)
+        self.module.process_pool.log("[mvect] {}".format(what), log_level)
     def _recv_vector(self, zmq_sock):
         try:
             rcv_com = server_command.srv_command(source=zmq_sock.recv_unicode())
         except:
-            self.log("error interpreting data as srv_command: %s" % (process_tools.get_except_info()),
+            self.log("error interpreting data as srv_command: {}".format(process_tools.get_except_info()),
                      logging_tools.LOG_LEVEL_ERROR)
         else:
             for in_vector in rcv_com.xpath(".//*[@type='vector']", smart_strings=False):
@@ -340,14 +342,14 @@ class machine_vector(object):
             # print "Unregister "+name
             del self.__act_dict[name]
         else:
-            self.log("Error: entry %s not defined" % (name), logging_tools.LOG_LEVEL_ERROR)
+            self.log("Error: entry {} not defined".format(name), logging_tools.LOG_LEVEL_ERROR)
     def __setitem__(self, name, value):
         self.__act_dict[name].update(value)
     def _reg_update(self, log_t, name, value):
         if self.__act_dict.has_key(name):
             self.__act_dict[name].update(value)
         else:
-            log_t.error("Error: unknown machvector-name '%s'" % (name))
+            log_t.error("Error: unknown machvector-name '{}'".format(name))
     def _optimize_list(self, in_list):
         new_list = []
         for entry in in_list:
@@ -361,7 +363,7 @@ class machine_vector(object):
         new_list = [[entry[0], self._optimize_list(entry[1])] if len(entry) > 1 else entry for entry in new_list]
         return new_list
     def _beautify_list(self, in_list):
-        return ",".join(["%s%s" % (entry[0], ".(%s)" % (self._beautify_list(entry[1])) if entry[1] else "") for entry in in_list])
+        return ",".join(["{}{}".format(entry[0], ".({})".format(self._beautify_list(entry[1])) if entry[1] else "") for entry in in_list])
     def optimize_list(self, in_list):
         in_list = [entry.split(".") for entry in sorted(in_list)]
         return self._beautify_list(self._optimize_list(in_list))
@@ -378,21 +380,17 @@ class machine_vector(object):
             new_keys = self.__act_keys - last_keys
             lost_keys = last_keys - self.__act_keys
             if new_keys:
-                self.log("%s:" % (logging_tools.get_plural("new key", len(new_keys))))
+                self.log("{}:".format(logging_tools.get_plural("new key", len(new_keys))))
                 self.log(self.optimize_list(new_keys))
-                # for key_num, key in enumerate(sorted(new_keys)):
-                #    self.log(" %3d : %s" % (key_num, key))
             if lost_keys:
-                self.log("%s:" % (logging_tools.get_plural("lost key", len(lost_keys))))
+                self.log("{}:".format(logging_tools.get_plural("lost key", len(lost_keys))))
                 self.log(self.optimize_list(lost_keys))
-                # for key_num, key in enumerate(sorted(lost_keys)):
-                #    self.log(" %3d : %s" % (key_num, key))
-            self.log("Machine_vector has changed, setting actual key to %d (%d keys)" % (self.__act_key, len(self.__act_dict)))
+            self.log("Machine_vector has changed, setting actual key to {:d} ({:d} keys)".format(self.__act_key, len(self.__act_dict)))
     def check_timeout(self):
         cur_time = time.time()
         rem_keys = [key for key, value in self.__act_dict.iteritems() if value.check_timeout(cur_time)]
         if rem_keys:
-            self.log("removing %s because of timeout: %s" % (
+            self.log("removing {} because of timeout: {}".format(
                 logging_tools.get_plural("key", len(rem_keys)),
                 ", ".join(sorted(rem_keys))))
             for rem_key in rem_keys:
@@ -410,8 +408,8 @@ class machine_vector(object):
     def build_xml(self, builder, simple=False):
         mach_vect = builder(
             "machine_vector",
-            version="%d" % (self.__act_key),
-            time="%d" % (int(time.time())),
+            version="{:d}".format(self.__act_key),
+            time="{:d}".format(int(time.time())),
             simple="1" if simple else "0",
         )
         if simple:
@@ -483,16 +481,16 @@ def pretty_print2(value):
         act_v, p_str = (value["v"], "")
         unit = "???"
     if type(act_v) in [type(0), type(0L)]:
-        val = "%10d   " % (act_v)
+        val = "{:<10d}   ".format(int(act_v))
     else:
-        val = "%13.2f" % (act_v)
+        val = "{:13.2f}".format(float(act_v))
     return val, p_str, unit
 
 def build_info_string(ref, info):
     ret_str = info
     refp = ref.split(".")
     for idx in range(len(refp)):
-        ret_str = ret_str.replace("$%d" % (idx + 1), refp[idx])
+        ret_str = ret_str.replace("${}".format(idx + 1), refp[idx])
     return ret_str
 
 if __name__ == "__main__":

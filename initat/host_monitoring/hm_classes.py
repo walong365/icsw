@@ -405,7 +405,7 @@ class mvect_entry(object):
                 act_pf = pf_list.pop(0)
                 val = float(val) / self.base
         if self.v_type == "i":
-            val_str = "{:>10d}    ".format(val)
+            val_str = "{:>10d}    ".format(int(val))
         elif self.v_type == "f":
             val_str = "{:>14.3f}".format(val)
         else:
