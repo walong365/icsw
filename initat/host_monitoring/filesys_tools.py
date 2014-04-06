@@ -1,4 +1,23 @@
-#!/usr/bin/python-init -Otu
+#!/usr/bin/python-init -Ot
+#
+# Copyright (C) 2001-2014 Andreas Lang-Nevyjel, init.at
+#
+# Send feedback to: <lang-nevyjel@init.at>
+#
+# This program is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License Version 2 as
+# published by the Free Software Foundation.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software
+# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+#
+""" filesystem tools, also used by cluster-server """
 
 from lxml.builder import E # @UnresolvedImport
 import codecs
@@ -39,9 +58,9 @@ def create_dir(srv_com, log_com):
         if not int(dir_entry.get("error", "0")):
             _set_attributes(dir_entry, log_com)
     srv_com.set_result(
-        "created %s%s" % (
+        "created {}{}".format(
             logging_tools.get_plural("directory", created),
-            " (%d failed)" % (failed) if failed else "",
+            " ({:d} failed)".format(failed) if failed else "",
             ),
         server_command.SRV_REPLY_STATE_ERROR if failed else server_command.SRV_REPLY_STATE_OK
         )
@@ -68,7 +87,7 @@ def get_dir_tree(srv_com, log_com):
     for top_el in srv_com.xpath(".//ns:start_dir", smart_strings=False):
         top_el.append(E.directory(full_path=top_el.text, start_dir="1"))
         for cur_dir, dir_list, file_list in os.walk(top_el.text):
-            add_el = top_el.find(".//directory[@full_path='%s']" % (cur_dir))
+            add_el = top_el.find(".//directory[@full_path='{}']".format(cur_dir))
             for new_dir in sorted(dir_list):
                 add_el.append(
                     E.directory(
@@ -80,10 +99,10 @@ def get_dir_tree(srv_com, log_com):
                 add_el.append(
                     E.file(
                         name=new_file,
-                        size="%d" % (os.stat(os.path.join(cur_dir, new_file))[stat.ST_SIZE]),
+                        size="{:d}".format(os.stat(os.path.join(cur_dir, new_file))[stat.ST_SIZE]),
                         ))
         for cur_idx, cur_el in enumerate(top_el.findall(".//*")):
-            cur_el.attrib["idx"] = "%d" % (cur_idx)
+            cur_el.attrib["idx"] = "{:d}".format(cur_idx)
     srv_com.set_result(
         "read directory tree"
         )
@@ -107,9 +126,9 @@ def remove_dir(srv_com, log_com):
         else:
             dir_entry.attrib["error"] = "0"
     srv_com.set_result(
-        "removed %s%s" % (
+        "removed {}{}".formta(
             logging_tools.get_plural("directory", created),
-            " (%d failed)" % (failed) if failed else "",
+            " ({:d} failed)".format(failed) if failed else "",
             ),
             server_command.SRV_REPLY_STATE_ERROR if failed else server_command.SRV_REPLY_STATE_OK
         )
@@ -124,17 +143,17 @@ def get_file_content(srv_com, log_com):
                     content = open(file_entry.attrib["name"], "r").read()
             except:
                 file_entry.attrib["error"] = "1"
-                file_entry.attrib["error_str"] = "error reading: %s" % (process_tools.get_except_info())
+                file_entry.attrib["error_str"] = "error reading: {}".format(process_tools.get_except_info())
             else:
                 try:
                     file_entry.text = content
                 except:
                     file_entry.attrib["error"] = "1"
-                    file_entry.attrib["error_str"] = "error setting content: %s" % (process_tools.get_except_info())
+                    file_entry.attrib["error_str"] = "error setting content: {}".format(process_tools.get_except_info())
                 else:
                     file_entry.attrib["error"] = "0"
-                    file_entry.attrib["size"] = "%d" % (len(content))
-                    file_entry.attrib["lines"] = "%d" % (content.count("\n") + 1)
+                    file_entry.attrib["size"] = "{:d}".format(len(content))
+                    file_entry.attrib["lines"] = "{:d}".format(content.count("\n") + 1)
         else:
             file_entry.attrib["error"] = "1"
             file_entry.attrib["error_str"] = "file does not exist"

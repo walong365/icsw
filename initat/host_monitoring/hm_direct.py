@@ -49,7 +49,7 @@ class hm_icmp_protocol(icmp_class.icmp_protocol):
         self.__process.register_socket(self.socket, select.POLLIN, self.received)
         # self.raw_socket.bind("0.0.0.0")
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
-        self.__log_template.log(log_level, "[icmp] %s" % (what))
+        self.__log_template.log(log_level, "[icmp] {}".format(what))
     def __setitem__(self, key, value):
         self.__work_dict[key] = value
     def __getitem__(self, key):
@@ -63,14 +63,14 @@ class hm_icmp_protocol(icmp_class.icmp_protocol):
         return key in self.__work_dict
     def ping(self, seq_str, target_list, num_pings, timeout):
         if self.__debug:
-            self.log("ping to %s (%s; %d, %.2f) [%s]" % (
+            self.log("ping to {} ({}; {:d}, {:.2f}) [{}]".format(
                 logging_tools.get_plural("target", len(target_list)),
                 ", ".join(target_list),
                 num_pings, timeout,
                 seq_str))
         cur_time = time.time()
         if len(target_list) > 1:
-            seq_list = ["group_%d" % (idx) for idx in xrange(self.__group_idx, self.__group_idx + len(target_list))]
+            seq_list = ["group_{:d}".format(idx) for idx in xrange(self.__group_idx, self.__group_idx + len(target_list))]
             self.__group_idx += len(target_list)
             self.__group_dict[seq_str] = dict([(cur_seq_str, None) for cur_seq_str in seq_list])
             for cur_seq_str in seq_list:
@@ -96,7 +96,7 @@ class hm_icmp_protocol(icmp_class.icmp_protocol):
             self.__pings_in_flight += 1
         if self.__debug:
             self.log(
-                "%s in flight: %s" % (
+                "{} in flight: {}".format(
                     logging_tools.get_plural("ping", self.__pings_in_flight),
                     ", ".join(sorted([value["host"] for value in self.__work_dict.itervalues()]))
                     )
@@ -119,7 +119,7 @@ class hm_icmp_protocol(icmp_class.icmp_protocol):
                     except:
                         value["error_list"].append(process_tools.get_except_info())
                         self.log(
-                            "error sending to %s: %s" % (
+                            "error sending to {}: {}".format(
                                 value["host"],
                                 ", ".join(value["error_list"])),
                             logging_tools.LOG_LEVEL_ERROR)
@@ -159,17 +159,15 @@ class hm_icmp_protocol(icmp_class.icmp_protocol):
         else:
             if from_reply:
                 # should only happen for delayed pings or pings with error
-                self.log("got delayed ping reply (%s)" % (key), logging_tools.LOG_LEVEL_WARN)
+                self.log("got delayed ping reply ({})".format(key), logging_tools.LOG_LEVEL_WARN)
         # pprint.pprint(self.__work_dict)
     def received(self, sock):
         recv_time = time.time()
         dgram = self.parse_datagram(sock.recv(1024))
         if dgram and dgram.packet_type == 0 and dgram.ident == self.__process.pid & 0x7fff:
             seqno = dgram.seqno
-            # if seqno % 3 == 10:
-            #    return
             if seqno not in self.__seqno_dict:
-                self.log("got result with unknown seqno %d" % (seqno),
+                self.log("got result with unknown seqno {:d}".format(seqno),
                          logging_tools.LOG_LEVEL_ERROR)
             else:
                 value = self[self.__seqno_dict[seqno]]
@@ -189,7 +187,6 @@ class tcp_con(object):
         self.s_time = time.time()
         tcp_con.pending.append(self)
         self._host, self._port = (socket.gethostbyname(srv_com["host"].text), int(srv_com["port"].text))
-        # cur_id = "%s:%d" % (t_host, t_port)
         self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM) # , socket.IPPROTO_TCP)
         self.socket.setblocking(0)
         self.socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
@@ -202,18 +199,18 @@ class tcp_con(object):
         except socket.error as _err:
             errno = _err.errno
             if errno != 115:
-                self.log("error while bind: %d" % (errno))
+                self.log("error while bind: {}".format(errno))
             # if errno
             # print errno
             # time.sleep(0.1)
         # self._send()
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
-        self.__process.log("[%s:%d] %s" % (self._host, self._port, what), log_level)
+        self.__process.log("[{}:{:d}] {}".format(self._host, self._port, what), log_level)
     def _send(self, sock):
         try:
             self.socket.send(self._send_str(self.srv_com))
         except:
-            self.log("error sending: %s" % (process_tools.get_except_info()), logging_tools.LOG_LEVEL_ERROR)
+            self.log("error sending: {}".format(process_tools.get_except_info()), logging_tools.LOG_LEVEL_ERROR)
             self.close()
         else:
             self.__process.unregister_socket(self.socket)
@@ -221,20 +218,24 @@ class tcp_con(object):
     def _send_str(self, srv_com):
         com = srv_com["command"].text
         if srv_com["arg_list"].text:
-            com = "%s %s" % (com, srv_com["arg_list"].text)
-        return "%08d%s" % (len(com), com)
+            com = "{} {}".format(com, srv_com["arg_list"].text)
+        return "{:08d}{}".format(len(com), com)
     def _recv(self, sock):
-        _data = sock.recv(2048)
-        if _data[0:8].isdigit():
-            _len = int(_data[0:8])
-            if _len + 8 == len(_data):
-                self.__process.send_result(self.src_id, unicode(self.srv_com), _data[8:])
-            else:
-                self.log("wrong length: %d (header) != %d (body)" % (
-                    _len,
-                    len(_data) - 8), logging_tools.LOG_LEVEL_ERROR)
+        try:
+            _data = sock.recv(2048)
+        except:
+            self.log("recv problem: {}".format(process_tools.get_except_info()), logging_tools.LOG_LEVEL_ERROR)
         else:
-            self.log("wrong header: %s" % (_data[0:8]), logging_tools.LOG_LEVEL_ERROR)
+            if _data[0:8].isdigit():
+                _len = int(_data[0:8])
+                if _len + 8 == len(_data):
+                    self.__process.send_result(self.src_id, unicode(self.srv_com), _data[8:])
+                else:
+                    self.log("wrong length: {:d} (header) != {:d} (body)".format(
+                        _len,
+                        len(_data) - 8), logging_tools.LOG_LEVEL_ERROR)
+            else:
+                self.log("wrong header: {}" .format(_data[0:8]), logging_tools.LOG_LEVEL_ERROR)
         self.close()
     def close(self):
         tcp_con.pending = [_entry for _entry in tcp_con.pending if _entry != self]
@@ -265,7 +266,7 @@ class socket_process(threading_tools.process_obj):
         cur_time = time.time()
         to_list = [entry for entry in tcp_con.pending if abs(entry.s_time - cur_time) > 20]
         if to_list:
-            self.log("removing %s (timeout)" % (logging_tools.get_plural("TCP connection", len(to_list))))
+            self.log("removing {} (timeout)".format(logging_tools.get_plural("TCP connection", len(to_list))))
             for _entry in to_list:
                 _entry.log("timeout", logging_tools.LOG_LEVEL_WARN)
                 _entry.close()
