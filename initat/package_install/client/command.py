@@ -46,7 +46,7 @@ class simple_command(object):
         self.info = kwargs.get("info", None)
         self.max_run_time = kwargs.get("max_run_time", 600)
         self.log(
-            "init %s-command %s%s, delay is %s" % (
+            "init {}-command {}{}, {}" % (
                 self.command_stage,
                 "with %s" % (
                     logging_tools.get_plural(
@@ -54,7 +54,11 @@ class simple_command(object):
                         len(self.com_str.split("\n")))) if kwargs.get("short_info", True) else "'%s'" % (self.com_str),
                 " (%s)" % (
                     kwargs.get("add_info", "")) if "add_info" in kwargs else "",
-                logging_tools.get_plural("second", self.delay_time)))
+                "delay is {}".format(
+                    logging_tools.get_plural("second", self.delay_time)
+                ) if self.delay_time else "no delay"
+            )
+        )
         if self.delay_time:
             simple_command.process.register_timer(self.call, self.delay_time, oneshot=True)
         else:

@@ -1,5 +1,3 @@
-#!/usr/bin/python-init -Ot
-#
 # Copyright (C) 2001-2014 Andreas Lang-Nevyjel
 #
 # this file is part of package-server
@@ -50,10 +48,14 @@ class repo_type(object):
     def __init__(self, master_process):
         self.master_process = master_process
         self.log_com = master_process.log
-        self.log("repository type is %s (%s)" % (self.REPO_TYPE_STR,
-                                                 self.REPO_SUBTYPE_STR))
+        self.log(
+            "repository type is {} ({})".format(
+                self.REPO_TYPE_STR,
+                self.REPO_SUBTYPE_STR
+            )
+        )
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
-        self.log_com("[rt] %s" % (what), log_level)
+        self.log_com("[rt] {}".format(what), log_level)
     def init_search(self, s_struct):
         cur_search = s_struct.run_info["stuff"]
         cur_search.last_search_string = cur_search.search_string
@@ -68,7 +70,7 @@ class repo_type_rpm_yum(repo_type):
     SCAN_REPOS = "yum repolist all"
     REPO_CLASS = rpm_repository
     def search_package(self, s_string):
-        return "yum -q --showduplicates search %s" % (s_string)
+        return "yum -q --showduplicates search {}".format(s_string)
     def repo_scan_result(self, s_struct):
         self.log("got repo scan result")
         cur_mode = 0
@@ -100,19 +102,15 @@ class repo_type_rpm_yum(repo_type):
                     cur_repo.enabled = repo_enabled
                     cur_repo.gpg_check = False
                     cur_repo.save()
-        self.log("found %s" % (logging_tools.get_plural("new repository", len(new_repos))))
+        self.log("found {}".format(logging_tools.get_plural("new repository", len(new_repos))))
         if old_repos:
-            self.log("found %s: %s" % (logging_tools.get_plural("old repository", len(old_repos)),
-                                       ", ".join(sorted(old_repos))), logging_tools.LOG_LEVEL_ERROR)
+            self.log(
+                "found {}: {}".format(
+                    logging_tools.get_plural("old repository", len(old_repos)),
+                    ", ".join(sorted(old_repos))), logging_tools.LOG_LEVEL_ERROR)
             if global_config["DELETE_MISSING_REPOS"]:
                 self.log(" ... removing them from DB", logging_tools.LOG_LEVEL_WARN)
                 package_repo.objects.filter(Q(name__in=old_repos)).delete()
-        # if s_struct.src_id:
-        #    self.master_process.send_pool_message(
-        #        "delayed_result",
-        #        s_struct.src_id,
-        #        "rescanned %s" % (logging_tools.get_plural("repository", len(found_repos))),
-        #        server_command.SRV_REPLY_STATE_OK)
         self.master_process._reload_searches()
     def search_result(self, s_struct):
         cur_mode = 0
@@ -132,7 +130,7 @@ class repo_type_rpm_yum(repo_type):
         cur_search.results = len(found_packs)
         cur_search.last_search = cluster_timezone.localize(datetime.datetime.now())
         cur_search.save(update_fields=["last_search", "current_state", "results"])
-        self.log("found for %s: %d" % (cur_search.search_string, cur_search.results))
+        self.log("found for {}: {:d}".format(cur_search.search_string, cur_search.results))
         for p_name in found_packs:
             parts = p_name.split("-")
             rel_arch = parts.pop(-1)
@@ -144,7 +142,7 @@ class repo_type_rpm_yum(repo_type):
                 name=name,
 
                 arch=arch,
-                version="%s-%s" % (version, release),
+                version="{}-{}".format(version, release),
                 package_search=cur_search,
                 copied=False,
                 package_repo=None)
@@ -157,7 +155,7 @@ class repo_type_rpm_zypper(repo_type):
     SCAN_REPOS = "zypper --xml ls -r -d"
     REPO_CLASS = rpm_repository
     def search_package(self, s_string):
-        return "zypper --xml search -s %s" % (s_string)
+        return "zypper --xml search -s {}".format(s_string)
     def repo_scan_result(self, s_struct):
         self.log("got repo scan result")
         repo_xml = etree.fromstring(s_struct.read())
@@ -205,7 +203,7 @@ class repo_type_rpm_zypper(repo_type):
             _zypper_com = "/usr/bin/zypper lr -p"
             _stat, _out = commands.getstatusoutput(_zypper_com)
             if _stat:
-                self.log("error scanning via '%s' (%d): %s" % (_zypper_com, _stat, _out))
+                self.log("error scanning via '{}' ({:d}): {}".format(_zypper_com, _stat, _out))
             else:
                 _lines = _out.strip().split("\n")[2:]
                 for _line in _lines:
@@ -215,20 +213,22 @@ class repo_type_rpm_zypper(repo_type):
                         try:
                             cur_repo = package_repo.objects.get(Q(name=_name))
                         except package_repo.DoesNotExist:
-                            self.log("no repository with name '%s' found" % (_name), logging_tools.LOG_LEVEL_ERROR)
+                            self.log("no repository with name '{}' found".format(_name), logging_tools.LOG_LEVEL_ERROR)
                         else:
                             if _pri != cur_repo.priority:
-                                self.log("changing priority of %s from %d to %d" % (
+                                self.log("changing priority of {} from {:d} to {:d}".format(
                                     cur_repo.name,
                                     cur_repo.priority,
                                     _pri,
                                     ))
                             cur_repo.priority = _pri
                             cur_repo.save()
-        self.log("found %s" % (logging_tools.get_plural("new repository", len(new_repos))))
+        self.log("found {}".format(logging_tools.get_plural("new repository", len(new_repos))))
         if old_repos:
-            self.log("found %s: %s" % (logging_tools.get_plural("old repository", len(old_repos)),
-                                       ", ".join(sorted(old_repos))), logging_tools.LOG_LEVEL_ERROR)
+            self.log(
+                "found {}: {}".format(
+                    logging_tools.get_plural("old repository", len(old_repos)),
+                    ", ".join(sorted(old_repos))), logging_tools.LOG_LEVEL_ERROR)
             if global_config["DELETE_MISSING_REPOS"]:
                 self.log(" ... removing them from DB", logging_tools.LOG_LEVEL_WARN)
                 package_repo.objects.filter(Q(name__in=old_repos)).delete()
@@ -236,7 +236,7 @@ class repo_type_rpm_zypper(repo_type):
             self.master_process.send_pool_message(
                 "delayed_result",
                 s_struct.src_id,
-                "rescanned %s" % (logging_tools.get_plural("repository", len(found_repos))),
+                "rescanned {}".format(logging_tools.get_plural("repository", len(found_repos))),
                 server_command.SRV_REPLY_STATE_OK)
         self.master_process._reload_searches()
     def search_result(self, s_struct):
@@ -250,7 +250,7 @@ class repo_type_rpm_zypper(repo_type):
         repo_dict = dict([(cur_repo.name, cur_repo) for cur_repo in package_repo.objects.all()])
         # delete previous search results
         cur_search.package_search_result_set.all().delete()
-        self.log("found for %s: %d" % (cur_search.search_string, cur_search.results))
+        self.log("found for {}: {:d}".format(cur_search.search_string, cur_search.results))
         for result in res_xml.xpath(".//solvable", smart_strings=False):
             if result.attrib["repository"] in repo_dict:
                 new_sr = package_search_result(
@@ -263,7 +263,7 @@ class repo_type_rpm_zypper(repo_type):
                     package_repo=repo_dict[result.attrib["repository"]])
                 new_sr.save()
             else:
-                self.log("unknown repository '%s' for package '%s'" % (
+                self.log("unknown repository '{}' for package '{}'".format(
                     result.attrib["repository"],
                     result.attrib["name"],
                     ), logging_tools.LOG_LEVEL_ERROR)
@@ -296,7 +296,7 @@ class subprocess_struct(object):
         if kwargs.get("start", False):
             self.run()
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
-        self.log_com("[ss %d/%d] %s" % (self.run_idx, self.com_num, what), log_level)
+        self.log_com("[ss {:d}/{:d}] {}".format(self.run_idx, self.com_num, what), log_level)
     def run(self):
         run_info = {"stuff" : None}
         if self.multi_command:
@@ -318,14 +318,14 @@ class subprocess_struct(object):
         self.run_info = run_info
         if run_info["comline"]:
             if self.Meta.verbose:
-                self.log("popen '%s'" % (run_info["comline"]))
+                self.log("popen '{}'".format(run_info["comline"]))
             self.current_stdout = ""
             if self.pre_cb_func:
                 self.pre_cb_func(self)
             self.popen = subprocess.Popen(run_info["comline"], shell=True, stderr=subprocess.STDOUT, stdout=subprocess.PIPE)
     def read(self):
         if self.popen:
-            self.current_stdout = "%s%s" % (self.current_stdout, self.popen.stdout.read())
+            self.current_stdout = "{}{}".format(self.current_stdout, self.popen.stdout.read())
             return self.current_stdout
         else:
             return None
@@ -343,7 +343,7 @@ class subprocess_struct(object):
                 if self.run_info["result"] is None:
                     self.log("pending")
                 else:
-                    self.log("finished with %s" % (str(self.run_info["result"])))
+                    self.log("finished with {}".format(str(self.run_info["result"])))
             fin = False
             if self.run_info["result"] is not None:
                 self.process_result()
@@ -357,7 +357,7 @@ class subprocess_struct(object):
                 else:
                     fin = True
             else:
-                self.current_stdout = "%s%s" % (self.current_stdout, self.popen.stdout.read())
+                self.current_stdout = "{}{}".format(self.current_stdout, self.popen.stdout.read())
         return fin
 
 class client(object):
@@ -374,8 +374,9 @@ class client(object):
     def create_logger(self):
         if self.__log_template is None:
             self.__log_template = logging_tools.get_logger(
-                "%s.%s" % (global_config["LOG_NAME"],
-                           self.name.replace(".", r"\.")),
+                "{}.{}".format(
+                    global_config["LOG_NAME"],
+                    self.name.replace(".", r"\.")),
                 global_config["LOG_DESTINATION"],
                 zmq=True,
                 context=client.srv_process.zmq_context,
@@ -401,10 +402,10 @@ class client(object):
             try:
                 new_client = client(uid, name)
             except device.DoesNotExist:
-                client.srv_process.log("no client with name '%s' found" % (name), logging_tools.LOG_LEVEL_ERROR)
+                client.srv_process.log("no client with name '{}' found".format(name), logging_tools.LOG_LEVEL_ERROR)
                 if name.count("."):
                     s_name = name.split(".")[0]
-                    client.srv_process.log("trying with short name '%s'" % (s_name), logging_tools.LOG_LEVEL_WARN)
+                    client.srv_process.log("trying with short name '{}'".format(s_name), logging_tools.LOG_LEVEL_WARN)
                     try:
                         new_client = client(uid, s_name)
                     except:
@@ -412,7 +413,7 @@ class client(object):
                     else:
                         client.srv_process.log("successfull with short name", logging_tools.LOG_LEVEL_WARN)
                 else:
-                    client.srv_process.log("trying with name '%s'" % (name), logging_tools.LOG_LEVEL_WARN)
+                    client.srv_process.log("trying with name '{}'".format(name), logging_tools.LOG_LEVEL_WARN)
                     try:
                         new_client = client(uid, name)
                     except:
@@ -424,8 +425,8 @@ class client(object):
                 client.name_set.add(name)
                 client.lut[uid] = new_client
                 client.lut[name] = new_client
-                client.srv_process.log("added client %s (%s)" % (name, uid))
-                cur_el = client.xml.xpath(".//package_client[@name='%s']" % (name), smart_strings=False)
+                client.srv_process.log("added client {} ({})".format(name, uid))
+                cur_el = client.xml.xpath(".//package_client[@name='{}']".format(name), smart_strings=False)
                 if not len(cur_el):
                     client.xml.append(E.package_client(uid, name=name))
                     file(CONFIG_NAME, "w").write(etree.tostring(client.xml, pretty_print=True))
@@ -438,8 +439,9 @@ class client(object):
     def send_reply(self, srv_com):
         self.srv_process.send_reply(self.uid, srv_com)
     def __unicode__(self):
-        return u"%s (%s)" % (self.name,
-                             self.uid)
+        return u"{} ({})".format(
+            self.name,
+            self.uid)
     def _modify_device_variable(self, var_name, var_descr, var_type, var_value):
         try:
             cur_var = device_variable.objects.get(Q(device=self.device) & Q(name=var_name))
@@ -458,8 +460,8 @@ class client(object):
                     if int(major) >= 3 and int(minor) >= 1:
                         self.__client_gen = 1
             except:
-                self.log("cannot interpret version '%s'" % (new_vers))
-            self.log("changed version from '%s' to '%s' (generation %d)" % (
+                self.log("cannot interpret version '{}'".format(new_vers))
+            self.log("changed version from '{}' to '{}' (generation {:d})".format(
                 self.__version,
                 new_vers,
                 self.__client_gen,
@@ -486,7 +488,7 @@ class client(object):
             take = True
             if cur_pdc.image_dep:
                 if cur_image not in cur_pdc.image_list.all():
-                    self.log("ignoring package '%s' because image '%s' not in image_list '%s'" % (
+                    self.log("ignoring package '{}' because image '{}' not in image_list '{}'".format(
                         unicode(cur_pdc.package),
                         unicode(cur_image),
                         ", ".join([unicode(_v) for _v in cur_pdc.image_list.all()]),
@@ -494,7 +496,7 @@ class client(object):
                     take = False
             if cur_pdc.kernel_dep:
                 if cur_kernel not in cur_pdc.kernel_list.all():
-                    self.log("ignoring package '%s' because kernel '%s' not in kernel_list '%s'" % (
+                    self.log("ignoring package '{}' because kernel '{}' not in kernel_list '{}'".format(
                         unicode(cur_pdc.package),
                         unicode(cur_kernel),
                         ", ".join([unicode(_v) for _v in cur_pdc.kernel_list.all()]),
@@ -502,7 +504,7 @@ class client(object):
                     take = False
             if take:
                 send_list.append(cur_pdc)
-        self.log("%s in source list, %s in send_list" % (
+        self.log("{} in source list, {} in send_list".format(
             logging_tools.get_plural("package", len(pdc_list)),
             logging_tools.get_plural("package", len(send_list)),))
         if self.__client_gen == 1:
@@ -516,7 +518,7 @@ class client(object):
     def _get_repo_list(self, srv_com):
         repo_list = package_repo.objects.filter(Q(publish_to_nodes=True))
         send_ok = [cur_repo for cur_repo in repo_list if cur_repo.distributable]
-        self.log("%s, %d to send" % (
+        self.log("{}, {:d} to send".format(
             logging_tools.get_plural("publish repo", len(repo_list)),
             len(send_ok),
             ))
@@ -535,7 +537,7 @@ class client(object):
             info_xml = info_xml[0]
             cur_pdc = package_device_connection.objects.select_related("package").get(Q(pk=pdc_xml.attrib["pk"]))
             cur_pdc.response_type = pdc_xml.attrib["response_type"]
-            self.log("got package_info for %s (type is %s)" % (unicode(cur_pdc.package), cur_pdc.response_type))
+            self.log("got package_info for {} (type is {})".format(unicode(cur_pdc.package), cur_pdc.response_type))
             cur_pdc.response_str = etree.tostring(info_xml)
             # print cur_pdc.response_str
             cur_pdc.interpret_response()
@@ -563,12 +565,12 @@ class client(object):
         elif cur_com == "package_info":
             self._package_info(srv_com)
         else:
-            self.log("unknown command '%s'" % (cur_com),
+            self.log("unknown command '{}'".format(cur_com),
                      logging_tools.LOG_LEVEL_ERROR)
         if send_reply:
             self.send_reply(srv_com)
         e_time = time.time()
-        self.log("handled command %s in %s" % (
+        self.log("handled command {} in {}".format(
             cur_com,
             logging_tools.get_diff_time_str(e_time - s_time)))
 
