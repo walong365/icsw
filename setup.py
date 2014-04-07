@@ -8,4 +8,5 @@ setup(name="meta-server",
       author_email="lang@init.at",
       py_modules=[],
       packages=["initat.meta_server"],
-      )
+)
+
