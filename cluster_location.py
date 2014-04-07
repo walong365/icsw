@@ -1,5 +1,3 @@
-#!/usr/bin/python-init -Ot
-#
 # Copyright (C) 2012-2014 Andreas Lang-Nevyjel, init.at
 #
 # this file is part of cluster-backbone

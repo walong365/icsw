@@ -1,10 +1,9 @@
-#!/usr/bin/python-init -Otu
 # -*- coding: utf-8 -*-
 #
 # Copyright (C) 2007-2009,2012-2014 Andreas Lang-Nevyjel, init.at
 #
 # Send feedback to: <lang-nevyjel@init.at>
-# 
+#
 # This file is part of cluster-backbone-sql
 #
 # This program is free software; you can redistribute it and/or modify
@@ -97,7 +96,7 @@ class kernel_helper(object):
             else:
                 self.__config_path = None
         self.__initrd_paths = dict([(key, "%s/initrd_%s.gz" % (self.path, key)) for key in KNOWN_INITRD_FLAVOURS])
-        self.__initrd_paths["old"]    = "%s/initrd.gz" % (self.path)
+        self.__initrd_paths["old"] = "%s/initrd.gz" % (self.path)
         self.__initrd_paths["stage2"] = "%s/initrd_stage2.gz" % (self.path)
         self.__option_dict = {"database" : False}
         self.__thread_name = threading.currentThread().getName()
@@ -106,7 +105,7 @@ class kernel_helper(object):
             raise IOError, "kernel_dir %s is not a directory" % (self.path)
         if not os.path.isfile(self.__bz_path):
             raise IOError, "kernel_dir %s has no bzImage" % (self.path)
-        #if not [True for initrd_path in self.__initrd_paths.values() if os.path.isfile(initrd_path)]:
+        # if not [True for initrd_path in self.__initrd_paths.values() if os.path.isfile(initrd_path)]:
         #    raise IOError, "kernel_dir %s has no initrd*.gz" % (self.path)
         # init db-Fields
         self.__checks = []
@@ -115,7 +114,7 @@ class kernel_helper(object):
             "path"         : self.path,
             "initrd_built" : None,
             "module_list"  : ""}
-        #self.__db_kernel = {"name"          : self.name,
+        # self.__db_kernel = {"name"          : self.name,
         #                    "target_dir"    : self.path,
         #                    "initrd_built"  : None,
         #                    "module_list"   : "",
@@ -177,7 +176,7 @@ class kernel_helper(object):
         self.__checks.append("md5")
         files_to_check = sorted([os.path.normpath("%s/%s" % (self.path, f_name)) for f_name in ["bzImage", "initrd.gz", "xen.gz", "modules.tar.bz2"] +
                                  ["initrd_%s.gz" % (key) for key in KNOWN_INITRD_FLAVOURS]])
-        md5s_to_check  = dict([(p_name, os.path.normpath("%s/.%s_md5" % (self.path, os.path.basename(p_name)))) for p_name in files_to_check if os.path.exists(p_name)])
+        md5s_to_check = dict([(p_name, os.path.normpath("%s/.%s_md5" % (self.path, os.path.basename(p_name)))) for p_name in files_to_check if os.path.exists(p_name)])
         md5s_to_remove = sorted([md5_file for md5_file in [os.path.normpath("%s/.%s_md5" % (self.path, os.path.basename(p_name))) for p_name in files_to_check if not os.path.exists(p_name)] if os.path.exists(md5_file)])
         if md5s_to_remove:
             self.log("removing %s: %s" % (logging_tools.get_plural("MD5 file", len(md5s_to_remove)),
@@ -206,13 +205,13 @@ class kernel_helper(object):
                     file(md5_file, "w").write(self.__option_dict[md5_name])
                 else:
                     self.__option_dict[md5_name] = file(md5_file, "r").read()
-##    def set_db_kernel(self, db_k):
-##        self.__db_kernel = db_k
-##        self.__option_dict["database"] = True
-##        self.__db_idx = db_k["kernel_idx"]
-##    def get_db_kernel(self):
-##        return self.__db_kernel
-##    db_kernel = property(get_db_kernel, set_db_kernel)
+# #    def set_db_kernel(self, db_k):
+# #        self.__db_kernel = db_k
+# #        self.__option_dict["database"] = True
+# #        self.__db_idx = db_k["kernel_idx"]
+# #    def get_db_kernel(self):
+# #        return self.__db_kernel
+# #    db_kernel = property(get_db_kernel, set_db_kernel)
     def move_old_initrd(self):
         if os.path.isfile(self.__initrd_paths["old"]):
             c_stat, c_out = commands.getstatusoutput("file -z %s" % (self.__initrd_paths["old"]))
@@ -285,12 +284,12 @@ class kernel_helper(object):
                          db_write=True)
                 self.__checks.append("initrd")
                 initrd_built = cluster_timezone.localize(datetime.datetime.fromtimestamp(os.stat(self.__initrd_paths[present_keys[0]])[stat.ST_MTIME]))
-                #initrd_built = time.localtime(initrd_built)
+                # initrd_built = time.localtime(initrd_built)
                 self._update_kernel(initrd_built=initrd_built)
                 # temporary file and directory
                 tmp_dir = tempfile.mkdtemp()
                 tfile_name = "%s/.initrd_check" % (tmp_dir)
-                tdir_name  = "%s/.initrd_mdir" % (tmp_dir)
+                tdir_name = "%s/.initrd_mdir" % (tmp_dir)
                 if not os.path.isdir(tdir_name):
                     os.mkdir(tdir_name)
                 checked = False
@@ -340,7 +339,7 @@ class kernel_helper(object):
                                 mod_lines = [os.path.basename("/%s" % (line)) for line in c_out.split("\n") if line.startswith("lib/modules") and (line.endswith(".o") or line.endswith(".ko"))]
                                 mod_list = set([mod_name[:-2] if mod_name.endswith(".o") else mod_name[:-3] for mod_name in mod_lines])
                         mod_list = ",".join(sorted(mod_list))
-                        #print "***", present_key, mod_list
+                        # print "***", present_key, mod_list
                         if mod_list:
                             self.log("found %s: %s" % (logging_tools.get_plural("module", len(mod_list.split(","))),
                                                        mod_list))
@@ -361,7 +360,7 @@ class kernel_helper(object):
                                                                                         c_out),
                                      logging_tools.LOG_LEVEL_ERROR)
                     if checked:
-                        #pass
+                        # pass
                         break
                 if os.path.isdir(tdir_name):
                     os.rmdir(tdir_name)
@@ -489,7 +488,7 @@ class kernel_helper(object):
         else:
             build_dev = None
         self.__values["build_machine"] = build_mach
-        self.__values["device"]        = build_dev
+        self.__values["device"] = build_dev
     def check_xen(self):
         xen_host_kernel = True if os.path.isfile(self.__xen_path) else False
         xen_guest_kernel = False
@@ -507,10 +506,10 @@ class kernel_helper(object):
         self._update_kernel(bitcount=bc)
     def set_option_dict_values(self):
         # local kernel ?
-        #self.__option_dict["kernel_is_local"] = (self.__db_kernel["build_machine"] or "").split(".")[0] == self.__config["SERVER_SHORT_NAME"]
+        # self.__option_dict["kernel_is_local"] = (self.__db_kernel["build_machine"] or "").split(".")[0] == self.__config["SERVER_SHORT_NAME"]
         # FIXME
         self.__option_dict["kernel_is_local"] = False
-        #self.__option_dict["build_machine"] = self.__db_kernel["build_machine"]
+        # self.__option_dict["build_machine"] = self.__db_kernel["build_machine"]
         # initrds found, not used right now
         for initrd_flavour in ["lo", "cramfs", "cpio"]:
             self.__option_dict["initrd_flavour_%s" % (initrd_flavour)] = os.path.exists(self.__initrd_paths[initrd_flavour])
@@ -558,20 +557,20 @@ class kernel_helper(object):
                                                                                   str(ext_opt_dict["ignore_kernel_build_machine"])))
             ins = True
             # old code, check locality
-##            if ext_opt_dict["insert_all_found"] or self.name in ext_opt_dict["kernels_to_insert"]:
-##                # check for kernel locality
-##                kl_ok = self.__option_dict["kernel_is_local"]
-##                if not kl_ok:
-##                    if self.__config.get("IGNORE_KERNEL_BUILD_MACHINE", False) or ext_opt_dict["ignore_kernel_build_machine"]:
-##                        self.log("ignore kernel build_machine (global: %s, local: %s)" % (str(self.__config.get("IGNORE_KERNEL_BUILD_MACHINE", False)),
-##                                                                                          str(ext_opt_dict["ignore_kernel_build_machine"])))
-##                        kl_ok = True
-##                if not kl_ok:
-##                    # FIXME
-##                    self.log("kernel is not local (%s)" % ('self.__option_dict["build_machine"]'),
-##                             logging_tools.LOG_LEVEL_ERROR)
-##                else:
-##                    ins = True
+# #            if ext_opt_dict["insert_all_found"] or self.name in ext_opt_dict["kernels_to_insert"]:
+# #                # check for kernel locality
+# #                kl_ok = self.__option_dict["kernel_is_local"]
+# #                if not kl_ok:
+# #                    if self.__config.get("IGNORE_KERNEL_BUILD_MACHINE", False) or ext_opt_dict["ignore_kernel_build_machine"]:
+# #                        self.log("ignore kernel build_machine (global: %s, local: %s)" % (str(self.__config.get("IGNORE_KERNEL_BUILD_MACHINE", False)),
+# #                                                                                          str(ext_opt_dict["ignore_kernel_build_machine"])))
+# #                        kl_ok = True
+# #                if not kl_ok:
+# #                    # FIXME
+# #                    self.log("kernel is not local (%s)" % ('self.__option_dict["build_machine"]'),
+# #                             logging_tools.LOG_LEVEL_ERROR)
+# #                else:
+# #                    ins = True
         return ins
     def log_statistics(self):
         t_diff = time.time() - self.__start_time
