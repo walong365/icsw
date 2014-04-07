@@ -433,7 +433,7 @@ class mvect_entry(object):
             ("base"       , 1),
             ("factor"     , 1)]:
             if getattr(self, key) != ns_value:
-                kwargs[key] = "{:d}".format(getattr(self, key))
+                kwargs[key] = "{:d}".format(int(getattr(self, key)))
         return builder("mve", **kwargs)
     def build_json(self):
         return {

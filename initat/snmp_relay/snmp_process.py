@@ -1,6 +1,6 @@
 #!/usr/bin/python-init -Otu
 #
-# Copyright (C) 2009,2010,2011,2012,2013 Andreas Lang-Nevyjel
+# Copyright (C) 2009-2014 Andreas Lang-Nevyjel
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -47,7 +47,7 @@ class simple_snmp_oid(object):
         else:
             self._oid = oid
         self._oid_len = len(self._oid)
-        self._str_oid = ".".join(["%d" % (i_val) if type(i_val) in [int, long] else i_val for i_val in self._oid])
+        self._str_oid = ".".join(["{:d}".format(i_val) if type(i_val) in [int, long] else i_val for i_val in self._oid])
     def has_max_oid(self):
         return False
     def __str__(self):
@@ -84,12 +84,12 @@ class snmp_batch(object):
         self._clear_errors()
         self._set_target(snmp_ver, snmp_host, snmp_community)
         if self.__verbose > 2:
-            self.log("init SNMP_batch for %s (V%d)" % (snmp_host, snmp_ver))
+            self.log("init SNMP_batch for {} (V{:d})".format(snmp_host, snmp_ver))
         self.kh_list = scheme_data[6:]
         self.iterator = self.loop()
         self.proc.register_batch(self)
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
-        self.proc.log("[b %d] %s" % (self.key, what), log_level)
+        self.proc.log("[b {:d}] {}".format(self.key, what), log_level)
     def _clear_errors(self):
         self.__received, self.__snmp_dict = (set(), {})
         self.__timed_out, self.__other_errors, self.__error_list = (False, False, [])
@@ -103,50 +103,49 @@ class snmp_batch(object):
                 }[self.__snmp_ver]
             ]
         except KeyError:
-            self.log("unknown snmp_version %d, using 1" % (self.__snmp_ver), logging_tools.LOG_LEVEL_ERROR)
+            self.log("unknown snmp_version {:d}, using 1".format(self.__snmp_ver), logging_tools.LOG_LEVEL_ERROR)
             self.__p_mod = api.protoModules[api.protoVersion1]
     def run_ok(self):
         return not self.__timed_out and not self.__other_errors
     def oid_pretty_print(self, oids):
-        return ";".join(["%s" % (".".join(["%d" % (oidp) for oidp in oid])) for oid in oids])
+        return ";".join(["{}".format(".".join(["{:d}".format(oidp) for oidp in oid])) for oid in oids])
     def loop(self):
-        # print self.kh_list
         for key, header_list in self.kh_list:
             if self.run_ok() and header_list:
                 if key == "T":
                     # get table (bulk)
                     if self.__verbose > 1:
-                        self.log("bulk-walk tables (%s): %s" % (self.__snmp_host, self.oid_pretty_print(header_list)))
+                        self.log("bulk-walk tables ({}): {}".format(self.__snmp_host, self.oid_pretty_print(header_list)))
                     yield self.get_tables(header_list)
                     if self.__verbose > 1:
                         self.log("bulk-walk tables: done")
                 elif key == "S":
                     # set value, header_list is now a list of (mib, value) tuples
                     if self.__verbose > 1:
-                        self.log("set mib (%s): %s" % (self.__snmp_host, self.oid_pretty_print(header_list)))
+                        self.log("set mib ({}): {}".format(self.__snmp_host, self.oid_pretty_print(header_list)))
                     yield self.get_tables(header_list, set=True)
                     if self.__verbose > 1:
                         self.log("set mib: done")
                 else:
                     # get table, single walk
                     if self.__verbose > 1:
-                        self.log("get tables (%s): %s" % (self.__snmp_host, self.oid_pretty_print(header_list)))
+                        self.log("get tables ({}): {}".format(self.__snmp_host, self.oid_pretty_print(header_list)))
                     yield self.get_tables(header_list, single_values=True)
                     if self.__verbose > 1:
                         self.log("get tables: done")
                 if self.run_ok():
                     if self.__verbose > 1:
-                        self.log("(%s) for host %s (%s): %s" % (
+                        self.log("({}) for host {} ({}): {}".format(
                             key,
                             self.__snmp_host,
                             logging_tools.get_plural("table header", len(header_list)),
                             logging_tools.get_plural("result", self.num_result_values)))
                 else:
                     self.__error_list.append(
-                        "snmp timeout (%d secs, OID is %s)" % (
+                        "snmp timeout ({:d} secs, OID is {})".format(
                             self.__timeout,
                             self.oid_pretty_print(header_list)))
-                    self.log("(%s) run not ok for host %s (%s)" % (
+                    self.log("({}) run not ok for host {} ({})".format(
                         key,
                         self.__snmp_host,
                         logging_tools.get_plural("table header", len(header_list))),
@@ -195,7 +194,7 @@ class snmp_batch(object):
         else:
             self.__p_mod.apiPDU.setVarBinds(self.__req_pdu, [(head_var, self.__p_mod.Null("")) for head_var, _max_head_var in self.__act_head_vars])
         if self.__p_mod.apiPDU.getErrorStatus(self.__req_pdu):
-            self.log("Something went seriously wrong: %s" % (self.__p_mod.apiPDU.getErrorStatus(self.__req_pdu).prettyPrint()),
+            self.log("Something went seriously wrong: {}".format(self.__p_mod.apiPDU.getErrorStatus(self.__req_pdu).prettyPrint()),
                     logging_tools.LOG_LEVEL_CRITICAL)
         # message
         self.__req_msg = self.__p_mod.Message()
@@ -234,7 +233,7 @@ class snmp_batch(object):
         # Check for SNMP errors reported
         error_status = self.__p_mod.apiPDU.getErrorStatus(rsp_pdu)
         if error_status:
-            self.log("SNMP error_status: %s" % (self.__p_mod.apiPDU.getErrorStatus(rsp_pdu).prettyPrint()),
+            self.log("SNMP error_status: {}".format(self.__p_mod.apiPDU.getErrorStatus(rsp_pdu).prettyPrint()),
                      logging_tools.LOG_LEVEL_WARN)
             if error_status not in [2]:
                 self.__other_errors = True
@@ -244,7 +243,7 @@ class snmp_batch(object):
             var_bind_table = self.__p_mod.apiPDU.getVarBindTable(self.__req_pdu, rsp_pdu)
             # Report SNMP table
             if len(var_bind_table) != 1:
-                print "*** length of var_bind_table != 1 ***"
+                print("*** length of var_bind_table != 1 ***")
             for (act_h, max_h), (name, value) in zip(self.__act_head_vars, var_bind_table[0]):
                 if value is None:
                     continue
@@ -271,7 +270,6 @@ class snmp_batch(object):
                 self.__num_items += 1
                 if self.__max_items and self.__num_items > self.__max_items:
                     terminate = True
-                    # print "from: %s, %s = %s" % (address, name.prettyPrint(), value.prettyPrint())
             # Stop on EOM
             if not terminate:
                 for _oid, val in var_bind_table[-1]:
@@ -282,7 +280,7 @@ class snmp_batch(object):
                 else:
                     terminate = True
         # Generate request for next row
-        # print self.__timed_out, next_names, terminate, self.__single_values
+        # print(self.__timed_out, next_names, terminate, self.__single_values)
         if abs(time.time() - self.__start_time) > self.__timeout:
             self.__timed_out = True
         else:
@@ -291,17 +289,14 @@ class snmp_batch(object):
             self.__act_head_vars, self.__next_names = (next_headers, next_names)
             self.__act_domain, self.__act_address = (domain, address)
             self._next_send()
-            # print var_bind_table
             # self.proc._inject(self)
         else:
-            # print "done"
             self.proc._inject(self)
     def _next_send(self):
         # not working for set-requests, FIXME
         self.__p_mod.apiPDU.setVarBinds(self.__req_pdu, [(var_x, self.__p_mod.Null("")) for var_x in self.__next_names])
         self.__p_mod.apiPDU.setRequestID(self.__req_pdu, self.__p_mod.getNextRequestID())
         self.request_id = self.__p_mod.apiPDU.getRequestID(self.__req_pdu)
-        # print "***", self.request_id
         self.proc.send_next(self, (encoder.encode(self.__req_msg), self.__act_domain, self.__act_address))
         # self.__disp.sendMessage(encoder.encode(self.__req_msg), self.__act_domain, self.__act_address)
     def timer_func(self, act_time):
@@ -309,24 +304,23 @@ class snmp_batch(object):
         trigger_timeout = False
         if not self.__data_got and self.__timer_count: # and diff_time > self.__timeout / 2:
             if not self.__num_items and diff_time > self.__timeout:
-                self.log("giving up for %s after %d items (%d seconds, timer_count is %d)" % (
+                self.log("giving up for {} after {:d} items ({:d} seconds, timer_count is {:d})".format(
                     self.__snmp_host,
                     self.__num_items,
                     act_time - self.__start_time,
                     self.__timer_count),
                          logging_tools.LOG_LEVEL_ERROR)
                 trigger_timeout = True
-            elif abs(act_time - self.__start_get_time) > self.__timeout / 2:
+            elif abs(act_time - self.__start_get_time) > self.__timeout / 2 and self.__num_items < 2:
                 # trigger a re-get
                 self.__start_get_time = act_time
-                self.log("re-initiated get() for %s after %s (%d seconds, timer_count is %d)" % (
+                self.log("re-initiated get() for {} after {} ({:d} seconds, timer_count is {:d})".format(
                     self.__snmp_host,
                     logging_tools.get_plural("item", self.__num_items),
                     act_time - self.__start_time,
                     self.__timer_count),
                          logging_tools.LOG_LEVEL_WARN)
                 self._next_send()
-        # print self.__timer_count
         self.__timer_count += 1
         # reset trigger
         self.__data_got = False
@@ -368,7 +362,7 @@ class snmp_process(threading_tools.process_obj):
         self.v2c_decoder = api.protoModules[api.protoVersion2c]
     def register_batch(self, cur_batch):
         if self.__verbose > 3:
-            self.log("registered new batch %d" % (cur_batch.key))
+            self.log("registered new batch {:d}".format(cur_batch.key))
         self.__job_dict[cur_batch.key] = cur_batch
         self.__disp.jobStarted(cur_batch.key)
     def unregister_batch(self, cur_batch):
@@ -377,7 +371,7 @@ class snmp_process(threading_tools.process_obj):
         if to_keys:
             for to_key in to_keys:
                 del self.__req_id_lut[to_key]
-            cur_batch.log("deleted %s" % (logging_tools.get_plural("request ID", len(to_keys))))
+            cur_batch.log("deleted {}".format(logging_tools.get_plural("request ID", len(to_keys))))
         del self.__job_dict[cur_batch.key]
         self.__disp.jobFinished(cur_batch.key)
     def loop(self):
@@ -393,10 +387,10 @@ class snmp_process(threading_tools.process_obj):
             self.log("exception in dispatcher, terminating process",
                      logging_tools.LOG_LEVEL_CRITICAL)
             for log_line in exc_info.log_lines:
-                self.log(" - %s" % (log_line), logging_tools.LOG_LEVEL_CRITICAL)
+                self.log(" - {}".format(log_line), logging_tools.LOG_LEVEL_CRITICAL)
         else:
             self.log("no more jobs running")
-        self.log("jobs pending: %d" % (len(self.__job_dict)))
+        self.log("jobs pending: {:d}".format(len(self.__job_dict)))
         self.__disp.closeDispatcher()
     def _inject(self, cur_batch):
         try:
@@ -421,16 +415,21 @@ class snmp_process(threading_tools.process_obj):
     def _recv_func(self, disp, domain, address, whole_msg):
         while whole_msg:
             # rsp_msg, whole_msg = decoder.decode(whole_msg, asn1Spec=self.__p_mod.Message())
-            rsp_msg, whole_msg = decoder.decode(whole_msg, asn1Spec=self.v2c_decoder.Message())
-            # rsp_pdu = self.__p_mod.apiMessage.getPDU(rsp_msg)
-            rsp_pdu = self.v2c_decoder.apiMessage.getPDU(rsp_msg)
-            cur_id = self.v2c_decoder.apiPDU.getRequestID(rsp_pdu)
-            if cur_id in self.__req_id_lut:
-                self.__req_id_lut[cur_id].feed_pdu(disp, domain, address, rsp_pdu)
+            try:
+                rsp_msg, whole_msg = decoder.decode(whole_msg, asn1Spec=self.v2c_decoder.Message())
+            except:
+                self.log("error decoding message: {}".format(process_tools.get_except_info()), logging_tools.LOG_LEVEL_CRITICAL)
+                whole_msg = None
             else:
-                self.log("id %s in response not known" % (cur_id))
-            if cur_id in self.__req_id_lut:
-                del self.__req_id_lut[cur_id]
+                # rsp_pdu = self.__p_mod.apiMessage.getPDU(rsp_msg)
+                rsp_pdu = self.v2c_decoder.apiMessage.getPDU(rsp_msg)
+                cur_id = self.v2c_decoder.apiPDU.getRequestID(rsp_pdu)
+                if cur_id in self.__req_id_lut:
+                    self.__req_id_lut[cur_id].feed_pdu(disp, domain, address, rsp_pdu)
+                else:
+                    self.log("id {} in response not known".format(cur_id))
+                if cur_id in self.__req_id_lut:
+                    del self.__req_id_lut[cur_id]
         return whole_msg
     def loop_post(self):
         self.__log_template.close()
