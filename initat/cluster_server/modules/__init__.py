@@ -1,6 +1,4 @@
-#!/usr/bin/python -Ot
-#
-# Copyright (C) 2012,2013 Andreas Lang-Nevyjel
+# Copyright (C) 2012-2014 Andreas Lang-Nevyjel
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -45,7 +43,7 @@ for hm in _new_hm_list:
     try:
         command_dict[hm.__name__] = hm()
     except:
-        error_log.append("%s : %s" % (
+        error_log.append("{} : {}".format(
             hm.__name__,
             process_tools.get_except_info()))
     else:

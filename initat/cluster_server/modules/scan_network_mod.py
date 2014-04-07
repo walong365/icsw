@@ -1,5 +1,3 @@
-#!/usr/bin/python -Ot
-#
 # Copyright (C) 2014 Andreas Lang-Nevyjel
 #
 # Send feedback to: <lang-nevyjel@init.at>
@@ -44,7 +42,7 @@ class nd_struct(object):
         nd_struct.default_nds = default_nds
         nd_struct.dict = {}
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
-        nd_struct.cur_inst.log("[nd %s] %s" % (self.dev_name, what), log_level)
+        nd_struct.cur_inst.log("[nd {}] {}".format(self.dev_name, what), log_level)
     def create(self):
         cur_nd = netdevice(
             device=nd_struct.device,
@@ -65,7 +63,7 @@ class nd_struct(object):
             _mac = _ether[0].split()[0]
             cur_nd.macaddr = _mac
             cur_nd.save()
-            self.log("set macaddr to '%s'" % (cur_nd.macaddr))
+            self.log("set macaddr to '{}'".format(cur_nd.macaddr))
         for _inet in self.in_dict.get("inet", []):
             cur_ip_nw = _inet.split()[0]
             cur_ip = cur_ip_nw.split("/")[0]
@@ -75,14 +73,14 @@ class nd_struct(object):
                 domain_tree_node=self.device.domain_tree_node,
                 )
             new_ip.save()
-            self.log("added IP %s (network %s)" % (new_ip.ip, unicode(new_ip.network)))
+            self.log("added IP {} (network {})".format(new_ip.ip, unicode(new_ip.network)))
     def link_bridge_slaves(self):
         for _slave_name in self.br_dict.get("interfaces", []):
             if _slave_name in nd_struct.dict:
                 _slave_nd = nd_struct.dict[_slave_name].nd
                 if _slave_nd is not None:
                     _slave_nd.bridge_device = self.nd
-                    self.log("enslaving %s" % (_slave_name))
+                    self.log("enslaving {}".format(_slave_name))
                     _slave_nd.save()
 
 class scan_network_info(cs_base_class.server_com):
@@ -94,41 +92,41 @@ class scan_network_info(cs_base_class.server_com):
         strict_mode = True if int(cur_inst.option_dict["strict_mode"]) else False
         scan_address = cur_inst.option_dict["scan_address"]
         scan_dev = device.objects.get(Q(pk=dev_pk))
-        cur_inst.log("scanning network for device '%s' (%d), scan_address is '%s', strict_mode is %s" % (
+        cur_inst.log("scanning network for device '{}' ({:d}), scan_address is '{}', strict_mode is {}".format(
             unicode(scan_dev),
             scan_dev.pk,
             scan_address,
             "on" if strict_mode else "off",
             ))
         zmq_con = net_tools.zmq_connection(
-            "server:%s" % (process_tools.get_machine_name()),
+            "server:{}".format(process_tools.get_machine_name()),
             context=self.process_pool.zmq_context)
-        conn_str = "tcp://%s:%d" % (
+        conn_str = "tcp://{}:{:d}".format(
             scan_address,
             2001)
-        cur_inst.log(u"connection_str for %s is %s" % (unicode(scan_dev), conn_str))
+        cur_inst.log(u"connection_str for {} is {}".format(unicode(scan_dev), conn_str))
         zmq_con.add_connection(
             conn_str,
             server_command.srv_command(command="network_info"),
             multi=True
         )
         res_list = zmq_con.loop()
-        cur_inst.log("length of result list: %d" % (len(res_list)))
+        cur_inst.log("length of result list: {:d}".format(len(res_list)))
         num_errors, ret_f = (0, [])
         num_taken, num_ignored, num_warnings = (0, 0, 0)
         nds_list = netdevice_speed.objects.filter(Q(speed_bps__in=[1000000000, 100000000])).order_by("-speed_bps", "-full_duplex", "-check_via_ethtool")
         default_nds = nds_list[0]
-        cur_inst.log("default nds is %s" % (unicode(default_nds)))
+        cur_inst.log("default nds is {}".format(unicode(default_nds)))
         for _idx, (result, target_dev) in enumerate(zip(res_list, [scan_dev])):
-            cur_inst.log("device %s ..." % (unicode(target_dev)))
+            cur_inst.log("device {} ...".format(unicode(target_dev)))
             # print idx, result, target_dev
             res_state = -1 if result is None else int(result["result"].attrib["state"])
             if res_state:
                 num_errors += 1
                 if res_state == -1:
-                    ret_f.append(u"%s: no result" % (unicode(target_dev)))
+                    ret_f.append(u"{}: no result".format(unicode(target_dev)))
                 else:
-                    ret_f.append(u"%s: error %d: %s" % (
+                    ret_f.append(u"{}: error {:d}: {}".format(
                         unicode(target_dev),
                         int(result["result"].attrib["state"]),
                         result["result"].attrib["reply"]))
@@ -138,7 +136,7 @@ class scan_network_info(cs_base_class.server_com):
                     networks = result["networks"]
                 except:
                     num_errors += 1
-                    ret_f.append(u"%s: error missing keys in dict" % (target_dev))
+                    ret_f.append(u"{}: error missing keys in dict".format(target_dev))
                 else:
                     # clear current network
                     cur_inst.log("removing current network devices")
@@ -149,7 +147,7 @@ class scan_network_info(cs_base_class.server_com):
                     nd_struct.setup(cur_inst, target_dev, default_nds)
                     for dev_name in sorted(list(_all_devs & _br_devs)) + sorted(list(_all_devs - _br_devs)):
                         if any([dev_name.startswith(_ignore_pf) for _ignore_pf in IGNORE_LIST]):
-                            cur_inst.log("ignoring device %s" % (dev_name))
+                            cur_inst.log("ignoring device {}".format(dev_name))
                             num_ignored += 1
                             continue
                         _struct = networks[dev_name]
@@ -157,12 +155,12 @@ class scan_network_info(cs_base_class.server_com):
                         try:
                             cur_nd.create()
                         except:
-                            err_str = "error creating netdevice %s: %s" % (
+                            err_str = "error creating netdevice {}: {}".format(
                                 dev_name,
                                 process_tools.get_except_info())
                             ret_f.append(err_str)
                             for _log in process_tools.exception_info().log_lines:
-                                cur_inst.log("  %s" % (_log), logging_tools.LOG_LEVEL_CRITICAL)
+                                cur_inst.log("  {}".format(_log), logging_tools.LOG_LEVEL_CRITICAL)
                             all_ok = False
                             num_errors += 1
                         else:
@@ -173,9 +171,9 @@ class scan_network_info(cs_base_class.server_com):
                         num_taken -= target_dev.netdevice_set.all().count()
                         target_dev.netdevice_set.all().delete()
         if num_taken:
-            ret_f.append("%s taken" % (logging_tools.get_plural("netdevice", num_taken)))
+            ret_f.append("{} taken".format(logging_tools.get_plural("netdevice", num_taken)))
         if num_ignored:
-            ret_f.append("%s ignored" % (logging_tools.get_plural("netdevice", num_ignored)))
+            ret_f.append("{} ignored".format(logging_tools.get_plural("netdevice", num_ignored)))
         if not ret_f:
             ret_f = ["nothing to log"]
         if num_errors:

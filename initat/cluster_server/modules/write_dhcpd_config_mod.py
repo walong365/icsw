@@ -1,5 +1,3 @@
-#!/usr/bin/python -Ot
-#
 # Copyright (C) 2007-2008,2012-2014 Andreas Lang-Nevyjel
 #
 # Send feedback to: <lang-nevyjel@init.at>
@@ -145,7 +143,7 @@ class write_dhcpd_config(cs_base_class.server_com):
             if ret_state is None:
                 ret_state, ret_str = (
                     server_command.SRV_REPLY_STATE_ERROR,
-                    "error no valid dhcp-server found")
+                    "error no valid dhcp-server found (packages like dhcp-server missing ?)")
             cur_inst.srv_com.set_result(
                 ret_str,
                 ret_state,

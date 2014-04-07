@@ -1,6 +1,4 @@
-#!/usr/bin/python -Ot
-#
-# Copyright (C) 2007,2013 Andreas Lang-Nevyjel
+# Copyright (C) 2007,2013-2014 Andreas Lang-Nevyjel
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #

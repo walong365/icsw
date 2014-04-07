@@ -1,5 +1,3 @@
-#!/usr/bin/python -Ot
-#
 # Copyright (C) 2007 Andreas Lang-Nevyjel
 #
 # Send feedback to: <lang-nevyjel@init.at>
@@ -31,7 +29,7 @@ class modify_user_dir(cs_base_class.server_com):
         def change_own(arg, dir_name, entries):
             uid, gid = arg
             for entry in entries:
-                fname = "%s/%s" % (dir_name, entry)
+                fname = os.path.join(dir_name, entry)
                 os.chown(fname, uid, gid)
         user, export_type, old_dir_name = (opt_dict["username"],
                                            opt_dict["export_type"],

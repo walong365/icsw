@@ -1,5 +1,3 @@
-#!/usr/bin/python-init -Ot
-#
 # Copyright (C) 2007,2012-2014 Andreas Lang-Nevyjel
 #
 # Send feedback to: <lang-nevyjel@init.at>
@@ -50,7 +48,7 @@ class bg_process(threading_tools.process_obj):
     def _set_srv_com(self, srv_com, **kwargs):
         self.srv_com = server_command.srv_command(source=srv_com)
     def _start_command(self, com_name, **kwargs):
-        self.log("starting command '%s'" % (com_name))
+        self.log("starting command '{}'".format(com_name))
         # print [key for key in sys.modules.keys() if key.count("cluster_s")]
         import initat.cluster_server
         ex_code = initat.cluster_server.command_dict[com_name]
@@ -80,7 +78,7 @@ class com_instance(object):
         self.sc_obj.log("[ci] {}".format(what), log_level)
     def write_start_log(self):
         if self.Meta.write_log:
-            self.log("Got command %s (options %s) from host %s (port %d) to %s, %s: %s" % (
+            self.log("Got command {} (options {}) from host {} (port {:d}) to {}, {}: {}".format(
                 self.srv_com["command"].text,
                 "self.opt_str",
                 "self.src_host",
@@ -97,7 +95,7 @@ class com_instance(object):
             if self.Meta.cur_running < self.Meta.max_instances:
                 self.Meta.cur_running += 1
                 com_instance.bg_idx += 1
-                new_bg_name = "bg_%s_%d" % (self.sc_obj.name, com_instance.bg_idx)
+                new_bg_name = "bg_{}_{:d}".format(self.sc_obj.name, com_instance.bg_idx)
                 # new_bgt = self.sc_obj.process_pool.add_process(bg_process(new_bg_name), start=True)
                 self.sc_obj.process_pool.send_to_process(
                     new_bg_name,
@@ -114,15 +112,14 @@ class com_instance(object):
                     self.sc_obj.name,
                 )
                 connection.close()
-                self.srv_com["result"].attrib.update({
-                    "reply" : "sent to background",
-                    "state" : "%d" % (server_command.SRV_REPLY_STATE_OK),
-                })
+                self.srv_com.set_result(
+                    "sent to background"
+                )
             else:
-                self.srv_com["result"].attrib.update({
-                    "reply" : "too many instances running (%d of %d)" % (self.Meta.cur_running, self.Meta.max_instances),
-                    "state" : "%d" % (server_command.SRV_REPLY_STATE_ERROR),
-                })
+                self.srv_com.set_result(
+                    "too many instances running ({:d} of {:d})".format(self.Meta.cur_running, self.Meta.max_instances),
+                    server_command.SRV_REPLY_STATE_ERROR
+                )
         else:
             db_debug = global_config["DATABASE_DEBUG"]
             if db_debug:
@@ -134,10 +131,10 @@ class com_instance(object):
                 exc_info = process_tools.exception_info()
                 for line in exc_info.log_lines:
                     self.log(line, logging_tools.LOG_LEVEL_CRITICAL)
-                self.srv_com["result"].attrib.update({
-                    "reply" : "error %s" % (process_tools.get_except_info(exc_info.except_info)),
-                    "state" : "%d" % (server_command.SRV_REPLY_STATE_CRITICAL),
-                })
+                self.srv_com.set_result(
+                    process_tools.get_except_info(exc_info.except_info),
+                    server_command.SRV_REPLY_STATE_CRITICAL
+                )
                 # write to logging-server
                 err_h = io_stream_helper.io_stream(
                     "/var/lib/logging-server/py_err_zmq",
@@ -146,20 +143,24 @@ class com_instance(object):
                 err_h.close()
             else:
                 if result is not None:
-                    self.log("command got an (unexpected) result: '%s'" % (str(result)),
+                    self.log("command got an (unexpected) result: '{}'".format(str(result)),
                              logging_tools.LOG_LEVEL_ERROR)
             self.end_time = time.time()
             if int(self.srv_com["result"].attrib["state"]):
-                self.log("result is (%d) %s" % (int(self.srv_com["result"].attrib["state"]),
-                                                self.srv_com["result"].attrib["reply"]),
-                         logging_tools.LOG_LEVEL_ERROR)
+                self.log(
+                    "result is ({:d}) {}".format(
+                        int(self.srv_com["result"].attrib["state"]),
+                        self.srv_com["result"].attrib["reply"]
+                    ),
+                    logging_tools.LOG_LEVEL_ERROR
+                )
             if self.Meta.show_execution_time:
-                self.log("run took %s" % (logging_tools.get_diff_time_str(self.end_time - self.start_time)))
-                self.srv_com["result"].attrib["reply"] = "%s in %s" % (
+                self.log("run took {}".format(logging_tools.get_diff_time_str(self.end_time - self.start_time)))
+                self.srv_com["result"].attrib["reply"] = "{} in {}".format(
                     self.srv_com["result"].attrib["reply"],
                     logging_tools.get_diff_time_str(self.end_time - self.start_time))
             if db_debug:
-                self.log("queries executed : %d" % (len(connection.queries) - pre_queries))
+                self.log("queries executed : {:d}".format(len(connection.queries) - pre_queries))
 
 class server_com(object):
     class Meta:
@@ -197,13 +198,13 @@ class server_com(object):
     def link(self, process_pool):
         self.process_pool = process_pool
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
-        self.process_pool.log("[com] %s" % (what), log_level)
+        self.process_pool.log("[com] {}".format(what), log_level)
     def check_config(self, loc_config, force=False):
         self.server_idx, self.act_config_name = (0, "")
         doit, srv_origin, err_str = (False, "---", "OK")
         if self.Meta.needed_configs:
             for act_c in self.Meta.needed_configs:
-                sql_info = config_tools.server_check(server_type="%s" % (act_c))
+                sql_info = config_tools.server_check(server_type="{}".format(act_c))
                 if sql_info.effective_device:
                     doit, srv_origin = (True, sql_info.server_origin)
                     if not self.server_idx:
@@ -215,13 +216,13 @@ class server_com(object):
                 if force:
                     doit = True
                 else:
-                    err_str = "Server %s has no %s attribute" % (loc_config["SERVER_SHORT_NAME"], " or ".join(self.Meta.needed_configs))
+                    err_str = "Server {} has no {} attribute".format(loc_config["SERVER_SHORT_NAME"], " or ".join(self.Meta.needed_configs))
         else:
             doit = True
         if doit and self.Meta.needed_config_keys:
             for key in self.Meta.needed_config_keys:
                 if key not in loc_config:
-                    self.log("key '%s' not defined in config" % (key), logging_tools.LOG_LEVEL_ERROR)
+                    self.log("key '{}' not defined in config".format(key), logging_tools.LOG_LEVEL_ERROR)
                     doit = False
         if doit and srv_origin == "---":
             srv_origin = "yes"
