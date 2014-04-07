@@ -285,7 +285,7 @@ class snmp_scheme(object):
         except:
             act_state, act_str = (
                 limits.nag_STATE_CRITICAL,
-                "error in process_return() for %s: %s" % (
+                "error in process_return() for {}: {}".format(
                     self.name,
                     process_tools.get_except_info()))
         self.send_return(act_state, act_str)
@@ -293,10 +293,10 @@ class snmp_scheme(object):
         pass
     def _send_error_return(self):
         self.error()
-        err_str = "%s: %s; missing headers: %s" % (
+        err_str = "{}: {}; missing headers: {}".format(
             self.name,
             ", ".join(self.__errors) or "unspecified error",
-            ", ".join([".".join(["%d" % (part) for part in oid]) for oid in self.__missing_headers]) or "none",
+            ", ".join([".".join(["{:d}".format(part) for part in oid]) for oid in self.__missing_headers]) or "none",
         )
         self.send_return(limits.nag_STATE_CRITICAL, err_str, True)
     def send_return(self, ret_state, ret_str, log_it=False):

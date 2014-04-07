@@ -26,13 +26,24 @@ from pyasn1.codec.ber import encoder, decoder # @UnresolvedImport
 from pyasn1.type.error import ValueConstraintError # @UnresolvedImport
 from pysnmp.carrier.asynsock.dgram import udp # @UnresolvedImport
 from pysnmp.carrier.asynsock.dispatch import AsynsockDispatcher # @UnresolvedImport
-from pysnmp.proto import api # @UnresolvedImport
+from pysnmp.proto import rfc1155, rfc1902, api # @UnresolvedImport
 from pysnmp.smi import exval # @UnresolvedImport
 import logging_tools
 import process_tools
 import pyasn1 # @UnresolvedImport
 import threading_tools
 import time
+
+# --- hack Counter type, from http://pysnmp.sourceforge.net/faq.html
+
+def counter_clone_hack(self, *args):
+    if args and args[0] < 0:
+        args = (0xffffffff + args[0] - 1,) + args[1:]
+
+    return self.__class__(*args)
+
+rfc1155.Counter.clone = counter_clone_hack
+rfc1902.Counter32.clone = counter_clone_hack
 
 class simple_snmp_oid(object):
     def __init__(self, *oid, **kwargs):
@@ -89,7 +100,7 @@ class snmp_batch(object):
         self.iterator = self.loop()
         self.proc.register_batch(self)
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
-        self.proc.log("[b {:d}] {}".format(self.key, what), log_level)
+        self.proc.log("[b {:d}, {}] {}".format(self.key, self.__snmp_host, what), log_level)
     def _clear_errors(self):
         self.__received, self.__snmp_dict = (set(), {})
         self.__timed_out, self.__other_errors, self.__error_list = (False, False, [])
@@ -300,24 +311,24 @@ class snmp_batch(object):
         self.proc.send_next(self, (encoder.encode(self.__req_msg), self.__act_domain, self.__act_address))
         # self.__disp.sendMessage(encoder.encode(self.__req_msg), self.__act_domain, self.__act_address)
     def timer_func(self, act_time):
-        diff_time = act_time - self.__start_time
+        diff_time = int(abs(act_time - self.__start_time))
         trigger_timeout = False
         if not self.__data_got and self.__timer_count: # and diff_time > self.__timeout / 2:
             if not self.__num_items and diff_time > self.__timeout:
                 self.log("giving up for {} after {:d} items ({:d} seconds, timer_count is {:d})".format(
                     self.__snmp_host,
                     self.__num_items,
-                    int(act_time - self.__start_time),
+                    diff_time,
                     self.__timer_count),
                          logging_tools.LOG_LEVEL_ERROR)
                 trigger_timeout = True
-            elif abs(act_time - self.__start_get_time) > self.__timeout / 2 and self.__num_items < 2:
+            elif abs(act_time - self.__start_get_time) > self.__timeout / 2:
                 # trigger a re-get
                 self.__start_get_time = act_time
                 self.log("re-initiated get() for {} after {} ({:d} seconds, timer_count is {:d})".format(
                     self.__snmp_host,
                     logging_tools.get_plural("item", self.__num_items),
-                    int(act_time - self.__start_time),
+                    diff_time,
                     self.__timer_count),
                          logging_tools.LOG_LEVEL_WARN)
                 self._next_send()
@@ -325,6 +336,7 @@ class snmp_batch(object):
         # reset trigger
         self.__data_got = False
         if abs(diff_time) > self.__timeout or trigger_timeout:
+            self.log("triggered timeout after {:d} seconds".format(diff_time), logging_tools.LOG_LEVEL_ERROR)
             self.__timed_out = True
             return True
         else:
@@ -418,7 +430,9 @@ class snmp_process(threading_tools.process_obj):
             try:
                 rsp_msg, whole_msg = decoder.decode(whole_msg, asn1Spec=self.v2c_decoder.Message())
             except:
-                self.log("error decoding message: {}".format(process_tools.get_except_info()), logging_tools.LOG_LEVEL_CRITICAL)
+                self.log("error decoding message from {}: {}".format(
+                    address,
+                    process_tools.get_except_info()), logging_tools.LOG_LEVEL_CRITICAL)
                 whole_msg = None
             else:
                 # rsp_pdu = self.__p_mod.apiMessage.getPDU(rsp_msg)
