@@ -433,6 +433,7 @@ class snmp_process(threading_tools.process_obj):
                 self.log("error decoding message from {}: {}".format(
                     address,
                     process_tools.get_except_info()), logging_tools.LOG_LEVEL_CRITICAL)
+                # send meaningfull error message to client ? TODO, FIXME
                 whole_msg = None
             else:
                 # rsp_pdu = self.__p_mod.apiMessage.getPDU(rsp_msg)

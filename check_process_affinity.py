@@ -1,9 +1,9 @@
 #!/usr/bin/python-init -Ot
 #
-# Copyright (C) 2008,2009,2013 Andreas Lang-Nevyjel
+# Copyright (C) 2008-2009,2013-2014 Andreas Lang-Nevyjel
 #
 # Send feedback to: <lang-nevyjel@init.at>
-# 
+#
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License Version 2 as
 # published by the Free Software Foundation.
@@ -19,17 +19,13 @@
 #
 """ checks processor-affinity on a regular basis """
 
-import sys
-import time
-import pprint
-
-import process_tools
-import configfile
-import logging_tools
-import threading_tools
 import affinity_tools
+import configfile
 import cpu_database
-import pprint
+import logging_tools
+import process_tools
+import threading_tools
+import time
 
 class thread_pool(threading_tools.thread_pool):
     def __init__(self, config):
@@ -112,7 +108,7 @@ class thread_pool(threading_tools.thread_pool):
         if unset_list:
             self.log("unset list (%d): %s" % (len(unset_list), ", ".join(["%d" % (cur_pid) for cur_pid in sorted(unset_list)])))
         # distribute pids so that all cpus have the same amount of pids (or 1 less)
-        #pprint.pprint(proc_dict)
+        # pprint.pprint(proc_dict)
         while True:
             min_pids = min([len(p_list) for p_list in proc_dict.itervalues()])
             max_pids = max([len(p_list) for p_list in proc_dict.itervalues()])

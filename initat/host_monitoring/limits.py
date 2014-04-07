@@ -1,5 +1,3 @@
-#!/usr/bin/python-init -Ot
-#
 # Copyright (C) 2001-2008,2010-2014 Andreas Lang-Nevyjel, init.at
 #
 # Send feedback to: <lang-nevyjel@init.at>
@@ -24,10 +22,10 @@ import logging_tools
 import sys
 
 # nagios exit codes
-nag_STATE_CRITICAL  =  2
-nag_STATE_WARNING   =  1
-nag_STATE_OK        =  0
-nag_STATE_UNKNOWN   = -1
+nag_STATE_CRITICAL = 2
+nag_STATE_WARNING = 1
+nag_STATE_OK = 0
+nag_STATE_UNKNOWN = -1
 nag_STATE_DEPENDENT = -2
 
 def get_state_str(in_state):
@@ -37,7 +35,7 @@ def get_state_str(in_state):
         nag_STATE_OK        : "OK",
         nag_STATE_UNKNOWN   : "Unknown",
         nag_STATE_DEPENDENT : "Dependent"
-    }.get(in_state, "state %d not known" % (in_state))
+    }.get(in_state, "state {:d} not known".format(in_state))
 
 def nag_state_to_log_level(in_state):
     return {
@@ -63,19 +61,19 @@ def check_floor(value, warn, crit):
         return nag_STATE_WARNING
     else:
         return nag_STATE_OK
-    
+
 class range_parameter(object):
     __slots = ["name", "lower_boundary", "upper_boundary"]
     def __init__(self, name):
         self.name = name
         self.set_lower_boundary()
         self.set_upper_boundary()
-    def set_lower_boundary(self, lower = 0):
+    def set_lower_boundary(self, lower=0):
         if lower is None:
             self.lower_boundary = lower
         else:
             self.lower_boundary = int(lower)
-    def set_upper_boundary(self, upper = 0):
+    def set_upper_boundary(self, upper=0):
         if upper is None:
             self.upper_boundary = upper
         else:
@@ -94,13 +92,13 @@ class range_parameter(object):
             if self.upper_boundary and value > self.upper_boundary:
                 b_ok = False
         return b_ok
-    
+
 class limits(object):
     __slots = ["warn_val", "crit_val", "warn_val_f", "crit_val_f", "add_flags", "add_vars"]
     def __init__(self, warn_val=None, crit_val=None, add_flags=None):
         self.warn_val, self.warn_val_f = (None, None)
         self.crit_val, self.crit_val_f = (None, None)
-        self.add_flags, self.add_vars  = ([], {})
+        self.add_flags, self.add_vars = ([], {})
         if warn_val is not None:
             self.set_warn_val(warn_val)
         if crit_val is not None:
@@ -147,9 +145,9 @@ class limits(object):
     def get_string(self):
         out_f = []
         if self.warn_val:
-            out_f.append("warn=%d" % (self.warn_val))
+            out_f.append("warn={:d}".format(self.warn_val))
         if self.crit_val:
-            out_f.append("crit=%d" % (self.crit_val))
+            out_f.append("crit={:d}".format(self.crit_val))
         for flag in self.add_flags:
             out_f.append(flag)
         return out_f and ",".join(out_f) or "-"

@@ -1,4 +1,3 @@
-#!/usr/bin/python-init -Ot
 # -*- coding: utf-8 -*-
 #
 # Copyright (C) 2011-2014 Andreas Lang-Nevyjel
@@ -31,7 +30,7 @@ class my_cached_file(process_tools.cached_file):
         process_tools.cached_file.__init__(self, name, **kwargs)
     def changed(self):
         if self.content:
-            self.log("reread file %s" % (self.name))
+            self.log("reread file {}".format(self.name))
             self.hosts = set([cur_line.strip() for cur_line in self.content.strip().split("\n") if cur_line.strip() and not cur_line.strip().startswith("#")])
         else:
             self.hosts = set()
