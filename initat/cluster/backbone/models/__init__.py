@@ -1154,6 +1154,8 @@ class device(models.Model):
         return self.device_type.identifier
     def device_group_name(self):
         return self.device_group.name
+    def is_cluster_device_group(self):
+        return self.device_group.cluster_device_group
     def get_monitor_type(self):
         sel_configs = set(self.device_config_set.filter(Q(config__name__in=["monitor_server", "monitor_master", "monitor_slave"])).values_list("config__name", flat=True))
         if set(["monitor_master", "monitor_server"]) & sel_configs:
@@ -1316,6 +1318,7 @@ class device_selection_serializer(serializers.Serializer):
 class device_serializer(serializers.ModelSerializer):
     full_name = serializers.Field(source="full_name")
     is_meta_device = serializers.Field(source="is_meta_device")
+    is_cluster_device_group = serializers.Field(source="is_cluster_device_group")
     device_type_identifier = serializers.Field(source="device_type_identifier")
     device_group_name = serializers.Field(source="device_group_name")
     access_level = serializers.SerializerMethodField("get_access_level")
@@ -1334,6 +1337,7 @@ class device_serializer(serializers.ModelSerializer):
             "act_partition_table", "enable_perfdata", "flap_detection_enabled",
             "automap_root_nagvis", "nagvis_parent", "monitor_server", "mon_ext_host",
             "is_meta_device", "device_type_identifier", "device_group_name", "bootserver",
+            "is_cluster_device_group",
             "curl", "mon_resolve_name", "uuid", "access_level", "access_levels",
             )
         read_only_fields = ("uuid",)
@@ -1352,6 +1356,7 @@ class device_serializer_cat(device_serializer):
             "act_partition_table", "enable_perfdata", "flap_detection_enabled",
             "automap_root_nagvis", "nagvis_parent", "monitor_server", "mon_ext_host",
             "is_meta_device", "device_type_identifier", "device_group_name", "bootserver",
+            "is_cluster_device_group",
             "curl", "categories", "access_level", "access_levels",
             )
 
@@ -1365,6 +1370,7 @@ class device_serializer_variables(device_serializer):
             "act_partition_table", "enable_perfdata", "flap_detection_enabled",
             "automap_root_nagvis", "nagvis_parent", "monitor_server", "mon_ext_host",
             "is_meta_device", "device_type_identifier", "device_group_name", "bootserver",
+            "is_cluster_device_group",
             "curl", "device_variable_set", "access_level", "access_levels",
             )
 
@@ -1378,6 +1384,7 @@ class device_serializer_device_configs(device_serializer):
             "act_partition_table", "enable_perfdata", "flap_detection_enabled",
             "automap_root_nagvis", "nagvis_parent", "monitor_server", "mon_ext_host",
             "is_meta_device", "device_type_identifier", "device_group_name", "bootserver",
+            "is_cluster_device_group",
             "curl", "device_config_set", "access_level", "access_levels",
             )
 
@@ -1392,6 +1399,7 @@ class device_serializer_disk_info(device_serializer):
             "act_partition_table", "enable_perfdata", "flap_detection_enabled",
             "automap_root_nagvis", "nagvis_parent", "monitor_server", "mon_ext_host",
             "is_meta_device", "device_type_identifier", "device_group_name", "bootserver",
+            "is_cluster_device_group",
             "curl", "partition_table", "access_level", "access_levels",
             )
 
@@ -1405,6 +1413,7 @@ class device_serializer_network(device_serializer):
             "enable_perfdata", "flap_detection_enabled",
             "automap_root_nagvis", "nagvis_parent", "monitor_server", "mon_ext_host",
             "is_meta_device", "device_type_identifier", "device_group_name", "bootserver",
+            "is_cluster_device_group",
             "curl", "netdevice_set", "access_level", "access_levels",
             # for device.boot
             "new_state", "prod_link", "dhcp_mac", "dhcp_write",

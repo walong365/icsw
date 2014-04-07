@@ -1,4 +1,4 @@
-#!/usr/bin/python-init -Otu
+#!/usr/bin/env python
 
 from django.core.exceptions import ImproperlyConfigured
 from initat.cluster.backbone.models import AC_MASK_DICT
