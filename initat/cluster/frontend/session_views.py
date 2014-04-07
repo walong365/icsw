@@ -58,10 +58,11 @@ def _get_login_hints():
     # show login hints ?
     _hints, _valid = ([], True)
     if user.objects.all().count() < 3:
-        for user_name in user.objects.all().values_list("login", flat=True):
+        for _user in user.objects.all().order_by("login"):
+            user_name = _user.login
             for ck_pwd in [user_name, "{}{}".format(user_name, user_name)]:
                 if authenticate(username=user_name, password=ck_pwd) is not None:
-                    _hints.append((user_name, ck_pwd))
+                    _hints.append((user_name, ck_pwd, _user.is_superuser))
                 else:
                     _valid = False
     if not _valid:

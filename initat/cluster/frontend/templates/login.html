@@ -37,15 +37,23 @@
             </div>
         </div>
         <div ng-show="login_hints.length" class="row">
-            <div class="col-md-offset-2 col-md-6">
-                <h3>Login hints</h3>
-                <ul>
-                    <li ng-repeat="entry in login_hints">
+            <div class="col-md-offset-2 col-md-8">
+                <div class="panel panel-default">
+                    <div class="panel-heading">
+                        <h3>Login hints</h3>
+                    </div>
+                    <div class="panel-body">
+                <ul class="list-group">
+                    <li class="list-group-item" ng-repeat="entry in login_hints">
                         {% verbatim %}
-                        user <tt><b>{{ entry[0] }}</b></tt> has password <tt>'{{ entry[1] }}'</tt>
+                        <span ng-show="entry[2]">superuser </span>
+                        <span ng-show="!entry[2]">user </span>
+                        <tt><b>{{ entry[0] }}</b></tt> has password <tt>'{{ entry[1] }}'</tt>
                         {% endverbatim %}
                     </li>
                 </ul>
+                </div>
+                </div>
             </div>
         </div>
     </div>
