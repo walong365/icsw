@@ -317,7 +317,7 @@ class snmp_batch(object):
                 self.log("re-initiated get() for {} after {} ({:d} seconds, timer_count is {:d})".format(
                     self.__snmp_host,
                     logging_tools.get_plural("item", self.__num_items),
-                    act_time - self.__start_time,
+                    int(act_time - self.__start_time),
                     self.__timer_count),
                          logging_tools.LOG_LEVEL_WARN)
                 self._next_send()
