@@ -1,6 +1,4 @@
-#!/usr/bin/python-init -Otu
-#
-# Copyright (C) 2013 Andreas Lang-Nevyjel, init.at
+# Copyright (C) 2013-2014 Andreas Lang-Nevyjel, init.at
 #
 # this file is part of md-config-server
 #
