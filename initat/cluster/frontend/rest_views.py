@@ -546,6 +546,8 @@ class device_tree_list(mixins.ListModelMixin,
             if with_md:
                 md_pks = set(device.objects.filter(Q(pk__in=dev_keys)).values_list("device_group__device", flat=True))
                 dev_keys.extend(md_pks)
+                if not ignore_cdg:
+                    dev_keys.extend(device.objects.filter(Q(device_group__cluster_device_group=True)).values_list("pk", flat=True))
             _q = _q.filter(Q(pk__in=dev_keys))
         if not self._get_post_boolean("ignore_disabled", False):
             _q = _q.filter(Q(enabled=True) & Q(device_group__enabled=True))
