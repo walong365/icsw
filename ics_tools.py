@@ -21,6 +21,7 @@
 #
 """ checks the status of python server processes """
 
+from __future__ import print_function
 import argparse
 import logging_tools
 import os
@@ -28,7 +29,6 @@ import process_tools
 import stat
 import sys
 import time
-from __future__ import print_function
 
 MS_DIR = "/var/lib/meta-server"
 

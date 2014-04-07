@@ -1,5 +1,3 @@
-#!/usr/bin/python-init -Ot
-#
 # Copyright (C) 2001-2006,2011,2013-2014 Andreas Lang-Nevyjel
 #
 # this file is part of python-modules-base
@@ -18,10 +16,11 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
 
+""" interpret pci layout """
+
 import os
 import re
 import struct
-import sys
 
 def get_pci_dicts(fname=None):
     vdict, cdict = ({}, {})
@@ -91,7 +90,7 @@ def get_actual_pci_struct(vdict=None, cdict=None):
                 bdev1 = bdev - (bdev0 << 3)
                 vendor = okmatch.group(3)[0:4]
                 device = okmatch.group(3)[4:8]
-                fname = "/proc/bus/pci/%02x/%02x.%x" % (bus, bdev0, bdev1)
+                fname = "/proc/bus/pci/{:02x}/{:02x}.{:x}".format(bus, bdev0, bdev1)
                 pcdomain = int("0000", 16)
                 try:
                     fbytes = file(fname, "r").read(64)
@@ -100,18 +99,18 @@ def get_actual_pci_struct(vdict=None, cdict=None):
                     subclass = "0"
                     revision = "0"
                 else:
-                    pclass = "%02x" % (struct.unpack("B", fbytes[11]))
-                    subclass = "%02x" % (struct.unpack("B", fbytes[10]))
-                    revision = "%02x" % (struct.unpack("B", fbytes[8]))
+                    pclass = "{:02x}".format(struct.unpack("B", fbytes[11]))
+                    subclass = "{:02x}".format(struct.unpack("B", fbytes[10]))
+                    revision = "{:02x}".format(struct.unpack("B", fbytes[8]))
                 actd = {"domain"       : pcdomain,
                         "vendor"       : vendor,
                         "device"       : device,
                         "class"        : pclass,
                         "subclass"     : subclass,
-                        "vendorname"   : "unknown vendor %s" % (vendor),
-                        "devicename"   : "unknown device %s" % (device),
-                        "classname"    : "unknown class %s" % (pclass),
-                        "subclassname" : "unknown subclass %s" % (subclass),
+                        "vendorname"   : "unknown vendor {}".format(vendor),
+                        "devicename"   : "unknown device {}".format(device),
+                        "classname"    : "unknown class {}".format(pclass),
+                        "subclassname" : "unknown subclass {}".format(subclass),
                         "revision"     : revision}
                 if vendor in vdict:
                     actd["vendorname"] = vdict[vendor]["name"]
@@ -123,10 +122,3 @@ def get_actual_pci_struct(vdict=None, cdict=None):
                         actd["subclassname"] = cdict[pclass][subclass]
                 pdict.setdefault(pcdomain, {}).setdefault(bus, {}).setdefault(bdev0, {})[bdev1] = actd
     return pdict
-
-def main():
-    print "Loadable module, exiting..."
-    sys.exit(0)
-
-if __name__ == "__main__":
-    main()

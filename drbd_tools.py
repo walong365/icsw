@@ -1,5 +1,3 @@
-#!/usr/bin/python-init -Ot
-#
 # Copyright (C) 2008-2014 Andreas Lang-Nevyjel, init.at
 #
 # this file is part of python-modules-base
@@ -60,7 +58,7 @@ class drbd_config(object):
         c_dict["devices"] = {}
         stream = (" ".join([line.strip() for line in file(self.__config_name, "r").read().split("\n") if not line.lstrip().startswith("#")])).strip()
         if stream.count("{") != stream.count("}"):
-            raise SyntaxError, "cannot parse stream from %s" % (self.__config_name)
+            raise SyntaxError, "cannot parse stream from {}".format(self.__config_name)
         # add depth info
         c_list, act_depth, sub_stream = ([], 0, "")
         for char in stream:
@@ -79,7 +77,7 @@ class drbd_config(object):
                 elif char == "}":
                     act_depth -= 1
             else:
-                sub_stream = "%s%s" % (sub_stream, char)
+                sub_stream = "{}{}".format(sub_stream, char)
         conf_way = []
         for act_depth, act_stream, config_line in c_list:
             conf_way = conf_way[:act_depth]
@@ -121,7 +119,7 @@ class drbd_config(object):
             act_device = None
             for line in stat_lines:
                 if line[0].endswith(":") and line[0][:-1].isdigit():
-                    act_device = self.__config_dict["resources"][self.__config_dict["devices"]["/dev/drbd%d" % (int(line[0][:-1]))]]["localhost"]
+                    act_device = self.__config_dict["resources"][self.__config_dict["devices"]["/dev/drbd{:d}".format(int(line[0][:-1]))]]["localhost"]
                     # copy line info to dict
                     act_device["connection_state"] = line[1].split(":")[1].lower()
                     if act_device["connection_state"] == "unconfigured":
@@ -143,15 +141,15 @@ class drbd_config(object):
                         act_device["resync_percentage"] = line[2][:-1]
                         line = None
                     elif line[0].endswith(":"):
-                        pre_key = "%s." % (line.pop(0)[:-1])
+                        pre_key = "{}.".format(line.pop(0)[:-1])
                     else:
                         pre_key = ""
                     if line:
                         for sub_key, value in [part.split(":") for part in line]:
                             if value.count("/"):
-                                act_device["%s%s" % (pre_key, sub_key)] = tuple([int(sub_value) for sub_value in value.split("/")])
+                                act_device["{}{}".format(pre_key, sub_key)] = tuple([int(sub_value) for sub_value in value.split("/")])
                             else:
-                                act_device["%s%s" % (pre_key, sub_key)] = int(value) if value.isdigit() else value
+                                act_device["{}{}".format(pre_key, sub_key)] = int(value) if value.isdigit() else value
                     # pprint.pprint(act_device)
         else:
             self.__config_dict["status_present"] = True
@@ -162,10 +160,10 @@ class drbd_config(object):
                 parts.append(act_stream)
                 act_stream = ""
             elif char in escape_chars:
-                act_stream = "%s%s" % (act_stream, char)
+                act_stream = "{}{}".format(act_stream, char)
                 escaped = not escaped
             else:
-                act_stream = "%s%s" % (act_stream, char)
+                act_stream = "{}{}".format(act_stream, char)
         parts.append(act_stream)
         return parts
     def __getitem__(self, key):

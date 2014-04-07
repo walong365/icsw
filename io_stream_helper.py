@@ -1,4 +1,3 @@
-#!/usr/bin/python-init -Ot
 # -*- coding: utf-8 -*-
 #
 # Copyright (c) 2009-2014 Andreas Lang-Nevyjel, init.at
@@ -27,10 +26,10 @@ import zmq
 
 def zmq_socket_name(sock_name, **kwargs):
     if not sock_name.endswith("_zmq"):
-        sock_name = "%s_zmq" % (sock_name)
+        sock_name = "{}_zmq".format(sock_name)
     if kwargs.get("check_ipc_prefix", False):
         if not sock_name.startswith("ipc://"):
-            sock_name = "ipc://%s" % (sock_name)
+            sock_name = "ipc://{}".format(sock_name)
     return sock_name
 
 class io_stream(object):
@@ -48,9 +47,9 @@ class io_stream(object):
             "IOS_type"  : "error",
             "error_str" : err_str,
             "pid"       : os.getpid()})
-        if os.path.isdir("/proc/%d" % (pid)):
+        if os.path.isdir("/proc/{:d}".format(pid)):
             try:
-                stat_lines = [(entry.split() + ["", ""])[0 : 2] for entry in file("/proc/%d/status" % (pid), "r").read().split("\n")]
+                stat_lines = [(entry.split() + ["", ""])[0 : 2] for entry in file("/proc/{:d}/status".format(pid), "r").read().split("\n")]
             except:
                 pass
             else:
