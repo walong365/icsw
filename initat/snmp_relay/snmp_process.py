@@ -307,7 +307,7 @@ class snmp_batch(object):
                 self.log("giving up for {} after {:d} items ({:d} seconds, timer_count is {:d})".format(
                     self.__snmp_host,
                     self.__num_items,
-                    act_time - self.__start_time,
+                    int(act_time - self.__start_time),
                     self.__timer_count),
                          logging_tools.LOG_LEVEL_ERROR)
                 trigger_timeout = True
