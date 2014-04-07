@@ -24,15 +24,19 @@ fi
 . /etc/init.d/ics_tools.sh
 
 SERVER_BIN=/opt/cluster/sbin/meta-server.py
-PYTHON_BIN=/usr/bin/python-init
 SERVER_PID=/var/run/meta-server.pid
 SERVER_ARGS=""
 
 test -x ${SERVER_BIN} || exit 5
-test -x ${PYTHON_BIN} || exit 5
 
 rc_reset
 
+if [ -d /opt/python-init/bin ] ; then
+    export PATH=/opt/python-init/bin:${PATH}
+fi
+
+export PYTHONOPTIMIZE="yes"
+export PYTHONBUFFER="yes"
 export HOSTNAME=`/bin/hostname`
 case "$1" in
     start)
