@@ -1,5 +1,3 @@
-#!/usr/bin/python-init -Ot
-#
 # Copyright (C) 2001-2009,2012-2014 Andreas Lang-Nevyjel
 #
 # this file is part of package-server

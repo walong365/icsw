@@ -1,5 +1,3 @@
-#!/usr/bin/python-init -Ot
-#
 # Copyright (C) 2001-2014 Andreas Lang-Nevyjel
 #
 # this file is part of package-client
@@ -36,17 +34,17 @@ RPM_QUERY_FORMAT = "%{NAME}\n%{INSTALLTIME}\n%{VERSION}\n%{RELEASE}\n"
 def get_repo_str(in_repo):
     # copy from initat.cluster.backbone.models.package_repo.repo_str
     _vf = [
-        "[%s]" % (in_repo.findtext("alias")),
-        "name=%s" % (in_repo.findtext("name")),
-        "enabled=%d" % (1 if in_repo.findtext("enabled") == "True" else 0),
-        "autorefresh=%d" % (1 if in_repo.findtext("autorefresh") == "True" else 0),
-        "baseurl=%s" % (in_repo.findtext("url")),
-        "type=%s" % (in_repo.findtext("repo_type") or "NONE"),
+        "[{}]".format(in_repo.findtext("alias")),
+        "name={}".format(in_repo.findtext("name")),
+        "enabled={:d}".format(1 if in_repo.findtext("enabled") == "True" else 0),
+        "autorefresh={:d}".format(1 if in_repo.findtext("autorefresh") == "True" else 0),
+        "baseurl={}".format(in_repo.findtext("url")),
+        "type={}".format(in_repo.findtext("repo_type") or "NONE"),
     ]
     if in_repo.findtext("priority"):
-        _vf.append("priority=%d" % (int(in_repo.findtext("priority"))))
+        _vf.append("priority={:d}".format(int(in_repo.findtext("priority"))))
     if in_repo.findtext("service_name"):
-        _vf.append("service=%s" % (in_repo.findtext("service_name")))
+        _vf.append("service={}".format(in_repo.findtext("service_name")))
     else:
         _vf.append("keeppackages=0")
     _vf.append("")
@@ -128,7 +126,7 @@ class install_process(threading_tools.process_obj):
             for pp_attr in pp_attrs:
                 if pp_attr in cur_init.attrib:
                     pc_set = True
-                    self.log(" %s is '%s'" % (pp_attr, cur_init.attrib[pp_attr].replace("\n", "\\n")))
+                    self.log(" {} is '{}'".format(pp_attr, cur_init.attrib[pp_attr].replace("\n", "\\n")))
             # only do something if a pre_command ist set
             if pc_set:
                 simple_command(
@@ -147,19 +145,19 @@ class install_process(threading_tools.process_obj):
             self.handle_pending_commands()
     def _command_done(self, hc_sc):
         cur_out = hc_sc.read()
-        self.log("hc_com '%s' (stage %s) finished with stat %d (%d bytes)" % (
+        self.log("hc_com '{}' (stage {}) finished with stat {:d} ({:d} bytes)".format(
             hc_sc.com_str.replace("\n", "\\n"),
             hc_sc.command_stage,
             hc_sc.result,
             len(cur_out)))
         for line_num, line in enumerate(cur_out.split("\n")):
-            self.log(" %3d %s" % (line_num + 1, line))
+            self.log(" {:3d} {}".format(line_num + 1, line))
         hc_sc.terminate()
         if cur_out.startswith("<?xml") and hc_sc.command_stage == "main":
             try:
                 xml_out = etree.fromstring(cur_out)
             except:
-                self.log("error parsing XML string (%d bytes, first 100: '%s'): %s" % (
+                self.log("error parsing XML string ({:d} bytes, first 100: '{}'): {}".format(
                     len(cur_out),
                     cur_out[:100],
                     process_tools.get_except_info()),
@@ -170,7 +168,7 @@ class install_process(threading_tools.process_obj):
             # pre and post commands
             xml_out = E.stdout(cur_out)
         # store in xml
-        hc_sc.data.append(getattr(E, "%s_result" % (hc_sc.command_stage))(xml_out))
+        hc_sc.data.append(getattr(E, "{}_result".format(hc_sc.command_stage))(xml_out))
         # print "***", hc_sc.command_stage
         if hc_sc.data.tag == "package_device_connection":
             # only send something back for package_device_connection commands
@@ -231,7 +229,7 @@ class install_process(threading_tools.process_obj):
                     self.log("repository is outdated, forcing refresh and keeping pdc", logging_tools.LOG_LEVEL_WARN)
                     keep_pdc = True
                     cur_pdc.attrib["init"] = "0"
-                    cur_pdc.attrib["retry_count"] = "%d" % (int(cur_pdc.attrib["retry_count"]) + 1)
+                    cur_pdc.attrib["retry_count"] = "{:d}".format(int(cur_pdc.attrib["retry_count"]) + 1)
                     self.package_commands.insert(0, E.special_command(send_return="0", command="refresh", init="0"))
             cur_pdc.attrib["response_type"] = self.response_type
         else:
@@ -251,7 +249,7 @@ class install_process(threading_tools.process_obj):
             # now the fun starts, we have a list of commands and a valid local package list
             first_com = self.pending_commands.pop(0)
             cur_com = first_com["command"].text
-            self.log("try to handle %s" % (cur_com))
+            self.log("try to handle {}".format(cur_com))
             if cur_com in ["send_info"]:
                 self.log("... ignoring", logging_tools.LOG_LEVEL_WARN)
             elif cur_com in ["repo_list"]:
@@ -298,9 +296,9 @@ class install_process(threading_tools.process_obj):
                 else:
                     self.log("empty package_list, removing")
             else:
-                self.log("unknown command '%s', ignoring..." % (cur_com), logging_tools.LOG_LEVEL_CRITICAL)
+                self.log("unknown command '{}', ignoring...".format(cur_com), logging_tools.LOG_LEVEL_CRITICAL)
         else:
-            self.log("handle_pending_commands: %d pending, %d package" % (
+            self.log("handle_pending_commands: {:d} pending, {:d} package".format(
                 len(self.pending_commands),
                 len(self.package_commands)))
     def get_always_latest(self, pack_xml):
@@ -309,7 +307,7 @@ class install_process(threading_tools.process_obj):
         if self.get_always_latest(pack_xml):
             return pack_xml.attrib["name"]
         else:
-            return "%s-%s" % (
+            return "{}-{}".format(
                 pack_xml.attrib["name"],
                 pack_xml.attrib["version"],
             )
@@ -335,13 +333,13 @@ class yum_install_process(install_process):
                 #    pack_xml.attrib["name"],
                 #    pack_xml.attrib["version"],
                 # )
-                cur_pdc.attrib["pre_command"] = "/bin/rpm -q %s --queryformat=\"%s\"" % (self.package_name(pack_xml), RPM_QUERY_FORMAT)
-                cur_pdc.attrib["post_command"] = "/bin/rpm -q %s --queryformat=\"%s\"" % (self.package_name(pack_xml), RPM_QUERY_FORMAT)
+                cur_pdc.attrib["pre_command"] = "/bin/rpm -q {} --queryformat=\"{}\"".format(self.package_name(pack_xml), RPM_QUERY_FORMAT)
+                cur_pdc.attrib["post_command"] = "/bin/rpm -q {} --queryformat=\"{}\"".format(self.package_name(pack_xml), RPM_QUERY_FORMAT)
     def _decide(self, hc_sc, cur_out):
         cur_pdc = hc_sc.data
         is_installed = False if cur_out.count("is not installed") else True
         self.log(
-            "installed flag from '%s': %s" % (
+            "installed flag from '{}': {}".format(
                 cur_out,
                 str(is_installed),
                 )
@@ -359,8 +357,8 @@ class yum_install_process(install_process):
             # else:
             #    return True, E.stdout("package %s is not installed" % (package_name))
         else:
-            self.log("starting action '%s'" % (yum_com))
-            yum_com = "/usr/bin/yum -y %s %s" % (
+            self.log("starting action '{}'".format(yum_com))
+            yum_com = "/usr/bin/yum -y {} {}".format(
                 yum_com,
                 package_name,
                 )
@@ -384,15 +382,15 @@ class zypper_install_process(install_process):
             if cur_pdc.attrib["command"] == "refresh":
                 cur_pdc.attrib["pre_command"] = "/usr/bin/zypper -q -x --gpg-auto-import-keys refresh"
             else:
-                self.log("unknown special command '%s'" % (cur_pdc.attrib["command"]), logging_tools.LOG_LEVEL_ERROR)
+                self.log("unknown special command '{}'".format(cur_pdc.attrib["command"]), logging_tools.LOG_LEVEL_ERROR)
         else:
             pack_xml = cur_pdc[0]
             if cur_pdc.attrib["target_state"] == "keep":
                 # just check install state
-                cur_pdc.attrib["pre_command"] = "/bin/rpm -q %s --queryformat=\"%s\"" % (self.package_name(pack_xml), RPM_QUERY_FORMAT)
+                cur_pdc.attrib["pre_command"] = "/bin/rpm -q {} --queryformat=\"{}\"".format(self.package_name(pack_xml), RPM_QUERY_FORMAT)
             else:
-                cur_pdc.attrib["pre_command"] = "/bin/rpm -q %s --queryformat=\"%s\"" % (self.package_name(pack_xml), RPM_QUERY_FORMAT)
-                cur_pdc.attrib["post_command"] = "/bin/rpm -q %s --queryformat=\"%s\"" % (self.package_name(pack_xml), RPM_QUERY_FORMAT)
+                cur_pdc.attrib["pre_command"] = "/bin/rpm -q {} --queryformat=\"{}\"".format(self.package_name(pack_xml), RPM_QUERY_FORMAT)
+                cur_pdc.attrib["post_command"] = "/bin/rpm -q {} --queryformat=\"{}\"".format(self.package_name(pack_xml), RPM_QUERY_FORMAT)
     def _pre_decide(self, hc_sc, cur_out):
         _stage = hc_sc.command_stage
         cur_pdc = hc_sc.data
@@ -403,7 +401,7 @@ class zypper_install_process(install_process):
         package_name = self.package_name(pack_xml)
         always_latest = self.get_always_latest(pack_xml)
         self.log(
-            "installed flag from '%s': %s, target state is '%s', always_latest is '%s'" % (
+            "installed flag from '{}': {}, target state is '{}', always_latest is '{}'".format(
                 cur_out,
                 str(is_installed),
                 cur_pdc.attrib["target_state"],
@@ -422,21 +420,21 @@ class zypper_install_process(install_process):
             self.log("doing nothing")
             if is_installed:
                 cur_pdc.append(E.main_result(
-                    E.stdout("package %s is installed" % (package_name))
+                    E.stdout("package {} is installed".format(package_name))
                 ))
             else:
                 cur_pdc.append(E.main_result(
-                    E.stdout("package %s is not installed" % (package_name))
+                    E.stdout("package {} is not installed".format(package_name))
                 ))
             return True
         else:
             if not is_installed and zypper_com == "up" and always_latest:
                 zypper_com = "in"
-                self.log("changing zypper_com to '%s' (always_latest flag)" % (zypper_com), logging_tools.LOG_LEVEL_WARN)
-            self.log("starting action '%s'" % (zypper_com))
+                self.log("changing zypper_com to '{}' (always_latest flag)".format(zypper_com), logging_tools.LOG_LEVEL_WARN)
+            self.log("starting action '{}'".format(zypper_com))
             cur_pdc.attrib["pre_zypper_com"] = zypper_com
             # flags: xml output, non-interactive
-            zypper_com = "/usr/bin/zypper -x -n %s %s %s" % (
+            zypper_com = "/usr/bin/zypper -x -n {} {} {}".format(
                 zypper_com,
                 "-f" if int(cur_pdc.attrib["force_flag"]) else "",
                 package_name,
@@ -474,16 +472,16 @@ class zypper_install_process(install_process):
         in_repos = in_com.xpath(".//ns:repo_list/root")[0]
         # old code
         # in_repos = in_com.xpath(".//ns:repos")[0]
-        self.log("handling repo_list (%s)" % (logging_tools.get_plural("entry", len(in_repos))))
+        self.log("handling repo_list ({})".format(logging_tools.get_plural("entry", len(in_repos))))
         # manual comparision, better modify them with zypper, FIXME ?
         repo_dir = "/etc/zypp/repos.d"
         cur_repo_names = [entry[:-5] for entry in os.listdir(repo_dir) if entry.endswith(".repo")]
-        self.log("%s found in %s" % (
+        self.log("{} found in {}".format(
             logging_tools.get_plural("repository", len(cur_repo_names)),
             repo_dir))
         # _new_repo_names = in_repos.xpath(".//package_repo/@alias")
         _new_repo_names = in_repos.xpath(".//alias/text()")
-        old_repo_dict = dict([(f_name, file(os.path.join(repo_dir, "%s.repo" % (f_name)), "r").read()) for f_name in cur_repo_names])
+        old_repo_dict = dict([(f_name, file(os.path.join(repo_dir, "{}.repo".format(f_name)), "r").read()) for f_name in cur_repo_names])
         # new_repo_dict = dict([(in_repo.findtextattrib["alias"], get_repo_str(in_repo)) for in_repo in in_repos])
         new_repo_dict = dict([(in_repo.findtext("alias"), get_repo_str(in_repo)) for in_repo in in_repos])
         rewrite_repos = False
@@ -497,19 +495,19 @@ class zypper_install_process(install_process):
             self.log("rewritting repo files")
             # remove old ones
             for old_r_name in old_repo_dict.iterkeys():
-                f_name = os.path.join(repo_dir, "%s.repo" % (old_r_name))
+                f_name = os.path.join(repo_dir, "{}.repo".format(old_r_name))
                 try:
                     os.unlink(f_name)
                 except:
-                    self.log("cannot remove %s: %s" % (f_name, process_tools.get_except_info()), logging_tools.LOG_LEVEL_ERROR)
+                    self.log("cannot remove {}: {}".format(f_name, process_tools.get_except_info()), logging_tools.LOG_LEVEL_ERROR)
                 else:
-                    self.log("removed %s" % (f_name))
+                    self.log("removed {}".format(f_name))
             for new_r_name in new_repo_dict.iterkeys():
-                f_name = os.path.join(repo_dir, "%s.repo" % (new_r_name))
+                f_name = os.path.join(repo_dir, "{}.repo".format(new_r_name))
                 try:
                     file(f_name, "w").write(new_repo_dict[new_r_name])
                 except:
-                    self.log("cannot create %s: %s" % (f_name, process_tools.get_except_info()), logging_tools.LOG_LEVEL_ERROR)
+                    self.log("cannot create {}: {}".format(f_name, process_tools.get_except_info()), logging_tools.LOG_LEVEL_ERROR)
                 else:
-                    self.log("created %s" % (f_name))
+                    self.log("created {}".format(f_name))
             self.package_commands.append(E.special_command(send_return="0", command="refresh", init="0"))

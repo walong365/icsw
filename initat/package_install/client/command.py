@@ -1,5 +1,3 @@
-#!/usr/bin/python-init -Ot
-#
 # Copyright (C) 2001-2009,2012-2014 Andreas Lang-Nevyjel
 #
 # this file is part of package-client
@@ -46,13 +44,13 @@ class simple_command(object):
         self.info = kwargs.get("info", None)
         self.max_run_time = kwargs.get("max_run_time", 600)
         self.log(
-            "init {}-command {}{}, {}" % (
+            "init {}-command {}{}, {}".format(
                 self.command_stage,
-                "with %s" % (
+                "with {}".format(
                     logging_tools.get_plural(
                         "line",
-                        len(self.com_str.split("\n")))) if kwargs.get("short_info", True) else "'%s'" % (self.com_str),
-                " (%s)" % (
+                        len(self.com_str.split("\n")))) if kwargs.get("short_info", True) else "'{}'".format(self.com_str),
+                " ({})".format(
                     kwargs.get("add_info", "")) if "add_info" in kwargs else "",
                 "delay is {}".format(
                     logging_tools.get_plural("second", self.delay_time)
@@ -93,9 +91,9 @@ class simple_command(object):
         return True if not simple_command.com_list else False
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
         if self.__log_com:
-            self.__log_com("[sc %d] %s" % (self.idx, what), log_level)
+            self.__log_com("[sc {:d}] {}".format(self.idx, what), log_level)
         else:
-            simple_command.process.log("[sc %d] %s" % (self.idx, what), log_level)
+            simple_command.process.log("[sc {:d}] {}".format(self.idx, what), log_level)
     def terminate(self):
         if self.popen:
             del self.popen

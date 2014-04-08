@@ -1,5 +1,3 @@
-#!/usr/bin/python-init -Ot
-#
 # Copyright (C) 2001-2009,2012-2014 Andreas Lang-Nevyjel
 #
 # this file is part of package-client
@@ -97,14 +95,14 @@ class server_process(threading_tools.process_pool):
     def _show_config(self):
         try:
             for log_line, log_level in global_config.get_log():
-                self.log("Config info : [%d] %s" % (log_level, log_line))
+                self.log("Config info : [{:d}] {}".format(log_level, log_line))
         except:
-            self.log("error showing configfile log, old configfile ? (%s)" % (process_tools.get_except_info()),
+            self.log("error showing configfile log, old configfile ? ({})".format(process_tools.get_except_info()),
                      logging_tools.LOG_LEVEL_ERROR)
         conf_info = global_config.get_config_info()
-        self.log("Found %s:" % (logging_tools.get_plural("valid configline", len(conf_info))))
+        self.log("Found {}:".format(logging_tools.get_plural("valid configline", len(conf_info))))
         for conf in conf_info:
-            self.log("Config : %s" % (conf))
+            self.log("Config : {}".format(conf))
     def _log_limits(self):
         # read limits
         r_dict = {}
@@ -123,14 +121,14 @@ class server_process(threading_tools.process_pool):
                     r_dict[av_r] = None
             if r_dict:
                 res_keys = sorted(r_dict.keys())
-                self.log("%s defined" % (logging_tools.get_plural("limit", len(res_keys))))
+                self.log("{} defined".format(logging_tools.get_plural("limit", len(res_keys))))
                 res_list = logging_tools.new_form_list()
                 for key in res_keys:
                     val = r_dict[key]
                     if type(val) == type(""):
                         info_str = val
                     elif type(val) == type(()):
-                        info_str = "%8d (hard), %8d (soft)" % val
+                        info_str = "{:8d} (hard), {:8d} (soft)".format(*val)
                     else:
                         info_str = "None (error?)"
                     res_list.append([logging_tools.form_entry(key, header="key"),
@@ -147,17 +145,17 @@ class server_process(threading_tools.process_pool):
         srv_port.setsockopt(zmq.TCP_KEEPALIVE, 1)
         srv_port.setsockopt(zmq.TCP_KEEPALIVE_IDLE, 300)
         # srv_port.setsockopt(zmq.SUBSCRIBE, "")
-        self.conn_str = "tcp://%s:%d" % (
+        self.conn_str = "tcp://{}:{:d}".format(
             global_config["PACKAGE_SERVER"],
             global_config["SERVER_COM_PORT"])
         srv_port.connect(self.conn_str)
         # pull_port = self.zmq_context.socket(zmq.PUSH)
         # pull_port.setsockopt(zmq.IDENTITY, uuid_tools.get_uuid().get_urn())
         self.register_poller(srv_port, zmq.POLLIN, self._recv)
-        self.log("connected to %s" % (self.conn_str))
+        self.log("connected to {}".format(self.conn_str))
         self.srv_port = srv_port
         # client socket
-        self.bind_id = "%s:pclient:" % (uuid_tools.get_uuid().get_urn())
+        self.bind_id = "{}:pclient:".format(uuid_tools.get_uuid().get_urn())
         client_sock = self.zmq_context.socket(zmq.ROUTER)
         client_sock.setsockopt(zmq.LINGER, 1000)
         client_sock.setsockopt(zmq.IDENTITY, self.bind_id)
@@ -167,10 +165,10 @@ class server_process(threading_tools.process_pool):
         client_sock.setsockopt(zmq.RCVHWM, 16)
         client_sock.setsockopt(zmq.RECONNECT_IVL_MAX, 500)
         client_sock.setsockopt(zmq.RECONNECT_IVL, 200)
-        bind_str = "tcp://0.0.0.0:%d" % (
+        bind_str = "tcp://0.0.0.0:{:d}".format(
                     global_config["COM_PORT"])
         client_sock.bind(bind_str)
-        self.log("bound to %s (ID %s)" % (bind_str, self.bind_id))
+        self.log("bound to {} (ID {})".format(bind_str, self.bind_id))
         self.client_socket = client_sock
         self.register_poller(client_sock, zmq.POLLIN, self._recv_client)
         # send commands
@@ -181,7 +179,7 @@ class server_process(threading_tools.process_pool):
         self._send_to_server("self", os.getpid(), xml_com["command"].text, unicode(xml_com), "server command")
     def _send_to_server(self, src_proc, *args, **kwargs):
         src_pid, com_name, send_com, send_info = args
-        self.log("sending %s (%s) to server %s" % (com_name, send_info, self.conn_str))
+        self.log("sending {} ({}) to server {}".format(com_name, send_info, self.conn_str))
         self.srv_port.send_unicode(send_com)
     def _get_new_config(self):
         self._send_to_server_int(get_srv_command(command="get_package_list"))
@@ -198,27 +196,28 @@ class server_process(threading_tools.process_pool):
             srv_com = server_command.srv_command(source=data)
             srv_com.update_source()
             cur_com = srv_com["command"].text
-            self.log("got %s (length: %d) from %s" % (cur_com, len(data), src_id))
+            self.log("got {} (length: {:d}) from {}".format(cur_com, len(data), src_id))
             srv_com["result"] = None
             if cur_com == "get_0mq_id":
                 srv_com["zmq_id"] = self.bind_id
-                srv_com["result"].attrib.update({
-                    "reply" : "0MQ_ID is %s" % (self.bind_id),
-                    "state" : "%d" % (server_command.SRV_REPLY_STATE_OK)})
+                srv_com.set_result(
+                    "0MQ_ID is {}".format(self.bind_id)
+                )
             elif cur_com == "status":
                 # FIXME, Todo
-                srv_com["result"].attrib.update({
-                    "reply" : "everything OK :-)",
-                    "state" : "%d" % (server_command.SRV_REPLY_STATE_OK)})
+                srv_com.set_result(
+                    "everything OK :-)"
+                )
             else:
-                srv_com["result"].attrib.update(
-                    {"reply" : "unknown command '%s'" % (cur_com),
-                        "state" : "%d" % (server_command.SRV_REPLY_STATE_ERROR)})
+                srv_com.set_result(
+                    "unknown command '{}'".format(cur_com),
+                    server_command.SRV_REPLY_STATE_ERROR
+                )
             zmq_sock.send_unicode(src_id, zmq.SNDMORE)
             zmq_sock.send_unicode(unicode(srv_com))
             del srv_com
         else:
-            self.log("cannot receive more data, already got '%s'" % (", ".join(data)),
+            self.log("cannot receive more data, already got '{}'".format(", ".join(data)),
                      logging_tools.LOG_LEVEL_ERROR)
     def _recv(self, zmq_sock):
         batch_list = []
@@ -228,11 +227,11 @@ class server_process(threading_tools.process_pool):
                 try:
                     in_com = server_command.srv_command(source=zmq_sock.recv_unicode())
                 except:
-                    self.log("error decoding command: %s" % (process_tools.get_except_info()),
+                    self.log("error decoding command: {}".format(process_tools.get_except_info()),
                              logging_tools.LOG_LEVEL_ERROR)
                 else:
                     rcv_com = in_com["command"].text
-                    self.log("got command %s" % (rcv_com))
+                    self.log("got command {}".format(rcv_com))
                     if rcv_com == "new_config":
                         self._get_new_config()
                     elif rcv_com == "sync_repos":
@@ -255,7 +254,7 @@ class server_process(threading_tools.process_pool):
         if self["exit_requested"]:
             self.log("exit already requested, ignoring", logging_tools.LOG_LEVEL_WARN)
         else:
-            self.log("got int_error, err_cause is '%s'" % (err_cause), logging_tools.LOG_LEVEL_WARN)
+            self.log("got int_error, err_cause is '{}'".format(err_cause), logging_tools.LOG_LEVEL_WARN)
             self["exit_requested"] = True
     def _alarm_error(self, err_cause):
         self.__comsend_queue.put("reload")
