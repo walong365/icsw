@@ -1,7 +1,7 @@
 #!/usr/bin/python-init -Ot
 # -*- coding: utf-8 -*-
 #
-# Copyright (C) 2013,2014 Andreas Lang-Nevyjel
+# Copyright (C) 2013-2014 Andreas Lang-Nevyjel
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -118,10 +118,10 @@ class server_code(threading_tools.process_pool):
         sys.stdout = my_io
         self.objgraph.show_growth()
         lines = [line.rstrip() for line in unicode(my_io.getvalue()).split("\n") if line.strip()]
-        self.log("objgraph show_growth (%s)" % (logging_tools.get_plural("line", len(lines)) if lines else "no output"))
+        self.log("objgraph show_growth ({})".format(logging_tools.get_plural("line", len(lines)) if lines else "no output"))
         if lines:
             for line in lines:
-                self.log(u" - %s" % (line))
+                self.log(u" - {}".format(line))
         sys.stdout = cur_stdout
     def _check_ksm(self):
         if global_config["ENABLE_KSM"]:
@@ -130,18 +130,21 @@ class server_code(threading_tools.process_pool):
                 try:
                     file(os.path.join(ksm_dir, "run"), "w").write("1\n")
                 except:
-                    self.log("error enabling KSM: %s" % (process_tools.get_except_info()),
-                             logging_tools.LOG_LEVEL_ERROR)
+                    self.log(
+                        "error enabling KSM: {}".format(
+                            process_tools.get_except_info()
+                        ),
+                        logging_tools.LOG_LEVEL_ERROR)
                 else:
                     self.log("enabled KSM")
             else:
-                self.log("ksm_dir '%s' not found" % (ksm_dir), logging_tools.LOG_LEVEL_ERROR)
+                self.log("ksm_dir '{}' not found".format(ksm_dir), logging_tools.LOG_LEVEL_ERROR)
         else:
             self.log("KSM not touched")
     def _register_callback(self, *args, **kwargs):
         call_proc, call_pid, com_name, func_name = args
         self.__callbacks[com_name] = (call_proc, func_name)
-        self.log("registered callback '%s' from process %s (func: %s)" % (
+        self.log("registered callback '{}' from process {} (func: {})".format(
             com_name,
             call_proc,
             func_name
@@ -151,7 +154,7 @@ class server_code(threading_tools.process_pool):
             huge_dir = "/sys/kernel/mm/hugepages/"
             mem_total = int([line for line in file("/proc/meminfo", "r").read().lower().split("\n") if line.startswith("memtotal")][0].split()[1]) * 1024
             mem_to_map = mem_total * global_config["HUGEPAGES"] / 100
-            self.log("memory to use for hugepages (%d %%): %s (of %s)" % (
+            self.log("memory to use for hugepages ({:d} %): {} (of {})".format(
                 global_config["HUGEPAGES"],
                 logging_tools.get_size_str(mem_to_map),
                 logging_tools.get_size_str(mem_total)))
@@ -167,11 +170,11 @@ class server_code(threading_tools.process_pool):
                         elif local_size.endswith("gb"):
                             local_size = int(local_size[:-2]) * 1024 * 1024 * 1024
                         else:
-                            self.log("cannot interpret %s (%s)" % (local_size, full_subdir), logging_tools.LOG_LEVEL_ERROR)
+                            self.log("cannot interpret {} ({})".format(local_size, full_subdir), logging_tools.LOG_LEVEL_ERROR)
                             local_size = None
                         if local_size:
                             num_pages = int(mem_to_map / local_size)
-                            self.log("size of %s is %s, resulting in %s" % (
+                            self.log("size of {} is {}, resulting in {}".format(
                                 sub_dir,
                                 logging_tools.get_size_str(local_size),
                                 logging_tools.get_plural("page", num_pages)
@@ -181,20 +184,23 @@ class server_code(threading_tools.process_pool):
                                 try:
                                     cur_pages = int(file(pages_file, "r").read().strip())
                                 except:
-                                    self.log("cannot read pages from %s: %s" % (pages_file, process_tools.get_except_info()), logging_tools.LOG_LEVEL_ERROR)
+                                    self.log("cannot read pages from {}: {}".format(
+                                        pages_file,
+                                        process_tools.get_except_info()), logging_tools.LOG_LEVEL_ERROR)
                                 else:
                                     if cur_pages:
-                                        self.log("current pages set to %d, skipping set to %d" % (cur_pages, num_pages), logging_tools.LOG_LEVEL_WARN)
+                                        self.log("current pages set to {:d}, skipping set to {:d}".format(
+                                            cur_pages, num_pages), logging_tools.LOG_LEVEL_WARN)
                                     else:
                                         try:
-                                            file(pages_file, "w").write("%d\n" % (num_pages))
+                                            file(pages_file, "w").write("{:d}\n".format(num_pages))
                                         except:
-                                            self.log("cannot write %d to %s: %s" % (
+                                            self.log("cannot write {:d} to {}: {}".format(
                                                 num_pages,
                                                 pages_file,
                                                 process_tools.get_except_info()), logging_tools.LOG_LEVEL_ERROR)
                                         else:
-                                            self.log("wrote %d to %s" % (num_pages, pages_file))
+                                            self.log("wrote {:d} to {}".format(num_pages, pages_file))
             else:
                 self.log("huge_dir '%s' not found" % (huge_dir), logging_tools.LOG_LEVEL_ERROR)
         else:
