@@ -978,7 +978,10 @@ class device_variable(models.Model):
         self._update_gauge()
     def _update_gauge(self):
         self.val_int = min(100, int(float(100 * self.__cur) / float(max(1, self.__max))))
-        self.save()
+        if self.pk:
+            device_variable.objects.filter(Q(pk=self.pk)).update(val_int=self.val_int)
+        else:
+            self.save()
     class Meta:
         db_table = u'device_variable'
         unique_together = ("name", "device",)
