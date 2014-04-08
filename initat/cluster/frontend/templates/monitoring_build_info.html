@@ -33,8 +33,8 @@
             <tr ng-repeat-start="build in masters | paginator:this" ng-class="get_line_class(build)">
                 <th>{{ build.device | follow_fk:this:'servers':'full_name' }} ({{ build.mon_dist_slave_set.length }})</th>
                 <td>{{ get_time(build.build_start) }} ({{ get_diff_time(build.build_start) }})</td>
-                <td class="text-center">{{ get_conf_time(build) }}</td>
-                <td class="text-center">{{ get_run_time(build) }}</td>
+                <td class="text-right">{{ get_conf_time(build) }}</td>
+                <td class="text-right">{{ get_run_time(build) }}</td>
                 <td>{{ build.mon_version }}</td>
                 <td class="text-center">{{ build.md_version }}</td>
                 <td class="text-center">{{ build.relayer_version }}</td>
