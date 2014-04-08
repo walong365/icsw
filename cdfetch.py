@@ -23,7 +23,6 @@ from initat.host_monitoring.hm_classes import mvect_entry
 from lxml import etree # @UnresolvedImports
 import argparse
 import logging_tools
-import os
 import process_tools
 import server_command
 import sys
@@ -37,8 +36,8 @@ class base_com(object):
         srv_com["identity"] = process_tools.zmq_identity_str(self.options.identity_string)
         for arg_index, arg in enumerate(args):
             if self.options.verbose:
-                print " arg %2d: %s" % (arg_index, arg)
-                srv_com["arguments:arg%d" % (arg_index)] = arg
+                print " arg {:d}: {}".format(arg_index, arg)
+                srv_com["arguments:arg{:d}".format(arg_index)] = arg
         srv_com["arg_list"] = " ".join(args)
         srv_com["host_filter"] = self.options.host_filter
         srv_com["key_filter"] = self.options.key_filter
@@ -49,9 +48,11 @@ class base_com(object):
     def __unicode__(self):
         return unicode(self.srv_com)
     def send_and_receive(self, client):
-        conn_str = "tcp://%s:%d" % (self.options.host, self.options.port)
+        conn_str = "tcp://{}:{:d}".format(self.options.host, self.options.port)
         if self.options.verbose:
-            print "Identity_string is '%s', connection_string is '%s'" % (self.srv_com["identity"].text, conn_str)
+            print "Identity_string is '{}', connection_string is '{}'".format(
+                self.srv_com["identity"].text,
+                conn_str)
         client.connect(conn_str)
         s_time = time.time()
 
@@ -69,16 +70,16 @@ class base_com(object):
             self.receive_tuple = (recv_id, recv_str)
             timeout = False
         else:
-            print "error timeout (%.2f > %d)" % (time.time() - s_time, self.options.timeout)
+            print "error timeout ({:.2f} > {:d})".format(time.time() - s_time, self.options.timeout)
             timeout = True
         e_time = time.time()
         if self.options.verbose:
             if timeout:
-                print "communication took %s" % (
+                print "communication took {}".format(
                     logging_tools.get_diff_time_str(e_time - s_time),
                 )
             else:
-                print "communication took %s, received %d bytes" % (
+                print "communication took {}, received {:d} bytes".format(
                     logging_tools.get_diff_time_str(e_time - s_time),
                     len(recv_str),
                 )
@@ -88,13 +89,13 @@ class base_com(object):
         try:
             srv_reply = server_command.srv_command(source=recv_str)
         except:
-            print "cannot interpret reply: %s" % (process_tools.get_except_info())
-            print "reply was: %s" % (recv_str)
+            print "cannot interpret reply: {}".format(process_tools.get_except_info())
+            print "reply was: {}".format(recv_str)
             self.ret_state = 1
         else:
             if self.options.verbose:
                 print
-                print "XML response (id: '%s'):" % (recv_id)
+                print "XML response (id: '{}'):".format(recv_id)
                 print
                 print srv_reply.pretty_print()
                 print
@@ -117,9 +118,9 @@ class host_list_com(base_com):
         h_list = srv_com.xpath(".//host_list", smart_strings=False)
         if len(h_list):
             h_list = h_list[0]
-            print "got result for %s:" % (logging_tools.get_plural("host", int(h_list.attrib["entries"])))
+            print "got result for {}:".format(logging_tools.get_plural("host", int(h_list.attrib["entries"])))
             for host in h_list:
-                print "%-30s (%-40s) : %4d keys, last update %s" % (
+                print "{:<30s} ({:<40s}) : {:4d} keys, last update {}".format(
                     host.attrib["name"],
                     host.attrib["uuid"],
                     int(host.attrib["keys"]),
@@ -138,9 +139,9 @@ class key_list_com(base_com):
         if len(h_list):
             h_list = h_list[0]
             out_f = logging_tools.new_form_list()
-            print "got result for %s:" % (logging_tools.get_plural("host", int(h_list.attrib["entries"])))
+            print "got result for {}:".format(logging_tools.get_plural("host", int(h_list.attrib["entries"])))
             for host in h_list:
-                print "%-30s (%-40s) : %4d keys, last update %s" % (
+                print "{:<30s} ({:<40s}) : {:4d} keys, last update {}".format(
                     host.attrib["name"],
                     host.attrib["uuid"],
                     int(host.attrib["keys"]),
@@ -157,7 +158,7 @@ class key_list_com(base_com):
 def main():
     parser = argparse.ArgumentParser("query the datastore of collectd servers")
     com_list = [key[:-4] for key in globals().keys() if key.endswith("_com") if key not in ["base_com"]]
-    parser.add_argument("arguments", nargs="+", help="additional arguments, first one is command (one of %s)" % (
+    parser.add_argument("arguments", nargs="+", help="additional arguments, first one is command (one of {})".format(
         ", ".join(sorted(com_list))))
     parser.add_argument("-t", help="set timeout [%(default)d]", default=10, type=int, dest="timeout")
     parser.add_argument("-p", help="port [%(default)d]", default=8008, dest="port", type=int)
@@ -172,14 +173,14 @@ def main():
     # print args.arguments, other_args
     command = args.arguments.pop(0)
     other_args = args.arguments + other_args
-    if "%s_com" % (command) in globals():
+    if "{}_com".format(command) in com_list:
         try:
-            cur_com = globals()["%s_com" % (command)](args, *other_args)
+            cur_com = globals()["{}_com".format(command)](args, *other_args)
         except:
-            print "error init '%s': %s" % (command, process_tools.get_except_info())
+            print "error init '{}': {}".format(command, process_tools.get_except_info())
             sys.exit(ret_state)
     else:
-        print "Unknown command '%s'" % (command)
+        print "Unknown command '{}'".format(command)
         sys.exit(ret_state)
     zmq_context = zmq.Context(1)
     client = zmq_context.socket(zmq.DEALER) # if not args.split else zmq.PUB) # ROUTER)#DEALER)

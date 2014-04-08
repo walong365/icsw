@@ -120,8 +120,8 @@ class win_disk_pdata(perfdata_object):
     def get_pd_xml_info(self, v_list):
         disk = v_list[0]
         return E.perfdata_info(
-            perfdata_value("used", "space used on %s" % (disk), v_type="i", unit="B", rrd_spec="GAUGE:0:U", key="disk.%s.used" % (disk)).get_xml(),
-            perfdata_value("total", "total size of %s" % (disk), v_type="i", unit="B", rrd_spec="GAUGE:0:U", key="disk.%s.total" % (disk)).get_xml(),
+            perfdata_value("used", "space used on {}".format(disk), v_type="i", unit="B", rrd_spec="GAUGE:0:U", key="disk.{}.used".format(disk)).get_xml(),
+            perfdata_value("total", "total size of {}".format(disk), v_type="i", unit="B", rrd_spec="GAUGE:0:U", key="disk.{}.total".format(disk)).get_xml(),
         )
     def build_values(self, _xml, in_dict):
         return self._wrap(
@@ -131,7 +131,7 @@ class win_disk_pdata(perfdata_object):
         )
     def get_type_instance(self, v_list):
         # set PSU index as instance
-        return "%s" % (v_list[0])
+        return "{}".format(v_list[0])
 
 class win_load_pdata(perfdata_object):
     PD_RE = re.compile("^1 min avg Load=(?P<load1>\d+)%\S+ 5 min avg Load=(?P<load5>\d+)%\S+ 15 min avg Load=(?P<load15>\d+)%\S+$")
@@ -176,14 +176,14 @@ class smc_chassis_psu_pdata(perfdata_object):
     def get_pd_xml_info(self, v_list):
         psu_num = v_list[0]
         return E.perfdata_info(
-            perfdata_value("temp", "temperature of PSU %d" % (psu_num), v_type="f", unit="C", key="temp.psu%d" % (psu_num), rrd_spec="GAUGE:0:100").get_xml(),
-            perfdata_value("amps", "amperes consumed by PSU %d" % (psu_num), v_type="f", unit="A", key="amps.psu%d" % (psu_num), rrd_spec="GAUGE:0:100").get_xml(),
-            perfdata_value("fan1", "speed of FAN1 of PSU %d" % (psu_num), v_type="i", key="fan.psu%dfan1" % (psu_num), rrd_spec="GAUGE:0:10000").get_xml(),
-            perfdata_value("fan2", "speed of FAN2 of PSU %d" % (psu_num), v_type="i", key="fan.psu%dfan2" % (psu_num), rrd_spec="GAUGE:0:10000").get_xml(),
+            perfdata_value("temp", "temperature of PSU {:d}".format(psu_num), v_type="f", unit="C", key="temp.psu{:d}".format(psu_num), rrd_spec="GAUGE:0:100").get_xml(),
+            perfdata_value("amps", "amperes consumed by PSU {:d}".format(psu_num), v_type="f", unit="A", key="amps.psu{:d}".format(psu_num), rrd_spec="GAUGE:0:100").get_xml(),
+            perfdata_value("fan1", "speed of FAN1 of PSU {:d}".format(psu_num), v_type="i", key="fan.psu{:d}fan1".format(psu_num), rrd_spec="GAUGE:0:10000").get_xml(),
+            perfdata_value("fan2", "speed of FAN2 of PSU {:d}".format(psu_num), v_type="i", key="fan.psu{:d}fan2".format(psu_num), rrd_spec="GAUGE:0:10000").get_xml(),
         )
     def get_type_instance(self, v_list):
         # set PSU index as instance
-        return "%d" % (v_list[0])
+        return "{:d}".format(v_list[0])
 
 class ping_pdata(perfdata_object):
     PD_RE = re.compile("^rta=(?P<rta>\S+) min=(?P<min>\S+) max=(?P<max>\S+) sent=(?P<sent>\d+) loss=(?P<loss>\d+)$")
@@ -237,14 +237,14 @@ class value(object):
             value=str(self.value),
             name=self.name,
             v_type=self.v_type,
-            base="%d" % (self.base),
-            factor="%d" % (self.factor),
+            base="{:d}".format(self.base),
+            factor="{:d}".format(self.factor),
             unit=self.unit,
             )
 
 class host_info(object):
     def __init__(self, uuid, name):
-        collectd.notice("init host_info for %s (%s)" % (name, uuid))
+        collectd.notice("init host_info for {} ({})".format(name, uuid))
         self.name = name
         self.uuid = uuid
         self.__dict = {}
@@ -255,12 +255,12 @@ class host_info(object):
         return E.host_info(
             name=self.name,
             uuid=self.uuid,
-            last_update="%d" % (self.last_update or 0),
-            keys="%d" % (len(self.__dict)),
+            last_update="{:d}".format(self.last_update or 0),
+            keys="{:d}".format(len(self.__dict)),
             # update calls (full info)
-            updates="%d" % (self.updates),
+            updates="{:d}".format(self.updates),
             # store calls (short info)
-            stores="%d" % (self.stores),
+            stores="{:d}".format(self.stores),
             )
     def get_key_list(self, key_filter):
         h_info = self.get_host_info()
@@ -283,7 +283,7 @@ class host_info(object):
             del_keys = old_keys - new_keys
             for del_key in del_keys:
                 del self.__dict[del_key]
-            collectd.warning("%s changed for %s" % (logging_tools.get_plural("key", len(c_keys)), self.name))
+            collectd.warning("{} changed for {}".format(logging_tools.get_plural("key", len(c_keys)), self.name))
             return True
         else:
             return False
@@ -296,7 +296,7 @@ class host_info(object):
                     self.__dict[key].transform(value, cur_time),
                 )
             except:
-                collectd.error("error transforming %s: %s" % (key, process_tools.get_except_info()))
+                collectd.error("error transforming {}: {}".format(key, process_tools.get_except_info()))
                 return (None, None)
         else:
             # key not known, skip
@@ -314,8 +314,8 @@ class host_info(object):
 class net_receiver(multiprocessing.Process):
     def __init__(self):
         multiprocessing.Process.__init__(self, target=self._code, name="0MQ_net_receiver")
-        self.zmq_id = "%s:collserver_plugin" % (process_tools.get_machine_name())
-        self.grapher_id = "%s:rrd_grapher" % (uuid_tools.get_uuid().get_urn())
+        self.zmq_id = "{}:collserver_plugin".format(process_tools.get_machine_name())
+        self.grapher_id = "{}:rrd_grapher".format(uuid_tools.get_uuid().get_urn())
         self.poller = zmq.Poller()
     def _init(self):
         self._init_perfdata()
@@ -347,13 +347,13 @@ class net_receiver(multiprocessing.Process):
             self.grapher.setsockopt(flag, value)
             self.command.setsockopt(flag, value)
         self.sender.connect(IPC_SOCK)
-        listener_url = "tcp://*:%d" % (RECV_PORT)
-        command_url = "tcp://*:%d" % (COMMAND_PORT)
-        grapher_url = "tcp://localhost:%d" % (GRAPHER_PORT)
+        listener_url = "tcp://*:{:d}".format(RECV_PORT)
+        command_url = "tcp://*:{:d}".format(COMMAND_PORT)
+        grapher_url = "tcp://localhost:{:d}".format(GRAPHER_PORT)
         self.receiver.bind(listener_url)
         self.command.bind(command_url)
         self.grapher.connect(grapher_url)
-        collectd.notice("listening on %s, connected to grapher on %s, command_url is %s" % (
+        collectd.notice("listening on {}, connected to grapher on {}, command_url is {}".format(
             listener_url,
             grapher_url,
             command_url,
@@ -403,7 +403,7 @@ class net_receiver(multiprocessing.Process):
         st_rate = self.__total_size_trees / diff_time
         bp_rate = self.__pds_read / diff_time
         sp_rate = self.__total_size_pds / diff_time
-        collectd.notice("read %s (%s) from %s (rate [%.2f, %s] / sec), %s (%s) from %s (rate [%.2f, %s] / sec) in %s" % (
+        collectd.notice("read {} ({}) from {} (rate [{:.2f}, {}] / sec), {} ({}) from {} (rate [{:.2f}, {}] / sec) in {}".format(
             logging_tools.get_plural("tree", self.__trees_read),
             logging_tools.get_size_str(self.__total_size_trees),
             logging_tools.get_plural("host", len(self.__distinct_hosts_mv)),
@@ -446,7 +446,7 @@ class net_receiver(multiprocessing.Process):
             in_com.get("host_filter", ".*"),
             in_com.get("key_filter", ".*")
             )
-        collectd.info("got command %s from %s (host_filter: %s, key_filter: %s)" % (
+        collectd.info("got command {} from {} (host_filter: {}, key_filter: {})".format(
             com_text,
             in_uuid,
             h_filter,
@@ -456,24 +456,24 @@ class net_receiver(multiprocessing.Process):
             host_filter = re.compile(h_filter)
         except:
             host_filter = re.compile(".*")
-            collectd.error("error interpreting '%s' as host re: %s" % (h_filter, process_tools.get_except_info()))
+            collectd.error("error interpreting '{}' as host re: {}".format(h_filter, process_tools.get_except_info()))
         try:
             key_filter = re.compile(k_filter)
         except:
             key_filter = re.compile(".*")
-            collectd.error("error interpreting '%s' as key re: %s" % (k_filter, process_tools.get_except_info()))
+            collectd.error("error interpreting '{}' as key re: {}".format(k_filter, process_tools.get_except_info()))
         match_uuids = [_value[1] for _value in sorted([(self.__hosts[cur_uuid].name, cur_uuid) for cur_uuid in self.__hosts.keys() if host_filter.match(self.__hosts[cur_uuid].name)])]
         if com_text == "host_list":
-            result = E.host_list(entries="%d" % (len(match_uuids)))
+            result = E.host_list(entries="{:d}".format(len(match_uuids)))
             for cur_uuid in match_uuids:
                 result.append(self.__hosts[cur_uuid].get_host_info())
             in_com["result"] = result
         elif com_text == "key_list":
-            result = E.host_list(entries="%d" % (len(match_uuids)))
+            result = E.host_list(entries="{:d}".format(len(match_uuids)))
             for cur_uuid in match_uuids:
                 result.append(self.__hosts[cur_uuid].get_key_list(key_filter))
             in_com["result"] = result
-        in_com.set_result("got command %s" % (com_text))
+        in_com.set_result("got command {}".format(com_text))
         in_sock.send_unicode(in_uuid, zmq.SNDMORE)
         in_sock.send_unicode(unicode(in_com))
     def _feed_host_info(self, host_uuid, host_name, _xml):
@@ -489,11 +489,11 @@ class net_receiver(multiprocessing.Process):
         try:
             _xml = etree.fromstring(in_tree)
         except:
-            collectd.error("cannot parse tree: %s" % (process_tools.get_except_info()))
+            collectd.error("cannot parse tree: {}".format(process_tools.get_except_info()))
         else:
             xml_tag = _xml.tag.split("}")[-1]
             # collectd.error(xml_tag)
-            handle_name = "_handle_%s" % (xml_tag)
+            handle_name = "_handle_{}".format(xml_tag)
             if hasattr(self, handle_name):
                 try:
                     # loop
@@ -503,7 +503,7 @@ class net_receiver(multiprocessing.Process):
                 except:
                     collectd.error(process_tools.get_except_info())
             else:
-                collectd.error("unknown handle_name '%s'" % (handle_name))
+                collectd.error("unknown handle_name '{}'".format(handle_name))
     def _check_for_ext_perfdata(self, mach_values):
         # unique tuple
         pd_tuple = (mach_values[0], mach_values[1])
@@ -515,7 +515,7 @@ class net_receiver(multiprocessing.Process):
         if not self.__perfdatas_cnt[pd_tuple]:
             # zero reached, reset counter to 10 and send info to local rrd-grapher
             self.__perfdatas_cnt[pd_tuple] = 10
-            pd_obj = globals()["%s_pdata" % (mach_values[0])]()
+            pd_obj = globals()["{}_pdata".format(mach_values[0])]()
             self._send_to_grapher(pd_obj.build_perfdata_info(mach_values))
     def _handle_machine_vector(self, _xml, data_len):
         self.__trees_read += 1
@@ -530,7 +530,7 @@ class net_receiver(multiprocessing.Process):
         self.__distinct_hosts_mv.add(host_uuid)
         if simple and host_uuid not in self.__hosts:
             collectd.warning(
-                "no full info for host %s (%s) received, discarding data" % (
+                "no full info for host {} ({}) received, discarding data".format(
                     host_name,
                     host_uuid,
                 )
@@ -565,7 +565,7 @@ class net_receiver(multiprocessing.Process):
                 break
         if not values:
             collectd.warning(
-                "unparsed perfdata '%s' from %s" % (
+                "unparsed perfdata '{}' from {}".format(
                     perf_value,
                     p_data.get("host")
                 )
@@ -583,11 +583,11 @@ class receiver(object):
         self.sub_proc = net_receiver()
         self.sub_proc.start()
     def init_receiver(self):
-        collectd.notice("init 0MQ IPC receiver at %s" % (IPC_SOCK))
+        collectd.notice("init 0MQ IPC receiver at {}".format(IPC_SOCK))
         self.recv_sock = self.context.socket(zmq.PULL)
         sock_dir = os.path.dirname(IPC_SOCK[6:])
         if not os.path.isdir(sock_dir):
-            collectd.notice("creating directory %s" % (sock_dir))
+            collectd.notice("creating directory {}".format(sock_dir))
             os.mkdir(sock_dir)
         self.recv_sock.bind(IPC_SOCK)
     def recv(self):
@@ -618,14 +618,14 @@ class receiver(object):
             if cur_time <= self.__last_sent[h_tuple]:
                 diff_time = self.__last_sent[h_tuple] + 1 - cur_time
                 cur_time += diff_time
-                collectd.notice("correcting time for %s (+%ds to %d)" % (str(h_tuple), diff_time, int(cur_time)))
+                collectd.notice("correcting time for {} (+{:d}s to {:d})".format(str(h_tuple), diff_time, int(cur_time)))
         self.__last_sent[h_tuple] = cur_time
         return self.__last_sent[h_tuple]
     def _handle_perfdata(self, data):
         # print "***", data
         _type, type_instance, host_name, time_recv, rsi, v_list = data[1]
-        s_time = self.get_time((host_name, "ipd_%s" % (_type)), time_recv)
-        collectd.Values(plugin="perfdata", type_instance=type_instance, host=host_name, time=s_time, type="ipd_%s" % (_type), interval=5 * 60).dispatch(values=v_list[rsi:])
+        s_time = self.get_time((host_name, "ipd_{}".format(_type)), time_recv)
+        collectd.Values(plugin="perfdata", type_instance=type_instance, host=host_name, time=s_time, type="ipd_{}".format(_type), interval=5 * 60).dispatch(values=v_list[rsi:])
     def _handle_tree(self, data):
         host_name, time_recv, values = data
         # print host_name, time_recv
@@ -635,18 +635,14 @@ class receiver(object):
             if name:
                 collectd.Values(plugin="collserver", host=host_name, time=s_time, type="icval", type_instance=name).dispatch(values=[value])
 
-if __name__ != "__main__":
-    # Our Own Functions go here
+def main_for_collectd():
+    # our own functions go here
     def configer(ObjConfiguration):
         pass
-        # collectd.debug('Configuring Stuff')
-
     def initer(my_recv):
         signal.signal(signal.SIGCHLD, signal.SIG_DFL)
         my_recv.init_receiver()
         my_recv.start_sub_proc()
-
-    # == Hook Callbacks, Order is important! ==#
 
     my_recv = receiver()
 
@@ -654,7 +650,8 @@ if __name__ != "__main__":
     collectd.register_init(initer, my_recv)
     # call every 15 seconds
     collectd.register_read(my_recv.recv, 15.0)
-else:
+
+def main_for_direct():
     out_list = logging_tools.new_form_list()
     out_list.append([
         logging_tools.form_entry("icval"),
@@ -665,9 +662,28 @@ else:
         if type(obj) == type and obj != perfdata_object:
             if issubclass(obj, perfdata_object):
                 obj = obj()
-                out_list.append([
-                    logging_tools.form_entry("ipd_%s" % (obj.PD_NAME)),
-                    logging_tools.form_entry(" ".join(["%s:%s" % (_e.get("name"), _e.get("rrd_spec")) for _e in obj.default_xml_info.xpath(".//value[@rrd_spec]", smart_strings=False)])),
-                ])
+                out_list.append(
+                    [
+                        logging_tools.form_entry(
+                            "ipd_{}".format(obj.PD_NAME)
+                        ),
+                        logging_tools.form_entry(
+                            " ".join(
+                                [
+                                    "{}:{}".format(
+                                        _e.get("name"),
+                                        _e.get("rrd_spec")
+                                    ) for _e in obj.default_xml_info.xpath(
+                                        ".//value[@rrd_spec]", smart_strings=False
+                                    )
+                                ]
+                            )
+                        ),
+                    ]
+                )
     print unicode(out_list)
 
+if __name__ != "__main__":
+    main_for_collectd()
+else:
+    main_for_direct()
