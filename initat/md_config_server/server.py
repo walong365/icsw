@@ -1,5 +1,3 @@
-#!/usr/bin/python-init -OtW default
-#
 # Copyright (C) 2013-2014 Andreas Lang-Nevyjel, init.at
 #
 # this file is part of md-config-server
@@ -91,12 +89,12 @@ class server_process(threading_tools.process_pool, version_check_mixin):
         res_dict = {}
         if self.__enable_livestatus:
             if "MD_TYPE" in global_config:
-                sock_name = "/opt/%s/var/live" % (global_config["MD_TYPE"])
+                sock_name = os.path.join("/opt", global_config["MD_TYPE"], "var", "live")
                 cur_s = live_socket(sock_name)
                 try:
                     result = cur_s.hosts.columns("name", "state").call()
                 except:
-                    self.log("cannot query socket %s: %s" % (sock_name, process_tools.get_except_info()),
+                    self.log("cannot query socket {}: {}".format(sock_name, process_tools.get_except_info()),
                              logging_tools.LOG_LEVEL_CRITICAL)
                 else:
                     q_list = [int(value["state"]) for value in result]
@@ -123,7 +121,7 @@ class server_process(threading_tools.process_pool, version_check_mixin):
             res_dict["unknown"] = res_dict["tot"] - (res_dict["up"] + res_dict["down"])
             cursor.close()
         if res_dict:
-            self.log("%s status is: %d up, %d down, %d unknown (%d total)" % (
+            self.log("{} status is: {:d} up, {:d} down, {:d} unknown ({:d} total)".format(
                 global_config["MD_TYPE"],
                 res_dict["up"],
                 res_dict["down"],
@@ -145,24 +143,24 @@ class server_process(threading_tools.process_pool, version_check_mixin):
             drop_com["vector_loadsensor"] = add_obj
             drop_com["vector_loadsensor"].attrib["type"] = "vector"
             send_str = unicode(drop_com)
-            self.log("sending %d bytes to vector_socket" % (len(send_str)))
+            self.log("sending {:d} bytes to vector_socket".format(len(send_str)))
             self.vector_socket.send_unicode(send_str)
         else:
             self.log("empty result dict for _update()", logging_tools.LOG_LEVEL_WARN)
     def _log_config(self):
         self.log("Config info:")
         for line, log_level in global_config.get_log(clear=True):
-            self.log(" - clf: [%d] %s" % (log_level, line))
+            self.log(" - clf: [{:d}] {}".format(log_level, line))
         conf_info = global_config.get_config_info()
-        self.log("Found %d valid global config-lines:" % (len(conf_info)))
+        self.log("Found {:d} valid global config-lines:".format(len(conf_info)))
         for conf in conf_info:
-            self.log("Config : %s" % (conf))
+            self.log("Config : {}".format(conf))
     def _re_insert_config(self):
         cluster_location.write_config("monitor_server", global_config)
     def _check_notification(self):
         cur_not = mon_notification.objects.all().count()
         if cur_not:
-            self.log("%s defined, skipping check" % (logging_tools.get_plural("notification", cur_not)))
+            self.log("{} defined, skipping check".format(logging_tools.get_plural("notification", cur_not)))
         else:
             if "NOTIFY_BY_EMAIL_LINE01" in global_config:
                 self.log("rewriting notifications from global_config")
@@ -174,11 +172,11 @@ class server_process(threading_tools.process_pool, version_check_mixin):
                     "mail" : {
                         "host"    : (
                             global_config["HOST_NOTIFY_BY_EMAIL_SUBJECT"],
-                            [global_config["HOST_NOTIFY_BY_EMAIL_LINE%02d" % (idx)] for idx in xrange(1, 16)],
+                            [global_config["HOST_NOTIFY_BY_EMAIL_LINE{:02d}".format(idx)] for idx in xrange(1, 16)],
                             ),
                         "service" : (
                             global_config["NOTIFY_BY_EMAIL_SUBJECT"],
-                            [global_config["NOTIFY_BY_EMAIL_LINE%02d" % (idx)] for idx in xrange(1, 16)],
+                            [global_config["NOTIFY_BY_EMAIL_LINE{:02d}".format(idx)] for idx in xrange(1, 16)],
                             ),
                     }
                 }
@@ -193,14 +191,14 @@ class server_process(threading_tools.process_pool, version_check_mixin):
                                 try:
                                     var_obj.objects.get(Q(pk=pk)).delete()
                                 except:
-                                    self.log("cannot delete var %s: %s" % (key, process_tools.get_except_info()), logging_tools.LOG_LEVEL_ERROR)
+                                    self.log("cannot delete var {}: {}".format(key, process_tools.get_except_info()), logging_tools.LOG_LEVEL_ERROR)
                                 else:
-                                    self.log("deleted variable %s" % (key))
+                                    self.log("deleted variable {}".format(key))
                                     del global_config[key]
                             else:
-                                self.log("unknown source_table %s for %s" % (t_type, key), logging_tools.LOG_LEVEL_ERROR)
+                                self.log("unknown source_table {} for {}".format(t_type, key), logging_tools.LOG_LEVEL_ERROR)
                         else:
-                            self.log("cannot parse source %s of %s" % (src, key), logging_tools.LOG_LEVEL_ERROR)
+                            self.log("cannot parse source {} of {}".format(src, key), logging_tools.LOG_LEVEL_ERROR)
             else:
                 # default dict
                 str_dict = {
@@ -263,7 +261,7 @@ class server_process(threading_tools.process_pool, version_check_mixin):
             for channel, s_dict in str_dict.iteritems():
                 for not_type, (subject, content) in s_dict.iteritems():
                     mon_notification.objects.create(
-                        name="%s-notify-by-%s" % (not_type, channel),
+                        name="{}-notify-by-{}".format(not_type, channel),
                         channel=channel,
                         not_type=not_type,
                         subject=subject,
@@ -316,10 +314,11 @@ class server_process(threading_tools.process_pool, version_check_mixin):
         return msi_block
     def _register_slave(self, *args, **kwargs):
         src_proc, src_id, slave_ip, slave_uuid = args
-        conn_str = "tcp://%s:%d" % (slave_ip,
-                                    2004)
+        conn_str = "tcp://{}:{:d}".format(
+            slave_ip,
+            2004)
         if conn_str not in self.__slaves:
-            self.log("connecting to slave on %s (%s)" % (conn_str, slave_uuid))
+            self.log("connecting to slave on {} ({})".format(conn_str, slave_uuid))
             self.com_socket.connect(conn_str)
             self.__slaves[conn_str] = slave_uuid
     def _handle_ocp_event(self, in_com):
@@ -330,7 +329,7 @@ class server_process(threading_tools.process_pool, version_check_mixin):
             "ochp-event" : "PROCESS_HOST_CHECK_RESULT"}[com_type]
         # rewrite state information
         state_idx, error_state = (1, 1) if com_type == "ochp-event" else (2, 2)
-        targ_list[state_idx] = "%d" % ({
+        targ_list[state_idx] = "{:d}".format({
             "ok"          : 0,
             "up"          : 0,
             "warning"     : 1,
@@ -342,7 +341,7 @@ class server_process(threading_tools.process_pool, version_check_mixin):
             pass
         else:
             pass
-        out_line = "[%d] %s;%s\n" % (
+        out_line = "[{:d}] {};{}\n".format(
             int(time.time()),
             target_com,
             ";".join(targ_list))
@@ -350,7 +349,7 @@ class server_process(threading_tools.process_pool, version_check_mixin):
             try:
                 codecs.open(self.__external_cmd_file, "w", "utf-8").write(out_line)
             except:
-                self.log("error writing to %s: %s" % (
+                self.log("error writing to {}: {}".format(
                     self.__external_cmd_file,
                     process_tools.get_except_info()), logging_tools.LOG_LEVEL_ERROR)
                 raise
@@ -358,27 +357,29 @@ class server_process(threading_tools.process_pool, version_check_mixin):
             self.log("no external cmd_file defined", logging_tools.LOG_LEVEL_ERROR)
     def _send_command(self, *args, **kwargs):
         src_proc, src_id, full_uuid, srv_com = args
-        self.log("init send of %s bytes to %s" % (len(srv_com), full_uuid))
+        self.log("init send of {:d} bytes to {}".format(len(srv_com), full_uuid))
         self.com_socket.send_unicode(full_uuid, zmq.SNDMORE)
         self.com_socket.send_unicode(srv_com)
     def _set_external_cmd_file(self, *args, **kwargs):
         src_proc, src_id, ext_name = args
-        self.log("setting external cmd_file to '%s'" % (ext_name))
+        self.log("setting external cmd_file to '{}'".format(ext_name))
         self.__external_cmd_file = ext_name
     def _init_network_sockets(self):
         client = self.zmq_context.socket(zmq.ROUTER)
-        client.setsockopt(zmq.IDENTITY, "%s:monitor_master" % (uuid_tools.get_uuid().get_urn()))
+        client.setsockopt(zmq.IDENTITY, "{}:monitor_master".format(uuid_tools.get_uuid().get_urn()))
         client.setsockopt(zmq.SNDHWM, 1024)
         client.setsockopt(zmq.RCVHWM, 1024)
         client.setsockopt(zmq.LINGER, 0)
         client.setsockopt(zmq.TCP_KEEPALIVE, 1)
         client.setsockopt(zmq.TCP_KEEPALIVE_IDLE, 300)
         try:
-            client.bind("tcp://*:%d" % (global_config["COM_PORT"]))
+            client.bind("tcp://*:{:d}".format(global_config["COM_PORT"]))
         except zmq.ZMQError:
-            self.log("error binding to %d: %s" % (global_config["COM_PORT"],
-                                                  process_tools.get_except_info()),
-                     logging_tools.LOG_LEVEL_CRITICAL)
+            self.log(
+                "error binding to {:d}: {}".format(
+                    global_config["COM_PORT"],
+                    process_tools.get_except_info()),
+                logging_tools.LOG_LEVEL_CRITICAL)
             raise
         else:
             self.register_poller(client, zmq.POLLIN, self._recv_command)
@@ -400,7 +401,7 @@ class server_process(threading_tools.process_pool, version_check_mixin):
             try:
                 srv_com = server_command.srv_command(source=data)
             except:
-                self.log("error interpreting command: %s" % (process_tools.get_except_info()),
+                self.log("error interpreting command: {}".format(process_tools.get_except_info()),
                          logging_tools.LOG_LEVEL_ERROR)
                 # send something back
                 self.com_socket.send_unicode(src_id, zmq.SNDMORE)
@@ -408,7 +409,7 @@ class server_process(threading_tools.process_pool, version_check_mixin):
             else:
                 cur_com = srv_com["command"].text
                 if self.__verbose or cur_com not in ["ocsp-event", "ochp-event", "file_content_result"]:
-                    self.log("got command '%s' from '%s'" % (
+                    self.log("got command '{}' from '{}'".format(
                         cur_com,
                         srv_com["source"].attrib["host"]))
                 srv_com.update_source()
@@ -428,16 +429,16 @@ class server_process(threading_tools.process_pool, version_check_mixin):
                 elif cur_com in ["file_content_result", "relayer_info", "file_content_bulk_result"]:
                     self.send_to_process("syncer", cur_com, unicode(srv_com))
                 else:
-                    self.log("got unknown command '%s' from '%s'" % (cur_com, srv_com["source"].attrib["host"]), logging_tools.LOG_LEVEL_ERROR)
+                    self.log("got unknown command '{}' from '{}'".format(cur_com, srv_com["source"].attrib["host"]), logging_tools.LOG_LEVEL_ERROR)
                 if send_return:
-                    srv_com.set_result("ok processed command %s" % (cur_com))
+                    srv_com.set_result("ok processed command {}".format(cur_com))
                     self.com_socket.send_unicode(src_id, zmq.SNDMORE)
                     self.com_socket.send_unicode(unicode(srv_com))
                 else:
                     del cur_com
         else:
             self.log(
-                "wrong count of input data frames: %d, first one is %s" % (
+                "wrong count of input data frames: {:d}, first one is {}".format(
                     len(in_data),
                     in_data[0]),
                 logging_tools.LOG_LEVEL_ERROR)

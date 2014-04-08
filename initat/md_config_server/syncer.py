@@ -1,5 +1,3 @@
-#!/usr/bin/python-init -OtW default
-#
 # Copyright (C) 2014 Andreas Lang-Nevyjel, init.at
 #
 # this file is part of md-config-server
@@ -62,11 +60,11 @@ class syncer_process(threading_tools.process_obj):
         self.__master_config = sync_config(self, master_server, distributed=True if len(slave_servers) else False)
         self.__slave_configs, self.__slave_lut = ({}, {})
         # connect to local relayer
-        self.log("  master %s (IP %s, %s)" % (master_server.full_name, "127.0.0.1", master_server.uuid))
+        self.log("  master {} (IP {}, {})".format(master_server.full_name, "127.0.0.1", master_server.uuid))
         self.send_pool_message("register_slave", "127.0.0.1", master_server.uuid)
         if len(slave_servers):
             self.log(
-                "found %s: %s" % (
+                "found {}: {}".format(
                     logging_tools.get_plural("slave_server", len(slave_servers)),
                     ", ".join(sorted([cur_dev.full_name for cur_dev in slave_servers]))))
             for cur_dev in slave_servers:
@@ -79,7 +77,7 @@ class syncer_process(threading_tools.process_obj):
                 self.__slave_configs[cur_dev.pk] = _slave_c
                 self.__slave_lut[cur_dev.full_name] = cur_dev.pk
                 self.__slave_lut[cur_dev.uuid] = cur_dev.pk
-                self.log("  slave %s (IP %s, %s)" % (_slave_c.monitor_server.full_name, _slave_c.slave_ip, _slave_c.monitor_server.uuid))
+                self.log("  slave {} (IP {}, {})".format(_slave_c.monitor_server.full_name, _slave_c.slave_ip, _slave_c.monitor_server.uuid))
                 if _slave_c.slave_ip:
                     self.send_pool_message("register_slave", _slave_c.slave_ip, _slave_c.monitor_server.uuid)
                 else:
@@ -104,11 +102,11 @@ class syncer_process(threading_tools.process_obj):
                 host="DIRECT",
                 port="0",
                 master_ip=master_ip,
-                master_port="%d" % (constants.SERVER_COM_PORT))
-            self.log("send register_master to %s (master IP %s, UUID %s)" % (unicode(_srv), master_ip, _srv.uuid))
+                master_port="{:d}".format(constants.SERVER_COM_PORT))
+            self.log("send register_master to {} (master IP {}, UUID {})".format(unicode(_srv), master_ip, _srv.uuid))
             self.send_command(_srv.uuid, unicode(srv_com))
     def send_command(self, src_id, srv_com):
-        self.send_pool_message("send_command", "urn:uuid:%s:relayer" % (src_id), srv_com)
+        self.send_pool_message("send_command", "urn:uuid:{}:relayer".format(src_id), srv_com)
     def _check_for_redistribute(self, *args, **kwargs):
         for slave_config in self.__slave_configs.itervalues():
             slave_config.check_for_resend()
@@ -118,7 +116,7 @@ class syncer_process(threading_tools.process_obj):
         if slave_name in self.__slave_lut:
             self.__slave_configs[self.__slave_lut[slave_name]].file_content_info(srv_com)
         else:
-            self.log("unknown slave_name '%s'" % (slave_name), logging_tools.LOG_LEVEL_ERROR)
+            self.log("unknown slave_name '{}'".format(slave_name), logging_tools.LOG_LEVEL_ERROR)
     def _relayer_info(self, *args, **kwargs):
         srv_com = server_command.srv_command(source=args[0])
         if "uuid" in srv_com:
@@ -129,7 +127,7 @@ class syncer_process(threading_tools.process_obj):
                 _pk = self.__slave_lut[uuid]
                 self.__slave_configs[_pk].set_relayer_info(srv_com)
             else:
-                self.log("uuid %s not found in slave_lut" % (uuid), logging_tools.LOG_LEVEL_ERROR)
+                self.log("uuid {} not found in slave_lut".format(uuid), logging_tools.LOG_LEVEL_ERROR)
         else:
             self.log("uuid missing in relayer_info", logging_tools.LOG_LEVEL_ERROR)
     def _build_info(self, *args, **kwargs):
@@ -138,13 +136,13 @@ class syncer_process(threading_tools.process_obj):
         if _bi_type == "start_build":
             # config build started
             self.__build_in_progress, self.__build_version = (True, _vals.pop(0))
-            self.log("build started (%d)" % (self.__build_version))
+            self.log("build started ({:d})".format(self.__build_version))
             self._master_md = self.__master_config.start_build(self.__build_version)
             for _conf in self.__slave_configs.values():
                 _conf.start_build(self.__build_version, master=self._master_md)
         elif _bi_type == "end_build":
             self.__build_in_progress = False
-            self.log("build ended (%d)" % (self.__build_version))
+            self.log("build ended ({:d})".format(self.__build_version))
             self.__master_config.end_build()
             # trigger reload when sync is done
             for _slave in self.__slave_configs.itervalues():
@@ -152,10 +150,10 @@ class syncer_process(threading_tools.process_obj):
         elif _bi_type == "sync_slave":
             slave_name = _vals.pop(0)
             if slave_name in self.__slave_lut:
-                self.log("syncing config to slave '%s'" % (slave_name))
+                self.log("syncing config to slave '{}'".format(slave_name))
                 slave_pk = self.__slave_lut[slave_name]
                 self.__slave_configs[slave_pk].distribute()
             else:
-                self.log("unknown slave '%s'" % (slave_name), logging_tools.LOG_LEVEL_CRITICAL)
+                self.log("unknown slave '{}'".format(slave_name), logging_tools.LOG_LEVEL_CRITICAL)
         else:
-            self.log("unknown build_info '%s'" % (str(args)), logging_tools.LOG_LEVEL_CRITICAL)
+            self.log("unknown build_info '{}'".format(str(args)), logging_tools.LOG_LEVEL_CRITICAL)
