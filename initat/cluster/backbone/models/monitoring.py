@@ -39,6 +39,10 @@ class mon_dist_slave(models.Model):
     idx = models.AutoField(primary_key=True)
     mon_dist_master = models.ForeignKey("backbone.mon_dist_master")
     device = models.ForeignKey("backbone.device")
+    # start of build
+    config_build_start = models.DateTimeField(default=None, null=True)
+    # end of build
+    config_build_end = models.DateTimeField(default=None, null=True)
     # start of first sync
     sync_start = models.DateTimeField(default=None, null=True)
     # end of last sync
@@ -63,7 +67,13 @@ class mon_dist_master(models.Model):
     idx = models.AutoField(primary_key=True)
     device = models.ForeignKey("backbone.device")
     version = models.IntegerField(default=0)
+    # start of build
+    config_build_start = models.DateTimeField(default=None, null=True)
+    # end of build
+    config_build_end = models.DateTimeField(default=None, null=True)
+    # total build start
     build_start = models.DateTimeField(default=None, null=True)
+    # total build end
     build_end = models.DateTimeField(default=None, null=True)
     # version of of master relayer / md-config-server / icinga
     relayer_version = models.CharField(max_length=128, default="")
