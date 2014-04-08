@@ -102,31 +102,32 @@ class server_process(threading_tools.process_pool):
     def _connect_to_collectd(self):
         disabled_hosts = device.objects.filter(Q(store_rrd_data=False))
         num_dis = disabled_hosts.count()
-        if num_dis:
-            self.log("{} with no_store flag, contacting {}".format(
+        self.log(
+            "{} with no_store flag, contacting {}".format(
                 logging_tools.get_plural("device", num_dis),
                 logging_tools.get_plural("collectd", len(self._collectd_sockets))
-                ))
-            send_com = server_command.srv_command(command="disabled_hosts")
-            _bld = send_com.builder()
-            send_com["no_rrd_store"] = _bld.device_list(
-                *[
-                    _bld.device(
-                        pk="{:d}".format(cur_dev.pk),
-                        short_name="{}".format(cur_dev.name),
-                        full_name="{}".format(cur_dev.full_name),
-                        uuid="{}".format(cur_dev.uuid)
-                    ) for cur_dev in disabled_hosts]
-                )
-            snd_ok = 0
-            for key in sorted(self._collectd_sockets):
-                try:
-                    self._collectd_sockets[key].send_unicode(unicode(send_com))
-                except:
-                    self.log("error sending to {}: {}".format(key, process_tools.get_except_info()), logging_tools.LOG_LEVEL_ERROR)
-                else:
-                    snd_ok += 1
-            self.log("sent command, {:d} OK, {:d} with problems".format(snd_ok, len(self._collectd_sockets) - snd_ok))
+            )
+        )
+        send_com = server_command.srv_command(command="disabled_hosts")
+        _bld = send_com.builder()
+        send_com["no_rrd_store"] = _bld.device_list(
+            *[
+                _bld.device(
+                    pk="{:d}".format(cur_dev.pk),
+                    short_name="{}".format(cur_dev.name),
+                    full_name="{}".format(cur_dev.full_name),
+                    uuid="{}".format(cur_dev.uuid)
+                ) for cur_dev in disabled_hosts]
+            )
+        snd_ok = 0
+        for key in sorted(self._collectd_sockets):
+            try:
+                self._collectd_sockets[key].send_unicode(unicode(send_com))
+            except:
+                self.log("error sending to {}: {}".format(key, process_tools.get_except_info()), logging_tools.LOG_LEVEL_ERROR)
+            else:
+                snd_ok += 1
+        self.log("sent command, {:d} OK, {:d} with problems".format(snd_ok, len(self._collectd_sockets) - snd_ok))
     def _check_for_stale_rrds(self):
         cur_time = time.time()
         # set stale after two hours
