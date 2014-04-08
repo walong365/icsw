@@ -20,7 +20,9 @@
 """ server-part of rrd-grapher """
 
 from django.db import connection
-from initat.rrd_grapher.config import global_config
+from django.db.models import Q
+from initat.cluster.backbone.models import device
+from initat.rrd_grapher.config import global_config, CD_COM_PORT
 from initat.rrd_grapher.graph import graph_process
 from initat.rrd_grapher.struct import data_store
 from lxml.builder import E # @UnresolvedImport
@@ -65,15 +67,16 @@ class server_process(threading_tools.process_pool):
         self.register_func("send_command", self._send_command)
         self.register_timer(self._clear_old_graphs, 60, instant=True)
         self.register_timer(self._check_for_stale_rrds, 3600, instant=True)
+        self.register_timer(self._connect_to_collectd, 300, instant=True)
         data_store.setup(self)
     def _log_config(self):
         self.log("Config info:")
         for line, log_level in global_config.get_log(clear=True):
-            self.log(" - clf: [%d] %s" % (log_level, line))
+            self.log(" - clf: [{:d}] {}".format(log_level, line))
         conf_info = global_config.get_config_info()
-        self.log("Found %d valid global config-lines:" % (len(conf_info)))
+        self.log("Found {:d} valid global config-lines:".format(len(conf_info)))
         for conf in conf_info:
-            self.log("Config : %s" % (conf))
+            self.log("Config : {}".format(conf))
     def _re_insert_config(self):
         cluster_location.write_config("rrd_server", global_config)
     def log(self, what, lev=logging_tools.LOG_LEVEL_OK):
@@ -96,6 +99,26 @@ class server_process(threading_tools.process_pool):
         if self.__msi_block:
             self.__msi_block.add_actual_pid(src_pid, mult=mult, process_name=src_process)
             self.__msi_block.save_block()
+    def _connect_to_collectd(self):
+        disabled_hosts = device.objects.filter(Q(store_rrd_data=False))
+        num_dis = disabled_hosts.count()
+        if num_dis:
+            self.log("{} with no_store flag, contacting {}".format(
+                logging_tools.get_plural("device", num_dis),
+                logging_tools.get_plural("collectd", len(self._collectd_sockets))
+                ))
+            send_com = server_command.srv_command(command="disabled_hosts")
+            _bld = send_com.builder()
+            send_com["no_rrd_store"] = _bld.device_list(
+                *[_bld.device(pk="{:d}".format(cur_dev.pk), short_name="{}".format(cur_dev.name), full_name="{}".format(cur_dev.full_name)) for cur_dev in disabled_hosts]
+                ) 
+            print send_com.pretty_print()
+            for key in sorted(self._collectd_sockets):
+                try:
+                    self._collectd_sockets[key].send_unicode("disabled_hosts", zmq.SNDMORE)
+                    self._collectd_sockets[key].send_unicode(unicode(send_com))
+                except:
+                    self.log("error sending to {}: {}".format(key, process_tools.get_except_info()), logging_tools.LOG_LEVEL_ERROR)
     def _check_for_stale_rrds(self):
         cur_time = time.time()
         # set stale after two hours
@@ -129,18 +152,18 @@ class server_process(threading_tools.process_pool):
                         file_el.attrib["active"] = "1"
                         disabled += 1
                 else:
-                    self.log("file '%s' missing, disabling" % (file_el.attrib["file_name"]), logging_tools.LOG_LEVEL_ERROR)
+                    self.log("file '{}' missing, disabling".format(file_el.attrib["file_name"]), logging_tools.LOG_LEVEL_ERROR)
                     file_el.attrib["active"] = "0"
                     disabled += 1
             if enabled or disabled:
                 num_changed += 1
-                self.log("updated active info for %s: %d enabled, %d disabled" % (
+                self.log("updated active info for {}: {:d} enabled, {:d} disabled".format(
                     _struct.name,
                     enabled,
                     disabled,
                     ))
                 _struct.store()
-        self.log("checked for stale entries, modified %s" % (logging_tools.get_plural("device", num_changed)))
+        self.log("checked for stale entries, modified {}".format(logging_tools.get_plural("device", num_changed)))
     def _clear_old_graphs(self):
         cur_time = time.time()
         graph_root = global_config["GRAPH_ROOT"]
@@ -154,9 +177,9 @@ class server_process(threading_tools.process_pool):
                     if diff_time > 5 * 60:
                         del_list.append(full_name)
         else:
-            self.log("graph_root '%s' not found, strange" % (graph_root), logging_tools.LOG_LEVEL_ERROR)
+            self.log("graph_root '{}' not found, strange".format(graph_root), logging_tools.LOG_LEVEL_ERROR)
         if del_list:
-            self.log("clearing %s is %s" % (
+            self.log("clearing {} in {}".format(
                 logging_tools.get_plural("old graph", len(del_list)),
                 graph_root))
             for del_entry in del_list:
@@ -181,32 +204,47 @@ class server_process(threading_tools.process_pool):
         return msi_block
     def _send_command(self, *args, **kwargs):
         _src_proc, _src_id, full_uuid, srv_com = args
-        self.log("init send of %s bytes to %s" % (len(srv_com), full_uuid))
+        self.log("init send of {:d} bytes to {}".format(len(srv_com), full_uuid))
         self.com_socket.send_unicode(full_uuid, zmq.SNDMORE)
         self.com_socket.send_unicode(srv_com)
     def _init_network_sockets(self):
         client = self.zmq_context.socket(zmq.ROUTER)
-        self.bind_id = "%s:rrd_grapher" % (uuid_tools.get_uuid().get_urn())
+        self.bind_id = "{}:rrd_grapher".format(uuid_tools.get_uuid().get_urn())
         client.setsockopt(zmq.IDENTITY, self.bind_id)
         client.setsockopt(zmq.SNDHWM, 256)
         client.setsockopt(zmq.RCVHWM, 256)
         client.setsockopt(zmq.TCP_KEEPALIVE, 1)
         client.setsockopt(zmq.TCP_KEEPALIVE_IDLE, 300)
-        bind_str = "tcp://*:%d" % (global_config["COM_PORT"])
+        bind_str = "tcp://*:{:d}".format(global_config["COM_PORT"])
         try:
             client.bind(bind_str)
         except zmq.ZMQError:
             self.log(
-                "error binding to %d: %s" % (
+                "error binding to {:d}: {}".format(
                     global_config["COM_PORT"],
                     process_tools.get_except_info()
                 ),
                 logging_tools.LOG_LEVEL_CRITICAL)
             raise
         else:
-            self.log("bound to %s" % (bind_str))
+            self.log("bound to {}".format(bind_str))
             self.register_poller(client, zmq.POLLIN, self._recv_command)
             self.com_socket = client
+        # connection to collectd clients
+        collectd_hosts = ["127.0.0.1"]
+        self._collectd_sockets = {}
+        for _ch in collectd_hosts:
+            _cs = self.zmq_context.socket(zmq.ROUTER)
+            _id_str = "{}:{}:rrd_cs".format(uuid_tools.get_uuid().get_urn(), _ch)
+            _cs.setsockopt(zmq.IDENTITY, self.bind_id)
+            _cs.setsockopt(zmq.SNDHWM, 256)
+            _cs.setsockopt(zmq.RCVHWM, 256)
+            _cs.setsockopt(zmq.TCP_KEEPALIVE, 1)
+            _cs.setsockopt(zmq.TCP_KEEPALIVE_IDLE, 300)
+            _conn_str = "tcp://{}:{:d}".format(_ch, CD_COM_PORT)
+            self.log("connection string for {} is {}".format(_ch, _conn_str))
+            _cs.connect(_conn_str)
+            self._collectd_sockets[_ch] = _cs
     def _interpret_mv_info(self, in_vector):
         data_store.feed_vector(in_vector[0])
     def _interpret_perfdata_info(self, host_name, pd_type, pd_info):
@@ -216,11 +254,11 @@ class server_process(threading_tools.process_pool):
         dev_list = srv_com.xpath(".//device_list", smart_strings=False)[0]
         pk_list = [int(cur_pk) for cur_pk in dev_list.xpath(".//device/@pk", smart_strings=False)]
         for dev_pk in pk_list:
-            cur_res = E.node_result(pk="%d" % (dev_pk))
+            cur_res = E.node_result(pk="{:d}".format(dev_pk))
             if data_store.has_rrd_xml(dev_pk):
                 cur_res.append(data_store.get_rrd_xml(dev_pk, sort=True))
             else:
-                self.log("no rrd_xml found for device %d" % (dev_pk), logging_tools.LOG_LEVEL_WARN)
+                self.log("no rrd_xml found for device {:d}".format(dev_pk), logging_tools.LOG_LEVEL_WARN)
             node_results.append(cur_res)
         if int(dev_list.get("merge_results", "0")):
             data_store.merge_node_results(node_results)
@@ -237,7 +275,7 @@ class server_process(threading_tools.process_pool):
                 srv_com = server_command.srv_command(source=data)
             except:
                 self.log(
-                    "error interpreting command: %s" % (process_tools.get_except_info()),
+                    "error interpreting command: {}".format(process_tools.get_except_info()),
                     logging_tools.LOG_LEVEL_ERROR)
                 # send something back
                 self.com_socket.send_unicode(src_id, zmq.SNDMORE)
@@ -245,13 +283,13 @@ class server_process(threading_tools.process_pool):
             else:
                 cur_com = srv_com["command"].text
                 if self.__verbose or cur_com not in ["ocsp-event", "ochp-event" "vector", "perfdata_info"]:
-                    self.log("got command '%s' from '%s'" % (
+                    self.log("got command '{}' from '{}'".format(
                         cur_com,
                         srv_com["source"].attrib["host"]))
                 srv_com.update_source()
                 send_return = True
                 srv_reply, srv_state = (
-                    "ok processed command %s" % (cur_com),
+                    "ok processed command {}".format(cur_com),
                     server_command.SRV_REPLY_STATE_OK
                     )
                 if cur_com in ["mv_info"]:
@@ -267,31 +305,24 @@ class server_process(threading_tools.process_pool):
                     self.send_to_process("graph", "graph_rrd", src_id, unicode(srv_com))
                 elif cur_com == "get_0mq_id":
                     srv_com["zmq_id"] = self.bind_id
-                    srv_reply = "0MQ_ID is %s" % (self.bind_id)
+                    srv_reply = "0MQ_ID is {}".format(self.bind_id)
                 elif cur_com == "status":
                     srv_reply = "up and running"
                 else:
-                    self.log("got unknown command '%s'" % (cur_com), logging_tools.LOG_LEVEL_ERROR)
+                    self.log("got unknown command '{}'".format(cur_com), logging_tools.LOG_LEVEL_ERROR)
                     srv_reply, srv_state = (
-                        "unknown command '%s'" % (cur_com),
+                        "unknown command '{}'".format(cur_com),
                         server_command.SRV_REPLY_STATE_ERROR,
                         )
                 if send_return:
-                    srv_com["result"] = None
-                    # blabla
-                    srv_com["result"].attrib.update(
-                        {
-                            "reply" : srv_reply,
-                            "state" : "%d" % (srv_state)
-                        }
-                    )
+                    srv_com.set_result(srv_reply, srv_state)
                     self.com_socket.send_unicode(src_id, zmq.SNDMORE)
                     self.com_socket.send_unicode(unicode(srv_com))
                 else:
                     del cur_com
         else:
             self.log(
-                "wrong count of input data frames: %d, first one is %s" % (
+                "wrong count of input data frames: {:d}, first one is {}".format(
                     len(in_data),
                     in_data[0]),
                 logging_tools.LOG_LEVEL_ERROR)
@@ -301,6 +332,8 @@ class server_process(threading_tools.process_pool):
             self.__msi_block.remove_meta_block()
     def loop_post(self):
         self.com_socket.close()
+        for key, _sock in self._collectd_sockets:
+            _sock.close()
         self.__log_template.close()
     def thread_loop_post(self):
         process_tools.delete_pid(self.__pid_name)

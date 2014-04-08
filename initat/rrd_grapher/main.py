@@ -28,7 +28,6 @@ from django.conf import settings
 from initat.cluster.backbone.models import log_source
 from initat.rrd_grapher.config import global_config
 from initat.rrd_grapher.server import server_process
-import cluster_location
 import config_tools
 import configfile
 import process_tools
@@ -46,9 +45,9 @@ def _create_dirs():
         try:
             os.makedirs(graph_root)
         except:
-            print("*** cannot create graph_root '%s': %s" % (graph_root, process_tools.get_except_info()))
+            print("*** cannot create graph_root '{}': {}".format(graph_root, process_tools.get_except_info()))
         else:
-            print("created graph_root '%s'" % (graph_root))
+            print("created graph_root '{}'".format(graph_root))
 
 def main():
     long_host_name, _mach_name = process_tools.get_fqdn()
@@ -74,8 +73,9 @@ def main():
     ])
     global_config.parse_file()
     _options = global_config.handle_commandline(
-        description="%s, version is %s" % (prog_name,
-                                           VERSION_STRING),
+        description="{}, version is {}".format(
+            prog_name,
+            VERSION_STRING),
         add_writeback_option=True,
         positional_arguments=False)
     global_config.write_file()
@@ -89,7 +89,7 @@ def main():
         sys.exit(0)
     if global_config["KILL_RUNNING"]:
         _log_lines = process_tools.kill_running_processes(
-            "%s.py" % (prog_name),
+            "{}.py".format(prog_name),
             ignore_names=[],
             exclude=configfile.get_manager_pid())
 
@@ -111,7 +111,7 @@ def main():
     if not global_config["DEBUG"]:
         process_tools.become_daemon()
     else:
-        print "Debugging rrd-grapher on %s" % (long_host_name)
+        print "Debugging rrd-grapher on {}".format(long_host_name)
     ret_state = server_process().loop()
     sys.exit(ret_state)
 

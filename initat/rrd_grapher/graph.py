@@ -43,22 +43,22 @@ class colorizer(object):
         self.def_color_table = "dark28"
         self._read_files()
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
-        self.graph_process.log("[col] %s" % (what), log_level)
+        self.graph_process.log("[col] {}".format(what), log_level)
     def _read_files(self):
         self.colortables = etree.fromstring(file(global_config["COLORTABLE_FILE"], "r").read())
         self.color_tables = {}
         for c_table in self.colortables.findall(".//colortable[@name]"):
-            self.color_tables[c_table.get("name")] = ["#%s" % (color.get("rgb")) for color in c_table if self._check_color(color)]
-        self.log("read colortables from %s" % (global_config["COLORTABLE_FILE"]))
+            self.color_tables[c_table.get("name")] = ["#{:d}".format(color.get("rgb")) for color in c_table if self._check_color(color)]
+        self.log("read colortables from {}".format(global_config["COLORTABLE_FILE"]))
         self.color_rules = etree.fromstring(file(global_config["COLORRULES_FILE"], "r").read())
-        self.log("read colorrules from %s" % (global_config["COLORRULES_FILE"]))
+        self.log("read colorrules from {}".format(global_config["COLORRULES_FILE"]))
         self.match_re_keys = [
-            (re.compile("^%s" % (entry.attrib["key"].replace(".", r"\."))),
+            (re.compile("^{}".format(entry.attrib["key"].replace(".", r"\."))),
              entry) for entry in self.color_rules.xpath(".//entry[@key]", smart_strings=False)]
         # fast lookup table, store computed lookups
         self.fast_lut = {}
     def _check_color(self, color):
-        cur_c = "#%s" % (color.get("rgb"))
+        cur_c = "#{}".format(color.get("rgb"))
         return (int(cur_c[1:3], 16) + int(cur_c[3:5], 16) + int(cur_c[5:7], 16)) < 3 * 224
     def reset(self):
         # reset values for next graph
@@ -96,7 +96,7 @@ class graph_var(object):
         self.width = graph_width
         self.max_info_width = 60 + int((self.width - 800) / 8)
         graph_var.var_idx += 1
-        self.name = "v%d" % (graph_var.var_idx)
+        self.name = "v{:d}".format(graph_var.var_idx)
     def __getitem__(self, key):
         return self.entry.attrib[key]
     def __contains__(self, key):
@@ -113,9 +113,9 @@ class graph_var(object):
         info = self["info"]
         parts = self["name"].split(".")
         for idx in xrange(len(parts)):
-            info = info.replace("$%d" % (idx + 1), parts[idx])
+            info = info.replace("${:d}".format(idx + 1), parts[idx])
         if self.dev_name:
-            info = "%s (%s)" % (info, str(self.dev_name))
+            info = "{} ({})".format(info, str(self.dev_name))
         return info
     def get_color_and_style(self):
         self.color, self.style_dict = graph_var.colorizer.get_color_and_style(self.entry)
@@ -125,26 +125,26 @@ class graph_var(object):
         if self.entry.tag == "value":
             # pde entry
             c_lines = [
-                "DEF:%s=%s:%s:AVERAGE" % (self.name, self["file_name"], self["part"]),
+                "DEF:{}={}:{}:AVERAGE".format(self.name, self["file_name"], self["part"]),
             ]
         else:
             # machvector entry
             c_lines = [
-                "DEF:%s=%s:v:AVERAGE" % (self.name, self["file_name"]),
+                "DEF:{}={}:v:AVERAGE".format(self.name, self["file_name"]),
             ]
         if int(self.get("invert", "0")):
             c_lines.append(
-                "CDEF:%sinv=%s,-1,*" % (self.name, self.name),
+                "CDEF:{}inv={},-1,*".format(self.name, self.name),
             )
-            draw_name = "%sinv" % (self.name)
+            draw_name = "{}inv".format(self.name)
         else:
             draw_name = self.name
         c_lines.append(
-            "%s:%s%s:<tt>%s</tt>" % (
+            "{}:{}{}:<tt>{}</tt>".format(
                 self.style_dict.get("draw_type", "LINE1"),
                 draw_name,
                 self.color,
-                ("%%-%ds" % (self.max_info_width)) % (self.info)[:self.max_info_width]),
+                ("{{:-{:d}s}}".format(self.max_info_width)).format(self.info)[:self.max_info_width]),
         )
         for rep_name, cf in [
             ("min"  , "MINIMUM"),
@@ -154,8 +154,8 @@ class graph_var(object):
             ("total", "TOTAL")]:
             c_lines.extend(
                 [
-                    "VDEF:%s%s=%s,%s" % (self.name, rep_name, self.name, cf),
-                    "GPRINT:%s%s:<tt>%%6.1lf%%s</tt>%s" % (
+                    "VDEF:{}{}={},{}".format(self.name, rep_name, self.name, cf),
+                    "GPRINT:{}{}:<tt>%6.1lf%s</tt>{}".format(
                         self.name, rep_name,
                         r"\l" if rep_name == "total" else r""
                         ),
@@ -164,9 +164,9 @@ class graph_var(object):
         return c_lines
     @property
     def header_line(self):
-        return "COMMENT:<tt>%s%s</tt>\\n" % (
-            ("%%-%ds" % (self.max_info_width + 2)) % ("value"),
-            "".join(["%9s" % (rep_name) for rep_name in ["min", "ave", "max", "latest", "total"]])
+        return "COMMENT:<tt>{}{}</tt>\\n".format(
+            ("{{:-{:d}s}}".format(self.max_info_width + 2)).format("value"),
+            "".join(["{:9s}".format(rep_name) for rep_name in ["min", "ave", "max", "latest", "total"]])
         )
 
 class graph_process(threading_tools.process_obj):
@@ -177,7 +177,7 @@ class graph_process(threading_tools.process_obj):
         self.register_func("xml_info", self._xml_info)
         self.vector_dict = {}
         self.graph_root = global_config["GRAPH_ROOT"]
-        self.log("graphs go into %s" % (self.graph_root))
+        self.log("graphs go into {}".format(self.graph_root))
         self.colorizer = colorizer(self)
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
         self.__log_template.log(log_level, what)
@@ -200,9 +200,9 @@ class graph_process(threading_tools.process_obj):
         dev_dict = dict([(cur_dev.pk, unicode(cur_dev.full_name)) for cur_dev in device.objects.filter(Q(pk__in=dev_pks))])
         graph_keys = sorted(srv_com.xpath(".//graph_key_list/graph_key/text()", smart_strings=False))
         graph_key_dict = self._create_graph_keys(graph_keys)
-        self.log("found device pks: %s" % (", ".join(["%d" % (pk) for pk in dev_pks])))
-        self.log("graph keys: %s" % (", ".join(graph_keys)))
-        self.log("top level keys (== distinct graphs): %d; %s" % (
+        self.log("found device pks: {}".format(", ".join(["{:d}".format(pk) for pk in dev_pks])))
+        self.log("graph keys: {}".format(", ".join(graph_keys)))
+        self.log("top level keys (== distinct graphs): {:d}; {}".format(
             len(graph_key_dict),
             ", ".join(sorted(graph_key_dict)),
             ))
@@ -219,15 +219,15 @@ class graph_process(threading_tools.process_obj):
         para_dict["timeframe"] = abs((para_dict["end_time"] - para_dict["start_time"]).total_seconds())
         graph_size = para_dict["size"]
         graph_width, graph_height = [int(value) for value in graph_size.split("x")]
-        self.log("width / height : %d x %d" % (graph_width, graph_height))
+        self.log("width / height : {:d} x {:d}".format(graph_width, graph_height))
         graph_list = E.graph_list()
         multi_dev_mode = len(dev_pks) > 1
         for tlk in sorted(graph_key_dict):
             graph_keys = graph_key_dict[tlk]
-            graph_name = "gfx_%s_%d.png" % (tlk, int(time.time()))
+            graph_name = "gfx_{}_{:d}.png".format(tlk, int(time.time()))
             abs_file_loc, rel_file_loc = (
                 os.path.join(self.graph_root, graph_name),
-                os.path.join("/%s/static/graphs/%s" % (settings.REL_SITE_ROOT, graph_name)),
+                os.path.join("/{}/static/graphs/{}".format(settings.REL_SITE_ROOT, graph_name)),
             )
             dt_1970 = datetime.datetime(1970, 1, 1)
             rrd_args = [
@@ -238,8 +238,8 @@ class graph_process(threading_tools.process_obj):
                     "normal",
                     "-P",
                     # "-nDEFAULT:8:",
-                    "-w %d" % (graph_width),
-                    "-h %d" % (graph_height),
+                    "-w {:d}".format(graph_width),
+                    "-h {:d}".format(graph_height),
                     "-a"
                     "PNG",
                     "--daemon",
@@ -249,9 +249,9 @@ class graph_process(threading_tools.process_obj):
                     "-cBACK#ffffff",
                     "--end",
                     # offset to fix UTC, FIXME
-                    "%d" % ((para_dict["end_time"] - dt_1970).total_seconds() - 1 * 3600),
+                    "{:d}".format((para_dict["end_time"] - dt_1970).total_seconds() - 1 * 3600),
                     "--start",
-                    "%d" % ((para_dict["start_time"] - dt_1970).total_seconds() - 1 * 3600),
+                    "{:d}".format((para_dict["start_time"] - dt_1970).total_seconds() - 1 * 3600),
                     graph_var(None, "", graph_width=graph_width).header_line,
             ]
             graph_var.init(self.colorizer)
@@ -260,41 +260,42 @@ class graph_process(threading_tools.process_obj):
                     dev_vector = self.vector_dict[cur_pk]
                     if graph_key.startswith("pde:"):
                         # performance data from icinga
-                        graph_pde = dev_vector.find(".//value[@name='%s']" % (graph_key))
+                        graph_pde = dev_vector.find(".//value[@name='{}']".format(graph_key))
                         if graph_pde is not None:
                             rrd_args.extend(graph_var(graph_pde, dev_dict[cur_pk], graph_width=graph_width).config)
                     else:
                         # machine vector entry
-                        graph_mve = dev_vector.find(".//mve[@name='%s']" % (graph_key))
+                        graph_mve = dev_vector.find(".//mve[@name='{}']".format(graph_key))
                         if graph_mve is not None:
                             rrd_args.extend(graph_var(graph_mve, dev_dict[cur_pk], graph_width=graph_width).config)
             if graph_var.var_idx:
                 rrd_args.extend([
                     "--title",
-                    "%s (%s, %s)" % (
-                                     tlk,
-                                     logging_tools.get_plural("DEF", graph_var.var_idx),
-                                     logging_tools.get_diff_time_str(para_dict["timeframe"])),
+                    "{} ({}, {})".format(
+                        tlk,
+                        logging_tools.get_plural("DEF", graph_var.var_idx),
+                        logging_tools.get_diff_time_str(para_dict["timeframe"])),
                 ])
                 try:
                     draw_result = rrdtool.graphv(*rrd_args)
                 except:
-                    self.log("error creating graph: %s" % (process_tools.get_except_info()), logging_tools.LOG_LEVEL_ERROR)
+                    self.log("error creating graph: {}".format(process_tools.get_except_info()), logging_tools.LOG_LEVEL_ERROR)
                     if global_config["DEBUG"]:
                         pprint.pprint(rrd_args)
                 else:
                     graph_list.append(
                         E.graph(
                             href=rel_file_loc,
-                            **dict([(key, "%d" % (value) if type(value) in [int, long] else "%.6f" % (value)) for key, value in draw_result.iteritems()])
+                            **dict([(key, "{:d}".format(value) if type(value) in [int, long] else "{:.6f}".format(value)) for key, value in draw_result.iteritems()])
                         )
                     )
             else:
-                self.log("no DEFs for graph_key_dict %s" % (tlk), logging_tools.LOG_LEVEL_ERROR)
+                self.log("no DEFs for graph_key_dict {}".format(tlk), logging_tools.LOG_LEVEL_ERROR)
         srv_com["graphs"] = graph_list
         # print srv_com.pretty_print()
         srv_com.set_result(
-            "generated %d %s" % (len(graph_list), "graph" if len(graph_list) == 1 else "graphs"),
-            server_command.SRV_REPLY_STATE_OK)
+            "generated {}".format(logging_tools.get_plural("graph", len(graph_list))),
+            server_command.SRV_REPLY_STATE_OK
+        )
         self.send_pool_message("send_command", src_id, unicode(srv_com))
 
