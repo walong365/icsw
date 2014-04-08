@@ -894,7 +894,7 @@ def build_running_list(s_info, options, **kwargs):
                 eff = int((num_nodes / (max_load * float(num_nodes - 1)) * mean_load + 1. / float(1 - num_nodes)) * 100)
             else:
                 eff = 0
-        cur_job.append(E.load("{:.2f} ({:3d} {{}})".format(mean_load, eff)))
+        cur_job.append(E.load("{:.2f} ({:3d} %)".format(mean_load, eff)))
         if options.show_stdoutstderr:
             cur_job.append(create_stdout_stderr(act_job, "stdout"))
             cur_job.append(create_stdout_stderr(act_job, "stderr"))
