@@ -48,7 +48,7 @@ class colorizer(object):
         self.colortables = etree.fromstring(file(global_config["COLORTABLE_FILE"], "r").read())
         self.color_tables = {}
         for c_table in self.colortables.findall(".//colortable[@name]"):
-            self.color_tables[c_table.get("name")] = ["#{:d}".format(color.get("rgb")) for color in c_table if self._check_color(color)]
+            self.color_tables[c_table.get("name")] = ["#{:s}".format(color.get("rgb")) for color in c_table if self._check_color(color)]
         self.log("read colortables from {}".format(global_config["COLORTABLE_FILE"]))
         self.color_rules = etree.fromstring(file(global_config["COLORRULES_FILE"], "r").read())
         self.log("read colorrules from {}".format(global_config["COLORRULES_FILE"]))

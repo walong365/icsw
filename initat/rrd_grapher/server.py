@@ -110,15 +110,23 @@ class server_process(threading_tools.process_pool):
             send_com = server_command.srv_command(command="disabled_hosts")
             _bld = send_com.builder()
             send_com["no_rrd_store"] = _bld.device_list(
-                *[_bld.device(pk="{:d}".format(cur_dev.pk), short_name="{}".format(cur_dev.name), full_name="{}".format(cur_dev.full_name)) for cur_dev in disabled_hosts]
-                ) 
-            print send_com.pretty_print()
+                *[
+                    _bld.device(
+                        pk="{:d}".format(cur_dev.pk),
+                        short_name="{}".format(cur_dev.name),
+                        full_name="{}".format(cur_dev.full_name),
+                        uuid="{}".format(cur_dev.uuid)
+                    ) for cur_dev in disabled_hosts]
+                )
+            snd_ok = 0
             for key in sorted(self._collectd_sockets):
                 try:
-                    self._collectd_sockets[key].send_unicode("disabled_hosts", zmq.SNDMORE)
                     self._collectd_sockets[key].send_unicode(unicode(send_com))
                 except:
                     self.log("error sending to {}: {}".format(key, process_tools.get_except_info()), logging_tools.LOG_LEVEL_ERROR)
+                else:
+                    snd_ok += 1
+            self.log("sent command, {:d} OK, {:d} with problems".format(snd_ok, len(self._collectd_sockets) - snd_ok))
     def _check_for_stale_rrds(self):
         cur_time = time.time()
         # set stale after two hours
@@ -234,7 +242,7 @@ class server_process(threading_tools.process_pool):
         collectd_hosts = ["127.0.0.1"]
         self._collectd_sockets = {}
         for _ch in collectd_hosts:
-            _cs = self.zmq_context.socket(zmq.ROUTER)
+            _cs = self.zmq_context.socket(zmq.DEALER)
             _id_str = "{}:{}:rrd_cs".format(uuid_tools.get_uuid().get_urn(), _ch)
             _cs.setsockopt(zmq.IDENTITY, self.bind_id)
             _cs.setsockopt(zmq.SNDHWM, 256)
@@ -242,7 +250,7 @@ class server_process(threading_tools.process_pool):
             _cs.setsockopt(zmq.TCP_KEEPALIVE, 1)
             _cs.setsockopt(zmq.TCP_KEEPALIVE_IDLE, 300)
             _conn_str = "tcp://{}:{:d}".format(_ch, CD_COM_PORT)
-            self.log("connection string for {} is {}".format(_ch, _conn_str))
+            self.log("connection string for collectd at {} is {}".format(_ch, _conn_str))
             _cs.connect(_conn_str)
             self._collectd_sockets[_ch] = _cs
     def _interpret_mv_info(self, in_vector):
@@ -332,7 +340,7 @@ class server_process(threading_tools.process_pool):
             self.__msi_block.remove_meta_block()
     def loop_post(self):
         self.com_socket.close()
-        for key, _sock in self._collectd_sockets:
+        for key, _sock in self._collectd_sockets.iteritems():
             _sock.close()
         self.__log_template.close()
     def thread_loop_post(self):
