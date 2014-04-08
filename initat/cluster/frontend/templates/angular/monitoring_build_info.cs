@@ -52,7 +52,7 @@ monitoring_build_info_module.controller("info_ctrl", ["$scope", "$compile", "$fi
                 return diff + "s"
             else
                 return "< 1s"
-        $scope.get_runtime = (master) ->
+        $scope.get_run_time = (master) ->
             if master.build_start and master.build_end
                 return $scope._runtime(moment(master.build_end).diff(moment(master.build_start), "seconds"))
             else
@@ -66,6 +66,14 @@ monitoring_build_info_module.controller("info_ctrl", ["$scope", "$compile", "$fi
             if slave
                 if slave.sync_end and slave.sync_start
                     return $scope._runtime(moment(slave.sync_end).diff(moment(slave.sync_start), "seconds"))
+                else
+                    return "---"
+            else
+                return "---"
+        $scope.get_conf_time = (obj) ->
+            if obj
+                if obj.config_build_end and obj.config_build_start
+                    return $scope._runtime(moment(obj.config_build_end).diff(moment(obj.config_build_start), "seconds"))
                 else
                     return "---"
             else
