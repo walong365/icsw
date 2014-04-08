@@ -144,7 +144,7 @@ class graph_var(object):
                 self.style_dict.get("draw_type", "LINE1"),
                 draw_name,
                 self.color,
-                ("{{:-{:d}s}}".format(self.max_info_width)).format(self.info)[:self.max_info_width]),
+                ("{{:<{:d}s}}".format(self.max_info_width)).format(self.info)[:self.max_info_width]),
         )
         for rep_name, cf in [
             ("min"  , "MINIMUM"),
@@ -165,7 +165,7 @@ class graph_var(object):
     @property
     def header_line(self):
         return "COMMENT:<tt>{}{}</tt>\\n".format(
-            ("{{:-{:d}s}}".format(self.max_info_width + 2)).format("value"),
+            ("{{:<{:d}s}}".format(self.max_info_width + 2)).format("value"),
             "".join(["{:9s}".format(rep_name) for rep_name in ["min", "ave", "max", "latest", "total"]])
         )
 
@@ -249,9 +249,9 @@ class graph_process(threading_tools.process_obj):
                     "-cBACK#ffffff",
                     "--end",
                     # offset to fix UTC, FIXME
-                    "{:d}".format((para_dict["end_time"] - dt_1970).total_seconds() - 1 * 3600),
+                    "{:d}".format(int((para_dict["end_time"] - dt_1970).total_seconds() - 1 * 3600)),
                     "--start",
-                    "{:d}".format((para_dict["start_time"] - dt_1970).total_seconds() - 1 * 3600),
+                    "{:d}".format(int((para_dict["start_time"] - dt_1970).total_seconds() - 1 * 3600)),
                     graph_var(None, "", graph_width=graph_width).header_line,
             ]
             graph_var.init(self.colorizer)
