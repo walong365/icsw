@@ -120,11 +120,12 @@ class host_list_com(base_com):
             h_list = h_list[0]
             print "got result for {}:".format(logging_tools.get_plural("host", int(h_list.attrib["entries"])))
             for host in h_list:
-                print "{:<30s} ({:<40s}) : {:4d} keys, last update {}".format(
+                print "{:<30s} ({:<40s}) : {:4d} keys, last update {}, store_to_disk is {}".format(
                     host.attrib["name"],
                     host.attrib["uuid"],
                     int(host.attrib["keys"]),
-                    time.ctime(int(host.attrib["last_update"]))
+                    time.ctime(int(host.attrib["last_update"])),
+                    "enabled" if int(host.get("store_to_disk", "1")) else "disabled",
                     )
             pass
         else:

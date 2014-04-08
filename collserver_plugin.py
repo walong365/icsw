@@ -251,6 +251,7 @@ class host_info(object):
         self.last_update = None
         self.updates = 0
         self.stores = 0
+        self.store_to_disk = True
     def get_host_info(self):
         return E.host_info(
             name=self.name,
@@ -261,6 +262,7 @@ class host_info(object):
             updates="{:d}".format(self.updates),
             # store calls (short info)
             stores="{:d}".format(self.stores),
+            store_to_disk="1" if self.store_to_disk else "0",
             )
     def get_key_list(self, key_filter):
         h_info = self.get_host_info()
@@ -310,6 +312,8 @@ class host_info(object):
         cur_time = time.time()
         values = [self.transform(entry.attrib[name_name], entry.attrib[value_name], cur_time) for entry in _xml.findall(tag_name)]
         return values
+    def __unicode__(self):
+        return "{} ({})".format(self.name, self.uuid)
 
 class net_receiver(multiprocessing.Process):
     def __init__(self):
@@ -439,29 +443,77 @@ class net_receiver(multiprocessing.Process):
     def _recv_command(self, in_sock):
         in_uuid = in_sock.recv_unicode()
         in_xml = in_sock.recv_unicode()
-        in_com = server_command.srv_command(source=in_xml)
-        in_com.update_source()
-        com_text = in_com["command"].text
+        try:
+            in_com = server_command.srv_command(source=in_xml)
+        except:
+            collectd.error("error decoding command {}: {}".format(in_xml, process_tools.get_except_info))
+        else:
+            in_com.update_source()
+            com_text = in_com["command"].text
+            collectd.info("got command {} from {}".format(com_text, in_uuid))
+            if com_text in ["host_list", "key_list"]:
+                self._handle_hk_command(in_com, com_text)
+            elif com_text == "disabled_hosts":
+                self._handle_disabled_hosts(in_com, com_text)
+            else:
+                collectd.error("unknown command {}".format(com_text))
+                in_com.set_result(
+                    "unknown command {}".format(com_text),
+                    server_command.SRV_REPLY_STATE_ERROR
+                    )
+            in_sock.send_unicode(in_uuid, zmq.SNDMORE)
+            in_sock.send_unicode(unicode(in_com))
+    def _handle_disabled_hosts(self, in_com, com_text):
+        uuids_to_disable = set(in_com.xpath(".//ns:device/@uuid")) & set(self.__hosts.keys())
+        cur_disabled = set([key for key, value in self.__hosts.iteritems() if not value.store_to_disk])
+        to_disable = uuids_to_disable - cur_disabled
+        to_enable = cur_disabled - uuids_to_disable
+        if to_disable or to_enable:
+            collectd.warning(
+                "{} to disable, {} to enable".format(
+                    logging_tools.get_plural("UUID", len(to_disable)),
+                    logging_tools.get_plural("UUID", len(to_enable)),
+                )
+            )
+            for _to_dis in to_disable:
+                _host = self.__hosts[_to_dis]
+                _host.store_to_disk = False
+                collectd.warning("disabled {}".format(unicode(_host)))
+            for _to_en in to_enable:
+                _host = self.__hosts[_to_dis]
+                _host.store_to_disk = True
+                collectd.warning("enabled {}".format(unicode(_host)))
+    def _handle_hk_command(self, in_com, com_text):
         h_filter, k_filter = (
             in_com.get("host_filter", ".*"),
             in_com.get("key_filter", ".*")
+        )
+        collectd.info(
+            "host_filter: {}, key_filter: {}".format(
+                h_filter,
+                k_filter,
             )
-        collectd.info("got command {} from {} (host_filter: {}, key_filter: {})".format(
-            com_text,
-            in_uuid,
-            h_filter,
-            k_filter,
-            ))
+        )
         try:
             host_filter = re.compile(h_filter)
         except:
             host_filter = re.compile(".*")
-            collectd.error("error interpreting '{}' as host re: {}".format(h_filter, process_tools.get_except_info()))
+            collectd.error(
+                "error interpreting '{}' as host re: {}".format(
+                    h_filter,
+                    process_tools.get_except_info()
+                )
+            )
         try:
             key_filter = re.compile(k_filter)
         except:
             key_filter = re.compile(".*")
-            collectd.error("error interpreting '{}' as key re: {}".format(k_filter, process_tools.get_except_info()))
+            collectd.error(
+                "error interpreting '{}' as key re: {}".format(
+                    k_filter,
+                    process_tools.get_except_info()
+                )
+            )
         match_uuids = [_value[1] for _value in sorted([(self.__hosts[cur_uuid].name, cur_uuid) for cur_uuid in self.__hosts.keys() if host_filter.match(self.__hosts[cur_uuid].name)])]
         if com_text == "host_list":
             result = E.host_list(entries="{:d}".format(len(match_uuids)))
@@ -474,8 +526,6 @@ class net_receiver(multiprocessing.Process):
                 result.append(self.__hosts[cur_uuid].get_key_list(key_filter))
             in_com["result"] = result
         in_com.set_result("got command {}".format(com_text))
-        in_sock.send_unicode(in_uuid, zmq.SNDMORE)
-        in_sock.send_unicode(unicode(in_com))
     def _feed_host_info(self, host_uuid, host_name, _xml):
         if host_uuid not in self.__hosts:
             self.__hosts[host_uuid] = host_info(host_uuid, host_name)
@@ -539,6 +589,9 @@ class net_receiver(multiprocessing.Process):
         else:
             if not simple:
                 self._feed_host_info(host_uuid, host_name, _xml)
+            if not self.__hosts[host_uuid].store_to_disk:
+                # writing to disk not allowed
+                raise StopIteration
             values = self.__hosts[host_uuid].get_values(_xml, simple)
             r_data = (host_name, recv_time, values)
             yield r_data
