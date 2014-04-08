@@ -480,7 +480,7 @@ class net_receiver(multiprocessing.Process):
                 _host.store_to_disk = False
                 collectd.warning("disabled {}".format(unicode(_host)))
             for _to_en in to_enable:
-                _host = self.__hosts[_to_dis]
+                _host = self.__hosts[_to_en]
                 _host.store_to_disk = True
                 collectd.warning("enabled {}".format(unicode(_host)))
     def _handle_hk_command(self, in_com, com_text):
