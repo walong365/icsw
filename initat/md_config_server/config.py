@@ -50,6 +50,17 @@ import time
 
 global_config = configfile.get_global_config(process_tools.get_programm_name())
 
+class generic_cache(object):
+    # stores various cached objects
+    def __init__(self):
+        # global luts
+        # lookup table for host_check_commands
+        self.mcc_lut = {key : (v0, v1, v2) for key, v0, v1, v2 in mon_check_command.objects.all().values_list("pk", "name", "description", "config__name")}
+        # lookup table for config -> mon_check_commands
+        self.mcc_lut_2 = {}
+        for v_list in mon_check_command.objects.all().values_list("name", "config__name"):
+            self.mcc_lut_2.setdefault(v_list[1], []).append(v_list[0])
+
 class var_cache(dict):
     def __init__(self, cdg):
         super(var_cache, self).__init__(self)
@@ -1503,10 +1514,11 @@ class all_service_groups(host_type_config):
     def _add_servicegroups_from_db(self):
         for cat_pk in self.cat_tree.get_sorted_pks():
             cur_cat = self.cat_tree[cat_pk]
-            nag_conf = nag_config("servicegroup",
-                                  cur_cat.full_name,
-                                  servicegroup_name=cur_cat.full_name,
-                                  alias="%s group" % (cur_cat.full_name))
+            nag_conf = nag_config(
+                "servicegroup",
+                cur_cat.full_name,
+                servicegroup_name=cur_cat.full_name,
+                alias="%s group" % (cur_cat.full_name))
             self.__host_srv_lut[cur_cat.full_name] = set()
             self.__dict[cur_cat.pk] = nag_conf
             self.__obj_list.append(nag_conf)
@@ -1704,7 +1716,8 @@ class all_commands(host_type_config):
                 ngc_name = _ngc_name
             _nag_name = command_names.add(ngc_name)
             if ngc.pk:
-                cats = ngc.categories.all().values_list("full_name", flat=True)
+                # print ngc.categories.all()
+                cats = [cur_cat.full_name for cur_cat in ngc.categories.all()] # .values_list("full_name", flat=True)
             else:
                 cats = [TOP_MONITORING_CATEGORY]
             cc_s = check_command(
@@ -1746,16 +1759,18 @@ class all_contacts(host_type_config):
     def get_name(self):
         return "contact"
     def _add_contacts_from_db(self, gen_conf):
+        all_nots = mon_notification.objects.all()
         for contact in mon_contact.objects.all().select_related("user"):
             full_name = ("%s %s" % (contact.user.first_name, contact.user.last_name)).strip().replace(" ", "_")
             if not full_name:
                 full_name = contact.user.login
-            not_h_list = list(contact.notifications.filter(Q(channel="mail") & Q(not_type="host") & Q(enabled=True)))
-            not_s_list = list(contact.notifications.filter(Q(channel="mail") & Q(not_type="service") & Q(enabled=True)))
+            not_h_list = [entry for entry in all_nots if entry.channel == "mail" and entry.not_type == "host" and entry.enabled]
+            # not_s_list = list(contact.notifications.filter(Q(channel="mail") & Q(not_type="service") & Q(enabled=True)))
+            not_s_list = [entry for entry in all_nots if entry.channel == "mail" and entry.not_type == "service" and entry.enabled]
             if len(contact.user.pager) > 5:
                 # check for pager number
-                not_h_list.extend(list(contact.notifications.filter(Q(channel="sms") & Q(not_type="host") & Q(enabled=True))))
-                not_s_list.extend(list(contact.notifications.filter(Q(channel="sms") & Q(not_type="service") & Q(enabled=True))))
+                not_h_list.extend([entry for entry in all_nots if entry.channel == "sms" and entry.not_type == "host" and entry.enabled])
+                not_s_list.extend([entry for entry in all_nots if entry.channel == "sms" and entry.not_type == "service" and entry.enabled])
             if contact.mon_alias:
                 alias = contact.mon_alias
             elif contact.user.comment:
@@ -1841,7 +1856,10 @@ class all_contact_groups(host_type_config):
                 alias=cg_group.alias)
             self.__dict[cg_group.pk] = nag_conf
             for member in cg_group.members.all():
-                nag_conf["members"] = gen_conf["contact"][member.pk]["contact_name"]
+                try:
+                    nag_conf["members"] = gen_conf["contact"][member.pk]["contact_name"]
+                except:
+                    pass
         self.__obj_list = self.__dict.values()
     def has_key(self, key):
         return self.__dict.has_key(key)
@@ -1881,7 +1899,7 @@ class all_host_groups(host_type_config):
                         members="-")
                     self.__dict[h_group.pk] = nag_conf
                     self.__obj_list.append(nag_conf)
-                    nag_conf["members"] = ",".join([cur_dev.full_name for cur_dev in h_group.device_group.filter(Q(pk__in=host_pks))])
+                    nag_conf["members"] = ",".join([cur_dev.full_name for cur_dev in h_group.device_group.filter(Q(pk__in=host_pks)).select_related("domain_tree_node")])
                 # hostgroups by categories
                 for cat_pk in self.cat_tree.get_sorted_pks():
                     cur_cat = self.cat_tree[cat_pk]
@@ -1891,7 +1909,7 @@ class all_host_groups(host_type_config):
                         hostgroup_name=cur_cat.full_name,
                         alias=cur_cat.comment or cur_cat.full_name,
                         members="-")
-                    nag_conf["members"] = ",".join([cur_dev.full_name for cur_dev in cur_cat.device_set.filter(host_filter)])
+                    nag_conf["members"] = ",".join([cur_dev.full_name for cur_dev in cur_cat.device_set.filter(host_filter).select_related("domain_tree_node")])
                     if nag_conf["members"]:
                         self.__obj_list.append(nag_conf)
             else:

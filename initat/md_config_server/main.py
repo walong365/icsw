@@ -26,6 +26,7 @@ import os
 
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "initat.cluster.settings")
 
+from django.conf import settings
 from initat.cluster.backbone.models import log_source
 from initat.md_config_server.config import global_config
 from initat.md_config_server.constants import SERVER_COM_PORT, IDOMOD_PROCESS_TIMED_EVENT_DATA, \
@@ -64,6 +65,7 @@ def main():
             VERSION_STRING),
         add_writeback_option=True,
         positional_arguments=False)
+    settings.DEBUG = global_config["DEBUG"]
     global_config.write_file()
     sql_info = config_tools.server_check(server_type="monitor_server")
     if not sql_info.effective_device:
