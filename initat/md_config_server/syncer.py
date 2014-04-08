@@ -103,7 +103,7 @@ class syncer_process(threading_tools.process_obj):
                 port="0",
                 master_ip=master_ip,
                 master_port="{:d}".format(constants.SERVER_COM_PORT))
-            self.log("send register_master to {} (master IP {}, UUID {})".format(unicode(_srv), master_ip, _srv.uuid))
+            self.log(u"send register_master to {} (master IP {}, UUID {})".format(unicode(_srv), master_ip, _srv.uuid))
             self.send_command(_srv.uuid, unicode(srv_com))
     def send_command(self, src_id, srv_com):
         self.send_pool_message("send_command", "urn:uuid:{}:relayer".format(src_id), srv_com)

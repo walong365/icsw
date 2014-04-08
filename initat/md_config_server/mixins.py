@@ -64,7 +64,7 @@ class version_check_mixin(object):
                 ("MD_VERSION"       , configfile.int_c_var(int(md_version.split(".")[0]))),
                 ("MD_RELEASE"       , configfile.int_c_var(int(md_version.split(".")[1]))),
                 ("MD_VERSION_STRING", configfile.str_c_var(md_version)),
-                ("MD_BASEDIR"       , configfile.str_c_var(os.path.join("/otp", md_type))),
+                ("MD_BASEDIR"       , configfile.str_c_var(os.path.join("/opt", md_type))),
                 ("MAIN_CONFIG_NAME" , configfile.str_c_var(md_type)),
                 ("MD_LOCK_FILE"     , configfile.str_c_var("{}.lock".format(md_type))),
             ])
