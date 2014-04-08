@@ -230,6 +230,10 @@ class device_info_form(ModelForm):
                 ),
             ),
             Fieldset(
+                "RRD / graph settings",
+                Field("store_rrd_data"),
+            ),
+            Fieldset(
                 "Info",
                 Div(
                     Div(
@@ -256,7 +260,9 @@ class device_info_form(ModelForm):
     class Meta:
         model = device
         fields = ["name", "comment", "monitor_checks", "domain_tree_node", "mon_device_templ",
-                  "enable_perfdata", "flap_detection_enabled", "mon_resolve_name", "curl"]
+                  "enable_perfdata", "flap_detection_enabled", "mon_resolve_name", "curl",
+                  "store_rrd_data",
+                  ]
 
 class dummy_password_form(Form):
     helper = FormHelper()
