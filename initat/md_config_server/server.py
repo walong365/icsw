@@ -23,7 +23,6 @@ import os
 
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "initat.cluster.settings")
 
-# from intiat.md_config_server.version import VERSION_STRING
 from django.db import connection, connections
 from django.db.models import Q
 from initat.cluster.backbone.models import mon_notification, config_str, config_int
@@ -36,11 +35,9 @@ from initat.md_config_server.status import status_process, live_socket
 from initat.md_config_server.syncer import syncer_process
 import cluster_location
 import codecs
-import commands
 import configfile
 import logging_tools
 import process_tools
-import re
 import server_command
 import threading_tools
 import time

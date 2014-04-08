@@ -341,7 +341,9 @@ class build_process(threading_tools.process_obj, version_check_mixin):
                 if cur_gc.master and not single_build:
                     # recreate access files
                     cur_gc._create_access_entries()
+                self.send_to_socket(self.syncer_socket, ["build_info", "start_config_build", cur_gc.monitor_server.full_name])
                 self._create_host_config_files(build_dv, cur_gc, h_list, dev_templates, serv_templates, var_stack, cur_dmap, single_build, hdep_from_topo)
+                self.send_to_socket(self.syncer_socket, ["build_info", "end_config_build", cur_gc.monitor_server.full_name])
                 if not single_build:
                     # refresh implies _write_entries
                     cur_gc.refresh()

@@ -131,6 +131,7 @@ class syncer_process(threading_tools.process_obj):
         else:
             self.log("uuid missing in relayer_info", logging_tools.LOG_LEVEL_ERROR)
     def _build_info(self, *args, **kwargs):
+        # build info send from relayer
         _vals = list(args)
         _bi_type = _vals.pop(0)
         if _bi_type == "start_build":
@@ -147,6 +148,14 @@ class syncer_process(threading_tools.process_obj):
             # trigger reload when sync is done
             for _slave in self.__slave_configs.itervalues():
                 _slave.reload_after_sync()
+        elif _bi_type in ["start_config_build", "end_config_build"]:
+            _srv_name = _vals.pop(0)
+            if _srv_name in self.__slave_lut:
+                # slave
+                self.__slave_configs[self.__slave_lut[_srv_name]].config_ts(_bi_type.split("_")[0])
+            else:
+                # master
+                self.__master_config.config_ts(_bi_type.split("_")[0])
         elif _bi_type == "sync_slave":
             slave_name = _vals.pop(0)
             if slave_name in self.__slave_lut:

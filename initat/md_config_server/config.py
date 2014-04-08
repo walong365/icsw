@@ -25,7 +25,6 @@ from initat.cluster.backbone.models import device, device_group, device_variable
      mon_check_command, mon_period, mon_contact, mon_contactgroup, mon_service_templ, \
      user, category_tree, TOP_MONITORING_CATEGORY, mon_notification, host_check_command , \
      mon_dist_master, mon_dist_slave, cluster_timezone
-from initat.host_monitoring.version import VERSION_STRING as RELAYER_VERSION_STRING
 from initat.md_config_server.version import VERSION_STRING
 from lxml.builder import E # @UnresolvedImport
 import ConfigParser
@@ -46,6 +45,7 @@ import server_command
 import shutil
 import sqlite3
 import stat
+import sys
 import time
 
 global_config = configfile.get_global_config(process_tools.get_programm_name())
@@ -89,7 +89,7 @@ class var_cache(dict):
 class sync_config(object):
     def __init__(self, proc, monitor_server, **kwargs):
         """
-        holds information about remote monitoring sattelites
+        holds information about remote monitoring satellites
         """
         self.__process = proc
         self.__slave_name = kwargs.get("slave_name", None)
@@ -147,7 +147,7 @@ class sync_config(object):
         # flag for reload after sync
         self.reload_after_sync_flag = False
         # relayer info
-        self.relayer_version = RELAYER_VERSION_STRING if self.master else "?.?-0"
+        self.relayer_version = "?.?-0"
         self.mon_version = "?.?-0"
         if not self.master:
             # try to get relayer / mon_version from latest build
@@ -217,20 +217,32 @@ class sync_config(object):
         if not self.dist_ok and self.config_version_build != self.config_version_installed and abs(self.send_time - time.time()) > 60:
             self.log("resending files")
             self.distribute()
+    def config_ts(self, ts_type):
+        # set config timestmap
+        setattr(self.__md_struct, "config_build_{}".format(ts_type), cluster_timezone.localize(datetime.datetime.now()))
+        self.__md_struct.save()
     def start_build(self, b_version, master=None):
         # generate datbase entry for build
         self.config_version_build = b_version
         if self.master:
+            # re-check relayer version for master
+            if "initat.host_monitoring.version" in sys.modules:
+                del sys.modules["initat.host_monitoring.version"]
+            from initat.host_monitoring.version import VERSION_STRING as RELAYER_VERSION_STRING
+            self.relayer_version = RELAYER_VERSION_STRING
             _mon_version = global_config["MD_VERSION_STRING"]
             if _mon_version.split(".")[-1] in ["x86_64", "i586", "i686"]:
                 _mon_version = ".".join(_mon_version.split(".")[:-1])
+            self.mon_version = _mon_version
+            self.log("mon / relayer version for master is {} / {}".format(self.mon_version, self.relayer_version))
             _md = mon_dist_master(
                 device=self.monitor_server,
                 version=self.config_version_build,
                 build_start=cluster_timezone.localize(datetime.datetime.now()),
                 relayer_version=self.relayer_version,
+                # monitorig daemon
                 md_version=VERSION_STRING,
-                mon_version=_mon_version,
+                mon_version=self.mon_version,
                 )
         else:
             self.__md_master = master
