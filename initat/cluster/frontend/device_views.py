@@ -72,6 +72,7 @@ class change_devices(View):
                 "bootserver" : None,
                 "monitor_server" : None,
                 "enabled" : False,
+                "store_rrd_data" : False,
                 }
             # build change_dict
             c_dict = {key[7:] : c_dict.get(key[7:], def_dict.get(key[7:], None)) for key in c_dict.iterkeys() if key.startswith("change_") and c_dict[key]}

@@ -30,6 +30,7 @@
     <th>Description</th>
     <th>TLN</th>
     <th>Enabled</th>
+    <th>RRDstore</th>
     <th>Type</th>
     <th>MonMaster</th>
     <th>BootServer</th>
@@ -43,7 +44,7 @@
     <td>{{ obj.device_group_obj.description }}</td>
     <td>{{ obj.device_group_obj.domain_tree_node | array_lookup:this.rest_data.domain_tree_node | show_dtn }}</td>
     <td></td>
-    <td colspan=4></td>
+    <td colspan=5></td>
     <td><input type="button" class="btn btn-primary btn-sm" ng-click="edit('device_group', $event, obj.device_group_obj)" value="modify"/></td>
     <td></td>
 </script> 
@@ -59,6 +60,7 @@
     <td>{{ obj.device_group_obj.description }}</td>
     <td>{{ obj.device_group_obj.domain_tree_node | array_lookup:this.rest_data.domain_tree_node | show_dtn }}</td>
     <td>{{ obj.device_group_obj.enabled | yesno1 }}</td>
+    <td></td>
     <td>{{ obj.device_group_obj.num_devices }} devices</td>
     <td colspan="3" class="text-right">
         <input type="button btn-success" class="btn btn-success btn-sm" ng-click="create('device', $event, obj.device_group_obj)" value="create device"/>
@@ -80,6 +82,7 @@
         <span ng-show="obj.device_group_obj.enabled">{{ obj.enabled | yesno1 }}</span>
         <span ng-show="!obj.device_group_obj.enabled"><em>{{ obj.enabled | yesno1 }}</em></span>
     </td>
+    <td>{{ obj.store_rrd_data | yesno2 }}</td>
     <td>{{ obj.device_type | array_lookup:this.rest_data.device_type:"description" }}</td>
     <td>{{ obj.monitor_server | array_lookup:this.rest_data.monitor_server:"full_name" }}</td>
     <td>{{ obj.bootserver | array_lookup:this.rest_data.mother_server:"full_name" }}</td>
@@ -94,8 +97,8 @@
         <div class="btn-group">
             <input type="button" class="btn btn-primary" value="create device" ng-show="dg_present()" ng-click="create('device', $event)"></button>
             <input type="button" class="btn btn-success" value="create devicegroup" ng-click="create('device_group', $event)"></button>
-            <input ng-show="num_selected()" type="button" class="btn btn-warning" value="modify selected" ng-click="edit_many($event)"></button>
-            <input ng-show="num_selected()" type="button" class="btn btn-danger" value="delete selected" ng-click="delete_many($event)"></button>
+            <input ng-show="num_selected() > 1" type="button" class="btn btn-warning" value="modify selected" ng-click="edit_many($event)"></button>
+            <input ng-show="num_selected() > 1" type="button" class="btn btn-danger" value="delete selected" ng-click="delete_many($event)"></button>
         </div>
     </h2>
     <form class="form-inline">

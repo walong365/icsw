@@ -1892,6 +1892,7 @@ class device_tree_form(ModelForm):
                         css_class="col-md-6",
                     ),
                     Div(
+                        Field("store_rrd_data"),
                         css_class="col-md-6",
                     ),
                     css_class="row",
@@ -1926,6 +1927,7 @@ class device_tree_many_form(ModelForm):
     change_bootserver = BooleanField(label="Bootserver", required=False)
     change_monitor_server = BooleanField(label="MonitorServer", required=False)
     change_enabled = BooleanField(label="EnabledFlag", required=False)
+    change_store_rrd_data = BooleanField(label="store RRD data", required=False)
     helper.layout = Layout(
         HTML("<h2>Change settings of {%verbatim %}{{ num_selected() }}{% endverbatim %} devices</h2>"),
     )
@@ -1947,6 +1949,7 @@ class device_tree_many_form(ModelForm):
         (
             "Flags", [
                 ("enabled", None, {}),
+                ("store_rrd_data", None, {}),
             ]
         ),
         ]:
