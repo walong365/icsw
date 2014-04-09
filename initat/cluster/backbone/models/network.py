@@ -194,10 +194,10 @@ def network_pre_save(sender, **kwargs):
         _mask = 0
         any_match = False
         for _idx in xrange(32, 0, -1):
-            _mask = _mask + 2 ** (_idx - 1)
             if _mask == ip_dict["netmask"].value():
                 any_match = True
                 break
+            _mask = _mask + 2 ** (_idx - 1)
         if not any_match:
             raise ValidationError("netmask is not valid")
         ip_dict["network"] = ip_dict["network"] & ip_dict["netmask"]
@@ -332,7 +332,7 @@ class network_with_ip_serializer(serializers.ModelSerializer):
         model = network
 
 class net_ip_serializer(serializers.ModelSerializer):
-    network = network_serializer()
+    # network = network_serializer()
     class Meta:
         model = net_ip
 

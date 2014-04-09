@@ -331,7 +331,7 @@ PIPELINE_CSS = {
             "css/main.css",
             "js/libs/dynatree/skin/ui.dynatree.css",
             "js/libs/chosen/chosen.min.css",
-            "js/libs/angular-chosen-1.0.5/chosen-spinner.css",
+            "js/libs/angular-chosen-1.0.6/chosen-spinner.css",
             "css/jquery.dataTables.css",
             "css/msdropdown/dd.css",
             "css/jqModal.css",
@@ -341,6 +341,8 @@ PIPELINE_CSS = {
             "css/angular-datetimepicker.css",
             "js/libs/select2/select2.css",
             "js/libs/select2/select2-bootstrap.css",
+            # hm, not working
+            # "js/libs/ui-select-0.2.0/select.css",
         },
         "output_filename" : "pipeline/css/part1.css"
     }
@@ -383,7 +385,6 @@ PIPELINE_JS = {
         "source_filenames" : {
             "js/jquery.dataTables.rowGrouping.js",
             "js/codemirror/addon/selection/active-line.js",
-            "js/libs/select2/ui-select2.js",
             "js/codemirror/python.js",
             "js/codemirror/xml.js",
             "js/codemirror/shell.js",
@@ -393,8 +394,10 @@ PIPELINE_JS = {
             "js/libs/angular-cookies.min.js",
             "js/libs/angular-sanitize.min.js",
             "js/libs/angular-animate.min.js",
-            "js/libs/angular-chosen-1.0.5/chosen.js",
+            "js/libs/angular-chosen-1.0.6/chosen.js",
             "js/libs/restangular.min.js",
+            # hm, not working
+            # "js/libs/ui-select-0.2.0/select.js",
             "js/libs/ui-bootstrap.min.js",
             "js/libs/ui-bootstrap-tpls.min.js",
             # now in common_function as coffeescript
