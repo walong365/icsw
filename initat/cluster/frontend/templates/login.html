@@ -68,7 +68,6 @@ login_module = angular.module("icsw.login", ["ngResource", "ngCookies", "ngSanit
 login_module.controller("login_ctrl", ["$scope",
     ($scope) ->
         $scope.login_hints = {{ login_hints | safe }}
-        console.log $scope.login_hints
         $scope.medium_screen = () ->
             $("input#id_username").focus()
             return "{{ LOGIN_SCREEN_TYPE }}" == "medium"

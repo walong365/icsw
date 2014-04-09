@@ -203,7 +203,7 @@ class device_info_form(ModelForm):
     helper.ng_model = "_edit_obj"
     helper.layout = Layout(
         Div(
-            HTML("<h2>Category details for '{% verbatim %}{{ _edit_obj.name }}{% endverbatim %}'</h2>"),
+            HTML("<h2>Device details for '{% verbatim %}{{ _edit_obj.name }}{% endverbatim %}'</h2>"),
             Fieldset(
                 "Device details",
                 Field("name"),
@@ -212,9 +212,10 @@ class device_info_form(ModelForm):
                 Field("comment"),
                 Field("curl"),
             ),
+            # HTML("<ui-select ng-model='_edit_obj.domain_tree_node'><choices repeat='value in domain_tree_node'>dd</choices></ui-select>"),
             Fieldset(
                 "Monitor settings",
-                Field("mon_device_templ", ng_options="value.idx as value.name for value in mon_device_templ_list", chosen=True),
+                # Field("mon_device_templ", ng_options="value.idx as value.name for value in mon_device_templ_list", chosen=True),
                 Div(
                     Div(
                         Field("monitor_checks"),
@@ -744,7 +745,8 @@ class network_form(ModelForm):
     helper.form_class = 'form-horizontal'
     helper.label_class = 'col-sm-3'
     helper.field_class = 'col-sm-7'
-    helper.ng_model = "edit_obj"
+    helper.ng_model = "_edit_obj"
+    helper.ng_submit = "edit_mixin.modify()"
     master_network = ModelChoiceField(queryset=empty_query_set(), empty_label="No master network", required=False)
     network_type = ModelChoiceField(queryset=empty_query_set(), empty_label=None)
     network_device_type = ModelMultipleChoiceField(queryset=empty_query_set(), required=False)
@@ -752,24 +754,24 @@ class network_form(ModelForm):
         HTML("<h2>Network</h2>"),
             Fieldset(
                 "Base data",
-                Field("identifier", wrapper_class="ng-class:form_error('identifier')", placeholder="Identifier"),
-                Field("network"   , wrapper_class="ng-class:form_error('network')"   , ng_pattern="/^\d+\.\d+\.\d+\.\d+$/", placeholder="Network"),
-                Field("netmask"   , wrapper_class="ng-class:form_error('netmask')"   , ng_pattern="/^\d+\.\d+\.\d+\.\d+$/", placeholder="Netmask"),
-                Field("broadcast" , wrapper_class="ng-class:form_error('broadcast')" , ng_pattern="/^\d+\.\d+\.\d+\.\d+$/", placeholder="Broadcast"),
-                Field("gateway"   , wrapper_class="ng-class:form_error('gateway')"   , ng_pattern="/^\d+\.\d+\.\d+\.\d+$/", placeholder="Gateway"),
+                Field("identifier", wrapper_class="ng-class:edit_mixin.form_error('identifier')", placeholder="Identifier"),
+                Field("network"   , wrapper_class="ng-class:edit_mixin.form_error('network')"   , ng_pattern="/^\d+\.\d+\.\d+\.\d+$/", placeholder="Network"),
+                Field("netmask"   , wrapper_class="ng-class:edit_mixin.form_error('netmask')"   , ng_pattern="/^\d+\.\d+\.\d+\.\d+$/", placeholder="Netmask"),
+                Field("broadcast" , wrapper_class="ng-class:edit_mixin.form_error('broadcast')" , ng_pattern="/^\d+\.\d+\.\d+\.\d+$/", placeholder="Broadcast"),
+                Field("gateway"   , wrapper_class="ng-class:edit_mixin.form_error('gateway')"   , ng_pattern="/^\d+\.\d+\.\d+\.\d+$/", placeholder="Gateway"),
             ),
             Fieldset(
                 "Additional settings",
-                Field("network_type", ng_options="value.idx as value.description for value in rest_data.network_types", ng_disabled="fn.has_master_network(edit_obj)", chosen=True),
-                Field("master_network", ng_options="value.idx as value.identifier for value in fn.get_production_networks(this)", wrapper_ng_show="fn.is_slave_network(this, edit_obj.network_type)", chosen=True),
+                Field("network_type", ng_options="value.idx as value.description for value in rest_data.network_types", ng_disabled="has_master_network(_edit_obj)", chosen=True),
+                Field("master_network", ng_options="value.idx as value.identifier for value in get_production_networks(this)", wrapper_ng_show="is_slave_network(this, _edit_obj.network_type)", chosen=True),
                 Field("network_device_type", ng_options="value.idx as value.identifier for value in rest_data.network_device_types", chosen=True),
             ),
             Fieldset(
-                "Flags",
+                "Flags", # {% verbatim %}{{ _edit_obj }}{% endverbatim %}",
                 Field("enforce_unique_ips"),
             ),
             FormActions(
-                Submit("submit", "", css_class="primaryAction", ng_value="get_action_string()"),
+                Submit("submit", "", css_class="primaryAction", ng_value="action_string"),
             ),
         )
     class Meta:

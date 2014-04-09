@@ -52,14 +52,13 @@ angular_add_simple_list_controller(
     }
 )
 
-angular_add_simple_list_controller(
+angular_add_mixin_list_controller(
     network_module,
     "network_base",
     {
-        rest_url            : "{% url 'rest:network_list' %}"
-        rest_options        : {"_with_ip_info" : true}
         edit_template       : "network.html"
         rest_map            : [
+            {"short" : "network"             , "url" : "{% url 'rest:network_list' %}", "options" : {"_with_ip_info" : true}}
             {"short" : "network_types"       , "url" : "{% url 'rest:network_type_list' %}"}
             {"short" : "network_device_types", "url" : "{% url 'rest:network_device_type_list' %}"}
         ]
@@ -67,16 +66,35 @@ angular_add_simple_list_controller(
         template_cache_list : ["network_row.html", "network_head.html"]
         new_object          : ($scope) ->
             return {
-                "identifier"   : "",
+                "identifier"   : "new network",
                 "network_type" : (entry["idx"] for key, entry of $scope.rest_data.network_types when typeof(entry) == "object" and entry and entry["identifier"] == "o")[0]
                 "enforce_unique_ips" : true
                 "num_ip"       : 0
             }
-        object_created  : (new_obj) -> new_obj.identifier = ""
-        active_network : null
-        fn : 
-            show_network : ($scope, obj) ->
-                $scope.settings.active_network = obj
+        # function dict, scope gets extended with it
+        fn: 
+            after_entries_set : () ->
+                this.edit_scope.active_network = null
+            get_defer : (q_type) ->
+                d = this.fn_lut.q.defer()
+                result = q_type.then(
+                   (response) ->
+                       d.resolve(response)
+                )
+                return d.promise
+            show_network : (obj) ->
+                es = this.edit_scope
+                es.active_network = obj
+                q_list = [
+                    es.get_defer(es.fn_lut.Restangular.all("{% url 'rest:net_ip_list' %}".slice(1)).getList({"network" : obj.idx}))
+                    es.get_defer(es.fn_lut.Restangular.all("{% url 'rest:netdevice_list' %}".slice(1)).getList({"net_ip__network" : obj.idx}))
+                    es.get_defer(es.fn_lut.Restangular.all("{% url 'rest:device_list' %}".slice(1)).getList({"netdevice__net_ip__network" : obj.idx}))
+                ]
+                es.fn_lut.q.all(q_list).then((data) ->
+                    es.ip_list = data[0]
+                    es.netdevices = build_lut(data[1])
+                    es.devices = build_lut(data[2])
+                )
             get_production_networks : ($scope) -> 
                 prod_idx = (entry for key, entry of $scope.rest_data.network_types when typeof(entry) == "object" and entry and entry["identifier"] == "p")[0].idx
                 return (entry for key, entry of $scope.entries when typeof(entry) == "object" and entry and entry.network_type == prod_idx)

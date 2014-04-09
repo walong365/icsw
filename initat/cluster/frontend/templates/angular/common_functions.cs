@@ -534,7 +534,6 @@ angular_add_simple_list_controller = (module, name, settings) ->
             else
                 wait_list = []
             $scope.rest_data = {}
-            $scope.modal_active = false
             if $scope.settings.rest_map
                 for value, idx in $scope.settings.rest_map
                     $scope.rest_data[value.short] = restDataSource.load([value.url, value.options])
@@ -663,6 +662,72 @@ angular_add_simple_list_controller = (module, name, settings) ->
                 $scope.settings.init_fn($scope, $timeout)
     ])
 
+angular_add_mixin_list_controller = (module, name, settings) ->
+    $(settings.template_cache_list).each (idx, t_name) ->
+        short_name = t_name.replace(/.html$/g, "").replace(/_/g, "")
+        module.directive(short_name, ($templateCache) ->
+            return {
+                restrict : "EA"
+                template : $templateCache.get(t_name)
+            }
+        )
+    module.run(($templateCache) ->
+        $templateCache.put("simple_confirm.html", simple_modal_template)
+    ).controller(name, ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "sharedDataSource", "$q", "$timeout", "$modal", 
+        ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, sharedDataSource, $q, $timeout, $modal) ->
+            # extend scope with reference
+            angular.extend($scope, settings.fn)
+            # edit mixin
+            $scope.edit_mixin = new angular_edit_mixin($scope, $templateCache, $compile, $modal, Restangular, $q)
+            $scope.edit_mixin.create_template = settings.edit_template
+            $scope.edit_mixin.edit_template   = settings.edit_template
+            # the first entry in rest_map is the main entry
+            $scope.edit_mixin.create_rest_url = Restangular.all(settings.rest_map[0].url.slice(1))
+            $scope.edit_mixin.use_promise = true
+            $scope.edit_mixin.new_object = settings.new_object
+            $scope.edit_mixin.delete_confirm_str = settings.delete_confirm_str
+            # init pagSettings
+            $scope.pagSettings = paginatorSettings.get_paginator(name, $scope)
+            # list of entries, needed for paginator (default value)
+            $scope.entries = []
+            # set currect scope
+            $scope.edit_scope = $scope
+            # funtion lookups
+            $scope.fn_lut = {
+                "q"           : $q
+                "Restangular" : Restangular
+            }
+            # shared data
+            $scope.shared_data = sharedDataSource.data
+            $scope.rest_data = {}
+            $scope.load = () ->
+                wait_list = []
+                for value, idx in settings.rest_map
+                    # set promise
+                    $scope.rest_data[value.short] = restDataSource.load([value.url, value.options])
+                    wait_list.push($scope.rest_data[value.short])
+                $q.all(wait_list).then((data) ->
+                    for value, idx in data
+                        $scope.rest_data[settings.rest_map[idx].short] = value
+                        if idx == 0
+                            $scope.set_entries(value)
+                )
+            $scope.reload = () ->
+                # only reload primary REST, nothing from rest_map
+                restDataSource.reload([settings.rest_map[0].url, settings.rest_map[0].options]).then((data) ->
+                    $scope.set_entries(data)
+                )
+            $scope.set_entries = (data) ->
+                $scope.edit_mixin.create_list = data
+                $scope.entries = data
+                if angular.isFunction($scope.after_entries_set)
+                    $scope.after_entries_set()
+            # call the external init function after the rest has been declared
+            if angular.isFunction($scope.before_load)
+                $scope.before_load($timeout)
+            $scope.load()
+    ])
+
 angular.module(
     "init.csw.filters", []
 ).filter(
@@ -685,7 +750,10 @@ angular.module(
     "follow_fk", () ->
         return (in_value, scope, fk_model, fk_key, null_msg) ->
             if in_value != null
-                return scope[fk_model][in_value][fk_key]
+                if scope[fk_model] and scope[fk_model][in_value]
+                    return scope[fk_model][in_value][fk_key]
+                else
+                    return null_msg
             else
                 return null_msg
 ).filter(
@@ -797,7 +865,8 @@ class angular_edit_mixin
         @scope.create_mode = create_or_edit
         @scope.cur_edit = @
         if not @scope.create_mode
-            @Restangular.restangularizeElement(null, @scope._edit_obj, @modify_rest_url)
+            if not @scope._edit_obj.addRestangularMethod
+                @Restangular.restangularizeElement(null, @scope._edit_obj, @modify_rest_url)
         @scope.action_string = if @scope.create_mode then "Create" else "Modify"
         if @use_promise
            @_prom = @q.defer()
@@ -905,7 +974,8 @@ class angular_edit_mixin
         c_modal.result.then(
             () =>
                 # add restangular elements
-                @Restangular.restangularizeElement(null, obj, @modify_rest_url)
+                if not obj.addRestangularMethod
+                    @Restangular.restangularizeElement(null, obj, @modify_rest_url)
                 obj.remove().then(
                     (resp) =>
                         noty
@@ -1045,6 +1115,7 @@ root.angular_modal_mixin = angular_modal_mixin
 root.angular_module_setup = angular_module_setup
 root.handle_reset = handle_reset
 root.angular_add_simple_list_controller = angular_add_simple_list_controller
+root.angular_add_mixin_list_controller = angular_add_mixin_list_controller
 root.build_lut = build_lut
 root.simple_modal_template = simple_modal_template
 

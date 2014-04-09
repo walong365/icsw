@@ -89,10 +89,10 @@
     <td>{{ obj.network_type | array_lookup:this.rest_data.network_types:'description' }}</td>
     <td>{{ obj.master_network | array_lookup:this.entries:'identifier':'---' }}</td>
     <td>{{ obj.network_device_type | resolve_n2m:this.rest_data.network_device_types:'identifier':'---' }}</td>
-    <td><input type="button" class="btn btn-primary btn-xs" ng-click="edit($event, obj)" value="modify"/></td>
+    <td><input type="button" class="btn btn-primary btn-xs" ng-click="edit_mixin.edit(obj, $event)" value="modify"/></td>
     <td>
-        <input type="button" class="btn btn-danger btn-xs" ng-show="obj.num_ip == 0" ng-click="delete(obj)" value="delete"/>
-        <input type="button" class="btn btn-success btn-xs" ng-show="obj.num_ip > 0" ng-click="fn.show_network(this, obj)" value="show"/>
+        <input type="button" class="btn btn-danger btn-xs" ng-show="obj.num_ip == 0" ng-click="edit_mixin.delete_obj(obj)" value="delete"/>
+        <input type="button" class="btn btn-success btn-xs" ng-show="obj.num_ip > 0" ng-click="show_network(obj)" value="show"/>
     </td>
 </script>
 
@@ -121,15 +121,31 @@
     </tab>
     <tab heading="Networks">
         <div ng-controller="network_base">
-            <h2>Networks ({{entries.length}} entries), <input type="button" class="btn btn-primary" value="create new" ng-click="create($event)"/></h2>
+            <h2>
+                Networks ({{entries.length}} entries),
+                <div class="btn-group">
+                    <input type="button" class="btn btn-primary btn-sm" value="create new" ng-click="edit_mixin.create($event)"/>
+                    <input type="button" class="btn btn-success btn-sm" value="reload" ng-click="reload()"/>
+                </div>
+            </h2>
             <table class="table table-condensed table-hover" style="width:auto;">
                 <thead networkhead></thead>
                 <tbody>
-                    <tr networkrow ng-repeat="obj in entries | orderBy:'-identifier':true"></tr>
+                    <tr><td colspan="9" paginator entries="entries" pag_settings="pagSettings" per_page="15"></td></tr>
+                    <tr networkrow ng-repeat="obj in entries | orderBy:'-identifier':true | paginator:this"></tr>
                 </tbody>
             </table>
-            <div ng-show="settings.active_network">
-                <h3>Network {{ settings.active_network.identifier }}, {{ settings.active_network.num_ip }} IP addresses</h3>
+            <div ng-show="active_network">
+                <h3>Network {{ active_network.identifier }}, {{ active_network.num_ip }} IP addresses</h3>
+                <table class="table table-condensed table-hover" style="width:auto;">
+                    <tbody>
+                        <tr ng-repeat="obj in ip_list">
+                           <td>{{ obj.ip }}</td>
+                           <td>{{ obj.netdevice | follow_fk:this:'netdevices':'devname':'N/A' }}</td>
+                           <td>{{ obj.netdevice | follow_fk:this:'netdevices':'device':'N/A' | follow_fk:this:'devices':'full_name':'N/A' }}</td>
+                        </tr>
+                    </tbody>
+                </table>
             </div>
         </div>
     </tab>
