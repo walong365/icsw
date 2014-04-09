@@ -151,6 +151,7 @@ class update_device(APIView):
                 .prefetch_related("categories") \
                 .order_by("device_group__name", "name"))
             for cur_dev in all_devs:
+                # print "**", cur_dev
                 update_list = set()
                 if _en["t"]:
                     new_new_state, new_prod_link = (None, None)

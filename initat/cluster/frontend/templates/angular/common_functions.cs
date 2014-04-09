@@ -864,12 +864,11 @@ class angular_edit_mixin
         @scope.pre_edit_obj = angular.copy(obj)
         @scope.create_mode = create_or_edit
         @scope.cur_edit = @
-        if not @scope.create_mode
-            if not @scope._edit_obj.addRestangularMethod
-                @Restangular.restangularizeElement(null, @scope._edit_obj, @modify_rest_url)
+        if not @scope.create_mode and @modify_rest_url
+            @Restangular.restangularizeElement(null, @scope._edit_obj, @modify_rest_url)
         @scope.action_string = if @scope.create_mode then "Create" else "Modify"
         if @use_promise
-           @_prom = @q.defer()
+            @_prom = @q.defer()
         if @use_modal
             @edit_div = @compile(@templateCache.get(if @scope.create_mode then @create_template else @edit_template))(@scope)
             @edit_div.simplemodal
@@ -974,7 +973,7 @@ class angular_edit_mixin
         c_modal.result.then(
             () =>
                 # add restangular elements
-                if not obj.addRestangularMethod
+                if not obj.addRestangularMethod and @modify_rest_url
                     @Restangular.restangularizeElement(null, obj, @modify_rest_url)
                 obj.remove().then(
                     (resp) =>
