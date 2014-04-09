@@ -157,11 +157,7 @@ class id_discovery(object):
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
         id_discovery.relayer_process.log("[idd, %s] %s" % (self.conn_str, what), log_level)
     @staticmethod
-    def init(r_process, backlog_size, timeout, verbose):
-        id_discovery.relayer_process = r_process
-        id_discovery.backlog_size = backlog_size
-        id_discovery.timeout = timeout
-        id_discovery.verbose = verbose
+    def reload_mapping():
         id_discovery.reverse_mapping = {}
         # mapping connection string -> 0MQ id
         id_discovery.save_file = True
@@ -202,9 +198,16 @@ class id_discovery(object):
         else:
             id_discovery.mapping = {}
             id_discovery.mapping_xml = E.zmq_mapping()
+    @staticmethod
+    def init(r_process, backlog_size, timeout, verbose):
+        id_discovery.relayer_process = r_process
+        id_discovery.backlog_size = backlog_size
+        id_discovery.timeout = timeout
+        id_discovery.verbose = verbose
         id_discovery.pending = {}
         # last discovery try
         id_discovery.last_try = {}
+        id_discovery.reload_mapping()
     @staticmethod
     def destroy():
         for value in list(id_discovery.pending.values()):
@@ -716,13 +719,16 @@ class relay_code(threading_tools.process_pool):
                 self.__mon_version = lines.pop(0).strip().split()[-1]
         self.log("mon_version is '%s'" % (self.__mon_version))
     def _hup_error(self, err_cause):
-        self.log("got SIGHUP (%s), setting all clients with connmode TCP to unknown" % (err_cause), logging_tools.LOG_LEVEL_WARN)
+        self.log("got SIGHUP ({})".format(err_cause), logging_tools.LOG_LEVEL_WARN)
+        self.log(" - setting all clients with connmode TCP to unknown", logging_tools.LOG_LEVEL_WARN)
+        self.log(" - reloading 0MQ mappings", logging_tools.LOG_LEVEL_WARN)
         num_c = 0
         for t_host, c_state in self.__client_dict.iteritems():
             if c_state == "T":
                 self.__client_dict[t_host] = None
                 num_c += 1
-        self.log("cleared %s" % (logging_tools.get_plural("state", num_c)))
+        self.log("cleared {}".format(logging_tools.get_plural("state", num_c)))
+        id_discovery.reload_mapping()
     def _change_rlimits(self):
         for limit_name in ["OFILE"]:
             res = getattr(resource, "RLIMIT_%s" % (limit_name))
