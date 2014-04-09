@@ -15,7 +15,7 @@ import process_tools
 import re
 
 __all__ = [
-    "network", "network_serializer",
+    "network", "network_serializer", "network_with_ip_serializer",
     "network_type", "network_type_serializer",
     "net_ip", "net_ip_serializer",
     "network_device_type", "network_device_type_serializer",
@@ -133,6 +133,8 @@ class network(models.Model):
         )
     def get_identifier(self):
         return self.network_type.identifier
+    def num_ip(self):
+        return self.net_ip_set.all().count()
     class Meta:
         db_table = u'network'
         app_label = "backbone"
@@ -318,11 +320,19 @@ class network_type_serializer(serializers.ModelSerializer):
 class network_serializer(serializers.ModelSerializer):
     info_string = serializers.Field(source="info_string")
     network_type_identifier = serializers.Field(source="get_identifier")
+    num_ip = serializers.Field(0)
+    class Meta:
+        model = network
+
+class network_with_ip_serializer(serializers.ModelSerializer):
+    info_string = serializers.Field(source="info_string")
+    network_type_identifier = serializers.Field(source="get_identifier")
+    num_ip = serializers.Field(source="num_ip")
     class Meta:
         model = network
 
 class net_ip_serializer(serializers.ModelSerializer):
-    # network = network_serializer()
+    network = network_serializer()
     class Meta:
         model = net_ip
 
