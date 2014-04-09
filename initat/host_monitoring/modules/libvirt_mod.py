@@ -22,6 +22,7 @@ from initat.host_monitoring import limits, hm_classes
 from lxml import etree # @UnresolvedImport
 import commands
 import logging_tools
+import process_tools
 import server_command
 import sys
 try:
@@ -49,7 +50,7 @@ class _general(hm_classes.hm_module):
     def _exec_command(self, com, logger):
         stat, out = commands.getstatusoutput(com)
         if stat:
-            logger.warning("cannot execute %s (%d): %s" % (com, stat, out))
+            logger.warning("cannot execute {} ({:d}): {}".format(com, stat, out))
             out = ""
         return out.split("\n")
     def _save_mv(self, mv, key, info_str, ent, factor, value):
@@ -61,103 +62,111 @@ class _general(hm_classes.hm_module):
         self.establish_connection()
         if self.connection:
             _c = self.connection
-            _c.update()
-            doms_found = set()
-            for cur_dom in _c.keys():
-                _d = _c[cur_dom]
-                sane_name = _d.name.replace(".", "_")
-                doms_found.add(sane_name)
-                if sane_name not in self.doms_reg:
-                    self.doms_reg.add(sane_name)
-                    self.log("registering domain '%s' (%s)" % (_d.name, sane_name))
-                base_name = "virt.%s" % (sane_name)
-                # CPU
-                self._save_mv(mv, "%s.cpu" % (base_name), "cpu usage for $2", "%", 1, _d.base_info.cpu_used)
-                if _d.disk_dict:
-                    # Disk
-                    disk_base = "%s.disk" % (base_name)
-                    t_read, t_write = (0, 0)
-                    for act_disk in _d.disk_dict:
-                        self._save_mv(
-                            mv,
-                            "%s.%s.read" % (disk_base, act_disk),
-                            "byte read from $4 ($2)",
-                            "B/s",
-                            1024,
-                            _d.disk_dict[act_disk].stats["read"]["bytes"]
-                        )
-                        self._save_mv(
-                            mv,
-                            "%s.%s.write" % (disk_base, act_disk),
-                            "byte written to $4 ($2)",
-                            "B/s",
-                            1024,
-                            _d.disk_dict[act_disk].stats["write"]["bytes"]
-                        )
-                        t_read += _d.disk_dict[act_disk].stats["read"]["bytes"]
-                        t_write += _d.disk_dict[act_disk].stats["write"]["bytes"]
+            try:
+                _c.update()
+            except:
+                self.log("error updating, closing connection: {}".format(process_tools.get_except_info()), logging_tools.LOG_LEVEL_ERROR)
+                self.connection = None
+            else:
+                self._parse_domains(mv)
+    def _parse_domains(self, mv):
+        _c = self.connection
+        doms_found = set()
+        for cur_dom in _c.keys():
+            _d = _c[cur_dom]
+            sane_name = _d.name.replace(".", "_")
+            doms_found.add(sane_name)
+            if sane_name not in self.doms_reg:
+                self.doms_reg.add(sane_name)
+                self.log("registering domain '{}' ({})".format(_d.name, sane_name))
+            base_name = "virt.%s" % (sane_name)
+            # CPU
+            self._save_mv(mv, "%s.cpu" % (base_name), "cpu usage for $2", "%", 1, _d.base_info.cpu_used)
+            if _d.disk_dict:
+                # Disk
+                disk_base = "%s.disk" % (base_name)
+                t_read, t_write = (0, 0)
+                for act_disk in _d.disk_dict:
                     self._save_mv(
                         mv,
-                        "%s.%s.read" % (disk_base, "total"),
+                        "%s.%s.read" % (disk_base, act_disk),
                         "byte read from $4 ($2)",
                         "B/s",
                         1024,
-                        t_read,
+                        _d.disk_dict[act_disk].stats["read"]["bytes"]
                     )
                     self._save_mv(
                         mv,
-                        "%s.%s.write" % (disk_base, "total"),
+                        "%s.%s.write" % (disk_base, act_disk),
                         "byte written to $4 ($2)",
                         "B/s",
                         1024,
-                        t_write,
+                        _d.disk_dict[act_disk].stats["write"]["bytes"]
                     )
-                if _d.net_dict:
-                    # Network
-                    net_base = "%s.net" % (base_name)
-                    t_read, t_write = (0, 0)
-                    for act_net in _d.net_dict:
-                        self._save_mv(
-                            mv,
-                            "%s.%s.read" % (net_base, act_net),
-                            "byte read from $4 ($2)",
-                            "B/s",
-                            1024,
-                            _d.net_dict[act_net].stats["read"]["bytes"]
-                        )
-                        self._save_mv(
-                            mv,
-                            "%s.%s.write" % (net_base, act_net),
-                            "byte written to $4 ($2)",
-                            "B/s",
-                            1024,
-                            _d.net_dict[act_net].stats["write"]["bytes"]
-                        )
-                        t_read += _d.net_dict[act_net].stats["read"]["bytes"]
-                        t_write += _d.net_dict[act_net].stats["write"]["bytes"]
+                    t_read += _d.disk_dict[act_disk].stats["read"]["bytes"]
+                    t_write += _d.disk_dict[act_disk].stats["write"]["bytes"]
+                self._save_mv(
+                    mv,
+                    "%s.%s.read" % (disk_base, "total"),
+                    "byte read from $4 ($2)",
+                    "B/s",
+                    1024,
+                    t_read,
+                )
+                self._save_mv(
+                    mv,
+                    "%s.%s.write" % (disk_base, "total"),
+                    "byte written to $4 ($2)",
+                    "B/s",
+                    1024,
+                    t_write,
+                )
+            if _d.net_dict:
+                # Network
+                net_base = "%s.net" % (base_name)
+                t_read, t_write = (0, 0)
+                for act_net in _d.net_dict:
                     self._save_mv(
                         mv,
-                        "%s.%s.read" % (net_base, "all"),
+                        "%s.%s.read" % (net_base, act_net),
                         "byte read from $4 ($2)",
                         "B/s",
                         1024,
-                        t_read,
+                        _d.net_dict[act_net].stats["read"]["bytes"]
                     )
                     self._save_mv(
                         mv,
-                        "%s.%s.write" % (net_base, "all"),
+                        "%s.%s.write" % (net_base, act_net),
                         "byte written to $4 ($2)",
                         "B/s",
                         1024,
-                        t_write,
+                        _d.net_dict[act_net].stats["write"]["bytes"]
                     )
-            rem_doms = self.doms_reg - doms_found
-            if rem_doms:
-                self.doms_reg -= rem_doms
-                for dom_del in rem_doms:
-                    self.log("unregistering domain %s" % (dom_del))
-                    mv.unregister_tree("virt.%s" % (dom_del))
-                    self.mv_regs = set([value for value in self.mv_regs if not value.startswith("virt.%s." % (dom_del))])
+                    t_read += _d.net_dict[act_net].stats["read"]["bytes"]
+                    t_write += _d.net_dict[act_net].stats["write"]["bytes"]
+                self._save_mv(
+                    mv,
+                    "%s.%s.read" % (net_base, "all"),
+                    "byte read from $4 ($2)",
+                    "B/s",
+                    1024,
+                    t_read,
+                )
+                self._save_mv(
+                    mv,
+                    "%s.%s.write" % (net_base, "all"),
+                    "byte written to $4 ($2)",
+                    "B/s",
+                    1024,
+                    t_write,
+                )
+        rem_doms = self.doms_reg - doms_found
+        if rem_doms:
+            self.doms_reg -= rem_doms
+            for dom_del in rem_doms:
+                self.log("unregistering domain %s" % (dom_del))
+                mv.unregister_tree("virt.%s" % (dom_del))
+                self.mv_regs = set([value for value in self.mv_regs if not value.startswith("virt.%s." % (dom_del))])
 
 class libvirt_status_command(hm_classes.hm_command):
     def __call__(self, srv_com, cur_ns):
