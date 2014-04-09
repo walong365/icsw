@@ -62,9 +62,10 @@
 
 <script type="text/ng-template" id="network_head.html">
     <tr>
-        <th>Id</th>   
+        <th>Id</th>
         <th>Network definition</th>   
         <th>Gateway</th>
+        <th>#IPs</th>
         <th>Pri</th>
         <th>uniqueIP</th>
         <th>Type</th>
@@ -79,16 +80,20 @@
     <td style="font-family:monospace;">
         <span ng-bind-html="obj.network | ip_fixed_width"></span> / <span ng-bind-html="obj.netmask | ip_fixed_width"></span> / <span ng-bind-html="obj.broadcast | ip_fixed_width"></span>
     </td>
-    <td>
+    <td style="font-family:monospace;">
         <span ng-bind-html="obj.gateway | ip_fixed_width"></span>
     </td>
+    <td class="text-right">{{ obj.num_ip }}</td>
     <td>{{ obj.penalty }}</td>
     <td>{{ obj.enforce_unique_ips | yesno1 }}</td>
     <td>{{ obj.network_type | array_lookup:this.rest_data.network_types:'description' }}</td>
     <td>{{ obj.master_network | array_lookup:this.entries:'identifier':'---' }}</td>
     <td>{{ obj.network_device_type | resolve_n2m:this.rest_data.network_device_types:'identifier':'---' }}</td>
     <td><input type="button" class="btn btn-primary btn-xs" ng-click="edit($event, obj)" value="modify"/></td>
-    <td><input type="button" class="btn btn-danger btn-xs" ng-click="delete(obj)" value="delete"/></td>
+    <td>
+        <input type="button" class="btn btn-danger btn-xs" ng-show="obj.num_ip == 0" ng-click="delete(obj)" value="delete"/>
+        <input type="button" class="btn btn-success btn-xs" ng-show="obj.num_ip > 0" ng-click="fn.show_network(this, obj)" value="show"/>
+    </td>
 </script>
 
 <tabset>
@@ -123,6 +128,9 @@
                     <tr networkrow ng-repeat="obj in entries | orderBy:'-identifier':true"></tr>
                 </tbody>
             </table>
+            <div ng-show="settings.active_network">
+                <h3>Network {{ settings.active_network.identifier }}, {{ settings.active_network.num_ip }} IP addresses</h3>
+            </div>
         </div>
     </tab>
 </tabset>

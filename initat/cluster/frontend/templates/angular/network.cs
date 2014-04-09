@@ -32,6 +32,7 @@ angular_add_simple_list_controller(
     }
 )
 
+
 angular_add_simple_list_controller(
     network_module,
     "network_device_type_base",
@@ -56,6 +57,7 @@ angular_add_simple_list_controller(
     "network_base",
     {
         rest_url            : "{% url 'rest:network_list' %}"
+        rest_options        : {"_with_ip_info" : true}
         edit_template       : "network.html"
         rest_map            : [
             {"short" : "network_types"       , "url" : "{% url 'rest:network_type_list' %}"}
@@ -68,9 +70,13 @@ angular_add_simple_list_controller(
                 "identifier"   : "",
                 "network_type" : (entry["idx"] for key, entry of $scope.rest_data.network_types when typeof(entry) == "object" and entry and entry["identifier"] == "o")[0]
                 "enforce_unique_ips" : true
+                "num_ip"       : 0
             }
         object_created  : (new_obj) -> new_obj.identifier = ""
+        active_network : null
         fn : 
+            show_network : ($scope, obj) ->
+                $scope.settings.active_network = obj
             get_production_networks : ($scope) -> 
                 prod_idx = (entry for key, entry of $scope.rest_data.network_types when typeof(entry) == "object" and entry and entry["identifier"] == "p")[0].idx
                 return (entry for key, entry of $scope.entries when typeof(entry) == "object" and entry and entry.network_type == prod_idx)

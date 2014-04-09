@@ -35,7 +35,7 @@ from initat.cluster.backbone.models import user , group, \
      partition_disc_serializer_create, device_serializer_variables, device_serializer_device_configs, \
      device_config, device_config_hel_serializer, home_export_list, csw_permission, \
      device_serializer_disk_info, device_serializer_network, peer_information, netdevice, \
-     csw_object_permission, cd_connection, device_serializer_only_boot
+     csw_object_permission, cd_connection, device_serializer_only_boot, network_with_ip_serializer
 # from initat.cluster.backbone.forms import * # @UnusedWildImport
 from initat.cluster.frontend import forms
 from rest_framework import mixins, generics, status, viewsets, serializers
@@ -126,10 +126,48 @@ class rest_logging(object):
             logging_tools.get_diff_time_str(e_time - s_time)))
         return result
 
+class db_prefetch_mixin(object):
+    def _kernel_prefetch(self):
+        return ["initrd_build_set", "kernel_build_set", "new_kernel", "act_kernel"]
+    def _image_prefetch(self):
+        return ["new_image", "act_image"]
+    def _partition_table_prefetch(self):
+        return [
+            "new_partition_table", "act_partition_table", "sys_partition_set",
+            "lvm_lv_set__partition_fs" , "lvm_vg_set", "partition_disc_set__partition_set__partition_fs"]
+    def _mon_period_prefetch(self):
+        return ["service_check_period"]
+    def _device_related(self):
+        return ["domain_tree_node", "device_type", "device_group"]
+    def _mon_check_command_prefetch(self):
+        return ["exclude_devices", "categories"]
+    def _mon_host_cluster_prefetch(self):
+        return ["devices"]
+    def _network_prefetch(self):
+        return ["network_device_type", "net_ip_set"]
+    def _user_related(self):
+        return ["group"]
+    def _user_prefetch(self):
+        return ["user_permission_set", "user_object_permission_set__csw_object_permission", "secondary_groups", "allowed_device_groups"]
+    def _group_related(self):
+        return ["parent_group"]
+    def _group_prefetch(self):
+        return ["group_permission_set", "group_object_permission_set", "group_object_permission_set__csw_object_permission", "allowed_device_groups"]
+    def _config_prefetch(self):
+        return [
+            "categories", "config_str_set", "config_int_set", "config_blob_set",
+            "config_bool_set", "config_script_set", "mon_check_command_set__categories", "mon_check_command_set__exclude_devices",
+            "device_config_set"]
+    def _mon_dist_master_prefetch(self):
+        return ["mon_dist_slave_set"]
+    def _macbootlog_related(self):
+        return ["device__domain_tree_node"]
+
 class detail_view(mixins.RetrieveModelMixin,
                   mixins.UpdateModelMixin,
                   mixins.DestroyModelMixin,
-                  generics.SingleObjectAPIView):
+                  generics.SingleObjectAPIView,
+                  db_prefetch_mixin):
     @rest_logging
     def get(self, request, *args, **kwargs):
         return self.retrieve(request, *args, **kwargs)
@@ -141,38 +179,13 @@ class detail_view(mixins.RetrieveModelMixin,
             return partition_disc_serializer_save
         else:
             return self.serializer_class
-    # def get_serializer(self, instance=None, data=None,
-    #                   files=None, many=False, partial=False):
-    #    """
-    #    Return the serializer instance that should be used for validating and
-    #    deserializing input, and for serializing output.
-    #    """
-    #    serializer_class = self.get_serializer_class()
-    #    context = self.get_serializer_context()
-    #    return serializer_class(instance, data=data, files=files,
-    #                            many=many, partial=partial, context=context, allow_add_remove=self.model._meta.object_name in ["config"])
     @rest_logging
     def get_queryset(self):
         model_name = self.model._meta.model_name
-        related_fields, prefetch_fields = {
-            "kernel" : ([], ["initrd_build_set", "kernel_build_set", "new_kernel", "act_kernel"]),
-            "image" : ([], ["new_image", "act_image"]),
-            "partition_table" : ([], ["new_partition_table", "act_partition_table", "sys_partition_set",
-                "lvm_lv_set__partition_fs" , "lvm_vg_set", "partition_disc_set__partition_set__partition_fs"]),
-            "mon_period" : ([], ["service_check_period"]),
-            "device" : (["domain_tree_node", "device_type", "device_group"], []),
-            "mon_check_command" : ([], ["exclude_devices", "categories"]),
-            "mon_host_cluster" : ([], ["devices"]),
-            "network" : ([], ["network_device_type"]),
-            "user" : (["group"], ["user_permission_set", "user_object_permission_set__csw_object_permission", "secondary_groups", "allowed_device_groups"]),
-            "group" : (["parent_group"], ["group_permission_set", "group_object_permission_set", "group_object_permission_set__csw_object_permission", "allowed_device_groups"]),
-            "config" : ([], [
-                "categories", "config_str_set", "config_int_set", "config_blob_set",
-                "config_bool_set", "config_script_set", "mon_check_command_set__categories", "mon_check_command_set__exclude_devices",
-                "device_config_set"]),
-            "mon_dist_master" : ([], ["mon_dist_slave_set"]),
-            "cluster_setting" : ([], ["cluster_license_set"]),
-            }.get(model_name, ([], []))
+        related_fields, prefetch_fields = (
+            getattr(self, "_{}_related".format(model_name), lambda: [])(),
+            getattr(self, "_{}_prefetch".format(model_name), lambda: [])(),
+        )
         res = self.model.objects
         return res.select_related(*related_fields).prefetch_related(*prefetch_fields)
     @rest_logging
@@ -213,7 +226,9 @@ class detail_view(mixins.RetrieveModelMixin,
 
 class list_view(mixins.ListModelMixin,
                 mixins.CreateModelMixin,
-                generics.MultipleObjectAPIView):
+                generics.MultipleObjectAPIView,
+                db_prefetch_mixin
+                ):
     @rest_logging
     def get(self, request, *args, **kwargs):
         return self.list(request, *args, **kwargs)
@@ -228,6 +243,10 @@ class list_view(mixins.ListModelMixin,
         if self.request.method == "POST":
             if self.model._meta.object_name == "partition_disc":
                 return partition_disc_serializer_create
+        elif self.request.method == "GET":
+            if self.model._meta.object_name == "network":
+                if "_with_ip_info" in self.request.QUERY_PARAMS:
+                    return network_with_ip_serializer
         return self.serializer_class
     @rest_logging
     def get_queryset(self):
@@ -236,25 +255,10 @@ class list_view(mixins.ListModelMixin,
             return domain_name_tree()
         elif model_name == "category":
             return category_tree(with_ref_count=True)
-        related_fields, prefetch_fields = {
-            "kernel" : ([], ["initrd_build_set", "kernel_build_set", "new_kernel", "act_kernel"]),
-            "image" : ([], ["new_image", "act_image"]),
-            "partition_table" : ([], ["new_partition_table", "act_partition_table", "sys_partition_set",
-                "lvm_lv_set__partition_fs" , "lvm_vg_set", "partition_disc_set__partition_set__partition_fs"]),
-            "mon_period" : ([], ["service_check_period"]),
-            "device" : (["domain_tree_node", "device_type", "device_group"], []),
-            "mon_check_command" : ([], ["exclude_devices", "categories"]),
-            "mon_host_cluster" : ([], ["devices"]),
-            "network" : ([], ["network_device_type"]),
-            "user" : (["group"], ["user_permission_set", "user_object_permission_set__csw_object_permission", "secondary_groups", "allowed_device_groups"]),
-            "group" : (["parent_group"], ["group_permission_set", "group_object_permission_set", "group_object_permission_set__csw_object_permission", "allowed_device_groups"]),
-            "config" : ([], [
-                "categories", "config_str_set", "config_int_set", "config_blob_set",
-                "config_bool_set", "config_script_set", "mon_check_command_set__categories", "mon_check_command_set__exclude_devices",
-                "device_config_set"]),
-            "mon_dist_master" : ([], ["mon_dist_slave_set"]),
-            "macbootlog" : (["device__domain_tree_node"], []),
-            }.get(model_name, ([], []))
+        related_fields, prefetch_fields = (
+            getattr(self, "_{}_related".format(model_name), lambda: [])(),
+            getattr(self, "_{}_prefetch".format(model_name), lambda: [])(),
+        )
         res = self.model.objects.all()
         filter_list = []
         special_dict = {}
