@@ -174,8 +174,9 @@ class server_process(threading_tools.process_pool):
                     if cur_c is not None:
                         cur_c.handle_nodeinfo(data[0], node_text)
                 else:
-                    self.log("got command '%s' from %s, ignoring" % (etree.tostring(srv_com.tree), data[0]),
-                             logging_tools.LOG_LEVEL_ERROR)
+                    self.log(
+                        "got command '{}' from {}, ignoring".format(etree.tostring(srv_com.tree), data[0]),
+                        logging_tools.LOG_LEVEL_ERROR)
             else:
                 srv_com.update_source()
                 if cur_com == "register":
