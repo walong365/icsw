@@ -35,8 +35,8 @@ class var_cache(dict):
     def get_vars(self, cur_dev):
         global_key, dg_key, dev_key = (
             "GLOBAL",
-            "dg__%d" % (cur_dev.device_group_id),
-            "dev__%d" % (cur_dev.pk))
+            "dg__{:d}".format(cur_dev.device_group_id),
+            "dev__{:d}".format(cur_dev.pk))
         if global_key not in self:
             def_dict = {
                 "SNMP_VERSION"         : 2,
@@ -70,10 +70,11 @@ class simple_request(object):
         self.zmq_id = zmq_id
         if zmq_id.count(":") == 2:
             src_ip = zmq_id.split(":")[-1]
+            if not src_ip:
+                src_ip = None
         else:
-            src_ip = "0.0.0.0"
+            src_ip = None
         self.src_ip = src_ip
-        self.server_ip = "0.0.0.0"
         self.node_text = node_text
         self.command = node_text.strip().split()[0]
         self.data = " ".join(node_text.strip().split()[1:])
@@ -97,7 +98,7 @@ class simple_request(object):
         if bs_list:
             return sorted(bs_list)[0][1]
         else:
-            self.log("no result in find_best_server (%s)" % (logging_tools.get_plural("entry", len(conf_list))))
+            self.log("no result in find_best_server ({})".format(logging_tools.get_plural("entry", len(conf_list))))
             return None
     def _get_config_str_vars(self, cs_name):
         config_pks = config.objects.filter(
@@ -153,21 +154,26 @@ class simple_request(object):
                 self.cc.router_obj,
                 dev_sc,
                 filter_ip=self.src_ip,
-                allow_route_to_other_networks=False)
+                allow_route_to_other_networks=False,
+                # prefer production routes
+                prefer_production_net=True,
+            )
+            # srv_routing = valid_server_struct.prefer_production_net(srv_routing)
             if not srv_routing:
                 # check for updated network ?
-                self.log("found valid_server_struct %s but no route" % (
+                self.log("found valid_server_struct {} but no route".format(
                     valid_server_struct.server_info_str),
                          logging_tools.LOG_LEVEL_ERROR)
                 valid_server_struct = None
             else:
+                # print "r", srv_routing
                 self.server_ip = srv_routing[0][2][1][0]
-                self.log("found valid_server_struct %s (device %s) with ip %s" % (
+                self.log("found valid_server_struct {} (device {}) with ip {}".format(
                     valid_server_struct.server_info_str,
                     unicode(valid_server_struct.device),
                     self.server_ip))
         else:
-            self.log("no valid server_struct found (search list: %s)" % (", ".join(s_list)),
+            self.log("no valid server_struct found (search list: {})".format(", ".join(s_list)),
                      logging_tools.LOG_LEVEL_ERROR)
         return valid_server_struct
     def create_config_dir(self):
@@ -188,9 +194,9 @@ class simple_request(object):
             return "error cannot create partition info"
     def build_config_result(self, result):
         xml_result = server_command.srv_command(source=result)
-        res_node = xml_result.xpath(".//ns:device[@pk='%d']" % (self.cc.device.pk), smart_strings=False)[0]
-        self.log("result node has %s:" % (logging_tools.get_plural("attribute", len(res_node.attrib))))
+        res_node = xml_result.xpath(".//ns:device[@pk='{:d}']".format(self.cc.device.pk), smart_strings=False)[0]
+        self.log("result node has {}:".format(logging_tools.get_plural("attribute", len(res_node.attrib))))
         for key, value in res_node.attrib.iteritems():
-            self.log("   %-10s: %s" % (key, value))
+            self.log("   {:<10s}: {}".format(key, value))
         del self.cc.pending_config_requests[self.cc.device.name]
         self.cc.done_config_requests[self.cc.device.name] = "ok config built" if int(res_node.attrib["state_level"]) in [logging_tools.LOG_LEVEL_OK, logging_tools.LOG_LEVEL_WARN] else "error building config"
