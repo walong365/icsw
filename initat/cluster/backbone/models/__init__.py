@@ -15,6 +15,8 @@ from lxml.builder import E # @UnresolvedImport
 from rest_framework import serializers
 import datetime
 import ipvx_tools
+import crypt
+import random
 import logging
 import logging_tools
 import marshal
@@ -1153,6 +1155,18 @@ class device(models.Model):
             return ".".join([self.name, self.domain_tree_node.full_name])
         else:
             return self.name
+    def crypt(self, in_pwd):
+        if in_pwd:
+            _crypted = crypt.crypt(in_pwd, "{}{}".format(
+                chr(random.randint(65, 96)),
+                chr(random.randint(65, 96))))
+            if _crypted == "*0":
+                _crypted = ""
+        else:
+            _crypted = ""
+        return _crypted
+    def root_passwd_set(self):
+        return True if self.root_passwd else False
     def is_meta_device(self):
         return self.device_type.identifier == "MD"
     def device_type_identifier(self):
@@ -1328,12 +1342,13 @@ class device_serializer(serializers.ModelSerializer):
     device_group_name = serializers.Field(source="device_group_name")
     access_level = serializers.SerializerMethodField("get_access_level")
     access_levels = serializers.SerializerMethodField("get_access_levels")
+    root_passwd_set = serializers.Field(source="root_passwd_set")
     def get_access_level(self, obj):
         if "olp" in self.context:
             return self.context["request"].user.get_object_perm_level(self.context["olp"], obj)
         return -1
     def get_access_levels(self, obj):
-        return ",".join(["%s=%d" % (key, value) for key, value in self.context["request"].user.get_object_access_levels(obj).iteritems()])
+        return ",".join(["{}={:d}".format(key, value) for key, value in self.context["request"].user.get_object_access_levels(obj).iteritems()])
     class Meta:
         model = device
         fields = ("idx", "name", "device_group", "device_type",
@@ -1342,7 +1357,7 @@ class device_serializer(serializers.ModelSerializer):
             "act_partition_table", "enable_perfdata", "flap_detection_enabled",
             "automap_root_nagvis", "nagvis_parent", "monitor_server", "mon_ext_host",
             "is_meta_device", "device_type_identifier", "device_group_name", "bootserver",
-            "is_cluster_device_group",
+            "is_cluster_device_group", "root_passwd_set",
             "curl", "mon_resolve_name", "uuid", "access_level", "access_levels", "store_rrd_data",
             )
         read_only_fields = ("uuid",)
@@ -1361,7 +1376,7 @@ class device_serializer_cat(device_serializer):
             "act_partition_table", "enable_perfdata", "flap_detection_enabled",
             "automap_root_nagvis", "nagvis_parent", "monitor_server", "mon_ext_host",
             "is_meta_device", "device_type_identifier", "device_group_name", "bootserver",
-            "is_cluster_device_group",
+            "is_cluster_device_group", "root_passwd_set",
             "curl", "categories", "access_level", "access_levels",
             )
 
@@ -1375,7 +1390,7 @@ class device_serializer_variables(device_serializer):
             "act_partition_table", "enable_perfdata", "flap_detection_enabled",
             "automap_root_nagvis", "nagvis_parent", "monitor_server", "mon_ext_host",
             "is_meta_device", "device_type_identifier", "device_group_name", "bootserver",
-            "is_cluster_device_group",
+            "is_cluster_device_group", "root_passwd_set",
             "curl", "device_variable_set", "access_level", "access_levels", "store_rrd_data",
             )
 
@@ -1389,7 +1404,7 @@ class device_serializer_device_configs(device_serializer):
             "act_partition_table", "enable_perfdata", "flap_detection_enabled",
             "automap_root_nagvis", "nagvis_parent", "monitor_server", "mon_ext_host",
             "is_meta_device", "device_type_identifier", "device_group_name", "bootserver",
-            "is_cluster_device_group",
+            "is_cluster_device_group", "root_passwd_set",
             "curl", "device_config_set", "access_level", "access_levels", "store_rrd_data",
             )
 
@@ -1404,7 +1419,7 @@ class device_serializer_disk_info(device_serializer):
             "act_partition_table", "enable_perfdata", "flap_detection_enabled",
             "automap_root_nagvis", "nagvis_parent", "monitor_server", "mon_ext_host",
             "is_meta_device", "device_type_identifier", "device_group_name", "bootserver",
-            "is_cluster_device_group",
+            "is_cluster_device_group", "root_passwd_set",
             "curl", "partition_table", "access_level", "access_levels", "store_rrd_data",
             )
 
@@ -1418,7 +1433,7 @@ class device_serializer_network(device_serializer):
             "enable_perfdata", "flap_detection_enabled",
             "automap_root_nagvis", "nagvis_parent", "monitor_server", "mon_ext_host",
             "is_meta_device", "device_type_identifier", "device_group_name", "bootserver",
-            "is_cluster_device_group",
+            "is_cluster_device_group", "root_passwd_set",
             "curl", "netdevice_set", "access_level", "access_levels", "store_rrd_data",
             # for device.boot
             "new_state", "prod_link", "dhcp_mac", "dhcp_write",
