@@ -174,7 +174,7 @@ def main():
     # print args.arguments, other_args
     command = args.arguments.pop(0)
     other_args = args.arguments + other_args
-    if "{}_com".format(command) in com_list:
+    if command in com_list:
         try:
             cur_com = globals()["{}_com".format(command)](args, *other_args)
         except:
