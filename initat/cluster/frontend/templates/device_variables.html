@@ -35,6 +35,7 @@
             </span> {{ obj.device_variable_set.length }}
             <span ng-if="var_filter.length"> / {{ obj.num_filtered }} shown</span>
             <span ng-if="parent_vars_defined(obj)">&nbsp;({{ num_parent_vars(obj) }} inherit)</span>
+            <span ng-if="any_shadowed_vars(obj)">&nbsp;({{ num_shadowed_vars(obj) }} shadow)</span>
         </button>
     </td>
     <td>{{ get_name(obj) }}</td>
@@ -283,6 +284,17 @@ device_variable_module.controller("dv_base", ["$scope", "$compile", "$filter", "
                 return num_meta
             scope.parent_vars_defined = (obj) ->
                 return if scope.num_parent_vars(obj) then true else false
+            scope.num_shadowed_vars = (obj) ->
+                my_names = (entry.name for entry in obj.device_variable_set)
+                num_shadow = 0
+                if not obj.is_cluster_device_group
+                    if obj.device_type_identifier != "MD"
+                        meta_server = scope.deep_entries[scope.group_dev_lut[obj.device_group]]
+                        num_shadow += (entry for entry in meta_server.device_variable_set when entry.name in my_names).length
+                    num_shadow += (entry for entry in scope.cdg.device_variable_set when entry.name in my_names).length
+                return num_shadow
+            scope.any_shadowed_vars = (obj) ->
+                return if scope.num_shadowed_vars(obj) then true else false
     }
 ).run(($templateCache) ->
     $templateCache.put("simple_confirm.html", simple_modal_template)
