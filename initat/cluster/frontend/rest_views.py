@@ -145,6 +145,8 @@ class db_prefetch_mixin(object):
         return ["devices"]
     def _network_prefetch(self):
         return ["network_device_type", "net_ip_set"]
+    def _netdevice_prefetch(self):
+        return ["net_ip_set"]
     def _user_related(self):
         return ["group"]
     def _user_prefetch(self):
