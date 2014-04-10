@@ -156,33 +156,7 @@ class machine_vector(object):
         # read machine vector config
         self.conf_name = os.path.join("/etc/sysconfig/host-monitoring.d", MACHVECTOR_NAME)
         if not os.path.isfile(self.conf_name):
-            self.log("create {}".format(self.conf_name))
-            # create default file
-            def_xml = E.mv_targets(
-                E.mv_target(
-                    # enabled or disabled
-                    enabled="0",
-                    # target (== server)
-                    target="127.0.0.1",
-                    # target port
-                    port="8002",
-                    # name used for sending, if unset use process_tools.get_machine_name()
-                    send_name="",
-                    # send every X seconds
-                    send_every="30",
-                    # every Y iteration send a full dump
-                    full_info_every="10",
-                    # send immediately
-                    immediate="0",
-                    # format, json or xml
-                    format="xml",
-                )
-            )
-            file(self.conf_name, "w").write(
-                etree.tostring(
-                    def_xml,
-                    pretty_print=True,
-                    xml_declaration=True))
+            self._create_default_config()
         try:
             xml_struct = etree.fromstring(file(self.conf_name, "r").read())
         except:
@@ -199,8 +173,8 @@ class machine_vector(object):
                 mv_target.attrib["send_id"] = "{:d}".format(send_id)
                 mv_target.attrib["sent"] = "0"
                 p_pool.register_timer(self._send_vector, int(mv_target.get("send_every", "30")), data=send_id, instant=int(mv_target.get("immediate", "0")) == 1)
-                # zmq sending, not needed any more (now using UDP/collectd)
-                if True: # False:
+                # zmq sending, to collectd
+                if True:
                     t_sock = p_pool.zmq_context.socket(zmq.PUSH)
                     t_sock.setsockopt(zmq.LINGER, 0)
                     t_sock.setsockopt(zmq.SNDHWM, 16)
@@ -218,8 +192,43 @@ class machine_vector(object):
                     t_sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
                 self.__socket_dict[send_id] = t_sock
         self.__xml_struct = xml_struct
+        self.vector_flags = {}
         module.process_pool.register_vector_receiver(self._recv_vector)
-        # self.__module_dict = module_dict
+        # check flags
+        for module in module.process_pool.module_list:
+            if hasattr(module, "set_machine_vector_flags"):
+                if self.__verbosity:
+                    self.log("calling set_machine_vector_flags for module '{}'".format(module.name))
+                try:
+                    module.set_machine_vector_flags(self)
+                except:
+                    self.log("error: {}".format(process_tools.get_except_info()), logging_tools.LOG_LEVEL_CRITICAL)
+                    raise
+        # change config
+        if self.__xml_struct.tag != "mv_config":
+            self.__xml_struct = E.mv_config(
+                self.__xml_struct
+            )
+        if self.__xml_struct.find("mv_flags") is None:
+            self.__xml_struct.append(E.mv_flags())
+        mv_flags = self.__xml_struct.find("mv_flags")
+        # show and set vector flags
+        self.log("{} defined".format(logging_tools.get_plural("vector flag", len(self.vector_flags))))
+        for key in sorted(self.vector_flags):
+            cur_val = mv_flags.find(".//mv_flag[@name='{}']".format(key))
+            if cur_val is None:
+                cur_val = E.mv_flag(enabled="1" if self.vector_flags[key] else "0", name=key)
+                self.log("  {:<10s} : {}".format(key, "enabled" if self.vector_flags[key] else "disabled"))
+                mv_flags.append(cur_val)
+            else:
+                def_value = self.vector_flags[key]
+                self.vector_flags[key] = True if int(cur_val.attrib["enabled"]) else False
+                self.log("  {:<10s} : {} (from config{})".format(
+                    key,
+                    "enabled" if self.vector_flags[key] else "disabled",
+                    ", changed" if self.vector_flags[key] != def_value else "",
+                    ))
+        # init MV
         for module in module.process_pool.module_list:
             if hasattr(module, "init_machine_vector"):
                 if self.__verbosity:
@@ -229,6 +238,9 @@ class machine_vector(object):
                 except:
                     self.log("error: {}".format(process_tools.get_except_info()), logging_tools.LOG_LEVEL_CRITICAL)
                     raise
+        self._store_config()
+        self._remove_old_dirs()
+    def _remove_old_dirs(self):
         # delete external directories
         old_dir = "/tmp/.machvect_es"
         if os.path.isdir(old_dir):
@@ -242,6 +254,53 @@ class machine_vector(object):
                     logging_tools.LOG_LEVEL_ERROR)
             else:
                 self.log("removed old external directory {}".format(old_dir))
+    def _store_config(self):
+        try:
+            file(self.conf_name, "w").write(
+                etree.tostring(
+                    self.__xml_struct,
+                    pretty_print=True,
+                    xml_declaration=True,
+                )
+            )
+        except:
+            self.log(
+                "cannot store MVector config to {}: {}".format(
+                    self.conf_name,
+                    process_tools.get_except_info(),
+                ),
+                logging_tools.LOG_LEVEL_ERROR
+            )
+        else:
+            self.log("stored MVector config to {}".format(self.conf_name))
+    def _create_default_config(self):
+        self.log("create {}".format(self.conf_name))
+        # create default file
+        def_xml = E.mv_targets(
+            E.mv_target(
+                # enabled or disabled
+                enabled="0",
+                # target (== server)
+                target="127.0.0.1",
+                # target port
+                port="8002",
+                # name used for sending, if unset use process_tools.get_machine_name()
+                send_name="",
+                # send every X seconds
+                send_every="30",
+                # every Y iteration send a full dump
+                full_info_every="10",
+                # send immediately
+                immediate="0",
+                # format, json or xml
+                format="xml",
+            )
+        )
+        file(self.conf_name, "w").write(
+            etree.tostring(
+                def_xml,
+                pretty_print=True,
+                xml_declaration=True))
     def _send_vector(self, *args, **kwargs):
         cur_xml = self.__xml_struct.find(".//mv_target[@send_id='{:d}']".format(args[0]))
         _p_until = int(cur_xml.get("pause_until", "0"))

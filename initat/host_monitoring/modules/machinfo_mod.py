@@ -122,6 +122,8 @@ class _general(hm_classes.hm_module):
                 ", ".join(["%d" % (x) for x in valid_major_nums.keys()])))
         self.valid_block_devs, self.valid_major_nums = (valid_block_devs,
                                                         valid_major_nums)
+    def set_machine_vector_flags(self, mv):
+        mv.vector_flags["detailed_cpu_statistics"] = False
     def init_machine_vector(self, mv):
         mv.register_entry("load.1"           , 0., "load average of the last $2 minute")
         mv.register_entry("load.5"           , 0., "load average of the last $2 minutes")
@@ -150,12 +152,13 @@ class _general(hm_classes.hm_module):
         for stuff in [line.strip().split()[0] for line in file("/proc/stat", "r").readlines() if line.strip().startswith("cpu")]:
             if stuff != "cpu":
                 self.cpu_list.append(stuff[3:])
-        if not self.cpu_list:
-            self.cpu_list = ["0"]
-        if len(self.cpu_list) > 1:
-            for cpu_idx in self.cpu_list:
-                for what in stat_list:
-                    mv.register_entry("vms.%s.p%s" % (what, cpu_idx), 0., "percentage of time spent for $2 on cpu %s" % (cpu_idx), "%")
+        if mv.vector_flags["detailed_cpu_statistics"]:
+            if not self.cpu_list:
+                self.cpu_list = ["0"]
+            if len(self.cpu_list) > 1:
+                for cpu_idx in self.cpu_list:
+                    for what in stat_list:
+                        mv.register_entry("vms.%s.p%s" % (what, cpu_idx), 0., "percentage of time spent for $2 on cpu %s" % (cpu_idx), "%")
         mv.register_entry("num.interrupts", 0, "number of interrupts per second"      , "1/s")
         mv.register_entry("num.context"   , 0, "number of context switches per second", "1/s")
         # mv.register_entry("blks.in"       , 0, "number of blocks read per second"     , "1/s")
@@ -367,7 +370,10 @@ class _general(hm_classes.hm_module):
             vms_tdiff = tdiff
             if "ctxt" in stat_dict and "ctxt" in self.vmstat_dict:
                 mvect["num.context"] = int((stat_dict["ctxt"] - self.vmstat_dict["ctxt"]) / tdiff)
-            for cpu_str, name_p in [("cpu", "")] + ([("cpu%s" % (cpu_idx), ".p%s" % (cpu_idx)) for cpu_idx in self.cpu_list] if len(self.cpu_list) > 1 else []):
+            _cpu_update_list = [("cpu", "")]
+            if mvect.vector_flags["detailed_cpu_statistics"]:
+                _cpu_update_list.extend([("cpu%s" % (cpu_idx), ".p%s" % (cpu_idx)) for cpu_idx in self.cpu_list] if len(self.cpu_list) > 1 else [])
+            for cpu_str, name_p in _cpu_update_list:
                 if cpu_str in stat_dict and cpu_str in self.vmstat_dict:
                     for idx, name in enumerate(self.stat_list):
                         mvect["vms.%s%s" % (name, name_p)] = float(sub_wrap(stat_dict[cpu_str][idx], self.vmstat_dict[cpu_str][idx]) / vms_tdiff)
