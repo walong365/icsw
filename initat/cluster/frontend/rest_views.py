@@ -46,9 +46,11 @@ from rest_framework.response import Response
 from rest_framework.reverse import reverse
 from rest_framework.views import exception_handler, APIView
 import json
+import crypt
 import logging
 import logging_tools
 import operator
+import random
 import process_tools
 import time
 import types
@@ -200,6 +202,12 @@ class detail_view(mixins.RetrieveModelMixin,
         #    print cur_exc
         # print dir(resp), resp.data
         new_model = self.model.objects.get(Q(pk=kwargs["pk"]))
+        if self.model._meta.object_name == "device":
+            root_pwd = new_model.crypt(req_changes.get("root_passwd", ""))
+            if root_pwd:
+                new_model.root_passwd = root_pwd
+                new_model.save()
+            # print "+" * 10, root_pwd
         c_list, r_list = get_change_reset_list(prev_model, new_model, req_changes)
         # print c_list, r_list
         resp.data["_change_list"] = c_list

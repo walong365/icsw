@@ -1870,6 +1870,7 @@ class device_tree_form(ModelForm):
     helper.label_class = 'col-sm-3'
     helper.field_class = 'col-sm-7'
     helper.ng_model = "edit_obj"
+    root_passwd = CharField(widget=PasswordInput, required=False)
     helper.layout = Layout(
         HTML("<h2>Device settings for {% verbatim %}{{ edit_obj.name }}{% endverbatim %}</h2>"),
             Fieldset(
@@ -1885,6 +1886,10 @@ class device_tree_form(ModelForm):
                 Field("domain_tree_node", ng_options="value.idx as value.tree_info for value in rest_data.domain_tree_node", chosen=True),
                 Field("bootserver", ng_options="value.idx as value.full_name for value in rest_data.mother_server", chosen=True),
                 Field("monitor_server", ng_options="value.idx as value.full_name for value in rest_data.monitor_server", chosen=True),
+            ),
+            Fieldset(
+                "Security",
+                Field("root_passwd"),
             ),
             Fieldset(
                 "Flags",
@@ -1923,6 +1928,8 @@ class device_tree_many_form(ModelForm):
     helper.ng_submit = "modify_many()"
     change_device_type = BooleanField(label="DeviceType", required=False)
     change_device_group = BooleanField(label="DeviceGroup", required=False)
+    root_passwd = CharField(widget=PasswordInput, required=False)
+    change_root_passwd = BooleanField(label="pwd", required=False)
     curl = CharField(label="Curl", required=False)
     change_curl = BooleanField(label="Curl", required=False)
     change_domain_tree_node = BooleanField(label="DTN", required=False)
@@ -1946,6 +1953,11 @@ class device_tree_many_form(ModelForm):
                 ("domain_tree_node", "value.idx as value.tree_info for value in rest_data.domain_tree_node", {"chosen" : True}),
                 ("bootserver", "value.idx as value.full_name for value in rest_data.mother_server", {"chosen" : True}),
                 ("monitor_server", "value.idx as value.full_name for value in rest_data.monitor_server", {"chosen" : True}),
+            ]
+        ),
+        (
+            "Security", [
+                ("root_passwd", None, {}),
             ]
         ),
         (

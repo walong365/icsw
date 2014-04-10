@@ -800,6 +800,10 @@ angular.module(
     "yesno2", () ->
         return (in_value) ->
             return if in_value then "yes" else "no"
+).filter(
+    "isset", () ->
+        return (in_value) ->
+            return if in_value then "set" else "not set"
 ).filter("limit_text", () ->
     return (text, max_len) ->
         if text.length > max_len

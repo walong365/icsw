@@ -115,6 +115,7 @@ device_tree_base = device_module.controller("device_tree_base", ["$scope", "$com
             #console.log $scope.edit_obj
             $scope.create_mode = create_or_edit
             $scope.edit_div = $compile($templateCache.get($scope.edit_map[$scope._array_name]))($scope)
+            obj.root_passwd = ""
             $scope.edit_div.simplemodal
                 #opacity      : 50
                 position     : [event.pageY, event.pageX]
@@ -134,6 +135,7 @@ device_tree_base = device_module.controller("device_tree_base", ["$scope", "$com
                 "device_type"        : (entry.idx for entry in $scope.rest_data.device_type when entry.identifier == "H")[0]
                 "device_group"       : (entry.idx for entry in $scope.rest_data.device_group when entry.cluster_device_group == false)[0]
                 "domain_tree_node"   : (entry.idx for entry in $scope.rest_data.domain_tree_node when entry.depth == 0)[0]
+                "root_passwd"        : ""
             }
             $scope.create_or_edit(event, false, edit_obj)
         $scope.modify_many = () ->
@@ -324,9 +326,7 @@ device_tree_base = device_module.controller("device_tree_base", ["$scope", "$com
                 }
                 success : (xml) ->
                     parse_xml_response(xml)
-])
-
-device_module.directive("devicetreerow", ($templateCache, $compile) ->
+]).directive("devicetreerow", ($templateCache, $compile) ->
     return {
         restrict : "EA"
         link : (scope, element, attrs) ->

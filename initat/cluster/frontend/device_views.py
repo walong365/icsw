@@ -63,6 +63,7 @@ class change_devices(View):
         _post = request.POST
         c_dict = json.loads(_post.get("change_dict", ""))
         pk_list = json.loads(_post.get("device_list"))
+        print "*"
         if c_dict.get("delete", False):
             device.objects.filter(Q(pk__in=pk_list)).delete()
             request.xml_response.info("delete {}".format(logging_tools.get_plural("device", len(pk_list))))
@@ -86,14 +87,23 @@ class change_devices(View):
                 }[key].objects.get(Q(pk=value)) if type(value) == int else value for key, value in c_dict.iteritems()}
             logger.info("change_dict has {}".format(logging_tools.get_plural("key", len(c_dict))))
             for key in sorted(c_dict):
-                logger.info(" %s: %s" % (key, unicode(c_dict[key])))
+                if key == "root_passwd":
+                    logger.info(" %s: %s" % (key, "****"))
+                else:
+                    logger.info(" %s: %s" % (key, unicode(c_dict.get[key])))
             dev_changes = 0
             for cur_dev in device.objects.filter(Q(pk__in=pk_list)):
                 changed = False
                 for c_key, c_value in c_dict.iteritems():
                     if getattr(cur_dev, c_key) != c_value:
-                        setattr(cur_dev, c_key, c_value)
-                        changed = True
+                        if c_key == "root_passwd":
+                            c_value = cur_dev.crypt(c_value)
+                            if c_value:
+                                setattr(cur_dev, c_key, c_value)
+                                changed = True
+                        else:
+                            setattr(cur_dev, c_key, c_value)
+                            changed = True
                 if changed:
                     cur_dev.save()
                     dev_changes += 1
