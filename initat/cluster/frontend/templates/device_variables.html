@@ -273,12 +273,13 @@ device_variable_module.controller("dv_base", ["$scope", "$compile", "$filter", "
         template : $templateCache.get("dv_row.html")
         link : (scope) ->
             scope.num_parent_vars = (obj) ->
+                my_names = (entry.name for entry in obj.device_variable_set)
                 num_meta = 0
                 if not obj.is_cluster_device_group
                     if obj.device_type_identifier != "MD"
                         meta_server = scope.deep_entries[scope.group_dev_lut[obj.device_group]]
-                        num_meta += meta_server.device_variable_set.length
-                    num_meta += scope.cdg.device_variable_set.length
+                        num_meta += (entry for entry in meta_server.device_variable_set when entry.name not in my_names).length
+                    num_meta += (entry for entry in scope.cdg.device_variable_set when entry.name not in my_names).length
                 return num_meta
             scope.parent_vars_defined = (obj) ->
                 return if scope.num_parent_vars(obj) then true else false
@@ -319,6 +320,7 @@ device_variable_module.controller("dv_base", ["$scope", "$compile", "$filter", "
                 else
                     return "unknown type #{obj.var_type}"
             scope.get_parent_vars = (obj, src) ->
+                my_names = (entry.name for entry in obj.device_variable_set)
                 parents = []                    
                 if not obj.is_cluster_device_group
                     if obj.device_type_identifier != "MD" and src == "g" 
@@ -326,6 +328,7 @@ device_variable_module.controller("dv_base", ["$scope", "$compile", "$filter", "
                         parents = meta_server.device_variable_set
                     else if src == "c"
                         parents = scope.cdg.device_variable_set
+                    parents = (entry for entry in parents when entry.name not in my_names)
                 return parents
     }
 )

@@ -307,10 +307,11 @@ angular_module_setup = (module_list, url_list=[]) ->
                 $httpProvider.defaults.xsrfCookieName = 'csrftoken'
                 $httpProvider.defaults.xsrfHeaderName = 'X-CSRFToken'
         ]).filter("paginator", ["$filter", ($filter) ->
-            return (arr, scope) ->
-                if scope.pagSettings.conf.init
-                    arr = scope.pagSettings.apply_filter(arr)
-                    return arr.slice(scope.pagSettings.conf.start_idx, scope.pagSettings.conf.end_idx + 1)
+            return (arr, scope, pagname) ->
+                cur_ps = if pagname then scope.$eval(pagname) else scope.pagSettings
+                if cur_ps.conf.init
+                    arr = cur_ps.apply_filter(arr)
+                    return arr.slice(cur_ps.conf.start_idx, cur_ps.conf.end_idx + 1)
                 else
                     return arr
         ]).filter("paginator2", ["$filter", ($filter) ->
@@ -384,6 +385,8 @@ angular_module_setup = (module_list, url_list=[]) ->
             return new shared_data_source()
         ]).directive("paginator", ($templateCache) ->
             link = (scope, element, attrs) ->
+                #console.log attrs.pagSettings, scope.$eval(attrs.pagSettings), scope
+                #pagSettings = scope.$eval(scope.pagSettings)
                 pagSettings = scope.pagSettings
                 pagSettings.conf.per_page = parseInt(attrs.perPage)
                 #scope.pagSettings.conf.filter = attrs.paginatorFilter
@@ -696,6 +699,8 @@ angular_add_mixin_list_controller = (module, name, settings) ->
             $scope.fn_lut = {
                 "q"           : $q
                 "Restangular" : Restangular
+                "timeout"     : $timeout
+                "paginatorSettings" : paginatorSettings
             }
             # shared data
             $scope.shared_data = sharedDataSource.data
@@ -724,7 +729,7 @@ angular_add_mixin_list_controller = (module, name, settings) ->
                     $scope.after_entries_set()
             # call the external init function after the rest has been declared
             if angular.isFunction($scope.before_load)
-                $scope.before_load($timeout)
+                $scope.before_load()
             $scope.load()
     ])
 

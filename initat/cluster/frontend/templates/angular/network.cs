@@ -73,8 +73,15 @@ angular_add_mixin_list_controller(
             }
         # function dict, scope gets extended with it
         fn: 
+            before_load: () ->
+                console.log "set"
+                es = this.edit_scope
+                es.ippager = es.fn_lut.paginatorSettings.get_paginator("iplist", es)
+                es.iplist = []
             after_entries_set : () ->
-                this.edit_scope.active_network = null
+                es = this.edit_scope
+                es.active_network = null
+                es.iplist = []
             get_defer : (q_type) ->
                 d = this.fn_lut.q.defer()
                 result = q_type.then(
@@ -86,14 +93,19 @@ angular_add_mixin_list_controller(
                 es = this.edit_scope
                 es.active_network = obj
                 q_list = [
-                    es.get_defer(es.fn_lut.Restangular.all("{% url 'rest:net_ip_list' %}".slice(1)).getList({"network" : obj.idx}))
+                    es.get_defer(es.fn_lut.Restangular.all("{% url 'rest:net_ip_list' %}".slice(1)).getList({"network" : obj.idx, "_order_by" : "ip"}))
                     es.get_defer(es.fn_lut.Restangular.all("{% url 'rest:netdevice_list' %}".slice(1)).getList({"net_ip__network" : obj.idx}))
                     es.get_defer(es.fn_lut.Restangular.all("{% url 'rest:device_list' %}".slice(1)).getList({"netdevice__net_ip__network" : obj.idx}))
                 ]
                 es.fn_lut.q.all(q_list).then((data) ->
-                    es.ip_list = data[0]
-                    es.netdevices = build_lut(data[1])
-                    es.devices = build_lut(data[2])
+                    es.iplist = data[0]
+                    netdevices = build_lut(data[1])
+                    devices = build_lut(data[2])
+                    for entry in es.iplist
+                        nd = netdevices[entry.netdevice]
+                        entry.netdevice_name = nd.devname
+                        entry.device_full_name = devices[nd.device].full_name
+                    es.ippager.set_entries(es.iplist)
                 )
             get_production_networks : ($scope) -> 
                 prod_idx = (entry for key, entry of $scope.rest_data.network_types when typeof(entry) == "object" and entry and entry["identifier"] == "p")[0].idx

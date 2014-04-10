@@ -78,10 +78,12 @@
 <script type="text/ng-template" id="network_row.html">
     <td>{{ obj.identifier }}</td>
     <td style="font-family:monospace;">
-        <span ng-bind-html="obj.network | ip_fixed_width"></span> / <span ng-bind-html="obj.netmask | ip_fixed_width"></span> / <span ng-bind-html="obj.broadcast | ip_fixed_width"></span>
+        <span style="background-color:#ededed;" ng-bind-html="obj.network | ip_fixed_width"></span> / 
+        <span style="background-color:#ededed;" ng-bind-html="obj.netmask | ip_fixed_width"></span> / 
+        <span style="background-color:#ededed;" ng-bind-html="obj.broadcast | ip_fixed_width"></span>
     </td>
     <td style="font-family:monospace;">
-        <span ng-bind-html="obj.gateway | ip_fixed_width"></span>
+        <span style="background-color:#ededed;" ng-bind-html="obj.gateway | ip_fixed_width"></span>
     </td>
     <td class="text-right">{{ obj.num_ip }}</td>
     <td>{{ obj.penalty }}</td>
@@ -138,11 +140,19 @@
             <div ng-show="active_network">
                 <h3>Network {{ active_network.identifier }}, {{ active_network.num_ip }} IP addresses</h3>
                 <table class="table table-condensed table-hover" style="width:auto;">
+                    <thead>
+                        <tr>
+                            <th>IP</th>
+                            <th>Netdevice</th>
+                            <th>Device</th>
+                        </tr>
+                    </thead>
                     <tbody>
-                        <tr ng-repeat="obj in ip_list">
+                        <tr><td colspan="9" paginator entries="iplist" pag_settings="ippager" per_page="15"></td></tr>
+                        <tr ng-repeat="obj in iplist | paginator:this:'ippager'">
                            <td>{{ obj.ip }}</td>
-                           <td>{{ obj.netdevice | follow_fk:this:'netdevices':'devname':'N/A' }}</td>
-                           <td>{{ obj.netdevice | follow_fk:this:'netdevices':'device':'N/A' | follow_fk:this:'devices':'full_name':'N/A' }}</td>
+                           <td>{{ obj.netdevice_name }}</td>
+                           <td>{{ obj.device_full_name }}</td>
                         </tr>
                     </tbody>
                 </table>
