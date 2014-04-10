@@ -21,19 +21,19 @@
 #
 """ cluster-config-server, config generators """
 
-import os
+from django.db.models import Q
+from initat.cluster.backbone.models import device_variable, domain_tree_node, netdevice
+from initat.cluster_config_server.config import global_config, GATEWAY_THRESHOLD
+from initat.cluster_config_server.partition_setup import partition_setup
+from lxml import etree # @UnresolvedImport
+from lxml.builder import E # @UnresolvedImport
 import base64
+import commands
+import os
 import logging_tools
 import networkx
 import re
 import tempfile
-from django.db.models import Q
-from lxml import etree # @UnresolvedImport
-from lxml.builder import E # @UnresolvedImport
-from initat.cluster.backbone.models import device_variable, domain_tree_node, netdevice
-
-from initat.cluster_config_server.config import global_config, GATEWAY_THRESHOLD
-from initat.cluster_config_server.partition_setup import partition_setup
 
 def do_uuid(conf):
     conf_dict = conf.conf_dict
@@ -317,35 +317,44 @@ def do_ssh(conf):
             sshkn = tempfile.mktemp("sshgen")
             sshpn = "%s.pub" % (sshkn)
             if ssh_type:
-                os.system("ssh-keygen -t %s -q -b %d -f %s -N ''" % (ssh_type, key_size, sshkn))
+                _cmd = "ssh-keygen -t {} -q -b {:d} -f {} -N ''".format(ssh_type, key_size, sshkn)
             else:
-                os.system("ssh-keygen -q -b 1024 -f %s -N ''" % (sshkn))
-            found_keys_dict[privfn] = file(sshkn, "rb").read()
-            found_keys_dict[pubfn] = file(sshpn, "rb").read()
-            os.unlink(sshkn)
-            os.unlink(sshpn)
+                _cmd = "ssh-keygen -q -b 1024 -f {} -N ''".format(sshkn)
+            c_stat, c_out = commands.getstatusoutput(_cmd)
+            if c_stat:
+                print "error generating: {}".format(c_out)
+            else:
+                found_keys_dict[privfn] = file(sshkn, "rb").read()
+                found_keys_dict[pubfn] = file(sshpn, "rb").read()
+            try:
+                os.unlink(sshkn)
+                os.unlink(sshpn)
+            except:
+                pass
             new_keys.extend([privfn, pubfn])
     if new_keys:
         new_keys.sort()
         print "%s to create: %s" % (logging_tools.get_plural("key", len(new_keys)),
                                     ", ".join(new_keys))
         for new_key in new_keys:
-            new_dv = device_variable(
-                device=conf_dict["device"],
-                name=new_key,
-                var_type="b",
-                description="SSH key %s" % (new_key),
-                val_blob=base64.b64encode(found_keys_dict[new_key]))
-            new_dv.save()
+            if found_keys_dict[new_key] is not None:
+                new_dv = device_variable(
+                    device=conf_dict["device"],
+                    name=new_key,
+                    var_type="b",
+                    description="SSH key %s" % (new_key),
+                    val_blob=base64.b64encode(found_keys_dict[new_key]))
+                new_dv.save()
     for ssh_type, key_size in ssh_types:
         privfn = "ssh_host_%s_key" % (ssh_type)
         pubfn = "ssh_host_%s_key_pub" % (ssh_type)
         _pubfrn = "ssh_host_%s_key.pub" % (ssh_type)
         for var in [privfn, pubfn]:
-            new_co = conf.add_file_object("/etc/ssh/%s" % (var.replace("_pub", ".pub")))
-            new_co.bin_append(found_keys_dict[var])
-            if var == privfn:
-                new_co.mode = "0600"
+            if found_keys_dict[var] is not None:
+                new_co = conf.add_file_object("/etc/ssh/%s" % (var.replace("_pub", ".pub")))
+                new_co.bin_append(found_keys_dict[var])
+                if var == privfn:
+                    new_co.mode = "0600"
         if ssh_type == "rsa1":
             for var in [privfn, pubfn]:
                 new_co = conf.add_file_object("/etc/ssh/%s" % (var.replace("_rsa1", "").replace("_pub", ".pub")))
