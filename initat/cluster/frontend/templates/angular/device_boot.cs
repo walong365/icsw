@@ -32,11 +32,14 @@ device_boot_template = """
             <th ng-show="any_type_1_selected">
                 action
             </th>
+            <th ng-show="any_type_3_selected">
+                log
+            </th>
         </tr>
     </thead>
     <tbody>
         <tr devicerow ng-repeat-start="dev in devices"></tr>
-        <tr ng-repeat-end ng-show="bo_enabled['l']">
+        <tr ng-repeat-end ng-show="bo_enabled['l'] && dev.show_log">
             <td colspan="100">
                 <devicelogs></devicelogs>
             </td>
@@ -157,6 +160,9 @@ device_row_template = """
     <td ng-show="any_type_1_selected">
         <input type="button" class="btn btn-xs btn-warning" value="modify" ng-click="modify_device(dev, $event)"></input>
     </td>
+    <td ng-show="any_type_3_selected">
+        <input type="button" ng-class="get_devlog_class(dev)" ng-value="get_devlog_value(dev)" ng-click="change_devlog_flag(dev)"></input>
+    </td>
 """
 
 device_log_row_template = """
@@ -198,6 +204,8 @@ device_boot_module.controller("boot_ctrl", ["$scope", "$compile", "$filter", "$t
         $scope.num_selected = 0
         $scope.bootserver_list = []
         $scope.any_type_1_selected = false
+        $scope.any_type_2_selected = false
+        $scope.any_type_3_selected = false
         $scope.device_sel_filter = ""
         $scope.boot_options = [
             # 1 ... option to modify globally
@@ -226,6 +234,15 @@ device_boot_module.controller("boot_ctrl", ["$scope", "$compile", "$filter", "$t
                     return ", " + $scope.bootserver_list.length + " bootservers"
             else
                 return ""
+        $scope.get_devlog_class = (dev) ->
+            if dev.show_log
+                return "btn btn-xs btn-success"
+            else
+                return "btn btn-xs"
+        $scope.get_devlog_value = (dev) ->
+            return if dev.show_log then "hide" else "show"
+        $scope.change_devlog_flag = (dev) ->
+            dev.show_log = !dev.show_log
         $scope.change_sel_filter = () ->
             if $scope.cur_sel_timeout
                 $timeout.cancel($scope.cur_sel_timeout)
@@ -250,6 +267,8 @@ device_boot_module.controller("boot_ctrl", ["$scope", "$compile", "$filter", "$t
         $scope.toggle_bo = (short) ->
             $scope.bo_enabled[short] = ! $scope.bo_enabled[short]
             $scope.any_type_1_selected = if (entry for entry in $scope.boot_options when entry[2] == 1 and $scope.bo_enabled[entry[0]] == true).length then true else false
+            $scope.any_type_2_selected = if (entry for entry in $scope.boot_options when entry[2] == 2 and $scope.bo_enabled[entry[0]] == true).length then true else false
+            $scope.any_type_3_selected = if (entry for entry in $scope.boot_options when entry[2] == 3 and $scope.bo_enabled[entry[0]] == true).length then true else false
         $scope.get_dev_sel_class = (dev) ->
             if dev.selected
                 return "btn btn-xs btn-success"
@@ -333,6 +352,7 @@ device_boot_module.controller("boot_ctrl", ["$scope", "$compile", "$filter", "$t
                 $scope.devices = (dev for dev in data[0])
                 $scope.num_selected = 0
                 for dev in $scope.devices
+                    dev.show_log = false
                     dev.selected = false
                     dev.recvreq_str = "waiting"
                     dev.recvreq_state = "warning"
