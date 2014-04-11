@@ -41,7 +41,7 @@
             <tr class="success">
                 <th colspan="10"></th>
                 <th>
-                    <input type="button" class="btn btn-success btn-sm" ng-click="layout_edit.create($event)" value="create disc"/>
+                    <input type="button" class="btn btn-success btn-xs" ng-click="layout_edit.create($event)" value="create disc"/>
                 </th>
                 <th colspan="2"></th>
             </tr>
@@ -50,7 +50,7 @@
             <tr class="danger">
                 <th colspan="10">system partitions ({{ edit_obj.sys_partition_set.length }} defined)</th>
                 <th>
-                    <input type="button" class="btn btn-success btn-sm" ng-click="sys_edit.create($event)" value="create sys"/>
+                    <input type="button" class="btn btn-success btn-xs" ng-click="sys_edit.create($event)" value="create sys"/>
                 </th>
                 <th colspan="2"></th>
             </tr>
@@ -64,19 +64,19 @@
     <td>{{ sys.mountpoint }}</td>
     <td colspan="8">{{ sys.mount_options }}</td>
     <td>
-        <input type="button" class="btn btn-primary btn-sm" value="modify" ng-click="sys_edit.edit(sys, $event)"></input>
+        <input type="button" class="btn btn-primary btn-xs" value="modify" ng-click="sys_edit.edit(sys, $event)"></input>
     </td>
     <td>
-        <input type="button" class="btn btn-danger btn-sm" value="delete" ng-click="sys_edit.delete_obj(sys)"></input>
+        <input type="button" class="btn btn-danger btn-xs" value="delete" ng-click="sys_edit.delete_obj(sys)"></input>
     </td>
 </script>
 
 <script type="text/ng-template" id="part_disc.html">
     <tr class="success icsw_dyn">
         <th colspan="10">Disc: {{ disc.disc }}, {{ disc.partition_set.length }} partitions, label_type is {{ disc.label_type }}</th>
-        <th><input type="button" class="btn btn-success btn-sm" ng-click="disc_edit.create($event)" value="create part"/></th>
-        <th><input type="button" class="btn btn-primary btn-sm" ng-click="disc_edit.edit(disc, $event)" value="modify"/></th>
-        <th><input type="button" class="btn btn-danger btn-sm" ng-click="disc_edit.delete_obj(disc)" value="delete"/></th>
+        <th><input type="button" class="btn btn-success btn-xs" ng-click="disc_edit.create($event)" value="create part"/></th>
+        <th><input type="button" class="btn btn-primary btn-xs" ng-click="disc_edit.edit(disc, $event)" value="modify"/></th>
+        <th><input type="button" class="btn btn-danger btn-xs" ng-click="disc_edit.delete_obj(disc)" value="delete"/></th>
     </tr>
     <tr class="icsw_dyn" ng-show="disc.partition_set.length">
         <th>Part</th>
@@ -111,10 +111,10 @@
     <td>
     </td>
     <td>
-        <input type="button" class="btn btn-primary btn-sm" value="modify" ng-click="part_edit.edit(part, $event)"></input>
+        <input type="button" class="btn btn-primary btn-xs" value="modify" ng-click="part_edit.edit(part, $event)"></input>
     </td>
     <td>
-        <input type="button" class="btn btn-danger btn-sm" value="delete" ng-click="part_edit.delete_obj(part)"></input>
+        <input type="button" class="btn btn-danger btn-xs" value="delete" ng-click="part_edit.delete_obj(part)"></input>
     </td>
 </script>
 
@@ -137,8 +137,8 @@
     <td ng-class="obj.valid && 'success' || 'danger'">{{ obj.valid | yesno1  }}</td>
     <td ng-class="obj.valid && 'success' || 'danger'">{{ obj.nodeboot | yesno1 }}</td>
     <td class="text-center">{{ obj.act_partition_table.length }} / {{ obj.new_partition_table.length }}</td>
-    <td><input type="button" class="btn btn-primary btn-sm" ng-click="edit($event, obj)" value="modify"/></td>
-    <td><input type="button" class="btn btn-danger btn-sm" ng-show="fn.delete_ok(obj)" ng-click="delete(obj)" value="delete"/></td>
+    <td><input type="button" class="btn btn-primary btn-xs" ng-click="edit($event, obj)" value="modify"/></td>
+    <td><input type="button" class="btn btn-danger btn-xs" ng-show="fn.delete_ok(obj)" ng-click="delete(obj)" value="delete"/></td>
 </script>
 
 <tabset>

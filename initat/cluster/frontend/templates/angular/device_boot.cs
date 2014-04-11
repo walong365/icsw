@@ -10,7 +10,7 @@ DT_FORM = "dd, D. MMM YYYY HH:mm:ss"
 
 device_boot_template = """
 <h2>
-    Boot config for {{ devices.length }} devices<span ng-show="num_selected">, {{ num_selected }} selected</span>
+    Boot config for {{ devices.length }} devices<span ng-show="num_selected">, {{ num_selected }} selected</span>{{ get_global_bootserver_info() }}
 </h2>
 <form class="form-inline">
     <div class="btn-group">
@@ -119,7 +119,7 @@ device_boot_template = """
 
 device_row_template = """
     <td>{{ dev.device_group_name }}</td>
-    <td ng-class="get_device_name_class(dev)">{{ dev.full_name }} ({{ get_bootserver_info(dev) }})</td>
+    <td ng-class="get_device_name_class(dev)">{{ dev.full_name }}{{ get_bootserver_info(dev) }}</td>
     <td class="center"><input type="button" ng-class="get_dev_sel_class(dev)" ng-click="toggle_dev_sel(dev, 0)" value="sel"></button></td>
     <td ng-class="dev.recvreq_state">{{ dev.recvreq_str }}</td>
     <td ng-class="dev.network_state">{{ dev.network }}</td>
@@ -196,6 +196,7 @@ device_boot_module.controller("boot_ctrl", ["$scope", "$compile", "$filter", "$t
         $scope.enable_modal = true
         $scope.mbl_entries = []
         $scope.num_selected = 0
+        $scope.bootserver_list = []
         $scope.any_type_1_selected = false
         $scope.device_sel_filter = ""
         $scope.boot_options = [
@@ -216,6 +217,15 @@ device_boot_module.controller("boot_ctrl", ["$scope", "$compile", "$filter", "$t
             {"val" : "cramfs", "name" : "CramFS"},
             {"val" : "lo", "name" : "ext2 via Loopback"},
         ]
+        $scope.get_global_bootserver_info = () ->
+            if $scope.bootserver_list.length
+                if $scope.bootserver_list.length == 1
+                    return " on bootserver " + $scope.mother_servers[$scope.bootserver_list[0]].full_name
+                else
+                    console.log "."
+                    return ", " + $scope.bootserver_list.length + " bootservers"
+            else
+                return ""
         $scope.change_sel_filter = () ->
             if $scope.cur_sel_timeout
                 $timeout.cancel($scope.cur_sel_timeout)
@@ -251,10 +261,13 @@ device_boot_module.controller("boot_ctrl", ["$scope", "$compile", "$filter", "$t
             else
                 return "warning"
         $scope.get_bootserver_info = (dev) ->
-            if dev.bootserver of $scope.mother_servers
-                return $scope.mother_servers[dev.bootserver].full_name
+            if $scope.bootserver_list.length > 1
+                if dev.bootserver of $scope.mother_servers
+                    return " (" + $scope.mother_servers[dev.bootserver].full_name + ")"
+                else
+                    return " (N/A)"
             else
-                return "N/A"
+                return ""
         $scope.num_selected_hc = () ->
             num_hc = 0
             for dev in $scope.devices
@@ -342,6 +355,8 @@ device_boot_module.controller("boot_ctrl", ["$scope", "$compile", "$filter", "$t
                 if $scope.update_info_timeout
                     $timeout.cancel($scope.update_info_timeout)
                 prod_nets = (entry for entry in data[5] when entry.network_type_identifier == "p")
+                # check for number of bootservers
+                $scope.bootserver_list = _.uniq(entry.bootserver for entry in $scope.devices)
                 valid_states = []
                 idx = 0
                 for entry in data[4]
@@ -412,7 +427,9 @@ device_boot_module.controller("boot_ctrl", ["$scope", "$compile", "$filter", "$t
                                     _list = (_entry for _entry in $scope.valid_states when _entry.status == dev.new_state)
                                     if dev.prod_link
                                         _list = (_entry for _entry in _list when _entry.network == dev.prod_link)
-                                    dev.target_state = _list[0].idx
+                                    # _list can be empty when networks change theirs types
+                                    if _list.length
+                                        dev.target_state = _list[0].idx
                                 # copy image
                                 for _kv in ["new_image", "act_image", "imageversion"]
                                     dev[_kv] = entry[_kv]
