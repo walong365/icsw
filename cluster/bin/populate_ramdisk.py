@@ -1220,7 +1220,7 @@ def main_normal():
         conf_dict = {}
     # set initsize if not already set
     if not my_args.init_size:
-        my_args.init_size = int(conf_dict.get("CONFIG_BLK_DEV_RAM_SIZE", "16384"))
+        my_args.init_size = int(conf_dict.get("CONFIG_BLK_DEV_RAM_SIZE", "32768"))
     # check for 64bit Kernel
     if not my_args.kernel_64_bit:
         my_args.kernel_64_bit = "CONFIG_X86_64" in conf_dict
