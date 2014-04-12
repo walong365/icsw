@@ -385,8 +385,13 @@ class main_process(threading_tools.process_pool):
                         self.log("removing {} from mis_dict".format(logging_tools.get_plural("key", len(del_keys))))
                         for del_key in del_keys:
                             del self.mis_dict[del_key]
-                self.log("Memory info: {}".format(" / ".join([process_tools.beautify_mem_info(sum([value[1] for value in mem_info_dict.get(key, {}).itervalues()])) for key in act_meminfo_keys])))
-
+                self.log(
+                    "Memory info: {}".format(
+                        " / ".join([
+                            process_tools.beautify_mem_info(sum([value[1] for value in mem_info_dict.get(key, {}).itervalues()]), short=True) for key in act_meminfo_keys
+                        ])
+                    )
+                )
             if del_list:
                 del_list.sort()
                 self.log("removed {}: {}".format(logging_tools.get_plural("block", len(del_list)), ", ".join(del_list)))
