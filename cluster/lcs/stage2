@@ -244,7 +244,7 @@ function add_groups_and_users() {
         gname=`echo $g| cut -d ":" -f 1`
         gid=`echo $g| cut -d ":" -f 2`
         echo -e "Trying to add group $gname (gid $gid)"
-        chroot /$basedir /usr/sbin/groupadd -g $gid $gname
+        chroot /$basedir /usr/sbin/groupadd -g $gid $gname  >> /conf/.output/useradd 2>&1
     done
     users=`get_conf_str "get_add_user" | cut -d " " -f 3- `
     echo -e "Adding users $users"
@@ -257,7 +257,7 @@ function add_groups_and_users() {
         ushell=`echo $u | cut -d ":" -f 6`
         passwd=`echo $u | cut -d ":" -f 7`
         echo -e "Trying to add user $name (uid $uid, group $group, info $uinfo, home $uhome, shell $ushell)"
-        chroot /$basedir /usr/sbin/useradd -u $uid -g $group -c "$uinfo" -d "$uhome" -s "$ushell" $name
+        chroot /$basedir /usr/sbin/useradd -u $uid -g $group -c "$uinfo" -d "$uhome" -s "$ushell" $name >> /conf/.output/useradd 2>&1 
         echo "${name}:${passwd}" > /$basedir/tmp/pwf
         chroot /$basedir cat /tmp/pwf | /usr/sbin/chpasswd
         rm -f /$basedir/pwf
