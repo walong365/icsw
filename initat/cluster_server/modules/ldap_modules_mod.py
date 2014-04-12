@@ -660,32 +660,20 @@ class sync_ldap_config(cs_base_class.server_com, ldap_mixin):
                             export_dict[aeid["import"]] = (aeid["options"], "%s%s:%s" % (mach, aeid["node_postfix"], aeid["export"]))
                 # home-exports
                 home_exp_dict = home_export_list().exp_dict
-#                 exp_entries = device_config.objects.filter(
-#                     Q(config__name__icontains="homedir") &
-#                     Q(config__name__icontains="export") &
-#                     Q(device__device_type__identifier="H")).prefetch_related("config__config_str_set").select_related("device")
-#                 for entry in exp_entries:
-#                     dev_name, act_pk = (entry.device.name,
-#                                         entry.pk)
-#                     home_exp_dict.setdefault(
-#                         act_pk, {
-#                             "name"         : dev_name,
-#                             "homeexport"   : "",
-#                             "node_postfix" : "",
-#                             "options"      : "-soft"})
-#                     for c_str in entry.config.config_str_set.all():
-#                         if c_str.name in home_exp_dict[act_pk]:
-#                             home_exp_dict[act_pk][c_str.name] = c_str.value
-#                 # remove invalid exports (with no homeexport-entry)
-#                 invalid_home_keys = [key for key, value in home_exp_dict.iteritems() if not value["homeexport"]]
-#                 for ihk in invalid_home_keys:
-#                     del home_exp_dict[ihk]
                 # now we have all automount-maps in export_dict, form is mountpoint: (options, source)
                 for user_stuff in [cur_u for cur_u in all_users.values() if cur_u.active and cur_u.group.active]:
                     group_stuff = all_groups[user_stuff.group_id]
                     if user_stuff.export_id in home_exp_dict.keys():
                         home_stuff = home_exp_dict[user_stuff.export_id]
-                        export_dict[os.path.normpath("%s/%s" % (group_stuff.homestart, user_stuff.home))] = (home_stuff["options"], "%s%s:%s/%s" % (home_stuff["name"], home_stuff["node_postfix"], home_stuff["homeexport"], user_stuff.home))
+                        if group_stuff.homestart and group_stuff.homestart not in ["/None", "/none"]:
+                            export_dict[os.path.normpath("%s/%s" % (group_stuff.homestart, user_stuff.home))] = (home_stuff["options"], "%s%s:%s/%s" % (home_stuff["name"], home_stuff["node_postfix"], home_stuff["homeexport"], user_stuff.home))
+                        else:
+                            self.log("ignoring export for user {} because of empty or invalid homestart in group {}".format(
+                                unicode(user_stuff),
+                                unicode(group_stuff),
+                                ),
+                                logging_tools.LOG_LEVEL_WARN
+                                )
                 # build mountmaps
                 # SUSE 10.1 mappings
                 if ldap_version > 0:
@@ -703,6 +691,8 @@ class sync_ldap_config(cs_base_class.server_com, ldap_mixin):
                     mount_point_class = ["top", "automount", "clusterAutomount"]
                 master_map_dn = "%s=auto.master" % (master_map_pfix)
                 auto_maps = []
+                # import pprint
+                # pprint.pprint(export_dict)
                 # remove mount_points which would overwrite '/'
                 error_keys = sorted([key for key in export_dict.keys() if os.path.dirname(key) == "/"])
                 if error_keys:
