@@ -638,7 +638,7 @@ def config_post_save(sender, **kwargs):
                         config_str(
                             name="options",
                             description="Options",
-                            value="-soft,tcp,lock,rsize=8192,wsize=8192,noac,lookupcache=none"
+                            value="-soft,tcp,lock,rsize=8192,wsize=8192,noac,lookupcache=none,vers=4,port=2049"
                         ),
                         config_str(
                             name="node_postfix",
@@ -661,7 +661,7 @@ def config_post_save(sender, **kwargs):
                         config_str(
                             name="options",
                             description="Options",
-                            value="-soft,tcp,lock,rsize=8192,wsize=8192,noac,lookupcache=none"
+                            value="-soft,tcp,lock,rsize=8192,wsize=8192,noac,lookupcache=none,vers=4,port=2049"
                             )
                     ]
             elif cur_inst.name == "ldap_server":
