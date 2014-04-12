@@ -635,7 +635,11 @@ class receiver(object):
         collectd.notice("start 0MQ process")
         self.sub_proc = net_receiver()
         self.sub_proc.start()
+        collectd.info("adding receiver pid {:d}".format(self.sub_proc.pid))
+        self.__msi_block.add_actual_pid(self.sub_proc.pid, mult=3, process_name="receiver", fuzzy_ceiling=3)
+        self.__msi_block.save_block()
     def init_receiver(self):
+        self._init_msi_block()
         collectd.notice("init 0MQ IPC receiver at {}".format(IPC_SOCK))
         self.recv_sock = self.context.socket(zmq.PULL)
         sock_dir = os.path.dirname(IPC_SOCK[6:])
@@ -643,6 +647,15 @@ class receiver(object):
             collectd.notice("creating directory {}".format(sock_dir))
             os.mkdir(sock_dir)
         self.recv_sock.bind(IPC_SOCK)
+    def _init_msi_block(self):
+        collectd.info("init meta-server-info block")
+        msi_block = process_tools.meta_server_info("collectd")
+        msi_block.add_actual_pid(mult=10, fuzzy_ceiling=10, process_name="main")
+        msi_block.start_command = "/etc/init.d/collectd start"
+        msi_block.stop_command = "/etc/init.d/collectd force-stop"
+        msi_block.kill_pids = True
+        msi_block.save_block()
+        self.__msi_block = msi_block
     def recv(self):
         self.lock.acquire()
         if self.recv_sock:
@@ -658,6 +671,7 @@ class receiver(object):
                         self.recv_sock.close()
                         self.context.term()
                         self.recv_sock = None
+                        self.__msi_block.remove_meta_block()
                         break
                     else:
                         if len(data) == 3:
@@ -734,7 +748,7 @@ def main_for_direct():
                         ),
                     ]
                 )
-    print unicode(out_list)
+    print(unicode(out_list))
 
 if __name__ != "__main__":
     main_for_collectd()
