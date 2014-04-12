@@ -336,11 +336,8 @@ def _build_stat_dict(content):
     stat_dict["comm"] = com_part
     return stat_dict
 
-def beautify_mem_info(mi=None, short=0):
-    if short:
-        bs = "B"
-    else:
-        bs = "Bytes"
+def beautify_mem_info(mi=None, short=False):
+    bs = "B" if short else "Bytes"
     if mi is None:
         mi = get_mem_info()
     if mi < 1024:

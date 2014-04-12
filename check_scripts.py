@@ -87,7 +87,7 @@ INSTANCE_XML = """
         </config_names>
     </instance>
     <!-- collectd is checked via process_name to take the python side-process into account -->
-    <instance name="collectd" check_type="simple" any_threads_ok="1" runs_on="system">
+    <instance name="collectd" any_threads_ok="1" runs_on="system" has_force_stop="1" meta_server_name="collectd">
         <config_names>
             <config_name>rrd_server</config_name>
         </config_names>
@@ -308,7 +308,7 @@ def check_system(opt_ns):
                         entry.append(
                             E.state_info(
                                 num_started="{:d}".format(threads_found),
-                                num_found="%{:d}".format(threads_found),
+                                num_found="{:d}".format(threads_found),
                                 num_diff="0",
                                 state="0"))
                     else:
