@@ -320,10 +320,13 @@ class poller_obj(object):
                                 # raise exception, important
                                 raise
                         else:
-                            self.log("r_type %d not found for socket '%s'" % (
-                                r_type,
-                                str(sock),
-                                ), logging_tools.LOG_LEVEL_CRITICAL)
+                            self.log(
+                                "r_type {:d} not found for socket '{}'".format(
+                                    r_type,
+                                    str(sock),
+                                ),
+                                logging_tools.LOG_LEVEL_CRITICAL
+                            )
                             time.sleep(0.5)
             else:
                 self.log("socket %s not found in handler_dict" % (str(sock)), logging_tools.LOG_LEVEL_CRITICAL)
