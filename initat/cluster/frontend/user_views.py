@@ -28,8 +28,7 @@ from django.utils.decorators import method_decorator
 from django.views.generic import View
 from initat.cluster.backbone.models import group, user, user_variable, csw_permission, \
     csw_object_permission, group_permission, user_permission, group_object_permission, \
-    user_object_permission, group_object_permission_serializer, user_object_permission_serializer, \
-    cluster_setting
+    user_object_permission, group_object_permission_serializer, user_object_permission_serializer
 from initat.cluster.backbone.render import permission_required_mixin, render_me
 from initat.cluster.frontend.forms import group_detail_form, user_detail_form, \
     account_detail_form, global_settings_form
@@ -61,13 +60,18 @@ class sync_users(View):
     def post(self, request):
         # create homedirs
         # FIXME: only create users for local server
-        create_user_list = user.objects.exclude(Q(export=None)).filter(Q(home_dir_created=False) & Q(active=True) & Q(group__active=True))
+        create_user_list = user.objects.exclude(Q(export=None)).filter(Q(home_dir_created=False) & Q(active=True) & Q(group__active=True)).select_related("export__device")
         logger.info("user homes to create: %d" % (len(create_user_list)))
         for create_user in create_user_list:
-            logger.info("trying to create user_home for '%s'" % (unicode(create_user)))
+            logger.info(
+                "trying to create user_home for '{}' on server {}".format(
+                    unicode(create_user),
+                    create_user.export.device.full_name,
+                )
+            )
             srv_com = server_command.srv_command(command="create_user_home")
             srv_com["server_key:username"] = create_user.login
-            _result = contact_server(request, "server", srv_com, timeout=30)
+            _result = contact_server(request, "server", srv_com, timeout=30, target_server_id=create_user.export.device_id)
         # check for configs, can be optimised ?
         if config_tools.server_check(server_type="ldap_server").effective_device:
             srv_com = server_command.srv_command(command="sync_ldap_config")
@@ -75,8 +79,9 @@ class sync_users(View):
         if config_tools.server_check(server_type="yp_server").effective_device:
             srv_com = server_command.srv_command(command="write_yp_config")
             _result = contact_server(request, "server", srv_com, timeout=30)
-        srv_com = server_command.srv_command(command="sync_http_users")
-        _result = contact_server(request, "md-config", srv_com)
+        if config_tools.server_check(server_type="md-config").effective_device:
+            srv_com = server_command.srv_command(command="sync_http_users")
+            _result = contact_server(request, "md-config", srv_com)
 
 class save_layout_state(View):
     @method_decorator(login_required)
