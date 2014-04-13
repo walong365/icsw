@@ -282,6 +282,7 @@ def check_system(opt_ns):
                     pid_time = os.stat(pid_file_name)[stat.ST_CTIME]
                     act_pids = [int(line.strip()) for line in file(pid_file_name, "r").read().split("\n") if line.strip().isdigit()]
                     act_state, num_started, num_found = check_processes(name, act_pids, pid_thread_dict, True if int(entry.attrib["any_threads_ok"]) else False)
+                    num_diff = 0
                     diff_dict = {}
                 entry.append(
                     E.state_info(
