@@ -87,15 +87,15 @@ device_config_template = """
 """
 
 devconf_vars_template = """
-    <h2>Config variables for {{ devsel_list.length }} devices</h2>
+    <h2>Config variables for {{ devsel_list.length }} devices, <input type="button" class="btn btn-xs btn-primary" value="show vars" ng-click="load_vars()"></input></h2>
     <div class="row">
-        <div class="col-sm-5 form-inline">
+        <div class="col-sm-5 form-inline" ng-show="loaded">
             <div class="form-group">
                 <input class="form-control" ng-model="var_filter" placeholder="filter"></input>
             </div>
         </div>
     </div>
-    <div>
+    <div ng-show="loaded">
         <tree treeconfig="devvar_tree"></tree>
     </div>
 """
@@ -191,15 +191,19 @@ device_config_module.controller("config_vars_ctrl", ["$scope", "$compile", "$fil
     ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, sharedDataSource, $q, $modal) ->
         $scope.devvar_tree = new device_config_var_tree($scope)
         $scope.var_filter = ""
-        $scope.new_devsel = (_dev_sel, _devg_sel) ->
+        $scope.loaded = false
+        $scope.set_devsel = (_dev_sel, _devg_sel) ->
             $scope.devsel_list = _dev_sel
-            call_ajax
-                url     : "{% url 'config:get_device_cvars' %}"
-                data    :
-                    "keys" : angular.toJson($scope.devsel_list)
-                success : (xml) =>
-                    parse_xml_response(xml)
-                    $scope.set_tree_content($(xml).find("devices"))
+        $scope.load_vars = () ->
+            if not $scope.loaded
+                $scope.loaded = true
+                call_ajax
+                    url     : "{% url 'config:get_device_cvars' %}"
+                    data    :
+                        "keys" : angular.toJson($scope.devsel_list)
+                    success : (xml) =>
+                        parse_xml_response(xml)
+                        $scope.set_tree_content($(xml).find("devices"))
         $scope.set_tree_content = (in_xml) ->
             for dev_xml in in_xml.find("device")
                 dev_xml = $(dev_xml)
@@ -234,7 +238,7 @@ device_config_module.controller("config_vars_ctrl", ["$scope", "$compile", "$fil
         restrict : "EA"
         template : $templateCache.get("devconfvars.html")
         link : (scope, el, attrs) ->
-            scope.new_devsel((parseInt(entry) for entry in attrs["devicepk"].split(",")), [])
+            scope.set_devsel((parseInt(entry) for entry in attrs["devicepk"].split(",")), [])
     }
 ).run(($templateCache) ->
     $templateCache.put("devconfvars.html", devconf_vars_template)

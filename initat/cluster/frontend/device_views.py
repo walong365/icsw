@@ -90,7 +90,7 @@ class change_devices(View):
                 if key == "root_passwd":
                     logger.info(" %s: %s" % (key, "****"))
                 else:
-                    logger.info(" %s: %s" % (key, unicode(c_dict.get[key])))
+                    logger.info(" %s: %s" % (key, unicode(c_dict.get(key))))
             dev_changes = 0
             for cur_dev in device.objects.filter(Q(pk__in=pk_list)):
                 changed = False
