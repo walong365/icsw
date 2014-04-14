@@ -154,7 +154,7 @@ class network(models.Model):
         return u"%s (%s/%s, %s)" % (
             self.identifier,
             self.network,
-            self.netmask,
+            ipvx_tools.get_network_name_from_mask(self.netmask),
             self.network_type.identifier
         )
 
