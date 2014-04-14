@@ -92,12 +92,13 @@ class srv_command(object):
                 self.__tree = kwargs["source"]
         else:
             self.__tree = self.__builder.ics_batch(
-                self.__builder.source(host=os.uname()[1],
-                                      pid="%d" % (os.getpid())),
+                self.__builder.source(
+                    host=os.uname()[1],
+                    pid="{:d}".format(os.getpid())),
                 self.__builder.command(kwargs.pop("command", "not set")),
                 self.__builder.identity(kwargs.pop("identity", "not set")),
                 # set srv_command version
-                srvc_version="%d" % (kwargs.pop("srvc_version", 1)))
+                srvc_version="{:d}".format(kwargs.pop("srvc_version", 1)))
             for key, value in kwargs.iteritems():
                 self[key] = value
     def xpath(self, *args, **kwargs):
@@ -110,12 +111,12 @@ class srv_command(object):
             self["result"] = None
         self["result"].attrib.update({
             "reply" : ret_str,
-            "state" : "%d" % (level)})
+            "state" : "{:d}".format(level)})
     def builder(self, tag_name=None, *args, **kwargs):
         if tag_name is None:
             return self.__builder
         if type(tag_name) == int:
-            tag_name = "__int__%d" % (tag_name)
+            tag_name = "__int__{:d}".format(tag_name)
         elif tag_name == None:
             tag_name = "__none__"
         if tag_name.count("/"):
@@ -125,14 +126,14 @@ class srv_command(object):
             tag_name = tag_name.replace("@", "__atsign__")
             kwargs["escape_atsign"] = "1"
         if tag_name[0].isdigit():
-            tag_name = "__fdigit__%s" % (tag_name)
+            tag_name = "__fdigit__{}".format(tag_name)
             kwargs["first_digit"] = "1"
         if tag_name.count(":"):
             tag_name = tag_name.replace(":", "__colon__")
             kwargs["escape_colon"] = "1"
         # escape special chars
         for s_char in "[] ":
-            tag_name = tag_name.replace(s_char, "_0x0%x_" % (ord(s_char)))
+            tag_name = tag_name.replace(s_char, "_0x0{:x}_".format(ord(s_char)))
         return getattr(self.__builder, tag_name)(*args, **kwargs)
     def _interpret_tag(self, el, tag_name):
         iso_re = re.compile("^(?P<pre>.*)_0x0(?P<code>[^_]\S+)_(?P<post>.*)")
@@ -154,7 +155,7 @@ class srv_command(object):
             while True:
                 cur_match = iso_re.match(tag_name)
                 if cur_match:
-                    tag_name = "%s%s%s" % (
+                    tag_name = "{}{}{}".format(
                         cur_match.group("pre"),
                         chr(int(cur_match.group("code"), 16)),
                         cur_match.group("post"))
@@ -170,12 +171,12 @@ class srv_command(object):
         else:
             return default
     def __contains__(self, key):
-        xpath_str = "/ns:ics_batch/%s" % ("/".join(["ns:%s" % (sub_arg) for sub_arg in key.split(":")]))
+        xpath_str = "/ns:ics_batch/{}".format("/".join(["ns:{}".format(sub_arg) for sub_arg in key.split(":")]))
         xpath_res = self.__tree.xpath(xpath_str, smart_strings=False, namespaces={"ns" : XML_NS})
         return True if len(xpath_res) else False
     def get_element(self, key):
         if key:
-            xpath_str = "/ns:ics_batch/%s" % ("/".join(["ns:%s" % (sub_arg) for sub_arg in key.split(":")]))
+            xpath_str = "/ns:ics_batch/{}".format("/".join(["ns:{}".format(sub_arg) for sub_arg in key.split(":")]))
         else:
             xpath_str = "/ns:ics_batch"
         return self.__tree.xpath(xpath_str, smart_strings=False, namespaces={"ns" : XML_NS})
@@ -201,12 +202,12 @@ class srv_command(object):
             else:
                 return [cur_res for cur_res in xpath_res]
         else:
-            raise KeyError("key %s not found in srv_command" % (key))
+            raise KeyError("key {} not found in srv_command".format(key))
     def _to_unicode(self, value):
         if type(value) == bool:
             return ("True" if value else "False", "bool")
         elif type(value) in [int, long]:
-            return ("%d" % (value), "int")
+            return ("{:d}".format(value), "int")
         else:
             return (value, "str")
     def __setitem__(self, key, value):
@@ -214,10 +215,9 @@ class srv_command(object):
         if etree.iselement(value):
             cur_element.append(value)
         else:
-            # print "__setitem__() in srv_command: key=%s" % (key)
             self._element(value, cur_element)
     def delete_subtree(self, key):
-        xpath_str = "/ns:ics_batch/%s" % ("/".join(["ns:%s" % (sub_arg) for sub_arg in key.split(":")]))
+        xpath_str = "/ns:ics_batch/{}".format("/".join(["ns:{}".format(sub_arg) for sub_arg in key.split(":")]))
         for result in self.__tree.xpath(xpath_str, smart_strings=False, namespaces={"ns" : XML_NS}):
             result.getparent().remove(result)
     def _element(self, value, cur_element=None):
@@ -227,10 +227,10 @@ class srv_command(object):
             cur_element.text = value
             cur_element.attrib["type"] = "str"
         elif type(value) in [int, long]:
-            cur_element.text = "%d" % (value)
+            cur_element.text = "{:d}".format(value)
             cur_element.attrib["type"] = "int"
         elif type(value) in [float]:
-            cur_element.text = "%f" % (value)
+            cur_element.text = "{:f}".format(value)
             cur_element.attrib["type"] = "float"
         elif type(value) == type(None):
             cur_element.text = None
@@ -249,7 +249,7 @@ class srv_command(object):
             for sub_key, sub_value in value.iteritems():
                 sub_el = self._element(sub_value, self.builder(sub_key))
                 if type(sub_key) in [int, long]:
-                    sub_el.attrib["dict_key"] = "__int__%d" % (sub_key)
+                    sub_el.attrib["dict_key"] = "__int__{:d}".format(sub_key)
                 elif sub_key == None:
                     sub_el.attrib["dict_key"] = "__none__"
                 else:
@@ -266,7 +266,7 @@ class srv_command(object):
                 sub_el = self._element(sub_value)
                 cur_element.append(sub_el)
         else:
-            raise ValueError("_element: unknown value type '%s'" % (type(value)))
+            raise ValueError("_element: unknown value type '{}'".format(type(value)))
         return cur_element
 # #    def _escape_key(self, key_str):
 # #        return key_str.replace("/", "r")
@@ -277,9 +277,9 @@ class srv_command(object):
         xpath_str = "/ns:ics_batch"
         cur_element = self.__tree.xpath(xpath_str, smart_strings=False , namespaces={"ns" : XML_NS})[0]
         for cur_key in key.split(":"):
-            xpath_str = "%s/ns:%s" % (xpath_str, self._escape_key(cur_key))
-            full_key = "{%s}%s" % (XML_NS, self._escape_key(cur_key))
-            sub_el = cur_element.find("./%s" % (full_key))
+            xpath_str = "{}/ns:{}".format(xpath_str, self._escape_key(cur_key))
+            full_key = "{{{}}}{}".format(XML_NS, self._escape_key(cur_key))
+            sub_el = cur_element.find("./{}".format(full_key))
             if sub_el is not None:
                 cur_element = sub_el
             else:
@@ -323,7 +323,7 @@ class srv_command(object):
             return value
         return result
     def get(self, key, def_value=None):
-        xpath_str = ".//%s" % ("/".join(["ns:%s" % (sub_arg) for sub_arg in key.split(":")]))
+        xpath_str = ".//{}".format("/".join(["ns:{}".format(sub_arg) for sub_arg in key.split(":")]))
         xpath_res = self.__tree.xpath(xpath_str, smart_strings=False, namespaces={"ns" : XML_NS})
         if len(xpath_res) == 1:
             return xpath_res[0].text
@@ -334,7 +334,7 @@ class srv_command(object):
     def update_source(self):
         self.__tree.xpath(".//ns:source", smart_strings=False, namespaces={"ns" : XML_NS})[0].attrib.update({
             "host" : os.uname()[1],
-            "pid" : "%d" % (os.getpid())})
+            "pid" : "{:d}".format(os.getpid())})
     def pretty_print(self):
         return etree.tostring(self.__tree, encoding=unicode, pretty_print=True)
     def __unicode__(self):
