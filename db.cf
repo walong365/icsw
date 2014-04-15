@@ -4,4 +4,3 @@ DB_PASSWD=dbpasswd
 DB_DATABASE=cdbase
 DB_PORT=3306
 DB_ENGINE=django.db.backends.postgresql_psycopg2
-
