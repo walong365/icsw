@@ -155,6 +155,11 @@ class rrd_tree extends tree_config
             return t_entry._name
         else
             return t_entry._name
+    get_title: (t_entry) ->
+        if t_entry._node_type == "e"
+            return t_entry._g_key
+        else
+            return ""
     handle_click: (entry, event) =>
         if entry._node_type == "s"
             entry.expand = ! entry.expand
@@ -266,23 +271,32 @@ device_rrd_module.controller("rrd_ctrl", ["$scope", "$compile", "$filter", "$tem
                             $scope.$digest()
         $scope.add_nodes = (p_node, xml_node) =>
             if p_node == undefined
-                cur_node = $scope.g_tree.new_node({folder:true, _node_type:"h", expand:true})
+                cur_node = $scope.g_tree.new_node({
+                    folder : true
+                    expand : true
+                    _node_type : "h"
+                })
                 cur_node._show_select = false
                 $scope.g_tree.add_root_node(cur_node)
             else
                 if xml_node.prop("tagName") == "entry"
                     # structural
-                    cur_node = $scope.g_tree.new_node({folder:true, _node_type:"s", expand:false, _name:xml_node.attr("part")})
+                    cur_node = $scope.g_tree.new_node({
+                        folder : true,
+                        expand : false
+                        _name  : xml_node.attr("part")
+                        _node_type : "s"
+                    })
                     cur_node._show_select = false
                 else
                     # value
                     #console.log xml_node[0]
                     cur_node = $scope.g_tree.new_node({
-                        folder :false,
-                        _node_type :"e",
-                        expand :false
+                        folder : false
+                        expand : false
                         _g_key : xml_node.attr("name")
-                        _name  :xml_node.attr("info")
+                        _name  : xml_node.attr("info")
+                        _node_type : "e"
                     })
                 p_node.add_child(cur_node)
             for sub_node in xml_node.children()
@@ -342,7 +356,7 @@ device_rrd_module.controller("rrd_ctrl", ["$scope", "$compile", "$filter", "$tem
                         num_graph = 0
                         for graph in $(xml).find("graph_list > graph")
                             num_graph++
-                            graph_list.push(new d_graph(num_graph, $(graph)))#graph.attr("href"))
+                            graph_list.push(new d_graph(num_graph, $(graph)))
                     $scope.$apply(
                         $scope.graph_list = graph_list
                     )
