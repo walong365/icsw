@@ -1,5 +1,3 @@
-#!/usr/bin/python-init -Ot
-#
 # Copyright (C) 2008-2014 Andreas Lang-Nevyjel, init.at
 #
 # this file is part of md-config-server
@@ -27,7 +25,6 @@ from initat.cluster.backbone.models import device, device_group, device_variable
      mon_check_command, mon_period, mon_contact, mon_contactgroup, mon_service_templ, \
      user, category_tree, TOP_MONITORING_CATEGORY, mon_notification, host_check_command , \
      mon_dist_master, mon_dist_slave, cluster_timezone
-from initat.host_monitoring.version import VERSION_STRING as RELAYER_VERSION_STRING
 from initat.md_config_server.version import VERSION_STRING
 from lxml.builder import E # @UnresolvedImport
 import ConfigParser
@@ -48,9 +45,21 @@ import server_command
 import shutil
 import sqlite3
 import stat
+import sys
 import time
 
 global_config = configfile.get_global_config(process_tools.get_programm_name())
+
+class generic_cache(object):
+    # stores various cached objects
+    def __init__(self):
+        # global luts
+        # lookup table for host_check_commands
+        self.mcc_lut = {key : (v0, v1, v2) for key, v0, v1, v2 in mon_check_command.objects.all().values_list("pk", "name", "description", "config__name")}
+        # lookup table for config -> mon_check_commands
+        self.mcc_lut_2 = {}
+        for v_list in mon_check_command.objects.all().values_list("name", "config__name"):
+            self.mcc_lut_2.setdefault(v_list[1], []).append(v_list[0])
 
 class var_cache(dict):
     def __init__(self, cdg):
@@ -91,7 +100,7 @@ class var_cache(dict):
 class sync_config(object):
     def __init__(self, proc, monitor_server, **kwargs):
         """
-        holds information about remote monitoring sattelites
+        holds information about remote monitoring satellites
         """
         self.__process = proc
         self.__slave_name = kwargs.get("slave_name", None)
@@ -149,7 +158,7 @@ class sync_config(object):
         # flag for reload after sync
         self.reload_after_sync_flag = False
         # relayer info
-        self.relayer_version = RELAYER_VERSION_STRING if self.master else "?.?-0"
+        self.relayer_version = "?.?-0"
         self.mon_version = "?.?-0"
         if not self.master:
             # try to get relayer / mon_version from latest build
@@ -219,20 +228,32 @@ class sync_config(object):
         if not self.dist_ok and self.config_version_build != self.config_version_installed and abs(self.send_time - time.time()) > 60:
             self.log("resending files")
             self.distribute()
+    def config_ts(self, ts_type):
+        # set config timestmap
+        setattr(self.__md_struct, "config_build_{}".format(ts_type), cluster_timezone.localize(datetime.datetime.now()))
+        self.__md_struct.save()
     def start_build(self, b_version, master=None):
         # generate datbase entry for build
         self.config_version_build = b_version
         if self.master:
+            # re-check relayer version for master
+            if "initat.host_monitoring.version" in sys.modules:
+                del sys.modules["initat.host_monitoring.version"]
+            from initat.host_monitoring.version import VERSION_STRING as RELAYER_VERSION_STRING
+            self.relayer_version = RELAYER_VERSION_STRING
             _mon_version = global_config["MD_VERSION_STRING"]
             if _mon_version.split(".")[-1] in ["x86_64", "i586", "i686"]:
                 _mon_version = ".".join(_mon_version.split(".")[:-1])
+            self.mon_version = _mon_version
+            self.log("mon / relayer version for master is {} / {}".format(self.mon_version, self.relayer_version))
             _md = mon_dist_master(
                 device=self.monitor_server,
                 version=self.config_version_build,
                 build_start=cluster_timezone.localize(datetime.datetime.now()),
                 relayer_version=self.relayer_version,
+                # monitorig daemon
                 md_version=VERSION_STRING,
-                mon_version=_mon_version,
+                mon_version=self.mon_version,
                 )
         else:
             self.__md_master = master
@@ -266,8 +287,9 @@ class sync_config(object):
             self.send_time_lut[self.send_time] = self.config_version_send
             self.dist_ok = False
             _r_gen = self._relayer_gen()
-            self.log("start send to slave (version %d, generation is %d)" % (
+            self.log("start send to slave (version {:d} [{:d}], generation is {:d})".format(
                 self.config_version_send,
+                self.send_time,
                 _r_gen,
                 ))
             # number of atomic commands
@@ -301,10 +323,10 @@ class sync_config(object):
                                 host="DIRECT",
                                 slave_name=self.__slave_name,
                                 port="0",
-                                uid="%d" % (os.stat(full_r_path)[stat.ST_UID]),
-                                gid="%d" % (os.stat(full_r_path)[stat.ST_GID]),
-                                version="%d" % (self.send_time),
-                                file_name="%s" % (full_w_path),
+                                uid="{:d}".format(os.stat(full_r_path)[stat.ST_UID]),
+                                gid="{:d}".format(os.stat(full_r_path)[stat.ST_GID]),
+                                version="{:d}".format(self.send_time),
+                                file_name="{}".format(full_w_path),
                                 content=base64.b64encode(_content)
                             )
                             self._send(srv_com)
@@ -414,10 +436,16 @@ class sync_config(object):
             return ("", [])
     def file_content_info(self, srv_com):
         cmd = srv_com["command"].text
-        self.log("handling '%s" % (cmd))
         version = int(srv_com["version"].text)
-        file_status = int(srv_com["result"].attrib["state"])
-        file_status = server_command.srv_reply_to_log_level(file_status)
+        file_reply, file_status = srv_com.get_log_tuple()
+        self.log(
+            "handling {} (version {:d}, reply is {})".format(
+                cmd,
+                version,
+                file_reply,
+            ),
+            file_status
+        )
         if cmd == "file_content_result":
             file_name = srv_com["file_name"].text
             # check return state for validity
@@ -447,7 +475,9 @@ class sync_config(object):
                     _failed_dir,
                     ", ".join(sorted(_failed_list))))
             file_names = ok_list
+        err_dict = {}
         for file_name in file_names:
+            err_str = None
             if version in self.send_time_lut:
                 target_vers = self.send_time_lut[version]
                 if version == self.send_time:
@@ -458,13 +488,20 @@ class sync_config(object):
                             else:
                                 self.__tcv_dict[file_name] = False
                         else:
-                            self.log("key %s waits for different version: %d != %d" % (file_name, version, self.__tcv_dict[file_name]), logging_tools.LOG_LEVEL_ERROR)
+                            err_str = "waits for different version: {:d} != {:d}".format(version, self.__tcv_dict[file_name])
                     else:
-                        self.log("key %s already set to %s" % (file_name, str(self.__tcv_dict[file_name])), logging_tools.LOG_LEVEL_ERROR)
+                        err_str = "already set to {}".format(str(self.__tcv_dict[file_name]))
                 else:
-                    self.log("version is from an older distribution run", logging_tools.LOG_LEVEL_ERROR)
+                    err_str = "version is from an older distribution run ({:d} != {:d})".format(version, self.send_time)
             else:
-                self.log("version %d not known in send_time_lut" % (version), logging_tools.LOG_LEVEL_ERROR)
+                err_str = "version {:d} not known in send_time_lut".format(version)
+            if err_str:
+                err_dict.setdefault(err_str, []).append(file_name)
+        for err_key in sorted(err_dict.keys()):
+            self.log("[{:4d}] {} : {}".format(
+                len(err_dict[err_key]),
+                err_key,
+                ", ".join(sorted(err_dict[err_key]))), logging_tools.LOG_LEVEL_ERROR)
         self._show_pending_info()
 
 class main_config(object):
@@ -1477,10 +1514,11 @@ class all_service_groups(host_type_config):
     def _add_servicegroups_from_db(self):
         for cat_pk in self.cat_tree.get_sorted_pks():
             cur_cat = self.cat_tree[cat_pk]
-            nag_conf = nag_config("servicegroup",
-                                  cur_cat.full_name,
-                                  servicegroup_name=cur_cat.full_name,
-                                  alias="%s group" % (cur_cat.full_name))
+            nag_conf = nag_config(
+                "servicegroup",
+                cur_cat.full_name,
+                servicegroup_name=cur_cat.full_name,
+                alias="%s group" % (cur_cat.full_name))
             self.__host_srv_lut[cur_cat.full_name] = set()
             self.__dict[cur_cat.pk] = nag_conf
             self.__obj_list.append(nag_conf)
@@ -1678,7 +1716,8 @@ class all_commands(host_type_config):
                 ngc_name = _ngc_name
             _nag_name = command_names.add(ngc_name)
             if ngc.pk:
-                cats = ngc.categories.all().values_list("full_name", flat=True)
+                # print ngc.categories.all()
+                cats = [cur_cat.full_name for cur_cat in ngc.categories.all()] # .values_list("full_name", flat=True)
             else:
                 cats = [TOP_MONITORING_CATEGORY]
             cc_s = check_command(
@@ -1720,16 +1759,18 @@ class all_contacts(host_type_config):
     def get_name(self):
         return "contact"
     def _add_contacts_from_db(self, gen_conf):
+        all_nots = mon_notification.objects.all()
         for contact in mon_contact.objects.all().select_related("user"):
             full_name = ("%s %s" % (contact.user.first_name, contact.user.last_name)).strip().replace(" ", "_")
             if not full_name:
                 full_name = contact.user.login
-            not_h_list = list(contact.notifications.filter(Q(channel="mail") & Q(not_type="host") & Q(enabled=True)))
-            not_s_list = list(contact.notifications.filter(Q(channel="mail") & Q(not_type="service") & Q(enabled=True)))
+            not_h_list = [entry for entry in all_nots if entry.channel == "mail" and entry.not_type == "host" and entry.enabled]
+            # not_s_list = list(contact.notifications.filter(Q(channel="mail") & Q(not_type="service") & Q(enabled=True)))
+            not_s_list = [entry for entry in all_nots if entry.channel == "mail" and entry.not_type == "service" and entry.enabled]
             if len(contact.user.pager) > 5:
                 # check for pager number
-                not_h_list.extend(list(contact.notifications.filter(Q(channel="sms") & Q(not_type="host") & Q(enabled=True))))
-                not_s_list.extend(list(contact.notifications.filter(Q(channel="sms") & Q(not_type="service") & Q(enabled=True))))
+                not_h_list.extend([entry for entry in all_nots if entry.channel == "sms" and entry.not_type == "host" and entry.enabled])
+                not_s_list.extend([entry for entry in all_nots if entry.channel == "sms" and entry.not_type == "service" and entry.enabled])
             if contact.mon_alias:
                 alias = contact.mon_alias
             elif contact.user.comment:
@@ -1815,7 +1856,10 @@ class all_contact_groups(host_type_config):
                 alias=cg_group.alias)
             self.__dict[cg_group.pk] = nag_conf
             for member in cg_group.members.all():
-                nag_conf["members"] = gen_conf["contact"][member.pk]["contact_name"]
+                try:
+                    nag_conf["members"] = gen_conf["contact"][member.pk]["contact_name"]
+                except:
+                    pass
         self.__obj_list = self.__dict.values()
     def has_key(self, key):
         return self.__dict.has_key(key)
@@ -1855,7 +1899,7 @@ class all_host_groups(host_type_config):
                         members="-")
                     self.__dict[h_group.pk] = nag_conf
                     self.__obj_list.append(nag_conf)
-                    nag_conf["members"] = ",".join([cur_dev.full_name for cur_dev in h_group.device_group.filter(Q(pk__in=host_pks))])
+                    nag_conf["members"] = ",".join([cur_dev.full_name for cur_dev in h_group.device_group.filter(Q(pk__in=host_pks)).select_related("domain_tree_node")])
                 # hostgroups by categories
                 for cat_pk in self.cat_tree.get_sorted_pks():
                     cur_cat = self.cat_tree[cat_pk]
@@ -1865,7 +1909,7 @@ class all_host_groups(host_type_config):
                         hostgroup_name=cur_cat.full_name,
                         alias=cur_cat.comment or cur_cat.full_name,
                         members="-")
-                    nag_conf["members"] = ",".join([cur_dev.full_name for cur_dev in cur_cat.device_set.filter(host_filter)])
+                    nag_conf["members"] = ",".join([cur_dev.full_name for cur_dev in cur_cat.device_set.filter(host_filter).select_related("domain_tree_node")])
                     if nag_conf["members"]:
                         self.__obj_list.append(nag_conf)
             else:
