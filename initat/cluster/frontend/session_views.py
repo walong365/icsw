@@ -60,11 +60,13 @@ def _get_login_hints():
     if user.objects.all().count() < 3:
         for _user in user.objects.all().order_by("login"):
             user_name = _user.login
+            _user_valid = False
             for ck_pwd in [user_name, "{}{}".format(user_name, user_name)]:
                 if authenticate(username=user_name, password=ck_pwd) is not None:
                     _hints.append((user_name, ck_pwd, _user.is_superuser))
-                else:
-                    _valid = False
+                    _user_valid = True
+            if not _user_valid:
+                _valid = False
     if not _valid:
         _hints = []
     return json.dumps(_hints)
