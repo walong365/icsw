@@ -77,9 +77,11 @@ class write_etc_hosts(cs_base_class.server_com):
         try:
             host_lines = [line.strip() for line in codecs.open(ETC_HOSTS_FILENAME, "r", "utf-8").read().split("\n")]
         except:
-            self.log("error reading / parsing %s: %s" % (ETC_HOSTS_FILENAME,
-                                                         process_tools.get_except_info()),
-                     logging_tools.LOG_LEVEL_ERROR)
+            self.log(
+                "error reading / parsing {}: {}".format(
+                    ETC_HOSTS_FILENAME,
+                    process_tools.get_except_info()),
+                logging_tools.LOG_LEVEL_ERROR)
         else:
             mode, any_modes_found = (0, False)
             for line in host_lines:
@@ -95,13 +97,12 @@ class write_etc_hosts(cs_base_class.server_com):
                     elif mode == 2:
                         post_host_lines.append(line)
             if not any_modes_found:
-                self.log("no ### aeh-.* stuff found in %s, copying to %s.orig" % (
+                self.log("no ### aeh-.* stuff found in {}, copying to {}.orig".format(
                     ETC_HOSTS_FILENAME, ETC_HOSTS_FILENAME))
                 try:
                     pass
-                    # file("%s.orig" % (ETC_HOSTS_FILENAME), "w").write("\n".join(host_lines + [""]))
                 except:
-                    self.log("error writing %s.orig: %s" % (
+                    self.log("error writing {}.orig: {}".format(
                         ETC_HOSTS_FILENAME,
                         process_tools.get_except_info()))
         # mapping from device_name to all names for ssh_host_keys
@@ -123,16 +124,24 @@ class write_etc_hosts(cs_base_class.server_com):
                 host_names = []
                 cur_dtn = cur_ip.domain_tree_node or tl_dtn
                 if not (cur_ip.alias.strip() and cur_ip.alias_excl):
-                    host_names.append("%s%s" % (target_nd.device.name, cur_dtn.node_postfix))
-                host_names.extend(["%s%s" % (cur_entry, cur_dtn.node_postfix) for cur_entry in cur_ip.alias.strip().split()])
+                    host_names.append("{}{}".format(target_nd.device.name, cur_dtn.node_postfix))
+                host_names.extend(["{}{}".format(cur_entry, cur_dtn.node_postfix) for cur_entry in cur_ip.alias.strip().split()])
                 if "localhost" in [x.split(".")[0] for x in host_names]:
                     host_names = [host_name for host_name in host_names if host_name.split(".")[0] == "localhost"]
-                if cur_dtn.create_short_names:
-                    # also create short_names
-                    out_names = (" ".join(["%s.%s %s" % (host_name, cur_dtn.full_name, host_name) for host_name in host_names if not host_name.count(".")])).split()
+                if cur_dtn.full_name:
+                    if cur_dtn.create_short_names:
+                        # also create short_names
+                        out_names = (" ".join(["{}.{} {}".format(host_name, cur_dtn.full_name, host_name) for host_name in host_names if not host_name.count(".")])).split()
+                    else:
+                        # only print the long names
+                        out_names = ["{}.{}".format(host_name, cur_dtn.full_name) for host_name in host_names if not host_name.count(".")]
                 else:
-                    # only print the long names
-                    out_names = ["%s.%s" % (host_name, cur_dtn.full_name) for host_name in host_names if not host_name.count(".")]
+                    if cur_dtn.create_short_names:
+                        # also create short_names
+                        out_names = (" ".join(["{}".format(host_name) for host_name in host_names if not host_name.count(".")])).split()
+                    else:
+                        # only print the long names
+                        out_names = ["{}".format(host_name) for host_name in host_names if not host_name.count(".")]
                 # add names with dot
                 out_names.extend([host_name for host_name in host_names if host_name.count(".")])
                 # name_dict without localhost
@@ -160,7 +169,7 @@ class write_etc_hosts(cs_base_class.server_com):
             for entry in sorted(loc_dict[pen_value]):
                 act_out_list.append([logging_tools.form_entry(entry[0])] + [logging_tools.form_entry(cur_e) for cur_e in entry[1:]])
             host_lines = str(act_out_list).split("\n")
-            out_file.extend(["# penalty %d, %s" % (
+            out_file.extend(["# penalty {:d}, {}".format(
                 pen_value,
                 logging_tools.get_plural("host entry", len(host_lines))), ""] + host_lines + [""])
         if not os.path.isdir(GROUP_DIR):
@@ -198,9 +207,9 @@ class write_etc_hosts(cs_base_class.server_com):
         if os.path.isdir(os.path.dirname(SSH_KNOWN_HOSTS_FILENAME)):
             skh_f = file(SSH_KNOWN_HOSTS_FILENAME, "w")
             for ssh_key_node in sorted(rsa_key_dict.keys()):
-                skh_f.write("%s %s\n" % (",".join(name_dict.get(ssh_key_node, [ssh_key_node])), rsa_key_dict[ssh_key_node]))
+                skh_f.write("{} {}\n".format(",".join(name_dict.get(ssh_key_node, [ssh_key_node])), rsa_key_dict[ssh_key_node]))
             skh_f.close()
             file_list.append(SSH_KNOWN_HOSTS_FILENAME)
         cur_inst.srv_com.set_result(
-            "wrote %s" % (", ".join(sorted(file_list)))
+            "wrote {}".format(", ".join(sorted(file_list)))
         )
