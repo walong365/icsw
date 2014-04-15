@@ -345,7 +345,10 @@ class netdevice(models.Model):
     speed = models.IntegerField(default=0, null=True, blank=True)
     netdevice_speed = models.ForeignKey("backbone.netdevice_speed")
     driver = models.CharField(max_length=384, blank=True, default="e1000e")
+    # is a valid routing target
     routing = models.BooleanField(default=False)
+    # inter-device routing enabled
+    inter_device_routing = models.BooleanField(default=True)
     penalty = models.IntegerField(null=True, blank=True, default=1)
     dhcp_device = models.NullBooleanField(null=True, blank=True, default=False)
     ethtool_options = models.IntegerField(null=True, blank=True, default=0)
@@ -370,6 +373,7 @@ class netdevice(models.Model):
             devname=self.devname,
             macaddr=self.get_dummy_macaddr(),
             driver_options=self.driver_options,
+            inter_device_routing=self.inter_device_routing,
             speed=self.speed,
             netdevice_speed=self.netdevice_speed,
             driver=self.driver,

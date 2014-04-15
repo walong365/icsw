@@ -430,6 +430,7 @@ class user_manager(models.Manager):
             groupname="%sgrp" % (login),
             gid=max(list(group.objects.all().values_list("gid", flat=True)) + [665]) + 1,
             group_comment="auto create group for admin %s" % (login),
+            homestart="/",
         )
         new_admin = self.create(
             login=login,
