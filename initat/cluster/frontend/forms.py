@@ -2353,7 +2353,8 @@ class netdevice_form(ModelForm):
     show_hardware = BooleanField(required=False)
     show_mac = BooleanField(required=False)
     show_vlan = BooleanField(required=False)
-    routing = BooleanField(required=False)
+    routing = BooleanField(required=False, label="routing target")
+    inter_device_routing = BooleanField(required=False)
     helper.layout = Layout(
         HTML("<h2>Netdevice '{% verbatim %}{{ _edit_obj.devname }}{% endverbatim %}'</h2>"),
             Fieldset(
@@ -2374,18 +2375,9 @@ class netdevice_form(ModelForm):
             ),
             Fieldset(
                 "Routing settings",
-                Div(
-                    Div(
-                        # disable enabled-flag for clusterdevicegroup
-                        Field("penalty", min=1, max=128),
-                        css_class="col-md-6",
-                    ),
-                    Div(
-                        Field("routing"),
-                        css_class="col-md-6",
-                    ),
-                    css_class="row",
-                ),
+                Field("penalty", min=1, max=128),
+                Field("routing"),
+                Field("inter_device_routing"),
             ),
             Fieldset(
                 "buttons",
@@ -2446,7 +2438,7 @@ class netdevice_form(ModelForm):
         model = netdevice
         fields = ("devname", "netdevice_speed", "description", "driver", "driver_options", "is_bridge",
             "macaddr", "fake_macaddr", "dhcp_device", "vlan_id", "master_device", "routing", "penalty",
-            "bridge_device")
+            "bridge_device", "inter_device_routing")
 
 class net_ip_form(ModelForm):
     helper = FormHelper()
