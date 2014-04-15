@@ -1,9 +1,7 @@
-#!/usr/bin/python-init -Ot
-#
-# Copyright (C) 2008 Andreas Lang-Nevyjel
+# Copyright (C) 2008,2014 Andreas Lang-Nevyjel
 #
 # Send feedback to: <lang-nevyjel@init.at>
-# 
+#
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License Version 2 as
 # published by the Free Software Foundation.
@@ -69,7 +67,7 @@ class rsync_call(object):
                 log_lines.append(line)
                 self.log(" - %s" % (line))
         # show it
-        #pprint.pprint(self.__v_dict)
+        # pprint.pprint(self.__v_dict)
         return log_lines
     def _interpret_call_stat(self, cs):
         # return strings
@@ -93,7 +91,7 @@ class rsync_call(object):
                       25 : "The --max-delete limit stopped deletions",
                       30 : "Timeout in data send/receive"}
         # left and right call stat
-        l_cs, r_cs = (cs >>8, cs & 255)
+        l_cs, r_cs = (cs >> 8, cs & 255)
         return "[%s]" % (", ".join(["%s (%d)" % (r_str_dict.get(act_cs, "unknown code %d" % (act_cs)), act_cs) for act_cs in [l_cs, r_cs]]))
     def _interpret_output(self):
         key_list = ["number of files",
@@ -113,7 +111,7 @@ class rsync_call(object):
                         value = value[:-6].strip()
                     key_dict[key_lut[key.lower()]] = int(value)
         self["decoded"] = key_dict
-        
+
 if __name__ == "__main__":
     print "Loadable module, exiting ..:"
     sys.exit(1)

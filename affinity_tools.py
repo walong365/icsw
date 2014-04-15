@@ -19,11 +19,9 @@
 #
 """ handles process affinity """
 
-# import process_tools
 import cpu_database
 import commands
 import os
-import sys
 
 if "FAKEROOTKEY" in os.environ:
     MAX_CORES = 2
@@ -53,8 +51,8 @@ TASKSET_BIN = find_file("taskset")
 
 def get_process_affinity_mask(pid):
     mask = 0
-    if os.path.isfile("/proc/%d/status" % (pid)):
-        lines = [line.split() for line in open("/proc/%d/status" % (pid), "r").read().lower().split("\n") if line.startswith("cpus_allowed")]
+    if os.path.isfile("/proc/{:d}/status".format(pid)):
+        lines = [line.split() for line in open("/proc/{:d}/status".format(pid), "r").read().lower().split("\n") if line.startswith("cpus_allowed")]
         if lines:
             mask = int(lines[0][1], 16)
     return mask
@@ -81,7 +79,7 @@ class cpu_container(dict):
         else:
             return None
     def get_usage_str(self):
-        return "|".join(["%d:%.2f(%d)" % (
+        return "|".join(["{:d}:{:-2f}({:d})".format(
             key,
             self[key].usage["t"],
             len(self[key].procs)) for key in sorted(self.keys())])
@@ -149,20 +147,17 @@ class proc_struct(object):
     def read_mask(self):
         self.act_mask = self._get_mask()
     def _get_mask(self):
-        c_stat, c_out = self._call("-p %d" % (self.pid))
+        c_stat, c_out = self._call("-p {:d}".format(self.pid))
         if c_stat:
             return MAX_MASK
         else:
             return int(c_out.strip().split()[-1], 16)
     def _set_mask(self, t_cpu):
-        return self._call("-pc %d %d" % (t_cpu, self.pid))
+        return self._call("-pc {:d} {:d}".format(t_cpu, self.pid))
     def _clear_mask(self):
-        return self._call("-p %x %d" % (MAX_MASK, self.pid))
+        return self._call("-p {:x} {:d}".format(MAX_MASK, self.pid))
     def _call(self, com_line):
-        return commands.getstatusoutput("%s %s" % (TASKSET_BIN, com_line))
+        return commands.getstatusoutput("{} {}".format(TASKSET_BIN, com_line))
     def __unicode__(self):
-        return "%s [%d]" % (self.name, self.pid)
+        return "{} [{:d}]".format(self.name, self.pid)
 
-if __name__ == "__main__":
-    print "Loadable module, exiting..."
-    sys.exit(0)

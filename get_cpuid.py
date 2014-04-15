@@ -1,6 +1,5 @@
 #!/usr/bin/python-init -Otu
-#
-# Copyright (c) 2007 Andreas Lang, init.at
+# Copyright (c) 2007,2014 Andreas Lang-Nevyjel, init.at
 #
 # this file is part of python-modules-base
 #
@@ -25,4 +24,4 @@ def main():
 
 if __name__ == "__main__":
     main()
-    
+

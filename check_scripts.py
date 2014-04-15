@@ -45,7 +45,6 @@ except:
 EXTRA_SERVER_DIR = "/opt/cluster/etc/extra_servers.d"
 
 def check_processes(name, pids, pid_thread_dict, any_ok):
-    # print name, pids, any_ok
     ret_state = 7
     unique_pids = dict([(key, pids.count(key)) for key in set(pids)])
     pids_found = dict([(key, pid_thread_dict.get(key, 1)) for key in set(pids)])
@@ -88,7 +87,7 @@ INSTANCE_XML = """
         </config_names>
     </instance>
     <!-- collectd is checked via process_name to take the python side-process into account -->
-    <instance name="collectd" check_type="simple" any_threads_ok="1" runs_on="system">
+    <instance name="collectd" any_threads_ok="1" runs_on="system" has_force_stop="1" meta_server_name="collectd">
         <config_names>
             <config_name>rrd_server</config_name>
         </config_names>
@@ -170,11 +169,13 @@ def get_instance_xml():
                 try:
                     add_inst_list = etree.fromstring(open(os.path.join(EXTRA_SERVER_DIR, entry), "r").read())
                 except:
-                    print "cannot read entry '%s' from %s: %s" % (
-                        entry,
-                        EXTRA_SERVER_DIR,
-                        process_tools.get_except_info(),
+                    print(
+                        "cannot read entry '{}' from {}: {}".format(
+                            entry,
+                            EXTRA_SERVER_DIR,
+                            process_tools.get_except_info(),
                         )
+                    )
                 else:
                     for sub_inst in add_inst_list.findall("instance"):
                         instance_xml.append(sub_inst)
@@ -184,7 +185,7 @@ def get_instance_xml():
             ("runs_on", "server"),
             ("check_type", "threads_by_pid_file"),
             ("any_threads_ok", "0"),
-            ("pid_file_name", "%s.pid" % (name)),
+            ("pid_file_name", "{}.pid".format(name)),
             ("init_script_name", name),
             ("checked", "0"),
             ("to_check", "0"),
@@ -229,11 +230,11 @@ def check_system(opt_ns):
         if entry.attrib["init_script_name"] in stat_dict:
             entry.append(
                 E.runlevels(
-                    *[E.runlevel("%d" % (cur_rl)) for cur_rl in stat_dict.get(entry.attrib["init_script_name"], [])]
+                    *[E.runlevel("{:d}".format(cur_rl)) for cur_rl in stat_dict.get(entry.attrib["init_script_name"], [])]
                 )
             )
         act_pids = []
-        init_script_name = os.path.join("/etc/init.d/%s" % (entry.attrib["init_script_name"]))
+        init_script_name = os.path.join("/etc", "init.d", entry.attrib["init_script_name"])
         if entry.attrib["check_type"] == "simple":
             if os.path.isfile(init_script_name):
                 running_procs = [pid for pid in act_proc_dict.values() if pid["name"] == entry.attrib["process_name"]]
@@ -244,19 +245,19 @@ def check_system(opt_ns):
                     act_state, act_str = (7, "not running")
             else:
                 act_state, act_str = (5, "not installed")
-            entry.append(E.state_info(act_str, state="%d" % (act_state)))
+            entry.append(E.state_info(act_str, state="{:d}".format(act_state)))
         elif entry.attrib["check_type"] == "threads_by_pid_file":
             pid_file_name = entry.attrib["pid_file_name"]
             if pid_file_name == "":
                 # no pid file
                 pass
             elif not pid_file_name.startswith("/"):
-                pid_file_name = "/var/run/%s" % (pid_file_name)
+                pid_file_name = os.path.join("/var", "run", pid_file_name)
             if pid_file_name and os.path.isfile(pid_file_name):
                 ms_name = None
                 # do we need a loop here ?
                 for c_name in set([entry.attrib["meta_server_name"]]):
-                    cur_ms_name = os.path.join("/var/lib/meta-server", c_name)
+                    cur_ms_name = os.path.join("/var", "lib", "meta-server", c_name)
                     if os.path.exists(cur_ms_name):
                         ms_name = cur_ms_name
                         break
@@ -288,14 +289,14 @@ def check_system(opt_ns):
                     E.state_info(
                         *[
                             E.diff_info(
-                                pid="%d" % (key),
-                                diff="%d" % (value)
+                                pid="{:d}".format(key),
+                                diff="{:d}".format(value)
                             ) for key, value in diff_dict.iteritems()],
-                            num_started="%d" % (num_started),
-                            num_found="%d" % (num_found),
-                            num_diff="%d" % (num_diff),
-                            pid_time="%d" % (pid_time),
-                            state="%d" % (act_state)
+                            num_started="{:d}".format(num_started),
+                            num_found="{:d}".format(num_found),
+                            num_diff="{:d}".format(num_diff),
+                            pid_time="{:d}".format(pid_time),
+                            state="{:d}".format(act_state)
                         )
                     )
             else:
@@ -304,16 +305,27 @@ def check_system(opt_ns):
                         found_procs = {key : (value, pid_thread_dict.get(value["pid"], 1)) for key, value in act_proc_dict.iteritems() if value["name"] == entry.attrib["process_name"]}
                         act_pids = sum([[key] * value[1] for key, value in found_procs.iteritems()], [])
                         threads_found = sum([value[1] for value in found_procs.itervalues()])
-                        entry.append(E.state_info(num_started="%d" % (threads_found), num_found="%d" % (threads_found), num_diff="0", state="0"))
+                        entry.append(
+                            E.state_info(
+                                num_started="{:d}".format(threads_found),
+                                num_found="{:d}".format(threads_found),
+                                num_diff="0",
+                                state="0"))
                     else:
-                        entry.append(E.state_info("no threads", state="7"))
+                        entry.append(
+                            E.state_info(
+                                "no threads",
+                                state="7"))
                 else:
-                    entry.append(E.state_info("not installed", state="5"))
+                    entry.append(
+                        E.state_info(
+                            "not installed",
+                            state="5"))
         else:
-            entry.append(E.state_info("unknown check_type '%s'" % (entry.attrib["check_type"]), state="1"))
+            entry.append(E.state_info("unknown check_type '{}'".format(entry.attrib["check_type"]), state="1"))
         entry.append(
             E.pids(
-                *[E.pid("%d" % (cur_pid), count="%d" % (act_pids.count(cur_pid))) for cur_pid in set(act_pids)]
+                *[E.pid("{:d}".format(cur_pid), count="{:d}".format(act_pids.count(cur_pid))) for cur_pid in set(act_pids)]
                 )
             )
         if entry.attrib["runs_on"] == "server":
@@ -329,7 +341,7 @@ def check_system(opt_ns):
                             act_state = 5
                         break
                 if not found:
-                    sql_info = "not set (%s)" % (", ".join(srv_type_list))
+                    sql_info = "not set ({})".format(", ".join(srv_type_list))
             else:
                 sql_info = "no db_con"
         else:
@@ -340,14 +352,14 @@ def check_system(opt_ns):
                 )
         else:
             entry.append(
-                E.sql_info("%s (%s)" % (
+                E.sql_info("{} ({})".format(
                     sql_info.server_info_str,
                     sql_info.config_name),
                 )
             )
         entry.append(
             E.memory_info(
-                "%d" % (sum(process_tools.get_mem_info(cur_pid) for cur_pid in set(act_pids))) if act_pids else "",
+                "{:d}".format(sum(process_tools.get_mem_info(cur_pid) for cur_pid in set(act_pids))) if act_pids else "",
                 )
             )
     return instance_xml
@@ -367,11 +379,11 @@ def show_xml(opt_ns, res_xml, iter=0):
                5 : (1, "skipped"),
                6 : (1, "not install"),
                7 : (2, "dead")}
-    rc_strs = dict([(key, "%s%s%s" % (col_str_dict[wc], value, col_str_dict[3]))
+    rc_strs = dict([(key, "{}{}{}".format(col_str_dict[wc], value, col_str_dict[3]))
                     for key, (wc, value) in rc_dict.iteritems()])
     out_bl = logging_tools.new_form_list()
     types = ["node", "server", "system"]
-    _list = sum([res_xml.xpath("instance[@checked='1' and @runs_on='%s']" % (_type)) for _type in types], [])
+    _list = sum([res_xml.xpath("instance[@checked='1' and @runs_on='{}']".format(_type)) for _type in types], [])
     for act_struct in _list:
         cur_line = [logging_tools.form_entry(act_struct.attrib["name"], header="Name")]
         cur_line.append(logging_tools.form_entry(act_struct.attrib["runs_on"], header="type"))
@@ -388,26 +400,26 @@ def show_xml(opt_ns, res_xml, iter=0):
                     True if int(act_struct.attrib["any_threads_ok"]) else False)
                 # print etree.tostring(act_struct, pretty_print=True)
                 if any_ok:
-                    ret_str = "%s running" % (logging_tools.get_plural("thread", num_found))
+                    ret_str = "{} running".format(logging_tools.get_plural("thread", num_found))
                 else:
                     diffs_found = s_info.findall("diff_info")
                     if diffs_found:
-                        diff_str = ", [diff: %s]" % (", ".join(["%d: %d" % (int(cur_diff.attrib["pid"]), int(cur_diff.attrib["diff"])) for cur_diff in diffs_found]))
+                        diff_str = ", [diff: {}]".format(", ".join(["{:d}: {:d}".format(int(cur_diff.attrib["pid"]), int(cur_diff.attrib["diff"])) for cur_diff in diffs_found]))
                     else:
                         diff_str = ""
                     if num_diff < 0:
-                        ret_str = "%s %s missing%s" % (
+                        ret_str = "{} {} missing{}".format(
                             logging_tools.get_plural("thread", -num_diff),
                             num_diff == 1 and "is" or "are",
                             diff_str,
                             )
                     elif num_diff > 0:
-                        ret_str = "%s too much%s" % (
+                        ret_str = "{} too much{}".format(
                             logging_tools.get_plural("thread", num_diff),
                             diff_str,
                         )
                     else:
-                        ret_str = "the thread is running" if num_started == 1 else "all %d threads running" % (num_started)
+                        ret_str = "the thread is running" if num_started == 1 else "all {:d} threads running".format(num_started)
                 if opt_ns.time:
                     if pid_time:
                         diff_time = max(0, time.mktime(time.localtime()) - pid_time)
@@ -415,9 +427,11 @@ def show_xml(opt_ns, res_xml, iter=0):
                         diff_hours = int((diff_time - 3600 * 24 * diff_days) / 3600)
                         diff_mins = int((diff_time - 3600 * (24 * diff_days + diff_hours)) / 60)
                         diff_secs = int(diff_time - 60 * (60 * (24 * diff_days + diff_hours) + diff_mins))
-                        ret_str += ", stable since %s%02d:%02d:%02d (%s)" % (
-                            diff_days and "%s, " % (logging_tools.get_plural("day", diff_days)) or "",
-                            diff_hours, diff_mins, diff_secs,
+                        ret_str += ", stable since {}{:02d}:{:02d}:{:02d} ({})".format(
+                            diff_days and "{}, ".format(logging_tools.get_plural("day", diff_days)) or "",
+                            diff_hours,
+                            diff_mins,
+                            diff_secs,
                             time.strftime("%a, %d. %b %Y, %H:%M:%S", time.localtime(pid_time)))
                     else:
                         ret_str += ", no pid found"
@@ -433,9 +447,9 @@ def show_xml(opt_ns, res_xml, iter=0):
                 else:
                     cur_line.append(
                         logging_tools.form_entry(
-                            ",".join(["%d%s" % (
+                            ",".join(["{:d}{}".format(
                                 key,
-                                " (%d)" % (pid_dict[key]) if pid_dict[key] > 1 else "") for key in p_list]
+                                " ({:d})".format(pid_dict[key]) if pid_dict[key] > 1 else "") for key in p_list]
                             ),
                             header="pids"
                         )
@@ -450,7 +464,7 @@ def show_xml(opt_ns, res_xml, iter=0):
                 if len(rlevs):
                     cur_line.append(
                         logging_tools.form_entry(
-                            "%s %s" % (
+                            "{} {}".format(
                                 logging_tools.get_plural("level", rlevs, 0),
                                 ", ".join([r_lev for r_lev in rlevs])),
                                 header="runlevels"
@@ -471,39 +485,43 @@ def show_xml(opt_ns, res_xml, iter=0):
         cur_line.append(logging_tools.form_entry(rc_strs[cur_state], header="status"))
         if not opt_ns.failed or (opt_ns.failed and cur_state in [1, 7]):
             out_bl.append(cur_line)
-    print datetime.datetime.now().strftime("%a, %d. %b %Y %d %H:%M:%S")
+    print(datetime.datetime.now().strftime("%a, %d. %b %Y %d %H:%M:%S"))
     # _lines = unicode(out_bl).split("\n")
     # if iter and len(_lines) > 2:
     #    print "\n".join(_lines[2:])
     # else:
     #    print "\n".join(_lines)
-    print unicode(out_bl)
+    print(unicode(out_bl))
 
 def do_action_xml(opt_ns, res_xml, mode):
     structs = res_xml.findall("instance[@checked='1']")
     if not opt_ns.quiet:
-        print "%sing %s: %s" % (
-            mode,
-            logging_tools.get_plural("instance", len(structs)),
-            ", ".join([cur_el.attrib["name"] for cur_el in structs])
+        print(
+            "{}ing {}: {}".format(
+                mode,
+                logging_tools.get_plural("instance", len(structs)),
+                ", ".join([cur_el.attrib["name"] for cur_el in structs])
             )
+        )
     for cur_el in structs:
         cur_name = cur_el.attrib["name"]
         init_script = os.path.join("/", "etc", "init.d", cur_el.get("init_script_name", cur_name))
         if os.path.exists(init_script):
-            op_mode = "start" if mode == "start" else ("force-%s" % (mode) if opt_ns.force and int(cur_el.get("has_force_stop", "0")) else mode)
-            cur_com = "%s %s" % (
+            op_mode = "start" if mode == "start" else ("force-{}".format(mode) if opt_ns.force and int(cur_el.get("has_force_stop", "0")) else mode)
+            cur_com = "{} {}".format(
                 init_script, op_mode
             )
             if not opt_ns.quiet:
-                print "calling %s" % (cur_com)
+                print("calling {}".format(cur_com))
             _ret_val = subprocess.call(cur_com, shell=True)
         else:
             if not opt_ns.quiet:
-                print "init-script '%s' for %s does not exist" % (
-                    init_script,
-                    cur_name,
+                print(
+                    "init-script '{}' for {} does not exist".format(
+                        init_script,
+                        cur_name,
                     )
+                )
 
 def main():
     my_parser = argparse.ArgumentParser()
@@ -534,11 +552,11 @@ def main():
         opt_ns.time = True
         opt_ns.database = True
     if os.getuid():
-        print "Not running as root, information may be incomplete, disabling display of memory"
+        print("Not running as root, information may be incomplete, disabling display of memory")
         opt_ns.memory = False
     ret_xml = check_system(opt_ns)
     if not len(ret_xml.findall("instance[@checked='1']")):
-        print "Nothing to do"
+        print("Nothing to do")
         sys.exit(1)
 
     if opt_ns.mode == "show":
@@ -553,7 +571,7 @@ def main():
                 else:
                     break
             except KeyboardInterrupt:
-                print "exiting..."
+                print("exiting...")
                 break
     elif opt_ns.mode in ["start", "stop", "restart"]:
         do_action_xml(opt_ns, ret_xml, opt_ns.mode)

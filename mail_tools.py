@@ -1,8 +1,6 @@
-#!/usr/bin/python-init -Ot
-#
 # -*- encoding: utf-8 -*-
 #
-# Copyright (C) 2001,2002,2003,2004,2005,2007,2009,2013 Andreas Lang-Nevyjel, init.at
+# Copyright (C) 2001-2009,2013-2014 Andreas Lang-Nevyjel, init.at
 #
 # this file is part of python-modules-base
 #

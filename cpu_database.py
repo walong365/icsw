@@ -1,5 +1,3 @@
-#!/usr/bin/python-init -Ot
-#
 # Copyright (C) 2001-2014 Andreas Lang-Nevyjel, init.at
 #
 # this file is part of python-modules-base
@@ -155,9 +153,10 @@ class cpu_value(object):
                 self.v_type = "s"
                 self.value = in_str
     def __repr__(self):
-        return "cpu_value, type %s, value %s%s" % (self.v_type,
-                                                   self.value,
-                                                   self.add_value and ", %s" % (self.add_value) or "")
+        return "cpu_value, type {}, value {}{}".format(
+            self.v_type,
+            self.value,
+            self.add_value and ", {}".format(self.add_value) or "")
 
 class cpu_info_part(object):
     def __init__(self, act_key):
@@ -206,7 +205,9 @@ class cpu_info_part(object):
     def values(self):
         return self.__value_dict.values()
     def __repr__(self):
-        return "cpu_info_part %s (%s)" % (self.str_key, logging_tools.get_plural("key", len(self.__value_dict.keys())))
+        return "cpu_info_part {} ({})".format(
+            self.str_key,
+            logging_tools.get_plural("key", len(self.__value_dict.keys())))
 
 class old_cpu_info(object):
     def __init__(self, lines):
@@ -363,10 +364,12 @@ class share_map(object):
     def get_cache_num(self, core_num):
         return self.__core_lut.get(core_num, None)
     def __repr__(self):
-        return "share_map for level %d cache, %s: %s" % (self.cache_level,
-                                                         logging_tools.get_plural("cache", self.num_caches),
-                                                         ", ".join(["%d [%s]" % (c_num,
-                                                                                 ":".join(["%d" % (core_num) for core_num in self.__cache_lut[c_num]])) for c_num in xrange(self.num_caches)]))
+        return "share_map for level {:d} cache, {}: {}".format(
+            self.cache_level,
+            logging_tools.get_plural("cache", self.num_caches),
+            ", ".join(["{:d} [{}]".format(
+                c_num,
+                ":".join(["{:d}".format(core_num) for core_num in self.__cache_lut[c_num]])) for c_num in xrange(self.num_caches)]))
 
 class cpu_info(object):
     def __init__(self, in_dict):
@@ -390,7 +393,7 @@ class cpu_info(object):
     def _set_num_dict(self, in_dict=None):
         if in_dict is None:
             for key in ["core", "ht_core", "die", "domain", "socket"]:
-                self["%s_num" % (key)] = 0
+                self["{}_num".format(key)] = 0
         else:
             self.__v_dict.update(in_dict)
     def has_key(self, key):
@@ -431,16 +434,17 @@ class cpu_info(object):
             if share_info == set([self["core_num"]]):
                 return "excl"
             else:
-                return "shared by %s" % (", ".join(["%d" % (core) for core in sorted(share_info)]))
+                return "shared by {}".format(", ".join(["{:d}".format(core) for core in sorted(share_info)]))
     def get_cache_sizes(self):
         return self.cache_info["size"]
     def get_short_cache_info(self):
         return "".join([self._get_size_str(self.cache_info["size"][cache_num]).replace(" ", "").replace("B", "") for cache_num in [1, 2, 3]])
     def get_cache_info_str(self):
         if sum(self.cache_info["size"].values(), 0):
-            return ", ".join(["L%d: %s%s" % (cache_num,
-                                             self._get_size_str(self.cache_info["size"][cache_num]),
-                                             " (%s)" % (self._get_cache_share_info(cache_num)) if self._get_cache_share_info(cache_num) else "") for cache_num in range(1, 4) if self.cache_info["size"][cache_num]])
+            return ", ".join(["L{:d}: {}{}".format(
+                cache_num,
+                self._get_size_str(self.cache_info["size"][cache_num]),
+                " ({})".format(self._get_cache_share_info(cache_num)) if self._get_cache_share_info(cache_num) else "") for cache_num in range(1, 4) if self.cache_info["size"][cache_num]])
         else:
             return "No cache info found"
     def set_cache_from_cpuid_info(self, in_dict):
@@ -470,21 +474,21 @@ class cpu_info(object):
             self.cache_info["size"][3] = 0
     def _get_size_str(self, num):
         if num >= 1024 * 1024:
-            return "%d MB" % (num / (1024 * 1024))
+            return "{:d} MB".format(num / (1024 * 1024))
         elif num:
-            return "%d kB" % (num / (1024))
+            return "{:d} kB".format(num / (1024))
         else:
             return "0 B"
     def __repr__(self):
         if self["online"]:
-            return "core info (idx %d), socket is %d, phys_core %d, %s, %s" % (
+            return "core info (idx {:d}), socket is {:d}, phys_core {:d}, {}, {}".format(
                 self["core_num"],
                 self["socket_num"],
                 self["ht_core_num"],
                 self.get_cache_info_str(),
                 self["cpu_id"])
         else:
-            print("core info (idx %d), offline" % (self.core_num))
+            print("core info (idx {:d}), offline".format(self.core_num))
 
 class global_cpu_info(object):
     def __init__(self, **kwargs):
@@ -501,20 +505,20 @@ class global_cpu_info(object):
             proc_dict = _xml.xpath(".//ns0:cpu_info/ns0:proc_dict", namespaces={"ns0" : server_command.XML_NS}, smart_strings=False)[0]
             self.__proc_dict = marshal.loads(bz2.decompress(base64.b64decode(proc_dict.text)))
         else:
-            self.c_stat_kernel, self.c_out_kernel = getstatusoutput("%s -k -r" % (self.__cpuid_binary))
+            self.c_stat_kernel, self.c_out_kernel = getstatusoutput("{} -k -r".format(self.__cpuid_binary))
             if self.c_stat_kernel:
                 # try to load cpuid
                 getstatusoutput("/sbin/modprobe cpuid")
-                self.c_stat_kernel, self.c_out_kernel = getstatusoutput("%s -k -r" % (self.__cpuid_binary))
-            self.c_stat_cpuid, self.c_out_cpuid = getstatusoutput("%s -r" % (self.__cpuid_binary))
+                self.c_stat_kernel, self.c_out_kernel = getstatusoutput("{} -k -r".format(self.__cpuid_binary))
+            self.c_stat_cpuid, self.c_out_cpuid = getstatusoutput("{} -r".format(self.__cpuid_binary))
             self.__proc_dict = self._read_proc_info()
         if kwargs.get("parse", False):
             self.parse_info()
     def get_send_dict(self, srv_com):
         el_builder = srv_com.builder
         cpu_info = el_builder("cpu_info", version="1")
-        cpu_info.extend([el_builder("kernel_tuple", base64.b64encode(bz2.compress(self.c_out_kernel)), stat="%d" % (self.c_stat_kernel)),
-                         el_builder("cpuid_tuple", base64.b64encode(bz2.compress(self.c_out_cpuid)), stat="%d" % (self.c_stat_cpuid)),
+        cpu_info.extend([el_builder("kernel_tuple", base64.b64encode(bz2.compress(self.c_out_kernel)), stat="{:d}".format(self.c_stat_kernel)),
+                         el_builder("cpuid_tuple", base64.b64encode(bz2.compress(self.c_out_cpuid)), stat="{:d}".format(self.c_stat_cpuid)),
                          el_builder("proc_dict", base64.b64encode(bz2.compress(marshal.dumps(self.__proc_dict))))])
         srv_com["cpu_info"] = cpu_info
     def parse_info(self):

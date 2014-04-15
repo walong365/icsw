@@ -45,7 +45,7 @@ def main():
     parser.add_argument("--kv", help="key-value pair, colon-separated [key:value]", action="append")
     parser.add_argument("--kva", help="key-attribute pair, colon-separated [key:attribute:value]", action="append")
     parser.add_argument("--kv-path", help="path to store key-value pairs under", type=str, default="")
-    parser.add_argument("--split", help="set read socket (for split-socket command), [%(default)s]", default="")
+    parser.add_argument("--split", help="set read socket (for split-socket command), [%(default)s]", type=str, default="")
     # parser.add_argument("arguments", nargs="+", help="additional arguments")
     ret_state = 1
     args, other_args = parser.parse_known_args()
@@ -54,32 +54,36 @@ def main():
     other_args = args.arguments + other_args
     identity_str = process_tools.zmq_identity_str(args.identity_string)
     zmq_context = zmq.Context(1)
-    client = zmq_context.socket(zmq.DEALER) # if not args.split else zmq.PUB) # ROUTER)#DEALER)
+    s_type = "DEALER" if not args.split else "PUSH"
+    client = zmq_context.socket(getattr(zmq, s_type))
     client.setsockopt(zmq.IDENTITY, identity_str)
     client.setsockopt(zmq.LINGER, args.timeout)
     if args.protocoll == "ipc":
         if args.root:
             process_tools.ALLOW_MULTIPLE_INSTANCES = False
-        conn_str = "%s" % (process_tools.get_zmq_ipc_name(args.host, s_name=args.server_name, connect_to_root_instance=args.root))
+        conn_str = "{}".format(process_tools.get_zmq_ipc_name(args.host, s_name=args.server_name, connect_to_root_instance=args.root))
     else:
-        conn_str = "%s://%s:%d" % (args.protocoll, args.host, args.port)
+        conn_str = "{}://{}:{:d}".format(args.protocoll, args.host, args.port)
     if args.split:
-        recv_conn_str = "%s" % (process_tools.get_zmq_ipc_name(args.split, s_name=args.server_name, connect_to_root_instance=args.root))
+        recv_conn_str = "{}".format(process_tools.get_zmq_ipc_name(args.split, s_name=args.server_name, connect_to_root_instance=args.root))
         recv_sock = zmq_context.socket(zmq.ROUTER)
         recv_sock.setsockopt(zmq.IDENTITY, identity_str)
         recv_sock.setsockopt(zmq.LINGER, args.timeout)
     else:
         recv_sock = None
     if args.verbose:
-        print "Identity_string is '%s', connection_string is '%s'" % (identity_str, conn_str)
+        print "socket_type is {}\nIdentity_string is '{}'\nconnection_string is '{}'".format(
+            s_type,
+            identity_str,
+            conn_str)
         if args.split:
-            print "receive connection string is '%s'" % (recv_conn_str)
+            print "receive connection string is '{}'".format(recv_conn_str)
     client.connect(conn_str)
     if recv_sock:
         recv_sock.connect(recv_conn_str)
     for cur_iter in xrange(args.iterations):
         if args.verbose:
-            print "iteration %d" % (cur_iter)
+            print "iteration {:d}".format(cur_iter)
         if args.raw:
             srv_com = command
         else:
@@ -90,22 +94,22 @@ def main():
                     if kv_pair.count(":"):
                         key, value = kv_pair.split(":", 1)
                         if args.kv_path:
-                            srv_com["%s:%s" % (args.kv_path, key)] = value
+                            srv_com["{}:{}".format(args.kv_path, key)] = value
                         else:
                             srv_com[key] = value
                     else:
-                        print "cannot parse key '%s'" % (kv_pair)
+                        print "cannot parse key '{}'".format(kv_pair)
             if args.kva:
                 for kva_pair in args.kva:
                     key, attr, value = kva_pair.split(":")
                     if args.kv_path:
-                        srv_com["%s:%s" % (args.kv_path, key)].attrib[attr] = value
+                        srv_com["{}:{}".format(args.kv_path, key)].attrib[attr] = value
                     else:
                         srv_com[key].attrib[attr] = value
         for arg_index, arg in enumerate(other_args):
             if args.verbose:
-                print " arg %2d: %s" % (arg_index, arg)
-                srv_com["arguments:arg%d" % (arg_index)] = arg
+                print " arg {:2d}: {}".format(arg_index, arg)
+                srv_com["arguments:arg{:d}".format(arg_index)] = arg
         if not args.raw:
             srv_com["arg_list"] = " ".join(other_args)
         s_time = time.time()
@@ -127,11 +131,11 @@ def main():
         e_time = time.time()
         if args.verbose:
             if timeout:
-                print "communication took %s" % (
+                print "communication took {}".format(
                     logging_tools.get_diff_time_str(e_time - s_time),
                 )
             else:
-                print "communication took %s, received %d bytes" % (
+                print "communication took {}, received {:d} bytes".format(
                     logging_tools.get_diff_time_str(e_time - s_time),
                     len(recv_str),
                 )
@@ -139,13 +143,13 @@ def main():
             try:
                 srv_reply = server_command.srv_command(source=recv_str)
             except:
-                print "cannot interpret reply: %s" % (process_tools.get_except_info())
-                print "reply was: %s" % (recv_str)
+                print "cannot interpret reply: {}".format(process_tools.get_except_info())
+                print "reply was: {}".format(recv_str)
                 ret_state = 1
             else:
                 if args.verbose:
                     print
-                    print "XML response (id: '%s'):" % (recv_id)
+                    print "XML response (id: '{}'):".format(recv_id)
                     print
                     print srv_reply.pretty_print()
                     print

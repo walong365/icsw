@@ -1,4 +1,3 @@
-#!/usr/bin/python-init -Ot
 # -*- coding: utf-8 -*-
 #
 # Copyright (C) 2001-2014 Andreas Lang-Nevyjel
@@ -138,8 +137,8 @@ def get_size_str(in_s, long_version=False, divider=1024, strip_spaces=False):
     while in_s > divider:
         in_s = in_s / float(divider)
         pf_str = pf_f.pop(0)
-    ret_str = "%s %s%s" % (
-        pf_str and "%6.2f" % (in_s) or "%4d" % (in_s),
+    ret_str = "{} {}{}".format(
+        pf_str and "{:6.2f}".format(float(in_s)) or "{:4d}".format(int(in_s)),
         pf_str,
         b_str)
     if strip_spaces:
@@ -253,9 +252,9 @@ def get_logger(name, destination, **kwargs):
     if kwargs.get("init_logger", False) and is_linux:
         # force init.at logger
         if not name.startswith("init.at."):
-            name = "init.at.%s" % (name)
+            name = "init.at.{}".format(name)
     # get unique logger for 0MQ send
-    act_logger = logging.getLogger("%s.%d" % (name, cur_pid))
+    act_logger = logging.getLogger("{}.{:d}".format(name, cur_pid))
     act_logger.name = name
     act_logger.propagate = 0
     if not hasattr(act_logger, "handler_strings"):
@@ -278,7 +277,7 @@ def get_logger(name, destination, **kwargs):
 
             pub = cur_context.socket(zmq.PUSH)
             pub.setsockopt(zmq.LINGER, 0)
-            pub.connect(rewrite_log_destination(act_dest if act_dest.endswith("_zmq") else "%s_zmq" % (act_dest)))
+            pub.connect(rewrite_log_destination(act_dest if act_dest.endswith("_zmq") else "{}_zmq".format(act_dest)))
             act_logger.addHandler(zmq_handler(pub, act_logger))
     if log_adapter:
         # by using the log_adapter we also add thread-safety to the logger
@@ -307,12 +306,12 @@ class log_adapter(logging.LoggerAdapter):
     def set_prefix(self, pfix=""):
         self.__prefix = pfix
     def log_command(self, what):
-        self.log("<LCH>%s</LCH>" % (what))
+        self.log("<LCH>{}</LCH>".format(what))
     def log(self, level, what=LOG_LEVEL_OK, *args, **kwargs):
         self.__lock.acquire()
         if type(level) in [str, unicode]:
             if self.__prefix:
-                level = "%s%s" % (self.__prefix, level)
+                level = "{}{}".format(self.__prefix, level)
             try:
                 logging.LoggerAdapter.log(self, what, level, *args, **kwargs)
             except:
@@ -321,7 +320,7 @@ class log_adapter(logging.LoggerAdapter):
                 raise
         else:
             if self.__prefix:
-                what = "%s%s" % (self.__prefix, what)
+                what = "{}{}".format(self.__prefix, what)
             try:
                 logging.LoggerAdapter.log(self, level, what, *args, **kwargs)
             except:
@@ -378,10 +377,10 @@ class initat_formatter(object):
             tb_object = record.exc_info[2]
             frame_info = []
             for file_name, line_no, name, line in traceback.extract_tb(tb_object):
-                frame_info.append("File '%s', line %d, in %s" % (file_name, line_no, name))
+                frame_info.append("File '{}', line {:d}, in {}".format(file_name, line_no, name))
                 if line:
-                    frame_info.append(u" - %d : %s" % (line_no, line))
-            frame_info.append(u"%s (%s)" % (
+                    frame_info.append(u" - {:d} : {}".format(line_no, line))
+            frame_info.append(u"{} ({})".format(
                 unicode(record.exc_info[0]),
                 unicode(record.exc_info[1])))
             record.error_str = record.message + "\n" + "\n".join(frame_info)
@@ -390,7 +389,7 @@ class initat_formatter(object):
             if request:
                 info_lines.extend([
                     "",
-                    "method is %s" % (request.method),
+                    "method is {}".format(request.method),
                     "",
                 ])
                 # print get / post variables
@@ -398,11 +397,17 @@ class initat_formatter(object):
                 if v_dict:
                     var_list.extend([
                         "",
-                        "%s:" % (get_plural("variable", len(v_dict))),
+                        "{}:".format(get_plural("variable", len(v_dict))),
                         "",
                     ])
                     for s_num, s_key in enumerate(sorted(v_dict.keys())):
-                        var_list.append("  %3d %s: %s" % (s_num + 1, s_key, v_dict[s_key]))
+                        var_list.append(
+                            "  {:3d} {}: {}".format(
+                                s_num + 1,
+                                s_key,
+                                v_dict[s_key]
+                            )
+                        )
             # print frame_info, var_list
             record.exc_text = "\n".join(frame_info + var_list + info_lines)
         if hasattr(record, "request"):
@@ -419,7 +424,7 @@ class init_handler(zmq_handler):
         zmq_handler.__init__(self, pub, None)
     def emit(self, record):
         if not record.name.startswith("init.at."):
-            record.name = "init.at.%s" % (record.name)
+            record.name = "init.at.{}".format(record.name)
         self.format(record)
         zmq_handler.emit(self, record)
 
@@ -459,7 +464,7 @@ class init_handler_unified(zmq_handler):
         self.format(record)
         form_str = "%-s/%s[%d]"
         record.threadName = form_str % (record.name, record.threadName, record.lineno)
-        record.name = "init.at.%s" % (UNIFIED_NAME)
+        record.name = "init.at.{}".format(UNIFIED_NAME)
         zmq_handler.emit(self, record)
 
 class queue_handler(logging.Handler):
@@ -489,14 +494,14 @@ class progress_counter(object):
     def overview(self, **kwargs):
         if self.__total_count:
             diff_time = time.time() - self.__act_cs_time
-            log_str = "%s %d (%s announced), %s total, %s per entity" % (
+            log_str = "{} {:d} ({} announced), {} total, {} per entity".format(
                 self.__action,
                 self.__sum_lc,
                 self.__total_count,
                 get_diff_time_str(diff_time),
                 get_diff_time_str(diff_time / self.__sum_lc if self.__sum_lc else 0))
         else:
-            log_str = "no entities to work with (%s)" % (self.__action)
+            log_str = "no entities to work with ({})".format(self.__action)
         self._log(log_str, **kwargs)
         return log_str
     def count(self, **kwargs):
@@ -512,7 +517,7 @@ class progress_counter(object):
             else:
                 info_str = ""
             if kwargs.get("info_str", ""):
-                info_str = "%s, %s" % (info_str, kwargs["info_str"])
+                info_str = "{}, {}".format(info_str, kwargs["info_str"])
             log_str = "%s %d, %5.2f %%, %d (%s) to go%s" % (
                 self.__action,
                 self.__lc,
@@ -799,11 +804,11 @@ def compress_list(ql, **kwargs):
 def compress_num_list(ql, excl_list=[]):
     def add_p(s_idx, e_idx):
         if e_idx == s_idx:
-            return "%d" % (s_idx)
+            return "{:d}".format(s_idx)
         elif e_idx == s_idx + 1:
-            return "%d/%d" % (s_idx, e_idx)
+            return "{:d}/{:d}".format(s_idx, e_idx)
         else:
-            return "%d-%d" % (s_idx, e_idx)
+            return "{:d}-{:d}".format(s_idx, e_idx)
     if type(ql) == list:
         ql.sort()
     nc_a = []
@@ -838,28 +843,36 @@ def my_syslog(out_str, log_lev=LOG_LEVEL_OK, out=False):
             syslog.syslog(log_type, out_str.encode("utf-8"))
     except:
         exc_info = sys.exc_info()
-        error_str = "(%s, %s)" % (
+        error_str = "({}, {})".format(
             unicode(exc_info[0]),
             unicode(exc_info[1]),
         )
         if type(out_str) == unicode:
-            syslog.syslog(syslog.LOG_ERR | syslog.LOG_USER, "error logging unicode (%s, len %d, log_type %d)" % (
-                error_str,
-                len(out_str),
-                log_type))
+            syslog.syslog(
+                syslog.LOG_ERR | syslog.LOG_USER,
+                "error logging unicode ({}, len {:d}, log_type {:d})".format(
+                    error_str,
+                    len(out_str),
+                    log_type)
+                )
         else:
-            syslog.syslog(syslog.LOG_ERR | syslog.LOG_USER, "error logging string (%s, len %d, log_type %d)" % (
-                error_str,
-                len(str(out_str)),
-                log_type))
+            syslog.syslog(
+                syslog.LOG_ERR | syslog.LOG_USER,
+                "error logging string ({}, len {:d}, log_type {:d})".format(
+                    error_str,
+                    len(str(out_str)),
+                    log_type)
+                )
     if out:
         print(out_str)
 
 def get_log_level_str(level):
-    return {LOG_LEVEL_OK       : "ok",
-            LOG_LEVEL_WARN     : "warn",
-            LOG_LEVEL_ERROR    : "err",
-            LOG_LEVEL_CRITICAL : "crit"}.get(level, "lev%d" % (level))
+    return {
+        LOG_LEVEL_OK       : "ok",
+        LOG_LEVEL_WARN     : "warn",
+        LOG_LEVEL_ERROR    : "err",
+        LOG_LEVEL_CRITICAL : "crit"
+    }.get(level, "lev{:d}".format(level))
 
 class my_formatter(logging.Formatter):
     def __init__(self, *args):
@@ -872,7 +885,7 @@ class my_formatter(logging.Formatter):
         if self.__max_line_length and len(message.msg) > self.__max_line_length + 20:
             left = len(message.msg) - self.__max_line_length
             if left > 4:
-                message.msg = "%s (%d left)" % (message.msg[:self.__max_line_length], len(message.msg))
+                message.msg = "{} ({:d} left)".format(message.msg[:self.__max_line_length], len(message.msg))
         return logging.Formatter.format(self, message)
 
 class logfile(logging.handlers.BaseRotatingHandler):
@@ -890,7 +903,7 @@ class logfile(logging.handlers.BaseRotatingHandler):
     def shouldRollover(self, record):
         do_rollover = False
         if self.__max_size > 0:
-            msg = "%s\n" % (self.format(record))
+            msg = "{}\n".format(self.format(record))
             try:
                 if self.stream.tell() + len(msg) > self.__max_size:
                     do_rollover = True
@@ -903,14 +916,14 @@ class logfile(logging.handlers.BaseRotatingHandler):
         file_list = [entry for entry in os.listdir(cur_dir) if entry.startswith(base_name) and entry != base_name]
         for cur_file in file_list:
             f_name = os.path.join(cur_dir, cur_file)
-            act_age = abs(time.time() - os.stat(f_name)[stat.ST_MTIME]) / (24 * 3600)
+            act_age = int(abs(time.time() - os.stat(f_name)[stat.ST_MTIME]) / (24 * 3600))
             if act_age > self.max_age:
                 try:
                     os.unlink(f_name)
                 except:
-                    my_syslog("cannot remove file '%s' (%d > %d days)" % (f_name, act_age, self.max_age), LOG_LEVEL_ERROR)
+                    my_syslog("cannot remove file '{}' ({:d} > {:d} days)".format(f_name, act_age, self.max_age), LOG_LEVEL_ERROR)
                 else:
-                    my_syslog("removed file '%s' (%d > %d days)" % (f_name, act_age, self.max_age))
+                    my_syslog("removed file '{}' ({:d} > {:d} days)".format(f_name, act_age, self.max_age))
     def doRollover(self):
         self._cleanup_old_logfiles()
         self.stream.close()
@@ -922,8 +935,8 @@ class logfile(logging.handlers.BaseRotatingHandler):
             gz_postfix = "gz"
         act_idx = 0
         while True:
-            act_postfix = "%s.%d" % (base_postfix, act_idx) if act_idx else base_postfix
-            gz_file_name = "%s-%s.%s" % (
+            act_postfix = "{}.{:d}".format(base_postfix, act_idx) if act_idx else base_postfix
+            gz_file_name = "{}-{}.{}".format(
                 self.baseFilename,
                 act_postfix,
                 gz_postfix)
@@ -938,7 +951,7 @@ class logfile(logging.handlers.BaseRotatingHandler):
                 act_z = gzip.open(gz_file_name, "wb", 4)
         except:
             exc_info = sys.exc_info()
-            my_syslog("error opening %s: %s (%s)" % (
+            my_syslog("error opening {}: {} ({})".format(
                 gz_file_name,
                 str(exc_info[0]),
                 str(exc_info[1])))
@@ -963,7 +976,7 @@ class syslog_helper_obj(object):
         for in_c in in_str:
             if in_c == " ":
                 if in_count:
-                    act_str = "%s%s" % (act_str, in_c)
+                    act_str = "{}{}".format(act_str, in_c)
                 else:
                     act_str = act_str.strip()
                     if act_str:
@@ -972,17 +985,17 @@ class syslog_helper_obj(object):
             else:
                 if in_c == "(":
                     if in_count == max_count:
-                        raise ValueError("already in parentheses_mode (%s) ..." % (in_str))
+                        raise ValueError("already in parentheses_mode ({}) ...".format(in_str))
                     if in_count > 1:
-                        act_str = "%s%s" % (act_str, in_c)
+                        act_str = "{}{}".format(act_str, in_c)
                     in_count += 1
                 elif in_c == ")":
                     if not in_count:
                         raise ValueError("not in parentheses_mode ...")
                     in_count -= 1
                     if not in_count:
-                        act_str = "%s%s" % (act_str, in_c)
-                act_str = "%s%s" % (act_str, in_c)
+                        act_str = "{}{}".format(act_str, in_c)
+                act_str = "{}{}".format(act_str, in_c)
         act_str = act_str.strip()
         if act_str:
             act_list.append(act_str)
@@ -1019,7 +1032,7 @@ class syslog_helper_obj(object):
                         raise ValueError("already in structure, error ...")
                     struct_count += 1
                     if struct_count > 1:
-                        in_str = "%s%s" % (in_str, in_c)
+                        in_str = "{}{}".format(in_str, in_c)
                 elif in_c == str_end:
                     if not struct_count:
                         raise ValueError("not in structure, error ...")
@@ -1030,12 +1043,12 @@ class syslog_helper_obj(object):
                         pre_str = pre_str.strip()
                         in_str = in_str.strip()
                     else:
-                        in_str = "%s%s" % (in_str, in_c)
+                        in_str = "{}{}".format(in_str, in_c)
                 else:
                     if struct_count:
-                        in_str = "%s%s" % (in_str, in_c)
+                        in_str = "{}{}".format(in_str, in_c)
                     else:
-                        pre_str = "%s%s" % (pre_str, in_c)
+                        pre_str = "{}{}".format(pre_str, in_c)
         return s_list
     def is_string(self, in_str):
         return type(in_str) == str and in_str[0] == in_str[-1] and in_str[0] in ["'", '"']
@@ -1058,12 +1071,12 @@ class syslog_ng_destination(syslog_helper_obj):
         syslog_helper_obj.__init__(self)
         d_list = self._parse_stream(in_str, [], "(")
         if len(d_list) > 1:
-            raise ValueError("__destination to long (%d)" % (len(d_list)))
+            raise ValueError("__destination to long ({:d})".format(len(d_list)))
         elif d_list:
             self.__type, self.__args = d_list[0]
             self.__args = self._split_str(self.__args)
     def __repr__(self):
-        return "%s %s, %s" % ("destination", self.__type, " ".join(self.__args))
+        return "{} {}, {}".format("destination", self.__type, " ".join(self.__args))
     def get_conf_str(self):
         return " "
 
@@ -1074,7 +1087,7 @@ class syslog_ng_source(syslog_helper_obj):
     def get_dict(self):
         return self.__sources
     def __repr__(self):
-        return "%s %s" % ("source", " ".join(["%s(%s)" % (x, " ".join(y)) for x, y in self.__sources.iteritems()]))
+        return "{} {}".format("source", " ".join(["{}({})".format(x, " ".join(y)) for x, y in self.__sources.iteritems()]))
     def get_conf_str(self):
         return " "
 
@@ -1083,7 +1096,7 @@ class syslog_ng_filter(syslog_helper_obj):
         syslog_helper_obj.__init__(self)
         self.__filter_list = self._split_str(in_str, 4)
     def __repr__(self):
-        return "%s %s" % ("filter", " ".join(self.__filter_list))
+        return "{} {}".format("filter", " ".join(self.__filter_list))
     def get_conf_str(self):
         return " ".join(self.__filter_list)
 
@@ -1096,7 +1109,7 @@ class syslog_ng_log(syslog_helper_obj):
             if key in o_dict.keys():
                 o_dict[key].append(value)
             else:
-                raise KeyError("unknown key %s" % (key))
+                raise KeyError("unknown key {}".format(key))
         if not o_dict["source"]:
             raise ValueError("need at least one source")
         elif not o_dict["destination"]:
@@ -1150,18 +1163,18 @@ class syslog_ng_config(syslog_helper_obj):
         return self.__multi_objects[name]
         # pprint.pprint(s_dict)
 
-def main():
-    a = new_form_list()
-    a.append([form_entry("xxx", header="a"),
-              form_entry(u"öäöü", header="test"),
-              form_entry_right(89, header="num")])
-    print(unicode(a))
-    # a = syslog_ng_config()
-    # print a.get_dict_sort(a.get_multi_object("source"))
-    # print "\n".join(a.get_config_lines())
-    sys.exit(0)
-
-if __name__ == "__main__":
-    main()
-    print("Loadable module, exiting...")
-    sys.exit(0)
+# def main():
+#    a = new_form_list()
+#    a.append([form_entry("xxx", header="a"),
+#              form_entry(u"öäöü", header="test"),
+#              form_entry_right(89, header="num")])
+#    print(unicode(a))
+#    # a = syslog_ng_config()
+#    # print a.get_dict_sort(a.get_multi_object("source"))
+#    # print "\n".join(a.get_config_lines())
+#    sys.exit(0)
+#
+# if __name__ == "__main__":
+#    main()
+#    print("Loadable module, exiting...")
+#    sys.exit(0)

@@ -1,5 +1,3 @@
-#!/usr/bin/python-init -OtW error
-#
 # Copyright (C) 2007-2008,2012-2014 Andreas Lang-Nevyjel, init.at
 #
 # this file is part of python-modules-base
@@ -64,7 +62,9 @@ class router_object(object):
         latest_gen = self.__cur_gen + 1
         if latest_gen != self.__cur_gen:
             s_time = time.time()
-            self.all_nds = netdevice.objects.exclude(Q(device__device_type__identifier="MD")).filter(Q(device__enabled=True) & Q(device__device_group__enabled=True)).values_list("idx", "device", "routing", "penalty")
+            self.all_nds = netdevice.objects.exclude(Q(device__device_type__identifier="MD")).\
+                filter(Q(device__enabled=True) & Q(device__device_group__enabled=True)). \
+                values_list("idx", "device", "routing", "penalty", "inter_device_routing")
             self.dev_dict = {}
             for cur_nd in self.all_nds:
                 if cur_nd[1] not in self.dev_dict:
@@ -85,7 +85,7 @@ class router_object(object):
                     self.simple_peer_dict[(s_nd_id, d_nd_id)] = penalty
             # add simple peers for device-internal networks
             for nd_list in self.dev_dict.itervalues():
-                route_nds = [cur_nd for cur_nd in nd_list if cur_nd[2]]
+                route_nds = [cur_nd for cur_nd in nd_list if cur_nd[4]]
                 if len(route_nds) > 1:
                     for s_idx in xrange(len(route_nds)):
                         for d_idx in xrange(s_idx + 1, len(route_nds)):
@@ -537,10 +537,14 @@ class server_check(object):
                             if filter_ip not in source_ip_lut[act_id] and filter_ip not in dest_ip_lut[act_id]:
                                 add_actual = False
                         if add_actual:
-                            c_ret_list.append((penalty,
-                                             act_id,
-                                             (s_nd_pk, source_ip_lut[act_id]),
-                                             (d_nd_pk, dest_ip_lut[act_id])))
+                            c_ret_list.append(
+                                (
+                                    penalty,
+                                    act_id,
+                                    (s_nd_pk, source_ip_lut[act_id]),
+                                    (d_nd_pk, dest_ip_lut[act_id])
+                                )
+                            )
                 else:
                     if kwargs.get("allow_route_to_other_networks", False):
                         for src_id in set(source_ip_lut.iterkeys()) & set(["p", "o"]):
@@ -550,11 +554,21 @@ class server_check(object):
                                     if filter_ip not in source_ip_lut[src_id] and filter_ip not in dest_ip_lut[dst_id]:
                                         add_actual = False
                                 if add_actual:
-                                    nc_ret_list.append((penalty,
-                                                     dst_id,
-                                                     (s_nd_pk, source_ip_lut[src_id]),
-                                                     (d_nd_pk, dest_ip_lut[dst_id])))
-        return sorted(c_ret_list) + sorted(nc_ret_list)
+                                    nc_ret_list.append(
+                                        (
+                                            penalty,
+                                            dst_id,
+                                            (s_nd_pk, source_ip_lut[src_id]),
+                                            (d_nd_pk, dest_ip_lut[dst_id])
+                                        )
+                                    )
+        r_list = sorted(c_ret_list) + sorted(nc_ret_list)
+        if kwargs.get("prefer_production_net", False):
+            r_list = self.prefer_production_net(r_list)
+        return r_list
+    def prefer_production_net(self, r_list):
+        # puts production routes in front of the rest
+        return [entry for entry in r_list if entry[1] in ["p"]] + [entry for entry in r_list if entry[1] not in ["p"]]
     def report(self):
         # print self.effective_device
         if self.effective_device:

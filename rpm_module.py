@@ -1,5 +1,3 @@
-#!/usr/bin/python-init -Ot
-#
 # Copyright (C) 2001,2002,2003,2004,2005,2006,2008 Andreas Lang-Nevyjel, init.at
 #
 # Send feedback to: <lang-nevyjel@init.at>
@@ -36,7 +34,7 @@ def __import__(name):
                         "/usr/lib/python/site-packages"]:
             if os.path.isdir(add_dir) and add_dir not in sys.path:
                 sys.path.append(add_dir)
-        #print sys.path
+        # print sys.path
         fp, pathname, description = imp.find_module(name)
         sys.path = old_sys_path
         try:
@@ -114,7 +112,7 @@ def return_package_header(name):
     except OSError:
         raise RPMError, "Error opening file %s" % (name)
     my_ts = rpm.TransactionSet()
-    my_ts.setVSFlags(~(rpm.RPMVSF_NOMD5|rpm.RPMVSF_NEEDPAYLOAD))
+    my_ts.setVSFlags(~(rpm.RPMVSF_NOMD5 | rpm.RPMVSF_NEEDPAYLOAD))
     try:
         header = my_ts.hdrFromFdno(fdno)
     except rpm.error:
@@ -144,10 +142,10 @@ class rpm_package(object):
     def set_basic_info(self, header):
         self.bi = {}
         for what in ["name", "group", "epoch", "version", "release", "size", "arch", "summary", "installtime"]:
-            self.bi[what] = header[what]#getattr(rpm, "RPMTAG_%s" % (what.upper()))]
+            self.bi[what] = header[what] # getattr(rpm, "RPMTAG_%s" % (what.upper()))]
         for l_name in ["provide", "depend", "conflict", "obsolete"]:
             setattr(self, "%ss_list" % (l_name), None)
-        #print self.bi
+        # print self.bi
     def correct_flags(self, flag_list):
         returnflags = []
         if flag_list:

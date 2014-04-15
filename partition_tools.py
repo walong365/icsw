@@ -1,6 +1,4 @@
-#!/usr/bin/python-init -Ot
-#
-# Copyright (C) 2008,2009,2012,2013 Andreas Lang-Nevyjel, init.at
+# Copyright (C) 2008-2014 Andreas Lang-Nevyjel, init.at
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -17,7 +15,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
-""" partition stuff """
+""" tools for handling partition tables (LVM and UUID / label stuff) """
 
 import commands
 import logging_tools
@@ -26,8 +24,26 @@ import process_tools
 import re
 import sys
 
+class uuid_label_struct(dict):
+    def __init__(self):
+        # after init can be used like
+        # _uls = uuid_label_struct()
+        # print _uls[UUID]
+        dict.__init__(self)
+        c_stat, c_out = commands.getstatusoutput("/sbin/blkid")
+        if not c_stat:
+            for _line in c_out.split("\n"):
+                if _line.count(":"):
+                    part, _rest = _line.split(":", 1)
+                    _dict = dict([_part.split("=", 1) for _part in _rest.strip().split()])
+                    _dict = {key : value[1:-1] if value.startswith('"') else value for key, value in _dict.iteritems()}
+                    _dict["part"] = part
+                    for key in set(_dict) & set(["UUID"]):
+                        self[_dict[key]] = _dict
+
 class lvm_object(dict):
     def __init__(self, lv_type, in_dict):
+        dict.__init__(self)
         self.lv_type = lv_type
         self.__ignore_list = ["percent"]
         self.__int_keys = ["major", "minor", "kernel_major", "kernel_minor", "used", "max_pv", "max_lv", "stripes", "free"]
@@ -41,7 +57,7 @@ class lvm_object(dict):
             if len(in_dict):
                 self["mount_options"] = dict([(sub_key, sub_value if sub_key not in ["fsck", "dump"] else int(sub_value)) for sub_key, sub_value in in_dict[0].attrib.iteritems()])
     def __setitem__(self, key, value):
-        if key.startswith("%s_" % (self.lv_type)):
+        if key.startswith("{}_".format(self.lv_type)):
             key = key[3:]
         if key in self.__int_keys or key.count("size") or key.count("count"):
             if value.endswith("B"):
@@ -62,13 +78,15 @@ class lvm_object(dict):
             if type(value) in [str, unicode]:
                 r_dict[key] = value
             elif type(value) in [int, long]:
-                r_dict[key] = "%d" % (value)
+                r_dict[key] = "{:d}".format(value)
         return r_dict
     def __repr__(self):
-        return "\n".join(["{",
-                          "--- name %s, type %s --- " % (self["name"], self.lv_type)] +
-                         ["%-20s: (%s) %s" % (key, str(type(value)), str(value)) for key, value in self.iteritems()] +
-                         ["}"])
+        return "\n".join(
+            [
+                "{",
+                "--- name {}, type {} --- ".format(self["name"], self.lv_type)] +
+                ["{:<20s}: ({}) {}".format(key, str(type(value)), str(value)) for key, value in self.iteritems()] +
+                ["}"])
 
 class multipath_struct(object):
     def __init__(self, source, **kwargs):
@@ -82,13 +100,13 @@ class multipath_struct(object):
         mp_bins = {"multipath" : "-ll"}
         self.__mp_bin_dict = {}
         for bn, bn_opts in mp_bins.iteritems():
-            path_found = [entry for entry in ["%s/%s" % (name, bn) for name in mp_path] if os.path.isfile(entry)]
+            path_found = [entry for entry in [os.path.join(name, bn) for name in mp_path] if os.path.isfile(entry)]
             if path_found:
                 self.__mp_bin_dict[bn] = (path_found[0], bn_opts)
     def update(self):
         dev_dict = {}
         if self.__mp_bin_dict:
-            cur_stat, cur_out = commands.getstatusoutput("%s %s" % self.__mp_bin_dict["multipath"])
+            cur_stat, cur_out = commands.getstatusoutput("{} {}".format(*self.__mp_bin_dict["multipath"]))
             if not cur_stat:
                 re_dict = {
                     "header1" : re.compile("^(?P<name>\S+)\s+\((?P<id>\S+)\)\s+(?P<devname>\S+)\s+(?P<info>.*)$"),
@@ -156,7 +174,7 @@ class lvm_struct(object):
         elif self.__source == "xml":
             self._parse_xml(kwargs["xml"])
         else:
-            print "unknown source '%s' for lvm_struct.__init__" % (source)
+            print "unknown source '{}' for lvm_struct.__init__".format(source)
     def _check_binary_paths(self):
         lvm_path = ["/sbin", "/usr/sbin", "/usr/local/sbin"]
         lvm_bins = {"pv" : ["pv_uuid", "pv_fmt", "pv_size", "dev_size",
@@ -172,7 +190,7 @@ class lvm_struct(object):
                             "seg_start", "seg_size", "seg_tags", "devices", "vg_name"]}
         self.__lvm_bin_dict = {}
         for bn, bn_opts in lvm_bins.iteritems():
-            path_found = [entry for entry in ["%s/%ss" % (name, bn) for name in lvm_path] if os.path.isfile(entry)]
+            path_found = [entry for entry in [os.path.join(name, "{}s".format(bn)) for name in lvm_path] if os.path.isfile(entry)]
             if path_found:
                 self.__lvm_bin_dict[bn] = (path_found[0], bn_opts)
     def _read_dm_links(self):
@@ -201,7 +219,7 @@ class lvm_struct(object):
                 ret_dict[name] = []
                 if bin_path:
                     num_sep = len(options)
-                    com = "%s --separator \; --units b -o %s" % (bin_path, ",".join(options))
+                    com = "{} --separator \; --units b -o {}".format(bin_path, ",".join(options))
                     c_stat, c_out = commands.getstatusoutput(com)
                     if not c_stat:
                         lines = [line.strip() for line in c_out.split("\n") if line.strip() and line.count(";") >= num_sep / 2]
@@ -239,7 +257,7 @@ class lvm_struct(object):
                          version="2",
                          lvm_present="1" if self.lvm_present else "0")
         for m_key, val_list in self.lv_dict.iteritems():
-            sub_struct = builder("lvm_%s" % (m_key), lvm_type=m_key, entities="%d" % (len(val_list)))
+            sub_struct = builder("lvm_{}".format(m_key), lvm_type=m_key, entities="{:d}".format(len(val_list)))
             lvm_el.append(sub_struct)
             for _el_key, element in val_list.iteritems():
                 sub_struct.append(element.build_xml(builder))
@@ -262,7 +280,7 @@ class lvm_struct(object):
         while rst > 1024:
             pf_list.pop(0)
             rst /= 1024.
-        return "%.2f %sB" % (rst, pf_list[0])
+        return "{:.2f} {}B".format(rst, pf_list[0])
     def get_info(self, short=True):
         vg_names = sorted(self.lv_dict.get("vg", {}).keys())
         vg_info = {}
@@ -278,7 +296,7 @@ class lvm_struct(object):
             lv_stuff = self.lv_dict.get("lv", {})[lv_name]
             vg_name = lv_stuff["vg_name"]
             lv_size = lv_stuff["size"]
-            lv_info.setdefault(vg_name, []).append("%s%s (%s)" % (
+            lv_info.setdefault(vg_name, []).append("{}{} ({})".format(
                 lv_name,
                 lv_stuff["attr"][5] == "o" and "[open]" or "",
                 self._get_size_str(lv_size)))
@@ -286,14 +304,15 @@ class lvm_struct(object):
         if short:
             ret_info = []
             for vg_name in vg_names:
-                ret_info.append("%s (%s, %s free, %s: %s)" % (
+                ret_info.append("{} ({}, {} free, {}: {})".format(
                     vg_name,
                     vg_info[vg_name][0],
                     vg_info[vg_name][1],
                     logging_tools.get_plural("LV", len(lv_info.get(vg_name, []))),
                     ", ".join(lv_info.get(vg_name, [])) or "NONE"))
-            return "%s: %s" % (logging_tools.get_plural("VG", len(ret_info)),
-                               "; ".join(ret_info))
+            return "{}: {}".format(
+                logging_tools.get_plural("VG", len(ret_info)),
+                "; ".join(ret_info))
         else:
             ret_info = logging_tools.new_form_list()
             for vg_name in vg_names:
@@ -317,7 +336,7 @@ class lvm_struct(object):
             return unicode(ret_info)
     def __repr__(self):
         order_list = ["pv", "vg", "lv"]
-        ret_a = ["%s:" % (", ".join(["%s" % (logging_tools.get_plural(k, len(self.lv_dict.get(k, {}).keys()))) for k in order_list]))]
+        ret_a = ["{}:".format(", ".join(["{}".format(logging_tools.get_plural(k, len(self.lv_dict.get(k, {}).keys()))) for k in order_list]))]
         for ol in order_list:
             ret_a.append("\n".join([str(x) for x in self.lv_dict.get(ol, {}).values()]))
         return "\n".join(ret_a)

@@ -2,12 +2,12 @@
 #
 # -*- encoding: utf-8 -*-
 #
-# Copyright (c) 2001,2002,2003,2004,2007,2009,2013 Andreas Lang-Nevyjel, init.at
+# Copyright (c) 2001-2004,2007-2009,2013-2014 Andreas Lang-Nevyjel, init.at
 #
 # this file is part of python-modules-base
 #
 # Send feedback to: <lang-nevyjel@init.at>
-# 
+#
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
 # the Free Software Foundation; version 2 of the License
@@ -54,7 +54,7 @@ def main():
         all_users = [entry for entry in list(user.objects.exclude(Q(email='')).filter(Q(active=True) & Q(group__active=True)).values_list("email", flat=True)) if entry.count("@")]
         cur_opts.to = all_users
         log_template.info(
-            "sending to %s: %s" % (
+            "sending to {}: {}".format(
                 logging_tools.get_plural("address", len(all_users)),
                 ", ".join(sorted(all_users)))
         )
@@ -64,7 +64,7 @@ def main():
     m_stat, m_ret_f = my_mail.send_mail()
     if m_stat:
         log_template.error(
-            "Some error occured sending to %s (%s, %d): %s" % (
+            "Some error occured sending to {} ({}, {:d}): {}".format(
                 ",".join(cur_opts.to),
                 cur_opts.subject,
                 m_stat,
@@ -72,7 +72,7 @@ def main():
         )
     else:
         log_template.info(
-            "Mail successfully sent to %s (%s)" % (
+            "Mail successfully sent to {} ({})".format(
                 ",".join(cur_opts.to),
                 cur_opts.subject,
             )
@@ -83,4 +83,4 @@ def main():
 
 if __name__ == "__main__":
     main()
-    
+

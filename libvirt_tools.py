@@ -1,5 +1,3 @@
-#!/usr/bin/python-init -Ot
-#
 # Copyright (C) 2010,2012-2014 Andreas Lang-Nevyjel
 #
 # Send feedback to: <lang-nevyjel@init.at>
@@ -66,7 +64,7 @@ class disk_info(object):
         self.dev = self.__xml_object.xpath(".//target", smart_strings=False)[0].attrib["dev"]
         self.bus = self.__xml_object.xpath(".//target", smart_strings=False)[0].attrib["bus"]
     def get_info(self):
-        return "device '%s' on bus '%s', source is %s (%s)" % (
+        return "device '{}' on bus '{}', source is {} ({})".format(
             self.dev,
             self.bus,
             self.src_ref,
@@ -101,7 +99,7 @@ class net_info(object):
         self.source = self.__xml_object.xpath(".//source", smart_strings=False)[0].attrib["bridge"]
         self.mac_address = self.__xml_object.xpath(".//mac", smart_strings=False)[0].attrib["address"]
     def get_info(self):
-        return "device %s (model %s) on %s, MAC is %s" % (
+        return "device {} (model {}) on {}, MAC is {}".format(
             self.dev,
             self.model,
             self.source,
@@ -131,22 +129,24 @@ class virt_instance(object):
         self.dom_handle = ro_conn.lookupByID(self.inst_id)
         self._update_xml()
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
-        self.log_com("[%s] %s" % (self.name, what), log_level)
+        self.log_com("[{}] {}".format(self.name, what), log_level)
     def _update_xml(self):
         self.name = self.dom_handle.name()
-        self.log("Instance name is '%s', ID is %s" % (self.name,
-                                                      self.inst_id))
+        self.log("Instance name is '{}', ID is {}".format(
+            self.name,
+            self.inst_id))
         self.xml_desc = etree.fromstring(self.dom_handle.XMLDesc(0))
         self.memory = int(self.xml_desc.xpath(".//currentMemory", smart_strings=False)[0].text) * 1024
         self.vcpus = int(self.xml_desc.xpath(".//vcpu", smart_strings=False)[0].text)
-        self.log("memory is %s, %s" % (logging_tools.get_size_str(self.memory),
-                                       logging_tools.get_plural("CPU", self.vcpus)))
+        self.log("memory is {}, {}".format(
+            logging_tools.get_size_str(self.memory),
+            logging_tools.get_plural("CPU", self.vcpus)))
         self.disk_dict, self.net_dict = ({}, {})
         self.vnc_port = None
         vnc_entry = self.xml_desc.xpath(".//graphics[@type='vnc']", smart_strings=False)
         if vnc_entry:
             self.vnc_port = int(vnc_entry[0].attrib["port"]) - 5900
-            self.log("VNC port is %d" % (self.vnc_port))
+            self.log("VNC port is {:d}".format(self.vnc_port))
         else:
             self.log("no VNC-port defined", logging_tools.LOG_LEVEL_WARN)
         # print etree.tostring(self.xml_desc, pretty_print=True)
@@ -164,7 +164,6 @@ class virt_instance(object):
     def update(self):
         # print dir(self.dom_handle)
         self.base_info.feed(*self.dom_handle.info())
-        # print "+", self.name, self.disk_dict.keys(), "%.2f" % (self.base_info.cpu_used)
         for act_disk in self.disk_dict:
             self.disk_dict[act_disk].feed(*self.dom_handle.blockStats(act_disk))
             # print "    ", act_disk, self.disk_dict[act_disk].stats
@@ -185,9 +184,9 @@ class libvirt_connection(object):
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
         self.log_lines.append((log_level, what))
         if self.log_com:
-            self.log_com("[lvc] %s" % (what), log_level)
+            self.log_com("[lvc] {}".format(what), log_level)
     def stdout_log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
-        print "[%-5s] %s" % (logging_tools.get_log_level_str(log_level), what)
+        print "[{:<5s}] {}".format(logging_tools.get_log_level_str(log_level), what)
     def close(self, **kwargs):
         self._close_con()
         if kwargs.get("keep_log_lines", False):
@@ -197,7 +196,7 @@ class libvirt_connection(object):
             try:
                 self.__conn.close()
             except:
-                self.log("error closing connection: %s" % (process_tools.get_except_info()), logging_tools.LOG_LEVEL_ERROR)
+                self.log("error closing connection: {}".format(process_tools.get_except_info()), logging_tools.LOG_LEVEL_ERROR)
             del self.__conn
             self.__conn = None
     @property
@@ -208,16 +207,20 @@ class libvirt_connection(object):
                     self.__conn = libvirt.openReadOnly(None)
                 except:
                     self.__conn = None
-                    self.log("error in openReadOnly(None): %s" % (process_tools.get_except_info()),
-                             logging_tools.LOG_LEVEL_CRITICAL)
+                    self.log(
+                        "error in openReadOnly(None): {}".format(
+                            process_tools.get_except_info()),
+                        logging_tools.LOG_LEVEL_CRITICAL)
                 else:
                     if os.getuid():
-                        self.log("not running as root (%d != 0)" % (os.getuid()),
-                                 logging_tools.LOG_LEVEL_ERROR)
+                        self.log(
+                            "not running as root ({:d} != 0)".format(
+                                os.getuid()),
+                            logging_tools.LOG_LEVEL_ERROR)
             else:
                 if not self.__missing_logged:
                     self.__missing_logged = True
-                    self.log("no libvirt defined or socket %s not found" % (LIBVIRT_RO_SOCK_NAME), logging_tools.LOG_LEVEL_ERROR)
+                    self.log("no libvirt defined or socket {} not found".format(LIBVIRT_RO_SOCK_NAME), logging_tools.LOG_LEVEL_ERROR)
                 self.__conn = None
         return self.__conn
     def keys(self):
@@ -229,7 +232,7 @@ class libvirt_connection(object):
             try:
                 res = getattr(conn, call_name)(*args, **kwargs)
             except:
-                self.log("error calling %s: %s" % (call_name, process_tools.get_except_info()), logging_tools.LOG_LEVEL_ERROR)
+                self.log("error calling {}: {}".format(call_name, process_tools.get_except_info()), logging_tools.LOG_LEVEL_ERROR)
                 self._close_con()
                 if retry:
                     raise
@@ -253,16 +256,16 @@ class libvirt_connection(object):
                 old_ids = present_ids - cur_ids
                 if new_ids:
                     self.log(
-                        "%s found: %s" % (
+                        "{} found: {}".format(
                             logging_tools.get_plural("ID", len(new_ids)),
-                            ", ".join(["%d" % (cur_id) for cur_id in sorted(new_ids)])))
+                            ", ".join(["{:d}".format(cur_id) for cur_id in sorted(new_ids)])))
                     for new_id in new_ids:
                         self.add_domain(virt_instance(new_id, self.log, conn))
                 if old_ids:
                     self.log(
-                        "%s lost: %s" % (
+                        "{} lost: {}".format(
                             logging_tools.get_plural("ID", len(old_ids)),
-                            ", ".join(["%d" % (cur_id) for cur_id in sorted(old_ids)])))
+                            ", ".join(["{:d}".format(cur_id) for cur_id in sorted(old_ids)])))
                     for old_id in old_ids:
                         self.remove_domain(old_id)
                 for same_id in cur_ids & present_ids:

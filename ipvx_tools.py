@@ -1,5 +1,3 @@
-#!/usr/bin/python -Ot
-#
 # Copyright (C) 2007,2012-2014 Andreas Lang-Nevyjel
 #
 # Send feedback to: <lang-nevyjel@init.at>
@@ -34,7 +32,7 @@ class ipv4(object):
                 self.inv_parts.reverse()
                 # print "+",in_value, self.parts, self.inv_parts, "*<br>"
             else:
-                raise ValueError, "error parsing IP address '%s'" % (in_value)
+                raise ValueError, "error parsing IP address '{}'".format(in_value)
         elif type(in_value) == type([]):
             if type(in_value[0]) in [type(0), type(0L)]:
                 # value is a list of integer
@@ -95,7 +93,7 @@ class ipv4(object):
                 ov += 1
             new_v[i] = new_val
         if ov:
-            raise ValueError, "Overflow while adding IPv4 addresses %s and %s" % (str(self), str(other))
+            raise ValueError, "Overflow while adding IPv4 addresses {} and {}".format(str(self), str(other))
         else:
             return ipv4(".".join([str(x) for x in new_v]))
     def __lt__(self, other):

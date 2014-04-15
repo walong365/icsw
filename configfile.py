@@ -1,5 +1,3 @@
-#!/usr/bin/python-init -Ot
-#
 # Copyright (C) 2001-2009,2011-2014 Andreas Lang-Nevyjel, init.at
 #
 # this file is part of python-modules-base
@@ -105,7 +103,9 @@ class _conf_var(object):
         self.__default_val = def_val
         self.__info = kwargs.get("info", "")
         if not self.check_type(def_val):
-            raise TypeError("Type of Default-value differs from given type (%s, %s)" % (type(def_val), str(self.short_type)))
+            raise TypeError("Type of Default-value differs from given type ({}, {})".format(
+                type(def_val),
+                str(self.short_type)))
         self.source = kwargs.get("source", "default")
         self.fixed = kwargs.get("fixed", False)
         self.is_global = kwargs.get("is_global", True)
@@ -123,19 +123,19 @@ class _conf_var(object):
         return True if self._help_string else False
     def get_commandline_info(self):
         if self._help_string:
-            return "is commandline option, help_string is '%s'" % (self._help_string)
+            return "is commandline option, help_string is '{}'".format(self._help_string)
         else:
             return "no commandline option"
     def add_argument(self, name, arg_parser):
         if self._short_opts:
             if len(self._short_opts) > 1:
-                opts = ["--%s" % (self._short_opts)]
+                opts = ["--{}".format(self._short_opts)]
             else:
-                opts = ["-%s" % (self._short_opts)]
+                opts = ["-{}".format(self._short_opts)]
         else:
-            opts = ["--%s" % (name.lower())]
+            opts = ["--{}".format(name.lower())]
             if name.lower().count("_"):
-                opts.append("--%s" % (name.lower().replace("_", "-")))
+                opts.append("--{}".format(name.lower().replace("_", "-")))
         kwargs = {"dest" : name,
                   "help" : self._help_string}
         if self._choices:
@@ -146,9 +146,9 @@ class _conf_var(object):
             if self.short_type == "b":
                 # bool
                 if self._only_commandline and not self._writeback:
-                    arg_parser.add_argument(*opts, action="store_%s" % ("false" if self.__default_val else "true"), default=self.__default_val, **kwargs)
+                    arg_parser.add_argument(*opts, action="store_{}".format("false" if self.__default_val else "true"), default=self.__default_val, **kwargs)
                 else:
-                    arg_parser.add_argument(*opts, action="store_%s" % ("false" if self.value else "true"), default=self.value, **kwargs)
+                    arg_parser.add_argument(*opts, action="store_{}".format("false" if self.value else "true"), default=self.value, **kwargs)
             else:
                 print("*? unknown short_type in _conf_var ?*", self.short_type, name, self.argparse_type)
         else:
@@ -193,15 +193,15 @@ class _conf_var(object):
         try:
             r_val = self.str_to_val(val)
         except TypeError:
-            raise TypeError("Type Error for value %s" % (str(val)))
+            raise TypeError("Type Error for value {}".format(str(val)))
         except ValueError:
-            raise ValueError("Value Error for value %s" % (str(val)))
+            raise ValueError("Value Error for value {}".format(str(val)))
         else:
             self.value = r_val
             if source and (source != "default" or self.source == "default"):
                 self.source = source
     def __str__(self):
-        return "%s (source %s, %s) : %s" % (
+        return "{} (source {}, {}) : {}".format(
             self.descr,
             self.source,
             "global" if self.__is_global else "local",
@@ -252,7 +252,7 @@ class blob_c_var(_conf_var):
     def check_type(self, val):
         return type(val) == str
     def pretty_print(self):
-        return "blob with len %d" % (len(self.act_val))
+        return "blob with len {:d}".format(len(self.act_val))
 
 class bool_c_var(_conf_var):
     descr = "Bool"
@@ -344,28 +344,28 @@ class configuration(object):
             # check for override of database flag
             if not value._database_set and "database" in kwargs:
                 if self.__verbose:
-                    self.log("override database flag for '%s', setting to '%s'" % (key, str(kwargs["database"])))
+                    self.log("override database flag for '{}', setting to '{}'".format(key, str(kwargs["database"])))
                 value.database = kwargs["database"]
             if key in self.__c_dict and self.__verbose:
-                self.log("Replacing config for key %s" % (key))
+                self.log("Replacing config for key {}".format(key))
             self.__c_dict[key] = value
             if self.__verbose:
-                self.log("Setting config for key %s to %s" % (key, value))
+                self.log("Setting config for key {} to {}".format(key, value))
     def pretty_print(self, key):
         if key in self.__c_dict:
             return self.__c_dict[key].pretty_print()
         else:
-            raise KeyError("Key %s not found in c_dict" % (key))
+            raise KeyError("Key {} not found in c_dict".format(key))
     def __getitem__(self, key):
         if key in self.__c_dict:
             return self.__c_dict[key].value
         else:
-            raise KeyError("Key %s not found in c_dict" % (key))
+            raise KeyError("Key {} not found in c_dict".format(key))
     def __delitem__(self, key):
         if key in self.__c_dict:
             del self.__c_dict[key]
         else:
-            raise KeyError("Key %s not found in c_dict" % (key))
+            raise KeyError("Key {} not found in c_dict".format(key))
     def __setitem__(self, key, value):
         if key in self.__c_dict:
             if type(value) == type(()):
@@ -374,7 +374,7 @@ class configuration(object):
                 source = None
             self.__c_dict[key].set_value(value, source)
         else:
-            raise KeyError("Key %s not found in c_dict" % (key))
+            raise KeyError("Key {} not found in c_dict".format(key))
     def get_config_info(self):
         gk = sorted(self.keys())
         if gk:
@@ -387,7 +387,7 @@ class configuration(object):
                     pv = self.pretty_print(key)
                     f_obj.append([
                         logging_tools.form_entry(key),
-                        logging_tools.form_entry("list with %s:" % (logging_tools.get_plural("entry", len(pv)))),
+                        logging_tools.form_entry("list with {}:".format(logging_tools.get_plural("entry", len(pv)))),
                         logging_tools.form_entry(self.get_type(key)),
                         logging_tools.form_entry(self.get_source(key)),
                         ])
@@ -431,37 +431,37 @@ class configuration(object):
         if key in self.__c_dict:
             return self.__c_dict[key].source
         else:
-            raise KeyError("Key %s not found in c_dict" % (key))
+            raise KeyError("Key {} not found in c_dict".format(key))
     def fixed(self, key):
         if key in self.__c_dict:
             return self.__c_dict[key].fixed
         else:
-            raise KeyError("Key %s not found in c_dict" % (key))
+            raise KeyError("Key {} not found in c_dict".format(key))
     def is_global(self, key):
         if key in self.__c_dict:
             return self.__c_dict[key].is_global
         else:
-            raise KeyError("Key %s not found in c_dict" % (key))
+            raise KeyError("Key {} not found in c_dict".format(key))
     def set_global(self, key, value):
         if key in self.__c_dict:
             self.__c_dict[key].is_global = value
         else:
-            raise KeyError("Key %s not found in c_dict" % (key))
+            raise KeyError("Key {} not found in c_dict".format(key))
     def database(self, key):
         if key in self.__c_dict:
             return self.__c_dict[key].database
         else:
-            raise KeyError("Key %s not found in c_dict" % (key))
+            raise KeyError("Key {} not found in c_dict".format(key))
     def get_type(self, key):
         if key in self.__c_dict:
             return self.__c_dict[key].short_type
         else:
-            raise KeyError("Key %s not found in c_dict" % (key))
+            raise KeyError("Key {} not found in c_dict".format(key))
     def parse_file(self, *args, **kwargs):
         if len(args):
             file_name = args[0]
         else:
-            file_name = "/etc/sysconfig/%s" % (self.__name)
+            file_name = os.path.join("/etc", "sysconfig", self.__name)
         # kwargs:
         # section ... only read arugments from the given section (if found)
         scan_section = kwargs.get("section", "global")
@@ -474,7 +474,7 @@ class configuration(object):
                 lines = [line.strip() for line in open(file_name, "r").read().split("\n") if line.strip() and not line.strip().startswith("#")]
             except:
                 self.log(
-                    "Error while reading file %s: %s" % (
+                    "Error while reading file {}: {}".format(
                         file_name,
                         process_tools.get_except_info()),
                     logging_tools.LOG_LEVEL_ERROR)
@@ -494,50 +494,50 @@ class configuration(object):
                                 try:
                                     cur_type = self.get_type(key)
                                 except KeyError:
-                                    self.log("Error: key %s not defined in dictionary for get_type" % (key),
+                                    self.log("Error: key {} not defined in dictionary for get_type".format(key),
                                              logging_tools.LOG_LEVEL_ERROR)
                                 else:
                                     # interpret using eval
                                     if cur_type == "s":
                                         if value not in ["\"\""]:
                                             # escape strings
-                                            value = "\"%s\"" % (value)
+                                            value = "\"{}\"".format(value)
                                     try:
-                                        self[key] = (eval("%s" % (value)), "%s, sec %s" % (file_name, act_section))
+                                        self[key] = (
+                                            eval("{}".format(value)),
+                                            "{}, sec {}".format(file_name, act_section)
+                                        )
                                     except KeyError:
-                                        self.log("Error: key %s not defined in dictionary" % (key),
+                                        self.log("Error: key {} not defined in dictionary".format(key),
                                                  logging_tools.LOG_LEVEL_ERROR)
                                     else:
                                         if self.__verbose:
-                                            self.log("Changing value of key %s to %s" % (key, self.__c_dict[key]))
+                                            self.log("Changing value of key {} to {}".format(key, self.__c_dict[key]))
                             else:
-                                self.log("Error parsing line '%s'" % (str(line)),
+                                self.log("Error parsing line '{}'".format(str(line)),
                                          logging_tools.LOG_LEVEL_ERROR)
         else:
-            self.log("Cannot find file %s" % (file_name),
+            self.log("Cannot find file {}".format(file_name),
                      logging_tools.LOG_LEVEL_ERROR)
     def write_file(self, *args):
         if len(args):
             file_name = args[0]
         else:
-            file_name = "/etc/sysconfig/%s" % (self.__name)
+            file_name = os.path.join("/etc", "sysconfig", self.__name)
         if (not os.path.isfile(file_name)) or (os.path.isfile(file_name) and self.__writeback_changes):
             all_keys = self.__c_dict.keys()
             try:
-                # file(file_name, "w").write("\n".join(["# %s \n%s\n%s = %s\n" % (self.__c_dict[k],
-                #                                                                self.__c_dict[k].get_info() and "# %s \n" % (self.__c_dict[k].get_info()) or "",
-                #                                                                k,
-                #                                                                self.__c_dict[k].get_value()) for k in all_keys] + [""]))
                 open(file_name, "w").write("\n".join(sum([[
-                    "# %s" % (self.__c_dict[key]),
-                    "# %s" % (self.__c_dict[key].get_info() if self.__c_dict[key].get_info() else "no info"),
-                    "# %s" % (self.__c_dict[key].get_commandline_info()),
-                    "%s=%s" % (key,
-                               "\"\"" if self.__c_dict[key].value == "" else self.__c_dict[key].value),
+                    "# {}".format(self.__c_dict[key]),
+                    "# {}".format(self.__c_dict[key].get_info() if self.__c_dict[key].get_info() else "no info"),
+                    "# {}".format(self.__c_dict[key].get_commandline_info()),
+                    "{}={}".format(
+                        key,
+                        "\"\"" if self.__c_dict[key].value == "" else self.__c_dict[key].value),
                     ""] for key in all_keys if (self.get_cvar(key)._only_commandline == False and self.get_cvar(key)._writeback)],
                                                          [""])))
             except:
-                self.log("Error while writing file %s: %s" % (file_name, process_tools.get_except_info()))
+                self.log("Error while writing file {}: {}".format(file_name, process_tools.get_except_info()))
             else:
                 pass
     def _argparse_exit(self, status=0, message=None):
@@ -611,7 +611,6 @@ class my_server(Server):
         if sys.version_info[0] == 3:
             self.stop_event = threading.Event()
         current_process()._manager_server = self
-        # print("*", os.getpid(), os.getuid())
         _run = True
         import time
         try:
@@ -623,22 +622,15 @@ class my_server(Server):
                         except (OSError, IOError):
                             continue
                         t = threading.Thread(target=self.handle_request, args=(c,))
-                        # file("/tmp/bla", "a").write("get %d\n" % (time.time()))
                         t.daemon = True
                         t.start()
                 except (KeyboardInterrupt, SystemExit):
-                    # file("/tmp/bla", "a").write("xxx\n")
-                    # print "+++", process_tools.get_except_info()
                     pass
                 except:
-                    # file("/tmp/bla", "a").write("%s\n" % (process_tools.get_except_info()))
                     raise
         finally:
-            # print "***", process_tools.get_except_info()
             self.stop = 999
-            # print "exit"
             self.listener.close()
-        # file("/tmp/bla", "a").write("fin\n")
 
 class config_manager(BaseManager):
     # monkey-patch Server
@@ -739,7 +731,7 @@ def readconfig(name, c_type=0, in_array=[]):
                         cd[act_k] = arg
             ret_code, ret_array = (True, cd)
         else:
-            print("Unknown type %d for readconfig" % (c_type))
+            print("Unknown type {:d} for readconfig".format(c_type))
     return (ret_code, ret_array)
 
 def check_str_config(in_dict, name, default):
