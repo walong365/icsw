@@ -119,7 +119,7 @@ class Command(BaseCommand):
         factories.NetworkDeviceType(identifier="xenbr", name_re="^xenbr\d+$", description="xen bridge devices", mac_bytes=6)
         factories.NetworkDeviceType(identifier="tun", name_re="^tun\d+$", description="ethernet tunnel devices", mac_bytes=6)
         factories.NetworkDeviceType(identifier="ib", name_re="^ib\d+$", description="infiniband devices", mac_bytes=20)
-        factories.NetworkDeviceType(identifier="bridge", name_re="^bridge\d+$", description="generic bridge", mac_bytes=6)
+        factories.NetworkDeviceType(identifier="bridge", name_re="^.*bridge.*$", description="generic bridge", mac_bytes=6)
         factories.NetworkDeviceType(identifier="vlan", name_re="^vlan\d+$", description="VLAN device", mac_bytes=6)
         factories.NetworkDeviceType(identifier="en", name_re="^en(s|p)\d+$", description="Ethernet new scheme", mac_bytes=6)
         # network types
