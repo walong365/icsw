@@ -46,7 +46,7 @@ class network_device_type(models.Model):
     def info_string(self):
         return unicode(self)
     def __unicode__(self):
-        return u"%s (%s [%d])" % (
+        return u"{} ({} [{:d}])".format(
             self.identifier,
             self.description,
             self.mac_bytes)
@@ -58,9 +58,9 @@ def network_device_type_post_init(sender, **kwargs):
         # print "*" * 20, cur_inst.identifier, cur_inst.pk, "+" * 20
         if cur_inst.name_re == "^.*$" and cur_inst.pk:
             if cur_inst.identifier in ["lo"]:
-                cur_inst.name_re = "^%s$" % (cur_inst.identifier)
+                cur_inst.name_re = "^{}$".format(cur_inst.identifier)
             else:
-                cur_inst.name_re = "^%s\d+$" % (cur_inst.identifier)
+                cur_inst.name_re = "^{}\d+$".format(cur_inst.identifier)
             cur_inst.save()
 
 @receiver(signals.pre_save, sender=network_device_type)
@@ -70,15 +70,20 @@ def network_device_type_pre_save(sender, **kwargs):
         if not(cur_inst.identifier.strip()):
             raise ValidationError("identifer must not be empty")
         if not re.match("^[a-zA-Z0-9]+$", cur_inst.identifier):
-            raise ValidationError("identifier '%s' contains illegal characters" % (cur_inst.identifier))
+            raise ValidationError("identifier '{}' contains illegal characters".format(cur_inst.identifier))
         if not cur_inst.name_re.startswith("^"):
-            cur_inst.name_re = "^%s" % (cur_inst.name_re)
+            cur_inst.name_re = "^{}".format(cur_inst.name_re)
         if not cur_inst.name_re.endswith("$"):
-            cur_inst.name_re = "%s$" % (cur_inst.name_re)
+            cur_inst.name_re = "{}$".format(cur_inst.name_re)
         try:
             _cur_re = re.compile(cur_inst.name_re)
         except:
-            raise ValidationError("invalid re '%s': %s" % (cur_inst.name_re, process_tools.get_except_info()))
+            raise ValidationError(
+                "invalid re '{}': {}".format(
+                    cur_inst.name_re,
+                    process_tools.get_except_info()
+                )
+            )
         _check_integer(cur_inst, "mac_bytes", min_val=6, max_val=24)
 
 class network_type(models.Model):
@@ -97,8 +102,9 @@ class network_type(models.Model):
         db_table = u'network_type'
         app_label = "backbone"
     def __unicode__(self):
-        return u"%s (%s)" % (self.description,
-                             self.identifier)
+        return u"{} ({})".format(
+            self.description,
+            self.identifier)
 
 class network(models.Model):
     idx = models.AutoField(db_column="network_idx", primary_key=True)
@@ -141,17 +147,17 @@ class network(models.Model):
     def get_info(self):
         all_slaves = self.rel_master_network.all()
         # return extended info
-        log_str = "%s network '%s' has %s%s" % (
+        log_str = "{} network '{}' has {}{}".format(
             self.network_type.get_identifier_display(),
             self.identifier,
             logging_tools.get_plural("slave network", len(all_slaves)),
-            ": %s" % ([cur_slave.identifier for cur_slave in all_slaves]) if all_slaves else "",
+            ": {}".format([cur_slave.identifier for cur_slave in all_slaves]) if all_slaves else "",
         )
         return log_str
     def info_string(self):
         return unicode(self)
     def __unicode__(self):
-        return u"%s (%s/%s, %s)" % (
+        return u"{} ({}/{}, {})".format(
             self.identifier,
             self.network,
             ipvx_tools.get_network_name_from_mask(self.netmask),
@@ -180,7 +186,7 @@ def network_pre_save(sender, **kwargs):
             try:
                 ip_dict[key] = ipvx_tools.ipv4(getattr(cur_inst, key))
             except:
-                raise ValidationError("%s is not an IPv4 address" % (key))
+                raise ValidationError("{} is not an IPv4 address".format(key))
         if not change_attr:
             change_attr = "network"
         if change_attr in ["network", "netmask"]:
@@ -257,16 +263,16 @@ def net_ip_pre_save(sender, **kwargs):
             if len(match_list):
                 cur_inst.network = match_list[0][1]
         if not cur_inst.network_id:
-            raise ValidationError("no matching network found for '%s'" % (cur_inst.ip))
+            raise ValidationError("no matching network found for '{}'".format(cur_inst.ip))
         if not ipv_addr.network_matches(cur_inst.network):
             match_list = ipv_addr.find_matching_network(network.objects.all())
             if match_list:
                 cur_inst.network = match_list[0][1]
             else:
-                raise ValidationError("no maching network found for '%s'" % (cur_inst.ip))
+                raise ValidationError("no maching network found for '{}'".format(cur_inst.ip))
         dev_ips = net_ip.objects.exclude(Q(pk=cur_inst.pk)).filter(Q(netdevice__device=cur_inst.netdevice.device)).values_list("ip", flat=True)
         if cur_inst.ip in dev_ips:
-            raise ValidationError("Address already %s used, device %s" % (cur_inst.ip, unicode(cur_inst.netdevice.device)))
+            raise ValidationError("Address already {} used, device {}".format(cur_inst.ip, unicode(cur_inst.netdevice.device)))
         if cur_inst.network.enforce_unique_ips:
             try:
                 present_ip = net_ip.objects.exclude(Q(pk=cur_inst.pk)).get(Q(network=cur_inst.network) & Q(ip=cur_inst.ip))
@@ -275,7 +281,7 @@ def net_ip_pre_save(sender, **kwargs):
             except net_ip.MultipleObjectsReturned:
                 raise ValidationError("IP already used more than once in network (force_unique_ips == True)")
             else:
-                raise ValidationError("IP already used for %s (enforce_unique_ips == True)" % (unicode(present_ip.netdevice.device)))
+                raise ValidationError("IP already used for {} (enforce_unique_ips == True)".format(unicode(present_ip.netdevice.device)))
 
 @receiver(signals.pre_delete, sender=net_ip)
 def net_ip_pre_delete(sender, **kwargs):
@@ -456,11 +462,11 @@ def netdevice_pre_save(sender, **kwargs):
         _check_empty_string(cur_inst, "devname")
         all_nd_names = netdevice.objects.exclude(Q(pk=cur_inst.pk)).filter(Q(device=cur_inst.device_id)).values_list("devname", flat=True)
         if cur_inst.devname in all_nd_names:
-            raise ValidationError("devname '%s' already used" % (cur_inst.devname))
+            raise ValidationError("devname '{}' already used".format(cur_inst.devname))
         # change network_device_type
         nd_type = cur_inst.find_matching_network_device_type()
         if not nd_type:
-            raise ValidationError("no matching device_type found for '%s' (%s)" % (unicode(cur_inst), cur_inst.pk or "new nd"))
+            raise ValidationError("no matching device_type found for '{}' ({})".format(unicode(cur_inst), cur_inst.pk or "new nd"))
         cur_inst.network_device_type = nd_type
         # fix None as vlan_id
         _check_integer(cur_inst, "vlan_id", none_to_zero=True, min_val=0)
@@ -472,23 +478,23 @@ def netdevice_pre_save(sender, **kwargs):
         if cur_inst.fake_macaddr:
             cur_inst.fake_macaddr = cur_inst.fake_macaddr.replace("-", ":").lower()
         dummy_mac, mac_re = (":".join(["00"] * cur_inst.network_device_type.mac_bytes),
-                             re.compile("^%s$" % (":".join(["[0-9a-f]{2}"] * cur_inst.network_device_type.mac_bytes))))
+                             re.compile("^{}$".format(":".join(["[0-9a-f]{2}"] * cur_inst.network_device_type.mac_bytes))))
         # set empty if not set
         try:
             if not cur_inst.macaddr.strip() or int(cur_inst.macaddr.replace(":", ""), 16) == 0:
                 cur_inst.macaddr = dummy_mac
         except:
-            raise ValidationError("MACaddress '%s' has illegal format" % (cur_inst.macaddr))
+            raise ValidationError("MACaddress '{}' has illegal format".format(cur_inst.macaddr))
         # set empty if not set
         try:
             if not cur_inst.fake_macaddr.strip() or int(cur_inst.fake_macaddr.replace(":", ""), 16) == 0:
                 cur_inst.fake_macaddr = dummy_mac
         except:
-            raise ValidationError("fake MACaddress '%s' has illegal format" % (cur_inst.fake_macaddr))
+            raise ValidationError("fake MACaddress '{}' has illegal format".format(cur_inst.fake_macaddr))
         if not mac_re.match(cur_inst.macaddr):
-            raise ValidationError("MACaddress '%s' has illegal format" % (cur_inst.macaddr))
+            raise ValidationError("MACaddress '{}' has illegal format".format(cur_inst.macaddr))
         if not mac_re.match(cur_inst.fake_macaddr):
-            raise ValidationError("fake MACaddress has illegal format" % (cur_inst.fake_macaddr))
+            raise ValidationError("fake MACaddress '{}' has illegal format".format(cur_inst.fake_macaddr))
         if cur_inst.master_device_id:
             if not cur_inst.vlan_id:
                 raise ValidationError("VLAN id cannot be zero")
@@ -527,7 +533,7 @@ class netdevice_speed(models.Model):
         while cur_s > 999:
             cur_s = cur_s / 1000
             lut_idx += 1
-        return u"%d%sBps, %s duplex, %s" % (
+        return u"{}{}Bps, {} duplex, {}".format(
             cur_s,
             " kMGT"[lut_idx].strip(),
             "full" if self.full_duplex else "half",
@@ -553,7 +559,10 @@ class peer_information(models.Model):
     penalty = models.IntegerField(default=0)
     date = models.DateTimeField(auto_now_add=True)
     def __unicode__(self):
-        return u"%s [%d] %s" % (self.s_netdevice.devname, self.penalty, self.d_netdevice.devname)
+        return u"{} [{:d}] {}".format(
+            self.s_netdevice.devname,
+            self.penalty,
+            self.d_netdevice.devname)
     class Meta:
         db_table = u'peer_information'
         app_label = "backbone"

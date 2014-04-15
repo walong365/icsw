@@ -12,11 +12,11 @@ class csw_obj_lut(object):
         self.perm_name = perm_name
     @property
     def key(self):
-        return "%s.%s.%s" % (self.module_name, self.content_name, self.perm_name)
+        return "{}.{}.{}".format(self.module_name, self.content_name, self.perm_name)
     def __getitem__(self, obj_name):
         key = self.key
         if obj_name.count("."):
-            raise ImproperlyConfigured("dot found in obj_name '%s' (key=%s)" % (obj_name, key))
+            raise ImproperlyConfigured("dot found in obj_name '{}' (key={})".format(obj_name, key))
         if obj_name == "ANY__":
             print "cfo", key
             return self.user.has_object_perm(key)
@@ -27,7 +27,7 @@ class csw_obj_lut(object):
             else:
                 return False
         else:
-            raise ImproperlyConfigured("Unknown object level accesscode '%s' (key '%s')" % (obj_name, key))
+            raise ImproperlyConfigured("Unknown object level accesscode '{}' (key '{}')".format(obj_name, key))
     def __bool__(self):
         return self.user.has_object_perm(self.key)
     def __nonzero__(self):
@@ -41,7 +41,6 @@ class csw_perm_lut(object):
         self.content_name = content_name
     def __getitem__(self, perm_name):
         return csw_obj_lut(self.user, self.module_name, self.content_name, perm_name)
-        # return self.user.has_object_perm("%s.%s" % (self.module_name, perm_name))
     def __bool__(self):
         return self.user.has_content_perms(self.module_name, self.content_name)
     def __nonzero__(self):
@@ -54,7 +53,6 @@ class csw_content_lut(object):
         self.module_name = module_name
     def __getitem__(self, content_name):
         return csw_perm_lut(self.user, self.module_name, content_name)
-        # return self.user.has_object_perm("%s.%s" % (self.module_name, perm_name))
     def __bool__(self):
         return self.user.has_module_perms(self.module_name)
     def __nonzero__(self):

@@ -19,7 +19,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
-""" create the cluster device supergroup """
+""" migrate to configuration catalogs """
 
 from django.core.management.base import BaseCommand
 from django.db.models import Q
@@ -37,10 +37,10 @@ class Command(BaseCommand):
                 name="local",
                 url="http://www.initat.org/",
                 author="Andreas Lang-Nevyjel")
-            print "created config_catalog '%s'" % (unicode(def_cc))
+            print "created config_catalog '{}'".format(unicode(def_cc))
             for conf in config.objects.all():
                 conf.config_catalog = def_cc
                 conf.save()
-            print "migrated %d configs" % (config.objects.all().count())
+            print "migrated {:d} configs".format(config.objects.all().count())
         else:
-            print "%s already present" % (logging_tools.get_plural("config catalog", num_cc))
+            print "{} already present".format(logging_tools.get_plural("config catalog", num_cc))

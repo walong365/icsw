@@ -40,14 +40,14 @@ class Command(BaseCommand):
                 app_label, model_name = exclude.split('.', 1)
                 model_obj = get_model(app_label, model_name)
                 if not model_obj:
-                    raise CommandError('Unknown model in excludes: %s' % exclude)
+                    raise CommandError('Unknown model in excludes: {}'.format(exclude))
                 excluded_models.add(model_obj)
             else:
                 try:
                     app_obj = get_app(exclude)
                     excluded_apps.add(app_obj)
                 except ImproperlyConfigured:
-                    raise CommandError('Unknown app in excludes: %s' % exclude)
+                    raise CommandError('Unknown app in excludes: {}'.format(exclude))
 
         if len(app_labels) == 0:
             app_list = SortedDict((app, None) for app in get_apps() if app not in excluded_apps)
@@ -59,12 +59,12 @@ class Command(BaseCommand):
                     try:
                         app = get_app(app_label)
                     except ImproperlyConfigured:
-                        raise CommandError("Unknown application: %s" % app_label)
+                        raise CommandError("Unknown application: {}".format(app_label))
                     if app in excluded_apps:
                         continue
                     model = get_model(app_label, model_label)
                     if model is None:
-                        raise CommandError("Unknown model: %s.%s" % (app_label, model_label))
+                        raise CommandError("Unknown model: {}.{}".format(app_label, model_label))
 
                     if app in app_list.keys():
                         if app_list[app] and model not in app_list[app]:
@@ -77,7 +77,7 @@ class Command(BaseCommand):
                     try:
                         app = get_app(app_label)
                     except ImproperlyConfigured:
-                        raise CommandError("Unknown application: %s" % app_label)
+                        raise CommandError("Unknown application: {}".format(app_label))
                     if app in excluded_apps:
                         continue
                     app_list[app] = None
@@ -102,7 +102,7 @@ class Command(BaseCommand):
                         found_perms_list.append((app_label, code_name))
                         found_perms.add((app_label, code_name))
                         if (app_label, code_name) in p_dict and (app_label, code_name, cur_ct.model) not in full_dict:
-                            print "removing permission '%s' from old model %s" % (unicode(p_dict[(app_label, code_name)]), cur_ct.model)
+                            print "removing permission '{}' from old model {}".format(unicode(p_dict[(app_label, code_name)]), cur_ct.model)
                             p_dict[(app_label, code_name)].delete()
                             del p_dict[(app_label, code_name)]
                         if (app_label, code_name) not in p_dict:
@@ -115,30 +115,30 @@ class Command(BaseCommand):
                             p_dict[(new_perm.content_type.app_label, new_perm.codename)] = new_perm
                             full_dict[(new_perm.content_type.app_label, new_perm.codename, new_perm.content_type.model)] = new_perm
                             created += 1
-                            print "Created '%s' for model %s" % (unicode(new_perm), cur_ct.model)
+                            print "Created '{}' for model {}".format(unicode(new_perm), cur_ct.model)
                         else:
                             if valid_for_object_level != p_dict[(app_label, code_name)].valid_for_object_level:
-                                print "Change valid_for_object_level to %s for %s" % (
+                                print "Change valid_for_object_level to {} for {}".format(
                                     unicode(valid_for_object_level),
                                     unicode(p_dict[(app_label, code_name)])
                                     )
                                 p_dict[(app_label, code_name)].valid_for_object_level = valid_for_object_level
                                 p_dict[(app_label, code_name)].save()
                 if created:
-                    print "creation of %d took %7.2f s" % (created, time.time() - start_time),
-                    print "found %7s error(s)" % len(errors)
+                    print "creation of {:d} took {:7.2f} seconds".format(created, time.time() - start_time),
+                    print "found {:7s} error(s)".format(len(errors))
                     if verbosity > 1:
                         pprint.pprint(errors)
         dup_keys = set([key for key in found_perms if found_perms_list.count(key) > 1])
         if dup_keys:
-            print "%s found, please fix models: %s" % (logging_tools.get_plural("duplicate key", len(dup_keys)), ", ".join(sorted([str(_v) for _v in dup_keys])))
+            print "{} found, please fix models: {}".format(logging_tools.get_plural("duplicate key", len(dup_keys)), ", ".join(sorted([str(_v) for _v in dup_keys])))
             raise ImproperlyConfigured("CSW permissions not unique")
         # find old permissions
         old_perms = set(p_dict.keys()) - found_perms
         if old_perms:
-            print "Removing %s: %s" % (
+            print "Removing {}: {}".format(
                 logging_tools.get_plural("old permission", len(old_perms)),
-                ", ".join(sorted(["%s.%s" % (app_label, code_name) for app_label, code_name in sorted(old_perms)]))
+                ", ".join(sorted(["{}.{}".format(app_label, code_name) for app_label, code_name in sorted(old_perms)]))
                 )
             for app_label, code_name in old_perms:
                 csw_permission.objects.get(Q(codename=code_name)).delete()

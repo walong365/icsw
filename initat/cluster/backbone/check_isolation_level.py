@@ -22,7 +22,7 @@ def main():
             print ""
             print "transaction-isolation = READ-COMMITTED"
             print ""
-            raise ImproperlyConfigured("wrong transaction-isolation level used (found: %s, need: %s)" % (global_tx, TARGET_IL))
+            raise ImproperlyConfigured("wrong transaction-isolation level used (found: {}, need: {})".format(global_tx, TARGET_IL))
 
 if __name__ == "__main__":
     main()

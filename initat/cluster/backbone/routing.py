@@ -78,12 +78,12 @@ class srv_type_routing(object):
             # filter
             _found_srv = [entry for entry in _srv_list if entry[2] == server_id]
             if not _found_srv:
-                self.logger.critical("no server_id %d found for srv_type %s, taking first one" % (server_id, srv_type))
+                self.logger.critical("no server_id {:d} found for srv_type {}, taking first one".format(server_id, srv_type))
                 _found_srv = _srv_list
         else:
             _found_srv = _srv_list
         # no server id, take first one
-        return "tcp://%s:%d" % (
+        return "tcp://{}:{:d}".format(
             _found_srv[0][1],
             _SRV_TYPE_PORT_MAPPING[srv_type],
         )
@@ -116,7 +116,7 @@ class srv_type_routing(object):
                 for _dev in _sc[_conf_name]:
                     # routing info
                     if _dev.effective_device.device_type.identifier == "MD":
-                        self.logger.error("device '%s' (srv_type %s) has an illegal device_type %s" % (
+                        self.logger.error("device '{}' (srv_type {}) has an illegal device_type {}".format(
                             _dev.effective_device.full_name,
                             _srv_type,
                             _dev.effective_device.device_type.identifier,
@@ -142,7 +142,7 @@ class srv_type_routing(object):
                                     _penalty,
                                 )
                             )
-                            self.logger.debug("adding device '%s' (IP %s, %d) to srv_type %s" % (
+                            self.logger.debug("adding device '{}' (IP {}, {:d}) to srv_type {}".format(
                                 _dev.effective_device.full_name,
                                 _first_ip,
                                 _dev.effective_device.pk,
@@ -150,7 +150,7 @@ class srv_type_routing(object):
                                 )
                             )
                         else:
-                            self.logger.error("no route to device '%s' found (srv_type %s)" % (
+                            self.logger.error("no route to device '{}' found (srv_type {})".format(
                                 _dev.effective_device.full_name,
                                 _srv_type,
                             ))
@@ -158,7 +158,7 @@ class srv_type_routing(object):
         _missing_srv = set(_SRV_NAME_TYPE_MAPPING.keys()) - set(_resolv_dict.keys())
         if _missing_srv:
             for _srv_type in sorted(_missing_srv):
-                self.logger.warning("no device for srv_type '%s' found" % (_srv_type))
+                self.logger.warning("no device for srv_type '{}' found".format(_srv_type))
         # sort entry
         for key, value in _resolv_dict.iteritems():
             _resolv_dict[key] = [_v2[1] for _v2 in sorted([(_v[3], _v) for _v in value])]
@@ -184,7 +184,7 @@ class srv_type_routing(object):
                 _cl_dict.setdefault(_value[1], []).append(_value[0])
             else:
                 self.__no_bootserver_devices.add(_value[0])
-                self.logger.error("device %d (%s) has no bootserver associated" % (
+                self.logger.error("device {:d} ({}) has no bootserver associated".format(
                     _value[0],
                     _value[2],
                 ))
@@ -211,7 +211,7 @@ class srv_type_routing(object):
     def feed_result(self, orig_com, result, request, conn_str, log_lines, log_result, log_error):
         if result is None:
             if log_error:
-                _err_str = "error contacting server %s, %s" % (
+                _err_str = "error contacting server {}, {}".format(
                     conn_str,
                     orig_com["command"].text
                 )
@@ -233,7 +233,7 @@ class srv_type_routing(object):
                 # merge result
                 # possible sub-structs
                 for _sub_name in ["devices", "cd_ping_list"]:
-                    _s2_name = "%s:%s" % (_sub_name, _sub_name)
+                    _s2_name = "{}:{}".format(_sub_name, _sub_name)
                     if _s2_name in result:
                         # preset in result to merge
                         if _s2_name not in self.result:
@@ -241,10 +241,10 @@ class srv_type_routing(object):
                             self.result[_sub_name] = self.result.builder(_sub_name)
                         add_list = self.result[_s2_name]
                         _merged = 0
-                        for entry in result.xpath(".//ns:%s/ns:%s/*" % (_sub_name, _sub_name)):
+                        for entry in result.xpath(".//ns:{}/ns:{}/*".format(_sub_name, _sub_name)):
                             _merged += 1
                             add_list.append(entry)
-                        self.logger.info("merged %s of %s" % (
+                        self.logger.info("merged {} of {}".format(
                             logging_tools.get_plural("element", _merged),
                             _sub_name,
                             ))

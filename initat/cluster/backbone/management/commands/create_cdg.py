@@ -42,7 +42,7 @@ class Command(BaseCommand):
         except device_group.DoesNotExist:
             new_cdg = device_group(name=options["name"], description=options["description"], cluster_device_group=True)
             new_cdg.save()
-            print "Created cluster device group '%s'" % (unicode(new_cdg))
+            print "Created cluster device group '{}'".format(unicode(new_cdg))
         else:
-            print "Cluster device group '%s' already exists" % (unicode(_cdg_present))
+            print "Cluster device group '{}' already exists".format(unicode(_cdg_present))
 

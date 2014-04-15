@@ -24,9 +24,7 @@
 from django.core.management.base import BaseCommand
 from django.db.models import Q
 from initat.cluster.backbone.models import domain_tree_node, network, net_ip, domain_name_tree, device
-from lxml import etree # @UnresolvedImport
 import logging_tools
-import sys
 
 class tree_node(object):
     def __init__(self, name="", depth=0):
@@ -51,11 +49,11 @@ class tree_node(object):
                 self.sub_nodes[last_part] = tree_node(last_part, depth=self.depth + 1)
             return self.sub_nodes[last_part].feed_name(".".join(name_parts[:-1]), cur_net)
     def show_tree(self):
-        return "\n".join(["%s%s" % ("    " * self.depth, unicode(self))] + [value.show_tree() for _key, value in self.sub_nodes.iteritems()])
+        return "\n".join(["{}{}".format("    " * self.depth, unicode(self))] + [value.show_tree() for _key, value in self.sub_nodes.iteritems()])
     def create_db_entries(self, top_node=None):
         full_name = self.name
         if top_node and top_node.name:
-            full_name = "%s.%s" % (full_name, top_node.name)
+            full_name = "{}.{}".format(full_name, top_node.name)
         if self.cur_net:
             cur_db = domain_tree_node(
                 name=self.name,
@@ -78,7 +76,7 @@ class tree_node(object):
         self.db_obj = cur_db
         [value.create_db_entries(top_node=self) for value in self.sub_nodes.itervalues()]
     def __unicode__(self):
-        return "%s (PF '%s', %d)" % (self.name or "TOP NODE", self.postfix, self.depth)
+        return "{} (PF '{}', {:d})".format(self.name or "TOP NODE", self.postfix, self.depth)
 
 class Command(BaseCommand):
     option_list = BaseCommand.option_list
@@ -125,7 +123,7 @@ def main():
         net_dict[nw_obj.pk] = nw_obj
         nw_obj.dns_node = domain_tree_node.objects.get(Q(full_name=nw_obj.name))
     # modify net_ip
-    print "migrating %s" % (logging_tools.get_plural("netip", net_ip.objects.filter(Q(domain_tree_node=None)).count()))
+    print "migrating {}".format(logging_tools.get_plural("netip", net_ip.objects.filter(Q(domain_tree_node=None)).count()))
     for cur_ip in net_ip.objects.filter(Q(domain_tree_node=None)):
         cur_ip.domain_tree_node = net_dict[cur_ip.network_id].dns_node
         cur_ip.save()
@@ -149,7 +147,7 @@ def main():
                     # take the first one
                     dom_id = valid_ips[0].domain_tree_node_id
             if cur_dev.name.count("."):
-                new_domain = "%s.%s" % (cur_dev.name.split(".", 1)[1], cur_dnt[dom_id].full_name)
+                new_domain = "{}.{}".format(cur_dev.name.split(".", 1)[1], cur_dnt[dom_id].full_name)
                 cur_dev.name = cur_dev.name.split(".")[0]
                 new_dom = cur_dnt.add_domain(new_domain)
                 # is not intermediate

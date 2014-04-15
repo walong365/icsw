@@ -79,18 +79,18 @@ class permission_required_mixin(object):
         perm_ok = True
         if self.all_required_permissions:
             if any([_perm.count(".") != 2 for _perm in self.all_required_permissions]):
-                raise ImproperlyConfigured("permission format error: %s" % (", ".join(self.all_required_permissions)))
+                raise ImproperlyConfigured("permission format error: {}".format(", ".join(self.all_required_permissions)))
             if not request.user.has_object_perms(self.all_required_permissions):
-                logger.error("user %s has not the required permissions %s" % (
+                logger.error("user {} has not the required permissions {}".format(
                     unicode(request.user),
                     str(self.all_required_permissions),
                     ))
                 perm_ok = False
         if self.any_required_permissions:
             if any([_perm.count(".") != 2 for _perm in self.any_required_permissions]):
-                raise ImproperlyConfigured("permission format error: %s" % (", ".join(self.any_required_permissions)))
+                raise ImproperlyConfigured("permission format error: {}".format(", ".join(self.any_required_permissions)))
             if not request.user.has_any_object_perms(self.any_required_permissions):
-                logger.error("user %s has not any of the required permissions %s" % (
+                logger.error("user {} has not any of the required permissions {}".format(
                     unicode(request.user),
                     str(self.any_required_permissions),
                     ))

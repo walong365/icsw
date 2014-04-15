@@ -50,7 +50,10 @@ class cs_timer(object):
         self.start_time = time.time()
     def __call__(self, what):
         cur_time = time.time()
-        log_str = "%s in %s" % (what, logging_tools.get_diff_time_str(cur_time - self.start_time))
+        log_str = "{} in {}".format(
+            what,
+            logging_tools.get_diff_time_str(cur_time - self.start_time)
+        )
         self.start_time = cur_time
         return log_str
 
@@ -61,7 +64,7 @@ system_timezone = pytz.timezone(time.tzname[0])
 cluster_log_source = None
 
 def boot_uuid(cur_uuid):
-    return "%s-boot" % (cur_uuid[:-5])
+    return "{}-boot".format(cur_uuid[:-5])
 
 class home_export_list(object):
     """ build home_export_list (dict) from DB, used in forms.py and ldap_modules.py """
@@ -89,7 +92,7 @@ class home_export_list(object):
         for ihk in invalid_home_keys:
             del home_exp_dict[ihk]
         for key, value in home_exp_dict.iteritems():
-            value["info"] = "%s on %s" % (value["homeexport"], value["name"])
+            value["info"] = "{} on {}".format(value["homeexport"], value["name"])
             value["entry"].info_str = value["info"]
         self.exp_dict = home_exp_dict
     def get(self, *args, **kwargs):
@@ -118,8 +121,8 @@ class architecture(models.Model):
     def get_xml(self):
         return E.architecture(
             self.architecture,
-            pk="%d" % (self.idx),
-            key="arch__%d" % (self.idx),
+            pk="{:d}".format(self.idx),
+            key="arch__{:d}".format(self.idx),
             architecture=self.architecture,
         )
     class Meta:
@@ -143,8 +146,8 @@ class partition_fs(models.Model):
     def get_xml(self):
         return E.partition_fs(
             self.name,
-            pk="%d" % (self.pk),
-            key="partfs__%d" % (self.pk),
+            pk="{:d}".format(self.pk),
+            key="partfs__{:d}".format(self.pk),
             identifier=self.identifier,
             descr=self.descr,
             hexid=self.hexid,
@@ -192,13 +195,13 @@ class lvm_lv(models.Model):
     date = models.DateTimeField(auto_now_add=True)
     def get_xml(self):
         return E.lvm_lv(
-            pk="%d" % (self.pk),
-            key="lvm_lv__%d" % (self.pk),
-            lvm_vg="%d" % (self.lvm_vg_id or 0),
-            mountpoint="%s" % (self.mountpoint),
-            name="%s" % (self.name),
-            warn_threshold="%d" % (self.warn_threshold or 0),
-            crit_threshold="%d" % (self.crit_threshold or 0),
+            pk="{:d}".format(self.pk),
+            key="lvm_lv__{:d}".format(self.pk),
+            lvm_vg="{:d}".format(self.lvm_vg_id or 0),
+            mountpoint="{}".format(self.mountpoint),
+            name="{}".format(self.name),
+            warn_threshold="{:d}".format(self.warn_threshold or 0),
+            crit_threshold="{:d}".format(self.crit_threshold or 0),
        )
     class Meta:
         db_table = u'lvm_lv'
@@ -229,9 +232,9 @@ class lvm_vg(models.Model):
             E.lvm_lvs(
                 *[cur_lv.get_xml() for cur_lv in self.lvm_lv_set.all()]
             ),
-            pk="%d" % (self.pk),
-            key="lvm_vg__%d" % (self.pk),
-            partition_table="%d" % (self.partition_table_id or 0),
+            pk="{:d}".format(self.pk),
+            key="lvm_vg__{:d}".format(self.pk),
+            partition_table="{:d}".format(self.partition_table_id or 0),
             name=self.name,
         )
     class Meta:
@@ -262,8 +265,8 @@ class partition(models.Model):
     date = models.DateTimeField(auto_now_add=True)
     def get_xml(self):
         p_xml = E.partition(
-            pk="%d" % (self.pk),
-            key="part__%d" % (self.pk),
+            pk="{:d}".format(self.pk),
+            key="part__{:d}".format(self.pk),
             mountpoint=self.mountpoint or "",
             mount_options=self.mount_options or "",
             pnum="%d" % (self.pnum or 0),
@@ -284,17 +287,17 @@ class partition(models.Model):
         return p_xml
     def _validate(self, p_disc):
         p_list = []
-        p_name = "%s%d" % (p_disc, self.pnum)
+        p_name = "{}{:d}".format(p_disc, self.pnum)
         if not self.partition_fs_id:
-            p_list.append((logging_tools.LOG_LEVEL_ERROR, "no partition_fs set (%s)" % (p_name), False))
+            p_list.append((logging_tools.LOG_LEVEL_ERROR, "no partition_fs set ({})".format(p_name), False))
         else:
             if self.partition_fs.hexid == "0" and self.partition_fs.name == "empty":
-                p_list.append((logging_tools.LOG_LEVEL_ERROR, "empty partitionf_fs (%s)" % (p_name), False))
+                p_list.append((logging_tools.LOG_LEVEL_ERROR, "empty partitionf_fs ({})".format(p_name), False))
             if self.partition_fs.need_mountpoint():
                 if not self.mountpoint.startswith("/"):
-                    p_list.append((logging_tools.LOG_LEVEL_ERROR, "no mountpoint defined for %s" % (p_name), False))
+                    p_list.append((logging_tools.LOG_LEVEL_ERROR, "no mountpoint defined for {}".format(p_name), False))
                 if not self.mount_options.strip():
-                    p_list.append((logging_tools.LOG_LEVEL_ERROR, "no mount_options given for %s" % (p_name), False))
+                    p_list.append((logging_tools.LOG_LEVEL_ERROR, "no mount_options given for {}".format(p_name), False))
         return p_list
     class Meta:
         db_table = u'partition'
@@ -312,12 +315,12 @@ def partition_pre_save(sender, **kwargs):
         try:
             p_num = int(p_num)
         except:
-            raise ValidationError("partition number '%s' not parseable" % (p_num))
+            raise ValidationError("partition number '{}' not parseable".format(p_num))
         if p_num == 0:
             if partition.objects.filter(Q(partition_disc=cur_inst.partition_disc)).count() > 1:
                 raise ValidationError("for pnum==0 only one partition is allowed")
         elif p_num < 1 or p_num > 32:
-            raise ValidationError("partition number %d out of bounds [1, 32]" % (p_num))
+            raise ValidationError("partition number {:d} out of bounds [1, 32]".format(p_num))
         all_part_nums = partition.objects.exclude(Q(pk=cur_inst.pk)).filter(Q(partition_disc=cur_inst.partition_disc)).values_list("pnum", flat=True)
         if p_num in all_part_nums:
             raise ValidationError("partition number already used")
@@ -366,7 +369,7 @@ class partition_disc(models.Model):
         return pd_xml
     def _validate(self):
         my_parts = self.partition_set.all()
-        p_list = sum([[(cur_lev, "*%d : %s" % (part.pnum, msg), flag) for cur_lev, msg, flag in part._validate(self)] for part in my_parts], [])
+        p_list = sum([[(cur_lev, "*{:d} : {}".format(part.pnum, msg), flag) for cur_lev, msg, flag in part._validate(self)] for part in my_parts], [])
         all_mps = [cur_mp.mountpoint for cur_mp in my_parts if cur_mp.mountpoint.strip() and cur_mp.mountpoint.strip() != "swap"]
         if len(all_mps) != len(set(all_mps)):
             p_list.append((logging_tools.LOG_LEVEL_ERROR, "mountpoints not unque", False))
@@ -380,9 +383,9 @@ class partition_disc(models.Model):
                 # msdos label validation path
                 if len(ext_parts) == 0:
                     if max_pnum > 4:
-                        p_list.append((logging_tools.LOG_LEVEL_ERROR, "too many partitions (%d), only 4 without ext allowed" % (max_pnum), False))
+                        p_list.append((logging_tools.LOG_LEVEL_ERROR, "too many partitions ({:d}), only 4 without ext allowed".format(max_pnum), False))
                 elif len(ext_parts) > 1:
-                    p_list.append((logging_tools.LOG_LEVEL_ERROR, "too many ext partitions (%d) defined" % (len(ext_parts)), False))
+                    p_list.append((logging_tools.LOG_LEVEL_ERROR, "too many ext partitions ({:d}) defined".format(len(ext_parts)), False))
                 else:
                     ext_part = ext_parts[0]
                     if ext_part.pnum != 4:
@@ -423,10 +426,10 @@ def partition_disc_pre_save(sender, **kwargs):
         if not d_name:
             raise ValidationError("name must not be zero")
         if not disc_re.match(d_name):
-            raise ValidationError("illegal name '%s'" % (d_name))
+            raise ValidationError("illegal name '{}'".format(d_name))
         all_discs = partition_disc.objects.exclude(Q(pk=cur_inst.pk)).filter(Q(partition_table=cur_inst.partition_table)).values_list("disc", flat=True)
         if d_name in all_discs:
-            raise ValidationError("disc name '%s' already used" % (d_name))
+            raise ValidationError("disc name '{}' already used".format(d_name))
         cur_inst.disc = d_name
 
 class partition_table(models.Model):
@@ -442,9 +445,9 @@ class partition_table(models.Model):
     date = models.DateTimeField(auto_now_add=True)
     def _msg_merge(self, parent, msg):
         if msg.startswith("*"):
-            return "%s%s" % (parent, msg[1:])
+            return "{}{}".format(parent, msg[1:])
         else:
-            return "%s: %s" % (parent, msg)
+            return "{}: {}".format(parent, msg)
     def validate(self):
         # problem list, format is level, problem, global (always True for partition_table)
         prob_list = []
@@ -462,7 +465,7 @@ class partition_table(models.Model):
         unique_mps = set(all_mps)
         for non_unique_mp in sorted([name for name in unique_mps if all_mps.count(name) > 1]):
             prob_list.append(
-                (logging_tools.LOG_LEVEL_ERROR, "mountpoint '%s' is not unique (%d)" % (
+                (logging_tools.LOG_LEVEL_ERROR, "mountpoint '{}' is not unique ({:d})".format(
                     non_unique_mp,
                     all_mps.count(name),
                 ), True)
@@ -590,12 +593,13 @@ class config(models.Model):
     def __unicode__(self):
         return self.name
     def show_variables(self, log_com, detail=False):
-        log_com(" - config %s (pri %d)" % (self.name,
-                                           self.priority))
+        log_com(" - config {} (pri {:d})".format(
+            self.name,
+            self.priority))
         if detail:
             for var_type in ["str", "int", "bool"]:
-                for cur_var in getattr(self, "config_%s_set" % (var_type)).all():
-                    log_com("    %-20s : %s" % (cur_var.name, unicode(cur_var)))
+                for cur_var in getattr(self, "config_{}_set".format(var_type)).all():
+                    log_com("    {:<20s} : {}".format(cur_var.name, unicode(cur_var)))
     def natural_key(self):
         return self.name
     class Meta:
@@ -749,7 +753,7 @@ def config_str_pre_save(sender, **kwargs):
             list(cur_inst.config.config_bool_set.all().values_list("name", flat=True)) + \
             list(cur_inst.config.config_blob_set.all().values_list("name", flat=True))
         if cur_inst.name in all_var_names:
-            raise ValidationError("name '%s' already used" % (cur_inst.name))
+            raise ValidationError("name '{}' already used".format(cur_inst.name))
         cur_inst.value = cur_inst.value or ""
 
 class config_blob(models.Model):
@@ -785,7 +789,7 @@ def config_blob_pre_save(sender, **kwargs):
             list(cur_inst.config.config_bool_set.all().values_list("name", flat=True)) + \
             list(cur_inst.config.config_blob_set.exclude(Q(pk=cur_inst.pk)).values_list("name", flat=True))
         if cur_inst.name in all_var_names:
-            raise ValidationError("name '%s' already used" % (cur_inst.name))
+            raise ValidationError("name '{}' already used".format(cur_inst.name))
 
 class config_bool(models.Model):
     idx = models.AutoField(db_column="config_bool_idx", primary_key=True)
@@ -822,7 +826,7 @@ def config_bool_pre_save(sender, **kwargs):
             list(cur_inst.config.config_bool_set.exclude(Q(pk=cur_inst.pk)).values_list("name", flat=True)) + \
             list(cur_inst.config.config_blob_set.all().values_list("name", flat=True))
         if cur_inst.name in all_var_names:
-            raise ValidationError("name '%s' already used" % (cur_inst.name))
+            raise ValidationError("name '{}' already used".format(cur_inst.name))
         try:
             if type(cur_inst.value) == bool:
                 pass
@@ -857,7 +861,7 @@ class config_int(models.Model):
     def __unicode__(self):
         if type(self.value) in [str, unicode]:
             self.value = int(self.value)
-        return "%d" % (self.value or 0)
+        return "{:d}".format(self.value or 0)
     class Meta:
         db_table = u'config_int'
 
@@ -871,7 +875,7 @@ def config_int_pre_save(sender, **kwargs):
             list(cur_inst.config.config_bool_set.all().values_list("name", flat=True)) + \
             list(cur_inst.config.config_blob_set.all().values_list("name", flat=True))
         if cur_inst.name in all_var_names:
-            raise ValidationError("name '%s' already used" % (cur_inst.name))
+            raise ValidationError("name '{}' already used".format(cur_inst.name))
         _check_integer(cur_inst, "value")
 
 class config_script(models.Model):
@@ -910,7 +914,7 @@ def config_script_pre_save(sender, **kwargs):
         if not cur_inst.value:
             raise ValidationError("value is empty")
         if cur_inst.name in cur_inst.config.config_script_set.exclude(Q(pk=cur_inst.pk)).values_list("name", flat=True):
-            raise ValidationError("name '%s' already used" % (cur_inst.name))
+            raise ValidationError("name '{}' already used".format(cur_inst.name))
         _check_integer(cur_inst, "priority")
         cur_inst.error_text = cur_inst.error_text or ""
 
@@ -951,7 +955,7 @@ class device_variable(models.Model):
         elif self.var_type == "s":
             return self.val_str
         else:
-            return "get_value for %s" % (self.var_type)
+            return "get_value for {}".format(self.var_type)
     value = property(get_value, set_value)
     def get_xml(self):
         dev_xml = E.device_variable(
@@ -968,7 +972,7 @@ class device_variable(models.Model):
             dev_xml.attrib["value"] = self.val_str
         return dev_xml
     def __unicode__(self):
-        return "%s[%s] = %s" % (
+        return "{}[{}] = {}".format(
             self.name,
             self.var_type,
             str(self.get_value()))
@@ -1016,7 +1020,12 @@ def device_variable_pre_save(sender, **kwargs):
             _check_empty_string(cur_inst, "var_type")
             all_var_names = device_variable.objects.exclude(Q(pk=cur_inst.pk)).filter(Q(device=cur_inst.device)).values_list("name", flat=True)
             if cur_inst.name in all_var_names:
-                raise ValidationError("name '%s' already used for device '%s'" % (cur_inst.name, unicode(cur_inst.device)))
+                raise ValidationError(
+                    "name '{}' already used for device '{}'".format(
+                        cur_inst.name,
+                        unicode(cur_inst.device)
+                    )
+                )
 
 class device_config(models.Model):
     idx = models.AutoField(db_column="device_config_idx", primary_key=True)
@@ -1300,9 +1309,9 @@ class device(models.Model):
         else:
             return "?.?"
     def __unicode__(self):
-        return u"%s%s" % (
+        return u"{}{}".format(
             self.name,
-            " (%s)" % (self.comment) if self.comment else "")
+            " ({})".format(self.comment) if self.comment else "")
     class CSW_Meta:
         permissions = (
             ("all_devices", "access all devices", False),
@@ -1476,7 +1485,7 @@ def device_pre_save(sender, **kwargs):
                     cur_inst.domain_tree_node = domain_name_tree().add_domain(dom_name)
                     cur_inst.name = short_name
                 else:
-                    raise ValidationError("domain '%s' not defined" % (dom_name))
+                    raise ValidationError("domain '{}' not defined".format(dom_name))
             else:
                 cur_inst.domain_tree_node = cur_dnt
                 cur_inst.name = short_name
@@ -1496,7 +1505,7 @@ def device_pre_save(sender, **kwargs):
         if not valid_domain_re.match(cur_inst.name):
             # check if we can simple fix it
             if not valid_domain_re.match(cur_inst.name.replace(" ", "_")):
-                raise ValidationError("illegal characters in name '%s'" % (cur_inst.name))
+                raise ValidationError("illegal characters in name '{}'".format(cur_inst.name))
             else:
                 cur_inst.name = cur_inst.name.replace(" ", "_")
         if int(cur_inst.md_cache_mode) == 0:
@@ -1511,7 +1520,7 @@ def device_pre_save(sender, **kwargs):
             pass
         else:
             if present_dev.pk != cur_inst.pk:
-                raise ValidationError("UUID clash (=%s for %s and %s)" % (
+                raise ValidationError("UUID clash (={} for {} and {})".format(
                     cur_inst.uuid,
                     unicode(cur_inst),
                     unicode(present_dev),
@@ -1525,7 +1534,7 @@ def device_pre_save(sender, **kwargs):
             current_count = device.objects.exclude(device_type=md_type).count()
 
             if dev_count > 0 and current_count >= dev_count:
-                logger.warning("Device limit %d reached", dev_count)
+                logger.warning("Device limit {:d} reached".format(dev_count))
                 raise ValidationError("Device limit reached!")
 
 class cd_connection(models.Model):
@@ -1541,7 +1550,7 @@ class cd_connection(models.Model):
     parameter_i4 = models.IntegerField(default=0)
     date = models.DateTimeField(auto_now_add=True)
     def __unicode__(self):
-        return "%s (via %s) %s" % (
+        return "{} (via {}) {}".format(
             unicode(self.parent),
             self.connection_info,
             unicode(self.child))
@@ -1553,7 +1562,7 @@ def cd_connection_pre_save(sender, **kwargs):
     if "instance" in kwargs:
         cur_inst = kwargs["instance"]
         for par_idx in xrange(1, 5):
-            _check_integer(cur_inst, "parameter_i%d" % (par_idx), min_val=0, max_val=256)
+            _check_integer(cur_inst, "parameter_i{:d}".format(par_idx), min_val=0, max_val=256)
         try:
             cd_connection.objects.get(Q(parent=cur_inst.parent_id) & Q(child=cur_inst.child_id))
         except cd_connection.DoesNotExist:
@@ -1595,7 +1604,7 @@ class device_group(models.Model):
         self.save()
         return new_md
     def get_metadevice_name(self):
-        return "METADEV_%s" % (self.name)
+        return "METADEV_{}".format(self.name)
     def get_xml(self,
                 full=True,
                 with_devices=True,
@@ -1634,9 +1643,9 @@ class device_group(models.Model):
         db_table = u'device_group'
         ordering = ("-cluster_device_group", "name",)
     def __unicode__(self):
-        return u"%s%s%s" % (
+        return u"{}{}{}".format(
             self.name,
-            " (%s)" % (self.description) if self.description else "",
+            " ({})".format(self.description) if self.description else "",
             "[*]" if self.cluster_device_group else ""
         )
 
@@ -1655,7 +1664,7 @@ def device_group_pre_save(sender, **kwargs):
         if not cur_inst.name:
             raise ValidationError("name can not be zero")
         if not valid_domain_re.match(cur_inst.name):
-            raise ValidationError("invalid characters in '%s'" % (cur_inst.name))
+            raise ValidationError("invalid characters in '{}'".format(cur_inst.name))
 
 @receiver(signals.post_save, sender=device_group)
 def device_group_post_save(sender, **kwargs):
@@ -1815,7 +1824,7 @@ class devicelog(models.Model):
             date=unicode(self.date)
         )
     def __unicode__(self):
-        return u"%s (%s, %s:%d)" % (
+        return u"{} ({}, {}:{:d})".format(
             self.text,
             self.log_source.name,
             self.log_status.identifier,
@@ -1950,7 +1959,7 @@ class image(models.Model):
         )
         return cur_img
     def __unicode__(self):
-        return "%s (arch %s)" % (
+        return "{} (arch {})".format(
             self.name,
             unicode(self.architecture))
     class Meta:
@@ -2098,14 +2107,14 @@ class log_source(models.Model):
         ls_dev = kwargs.get("device", None)
         sources = log_source.objects.filter(Q(identifier=identifier) & Q(device=ls_dev))
         if len(sources) > 1:
-            print "Too many log_source_entries present (%s), exiting" % (", ".join([identifier, name]))
+            print "Too many log_source_entries present ({}), exiting".format(", ".join([identifier, name]))
             cur_source = None
         elif not len(sources):
             if ls_dev is not None:
                 new_source = log_source(
                     identifier=identifier,
                     name=name,
-                    description=u"%s on %s" % (name, unicode(ls_dev)),
+                    description=u"{} on {}".format(name, unicode(ls_dev)),
                     device=kwargs["device"]
                 )
                 new_source.save()
@@ -2113,7 +2122,7 @@ class log_source(models.Model):
                 new_source = log_source(
                     identifier=identifier,
                     name=name,
-                    description=kwargs.get("description", "%s (id %s)" % (name, identifier))
+                    description=kwargs.get("description", "{} (id {})".format(name, identifier))
                 )
                 new_source.save()
             cur_source = new_source
@@ -2121,9 +2130,10 @@ class log_source(models.Model):
             cur_source = sources[0]
         return cur_source
     def __unicode__(self):
-        return "ls %s (%s), %s" % (self.name,
-                                   self.identifier,
-                                   self.description)
+        return "ls {} ({}), {}".format(
+            self.name,
+            self.identifier,
+            self.description)
     class Meta:
         db_table = u'log_source'
 
@@ -2436,7 +2446,7 @@ class status(models.Model):
         return unicode(self)
     def __unicode__(self):
         # print ".", self.status
-        return u"%s (%s)%s" % (
+        return u"{} ({}){}".format(
             self.status,
             ",".join([short for short, attr_name in [
                 ("link"  , "prod_link"),
@@ -2447,7 +2457,7 @@ class status(models.Model):
             "(*)" if self.allow_boolean_modify else "")
     def get_xml(self, prod_net=None):
         return E.status(
-            unicode(self) if prod_net is None else "%s into %s" % (unicode(self), unicode(prod_net)),
+            unicode(self) if prod_net is None else "{} into {}".format(unicode(self), unicode(prod_net)),
             pk="%d" % (self.pk),
             prod_net="%d" % (0 if prod_net is None else prod_net.pk),
             key="status__%d" % (self.pk),
@@ -2484,7 +2494,7 @@ class tree_node(models.Model):
     def get_type_str(self):
         return "dir" if self.is_dir else ("link" if self.is_link else "file")
     def __unicode__(self):
-        return "tree_node, %s" % (self.get_type_str())
+        return "tree_node, {}".format(self.get_type_str())
 
 class wc_files(models.Model):
     idx = models.AutoField(db_column="wc_files_idx", primary_key=True)

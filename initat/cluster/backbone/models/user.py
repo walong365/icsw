@@ -34,17 +34,18 @@ __all__ = [
     ]
 
 def _csw_key(perm):
-    return "%s.%s.%s" % (
+    return "{}.{}.{}".format(
         perm.content_type.app_label,
         perm.content_type.name,
-        perm.codename)
+        perm.codename,
+    )
 
 # auth_cache structure
 class auth_cache(object):
     def __init__(self, auth_obj):
         self.auth_obj = auth_obj
         self.model_name = self.auth_obj._meta.model_name
-        self.cache_key = u"auth_%s_%d" % (
+        self.cache_key = u"auth_{}_{:d}".format(
             auth_obj._meta.object_name,
             auth_obj.pk,
             )
@@ -67,16 +68,16 @@ class auth_cache(object):
             for perm in csw_permission.objects.all().select_related("content_type"):
                 self.__perms[_csw_key(perm)] = AC_FULL
         else:
-            for perm in getattr(self.auth_obj, "%s_permission_set" % (self.model_name)).select_related("csw_permission__content_type"):
+            for perm in getattr(self.auth_obj, "{}_permission_set".format(self.model_name)).select_related("csw_permission__content_type"):
                 self.__perms[_csw_key(perm.csw_permission)] = perm.level
-        for perm in getattr(self.auth_obj, "%s_object_permission_set" % (self.model_name)).select_related("csw_object_permission__csw_permission__content_type"):
+        for perm in getattr(self.auth_obj, "{}_object_permission_set".format(self.model_name)).select_related("csw_object_permission__csw_permission__content_type"):
             self.__obj_perms.setdefault(_csw_key(perm.csw_object_permission.csw_permission), {})[perm.csw_object_permission.object_pk] = perm.level
         # pprint.pprint(self.__perms)
         # pprint.pprint(self.__obj_perms)
     def _get_code_key(self, app_label, content_name, code_name):
-        code_key = "%s.%s.%s" % (app_label, content_name, code_name)
+        code_key = "{}.{}.{}".format(app_label, content_name, code_name)
         if code_key not in self.__perm_dict:
-            raise ImproperlyConfigured("wrong permission name %s" % (code_key))
+            raise ImproperlyConfigured("wrong permission name {}".format(code_key))
         return code_key
     def has_permission(self, app_label, content_name, code_name):
         code_key = self._get_code_key(app_label, content_name, code_name)
@@ -186,7 +187,7 @@ class csw_permission(models.Model):
             object_pk=cur_pk
             )
     def __unicode__(self):
-        return u"%s | %s | %s | %s" % (
+        return u"{} | {} | {} | {}".format(
             self.content_type.app_label,
             self.content_type,
             self.name,
@@ -212,7 +213,7 @@ class csw_object_permission(models.Model):
     csw_permission = models.ForeignKey(csw_permission)
     object_pk = models.IntegerField(default=0)
     def __unicode__(self):
-        return "%s | %d" % (unicode(self.csw_permission), self.object_pk)
+        return "{} | {:d}".format(unicode(self.csw_permission), self.object_pk)
     class Meta:
         app_label = "backbone"
 
@@ -300,15 +301,15 @@ def get_label_codename(perm):
         if perm.count(".") == 2:
             app_label, content_name, codename = perm.split(".")
         elif perm.count(".") == 1:
-            raise ImproperlyConfigured("old permission format '%s'" % (perm))
+            raise ImproperlyConfigured("old permission format '{}'".format(perm))
         else:
-            raise ImproperlyConfigured("Unknown permission format '%s'" % (perm))
+            raise ImproperlyConfigured("Unknown permission format '{}'".format(perm))
     elif isinstance(perm, csw_permission):
         app_label, content_name, codename = (perm.content_type.app_label, perm.content_type.name, perm.codename)
     elif isinstance(perm, csw_object_permission):
         app_label, content_name, codename = (perm.csw_permission.content_type.app_label, perm.csw_permission.content_type.name, perm.csw_permission.codename)
     else:
-        raise ImproperlyConfigured("Unknown perm '%s'" % (unicode(perm)))
+        raise ImproperlyConfigured("Unknown perm '{}'".format(unicode(perm)))
     return (app_label, content_name, codename)
 
 def check_app_permission(auth_obj, app_label):
@@ -330,7 +331,7 @@ def check_content_permission(auth_obj, app_label, content_name):
         if csw_permission.objects.filter(Q(content_type__app_label=app_label) & Q(content_type__name=content_name)).count():
             return False
         else:
-            raise ImproperlyConfigured("unknown app_label / content_name combination '%s.%s" % (app_label, content_name))
+            raise ImproperlyConfigured("unknown app_label / content_name combination '{}.{}".format(app_label, content_name))
 
 def check_permission(auth_obj, perm):
     if not hasattr(auth_obj, "_auth_cache"):
@@ -414,7 +415,7 @@ class user_manager(models.Manager):
                 if _q[0][0] == "pdk":
                     _val = _q[0][1]
                     # get from memcached
-                    _mc_key = "icsw_user_pk_%d" % (int(_val))
+                    _mc_key = "icsw_user_pk_{:d}".format(int(_val))
                     _mc_content = cache.get(_mc_key)
                     if _mc_content:
                         for _obj in django.core.serializers.deserialize("json", _mc_content):
@@ -427,9 +428,9 @@ class user_manager(models.Manager):
     def create_superuser(self, login, email, password):
         # create group
         user_group = group.objects.create(
-            groupname="%sgrp" % (login),
+            groupname="{}grp".format(login),
             gid=max(list(group.objects.all().values_list("gid", flat=True)) + [665]) + 1,
-            group_comment="auto create group for admin %s" % (login),
+            group_comment="auto created group for admin {}".format(login),
             homestart="/",
         )
         new_admin = self.create(
@@ -486,7 +487,7 @@ class user(models.Model):
         return False
     def mc_key(self):
         if self.pk:
-            return "icsw_user_pk_%d" % (self.pk)
+            return "icsw_user_pk_{:d}".format(self.pk)
         else:
             return "icsw_user_pk_none"
     def __setattr__(self, key, value):
@@ -611,7 +612,7 @@ class user(models.Model):
         ordering = ("login",)
         app_label = "backbone"
     def __unicode__(self):
-        return u"%s (%d; %s, %s)" % (
+        return u"{} ({:d}; {}, {})".format(
             self.login,
             self.pk,
             self.first_name or "first",
@@ -677,19 +678,19 @@ def user_pre_save(sender, **kwargs):
             pw_gen_1 = settings.PASSWORD_HASH_FUNCTION
             if pw_gen_1 == "CRYPT":
                 salt = "".join(random.choice(string.ascii_uppercase + string.digits) for _x in xrange(4))
-                cur_pw = "%s:%s" % (pw_gen_1, crypt.crypt(passwd, salt))
+                cur_pw = "{}:{}".format(pw_gen_1, crypt.crypt(passwd, salt))
                 cur_inst.password = cur_pw
                 cur_inst.password_ssha = ""
             else:
                 salt = os.urandom(4)
                 new_sh = hashlib.new(pw_gen_1)
                 new_sh.update(passwd)
-                cur_pw = "%s:%s" % (pw_gen_1, base64.b64encode(new_sh.digest()))
+                cur_pw = "{}:{}".format(pw_gen_1, base64.b64encode(new_sh.digest()))
                 cur_inst.password = cur_pw
                 # ssha1
                 new_sh.update(salt)
                 # print base64.b64encode(new_sh.digest() +  salt)
-                cur_inst.password_ssha = "%s:%s" % ("SSHA", base64.b64encode(new_sh.digest() + salt))
+                cur_inst.password_ssha = "{}:{}".format("SSHA", base64.b64encode(new_sh.digest() + salt))
 
 @receiver(signals.post_save, sender=user)
 def user_post_save(sender, **kwargs):
@@ -765,7 +766,7 @@ class group(models.Model):
         ordering = ("groupname",)
         app_label = "backbone"
     def __unicode__(self):
-        return "%s (gid=%d)" % (
+        return "{} (gid={:d})".format(
             self.groupname,
             self.gid)
 
@@ -843,7 +844,7 @@ class user_variable(models.Model):
             self.var_type = "s"
         elif type(cur_val) in [int, long]:
             self.var_type = "i"
-            self.value = "%d" % (self.value)
+            self.value = "{:d}".format(self.value)
         elif type(cur_val) in [bool]:
             self.var_type = "b"
             self.value = "1" if cur_val else "0"

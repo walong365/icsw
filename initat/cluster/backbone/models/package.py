@@ -61,8 +61,8 @@ class package_repo(models.Model):
     def get_xml(self):
         return E.package_repo(
             unicode(self),
-            pk="%d" % (self.pk),
-            key="pr__%d" % (self.pk),
+            pk="{:d}".format(self.pk),
+            key="pr__{:d}".format(self.pk),
             name=self.name,
             alias=self.alias,
             repo_type=self.repo_type,
@@ -78,18 +78,18 @@ class package_repo(models.Model):
             return ""
     def repo_str(self):
         _vf = [
-            "[%s]" % (self.alias),
-            "name=%s" % (self.name),
-            "enabled=%d" % (1 if self.enabled else 0),
-            "autorefresh=%d" % (1 if self.autorefresh else 0),
-            "baseurl=%s" % (self.url),
-            "type=%s" % (self.repo_type),
+            "[{}]".format(self.alias),
+            "name={}".format(self.name),
+            "enabled={:d}".format(1 if self.enabled else 0),
+            "autorefresh={:d}".format(1 if self.autorefresh else 0),
+            "baseurl={}".format(self.url),
+            "type={}".format(self.repo_type),
             "keeppackages=0",
-            "priority=%d" % (self.priority),
+            "priority={:d}".format(self.priority),
             "",
         ]
         if self.service_id:
-            _vf.append("service=%s" % (self.service.name))
+            _vf.append("service={}".format(self.service.name))
         return "\n".join(_vf)
     class Meta:
         ordering = ("name",)
@@ -196,18 +196,18 @@ class package(models.Model):
     def get_xml(self):
         return E.package(
             unicode(self),
-            pk="%d" % (self.pk),
-            key="pack__%d" % (self.pk),
+            pk="{:d}".format(self.pk),
+            key="pack__{:d}".format(self.pk),
             name=self.name,
             version=self.version,
             kind=self.kind,
             arch=self.arch,
-            size="%d" % (self.size),
-            package_repo="%d" % (self.package_repo_id or 0),
-            always_latest="%d" % (1 if self.always_latest else 0),
+            size="{:d}".format(self.size),
+            package_repo="{:d}".format(self.package_repo_id or 0),
+            always_latest="{:d}".format(1 if self.always_latest else 0),
         )
     def __unicode__(self):
-        return "%s-%s" % (self.name, self.version)
+        return "{}-{}".format(self.name, self.version)
     class CSW_Meta:
         permissions = (
             ("package_install", "access package install site", False),
@@ -265,12 +265,12 @@ class package_device_connection(models.Model):
     kernel_list = models.ManyToManyField("backbone.kernel", blank=True)
     def get_xml(self, with_package=False):
         pdc_xml = E.package_device_connection(
-            pk="%d" % (self.pk),
-            key="pdc__%d" % (self.pk),
-            device="%d" % (self.device_id),
-            package="%d" % (self.package_id),
-            target_state="%s" % (self.target_state),
-            installed="%s" % (self.installed),
+            pk="{:d}".format(self.pk),
+            key="pdc__{:d}".format(self.pk),
+            device="{:d}".format(self.device_id),
+            package="{:d}".format(self.package_id),
+            target_state="{}".format(self.target_state),
+            installed="{}".format(self.installed),
             force_flag="1" if self.force_flag else "0",
             nodeps_flag="1" if self.nodeps_flag else "0",
         )
@@ -383,4 +383,4 @@ def package_device_connection_pre_save(sender, **kwargs):
             # rewrite t oupgrade
             cur_inst.target_state = "upgrade"
         if cur_inst.target_state not in ["upgrade", "keep", "install", "erase"]:
-            raise ValidationError("unknown target state '%s'" % (cur_inst.target_state))
+            raise ValidationError("unknown target state '{}'".format(cur_inst.target_state))

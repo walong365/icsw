@@ -19,24 +19,24 @@ def _check_integer(inst, attr_name, **kwargs):
     try:
         cur_val = int(cur_val)
     except:
-        raise ValidationError("%s is not an integer" % (attr_name))
+        raise ValidationError("{} is not an integer".format(attr_name))
     else:
         if min_val is not None and max_val is not None:
             if min_val is None:
                 if cur_val > max_val:
-                    raise ValidationError("%s too high (%d > %d)" % (
+                    raise ValidationError("{} too high ({:d} > {:d})".format(
                         attr_name,
                         cur_val,
                         max_val))
             elif max_val is None:
                 if cur_val < min_val:
-                    raise ValidationError("%s too low (%d < %d)" % (
+                    raise ValidationError("{} too low ({:d} < {:d})".format(
                         attr_name,
                         cur_val,
                         min_val))
             else:
                 if cur_val < min_val or cur_val > max_val:
-                    raise ValidationError("%s (%d) not in [%d, %d]" % (
+                    raise ValidationError("{} ({:d}) not in [{:d}, {:d}]".format(
                         attr_name,
                         cur_val,
                         min_val,
@@ -49,18 +49,18 @@ def _check_float(inst, attr_name):
     try:
         cur_val = float(cur_val)
     except:
-        raise ValidationError("%s is not a float" % (attr_name))
+        raise ValidationError("{} is not a float".format(attr_name))
     setattr(inst, attr_name, cur_val)
 
 def _check_empty_string(inst, attr_name):
     cur_val = getattr(inst, attr_name)
     if not cur_val.strip():
-        raise ValidationError("%s can not be empty" % (attr_name))
+        raise ValidationError("{} can not be empty".format(attr_name))
 
 def _check_non_empty_string(inst, attr_name):
     cur_val = getattr(inst, attr_name)
     if cur_val.strip():
-        raise ValidationError("%s must be empty" % (attr_name))
+        raise ValidationError("{} must be empty".format(attr_name))
 
 def to_system_tz(in_dt):
     return in_dt.astimezone(system_timezone)
@@ -104,7 +104,7 @@ def get_related_models(in_obj, m2m=False, detail=False, check_all=False, ignore_
             else:
                 used_objs += m2m_obj.model.objects.filter(Q(**{m2m_field_name : in_obj})).count()
     if ignore_list:
-        raise ImproperlyConfigured("ignore_list not empty, typos (model %s, %s) ?" % (
+        raise ImproperlyConfigured("ignore_list not empty, typos (model {}, {}) ?".format(
             in_obj._meta.model_name,
             ", ".join(ignore_list)
             ))

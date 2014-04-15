@@ -153,7 +153,7 @@ class host_check_command(models.Model):
     command_line = models.CharField(max_length=128, unique=True, blank=False, null=False)
     date = models.DateTimeField(auto_now_add=True)
     def __unicode__(self):
-        return "mcc_%s" % (self.name)
+        return "hcc_{}".format(self.name)
     class Meta:
         app_label = "backbone"
 
@@ -195,7 +195,7 @@ class mon_check_command(models.Model):
             ("setup_monitoring", "Change monitoring settings", False),
         )
     def __unicode__(self):
-        return "mcc_%s" % (self.name)
+        return "mcc_{}".format(self.name)
 
 class mon_check_command_serializer(serializers.ModelSerializer):
     class Meta:
@@ -221,7 +221,7 @@ def mon_check_command_pre_save(sender, **kwargs):
         if not cur_inst.is_event_handler:
             mc_refs = cur_inst.mon_check_command_set.all()
             if len(mc_refs):
-                raise ValidationError("still referenced by %s" % (logging_tools.get_plural("check_command", len(mc_refs))))
+                raise ValidationError("still referenced by {}".format(logging_tools.get_plural("check_command", len(mc_refs))))
         if cur_inst.is_special_command and cur_inst.is_event_handler:
             cur_inst.is_event_handler = False
             cur_inst.save()
@@ -261,7 +261,7 @@ class mon_contact(models.Model):
     notifications = models.ManyToManyField("backbone.mon_notification", blank=True)
     mon_alias = models.CharField(max_length=64, default="", verbose_name="alias", blank=True)
     def get_user_name(self):
-        return u"%s (%s %s)" % (
+        return u"{} ({} {})".format(
             self.user.login,
             self.user.first_name,
             self.user.last_name,
@@ -299,7 +299,7 @@ class mon_notification(models.Model):
     enabled = models.BooleanField(default=True)
     created = models.DateTimeField(auto_now_add=True)
     def __unicode__(self):
-        return "%s (%s via %s)" % (
+        return "{} ({} via {})".format(
             self.name,
             self.not_type,
             self.channel,
@@ -462,10 +462,10 @@ class mon_host_dependency_templ(models.Model):
     date = models.DateTimeField(auto_now_add=True)
     @property
     def execution_failure_criteria(self):
-        return ",".join([short for short, _long in [("o", "up"), ("d", "down"), ("u", "unreachable"), ("p", "pending")] if getattr(self, "efc_%s" % (_long))]) or "n"
+        return ",".join([short for short, _long in [("o", "up"), ("d", "down"), ("u", "unreachable"), ("p", "pending")] if getattr(self, "efc_{}".format(_long))]) or "n"
     @property
     def notification_failure_criteria(self):
-        return ",".join([short for short, _long in [("o", "up"), ("d", "down"), ("u", "unreachable"), ("p", "pending")] if getattr(self, "nfc_%s" % (_long))]) or "n"
+        return ",".join([short for short, _long in [("o", "up"), ("d", "down"), ("u", "unreachable"), ("p", "pending")] if getattr(self, "nfc_{}".format(_long))]) or "n"
     def __unicode__(self):
         return self.name
     class Meta:
@@ -495,11 +495,11 @@ class mon_host_dependency(models.Model):
         return True if (self.mon_host_dependency_templ_id) else False
     def get_id(self, devices=None, dependent_devices=None):
         # returns an unique ID
-        return "{%d:%d:[%s]:[%s]}" % (
+        return "{{{:d}:{:d}:[{}]:[{}]}}".format(
             self.mon_host_dependency_templ_id or 0,
             self.mon_host_cluster_id or 0,
-            ",".join(["%d" % (val) for val in sorted([sub_dev.pk for sub_dev in (devices if devices is not None else self.devices.all())])]),
-            ",".join(["%d" % (val) for val in sorted([sub_dev.pk for sub_dev in (dependent_devices if dependent_devices is not None else self.dependent_devices.all())])]),
+            ",".join(["{:d}".format(val) for val in sorted([sub_dev.pk for sub_dev in (devices if devices is not None else self.devices.all())])]),
+            ",".join(["{:d}".format(val) for val in sorted([sub_dev.pk for sub_dev in (dependent_devices if dependent_devices is not None else self.dependent_devices.all())])]),
             )
     def feed_config(self, conf):
         conf["inherits_parent"] = "1" if self.mon_host_dependency_templ.inherits_parent else "0"
@@ -532,10 +532,10 @@ class mon_service_dependency_templ(models.Model):
     date = models.DateTimeField(auto_now_add=True)
     @property
     def execution_failure_criteria(self):
-        return ",".join([short for short, _long in [("o", "ok"), ("w", "warn"), ("u", "unknown"), ("c", "critical"), ("p", "pending")] if getattr(self, "efc_%s" % (_long))]) or "n"
+        return ",".join([short for short, _long in [("o", "ok"), ("w", "warn"), ("u", "unknown"), ("c", "critical"), ("p", "pending")] if getattr(self, "efc_{}".format(_long))]) or "n"
     @property
     def notification_failure_criteria(self):
-        return ",".join([short for short, _long in [("o", "ok"), ("w", "warn"), ("u", "unknown"), ("c", "critical"), ("p", "pending")] if getattr(self, "nfc_%s" % (_long))]) or "n"
+        return ",".join([short for short, _long in [("o", "ok"), ("w", "warn"), ("u", "unknown"), ("c", "critical"), ("p", "pending")] if getattr(self, "nfc_{}".format(_long))]) or "n"
     def __unicode__(self):
         return self.name
     class Meta:
@@ -568,13 +568,13 @@ class mon_service_dependency(models.Model):
         return True if (self.mon_service_dependency_templ_id and self.mon_check_command_id and self.dependent_mon_check_command_id) else False
     def get_id(self, devices=None, dependent_devices=None):
         # returns an unique ID
-        return "{%d:%d:%d:%d:[%s]:[%s]}" % (
+        return "{{{:d}:{:d}:{:d}:{:d}:[{}]:[{}]}}".format(
             self.mon_check_command_id or 0,
             self.dependent_mon_check_command_id or 0,
             self.mon_service_dependency_templ_id or 0,
             self.mon_service_cluster_id or 0,
-            ",".join(["%d" % (val) for val in sorted([sub_dev.pk for sub_dev in (devices if devices is not None else self.devices.all())])]),
-            ",".join(["%d" % (val) for val in sorted([sub_dev.pk for sub_dev in (dependent_devices if dependent_devices is not None else self.dependent_devices.all())])]),
+            ",".join(["{:d}".format(val) for val in sorted([sub_dev.pk for sub_dev in (devices if devices is not None else self.devices.all())])]),
+            ",".join(["{:d}".format(val) for val in sorted([sub_dev.pk for sub_dev in (dependent_devices if dependent_devices is not None else self.dependent_devices.all())])]),
             )
     def feed_config(self, conf):
         conf["inherits_parent"] = "1" if self.mon_service_dependency_templ.inherits_parent else "0"
@@ -601,7 +601,7 @@ class mon_ext_host(models.Model):
     def __unicode__(self):
         return self.name
     def data_image_field(self):
-        _url = settings.STATIC_URL + "icinga/%s" % (self.icon_image)
+        _url = settings.STATIC_URL + "icinga/{}".format(self.icon_image)
         return _url
     class Meta:
         ordering = ("name",)
@@ -649,12 +649,12 @@ def mon_period_pre_save(sender, **kwargs):
         range_re1 = re.compile("^[0-9]{1,2}:[0-9]{1,2}-[0-9]{1,2}:[0-9]{1,2}$")
         range_re2 = re.compile("^[0-9]{1,2}-[0-9]{1,2}$")
         for day in ["sun", "mon", "tue", "wed", "thu", "fri", "sat"]:
-            r_name = "%s_range" % (day)
+            r_name = "{}_range".format(day)
             cur_val = getattr(cur_inst, r_name)
             re_t1 = range_re1.match(cur_val)
             re_t2 = range_re2.match(cur_val)
             if not (re_t1 or re_t2):
-                raise ValidationError("range for %s not correct" % (day))
+                raise ValidationError("range for {} not correct".format(day))
             else:
                 new_val = []
                 for cur_time in cur_val.split("-"):
@@ -665,8 +665,8 @@ def mon_period_pre_save(sender, **kwargs):
                     if (hours, minutes) in [(24, 0)]:
                         pass
                     elif hours < 0 or hours > 23 or minutes < 0 or minutes > 60:
-                        raise ValidationError("illegal time %s (%s)" % (cur_time, day))
-                    new_val.append("%02d:%02d" % (hours, minutes))
+                        raise ValidationError("illegal time {} ({})".format(cur_time, day))
+                    new_val.append("{:02d}:{:02d}".format(hours, minutes))
                 setattr(cur_inst, r_name, "-".join(new_val))
 
 class mon_service_templ(models.Model):
