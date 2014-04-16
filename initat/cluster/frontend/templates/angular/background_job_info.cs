@@ -15,26 +15,21 @@ DT_FORM = "dd, D. MMM YYYY HH:mm:ss"
 background_job_info_module.controller("info_ctrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "sharedDataSource", "$q", "$modal", "access_level_service", "$timeout",
     ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, sharedDataSource, $q, $modal, access_level_service, $timeout) ->
         access_level_service.install($scope)
-        $scope.pagSettings = paginatorSettings.get_paginator("masters", $scope)
-        $scope.masters = []
+        $scope.pagSettings = paginatorSettings.get_paginator("jobs", $scope)
+        $scope.jobs = []
         $scope.reload = () ->
             # force reload
             restDataSource.reset()
             wait_list = restDataSource.add_sources([
-                ["{% url 'rest:mon_dist_master_list' %}", {}]
+                ["{% url 'rest:background_job_list' %}", {}]
                 #["{% url 'rest:mon_dist_slave_list' %}", {}]
-                ["{% url 'rest:device_tree_list' %}", {"all_monitoring_servers" : true}]
+                #["{% url 'rest:user_list' %}", {"all_monitoring_servers" : true}]
             ])
             $q.all(wait_list).then((data) ->
                 $timeout($scope.reload, 5000)
-                $scope.masters = data[0]
-                slave_list = []
-                for master in $scope.masters
-                    for slave in master.mon_dist_slave_set
-                        if slave.device not in slave_list
-                            slave_list.push(slave.device)
-                $scope.all_slaves = slave_list
-                $scope.servers = build_lut(data[1])
+                $scope.jobs = data[0]
+                #console.log $scope.jobs
+                #$scope.servers = build_lut(data[1])
             )
         $scope.get_diff_time = (dt) ->
             if dt
@@ -57,11 +52,6 @@ background_job_info_module.controller("info_ctrl", ["$scope", "$compile", "$filt
                 return $scope._runtime(moment(master.build_end).diff(moment(master.build_start), "seconds"))
             else
                 return "---"
-        $scope.get_slaves = (build) ->
-            return ($scope.get_slave(build, idx) for idx in $scope.all_slaves)
-        $scope.get_slave = (build, idx) ->
-            _list = (entry for entry in build.mon_dist_slave_set when entry.device == idx)
-            return if _list.length then _list[0] else undefined 
         $scope.get_sync_time = (slave) ->
             if slave
                 if slave.sync_end and slave.sync_start
@@ -78,16 +68,8 @@ background_job_info_module.controller("info_ctrl", ["$scope", "$compile", "$filt
                     return "---"
             else
                 return "---"
-        $scope.get_line_class = (build) ->
-            if build.build_start and build.build_end
-                r_class = ""
-            else
-                r_class = "danger"
-            for slave in build.mon_dist_slave_set
-                if not slave.sync_start or not slave.sync_end
-                    if not r_class
-                        r_class = "warning"
-            return r_class
+        $scope.get_line_class = (job) ->
+            return ""
         $scope.reload()
 ])
 
