@@ -18,6 +18,8 @@ import os
 import random
 import string
 
+from initat.cluster.backbone.signals import user_changed, group_changed
+
 __all__ = [
     "csw_permission", "csw_permission_serializer",
     "csw_object_permission", "csw_object_permission_serializer",
@@ -231,6 +233,18 @@ class group_permission(models.Model):
     class Meta:
         app_label = "backbone"
 
+@receiver(signals.post_save, sender=group_permission)
+def group_permission_save(sender, **kwargs):
+    if not kwargs["raw"] and "instance" in kwargs:
+        _cur_inst = kwargs["instance"]
+        group_changed.send(sender=_cur_inst, group=_cur_inst.group, cause="global_permission_create")
+
+@receiver(signals.post_delete, sender=group_permission)
+def group_permission_delete(sender, **kwargs):
+    if "instance" in kwargs:
+        _cur_inst = kwargs["instance"]
+        group_changed.send(sender=_cur_inst, group=_cur_inst.group, cause="global_permission_delete")
+
 class group_object_permission(models.Model):
     idx = models.AutoField(primary_key=True)
     group = models.ForeignKey("backbone.group")
@@ -240,6 +254,18 @@ class group_object_permission(models.Model):
     class Meta:
         app_label = "backbone"
 
+@receiver(signals.post_save, sender=group_object_permission)
+def group_object_permission_save(sender, **kwargs):
+    if not kwargs["raw"] and "instance" in kwargs:
+        _cur_inst = kwargs["instance"]
+        group_changed.send(sender=_cur_inst, group=_cur_inst.group, cause="object_permission_create")
+
+@receiver(signals.post_delete, sender=group_object_permission)
+def group_object_permission_delete(sender, **kwargs):
+    if "instance" in kwargs:
+        _cur_inst = kwargs["instance"]
+        group_changed.send(sender=_cur_inst, group=_cur_inst.group, cause="object_permission_delete")
+
 class user_permission(models.Model):
     idx = models.AutoField(primary_key=True)
     user = models.ForeignKey("backbone.user")
@@ -248,6 +274,18 @@ class user_permission(models.Model):
     date = models.DateTimeField(auto_now_add=True)
     class Meta:
         app_label = "backbone"
+
+@receiver(signals.post_save, sender=user_permission)
+def user_permission_save(sender, **kwargs):
+    if not kwargs["raw"] and "instance" in kwargs:
+        _cur_inst = kwargs["instance"]
+        user_changed.send(sender=_cur_inst, user=_cur_inst.user, cause="global_permission_create")
+
+@receiver(signals.post_delete, sender=user_permission)
+def user_permission_delete(sender, **kwargs):
+    if "instance" in kwargs:
+        _cur_inst = kwargs["instance"]
+        user_changed.send(sender=_cur_inst, user=_cur_inst.user, cause="global_permission_delete")
 
 AC_MASK_READ = 0
 AC_MASK_MODIFY = 1
@@ -274,6 +312,18 @@ class user_object_permission(models.Model):
     date = models.DateTimeField(auto_now_add=True)
     class Meta:
         app_label = "backbone"
+
+@receiver(signals.post_save, sender=user_object_permission)
+def user_object_permission_save(sender, **kwargs):
+    if not kwargs["raw"] and "instance" in kwargs:
+        _cur_inst = kwargs["instance"]
+        user_changed.send(sender=_cur_inst, user=_cur_inst.user, cause="object_permission_create")
+
+@receiver(signals.post_delete, sender=user_object_permission)
+def user_object_permission_delete(sender, **kwargs):
+    if "instance" in kwargs:
+        _cur_inst = kwargs["instance"]
+        user_changed.send(sender=_cur_inst, user=_cur_inst.user, cause="object_permission_delete")
 
 class group_permission_serializer(serializers.ModelSerializer):
     class Meta:
@@ -609,7 +659,7 @@ class user(models.Model):
         fk_ignore_list = ["user_variable"]
     class Meta:
         db_table = u'user'
-        ordering = ("login",)
+        ordering = ("login", "group__groupname")
         app_label = "backbone"
     def __unicode__(self):
         return u"{} ({:d}; {}, {})".format(
@@ -696,7 +746,13 @@ def user_pre_save(sender, **kwargs):
 def user_post_save(sender, **kwargs):
     if not kwargs["raw"] and "instance" in kwargs:
         _cur_inst = kwargs["instance"]
-        # cache.delete(_cur_inst.mc_key())
+        user_changed.send(sender=_cur_inst, user=_cur_inst, cause="save")
+
+@receiver(signals.post_delete, sender=user)
+def user_post_delete(sender, **kwargs):
+    if "instance" in kwargs:
+        _cur_inst = kwargs["instance"]
+        user_changed.send(sender=_cur_inst, user=_cur_inst, cause="delete")
 
 class group(models.Model):
     idx = models.AutoField(db_column="ggroup_idx", primary_key=True)
@@ -804,11 +860,13 @@ def group_pre_save(sender, **kwargs):
 def group_post_save(sender, **kwargs):
     if not kwargs["raw"] and "instance" in kwargs:
         _cur_inst = kwargs["instance"]
+        group_changed.send(sender=_cur_inst, group=_cur_inst, cause="save")
 
 @receiver(signals.post_delete, sender=group)
 def group_post_delete(sender, **kwargs):
     if "instance" in kwargs:
         _cur_inst = kwargs["instance"]
+        group_changed.send(sender=_cur_inst, group=_cur_inst, cause="delete")
 
 @receiver(signals.m2m_changed, sender=group.perms.through)
 def group_perms_changed(sender, *args, **kwargs):

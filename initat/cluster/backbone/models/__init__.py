@@ -8,8 +8,7 @@ from django.db.models import Q, signals
 from django.dispatch import receiver
 from django.utils.functional import memoize
 from initat.cluster.backbone.models.functions import _check_empty_string, _check_float, \
-    _check_integer, _check_non_empty_string, to_system_tz, \
-    get_change_reset_list, get_related_models
+    _check_integer, _check_non_empty_string, to_system_tz, get_change_reset_list, get_related_models
 from lxml import etree # @UnresolvedImport
 from lxml.builder import E # @UnresolvedImport
 from rest_framework import serializers
@@ -26,14 +25,25 @@ import re
 import time
 import uuid
 
-from initat.cluster.backbone.models.background import * # @UnusedWildImport
 from initat.cluster.backbone.models.domain import * # @UnusedWildImport
 from initat.cluster.backbone.models.monitoring import * # @UnusedWildImport
 from initat.cluster.backbone.models.network import * # @UnusedWildImport
 from initat.cluster.backbone.models.package import * # @UnusedWildImport
 from initat.cluster.backbone.models.user import * # @UnusedWildImport
+from initat.cluster.backbone.models.background import * # @UnusedWildImport
+from initat.cluster.backbone.signals import user_changed, group_changed
+
+from initat.cluster.backbone.middleware import get_current_user
 # do not use, problems with import
 # from initat.cluster.backbone.models.partition import * # @UnusedWildImport
+
+@receiver(user_changed)
+def user_changed(*args, **kwargs):
+    print "*** user ***", args, kwargs, get_current_user()
+
+@receiver(group_changed)
+def group_changed(*args, **kwargs):
+    print "*** group ***", args, kwargs, get_current_user()
 
 LICENSE_CAPS = [
     ("monitor", "Monitoring services"),
@@ -1305,7 +1315,7 @@ class device(models.Model):
     def __unicode__(self):
         return u"{}{}".format(
             self.name,
-            " ({})".format(self.comment) if self.comment else "")
+            u" ({})".format(self.comment) if self.comment else "")
     class CSW_Meta:
         permissions = (
             ("all_devices", "access all devices", False),

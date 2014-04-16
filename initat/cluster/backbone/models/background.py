@@ -42,6 +42,7 @@ class background_job(models.Model):
         return "bg_job_{:d}".format(self.idx)
     class Meta:
         ordering = ("date",)
+        app_label = "backbone"
 
 class background_job_serializer(serializers.ModelSerializer):
     class Meta:
