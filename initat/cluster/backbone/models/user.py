@@ -31,7 +31,7 @@ __all__ = [
     "user_object_permission", "user_object_permission_serializer",
     "AC_MASK_READ", "AC_MASK_MODIFY", "AC_MASK_DELETE", "AC_MASK_CREATE",
     "AC_MASK_DICT",
-    ]
+]
 
 def _csw_key(perm):
     return "{}.{}.{}".format(
