@@ -27,11 +27,11 @@ ADMINS = (
 
 # determine product name
 if os.path.isfile("/etc/sysconfig/cluster/.is_corvus"):
-    INIT_PRODUCT_NAME = "Corvus"
+    INIT_PRODUCT_NAME = "CORVUS"
     # INIT_PRODUCT_FAMILY = "Corvus albicollis" # Geierrabe
     INIT_PRODUCT_FAMILY = "Corvus woodfordi" # Buntschnabelkrähe
 else:
-    INIT_PRODUCT_NAME = "Noctua"
+    INIT_PRODUCT_NAME = "NOCTUA"
     # INIT_PRODUCT_FAMILY = "Strigidae bubo bubo" # Uhu
     INIT_PRODUCT_FAMILY = "Strigidae pulsatrix perspicillata" # Brillenkauz
 
@@ -205,7 +205,7 @@ MIDDLEWARE_CLASSES = (
     "django.contrib.auth.middleware.AuthenticationMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
 
-    "backbone.middleware.thread_local_middleware",
+    # "backbone.middleware.thread_local_middleware",
     # Uncomment the next line for simple clickjacking protection:
     # 'django.middleware.clickjacking.XFrameOptionsMiddleware',
 

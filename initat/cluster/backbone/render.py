@@ -45,10 +45,12 @@ class render_me(object):
             self._unfold(gp_dict)
             self._unfold(op_dict)
             _user = {"idx" : self.request.user.pk, "pk" : self.request.user.pk}
+            _num_bg_jobs = 2
         else:
             gp_dict = {}
             op_dict = {}
             _user = {}
+            _num_bg_jobs = 0
         # license cache
         cur_clc = cluster_license_cache()
         # import pprint
@@ -60,6 +62,7 @@ class render_me(object):
         # store as dict for django templates
         self.my_dict["DJANGO_CLUSTER_LICENSE"] = cur_clc.licenses
         self.my_dict["CURRENT_USER"] = json.dumps(_user)
+        self.my_dict["NUM_BACKGROUND_JOBS"] = _num_bg_jobs
         return render_to_response(
             self.template,
             self.my_dict,

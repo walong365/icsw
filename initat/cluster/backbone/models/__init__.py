@@ -12,16 +12,17 @@ from initat.cluster.backbone.models.functions import _check_empty_string, _check
 from lxml import etree # @UnresolvedImport
 from lxml.builder import E # @UnresolvedImport
 from rest_framework import serializers
+import crypt
 import datetime
 import ipvx_tools
-import crypt
-import random
 import logging
 import logging_tools
 import marshal
 import process_tools
 import pytz
+import random
 import re
+import server_command
 import time
 import uuid
 
@@ -33,17 +34,8 @@ from initat.cluster.backbone.models.user import * # @UnusedWildImport
 from initat.cluster.backbone.models.background import * # @UnusedWildImport
 from initat.cluster.backbone.signals import user_changed, group_changed
 
-from initat.cluster.backbone.middleware import get_current_user
 # do not use, problems with import
 # from initat.cluster.backbone.models.partition import * # @UnusedWildImport
-
-@receiver(user_changed)
-def user_changed(*args, **kwargs):
-    print "*** user ***", args, kwargs, get_current_user()
-
-@receiver(group_changed)
-def group_changed(*args, **kwargs):
-    print "*** group ***", args, kwargs, get_current_user()
 
 LICENSE_CAPS = [
     ("monitor", "Monitoring services"),
@@ -75,6 +67,23 @@ system_timezone = pytz.timezone(time.tzname[0])
 
 # cluster_log_source
 cluster_log_source = None
+
+@receiver(user_changed)
+def user_changed(*args, **kwargs):
+    _insert_user_sync_job()
+
+@receiver(group_changed)
+def group_changed(*args, **kwargs):
+    _insert_user_sync_job()
+
+def _insert_user_sync_job():
+    _cmd = "sync_users"
+    background_job.objects.create(
+        command=_cmd,
+        command_xml=unicode(server_command.srv_command(command=_cmd)),
+        # valid for 4 hours
+        valid_until=cluster_timezone.localize(datetime.datetime.now() + datetime.timedelta(3600 * 4)),
+    )
 
 def boot_uuid(cur_uuid):
     return "{}-boot".format(cur_uuid[:-5])

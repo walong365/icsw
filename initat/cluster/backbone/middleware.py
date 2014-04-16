@@ -23,18 +23,16 @@ from threading import local
 
 _thread_local = local()
 
-def get_current_request():
-    return getattr(_thread_local, "request", None)
-
-def get_current_user():
-    return getattr(_thread_local, "user", None)
-
 class thread_local_middleware(object):
     def process_request(self, request):
         _thread_local.request = request
         _thread_local.user = getattr(request, "user", None)
-    def process_response(self, request, response):
-        return response
+    @property
+    def user(self):
+        return getattr(_thread_local, "user", None)
+    @property
+    def request(self):
+        return getattr(_thread_local, "request", None)
 
 REVISION_MIDDLEWARE_FLAG = "reversion.revision_middleware_active"
 
