@@ -68,6 +68,10 @@ class srv_type_routing(object):
             _resolv_dict = self._build_resolv_dict()
         else:
             _resolv_dict = json.loads(_resolv_dict)
+            if "_local_device" not in _resolv_dict:
+                # old version, recalc
+                _resolv_dict = self._build_resolv_dict()
+        self._local_device = device.objects.get(Q(pk=_resolv_dict["_local_device"][0]))
         self._resolv_dict = _resolv_dict
     def has_type(self, srv_type):
         return srv_type in self._resolv_dict
@@ -89,7 +93,7 @@ class srv_type_routing(object):
         )
     @property
     def resolv_dict(self):
-        return self._resolv_dict
+        return dict([(key, value) for key, value in self._resolv_dict.iteritems() if not key.startswith("_")])
     @property
     def local_device(self):
         return self._local_device
@@ -99,7 +103,6 @@ class srv_type_routing(object):
     def _build_resolv_dict(self):
         # local device
         _myself = server_check(server_type="", fetch_network_info=True)
-        self._local_device = _myself.device
         _router = router_object(self.logger)
         conf_names = sum(_SRV_NAME_TYPE_MAPPING.values(), [])
         # build reverse lut
@@ -108,7 +111,7 @@ class srv_type_routing(object):
             _rv_lut.update({_name : key for _name in value})
         # resolve dict
         _resolv_dict = {}
-        # get all config
+        # get all configs
         for _conf_name in conf_names:
             _srv_type = _rv_lut[_conf_name]
             _sc = device_with_config(config_name=_conf_name)
@@ -161,7 +164,10 @@ class srv_type_routing(object):
                 self.logger.warning("no device for srv_type '{}' found".format(_srv_type))
         # sort entry
         for key, value in _resolv_dict.iteritems():
+            # format: device name, device IP, device_pk, penalty
             _resolv_dict[key] = [_v2[1] for _v2 in sorted([(_v[3], _v) for _v in value])]
+        # set local device
+        _resolv_dict["_local_device"] = (_myself.device.pk,)
         # valid for 15 minutes
         cache.set(self._routing_key, json.dumps(_resolv_dict), 60 * 15)
         return _resolv_dict

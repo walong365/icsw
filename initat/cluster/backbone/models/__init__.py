@@ -70,20 +70,37 @@ cluster_log_source = None
 
 @receiver(user_changed)
 def user_changed(*args, **kwargs):
-    _insert_user_sync_job()
+    _insert_user_sync_job(kwargs["cause"], kwargs["user"])
 
 @receiver(group_changed)
 def group_changed(*args, **kwargs):
-    _insert_user_sync_job()
+    _insert_user_sync_job(kwargs["cause"], kwargs["group"])
 
-def _insert_user_sync_job():
+def _insert_user_sync_job(cause, obj):
+    # create entry to be handled by the cluster-server
     _cmd = "sync_users"
-    background_job.objects.create(
-        command=_cmd,
-        command_xml=unicode(server_command.srv_command(command=_cmd)),
-        # valid for 4 hours
-        valid_until=cluster_timezone.localize(datetime.datetime.now() + datetime.timedelta(3600 * 4)),
-    )
+    # get local device
+    _routing_key = "_WF_ROUTING"
+    _resolv_dict = cache.get(_routing_key)
+    if _resolv_dict:
+        _local_pk = _resolv_dict["_local_device"][0]
+    else:
+        try:
+            _local_pk = device.objects.get(Q(name=process_tools.get_machine_name())).pk
+        except device.DoesNotExist:
+            _local_pk = 0
+    if _local_pk:
+        background_job.objects.create(
+            command=_cmd,
+            cause=u"{} of '{}'".format(cause, unicode(obj)),
+            state="pre-init",
+            initiator=device.objects.get(Q(pk=_local_pk)),
+            command_xml=unicode(server_command.srv_command(command=_cmd)),
+            # valid for 4 hours
+            valid_until=cluster_timezone.localize(datetime.datetime.now() + datetime.timedelta(3600 * 4)),
+        )
+    else:
+        logger.error("cannot identify local device")
 
 def boot_uuid(cur_uuid):
     return "{}-boot".format(cur_uuid[:-5])

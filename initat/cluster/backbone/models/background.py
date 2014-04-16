@@ -13,12 +13,21 @@ __all__ = [
 
 class background_job(models.Model):
     idx = models.AutoField(primary_key=True)
+    # cause
+    cause = models.CharField(max_length=64, default="unknown")
     # command as text
     command = models.CharField(null=False, max_length=256)
+    # state
+    state = models.CharField(max_length=128, default="pre-init", choices=[
+        ("pre-init", "before cluster-server detection"),
+        ("pending", "init and awaiting processing"),
+        ])
     # command as XML
     command_xml = models.TextField(null=False)
+    # initiator
+    initiator = models.ForeignKey("backbone.device", related_name="bgj_initiator")
     # server to run on
-    target_server = models.ForeignKey("backbone.device", null=True)
+    target_server = models.ForeignKey("backbone.device", null=True, related_name="bgj_target_server")
     # creator, mostly null due to problem with thread local storage
     user = models.ForeignKey("backbone.user", null=True)
     # created
@@ -30,7 +39,7 @@ class background_job(models.Model):
     def __unicode__(self):
         return "bg_job_{:d}".format(self.idx)
     class Meta:
-        ordering = ("date",)
+        ordering = ("-date",)
         app_label = "backbone"
     class CSW_Meta:
         permissions = (

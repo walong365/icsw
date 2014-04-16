@@ -7,7 +7,7 @@ from django.core.urlresolvers import reverse
 from django.shortcuts import render_to_response, redirect
 from django.template.loader import render_to_string
 from django.utils.decorators import method_decorator
-from initat.cluster.backbone.models import cluster_license_cache
+from initat.cluster.backbone.models import cluster_license_cache, background_job
 import django.template
 import json
 import logging
@@ -45,7 +45,7 @@ class render_me(object):
             self._unfold(gp_dict)
             self._unfold(op_dict)
             _user = {"idx" : self.request.user.pk, "pk" : self.request.user.pk}
-            _num_bg_jobs = 2
+            _num_bg_jobs = background_job.objects.all().count()
         else:
             gp_dict = {}
             op_dict = {}
