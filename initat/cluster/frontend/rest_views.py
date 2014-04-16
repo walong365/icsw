@@ -437,6 +437,8 @@ class csw_object_list(viewsets.ViewSet):
             _q = _q.select_related("device_type", "device_group"). \
                 filter(Q(enabled=True, device_group__enabled=True)). \
                 order_by("-device_group__cluster_device_group", "device_group__name", "-device_type__priority", "name")
+        if _key == "backbone.user":
+            _q = _q.select_related("group")
         return [csw_object(cur_obj.pk, self._get_name(_key, cur_obj), self._get_group(_key, cur_obj), self._tr_class(_key, cur_obj)) for cur_obj in _q.all()]
     def _get_name(self, _key, cur_obj):
         if _key == "backbone.device":

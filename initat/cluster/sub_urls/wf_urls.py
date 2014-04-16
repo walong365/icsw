@@ -118,6 +118,7 @@ user_patterns = patterns(
     url("^change_obj_perm$"         , user_views.change_object_permission.as_view(), name="change_object_permission"),
     url("^account_info$"            , user_views.account_info.as_view()          , name="account_info"),
     url("^global_settings$"         , user_views.global_settings.as_view()       , name="global_settings"),
+    url("^background_info$"         , user_views.background_job_info.as_view()   , name="background_job_info"),
 )
 
 pack_patterns = patterns(

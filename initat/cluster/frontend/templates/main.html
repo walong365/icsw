@@ -81,6 +81,7 @@
         window.GLOBAL_PERMISSIONS = {{ GLOBAL_PERMISSIONS | safe }}
         window.OBJECT_PERMISSIONS = {{ OBJECT_PERMISSIONS | safe }}
         window.CURRENT_USER = {{ CURRENT_USER | safe }}
+        window.NUM_BACKGROUND_JOBS = {{ NUM_BACKGROUND_JOBS }}
         {% endinlinecoffeescript %}
         </script>
         {% compressed_js 'js_base' %}

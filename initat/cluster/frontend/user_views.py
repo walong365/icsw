@@ -59,7 +59,6 @@ class sync_users(View):
     @method_decorator(xml_wrapper)
     def post(self, request):
         # create homedirs
-        # FIXME: only create users for local server
         create_user_list = user.objects.exclude(Q(export=None)).filter(Q(home_dir_created=False) & Q(active=True) & Q(group__active=True)).select_related("export__device")
         logger.info("user homes to create: %d" % (len(create_user_list)))
         for create_user in create_user_list:
@@ -259,4 +258,11 @@ class global_settings(View):
     def get(self, request):
         return render_me(request, "global_settings.html", {
             "form" : global_settings_form()
+            })()
+
+class background_job_info(View):
+    @method_decorator(login_required)
+    @method_decorator(xml_wrapper)
+    def get(self, request):
+        return render_me(request, "background_job_info.html", {
             })()
