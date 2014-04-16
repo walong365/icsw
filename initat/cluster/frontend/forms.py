@@ -215,7 +215,7 @@ class device_info_form(ModelForm):
             # HTML("<ui-select ng-model='_edit_obj.domain_tree_node'><choices repeat='value in domain_tree_node'>dd</choices></ui-select>"),
             Fieldset(
                 "Monitor settings",
-                # Field("mon_device_templ", ng_options="value.idx as value.name for value in mon_device_templ_list", chosen=True),
+                Field("mon_device_templ", ng_options="value.idx as value.name for value in mon_device_templ_list", chosen=True),
                 Div(
                     Div(
                         Field("monitor_checks"),
@@ -2380,7 +2380,7 @@ class netdevice_form(ModelForm):
                 Field("inter_device_routing"),
             ),
             Fieldset(
-                "buttons",
+                "",
                 Button("show ethtool", "show ethtool", ng_click="_edit_obj.show_ethtool = !_edit_obj.show_ethtool", ng_class="{'btn btn-sm btn-success' : !_edit_obj.show_ethtool, 'btn btn-sm' : _edit_obj.show_ethtool}"),
                 Button("show hardware", "show hardware", ng_click="_edit_obj.show_hardware = !_edit_obj.show_hardware", ng_class="{'btn btn-sm btn-success' : !_edit_obj.show_hardware, 'btn btn-sm' : _edit_obj.show_hardware}"),
                 Button("show vlan", "show vlan", ng_click="_edit_obj.show_vlan = !_edit_obj.show_vlan", ng_class="{'btn btn-sm btn-success' : !_edit_obj.show_vlan, 'btn btn-sm' : _edit_obj.show_vlan}"),
