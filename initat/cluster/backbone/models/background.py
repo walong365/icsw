@@ -19,16 +19,18 @@ __all__ = [
     ]
 
 class background_job(models.Model):
-    idx = models.AutoField(db_column="partition_fs_idx", primary_key=True)
+    idx = models.AutoField(primary_key=True)
     # command as XML
     command = models.TextField(null=False)
     # result
-    state = server_command.SRV_REPLY_STATE_UNSET
+    state = models.IntegerField(default=server_command.SRV_REPLY_STATE_UNSET)
     result = models.TextField(default="")
     # pending
     pending = models.BooleanField(default=True)
     # server to run on
     target_server = models.ForeignKey("backbone.device", null=True)
+    # creator
+    user = models.ForeignKey("backbone.user", null=True)
     # created
     date = models.DateTimeField(auto_now_add=True)
     # started
@@ -39,7 +41,7 @@ class background_job(models.Model):
     def __unicode__(self):
         return "bg_job_{:d}".format(self.idx)
     class Meta:
-        ordering = ("name",)
+        ordering = ("date",)
 
 class background_job_serializer(serializers.ModelSerializer):
     class Meta:
