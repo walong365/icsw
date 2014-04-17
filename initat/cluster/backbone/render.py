@@ -4,6 +4,7 @@ from django.conf import settings
 from django.contrib.auth.decorators import login_required
 from django.core.exceptions import ImproperlyConfigured
 from django.core.urlresolvers import reverse
+from django.db.models import Q
 from django.shortcuts import render_to_response, redirect
 from django.template.loader import render_to_string
 from django.utils.decorators import method_decorator
@@ -45,7 +46,7 @@ class render_me(object):
             self._unfold(gp_dict)
             self._unfold(op_dict)
             _user = {"idx" : self.request.user.pk, "pk" : self.request.user.pk}
-            _num_bg_jobs = background_job.objects.all().count()
+            _num_bg_jobs = background_job.objects.exclude(Q(state="done")).count()
         else:
             gp_dict = {}
             op_dict = {}
