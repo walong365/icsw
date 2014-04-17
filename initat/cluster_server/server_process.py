@@ -46,11 +46,11 @@ class server_process(threading_tools.process_pool):
         self.__run_command = True if global_config["COMMAND"].strip() else False
         if self.__run_command:
             # rewrite LOG_NAME and PID_NAME
-            global_config["PID_NAME"] = "%s-direct-%s-%d" % (
+            global_config["PID_NAME"] = "{}-direct-{}-{:d}".format(
                 global_config["PID_NAME"],
                 "%04d%02d%02d-%02d:%02d" % tuple(time.localtime()[0:5]),
                 os.getpid())
-            global_config["LOG_NAME"] = "%s-direct-%s" % (
+            global_config["LOG_NAME"] = "{}-direct-{}".format(
                 global_config["LOG_NAME"],
                 global_config["COMMAND"])
         self.__pid_name = global_config["PID_NAME"]
@@ -234,12 +234,14 @@ class server_process(threading_tools.process_pool):
                 break
         if len(data) == 2:
             srv_com = server_command.srv_command(source=data[1])
-            self._process_command(srv_com)
-            zmq_sock.send_unicode(data[0], zmq.SNDMORE)
-            zmq_sock.send_unicode(unicode(srv_com))
+            if self._process_command(srv_com):
+                zmq_sock.send_unicode(data[0], zmq.SNDMORE)
+                zmq_sock.send_unicode(unicode(srv_com))
         else:
-            self.log("data stream has wrong length (%d) != 2" % (len(data)),
-                     logging_tools.LOG_LEVEL_ERROR)
+            self.log(
+                "data stream has wrong length ({}) != 2".format(len(data)),
+                logging_tools.LOG_LEVEL_ERROR
+            )
     def _client_connect_timeout(self, sock):
         self.log("connect timeout", logging_tools.LOG_LEVEL_ERROR)
         self.set_error("error connect timeout")
@@ -265,36 +267,41 @@ class server_process(threading_tools.process_pool):
         # show result
         print cur_com["result"].attrib["reply"]
     def _process_command(self, srv_com):
+        _send_return = True
         com_name = srv_com["command"].text
-        self.log("executing command %s" % (com_name))
-        srv_com["result"] = None
-        srv_com["result"].attrib.update({
-            "reply" : "no reply set",
-            "state" : "%d" % (server_command.SRV_REPLY_STATE_CRITICAL)})
+        self.log("executing command {}".format(com_name))
+        srv_com.set_result(
+            "no reply set",
+            server_command.SRV_REPLY_STATE_CRITICAL,
+        )
         if com_name in initat.cluster_server.modules.command_dict:
             com_obj = initat.cluster_server.modules.command_dict[com_name]
             # check config status
             do_it, srv_origin, err_str = com_obj.check_config(global_config, global_config["FORCE"])
-            self.log("checking the config gave: %s (%s) %s" % (str(do_it),
-                                                               srv_origin,
-                                                               err_str))
+            self.log(
+                "checking the config gave: {} ({}) {}".format(
+                    str(do_it),
+                    srv_origin,
+                    err_str
+                )
+            )
             # print srv_com.pretty_print()
             if do_it:
                 try:
                     found_keys = [key for key in com_obj.Meta.needed_option_keys if "server_key:%s" % (key) in srv_com]
                 except:
-                    srv_com["result"].attrib.update({
-                        "reply" : "error parsing options_keys: %s" % (process_tools.get_except_info()),
-                        "state" : "%d" % (server_command.SRV_REPLY_STATE_CRITICAL),
-                        })
+                    srv_com.set_result(
+                        "error parsing options_keys: {}".format(process_tools.get_except_info()),
+                        server_command.SRV_REPLY_STATE_CRITICAL
+                    )
                 else:
                     if set(found_keys) != set(com_obj.Meta.needed_option_keys):
-                        srv_com["result"].attrib.update({
-                            "reply" : "error option keys found (%s) != needed (%s)" % (
+                        srv_com.set_result(
+                            "error option keys found ({}) != needed ({})".format(
                                 ", ".join(sorted(list(set(found_keys)))) or "none",
                                 ", ".join(sorted(list(set(com_obj.Meta.needed_option_keys))))),
-                            "state" : "%d" % (server_command.SRV_REPLY_STATE_CRITICAL),
-                            })
+                            server_command.SRV_REPLY_STATE_CRITICAL
+                        )
                     else:
                         # salt com_obj with some settings
                         option_dict = dict([(key, srv_com["*server_key:%s" % (key)]) for key in com_obj.Meta.needed_option_keys])
@@ -303,19 +310,24 @@ class server_process(threading_tools.process_pool):
                         cur_inst()
                         cur_inst.write_end_log()
             else:
-                srv_com["result"].attrib.update({
-                    "reply" : "error %s" % (err_str),
-                    "state" : "%d" % (server_command.SRV_REPLY_STATE_CRITICAL),
-                    })
+                srv_com.set_result(
+                    err_str,
+                    server_command.SRV_REPLY_STATE_CRITICAL
+                )
+            self.log("result for %s was (%d) %s" % (
+                com_name,
+                int(srv_com["result"].attrib["state"]),
+                srv_com["result"].attrib["reply"]))
+        elif com_name in ["wf_notify"]:
+            self._handle_notify()
+            _send_return = False
         else:
-            srv_com["result"].attrib.update({
-                "reply" : "command %s not known" % (com_name),
-                "state" : "%d" % (server_command.SRV_REPLY_STATE_CRITICAL),
-                })
-        self.log("result for %s was (%d) %s" % (
-            com_name,
-            int(srv_com["result"].attrib["state"]),
-            srv_com["result"].attrib["reply"]))
+            self.log("unknown command {}".format(com_name))
+            srv_com.set_result(
+                "command {} not known".format(com_name),
+                server_command.SRV_REPLY_STATE_CRITICAL
+            )
+        return _send_return
     def _update(self):
         cur_time = time.time()
         cur_dt = datetime.datetime.now().replace(microsecond=0)
@@ -431,6 +443,10 @@ class server_process(threading_tools.process_pool):
         self.send_broadcast(bc_com)
     def get_client_ret_state(self):
         return self.__client_error, self.__client_ret_str
+    def _handle_notify(self):
+        # notify received
+        print global_config["SERVER_IDX"]
+        
     def _load_modules(self):
         self.log("init modules from cluster_server")
         if initat.cluster_server.modules.error_log:
