@@ -107,7 +107,8 @@ def _insert_user_sync_job(cause, obj):
         )
         _signal_localhost()
     else:
-        logger.error("cannot identify local device")
+        if not _local_pk:
+            logger.error("cannot identify local device")
 
 def _signal_localhost():
     # signal clusterserver running on localhost
