@@ -22,6 +22,7 @@
 from django.db import connection
 from django.db.models import Q
 from initat.cluster.backbone.models import device
+from initat.cluster.backbone.routing import get_server_uuid
 from initat.rrd_grapher.config import global_config, CD_COM_PORT
 from initat.rrd_grapher.graph import graph_process
 from initat.rrd_grapher.struct import data_store
@@ -218,7 +219,7 @@ class server_process(threading_tools.process_pool):
         self.com_socket.send_unicode(srv_com)
     def _init_network_sockets(self):
         client = self.zmq_context.socket(zmq.ROUTER)
-        self.bind_id = "{}:rrd_grapher".format(uuid_tools.get_uuid().get_urn())
+        self.bind_id = get_server_uuid("grapher")
         client.setsockopt(zmq.IDENTITY, self.bind_id)
         client.setsockopt(zmq.SNDHWM, 256)
         client.setsockopt(zmq.RCVHWM, 256)
