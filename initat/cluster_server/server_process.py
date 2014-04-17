@@ -338,7 +338,6 @@ class server_process(threading_tools.process_pool, notify_mixin):
         _send_return = True
         com_name = srv_com["command"].text
         self.log("executing command {}".format(com_name))
-        print srv_com.pretty_print()
         if self.notify_waiting_for_job(srv_com): # "bgrjid" in srv_com and int(srv_com["*bgrjid"]) in
             self.notify_handle_result(srv_com)
             _send_return = False
