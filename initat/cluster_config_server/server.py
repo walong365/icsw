@@ -24,6 +24,7 @@
 from django.db import connection
 from django.db.models import Q
 from initat.cluster.backbone.models import device
+from initat.cluster.backbone.routing import get_server_uuid
 from initat.cluster_config_server.build_process import build_process
 from initat.cluster_config_server.config import global_config
 from initat.cluster_config_server.config_control import config_control
@@ -113,7 +114,7 @@ class server_process(threading_tools.process_pool):
             open_sock.close()
         self.__log_template.close()
     def _init_network_sockets(self):
-        my_0mq_id = "%s:ccserver:" % (uuid_tools.get_uuid().get_urn())
+        my_0mq_id = get_server_uuid("config")
         self.bind_id = my_0mq_id
         self.socket_dict = {}
         # get all ipv4 interfaces with their ip addresses, dict: interfacename -> IPv4
