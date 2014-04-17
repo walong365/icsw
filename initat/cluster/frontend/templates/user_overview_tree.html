@@ -415,6 +415,23 @@ user_tree_module.controller("user_tree", ["$scope", "$compile", "$filter", "$tem
             return $scope.csw_permission_lut[perm.csw_permission].content_type.model
         $scope.get_perm_type = (perm) ->
             return if $scope.csw_permission_lut[perm.csw_permission].valid_for_object_level then "G / O" else "G"
+        $scope.get_home_dir_created_class = (obj) ->
+            if obj.home_dir_created
+                return "btn btn-sm btn-success"
+            else
+                return "btn btn-sm btn-danger"
+        $scope.get_home_dir_created_value = (obj) ->
+            return if obj.home_dir_created then "homedir exists" else "no homedir"
+        $scope.clear_home_dir_created = (obj) ->
+            call_ajax
+                url     : "{% url 'user:clear_home_dir_created' %}"
+                data    :
+                    "user_pk" : obj.pk
+                success : (xml) =>
+                    if parse_xml_response(xml)
+                        $scope.$apply(() ->
+                            obj.home_dir_created = false
+                        )
         $scope.get_perm_object = (perm) ->
             obj_perm = perm.csw_object_permission
             csw_perm = $scope.csw_permission_lut[obj_perm.csw_permission]

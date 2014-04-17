@@ -119,6 +119,7 @@ user_patterns = patterns(
     url("^account_info$"            , user_views.account_info.as_view()          , name="account_info"),
     url("^global_settings$"         , user_views.global_settings.as_view()       , name="global_settings"),
     url("^background_info$"         , user_views.background_job_info.as_view()   , name="background_job_info"),
+    url("^chdc$"                    , user_views.clear_home_dir_created.as_view(), name="clear_home_dir_created"),
 )
 
 pack_patterns = patterns(

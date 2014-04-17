@@ -440,7 +440,6 @@ class user_detail_form(ModelForm):
     helper.ng_submit = "user_edit.modify()"
     permission = ModelChoiceField(queryset=empty_query_set(), required=False)
     object = ModelChoiceField(queryset=empty_query_set(), required=False)
-    home_dir_created = BooleanField(required=False)
     permission_level = ModelChoiceField(queryset=empty_query_set(), required=False)
     helper.layout = Layout(
         HTML("<h2>Details for user {% verbatim %}'{{ _edit_obj.login }}'{% endverbatim %}</h2>"),
@@ -489,7 +488,25 @@ class user_detail_form(ModelForm):
             Field("group", ng_options="value.idx as value.groupname for value in group_list", chosen=True),
             Field("secondary_groups", ng_options="value.idx as value.groupname for value in group_list", chosen=True),
             Field("export", ng_options="value.idx as value.info_string for value in get_export_list()", chosen=True),
-            Field("home_dir_created", readonly=True, wrapper_ng_show="_edit_obj.export"),
+            HTML(
+"""
+        <div class='form-group'>
+            <label class='control-label col-sm-2'>
+                Homedir status
+            </label>
+            <div class='col-sm-8'>
+                {% verbatim %}<input
+                    type="button"
+                    ng-disabled="!_edit_obj.home_dir_created"
+                    ng-class="get_home_dir_created_class(_edit_obj)"
+                    ng-value="get_home_dir_created_value(_edit_obj)"
+                    ng-click="clear_home_dir_created(_edit_obj)"
+                    ></input>
+                {% endverbatim %}
+            </div>
+        </div>
+"""
+            ),
         ),
         Fieldset(
             "Aliases",
@@ -549,7 +566,7 @@ class user_detail_form(ModelForm):
         model = user
         fields = ["login", "uid", "shell", "first_name", "last_name", "active",
                   "title", "email", "pager", "tel", "comment", "is_superuser",
-                  "allowed_device_groups", "secondary_groups", "home_dir_created",
+                  "allowed_device_groups", "secondary_groups",
                   "aliases", "db_is_auth_for_password", "export", "group"]
 
 class global_settings_form(ModelForm):

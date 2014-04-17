@@ -265,3 +265,13 @@ class background_job_info(View):
     def get(self, request):
         return render_me(request, "background_job_info.html", {
             })()
+
+class clear_home_dir_created(View):
+    @method_decorator(login_required)
+    @method_decorator(xml_wrapper)
+    def post(self, request):
+        _post = request.POST
+        user_pk = int(_post["user_pk"])
+        cur_user = user.objects.get(Q(pk=user_pk))
+        cur_user.home_dir_created = False
+        cur_user.save(update_fields=["home_dir_created"])
