@@ -366,6 +366,7 @@ class net_receiver(multiprocessing.Process):
             self.receiver : self._recv_data,
             self.command : self._recv_command,
             }
+        self.__disabled_uuids = set()
         self.poller.register(self.receiver, zmq.POLLIN)
         self.poller.register(self.command, zmq.POLLIN)
     def _init_hosts(self):
@@ -466,6 +467,8 @@ class net_receiver(multiprocessing.Process):
     def _handle_disabled_hosts(self, in_com, com_text):
         uuids_to_disable = set(in_com.xpath(".//ns:device/@uuid")) & set(self.__hosts.keys())
         cur_disabled = set([key for key, value in self.__hosts.iteritems() if not value.store_to_disk])
+        # to be used to disable hosts on first contact, FIXME
+        self.__disabled_uuids = uuids_to_disable
         to_disable = uuids_to_disable - cur_disabled
         to_enable = cur_disabled - uuids_to_disable
         if to_disable or to_enable:
