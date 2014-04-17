@@ -1,5 +1,3 @@
-#!/usr/bin/python-init -Otu
-#
 # Copyright (C) 2008-2014 Andreas Lang-Nevyjel init.at
 #
 # Send feedback to: <lang-nevyjel@init.at>
@@ -36,16 +34,20 @@ def send_and_receive_zmq(target_host, command, *args, **kwargs):
     client_recv.setsockopt(zmq.SUBSCRIBE, identity_str)
     # kwargs["server"] : collrelay or snmprelay
     server_name = kwargs.pop("server")
-    send_conn_str = "%s" % (process_tools.get_zmq_ipc_name(
-        kwargs.pop("process", "receiver"),
-        s_name=server_name,
-        connect_to_root_instance=True,
-    ))
-    recv_conn_str = "%s" % (process_tools.get_zmq_ipc_name(
-        kwargs.pop("process", "sender"),
-        s_name=server_name,
-        connect_to_root_instance=True,
-    ))
+    send_conn_str = "{}".format(
+        process_tools.get_zmq_ipc_name(
+            kwargs.pop("process", "receiver"),
+            s_name=server_name,
+            connect_to_root_instance=True,
+        )
+    )
+    recv_conn_str = "{}".format(
+        process_tools.get_zmq_ipc_name(
+            kwargs.pop("process", "sender"),
+            s_name=server_name,
+            connect_to_root_instance=True,
+        )
+    )
     client_send.connect(send_conn_str)
     client_recv.connect(recv_conn_str)
     srv_com = server_command.srv_command(command=command, identity=identity_str)
@@ -54,7 +56,7 @@ def send_and_receive_zmq(target_host, command, *args, **kwargs):
     srv_com["arg_list"] = " ".join(args)
     # add additional keys
     for key, value in kwargs.iteritems():
-        srv_com[key] = "%d" % (value) if type(value) in [int, long] else value
+        srv_com[key] = "{:d}".format(value) if type(value) in [int, long] else value
     s_time = time.time()
     client_send.send_unicode(unicode(srv_com))
     client_send.close()
@@ -80,13 +82,5 @@ def send_and_receive_zmq(target_host, command, *args, **kwargs):
             raise
     else:
         srv_reply = None
-        raise SystemError, "timeout (%d seconds) exceeded" % (cur_timeout)
+        raise SystemError, "timeout ({:d} seconds) exceeded".format(int(cur_timeout))
     return srv_reply
-
-def send_and_receive(target_host, command, **kwargs):
-    return 2, "error deprecated call"
-
-if __name__ == "__main__":
-    print "Loadable module, exiting"
-    sys.exit(0)
-
