@@ -426,7 +426,7 @@ user_tree_module.controller("user_tree", ["$scope", "$compile", "$filter", "$tem
             call_ajax
                 url     : "{% url 'user:clear_home_dir_created' %}"
                 data    :
-                    "user_pk" : obj.pk
+                    "user_pk" : obj.idx
                 success : (xml) =>
                     if parse_xml_response(xml)
                         $scope.$apply(() ->
