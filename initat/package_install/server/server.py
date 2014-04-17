@@ -22,6 +22,7 @@
 """ package server """
 
 from django.db import connection
+from initat.cluster.backbone.routing import get_server_uuid
 from initat.package_install.server.config import global_config
 from initat.package_install.server.repository_process import repo_process
 from initat.package_install.server.structs import client
@@ -220,7 +221,7 @@ class server_process(threading_tools.process_pool):
             zmq_sock.send_unicode(unicode(in_uid), zmq.SNDMORE)
             zmq_sock.send_unicode(unicode(srv_com))
     def _init_network_sockets(self):
-        my_0mq_id = "%s:package-server:" % (uuid_tools.get_uuid().get_urn())
+        my_0mq_id = get_server_uuid("package")
         self.bind_id = my_0mq_id
         self.socket_dict = {}
         # get all ipv4 interfaces with their ip addresses, dict: interfacename -> IPv4
