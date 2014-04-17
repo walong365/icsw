@@ -21,6 +21,7 @@
 """ rms-server, process definitions """
 
 from initat.rms.config import global_config
+from initat.cluster.backbone.routing import get_server_uuid
 from lxml.builder import E # @UnresolvedImports
 import cluster_location
 import commands
@@ -32,7 +33,6 @@ import server_command
 import sge_tools
 import threading_tools
 import time
-import uuid_tools
 import zmq
 
 def call_command(command, log_com=None):
@@ -238,7 +238,7 @@ class server_process(threading_tools.process_pool):
             msi_block = None
         return msi_block
     def _init_network_sockets(self):
-        my_0mq_id = "%s:rmsserver:" % (uuid_tools.get_uuid().get_urn())
+        my_0mq_id = get_server_uuid("rms")
         self.bind_id = my_0mq_id
         client = self.zmq_context.socket(zmq.ROUTER)
         client.setsockopt(zmq.IDENTITY, self.bind_id)
