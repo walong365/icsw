@@ -135,7 +135,6 @@ class notify_mixin(object):
                     "server",
                     #
                 ))
-
                 # print "*", self.srv_routing.get_connection_string("server", create_user.export.device_id)
         else:
             self.log("no user homes to create", logging_tools.LOG_LEVEL_WARN)
@@ -167,14 +166,15 @@ class notify_mixin(object):
             else:
                 no_device.append(_command)
         if no_device:
-            self.log("no device found for {}".format(", ".join(no_device)), logging_tools.LOG_LEVEL_WARN)
+            self.log("no device(s) found for {}".format(", ".join(no_device)), logging_tools.LOG_LEVEL_WARN)
         if to_run:
+            self.log("commands to execute: {:d}".format(len(to_run)))
             cur_bg.num_servers = len(to_run)
             cur_bg.save()
             for _run_job, _send_xml, _srv_type in to_run:
                 _run_job.save()
                 # set BackGroundJobRunID
-                srv_com["bgjrid"] = "{:d}".format(_run_job.pk)
+                _send_xml["bgjrid"] = "{:d}".format(_run_job.pk)
                 # add to waiting list
                 self.__waiting_ids.append(_run_job.pk)
                 _is_local = _run_job.server_id == self.__server_idx and _srv_type == "server"
