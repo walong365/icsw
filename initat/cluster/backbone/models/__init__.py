@@ -7,6 +7,7 @@ from django.db import models
 from django.db.models import Q, signals
 from django.dispatch import receiver
 from django.utils.functional import memoize
+from initat.cluster.backbone.middleware import thread_local_middleware
 from initat.cluster.backbone.models.functions import _check_empty_string, _check_float, \
     _check_integer, _check_non_empty_string, to_system_tz, get_change_reset_list, get_related_models
 from lxml import etree # @UnresolvedImport
@@ -15,10 +16,11 @@ from rest_framework import serializers
 import crypt
 import datetime
 import ipvx_tools
-import net_tools
+import json
 import logging
 import logging_tools
 import marshal
+import net_tools
 import process_tools
 import pytz
 import random
@@ -35,7 +37,6 @@ from initat.cluster.backbone.models.user import * # @UnusedWildImport
 from initat.cluster.backbone.models.background import * # @UnusedWildImport
 from initat.cluster.backbone.signals import user_changed, group_changed
 
-from initat.cluster.backbone.middleware import thread_local_middleware
 
 # do not use, problems with import
 # from initat.cluster.backbone.models.partition import * # @UnusedWildImport
@@ -86,7 +87,7 @@ def _insert_user_sync_job(cause, obj):
     _routing_key = "_WF_ROUTING"
     _resolv_dict = cache.get(_routing_key)
     if _resolv_dict:
-        _local_pk = _resolv_dict["_local_device"][0]
+        _local_pk = json.loads(_resolv_dict)["_local_device"][0]
     else:
         try:
             _local_pk = device.objects.get(Q(name=process_tools.get_machine_name())).pk
@@ -101,7 +102,7 @@ def _insert_user_sync_job(cause, obj):
             user=thread_local_middleware().user,
             command_xml=unicode(server_command.srv_command(command=_cmd)),
             # valid for 4 hours
-            valid_until=cluster_timezone.localize(datetime.datetime.now() + datetime.timedelta(3600 * 4)),
+            valid_until=cluster_timezone.localize(datetime.datetime.now() + datetime.timedelta(seconds=60 * 5)), # 3600 * 4)),
         )
         _signal_localhost()
     else:

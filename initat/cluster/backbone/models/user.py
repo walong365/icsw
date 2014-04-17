@@ -656,7 +656,7 @@ class user(models.Model):
             ("modify_category_tree", "modify category tree", False),
         )
         # foreign keys to ignore
-        fk_ignore_list = ["user_variable"]
+        fk_ignore_list = ["user_variable", "user_permission", "user_object_permission", "session_data"]
     class Meta:
         db_table = u'user'
         ordering = ("login", "group__groupname")

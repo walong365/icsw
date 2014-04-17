@@ -29,10 +29,12 @@ from django.db.models import Q
 from initat.cluster.backbone.models import device
 from lxml import etree # @UnresolvedImports
 import json
+import uuid_tools
 import logging
 import logging_tools
 import server_command
 
+# mapping: server type -> default port
 _SRV_TYPE_PORT_MAPPING = {
     "mother"    : 8000,
     "grapher"   : 8003,
@@ -44,6 +46,18 @@ _SRV_TYPE_PORT_MAPPING = {
     "cransys"   : 8013,
 }
 
+# mapping: server type -> postfix for ZMQ_IDENTITY string
+_SRV_TYPE_UUID_MAPPING = {
+    "mother"    : "mother",
+    "server"    : "cluster-server",
+    "grapher"   : "grapher",
+    "md-config" : "md-config-server",
+    "rms"       : "rms-server",
+    "config"    : "config-server",
+    "package"   : "package-server"
+}
+
+# mapping: server type -> valid config names
 _SRV_NAME_TYPE_MAPPING = {
     "mother"    : ["mother_server"],
     "grapher"   : ["rrd_server"],
@@ -58,11 +72,24 @@ _SRV_NAME_TYPE_MAPPING = {
 
 _NODE_SPLIT = ["mother", "config"]
 
+def get_server_uuid(srv_type, uuid=None):
+    if uuid is None:
+        uuid = uuid_tools.get_uuid().get_urn()
+    if not uuid.startswith("urn"):
+        uuid = "urn:uuid:{}".format(uuid)
+    return "{}:{}:".format(
+        uuid,
+        _SRV_TYPE_UUID_MAPPING[srv_type],
+    )
+
 class srv_type_routing(object):
-    def __init__(self, force=False):
-        self.logger = logging.getLogger("cluster.srv_routing")
-        self._routing_key = "_WF_ROUTING"
-        _resolv_dict = cache.get(self._routing_key)
+    ROUTING_KEY = "_WF_ROUTING"
+    def __init__(self, force=False, logger=None):
+        if logger is None:
+            self.logger = logging.getLogger("cluster.srv_routing")
+        else:
+            self.logger = logger
+        _resolv_dict = cache.get(self.ROUTING_KEY)
         if _resolv_dict is None or force:
             _resolv_dict = self._build_resolv_dict()
         else:
@@ -72,6 +99,11 @@ class srv_type_routing(object):
                 _resolv_dict = self._build_resolv_dict()
         self._local_device = device.objects.get(Q(pk=_resolv_dict["_local_device"][0]))
         self._resolv_dict = _resolv_dict
+    def update(self, force=False):
+        if not cache.get(self.ROUTING_KEY) or force:
+            self.logger.info("update srv_type_routing")
+            self._resolv_dict = self._build_resolv_dict()
+            self._local_device = device.objects.get(Q(pk=self._resolv_dict["_local_device"][0]))
     def has_type(self, srv_type):
         return srv_type in self._resolv_dict
     def get_connection_string(self, srv_type, server_id=None):
@@ -168,7 +200,7 @@ class srv_type_routing(object):
         # set local device
         _resolv_dict["_local_device"] = (_myself.device.pk,)
         # valid for 15 minutes
-        cache.set(self._routing_key, json.dumps(_resolv_dict), 60 * 15)
+        cache.set(self.ROUTING_KEY, json.dumps(_resolv_dict), 60 * 15)
         return _resolv_dict
     def check_for_split_send(self, srv_type, in_com):
         if srv_type in _NODE_SPLIT:

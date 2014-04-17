@@ -9,6 +9,7 @@ logger = logging.getLogger(__name__)
 
 __all__ = [
     "background_job", "background_job_serializer",
+    "background_job_run", "background_job_run_serializer",
     ]
 
 class background_job(models.Model):
@@ -21,6 +22,7 @@ class background_job(models.Model):
     state = models.CharField(max_length=128, default="pre-init", choices=[
         ("pre-init", "before cluster-server detection"),
         ("pending", "init and awaiting processing"),
+        ("done", "job finished"),
         ])
     # command as XML
     command_xml = models.TextField(null=False)
@@ -34,10 +36,10 @@ class background_job(models.Model):
     date = models.DateTimeField(auto_now_add=True)
     # valid until
     valid_until = models.DateTimeField(null=True)
-    # number of servers
+    # number of servers to contact
     num_servers = models.IntegerField(default=0)
     def __unicode__(self):
-        return "bg_job_{:d}".format(self.idx)
+        return "background_job {:d}".format(self.idx)
     class Meta:
         ordering = ("-date",)
         app_label = "backbone"
@@ -57,7 +59,9 @@ class background_job_run(models.Model):
     # where the job was run
     server = models.ForeignKey("backbone.device")
     # log source
-    log_source = models.ForeignKey("backbone.log_source")
+    log_source = models.ForeignKey("backbone.log_source", null=True, default=None)
+    # command as XML
+    command_xml = models.TextField(null=False)
     # result
     state = models.IntegerField(default=server_command.SRV_REPLY_STATE_UNSET)
     result = models.TextField(default="")
@@ -71,22 +75,6 @@ class background_job_run(models.Model):
         ordering = ("date",)
         app_label = "backbone"
 
-class background_job_ignore(models.Model):
-    idx = models.AutoField(primary_key=True)
-    # background job
-    background_job = models.ForeignKey("backbone.background_job")
-    # where the job was run
-    server = models.ForeignKey("backbone.device")
-    date = models.DateTimeField(auto_now_add=True)
-    class Meta:
-        ordering = ("date",)
-        app_label = "backbone"
-
 class background_job_run_serializer(serializers.ModelSerializer):
     class Meta:
         model = background_job_run
-
-class background_job_ignore_serializer(serializers.ModelSerializer):
-    class Meta:
-        model = background_job_ignore
-
