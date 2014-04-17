@@ -60,6 +60,7 @@ import threading
 import threading_tools
 import time
 import uuid_tools
+from initat.cluster.backbone.routing import get_server_uuid
 import zmq
 
 try:
@@ -2793,7 +2794,7 @@ class server_process(threading_tools.process_pool):
         self.__log_template.close()
     def _init_network_sockets(self):
         success = True
-        my_0mq_id = "%s:mother:" % (uuid_tools.get_uuid().get_urn())
+        my_0mq_id = get_server_uuid("mother")
         self.bind_id = my_0mq_id
         self.socket_dict = {}
         # get all ipv4 interfaces with their ip addresses, dict: interfacename -> IPv4
