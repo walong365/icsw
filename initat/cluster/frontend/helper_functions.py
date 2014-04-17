@@ -107,8 +107,8 @@ class xml_response(object):
         if type(value) == list:
             ret_val = E.value_list(**{
                 "name" : key,
-                "num"  : "%d" % (len(value)),
-                "type"  :"list",
+                "num"  : "{:d}".format(len(value)),
+                "type" : "list",
             })
             for _val_num, sub_val in enumerate(value):
                 ret_val.append(self._get_value_xml(key, sub_val))
@@ -133,12 +133,13 @@ class xml_response(object):
         return E.response(
             E.header(
                 E.messages(
-                    *[E.message(log_str, **{"log_level"     : "%d" % (log_lev),
-                                            "log_level_str" : logging_tools.get_log_level_str(log_lev)}) for log_lev, log_str in self.log_buffer]),
-                **{"code"     : "%d" % (max([log_lev for log_lev, log_str in self.log_buffer] + [logging_tools.LOG_LEVEL_OK])),
-                   "errors"   : "%d" % (num_errors),
-                   "warnings" : "%d" % (num_warnings),
-                   "messages" : "%d" % (len(self.log_buffer))}),
+                    *[E.message(log_str, **{
+                        "log_level"     : "{:d}".format(log_lev),
+                        "log_level_str" : logging_tools.get_log_level_str(log_lev)}) for log_lev, log_str in self.log_buffer]),
+                **{"code"     : "{:d}".format(max([log_lev for log_lev, log_str in self.log_buffer] + [logging_tools.LOG_LEVEL_OK])),
+                   "errors"   : "{:d}".format(num_errors),
+                   "warnings" : "{:d}".format(num_warnings),
+                   "messages" : "{:d}".format(len(self.log_buffer))}),
             E.values(
                 *[self._get_value_xml(key, value) for key, value in self.val_dict.iteritems()]
             )
@@ -187,9 +188,9 @@ def send_emergency_mail(**kwargs):
     if request:
         msg_lines.extend([
             "",
-            "djangouser: %s" % (unicode(request.user)),
-            "PATH_INFO: %s" % (request.META.get("PATH_INFO", "nor found")),
-            "USER_AGENT: %s" % (request.META.get("HTTP_USER_AGENT", "not found"))])
+            "djangouser : {}".format(unicode(request.user)),
+            "PATH_INFO  : {}".format(request.META.get("PATH_INFO", "nor found")),
+            "USER_AGENT : {}".format(request.META.get("HTTP_USER_AGENT", "not found"))])
     header_cs = "utf-8"
     mesg = email.mime.text.MIMEText("\n".join(msg_lines), _charset=header_cs)
     mesg["Subject"] = "Python error"
@@ -253,7 +254,7 @@ def contact_server(request, srv_type, send_com, **kwargs):
             result = None
     else:
         result = None
-        _err_str = "srv_type '%s' not defined in routing" % (srv_type)
+        _err_str = u"srv_type '{}' not defined in routing".format(srv_type)
         if _xml_req:
             request.xml_response.error(_err_str)
         else:

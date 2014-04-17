@@ -19,6 +19,7 @@
             <tr>
                 <th>command</th>
                 <th>created</th>
+                <th>user</th>
                 <th>state</th>
                 <th>cause</th>
                 <th>initiator</th>
@@ -29,6 +30,7 @@
             <tr ng-repeat="job in jobs | paginator:this" ng-class="get_line_class(job)">
                 <th>{{ job.command }}</th>
                 <td>{{ get_time(job.date) }} ({{ get_diff_time(job.date) }})</td>
+                <td>{{ job.user }}</td>
                 <td>{{ job.state }}</td>
                 <td>{{ job.cause }}</td>
                 <td>{{ job.initiator }}</td>

@@ -92,7 +92,7 @@
                     <span class="glyphicon glyphicon-question-sign" style="font-size:12px;"></span>
                 </button>
                 &nbsp;
-                <span ng-show="NUM_BACKGROUND_JOBS" ng-class="get_background_job_class()" title="number of background jobs">{{ NUM_BACKGROUND_JOBS }}</span>
+                <span ng-show="NUM_BACKGROUND_JOBS" ng-class="get_background_job_class()" ng-click="redirect_to_bgj_info()" title="number of background jobs">{{ NUM_BACKGROUND_JOBS }}</span>
             </p>
         </li>
         <li>
@@ -188,6 +188,10 @@ menu_controller = menu_module.controller("menu_base", ["$scope", "$timeout", "$w
             return false
         $scope.redirect_to_handbook = () ->
             window.location = "/cluster/doc/main.pdf"
+            return false
+        $scope.redirect_to_bgj_info = () ->
+            if $scope.check_perm('background_job.show_background')
+                window.location = "{% url 'user:background_job_info' %}"
             return false
         $scope.get_background_job_class = () ->
             if $scope.NUM_BACKGROUND_JOBS < 4
