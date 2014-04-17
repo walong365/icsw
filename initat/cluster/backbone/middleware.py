@@ -20,12 +20,14 @@ import struct
 import termios
 
 from threading import local
+import threading
 
 _thread_local = local()
 
 class thread_local_middleware(object):
     def process_request(self, request):
         _thread_local.request = request
+        _thread_local.test = "test"
         _thread_local.user = getattr(request, "user", None)
     @property
     def user(self):

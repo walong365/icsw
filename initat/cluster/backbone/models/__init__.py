@@ -15,6 +15,7 @@ from rest_framework import serializers
 import crypt
 import datetime
 import ipvx_tools
+import net_tools
 import logging
 import logging_tools
 import marshal
@@ -33,6 +34,8 @@ from initat.cluster.backbone.models.package import * # @UnusedWildImport
 from initat.cluster.backbone.models.user import * # @UnusedWildImport
 from initat.cluster.backbone.models.background import * # @UnusedWildImport
 from initat.cluster.backbone.signals import user_changed, group_changed
+
+from initat.cluster.backbone.middleware import thread_local_middleware
 
 # do not use, problems with import
 # from initat.cluster.backbone.models.partition import * # @UnusedWildImport
@@ -79,7 +82,7 @@ def group_changed(*args, **kwargs):
 def _insert_user_sync_job(cause, obj):
     # create entry to be handled by the cluster-server
     _cmd = "sync_users"
-    # get local device
+    # get local device, key is defined in routing.py
     _routing_key = "_WF_ROUTING"
     _resolv_dict = cache.get(_routing_key)
     if _resolv_dict:
@@ -95,12 +98,20 @@ def _insert_user_sync_job(cause, obj):
             cause=u"{} of '{}'".format(cause, unicode(obj)),
             state="pre-init",
             initiator=device.objects.get(Q(pk=_local_pk)),
+            user=thread_local_middleware().user,
             command_xml=unicode(server_command.srv_command(command=_cmd)),
             # valid for 4 hours
             valid_until=cluster_timezone.localize(datetime.datetime.now() + datetime.timedelta(3600 * 4)),
         )
+        _signal_localhost()
     else:
         logger.error("cannot identify local device")
+
+def _signal_localhost():
+    # signal clusterserver running on localhost
+    _sender = net_tools.zmq_connection("wf_server_notify")
+    _sender.add_connection("tcp://localhost:8004", server_command.srv_command(command="wf_notify"), multi=True)
+    _sender.close()
 
 def boot_uuid(cur_uuid):
     return "{}-boot".format(cur_uuid[:-5])

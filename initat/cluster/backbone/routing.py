@@ -24,7 +24,6 @@
 """ helper functions for cluster routing """
 
 from config_tools import server_check, device_with_config, router_object
-from django.conf import settings
 from django.core.cache import cache
 from django.db.models import Q
 from initat.cluster.backbone.models import device
