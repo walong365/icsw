@@ -54,6 +54,7 @@ class notify_mixin(object):
                 logging_tools.LOG_LEVEL_CRITICAL
             )
             self["exit_requested"] = True
+        self.register_timer(self.check_notify, 0, instant=True, oneshot=True)
     def check_notify(self):
         self.srv_routing.update()
         # step 1: delete pending jobs which are too old
