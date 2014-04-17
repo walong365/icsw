@@ -46,6 +46,7 @@ def main():
     parser.add_argument("--kva", help="key-attribute pair, colon-separated [key:attribute:value]", action="append")
     parser.add_argument("--kv-path", help="path to store key-value pairs under", type=str, default="")
     parser.add_argument("--split", help="set read socket (for split-socket command), [%(default)s]", type=str, default="")
+    parser.add_argument("--only-send", help="only send command, [%(default)s]", default=False, action="store_true")
     # parser.add_argument("arguments", nargs="+", help="additional arguments")
     ret_state = 1
     args, other_args = parser.parse_known_args()
@@ -78,7 +79,16 @@ def main():
             conn_str)
         if args.split:
             print "receive connection string is '{}'".format(recv_conn_str)
-    client.connect(conn_str)
+    try:
+        client.connect(conn_str)
+    except:
+        print(
+            "error connecting to {}: {}".format(
+                conn_str,
+                process_tools.get_except_info()
+            )
+        )
+        sys.exit(-1)
     if recv_sock:
         recv_sock.connect(recv_conn_str)
     for cur_iter in xrange(args.iterations):
@@ -116,52 +126,53 @@ def main():
         client.send_unicode(unicode(srv_com))
         if args.verbose:
             print srv_com.pretty_print()
-        r_client = client if not recv_sock else recv_sock
-        if r_client.poll(args.timeout * 1000):
-            recv_str = r_client.recv()
-            if r_client.getsockopt(zmq.RCVMORE):
-                recv_id = recv_str
+        if not args.only_send:
+            r_client = client if not recv_sock else recv_sock
+            if r_client.poll(args.timeout * 1000):
                 recv_str = r_client.recv()
-            else:
-                recv_id = ""
-            timeout = False
-        else:
-            print "error timeout"
-            timeout = True
-        e_time = time.time()
-        if args.verbose:
-            if timeout:
-                print "communication took {}".format(
-                    logging_tools.get_diff_time_str(e_time - s_time),
-                )
-            else:
-                print "communication took {}, received {:d} bytes".format(
-                    logging_tools.get_diff_time_str(e_time - s_time),
-                    len(recv_str),
-                )
-        if not timeout:
-            try:
-                srv_reply = server_command.srv_command(source=recv_str)
-            except:
-                print "cannot interpret reply: {}".format(process_tools.get_except_info())
-                print "reply was: {}".format(recv_str)
-                ret_state = 1
-            else:
-                if args.verbose:
-                    print
-                    print "XML response (id: '{}'):".format(recv_id)
-                    print
-                    print srv_reply.pretty_print()
-                    print
-                if "result" in srv_reply:
-                    print srv_reply["result"].attrib["reply"]
-                    ret_state = int(srv_reply["result"].attrib["state"])
-                elif len(srv_reply.xpath(".//nodestatus", smart_strings=False)):
-                    print srv_reply.xpath(".//nodestatus", smart_strings=False)[0].text
-                    ret_state = 0
+                if r_client.getsockopt(zmq.RCVMORE):
+                    recv_id = recv_str
+                    recv_str = r_client.recv()
                 else:
-                    print "no result tag found in reply"
-                    ret_state = 2
+                    recv_id = ""
+                timeout = False
+            else:
+                print "error timeout"
+                timeout = True
+            e_time = time.time()
+            if args.verbose:
+                if timeout:
+                    print "communication took {}".format(
+                        logging_tools.get_diff_time_str(e_time - s_time),
+                    )
+                else:
+                    print "communication took {}, received {:d} bytes".format(
+                        logging_tools.get_diff_time_str(e_time - s_time),
+                        len(recv_str),
+                    )
+            if not timeout:
+                try:
+                    srv_reply = server_command.srv_command(source=recv_str)
+                except:
+                    print "cannot interpret reply: {}".format(process_tools.get_except_info())
+                    print "reply was: {}".format(recv_str)
+                    ret_state = 1
+                else:
+                    if args.verbose:
+                        print
+                        print "XML response (id: '{}'):".format(recv_id)
+                        print
+                        print srv_reply.pretty_print()
+                        print
+                    if "result" in srv_reply:
+                        print srv_reply["result"].attrib["reply"]
+                        ret_state = int(srv_reply["result"].attrib["state"])
+                    elif len(srv_reply.xpath(".//nodestatus", smart_strings=False)):
+                        print srv_reply.xpath(".//nodestatus", smart_strings=False)[0].text
+                        ret_state = 0
+                    else:
+                        print "no result tag found in reply"
+                        ret_state = 2
     client.close()
     if recv_sock:
         recv_sock.close()

@@ -885,7 +885,7 @@ class my_formatter(logging.Formatter):
         if self.__max_line_length and len(message.msg) > self.__max_line_length + 20:
             left = len(message.msg) - self.__max_line_length
             if left > 4:
-                message.msg = "{} ({:d} left)".format(message.msg[:self.__max_line_length], len(message.msg))
+                message.msg = u"{} ({:d} left)".format(message.msg[:self.__max_line_length], len(message.msg))
         return logging.Formatter.format(self, message)
 
 class logfile(logging.handlers.BaseRotatingHandler):
@@ -903,7 +903,7 @@ class logfile(logging.handlers.BaseRotatingHandler):
     def shouldRollover(self, record):
         do_rollover = False
         if self.__max_size > 0:
-            msg = "{}\n".format(self.format(record))
+            msg = u"{}\n".format(self.format(record))
             try:
                 if self.stream.tell() + len(msg) > self.__max_size:
                     do_rollover = True
