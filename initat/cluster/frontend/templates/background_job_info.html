@@ -23,6 +23,8 @@
                 <th>state</th>
                 <th>cause</th>
                 <th>initiator</th>
+                <th>commands</th>
+                <th>valid until</th>
             </tr>
         </thead>
         <tbody>
@@ -34,6 +36,8 @@
                 <td>{{ job.state }}</td>
                 <td>{{ job.cause }}</td>
                 <td>{{ job.initiator }}</td>
+                <td>{{ job.num_servers || '-' }}</td>
+                <td>{{ get_time(job.valid_until) }}</td>
             </tr>
         </tbody>
     </table>

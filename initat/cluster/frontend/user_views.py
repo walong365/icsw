@@ -49,9 +49,8 @@ class overview(permission_required_mixin, View):
     @method_decorator(login_required)
     def get(self, request, *args, **kwargs):
         return render_me(request, "user_overview_tree.html", {
-            # "user_detail_form" : user_detail_form(),
             "group_detail_form" : group_detail_form(),
-            "user_detail_form" : user_detail_form(),
+            "user_detail_form"  : user_detail_form(),
             })()
 
 class sync_users(View):

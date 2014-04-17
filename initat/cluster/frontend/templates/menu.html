@@ -92,7 +92,7 @@
                     <span class="glyphicon glyphicon-question-sign" style="font-size:12px;"></span>
                 </button>
                 &nbsp;
-                <span ng-show="NUM_BACKGROUND_JOBS" ng-class="get_background_job_class()" ng-click="redirect_to_bgj_info()" title="number of background jobs">{{ NUM_BACKGROUND_JOBS }}</span>
+                <button type="button" ng-show="NUM_BACKGROUND_JOBS" ng-class="get_background_job_class()" ng-click="redirect_to_bgj_info()" title="number of background jobs">{{ NUM_BACKGROUND_JOBS }}</button>
             </p>
         </li>
         <li>
@@ -195,9 +195,9 @@ menu_controller = menu_module.controller("menu_base", ["$scope", "$timeout", "$w
             return false
         $scope.get_background_job_class = () ->
             if $scope.NUM_BACKGROUND_JOBS < 4
-                return "label label-warning"
+                return "btn btn-xs btn-warning"
             else
-                return "label label-danger"
+                return "btn btn-xs btn-danger"
         $scope.show_time()
         #$scope.update_progress_bar()
         $scope.rebuild_config = () ->
