@@ -364,7 +364,7 @@ class server_process(threading_tools.process_pool, version_check_mixin):
         self.__external_cmd_file = ext_name
     def _init_network_sockets(self):
         client = self.zmq_context.socket(zmq.ROUTER)
-        client.setsockopt(zmq.IDENTITY, get_server_uuid("md-config-server"))
+        client.setsockopt(zmq.IDENTITY, get_server_uuid("md-config"))
         client.setsockopt(zmq.SNDHWM, 1024)
         client.setsockopt(zmq.RCVHWM, 1024)
         client.setsockopt(zmq.LINGER, 0)
