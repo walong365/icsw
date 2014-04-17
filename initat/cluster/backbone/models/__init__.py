@@ -93,7 +93,8 @@ def _insert_user_sync_job(cause, obj):
             _local_pk = device.objects.get(Q(name=process_tools.get_machine_name())).pk
         except device.DoesNotExist:
             _local_pk = 0
-    if _local_pk:
+    # we need local_pk and a valid user (so we have to be called via webfrontend)
+    if _local_pk and thread_local_middleware().user:
         background_job.objects.create(
             command=_cmd,
             cause=u"{} of '{}'".format(cause, unicode(obj)),

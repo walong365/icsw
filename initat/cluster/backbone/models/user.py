@@ -678,6 +678,7 @@ class user_serializer(serializers.ModelSerializer):
             "title", "email", "pager", "comment", "tel", "password", "active", "export",
             "secondary_groups", "user_permission_set", "user_object_permission_set",
             "allowed_device_groups", "aliases", "db_is_auth_for_password", "is_superuser",
+            "home_dir_created",
             )
 
 class user_flat_serializer(serializers.ModelSerializer):
@@ -685,7 +686,7 @@ class user_flat_serializer(serializers.ModelSerializer):
         model = user
         fields = ("idx", "login", "uid", "group", "first_name", "last_name", "shell",
             "title", "email", "pager", "comment", "tel", "password", "active", "export",
-            "aliases", "db_is_auth_for_password", "is_superuser",
+            "aliases", "db_is_auth_for_password", "is_superuser", "home_dir_created",
             )
 
 @receiver(signals.m2m_changed, sender=user.perms.through)
