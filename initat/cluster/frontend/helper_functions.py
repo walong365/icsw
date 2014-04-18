@@ -233,6 +233,17 @@ def contact_server(request, srv_type, send_com, **kwargs):
         # split to node-local servers ?
         if kwargs.get("split_send", True):
             send_list = cur_router.check_for_split_send(srv_type, send_com)
+            if cur_router.no_bootserver_devices:
+            # for _miss_pk, _miss_name in cur_router.no_bootserver_devices:
+                cur_router._log(
+                    request,
+                    _log_lines,
+                    "no bootserver for {}: {}".format(
+                        logging_tools.get_plural("device", len(cur_router.no_bootserver_devices)),
+                        ", ".join(sorted([_v[1] for _v in cur_router.no_bootserver_devices])),
+                    ),
+                    logging_tools.LOG_LEVEL_ERROR
+                )
         else:
             send_list = [(None, send_com)]
         if send_list:
@@ -255,10 +266,7 @@ def contact_server(request, srv_type, send_com, **kwargs):
     else:
         result = None
         _err_str = u"srv_type '{}' not defined in routing".format(srv_type)
-        if _xml_req:
-            request.xml_response.error(_err_str)
-        else:
-            _log_lines.append((logging_tools.LOG_LEVEL_ERROR, _err_str))
+        cur_router._log(request, _log_lines, _err_str, logging_tools.LOG_LEVEL_ERROR)
     if _xml_req:
         return result
     else:
