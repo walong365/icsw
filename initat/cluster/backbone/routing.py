@@ -129,7 +129,7 @@ class srv_type_routing(object):
     def local_device(self):
         return self._local_device
     @property
-    def not_bootserver_devices(self):
+    def no_bootserver_devices(self):
         return self.__no_bootserver_devices
     def _build_resolv_dict(self):
         # local device
@@ -210,17 +210,28 @@ class srv_type_routing(object):
     def _split_send(self, srv_type, in_com):
         self.__no_bootserver_devices = set()
         cur_devs = in_com.xpath(".//ns:devices/ns:devices/ns:device")
-        _dev_dict = {}
+        _dev_dict, _bs_hints = ({}, {})
         for _dev in cur_devs:
             _pk = int(_dev.attrib["pk"])
+            _bs_hints[_pk] = int(_dev.get("bootserver_hint", "0"))
             _dev_dict[_pk] = etree.tostring(_dev)
+        # eliminate zero hints
+        _bs_hints = {key : value for key, value in _bs_hints.iteritems() if value}
         _pk_list = _dev_dict.keys()
         _cl_dict = {}
         for _value in device.objects.filter(Q(pk__in=_pk_list)).values_list("pk", "bootserver", "name"):
             if _value[1]:
                 _cl_dict.setdefault(_value[1], []).append(_value[0])
+            elif _value[0] in _bs_hints:
+                # using boothints
+                self.logger.warning("using bootserver_hint {:d} for {:d} ({})".format(
+                    _bs_hints[_value[0]],
+                    _value[0],
+                    _value[2],
+                    ))
+                _cl_dict.setdefault(_bs_hints[_value[0]], []).append(_value[0])
             else:
-                self.__no_bootserver_devices.add(_value[0])
+                self.__no_bootserver_devices.add((_value[0], _value[2]))
                 self.logger.error("device {:d} ({}) has no bootserver associated".format(
                     _value[0],
                     _value[2],
@@ -245,6 +256,11 @@ class srv_type_routing(object):
             return []
     def start_result_feed(self):
         self.result = None
+    def _log(self, request, log_lines, log_str, log_level=logging_tools.LOG_LEVEL_OK):
+        if request:
+            request.xml_response.log(log_level, log_str)
+        else:
+            log_lines.append((log_level, log_str))
     def feed_result(self, orig_com, result, request, conn_str, log_lines, log_result, log_error):
         if result is None:
             if log_error:
@@ -252,18 +268,12 @@ class srv_type_routing(object):
                     conn_str,
                     orig_com["command"].text
                 )
-                if request:
-                    request.xml_response.error(_err_str)
-                else:
-                    log_lines.append((logging_tools.LOG_LEVEL_ERROR, _err_str))
+                self._log(request, log_lines, _err_str, logging_tools.LOG_LEVEL_ERROR)
         else:
             # TODO: check if result is set
             if log_result:
                 log_str, log_level = result.get_log_tuple()
-                if request:
-                    request.xml_response.log(log_level, log_str)
-                else:
-                    log_lines.append((log_level, log_str))
+                self._log(request, log_lines, log_str, log_level)
             if self.result is None:
                 self.result = result
             else:
