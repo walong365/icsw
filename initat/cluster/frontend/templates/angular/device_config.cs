@@ -46,7 +46,7 @@ device_config_template = """
             <div class="form-group">
                 <input
                     type="button"
-                    ng-class="{'btn btn-sm btn-success' : only_selected, 'btn btn-sm' : !only_selected}"
+                    ng-class="only_selected && 'btn btn-sm btn-success' || 'btn btn-sm'"
                     ng-click="only_selected = !only_selected"
                     value="only selected"
                     title="show only configs selected anywhere in the curren selection"
@@ -271,6 +271,13 @@ device_config_module.controller("config_ctrl", ["$scope", "$compile", "$filter",
                 $scope.device_lut = {}
                 $scope.meta_devices = {}
                 $scope.devg_md_lut = {}
+                # multiple name count (for names in config catalogs)
+                mn_dict = {}
+                for entry in data[1]
+                    if entry.name not of mn_dict
+                        mn_dict[entry.name] = 0
+                    mn_dict[entry.name]++
+                $scope.config_mn_dict = mn_dict
                 for entry in data[0]
                     if entry.idx in $scope.devsel_list
                         $scope.devices.push(entry)
@@ -281,6 +288,7 @@ device_config_module.controller("config_ctrl", ["$scope", "$compile", "$filter",
                     $scope.all_devices.push(entry)
                 $scope.configs = data[1]
                 $scope.config_catalogs = data[2]
+                $scope.cc_lut = build_lut(data[2])
                 $scope.init_devices(pre_sel)
                 $scope.new_filter_set($scope.name_filter, false)
             )
@@ -316,7 +324,10 @@ device_config_module.controller("config_ctrl", ["$scope", "$compile", "$filter",
                 num_vars = entry.config_str_set.length + entry.config_int_set.length + entry.config_bool_set.length + entry.config_blob_set.length
                 num_ccs = entry.mon_check_command_set.length
                 num_scripts = entry.config_script_set.length
-                entry.info_str = "#{entry.name} (#{num_vars}, #{num_scripts}, #{num_ccs})"
+                if $scope.config_mn_dict[entry.name] > 1
+                    entry.info_str = "#{entry.name}[#{$scope.cc_lut[entry.config_catalog].name}] (#{num_vars}, #{num_scripts}, #{num_ccs})"
+                else
+                    entry.info_str = "#{entry.name} (#{num_vars}, #{num_scripts}, #{num_ccs})"
                 $scope.configs_lut[entry.idx] = entry
         $scope.set_line_list = () ->
             PER_LINE = 6

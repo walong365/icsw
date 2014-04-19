@@ -680,7 +680,7 @@ class kernel_form(ModelForm):
                 {% verbatim %}<input
                     type="button"
                     disabled="disabled"
-                    ng-class="{'btn btn-sm btn-danger' : !edit_obj.stage1_lo_present, 'btn btn-sm btn-success' : edit_obj.stage1_lo_present}"
+                    ng-class="edit_obj.stage1_lo_present && 'btn btn-sm btn-success' || 'btn btn-sm btn-danger'"
                     ng-value="fn.get_flag_value(edit_obj, 'stage1_lo_present')"
                     ></input>{% endverbatim %}
             </div>
@@ -693,7 +693,7 @@ class kernel_form(ModelForm):
                 {% verbatim %}<input
                     type="button"
                     disabled="disabled"
-                    ng-class="{'btn btn-sm btn-danger' : !edit_obj.stage1_cpio_present, 'btn btn-sm btn-success' : edit_obj.stage1_cpio_present}"
+                    ng-class="edit_obj.stage1_cpio_present && 'btn btn-sm btn-success' || 'btn btn-sm btn-danger'"
                     ng-value="fn.get_flag_value(edit_obj, 'stage1_cpio_present')"
                     ></input>{% endverbatim %}
             </div>
@@ -706,7 +706,7 @@ class kernel_form(ModelForm):
                 {% verbatim %}<input
                     type="button"
                     disabled="disabled"
-                    ng-class="{'btn btn-sm btn-danger' : !edit_obj.stage1_cramfs_present, 'btn btn-sm btn-success' : edit_obj.stage1_cramfs_present}"
+                    ng-class="edit_obj.stage1_cramfs_present && 'btn btn-sm btn-success' || 'btn btn-sm btn-danger'"
                     ng-value="fn.get_flag_value(edit_obj, 'stage1_cramfs_present')"
                     ></input>{% endverbatim %}
             </div>
@@ -719,7 +719,7 @@ class kernel_form(ModelForm):
                 {% verbatim %}<input
                     type="button"
                     disabled="disabled"
-                    ng-class="{'btn btn-sm btn-danger' : !edit_obj.stage2_present, 'btn btn-sm btn-success' : edit_obj.stage2_present}"
+                    ng-class="edit_obj.stage2_present && 'btn btn-sm btn-success' || 'btn btn-sm btn-danger'"
                     ng-value="fn.get_flag_value(edit_obj, 'stage2_present')"
                     ></input>{% endverbatim %}
             </div>
@@ -2400,10 +2400,18 @@ class netdevice_form(ModelForm):
             ),
             Fieldset(
                 "",
-                Button("show ethtool", "show ethtool", ng_click="_edit_obj.show_ethtool = !_edit_obj.show_ethtool", ng_class="{'btn btn-sm btn-success' : !_edit_obj.show_ethtool, 'btn btn-sm' : _edit_obj.show_ethtool}"),
-                Button("show hardware", "show hardware", ng_click="_edit_obj.show_hardware = !_edit_obj.show_hardware", ng_class="{'btn btn-sm btn-success' : !_edit_obj.show_hardware, 'btn btn-sm' : _edit_obj.show_hardware}"),
-                Button("show vlan", "show vlan", ng_click="_edit_obj.show_vlan = !_edit_obj.show_vlan", ng_class="{'btn btn-sm btn-success' : !_edit_obj.show_vlan, 'btn btn-sm' : _edit_obj.show_vlan}"),
-                Button("show mac", "show mac", ng_click="_edit_obj.show_mac = !_edit_obj.show_mac", ng_class="{'btn btn-sm btn-success' : !_edit_obj.show_mac, 'btn btn-sm' : _edit_obj.show_mac}"),
+                Button("show ethtool", "show ethtool", ng_click="_edit_obj.show_ethtool = !_edit_obj.show_ethtool",
+                    ng_class="_edit_obj.show_ethtool && 'btn btn-sm btn-success' || 'btn btn-sm'",
+                ),
+                Button("show hardware", "show hardware", ng_click="_edit_obj.show_hardware = !_edit_obj.show_hardware",
+                    ng_class="_edit_obj.show_hardware && 'btn btn-sm btn-success' || 'btn btn-sm'",
+                ),
+                Button("show vlan", "show vlan", ng_click="_edit_obj.show_vlan = !_edit_obj.show_vlan",
+                    ng_class="_edit_obj.show_vlan && 'btn btn-sm btn-success' || 'btn btn-sm'",
+                ),
+                Button("show mac", "show mac", ng_click="_edit_obj.show_mac = !_edit_obj.show_mac",
+                    ng_class="_edit_obj.show_mac && 'btn btn-sm btn-success' || 'btn btn-sm'",
+                ),
             ),
             Fieldset(
                 "hardware settings",

@@ -61,6 +61,7 @@ config_patterns = patterns(
     url("^download_config/(?P<hash>.*)$", config_views.download_configs.as_view(), name="download_configs"),
     url("^upload_config$"       , config_views.upload_config.as_view()           , name="upload_config"),
     url("^xml/show_dev_vars"    , config_views.get_device_cvars.as_view()        , name="get_device_cvars"),
+    url("^xml/copy_mon$"        , config_views.copy_mon.as_view()                , name="copy_mon"),
 )
 
 boot_patterns = patterns(

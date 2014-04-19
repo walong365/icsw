@@ -232,7 +232,16 @@ mon_table_template = """
             <td>{{ obj.name }}</td>
             <td>{{ obj.mon_service_templ | array_lookup:this.mon_service_templ:'name':'-' }}</td>
             <td>{{ obj.description }}</td>
-            <td>{{ obj.command_line }}</td>
+            <td title="{{ obj.command_line }}">
+                <input
+                    type="button"
+                    title="expand / collapse full command line"
+                    ng-class="obj._show_full_command && 'btn btn-xs btn-success' || 'btn btn-xs btn-default'"
+                    value="e" ng-click="obj._show_full_command = !obj._show_full_command">
+                </input>
+                <span ng-if="!obj._show_full_command">{{ obj.command_line | limit_text:60:true }}</span>
+                <span ng-if="obj._show_full_command">{{ obj.command_line }}</span>
+            </td>
             <td>{{ obj.volatile | yesno1 }}</td>
             <td>{{ obj.enable_perfdata | yesno1 }}</td>
             <td>{{ obj.is_event_handler | yesno1 }}</td>
@@ -240,6 +249,7 @@ mon_table_template = """
             <td>{{ obj.event_handler_enabled }}</td>
             <td>{{ get_num_cats(obj) }}</td>
             <td><input type="button" class="btn btn-primary btn-xs" ng-click="edit_mon(config, obj, $event)" value="modify"></input></td>
+            <td><input type="button" class="btn btn-warning btn-xs" ng-click="copy_mon(config, obj, $event)" value="duplicate"></input></td>
             <td><input type="button" class="btn btn-danger btn-xs" ng-click="delete_mon(config, obj)" value="delete"></input></td>
         </tr>
     </tbody>
@@ -560,6 +570,19 @@ config_ctrl = config_module.controller("config_ctrl", ["$scope", "$compile", "$f
                     if mod_obj != false
                         $scope.filter_conf(config, $scope)
             )
+        $scope.copy_mon = (config, obj, event) ->
+            call_ajax
+                url     : "{% url 'config:copy_mon' %}"
+                data    :
+                    "config" : config.idx
+                    "mon"    : obj.idx
+                success : (xml) =>
+                    if parse_xml_response(xml)
+                        new_moncc = angular.fromJson($(xml).find("value[name='mon_cc']").text())
+                        config.mon_check_command_set.push(new_moncc)
+                        $scope.$apply(() ->
+                            $scope._set_fields(config)
+                        )
         $scope.create_mon = (config, event) ->
             $scope.mon_edit.create_list = config.mon_check_command_set
             $scope.mon_edit.new_object = (scope) ->

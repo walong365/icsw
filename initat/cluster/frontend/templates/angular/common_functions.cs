@@ -805,9 +805,12 @@ angular.module(
         return (in_value) ->
             return if in_value then "set" else "not set"
 ).filter("limit_text", () ->
-    return (text, max_len) ->
+    return (text, max_len, show_info) ->
         if text.length > max_len
-            return text[0..max_len] + "..."
+            if show_info
+                return text[0..max_len] + "... (#{max_len}/#{text.length})"
+            else
+                return text[0..max_len] + "..."
         else
             return text
 ).filter("show_user", () ->

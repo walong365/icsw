@@ -33,7 +33,8 @@ from django.utils.decorators import method_decorator
 from django.views.generic import View
 from initat.cluster.backbone import models
 from initat.cluster.backbone.models import config, device, device_config, tree_node, \
-    get_related_models, config_dump_serializer
+    get_related_models, config_dump_serializer, mon_check_command, mon_check_command_serializer, \
+    to_system_tz, category
 from initat.cluster.backbone.render import permission_required_mixin, render_me
 from initat.cluster.frontend.forms import config_form, config_str_form, config_int_form, \
     config_bool_form, config_script_form, mon_check_command_form, config_catalog_form
@@ -48,6 +49,7 @@ import json
 import logging
 import logging_tools
 import process_tools
+import re
 import server_command
 
 logger = logging.getLogger("cluster.config")
@@ -70,16 +72,16 @@ class show_configs(permission_required_mixin, View):
 def delete_object(request, del_obj, **kwargs):
     num_ref = get_related_models(del_obj)
     if num_ref:
-        request.xml_response.error("cannot delete %s '%s': %s" % (
+        request.xml_response.error("cannot delete {} '{}': {}".format(
             del_obj._meta.object_name,
             unicode(del_obj),
             logging_tools.get_plural("reference", num_ref)), logger)
     else:
         del_obj.delete()
         if kwargs.get("xml_log", True):
-            request.xml_response.info("deleted %s" % (del_obj._meta.object_name), logger)
+            request.xml_response.info("deleted {}".format(del_obj._meta.object_name), logger)
         else:
-            logger.info("deleted %s" % (del_obj._meta.object_name))
+            logger.info("deleted {}".format(del_obj._meta.object_name))
 
 def _get_device_configs(sel_list, **kwargs):
     dev_list = [key.split("__")[1] for key in sel_list if key.startswith("dev__")]
@@ -117,8 +119,8 @@ def _get_device_configs(sel_list, **kwargs):
         for conf_id in dg_dict.get(sbm_dev.device_group_id, []):
             # print unicode(sbm_dev)
             xml_resp.append(E.device_config(
-                device="%d" % (sbm_dev.pk),
-                config="%d" % (conf_id),
+                device="{:d}".format(sbm_dev.pk),
+                config="{:d}".format(conf_id),
                 meta="1"))
     # print etree.tostring(xml_resp, pretty_print=True)
     return xml_resp
@@ -143,7 +145,7 @@ class alter_config_cb(View):
         is_meta = cur_dev.device_type.identifier == "MD"
         # all devices of device_group
         all_devs = cur_dev.device_group.device_group.all()
-        logger.info("device %s [%s]/ config %s: %s (%s in device_group)" % (
+        logger.info("device {} [{}]/ config {}: {} ({} in device_group)".format(
             unicode(cur_dev),
             "MD" if is_meta else "-",
             unicode(cur_conf),
@@ -162,7 +164,7 @@ class alter_config_cb(View):
                         set_meta = False
                     else:
                         to_remove.delete()
-                        request.xml_response.info("removed %s from devices" % (logging_tools.get_plural("config", len(to_remove))), logger)
+                        request.xml_response.info("removed {} from devices".format(logging_tools.get_plural("config", len(to_remove))), logger)
                 # unset all devices except meta_device
                 if set_meta:
                     try:
@@ -170,7 +172,7 @@ class alter_config_cb(View):
                     except device_config.DoesNotExist:
                         device_config(device=cur_dev,
                                       config=cur_conf).save()
-                        request.xml_response.info("set meta config %s" % (unicode(cur_conf)), logger)
+                        request.xml_response.info("set meta config {}".format(unicode(cur_conf)), logger)
                     else:
                         request.xml_response.warn("meta config already set", logger)
             else:
@@ -180,7 +182,7 @@ class alter_config_cb(View):
                     request.xml_response.warn("meta config already unset", logger)
                 else:
                     delete_object(request, del_obj, xml_log=False)
-                    request.xml_response.info("meta config '%s' removed" % (unicode(cur_conf)), logger)
+                    request.xml_response.info("meta config '{}' removed".format(unicode(cur_conf)), logger)
         else:
             # get meta device
             try:
@@ -194,9 +196,9 @@ class alter_config_cb(View):
                 except device_config.DoesNotExist:
                     device_config(device=cur_dev,
                                   config=cur_conf).save()
-                    request.xml_response.info("set config %s" % (unicode(cur_conf)), logger)
+                    request.xml_response.info("set config {}".format(unicode(cur_conf)), logger)
                 else:
-                    request.xml_response.error("config %s already set" % (unicode(cur_conf)), logger)
+                    request.xml_response.error("config {} already set".format(unicode(cur_conf)), logger)
             else:
                 try:
                     del_obj = device_config.objects.get(Q(device=cur_dev) & Q(config=cur_conf))
@@ -206,11 +208,11 @@ class alter_config_cb(View):
                         try:
                             meta_conf = device_config.objects.get(Q(device=meta_dev) & Q(config=cur_conf))
                         except device_config.DoesNotExist:
-                            request.xml_response.error("config %s already unset and meta config also not set" % (unicode(cur_conf)), logger)
+                            request.xml_response.error("config {} already unset and meta config also not set".format(unicode(cur_conf)), logger)
                         else:
                             # set config for all devices exclude the meta device and this device
                             if get_related_models(meta_conf):
-                                request.xml_response.error("meta config %s is in use" % (unicode(cur_conf)), logger)
+                                request.xml_response.error("meta config {} is in use".format(unicode(cur_conf)), logger)
                             else:
                                 meta_conf.delete()
                                 add_devs = 0
@@ -218,23 +220,23 @@ class alter_config_cb(View):
                                     add_devs += 1
                                     device_config(device=set_dev,
                                                   config=cur_conf).save()
-                                request.xml_response.warn("removed meta conf %s and set %s" % (
+                                request.xml_response.warn("removed meta conf {} and set {}".format(
                                     unicode(cur_conf),
                                     logging_tools.get_plural("device", add_devs)), logger)
 
                     else:
-                        request.xml_response.warn("config %s already unset" % (unicode(cur_conf)), logger)
+                        request.xml_response.warn("config {} already unset".format(unicode(cur_conf)), logger)
                 else:
                     delete_object(request, del_obj, xml_log=False)
-                    request.xml_response.info("remove config %s" % (unicode(cur_conf)), logger)
-        xml_resp = _get_device_configs(["dev__%d" % (sel_dev.pk) for sel_dev in all_devs], conf=cur_conf)
+                    request.xml_response.info("remove config {}".format(unicode(cur_conf)), logger)
+        xml_resp = _get_device_configs(["dev__{:d}".format(sel_dev.pk) for sel_dev in all_devs], conf=cur_conf)
         xml_resp.extend([
-            E.config(pk="%d" % (cur_conf.pk)),
+            E.config(pk="{:d}".format(cur_conf.pk)),
             E.devices(
                 *[
                     E.device(
-                        pk="%d" % (sel_dev.pk),
-                        key="dev__%d" % (sel_dev.pk)
+                        pk="{:d}".format(sel_dev.pk),
+                        key="dev__{:d}".format(sel_dev.pk)
                     ) for sel_dev in all_devs])
         ])
         request.xml_response["response"] = xml_resp
@@ -266,32 +268,32 @@ class tree_struct(object):
             self.childs = []
     def get_name(self):
         if self.node:
-            return "%s%s" % (
+            return "{}{}".format(
                 self.wc_file.dest,
                 "/" if self.node.is_dir else "")
         else:
             return "empty"
     def __unicode__(self):
         return "\n".join([
-            "%s%s (%d, %d), %s" % (
+            "{}{} ({:d}, {:d}), {}".format(
                 "  " * self.depth,
                 unicode(self.node),
                 self.depth,
                 len(self),
                 self.get_name())
             ] +
-            ["%s" % (unicode(sub_entry)) for sub_entry in self.childs])
+            [u"{}".format(unicode(sub_entry)) for sub_entry in self.childs])
     def get_xml(self):
         return E.tree(
             self.wc_file.get_xml(),
             *[sub_node.get_xml() for sub_node in self.childs],
             name=self.get_name(),
-            depth="%d" % (self.depth),
+            depth="{:d}".format(self.depth),
             is_dir="1" if self.node.is_dir else "0",
             is_link="1" if self.node.is_link else "0",
-            node_id="%d_%d" % (self.dev_pk, self.node.pk),
+            node_id="{:d}_{:d}".format(self.dev_pk, self.node.pk),
             # needed for linking in frontend angular code
-            parent_id="%s" % ("%d_%d" % (self.dev_pk, self.parent.node.pk) if self.parent else "0")
+            parent_id="{}".format("{:d}_{:d}".format(self.dev_pk, self.parent.node.pk) if self.parent else "0")
         )
 
 class generate_config(View):
@@ -306,13 +308,13 @@ class generate_config(View):
         dev_list = device.objects.prefetch_related("categories").filter(Q(pk__in=sel_list)).order_by("name")
         dev_dict = dict([(cur_dev.pk, cur_dev) for cur_dev in dev_list])
         logger.info(
-            "generating config for %s: %s" % (
+            "generating config for {}: {}".format(
                 logging_tools.get_plural("device", len(dev_list)),
                 ", ".join([unicode(dev) for dev in dev_list])))
         srv_com = server_command.srv_command(command="build_config")
         srv_com["devices"] = srv_com.builder(
             "devices",
-            *[srv_com.builder("device", pk="%d" % (cur_dev.pk)) for cur_dev in dev_list])
+            *[srv_com.builder("device", pk="{:d}".format(cur_dev.pk)) for cur_dev in dev_list])
         result = contact_server(request, "config", srv_com, timeout=30, log_result=False)
         if result:
             request.xml_response["result"] = E.devices()
@@ -334,9 +336,9 @@ class download_configs(View):
     @method_decorator(login_required)
     def get(self, request, *args, **kwargs):
         conf_ids = json.loads(kwargs["hash"])
-        logger.info("got download request for %s: %s" % (
+        logger.info("got download request for {}: {}".format(
             logging_tools.get_plural("config", len(conf_ids)),
-            ", ".join(["%d" % (val) for val in sorted(conf_ids)])))
+            ", ".join(["{:d}".format(val) for val in sorted(conf_ids)])))
         configs = []
         # res_xml.append(configs)
         conf_list = config.objects.filter(Q(pk__in=conf_ids)).prefetch_related(
@@ -356,7 +358,7 @@ class download_configs(View):
             pk_el.getparent().remove(pk_el)
         act_resp = HttpResponse(etree.tostring(xml_tree, pretty_print=True),
                                 mimetype="application/xml")
-        act_resp["Content-disposition"] = "attachment; filename=config_%s.xml" % (datetime.datetime.now().strftime("%Y%m%d_%H%M%S"))
+        act_resp["Content-disposition"] = "attachment; filename=config_{}.xml".format(datetime.datetime.now().strftime("%Y%m%d_%H%M%S"))
         return act_resp
 
 IGNORE_WHEN_EMPTY = ["categories"]
@@ -388,13 +390,13 @@ class upload_config(View):
                 c_el = interpret_xml("list-item", _config, {})
                 mapping = {"config" : c_el.findtext("name")}
                 for targ_list in ["mon_check_command", "config_bool", "config_str", "config_int", "config_blob", "config_script"]:
-                    c_el.append(getattr(E, "%s_set" % (targ_list))())
+                    c_el.append(getattr(E, "{}_set".format(targ_list))())
                 new_tree.append(c_el)
                 for sub_el in _config.xpath(".//config_str|.//config_int|.//config_bool|.//config_blob|.//config_script|.//mon_check_command", smart_strings=False):
                     if "type" in sub_el.attrib:
-                        t_list = c_el.find("config_%s_set" % (sub_el.get("type")))
+                        t_list = c_el.find("config_{}_set".format(sub_el.get("type")))
                     else:
-                        t_list = c_el.find("%s_set" % (sub_el.tag))
+                        t_list = c_el.find("{}_set".format(sub_el.tag))
                     if sub_el.tag == "config_script":
                         sub_el.attrib["description"] = "config script"
                     t_list.append(interpret_xml("list-item", sub_el, mapping))
@@ -405,7 +407,7 @@ class upload_config(View):
         try:
             conf_list = XMLParser().parse(_data)
         except:
-            logger.error("cannot interpret upload file: %s" % (process_tools.get_except_info()))
+            logger.error("cannot interpret upload file: {}".format(process_tools.get_except_info()))
         else:
             # print cache.get("x")
             # print conf_list, _data.getvalue()
@@ -426,7 +428,7 @@ class upload_config(View):
                         _ent.object.save()
                         # pass
                     except:
-                        logger.error("error saving entry '%s': %s" % (
+                        logger.error("error saving entry '{}': {}".format(
                             unicode(_ent),
                             process_tools.get_except_info()
                             ))
@@ -434,25 +436,25 @@ class upload_config(View):
                         # add sub-sets
                         for key in _sets.iterkeys():
                             for entry in _sets[key]:
-                                _sub_ent = getattr(models, "%s_nat_serializer" % (key[:-4]))(data=entry)
+                                _sub_ent = getattr(models, "{}_nat_serializer".format(key[:-4]))(data=entry)
                                 if _sub_ent.is_valid():
                                     try:
                                         _sub_ent.object.save()
                                     except:
-                                        logger.error("error saving subentry '%s': %s" % (
+                                        logger.error("error saving subentry '{}': {}".format(
                                             unicode(_sub_ent),
                                             process_tools.get_except_info()
                                             ))
                                     else:
                                         sub_added += 1
                                 else:
-                                    logger.error("cannot create %s object: %s" % (
+                                    logger.error("cannot create {} object: {}".format(
                                         key,
                                         unicode(_sub_ent.errors)))
                         added += 1
                 else:
-                    logger.error("cannot create config object: %s" % (unicode(_ent.errors)))
-            logger.info("uploaded %d, added %d / %d" % (len(conf_list), added, sub_added))
+                    logger.error("cannot create config object: {}".format(unicode(_ent.errors)))
+            logger.info("uploaded {:d}, added {:d} / {:d}".format(len(conf_list), added, sub_added))
         return HttpResponseRedirect(reverse("config:show_configs"))
 
 class get_device_cvars(View):
@@ -467,7 +469,7 @@ class get_device_cvars(View):
         srv_com = server_command.srv_command(command="get_config_vars")
         srv_com["devices"] = srv_com.builder(
             "devices",
-            *[srv_com.builder("device", pk="%d" % (int(cur_pk))) for cur_pk in pk_list])
+            *[srv_com.builder("device", pk="{:d}".format(int(cur_pk))) for cur_pk in pk_list])
         result = contact_server(request, "config", srv_com, timeout=30, log_result=False)
         if result:
             request.xml_response["result"] = E.devices()
@@ -478,3 +480,30 @@ class get_device_cvars(View):
                 request.xml_response["result"].append(res_node)
                 request.xml_response.log(int(dev_node.attrib["state_level"]), dev_node.attrib["info_str"], logger=logger)
 
+class copy_mon(View):
+    @method_decorator(login_required)
+    @method_decorator(xml_wrapper)
+    def post(self, request):
+        _post = request.POST
+        _config = config.objects.get(Q(pk=_post["config"]))
+        mon_source = mon_check_command.objects.get(Q(pk=_post["mon"]))
+        name_re = re.compile("^(?P<pre>.*)_(?P<idx>\d+)$")
+        if name_re.match(mon_source.name):
+            new_name = mon_source.name
+        else:
+            new_name = "{}_1".format(mon_source.name)
+        while True:
+            if mon_check_command.objects.filter(Q(name=new_name)).count():
+                name_s = name_re.match(new_name)
+                new_name = u"{}_{:d}".format(name_s.group("pre"), int(name_s.group("idx")) + 1)
+            else:
+                break
+        src_cats = mon_source.categories.all().values_list("pk", flat=True)
+        mon_source.pk = None
+        mon_source.name = new_name
+        mon_source.save()
+        mon_source.categories.add(*[_entry for _entry in category.objects.filter(Q(pk__in=src_cats))])
+        logger.info("duplicate mon_check_command '{}' ({:d})".format(unicode(mon_source), mon_source.pk))
+        _json = mon_check_command_serializer(mon_source).data
+        _json["date"] = _json["date"].isoformat()
+        request.xml_response["mon_cc"] = json.dumps(_json)
