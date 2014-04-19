@@ -195,7 +195,7 @@ class config_catalog_serializer(serializers.ModelSerializer):
 
 class config(models.Model):
     idx = models.AutoField(db_column="new_config_idx", primary_key=True)
-    name = models.CharField(unique=True, max_length=192, blank=False)
+    name = models.CharField(max_length=192, blank=False)
     config_catalog = models.ForeignKey(config_catalog, null=True)
     description = models.CharField(max_length=765, default="", blank=True)
     priority = models.IntegerField(null=True, default=0)
@@ -207,32 +207,32 @@ class config(models.Model):
     categories = models.ManyToManyField("backbone.category")
     def get_use_count(self):
         return self.device_config_set.all().count()
-    def get_xml(self, full=True):
-        r_xml = E.config(
-            pk="%d" % (self.pk),
-            key="conf__%d" % (self.pk),
-            name=unicode(self.name),
-            description=unicode(self.description or ""),
-            priority="%d" % (self.priority or 0),
-            # config_type="%d" % (self.config_type_id),
-            parent_config="%d" % (self.parent_config_id or 0),
-            categories="::".join(["%d" % (cur_cat.pk) for cur_cat in self.categories.all()]),
-        )
-        if full:
-            # explicit but exposes chached queries
-            dev_names = [dev_conf.device.name for dev_conf in self.device_config_set.all()]
-            r_xml.attrib["num_device_configs"] = "%d" % (len(dev_names))
-            r_xml.attrib["device_list"] = logging_tools.compress_list(sorted(dev_names))
-            r_xml.extend([
-                E.config_vars(*[cur_var.get_xml() for cur_var in
-                                list(self.config_str_set.all()) + \
-                                list(self.config_int_set.all()) + \
-                                list(self.config_bool_set.all()) + \
-                                list(self.config_blob_set.all())]),
-                E.mon_check_commands(*[cur_ngc.get_xml(with_exclude_devices=full) for cur_ngc in list(self.mon_check_command_set.all())]),
-                E.config_scripts(*[cur_cs.get_xml() for cur_cs in list(self.config_script_set.all())])
-            ])
-        return r_xml
+    # def get_xml(self, full=True):
+    #    r_xml = E.config(
+    #        pk="%d" % (self.pk),
+    #        key="conf__%d" % (self.pk),
+    #        name=unicode(self.name),
+    #        description=unicode(self.description or ""),
+    #        priority="%d" % (self.priority or 0),
+    #        # config_type="%d" % (self.config_type_id),
+    #        parent_config="%d" % (self.parent_config_id or 0),
+    #        categories="::".join(["%d" % (cur_cat.pk) for cur_cat in self.categories.all()]),
+    #    )
+    #    if full:
+    #        # explicit but exposes chached queries
+    #        dev_names = [dev_conf.device.name for dev_conf in self.device_config_set.all()]
+    #        r_xml.attrib["num_device_configs"] = "%d" % (len(dev_names))
+    #        r_xml.attrib["device_list"] = logging_tools.compress_list(sorted(dev_names))
+    #        r_xml.extend([
+    #            E.config_vars(*[cur_var.get_xml() for cur_var in
+    #                            list(self.config_str_set.all()) + \
+    #                            list(self.config_int_set.all()) + \
+    #                            list(self.config_bool_set.all()) + \
+    #                            list(self.config_blob_set.all())]),
+    #            E.mon_check_commands(*[cur_ngc.get_xml(with_exclude_devices=full) for cur_ngc in list(self.mon_check_command_set.all())]),
+    #            E.config_scripts(*[cur_cs.get_xml() for cur_cs in list(self.config_script_set.all())])
+    #        ])
+    #    return r_xml
     def __unicode__(self):
         return self.name
     def show_variables(self, log_com, detail=False):
@@ -247,7 +247,8 @@ class config(models.Model):
         return self.name
     class Meta:
         db_table = u'new_config'
-        ordering = ["name"]
+        ordering = ["name", "config_catalog__name"]
+        unique_together = (("name", "config_catalog"),)
     class CSW_Meta:
         permissions = (
             ("modify_config", "modify global configurations", False),
@@ -370,16 +371,16 @@ class config_str(models.Model):
     value = models.TextField(blank=True)
     device = models.ForeignKey("device", null=True, blank=True)
     date = models.DateTimeField(auto_now_add=True)
-    def get_xml(self):
-        return E.config_str(
-            pk="%d" % (self.pk),
-            key="varstr__%d" % (self.pk),
-            type="str",
-            name=self.name,
-            description=self.description,
-            config="%d" % (self.config_id),
-            value=self.value or ""
-        )
+    # def get_xml(self):
+    #    return E.config_str(
+    #        pk="%d" % (self.pk),
+    #        key="varstr__%d" % (self.pk),
+    #        type="str",
+    #        name=self.name,
+    #        description=self.description,
+    #        config="%d" % (self.config_id),
+    #        value=self.value or ""
+    #    )
     def __unicode__(self):
         return self.value or u""
     class Meta:
@@ -409,16 +410,16 @@ class config_blob(models.Model):
     value = models.TextField(blank=True)
     device = models.ForeignKey("device", null=True, blank=True)
     date = models.DateTimeField(auto_now_add=True)
-    def get_xml(self):
-        return E.config_str(
-            pk="%d" % (self.pk),
-            key="varblob__%d" % (self.pk),
-            type="blob",
-            name=self.name,
-            description=self.description,
-            config="%d" % (self.config_id),
-            value=self.value or ""
-        )
+    # def get_xml(self):
+    #    return E.config_str(
+    #        pk="%d" % (self.pk),
+    #        key="varblob__%d" % (self.pk),
+    #        type="blob",
+    #        name=self.name,
+    #        description=self.description,
+    #        config="%d" % (self.config_id),
+    #        value=self.value or ""
+    #    )
     class Meta:
         db_table = u'config_blob'
 
@@ -444,16 +445,16 @@ class config_bool(models.Model):
     value = models.IntegerField(null=True, blank=True)
     device = models.ForeignKey("device", null=True, blank=True)
     date = models.DateTimeField(auto_now_add=True)
-    def get_xml(self):
-        return E.config_str(
-            pk="%d" % (self.pk),
-            key="varbool__%d" % (self.pk),
-            type="bool",
-            name=self.name,
-            description=self.description,
-            config="%d" % (self.config_id),
-            value="1" if self.value else "0"
-        )
+    # def get_xml(self):
+    #    return E.config_str(
+    #        pk="%d" % (self.pk),
+    #        key="varbool__%d" % (self.pk),
+    #        type="bool",
+    #        name=self.name,
+    #        description=self.description,
+    #        config="%d" % (self.config_id),
+    #        value="1" if self.value else "0"
+    #    )
     def __unicode__(self):
         return "True" if self.value else "False"
     class Meta:
@@ -491,16 +492,16 @@ class config_int(models.Model):
     value = models.IntegerField(null=True, blank=True)
     device = models.ForeignKey("device", null=True, blank=True)
     date = models.DateTimeField(auto_now_add=True)
-    def get_xml(self):
-        return E.config_str(
-            pk="%d" % (self.pk),
-            key="varint__%d" % (self.pk),
-            type="int",
-            name=self.name,
-            description=self.description,
-            config="%d" % (self.config_id),
-            value="%d" % (self.value or 0)
-        )
+    # def get_xml(self):
+    #    return E.config_str(
+    #        pk="%d" % (self.pk),
+    #        key="varint__%d" % (self.pk),
+    #        type="int",
+    #        name=self.name,
+    #        description=self.description,
+    #        config="%d" % (self.config_id),
+    #        value="%d" % (self.value or 0)
+    #    )
     def __unicode__(self):
         if type(self.value) in [str, unicode]:
             self.value = int(self.value)
@@ -533,17 +534,17 @@ class config_script(models.Model):
     error_text = models.TextField(blank=True, default="")
     device = models.ForeignKey("device", null=True, blank=True)
     date = models.DateTimeField(auto_now_add=True)
-    def get_xml(self):
-        self.enabled = self.enabled or False
-        return E.config_script(
-            pk="%d" % (self.pk),
-            key="cscript__%d" % (self.pk),
-            name=self.name,
-            enabled="1" if self.enabled else "0",
-            priority="%d" % (self.priority or 0),
-            config="%d" % (self.config_id),
-            value=self.value or ""
-        )
+    # def get_xml(self):
+    #    self.enabled = self.enabled or False
+    #    return E.config_script(
+    #        pk="%d" % (self.pk),
+    #        key="cscript__%d" % (self.pk),
+    #        name=self.name,
+    #        enabled="1" if self.enabled else "0",
+    #        priority="%d" % (self.priority or 0),
+    #        config="%d" % (self.config_id),
+    #        value=self.value or ""
+    #    )
     class Meta:
         db_table = u'config_script'
         ordering = ("priority", "name",)

@@ -203,12 +203,13 @@ class srv_type_routing(object):
         cache.set(self.ROUTING_KEY, json.dumps(_resolv_dict), 60 * 15)
         return _resolv_dict
     def check_for_split_send(self, srv_type, in_com):
+        # init error set
+        self.__no_bootserver_devices = set()
         if srv_type in _NODE_SPLIT:
             return self._split_send(srv_type, in_com)
         else:
             return [(None, in_com)]
     def _split_send(self, srv_type, in_com):
-        self.__no_bootserver_devices = set()
         cur_devs = in_com.xpath(".//ns:devices/ns:devices/ns:device")
         _dev_dict, _bs_hints = ({}, {})
         for _dev in cur_devs:
