@@ -1,5 +1,3 @@
-#!/usr/bin/python-init -Ot
-#
 # Copyright (C) 2008-2009,2012-2014 Andreas Lang-Nevyjel init.at
 #
 # Send feedback to: <lang-nevyjel@init.at>
@@ -21,12 +19,9 @@
 from initat.host_monitoring import limits, hm_classes
 import commands
 import logging_tools
-import os
-import time
-import re
 import process_tools
-import pprint
-import sys
+import re
+import time
 
 class _general(hm_classes.hm_module):
     def init_module(self):
@@ -36,7 +31,7 @@ class _general(hm_classes.hm_module):
     def _exec_command(self, com):
         if com.startswith("."):
             if self.__ipsec_command:
-                com = "%s %s" % (self.__ipsec_command, com[1:])
+                com = "{} {}".format(self.__ipsec_command, com[1:])
             else:
                 self.log("no ipsec command found",
                          logging_tools.LOG_LEVEL_ERROR)
@@ -44,7 +39,7 @@ class _general(hm_classes.hm_module):
         if com:
             stat, out = commands.getstatusoutput(com)
             if stat:
-                self.log("cannot execute %s (%d): %s" % (com, stat, out),
+                self.log("cannot execute {} ({:d}: {}".format(com, stat, out),
                          logging_tools.LOG_LEVEL_WARN)
                 out = ""
         return out.split("\n")
@@ -89,7 +84,7 @@ class _general(hm_classes.hm_module):
                                     port_num = "0"
                                 con_key, port_num = (con_key[1:-1], int(port_num))
                                 parts = [part.strip() for part in (" ".join(parts)).split(";") if part.strip()]
-                                con_dict[con_key]["sa_dict"].setdefault(("con_%d.%d" % (sa_key, port_num)), []).extend(parts)
+                                con_dict[con_key]["sa_dict"].setdefault(("con_{:d}.{:d}".format(sa_key, port_num)), []).extend(parts)
         return con_dict
     def init_machine_vector(self, mv):
         self.__ipsec_re = re.compile("^\s*(?P<conn_name>\S+){(?P<conn_id>\d+)}:\s+.*\s+(?P<bytes_in>\d+)\s+bytes_i.*\s+(?P<bytes_out>\d+)\s+bytes_o.*$")
@@ -104,22 +99,22 @@ class _general(hm_classes.hm_module):
                     _cn = _gd["conn_name"]
                     _found.add(_cn)
                     if _cn not in self.__ipsec_conns:
-                        self.log("registered IPSec connection %s" % (_cn))
+                        self.log("registered IPSec connection {}".format(_cn))
                         self.__ipsec_conns[_cn] = ipsec_con(_cn, mv)
                     self.__ipsec_conns[_cn].feed(mv, int(_gd["bytes_in"]), int(_gd["bytes_out"]))
                 else:
-                    self.log("cannot parse line '%s'" % (line), logging_tools.LOG_LEVEL_WARN)
+                    self.log("cannot parse line '{}'".format(line), logging_tools.LOG_LEVEL_WARN)
             _to_del = set(self.__ipsec_conns.keys()) - _found
             for _del in _to_del:
-                self.log("unregistered IPSec connection %s" % (_del))
+                self.log("unregistered IPSec connection {}".format(_del))
                 self.__ipsec_conns[_del].close(mv)
                 del self.__ipsec_conns[_del]
 
 class ipsec_con(object):
     def __init__(self, name, mv):
         self.name = name
-        mv.register_entry(self.key("in"), 0, "bytes received for connection %s" % (self.name), "Byte/s", 1024)
-        mv.register_entry(self.key("out"), 0, "bytes transmitted for connection %s" % (self.name), "Byte/s", 1024)
+        mv.register_entry(self.key("in"), 0, "bytes received for connection {}".format(self.name), "Byte/s", 1024)
+        mv.register_entry(self.key("out"), 0, "bytes transmitted for connection {}".format(self.name), "Byte/s", 1024)
         self.__in, self.__out = (0, 0)
         self.__last = None
     def feed(self, mv, _in, _out):
@@ -131,7 +126,7 @@ class ipsec_con(object):
         self.__last = cur_time
         self.__in, self.__out = (_in, _out)
     def key(self, key):
-        return "net.ipsec.%s.%s" % (self.name, key)
+        return "net.ipsec.{}.{}".format(self.name, key)
     def close(self, mv):
         mv.unregister_entry(self.key("in"))
         mv.unregister_entry(self.key("out"))
@@ -245,9 +240,9 @@ class ipsec_status_command(hm_classes.hm_command):
                     ret_state, ret_list = (limits.nag_STATE_OK, [])
                     for con_name in sorted(_con_dict):
                         if _con_dict[con_name].tunnel_ok():
-                            ret_list.append("%s ok" % (con_name))
+                            ret_list.append("{} ok".format(con_name))
                         else:
-                            ret_list.append("no installed tunnel for %s" % (con_name))
+                            ret_list.append("no installed tunnel for {}".format(con_name))
                             ret_state = max(ret_state, limits.nag_STATE_CRITICAL)
                     return ret_state, ", ".join(ret_list)
                 else:
@@ -256,11 +251,11 @@ class ipsec_status_command(hm_classes.hm_command):
                 if first_arg in _con_dict:
                     _conn = _con_dict[first_arg]
                     if _conn.tunnel_ok():
-                        return limits.nag_STATE_OK, "connection %s is defined and tunnel is installed" % (_conn.name)
+                        return limits.nag_STATE_OK, "connection {} is defined and tunnel is installed".format(_conn.name)
                     else:
-                        return limits.nag_STATE_CRITICAL, "connection %s is defined but no tunnel installed" % (_conn.name)
+                        return limits.nag_STATE_CRITICAL, "connection {} is defined but no tunnel installed".format(_conn.name)
                 else:
-                    return limits.nag_STATE_CRITICAL, "connection '%s' not found (defined: %s)" % (
+                    return limits.nag_STATE_CRITICAL, "connection '{}' not found (defined: {})".format(
                         first_arg,
                         ", ".join(sorted(_con_dict)) or "none")
         else:
@@ -271,9 +266,9 @@ class ipsec_status_command(hm_classes.hm_command):
                     ret_state, ret_list = (limits.nag_STATE_OK, [])
                     for con_name in sorted(con_dict):
                         if "erouted" in con_dict[con_name]["flags"]:
-                            ret_list.append("%s ok" % (con_name))
+                            ret_list.append("{} ok".format(con_name))
                         else:
-                            ret_list.append("%s is not erouted" % (con_name))
+                            ret_list.append("{} is not erouted".format(con_name))
                             ret_state = max(ret_state, limits.nag_STATE_CRITICAL)
                     return ret_state, ", ".join(ret_list)
                 else:
@@ -285,18 +280,15 @@ class ipsec_status_command(hm_classes.hm_command):
                     ret_list.append("is erouted")
                     for key in con_stuff["keys"]:
                         if key.endswith("proposal"):
-                            ret_list.append("%s: %s" % (key, "/".join(con_stuff["keys"][key])))
+                            ret_list.append("{}: {}".format(key, "/".join(con_stuff["keys"][key])))
                 else:
                     ret_list.append("is not erouted")
                     ret_state = max(ret_state, limits.nag_STATE_CRITICAL)
-                return ret_state, "connection %s: %s" % (first_arg,
-                                                         ", ".join(ret_list))
+                return ret_state, "connection {}: {}".format(
+                    first_arg,
+                    ", ".join(ret_list))
             else:
-                return limits.nag_STATE_CRITICAL, "error connection '%s' not found (defined: %s)" % (
+                return limits.nag_STATE_CRITICAL, "error connection '{}' not found (defined: {})".format(
                     first_arg,
                     ", ".join(sorted(con_dict)) or "none")
-
-if __name__ == "__main__":
-    print "This is a loadable module."
-    sys.exit(0)
 

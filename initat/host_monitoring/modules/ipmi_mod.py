@@ -1,5 +1,3 @@
-#!/usr/bin/python-init -Ot
-#
 # Copyright (C) 2010,2013-2014 Andreas Lang-Nevyjel, init.at
 #
 # Send feedback to: <lang-nevyjel@init.at>
@@ -22,23 +20,17 @@
 
 """ IPMI sensor readings """
 
-from initat.host_monitoring.config import global_config
 from initat.host_monitoring import hm_classes, limits
-from lxml import etree # @UnresolvedImport
+from initat.host_monitoring.config import global_config
 import commands
 import logging_tools
-import os
-import pprint
 import process_tools
-import re
-import stat
-import subprocess
 import server_command
-import sys
+import subprocess
 import time
 
 IPMI_LIMITS = ["ln", "lc", "lw", "uw", "uc", "un"]
-IPMI_LONG_LIMITS = ["%s%s" % ({"l" : "lower", "u" : "upper"}[key[0]], key[1:]) for key in IPMI_LIMITS]
+IPMI_LONG_LIMITS = ["{}{}".format({"l" : "lower", "u" : "upper"}[key[0]], key[1:]) for key in IPMI_LIMITS]
 
 def parse_ipmi_type(name, sensor_type):
     key, info, unit, base = ("", "", "", 1)
@@ -49,21 +41,21 @@ def parse_ipmi_type(name, sensor_type):
     if sensor_type == "rpm":
         if lparts[-1] == "tach":
             lparts.pop(-1)
-        key = "fan.%s" % (key_str)
-        info = "rotation of fan %s" % (" ".join(parts))
+        key = "fan.{}".format(key_str)
+        info = "rotation of fan {}".format(" ".join(parts))
         unit = "RPM"
         base = 1000
     elif sensor_type == "degrees c":
-        key = "temp.%s" % (key_str)
-        info = "Temperature of %s" % (" ".join(parts))
+        key = "temp.{}".format(key_str)
+        info = "Temperature of {}".format(" ".join(parts))
         unit = "C"
     elif sensor_type == "volts":
-        key = "volts.%s" % (key_str)
-        info = "Voltage of %s" % (" ".join(parts))
+        key = "volts.{}".format(key_str)
+        info = "Voltage of {}".format(" ".join(parts))
         unit = "V"
     elif sensor_type == "watts":
-        key = "watts.%s" % (key_str)
-        info = "Power usage of %s" % (" ".join(parts))
+        key = "watts.{}".format(key_str)
+        info = "Power usage of {}".format(" ".join(parts))
         unit = "W"
     return key, info, unit, base
 
@@ -99,7 +91,7 @@ class _general(hm_classes.hm_module):
                     self.ipmi_update = time.time()
                     self.popen = None
             if not self.popen:
-                self.popen = subprocess.Popen("%s sensor" % (self.it_command), shell=True, stderr=subprocess.STDOUT, stdout=subprocess.PIPE)
+                self.popen = subprocess.Popen("{} sensor".format(self.it_command), shell=True, stderr=subprocess.STDOUT, stdout=subprocess.PIPE)
     def check_ipmi_settings(self):
         cmd_name = "ipmitool"
         self.it_command = process_tools.find_file(cmd_name)
@@ -107,14 +99,14 @@ class _general(hm_classes.hm_module):
         if self.it_command:
             mp_command = process_tools.find_file("modprobe")
             self.log(
-                "found %s at %s" % (
+                "found {} at {}".format(
                     cmd_name,
                     self.it_command))
             self.log("trying to load ipmi kernel modules")
             for kern_mod in ["ipmi_si", "ipmi_devintf"]:
-                cmd = "%s %s" % (mp_command, kern_mod)
+                cmd = "{} {}".format(mp_command, kern_mod)
                 c_stat, c_out = commands.getstatusoutput(cmd)
-                self.log("calling '%s' gave (%d): %s" % (
+                self.log("calling '{}' gave ({:d}): {}".format(
                     cmd,
                     c_stat,
                     c_out
@@ -127,7 +119,7 @@ class _general(hm_classes.hm_module):
             # ipmi_sensor.update_all(self, self.log, ["rpm", "degrees c"])
         else:
             self.log(
-                "cmd %s not found" % (cmd_name),
+                "cmd {} not found".format(cmd_name),
                 logging_tools.LOG_LEVEL_WARN)
     def init_machine_vector(self, mv):
         self.ipmi_result = False
@@ -153,14 +145,14 @@ class ipmi_bg(hm_classes.subprocess_struct):
     def __init__(self, log_com, srv_com, ipmi_com, it_command):
         self.__log_com = log_com
         self.__ipmi_com = ipmi_com
-        hm_classes.subprocess_struct.__init__(self, srv_com, ["%s -s '%s'" % (
+        hm_classes.subprocess_struct.__init__(self, srv_com, ["{} -s '{}'".format(
             it_command,
             ipmi_com.Meta.command,
             )])
     def process(self):
         self.__ipmi_com.process(self)
     def log(self, what, level=logging_tools.LOG_LEVEL_OK):
-        self.__log_com("[ipmi] %s" % (what), level)
+        self.__log_com("[ipmi] {}".format(what), level)
 
 class _ipmi_sensor(object):
     class Meta:
@@ -175,7 +167,7 @@ class ipmi_sensor_command(hm_classes.hm_command):
     def __init__(self, name):
         hm_classes.hm_command.__init__(self, name, positional_arguments=True)
         for limit in IPMI_LONG_LIMITS:
-            self.parser.add_argument("--%s" % (limit), dest=limit, type=str, default="na")
+            self.parser.add_argument("--{}".format(limit), dest=limit, type=str, default="na")
     def __call__(self, srv_com, cur_ns):
         if self.module.ipmi_result:
             key_list = sorted(self.module.ipmi_result.keys())
@@ -184,7 +176,7 @@ class ipmi_sensor_command(hm_classes.hm_command):
                 if key in key_list:
                     key_list = [key]
                 else:
-                    srv_com.set_result("IPMI sensor '%s' not found" % (key), server_command.SRV_REPLY_STATE_ERROR)
+                    srv_com.set_result("IPMI sensor '{}' not found".format(key), server_command.SRV_REPLY_STATE_ERROR)
             if key_list:
                 _b = srv_com.builder("sensor_list")
                 for key in key_list:
@@ -192,13 +184,13 @@ class ipmi_sensor_command(hm_classes.hm_command):
                     _s = srv_com.builder("sensor")
                     _b.append(_s)
                     _s.attrib["key"] = key
-                    _s.attrib["value"] = "%.2f" % (value[0])
-                    _s.attrib["info"] = "%s" % (value[1])
-                    _s.attrib["unit"] = "%s" % (value[2])
-                    _s.attrib["base"] = "%d" % (value[3])
+                    _s.attrib["value"] = "{:.2f}".format(float(value[0]))
+                    _s.attrib["info"] = "{}".format(value[1])
+                    _s.attrib["unit"] = "{}".format(value[2])
+                    _s.attrib["base"] = "{:d}".format(int(value[3]))
                     for key in IPMI_LIMITS:
                         if value[4].get(key, ""):
-                            _s.attrib["limit_%s" % (key)] = value[4][key]
+                            _s.attrib["limit_{}".format(key)] = value[4][key]
                 srv_com["list"] = _b
         else:
             srv_com.set_result("no IPMI sensors found", server_command.SRV_REPLY_STATE_ERROR)
@@ -227,7 +219,7 @@ class ipmi_sensor_command(hm_classes.hm_command):
                     if l_dict[t_name] is not None:
                         if (log and cur_value >= l_dict[t_name]) or (not log and cur_value <= l_dict[t_name]):
                             ret_state = max(ret_state, t_state)
-                return ret_state, "%s: %s is %.2f %s" % (
+                return ret_state, "{}: {} is {:.2f} {}".format(
                     el.attrib["key"],
                     el.attrib["info"],
                     cur_value,
@@ -238,7 +230,7 @@ class ipmi_sensor_command(hm_classes.hm_command):
                 keys = s_list.xpath(".//@key", smart_strings=False)
                 out_list = logging_tools.new_form_list()
                 for key in keys:
-                    el = s_list.xpath("*[@key='%s']" % (key), smart_strings=False)[0]
+                    el = s_list.xpath("*[@key='{}']".format(key), smart_strings=False)[0]
                     v_list = [
                         logging_tools.form_entry(key, header="key"),
                         logging_tools.form_entry_right(el.attrib["value"], header="value"),
@@ -247,16 +239,13 @@ class ipmi_sensor_command(hm_classes.hm_command):
                         logging_tools.form_entry(el.attrib["info"], header="info"),
                         ]
                     for l_key in IPMI_LIMITS:
-                        x_key = "limit_%s" % (l_key)
+                        x_key = "limit_{}".format(l_key)
                         v_list.append(logging_tools.form_entry(el.attrib.get(x_key, "-"), header=x_key))
                     out_list.append(v_list)
-                return limits.nag_STATE_OK, "found %s:\n%s" % (
+                return limits.nag_STATE_OK, "found {}:\n{}".format(
                     logging_tools.get_plural("IPMI sensor", len(keys)),
                     unicode(out_list)
                     )
         else:
             return limits.nag_STATE_WARNING, "no IPMI sensors found"
 
-if __name__ == "__main__":
-    print "This is a loadable module."
-    sys.exit(0)

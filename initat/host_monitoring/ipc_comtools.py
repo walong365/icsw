@@ -19,7 +19,6 @@
 
 import process_tools
 import server_command
-import sys
 import time
 import zmq
 

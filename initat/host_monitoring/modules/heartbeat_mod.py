@@ -1,6 +1,4 @@
-#!/usr/bin/python-init -Ot
-#
-# Copyright (C) 2010,2012 Andreas Lang-Nevyjel, init.at
+# Copyright (C) 2010,2012-2014 Andreas Lang-Nevyjel, init.at
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -19,11 +17,9 @@
 #
 
 from initat.host_monitoring import limits, hm_classes
-from lxml import etree # @UnresolvedImport
 import commands
 import logging_tools
 import process_tools
-import sys
 
 class _general(hm_classes.hm_module):
     def _exec_command(self, com, **kwargs):
@@ -32,7 +28,7 @@ class _general(hm_classes.hm_module):
             return c_out, c_stat
         else:
             if c_stat:
-                self.log("cannot execute %s (%d): %s" % (com, c_stat, c_out), logging_tools.LOG_LEVEL_WARN)
+                self.log("cannot execute {} ({:d}): {}".format(com, c_stat, c_out), logging_tools.LOG_LEVEL_WARN)
                 c_out = ""
             return c_out.split("\n")
 
@@ -41,7 +37,7 @@ class corosync_status_command(hm_classes.hm_command):
         # not beautifull, FIXME ...
         c_out, c_stat = self.module._exec_command("/usr/sbin/corosync-cfgtool -s", full_output=True)
         srv_com["corosync_status"] = c_out
-        srv_com["corosync_status"].attrib["status"] = "%d" % (c_stat)
+        srv_com["corosync_status"].attrib["status"] = "{:d}".format(c_stat)
     def interpret(self, srv_com, cur_ns):
         coro_node = srv_com["corosync_status"]
         coro_stat = int(coro_node.attrib.get("status", "0"))
@@ -74,18 +70,19 @@ class corosync_status_command(hm_classes.hm_command):
             ret_state, out_f = (limits.nag_STATE_CRITICAL, r_lines)
         else:
             hb_dict = self._parse_lines(r_lines)
-            ret_state, out_f = (limits.nag_STATE_OK, ["node_id is %s" % (hb_dict["node_id"])])
+            ret_state, out_f = (limits.nag_STATE_OK, ["node_id is {}".format(hb_dict["node_id"])])
             ring_keys = sorted(hb_dict["rings"].keys())
             if ring_keys:
                 for ring_key in ring_keys:
                     ring_dict = hb_dict["rings"][ring_key]
                     ring_stat = ring_dict["status"]
-                    match_str = "ring %d" % (ring_key)
+                    match_str = "ring {:d}".format(ring_key)
                     if ring_stat.lower().startswith(match_str):
                         ring_stat = ring_stat[len(match_str) : ].strip()
-                    out_f.append("ring %d: id %s, %s" % (ring_key,
-                                                         ring_dict["id"],
-                                                         ring_stat))
+                    out_f.append("ring {:d}: id {}, {}".format(
+                        ring_key,
+                        ring_dict["id"],
+                        ring_stat))
                     if not ring_stat.lower().count("no faults"):
                         ret_state = max(ret_state, limits.nag_STATE_CRITICAL)
             else:
@@ -107,22 +104,25 @@ class heartbeat_status_command(hm_classes.hm_command):
                       "host"   : ""}
         hb_dict = self._parse_lines(r_dict)
         ret_state, out_f = (limits.nag_STATE_OK, [])
-        out_f.append("stack is %s (%s), DC is %s" % (hb_dict["stack"],
-                                                     hb_dict["version"],
-                                                     hb_dict["current_dc"]))
+        out_f.append("stack is {} ({}), DC is {}".format(
+            hb_dict["stack"],
+            hb_dict["version"],
+            hb_dict["current_dc"]))
         for online in [False, True]:
             nodes = [name for name, stuff in hb_dict["nodes"].iteritems() if stuff["online"] == online]
             if nodes:
-                out_f.append("%s(%d): [%s]" % ("online" if online else "offline",
-                                               len(nodes),
-                                               logging_tools.compress_list(nodes)))
+                out_f.append("{}({:d}): [{}]".format(
+                    "online" if online else "offline",
+                    len(nodes),
+                    logging_tools.compress_list(nodes)))
                 if not online:
                     ret_state = max(ret_state, limits.nag_STATE_WARNING)
         for res_name in sorted(hb_dict["resources"]):
             stuff = hb_dict["resources"][res_name]
             if "node" in stuff:
-                out_f.append("%s on %s" % (res_name,
-                                           stuff["node"]))
+                out_f.append("{} on {}".format(
+                    res_name,
+                    stuff["node"]))
             else:
                 out_f.append(res_name)
         return ret_state, ", ".join(out_f)
@@ -177,6 +177,3 @@ class heartbeat_status_command(hm_classes.hm_command):
                                     }
         return r_dict
 
-if __name__ == "__main__":
-    print "This is a loadable module."
-    sys.exit(0)

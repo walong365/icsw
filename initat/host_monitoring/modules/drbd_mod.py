@@ -1,6 +1,4 @@
-#!/usr/bin/python-init -Ot
-#
-# Copyright (C) 2008,2010,2012,2013 Andreas Lang-Nevyjel, init.at
+# Copyright (C) 2008-2014 Andreas Lang-Nevyjel, init.at
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -21,7 +19,6 @@
 from initat.host_monitoring import hm_classes, limits
 import logging_tools
 import server_command
-import sys
 try:
     import drbd_tools
 except ImportError:
@@ -41,8 +38,10 @@ class drbd_status_command(hm_classes.hm_command):
             self.module.drbd_config._parse_all()
             srv_com["drbd_status"] = self.module.drbd_config.get_config_dict()
         else:
-            srv_com["result"].attrib.update({"reply" : "no drbd_tools found",
-                                              "state" : "%d" % (server_command.SRV_REPLY_STATE_ERROR)})
+            srv_com.set_result(
+                "no drbd_tools found",
+                server_command.SRV_REPLY_STATE_ERROR
+            )
     def interpret(self, srv_com, cur_ns):
         return self._interpret(srv_com["drbd_status"], cur_ns)
     def interpret_old(self, result, cur_ns):
@@ -76,11 +75,11 @@ class drbd_status_command(hm_classes.hm_command):
                         dev_state = limits.nag_STATE_CRITICAL
                     if dev_state != limits.nag_STATE_OK:
                         # pprint.pprint(loc_dict)
-                        ret_strs.append("%s (%s, protocol '%s'%s): cs %s, %s, ds %s" % (
+                        ret_strs.append("{} ({}, protocol '{}'{}): cs {}, {}, ds {}".format(
                             key,
                             loc_dict["device"],
                             loc_dict.get("protocol", "???"),
-                            ", %s%%" % (loc_dict["resync_percentage"]) if loc_dict.has_key("resync_percentage") else "",
+                            ", {}%".format(loc_dict["resync_percentage"]) if loc_dict.has_key("resync_percentage") else "",
                             c_state,
                             "/".join(loc_dict.get("state", ["???"])),
                             "/".join(loc_dict.get("data_state", ["???"]))))
@@ -88,7 +87,7 @@ class drbd_status_command(hm_classes.hm_command):
                     # pprint.pprint(res_dict[key]["localhost"])
                 # pprint.pprint(state_dict)
                 ret_state = max(dev_states)
-                return ret_state, "%s; %s" % (
+                return ret_state, "{}; {}".format(
                     ", ".join([logging_tools.get_plural(key, len(value)) for key, value in state_dict.iteritems()]),
                     ", ".join(ret_strs) if ret_strs else "everything ok")
             else:
@@ -103,6 +102,3 @@ class drbd_status_command(hm_classes.hm_command):
         else:
             return limits.nag_STATE_WARNING, "empty dbrd_config"
 
-if __name__ == "__main__":
-    print "This is a loadable module."
-    sys.exit(0)

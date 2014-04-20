@@ -1,5 +1,3 @@
-#!/usr/bin/python-init -Ot
-#
 # Copyright (C) 2010,2012-2014 Andreas Lang-Nevyjel init.at
 #
 # Send feedback to: <lang-nevyjel@init.at>
@@ -79,17 +77,17 @@ class _general(hm_classes.hm_module):
             if sane_name not in self.doms_reg:
                 self.doms_reg.add(sane_name)
                 self.log("registering domain '{}' ({})".format(_d.name, sane_name))
-            base_name = "virt.%s" % (sane_name)
+            base_name = "virt.{}".format(sane_name)
             # CPU
-            self._save_mv(mv, "%s.cpu" % (base_name), "cpu usage for $2", "%", 1, _d.base_info.cpu_used)
+            self._save_mv(mv, "{}.cpu".format(base_name), "cpu usage for $2", "%", 1, _d.base_info.cpu_used)
             if _d.disk_dict:
                 # Disk
-                disk_base = "%s.disk" % (base_name)
+                disk_base = "{}.disk".format(base_name)
                 t_read, t_write = (0, 0)
                 for act_disk in _d.disk_dict:
                     self._save_mv(
                         mv,
-                        "%s.%s.read" % (disk_base, act_disk),
+                        "{}.{}.read".format(disk_base, act_disk),
                         "byte read from $4 ($2)",
                         "B/s",
                         1024,
@@ -97,7 +95,7 @@ class _general(hm_classes.hm_module):
                     )
                     self._save_mv(
                         mv,
-                        "%s.%s.write" % (disk_base, act_disk),
+                        "{}.{}.write".format(disk_base, act_disk),
                         "byte written to $4 ($2)",
                         "B/s",
                         1024,
@@ -107,7 +105,7 @@ class _general(hm_classes.hm_module):
                     t_write += _d.disk_dict[act_disk].stats["write"]["bytes"]
                 self._save_mv(
                     mv,
-                    "%s.%s.read" % (disk_base, "total"),
+                    "{}.{}.read".format(disk_base, "total"),
                     "byte read from $4 ($2)",
                     "B/s",
                     1024,
@@ -115,7 +113,7 @@ class _general(hm_classes.hm_module):
                 )
                 self._save_mv(
                     mv,
-                    "%s.%s.write" % (disk_base, "total"),
+                    "{}.{}.write".format(disk_base, "total"),
                     "byte written to $4 ($2)",
                     "B/s",
                     1024,
@@ -123,12 +121,12 @@ class _general(hm_classes.hm_module):
                 )
             if _d.net_dict:
                 # Network
-                net_base = "%s.net" % (base_name)
+                net_base = "{}.net".format(base_name)
                 t_read, t_write = (0, 0)
                 for act_net in _d.net_dict:
                     self._save_mv(
                         mv,
-                        "%s.%s.read" % (net_base, act_net),
+                        "{}.{}.read".format(net_base, act_net),
                         "byte read from $4 ($2)",
                         "B/s",
                         1024,
@@ -136,7 +134,7 @@ class _general(hm_classes.hm_module):
                     )
                     self._save_mv(
                         mv,
-                        "%s.%s.write" % (net_base, act_net),
+                        "{}.{}.write".format(net_base, act_net),
                         "byte written to $4 ($2)",
                         "B/s",
                         1024,
@@ -146,7 +144,7 @@ class _general(hm_classes.hm_module):
                     t_write += _d.net_dict[act_net].stats["write"]["bytes"]
                 self._save_mv(
                     mv,
-                    "%s.%s.read" % (net_base, "all"),
+                    "{}.{}.read".format(net_base, "all"),
                     "byte read from $4 ($2)",
                     "B/s",
                     1024,
@@ -154,7 +152,7 @@ class _general(hm_classes.hm_module):
                 )
                 self._save_mv(
                     mv,
-                    "%s.%s.write" % (net_base, "all"),
+                    "{}.{}.write".format(net_base, "all"),
                     "byte written to $4 ($2)",
                     "B/s",
                     1024,
@@ -164,9 +162,9 @@ class _general(hm_classes.hm_module):
         if rem_doms:
             self.doms_reg -= rem_doms
             for dom_del in rem_doms:
-                self.log("unregistering domain %s" % (dom_del))
-                mv.unregister_tree("virt.%s" % (dom_del))
-                self.mv_regs = set([value for value in self.mv_regs if not value.startswith("virt.%s." % (dom_del))])
+                self.log("unregistering domain {}".format(dom_del))
+                mv.unregister_tree("virt.{}".format(dom_del))
+                self.mv_regs = set([value for value in self.mv_regs if not value.startswith("virt.{}.".format(dom_del))])
 
 class libvirt_status_command(hm_classes.hm_command):
     def __call__(self, srv_com, cur_ns):
@@ -188,10 +186,10 @@ class libvirt_status_command(hm_classes.hm_command):
     def _interpret(self, r_dict, cur_ns):
         ret_state, out_f = (limits.nag_STATE_OK, [])
         if "info" in r_dict:
-            out_f.append("type is %s, version is %d.%d on an %s" % (
+            out_f.append("type is {}, version is {:d}.{:d} on an {}".format(
                 r_dict["type"],
-                (r_dict["version"] / 1000),
-                r_dict["version"] % 1000,
+                int((r_dict["version"] / 1000)),
+                int(r_dict["version"] % 1000),
                 r_dict["info"][0]))
         else:
             ret_state = limits.nag_STATE_CRITICAL
@@ -230,13 +228,16 @@ class domain_overview_command(hm_classes.hm_command):
         all_names = sorted(name_lut.keys())
         for act_name in all_names:
             n_dict = r_dict[name_lut[act_name]]
-            out_f.append("%s [#%d, %s]" % (act_name, name_lut[act_name],
-                                           logging_tools.get_plural("CPU", n_dict["info"][3])))
-        out_f.append("%d defined: %s" % (
+            out_f.append("{} [#{:d}, {}]".format(
+                act_name,
+                name_lut[act_name],
+                logging_tools.get_plural("CPU", n_dict["info"][3])))
+        out_f.append("{:d} defined: {}".format(
             len(d_dict),
             ", ".join(sorted(d_dict.keys())) or "none"))
-        return ret_state, "running: %s; %s" % (logging_tools.get_plural("domain", len(all_names)),
-                                               ", ".join(out_f))
+        return ret_state, "running: {}; {}".format(
+            logging_tools.get_plural("domain", len(all_names)),
+            ", ".join(out_f))
 
 class domain_status_command(hm_classes.hm_command):
     def __init__(self, name):
@@ -265,7 +266,7 @@ class domain_status_command(hm_classes.hm_command):
             if "desc" in dom_dict and dom_dict["desc"]:
                 xml_doc = etree.fromstring(dom_dict["desc"])
                 # print etree.tostring(xml_doc, pretty_print=True)
-                out_f.append("%s, memory %s, %s, %s, VNC port is %d" % (
+                out_f.append("{}, memory {}, {}, {}, VNC port is {:d}".format(
                     xml_doc.find(".//name").text,
                     logging_tools.get_size_str(int(xml_doc.find(".//memory").text) * 1024),
                     logging_tools.get_plural("disk", len(xml_doc.findall(".//disk"))),
@@ -275,15 +276,11 @@ class domain_status_command(hm_classes.hm_command):
             else:
                 if "cm" in dom_dict and dom_dict["cm"]:
                     ret_state = limits.nag_STATE_CRITICAL
-                    out_f.append("domain '%s' not running" % (dom_dict["cm"]))
+                    out_f.append("domain '{}' not running".format(dom_dict["cm"]))
                 else:
                     ret_state = limits.nag_STATE_WARNING
-                    out_f.append("no domain-info in result (domain %s not running)" % (", ".join(cur_ns.arguments)))
+                    out_f.append("no domain-info in result (domain {} not running)".format(", ".join(cur_ns.arguments)))
         else:
             ret_state = limits.nag_STATE_WARNING
             out_f.append("no domain-name give")
         return ret_state, ", ".join(out_f)
-
-if __name__ == "__main__":
-    print "This is a loadable module."
-    sys.exit(0)
