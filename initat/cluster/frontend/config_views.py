@@ -34,7 +34,7 @@ from django.views.generic import View
 from initat.cluster.backbone import models
 from initat.cluster.backbone.models import config, device, device_config, tree_node, \
     get_related_models, config_dump_serializer, mon_check_command, mon_check_command_serializer, \
-    to_system_tz, category
+    to_system_tz, category, config_str, config_script, config_bool, config_blob, config_int
 from initat.cluster.backbone.render import permission_required_mixin, render_me
 from initat.cluster.frontend.forms import config_form, config_str_form, config_int_form, \
     config_bool_form, config_script_form, mon_check_command_form, config_catalog_form
@@ -507,3 +507,23 @@ class copy_mon(View):
         _json = mon_check_command_serializer(mon_source).data
         _json["date"] = _json["date"].isoformat()
         request.xml_response["mon_cc"] = json.dumps(_json)
+
+class delete_objects(View):
+    @method_decorator(login_required)
+    @method_decorator(xml_wrapper)
+    def post(self, request):
+        del_list = json.loads(request.POST["obj_list"])
+        del_dict = {}
+        for obj_type, obj_idx in del_list:
+            del_dict.setdefault(obj_type, []).append(obj_idx)
+        for obj_type, pk_list in del_dict.iteritems():
+            {
+                "mon"    : mon_check_command,
+                "script" : config_script,
+                "str"    : config_str,
+                "int"    : config_int,
+                "bool"   : config_bool,
+                "blob"   : config_blob,
+            }[obj_type].objects.filter(Q(pk__in=pk_list)).delete()
+        request.xml_response.info("deleted {}".format(logging_tools.get_plural("object", len(del_list))))
+

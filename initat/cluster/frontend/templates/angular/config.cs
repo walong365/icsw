@@ -36,7 +36,15 @@ catalog_table_template = """
 """
 
 config_table_template = """
-<h2>{{ entries.length }} configurations, shown: {{ pagSettings.conf.filtered_len }}, <input type="button" class="btn btn-sm btn-success" value="create new config" ng-click="config_edit.create($event)"></input></h2>
+<h2>{{ entries.length }} configurations, shown: {{ pagSettings.conf.filtered_len }},
+    <input type="button" class="btn btn-sm btn-success" value="create new config" ng-click="config_edit.create($event)">
+    </input>
+    <span ng-show="selected_objects.length">
+    , {{ selected_objects.length }} selected,
+    <input type="button" class="btn btn-sm btn-warning" value="clear selection" ng-click="unselect_objects()"></input>
+    <input type="button" class="btn btn-sm btn-danger" value="delete selected" ng-click="delete_selected_objects()"></input>
+    </span>
+</h2>
 <table class="table table-condensed table-hover table-bordered" style="width:auto;">
     <thead>
         <tr>
@@ -109,6 +117,9 @@ config_table_template = """
             </td>
             <td class="text-center">{{ get_num_cats(config) }}</td>
             <td>
+                <input type="button" class="btn btn-sm btn-success" value="modify" ng-click="config_edit.edit(config, $event)"></input>
+            </td>
+            <td>
                 <div class="input-group-btn">
                     <div class="btn-group">
                         <button type="button" class="btn btn-warning btn-sm dropdown-toggle" data-toggle="dropdown">
@@ -133,9 +144,6 @@ config_table_template = """
                 <span ng-if="!config.usecount">
                     <input type="button" class="btn btn-sm btn-danger" value="delete" ng-click="config_edit.delete_obj(config)"></input>
                 </span>
-            </td>
-            <td>
-                <input type="button" class="btn btn-sm btn-success" value="modify" ng-click="config_edit.edit(config, $event)"></input>
             </td>
         </tr>
         <tr ng-show="config.var_expanded">
@@ -174,7 +182,8 @@ var_table_template = """
             <td>{{ obj.value }}</td>
             <td>{{ obj.description }}</td>
             <td>{{ obj.v_type }}</td>
-            <td><input type="button" class="btn btn-primary btn-xs" ng-click="edit_var(config, obj, $event)" value="modify"></input></td>
+            <td><input type="button" ng-class="obj._selected && 'btn btn-primary btn-xs' || 'btn btn-xs'" value="sel" ng-click="select_object(obj)"></input>
+            <td><input type="button" class="btn btn-success btn-xs" ng-click="edit_var(config, obj, $event)" value="modify"></input></td>
             <td><input type="button" class="btn btn-danger btn-xs" ng-click="delete_var(config, obj)" value="delete"></input></td>
         </tr>
     </tbody>
@@ -203,7 +212,8 @@ script_table_template = """
             <td>{{ obj.description }}</td>
             <td>{{ obj.priority }}</td>
             <td>{{ obj.enabled | yesno1 }}</td>
-            <td><input type="button" class="btn btn-primary btn-xs" ng-click="edit_script(config, obj, $event)" value="modify"></input></td>
+            <td><input type="button" ng-class="obj._selected && 'btn btn-primary btn-xs' || 'btn btn-xs'" value="sel" ng-click="select_object(obj)"></input>
+            <td><input type="button" class="btn btn-success btn-xs" ng-click="edit_script(config, obj, $event)" value="modify"></input></td>
             <td><input type="button" class="btn btn-danger btn-xs" ng-click="delete_script(config, obj)" value="delete"></input></td>
         </tr>
     </tbody>
@@ -248,7 +258,8 @@ mon_table_template = """
             <td>{{ obj.event_handler }}</td>
             <td>{{ obj.event_handler_enabled }}</td>
             <td>{{ get_num_cats(obj) }}</td>
-            <td><input type="button" class="btn btn-primary btn-xs" ng-click="edit_mon(config, obj, $event)" value="modify"></input></td>
+            <td><input type="button" ng-class="obj._selected && 'btn btn-primary btn-xs' || 'btn btn-xs'" value="sel" ng-click="select_object(obj)"></input>
+            <td><input type="button" class="btn btn-success btn-xs" ng-click="edit_mon(config, obj, $event)" value="modify"></input></td>
             <td><input type="button" class="btn btn-warning btn-xs" ng-click="copy_mon(config, obj, $event)" value="duplicate"></input></td>
             <td><input type="button" class="btn btn-danger btn-xs" ng-click="delete_mon(config, obj)" value="delete"></input></td>
         </tr>
@@ -265,6 +276,7 @@ angular_module_setup([config_module])
 config_ctrl = config_module.controller("config_ctrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "sharedDataSource", "$q", "$modal",
     ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, sharedDataSource, $q, $modal) ->
         $scope.pagSettings = paginatorSettings.get_paginator("config_list", $scope)
+        $scope.selected_objects = []
         $scope.pagSettings.conf.filter_settings = {
             "filter_str" : ""
             "filter_name" : true
@@ -417,6 +429,50 @@ config_ctrl = config_module.controller("config_ctrl", ["$scope", "$compile", "$f
             return show
         $scope.clear_filter = () ->
             $scope.pagSettings.conf.filter_settings.filter_str = ""
+        $scope.delete_selected_objects = () ->
+            if confirm("really delete #{$scope.selected_objects.length} objects ?")
+                $.blockUI
+                for obj in $scope.selected_objects
+                    conf = (entry for entry in $scope.entries when entry.idx == obj.config)[0]
+                    if obj.object_type == "mon"
+                        ref_f = conf.mon_check_command_set
+                    else
+                        ref_f = conf["config_#{obj.object_type}_set"]
+                    ref_f = (_rv for _rv in ref_f when _rv.idx != obj.idx)
+                    if obj.object_type == "mon"
+                        conf.mon_check_command_set = ref_f
+                    else
+                        conf["config_#{obj.object_type}_set"] = ref_f
+                    $scope._set_fields(conf)
+                call_ajax
+                    url     : "{% url 'config:delete_objects' %}"
+                    data    :
+                        "obj_list" : angular.toJson(([entry.object_type, entry.idx] for entry in $scope.selected_objects))
+                    success : (xml) =>
+                        parse_xml_response(xml)
+                        $.unblockUI()
+                $scope.selected_objects = []
+        $scope.unselect_objects = () ->
+            # unselect all selected objects
+            idx = 0
+            while $scope.selected_objects.length
+                prev_len = $scope.selected_objects.length
+                idx++
+                entry = $scope.selected_objects[0]
+                $scope.unselect_object($scope.selected_objects[0])
+                # unable to unselect, exit loop
+                if $scope.selected_objects.length == prev_len
+                    console.log "problem unselect..."
+                    break
+        $scope.unselect_object = (obj) ->
+            obj._selected = false
+            $scope.selected_objects = (entry for entry in $scope.selected_objects when entry != obj)
+        $scope.select_object = (obj) ->
+            if obj._selected
+                $scope.unselect_object(obj)
+            else
+                obj._selected = true
+                $scope.selected_objects.push(obj)
         $scope.get_label_class = (entry, s_type) ->
             num = entry["#{s_type}_num"]
             sel = entry["#{s_type}_sel"]
@@ -477,6 +533,7 @@ config_ctrl = config_module.controller("config_ctrl", ["$scope", "$compile", "$f
             }[v_type].slice(1).slice(0, -2)
             $scope.var_edit.delete_obj(_var).then((res) ->
                 if res
+                    $scope.unselect_object(_var)
                     $scope.filter_conf(config, $scope)
             )
         $scope.edit_var = (config, obj, event) ->
@@ -517,6 +574,7 @@ config_ctrl = config_module.controller("config_ctrl", ["$scope", "$compile", "$f
             $scope.script_edit.delete_list = config.config_script_set
             $scope.script_edit.delete_obj(_script).then((res) ->
                 if res
+                    $scope.unselect_object(_script)
                     $scope.filter_conf(config, $scope)
             )
         $scope.edit_script = (config, obj, event) ->
@@ -538,12 +596,12 @@ config_ctrl = config_module.controller("config_ctrl", ["$scope", "$compile", "$f
             $scope.script_edit.create_list = config.config_script_set
             $scope.script_edit.new_object = (scope) ->
                 return {
-                    "config" : config.idx
-                    "name" : "new script"
+                    "config"   : config.idx
+                    "name"     : "new script"
                     "priority" : 0
-                    "enabled" : true
-                    "description" : "new script"
-                    "edit_value" : "# config script (" + moment().format() + ")\n#\n"
+                    "enabled"  : true
+                    "description" : "new config script"
+                    "edit_value"  : "# config script (" + moment().format() + ")\n#\n"
                 }
             $scope.$watch(
                 () -> 
@@ -561,6 +619,7 @@ config_ctrl = config_module.controller("config_ctrl", ["$scope", "$compile", "$f
             $scope.mon_edit.delete_list = config.mon_check_command_set
             $scope.mon_edit.delete_obj(_mon).then((res) ->
                 if res
+                    $scope.unselect_object(_mon)
                     $scope.filter_conf(config, $scope)
             )
         $scope.edit_mon = (config, obj, event) ->
