@@ -186,6 +186,8 @@ class mon_check_command(models.Model):
     is_event_handler = models.BooleanField(default=False)
     event_handler = models.ForeignKey("self", null=True, default=None, blank=True)
     event_handler_enabled = models.BooleanField(default=True)
+    def get_object_type(self):
+        return "mon"
     class Meta:
         db_table = u'ng_check_command'
         unique_together = (("name", "config"))
@@ -198,6 +200,7 @@ class mon_check_command(models.Model):
         return "mcc_{}".format(self.name)
 
 class mon_check_command_serializer(serializers.ModelSerializer):
+    object_type = serializers.Field(source="get_object_type")
     class Meta:
         model = mon_check_command
 

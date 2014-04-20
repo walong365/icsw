@@ -371,6 +371,8 @@ class config_str(models.Model):
     value = models.TextField(blank=True)
     device = models.ForeignKey("device", null=True, blank=True)
     date = models.DateTimeField(auto_now_add=True)
+    def get_object_type(self):
+        return "str"
     # def get_xml(self):
     #    return E.config_str(
     #        pk="%d" % (self.pk),
@@ -410,6 +412,8 @@ class config_blob(models.Model):
     value = models.TextField(blank=True)
     device = models.ForeignKey("device", null=True, blank=True)
     date = models.DateTimeField(auto_now_add=True)
+    def get_object_type(self):
+        return "blob"
     # def get_xml(self):
     #    return E.config_str(
     #        pk="%d" % (self.pk),
@@ -445,6 +449,8 @@ class config_bool(models.Model):
     value = models.IntegerField(null=True, blank=True)
     device = models.ForeignKey("device", null=True, blank=True)
     date = models.DateTimeField(auto_now_add=True)
+    def get_object_type(self):
+        return "bool"
     # def get_xml(self):
     #    return E.config_str(
     #        pk="%d" % (self.pk),
@@ -492,6 +498,8 @@ class config_int(models.Model):
     value = models.IntegerField(null=True, blank=True)
     device = models.ForeignKey("device", null=True, blank=True)
     date = models.DateTimeField(auto_now_add=True)
+    def get_object_type(self):
+        return "int"
     # def get_xml(self):
     #    return E.config_str(
     #        pk="%d" % (self.pk),
@@ -545,6 +553,8 @@ class config_script(models.Model):
     #        config="%d" % (self.config_id),
     #        value=self.value or ""
     #    )
+    def get_object_type(self):
+        return "script"
     class Meta:
         db_table = u'config_script'
         ordering = ("priority", "name",)
@@ -2590,22 +2600,27 @@ class md_check_data_store(models.Model):
         return self.name
 
 class config_str_serializer(serializers.ModelSerializer):
+    object_type = serializers.Field(source="get_object_type")
     class Meta:
         model = config_str
 
 class config_int_serializer(serializers.ModelSerializer):
+    object_type = serializers.Field(source="get_object_type")
     class Meta:
         model = config_int
 
 class config_blob_serializer(serializers.ModelSerializer):
+    object_type = serializers.Field(source="get_object_type")
     class Meta:
         model = config_blob
 
 class config_bool_serializer(serializers.ModelSerializer):
+    object_type = serializers.Field(source="get_object_type")
     class Meta:
         model = config_bool
 
 class config_script_serializer(serializers.ModelSerializer):
+    object_type = serializers.Field(source="get_object_type")
     class Meta:
         model = config_script
 
