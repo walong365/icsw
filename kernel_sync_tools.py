@@ -70,41 +70,44 @@ class kernel_helper(object):
         self.name = name
         self.root_dir = root_dir
         self.__config = config
-        self.path = os.path.normpath("%s/%s" % (self.root_dir, self.name))
+        self.path = os.path.normpath(os.path.join(self.root_dir, self.name))
         self.__config_dict = {}
         self.__log_func = log_func
         self.__sync_kernel = kwargs.get("sync_kernel", False)
         if self.__sync_kernel:
             if not os.path.isdir(self.path):
-                self.log("creating kernel_dir %s" % (self.path))
+                self.log("creating kernel_dir {}".format(self.path))
                 os.makedirs(self.path)
             self._copy_from_sync_dict(kwargs.get("sync_dict", {}))
-        self.__bz_path = "%s/bzImage" % (self.path)
-        self.__xen_path = "%s/xen.gz" % (self.path)
+        self.__bz_path = os.path.join(self.path, "bzImage")
+        self.__xen_path = os.path.join(self.path, "xen.gz")
         for c_path in ["config", ".config"]:
-            self.__config_path = "%s/%s" % (self.path, c_path)
+            self.__config_path = os.path.join(self.path, c_path)
             if os.path.isfile(self.__config_path):
                 try:
                     conf_lines = [y for y in [x.strip() for x in file(self.__config_path, "r").read().split("\n") if x.strip()] if not y.strip().startswith("#")]
                 except:
-                    self.log("error reading config from %s: %s" % (self.__config_path,
-                                                                   process_tools.get_except_info()),
-                             logging_tools.LOG_LEVEL_ERROR)
+                    self.log(
+                        "error reading config from {}: {}".format(
+                            self.__config_path,
+                            process_tools.get_except_info()),
+                        logging_tools.LOG_LEVEL_ERROR
+                    )
                 else:
                     self.__config_dict = dict([x.split("=", 1) for x in conf_lines])
                     break
             else:
                 self.__config_path = None
-        self.__initrd_paths = dict([(key, "%s/initrd_%s.gz" % (self.path, key)) for key in KNOWN_INITRD_FLAVOURS])
-        self.__initrd_paths["old"] = "%s/initrd.gz" % (self.path)
-        self.__initrd_paths["stage2"] = "%s/initrd_stage2.gz" % (self.path)
+        self.__initrd_paths = dict([(key, "{}/initrd_{}.gz".format(self.path, key)) for key in KNOWN_INITRD_FLAVOURS])
+        self.__initrd_paths["old"] = os.path.join(self.path, "initrd.gz")
+        self.__initrd_paths["stage2"] = os.path.join(self.path, "initrd_stage2.gz")
         self.__option_dict = {"database" : False}
         self.__thread_name = threading.currentThread().getName()
         self.__initrd_built = None
         if not os.path.isdir(self.path):
-            raise IOError, "kernel_dir %s is not a directory" % (self.path)
+            raise IOError, "kernel_dir {} is not a directory".format(self.path)
         if not os.path.isfile(self.__bz_path):
-            raise IOError, "kernel_dir %s has no bzImage" % (self.path)
+            raise IOError, "kernel_dir {} has no bzImage".format(self.path)
         # if not [True for initrd_path in self.__initrd_paths.values() if os.path.isfile(initrd_path)]:
         #    raise IOError, "kernel_dir %s has no initrd*.gz" % (self.path)
         # init db-Fields
@@ -121,9 +124,9 @@ class kernel_helper(object):
         #                    "master_server" : self.__local_master_server}
     def _copy_from_sync_dict(self, in_dict):
         for f_name in self.pos_names:
-            tf_name = "%s/%s" % (self.path, f_name)
+            tf_name = os.path.join(self.path, f_name)
             if f_name in in_dict:
-                md5_name = "%s/.%s_md5" % (self.path, f_name)
+                md5_name = "{}/.{}_md5".format(self.path, f_name)
                 store = True
                 if os.path.isfile(md5_name):
                     try:
@@ -139,28 +142,32 @@ class kernel_helper(object):
                         # check md5_sum
                         file(tf_name, "w").write(in_dict[f_name])
                     except:
-                        self.log("error creating file %s: %s" % (tf_name,
-                                                                 process_tools.get_except_info()),
-                                 logging_tools.LOG_LEVEL_ERROR)
+                        self.log(
+                            "error creating file {}: {}".format(
+                                tf_name,
+                                process_tools.get_except_info()),
+                            logging_tools.LOG_LEVEL_ERROR)
                     else:
-                        self.log("created file %s" % (tf_name))
+                        self.log("created file {}".format(tf_name))
             elif os.path.isfile(tf_name):
                 try:
                     os.unlink(tf_name)
                 except:
-                    self.log("error removing file %s: %s" % (tf_name,
-                                                             process_tools.get_except_info()),
-                             logging_tools.LOG_LEVEL_ERROR)
+                    self.log(
+                        "error removing file {}: {}".format(
+                            tf_name,
+                            process_tools.get_except_info()),
+                        logging_tools.LOG_LEVEL_ERROR)
                 else:
-                    self.log("removed file %s" % (tf_name))
+                    self.log("removed file {}".format(tf_name))
     def get_sync_dict(self):
         sync_dict = {"name" : self.name}
         for f_name in self.pos_names:
-            if os.path.isfile("%s/%s" % (self.path, f_name)):
-                sync_dict[f_name] = file("%s/%s" % (self.path, f_name), "r").read()
+            if os.path.isfile(os.path.join(self.path, f_name)):
+                sync_dict[f_name] = file(os.path.join(self.path, f_name), "r").read()
         return sync_dict
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK, **kwargs):
-        self.__log_func("[kernel %s] %s" % (self.name, what), log_level)
+        self.__log_func("[kernel {}] {}".format(self.name, what), log_level)
         if kwargs.get("db_write", False) and self.__db_idx and self.__local_master_server:
             new_kl = kernel_log()
             new_kl.save()
@@ -174,14 +181,16 @@ class kernel_helper(object):
         return self.__option_dict[key]
     def check_md5_sums(self):
         self.__checks.append("md5")
-        files_to_check = sorted([os.path.normpath("%s/%s" % (self.path, f_name)) for f_name in ["bzImage", "initrd.gz", "xen.gz", "modules.tar.bz2"] +
-                                 ["initrd_%s.gz" % (key) for key in KNOWN_INITRD_FLAVOURS]])
-        md5s_to_check = dict([(p_name, os.path.normpath("%s/.%s_md5" % (self.path, os.path.basename(p_name)))) for p_name in files_to_check if os.path.exists(p_name)])
-        md5s_to_remove = sorted([md5_file for md5_file in [os.path.normpath("%s/.%s_md5" % (self.path, os.path.basename(p_name))) for p_name in files_to_check if not os.path.exists(p_name)] if os.path.exists(md5_file)])
+        files_to_check = sorted([os.path.normpath(os.path.join(self.path, f_name)) for f_name in ["bzImage", "initrd.gz", "xen.gz", "modules.tar.bz2"] +
+                                 ["initrd_{}.gz".format(key) for key in KNOWN_INITRD_FLAVOURS]])
+        md5s_to_check = dict([(p_name, os.path.normpath("{}/.{}_md5".format(self.path, os.path.basename(p_name)))) for p_name in files_to_check if os.path.exists(p_name)])
+        md5s_to_remove = sorted([md5_file for md5_file in [os.path.normpath("{}/.{}_md5".format(self.path, os.path.basename(p_name))) for p_name in files_to_check if not os.path.exists(p_name)] if os.path.exists(md5_file)])
         if md5s_to_remove:
-            self.log("removing %s: %s" % (logging_tools.get_plural("MD5 file", len(md5s_to_remove)),
-                                          ", ".join(md5s_to_remove)),
-                     logging_tools.LOG_LEVEL_WARN, db_write=True)
+            self.log(
+                "removing {}: {}".format(
+                    logging_tools.get_plural("MD5 file", len(md5s_to_remove)),
+                    ", ".join(md5s_to_remove)),
+                logging_tools.LOG_LEVEL_WARN, db_write=True)
             for md5_to_remove in md5s_to_remove:
                 md5_name = os.path.basename(md5_to_remove)[1:]
                 if md5_name in self.__option_dict:
@@ -189,9 +198,11 @@ class kernel_helper(object):
                 try:
                     os.unlink(md5_to_remove)
                 except:
-                    self.log("error remove %s: %s" % (md5_to_remove,
-                                                      process_tools.get_except_info()),
-                             logging_tools.LOG_LEVEL_ERROR, db_write=True)
+                    self.log(
+                        "error remove {}: {}".format(
+                            md5_to_remove,
+                            process_tools.get_except_info()),
+                        logging_tools.LOG_LEVEL_ERROR, db_write=True)
         if md5s_to_check:
             for src_file, md5_file in md5s_to_check.iteritems():
                 md5_name = os.path.basename(md5_file)[1:]
@@ -200,7 +211,7 @@ class kernel_helper(object):
                     if os.stat(src_file)[stat.ST_MTIME] < os.stat(md5_file)[stat.ST_MTIME]:
                         new_bz5 = False
                 if new_bz5:
-                    self.log("doing MD5-sum for %s (stored in %s)" % (os.path.basename(src_file), os.path.basename(md5_file)), db_write=True)
+                    self.log("doing MD5-sum for {} (stored in {})".format(os.path.basename(src_file), os.path.basename(md5_file)), db_write=True)
                     self.__option_dict[md5_name] = (hashlib.md5(file(src_file, "r").read())).hexdigest()
                     file(md5_file, "w").write(self.__option_dict[md5_name])
                 else:
@@ -214,7 +225,7 @@ class kernel_helper(object):
 # #    db_kernel = property(get_db_kernel, set_db_kernel)
     def move_old_initrd(self):
         if os.path.isfile(self.__initrd_paths["old"]):
-            c_stat, c_out = commands.getstatusoutput("file -z %s" % (self.__initrd_paths["old"]))
+            c_stat, c_out = commands.getstatusoutput("file -z {}".format(self.__initrd_paths["old"]))
             if c_stat:
                 self.log("error getting type of old-flavour initrd.gz %s (%d): %s" % (self.__initrd_paths["old"],
                                                                                       c_stat,

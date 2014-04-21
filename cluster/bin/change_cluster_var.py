@@ -32,7 +32,7 @@ import argparse
 import re
 
 def _show_var(var):
-    print "%4d :: %-40s (%-20s) : %s" % (
+    print "{:4d} :: {:<40s} ({:<20s}) : {}".format(
         var.idx,
         var.name,
         var.config.name,
@@ -53,7 +53,7 @@ def main():
             _show_var(_var)
         sys.exit(0)
     name_re, value_re = (re.compile(options.name_re, re.IGNORECASE), re.compile(options.value_re, re.IGNORECASE))
-    print options
+    # print options
     for _var in config_str.objects.all().select_related("config").order_by("config__name", "name"):
         if name_re.search(_var.name) and value_re.search(_var.value) and _var.idx not in options.exclude:
             _show_var(_var)
