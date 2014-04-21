@@ -34,7 +34,7 @@ class command_stream(object):
         self.__commands = []
         self.__running = False
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
-        simple_command.process.log("[cs %s] %s" % (self.stream_id, what), log_level)
+        simple_command.process.log("[cs {}] {}".format(self.stream_id, what), log_level)
     def new_command(self, new_sc):
         self.__commands.append(new_sc)
         new_sc.stream = self
