@@ -63,7 +63,6 @@ class get_boot_info_json(View):
     @method_decorator(xml_wrapper)
     def post(self, request):
         _post = request.POST
-        # option_dict = dict([(short, True if _post.get("opt_%s" % (short)) in ["true"] else False) for short, _long_opt, _t_class in OPTION_LIST])
         sel_list = _post.getlist("sel_list[]")
         dev_result = device.objects.filter(Q(pk__in=sel_list)).prefetch_related(
             "bootnetdevice__net_ip_set__network__network_device_type",
@@ -168,7 +167,6 @@ class update_device(APIView):
                     new_image = image.objects.get(Q(pk=dev_data["new_image"])) if dev_data.get("new_image", None) else None
                     if new_image != cur_dev.new_image:
                         cur_dev.new_image = new_image
-                        print "***"
                         update_list.add("image")
                 if _en["k"]:
                     new_kernel = kernel.objects.get(Q(pk=dev_data["new_kernel"])) if dev_data.get("new_kernel", None) else None
@@ -202,14 +200,18 @@ class update_device(APIView):
                             _bc = True
                     if _bc:
                         update_list.add("bootdevice")
-                        _mother_commands.add("alter_macaddr")
+                        _mother_commands.add("refresh")
                 if update_list:
                     _changed = True
                     _all_update_list |= update_list
                 if _changed:
+                    cur_dev._no_bg_job = True
                     cur_dev.save()
                     if cur_dev.bootnetdevice:
+                        # promote no_bg_job flag
+                        cur_dev.bootnetdevice.device = cur_dev
                         cur_dev.bootnetdevice.save()
+                    cur_dev._no_bg_job = False
                     # print cur_dev.new_kernel, cur_dev.new_image
         _lines = []
         if _mother_commands:
