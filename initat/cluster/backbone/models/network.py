@@ -6,6 +6,7 @@ from django.db.models import Q, signals, get_model
 from django.dispatch import receiver
 from initat.cluster.backbone.models.functions import _check_empty_string, \
     _check_integer
+from initat.cluster.backbone.signals import user_changed, group_changed, bootsettings_changed
 from lxml.builder import E # @UnresolvedImport
 from rest_framework import serializers
 import ipvx_tools
@@ -313,6 +314,8 @@ def net_ip_post_save(sender, **kwargs):
             cur_inst.netdevice.device.save()
             if num_boot_ips > 1:
                 raise ValidationError("too many IP-adresses in a boot network defined")
+            if cur_inst.netdevice.device.bootserver_id:
+                bootsettings_changed.send(sender=cur_inst, device=cur_inst.netdevice.device, cause="net_ip_changed")
 
 class network_device_type_serializer(serializers.ModelSerializer):
     info_string = serializers.Field(source="info_string")
@@ -509,6 +512,8 @@ def netdevice_pre_save(sender, **kwargs):
 def netdevice_post_save(sender, **kwargs):
     if "instance" in kwargs:
         _cur_inst = kwargs["instance"]
+        if _cur_inst.device.bootserver_id:
+            bootsettings_changed.send(sender=_cur_inst, device=_cur_inst.device, cause="netdevice_changed")
 
 @receiver(signals.post_delete, sender=netdevice)
 def netdevice_post_delete(sender, **kwargs):

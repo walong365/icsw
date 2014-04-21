@@ -292,8 +292,10 @@ class srv_type_routing(object):
                         for entry in result.xpath(".//ns:{}/ns:{}/*".format(_sub_name, _sub_name)):
                             _merged += 1
                             add_list.append(entry)
-                        self.logger.info("merged {} of {}".format(
-                            logging_tools.get_plural("element", _merged),
-                            _sub_name,
-                            ))
+                        self.logger.info(
+                            "merged {} of {}".format(
+                                logging_tools.get_plural("element", _merged),
+                                _sub_name,
+                            )
+                        )
 

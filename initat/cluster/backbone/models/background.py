@@ -23,6 +23,7 @@ class background_job(models.Model):
         ("pre-init", "before cluster-server detection"),
         ("pending", "init and awaiting processing"),
         ("done", "job finished"),
+        ("timeout", "timeout"),
         ])
     # command as XML
     command_xml = models.TextField(null=False)

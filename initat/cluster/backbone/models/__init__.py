@@ -35,7 +35,7 @@ from initat.cluster.backbone.models.network import * # @UnusedWildImport
 from initat.cluster.backbone.models.package import * # @UnusedWildImport
 from initat.cluster.backbone.models.user import * # @UnusedWildImport
 from initat.cluster.backbone.models.background import * # @UnusedWildImport
-from initat.cluster.backbone.signals import user_changed, group_changed
+from initat.cluster.backbone.signals import user_changed, group_changed, bootsettings_changed
 
 
 # do not use, problems with import
@@ -74,15 +74,20 @@ cluster_log_source = None
 
 @receiver(user_changed)
 def user_changed(*args, **kwargs):
-    _insert_user_sync_job(kwargs["cause"], kwargs["user"])
+    _insert_bg_job("sync_users", kwargs["cause"], kwargs["user"])
 
 @receiver(group_changed)
 def group_changed(*args, **kwargs):
-    _insert_user_sync_job(kwargs["cause"], kwargs["group"])
+    _insert_bg_job("sync_users", kwargs["cause"], kwargs["group"])
 
-def _insert_user_sync_job(cause, obj):
+@receiver(bootsettings_changed)
+def rcv_bootsettings_changed(*args, **kwargs):
+    _insert_bg_job("change_bootsetting", kwargs["cause"], kwargs["device"])
+
+def _insert_bg_job(cmd, cause, obj):
+    if getattr(obj, "_no_bg_job", False):
+        return
     # create entry to be handled by the cluster-server
-    _cmd = "sync_users"
     # get local device, key is defined in routing.py
     _routing_key = "_WF_ROUTING"
     _resolv_dict = cache.get(_routing_key)
@@ -95,13 +100,23 @@ def _insert_user_sync_job(cause, obj):
             _local_pk = 0
     # we need local_pk and a valid user (so we have to be called via webfrontend)
     if _local_pk and thread_local_middleware().user:
+        srv_com = server_command.srv_command(
+            command=cmd,
+        )
+        _bld = srv_com.builder()
+        srv_com["object"] = _bld.object(
+            unicode(obj),
+            model=obj._meta.model_name,
+            app=obj._meta.app_label,
+            pk="{:d}".format(obj.pk)
+        )
         background_job.objects.create(
-            command=_cmd,
+            command=cmd,
             cause=u"{} of '{}'".format(cause, unicode(obj)),
             state="pre-init",
             initiator=device.objects.get(Q(pk=_local_pk)),
             user=thread_local_middleware().user,
-            command_xml=unicode(server_command.srv_command(command=_cmd)),
+            command_xml=unicode(srv_com),
             # valid for 4 hours
             valid_until=cluster_timezone.localize(datetime.datetime.now() + datetime.timedelta(seconds=60 * 5)), # 3600 * 4)),
         )
@@ -1524,6 +1539,13 @@ class device_serializer_monitor_server(device_serializer):
         fields = ("idx", "name", "full_name", "device_group_name", "monitor_type",
             "access_level", "access_levels", "store_rrd_data",
             )
+
+@receiver(signals.post_save, sender=device)
+def device_post_save(sender, **kwargs):
+    if "instance" in kwargs:
+        _cur_inst = kwargs["instance"]
+        if _cur_inst.bootserver_id:
+            bootsettings_changed.send(sender=_cur_inst, device=_cur_inst, cause="device_changed")
 
 @receiver(signals.pre_save, sender=device)
 def device_pre_save(sender, **kwargs):

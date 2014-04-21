@@ -8,6 +8,7 @@ from django.db import models
 from django.db.models import Q, signals, get_model
 from django.dispatch import receiver
 from initat.cluster.backbone.models.functions import _check_empty_string, _check_integer
+from initat.cluster.backbone.signals import user_changed, group_changed
 from rest_framework import serializers
 import base64
 import crypt
@@ -17,8 +18,6 @@ import inspect
 import os
 import random
 import string
-
-from initat.cluster.backbone.signals import user_changed, group_changed
 
 __all__ = [
     "csw_permission", "csw_permission_serializer",
