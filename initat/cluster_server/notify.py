@@ -23,7 +23,8 @@
 
 from django.db import connection
 from initat.cluster.backbone.routing import srv_type_routing, get_server_uuid
-from initat.cluster.backbone.models import background_job, user, background_job_run, cluster_timezone
+from initat.cluster.backbone.models import background_job, user, background_job_run, device, \
+    cluster_timezone
 from django.db.models import Q
 import logging_tools
 import datetime
@@ -35,7 +36,8 @@ import server_command
 
 # background job command mapping
 BGJ_CM = {
-    "sync_users" : True
+    "sync_users"         : True,
+    "change_bootsetting" : True,
 }
 
 class notify_mixin(object):
@@ -58,6 +60,12 @@ class notify_mixin(object):
     def check_notify(self):
         self.srv_routing.update()
         # step 1: delete pending jobs which are too old
+        _timeout = background_job.objects.filter(Q(initiator=self.srv_routing.local_device.pk) & Q(state__in=["pre-init", "pending"]) & Q(valid_until__lte=datetime.datetime.now()))
+        if _timeout.count():
+            self.log("{} timeout".format(logging_tools.get_plural("background job", _timeout.count())), logging_tools.LOG_LEVEL_WARN)
+            for _to in _timeout:
+                _to.state = "timeout"
+                _to.save()
         # print background_job.objects.filter(Q(initiator=self.srv_routing.local_device.pk) & Q(state="pre-init") & Q(valid_until_lt=datetime.datetime.now()))
         try:
             _pending = background_job.objects.filter(Q(initiator=self.srv_routing.local_device.pk) & Q(state="pre-init")).order_by("pk")
@@ -83,10 +91,16 @@ class notify_mixin(object):
             cur_bg.valid_until = None
             cur_bg.save()
         else:
-            cur_bg.state = "pending"
-            cur_bg.save()
-            self.log("handling {}".format(cur_bg.command))
-            getattr(self, "_bgjp_{}".format(cur_bg.command))(cur_bg)
+            _com_name = "_bgjp_{}".format(cur_bg.command)
+            if hasattr(self, _com_name):
+                cur_bg.state = "pending"
+                cur_bg.save()
+                self.log("handling {}".format(cur_bg.command))
+                getattr(self, "_bgjp_{}".format(cur_bg.command))(cur_bg)
+            else:
+                self.log("no {} function defined".format(_com_name), logging_tools.LOG_LEVEL_CRITICAL)
+                cur_bg.state = "ended"
+                cur_bg.save()
     def notify_waiting_for_job(self, srv_com):
         _waiting = False
         if "bgjrid" in srv_com:
@@ -116,6 +130,27 @@ class notify_mixin(object):
             cur_bg.state = "done"
             cur_bg.save()
             self.log("{} finished".format(unicode(cur_bg)))
+    def _bgjp_change_bootsetting(self, cur_bg):
+        _src_com = server_command.srv_command(source=cur_bg.command_xml)
+        dev = device.objects.get(Q(pk=int(_src_com.xpath(".//ns:object/@pk")[0])))
+        # target command
+        srv_com = server_command.srv_command(command="refresh")
+        srv_com["devices"] = srv_com.builder(
+            "devices",
+            srv_com.builder("device", name=dev.name, pk="{:d}".format(dev.pk)))
+        to_run = [
+            (
+                background_job_run(
+                    background_job=cur_bg,
+                    server=dev.bootserver,
+                    command_xml=unicode(srv_com),
+                    start=cluster_timezone.localize(datetime.datetime.now()),
+                ),
+                srv_com,
+                "mother",
+            )
+        ]
+        self._run_bg_jobs(cur_bg, to_run)
     def _bgjp_sync_users(self, cur_bg):
         # step 1: create user homes
         create_user_list = user.objects.exclude(Q(export=None)).filter(Q(home_dir_created=False) & Q(active=True) & Q(group__active=True)).select_related("export__device")
@@ -136,7 +171,6 @@ class notify_mixin(object):
                     "server",
                     #
                 ))
-                # print "*", self.srv_routing.get_connection_string("server", create_user.export.device_id)
         else:
             self.log("no user homes to create", logging_tools.LOG_LEVEL_WARN)
         # check directory sync requests
@@ -168,6 +202,8 @@ class notify_mixin(object):
                 no_device.append(_command)
         if no_device:
             self.log("no device(s) found for {}".format(", ".join(no_device)), logging_tools.LOG_LEVEL_WARN)
+        self._run_bg_jobs(cur_bg, to_run)
+    def _run_bg_jobs(self, cur_bg, to_run):
         if to_run:
             self.log("commands to execute: {:d}".format(len(to_run)))
             cur_bg.num_servers = len(to_run)
