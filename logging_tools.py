@@ -117,12 +117,12 @@ def get_plural(in_str, num, show_int=1, fstr_len=0, **kwargs):
     else:
         p_str = ""
     if fstr_len > 0:
-        f_str = "{{:{:d}d}} ".format(fstr_len)
+        f_str = u"{{:{:d}d}} ".format(fstr_len)
     elif fstr_len < 0:
-        f_str = "{{:0{:d}d}} ".format(abs(fstr_len))
+        f_str = u"{{:0{:d}d}} ".format(abs(fstr_len))
     else:
-        f_str = "{:d} "
-    return "{}{}{}".format(
+        f_str = u"{:d} "
+    return u"{}{}{}".format(
         (show_int and f_str.format(r_num)) or "",
         in_str[0 : end_idx],
         p_str)
