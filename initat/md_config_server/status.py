@@ -27,6 +27,7 @@ from initat.cluster.backbone.models import device
 from initat.md_config_server.config import global_config
 from lxml.builder import E # @UnresolvedImport
 import csv
+import json
 import socket
 import logging_tools
 import os
@@ -119,31 +120,47 @@ class status_process(threading_tools.process_obj):
         try:
             cur_sock = self._open()
             if cur_sock:
-                query = cur_sock.services.columns("host_name", "description", "state", "plugin_output", "last_check").filter("host_name", "=", dev_names)
+                query = cur_sock.services.columns(
+                    "host_name",
+                    "description",
+                    "state",
+                    "plugin_output",
+                    "last_check",
+                    "check_type",
+                    "state_type",
+                    "last_state_change").filter("host_name", "=", dev_names)
                 result = query.call()
-                node_results = {}
-                for entry in result:
-                    try:
-                        # cleanup entry
-                        entry = {key: value for key, value in entry.iteritems() if value != None}
-                        host_name = entry.pop("host_name")
-                        output = entry["plugin_output"]
-                        if type(output) == list:
-                            entry["plugin_output"] = ",".join(output)
-                        if host_name:
-                            node_results.setdefault(host_name, []).append((entry["description"], entry))
-                    except:
-                        self.log("error processing livestatus entry '%s': %s" % (str(entry), process_tools.get_except_info()),
-                            logging_tools.LOG_LEVEL_CRITICAL)
-                if len(node_results) == len(dev_names):
-                    srv_com.set_result("status for %s" % (logging_tools.get_plural("device", len(dev_names))))
-                else:
-                    srv_com.set_result("status for %s (%d requested)" % (logging_tools.get_plural("device", len(node_results.keys())), len(dev_names)), server_command.SRV_REPLY_STATE_WARN)
-                srv_com["result"] = E.node_results(
-                    *[E.node_result(
-                        *[E.result(**entry) for _sort_val, entry in sorted(value)],
-                        name=key) for key, value in node_results.iteritems()]
+                srv_com["result"] = json.dumps([_line for _line in result if _line.get("host_name", "")])
+                srv_com.set_result(
+                    "query for {} gave {}".format(
+                        logging_tools.get_plural("device", len(dev_names)),
+                        logging_tools.get_plural("line", len(result)),
+                    )
                 )
+                if False:
+                    node_results = {}
+                    for entry in result:
+                        try:
+                            # cleanup entry
+                            entry = {key: value for key, value in entry.iteritems() if value != None}
+                            host_name = entry.pop("host_name")
+                            output = entry["plugin_output"]
+                            if type(output) == list:
+                                entry["plugin_output"] = ",".join(output)
+                            if host_name:
+                                node_results.setdefault(host_name, []).append((entry["description"], entry))
+                        except:
+                            self.log("error processing livestatus entry '%s': %s" % (str(entry), process_tools.get_except_info()),
+                                logging_tools.LOG_LEVEL_CRITICAL)
+                    if len(node_results) == len(dev_names):
+                        srv_com.set_result("status for %s" % (logging_tools.get_plural("device", len(dev_names))))
+                    else:
+                        srv_com.set_result("status for %s (%d requested)" % (logging_tools.get_plural("device", len(node_results.keys())), len(dev_names)), server_command.SRV_REPLY_STATE_WARN)
+                    srv_com["result"] = E.node_results(
+                        *[E.node_result(
+                            *[E.result(**entry) for _sort_val, entry in sorted(value)],
+                            name=key) for key, value in node_results.iteritems()]
+                    )
                 # print srv_com.pretty_print()
             else:
                 srv_com.set_result("cannot connect to socket", server_command.SRV_REPLY_STATE_CRITICAL)

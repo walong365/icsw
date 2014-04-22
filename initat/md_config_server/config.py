@@ -160,6 +160,8 @@ class sync_config(object):
         # relayer info
         self.relayer_version = "?.?-0"
         self.mon_version = "?.?-0"
+        # clear md_struct
+        self.__md_struct = None
         if not self.master:
             # try to get relayer / mon_version from latest build
             _latest_build = mon_dist_slave.objects.filter(Q(device=self.monitor_server)).order_by("-pk")
@@ -229,9 +231,10 @@ class sync_config(object):
             self.log("resending files")
             self.distribute()
     def config_ts(self, ts_type):
-        # set config timestmap
-        setattr(self.__md_struct, "config_build_{}".format(ts_type), cluster_timezone.localize(datetime.datetime.now()))
-        self.__md_struct.save()
+        if self.__md_struct:
+            # set config timestamp
+            setattr(self.__md_struct, "config_build_{}".format(ts_type), cluster_timezone.localize(datetime.datetime.now()))
+            self.__md_struct.save()
     def start_build(self, b_version, master=None):
         # generate datbase entry for build
         self.config_version_build = b_version
