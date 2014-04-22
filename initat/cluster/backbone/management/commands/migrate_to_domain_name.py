@@ -121,7 +121,11 @@ def main():
     net_dict = {}
     for nw_obj in network.objects.all():
         net_dict[nw_obj.pk] = nw_obj
-        nw_obj.dns_node = domain_tree_node.objects.get(Q(full_name=nw_obj.name))
+        try:
+            nw_obj.dns_node = domain_tree_node.objects.get(Q(full_name=nw_obj.name))
+        except:
+            # not found, use top-level node
+            nw_obj.dns_node = domain_tree_node.objects.get(Q(depth=0))
     # modify net_ip
     print "migrating {}".format(logging_tools.get_plural("netip", net_ip.objects.filter(Q(domain_tree_node=None)).count()))
     for cur_ip in net_ip.objects.filter(Q(domain_tree_node=None)):
