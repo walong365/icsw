@@ -313,10 +313,14 @@ class poller_obj(object):
                                 self.poller_handler[sock][r_type](self._socket_lut.get(sock, sock))
                             except:
                                 exc_info = process_tools.exception_info()
-                                self.log("error calling handler: %s" % (process_tools.get_except_info()),
-                                         logging_tools.LOG_LEVEL_CRITICAL)
+                                self.log(
+                                    "error calling handler in poller_obj: {}".format(
+                                        process_tools.get_except_info()
+                                    ),
+                                    logging_tools.LOG_LEVEL_CRITICAL
+                                )
                                 for line in exc_info.log_lines:
-                                    self.log("   %s" % (line), logging_tools.LOG_LEVEL_ERROR)
+                                    self.log("    {}".format(line), logging_tools.LOG_LEVEL_ERROR)
                                 # raise exception, important
                                 raise
                         else:
@@ -343,11 +347,61 @@ class process_base(object):
         else:
             self.log("setting stack_size to %s" % (logging_tools.get_size_str(s_size, long_version=True)))
 
-class process_obj(multiprocessing.Process, timer_base, poller_obj, process_base):
+class exception_handling_mixin(object):
+    def __init__(self):
+        self.__exception_table = {}
+    def register_exception(self, exc_type, call):
+        self.__exception_table[exc_type] = call
+        self.log("registered exception handler for {}".format(exc_type))
+    def handle_exception(self):
+        _handled = False
+        exc_info = sys.exc_info()
+        # store info
+        self._exc_info = exc_info
+        # FIXME
+        exc_type = str(exc_info[0]).split(".")[-1].split("'")[0]
+        if exc_type in self.__exception_table:
+            self.log("caught known exception {}".format(exc_type),
+                     logging_tools.LOG_LEVEL_WARN)
+            self.__exception_table[exc_type](exc_info[1])
+            _handled = True
+        else:
+            except_info = get_except_info()
+            self.log(
+                "caught unknown exception {} ({}), traceback".format(
+                    exc_type,
+                    except_info),
+                logging_tools.LOG_LEVEL_CRITICAL)
+            tb = self._exc_info[2]
+            out_lines = ["Exception in process '{}'".format(self.name)]
+            for file_name, line_no, name, line in traceback.extract_tb(tb):
+                self.log(
+                    "File '{}', line {:d}, in {}".format(
+                        file_name, line_no, name),
+                        logging_tools.LOG_LEVEL_CRITICAL
+                    )
+                out_lines.append("File '{}', line {:d} in {}".format(file_name, line_no, name))
+                if line:
+                    self.log(" - {:d} : {}".format(line_no, line),
+                             logging_tools.LOG_LEVEL_CRITICAL)
+                    out_lines.append(" - {:d} : {}".format(line_no, line))
+            out_lines.append(except_info)
+            # write to logging-server
+            err_h = io_stream_helper.io_stream("/var/lib/logging-server/py_err_zmq", zmq_context=self.zmq_context)
+            err_h.write("\n".join(out_lines))
+            err_h.close()
+            self.log(
+                "waiting for 1 second",
+                logging_tools.LOG_LEVEL_WARN)
+            time.sleep(1)
+        return _handled
+
+class process_obj(multiprocessing.Process, timer_base, poller_obj, process_base, exception_handling_mixin):
     def __init__(self, name, **kwargs):
         multiprocessing.Process.__init__(self, target=self._code, name=name)
         timer_base.__init__(self, loop_timer=kwargs.get("loop_timer", 0))
         poller_obj.__init__(self)
+        exception_handling_mixin.__init__(self)
         self.__stack_size = kwargs.get("stack_size", DEFAULT_STACK_SIZE)
         # flags
         self.__flags = {}
@@ -547,39 +601,24 @@ class process_obj(multiprocessing.Process, timer_base, poller_obj, process_base)
                     else:
                         self.step(blocking=True)
             except:
-                exc_info = sys.exc_info()
-                self._exc_info = exc_info
-                # FIXME
-                exc_type = str(exc_info[0]).split(".")[-1].split("'")[0]
-                except_info = get_except_info()
-                self.log("caught unknown exception %s (%s), traceback" % (exc_type, except_info),
-                         logging_tools.LOG_LEVEL_CRITICAL)
-                tb = self._exc_info[2]
-                out_lines = ["Exception in process '%s'" % (self.name)]
-                for file_name, line_no, name, line in traceback.extract_tb(tb):
-                    self.log("File '%s', line %d, in %s" % (file_name, line_no, name),
-                             logging_tools.LOG_LEVEL_CRITICAL)
-                    out_lines.append("File '%s', line %d, in %s" % (file_name, line_no, name))
-                    if line:
-                        self.log(" - %d : %s" % (line_no, line),
-                                 logging_tools.LOG_LEVEL_CRITICAL)
-                        out_lines.append(" - %d : %s" % (line_no, line))
-                out_lines.append(except_info)
-                # write to logging-server
-                err_h = io_stream_helper.io_stream("/var/lib/logging-server/py_err_zmq", zmq_context=self.zmq_context)
-                err_h.write("\n".join(out_lines))
-                err_h.close()
-                print("process_obj.loop() %s: %s" % (self.name,
-                                                     process_tools.get_except_info()))
-                raise
+                handled = self.handle_exception()
+                if not handled:
+                    print(
+                        "process_obj.loop() {}: {}".format(
+                            self.name,
+                            process_tools.get_except_info()
+                        )
+                    )
+                    raise
             if self.cb_func:
                 self.cb_func()
 
-class process_pool(timer_base, poller_obj, process_base):
+class process_pool(timer_base, poller_obj, process_base, exception_handling_mixin):
     def __init__(self, name, **kwargs):
         self.debug_zmq = kwargs.get("zmq_debug", False)
         timer_base.__init__(self)
         poller_obj.__init__(self)
+        exception_handling_mixin.__init__(self)
         self.name = name
         self.pid = os.getpid()
         self.__sockets = {}
@@ -612,7 +651,6 @@ class process_pool(timer_base, poller_obj, process_base):
                         "signal_handlers_installed" : False,
                         "exit_requested"            : False,
                         "return_value"              : 0}
-        self.__exception_table = {}
         self.process_init()
         self.set_stack_size(kwargs.get("stack_size", DEFAULT_STACK_SIZE))
         self.__processes_stopped = set()
@@ -798,43 +836,8 @@ class process_pool(timer_base, poller_obj, process_base):
     def process_start(self, p_name, p_pid):
         # dummy function, called when a process starts
         pass
-    def _handle_exception(self):
-        exc_info = sys.exc_info()
-        self._exc_info = exc_info
-        # FIXME
-        exc_type = str(exc_info[0]).split(".")[-1].split("'")[0]
-        if exc_type in self.__exception_table:
-            self.log("caught known exception %s" % (exc_type),
-                     logging_tools.LOG_LEVEL_WARN)
-            self.__exception_table[exc_type](exc_info[1])
-        else:
-            exc_info = sys.exc_info()
-            self._exc_info = exc_info
-            except_info = get_except_info()
-            self.log("caught unknown exception %s (%s), traceback" % (exc_type, except_info),
-                     logging_tools.LOG_LEVEL_CRITICAL)
-            tb = self._exc_info[2]
-            out_lines = ["Exception in process '%s'" % (self.name)]
-            for file_name, line_no, name, line in traceback.extract_tb(tb):
-                self.log("File '%s', line %d, in %s" % (file_name, line_no, name),
-                         logging_tools.LOG_LEVEL_CRITICAL)
-                out_lines.append("File '%s', line %d, in %s" % (file_name, line_no, name))
-                if line:
-                    self.log(" - %d : %s" % (line_no, line),
-                             logging_tools.LOG_LEVEL_CRITICAL)
-                    out_lines.append(" - %d : %s" % (line_no, line))
-            out_lines.append(except_info)
-            # write to logging-server
-            err_h = io_stream_helper.io_stream("/var/lib/logging-server/py_err_zmq", zmq_context=self.zmq_context)
-            err_h.write("\n".join(out_lines))
-            err_h.close()
-            self.log("waiting for 1 second",
-                     logging_tools.LOG_LEVEL_WARN)
-            time.sleep(1)
     def register_func(self, f_str, f_call):
         self.__func_table[f_str] = f_call
-    def register_exception(self, exc_type, call):
-        self.__exception_table[exc_type] = call
     def optimize_message_list(self, in_list):
         return in_list
     def _sig_handler(self, signum, frame):
@@ -936,7 +939,7 @@ class process_pool(timer_base, poller_obj, process_base):
                 self.loop_end()
                 excepted = False
             except:
-                self._handle_exception()
+                self.handle_exception()
         self.uninstall_signal_handlers()
         self.loop_post()
         self._close_pp_sockets()
