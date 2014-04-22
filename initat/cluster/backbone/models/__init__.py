@@ -3,11 +3,12 @@
 from django.conf import settings
 from django.core.cache import cache
 from django.core.exceptions import ValidationError, ImproperlyConfigured
+from django.core.signals import request_finished, request_started
 from django.db import models
 from django.db.models import Q, signals
 from django.dispatch import receiver
 from django.utils.functional import memoize
-from initat.cluster.backbone.middleware import thread_local_middleware
+from initat.cluster.backbone.middleware import thread_local_middleware, _thread_local
 from initat.cluster.backbone.models.functions import _check_empty_string, _check_float, \
     _check_integer, _check_non_empty_string, to_system_tz, get_change_reset_list, get_related_models
 from lxml import etree # @UnresolvedImport
@@ -72,6 +73,18 @@ system_timezone = pytz.timezone(time.tzname[0])
 # cluster_log_source
 cluster_log_source = None
 
+@receiver(request_started)
+def bg_req_started(*args, **kwargs):
+    # init number of background jobs created
+    _thread_local.num_bg_jobs = 0
+
+@receiver(request_finished)
+def bg_req_finished(*args, **kwargs):
+    # check number of background jobs and signal localhost
+    if _thread_local.num_bg_jobs:
+        _thread_local.num_bg_jobs = 0
+        _signal_localhost()
+
 @receiver(user_changed)
 def user_changed(*args, **kwargs):
     _insert_bg_job("sync_users", kwargs["cause"], kwargs["user"])
@@ -120,7 +133,7 @@ def _insert_bg_job(cmd, cause, obj):
             # valid for 4 hours
             valid_until=cluster_timezone.localize(datetime.datetime.now() + datetime.timedelta(seconds=60 * 5)), # 3600 * 4)),
         )
-        _signal_localhost()
+        _thread_local.num_bg_jobs += 1
     else:
         if not _local_pk:
             logger.error("cannot identify local device")
@@ -335,7 +348,7 @@ def config_post_save(sender, **kwargs):
                         value="dc=test,dc=ac,dc=at"),
                     config_str(
                         name="admin_cn",
-                        description="Admin CN (relative to base_dn",
+                        description="Admin CN (relative to base_dn)",
                         value="admin"),
                     config_str(
                         name="root_passwd",

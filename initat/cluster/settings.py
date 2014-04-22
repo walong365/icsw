@@ -50,7 +50,8 @@ DATABASES = {
         "USER"     : "",
         "PASSWORD" : "",
         "HOST"     : "",
-        "PORT"     : ""
+        "PORT"     : "",
+        # "CONN_MAX_AGE" : 30,
     }
 }
 
