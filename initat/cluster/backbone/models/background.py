@@ -24,6 +24,7 @@ class background_job(models.Model):
         ("pending", "init and awaiting processing"),
         ("done", "job finished"),
         ("timeout", "timeout"),
+        ("merged", "merged with other job"),
         ])
     # command as XML
     command_xml = models.TextField(null=False)

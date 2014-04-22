@@ -66,15 +66,15 @@ if os.path.isfile(NEW_CONF_FILE):
     try:
         conf_content = file(NEW_CONF_FILE, "r").read()
     except IOError:
-        raise ImproperlyConfigured("cannot read '%s', wrong permissions ?" % (NEW_CONF_FILE))
+        raise ImproperlyConfigured("cannot read '{}', wrong permissions ?".format(NEW_CONF_FILE))
 else:
     if not os.path.isfile(OLD_CONF_FILE):
-        raise ImproperlyConfigured("config '%s' and %s' not found" % (NEW_CONF_FILE, OLD_CONF_FILE))
+        raise ImproperlyConfigured("config '{}' and '{}' not found".format(NEW_CONF_FILE, OLD_CONF_FILE))
     else:
         try:
             conf_content = file(OLD_CONF_FILE, "r").read()
         except IOError:
-            raise ImproperlyConfigured("cannot read '%s', wrong permissions ?" % (OLD_CONF_FILE))
+            raise ImproperlyConfigured("cannot read '{}', wrong permissions ?".format(OLD_CONF_FILE))
 
 sql_dict = dict([(key.split("_")[1], value) for key, value in [
     line.strip().split("=", 1) for line in conf_content.split("\n") if line.count("=") and line.count("_") and not line.count("NAGIOS")]])
@@ -127,8 +127,8 @@ LANGUAGE_CODE = "en-us"
 SITE_ID = 1
 
 REL_SITE_ROOT = "cluster"
-SITE_ROOT = "/%s" % (REL_SITE_ROOT)
-LOGIN_URL = "%s/session/login/" % (SITE_ROOT)
+SITE_ROOT = "/{}".format(REL_SITE_ROOT)
+LOGIN_URL = "{}/session/login/".format(SITE_ROOT)
 
 # If you set this to False, Django will make some optimizations so as not
 # to load the internationalization machinery.
@@ -146,7 +146,7 @@ USE_TZ = True
 # Examples: "http://media.lawrence.com/media/", "http://example.com/media/"
 MEDIA_ROOT = os.path.join(FILE_ROOT, "frontend", "media")
 
-MEDIA_URL = "%s/media/" % (SITE_ROOT)
+MEDIA_URL = "{}/media/".format(SITE_ROOT)
 
 # Absolute path to the directory static files should be collected to.
 # Don't put anything in this directory yourself; store your static files
@@ -168,7 +168,7 @@ if not os.path.isdir(STATIC_ROOT_DEBUG):
 
 # URL prefix for static files.
 # Example: "http://media.lawrence.com/static/"
-STATIC_URL = "%s/static/" % (SITE_ROOT)
+STATIC_URL = "{}/static/".format(SITE_ROOT)
 
 # Session settings
 SESSION_ENGINE = "django.contrib.sessions.backends.cache"
@@ -290,7 +290,7 @@ except ImportError:
 else:
     _required = "1.4.0"
     if crispy_forms.__version__ != _required:
-        raise ImproperlyConfigured("Crispy forms has version '%s' (required: '%s')" % (
+        raise ImproperlyConfigured("Crispy forms has version '{}' (required: '{}')".format(
             crispy_forms.__version__,
             _required,
         ))
@@ -299,7 +299,7 @@ else:
 PIPELINE_YUGLIFY_BINARY = "/opt/cluster/lib/node_modules/yuglify/bin/yuglify"
 if not SLAVE_MODE:
     if not os.path.exists(PIPELINE_YUGLIFY_BINARY):
-        raise ImproperlyConfigured("no %s found" % (PIPELINE_YUGLIFY_BINARY))
+        raise ImproperlyConfigured("no {} found".format(PIPELINE_YUGLIFY_BINARY))
 PIPELINE_YUGLIFY_CSS_ARGUMENTS = "--terminal"
 PIPELINE_YUGLIFY_JS_ARGUMENTS = "--terminal"
 STATICFILES_STORAGE = "pipeline.storage.PipelineCachedStorage"
@@ -433,7 +433,7 @@ if not "NO_AUTO_ADD_APPLICATIONS" in os.environ:
         full_path = os.path.join(dir_name, sub_dir)
         if os.path.isdir(full_path):
             if any([entry.endswith("views.py") for entry in os.listdir(full_path)]):
-                add_app = "initat.cluster.%s" % (sub_dir)
+                add_app = "initat.cluster.{}".format(sub_dir)
                 if add_app not in INSTALLED_APPS:
                     # search for menu file
                     templ_dir = os.path.join(full_path, "templates")
@@ -470,7 +470,7 @@ else:
 
 # validate settings
 if PASSWORD_HASH_FUNCTION not in ["SHA1", "CRYPT"]:
-    raise ImproperlyConfigured("password hash function '%s' not known" % (PASSWORD_HASH_FUNCTION))
+    raise ImproperlyConfigured("password hash function '{}' not known".format(PASSWORD_HASH_FUNCTION))
 
 INSTALLED_APPS = tuple(list(INSTALLED_APPS) + ["rest_framework"])
 

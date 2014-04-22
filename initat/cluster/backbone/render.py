@@ -46,7 +46,7 @@ class render_me(object):
             self._unfold(gp_dict)
             self._unfold(op_dict)
             _user = {"idx" : self.request.user.pk, "pk" : self.request.user.pk}
-            _num_bg_jobs = background_job.objects.exclude(Q(state="done")).count()
+            _num_bg_jobs = background_job.objects.exclude(Q(state__in=["done", "timeout", "ended", "merged"])).count()
         else:
             gp_dict = {}
             op_dict = {}
