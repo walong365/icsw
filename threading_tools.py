@@ -21,6 +21,7 @@
 #
 """ classes for multiprocessing (using multiprocessing) """
 
+import inspect
 import io_stream_helper
 import logging_tools
 import multiprocessing
@@ -28,8 +29,8 @@ import os
 import process_tools
 import signal
 import sys
-import time
 import threading
+import time
 import traceback
 import zmq
 try:
@@ -39,6 +40,26 @@ except:
 
 # default stacksize
 DEFAULT_STACK_SIZE = 2 * 1024 * 1024
+
+# base class
+class exception_handling_base(object):
+    pass
+
+# exception mixin
+class operational_error_mixin(exception_handling_base):
+    def __init__(self):
+        self.register_exception("OperationalError", self._op_error)
+    def _op_error(self, info):
+        try:
+            from django.db import connection
+        except:
+            pass
+        else:
+            self.log("operational error, closing db connection", logging_tools.LOG_LEVEL_ERROR)
+            try:
+                connection.close()
+            except:
+                pass
 
 # Exceptions
 class my_error(Exception):
@@ -350,9 +371,24 @@ class process_base(object):
 class exception_handling_mixin(object):
     def __init__(self):
         self.__exception_table = {}
+        for _cl in inspect.getmro(self.__class__):
+            # handle if
+            # ... is subclass of exception_handling_base
+            # ... is not exception_handling_base
+            # ... is no subclass of exception_handling_mixin
+            if issubclass(_cl, exception_handling_base) and _cl != exception_handling_base and not issubclass(_cl, exception_handling_mixin):
+                _cl.__init__(self)
+                # print "*", _cl
     def register_exception(self, exc_type, call):
         self.__exception_table[exc_type] = call
-        self.log("registered exception handler for {}".format(exc_type))
+        # self.log("registered exception handler for {}".format(exc_type))
+    def show_exception_handlers(self):
+        self.log(
+            "{} defined: {}".format(
+                logging_tools.get_plural("exception handler", len(self.__exception_table)),
+                ", ".join(sorted(self.__exception_table.keys()))
+            )
+        )
     def handle_exception(self):
         _handled = False
         exc_info = sys.exc_info()
@@ -519,7 +555,9 @@ class process_obj(multiprocessing.Process, timer_base, poller_obj, process_base,
         self._init_sockets()
         # call process_init (set pid and stuff)
         self.process_init()
+        # now we should have a vaild log command
         self.set_stack_size(self.__stack_size)
+        self.show_exception_handlers()
         self.process_running()
         self.loop_start()
         self.loop()
@@ -861,11 +899,13 @@ class process_pool(timer_base, poller_obj, process_base, exception_handling_mixi
             self["signal_handlers_installed"] = True
             self.log("installing signal handlers")
             self.__orig_sig_handlers = {}
-            for sig_num in [signal.SIGTERM,
-                            signal.SIGINT,
-                            signal.SIGTSTP,
-                            signal.SIGALRM,
-                            signal.SIGHUP]:
+            for sig_num in [
+                signal.SIGTERM,
+                signal.SIGINT,
+                signal.SIGTSTP,
+                signal.SIGALRM,
+                signal.SIGHUP
+                ]:
                 self.__orig_sig_handlers[sig_num] = signal.signal(sig_num, self._sig_handler)
     def uninstall_signal_handlers(self):
         if self["signal_handlers_installed"]:
@@ -901,6 +941,7 @@ class process_pool(timer_base, poller_obj, process_base, exception_handling_mixi
     def loop(self):
         self["loop_start_called"] = False
         self.install_signal_handlers()
+        self.show_exception_handlers()
         excepted = True
         while excepted:
             try:
