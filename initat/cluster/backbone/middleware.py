@@ -104,12 +104,12 @@ def show_database_calls(**kwargs):
                             if cur_str.startswith("[") and cur_str.endswith("]"):
                                 out_list.add(cur_str.split(".")[0])
                         # print sql_str
-                        sql_str = "{} FROM {} :: {}".format(
+                        sql_str = u"{} FROM {} :: {}".format(
                             oper_str,
                             ", ".join(sorted(list(out_list))),
                             sql_str)
                     out_str = sql_str[0:cur_width - 8]
-                print "{:6.2f} {}".format(float(act_sql["time"]), out_str)
+                print u"{:6.2f} {}".format(float(act_sql["time"]), out_str)
     else:
         print "django.db.connection not loaded in backbone.middleware.py"
 
