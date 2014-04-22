@@ -12,21 +12,36 @@ livestatus_templ = """
 <table class="table table-condensed table-hover table-bordered" style="width:auto;">
     <thead>
         <tr>
-            <td colspan="4" paginator entries="entries" pag_settings="pagSettings" per_page="20" paginator_filter="simple" paginator-epp="10,20,50,100,1000"></td>
+            <td colspan="99" paginator entries="entries" pag_settings="pagSettings" per_page="20" paginator_filter="simple" paginator-epp="10,20,50,100,1000"></td>
         </tr>
         <tr>
-            <th ng-click="toggle_order('name')"><span ng-class="get_order_glyph('name')"></span>Node</th>
-            <th ng-click="toggle_order('descr')"><span ng-class="get_order_glyph('descr')"></span>Check</th>
-            <th>last check</th>
-            <th ng-click="toggle_order('result')"><span ng-class="get_order_glyph('result')"></span>result</th>
+            <th colspan="99">
+                <div class="btn-group">
+                    <input ng-repeat="entry in show_options" type="button" ng-class="get_so_class(entry[0])" value="{{ entry[1] }}" ng-click="toggle_so(entry[0])"></input>
+                </div>
+            </th>
+
+        </tr>
+        <tr>
+            <th ng-repeat="entry in show_options"
+                ng-show="so_enabled[entry[0]]"
+                ng-click="entry[3] && toggle_order(entry[0])"
+            >
+            <span ng-if="entry[3]" ng-class="get_order_glyph(entry[0])"></span>
+            {{ entry[1] }}
+            </th>
         </tr>
     </thead>
     <tbody>
-        <tr ng-repeat="entry in entries | orderBy:get_order() | paginator2:this.pagSettings" ng-class="get_tr_class(entry)">
-            <td>{{ entry.name }}</td>
-            <td>{{ entry.descr }}</td>
-            <td>{{ get_last_check(entry) }}</td>
-            <td>{{ entry.result }}</td>
+        <tr ng-repeat="entry in entries | orderBy:get_order() | paginator2:this.pagSettings">
+            <td ng-show="so_enabled['host_name']">{{ entry.host_name }}</td>
+            <td ng-show="so_enabled['state']" ng-class="get_state_class(entry)">{{ get_state_string(entry) }}</td>
+            <td ng-show="so_enabled['description']">{{ entry.description }}</td>
+            <td ng-show="so_enabled['state_type']">{{ get_state_type(entry) }}</td>
+            <td ng-show="so_enabled['check_type']">{{ get_check_type(entry) }}</td>
+            <td ng-show="so_enabled['last_check']">{{ get_last_check(entry) }}</td>
+            <td ng-show="so_enabled['last_change']">{{ get_last_change(entry) }}</td>
+            <td ng-show="so_enabled['plugin_output']">{{ entry.plugin_output }}</td>
         </tr>
     </tbody>
 </table>
@@ -71,9 +86,30 @@ angular_module_setup([device_livestatus_module])
 device_livestatus_module.controller("livestatus_ctrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "sharedDataSource", "$q", "$modal", "$timeout"
     ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, sharedDataSource, $q, $modal, $timeout) ->
         $scope.entries = []
-        $scope.order_name = "name"
+        $scope.order_name = "host_name"
         $scope.order_dir = true
         $scope.pagSettings = paginatorSettings.get_paginator("device_tree_base", $scope)
+        $scope.show_options = [
+            # 1 ... option local name
+            # 2 ... option display name
+            # 3 ... default value
+            # 4 ... enable sort
+            ["host_name"    , "node name", true, true],
+            ["state"        , "state", true, true],
+            ["description"  , "description", true, true],
+            ["state_type"   , "state type", false, false],
+            ["check_type"   , "check type", false, false],
+            ["last_check"   , "last check", true, false],
+            ["last_change"  , "last change", false, false],
+            ["plugin_output", "result", true, true],
+        ]
+        $scope.so_enabled = {}
+        for entry in $scope.show_options
+            $scope.so_enabled[entry[0]] = entry[2]
+        $scope.get_so_class = (short) ->
+            return (if $scope.so_enabled[short] then "btn btn-xs btn-success" else "btn btn-xs")
+        $scope.toggle_so = (short) ->
+            $scope.so_enabled[short] = !$scope.so_enabled[short]
         $scope.new_devsel = (_dev_sel, _devg_sel) ->
             #pre_sel = (dev.idx for dev in $scope.devices when dev.expanded)
             #restDataSource.reset()
@@ -106,18 +142,9 @@ device_livestatus_module.controller("livestatus_ctrl", ["$scope", "$compile", "$
                 success : (xml) =>
                     if parse_xml_response(xml)
                         entries = []
-                        $(xml).find("node_results node_result").each (idx, node) =>
-                            node = $(node)
-                            node_name = node.attr("name")
-                            node.find("result").each (_idx, res) =>
-                                res = $(res)
-                                entries.push({
-                                    "name" : node_name
-                                    "state" : parseInt(res.attr("state"))
-                                    "descr" : res.attr("description")
-                                    "last_check" : parseInt(res.attr("last_check"))
-                                    "result" : res.text()
-                                })
+                        $(xml).find("value[name='result']").each (idx, node) =>
+                            entries = entries.concat(angular.fromJson($(node).text()))
+                            #console.log entries[0]
                         $scope.$apply(
                             $scope.entries = entries
                         )
@@ -127,15 +154,43 @@ device_livestatus_module.controller("livestatus_ctrl", ["$scope", "$compile", "$
         template : $templateCache.get("livestatus_template.html")
         link : (scope, el, attrs) ->
             scope.new_devsel((parseInt(entry) for entry in attrs["devicepk"].split(",")), [])
-            scope.get_tr_class = (entry) ->
-                if entry.state > 1
-                    return "danger"
-                else if entry.state == 1
-                    return "warning"
-                else
-                    return ""
+            scope.get_state_class = (entry) ->
+                return {
+                    0 : "success"
+                    1 : "warning"
+                    2 : "danger"
+                    3 : "danger"
+                }[entry.state]
             scope.get_last_check = (entry) ->
-                return moment.unix(entry.last_check).fromNow(true)              
+                return scope.get_diff_time(entry.last_check)
+            scope.get_last_change = (entry) ->
+                return scope.get_diff_time(entry.last_state_change)
+            scope.get_diff_time = (ts) ->
+                if parseInt(ts)
+                    return moment.unix(ts).fromNow(true)
+                else
+                    return "never"
+            scope.get_state_string = (entry) ->
+                return {
+                    0 : "OK"
+                    1 : "Warning"
+                    2 : "Critical"
+                    3 : "Unknown"
+                }[entry.state]
+            scope.get_state_type = (entry) ->
+                return {
+                    ""  : "???"
+                    null : "???"
+                    "0" : "soft"
+                    "1" : "hard"
+                }[entry.state_type]
+            scope.get_check_type = (entry) ->
+                return {
+                    ""  : "???"
+                    null : "???"
+                    "0" : "active"
+                    "1" : "passive"
+                }[entry.check_type]
     }
 ).run(($templateCache) ->
     $templateCache.put("livestatus_template.html", livestatus_templ)

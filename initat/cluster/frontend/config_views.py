@@ -145,7 +145,7 @@ class alter_config_cb(View):
         is_meta = cur_dev.device_type.identifier == "MD"
         # all devices of device_group
         all_devs = cur_dev.device_group.device_group.all()
-        logger.info("device {} [{}]/ config {}: {} ({} in device_group)".format(
+        logger.info(u"device {} [{}]/ config {}: {} ({} in device_group)".format(
             unicode(cur_dev),
             "MD" if is_meta else "-",
             unicode(cur_conf),

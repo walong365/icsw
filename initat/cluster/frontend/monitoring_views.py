@@ -171,16 +171,12 @@ class get_node_status(View):
         )
         result = contact_server(request, "md-config", srv_com, timeout=30)
         if result:
-            node_results = result.xpath(".//node_results", smart_strings=False)
+            node_results = result.xpath(".//ns:result/text()", smart_strings=False)
             if len(node_results):
-                node_results = node_results[0]
-                if len(node_results):
-                    # first device
-                    request.xml_response["result"] = E.node_results(
-                        *[E.node_result(
-                            *[E.result(cur_res.attrib.pop("plugin_output"), **cur_res.attrib) for cur_res in node_result],
-                            **node_result.attrib
-                        ) for node_result in node_results]
-                    )
+                # import pprint
+                # pprint.pprint(json.loads(node_results[0]))
+                # simply copy json dump
+                request.xml_response["result"] = node_results[0]
             else:
                 request.xml_response.error("no node_results", logger=logger)
+
