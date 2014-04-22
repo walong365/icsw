@@ -122,7 +122,7 @@ class server_process(threading_tools.process_pool, notify_mixin):
     def _log_config(self):
         self.log("Config info:")
         for line, log_level in global_config.get_log(clear=True):
-            self.log(" - clf: [{:d}] {}".format(log_level, line))
+            self.log(u" - clf: [{:d}] {}".format(log_level, line))
         conf_info = global_config.get_config_info()
         self.log("Found {:d} valid config-lines:".format(len(conf_info)))
         for conf in conf_info:
@@ -322,7 +322,7 @@ class server_process(threading_tools.process_pool, notify_mixin):
                     err_str,
                     server_command.SRV_REPLY_STATE_CRITICAL
                 )
-            self.log("result for {} was ({:d}) {}".format(
+            self.log(u"result for {} was ({:d}) {}".format(
                 com_name,
                 int(srv_com["result"].attrib["state"]),
                 srv_com["result"].attrib["reply"]))
@@ -338,7 +338,7 @@ class server_process(threading_tools.process_pool, notify_mixin):
         _send_return = True
         com_name = srv_com["command"].text
         self.log("executing command {}".format(com_name))
-        if self.notify_waiting_for_job(srv_com): # "bgrjid" in srv_com and int(srv_com["*bgrjid"]) in
+        if self.notify_waiting_for_job(srv_com):
             self.notify_handle_result(srv_com)
             _send_return = False
         else:
