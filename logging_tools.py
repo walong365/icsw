@@ -29,7 +29,6 @@ import logging
 import logging.handlers
 import os
 import pickle
-import pprint
 import re
 import stat
 import sys
@@ -94,7 +93,7 @@ def get_relative_dt(dt_struct):
         elif diff_days == 0:
             return dt_struct.strftime("today %H:%M:%S")
         else:
-            return dt_struct.strftime("%%a, %d days ago %%H:%%M:%%S" % (diff_days))
+            return dt_struct.strftime("%a, {:d} days ago %H:%M:%S".format(int(diff_days)))
     else:
         return dt_struct.strftime("%a, %d. %b %Y %H:%M:%S")
 
@@ -118,14 +117,15 @@ def get_plural(in_str, num, show_int=1, fstr_len=0, **kwargs):
     else:
         p_str = ""
     if fstr_len > 0:
-        f_str = "%%%dd " % (fstr_len)
+        f_str = "{{:{:d}d}} ".format(fstr_len)
     elif fstr_len < 0:
-        f_str = "%%0%dd " % (abs(fstr_len))
+        f_str = "{{:0{:d}d}} ".format(abs(fstr_len))
     else:
-        f_str = "%d "
-    return "%s%s%s" % ((show_int and f_str % (r_num)) or "",
-                       in_str[0 : end_idx],
-                       p_str)
+        f_str = "{:d} "
+    return "{}{}{}".format(
+        (show_int and f_str.format(r_num)) or "",
+        in_str[0 : end_idx],
+        p_str)
 
 def get_size_str(in_s, long_version=False, divider=1024, strip_spaces=False):
     if type(in_s) in [str, unicode]:
@@ -169,7 +169,7 @@ def get_diff_time_str(diff_secs):
     abs_diffs = abs(diff_secs)
     is_int = type(abs_diffs) in [int, long]
     if abs_diffs < 0.1:
-        diff_str = "%.2f mseconds" % (abs_diffs * 1000)
+        diff_str = "{:.2f} mseconds".format(abs_diffs * 1000)
     else:
         abs_mins, abs_hours = (0, 0)
         if abs_diffs > 60:
@@ -185,17 +185,17 @@ def get_diff_time_str(diff_secs):
                     if abs_days > 365:
                         abs_years = int(abs_days / 365)
                         abs_days -= 365 * abs_years
-                        diff_str = "%dy %3dd %02d:%02d:%02d" % (abs_years, abs_days, abs_hours, abs_mins, abs_secs)
+                        diff_str = "{:d}y {:3d}d {:02d}:{:02d}:{:02d}".format(abs_years, abs_days, abs_hours, abs_mins, abs_secs)
                     else:
-                        diff_str = "%dd %02d:%02d:%02d" % (abs_days, abs_hours, abs_mins, abs_secs)
+                        diff_str = "{:d}d {:02d}:{:02d}:{:02d}".format(abs_days, abs_hours, abs_mins, abs_secs)
                 else:
-                    diff_str = "%d:%02d:%02d" % (abs_hours, abs_mins, abs_secs)
+                    diff_str = "{:d}:{:02d}:{:02d}".format(abs_hours, abs_mins, abs_secs)
             else:
-                diff_str = "%d:%02d" % (abs_mins, abs_secs)
+                diff_str = "{:d}:{:02d}".format(abs_mins, abs_secs)
         else:
-            diff_str = "%s seconds" % ("%d" if is_int else "%.2f") % (abs_diffs)
+            diff_str = "{} seconds".format("{:d}" if is_int else "{:.2f}").format(abs_diffs)
     if diff_secs < 0:
-        diff_str = "%s [NEGATIVE TIME]" % (diff_str)
+        diff_str = "{} [NEGATIVE TIME]".format(diff_str)
     return diff_str
 
 def get_time_str(secs):
@@ -212,13 +212,13 @@ def get_time_str(secs):
     for hms in parts:
         if hms:
             if any_written:
-                hms_f.append("%02d" % (hms))
+                hms_f.append("{:02d}".format(int(hms)))
             else:
-                hms_f.append("%d" % (hms))
+                hms_f.append("{:d}".format(int(hms)))
             any_written = True
         else:
             if any_written:
-                hms_f.append("%02d" % (hms))
+                hms_f.append("{:02d}".format(int(hms)))
     out_f.append(":".join(hms_f))
     return " ".join(out_f)
 
@@ -462,8 +462,8 @@ class init_handler_unified(zmq_handler):
         if record.name.startswith("init.at."):
             record.name = record.name[8:]
         self.format(record)
-        form_str = "%-s/%s[%d]"
-        record.threadName = form_str % (record.name, record.threadName, record.lineno)
+        form_str = "{:<s}/{}[{:d}]"
+        record.threadName = form_str.format(record.name, record.threadName, record.lineno)
         record.name = "init.at.{}".format(UNIFIED_NAME)
         zmq_handler.emit(self, record)
 
@@ -513,12 +513,12 @@ class progress_counter(object):
             time_spent = act_time - self.__act_cs_time
             time_to_go = time_spent / (self.__sum_lc) * (self.__start_count)
             if kwargs.get("show_rate", False):
-                info_str = " (rate: %.2f / sec)" % (self.__sum_lc / time_spent)
+                info_str = " (rate: {:.2f} / sec)".format(self.__sum_lc / time_spent)
             else:
                 info_str = ""
             if kwargs.get("info_str", ""):
                 info_str = "{}, {}".format(info_str, kwargs["info_str"])
-            log_str = "%s %d, %5.2f %%, %d (%s) to go%s" % (
+            log_str = "{} {:d}, {:5.2f} %, {:d} ({}) to go{}".format(
                 self.__action,
                 self.__lc,
                 100. * (self.__sum_lc / float(max(1, self.__total_count))),
@@ -583,6 +583,8 @@ class form_list(object):
     def set_column_separator(self, def_val=" "):
         self.col_separator = def_val
     def set_format_string(self, row_idx, r_t="s", left="-", pre_string="", post_string="", min_size=0):
+        if left == "-":
+            left = "<"
         if type(row_idx) in [str, unicode]:
             row_idx = dict([(v, k) for k, v in self.header_dict.iteritems()])[row_idx]
         if row_idx == -1:
@@ -615,36 +617,38 @@ class form_list(object):
                 l_p_l = len(l_p)
                 if l_p_l < num_rows:
                     if l_p_l > 1:
-                        row_lens = [max(x, y) for x, y in zip(row_lens[:l_p_l - 1], [len(str(y)) for y in list(l_p[:-1])])] + row_lens[l_p_l - 1:]
+                        row_lens = [max(x, y) for x, y in zip(row_lens[:l_p_l - 1], [len(unicode(y)) for y in list(l_p[:-1])])] + row_lens[l_p_l - 1:]
                 else:
-                    row_lens = [max(x, y) for x, y in zip(row_lens, [len(str(y)) for y in list(l_p)])]
+                    row_lens = [max(x, y) for x, y in zip(row_lens, [len(unicode(y)) for y in list(l_p)])]
             # body format parts, header format parts
             b_f_parts, h_f_parts = ([], [])
             for idx in range(num_rows):
-                tp_str, lf_str, pre_str, post_str, min_len = self.form_dict.get(idx, ("s", "-", "", "", 0))
+                tp_str, lf_str, pre_str, post_str, min_len = self.form_dict.get(idx, ("s", "<", "", "", 0))
                 act_len = max(row_lens[idx], min_len, len(self.header_dict.get(idx, "")))
                 if tp_str.endswith("f") and tp_str.startswith("."):
-                    b_f_parts.append(("%s%%%s%d%s%s" % (pre_str, lf_str, act_len, tp_str, post_str)))
+                    b_f_parts.append((u"{}{{:{}{:d}{}}}{}".format(pre_str, lf_str, act_len, tp_str, post_str)))
                 else:
-                    b_f_parts.append(("%s%%%s%d%s%s" % (pre_str, lf_str, act_len, tp_str, post_str)))
-                h_f_parts.append(("%s%%%s%ds%s" % (pre_str, lf_str, act_len, post_str)))
+                    b_f_parts.append((u"{}{{:{}{:d}{}}}{}".format(pre_str, lf_str, act_len, tp_str, post_str)))
+                h_f_parts.append((u"{}{{:{}{:d}}}{}".format(pre_str, lf_str, act_len, post_str)))
             b_form_str_dict = {num_rows : self.col_separator.join(b_f_parts)}
             h_form_str_dict = {num_rows : self.col_separator.join(h_f_parts)}
             for idx in range(1, len(b_f_parts)):
-                b_form_str_dict[idx] = self.col_separator.join(b_f_parts[0:idx - 1] + ["%s"])
-                h_form_str_dict[idx] = self.col_separator.join(h_f_parts[0:idx - 1] + ["%s"])
+                b_form_str_dict[idx] = self.col_separator.join(b_f_parts[0:idx - 1] + [u"{}"])
+                h_form_str_dict[idx] = self.col_separator.join(h_f_parts[0:idx - 1] + [u"{}"])
             out_lines = []
             if self.header_dict:
                 headers = [self.header_dict.get(idx, "") for idx in range(len(self.header_dict.keys()))]
-                out_lines.append((h_form_str_dict[len(headers)] % tuple(headers)).rstrip())
+                out_lines.append((h_form_str_dict[len(headers)].format(*headers)).rstrip())
                 out_lines.append("-" * len(out_lines[-1]))
             for l_p in self.lines:
-                out_lines.append((b_form_str_dict[len(l_p)] % tuple(list(l_p))).rstrip())
+                # print len(l_p), b_form_str_dict
+                # print b_form_str_dict[len(l_p)]
+                out_lines.append((b_form_str_dict[len(l_p)].format(*l_p)).rstrip())
         return "\n".join(out_lines)
     def __len__(self):
         return len(self.lines)
     def __unicode__(self):
-        return str(self)
+        return self.__str__()
 
 class form_entry(object):
     def __init__(self, content, **kwargs):
@@ -673,7 +677,7 @@ class form_entry(object):
     def min_len(self):
         return max(len(str(self)), self.min_width)
     def __str__(self):
-        return self.form_str() % (self.content)
+        return self.form_str().format(self.content)
     def form_str(self, max_len=None):
         if self.content_type == "d":
             form_str = "d"
@@ -682,16 +686,16 @@ class form_entry(object):
         else:
             form_str = "s"
         if max_len is None:
-            form_str = "%%%s" % (form_str)
+            form_str = "{{:{}}}".format(form_str)
         else:
-            form_str = "%%%s%d%s" % (
-                "-" if self.left else "",
+            form_str = "{{:{}{:d}{}}}".format(
+                "<" if self.left else "",
                 max_len,
                 form_str,
                 )
-        return "%s%s%s" % (self.pre_str, form_str, self.post_str)
+        return "{}{}{}".format(self.pre_str, form_str, self.post_str)
     def format(self, max_len):
-        return self.form_str(max_len) % (self.content)
+        return self.form_str(max_len).format(self.content)
 
 class form_entry_right(form_entry):
     def __init__(self, content, **kwargs):
@@ -746,10 +750,9 @@ class new_form_list(object):
         row_lens = [max(old_len, len(self.__header_dict.get(idx, (True, ""))[1])) for idx, old_len in enumerate(row_lens)]
         out_lines = []
         if self.__header_dict:
-            # header = [self.__header_dict.get(idx, "header%d" % (idx)) for idx in xrange(max_rows)]
             header_list = [self.__header_dict.get(idx, (True, "")) for idx in xrange(max_rows)]
-            form_str = self.__col_sep.join(["%%%s%ds" % ("-" if header_list[idx][0] else "", row_len) for idx, row_len in enumerate(row_lens)])
-            out_lines.append((form_str % tuple([_e[1] for _e in header_list])).rstrip())
+            form_str = self.__col_sep.join(["{{:{}{:d}s}}".format("<" if header_list[idx][0] else "", row_len) for idx, row_len in enumerate(row_lens)])
+            out_lines.append(form_str.format(*[_e[1] for _e in header_list]).rstrip())
             out_lines.append("-" * len(out_lines[-1]))
         for line in self.__content:
             out_lines.append(self.__col_sep.join([entry.format(max_len) for entry, max_len in zip(line, row_lens[:len(line)])]))
@@ -761,11 +764,11 @@ def compress_list(ql, **kwargs):
     # node prefix, postfix, start_string, end_string
     def add_p(np, ap, s_str, e_str):
         if s_str == e_str:
-            return "%s%s%s" % (np, s_str, ap)
+            return "{}{}{}".format(np, s_str, ap)
         elif int(s_str) + 1 == int(e_str):
-            return "%s%s%s/%s%s" % (np, s_str, ap, e_str, ap)
+            return "{}{}{}/{}{}".format(np, s_str, ap, e_str, ap)
         else:
-            return "%s%s%s-%s%s" % (np, s_str, ap, e_str, ap)
+            return "{}{}{}-{}{}".format(np, s_str, ap, e_str, ap)
     pf_re = re.compile("^(?P<pef>.*?)(?P<num>\d+)(?P<pof>.*)$")
     nc_dict, unmatch_list = ({}, [])
     for q_e in ql:
@@ -928,7 +931,7 @@ class logfile(logging.handlers.BaseRotatingHandler):
         self._cleanup_old_logfiles()
         self.stream.close()
         act_time = time.localtime()
-        base_postfix = "%04d%02d%02d" % (act_time[0], act_time[1], act_time[2])
+        base_postfix = "{:04d}{:02d}{:02d}".format(act_time[0], act_time[1], act_time[2])
         if bz2:
             gz_postfix = "bz2"
         else:
@@ -966,203 +969,6 @@ class logfile(logging.handlers.BaseRotatingHandler):
             self.mode = "w"
             self.stream = self._open()
 
-class syslog_helper_obj(object):
-    def __init__(self):
-        pass
-    def _split_str(self, in_str, max_count=1):
-        act_list = []
-        act_str = ""
-        in_count = 0
-        for in_c in in_str:
-            if in_c == " ":
-                if in_count:
-                    act_str = "{}{}".format(act_str, in_c)
-                else:
-                    act_str = act_str.strip()
-                    if act_str:
-                        act_list.append(act_str)
-                    act_str = ""
-            else:
-                if in_c == "(":
-                    if in_count == max_count:
-                        raise ValueError("already in parentheses_mode ({}) ...".format(in_str))
-                    if in_count > 1:
-                        act_str = "{}{}".format(act_str, in_c)
-                    in_count += 1
-                elif in_c == ")":
-                    if not in_count:
-                        raise ValueError("not in parentheses_mode ...")
-                    in_count -= 1
-                    if not in_count:
-                        act_str = "{}{}".format(act_str, in_c)
-                act_str = "{}{}".format(act_str, in_c)
-        act_str = act_str.strip()
-        if act_str:
-            act_list.append(act_str)
-        return act_list
-    def _parse_stream(self, in_stream, mc_list, str_start):
-        str_end = {"{" : "}",
-                   "(" : ")"}[str_start]
-        if str_start == "(":
-            max_struct = 2
-        else:
-            max_struct = 1
-        s_list = []
-        struct_count, pre_str, in_str = (0, "", "")
-        need_semi = False
-        for in_c in in_stream:
-            if in_c not in [" ", ";"] and need_semi:
-                raise ValueError("need semikolon, error ...")
-            elif in_c == ";" and not struct_count and need_semi:
-                pre_parts = pre_str.split()
-                com = pre_parts.pop(0)
-                if com in mc_list:
-                    name = pre_parts.pop(0)
-                    key_str = (com, name)
-                else:
-                    key_str = com
-                s_list.append((key_str, in_str.strip()))
-                # print "got struct %s(%s)" % (str(key_str), in_str)
-                need_semi = False
-                pre_str = ""
-                in_str = ""
-            else:
-                if in_c == str_start:
-                    if struct_count == max_struct:
-                        raise ValueError("already in structure, error ...")
-                    struct_count += 1
-                    if struct_count > 1:
-                        in_str = "{}{}".format(in_str, in_c)
-                elif in_c == str_end:
-                    if not struct_count:
-                        raise ValueError("not in structure, error ...")
-                    # now we need a semikolon
-                    struct_count -= 1
-                    if not struct_count:
-                        need_semi = True
-                        pre_str = pre_str.strip()
-                        in_str = in_str.strip()
-                    else:
-                        in_str = "{}{}".format(in_str, in_c)
-                else:
-                    if struct_count:
-                        in_str = "{}{}".format(in_str, in_c)
-                    else:
-                        pre_str = "{}{}".format(pre_str, in_c)
-        return s_list
-    def is_string(self, in_str):
-        return type(in_str) == str and in_str[0] == in_str[-1] and in_str[0] in ["'", '"']
-    def flatten_string(self, in_str):
-        if self.is_string(in_str):
-            return in_str[1:-1]
-        else:
-            return in_str
-    def get_dict_sort(self, in_dict):
-        ret_dict = {}
-        for top_k, top_v in in_dict.iteritems():
-            for sub_k, sub_v in top_v.get_dict().iteritems():
-                for sub_part in sub_v:
-                    if self.is_string(sub_part):
-                        ret_dict[self.flatten_string(sub_part)] = (top_k, sub_k, [x for x in sub_v if x != sub_part])
-        return ret_dict
-
-class syslog_ng_destination(syslog_helper_obj):
-    def __init__(self, in_str):
-        syslog_helper_obj.__init__(self)
-        d_list = self._parse_stream(in_str, [], "(")
-        if len(d_list) > 1:
-            raise ValueError("__destination to long ({:d})".format(len(d_list)))
-        elif d_list:
-            self.__type, self.__args = d_list[0]
-            self.__args = self._split_str(self.__args)
-    def __repr__(self):
-        return "{} {}, {}".format("destination", self.__type, " ".join(self.__args))
-    def get_conf_str(self):
-        return " "
-
-class syslog_ng_source(syslog_helper_obj):
-    def __init__(self, in_str):
-        syslog_helper_obj.__init__(self)
-        self.__sources = dict([(key, self._split_str(value)) for key, value in self._parse_stream(in_str, [], "(")])
-    def get_dict(self):
-        return self.__sources
-    def __repr__(self):
-        return "{} {}".format("source", " ".join(["{}({})".format(x, " ".join(y)) for x, y in self.__sources.iteritems()]))
-    def get_conf_str(self):
-        return " "
-
-class syslog_ng_filter(syslog_helper_obj):
-    def __init__(self, in_str):
-        syslog_helper_obj.__init__(self)
-        self.__filter_list = self._split_str(in_str, 4)
-    def __repr__(self):
-        return "{} {}".format("filter", " ".join(self.__filter_list))
-    def get_conf_str(self):
-        return " ".join(self.__filter_list)
-
-class syslog_ng_log(syslog_helper_obj):
-    def __init__(self, in_str):
-        syslog_helper_obj.__init__(self)
-        obj_list = self._parse_stream(in_str, [], "(")
-        o_dict = dict([(k, []) for k in ["source", "destination", "filter", "flags"]])
-        for key, value in obj_list:
-            if key in o_dict.keys():
-                o_dict[key].append(value)
-            else:
-                raise KeyError("unknown key {}".format(key))
-        if not o_dict["source"]:
-            raise ValueError("need at least one source")
-        elif not o_dict["destination"]:
-            raise ValueError("need at least one destination")
-        self.__obj_dict = o_dict
-    def __repr__(self):
-        return "log from (%s)%s to (%s)%s" % (", ".join(self.__obj_dict["source"]),
-                                                self.__obj_dict["filter"] and " with filter (%s)" % (", ".join(self.__obj_dict["destination"])) or "",
-                                                ", ".join(self.__obj_dict["destination"]),
-                                                self.__obj_dict["flags"] and ", flags (%s)" % (", ".join(self.__obj_dict["flags"])) or "")
-
-class syslog_ng_config(syslog_helper_obj):
-    def __init__(self, name="/etc/syslog-ng/syslog-ng.conf"):
-        syslog_helper_obj.__init__(self)
-        self.__stream = " ".join([y for y in [x.strip() for x in file(name, "r").read().split("\n")] if len(y) and not y.startswith("#")])
-        self.__multi_commands = {"destination" : syslog_ng_destination,
-                                 "source"      : syslog_ng_source,
-                                 "filter"      : syslog_ng_filter}
-        self.__multi_objects = dict([(k, {}) for k in self.__multi_commands.keys()])
-        self.__log_list = []
-        # parse stream
-        s_list = self._parse_stream(self.__stream, self.__multi_commands.keys(), "{")
-        for key, value in s_list:
-            if type(key) == set:
-                key, name = key
-            if key in self.__multi_commands.keys():
-                self.__multi_objects[key][name] = self.__multi_commands[key](value)
-            elif key == "log":
-                self.__log_list.append(syslog_ng_log(value))
-            elif key == "options":
-                self.__options = dict([(k, value) for k, value in self._parse_stream(value, [], "(")])
-            else:
-                raise KeyError("unknown key %s (%s)" % (key, str(value)))
-    def get_config_lines(self):
-        # return lines with the config
-        r_lines = ["# auto-generated syslog-ng.conf", ""]
-        if self.__options:
-            r_lines.append("options {")
-            for key, value in self.__options.iteritems():
-                r_lines.append("    %s(%s);" % (key, value))
-            r_lines.extend(["};", ""])
-        for mc in self.__multi_commands.keys():
-            for key, value in self.__multi_objects[mc].iteritems():
-                r_lines.append("%s %s %s" % (mc, key, value.get_conf_str()))
-        return r_lines
-    def pprint_config(self):
-        pprint.pprint(self.__multi_objects)
-        pprint.pprint(self.__log_list)
-        pprint.pprint(self.__options)
-    def get_multi_object(self, name):
-        return self.__multi_objects[name]
-        # pprint.pprint(s_dict)
-
 # def main():
 #    a = new_form_list()
 #    a.append([form_entry("xxx", header="a"),
@@ -1174,7 +980,8 @@ class syslog_ng_config(syslog_helper_obj):
 #    # print "\n".join(a.get_config_lines())
 #    sys.exit(0)
 #
-# if __name__ == "__main__":
+# if __name__ == "__main__"
 #    main()
 #    print("Loadable module, exiting...")
 #    sys.exit(0)
+
