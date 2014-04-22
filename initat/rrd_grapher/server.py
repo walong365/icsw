@@ -43,7 +43,7 @@ try:
 except ImportError:
     rrdtool = None
 
-class server_process(threading_tools.process_pool):
+class server_process(threading_tools.process_pool, threading_tools.operational_error_mixin):
     def __init__(self):
         self.__log_cache, self.__log_template = ([], None)
         self.__pid_name = global_config["PID_NAME"]

@@ -169,7 +169,7 @@ class graph_var(object):
             "".join(["{:9s}".format(rep_name) for rep_name in ["min", "ave", "max", "latest", "total"]])
         )
 
-class graph_process(threading_tools.process_obj):
+class graph_process(threading_tools.process_obj, threading_tools.operational_error_mixin):
     def process_init(self):
         self.__log_template = logging_tools.get_logger(global_config["LOG_NAME"], global_config["LOG_DESTINATION"], zmq=True, context=self.zmq_context, init_logger=True)
         connection.close()
