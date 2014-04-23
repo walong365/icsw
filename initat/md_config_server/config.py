@@ -115,7 +115,12 @@ class sync_config(object):
                 server_type="monitor_slave",
                 fetch_network_info=True)
             self.slave_uuid = monitor_server.uuid
-            route = master_cfg["monitor_server"][0].get_route_to_other_device(self.__process.router_obj, slave_cfg, allow_route_to_other_networks=True)
+            route = master_cfg["monitor_server"][0].get_route_to_other_device(
+                self.__process.router_obj,
+                slave_cfg,
+                allow_route_to_other_networks=True,
+                global_sort_results=True,
+                )
             if not route:
                 self.slave_ip = None
                 self.master_ip = None
