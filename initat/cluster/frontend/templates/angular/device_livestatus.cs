@@ -49,6 +49,7 @@ livestatus_templ = """
             <th ng-repeat="entry in show_options"
                 ng-show="so_enabled[entry[0]]"
                 ng-click="entry[3] && toggle_order(entry[0])"
+                ng-class="get_header_class(entry)"
             >
             <span ng-if="entry[3]" ng-class="get_order_glyph(entry[0])"></span>
             {{ entry[1] }}
@@ -57,13 +58,13 @@ livestatus_templ = """
     </thead>
     <tbody>
         <tr ng-repeat="entry in entries | orderBy:get_order() | paginator2:this.pagSettings">
-            <td ng-show="so_enabled['host_name']">{{ entry.host_name }}</td>
-            <td ng-show="so_enabled['state']" ng-class="get_state_class(entry)">{{ get_state_string(entry) }}</td>
-            <td ng-show="so_enabled['description']">{{ entry.description }}</td>
-            <td ng-show="so_enabled['state_type']">{{ get_state_type(entry) }}</td>
-            <td ng-show="so_enabled['check_type']">{{ get_check_type(entry) }}</td>
-            <td ng-show="so_enabled['last_check']">{{ get_last_check(entry) }}</td>
-            <td ng-show="so_enabled['last_change']">{{ get_last_change(entry) }}</td>
+            <td class="nowrap" ng-show="so_enabled['host_name']">{{ entry.host_name }}</td>
+            <td class="nowrap" ng-show="so_enabled['state']" ng-class="get_state_class(entry)">{{ get_state_string(entry) }}</td>
+            <td class="nowrap" ng-show="so_enabled['description']">{{ entry.description }}</td>
+            <td class="nowrap" ng-show="so_enabled['state_type']">{{ get_state_type(entry) }}</td>
+            <td class="nowrap" ng-show="so_enabled['check_type']">{{ get_check_type(entry) }}</td>
+            <td class="nowrap" ng-show="so_enabled['last_check']">{{ get_last_check(entry) }}</td>
+            <td class="nowrap" ng-show="so_enabled['last_change']">{{ get_last_change(entry) }}</td>
             <td ng-show="so_enabled['plugin_output']">{{ entry.plugin_output }}</td>
         </tr>
     </tbody>
@@ -160,6 +161,8 @@ device_livestatus_module.controller("livestatus_ctrl", ["$scope", "$compile", "$
             else
                 $scope.order_name = name
                 $scope.order_dir = true
+        $scope.get_header_class = (entry) ->
+            return "nowrap"
         $scope.get_order = () ->
             return (if $scope.order_dir then "" else "-") + $scope.order_name
         $scope.get_order_glyph = (name) ->
