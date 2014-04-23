@@ -9,8 +9,13 @@ root = exports ? this
 {% verbatim %}
 
 livestatus_templ = """
-<table class="table table-condensed table-hover table-bordered" >
+<table class="table table-condensed table-hover table-striped" style="font-size:100%;">
     <thead>
+        <tr>
+            <th colspan="99">
+                Number of checks : {{ entries.length }}
+            </th>
+        </tr>
         <tr>
             <td colspan="99">
                 <div class="row">
