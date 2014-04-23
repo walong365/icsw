@@ -115,7 +115,7 @@ class status_process(threading_tools.process_obj):
         try:
             cur_sock = self._open()
             if cur_sock:
-                query = cur_sock.services.columns(
+                service_query = cur_sock.services.columns(
                     "host_name",
                     "description",
                     "state",
@@ -123,13 +123,25 @@ class status_process(threading_tools.process_obj):
                     "last_check",
                     "check_type",
                     "state_type",
-                    "last_state_change").filter("host_name", "=", dev_names)
-                result = query.call()
-                srv_com["result"] = json.dumps([_line for _line in result if _line.get("host_name", "")])
+                    "last_state_change",
+                ).filter("host_name", "=", dev_names)
+                service_result = service_query.call()
+                host_query = cur_sock.hosts.columns(
+                    "host_name",
+                    "state",
+                    "last_check",
+                    "check_type",
+                    "state_type",
+                    "last_state_change",
+                ).filter("host_name", "=", dev_names)
+                host_result = host_query.call()
+                srv_com["service_result"] = json.dumps([_line for _line in service_result if _line.get("host_name", "")])
+                srv_com["host_result"] = json.dumps(host_result)
                 srv_com.set_result(
-                    "query for {} gave {}".format(
+                    "query for {} gave {} and {}".format(
                         logging_tools.get_plural("device", len(dev_names)),
-                        logging_tools.get_plural("line", len(result)),
+                        logging_tools.get_plural("host result", len(host_result)),
+                        logging_tools.get_plural("service result", len(service_result)),
                     )
                 )
             else:
