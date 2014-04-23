@@ -63,11 +63,16 @@ livestatus_templ = """
     </thead>
     <tbody>
         <tr ng-repeat="entry in entries | orderBy:get_order() | paginator2:this.pagSettings">
-            <td class="nowrap" ng-show="so_enabled['host_name']">{{ entry.host_name }}</td>
-            <td class="nowrap" ng-show="so_enabled['state']" ng-class="get_state_class(entry)">{{ get_state_string(entry) }}</td>
+            <td ng-show="so_enabled['host_name']" ng-class="get_host_class(entry)">
+                {{ entry.host_name }}
+                <span ng-show="host_is_passive_checked(entry)" title="host is passive checked" class="glyphicon glyphicon-download pull-right"></span>
+            </td>
+            <td class="nowrap" ng-show="so_enabled['state']" ng-class="get_state_class(entry)">
+                {{ get_state_string(entry) }}
+                <span ng-show="is_passive_check(entry)" title="service is passive checked" class="glyphicon glyphicon-download pull-right"></span>
+            </td>
             <td class="nowrap" ng-show="so_enabled['description']">{{ entry.description }}</td>
             <td class="nowrap" ng-show="so_enabled['state_type']">{{ get_state_type(entry) }}</td>
-            <td class="nowrap" ng-show="so_enabled['check_type']">{{ get_check_type(entry) }}</td>
             <td class="nowrap" ng-show="so_enabled['last_check']">{{ get_last_check(entry) }}</td>
             <td class="nowrap" ng-show="so_enabled['last_change']">{{ get_last_change(entry) }}</td>
             <td ng-show="so_enabled['plugin_output']">{{ entry.plugin_output }}</td>
@@ -129,7 +134,6 @@ device_livestatus_module.controller("livestatus_ctrl", ["$scope", "$compile", "$
             ["state"        , "state", true, true],
             ["description"  , "description", true, true],
             ["state_type"   , "state type", false, false],
-            ["check_type"   , "check type", false, false],
             ["last_check"   , "last check", true, false],
             ["last_change"  , "last change", false, false],
             ["plugin_output", "result", true, true],
@@ -188,12 +192,19 @@ device_livestatus_module.controller("livestatus_ctrl", ["$scope", "$compile", "$
                 },
                 success : (xml) =>
                     if parse_xml_response(xml)
-                        entries = []
-                        $(xml).find("value[name='result']").each (idx, node) =>
-                            entries = entries.concat(angular.fromJson($(node).text()))
+                        service_entries = []
+                        $(xml).find("value[name='service_result']").each (idx, node) =>
+                            service_entries = service_entries.concat(angular.fromJson($(node).text()))
                             #console.log entries[0]
+                        host_entries = []
+                        $(xml).find("value[name='host_result']").each (idx, node) =>
+                            host_entries = host_entries.concat(angular.fromJson($(node).text()))
                         $scope.$apply(
-                            $scope.entries = entries
+                            $scope.entries = service_entries
+                            $scope.host_entries = host_entries
+                            $scope.host_lut = {}
+                            for entry in host_entries
+                                $scope.host_lut[entry.host_name] = entry
                         )
         $scope.md_filter_changed = () ->
             $scope.pagSettings.set_entries(@entries)
@@ -252,6 +263,23 @@ device_livestatus_module.controller("livestatus_ctrl", ["$scope", "$compile", "$
                     "0" : "active"
                     "1" : "passive"
                 }[entry.check_type]
+            scope.host_is_passive_checked = (entry) ->
+                if entry.host_name of scope.host_lut
+                    return if parseInt(scope.host_lut[entry.host_name].check_type) then true else false 
+                else
+                    return false                  
+            scope.is_passive_check = (entry) ->
+                return if parseInt(entry.check_type) then true else false 
+            scope.get_host_class = (entry) ->
+                if entry.host_name of scope.host_lut
+                    h_state = parseInt(scope.host_lut[entry.host_name].state)
+                    return {
+                        0 : "success"
+                        1 : "danger"
+                        2 : "danger"
+                    }[h_state]
+                else
+                    return "warning"
     }
 ).run(($templateCache) ->
     $templateCache.put("livestatus_template.html", livestatus_templ)

@@ -171,12 +171,14 @@ class get_node_status(View):
         )
         result = contact_server(request, "md-config", srv_com, timeout=30)
         if result:
-            node_results = result.xpath(".//ns:result/text()", smart_strings=False)
-            if len(node_results):
+            host_results = result.xpath(".//ns:host_result/text()", smart_strings=False)
+            service_results = result.xpath(".//ns:service_result/text()", smart_strings=False)
+            if len(host_results) + len(service_results):
                 # import pprint
                 # pprint.pprint(json.loads(node_results[0]))
                 # simply copy json dump
-                request.xml_response["result"] = node_results[0]
+                request.xml_response["host_result"] = host_results[0]
+                request.xml_response["service_result"] = service_results[0]
             else:
-                request.xml_response.error("no node_results", logger=logger)
+                request.xml_response.error("no service or node_results", logger=logger)
 
