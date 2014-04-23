@@ -12,12 +12,25 @@ livestatus_templ = """
 <table class="table table-condensed table-hover table-bordered" style="width:auto;">
     <thead>
         <tr>
-            <td colspan="99" paginator entries="entries" pag_settings="pagSettings" per_page="20" paginator_filter="simple" paginator-epp="10,20,50,100,1000"></td>
+            <td colspan="99" paginator entries="entries" paginator_filter="func" paginator_filter_func="filter_mdr" pag_settings="pagSettings" per_page="20" paginator_filter="simple" paginator-epp="10,20,50,100,1000"></td>
         </tr>
         <tr>
             <th colspan="99">
                 <div class="btn-group">
-                    <input ng-repeat="entry in show_options" type="button" ng-class="get_so_class(entry[0])" value="{{ entry[1] }}" ng-click="toggle_so(entry[0])"></input>
+                    <input ng-repeat="entry in md_states" type="button"
+                        ng-class="get_mds_class(entry[0])"
+                        ng-value="entry[1]"
+                        ng-click="toggle_mds(entry[0])"
+                    >
+                    </input>
+                </div>
+                <div class="btn-group">
+                    <input ng-repeat="entry in show_options" type="button"
+                        ng-class="get_so_class(entry[0])"
+                        ng-value="entry[1]"
+                        ng-click="toggle_so(entry[0])"
+                    >
+                    </input>
                 </div>
             </th>
 
@@ -103,13 +116,27 @@ device_livestatus_module.controller("livestatus_ctrl", ["$scope", "$compile", "$
             ["last_change"  , "last change", false, false],
             ["plugin_output", "result", true, true],
         ]
+        # int_state, str_state, default
+        $scope.md_states = [
+            [0, "O", true]
+            [1, "W", true]
+            [2, "C", true]
+            [3, "U", true]
+        ]
         $scope.so_enabled = {}
         for entry in $scope.show_options
             $scope.so_enabled[entry[0]] = entry[2]
+        $scope.mds_enabled = {}
+        for entry in $scope.md_states
+            $scope.mds_enabled[entry[0]] = entry[2]
         $scope.get_so_class = (short) ->
-            return (if $scope.so_enabled[short] then "btn btn-xs btn-success" else "btn btn-xs")
+            return if $scope.so_enabled[short] then "btn btn-xs btn-success" else "btn btn-xs"
         $scope.toggle_so = (short) ->
             $scope.so_enabled[short] = !$scope.so_enabled[short]
+        $scope.get_mds_class = (int_state) ->
+            return if $scope.mds_enabled[int_state] then "btn btn-xs " + {0 : "btn-success", 1 : "btn-warning", 2 : "btn-danger", 3 : "btn-danger"}[int_state] else "btn btn-xs"
+        $scope.toggle_mds = (int_state) ->
+            $scope.mds_enabled[int_state] = !$scope.mds_enabled[int_state]
         $scope.new_devsel = (_dev_sel, _devg_sel) ->
             #pre_sel = (dev.idx for dev in $scope.devices when dev.expanded)
             #restDataSource.reset()
@@ -148,6 +175,11 @@ device_livestatus_module.controller("livestatus_ctrl", ["$scope", "$compile", "$
                         $scope.$apply(
                             $scope.entries = entries
                         )
+        $scope.filter_mdr = (entry, scope) ->
+            show = true
+            if not scope.mds_enabled[parseInt(entry.state)]
+                show = false
+            return show
 ]).directive("livestatus", ($templateCache) ->
     return {
         restrict : "EA"

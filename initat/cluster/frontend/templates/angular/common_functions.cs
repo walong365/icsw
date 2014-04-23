@@ -75,6 +75,8 @@ class paginator_class
             per_page         : 10
             filtered_len     : 0
             unfiltered_len   : 0
+            # length currently shown in header
+            shown_len        : 0 
             num_pages        : 0
             start_idx        : 0
             end_idx          : 0
@@ -147,12 +149,15 @@ class paginator_class
         @conf.entries_per_page = (parseInt(entry) for entry in in_str.split(","))
     set_entries: (el_list) =>
         # can also be used to reapply the filter
-        @conf.unfiltered_len = el_list.length
+        #@conf.unfiltered_len = el_list.length
         el_list = @apply_filter(el_list)
-        @filtered_list = el_list
+        #@filtered_list = el_list
         @conf.init = true
-        @conf.filtered_len = el_list.length
+        @recalculate()
+        #@conf.filtered_len = el_list.length
+    recalculate: () =>
         pp = @conf.per_page
+        @conf.shown_len = @conf.filtered_len
         @conf.num_pages = parseInt((@conf.filtered_len + pp - 1) / pp)
         if @conf.num_pages > 0
             @conf.page_list = (idx for idx in [1..@conf.num_pages])
@@ -171,6 +176,7 @@ class paginator_class
         if @conf.filter_mode
             @conf.filter = ""
     apply_filter: (el_list) =>
+        @conf.unfiltered_len = el_list.length
         if @conf.filter_changed
             @conf.filter_changed(@)
         if @conf.filter_mode
@@ -178,6 +184,11 @@ class paginator_class
                 el_list = (entry for entry in el_list when @conf.filter_func()(entry, @$scope))
             else
                 el_list = @$filter("filter")(el_list, @conf.filter)
+        @conf.filtered_len = el_list.length
+        @filtered_list = el_list
+        if @conf.filtered_len != @conf.shown_len
+            # force recalculation of header
+            @recalculate()
         return el_list
 
 class shared_data_source
