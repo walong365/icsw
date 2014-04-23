@@ -101,6 +101,7 @@ device_livestatus_module.controller("livestatus_ctrl", ["$scope", "$compile", "$
         $scope.entries = []
         $scope.order_name = "host_name"
         $scope.order_dir = true
+        $scope.cur_timeout = undefined
         $scope.pagSettings = paginatorSettings.get_paginator("device_tree_base", $scope)
         $scope.show_options = [
             # 1 ... option local name
@@ -160,7 +161,7 @@ device_livestatus_module.controller("livestatus_ctrl", ["$scope", "$compile", "$
                 _class = "glyphicon glyphicon-chevron-right"
             return _class
         $scope.load_data = () ->
-            $timeout($scope.load_data, 20000)
+            $scope.cur_timeout = $timeout($scope.load_data, 20000)
             call_ajax
                 url  : "{% url 'mon:get_node_status' %}"
                 data : {
@@ -180,6 +181,10 @@ device_livestatus_module.controller("livestatus_ctrl", ["$scope", "$compile", "$
             if not scope.mds_enabled[parseInt(entry.state)]
                 show = false
             return show
+        $scope.$on("$destroy", () ->
+            if $scope.cur_timeout
+                $timeout.cancel($scope.cur_timeout)
+        )
 ]).directive("livestatus", ($templateCache) ->
     return {
         restrict : "EA"

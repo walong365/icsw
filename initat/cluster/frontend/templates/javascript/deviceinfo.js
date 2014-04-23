@@ -8,6 +8,10 @@ root = exports ? this
 
 class device_info
     constructor: (@event, @dev_key, @addon_devices=[]) ->
+        if window.ICSW_DEV_INFO
+            window.ICSW_DEV_INFO.close()
+        window.ICSW_DEV_INFO = @
+        @active_divs = []
     show: () =>
         @replace_div = {% if index_view %}true{% else %}false{% endif %}
         call_ajax
@@ -32,12 +36,19 @@ class device_info
                             $("#simplemodal-container").css("height", "auto")
                             $("#simplemodal-container").css("width", "auto")
                         onClose: =>
+                            # destroy scopes
+                            @close()
                             $.simplemodal.close()
                 {% if index_view %}
                 $("div#center_content").hide()
                 $("div#center_deviceinfo").show()
                 {% endif %} 
                 @dev_div.find("a[href='#general']").trigger("click")
+    close: () =>
+        # find all scopes and close them
+        for active_div in @active_divs
+            $(active_div).find(".ng-scope").scope().$destroy()
+        @active_divs = []
     get_pk_list: (with_md=true) =>
         # get all pks
         return [@dev_json.idx].concat(@addon_devices)
@@ -178,6 +189,7 @@ urn:uuid:{{ _edit_obj.uuid }}
                     target_div = @dev_div.find("div[class='tab-pane'][id='#{t_href}'] > div[id^='icsw']")
                     # bootstrap angular (app == id of device)
                     angular.bootstrap(target_div, [target_div.attr("id")])
+                    @active_divs.push(target_div[0])
                 el.tab("show")
         )
     
