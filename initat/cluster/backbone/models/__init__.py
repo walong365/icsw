@@ -133,7 +133,11 @@ def _insert_bg_job(cmd, cause, obj):
             # valid for 4 hours
             valid_until=cluster_timezone.localize(datetime.datetime.now() + datetime.timedelta(seconds=60 * 5)), # 3600 * 4)),
         )
-        _thread_local.num_bg_jobs += 1
+        # init if not already done
+        if not hasattr(_thread_local, "num_bg_jobs"):
+            _thread_local.num_bg_jobs = 1
+        else:
+            _thread_local.num_bg_jobs += 1
     else:
         if not _local_pk:
             logger.error("cannot identify local device")
