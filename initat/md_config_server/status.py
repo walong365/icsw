@@ -25,20 +25,15 @@ from django.db import connection
 from django.db.models import Q
 from initat.cluster.backbone.models import device
 from initat.md_config_server.config import global_config
-from lxml.builder import E # @UnresolvedImport
 import csv
 import json
-import socket
 import logging_tools
 import os
 import process_tools
 import server_command
+import socket
 import threading_tools
-
-try:
-    from md_config_server.version import VERSION_STRING
-except ImportError:
-    VERSION_STRING = "?.?"
+import time
 
 class live_query(object):
     def __init__(self, conn, resource):
@@ -52,9 +47,9 @@ class live_query(object):
         else:
             return self._conn.call(str(self))
     def __str__(self):
-        r_field = ["GET %s" % (self._resource)]
+        r_field = ["GET {}".format(self._resource)]
         if self._columns:
-            r_field.append("Columns: %s" % (" ".join(self._columns)))
+            r_field.append("Columns: {}".format(" ".join(self._columns)))
         r_field.extend(self._filters)
         return "\n".join(r_field + ["", ""])
     def columns(self, *args):
@@ -63,11 +58,11 @@ class live_query(object):
     def filter(self, key, op, value):
         if type(value) == list:
             for entry in value:
-                self._filters.append("Filter: %s %s %s" % (key, op, entry))
+                self._filters.append("Filter: {} {} {}".format(key, op, entry))
             if len(value) > 1:
-                self._filters.append("Or: %d" % (len(value)))
+                self._filters.append("Or: {:d}".format(len(value)))
         else:
-            self._filters.append("Filter: %s %s %s" % (key, op, value))
+            self._filters.append("Filter: {} {} {}".format(key, op, value))
         return self
 
 class live_socket(object):
@@ -106,17 +101,17 @@ class status_process(threading_tools.process_obj):
             self.__socket = None
     def _open(self):
         if self.__socket is None:
-            sock_name = "/opt/%s/var/live" % (global_config["MD_TYPE"])
+            sock_name = "/opt/{}/var/live".format(global_config["MD_TYPE"])
             if os.path.exists(sock_name):
                 self.__socket = live_socket(sock_name)
             else:
-                self.log("socket '%s' does not exist" % (sock_name), logging_tools.LOG_LEVEL_ERROR)
+                self.log("socket '{}' does not exist".format(sock_name), logging_tools.LOG_LEVEL_ERROR)
         return self.__socket
     def _get_node_status(self, *args, **kwargs):
         src_id, srv_com = (args[0], server_command.srv_command(source=args[1]))
         pk_list = srv_com.xpath(".//device_list/device/@pk", smart_strings=False)
         dev_names = sorted([cur_dev.full_name for cur_dev in device.objects.filter(Q(pk__in=pk_list))])
-        self.log("querying %s: %s" % (logging_tools.get_plural("device", len(dev_names)), ", ".join(sorted(dev_names))))
+        s_time = time.time()
         try:
             cur_sock = self._open()
             if cur_sock:
@@ -137,39 +132,19 @@ class status_process(threading_tools.process_obj):
                         logging_tools.get_plural("line", len(result)),
                     )
                 )
-                if False:
-                    node_results = {}
-                    for entry in result:
-                        try:
-                            # cleanup entry
-                            entry = {key: value for key, value in entry.iteritems() if value != None}
-                            host_name = entry.pop("host_name")
-                            output = entry["plugin_output"]
-                            if type(output) == list:
-                                entry["plugin_output"] = ",".join(output)
-                            if host_name:
-                                node_results.setdefault(host_name, []).append((entry["description"], entry))
-                        except:
-                            self.log("error processing livestatus entry '%s': %s" % (str(entry), process_tools.get_except_info()),
-                                logging_tools.LOG_LEVEL_CRITICAL)
-                    if len(node_results) == len(dev_names):
-                        srv_com.set_result("status for %s" % (logging_tools.get_plural("device", len(dev_names))))
-                    else:
-                        srv_com.set_result("status for %s (%d requested)" % (logging_tools.get_plural("device", len(node_results.keys())), len(dev_names)), server_command.SRV_REPLY_STATE_WARN)
-                    srv_com["result"] = E.node_results(
-                        *[E.node_result(
-                            *[E.result(**entry) for _sort_val, entry in sorted(value)],
-                            name=key) for key, value in node_results.iteritems()]
-                    )
-                # print srv_com.pretty_print()
             else:
                 srv_com.set_result("cannot connect to socket", server_command.SRV_REPLY_STATE_CRITICAL)
         except:
-            self.log("fetch exception: %s" % (process_tools.get_except_info()), logging_tools.LOG_LEVEL_ERROR)
+            self.log(u"fetch exception: {}".format(process_tools.get_except_info()), logging_tools.LOG_LEVEL_ERROR)
             exc_info = process_tools.exception_info()
             for line in exc_info.log_lines:
-                self.log(" - %s" % (line), logging_tools.LOG_LEVEL_ERROR)
+                self.log(u" - {}".format(line), logging_tools.LOG_LEVEL_ERROR)
             self._close()
             srv_com.set_result("exception during fetch", server_command.SRV_REPLY_STATE_CRITICAL)
+        else:
+            self.log("queried {} in {} ({})".format(
+                logging_tools.get_plural("device", len(dev_names)),
+                logging_tools.get_diff_time_str(time.time() - s_time),
+                u", ".join(sorted(dev_names))))
         self.send_pool_message("send_command", src_id, unicode(srv_com))
 
