@@ -67,7 +67,7 @@ livestatus_templ = """
                 {{ entry.host_name }}
                 <span ng-show="host_is_passive_checked(entry)" title="host is passive checked" class="glyphicon glyphicon-download pull-right"></span>
             </td>
-            <td class="nowrap" ng-show="so_enabled['state']" ng-class="get_state_class(entry)">
+            <td ng-show="so_enabled['state']" ng-class="get_state_class(entry)">
                 {{ get_state_string(entry) }}
                 <span ng-show="is_passive_check(entry)" title="service is passive checked" class="glyphicon glyphicon-download pull-right"></span>
             </td>
@@ -227,12 +227,13 @@ device_livestatus_module.controller("livestatus_ctrl", ["$scope", "$compile", "$
         link : (scope, el, attrs) ->
             scope.new_devsel((parseInt(entry) for entry in attrs["devicepk"].split(",")), [])
             scope.get_state_class = (entry) ->
-                return {
+                state_class = {
                     0 : "success"
                     1 : "warning"
                     2 : "danger"
                     3 : "danger"
                 }[entry.state]
+                return "#{state_class} nowrap"
             scope.get_last_check = (entry) ->
                 return scope.get_diff_time(entry.last_check)
             scope.get_last_change = (entry) ->
@@ -273,13 +274,14 @@ device_livestatus_module.controller("livestatus_ctrl", ["$scope", "$compile", "$
             scope.get_host_class = (entry) ->
                 if entry.host_name of scope.host_lut
                     h_state = parseInt(scope.host_lut[entry.host_name].state)
-                    return {
+                    h_state_str = {
                         0 : "success"
                         1 : "danger"
                         2 : "danger"
                     }[h_state]
                 else
-                    return "warning"
+                    h_state_str = "warning"
+                return "#{h_state_str} nowrap"
     }
 ).run(($templateCache) ->
     $templateCache.put("livestatus_template.html", livestatus_templ)
