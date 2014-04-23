@@ -1242,9 +1242,7 @@ class relay_code(threading_tools.process_pool):
             else:
                 ret_com = self._file_content_bulk(srv_com)
             # set values
-            ret_com["host"] = self.master_ip
-            ret_com["port"] = "{:d}".format(self.master_port)
-            self._send_to_nhm_service(None, ret_com, None, register=False)
+            self._send_to_master(ret_com)
         elif cur_com == "clear_directory":
             self._clear_directory(srv_com)
         elif cur_com == "clear_directories":
@@ -1265,9 +1263,14 @@ class relay_code(threading_tools.process_pool):
                                   int(srv_com["master_port"].text))
         else:
             # add to cache ?
+            self._send_to_master(srv_com)
+    def _send_to_master(self, srv_com):
+        if self.master_ip:
             srv_com["host"] = self.master_ip
             srv_com["port"] = "%d" % (self.master_port)
             self._send_to_nhm_service(None, srv_com, None, register=False)
+        else:
+            self.log("no master-ip set, discarding message", logging_tools.LOG_LEVEL_WARN)
     def _ext_com_result(self, sub_s):
         self.log("external command gave:")
         for line_num, line in enumerate(sub_s.read().split("\n")):
