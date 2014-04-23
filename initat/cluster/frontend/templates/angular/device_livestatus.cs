@@ -9,10 +9,20 @@ root = exports ? this
 {% verbatim %}
 
 livestatus_templ = """
-<table class="table table-condensed table-hover table-bordered" style="width:auto;">
+<table class="table table-condensed table-hover table-bordered" >
     <thead>
         <tr>
-            <td colspan="99" paginator entries="entries" paginator_filter="func" paginator_filter_func="filter_mdr" pag_settings="pagSettings" per_page="20" paginator_filter="simple" paginator-epp="10,20,50,100,1000"></td>
+            <td colspan="99">
+                <div class="row">
+                    <div class="col-md-6">
+                        <span paginator entries="entries" paginator_filter="func" paginator_filter_func="filter_mdr" pag_settings="pagSettings" per_page="20" paginator_filter="simple" paginator-epp="10,20,50,100,1000"></span>
+                    </div>
+                    <div class="col-md-6">
+                        <input placeholder="filter..." ng-model="md_filter_str" class="form-control input-sm" ng-change="md_filter_changed()">
+                        </input>
+                    </div>
+                </div>
+            </td>
         </tr>
         <tr>
             <th colspan="99">
@@ -101,6 +111,7 @@ device_livestatus_module.controller("livestatus_ctrl", ["$scope", "$compile", "$
         $scope.entries = []
         $scope.order_name = "host_name"
         $scope.order_dir = true
+        $scope.md_filter_str = ""
         $scope.cur_timeout = undefined
         $scope.pagSettings = paginatorSettings.get_paginator("device_tree_base", $scope)
         $scope.show_options = [
@@ -176,10 +187,15 @@ device_livestatus_module.controller("livestatus_ctrl", ["$scope", "$compile", "$
                         $scope.$apply(
                             $scope.entries = entries
                         )
+        $scope.md_filter_changed = () ->
+            $scope.pagSettings.set_entries(@entries)
         $scope.filter_mdr = (entry, scope) ->
             show = true
             if not scope.mds_enabled[parseInt(entry.state)]
                 show = false
+            if scope.md_filter_str
+                if not $filter("filter")([entry], scope.md_filter_str).length
+                    show = false
             return show
         $scope.$on("$destroy", () ->
             if $scope.cur_timeout

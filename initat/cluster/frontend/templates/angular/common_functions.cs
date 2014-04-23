@@ -48,7 +48,7 @@ icsw_paginator = """
         </div> per page,
     </span>
     <span ng-show="pagSettings.simple_filter_mode()">
-        filter <div class="form-group"><input ng-model="pagSettings.conf.filter" class="form-control input-sm""></input></div>,
+        filter <div class="form-group"><input ng-model="pagSettings.conf.filter" class="form-control input-sm" placeholder="filter..."></input></div>,
     </span>
 </form>
 """
