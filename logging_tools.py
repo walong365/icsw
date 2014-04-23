@@ -174,7 +174,7 @@ def get_diff_time_str(diff_secs):
         abs_mins, abs_hours = (0, 0)
         if abs_diffs > 60:
             abs_mins = int(abs_diffs / 60)
-            abs_secs = abs_diffs - 60 * abs_mins
+            abs_secs = int(abs_diffs - 60 * abs_mins)
             if abs_mins > 60:
                 abs_hours = int(abs_mins / 60)
                 abs_mins -= 60 * abs_hours
