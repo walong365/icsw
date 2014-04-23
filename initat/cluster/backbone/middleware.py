@@ -20,7 +20,6 @@ import struct
 import termios
 
 from threading import local
-import threading
 
 _thread_local = local()
 
