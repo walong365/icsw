@@ -18,10 +18,10 @@ def main():
         cursor.execute("SELECT @@tx_isolation")
         local_tx = cursor.fetchone()[0]
         if (global_tx, local_tx) != (TARGET_IL, TARGET_IL):
-            print "please insert to following lines to the [mysqld] section of /etc/my.cnf:"
-            print ""
-            print "transaction-isolation = READ-COMMITTED"
-            print ""
+            print("please insert to following lines to the [mysqld] section of /etc/my.cnf:")
+            print("")
+            print("transaction-isolation = READ-COMMITTED")
+            print("")
             raise ImproperlyConfigured("wrong transaction-isolation level used (found: {}, need: {})".format(global_tx, TARGET_IL))
 
 if __name__ == "__main__":
