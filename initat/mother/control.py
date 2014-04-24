@@ -24,8 +24,7 @@
 from django.db import connection
 from django.db.models import Q
 from initat.cluster.backbone.models import kernel, device, image, macbootlog, mac_ignore, \
-     cluster_timezone, cached_log_status, cached_log_source, log_source, devicelog, \
-     partition_table, user
+     cluster_timezone, cached_log_status, cached_log_source, log_source, devicelog, user
 from initat.mother.command_tools import simple_command
 from initat.mother.config import global_config
 import config_tools
@@ -209,8 +208,8 @@ class machine(object):
             dev_node = srv_com.xpath(".//ns:device[@pk='{:d}']".format(cur_dev.pk), smart_strings=False)[0]
             tried = 0
             for ip in cur_dev.ip_dict.iterkeys():
-                # omit slave networks
-                if cur_dev.ip_dict[ip].network.network_type.identifier != "s":
+                # omit slave and local networks, allow local networks for pinging the server ?
+                if cur_dev.ip_dict[ip].network.network_type.identifier not in ["s", "l"]:
                     tried += 1
                     cur_id_str = "mp_{:d}".format(cur_id)
                     cur_id += 1
