@@ -10,6 +10,9 @@ class device_info
     constructor: (@event, @dev_key, @addon_devices=[]) ->
         if window.ICSW_DEV_INFO
             window.ICSW_DEV_INFO.close()
+            @active_div = window.ICSW_DEV_INFO.active_div
+        else
+            @active_div = "general"
         window.ICSW_DEV_INFO = @
         @active_divs = []
     show: () =>
@@ -43,7 +46,7 @@ class device_info
                 $("div#center_content").hide()
                 $("div#center_deviceinfo").show()
                 {% endif %} 
-                @dev_div.find("a[href='#general']").trigger("click")
+                @dev_div.find("a[href='##{@active_div}']").trigger("click")
     close: () =>
         # find all scopes and close them
         for active_div in @active_divs
@@ -56,8 +59,7 @@ class device_info
         return if @permissions.find("permissions[permission='#{perm_name}']").length then true else false
     build_div: () =>
         if @addon_devices.length
-            num_devs = @addon_devices.length + 1
-            addon_text = " (#{num_devs})"
+            addon_text = " (#{@addon_devices.length + 1})"
         else
             addon_text = ""
         main_pk = @dev_json.idx
@@ -190,6 +192,8 @@ urn:uuid:{{ _edit_obj.uuid }}
                     # bootstrap angular (app == id of device)
                     angular.bootstrap(target_div, [target_div.attr("id")])
                     @active_divs.push(target_div[0])
+                # store active div
+                @active_div = t_href
                 el.tab("show")
         )
     
