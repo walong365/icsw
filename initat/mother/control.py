@@ -209,7 +209,7 @@ class machine(object):
             tried = 0
             for ip in cur_dev.ip_dict.iterkeys():
                 # omit slave networks
-                if cur_dev.ip_dict[ip].network.network_type.identifier != "s":
+                if cur_dev.ip_dict[ip].network.network_type.identifier not in ["s", "l"]:
                     tried += 1
                     cur_id_str = "mp_%d" % (cur_id)
                     cur_id += 1
