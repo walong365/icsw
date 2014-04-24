@@ -24,16 +24,17 @@
 """ helper functions for cluster routing """
 
 from config_tools import server_check, device_with_config, router_object
-from django.conf import settings
 from django.core.cache import cache
 from django.db.models import Q
 from initat.cluster.backbone.models import device
 from lxml import etree # @UnresolvedImports
 import json
+import uuid_tools
 import logging
 import logging_tools
 import server_command
 
+# mapping: server type -> default port
 _SRV_TYPE_PORT_MAPPING = {
     "mother"    : 8000,
     "grapher"   : 8003,
@@ -45,6 +46,18 @@ _SRV_TYPE_PORT_MAPPING = {
     "cransys"   : 8013,
 }
 
+# mapping: server type -> postfix for ZMQ_IDENTITY string
+_SRV_TYPE_UUID_MAPPING = {
+    "mother"    : "mother",
+    "server"    : "cluster-server",
+    "grapher"   : "grapher",
+    "md-config" : "md-config-server",
+    "rms"       : "rms-server",
+    "config"    : "config-server",
+    "package"   : "package-server"
+}
+
+# mapping: server type -> valid config names
 _SRV_NAME_TYPE_MAPPING = {
     "mother"    : ["mother_server"],
     "grapher"   : ["rrd_server"],
@@ -59,16 +72,38 @@ _SRV_NAME_TYPE_MAPPING = {
 
 _NODE_SPLIT = ["mother", "config"]
 
+def get_server_uuid(srv_type, uuid=None):
+    if uuid is None:
+        uuid = uuid_tools.get_uuid().get_urn()
+    if not uuid.startswith("urn"):
+        uuid = "urn:uuid:{}".format(uuid)
+    return "{}:{}:".format(
+        uuid,
+        _SRV_TYPE_UUID_MAPPING[srv_type],
+    )
+
 class srv_type_routing(object):
-    def __init__(self, force=False):
-        self.logger = logging.getLogger("cluster.srv_routing")
-        self._routing_key = "_WF_ROUTING"
-        _resolv_dict = cache.get(self._routing_key)
+    ROUTING_KEY = "_WF_ROUTING"
+    def __init__(self, force=False, logger=None):
+        if logger is None:
+            self.logger = logging.getLogger("cluster.srv_routing")
+        else:
+            self.logger = logger
+        _resolv_dict = cache.get(self.ROUTING_KEY)
         if _resolv_dict is None or force:
             _resolv_dict = self._build_resolv_dict()
         else:
             _resolv_dict = json.loads(_resolv_dict)
+            if "_local_device" not in _resolv_dict:
+                # old version, recalc
+                _resolv_dict = self._build_resolv_dict()
+        self._local_device = device.objects.get(Q(pk=_resolv_dict["_local_device"][0]))
         self._resolv_dict = _resolv_dict
+    def update(self, force=False):
+        if not cache.get(self.ROUTING_KEY) or force:
+            self.logger.info("update srv_type_routing")
+            self._resolv_dict = self._build_resolv_dict()
+            self._local_device = device.objects.get(Q(pk=self._resolv_dict["_local_device"][0]))
     def has_type(self, srv_type):
         return srv_type in self._resolv_dict
     def get_connection_string(self, srv_type, server_id=None):
@@ -89,17 +124,16 @@ class srv_type_routing(object):
         )
     @property
     def resolv_dict(self):
-        return self._resolv_dict
+        return dict([(key, value) for key, value in self._resolv_dict.iteritems() if not key.startswith("_")])
     @property
     def local_device(self):
         return self._local_device
     @property
-    def not_bootserver_devices(self):
+    def no_bootserver_devices(self):
         return self.__no_bootserver_devices
     def _build_resolv_dict(self):
         # local device
         _myself = server_check(server_type="", fetch_network_info=True)
-        self._local_device = _myself.device
         _router = router_object(self.logger)
         conf_names = sum(_SRV_NAME_TYPE_MAPPING.values(), [])
         # build reverse lut
@@ -108,7 +142,7 @@ class srv_type_routing(object):
             _rv_lut.update({_name : key for _name in value})
         # resolve dict
         _resolv_dict = {}
-        # get all config
+        # get all configs
         for _conf_name in conf_names:
             _srv_type = _rv_lut[_conf_name]
             _sc = device_with_config(config_name=_conf_name)
@@ -161,29 +195,44 @@ class srv_type_routing(object):
                 self.logger.warning("no device for srv_type '{}' found".format(_srv_type))
         # sort entry
         for key, value in _resolv_dict.iteritems():
+            # format: device name, device IP, device_pk, penalty
             _resolv_dict[key] = [_v2[1] for _v2 in sorted([(_v[3], _v) for _v in value])]
+        # set local device
+        _resolv_dict["_local_device"] = (_myself.device.pk,)
         # valid for 15 minutes
-        cache.set(self._routing_key, json.dumps(_resolv_dict), 60 * 15)
+        cache.set(self.ROUTING_KEY, json.dumps(_resolv_dict), 60 * 15)
         return _resolv_dict
     def check_for_split_send(self, srv_type, in_com):
+        # init error set
+        self.__no_bootserver_devices = set()
         if srv_type in _NODE_SPLIT:
             return self._split_send(srv_type, in_com)
         else:
             return [(None, in_com)]
     def _split_send(self, srv_type, in_com):
-        self.__no_bootserver_devices = set()
         cur_devs = in_com.xpath(".//ns:devices/ns:devices/ns:device")
-        _dev_dict = {}
+        _dev_dict, _bs_hints = ({}, {})
         for _dev in cur_devs:
             _pk = int(_dev.attrib["pk"])
+            _bs_hints[_pk] = int(_dev.get("bootserver_hint", "0"))
             _dev_dict[_pk] = etree.tostring(_dev)
+        # eliminate zero hints
+        _bs_hints = {key : value for key, value in _bs_hints.iteritems() if value}
         _pk_list = _dev_dict.keys()
         _cl_dict = {}
         for _value in device.objects.filter(Q(pk__in=_pk_list)).values_list("pk", "bootserver", "name"):
             if _value[1]:
                 _cl_dict.setdefault(_value[1], []).append(_value[0])
+            elif _value[0] in _bs_hints:
+                # using boothints
+                self.logger.warning("using bootserver_hint {:d} for {:d} ({})".format(
+                    _bs_hints[_value[0]],
+                    _value[0],
+                    _value[2],
+                    ))
+                _cl_dict.setdefault(_bs_hints[_value[0]], []).append(_value[0])
             else:
-                self.__no_bootserver_devices.add(_value[0])
+                self.__no_bootserver_devices.add((_value[0], _value[2]))
                 self.logger.error("device {:d} ({}) has no bootserver associated".format(
                     _value[0],
                     _value[2],
@@ -208,6 +257,11 @@ class srv_type_routing(object):
             return []
     def start_result_feed(self):
         self.result = None
+    def _log(self, request, log_lines, log_str, log_level=logging_tools.LOG_LEVEL_OK):
+        if request:
+            request.xml_response.log(log_level, log_str)
+        else:
+            log_lines.append((log_level, log_str))
     def feed_result(self, orig_com, result, request, conn_str, log_lines, log_result, log_error):
         if result is None:
             if log_error:
@@ -215,18 +269,12 @@ class srv_type_routing(object):
                     conn_str,
                     orig_com["command"].text
                 )
-                if request:
-                    request.xml_response.error(_err_str)
-                else:
-                    log_lines.append((logging_tools.LOG_LEVEL_ERROR, _err_str))
+                self._log(request, log_lines, _err_str, logging_tools.LOG_LEVEL_ERROR)
         else:
             # TODO: check if result is set
             if log_result:
                 log_str, log_level = result.get_log_tuple()
-                if request:
-                    request.xml_response.log(log_level, log_str)
-                else:
-                    log_lines.append((log_level, log_str))
+                self._log(request, log_lines, log_str, log_level)
             if self.result is None:
                 self.result = result
             else:
@@ -244,8 +292,10 @@ class srv_type_routing(object):
                         for entry in result.xpath(".//ns:{}/ns:{}/*".format(_sub_name, _sub_name)):
                             _merged += 1
                             add_list.append(entry)
-                        self.logger.info("merged {} of {}".format(
-                            logging_tools.get_plural("element", _merged),
-                            _sub_name,
-                            ))
+                        self.logger.info(
+                            "merged {} of {}".format(
+                                logging_tools.get_plural("element", _merged),
+                                _sub_name,
+                            )
+                        )
 
