@@ -666,7 +666,3 @@ class device_with_config(dict):
     def set_key_type(self, k_type):
         print "deprecated, only one key_type (config) supported"
         sys.exit(0)
-
-if __name__ == "__main__":
-    print "Loadable module, exiting ..."
-    sys.exit(1)

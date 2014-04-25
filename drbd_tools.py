@@ -22,7 +22,6 @@
 import os
 import server_command
 import stat
-import sys
 
 class drbd_config(object):
     def __init__(self, config_name="/etc/drbd.conf", status_name="/proc/drbd", **args):
@@ -176,12 +175,3 @@ class drbd_config(object):
 def _test_code():
     dc = drbd_config()
     print len(dc.get_net_data())
-    # if dc:
-    #    pprint.pprint(dc["devices"])
-    #    pprint.pprint(dc["resources"])
-
-if __name__ == "__main__":
-    print "Loadable module, exiting ..."
-    if len(sys.argv) > 1 and sys.argv[1] == "test":
-        _test_code()
-    sys.exit(1)
