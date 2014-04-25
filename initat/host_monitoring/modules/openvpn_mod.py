@@ -1,5 +1,3 @@
-#!/usr/bin/python-init -Ot
-#
 # Copyright (C) 2008-2014 Andreas Lang-Nevyjel, init.at
 #
 # Send feedback to: <lang-nevyjel@init.at>
@@ -24,12 +22,10 @@ import datetime
 import glob
 import logging_tools
 import os
-import pprint
 import process_tools
 import re
 import shutil
 import socket
-import sys
 import tempfile
 import time
 
@@ -624,7 +620,3 @@ class openvpn_status_command(hm_classes.hm_command):
                 ret_state = max(ret_state, limits.nag_STATE_CRITICAL)
         return ret_state, "%s: %s" % (limits.get_state_str(ret_state),
                                       ", ".join(res_field))
-
-if __name__ == "__main__":
-    print "This is a loadable module."
-    sys.exit(0)

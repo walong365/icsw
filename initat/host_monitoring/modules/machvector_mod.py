@@ -1,5 +1,3 @@
-#!/usr/bin/python-init
-#
 # Copyright (C) 2001-2008,2010,2012-2014 Andreas Lang-Nevyjel
 #
 # Send feedback to: <lang-nevyjel@init.at>
@@ -36,7 +34,6 @@ import re
 import server_command
 import shutil
 import socket
-import sys
 import time
 import zmq
 
@@ -567,6 +564,3 @@ def build_info_string(ref, info):
         ret_str = ret_str.replace("${}".format(idx + 1), refp[idx])
     return ret_str
 
-if __name__ == "__main__":
-    print "Not an executable python script, exiting..."
-    sys.exit(-2)

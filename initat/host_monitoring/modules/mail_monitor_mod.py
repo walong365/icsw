@@ -1,5 +1,3 @@
-#!/usr/bin/python-init -Ot
-#
 # Copyright (C) 2001-2008,2013-2014 Andreas Lang-Nevyjel, init.at
 #
 # Send feedback to: <lang-nevyjel@init.at>
@@ -25,12 +23,10 @@ from initat.host_monitoring import hm_classes, limits
 import commands
 import logging_tools
 import os
-import pprint
 import process_tools
 import re
 import server_command
 import stat
-import sys
 import time
 
 MIN_UPDATE_TIME = 30
@@ -466,6 +462,3 @@ class ext_mailq_commandX(object): # hm_classes.hmb_command):
                                                                 result["command"])
         return ret_state, result
 
-if __name__ == "__main__":
-    print "This is a loadable module."
-    sys.exit(0)

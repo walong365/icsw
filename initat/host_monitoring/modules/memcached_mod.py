@@ -1,5 +1,3 @@
-#!/usr/bin/python-init -Ot
-#
 # Copyright (C) 2013 Andreas Lang-Nevyjel, init.at
 #
 # Send feedback to: <lang-nevyjel@init.at>
@@ -23,7 +21,6 @@ from initat.host_monitoring import limits, hm_classes
 import logging_tools
 import process_tools
 import server_command
-import sys
 try:
     import memcache
 except ImportError:
@@ -77,7 +74,3 @@ class memcached_status_command(hm_classes.hm_command):
             return ret_state, ", ".join(out_f)
         else:
             return limits.nag_STATE_CRITICAL, "no stats found"
-
-if __name__ == "__main__":
-    print "This is a loadable module."
-    sys.exit(0)

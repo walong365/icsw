@@ -1,6 +1,4 @@
-#!/usr/bin/python-init -Ot
-#
-# Copyright (C) 2011,2013 lang-nevyjel@init.at
+# Copyright (C) 2011,2013-2014 lang-nevyjel@init.at
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -18,11 +16,8 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
 
-import logging_tools
-import pprint
-import sys
-
 from initat.host_monitoring import hm_classes, limits
+import logging_tools
 
 HPASM_BIN = "/sbin/hpasmcli"
 
@@ -91,20 +86,25 @@ class _psu(object):
     def interpret(self, srv_com, cur_ns):
         psu_list = srv_com["*result"]
         if psu_list:
-            ret_v = ["found %s" % (logging_tools.get_plural("PSU", len(psu_list)))]
+            ret_v = [u"found {}".format(logging_tools.get_plural("PSU", len(psu_list)))]
             ret_state = limits.nag_STATE_OK
             for entry in psu_list:
                 if entry["condition"].lower() != "ok":
                     ret_state = max(limits.nag_STATE_CRITICAL, ret_state)
-                    ret_v.append("PS %s, present: %s, condition: %s" % (
-                        entry["num"],
-                        entry["present"],
-                        entry["condition"]
-                    ))
+                    ret_v.append(
+                        u"PS {}, present: {}, condition: {}".format(
+                            entry["num"],
+                            entry["present"],
+                            entry["condition"]
+                        )
+                    )
                 else:
-                    ret_v.append("PS %s, %s" % (
-                        entry["num"],
-                        entry["power"]))
+                    ret_v.append(
+                        u"PS {}, {}".format(
+                            entry["num"],
+                            entry.get("power", "power not defined")
+                        )
+                    )
             return ret_state, "; ".join(ret_v)
         else:
             return limits.nag_STATE_CRITICAL, "nothing returned"
@@ -139,6 +139,3 @@ class hp_powersupply_command(hm_classes.hm_command):
     def interpret(self, srv_com, cur_ns):
         return _psu().interpret(srv_com, cur_ns)
 
-if __name__ == "__main__":
-    print "This is a loadable module."
-    sys.exit(0)

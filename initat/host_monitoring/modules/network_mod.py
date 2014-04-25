@@ -1,5 +1,3 @@
-#!/usr/bin/python-init -Ot
-#
 # Copyright (C) 2001-2014 Andreas Lang-Nevyjel, init.at
 #
 # Send feedback to: <lang-nevyjel@init.at>
@@ -31,7 +29,6 @@ import re
 import server_command
 import stat
 import subprocess
-import sys
 import time
 
 # name of total-device
@@ -1395,6 +1392,3 @@ class ntp_status_command(hm_classes.hm_command):
         else:
             return limits.nag_STATE_CRITICAL, _lines[0]
 
-if __name__ == "__main__":
-    print "This is a loadable module."
-    sys.exit(0)

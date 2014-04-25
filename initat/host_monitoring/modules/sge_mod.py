@@ -1,5 +1,3 @@
-#!/usr/bin/python-init -Ot
-#
 # Copyright (C) 2013-2014 Andreas Lang-Nevyjel, init.at
 #
 # Send feedback to: <lang-nevyjel@init.at>
@@ -18,15 +16,12 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
 
-# import pprint
 from initat.host_monitoring import limits, hm_classes
 from lxml import etree # @UnresolvedImport
 import commands
-import logging_tools
 import os
 import process_tools
 import server_command
-import sys
 
 class _general(hm_classes.hm_module):
     def init_module(self):
@@ -122,6 +117,3 @@ class sge_queue_status_command(hm_classes.hm_command):
         else:
             return limits.nag_STATE_CRITICAL, "no stats found"
 
-if __name__ == "__main__":
-    print "This is a loadable module."
-    sys.exit(0)

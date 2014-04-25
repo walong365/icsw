@@ -1,5 +1,3 @@
-#!/usr/bin/python-init -Ot
-#
 # Copyright (C) 2001-2014 Andreas Lang-Nevyjel, init.at
 #
 # Send feedback to: <lang-nevyjel@init.at>
@@ -22,19 +20,16 @@
 
 from initat.host_monitoring import hm_classes, limits
 from initat.host_monitoring.config import global_config
-from lxml import etree # @UnresolvedImport
 import affinity_tools
 import commands
 import logging_tools
 import os
 import marshal
-import pprint
 import base64
 import bz2
 import process_tools
 import re
 import signal
-import sys
 import time
 
 MIN_UPDATE_TIME = 10
@@ -615,6 +610,3 @@ def find_pids(ptree, check):
         return r_list
     return search(ptree, 0, ptree.keys()[0])
 
-if __name__ == "__main__":
-    print "This is a loadable module."
-    sys.exit(0)

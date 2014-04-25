@@ -1,5 +1,3 @@
-#!/usr/bin/python-init -Ot
-#
 # Copyright (C) 2013-2014 Andreas Lang-Nevyjel, init.at
 #
 # Send feedback to: <lang-nevyjel@init.at>
@@ -22,7 +20,6 @@
 from initat.host_monitoring import limits, hm_classes
 import logging_tools
 import server_command
-import sys
 
 SMCIPMI_BIN = "/sbin/SMCIPMITool"
 
@@ -184,6 +181,3 @@ class smcipmi_command(hm_classes.hm_command):
                     obj_key,
                     ", ".join(sorted(r_dict.keys())) or "EMPTY")
 
-if __name__ == "__main__":
-    print "This is a loadable module."
-    sys.exit(0)
