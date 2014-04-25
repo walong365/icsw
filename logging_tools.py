@@ -123,7 +123,7 @@ def get_plural(in_str, num, show_int=1, fstr_len=0, **kwargs):
     else:
         f_str = u"{:d} "
     return u"{}{}{}".format(
-        (show_int and f_str.format(r_num)) or "",
+        (show_int and f_str.format(int(r_num))) or "",
         in_str[0 : end_idx],
         p_str)
 
