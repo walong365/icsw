@@ -124,6 +124,8 @@ class status_process(threading_tools.process_obj):
                     "check_type",
                     "state_type",
                     "last_state_change",
+                    "max_check_attempts",
+                    "current_attempt",
                 ).filter("host_name", "=", dev_names)
                 service_result = service_query.call()
                 host_query = cur_sock.hosts.columns(
@@ -133,6 +135,8 @@ class status_process(threading_tools.process_obj):
                     "check_type",
                     "state_type",
                     "last_state_change",
+                    "max_check_attempts",
+                    "current_attempt",
                 ).filter("host_name", "=", dev_names)
                 host_result = host_query.call()
                 srv_com["service_result"] = json.dumps([_line for _line in service_result if _line.get("host_name", "")])
