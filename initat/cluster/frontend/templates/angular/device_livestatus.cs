@@ -65,10 +65,12 @@ livestatus_templ = """
         <tr ng-repeat="entry in entries | orderBy:get_order() | paginator2:this.pagSettings">
             <td ng-show="so_enabled['host_name']" ng-class="get_host_class(entry)">
                 {{ entry.host_name }}
+                <span ng-show="show_host_attempt_info(entry)" class="badge pull-right">{{ get_host_attempt_info(entry) }}</span>
                 <span ng-show="host_is_passive_checked(entry)" title="host is passive checked" class="glyphicon glyphicon-download pull-right"></span>
             </td>
             <td ng-show="so_enabled['state']" ng-class="get_state_class(entry)">
                 {{ get_state_string(entry) }}
+                <span ng-show="show_attempt_info(entry)" class="badge pull-right">{{ get_attempt_info(entry) }}</span>
                 <span ng-show="is_passive_check(entry)" title="service is passive checked" class="glyphicon glyphicon-download pull-right"></span>
             </td>
             <td class="nowrap" ng-show="so_enabled['description']">{{ entry.description }}</td>
@@ -282,6 +284,31 @@ device_livestatus_module.controller("livestatus_ctrl", ["$scope", "$compile", "$
                 else
                     h_state_str = "warning"
                 return "#{h_state_str} nowrap"
+            scope.show_host_attempt_info = (srv_entry) ->
+                return scope.show_attempt_info(scope.host_lut[srv_entry.host_name])
+            scope.show_attempt_info = (entry) ->
+                try
+                    if parseInt(entry.current_attempt) == 1
+                        return false
+                    else
+                        return true
+                catch error
+                    return true
+            scope.get_host_attempt_info = (srv_entry) ->
+                return scope.get_attempt_info(scope.host_lut[srv_entry.host_name])
+            scope.get_attempt_info = (entry) ->
+                try
+                    max = parseInt(entry.max_check_attempts)
+                    cur = parseInt(entry.current_attempt)
+                    if cur == 1
+                        return ""
+                    else
+                        if cur == max
+                            return "#{cur}"
+                        else
+                            return "#{cur} / #{max}"
+                catch error
+                    return "??"
     }
 ).run(($templateCache) ->
     $templateCache.put("livestatus_template.html", livestatus_templ)
