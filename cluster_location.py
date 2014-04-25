@@ -264,6 +264,7 @@ class device_recognition(object):
             self.device_dict = dict([(cur_dev.pk, cur_dev) for cur_dev in device.objects.filter(Q(netdevice__net_ip__ip__in=self_ips))])
 
 def is_server(server_type, long_mode=False, report_real_idx=False, short_host_name="", **kwargs):
+    # we dont check meta-settings (settings via group)
     server_idx, s_type, s_str, config_idx, real_server_name = (0, "unknown", "not configured", 0, server_type)
     if server_type.count("%"):
         dmatch_str = "name__icontains"
@@ -279,11 +280,11 @@ def is_server(server_type, long_mode=False, report_real_idx=False, short_host_na
     except device.DoesNotExist:
         dev_pk = 0
     my_confs = config.objects.filter(
-        Q(device_config__device__device_group__device_group__name=short_host_name) &
+        Q(device_config__device__name=short_host_name) &
         Q(**{dmatch_str : server_type})
         ).distinct().values_list(
-            "device_config__device", "pk", "name",
-            "device_config__device__device_group__device_group__name")
+            "device_config__device", "pk", "name"
+        )
     num_servers = len(my_confs)
     # print "*", num_servers
     if num_servers == 1:
@@ -292,11 +293,12 @@ def is_server(server_type, long_mode=False, report_real_idx=False, short_host_na
             s_type = "real"
         else:
             s_type = "meta"
-        server_idx, s_type, s_str, config_idx, real_server_name = (my_conf[0] if report_real_idx else dev_pk,
-                                                                   s_type,
-                                                                   "%s '%s'-server via hostname '%s'" % (s_type, server_type, short_host_name),
-                                                                   my_conf[1],
-                                                                   my_conf[2])
+        server_idx, s_type, s_str, config_idx, real_server_name = (
+            my_conf[0] if report_real_idx else dev_pk,
+            s_type,
+            u"{} '{}'-server via hostname '{}'".format(s_type, server_type, short_host_name),
+            my_conf[1],
+            my_conf[2])
     else:
         # get local devices
         _local_ips = net_ip.objects.filter(Q(netdevice__device__name=short_host_name)).values_list("ip", flat=True)
@@ -314,13 +316,27 @@ def is_server(server_type, long_mode=False, report_real_idx=False, short_host_na
         # pprint.pprint(my_confs)
         # check for virtual-device
         all_ips = {}
+        # for _entry in my_confs:
+        #
         # still to change, FIXME
         # if False:
         #    for d_x in [y for y in dc.fetchall() if y["ip"] != "127.0.0.1"]:
         #        if d_x["ip"] not in local_ips:
         #            all_ips[d_x["ip"]] = (d_x["device_idx"], d_x["device_idx"], d_x["name"])
         _if_names = netifaces.interfaces()
-        ipv4_dict = dict([(cur_if_name, [ip_tuple["addr"] for ip_tuple in value[2]][0]) for cur_if_name, value in [(if_name, netifaces.ifaddresses(if_name)) for if_name in netifaces.interfaces()] if 2 in value])
+        ipv4_dict = dict(
+            [
+                (
+                    cur_if_name, [
+                        ip_tuple["addr"] for ip_tuple in value[2]
+                    ][0]
+                ) for cur_if_name, value in [
+                    (
+                        if_name, netifaces.ifaddresses(if_name)
+                    ) for if_name in netifaces.interfaces()
+                ] if 2 in value
+            ]
+        )
         self_ips = ipv4_dict.values()
         for ai in all_ips.keys():
             if ai in self_ips:
