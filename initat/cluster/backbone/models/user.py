@@ -661,9 +661,9 @@ class user(models.Model):
         ordering = ("login", "group__groupname")
         app_label = "backbone"
     def __unicode__(self):
-        return u"{} ({:d}; {}, {})".format(
+        return u"{} ({}; {}, {})".format(
             self.login,
-            self.pk,
+            "{:d}".format(self.pk) if type(self.pk) in [int, long] else "???",
             self.first_name or "first",
             self.last_name or "last")
 
