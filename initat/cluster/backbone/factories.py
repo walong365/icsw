@@ -142,9 +142,9 @@ class ConfigHint(factory.django.DjangoModelFactory):
             self.help_text_short = extracted
             self.save()
     @factory.post_generation
-    def help_text_long(self, create, extracted, **kwargs):
-        if self.help_text_long != extracted:
-            self.help_text_long = extracted
+    def help_text_html(self, create, extracted, **kwargs):
+        if self.help_text_html != extracted:
+            self.help_text_html = extracted
             self.save()
 
 class ConfigVarHint(factory.django.DjangoModelFactory):
@@ -156,7 +156,8 @@ class ConfigVarHint(factory.django.DjangoModelFactory):
             self.help_text_short = extracted
             self.save()
     @factory.post_generation
-    def help_text_long(self, create, extracted, **kwargs):
-        if self.help_text_long != extracted:
-            self.help_text_long = extracted
+    def help_text_html(self, create, extracted, **kwargs):
+        if self.help_text_html != extracted:
+            self.help_text_html = extracted
             self.save()
+

@@ -141,3 +141,34 @@ class Command(BaseCommand):
         factories.HostCheckCommand(name="check-host-alive-2", command_line="$USER2$ -m $HOSTADDRESS$ version")
         factories.HostCheckCommand(name="check-host-ok", command_line="$USER1$/check_dummy 0 up")
         factories.HostCheckCommand(name="check-host-down", command_line="$USER1$/check_dummy 2 down")
+        # hints
+
+        server_cfg = factories.ConfigHint(
+            config_name="server",
+            valid_for_meta=False,
+            help_text_short="activate device as a server",
+            help_text_html="""
+<h2>Use this option to activate server functionality</h2>
+"""
+        )
+        ldap_server_cfg = factories.ConfigHint(
+            config_name="ldap_server",
+            valid_for_meta=False,
+            help_text_short="set the device as LDAP-server",
+            help_text_html="""
+<h2>Enable LDAP-server functionality</h2>
+The following server command are available:
+<ul>
+<li><tt>init_ldap_config</tt> Create basic LDAP entries</li>
+<li><tt>sync_ldap_config</tt> Syncs the LDAP tree with the Cluster database</li>
+</ul>
+"""
+        )
+        base_dn_hint = factories.ConfigVarHint(
+            config_hint=ldap_server_cfg,
+            var_name="base_dn",
+            help_text_short="define LDAP base DN",
+            help_text_html="""
+<h3>Define the base DN for the LDAP sync</h3>
+"""
+        )
