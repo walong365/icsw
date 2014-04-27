@@ -36,6 +36,7 @@ from initat.cluster.backbone.models.network import * # @UnusedWildImport
 from initat.cluster.backbone.models.package import * # @UnusedWildImport
 from initat.cluster.backbone.models.user import * # @UnusedWildImport
 from initat.cluster.backbone.models.background import * # @UnusedWildImport
+from initat.cluster.backbone.models.hints import * # @UnusedWildImport
 from initat.cluster.backbone.signals import user_changed, group_changed, bootsettings_changed
 
 
@@ -2783,4 +2784,3 @@ class device_serializer_boot(device_serializer):
             # connections
             "master_connections", "slave_connections",
             )
-
