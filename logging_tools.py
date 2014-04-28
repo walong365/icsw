@@ -756,7 +756,7 @@ class new_form_list(object):
             out_lines.append("-" * len(out_lines[-1]))
         for line in self.__content:
             out_lines.append(self.__col_sep.join([entry.format(max_len) for entry, max_len in zip(line, row_lens[:len(line)])]))
-        return "\n".join(out_lines)
+        return "\n".join(map(lambda line: line.rstrip(), out_lines))
     def __len__(self):
         return len(self.__content)
 
