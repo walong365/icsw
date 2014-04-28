@@ -164,11 +164,105 @@ The following server command are available:
 </ul>
 """
         )
-        base_dn_hint = factories.ConfigVarHint(
+        _base_dn_hint = factories.ConfigVarHint(
             config_hint=ldap_server_cfg,
             var_name="base_dn",
             help_text_short="define LDAP base DN",
             help_text_html="""
 <h3>Define the base DN for the LDAP sync</h3>
+"""
+        )
+        _admin_cn_hint = factories.ConfigVarHint(
+            config_hint=ldap_server_cfg,
+            var_name="admin_cn",
+            help_text_short="CN of the admin user",
+            help_text_html="""
+<h3>CN of the admin user</h3>
+Enter without 'cn=', in most cases admin is enough
+"""
+        )
+        _root_passwd_hint = factories.ConfigVarHint(
+            config_hint=ldap_server_cfg,
+            var_name="root_passwd",
+            help_text_short="password of the admin ser",
+            help_text_html="""
+<h3>Password of the admin user</h3>
+Stored as cleartext password, handle with care.
+"""
+        )
+        _user_object_classes = factories.ConfigVarHint(
+            config_hint=ldap_server_cfg,
+            var_name="user_object_classes",
+            help_text_short="object classes for user objects",
+            help_text_html="""
+<h3>Object Classes to use for user objects</h3>
+A space (or comma) separated list of object classes to use
+for user objects. Can contain one or more of
+<ul>
+<li>account</li>
+<li>posixAccount</li>
+<li>shadowAccount</li>
+<li>shadowAccount</li>
+<li>top/li>
+</ul>
+"""
+        )
+        _group_object_classes = factories.ConfigVarHint(
+            config_hint=ldap_server_cfg,
+            var_name="group_object_classes",
+            help_text_short="object classes for group objects",
+            help_text_html="""
+<h3>Object Classes to use for group objects</h3>
+A space (or comma) separated list of object classes to use
+for group objects. Can contain one or more of
+<ul>
+<li>posixGroup</li>
+<li>top</li>
+<li>namedObject</li>
+</ul>
+"""
+        )
+        _group_dn_template = factories.ConfigVarHint(
+            config_hint=ldap_server_cfg,
+            var_name="group_dn_template",
+            help_text_short="template to create group dn",
+            help_text_html="""
+<h3>Template to specify group DN (distinguished name)</h3>
+The template to create the group DN. Defaults to<br>
+cn={GROUPNAME}<br>
+where GROUPNAME extends to the name of the group.
+"""
+        )
+        _user_dn_template = factories.ConfigVarHint(
+            config_hint=ldap_server_cfg,
+            var_name="user_dn_template",
+            help_text_short="template to create user dn",
+            help_text_html="""
+<h3>Template to specify user DN (distinguished name)</h3>
+The template to create the user DN. Defaults to<br>
+uid={USERNAME}<br>
+where USERNAME extends to the login name of the user.
+"""
+        )
+        _group_base_template = factories.ConfigVarHint(
+            config_hint=ldap_server_cfg,
+            var_name="group_base_template",
+            help_text_short="template to create the group base dn",
+            help_text_html="""
+<h3>Template to specify the group base DN</h3>
+This template define the DN for groups. A full group DN contains
+of the group_dn_template plus the group_base template:<br>
+GROUP_DN={GROUP_DN_TEMPLATE},{GROUP_BASE_TEMPLATE}
+"""
+        )
+        _user_base_template = factories.ConfigVarHint(
+            config_hint=ldap_server_cfg,
+            var_name="user_base_template",
+            help_text_short="template to create the user base dn",
+            help_text_html="""
+<h3>Template to specify the user base DN</h3>
+This template define the DN for users. A full user DN contains
+of the user_dn_template plus the user_base template:<br>
+USER_DN={USER_DN_TEMPLATE},{USER_BASE_TEMPLATE}
 """
         )
