@@ -34,11 +34,12 @@ class config_var_hint(models.Model):
     class Meta:
         app_label = "backbone"
 
-class config_hint_serializer(serializers.ModelSerializer):
-    class Meta:
-        model = config_hint
-
 class config_var_hint_serializer(serializers.ModelSerializer):
     class Meta:
         model = config_var_hint
+
+class config_hint_serializer(serializers.ModelSerializer):
+    config_var_hint_set = config_var_hint_serializer(many=True)
+    class Meta:
+        model = config_hint
 

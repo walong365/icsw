@@ -154,7 +154,7 @@ class Command(BaseCommand):
         ldap_server_cfg = factories.ConfigHint(
             config_name="ldap_server",
             valid_for_meta=False,
-            help_text_short="set the device as LDAP-server",
+            help_text_short="device controlls an LDAP-server",
             help_text_html="""
 <h2>Enable LDAP-server functionality</h2>
 The following server command are available:
