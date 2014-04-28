@@ -2130,6 +2130,9 @@ class config_form(ModelForm):
                 Field("description"),
                 Field("parent_config", ng_options="value.idx as value.name for value in this.get_valid_parents()", chosen=True),
             ),
+            HTML(
+                "<div ng-bind-html='show_config_help()'></div>",
+            ),
             Fieldset(
                 "other settings",
                 Field("enabled"),
@@ -2195,6 +2198,9 @@ class config_str_form(ModelForm):
                 Field("description"),
                 Field("value"),
             ),
+            HTML(
+                "<div ng-bind-html='show_config_var_help()'></div>",
+            ),
             FormActions(
                 Submit("submit", "", css_class="primaryAction", ng_value="action_string"),
             )
@@ -2220,6 +2226,9 @@ class config_int_form(ModelForm):
                 Field("description"),
                 Field("value"),
             ),
+            HTML(
+                "<div ng-bind-html='show_config_var_help()'></div>",
+            ),
             FormActions(
                 Submit("submit", "", css_class="primaryAction", ng_value="action_string"),
             )
@@ -2244,6 +2253,9 @@ class config_bool_form(ModelForm):
                 Field("name", wrapper_class="ng-class:form_error('name')"),
                 Field("description"),
                 Field("value", min=0, max=1),
+            ),
+            HTML(
+                "<div ng-bind-html='show_config_var_help()'></div>",
             ),
             FormActions(
                 Submit("submit", "", css_class="primaryAction", ng_value="action_string"),

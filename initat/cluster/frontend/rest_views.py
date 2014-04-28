@@ -162,6 +162,10 @@ class db_prefetch_mixin(object):
             "categories", "config_str_set", "config_int_set", "config_blob_set",
             "config_bool_set", "config_script_set", "mon_check_command_set__categories", "mon_check_command_set__exclude_devices",
             "device_config_set"]
+    def _config_hint_prefetch(self):
+        return [
+            "config_var_hint_set",
+        ]
     def _mon_dist_master_prefetch(self):
         return ["mon_dist_slave_set"]
     def _macbootlog_related(self):

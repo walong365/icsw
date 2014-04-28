@@ -88,7 +88,13 @@ config_table_template = """
     </thead>
     <tbody>
         <tr ng-repeat-start="config in pagSettings.filtered_list.slice(pagSettings.conf.start_idx, pagSettings.conf.end_idx + 1)" ng-class="get_config_row_class(config)">
-            <td>{{ config.name }}</td>
+            <td>
+                <span ng-show="config_has_info(config)" class="pull-right">
+                    <span class="glyphicon glyphicon-info-sign" title="{{ get_config_help_text(config) }}">
+                    </span>
+                </span>
+                {{ config.name }}
+            </td>
             <td class="text-right">{{ config.priority }}</td>
             <td>{{ config.config_catalog | array_lookup:this.config_catalogs:'name':'-' }}</td>
             <td class="text-center">{{ config.enabled | yesno1 }}</td>
@@ -178,7 +184,13 @@ var_table_template = """
     </thead>
     <tbody>
         <tr ng-repeat="obj in get_config_vars(config)">
-            <td>{{ obj.name }}</td>
+            <td>
+                <span ng-show="var_has_info(config, obj)" class="pull-right">
+                    <span class="glyphicon glyphicon-info-sign" title="{{ get_var_help_text(config, obj) }}">
+                    </span>
+                </span>
+                {{ obj.name }}
+            </td>
             <td>{{ obj.value }}</td>
             <td>{{ obj.description }}</td>
             <td>{{ obj.v_type }}</td>
@@ -376,6 +388,7 @@ config_ctrl = config_module.controller("config_ctrl", ["$scope", "$compile", "$f
                 restDataSource.reload(["{% url 'rest:mon_service_templ_list' %}", {}]),
                 restDataSource.reload(["{% url 'rest:category_list' %}", {}]),
                 restDataSource.reload(["{% url 'rest:config_catalog_list' %}", {}]),
+                restDataSource.reload(["{% url 'rest:config_hint_list' %}", {}]),
             ]
             $q.all(wait_list).then((data) ->
                 $scope.mon_service_templ = data[1]
@@ -388,6 +401,12 @@ config_ctrl = config_module.controller("config_ctrl", ["$scope", "$compile", "$f
                 $scope.config_edit.delete_list = $scope.entries
                 $scope.catalog_edit.create_list = $scope.config_catalogs
                 $scope.catalog_edit.delete_list = $scope.config_catalogs
+                $scope.config_hints = {}
+                for entry in data[4]
+                    $scope.config_hints[entry.config_name] = entry
+                    entry.var_lut = {}
+                    for vh in entry.config_var_hint_set
+                        entry.var_lut[vh.var_name] = vh
             )
         $scope._set_fields = (entry, init=false) ->
             entry.script_sel = 0
@@ -473,6 +492,38 @@ config_ctrl = config_module.controller("config_ctrl", ["$scope", "$compile", "$f
             else
                 obj._selected = true
                 $scope.selected_objects.push(obj)
+        # hint functions
+        $scope.config_has_info = (config) ->
+            return config.name of $scope.config_hints
+        $scope.get_config_help_text = (config) ->
+            if $scope.config_has_info(config) 
+                return $scope.config_hints[config.name].help_text_short or "no short help"
+            else
+                return ""
+        $scope.var_has_info = (config, cvar) ->
+            if config.name of $scope.config_hints
+                return cvar.name of $scope.config_hints[config.name].var_lut
+            else
+                return false
+        $scope.get_var_help_text = (config, cvar) ->
+            if $scope.var_has_info(config, cvar)
+                return $scope.config_hints[config.name].var_lut[cvar.name].help_text_short or "no short help"
+            else
+                return ""
+        $scope.show_config_help = () ->
+            if $scope._edit_obj.name of $scope.config_hints
+                return $scope.config_hints[$scope._edit_obj.name].help_text_html
+            else
+                return ""
+        $scope.show_config_var_help = () ->
+            if $scope._edit_obj.config and $scope._config.name of $scope.config_hints
+                ch = $scope.config_hints[$scope._config.name]
+                if $scope._edit_obj.name of ch.var_lut
+                    return ch.var_lut[$scope._edit_obj.name].help_text_html or ""
+                else
+                    return ""
+            else
+                return ""
         $scope.get_label_class = (entry, s_type) ->
             num = entry["#{s_type}_num"]
             sel = entry["#{s_type}_sel"]
@@ -538,6 +589,9 @@ config_ctrl = config_module.controller("config_ctrl", ["$scope", "$compile", "$f
             )
         $scope.edit_var = (config, obj, event) ->
             v_type = obj.v_type
+            $scope._config = config
+            if ! obj.description
+                obj.description = "descr"
             $scope.var_edit.edit_template = "config_#{v_type}_template.html"
             $scope.var_edit.modify_rest_url = {
                 "str" : "{% url 'rest:config_str_detail' 1 %}"
@@ -551,6 +605,7 @@ config_ctrl = config_module.controller("config_ctrl", ["$scope", "$compile", "$f
                         $scope.filter_conf(config, $scope)
             )
         $scope.create_var = (config, v_type, event) ->
+            $scope._config = config
             $scope.var_edit.create_template = "config_#{v_type}_template.html"
             $scope.var_edit.create_rest_url = Restangular.all({
                 "str" : "{% url 'rest:config_str_list'%}"
