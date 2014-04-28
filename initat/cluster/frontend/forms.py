@@ -2126,7 +2126,7 @@ class config_form(ModelForm):
         HTML("<h2>Configuration '{% verbatim %}{{ _edit_obj.name }}{% endverbatim %}'</h2>"),
             Fieldset(
                 "Basic settings",
-                Field("name", wrapper_class="ng-class:form_error('name')"),
+                Field("name", wrapper_class="ng-class:form_error('name')", typeahead="hint for hint in get_config_hints()"),
                 Field("description"),
                 Field("parent_config", ng_options="value.idx as value.name for value in this.get_valid_parents()", chosen=True),
             ),
@@ -2194,7 +2194,7 @@ class config_str_form(ModelForm):
         HTML("<h2>String var '{% verbatim %}{{ _edit_obj.name }}{% endverbatim %}'</h2>"),
             Fieldset(
                 "Basic settings",
-                Field("name", wrapper_class="ng-class:form_error('name')"),
+                Field("name", wrapper_class="ng-class:form_error('name')", typeahead="hint for hint in get_config_var_hints(_config)"),
                 Field("description"),
                 Field("value"),
             ),
@@ -2222,7 +2222,7 @@ class config_int_form(ModelForm):
         HTML("<h2>Integer var '{% verbatim %}{{ _edit_obj.name }}{% endverbatim %}'</h2>"),
             Fieldset(
                 "Basic settings",
-                Field("name", wrapper_class="ng-class:form_error('name')"),
+                Field("name", wrapper_class="ng-class:form_error('name')", typeahead="hint for hint in get_config_hints()"),
                 Field("description"),
                 Field("value"),
             ),
@@ -2250,7 +2250,7 @@ class config_bool_form(ModelForm):
         HTML("<h2>Bool var '{% verbatim %}{{ _edit_obj.name }}{% endverbatim %}'</h2>"),
             Fieldset(
                 "Basic settings",
-                Field("name", wrapper_class="ng-class:form_error('name')"),
+                Field("name", wrapper_class="ng-class:form_error('name')", typeahead="hint for hint in get_config_hints()"),
                 Field("description"),
                 Field("value", min=0, max=1),
             ),

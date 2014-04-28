@@ -493,6 +493,13 @@ config_ctrl = config_module.controller("config_ctrl", ["$scope", "$compile", "$f
                 obj._selected = true
                 $scope.selected_objects.push(obj)
         # hint functions
+        $scope.get_config_hints = () ->
+            return (entry for entry of $scope.config_hints)
+        $scope.get_config_var_hints = (config) ->
+            if config and config.name of $scope.config_hints
+                return (entry for entry of $scope.config_hints[config.name].var_lut)
+            else
+                return []
         $scope.config_has_info = (config) ->
             return config.name of $scope.config_hints
         $scope.get_config_help_text = (config) ->
