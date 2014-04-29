@@ -96,7 +96,9 @@ def group_changed(*args, **kwargs):
 
 @receiver(bootsettings_changed)
 def rcv_bootsettings_changed(*args, **kwargs):
-    _insert_bg_job("change_bootsetting", kwargs["cause"], kwargs["device"])
+    # not signal when bootserver is not set
+    if kwargs["device"].bootserver_id:
+        _insert_bg_job("change_bootsetting", kwargs["cause"], kwargs["device"])
 
 def _insert_bg_job(cmd, cause, obj):
     if getattr(obj, "_no_bg_job", False):
