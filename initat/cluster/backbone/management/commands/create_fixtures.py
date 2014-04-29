@@ -184,7 +184,7 @@ Enter without 'cn=', in most cases admin is enough
         _root_passwd_hint = factories.ConfigVarHint(
             config_hint=ldap_server_cfg,
             var_name="root_passwd",
-            help_text_short="password of the admin ser",
+            help_text_short="password of the admin user",
             help_text_html="""
 <h3>Password of the admin user</h3>
 Stored as cleartext password, handle with care.
@@ -203,7 +203,7 @@ for user objects. Can contain one or more of
 <li>posixAccount</li>
 <li>shadowAccount</li>
 <li>shadowAccount</li>
-<li>top/li>
+<li>top</li>
 </ul>
 """
         )
