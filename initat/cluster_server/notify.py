@@ -216,6 +216,7 @@ class notify_mixin(object):
                 # add to waiting list
                 _is_local = _run_job.server_id == self.__server_idx and _srv_type == "server"
                 _conn_str = self.srv_routing.get_connection_string(_srv_type, _run_job.server_id)
+                self.__waiting_ids.append(_run_job.pk)
                 if not _conn_str:
                     self.log(
                         u"got empty connection_string for {} ({})".format(
@@ -224,13 +225,13 @@ class notify_mixin(object):
                         ),
                         logging_tools.LOG_LEVEL_ERROR
                     )
-                    _run_job.state = server_command.SRV_REPLY_STATE_CRITICAL
-                    _run_job.result = "empty connection string"
-                    _run_job.result_xml = ""
-                    _run_job.end = cluster_timezone.localize(datetime.datetime.now())
-                    _run_job.save()
+                    # set result
+                    _send_xml.set_result(
+                        "empty connection string",
+                        server_command.SRV_REPLY_STATE_CRITICAL
+                        )
+                    self.notify_handle_result(_send_xml)
                 else:
-                    self.__waiting_ids.append(_run_job.pk)
                     _srv_uuid = get_server_uuid(_srv_type, _run_job.server.uuid)
                     self.log(u"command to {} {} ({}, command {}, {})".format(
                         _srv_type,
