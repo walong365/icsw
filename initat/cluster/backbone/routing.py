@@ -107,21 +107,25 @@ class srv_type_routing(object):
     def has_type(self, srv_type):
         return srv_type in self._resolv_dict
     def get_connection_string(self, srv_type, server_id=None):
-        # server list
-        _srv_list = self._resolv_dict[srv_type]
-        if server_id:
-            # filter
-            _found_srv = [entry for entry in _srv_list if entry[2] == server_id]
-            if not _found_srv:
-                self.logger.critical("no server_id {:d} found for srv_type {}, taking first one".format(server_id, srv_type))
+        if srv_type in self._resolv_dict:
+            # server list
+            _srv_list = self._resolv_dict[srv_type]
+            if server_id:
+                # filter
+                _found_srv = [entry for entry in _srv_list if entry[2] == server_id]
+                if not _found_srv:
+                    self.logger.critical("no server_id {:d} found for srv_type {}, taking first one".format(server_id, srv_type))
+                    _found_srv = _srv_list
+            else:
                 _found_srv = _srv_list
+            # no server id, take first one
+            return "tcp://{}:{:d}".format(
+                _found_srv[0][1],
+                _SRV_TYPE_PORT_MAPPING[srv_type],
+            )
         else:
-            _found_srv = _srv_list
-        # no server id, take first one
-        return "tcp://{}:{:d}".format(
-            _found_srv[0][1],
-            _SRV_TYPE_PORT_MAPPING[srv_type],
-        )
+            self.logger.critical("no srv_type {} defined".format(srv_type))
+            return None
     @property
     def resolv_dict(self):
         return dict([(key, value) for key, value in self._resolv_dict.iteritems() if not key.startswith("_")])
