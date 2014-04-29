@@ -1726,8 +1726,10 @@ class all_commands(host_type_config):
             if ngc.pk:
                 # print ngc.categories.all()
                 cats = [cur_cat.full_name for cur_cat in ngc.categories.all()] # .values_list("full_name", flat=True)
+                cat_pks = [cur_cat.pk for cur_cat in ngc.categories.all()]
             else:
                 cats = [TOP_MONITORING_CATEGORY]
+                cat_pks = []
             cc_s = check_command(
                 ngc_name,
                 ngc.command_line,
@@ -1738,10 +1740,12 @@ class all_commands(host_type_config):
                 nagios_name=_nag_name,
                 special=special,
                 servicegroup_names=cats,
+                servicegroup_pks=cat_pks,
                 enable_perfdata=ngc.enable_perfdata,
                 is_event_handler=ngc.is_event_handler,
                 event_handler=ngc.event_handler,
                 event_handler_enabled=ngc.event_handler_enabled,
+                check_command_pk=ngc.pk,
                 db_entry=ngc,
                 volatile=ngc.volatile,
             )
@@ -2072,6 +2076,8 @@ class check_command(object):
         self.template = template
         self.exclude_devices = [cur_dev.pk for cur_dev in exclude_devices] or []
         self.servicegroup_names = kwargs.get("servicegroup_names", [TOP_MONITORING_CATEGORY])
+        self.servicegroup_pks = kwargs.get("servicegroup_pks", [])
+        self.check_command_pk = kwargs.get("check_command_pk", None)
         self.is_event_handler = kwargs.get("is_event_handler", False)
         self.event_handler = kwargs.get("event_handler", None)
         self.event_handler_enabled = kwargs.get("event_handler_enabled", True)

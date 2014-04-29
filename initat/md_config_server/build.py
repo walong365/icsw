@@ -380,7 +380,9 @@ class build_process(threading_tools.process_obj, version_check_mixin):
     def _build_distance_map(self, root_node, show_unroutable=True):
         self.log("building distance map, root node is '%s'" % (root_node))
         # exclude all without attached netdevices
-        dm_dict = dict([(cur_dev.pk, cur_dev) for cur_dev in device.objects.filter(Q(enabled=True)).exclude(netdevice=None).prefetch_related("netdevice_set")])
+        dm_dict = dict([(cur_dev.pk, cur_dev) for cur_dev in device.objects.filter(Q(enabled=True)).exclude(netdevice=None) \
+            .select_related("domain_tree_node") \
+            .prefetch_related("netdevice_set")])
         nd_dict = {}
         for dev_pk, nd_pk in netdevice.objects.all().values_list("device", "pk"):
             nd_dict.setdefault(dev_pk, set()).add(nd_pk)
@@ -674,6 +676,7 @@ class build_process(threading_tools.process_obj, version_check_mixin):
                         act_host["process_perf_data"] = 1 if host.enable_perfdata else 0
                         if host.enable_perfdata:
                             act_host["action_url"] = "%s/index.php/graph?host=$HOSTNAME$&srv=_HOST_" % (self.gc["PNP_URL"])
+                    act_host["_device_pk"] = host.pk
                     if global_config["USE_ONLY_ALIAS_FOR_ALIAS"]:
                         act_host["alias"] = host.alias or host.name
                     else:
@@ -1382,7 +1385,10 @@ class build_process(threading_tools.process_obj, version_check_mixin):
                 act_serv["process_perf_data"] = 1 if (host.enable_perfdata and s_check.enable_perfdata) else 0
                 if host.enable_perfdata and s_check.enable_perfdata:
                     act_serv["action_url"] = "%s/index.php/graph?host=$HOSTNAME$&srv=$SERVICEDESC$" % (self.gc["PNP_URL"])
+            if s_check.check_command_pk:
+                act_serv["_check_command_pk"] = "{:d}".format(s_check.check_command_pk)
             if s_check.servicegroup_names:
+                act_serv["_cat_pks"] = ",".join(["{:d}".format(_pk) for _pk in s_check.servicegroup_pks])
                 act_serv["servicegroups"] = ",".join(s_check.servicegroup_names)
                 cur_gc["servicegroup"].add_host(host.name, act_serv["servicegroups"])
             act_serv["check_command"] = "!".join([s_check["command_name"]] + s_check.correct_argument_list(arg_temp, host.dev_variables))
