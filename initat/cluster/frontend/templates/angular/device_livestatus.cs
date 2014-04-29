@@ -368,9 +368,9 @@ device_livestatus_module.controller("livestatus_ctrl", ["$scope", "$compile", "$
                     if entry.custom_variables.cat_pks?
                         return (scope.cat_tree_lut[_pk].obj.short_name for _pk in entry.custom_variables.cat_pks).join(", ")
                     else
-                        return ""
+                        return "---"
                 else
-                    return ""
+                    return "N/A"
             scope.get_state_type = (entry) ->
                 return {
                     ""  : "???"
