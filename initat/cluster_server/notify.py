@@ -214,22 +214,36 @@ class notify_mixin(object):
                 # set BackGroundJobRunID
                 _send_xml["bgjrid"] = "{:d}".format(_run_job.pk)
                 # add to waiting list
-                self.__waiting_ids.append(_run_job.pk)
                 _is_local = _run_job.server_id == self.__server_idx and _srv_type == "server"
                 _conn_str = self.srv_routing.get_connection_string(_srv_type, _run_job.server_id)
-                _srv_uuid = get_server_uuid(_srv_type, _run_job.server.uuid)
-                self.log(u"command to {} {} ({}, command {}, {})".format(
-                    _srv_type,
-                    _conn_str,
-                    _srv_uuid,
-                    _send_xml["*command"],
-                    "local" if _is_local else "remote",
-                    ))
-                self.send_to_server(
-                    _conn_str,
-                    _srv_uuid,
-                    _send_xml,
-                    local=_is_local,
-                )
+                if not _conn_str:
+                    self.log(
+                        u"got empty connection_string for {} ({})".format(
+                            _srv_type,
+                            _send_xml["*command"],
+                        ),
+                        logging_tools.LOG_LEVEL_ERROR
+                    )
+                    _run_job.state = server_command.SRV_REPLY_STATE_CRITICAL
+                    _run_job.result = "empty connection string"
+                    _run_job.result_xml = ""
+                    _run_job.end = cluster_timezone.localize(datetime.datetime.now())
+                    _run_job.save()
+                else:
+                    self.__waiting_ids.append(_run_job.pk)
+                    _srv_uuid = get_server_uuid(_srv_type, _run_job.server.uuid)
+                    self.log(u"command to {} {} ({}, command {}, {})".format(
+                        _srv_type,
+                        _conn_str,
+                        _srv_uuid,
+                        _send_xml["*command"],
+                        "local" if _is_local else "remote",
+                        ))
+                    self.send_to_server(
+                        _conn_str,
+                        _srv_uuid,
+                        _send_xml,
+                        local=_is_local,
+                    )
         else:
             self.notify_check_for_bgj_finish(cur_bg)
