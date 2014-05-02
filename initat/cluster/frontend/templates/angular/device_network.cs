@@ -138,27 +138,6 @@ peer_row_template = """
 
 {% endverbatim %}
 
-d3js_module = angular.module("icsw.d3", []
-).factory("d3_service", ["$document", "$q", "$rootScope",
-    ($document, $q, $rootScope) ->
-        d = $q.defer()
-        on_script_load = () ->
-            $rootScope.$apply(() -> d.resolve(window.d3))
-        script_tag = $document[0].createElement('script')
-        script_tag.type = "text/javascript" 
-        script_tag.async = true
-        script_tag.src = "{% static 'js/d3.v3.min.js' %}"
-        script_tag.onreadystatechange = () ->
-            if this.readyState == 'complete'
-                on_script_load()
-        script_tag.onload = on_script_load
-        s = $document[0].getElementsByTagName('body')[0]
-        s.appendChild(script_tag)
-        return {
-            "d3" : () -> return d.promise
-        }
-])
-
 device_network_module = angular.module("icsw.network.device", ["ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters", "localytics.directives", "restangular", "icsw.d3"])
 
 angular_module_setup([device_network_module])
