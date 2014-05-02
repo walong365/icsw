@@ -1387,6 +1387,7 @@ class build_process(threading_tools.process_obj, version_check_mixin):
                     act_serv["action_url"] = "%s/index.php/graph?host=$HOSTNAME$&srv=$SERVICEDESC$" % (self.gc["PNP_URL"])
             if s_check.check_command_pk:
                 act_serv["_check_command_pk"] = "{:d}".format(s_check.check_command_pk)
+            act_serv["_device_pk"] = host.pk
             if s_check.servicegroup_names:
                 act_serv["_cat_pks"] = ",".join(["{:d}".format(_pk) for _pk in s_check.servicegroup_pks])
                 act_serv["servicegroups"] = ",".join(s_check.servicegroup_names)
