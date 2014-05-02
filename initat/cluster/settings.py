@@ -29,11 +29,13 @@ ADMINS = (
 if os.path.isfile("/etc/sysconfig/cluster/.is_corvus"):
     INIT_PRODUCT_NAME = "CORVUS"
     # INIT_PRODUCT_FAMILY = "Corvus albicollis" # Geierrabe
-    INIT_PRODUCT_FAMILY = "Corvus woodfordi" # Buntschnabelkrähe
+    # INIT_PRODUCT_FAMILY = "Corvus woodfordi" # Buntschnabelkrähe
+    INIT_PRODUCT_FAMILY = "Corvus frugilegus" # Saatkrähe
 else:
     INIT_PRODUCT_NAME = "NOCTUA"
     # INIT_PRODUCT_FAMILY = "Strigidae bubo bubo" # Uhu
-    INIT_PRODUCT_FAMILY = "Strigidae pulsatrix perspicillata" # Brillenkauz
+    # INIT_PRODUCT_FAMILY = "Strigidae pulsatrix perspicillata" # Brillenkauz
+    INIT_PRODUCT_FAMILY = "Strigidae ascalaphus" # Wüstenuhu
 
 ALLOWED_HOSTS = ["*"]
 
