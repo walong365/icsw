@@ -9,9 +9,8 @@ root = exports ? this
 {% verbatim %}
 
 livestatus_templ = """
-<d3test data="testData"></d3test>
-<arctest data="testData"></arctest>
-<bursttest data="burstData"></bursttest>
+<!-- <d3test data="testData"></d3test>
+<arctest data="testData"></arctest> -->
 <table class="table table-condensed table-hover table-striped" style="font-size:100%;">
     <thead>
         <tr>
@@ -29,6 +28,18 @@ livestatus_templ = """
                         <input placeholder="filter..." ng-model="md_filter_str" class="form-control input-sm" ng-change="md_filter_changed()">
                         </input>
                     </div>
+                </div>
+            </td>
+        </tr>
+        <tr>
+            <td colspan="99">
+                <div class="row">
+                    <div class="col-md-6">
+                        <tree treeconfig="cat_tree"></tree>
+                    </div>
+                    <div class="col-md-6">
+                        <bursttest data="burstData"></bursttest>
+                    </div> 
                 </div>
             </td>
         </tr>
@@ -52,15 +63,6 @@ livestatus_templ = """
                 </div>
             </th>
 
-        </tr>
-        <tr>
-            <td colspan="99">
-                <div class="row">
-                    <div class="col-md-6">
-                        <tree treeconfig="cat_tree"></tree>
-                    </div>
-                </div>
-            </td>
         </tr>
         <tr>
             <th ng-repeat="entry in show_options"
@@ -214,6 +216,7 @@ device_livestatus_module.controller("livestatus_ctrl", ["$scope", "$compile", "$
             return if $scope.mds_enabled[int_state] then "btn btn-xs " + {0 : "btn-success", 1 : "btn-warning", 2 : "btn-danger", 3 : "btn-danger"}[int_state] else "btn btn-xs"
         $scope.toggle_mds = (int_state) ->
             $scope.mds_enabled[int_state] = !$scope.mds_enabled[int_state]
+            $scope.md_filter_changed()
         $scope.new_devsel = (_dev_sel, _devg_sel) ->
             #pre_sel = (dev.idx for dev in $scope.devices when dev.expanded)
             #restDataSource.reset()
@@ -281,7 +284,6 @@ device_livestatus_module.controller("livestatus_ctrl", ["$scope", "$compile", "$
                         service_entries = []
                         $(xml).find("value[name='service_result']").each (idx, node) =>
                             service_entries = service_entries.concat(angular.fromJson($(node).text()))
-                            #console.log entries[0]
                         host_entries = []
                         $(xml).find("value[name='host_result']").each (idx, node) =>
                             host_entries = host_entries.concat(angular.fromJson($(node).text()))
@@ -289,49 +291,59 @@ device_livestatus_module.controller("livestatus_ctrl", ["$scope", "$compile", "$
                             $scope.entries = service_entries
                             $scope.host_entries = host_entries
                             $scope.host_lut = {}
-                            # build burst data
-                            _bdat = {
-                                "name" : "System"
-                                "children" : []
-                                "check" : {"state" : 0}
-                            }
-                            _devg_lut = {}
                             for entry in host_entries
                                 # sanitize entries
                                 $scope._sanitize_entries(entry)
                                 entry.custom_variables = $scope.parse_custom_variables(entry.custom_variables)
-                                if entry.custom_variables.device_pk of $scope.dev_tree_lut
-                                    _dev = $scope.dev_tree_lut[entry.custom_variables.device_pk]
-                                    if _dev.device_group_name not of _devg_lut
-                                        _devg = {"name" : _dev.device_group_name, "children" : [], "check" : { "state" : 0}}
-                                        _devg_lut[_devg.name] = _devg
-                                        _bdat.children.push(_devg)
-                                    else
-                                        _devg = _devg_lut[_dev.device_group_name]
-                                    # sunburst struct for device
-                                    _dev_sbs = {"name" : _dev.full_name, "children" : [], "check" : entry}
-                                    _devg.children.push(_dev_sbs)
-                                    # set devicegroup state
-                                    _devg.check.state = Math.max(_devg.check.state, _dev_sbs.check.state)
-                                    # set system state
-                                    _bdat.check.state = Math.max(_bdat.check.state, _devg.check.state)
-                                    _dev.sunburst = _dev_sbs
                                 $scope.host_lut[entry.host_name] = entry
                             for entry in service_entries
                                 # sanitize entries
                                 $scope._sanitize_entries(entry)
                                 entry.custom_variables = $scope.parse_custom_variables(entry.custom_variables)
-                                if entry.custom_variables.device_pk of $scope.dev_tree_lut
-                                    _dev = $scope.dev_tree_lut[entry.custom_variables.device_pk]
-                                    # console.log entry
-                                    _dev.sunburst.children.push({"name" : entry.description, "children" : [], "check" : entry})
+                            $scope.md_filter_changed()
                             $scope.testData = [
                                 {name : "services", count : service_entries.length, color : "red"}
                                 {name : "hosts", count : host_entries.length, color : "blue"}
                                 {name : "test", count : 14, color : "green"}
                             ]
-                            $scope.burstData = _bdat
+                            $scope.build_sunburst()
                         )
+        $scope.build_sunburst = () ->
+            # build burst data
+            _bdat = {
+                "name" : "System"
+                "children" : []
+                "check" : {"state" : 0}
+            }
+            _devg_lut = {}
+            for entry in $scope.host_entries
+                if entry.custom_variables.device_pk of $scope.dev_tree_lut
+                    _dev = $scope.dev_tree_lut[entry.custom_variables.device_pk]
+                    if _dev.device_group_name not of _devg_lut
+                        _devg = {"name" : _dev.device_group_name, "children" : [], "check" : { "state" : 0}}
+                        _devg_lut[_devg.name] = _devg
+                        _bdat.children.push(_devg)
+                    else
+                        _devg = _devg_lut[_dev.device_group_name]
+                    # sunburst struct for device
+                    _dev_sbs = {"name" : _dev.full_name, "children" : [], "check" : entry}
+                    _devg.children.push(_dev_sbs)
+                    # set devicegroup state
+                    _devg.check.state = Math.max(_devg.check.state, _dev_sbs.check.state)
+                    # set system state
+                    _bdat.check.state = Math.max(_bdat.check.state, _devg.check.state)
+                    _dev.sunburst = _dev_sbs
+            for entry in $scope.entries
+                # sanitize entries
+                if entry.custom_variables.device_pk of $scope.dev_tree_lut
+                    if entry._show
+                        _dev = $scope.dev_tree_lut[entry.custom_variables.device_pk]
+                        _dev.sunburst.children.push({"name" : entry.description, "children" : [], "check" : entry})
+            # remove empty devices
+            for _devg in _bdat.children
+                _devg.children = (entry for entry in _devg.children when entry.children.length)
+            _bdat.children = (entry for entry in _bdat.children when entry.children.length)
+            $scope.burstData = _bdat
         $scope._sanitize_entries = (entry) ->
             entry.state = parseInt(entry.state)
             if entry.state_type in ["0", "1"]
@@ -360,25 +372,30 @@ device_livestatus_module.controller("livestatus_ctrl", ["$scope", "$compile", "$
                         _cv[int_mkey] = (parseInt(_sv) for _sv in _cv[int_mkey])
             return _cv
         $scope.md_filter_changed = () ->
+            # called when new entries are set or a filter rule has changes
+            ($scope.check_filter(entry) for entry in @entries)
             $scope.pagSettings.set_entries(@entries)
-        $scope.filter_mdr = (entry, scope) ->
+            $scope.build_sunburst()
+        $scope.check_filter = (entry) ->
             show = true
-            if not scope.mds_enabled[entry.state]
+            if not $scope.mds_enabled[entry.state]
                 show = false
-            if scope.md_filter_str
-                if not $filter("filter")([entry], scope.md_filter_str).length
+            if $scope.md_filter_str
+                if not $filter("filter")([entry], $scope.md_filter_str).length
                     show = false
             if show
-                if not scope.selected_mcs.length
+                if not $scope.selected_mcs.length
                    show = false
                 else
                     if entry.custom_variables and entry.custom_variables.cat_pks?
                         # only show if there is an intersection
-                        show = _.intersection(scope.selected_mcs, entry.custom_variables.cat_pks).length
+                        show = _.intersection($scope.selected_mcs, entry.custom_variables.cat_pks).length
                     else
                         # show entries with unset / empty category
-                        show = scope.show_unspec_cat
-            return show
+                        show = $scope.show_unspec_cat
+            entry._show = show
+        $scope.filter_mdr = (entry, scope) ->
+            return entry._show
         $scope.$on("$destroy", () ->
             if $scope.cur_timeout
                 $timeout.cancel($scope.cur_timeout)
@@ -390,22 +407,22 @@ device_livestatus_module.controller("livestatus_ctrl", ["$scope", "$compile", "$
             data: "="
         }
         link: (scope, element) ->
-            width = 480
+            width = 600
             height = 320
-            scope.show_depth = 1
             d3_service.d3().then((d3) ->
-                radius = Math.min(width, height) / 2 -30
-                svg = d3.select(element[0]).append("svg")
+                radius = Math.min(width, height) / 2 - 40
+                top_el = d3.select(element[0]).append("svg")
                     .attr("width", width)
                     .attr("height", height)
-                    .append("g")
-                    .attr("transform", "translate(#{width / 2},#{height / 2})")
- 
+                    .attr("font-family", "'Open-Sans', sans-serif")
+                    .attr("font-size", "10pt")
+                svg = top_el.append("g").attr("class", "sunburst")
+                    .attr("transform", "translate(#{width / 2},#{height / 2 + 10})")
                 partition = d3.layout.partition()
                     .sort(null)
                     .size([2 * Math.PI, radius * radius])
                     .value((d) ->
-                        return 1 # d.name.length
+                        return if d.value? then d.value else 1
                     )
                 arc = d3.svg.arc()
                     .startAngle((d) ->
@@ -415,17 +432,45 @@ device_livestatus_module.controller("livestatus_ctrl", ["$scope", "$compile", "$
                     .innerRadius((d) -> return Math.sqrt(d.y))
                     .outerRadius((d) -> return Math.sqrt(d.y + d.dy))
                 outer_arc = d3.svg.arc()
-                    .innerRadius(150)
-                    .outerRadius(150)
+                    .innerRadius(140)
+                    .outerRadius(140)
                     .startAngle((d) -> return d.x)
                     .endAngle((d) -> return d.x + d.dx)
+                scope.unhide = (_v) ->
+                    _v.value = 1
+                    if _v.children?
+                        (scope.unhide(_entry) for _entry in _v.children)
+                scope.hide = (_v) ->
+                    _v.value = 0
+                    if _v.children?
+                        (scope.hide(_entry) for _entry in _v.children)
+                scope.get_color = (d) ->
+                    if d.check?
+                        return {
+                            0 : "#66dd66"
+                            1 : "#dddd88"
+                            2 : "#ff7777"
+                            3 : "#ff0000"
+                        }[d.check.state]
+                    else
+                        return "#dddddd"
+                scope.render_path = () ->
+                    top_el.select(".path").remove()
+                    top_el.append("g")
+                        .attr("class", "path")
+                    if scope.cur_path?
+                        top_el.select(".path")
+                            .append("text")
+                            .attr("x", 5)
+                            .attr("y", 20)
+                            .attr("font-weight", "bold")
+                            .text(scope.cur_path.join(" - "))
                 scope.render = (data) ->
                     #console.log data
                     # remove previous labels and lines
                     svg.select(".slices").remove()
                     svg.select(".labels").remove()
                     svg.select(".lines").remove()
-                    #console.log "render", scope.show_depth
                     #console.log svg.datum(data)
                     svg.append("g")
                         .attr("class", "slices")
@@ -433,40 +478,73 @@ device_livestatus_module.controller("livestatus_ctrl", ["$scope", "$compile", "$
                         .attr("class", "labels")
                     svg.append("g")
                         .attr("class", "lines")
+                    scope.render_path()
                     lines = svg.select(".slices").datum(data).selectAll("g")
                         .data(partition.nodes)
                         .enter().append("g")
                         #.attr("display", (d) -> return if d.depth then null else "none" )
                         .on("mouseover", (d) ->
-                            scope.$apply(() ->
-                                if scope.show_depth != d.depth
-                                    scope.show_depth = d.depth
-                                    scope.render(scope.data)
-                            )
-                            #console.log "over", d.name
+                            cur_d = d
+                            path = []
+                            if cur_d.check?
+                                if cur_d.check.plugin_output?
+                                    path.unshift(cur_d.check.plugin_output)
+                            while cur_d
+                                path.unshift(cur_d.name)
+                                p_path = d3.select("path[_gid='#{cur_d._gid}']")
+                                p_path.style("fill", d3.rgb(p_path.style("fill")).brighter())
+                                cur_d = cur_d.parent ? null
+                            scope.cur_path = path
+                            d3.selectAll("g.labels g").attr("display", "none")
+                            if d.children?
+                                for _child in d.children
+                                    if _child.value
+                                        d3.select("g.labels g[_gid='#{_child._gid}']").attr("display", null)
+                            else
+                                # no children, show label
+                                d3.select("g.labels g[_gid='#{d._gid}']").attr("display", null)
+                            scope.render_path()
                         ).on("mouseout", (d) ->
-                            #scope.show_depth = -1
-                            #console.log "out", d.name
+                            cur_d = d
+                            while cur_d
+                                p_path = d3.select("path[_gid='#{cur_d._gid}']")
+                                p_path.style("fill", scope.get_color(cur_d))
+                                cur_d = cur_d.parent ? null
+                        ).on("click", (d) ->
+                            if d.parent?
+                                # hide everything
+                                scope.hide(scope.data)
+                                # unhide local node
+                                scope.unhide(d)
+                                _p = d.parent
+                                while _p?
+                                    _p.value = 1
+                                    _p = _p.parent
+                            else
+                                scope.unhide(scope.data)
+                            scope.render(scope.data)
+                            #console.log "c", d.depth, d
                         )
+                    _gid = 0
                     lines.append("path")
                         .attr("d", arc)
-                        .style("stroke", "#fff")
-                        .style("fill", (d) ->
-                            if d.check?
-                                return {
-                                    0 : "#00aa00"
-                                    1 : "#dddd00"
-                                    2 : "#ff0000"
-                                    3 : "#ff4444"
-                                }[d.check.state]
-                            else
-                                return "#dddddd"
+                        .style("stroke", "#000000").style("stroke-width", "0.5")
+                        .attr("_gid", (d) ->
+                            _gid++
+                            d._gid = _gid
+                            return _gid
                         )
-                        .style("fill-rule", "evenodd")
-                    svg.select(".labels").datum(data).selectAll("g").data(partition.nodes).enter().append("g").append("text")
-                        .attr("display", (d) -> return if d.depth == scope.show_depth then null else "none")
-                        #.attr("transform", (d) -> return "rotate(" + (d.x + d.dx / 2 - Math.PI / 2) / Math.PI * 180 + ")")
-                        #.attr("x", (d) -> return Math.sqrt(d.y) )
+                        .style("fill", (d) ->
+                            return scope.get_color(d)
+                        )
+                        #.style("fill-rule", "evenodd")
+                    cur_sel = svg.select(".labels").datum(data).selectAll("g").data(partition.nodes).enter()
+                        .append("g")
+                        .attr("_gid", (d) ->
+                            return d._gid
+                        )
+                        .attr("display", "none")
+                    cur_sel.append("text")
                         .attr("x", (d) ->
                             return if outer_arc.centroid(d)[0] < 0 then -170 else 170
                         )
@@ -476,11 +554,11 @@ device_livestatus_module.controller("livestatus_ctrl", ["$scope", "$compile", "$
                         .attr("text-anchor", (d) ->
                             return if outer_arc.centroid(d)[0] < 0 then "end" else "start"
                         )
+                        .attr("alignment-baseline", "middle")
                         .text((d) ->
                             return d.name
                         )
-                    svg.select(".lines").datum(data).selectAll("g").data(partition.nodes).enter().append("g").append("polyline")
-                        .attr("display", (d) -> return if d.depth == scope.show_depth then null else "none")
+                    cur_sel.append("polyline")
                         .attr("points", (d) ->
                             _koord = arc.centroid(d)
                             _nkoord = outer_arc.centroid(d)
@@ -488,7 +566,7 @@ device_livestatus_module.controller("livestatus_ctrl", ["$scope", "$compile", "$
                                 return [[-170, _nkoord[1]], _nkoord, _koord]
                             else
                                 return [[170, _nkoord[1]], _nkoord, _koord]
-                        ).attr("stroke", "black").attr("fill", "none")
+                        ).attr("stroke", "#333333").attr("opacity", "0.4").attr("fill", "none")
                 scope.$watch('data', () ->
                     scope.render(scope.data)
                     true
