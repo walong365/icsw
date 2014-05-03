@@ -25,14 +25,15 @@
 
 from initat.host_monitoring import limits, hm_classes
 from initat.host_monitoring.config import global_config
-from initat.host_monitoring.constants import MAPPING_FILE_IDS, MAPPING_FILE_TYPES, MASTER_FILE_NAME, ICINGA_TOP_DIR
+from initat.host_monitoring.discovery import id_discovery
+from initat.host_monitoring.constants import MAPPING_FILE_TYPES, MASTER_FILE_NAME, ICINGA_TOP_DIR
+from initat.host_monitoring.struct import host_connection, host_message
 from initat.host_monitoring.hm_direct import socket_process
 from initat.host_monitoring.tools import my_cached_file
 from initat.host_monitoring.version import VERSION_STRING
 from lxml import etree # @UnresolvedImport
 from lxml.builder import E # @UnresolvedImport
 import StringIO
-import argparse
 import base64
 import bz2
 import commands
@@ -49,578 +50,6 @@ import threading_tools
 import time
 import uuid_tools
 import zmq
-
-class id_discovery(object):
-    # discover 0mq ids
-    __slots__ = ["port", "host", "raw_connect", "conn_str", "init_time", "srv_com", "src_id", "xml_input", "socket"]
-    def __init__(self, srv_com, src_id, xml_input):
-        self.port = int(srv_com["port"].text)
-        self.host = srv_com["host"].text
-        self.raw_connect = True if int(srv_com.get("raw_connect", "0")) else False
-        self.conn_str = "tcp://%s:%d" % (
-            self.host,
-            self.port)
-        self.init_time = time.time()
-        self.srv_com = srv_com
-        self.src_id = src_id
-        self.xml_input = xml_input
-        cur_time = time.time()
-        if self.conn_str in id_discovery.last_try and abs(id_discovery.last_try[self.conn_str] - cur_time) < 60:
-            # need 60 seconds between tries
-            self.socket = None
-            self.send_return("last 0MQ discovery less than 60 seconds ago")
-        else:
-            id_discovery.pending[self.conn_str] = self
-            new_sock = id_discovery.relayer_process.zmq_context.socket(zmq.DEALER)
-            id_str = "relayer_dlr_%s_%s" % (
-                process_tools.get_machine_name(),
-                self.src_id)
-            new_sock.setsockopt(zmq.IDENTITY, id_str)
-            new_sock.setsockopt(zmq.LINGER, 0)
-            new_sock.setsockopt(zmq.SNDHWM, id_discovery.backlog_size)
-            new_sock.setsockopt(zmq.RCVHWM, id_discovery.backlog_size)
-            new_sock.setsockopt(zmq.BACKLOG, id_discovery.backlog_size)
-            new_sock.setsockopt(zmq.TCP_KEEPALIVE, 1)
-            new_sock.setsockopt(zmq.TCP_KEEPALIVE_IDLE, 300)
-            self.socket = new_sock
-            id_discovery.relayer_process.register_poller(new_sock, zmq.POLLIN, self.get_result)
-            # id_discovery.relayer_process.register_poller(new_sock, zmq.POLLIN, self.error)
-            self.socket.connect(self.conn_str)
-            if self.raw_connect:
-                self.log("send raw discovery message")
-                self.socket.send_unicode("get_0mq_id")
-            else:
-                self.log("send discovery message")
-                dealer_message = server_command.srv_command(command="get_0mq_id")
-                dealer_message["target_ip"] = self.host
-                self.socket.send_unicode(unicode(dealer_message))
-    def send_return(self, error_msg):
-        self.log(error_msg, logging_tools.LOG_LEVEL_ERROR)
-        dummy_mes = host_message(self.srv_com["command"].text, self.src_id, self.srv_com, self.xml_input)
-        dummy_mes.set_result(limits.nag_STATE_CRITICAL, error_msg)
-        self.send_result(dummy_mes)
-    def send_result(self, host_mes, result=None):
-        id_discovery.relayer_process.sender_socket.send_unicode(host_mes.src_id, zmq.SNDMORE)
-        id_discovery.relayer_process.sender_socket.send_unicode(host_mes.get_result(result))
-        self.close()
-    def error(self, zmq_sock):
-        self.log("got error for socket", logging_tools.LOG_LEVEL_ERROR)
-        time.sleep(1)
-    def get_result(self, zmq_sock):
-        if self.conn_str in id_discovery.last_try:
-            del id_discovery.last_try[self.conn_str]
-        try:
-            if self.raw_connect:
-                # only valid for hoststatus, FIXME
-                zmq_id = etree.fromstring(zmq_sock.recv()).findtext("nodestatus")
-            else:
-                cur_reply = server_command.srv_command(source=zmq_sock.recv())
-                zmq_id = cur_reply["zmq_id"].text
-        except:
-            self.send_return("error extracting 0MQ id (discovery): %s" % (process_tools.get_except_info()))
-        else:
-            if zmq_id in id_discovery.reverse_mapping and self.host not in id_discovery.reverse_mapping[zmq_id]:
-                self.log("0MQ is %s but already used by %s: %s" % (
-                    zmq_id,
-                    logging_tools.get_plural("host", len(id_discovery.reverse_mapping[zmq_id])),
-                    ", ".join(sorted(id_discovery.reverse_mapping[zmq_id]))),
-                         logging_tools.LOG_LEVEL_ERROR)
-                self.send_return("0MQ id not unique, virtual host setup found ?")
-            else:
-                if zmq_id.lower().count("unknown command"):
-                    self.log("received illegal zmq_id '%s'" % (zmq_id), logging_tools.LOG_LEVEL_ERROR)
-                else:
-                    self.log("0MQ id is %s" % (zmq_id))
-                    id_discovery.set_mapping(self.conn_str, zmq_id) # mapping[self.conn_str] = zmq_id
-                    # reinject
-                    if self.port == 2001:
-                        id_discovery.relayer_process._send_to_client(self.src_id, self.srv_com, self.xml_input)
-                    else:
-                        id_discovery.relayer_process._send_to_nhm_service(self.src_id, self.srv_com, self.xml_input)
-                self.close()
-    @staticmethod
-    def save_mapping():
-        if id_discovery.save_file:
-            id_discovery.relayer_process.log("saving mapping file")
-            file(MAPPING_FILE_IDS, "w").write(etree.tostring(id_discovery.mapping_xml, pretty_print=True))
-    def close(self):
-        del self.srv_com
-        if self.socket:
-            self.socket.close()
-            id_discovery.relayer_process.unregister_poller(self.socket, zmq.POLLIN)
-            del self.socket
-        if self.conn_str in id_discovery.pending:
-            # remove from pending dict
-            del id_discovery.pending[self.conn_str]
-        self.log("closing")
-        del self
-    def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
-        id_discovery.relayer_process.log("[idd, %s] %s" % (self.conn_str, what), log_level)
-    @staticmethod
-    def reload_mapping():
-        id_discovery.reverse_mapping = {}
-        # mapping connection string -> 0MQ id
-        id_discovery.save_file = True
-        if os.path.isfile(MAPPING_FILE_IDS):
-            map_content = file(MAPPING_FILE_IDS, "r").read()
-            if map_content.startswith("<"):
-                # new format
-                id_discovery.mapping = {}
-                id_discovery.mapping_xml = etree.fromstring(map_content)
-                for host_el in id_discovery.mapping_xml.findall(".//host"):
-                    for uuid_el in host_el.findall(".//uuid"):
-                        conn_str = "%s://%s:%s" % (
-                            uuid_el.get("proto"),
-                            host_el.get("address"),
-                            uuid_el.get("port"),
-                            )
-                        id_discovery.set_mapping(conn_str, uuid_el.text)
-            else:
-                # old format
-                map_lines = [line.strip().split("=", 1) for line in map_content.split("\n") if line.strip() and line.count("=")]
-                id_discovery.mapping = {}
-                id_discovery.mapping_xml = E.zmq_mapping()
-                id_discovery.save_file = False
-                for key, value in map_lines:
-                    id_discovery.set_mapping(key, value)
-                id_discovery.save_file = True
-                id_discovery.save_mapping()
-            id_discovery.relayer_process.log(
-                "read %s from %s (in file: %d)" % (
-                    logging_tools.get_plural("mapping", len(id_discovery.mapping_xml.findall(".//uuid"))),
-                    MAPPING_FILE_IDS,
-                    len(map_content.split("\n")),
-                    ))
-            for key, value in id_discovery.mapping.iteritems():
-                # only use ip-address / hostname from key
-                id_discovery.reverse_mapping.setdefault(value, []).append(key[6:].split(":")[0])
-            # pprint.pprint(id_discovery.reverse_mapping)
-        else:
-            id_discovery.mapping = {}
-            id_discovery.mapping_xml = E.zmq_mapping()
-    @staticmethod
-    def init(r_process, backlog_size, timeout, verbose):
-        id_discovery.relayer_process = r_process
-        id_discovery.backlog_size = backlog_size
-        id_discovery.timeout = timeout
-        id_discovery.verbose = verbose
-        id_discovery.pending = {}
-        # last discovery try
-        id_discovery.last_try = {}
-        id_discovery.reload_mapping()
-    @staticmethod
-    def destroy():
-        for value in list(id_discovery.pending.values()):
-            value.close()
-    @staticmethod
-    def set_mapping(conn_str, uuid):
-        if uuid.lower().count("unknown command"):
-            return
-        id_discovery.mapping[conn_str] = uuid
-        proto, addr, port = conn_str.split(":")
-        addr = addr[2:]
-        map_xml = id_discovery.mapping_xml
-        addr_el = map_xml.find(".//host[@address='%s']" % (addr))
-        if addr_el is None:
-            addr_el = E.host(address=addr)
-            map_xml.append(addr_el)
-        uuid_el = addr_el.xpath("uuid[@proto='%s' and @port='%s']" % (proto, port), smart_strings=False)
-        if not len(uuid_el):
-            uuid_el = E.uuid("", proto=proto, port=port)
-            addr_el.append(uuid_el)
-        else:
-            uuid_el = uuid_el[0]
-        if uuid_el.text != uuid:
-            uuid_el.text = uuid
-            id_discovery.save_mapping()
-    @staticmethod
-    def is_pending(conn_str):
-        return conn_str in id_discovery.pending
-    @staticmethod
-    def has_mapping(conn_str):
-        return conn_str in id_discovery.mapping
-    @staticmethod
-    def get_mapping(conn_str):
-        return id_discovery.mapping[conn_str]
-    @staticmethod
-    def check_timeout(cur_time):
-        del_list = []
-        for _conn_str, cur_ids in id_discovery.pending.iteritems():
-            diff_time = abs(cur_ids.init_time - cur_time)
-            if diff_time > id_discovery.timeout:
-                del_list.append(cur_ids)
-        for cur_ids in del_list:
-            # set last try flag
-            id_discovery.last_try[cur_ids.conn_str] = cur_time
-            cur_ids.send_return("timeout triggered, closing")
-
-class sr_probe(object):
-    __slots__ = ["host_con", "__val", "__time"]
-    def __init__(self, host_con):
-        self.host_con = host_con
-        self.__val = {"send" : 0,
-                      "recv" : 0}
-        self.__time = time.time()
-    def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
-        self.host_con.log("[probe for %s] %s" % (self.host_con.conn_str, what), log_level)
-    @property
-    def send(self):
-        return self.__val["send"]
-    @send.setter
-    def send(self, val):
-        cur_time = time.time()
-        diff_time = abs(cur_time - self.__time)
-        if  diff_time > 30 * 60:
-            self.log("sent / received in %s: %s / %s" % (
-                logging_tools.get_diff_time_str(diff_time),
-                logging_tools.get_size_str(self.__val["send"]),
-                logging_tools.get_size_str(self.__val["recv"]),
-            ))
-            self.__time = cur_time
-            self.__val = {"send" : 0,
-                          "recv" : 0}
-        self.__val["send"] += val
-    @property
-    def recv(self):
-        return self.__val["recv"]
-    @recv.setter
-    def recv(self, val):
-        self.__val["recv"] += val
-
-class host_connection(object):
-    __slots__ = ["zmq_id", "tcp_con", "sr_probe", "__open", "__conn_str", "messages"]
-    def __init__(self, conn_str, **kwargs):
-        self.zmq_id = kwargs.get("zmq_id", "ms")
-        self.tcp_con = kwargs.get("dummy_connection", False)
-        host_connection.hc_dict[(not self.tcp_con, conn_str)] = self
-        self.sr_probe = sr_probe(self)
-        self.__open = False
-        self.__conn_str = conn_str
-        # print "*" * 20
-    @property
-    def conn_str(self):
-        return self.__conn_str
-    def close(self):
-        pass
-    def __del__(self):
-        pass
-    @staticmethod
-    def init(r_process, backlog_size, timeout, verbose):
-        host_connection.relayer_process = r_process
-        host_connection.messages = {}
-        # 2 queues for 0MQ and tcp, 0MQ is (True, conn_str), TCP is (False, conn_str)
-        host_connection.hc_dict = {}
-        host_connection.backlog_size = backlog_size
-        host_connection.timeout = timeout
-        host_connection.verbose = verbose
-        # router socket
-        new_sock = host_connection.relayer_process.zmq_context.socket(zmq.ROUTER)
-        id_str = "relayer_rtr_%s" % (process_tools.get_machine_name())
-        new_sock.setsockopt(zmq.IDENTITY, id_str)
-        new_sock.setsockopt(zmq.LINGER, 0)
-        new_sock.setsockopt(zmq.SNDHWM, host_connection.backlog_size)
-        new_sock.setsockopt(zmq.RCVHWM, host_connection.backlog_size)
-        new_sock.setsockopt(zmq.RECONNECT_IVL_MAX, 500)
-        new_sock.setsockopt(zmq.RECONNECT_IVL, 200)
-        new_sock.setsockopt(zmq.BACKLOG, host_connection.backlog_size)
-        new_sock.setsockopt(zmq.TCP_KEEPALIVE, 1)
-        new_sock.setsockopt(zmq.TCP_KEEPALIVE_IDLE, 300)
-        host_connection.zmq_socket = new_sock
-        host_connection.relayer_process.register_poller(new_sock, zmq.POLLIN, host_connection.get_result)
-        # host_connection.relayer_process.register_poller(new_sock, zmq.POLLERR, host_connection.error)
-    @staticmethod
-    def get_hc_0mq(conn_str, target_id="ms", **kwargs):
-        if (True, conn_str) not in host_connection.hc_dict:
-            if host_connection.verbose > 1:
-                host_connection.relayer_process.log("new 0MQ host_connection for '%s'" % (conn_str))
-            cur_hc = host_connection(conn_str, zmq_id=target_id, **kwargs)
-        else:
-            cur_hc = host_connection.hc_dict[(True, conn_str)]
-        return cur_hc
-    @staticmethod
-    def get_hc_tcp(conn_str, **kwargs):
-        if (False, conn_str) not in host_connection.hc_dict:
-            if host_connection.verbose > 1:
-                host_connection.relayer_process.log("new TCP host_connection for '%s'" % (conn_str))
-            cur_hc = host_connection(conn_str, **kwargs)
-        else:
-            cur_hc = host_connection.hc_dict[(False, conn_str)]
-        return cur_hc
-    @staticmethod
-    def check_timeout_global():
-        # global check_timeout function
-        cur_time = time.time()
-        id_discovery.check_timeout(cur_time)
-        [cur_hc.check_timeout(cur_time) for cur_hc in host_connection.hc_dict.itervalues()]
-    @staticmethod
-    def global_close():
-        host_connection.zmq_socket.close()
-    @staticmethod
-    def g_log(what, log_level):
-        host_connection.relayer_process.log("[hc] %s" % (what), log_level)
-    def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
-        host_connection.relayer_process.log("[hc %s] %s" % (self.__conn_str, what), log_level)
-    def check_timeout(self, cur_time):
-        # check all messages for current host
-        to_messages = [cur_mes for cur_mes in self.messages.itervalues() if cur_mes.check_timeout(cur_time, host_connection.timeout)]
-        if to_messages:
-            # print "TO", len(to_messages), self.__conn_str
-            for to_mes in to_messages:
-                if not self.tcp_con:
-                    pass
-                    # self.__backlog_counter -= 1
-                self.return_error(to_mes, "timeout (after %.2f seconds)" % (to_mes.get_runtime(cur_time)))
-    def _open(self):
-        if not self.__open:
-            try:
-                self.log("connecting")
-                host_connection.zmq_socket.connect(self.__conn_str)
-            except:
-                raise
-            else:
-                self.__open = True
-                # make a short nap to let 0MQ settle things down
-                time.sleep(0.2)
-        return self.__open
-    def _close(self):
-        if self.__open:
-            host_connection.zmq_socket.close()
-            self.__open = False
-    @staticmethod
-    def add_message(new_mes):
-        host_connection.messages[new_mes.src_id] = new_mes
-        return new_mes
-    def send(self, host_mes, com_struct):
-        try:
-            host_mes.set_com_struct(com_struct)
-        except:
-            self.return_error(
-                host_mes,
-                "error parsing arguments: %s" % (process_tools.get_except_info()))
-        else:
-            if not self.tcp_con:
-                try:
-                    self._open()
-                except:
-                    self.return_error(
-                        host_mes,
-                        "error connecting to %s: %s" % (self.__conn_str,
-                                                        process_tools.get_except_info()))
-                else:
-                    if False and self.__backlog_counter == host_connection.backlog_size:
-                        # no stupid backlog counting
-                        self.return_error(
-                            host_mes,
-                            "connection error (backlog full [%d.%d]) for '%s'" % (
-                                self.__backlog_counter,
-                                host_connection.backlog_size,
-                                self.__conn_str))
-                        # self._close()
-                    else:
-                        try:
-                            host_connection.zmq_socket.send_unicode(self.zmq_id, zmq.DONTWAIT | zmq.SNDMORE)
-                            send_str = unicode(host_mes.srv_com)
-                            host_connection.zmq_socket.send_unicode(send_str, zmq.DONTWAIT)
-                        except:
-                            self.return_error(
-                                host_mes,
-                                "connection error (%s)" % (process_tools.get_except_info()),
-                            )
-                        else:
-                            # self.__backlog_counter += 1
-                            self.sr_probe.send = len(send_str)
-                            host_mes.sr_probe = self.sr_probe
-                            host_mes.sent = True
-            else:
-                # send to socket-thread for old clients
-                host_connection.relayer_process.send_to_process(
-                    "socket",
-                    "connection",
-                    host_mes.src_id,
-                    unicode(host_mes.srv_com))
-    def send_result(self, host_mes, result=None):
-        host_connection.relayer_process.sender_socket.send_unicode(host_mes.src_id, zmq.SNDMORE)
-        host_connection.relayer_process.sender_socket.send_unicode(host_mes.get_result(result))
-        del host_connection.messages[host_mes.src_id]
-        del host_mes
-    @staticmethod
-    def _send_result(host_mes, result=None):
-        host_connection.relayer_process.sender_socket.send_unicode(host_mes.src_id, zmq.SNDMORE)
-        host_connection.relayer_process.sender_socket.send_unicode(host_mes.get_result(result))
-        del host_connection.messages[host_mes.src_id]
-        del host_mes
-    def return_error(self, host_mes, error_str):
-        host_mes.set_result(limits.nag_STATE_CRITICAL, error_str)
-        self.send_result(host_mes)
-    def _error(self, zmq_sock):
-        # not needed right now
-        print "**** _error", zmq_sock
-        print dir(zmq_sock)
-        print zmq_sock.getsockopt(zmq.EVENTS)
-        # self._close()
-        # raise zmq.ZMQError()
-    @staticmethod
-    def get_result(zmq_sock):
-        _src_id = zmq_sock.recv()
-        cur_reply = server_command.srv_command(source=zmq_sock.recv())
-        host_connection._handle_result(cur_reply)
-    @staticmethod
-    def _handle_result(result):
-        # print unicode(result)
-        mes_id = result["relayer_id"].text
-        if mes_id in host_connection.messages:
-            host_connection.relayer_process._new_client(result["host"].text, int(result["port"].text))
-            if "host_unresolved" in result:
-                host_connection.relayer_process._new_client(result["host_unresolved"].text, int(result["port"].text))
-            cur_mes = host_connection.messages[mes_id]
-            if cur_mes.sent:
-                cur_mes.sent = False
-                # self.__backlog_counter -= 1
-            if len(result.xpath(".//ns:raw", smart_strings=False)):
-                # raw response, no interpret
-                cur_mes.srv_com = result
-                host_connection._send_result(cur_mes, None)
-                # self.send_result(cur_mes, None)
-            else:
-                try:
-                    res_tuple = cur_mes.interpret(result)
-                except:
-                    res_tuple = (
-                        limits.nag_STATE_CRITICAL,
-                        "error interpreting result: %s" % (
-                            process_tools.get_except_info()))
-                    exc_info = process_tools.exception_info()
-                    for line in exc_info.log_lines:
-                        host_connection.relayer_process.log(line, logging_tools.LOG_LEVEL_CRITICAL)
-                host_connection._send_result(cur_mes, res_tuple)
-                # self.send_result(cur_mes, res_tuple)
-        else:
-            host_connection.g_log("got result for delayed id '%s'" % (mes_id), logging_tools.LOG_LEVEL_WARN)
-        del result
-    def _handle_old_result(self, mes_id, result):
-        if mes_id in host_connection.messages:
-            cur_mes = host_connection.messages[mes_id]
-            if result.startswith("no valid"):
-                res_tuple = (limits.nag_STATE_CRITICAL, result)
-            else:
-                host_connection.relayer_process._old_client(cur_mes.srv_com["host"].text, int(cur_mes.srv_com["port"].text))
-                try:
-                    res_tuple = cur_mes.interpret_old(result)
-                except:
-                    res_tuple = (limits.nag_STATE_CRITICAL, "error interpreting result: %s" % (process_tools.get_except_info()))
-            self.send_result(cur_mes, res_tuple)
-        else:
-            self.log("unknown id '%s' in _handle_old_result" % (mes_id), logging_tools.LOG_LEVEL_ERROR)
-
-class host_message(object):
-    hm_idx = 0
-    hm_open = set()
-    __slots__ = ["src_id", "xml_input", "timeout", "s_time", "sent", "sr_probe", "ns", "com_name", "srv_com", "com_struct"]
-    def __init__(self, com_name, src_id, srv_com, xml_input):
-        self.com_name = com_name
-        # self.hm_idx = host_message.hm_idx
-        # host_message.hm_idx += 1
-        # host_message.hm_open.add(self.hm_idx)
-        # print "init hm", self.hm_idx
-        self.src_id = src_id
-        self.xml_input = xml_input
-        self.srv_com = srv_com
-        self.timeout = int(srv_com.get("timeout", "10"))
-        self.srv_com[""].append(srv_com.builder("relayer_id", self.src_id))
-        self.s_time = time.time()
-        self.sent = False
-        self.sr_probe = None
-    def set_result(self, state, res_str):
-        self.srv_com.set_result(res_str, state)
-    def set_com_struct(self, com_struct):
-        self.com_struct = com_struct
-        if com_struct:
-            cur_ns, rest = com_struct.handle_commandline((self.srv_com["arg_list"].text or "").split())
-            # print "***", cur_ns, rest
-            _e = self.srv_com.builder()
-            _arg_list = self.srv_com.xpath(".//ns:arg_list", smart_strings=False)
-            if len(_arg_list):
-                _arg_list[0].text = " ".join(rest)
-            else:
-                self.srv_com[""].append(_e.arg_list(" ".join(rest)))
-            self.srv_com.delete_subtree("arguments")
-            self.srv_com[""].append(
-                _e.arguments(
-                    *([getattr(_e, "arg%d" % (arg_idx))(arg) for arg_idx, arg in enumerate(rest)] + [_e.rest(" ".join(rest))])
-                )
-            )
-            # print self.srv_com.pretty_print()
-            # for arg_idx, arg in enumerate(rest):
-            #    self.srv_com["arguments:arg%d" % (arg_idx)] = arg
-            # self.srv_com["arguments:rest"] = " ".join(rest)
-            self.ns = cur_ns
-        else:
-            # connect to non-host-monitoring service
-            self.srv_com["arguments:rest"] = self.srv_com["arg_list"].text
-            self.ns = argparse.Namespace()
-    def check_timeout(self, cur_time, to_value):
-        # check for timeout, to_value is a global timeout from the host_connection object
-        _timeout = abs(cur_time - self.s_time) > min(to_value, self.timeout - 2)
-        # print self.src_id, _timeout, self.timeout, abs(cur_time - self.s_time), to_value
-        return _timeout
-    def get_runtime(self, cur_time):
-        return abs(cur_time - self.s_time)
-    def get_result(self, result):
-        if result is None:
-            result = self.srv_com
-        if type(result) == type(()):
-            # from interpret
-            if not self.xml_input:
-                ret_str = u"%d\0%s" % (
-                    result[0],
-                    result[1]
-                )
-            else:
-                # shortcut
-                self.set_result(result[0], result[1])
-                ret_str = unicode(self.srv_com)
-        else:
-            if not self.xml_input:
-                ret_str = u"%s\0%s" % (
-                    result["result"].attrib["state"],
-                    result["result"].attrib["reply"],
-                )
-            else:
-                ret_str = unicode(result)
-        return ret_str
-    def interpret(self, result):
-        if self.sr_probe:
-            self.sr_probe.recv = len(result)
-            self.sr_probe = None
-        server_error = result.xpath(".//ns:result[@state != '0']", smart_strings=False)
-        if server_error:
-            return (int(server_error[0].attrib["state"]),
-                    server_error[0].attrib["reply"])
-        else:
-            return self.com_struct.interpret(result, self.ns)
-    def interpret_old(self, result):
-        if type(result) not in [str, unicode]:
-            server_error = result.xpath(".//ns:result[@state != '0']", smart_strings=False)
-        else:
-            server_error = None
-        if server_error:
-            return (int(server_error[0].attrib["state"]),
-                    server_error[0].attrib["reply"])
-        else:
-            if result.startswith("error "):
-                return (limits.nag_STATE_CRITICAL,
-                        result)
-            else:
-                # copy host, hacky hack
-                self.com_struct.NOGOOD_srv_com = self.srv_com
-                ret_value = self.com_struct.interpret_old(result, self.ns)
-                del self.com_struct.NOGOOD_srv_com
-                return ret_value
-    def __del__(self):
-        # host_message.hm_open.remove(self.hm_idx)
-        # print "del {}, still open {}".format(self.hm_idx, len(host_message.hm_open))
-        del self.srv_com
-        pass
 
 class relay_code(threading_tools.process_pool):
     def __init__(self):
@@ -748,6 +177,7 @@ class relay_code(threading_tools.process_pool):
         # try:
         #    resource.setrlimit(resource.RLIMIT_OFILE, 4069)
     def _init_master(self):
+        self.__master_sync_id = None
         # register_to_master_timer set ?
         self.__rmt_set = False
         if os.path.isfile(MASTER_FILE_NAME):
@@ -758,10 +188,27 @@ class relay_code(threading_tools.process_pool):
             self.master_ip = None
             self.master_port = None
             self.master_uuid = None
+    def _handle_relayer_info_result(self, srv_com):
+        sync_id = int(srv_com["*sync_id"])
+        ok = sync_id == self.__master_sync_id 
+        self.log(
+            "got ack for syncer_id {:d} (sent: {:d})".format(
+                sync_id,
+                self.__master_sync_id,
+            ),
+            logging_tools.LOG_LEVEL_OK if ok else logging_tools.LOG_LEVEL_ERROR,
+        )
+        if ok:
+            self.__master_sync_id = None
     def _contact_master(self):
         if self.master_ip:
             # updated monitoring version
             self._get_mon_version()
+            if self.__master_sync_id:
+                self.log("master_sync_id still set, closing connection and retrying", logging_tools.LOG_LEVEL_ERROR)
+                self.__master_sync_id = False
+
+            self.__master_sync_id = int(time.time())
             srv_com = server_command.srv_command(
                 command="relayer_info",
                 host=self.master_ip,
@@ -769,8 +216,14 @@ class relay_code(threading_tools.process_pool):
                 relayer_version=VERSION_STRING,
                 uuid=uuid_tools.get_uuid().get_urn(),
                 mon_version=self.__mon_version,
+                sync_id="{:d}".format(self.__master_sync_id),
             )
-            self.log("send master info (Rel %s, Mon %s)" % (VERSION_STRING, self.__mon_version))
+            self.log(
+                u"send master info (Rel {}, Mon {})".format(
+                    VERSION_STRING,
+                    self.__mon_version
+                )
+            )
             self._send_to_nhm_service(None, srv_com, None, register=False)
     def _register_master(self, master_ip, master_uuid, master_port, write=True):
         self.master_ip = master_ip
@@ -784,8 +237,8 @@ class relay_code(threading_tools.process_pool):
                     port="%d" % (self.master_port)
                 )
                 , pretty_print=True))
-        conn_str = "tcp://%s:%d" % (self.master_ip, self.master_port)
-        self.log("registered master at %s (%s)" % (conn_str, self.master_uuid))
+        conn_str = u"tcp://{}:{:d}".format(self.master_ip, self.master_port)
+        self.log(u"registered master at {} ({})".format(conn_str, self.master_uuid))
         id_discovery.set_mapping(conn_str, self.master_uuid)
         if not self.__rmt_set:
             self.__rmt_set = True
@@ -858,7 +311,7 @@ class relay_code(threading_tools.process_pool):
             self.__msi_block.add_actual_pid(src_pid, mult=mult, process_name=src_process)
             self.__msi_block.save_block()
     def _check_timeout(self):
-        host_connection.check_timeout_global()
+        host_connection.check_timeout_global(id_discovery)
         cur_time = time.time()
         # check nhm timeouts
         del_list = []
@@ -1297,6 +750,17 @@ class relay_code(threading_tools.process_pool):
             cur_hc.return_error(cur_mes, "0mq discovery in progress")
         else:
             id_discovery(srv_com, src_id, xml_input)
+    def _disconnect(self, conn_str):
+        if conn_str in self.__nhm_connections:
+            self.__nhm_connections.remove(conn_str)
+            try:
+                self.client.disconnect(conn_str)
+            except:
+                self.log(u"error disconnecting {}: {}".format(conn_str, process_tools.get_except_info()), logging_tools.LOG_LEVEL_ERROR)
+            else:
+                self.log("disconnected {}".format(conn_str))
+        else:
+            self.log(u"connection {} not present in __nhm_connections, ignoring disconnect".format(conn_str), logging_tools.LOG_LEVEL_WARN)
     def _send_to_nhm_service(self, src_id, srv_com, xml_input, **kwargs):
         conn_str = "tcp://%s:%d" % (
             srv_com["host"].text,
@@ -1355,7 +819,9 @@ class relay_code(threading_tools.process_pool):
                 del self.__raw_nhm_dict[data[0]]
             else:
                 srv_result = server_command.srv_command(source=data[1])
-                if "identity" in srv_result:
+                if "command" in srv_result and srv_result["*command"] in ["relayer_info"]:
+                    self._handle_relayer_info_result(srv_result)
+                elif "identity" in srv_result:
                     cur_id = srv_result["identity"].text
                     if cur_id in self.__nhm_dict:
                         del self.__nhm_dict[cur_id]
