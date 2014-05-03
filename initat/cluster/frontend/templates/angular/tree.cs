@@ -104,7 +104,9 @@ class tree_node
         # number of selected descendants
         @_sel_descendants = 0
     set_selected: (flag, propagate=true) ->
-        # console.log @selected, flag, flag != @selected
+        # if _show_select is false ignore selection request
+        if not @_show_select
+            return
         change = flag != @selected
         if change
             if propagate and @linklist.length

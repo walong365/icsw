@@ -22,19 +22,6 @@ livestatus_templ = """
             <td colspan="99">
                 <div class="row">
                     <div class="col-md-6">
-                        <span paginator entries="entries" paginator_filter="func" paginator_filter_func="filter_mdr" pag_settings="pagSettings" per_page="20" paginator_filter="simple" paginator-epp="10,20,50,100,1000"></span>
-                    </div>
-                    <div class="col-md-6">
-                        <input placeholder="filter..." ng-model="md_filter_str" class="form-control input-sm" ng-change="md_filter_changed()">
-                        </input>
-                    </div>
-                </div>
-            </td>
-        </tr>
-        <tr>
-            <td colspan="99">
-                <div class="row">
-                    <div class="col-md-6">
                         <tree treeconfig="cat_tree"></tree>
                     </div>
                     <div class="col-md-6">
@@ -63,6 +50,19 @@ livestatus_templ = """
                 </div>
             </th>
 
+        </tr>
+        <tr>
+            <td colspan="99">
+                <div class="row">
+                    <div class="col-md-6">
+                        <span paginator entries="entries" paginator_filter="func" paginator_filter_func="filter_mdr" pag_settings="pagSettings" per_page="20" paginator_filter="simple" paginator-epp="10,20,50,100,1000"></span>
+                    </div>
+                    <div class="col-md-6">
+                        <input placeholder="filter..." ng-model="md_filter_str" class="form-control input-sm" ng-change="md_filter_changed()">
+                        </input>
+                    </div>
+                </div>
+            </td>
         </tr>
         <tr>
             <th ng-repeat="entry in show_options"
@@ -257,7 +257,7 @@ device_livestatus_module.controller("livestatus_ctrl", ["$scope", "$compile", "$
                 for entry in data[0]
                     if entry.full_name.match(/^\/mon/)
                         entry.short_name = entry.full_name.substring(5)
-                        t_entry = $scope.cat_tree.new_node({folder:false, obj:entry, expand:entry.depth < 2, selected: true})
+                        t_entry = $scope.cat_tree.new_node({folder:false, obj:entry, expand:entry.depth < 1, selected: true})
                         cat_tree_lut[entry.idx] = t_entry
                         if entry.parent and entry.parent of cat_tree_lut
                             cat_tree_lut[entry.parent].add_child(t_entry)
@@ -288,6 +288,7 @@ device_livestatus_module.controller("livestatus_ctrl", ["$scope", "$compile", "$
                         $(xml).find("value[name='host_result']").each (idx, node) =>
                             host_entries = host_entries.concat(angular.fromJson($(node).text()))
                         $scope.$apply(
+                            used_pks = []
                             $scope.entries = service_entries
                             $scope.host_entries = host_entries
                             $scope.host_lut = {}
@@ -300,6 +301,15 @@ device_livestatus_module.controller("livestatus_ctrl", ["$scope", "$compile", "$
                                 # sanitize entries
                                 $scope._sanitize_entries(entry)
                                 entry.custom_variables = $scope.parse_custom_variables(entry.custom_variables)
+                                if entry.custom_variables and entry.custom_variables.cat_pks?
+                                    used_pks = _.union(used_pks, entry.custom_variables.cat_pks)
+                            for pk of $scope.cat_tree_lut
+                                entry = $scope.cat_tree_lut[pk]
+                                if parseInt(pk) in used_pks
+                                    entry._show_select = true 
+                                else
+                                    entry.selected = false
+                                    entry._show_select = false 
                             $scope.md_filter_changed()
                             $scope.testData = [
                                 {name : "services", count : service_entries.length, color : "red"}
@@ -466,12 +476,10 @@ device_livestatus_module.controller("livestatus_ctrl", ["$scope", "$compile", "$
                             .attr("font-weight", "bold")
                             .text(scope.cur_path.join(" - "))
                 scope.render = (data) ->
-                    #console.log data
                     # remove previous labels and lines
                     svg.select(".slices").remove()
                     svg.select(".labels").remove()
                     svg.select(".lines").remove()
-                    #console.log svg.datum(data)
                     svg.append("g")
                         .attr("class", "slices")
                     svg.append("g")
@@ -493,6 +501,7 @@ device_livestatus_module.controller("livestatus_ctrl", ["$scope", "$compile", "$
                                 path.unshift(cur_d.name)
                                 p_path = d3.select("path[_gid='#{cur_d._gid}']")
                                 p_path.style("fill", d3.rgb(p_path.style("fill")).brighter())
+                                #p_path.style("stroke-width", "2px")
                                 cur_d = cur_d.parent ? null
                             scope.cur_path = path
                             d3.selectAll("g.labels g").attr("display", "none")
@@ -523,7 +532,6 @@ device_livestatus_module.controller("livestatus_ctrl", ["$scope", "$compile", "$
                             else
                                 scope.unhide(scope.data)
                             scope.render(scope.data)
-                            #console.log "c", d.depth, d
                         )
                     _gid = 0
                     lines.append("path")
