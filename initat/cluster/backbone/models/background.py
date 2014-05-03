@@ -15,7 +15,7 @@ __all__ = [
 class background_job(models.Model):
     idx = models.AutoField(primary_key=True)
     # cause
-    cause = models.CharField(max_length=64, default="unknown")
+    cause = models.CharField(max_length=256, default="unknown")
     # command as text
     command = models.CharField(null=False, max_length=256)
     # state
