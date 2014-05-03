@@ -54,6 +54,7 @@
                     <li><a href="{% url 'mon:call_icinga' %}" target="_blank">{% trans "Icinga (new tab)" %}</a></li>
                     <li ng-show="check_perm('mon_check_command.setup_monitoring')" class="divider"></li>
                     <li ng-show="check_perm('mon_check_command.setup_monitoring')"><a href="{% url 'mon:build_info' %}">{% trans "Build Info" %}</a></li>
+                    <li><a href="{% url 'mon:livestatus' %}">{% trans "Livestatus" %}</li>
                     <li ng-show="check_perm('mon_check_command.setup_monitoring')" class="text-center">
                         <input id="create_monitoring_config" type="button" class="btn btn-success" value="rebuild config" ng-click="rebuild_config()"/>
                     </li>

@@ -711,7 +711,10 @@ device_livestatus_module.controller("livestatus_ctrl", ["$scope", "$compile", "$
         restrict : "EA"
         template : $templateCache.get("livestatus_template.html")
         link : (scope, el, attrs) ->
-            scope.new_devsel((parseInt(entry) for entry in attrs["devicepk"].split(",")), [])
+            if attrs.devicepk?
+                scope.new_devsel((parseInt(entry) for entry in attrs["devicepk"].split(",")), [])
+            else
+                install_devsel_link(scope.new_devsel, true, true, false)
             scope.get_state_class = (entry) ->
                 state_class = {
                     0 : "success"

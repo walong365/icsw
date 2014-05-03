@@ -182,3 +182,10 @@ class get_node_status(View):
             else:
                 request.xml_response.error("no service or node_results", logger=logger)
 
+class livestatus(View):
+    @method_decorator(login_required)
+    def get(self, request):
+        return render_me(
+            request, "monitoring_livestatus.html", {
+                }
+        )()
