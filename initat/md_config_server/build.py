@@ -771,9 +771,13 @@ class build_process(threading_tools.process_obj, version_check_mixin):
                             try:
                                 map_h = codecs.open(map_file, "w", "utf-8")
                             except:
-                                self.mach_log("cannot open %s: %s" % (map_file,
-                                                                      process_tools.get_except_info()),
-                                              logging_tools.LOG_LEVEL_CRITICAL)
+                                self.mach_log(
+                                    u"cannot open {}: {}".format(
+                                        map_file,
+                                        process_tools.get_except_info()
+                                    ),
+                                    logging_tools.LOG_LEVEL_CRITICAL
+                                )
                             else:
                                 nagvis_maps.add(map_file)
                                 map_h.write("define global {\n")
@@ -1271,7 +1275,7 @@ class build_process(threading_tools.process_obj, version_check_mixin):
                     new_hd["notification_failure_criteria"] = self.mon_host_dep.notification_failure_criteria
                     new_hd["inherits_parent"] = "1" if self.mon_host_dep.inherits_parent else "0"
                     cur_gc["hostdependency"].add_host_dependency(new_hd)
-            self.log("created %s" % (logging_tools.get_plural("nagvis map", len(nagvis_maps))))
+            self.log("created {}".format(logging_tools.get_plural("nagvis map", len(nagvis_maps))))
             # remove old nagvis maps
             nagvis_map_dir = os.path.join(self.gc["NAGVIS_DIR"], "etc", "maps")
             if os.path.isdir(nagvis_map_dir):
