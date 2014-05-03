@@ -426,6 +426,9 @@ class server_process(threading_tools.process_pool, version_check_mixin):
                     self._handle_ocp_event(srv_com)
                 elif cur_com in ["file_content_result", "relayer_info", "file_content_bulk_result"]:
                     self.send_to_process("syncer", cur_com, unicode(srv_com))
+                    if "sync_id" in srv_com:
+                        self.log("return with sync_id {:d}".format(int(srv_com["*sync_id"])))
+                        send_return = True
                 else:
                     self.log("got unknown command '{}' from '{}'".format(cur_com, srv_com["source"].attrib["host"]), logging_tools.LOG_LEVEL_ERROR)
                 if send_return:
