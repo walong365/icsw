@@ -115,32 +115,35 @@ class status_process(threading_tools.process_obj):
         try:
             cur_sock = self._open()
             if cur_sock:
-                service_query = cur_sock.services.columns(
-                    "host_name",
-                    "description",
-                    "state",
-                    "plugin_output",
-                    "last_check",
-                    "check_type",
-                    "state_type",
-                    "last_state_change",
-                    "max_check_attempts",
-                    "current_attempt",
-                    "custom_variables",
-                ).filter("host_name", "=", dev_names)
-                service_result = service_query.call()
-                host_query = cur_sock.hosts.columns(
-                    "host_name",
-                    "state",
-                    "last_check",
-                    "check_type",
-                    "state_type",
-                    "last_state_change",
-                    "max_check_attempts",
-                    "current_attempt",
-                    "custom_variables",
-                ).filter("host_name", "=", dev_names)
-                host_result = host_query.call()
+                if dev_names:
+                    service_query = cur_sock.services.columns(
+                        "host_name",
+                        "description",
+                        "state",
+                        "plugin_output",
+                        "last_check",
+                        "check_type",
+                        "state_type",
+                        "last_state_change",
+                        "max_check_attempts",
+                        "current_attempt",
+                        "custom_variables",
+                    ).filter("host_name", "=", dev_names)
+                    service_result = service_query.call()
+                    host_query = cur_sock.hosts.columns(
+                        "host_name",
+                        "state",
+                        "last_check",
+                        "check_type",
+                        "state_type",
+                        "last_state_change",
+                        "max_check_attempts",
+                        "current_attempt",
+                        "custom_variables",
+                    ).filter("host_name", "=", dev_names)
+                    host_result = host_query.call()
+                else:
+                    service_result, host_result = ([], [])
                 srv_com["service_result"] = json.dumps([_line for _line in service_result if _line.get("host_name", "")])
                 srv_com["host_result"] = json.dumps(host_result)
                 srv_com.set_result(
