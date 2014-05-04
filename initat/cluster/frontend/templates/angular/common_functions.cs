@@ -753,7 +753,7 @@ d3js_module = angular.module("icsw.d3", []
         script_tag = $document[0].createElement('script')
         script_tag.type = "text/javascript" 
         script_tag.async = true
-        script_tag.src = "{% static 'js/d3.v3.min.js' %}"
+        script_tag.src = "{% static 'js/d3.min.js' %}"
         script_tag.onreadystatechange = () ->
             if this.readyState == 'complete'
                 on_script_load()

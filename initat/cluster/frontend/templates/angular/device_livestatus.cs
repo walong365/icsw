@@ -15,18 +15,23 @@ livestatus_templ = """
     <thead>
         <tr>
             <th colspan="99">
-                Number of checks : {{ entries.length }}
+                Number of hosts / checks : {{ host_entries.length }} / {{ entries.length }}
             </th>
         </tr>
         <tr>
             <td colspan="99">
                 <div class="row">
                     <div class="col-md-6">
-                        <tree treeconfig="cat_tree"></tree>
+                        <tree treeconfig="cat_tree" ng-mouseenter="show_cat_tree()" ng-mouseleave="hide_cat_tree()"></tree>
                     </div>
+                </div>
+                <div class="row">
                     <div class="col-md-6">
-                        <bursttest data="burstData"></bursttest>
+                        <bursttest data="burstData" active-service="activeService"></bursttest>
                     </div> 
+                    <div class="col-md-6">
+                        <serviceinfo type="service_type" service="current_service"></serviceinfo>
+                    </div>
                 </div>
             </td>
         </tr>
@@ -128,6 +133,45 @@ monconfig_templ = """
     </tabset>
 </div>
 """
+
+serviceinfo_templ = """
+    <h3 ng-show="type">Type: {{ type }}</h3>
+    <div ng-switch="type">
+        <div ng-switch-when="system">
+           <ul class="list-group">
+               <li class="list-group-item">System</li>
+           </ul>
+        </div>
+        <div ng-switch-when="group">
+           <ul class="list-group">
+               <li class="list-group-item">Devicegroup<span class="pull-right">{{ service.group_name }}</span></li>
+               <li class="list-group-item">State<span ng-class="get_state_class(service)">{{ get_state_string(service) }}</span></li>
+           </ul>
+        </div>
+        <div ng-switch-when="host">
+            <ul class="list-group">
+                <li class="list-group-item">Devicegroup<span class="pull-right">{{ service.group_name }}</span></li>
+                <li class="list-group-item">Device<span class="pull-right">{{ service.host_name }}</span></li>
+                <li class="list-group-item">State<span ng-class="get_state_class(service)">{{ get_state_string(service) }}</span></li>
+                <li class="list-group-item">State type<span class="pull-right">{{ get_state_type(service) }}</span></li>
+                <li class="list-group-item">Check type<span class="pull-right">{{ get_check_type(service) }}</span></li>
+                <li class="list-group-item">attempts<span class="badge pull-right">{{ get_attempt_info(service) }}</span></li>
+            </ul>
+        </div>
+        <div ng-switch-when="service">
+            <ul class="list-group">
+                <li class="list-group-item">Device<span class="pull-right">{{ service.host_name }}</span></li>
+                <li class="list-group-item">Description<span class="pull-right">{{ service.description }}</span></li>
+                <li class="list-group-item">Output<span class="pull-right">{{ service.plugin_output }}</span></li>
+                <li class="list-group-item">State<span ng-class="get_state_class(service)">{{ get_state_string(service) }}</span></li>
+                <li class="list-group-item">State type<span class="pull-right">{{ get_state_type(service) }}</span></li>
+                <li class="list-group-item">Check type<span class="pull-right">{{ get_check_type(service) }}</span></li>
+                <li class="list-group-item">attempts<span class="badge pull-right">{{ get_attempt_info(service) }}</span></li>
+            </ul>
+        </div>
+    </div>
+"""
+
 {% endverbatim %}
 
 device_livestatus_module = angular.module("icsw.device.livestatus", ["ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters", "localytics.directives", "restangular", "icsw.d3"])
@@ -135,6 +179,61 @@ device_livestatus_module = angular.module("icsw.device.livestatus", ["ngResource
 angular_module_setup([device_livestatus_module])
 
 add_tree_directive(device_livestatus_module)
+
+get_state_string = (entry) ->
+    return {
+        0 : "OK"
+        1 : "Warning"
+        2 : "Critical"
+        3 : "Unknown"
+    }[entry.state]
+
+get_state_class = (entry) ->
+    return {
+        0 : "success"
+        1 : "warning"
+        2 : "danger"
+        3 : "danger"
+    }[entry.state]
+
+show_attempt_info = (entry) ->
+    try
+        if parseInt(entry.current_attempt) == 1
+            return false
+        else
+            return true
+    catch error
+       return true
+
+get_attempt_info = (entry, force=false) ->
+    if entry.max_check_attempts == null
+        return "N/A"
+    try
+        max = parseInt(entry.max_check_attempts)
+        cur = parseInt(entry.current_attempt)
+        if cur == 1 and not force
+            return ""
+        else
+            if cur == max
+                return "#{cur}"
+            else
+                return "#{cur} / #{max}"
+    catch error
+        return "e"
+
+get_state_type = (entry) ->
+    return {
+        null : "???"
+        0 : "soft"
+        1 : "hard"
+    }[entry.state_type]
+
+get_check_type = (entry) ->
+    return {
+        null : "???"
+        0 : "active"
+        1 : "passive"
+    }[entry.check_type]
 
 class category_tree extends tree_config
     constructor: (@scope, args) ->
@@ -166,11 +265,31 @@ class category_tree extends tree_config
 
 device_livestatus_module.controller("livestatus_ctrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "sharedDataSource", "$q", "$modal", "$timeout"
     ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, sharedDataSource, $q, $modal, $timeout) ->
+        $scope.host_entries = []
         $scope.entries = []
         $scope.order_name = "host_name"
         $scope.order_dir = true
         $scope.md_filter_str = ""
         $scope.cur_timeout = undefined
+        $scope.activeService = null
+        $scope.$watch("activeService", (as) ->
+            if as
+                $scope.service_type = as.split("_")[0]
+                _idx = parseInt(as.split("_")[1])
+                switch $scope.service_type
+                    when "system"
+                        $scope.current_service = {"system"}
+                    when "group"
+                        $scope.current_service = $scope.devg_lut[_idx].check
+                    when "host"
+                        $scope.current_service = $scope.dev_tree_lut[_idx].sunburst.check
+                    when "service"
+                        $scope.current_service = $scope.srv_lut[_idx]  
+            else
+                $scope.service_type = ""
+                _idx = 0
+                $scope.current_service = null
+        )
         # paginator settings
         $scope.pagSettings = paginatorSettings.get_paginator("device_tree_base", $scope)
         # category tree
@@ -222,6 +341,10 @@ device_livestatus_module.controller("livestatus_ctrl", ["$scope", "$compile", "$
             #restDataSource.reset()
             $scope.devsel_list = _dev_sel
             $scope.load_static_data()
+        $scope.show_cat_tree = () ->
+            $scope.cat_tree.toggle_expand_tree(1, false)
+        $scope.hide_cat_tree = () ->
+            $scope.cat_tree.toggle_expand_tree(-1, false)
         $scope.toggle_order = (name) ->
             if $scope.order_name == name
                 $scope.order_dir = not $scope.order_dir
@@ -288,7 +411,7 @@ device_livestatus_module.controller("livestatus_ctrl", ["$scope", "$compile", "$
                         $(xml).find("value[name='host_result']").each (idx, node) =>
                             host_entries = host_entries.concat(angular.fromJson($(node).text()))
                         $scope.$apply(
-                            used_pks = []
+                            used_cats = []
                             $scope.entries = service_entries
                             $scope.host_entries = host_entries
                             $scope.host_lut = {}
@@ -302,10 +425,10 @@ device_livestatus_module.controller("livestatus_ctrl", ["$scope", "$compile", "$
                                 $scope._sanitize_entries(entry)
                                 entry.custom_variables = $scope.parse_custom_variables(entry.custom_variables)
                                 if entry.custom_variables and entry.custom_variables.cat_pks?
-                                    used_pks = _.union(used_pks, entry.custom_variables.cat_pks)
+                                    used_cats = _.union(used_cats, entry.custom_variables.cat_pks)
                             for pk of $scope.cat_tree_lut
                                 entry = $scope.cat_tree_lut[pk]
-                                if parseInt(pk) in used_pks
+                                if parseInt(pk) in used_cats
                                     entry._show_select = true 
                                 else
                                     entry.selected = false
@@ -323,19 +446,33 @@ device_livestatus_module.controller("livestatus_ctrl", ["$scope", "$compile", "$
             _bdat = {
                 "name" : "System"
                 "children" : []
-                "check" : {"state" : 0}
+                "check" : {"state" : 0, "type" : "system", "idx" : 0}
             }
             _devg_lut = {}
+            srv_lut = {}
+            _idx = 0
             for entry in $scope.host_entries
                 if entry.custom_variables.device_pk of $scope.dev_tree_lut
                     _dev = $scope.dev_tree_lut[entry.custom_variables.device_pk]
+                    entry.idx = _dev.idx
+                    entry.type = "host" 
                     if _dev.device_group_name not of _devg_lut
-                        _devg = {"name" : _dev.device_group_name, "children" : [], "check" : { "state" : 0}}
+                        # we use the same index for devicegroups and services ...
+                        _idx++
+                        _devg = {"name" : _dev.device_group_name, "children" : [], "check" : {
+                            "state" : 0,
+                            "type" : "group",
+                            "idx" : _idx,
+                            "group_name" : _dev.device_group_name
+                            }
+                        }
                         _devg_lut[_devg.name] = _devg
+                        _devg_lut[_idx] = _devg
                         _bdat.children.push(_devg)
                     else
                         _devg = _devg_lut[_dev.device_group_name]
                     # sunburst struct for device
+                    entry.group_name = _dev.device_group_name
                     _dev_sbs = {"name" : _dev.full_name, "children" : [], "check" : entry}
                     _devg.children.push(_dev_sbs)
                     # set devicegroup state
@@ -344,11 +481,19 @@ device_livestatus_module.controller("livestatus_ctrl", ["$scope", "$compile", "$
                     _bdat.check.state = Math.max(_bdat.check.state, _devg.check.state)
                     _dev.sunburst = _dev_sbs
             for entry in $scope.entries
+                _idx++
+                entry.idx = _idx
+                entry.type = "service"
+                srv_lut[_idx] = entry
                 # sanitize entries
                 if entry.custom_variables.device_pk of $scope.dev_tree_lut
                     if entry._show
                         _dev = $scope.dev_tree_lut[entry.custom_variables.device_pk]
                         _dev.sunburst.children.push({"name" : entry.description, "children" : [], "check" : entry})
+            # set device_group lut
+            $scope.devg_lut = _devg_lut
+            # set service lut
+            $scope.srv_lut = srv_lut
             # remove empty devices
             for _devg in _bdat.children
                 _devg.children = (entry for entry in _devg.children when entry.children.length)
@@ -360,6 +505,10 @@ device_livestatus_module.controller("livestatus_ctrl", ["$scope", "$compile", "$
                 entry.state_type = parseInt(entry.state_type)
             else
                 entry.state_type = null
+            if entry.check_type in ["0", "1"]
+                entry.check_type = parseInt(entry.check_type)
+            else
+                entry.check_type = null
         $scope.parse_custom_variables = (cvs) ->
             _cv = {}
             if cvs
@@ -410,11 +559,42 @@ device_livestatus_module.controller("livestatus_ctrl", ["$scope", "$compile", "$
             if $scope.cur_timeout
                 $timeout.cancel($scope.cur_timeout)
         )
-]).directive("bursttest", ["d3_service", (d3_service) ->
+]).directive("serviceinfo", ["$templateCache", ($templateCache) ->
+    return {
+        restrict : "E"
+        template : $templateCache.get("serviceinfo_template.html")
+        scope : {
+            type : "=type"
+            service : "=service"
+        }
+        link : (scope, element) ->
+            scope.get_state_string = (entry) ->
+                return get_state_string(entry)
+            scope.get_state_class = (entry) ->
+                return "label label-#{get_state_class(entry)} pull-right"
+            scope.get_attempt_info = (entry) ->
+                return get_attempt_info(entry, true)
+            scope.get_state_type = (entry) ->
+                return get_state_type(entry)
+            scope.get_check_type = (entry) ->
+                return get_check_type(entry)
+    }
+]).directive("bursttest", ["d3_service", "$compile", (d3_service, $compile) ->
+    get_color = (d) ->
+        if d.check?
+            return {
+                0 : "#66dd66"
+                1 : "#dddd88"
+                2 : "#ff7777"
+                3 : "#ff0000"
+            }[d.check.state]
+        else
+            return "#dddddd"
     return {
         restrict : "E"
         scope: {
-            data: "="
+            data          : "=data"
+            activeService : "=activeService"
         }
         link: (scope, element) ->
             width = 600
@@ -427,7 +607,8 @@ device_livestatus_module.controller("livestatus_ctrl", ["$scope", "$compile", "$
                     .attr("font-family", "'Open-Sans', sans-serif")
                     .attr("font-size", "10pt")
                 svg = top_el.append("g").attr("class", "sunburst")
-                    .attr("transform", "translate(#{width / 2},#{height / 2 + 10})")
+                    .attr("transform", "translate(#{width / 2},#{height / 2})")
+                #console.log svg
                 partition = d3.layout.partition()
                     .sort(null)
                     .size([2 * Math.PI, radius * radius])
@@ -454,27 +635,6 @@ device_livestatus_module.controller("livestatus_ctrl", ["$scope", "$compile", "$
                     _v.value = 0
                     if _v.children?
                         (scope.hide(_entry) for _entry in _v.children)
-                scope.get_color = (d) ->
-                    if d.check?
-                        return {
-                            0 : "#66dd66"
-                            1 : "#dddd88"
-                            2 : "#ff7777"
-                            3 : "#ff0000"
-                        }[d.check.state]
-                    else
-                        return "#dddddd"
-                scope.render_path = () ->
-                    top_el.select(".path").remove()
-                    top_el.append("g")
-                        .attr("class", "path")
-                    if scope.cur_path?
-                        top_el.select(".path")
-                            .append("text")
-                            .attr("x", 5)
-                            .attr("y", 20)
-                            .attr("font-weight", "bold")
-                            .text(scope.cur_path.join(" - "))
                 scope.render = (data) ->
                     # remove previous labels and lines
                     svg.select(".slices").remove()
@@ -486,7 +646,7 @@ device_livestatus_module.controller("livestatus_ctrl", ["$scope", "$compile", "$
                         .attr("class", "labels")
                     svg.append("g")
                         .attr("class", "lines")
-                    scope.render_path()
+                    #scope.render_path()
                     lines = svg.select(".slices").datum(data).selectAll("g")
                         .data(partition.nodes)
                         .enter().append("g")
@@ -512,12 +672,14 @@ device_livestatus_module.controller("livestatus_ctrl", ["$scope", "$compile", "$
                             else
                                 # no children, show label
                                 d3.select("g.labels g[_gid='#{d._gid}']").attr("display", null)
-                            scope.render_path()
+                            scope.$apply(() ->
+                                scope.activeService = "#{d.check.type}_#{d.check.idx}"
+                            )
                         ).on("mouseout", (d) ->
                             cur_d = d
                             while cur_d
                                 p_path = d3.select("path[_gid='#{cur_d._gid}']")
-                                p_path.style("fill", scope.get_color(cur_d))
+                                p_path.style("fill", get_color(cur_d))
                                 cur_d = cur_d.parent ? null
                         ).on("click", (d) ->
                             if d.parent?
@@ -543,7 +705,7 @@ device_livestatus_module.controller("livestatus_ctrl", ["$scope", "$compile", "$
                             return _gid
                         )
                         .style("fill", (d) ->
-                            return scope.get_color(d)
+                            return get_color(d)
                         )
                         #.style("fill-rule", "evenodd")
                     cur_sel = svg.select(".labels").datum(data).selectAll("g").data(partition.nodes).enter()
@@ -732,13 +894,6 @@ device_livestatus_module.controller("livestatus_ctrl", ["$scope", "$compile", "$
                     return moment.unix(ts).fromNow(true)
                 else
                     return "never"
-            scope.get_state_string = (entry) ->
-                return {
-                    0 : "OK"
-                    1 : "Warning"
-                    2 : "Critical"
-                    3 : "Unknown"
-                }[entry.state]
             scope.get_categories = (entry) ->
                 if entry.custom_variables
                     if entry.custom_variables.cat_pks?
@@ -748,25 +903,16 @@ device_livestatus_module.controller("livestatus_ctrl", ["$scope", "$compile", "$
                 else
                     return "N/A"
             scope.get_state_type = (entry) ->
-                return {
-                    null : "???"
-                    0 : "soft"
-                    1 : "hard"
-                }[entry.state_type]
+                return get_state_type(entry)
             scope.get_check_type = (entry) ->
-                return {
-                    ""  : "???"
-                    null : "???"
-                    "0" : "active"
-                    "1" : "passive"
-                }[entry.check_type]
+                return get_check_type(entry)
             scope.host_is_passive_checked = (entry) ->
                 if entry.host_name of scope.host_lut
                     return if scope.host_lut[entry.host_name].check_type then true else false 
                 else
                     return false                  
             scope.is_passive_check = (entry) ->
-                return if parseInt(entry.check_type) then true else false 
+                return if entry.check_type then true else false 
             scope.get_host_class = (entry) ->
                 if entry.host_name of scope.host_lut
                     h_state = scope.host_lut[entry.host_name].state
@@ -778,36 +924,22 @@ device_livestatus_module.controller("livestatus_ctrl", ["$scope", "$compile", "$
                 else
                     h_state_str = "warning"
                 return "#{h_state_str} nowrap"
+            scope.get_state_string = (entry) -> 
+                return get_state_string(entry)
+            scope.get_state_class = (entry) -> 
+                return get_state_class(entry) + " nowrap"
             scope.show_host_attempt_info = (srv_entry) ->
                 return scope.show_attempt_info(scope.host_lut[srv_entry.host_name])
             scope.show_attempt_info = (entry) ->
-                try
-                    if parseInt(entry.current_attempt) == 1
-                        return false
-                    else
-                        return true
-                catch error
-                    return true
+                return show_attempt_info(entry)
             scope.get_host_attempt_info = (srv_entry) ->
                 return scope.get_attempt_info(scope.host_lut[srv_entry.host_name])
             scope.get_attempt_info = (entry) ->
-                if entry.max_check_attempts == null
-                    return "N/A"
-                try
-                    max = parseInt(entry.max_check_attempts)
-                    cur = parseInt(entry.current_attempt)
-                    if cur == 1
-                        return ""
-                    else
-                        if cur == max
-                            return "#{cur}"
-                        else
-                            return "#{cur} / #{max}"
-                catch error
-                    return "e"
+                return get_attempt_info(entry)
     }
 ).run(($templateCache) ->
     $templateCache.put("livestatus_template.html", livestatus_templ)
+    $templateCache.put("serviceinfo_template.html", serviceinfo_templ)
 )
 
 class mc_table
@@ -876,7 +1008,7 @@ device_livestatus_module.controller("monconfig_ctrl", ["$scope", "$compile", "$f
             return name.replace(/_/g, " ")
         $scope.get_short_attr_name = (name) ->
             _parts = name.split("_")
-            return (_str.slice(0, 1) for _str in _parts).join("").toUpperCase() 
+            return (_str.slice(0, 1) for _str in _parts).join("").toUpperCase()
         $scope.load_data = () ->
             #$timeout($scope.load_data, 20000)
             $scope.reload_pending = true
