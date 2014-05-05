@@ -133,6 +133,7 @@ class status_process(threading_tools.process_obj):
                     host_query = cur_sock.hosts.columns(
                         "host_name",
                         "state",
+                        "plugin_output",
                         "last_check",
                         "check_type",
                         "state_type",
