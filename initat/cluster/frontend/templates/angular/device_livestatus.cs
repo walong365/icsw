@@ -27,7 +27,7 @@ livestatus_templ = """
                 </div>
                 <div class="row">
                     <div class="col-md-6">
-                        <bursttest data="burstData" active-service="activeService"></bursttest>
+                        <bursttest data="burstData" active-service="activeService" focus-service="focusService" trigger-redraw="redrawSunburst"></bursttest>
                     </div> 
                     <div class="col-md-6">
                         <serviceinfo type="service_type" service="current_service"></serviceinfo>
@@ -152,6 +152,7 @@ serviceinfo_templ = """
             <ul class="list-group">
                 <li class="list-group-item">Devicegroup<span class="pull-right">{{ service.group_name }}</span></li>
                 <li class="list-group-item">Device<span class="pull-right">{{ service.host_name }}</span></li>
+                <li class="list-group-item">Output<span class="pull-right">{{ service.plugin_output }}</span></li>
                 <li class="list-group-item">State<span ng-class="get_state_class(service)">{{ get_state_string(service) }}</span></li>
                 <li class="list-group-item">State type<span class="pull-right">{{ get_state_type(service) }}</span></li>
                 <li class="list-group-item">Check type<span class="pull-right">{{ get_check_type(service) }}</span></li>
@@ -272,24 +273,58 @@ device_livestatus_module.controller("livestatus_ctrl", ["$scope", "$compile", "$
         $scope.md_filter_str = ""
         $scope.cur_timeout = undefined
         $scope.activeService = null
+        $scope.focusService = null
+        $scope.redrawSunburst = 0
+        # which devices to show
+        $scope.show_devs = []
+        # which service to show
+        $scope.show_service = null
         $scope.$watch("activeService", (as) ->
-            if as
-                $scope.service_type = as.split("_")[0]
-                _idx = parseInt(as.split("_")[1])
-                switch $scope.service_type
-                    when "system"
-                        $scope.current_service = {"system"}
-                    when "group"
-                        $scope.current_service = $scope.devg_lut[_idx].check
-                    when "host"
-                        $scope.current_service = $scope.dev_tree_lut[_idx].sunburst.check
-                    when "service"
-                        $scope.current_service = $scope.srv_lut[_idx]  
-            else
-                $scope.service_type = ""
-                _idx = 0
-                $scope.current_service = null
+            _parsed = $scope.parse_service(as)
+            $scope.service_type = _parsed[0]
+            $scope.current_service = _parsed[1]
         )
+        $scope.$watch("focusService", (nf) ->
+            _parsed = $scope.parse_service(nf)
+            _type = _parsed[0]
+            _service = _parsed[1]
+            $scope.show_service = null
+            switch _type
+                when "system"
+                    # show all
+                    show_devs = []
+                when "group"
+                    show_devs = (entry.check.idx for entry in $scope.devg_lut[_service.group_name].children)
+                when "host"
+                    show_devs = [_service.idx]
+                when "service"
+                    show_devs = [_service.custom_variables.device_pk]
+                    $scope.show_service = _service
+                else
+                    # default (equal to system)
+                    show_devs = []
+            $scope.show_devs = show_devs
+            # console.log $scope.show_devs
+            $scope.md_filter_changed()
+        )
+        $scope.parse_service = (srv) ->
+            # parse compacted service identifier
+            if srv
+                _type = srv.split("_")[0]
+                _idx = parseInt(srv.split("_")[1])
+                switch _type
+                    when "system"
+                        _service = {"system"}
+                    when "group"
+                        _service = $scope.devg_lut[_idx].check
+                    when "host"
+                        _service = $scope.dev_tree_lut[_idx].sunburst.check
+                    when "service"
+                        _service = $scope.srv_lut[_idx]  
+            else
+                _type = ""
+                _service = null
+            return [_type, _service]
         # paginator settings
         $scope.pagSettings = paginatorSettings.get_paginator("device_tree_base", $scope)
         # category tree
@@ -396,7 +431,7 @@ device_livestatus_module.controller("livestatus_ctrl", ["$scope", "$compile", "$
                 $scope.load_data()
             )
         $scope.load_data = () ->
-            #$scope.cur_timeout = $timeout($scope.load_data, 20000)
+            $scope.cur_timeout = $timeout($scope.load_data, 20000)#20000)
             call_ajax
                 url  : "{% url 'mon:get_node_status' %}"
                 data : {
@@ -459,11 +494,14 @@ device_livestatus_module.controller("livestatus_ctrl", ["$scope", "$compile", "$
                     if _dev.device_group_name not of _devg_lut
                         # we use the same index for devicegroups and services ...
                         _idx++
-                        _devg = {"name" : _dev.device_group_name, "children" : [], "check" : {
-                            "state" : 0,
-                            "type" : "group",
-                            "idx" : _idx,
-                            "group_name" : _dev.device_group_name
+                        _devg = {
+                            "name" : _dev.device_group_name,
+                            "children" : [],
+                            "check" : {
+                                "state" : 0,
+                                "type"  : "group",
+                                "idx"   : _idx,
+                                "group_name" : _dev.device_group_name
                             }
                         }
                         _devg_lut[_devg.name] = _devg
@@ -487,9 +525,13 @@ device_livestatus_module.controller("livestatus_ctrl", ["$scope", "$compile", "$
                 srv_lut[_idx] = entry
                 # sanitize entries
                 if entry.custom_variables.device_pk of $scope.dev_tree_lut
-                    if entry._show
-                        _dev = $scope.dev_tree_lut[entry.custom_variables.device_pk]
-                        _dev.sunburst.children.push({"name" : entry.description, "children" : [], "check" : entry})
+                    _dev = $scope.dev_tree_lut[entry.custom_variables.device_pk]
+                    _dev.sunburst.children.push({
+                        "name" : entry.description,
+                        "children" : [],
+                        "check" : entry,
+                        "value" : if entry._show then 1 else 0
+                    })
             # set device_group lut
             $scope.devg_lut = _devg_lut
             # set service lut
@@ -499,6 +541,13 @@ device_livestatus_module.controller("livestatus_ctrl", ["$scope", "$compile", "$
                 _devg.children = (entry for entry in _devg.children when entry.children.length)
             _bdat.children = (entry for entry in _bdat.children when entry.children.length)
             $scope.burstData = _bdat
+        $scope.update_sunburst = () ->
+            if ($scope.burstData.children ? []).length
+                for _sb_devg in $scope.burstData.children
+                    for _sb_dev in _sb_devg.children
+                        for _sb_srv in _sb_dev.children
+                            _sb_srv.value = if $scope.srv_lut[_sb_srv.check.idx]._show then 1 else 0
+                $scope.redrawSunburst++
         $scope._sanitize_entries = (entry) ->
             entry.state = parseInt(entry.state)
             if entry.state_type in ["0", "1"]
@@ -533,8 +582,8 @@ device_livestatus_module.controller("livestatus_ctrl", ["$scope", "$compile", "$
         $scope.md_filter_changed = () ->
             # called when new entries are set or a filter rule has changes
             ($scope.check_filter(entry) for entry in @entries)
+            $scope.update_sunburst()
             $scope.pagSettings.set_entries(@entries)
-            $scope.build_sunburst()
         $scope.check_filter = (entry) ->
             show = true
             if not $scope.mds_enabled[entry.state]
@@ -548,10 +597,12 @@ device_livestatus_module.controller("livestatus_ctrl", ["$scope", "$compile", "$
                 else
                     if entry.custom_variables and entry.custom_variables.cat_pks?
                         # only show if there is an intersection
-                        show = _.intersection($scope.selected_mcs, entry.custom_variables.cat_pks).length
+                        show = if _.intersection($scope.selected_mcs, entry.custom_variables.cat_pks).length then true else false
                     else
                         # show entries with unset / empty category
                         show = $scope.show_unspec_cat
+                    if show and $scope.show_devs.length 
+                        show = entry.custom_variables.device_pk in $scope.show_devs
             entry._show = show
         $scope.filter_mdr = (entry, scope) ->
             return entry._show
@@ -595,6 +646,8 @@ device_livestatus_module.controller("livestatus_ctrl", ["$scope", "$compile", "$
         scope: {
             data          : "=data"
             activeService : "=activeService"
+            focusService  : "=focusService"
+            triggerRedraw : "=triggerRedraw"
         }
         link: (scope, element) ->
             width = 600
@@ -673,7 +726,8 @@ device_livestatus_module.controller("livestatus_ctrl", ["$scope", "$compile", "$
                                 # no children, show label
                                 d3.select("g.labels g[_gid='#{d._gid}']").attr("display", null)
                             scope.$apply(() ->
-                                scope.activeService = "#{d.check.type}_#{d.check.idx}"
+                                if d? and d.check?
+                                    scope.activeService = "#{d.check.type}_#{d.check.idx}"
                             )
                         ).on("mouseout", (d) ->
                             cur_d = d
@@ -693,6 +747,9 @@ device_livestatus_module.controller("livestatus_ctrl", ["$scope", "$compile", "$
                                     _p = _p.parent
                             else
                                 scope.unhide(scope.data)
+                            scope.$apply(() ->
+                                scope.focusService = "#{d.check.type}_#{d.check.idx}"
+                            )
                             scope.render(scope.data)
                         )
                     _gid = 0
@@ -740,6 +797,9 @@ device_livestatus_module.controller("livestatus_ctrl", ["$scope", "$compile", "$
                 scope.$watch('data', () ->
                     scope.render(scope.data)
                     true
+                )
+                scope.$watch('triggerRedraw', () ->
+                    scope.render(scope.data)
                 )
             )
     } 
