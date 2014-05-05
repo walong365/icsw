@@ -1010,7 +1010,7 @@ device_livestatus_module.controller("monconfig_ctrl", ["$scope", "$compile", "$f
             _parts = name.split("_")
             return (_str.slice(0, 1) for _str in _parts).join("").toUpperCase()
         $scope.load_data = () ->
-            #$timeout($scope.load_data, 20000)
+            $timeout($scope.load_data, 20000)
             $scope.reload_pending = true
             call_ajax
                 url  : "{% url 'mon:get_node_config' %}"
