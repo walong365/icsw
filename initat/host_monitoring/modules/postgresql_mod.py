@@ -157,4 +157,4 @@ class _general(hm_module):
             for rem_db in to_remove:
                 self.log("remove mv for database {}".format(rem_db))
                 self.databases[rem_db].remove(mv)
-                del self.database[rem_db]
+                del self.databases[rem_db]
