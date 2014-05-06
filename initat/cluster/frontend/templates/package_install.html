@@ -64,8 +64,8 @@
     <td>{{ obj.url }}</td>
     <td>{{ obj.priority }}</td>
     <td>{{ fn.get_service_name(this, obj) }}</td>
-    <td><input type="button" class="btn btn-sm btn-primary" ng-click="fn.toggle(obj)" value="toggle"/></td>
-    <td><input type="button" class="btn btn-sm btn-danger" ng-click="delete(obj)" value="delete"/></td>
+    <td><input type="button" class="btn btn-xs btn-primary" ng-click="fn.toggle(obj)" value="toggle publish"/></td>
+    <td><input type="button" class="btn btn-xs btn-danger" ng-click="delete(obj)" value="delete"/></td>
 </script>
 
 <script type="text/ng-template" id="package_search_head.html">
@@ -188,7 +188,7 @@
                         <input type="button" class="btn btn-success" ng-value="fn.get_grid_style(this)" ng-click="fn.toggle_grid_style(this)"></input>
                         ({{ devices.length }} devices, {{ entries.length }} packages), {{ selected_pdcs_length() }} selected, package filter:
                         <div class="form-group">
-                            <input ng-model="package_filter" class="form-control input-sm""></input>
+                            <input ng-model="package_filter" class="form-control input-sm"></input>
                         </div>,
                         <input ng-show="selected_pdcs_length()" type="button" class="btn btn-success btm-sm" value="action" ng-click="action($event)"></input>&nbsp;
                         <input type="button" class="btn btn-warning btm-sm" value="sync" ng-click="send_sync()"></input>
