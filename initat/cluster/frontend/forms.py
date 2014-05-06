@@ -487,7 +487,8 @@ class user_detail_form(ModelForm):
             "Groups / export entry",
             Field("group", ng_options="value.idx as value.groupname for value in group_list", chosen=True),
             Field("secondary_groups", ng_options="value.idx as value.groupname for value in group_list", chosen=True),
-            Field("export", ng_options="value.idx as value.info_string for value in get_export_list()", chosen=True),
+            # do not use chosen here (will not refresh on export_list change)
+            Field("export", ng_options="value.idx as get_home_info_string(value) for value in get_export_list()"), # , chosen=True),
             HTML(
 """
         <div class='form-group'>
@@ -525,14 +526,15 @@ class user_detail_form(ModelForm):
         ),
         FormActions(
             Submit("modify", "Modify", css_class="btn-success", ng_show="!create_mode"),
-            Submit("create", "Create", css_class="btn-success", ng_show="create_mode"),
+            Submit("create", "Create", css_class="btn-success", ng_show="create_mode", ng_disabled="!_edit_obj.password"),
             HTML("&nbsp;"),
             Button("close", "close", css_class="btn-primary", ng_click="user_edit.close_modal()", ng_show="!create_mode"),
             HTML("&nbsp;"),
             Button("delete", "delete", css_class="btn-danger", ng_click="user_edit.delete_obj(_edit_obj)", ng_show="!create_mode"),
             HTML("&nbsp;"),
             Button("change password", "change password", css_class="btn-warning", ng_click="change_password()", ng_show="!create_mode"),
-            Button("set password", "set password", css_class="btn-warning", ng_click="change_password()", ng_show="create_mode"),
+            Button("set password", "set password", css_class="btn-warning", ng_click="change_password()", ng_show="create_mode && !_edit_obj.password"),
+            Button("change password", "change password", css_class="btn-warning", ng_click="change_password()", ng_show="create_mode && _edit_obj.password"),
         ),
     )
     def __init__(self, *args, **kwargs):

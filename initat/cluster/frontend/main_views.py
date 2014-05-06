@@ -68,9 +68,11 @@ class get_server_info(View):
                 _res["command"].attrib["server_name"] = _server[0]
                 _res["command"].attrib["server_id"] = "{:d}".format(_server[2])
                 _server_list.append(_res.tree)
+                _res.tree.tag = _res.tree.tag.split("}")[-1]
             else:
                 srv_com["command"].attrib["server_name"] = _server[0]
                 srv_com["command"].attrib["server_id"] = "{:d}".format(_server[2])
+                srv_com.tree.tag = srv_com.tree.tag.split("}")[-1]
                 _server_list.append(srv_com.tree)
         request.xml_response["result"] = _server_list
 

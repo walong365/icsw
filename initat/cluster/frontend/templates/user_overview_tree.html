@@ -293,7 +293,20 @@ user_tree_module.controller("user_tree", ["$scope", "$compile", "$filter", "$tem
             $scope._edit_obj.object = null
             return []
         $scope.get_export_list = () ->
-            return (entry for entry in $scope.home_export_list)
+            return $scope.home_export_list
+        $scope.get_home_info_string = (entry) ->
+            cur_group = (_entry for _entry in $scope.group_list when _entry.idx == $scope._edit_obj.group)
+            if cur_group.length
+                cur_group = cur_group[0]
+            else
+                cur_group = null
+            if entry.createdir
+                info_string = "#{entry.homeexport} (created in #{entry.createdir}) on #{entry.full_name}"
+            else
+                info_string = "#{entry.homeexport} on #{entry.full_name}"
+            if cur_group
+                info_string = "#{info_string}, #{cur_group.homestart}/#{$scope._edit_obj.login}"
+            return info_string
         $scope.update_filter = () ->
             if not $scope.filterstr
                 cur_re = new RegExp("^$", "gi")
@@ -325,7 +338,6 @@ user_tree_module.controller("user_tree", ["$scope", "$compile", "$filter", "$tem
             #console.log obj_type, obj
         $scope.$on("icsw.set_password", (event, new_pwd) ->
             $scope._edit_obj.password = new_pwd
-            $scope.user_edit.modify()
         )
         $scope.change_password = () ->
             $scope.$broadcast("icsw.enter_password")

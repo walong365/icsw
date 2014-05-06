@@ -546,7 +546,8 @@ device_livestatus_module.controller("livestatus_ctrl", ["$scope", "$compile", "$
                 for _sb_devg in $scope.burstData.children
                     for _sb_dev in _sb_devg.children
                         for _sb_srv in _sb_dev.children
-                            _sb_srv.value = if $scope.srv_lut[_sb_srv.check.idx]._show then 1 else 0
+                            _sb_srv._show = $scope.srv_lut[_sb_srv.check.idx]._show
+                            _sb_srv.value = if _sb_srv._show then 1 else 0
                 $scope.redrawSunburst++
         $scope._sanitize_entries = (entry) ->
             entry.state = parseInt(entry.state)
