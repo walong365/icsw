@@ -160,17 +160,22 @@ class home_export_list(object):
         exp_entries = device_config.objects.filter(
             Q(config__name__icontains="homedir") &
             Q(config__name__icontains="export") &
-            Q(device__device_type__identifier="H")).prefetch_related("config__config_str_set").select_related("device")
+            Q(device__device_type__identifier="H")).prefetch_related("config__config_str_set").select_related("device", "device__domain_tree_node")
         home_exp_dict = {}
         for entry in exp_entries:
-            dev_name, act_pk = (entry.device.name,
-                                entry.pk)
+            dev_name, dev_name_full, act_pk = (
+                entry.device.name,
+                entry.device.full_name,
+                entry.pk
+            )
             home_exp_dict[act_pk] = {
                     "key"          : act_pk,
                     "entry"        : entry,
                     "name"         : dev_name,
+                    "full_name"    : dev_name_full,
                     "homeexport"   : "",
                     "node_postfix" : "",
+                    "createdir"    : "",
                     "options"      : "-soft"}
             for c_str in entry.config.config_str_set.all():
                 if c_str.name in home_exp_dict[act_pk]:
@@ -180,8 +185,9 @@ class home_export_list(object):
         for ihk in invalid_home_keys:
             del home_exp_dict[ihk]
         for key, value in home_exp_dict.iteritems():
-            value["info"] = "{} on {}".format(value["homeexport"], value["name"])
+            value["info"] = u"{} on {}".format(value["homeexport"], value["name"])
             value["entry"].info_str = value["info"]
+            value["entry"].info_dict = value
         self.exp_dict = home_exp_dict
     def get(self, *args, **kwargs):
         # hacky
@@ -739,10 +745,21 @@ class device_config_serializer(serializers.ModelSerializer):
 
 class device_config_hel_serializer(serializers.ModelSerializer):
     info_string = serializers.Field(source="home_info")
+    homeexport = serializers.SerializerMethodField("get_homeexport")
+    createdir = serializers.SerializerMethodField("get_createdir")
+    name = serializers.SerializerMethodField("get_name")
+    full_name = serializers.SerializerMethodField("get_full_name")
+    def get_name(self, obj):
+        return obj.info_dict["name"]
+    def get_full_name(self, obj):
+        return obj.info_dict["full_name"]
+    def get_createdir(self, obj):
+        return obj.info_dict["createdir"]
+    def get_homeexport(self, obj):
+        return obj.info_dict["homeexport"]
     class Meta:
         model = device_config
-        fields = ("idx", "info_string")
-
+        fields = ("idx", "info_string", "homeexport", "createdir", "name", "full_name")
 
 class partition_fs(models.Model):
     # mix of partition and fs info, not perfect ...
