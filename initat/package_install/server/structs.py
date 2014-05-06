@@ -67,41 +67,56 @@ class repo_type(object):
 class repo_type_rpm_yum(repo_type):
     REPO_TYPE_STR = "rpm"
     REPO_SUBTYPE_STR = "yum"
-    SCAN_REPOS = "yum repolist all"
+    SCAN_REPOS = "yum -v repolist all --color=no"
     REPO_CLASS = rpm_repository
     def search_package(self, s_string):
         return "yum -q --showduplicates search {}".format(s_string)
     def repo_scan_result(self, s_struct):
         self.log("got repo scan result")
-        cur_mode = 0
         new_repos = []
         found_repos = []
         old_repos = set(package_repo.objects.all().values_list("name", flat=True))
+        repo_list = []
+        cur_repo_dict = {}
         for line in s_struct.read().split("\n"):
-            if line.startswith("repo id"):
-                cur_mode = 1
-            elif line.startswith("repolist:"):
-                cur_mode = 0
+            # strip spaces
+            line = line.strip()
+            if line.count(":"):
+                key, value = line.split(":", 1)
+                key = key.strip().lower()
+                value = value.strip()
+                if key.startswith("repo-"):
+                    key = key [5:]
+                    cur_repo_dict[key] = value
             else:
-                if cur_mode == 1:
-                    parts = line.strip().replace("enabled:", "enabled").split()
-                    while parts[-1] not in ["disabled", "enabled"]:
-                        parts.pop(-1)
-                    repo_name = parts.pop(0)
-                    repo_enabled = True if parts.pop(-1) == "enabled" else False
-                    repo_info = " ".join(parts)
-                    # print repo_name, repo_enabled, repo_info
-                    try:
-                        cur_repo = package_repo.objects.get(Q(name=repo_name))
-                    except package_repo.DoesNotExist:
-                        cur_repo = package_repo(name=repo_name)
-                        new_repos.append(cur_repo)
-                    found_repos.append(cur_repo)
-                    old_repos -= set([cur_repo.name])
-                    cur_repo.alias = repo_info
-                    cur_repo.enabled = repo_enabled
-                    cur_repo.gpg_check = False
-                    cur_repo.save()
+                # empty line, set repo_id to zero
+                if cur_repo_dict:
+                    repo_list.append(cur_repo_dict)
+                cur_repo_dict = {}
+        if cur_repo_dict:
+            repo_list.append(cur_repo_dict)
+        # map:
+        # id ........ name
+        # status .... disabled / enabled
+        # baseurl ... url
+        # name ...... alias
+        for _dict in repo_list:
+            try:
+                cur_repo = package_repo.objects.get(Q(name=_dict["id"]))
+            except package_repo.DoesNotExist:
+                cur_repo = package_repo(name=_dict["id"])
+                new_repos.append(cur_repo)
+            repo_enabled = True if _dict.get("status", "disabled").lower() == "enabled" else False
+            found_repos.append(cur_repo)
+            old_repos -= set([cur_repo.name])
+            # print repo_name, repo_enabled, repo_info
+            cur_repo.alias = _dict["name"]
+            cur_repo.enabled = repo_enabled
+            cur_repo.url = _dict.get("baseurl", "http://").split()[0]
+            cur_repo.gpg_check = False
+            # dummy value
+            cur_repo.repo_type = _dict.get("type", "yum")
+            cur_repo.save()
         self.log("found {}".format(logging_tools.get_plural("new repository", len(new_repos))))
         if old_repos:
             self.log(
@@ -124,6 +139,8 @@ class repo_type_rpm_yum(repo_type):
                 if cur_mode == 1:
                     p_name = line.split()[0].strip()
                     if p_name and p_name != ":":
+                        if p_name[0].isdigit() and p_name.count(":"):
+                            p_name = p_name.split(":", 1)[1]
                         found_packs.append(p_name)
         cur_search = s_struct.run_info["stuff"]
         cur_search.current_state = "done"

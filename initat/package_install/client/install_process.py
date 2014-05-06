@@ -31,22 +31,39 @@ import threading_tools
 
 RPM_QUERY_FORMAT = "%{NAME}\n%{INSTALLTIME}\n%{VERSION}\n%{RELEASE}\n"
 
-def get_repo_str(in_repo):
-    # copy from initat.cluster.backbone.models.package_repo.repo_str
-    _vf = [
-        "[{}]".format(in_repo.findtext("alias")),
-        "name={}".format(in_repo.findtext("name")),
-        "enabled={:d}".format(1 if in_repo.findtext("enabled") == "True" else 0),
-        "autorefresh={:d}".format(1 if in_repo.findtext("autorefresh") == "True" else 0),
-        "baseurl={}".format(in_repo.findtext("url")),
-        "type={}".format(in_repo.findtext("repo_type") or "NONE"),
-    ]
-    if in_repo.findtext("priority"):
-        _vf.append("priority={:d}".format(int(in_repo.findtext("priority"))))
-    if in_repo.findtext("service_name"):
-        _vf.append("service={}".format(in_repo.findtext("service_name")))
+def get_repo_str(_type, in_repo):
+    if _type == "zypper":
+        # copy from initat.cluster.backbone.models.package_repo.repo_str
+        _vf = [
+            "[{}]".format(in_repo.findtext("alias")),
+            "name={}".format(in_repo.findtext("name")),
+            "enabled={:d}".format(1 if in_repo.findtext("enabled") == "True" else 0),
+            "autorefresh={:d}".format(1 if in_repo.findtext("autorefresh") == "True" else 0),
+            "baseurl={}".format(in_repo.findtext("url")),
+            "type={}".format(in_repo.findtext("repo_type") or "NONE"),
+        ]
+        if in_repo.findtext("priority"):
+            _vf.append("priority={:d}".format(int(in_repo.findtext("priority"))))
+        if in_repo.findtext("service_name"):
+            _vf.append("service={}".format(in_repo.findtext("service_name")))
+        else:
+            _vf.append("keeppackages=0")
     else:
-        _vf.append("keeppackages=0")
+        # yum repository
+        _vf = [
+            "[{}]".format(in_repo.findtext("name")),
+            "name={}".format(in_repo.findtext("alias")),
+            "enabled={:d}".format(1 if in_repo.findtext("enabled") == "True" else 0),
+            "autorefresh={:d}".format(1 if in_repo.findtext("autorefresh") == "True" else 0),
+            "baseurl={}".format(in_repo.findtext("url")),
+            "type={}".format(in_repo.findtext("repo_type") or "NONE"),
+        ]
+        if in_repo.findtext("priority"):
+            _vf.append("priority={:d}".format(int(in_repo.findtext("priority"))))
+        if in_repo.findtext("service_name"):
+            _vf.append("service={}".format(in_repo.findtext("service_name")))
+        else:
+            _vf.append("keeppackages=0")
     _vf.append("")
     return "\n".join(_vf)
 
@@ -335,7 +352,7 @@ class yum_install_process(install_process):
                 # )
                 cur_pdc.attrib["pre_command"] = "/bin/rpm -q {} --queryformat=\"{}\"".format(self.package_name(pack_xml), RPM_QUERY_FORMAT)
                 cur_pdc.attrib["post_command"] = "/bin/rpm -q {} --queryformat=\"{}\"".format(self.package_name(pack_xml), RPM_QUERY_FORMAT)
-    def _decide(self, hc_sc, cur_out):
+    def _pre_decide(self, hc_sc, cur_out):
         cur_pdc = hc_sc.data
         is_installed = False if cur_out.count("is not installed") else True
         self.log(
@@ -349,14 +366,22 @@ class yum_install_process(install_process):
                    "upgrade" : "update",
                    "erase"   : "erase"}.get(cur_pdc.attrib["target_state"])
         package_name = self.package_name(pack_xml)
+        always_latest = self.get_always_latest(pack_xml)
         if (is_installed and yum_com in ["install", "upgrade"]) or (not is_installed and yum_com in ["erase"]):
             self.log("doing nothing, running post_command")
-            # FIXME, handle post command
-            # if is_installed:
-            #    return True, E.stdout("package %s is installed" % (package_name))
-            # else:
-            #    return True, E.stdout("package %s is not installed" % (package_name))
+            if is_installed:
+                cur_pdc.append(E.main_result(
+                    E.stdout("package {} is installed".format(package_name))
+                ))
+            else:
+                cur_pdc.append(E.main_result(
+                    E.stdout("package {} is not installed".format(package_name))
+                ))
+            return True
         else:
+            if not is_installed and yum_com == "update" and always_latest:
+                yum_com = "install"
+                self.log("changing yum_com to '{}' (always_latest flag)".format(yum_com), logging_tools.LOG_LEVEL_WARN)
             self.log("starting action '{}'".format(yum_com))
             yum_com = "/usr/bin/yum -y {} {}".format(
                 yum_com,
@@ -372,7 +397,50 @@ class yum_install_process(install_process):
                 data=cur_pdc)
             # return False, None
     def _handle_repo_list(self, in_com):
-        self.log("repo_list handling for yum-based distributions not implemented, FIXME", logging_tools.LOG_LEVEL_ERROR)
+        # print etree.tostring(in_com.tree, pretty_print=True)
+        # new code
+        in_repos = in_com.xpath(".//ns:repo_list/root")[0]
+        # old code
+        # in_repos = in_com.xpath(".//ns:repos")[0]
+        self.log("handling repo_list ({})".format(logging_tools.get_plural("entry", len(in_repos))))
+        # manual comparision, better modify them with zypper, FIXME ?
+        repo_dir = "/etc/yum.repos.d"
+        cur_repo_names = [entry[:-5] for entry in os.listdir(repo_dir) if entry.endswith(".repo")]
+        self.log("{} found in {}".format(
+            logging_tools.get_plural("repository", len(cur_repo_names)),
+            repo_dir))
+        # _new_repo_names = in_repos.xpath(".//package_repo/@alias")
+        _new_repo_names = in_repos.xpath(".//alias/text()")
+        old_repo_dict = dict([(f_name, file(os.path.join(repo_dir, "{}.repo".format(f_name)), "r").read()) for f_name in cur_repo_names])
+        # new_repo_dict = dict([(in_repo.findtextattrib["alias"], get_repo_str(in_repo)) for in_repo in in_repos])
+        new_repo_dict = dict([(in_repo.findtext("name"), get_repo_str("yum", in_repo)) for in_repo in in_repos])
+        rewrite_repos = False
+        if any([old_repo_dict[name] != new_repo_dict[name] for name in set(cur_repo_names) & set (new_repo_dict.keys())]):
+            self.log("repository content differs, forcing rewrite")
+            rewrite_repos = True
+        elif set(cur_repo_names) ^ set(new_repo_dict.keys()):
+            self.log("list of old and new repositories differ, forcing rewrite")
+            rewrite_repos = True
+        if rewrite_repos and global_config["MODIFY_REPOS"]:
+            self.log("rewritting repo files")
+            # remove old ones
+            for old_r_name in old_repo_dict.iterkeys():
+                f_name = os.path.join(repo_dir, "{}.repo".format(old_r_name))
+                try:
+                    os.unlink(f_name)
+                except:
+                    self.log("cannot remove {}: {}".format(f_name, process_tools.get_except_info()), logging_tools.LOG_LEVEL_ERROR)
+                else:
+                    self.log("removed {}".format(f_name))
+            for new_r_name in new_repo_dict.iterkeys():
+                f_name = os.path.join(repo_dir, "{}.repo".format(new_r_name))
+                try:
+                    file(f_name, "w").write(new_repo_dict[new_r_name])
+                except:
+                    self.log("cannot create {}: {}".format(f_name, process_tools.get_except_info()), logging_tools.LOG_LEVEL_ERROR)
+                else:
+                    self.log("created {}".format(f_name))
+            self.package_commands.append(E.special_command(send_return="0", command="refresh", init="0"))
 
 class zypper_install_process(install_process):
     response_type = "zypper_xml"
@@ -483,7 +551,7 @@ class zypper_install_process(install_process):
         _new_repo_names = in_repos.xpath(".//alias/text()")
         old_repo_dict = dict([(f_name, file(os.path.join(repo_dir, "{}.repo".format(f_name)), "r").read()) for f_name in cur_repo_names])
         # new_repo_dict = dict([(in_repo.findtextattrib["alias"], get_repo_str(in_repo)) for in_repo in in_repos])
-        new_repo_dict = dict([(in_repo.findtext("alias"), get_repo_str(in_repo)) for in_repo in in_repos])
+        new_repo_dict = dict([(in_repo.findtext("alias"), get_repo_str("zypper", in_repo)) for in_repo in in_repos])
         rewrite_repos = False
         if any([old_repo_dict[name] != new_repo_dict[name] for name in set(cur_repo_names) & set (new_repo_dict.keys())]):
             self.log("repository content differs, forcing rewrite")
@@ -511,3 +579,4 @@ class zypper_install_process(install_process):
                 else:
                     self.log("created {}".format(f_name))
             self.package_commands.append(E.special_command(send_return="0", command="refresh", init="0"))
+
