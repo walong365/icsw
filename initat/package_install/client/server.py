@@ -28,6 +28,7 @@ import os
 import process_tools
 import server_command
 import threading_tools
+import time
 import uuid_tools
 import zmq
 
@@ -171,6 +172,9 @@ class server_process(threading_tools.process_pool):
         self.log("bound to {} (ID {})".format(bind_str, self.bind_id))
         self.client_socket = client_sock
         self.register_poller(client_sock, zmq.POLLIN, self._recv_client)
+        # wait a litte for 0MQ to settle ...
+        self.log("waiting 1 second for 0MQ to settle down...")
+        time.sleep(1)
         # send commands
         self._send_to_server_int(get_srv_command(command="register"))
         self._get_repos()
@@ -178,7 +182,7 @@ class server_process(threading_tools.process_pool):
     def _send_to_server_int(self, xml_com):
         self._send_to_server("self", os.getpid(), xml_com["command"].text, unicode(xml_com), "server command")
     def _send_to_server(self, src_proc, *args, **kwargs):
-        src_pid, com_name, send_com, send_info = args
+        _src_pid, com_name, send_com, send_info = args
         self.log("sending {} ({}) to server {}".format(com_name, send_info, self.conn_str))
         self.srv_port.send_unicode(send_com)
     def _get_new_config(self):
