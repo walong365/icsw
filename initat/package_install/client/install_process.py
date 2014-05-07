@@ -504,7 +504,7 @@ class zypper_install_process(install_process):
             # flags: xml output, non-interactive
             zypper_com = "/usr/bin/zypper -x -n {} {} {}".format(
                 zypper_com,
-                "-f" if int(cur_pdc.attrib["force_flag"]) else "",
+                "-f" if (int(cur_pdc.attrib["force_flag"]) and zypper_com not in ["rm"]) else "",
                 package_name,
             )
             simple_command(
