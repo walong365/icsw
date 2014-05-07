@@ -1209,25 +1209,25 @@ class mon_service_templ_form(ModelForm):
             Fieldset(
                 "Freshness settings",
                 Field("check_freshness"),
-                Field("freshness_threshold"),
+                Field("freshness_threshold", wrapper_ng_show="edit_obj.check_freshness"),
             ),
             Fieldset(
                 "Flap settings",
                 Field("flap_detection_enabled"),
             ),
             FormActions(
-                Field("low_flap_threshold", min=0, max=100),
-                Field("high_flap_threshold", min=0, max=100),
+                Field("low_flap_threshold", min=0, max=100, wrapper_ng_show="edit_obj.flap_detection_enabled"),
+                Field("high_flap_threshold", min=0, max=100, wrapper_ng_show="edit_obj.flap_detection_enabled"),
             ),
             Div(
                 Div(
-                    Field("flap_detect_ok"),
-                    Field("flap_detect_warn"),
+                    Field("flap_detect_ok", wrapper_ng_show="edit_obj.flap_detection_enabled"),
+                    Field("flap_detect_warn", wrapper_ng_show="edit_obj.flap_detection_enabled"),
                     css_class="col-md-6",
                 ),
                 Div(
-                    Field("flap_detect_critical"),
-                    Field("flap_detect_unknown"),
+                    Field("flap_detect_critical", wrapper_ng_show="edit_obj.flap_detection_enabled"),
+                    Field("flap_detect_unknown", wrapper_ng_show="edit_obj.flap_detection_enabled"),
                     css_class="col-md-6",
                 ),
                 css_class="row",
@@ -1402,24 +1402,24 @@ class mon_device_templ_form(ModelForm):
             Fieldset(
                 "Freshness settings",
                 Field("check_freshness"),
-                Field("freshness_threshold"),
+                Field("freshness_threshold", wrapper_ng_show="edit_obj.check_freshness"),
             ),
             Fieldset(
                 "Flap settings",
                 Field("flap_detection_enabled"),
             ),
             FormActions(
-                Field("low_flap_threshold", min=0, max=100),
-                Field("high_flap_threshold", min=0, max=100),
+                Field("low_flap_threshold", min=0, max=100, wrapper_ng_show="edit_obj.flap_detection_enabled"),
+                Field("high_flap_threshold", min=0, max=100, wrapper_ng_show="edit_obj.flap_detection_enabled"),
             ),
             Div(
                 Div(
-                    Field("flap_detect_up"),
-                    Field("flap_detect_down"),
+                    Field("flap_detect_up", wrapper_ng_show="edit_obj.flap_detection_enabled"),
+                    Field("flap_detect_down", wrapper_ng_show="edit_obj.flap_detection_enabled"),
                     css_class="col-md-6",
                 ),
                 Div(
-                    Field("flap_detect_unreachable"),
+                    Field("flap_detect_unreachable", wrapper_ng_show="edit_obj.flap_detection_enabled"),
                     css_class="col-md-6",
                 ),
                 css_class="row",
