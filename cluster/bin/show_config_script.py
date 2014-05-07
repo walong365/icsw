@@ -61,14 +61,14 @@ def main():
         )
         print("{} = config.add_file_object('{}')".format(obj_name, f_name))
         print(
-            "{} += [\n{}]\n".format(
+            u"{} += [\n{}]\n".format(
                 obj_name,
                 "".join(["{}'{}',\n".format(p_line, _line.replace("'", '"').replace("\\", "\\\\")) for _line in f_lines])
             )
         )
-        print (
-            "{}.mode = 0{:o}".format(
-                _obj_name,
+        print(
+            u"{}.mode = 0{:o}".format(
+                obj_name,
                 stat.S_IMODE(f_stat[stat.ST_MODE])
             )
         )
