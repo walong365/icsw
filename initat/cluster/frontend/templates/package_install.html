@@ -44,13 +44,16 @@
             <span ng-class="get_glyph_class(pdc.target_state)"></span>
             <div class="btn-group btn-group-xs">
                 <input type="button" class="btn disabled" ng-class="get_btn_class()" value="{{ pdc.installed }}"></input>
-                <input type="button" class="btn disabled" ng-class="{'btn-primary': pdc.force_flag, 'btn-default': !pdc.force_flag}" value="F"></input>
-                <input type="button" class="btn disabled" ng-class="{'btn-primary': pdc.nodeps_flag, 'btn-default': !pdc.nodeps_flag}" value="N"></input>
+                <input type="button" class="btn disabled" ng-class="pdc.force_flag && 'btn-primary' || 'btn-default'" value="F"></input>
+                <input type="button" class="btn disabled" ng-class="pdc.nodeps_flag && 'btn-primary' || 'btn-default'" value="N"></input>
+                <input type="button" ng-class="pdc.selected && 'btn btn-primary' || 'btn'" value="S" title="select" ng-model="pdc.selected" ng-click="change_sel(pdc)"></input>
             </div>
         </span>
         <span ng-show="!show_pdc()">
+            <div class="btn-group btn-group-xs">
+                <input type="button" ng-class="pdc.selected && 'btn btn-primary' || 'btn'" value="S" title="select" ng-model="pdc.selected" ng-click="change_sel(pdc)"></input>
+            </div>
         </span>
-        <input type="checkbox" ng-model="pdc.selected" ng-change="change_sel()"></input>
     </div>
 </script>
 

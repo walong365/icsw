@@ -517,8 +517,8 @@ package_module.controller("install", ["$scope", "$compile", "$filter", "$templat
                             return "glyphicon glyphicon-asterisk"
                     else
                         return "glyphicon"
-                scope.change_sel = () ->
-                    pdc = scope.pdc
+                scope.change_sel = (pdc) ->
+                    pdc.selected = !pdc.selected
                     if pdc.idx
                         if pdc.selected and pdc.idx not of scope.selected_pdcs
                             scope.selected_pdcs[pdc.idx] = pdc

@@ -788,8 +788,9 @@ class network_form(ModelForm):
                 Field("network_device_type", ng_options="value.idx as value.identifier for value in rest_data.network_device_types", chosen=True),
             ),
             Fieldset(
-                "Flags", # {% verbatim %}{{ _edit_obj }}{% endverbatim %}",
+                "Flags and priority", # {% verbatim %}{{ _edit_obj }}{% endverbatim %}",
                 Field("enforce_unique_ips"),
+                Field("gw_pri"),
             ),
             FormActions(
                 Submit("submit", "", css_class="primaryAction", ng_value="action_string"),
@@ -798,7 +799,7 @@ class network_form(ModelForm):
     class Meta:
         model = network
         fields = ("identifier", "network", "netmask", "broadcast", "gateway", "master_network", \
-            "network_type", "network_device_type", "enforce_unique_ips",)
+            "network_type", "network_device_type", "enforce_unique_ips", "gw_pri",)
 
 class network_type_form(ModelForm):
     helper = FormHelper()
@@ -1793,7 +1794,7 @@ class package_action_form(Form):
     helper.label_class = 'col-sm-3'
     helper.field_class = 'col-sm-7'
     helper.ng_model = "edit_obj"
-    target_state = ChoiceField()
+    target_state = ChoiceField(required=False)
     nodeps_flag = ChoiceField(required=False)
     force_flag = ChoiceField(required=False)
     image_dep = ChoiceField(required=False)

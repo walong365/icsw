@@ -65,6 +65,7 @@
         <th>Id</th>
         <th>Network definition</th>   
         <th>Gateway</th>
+        <th>gw pri</th>
         <th>#IPs</th>
         <th>Pri</th>
         <th>uniqueIP</th>
@@ -84,6 +85,9 @@
     </td>
     <td style="font-family:monospace;">
         <span style="background-color:#ededed;" ng-bind-html="obj.gateway | ip_fixed_width"></span>
+    </td>
+    <td class="right">
+        {{ obj.gw_pri }}
     </td>
     <td class="text-right">{{ obj.num_ip }}</td>
     <td>{{ obj.penalty }}</td>
@@ -133,7 +137,7 @@
             <table class="table table-condensed table-hover" style="width:auto;">
                 <thead networkhead></thead>
                 <tbody>
-                    <tr><td colspan="9" paginator entries="entries" pag_settings="pagSettings" per_page="15"></td></tr>
+                    <tr><td colspan="12" paginator entries="entries" pag_settings="pagSettings" per_page="15"></td></tr>
                     <tr networkrow ng-repeat="obj in entries | orderBy:'-identifier':true | paginator:this"></tr>
                 </tbody>
             </table>
