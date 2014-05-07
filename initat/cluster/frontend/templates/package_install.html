@@ -89,10 +89,10 @@
     <td>{{ obj.results }}</td>
     <td>{{ obj.last_search_string }}</td>
     <td class="text-right">{{ obj.last_search | datetime1 }}</td>
-    <td><input type="button" class="btn btn-success btn-sm" ng-show="obj.results > 0" ng-click="fn.show(this, obj)" value="show"/></td>
-    <td><input type="button" class="btn btn-primary btn-sm" ng-show="obj.current_state == 'done'" ng-click="fn.retry(this, obj)" value="retry"/></td>
-    <td><input type="button" class="btn btn-warning btn-sm" ng-show="obj.current_state == 'done'" ng-click="edit($event, obj)" value="modify"/></td>
-    <td><input type="button" class="btn btn-danger btn-sm" ng-click="delete(obj)" value="delete"/></td>
+    <td><input type="button" class="btn btn-success btn-xs" ng-show="obj.results > 0" ng-click="fn.show(this, obj)" value="show"/></td>
+    <td><input type="button" class="btn btn-primary btn-xs" ng-show="obj.current_state == 'done'" ng-click="fn.retry(this, obj)" value="retry"/></td>
+    <td><input type="button" class="btn btn-warning btn-xs" ng-show="obj.current_state == 'done'" ng-click="edit($event, obj)" value="modify"/></td>
+    <td><input type="button" class="btn btn-danger btn-xs" ng-click="delete(obj)" value="delete"/></td>
 </script>
 
 <script type="text/ng-template" id="package_search_result_head.html">
@@ -112,9 +112,9 @@
     <td>{{ obj.kind }}</td>
     <td>{{ obj.package_repo | array_lookup:this.rest_data.package_repo:"name" }}</td>
     <td>{{ obj.arch }}</td>
-    <td><input type="button" ng-show="obj.copied == 0" class="btn btn-sm btn-primary" ng-click="fn.take(this, obj, true)" value="take exact"/></td>
-    <td><input type="button" ng-show="obj.copied == 0" class="btn btn-sm btn-primary" ng-click="fn.take(this, obj, false)" value="take latest"/></td>
-    <td><input type="button" class="btn btn-danger" ng-click="delete(obj)" value="delete"/></td>
+    <td><input type="button" ng-show="obj.copied == 0" class="btn btn-xs btn-primary" ng-click="fn.take(this, obj, true)" value="take exact"/></td>
+    <td><input type="button" ng-show="obj.copied == 0" class="btn btn-xs btn-primary" ng-click="fn.take(this, obj, false)" value="take latest"/></td>
+    <td><input type="button" class="btn btn-xs btn-danger" ng-click="delete(obj)" value="delete"/></td>
 </script>
 
 <script type="text/ng-template" id="package_head.html">
@@ -135,9 +135,10 @@
     <td>{{ obj.package_repo | array_lookup:this.rest_data.package_repo:"name" }}</td>
     <td>{{ obj.kind }}</td>
     <td>{{ obj.arch }}</td>
-    <td><input type="button" class="btn btn-primary btn-sm" ng-click="attach(obj)" value="attach" title="attach to selected devices"/></td>
-    <td><input type="button" class="btn btn-warning btn-sm" ng-click="remove(obj)" value="remove" title="remove from selected devices"/></td>
-    <td><input type="button" class="btn btn-danger btn-sm" ng-click="delete(obj)" value="delete"/></td>
+    <td><input type="button" class="btn btn-primary btn-xs" ng-click="attach(obj)" value="attach" title="attach to selected devices"/></td>
+    <td><input type="button" class="btn btn-warning btn-xs" ng-click="remove(obj)" value="remove" title="remove from selected devices"/></td>
+    <td><input type="button" class="btn btn-danger btn-xs" ng-click="delete(obj)" value="delete"/></td>
+    <td>{{ get_pdc_list(obj) }}</td>
 </script>
 
 <tabset>
@@ -150,7 +151,7 @@
             <table class="table table-condensed table-hover" style="width:auto;">
                 <thead packagerepohead></thead>
                 <tbody>
-                    <tr><td colspan="9" paginator entries="entries" pag_settings="pagSettings" per_page="10" paginator-epp="10,20,50,100"></td></tr>
+                    <tr><td colspan="11" paginator entries="entries" pag_settings="pagSettings" per_page="10" paginator-epp="10,20,50,100"></td></tr>
                     <tr packagereporow ng-repeat="obj in entries | orderBy:'-name':true | paginator:this"></tr>
                 </tbody>
             </table>
@@ -185,7 +186,7 @@
             <div ng-controller="install">
                 <h3>
                     <form class="form-inline" role="form">
-                        <input type="button" class="btn btn-success" ng-value="fn.get_grid_style(this)" ng-click="fn.toggle_grid_style(this)"></input>
+                        <!-- <input type="button" class="btn btn-success" ng-value="fn.get_grid_style(this)" ng-click="fn.toggle_grid_style(this)"></input> -->
                         ({{ devices.length }} devices, {{ entries.length }} packages), {{ selected_pdcs_length() }} selected, package filter:
                         <div class="form-group">
                             <input ng-model="package_filter" class="form-control input-sm"></input>
