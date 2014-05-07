@@ -386,6 +386,9 @@ class mon_device_templ(models.Model):
     flap_detect_up = models.BooleanField(default=True)
     flap_detect_down = models.BooleanField(default=False)
     flap_detect_unreachable = models.BooleanField(default=False)
+    # freshness checks
+    check_freshness = models.BooleanField(default=False)
+    freshness_threshold = models.IntegerField(default=0)
     date = models.DateTimeField(auto_now_add=True)
     def __unicode__(self):
         return self.name
@@ -695,6 +698,9 @@ class mon_service_templ(models.Model):
     flap_detect_warn = models.BooleanField(default=False)
     flap_detect_critical = models.BooleanField(default=False)
     flap_detect_unknown = models.BooleanField(default=False)
+    # freshness checks
+    check_freshness = models.BooleanField(default=False)
+    freshness_threshold = models.IntegerField(default=0)
     date = models.DateTimeField(auto_now_add=True)
     def __unicode__(self):
         return self.name
