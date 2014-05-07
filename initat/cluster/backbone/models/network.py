@@ -116,7 +116,7 @@ class network(models.Model):
     short_names = models.BooleanField(default=True)
     # should no longer be used, now in domain_tree_node
     name = models.CharField(max_length=192, blank=True, default="")
-    penalty = models.PositiveIntegerField(default=1)
+    penalty = models.PositiveIntegerField(default=1, verbose_name="cost")
     # should no longer be used, now in domain_tree_node
     postfix = models.CharField(max_length=12, blank=True)
     info = models.CharField(max_length=255, blank=True)
@@ -219,7 +219,7 @@ class net_ip(models.Model):
     ip = models.CharField(max_length=48)
     network = models.ForeignKey("backbone.network")
     netdevice = models.ForeignKey("backbone.netdevice")
-    penalty = models.IntegerField(default=0)
+    penalty = models.IntegerField(default=0, verbose_name="cost")
     alias = models.CharField(max_length=765, blank=True, default="")
     alias_excl = models.NullBooleanField(null=True, blank=True, default=False)
     domain_tree_node = models.ForeignKey("backbone.domain_tree_node", null=True, default=None)
@@ -358,7 +358,7 @@ class netdevice(models.Model):
     routing = models.BooleanField(default=False)
     # inter-device routing enabled
     inter_device_routing = models.BooleanField(default=True)
-    penalty = models.IntegerField(null=True, blank=True, default=1)
+    penalty = models.IntegerField(null=True, blank=True, default=1, verbose_name="cost")
     dhcp_device = models.NullBooleanField(null=True, blank=True, default=False)
     ethtool_options = models.IntegerField(null=True, blank=True, default=0)
     fake_macaddr = models.CharField(db_column="fake_macadr", max_length=177, blank=True)
@@ -561,7 +561,7 @@ class peer_information(models.Model):
     idx = models.AutoField(db_column="peer_information_idx", primary_key=True)
     s_netdevice = models.ForeignKey("backbone.netdevice", related_name="peer_s_netdevice")
     d_netdevice = models.ForeignKey("backbone.netdevice", related_name="peer_d_netdevice")
-    penalty = models.IntegerField(default=0)
+    penalty = models.IntegerField(default=0, verbose_name="cost")
     date = models.DateTimeField(auto_now_add=True)
     def __unicode__(self):
         return u"{} [{:d}] {}".format(
