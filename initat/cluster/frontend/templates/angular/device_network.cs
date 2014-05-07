@@ -123,8 +123,8 @@ ip_row_template = """
 peer_row_template = """
 <td></td>
 <td colspan="4">
-    with penalty {{ ndip_obj.peer.penalty }}
-    &nbsp;<span class="label label-primary">{{ get_peer_penalty(ndip_obj) }}</span>&nbsp;
+    with cost {{ ndip_obj.peer.penalty }}
+    &nbsp;<span class="label label-primary">{{ get_peer_cost(ndip_obj) }}</span>&nbsp;
     to {{ get_peer_target(ndip_obj) }}
 </td>
 <td></td>
@@ -525,15 +525,15 @@ device_network_module.controller("network_ctrl", ["$scope", "$compile", "$filter
                 return $scope.nd_lut[ndip_obj.netdevice].expanded
             else
                 return $scope.nd_lut[ndip_obj.netdevice].expanded
-        $scope.get_peer_penalty = (ndip_obj) ->
+        $scope.get_peer_cost = (ndip_obj) ->
             if ndip_obj.target of $scope.nd_lut
-                t_penalty = $scope.nd_lut[ndip_obj.target].penalty
+                t_cost = $scope.nd_lut[ndip_obj.target].penalty
             else
                 if ndip_obj.target of $scope.nd_peer_lut
-                    t_penalty = $scope.nd_peer_lut[ndip_obj.target].penalty
+                    t_cost = $scope.nd_peer_lut[ndip_obj.target].penalty
                 else
                     return "N/A"
-            return t_penalty + ndip_obj.peer.penalty + $scope.nd_lut[ndip_obj.netdevice].penalty
+            return t_cost + ndip_obj.peer.penalty + $scope.nd_lut[ndip_obj.netdevice].penalty
         $scope.get_peer_target = (ndip_obj) ->
             if ndip_obj.target of $scope.nd_lut
                 peer = $scope.nd_lut[ndip_obj.target]
