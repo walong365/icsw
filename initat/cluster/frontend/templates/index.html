@@ -8,6 +8,14 @@
 
 <div id="center_content">
     <h2 class="center">Please select a device from the tree on the left side</h2>
+    <div class="well">
+        <h3>Quicklinks</h3>
+        <ul class="list-group">
+            <li class="list-group-item">Change account settings (password)
+                <a href="{% url 'user:account_info' %}" class="btn btn-primary">{% trans "Account Info" %}</a>
+            </li>
+        </ul>
+    </div>
 </div>
 <div id="center_deviceinfo">
 </div>

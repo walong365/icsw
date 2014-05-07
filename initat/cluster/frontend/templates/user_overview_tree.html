@@ -45,7 +45,7 @@
                 <td><input type="button" class="btn btn-xs btn-danger" value="delete" ng-click="delete_permission(perm)"></input></td>
             </tr>
             <tr ng-repeat="perm in get_object_permission_set()">
-                <td>local</td>'
+                <td>local</td>
                 <td>{{ perm.csw_object_permission.csw_permission | array_lookup:csw_permission_list:'name' }}</td>
                 <td>{{ get_perm_level(perm) }}</td>
                 <td>{{ get_perm_object(perm) }}</td>
