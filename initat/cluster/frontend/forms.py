@@ -1207,6 +1207,11 @@ class mon_service_templ_form(ModelForm):
                 css_class="row",
             ),
             Fieldset(
+                "Freshness settings",
+                Field("check_freshness"),
+                Field("freshness_threshold"),
+            ),
+            Fieldset(
                 "Flap settings",
                 Field("flap_detection_enabled"),
             ),
@@ -1393,6 +1398,11 @@ class mon_device_templ_form(ModelForm):
                     css_class="col-md-4",
                 ),
                 css_class="row",
+            ),
+            Fieldset(
+                "Freshness settings",
+                Field("check_freshness"),
+                Field("freshness_threshold"),
             ),
             Fieldset(
                 "Flap settings",
