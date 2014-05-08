@@ -42,6 +42,16 @@ livestatus_templ = """
                         ng-class="get_mds_class(entry[0])"
                         ng-value="entry[1]"
                         ng-click="toggle_mds(entry[0])"
+                        title="{{ entry[3] }}"
+                    >
+                    </input>
+                </div>
+                <div class="btn-group">
+                    <input ng-repeat="entry in sh_states" type="button"
+                        ng-class="get_shs_class(entry[0])"
+                        ng-value="entry[1]"
+                        ng-click="toggle_shs(entry[0])"
+                        title="{{ entry[3] }}"
                     >
                     </input>
                 </div>
@@ -351,10 +361,14 @@ device_livestatus_module.controller("livestatus_ctrl", ["$scope", "$compile", "$
         ]
         # int_state, str_state, default
         $scope.md_states = [
-            [0, "O", true]
-            [1, "W", true]
-            [2, "C", true]
-            [3, "U", true]
+            [0, "O", true, "show OK states"]
+            [1, "W", true, "show warning states"]
+            [2, "C", true, "show critcal states"]
+            [3, "U", true, "show unknown states"]
+        ]
+        $scope.sh_states = [
+            [0, "S", true, "show soft states"]
+            [1, "H", true, "show hard states"]
         ]
         $scope.so_enabled = {}
         for entry in $scope.show_options
@@ -362,14 +376,22 @@ device_livestatus_module.controller("livestatus_ctrl", ["$scope", "$compile", "$
         $scope.mds_enabled = {}
         for entry in $scope.md_states
             $scope.mds_enabled[entry[0]] = entry[2]
+        $scope.shs_enabled = {}
+        for entry in $scope.sh_states
+            $scope.shs_enabled[entry[0]] = entry[2]
         $scope.get_so_class = (short) ->
             return if $scope.so_enabled[short] then "btn btn-xs btn-success" else "btn btn-xs"
         $scope.toggle_so = (short) ->
             $scope.so_enabled[short] = !$scope.so_enabled[short]
         $scope.get_mds_class = (int_state) ->
             return if $scope.mds_enabled[int_state] then "btn btn-xs " + {0 : "btn-success", 1 : "btn-warning", 2 : "btn-danger", 3 : "btn-danger"}[int_state] else "btn btn-xs"
+        $scope.get_shs_class = (int_state) ->
+            return if $scope.shs_enabled[int_state] then "btn btn-xs btn-success" else "btn btn-xs"
         $scope.toggle_mds = (int_state) ->
             $scope.mds_enabled[int_state] = !$scope.mds_enabled[int_state]
+            $scope.md_filter_changed()
+        $scope.toggle_shs = (int_state) ->
+            $scope.shs_enabled[int_state] = !$scope.shs_enabled[int_state]
             $scope.md_filter_changed()
         $scope.new_devsel = (_dev_sel, _devg_sel) ->
             #pre_sel = (dev.idx for dev in $scope.devices when dev.expanded)
@@ -588,6 +610,8 @@ device_livestatus_module.controller("livestatus_ctrl", ["$scope", "$compile", "$
         $scope.check_filter = (entry) ->
             show = true
             if not $scope.mds_enabled[entry.state]
+                show = false
+            if not $scope.shs_enabled[entry.state_type]
                 show = false
             if $scope.md_filter_str
                 if not $filter("filter")([entry], $scope.md_filter_str).length
