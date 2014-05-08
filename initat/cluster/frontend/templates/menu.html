@@ -27,9 +27,15 @@
             <li ng-show="CLUSTER_LICENSE.boot || CLUSTER_LICENSE.package" class="dropdown">
                 <a class="dropdown-toggle" data-toggle="dropdown">{% trans "Cluster" %} <b class="caret"></b></a>
                 <ul class="dropdown-menu">
+                    {% if ROUTING_TYPES.mother %}
                     <li ng-show="CLUSTER_LICENSE.boot"><a href="{% url 'boot:show_boot' %}">{% trans "Nodeboot" %}</a></li>
+                    {% endif %}
+                    {% if ROUTING_TYPES.package %}
                     <li ng-show="CLUSTER_LICENSE.package && check_perm('package.package_install')"><a href="{% url 'pack:repo_overview' %}">{% trans "Package install" %}</a></li>
+                    {% endif %}
+                    {% if ROUTING_TYPES.mother or ROUTING_TYPES.package %}
                     <li ng-show="CLUSTER_LICENSE.boot" class="divider"></li>
+                    {% endif %}
                     <li ng-show="CLUSTER_LICENSE.boot"><a href="{% url 'setup:image_overview' %}">{% trans "Image overview" %}</a></li>
                     <li ng-show="CLUSTER_LICENSE.boot"><a href="{% url 'setup:kernel_overview' %}">{% trans "Kernel overview" %}</a></li>
                     <li ng-show="CLUSTER_LICENSE.boot"><a href="{% url 'setup:partition_overview' %}">{% trans "Partition overview" %}</a></li>
@@ -54,10 +60,12 @@
                     <li><a href="{% url 'mon:call_icinga' %}" target="_blank">{% trans "Icinga (new tab)" %}</a></li>
                     <li ng-show="check_perm('mon_check_command.setup_monitoring')" class="divider"></li>
                     <li ng-show="check_perm('mon_check_command.setup_monitoring')"><a href="{% url 'mon:build_info' %}">{% trans "Build Info" %}</a></li>
+{% if ROUTING_TYPES.md_config %}                    
                     <li><a href="{% url 'mon:livestatus' %}">{% trans "Livestatus" %}</a></li>
                     <li ng-show="check_perm('mon_check_command.setup_monitoring')" class="text-center">
                         <input id="create_monitoring_config" type="button" class="btn btn-success" value="rebuild config" ng-click="rebuild_config()"/>
                     </li>
+{% endif %}
                 </ul>
             </li>
             <li ng-show="CLUSTER_LICENSE.rms" class="dropdown">
