@@ -106,6 +106,9 @@ class srv_type_routing(object):
             self._local_device = device.objects.get(Q(pk=self._resolv_dict["_local_device"][0]))
     def has_type(self, srv_type):
         return srv_type in self._resolv_dict
+    @property
+    def routing_types(self):
+        return [key for key in self._resolv_dict.keys() if not key.startswith("_")]
     def get_connection_string(self, srv_type, server_id=None):
         if srv_type in self._resolv_dict:
             # server list
