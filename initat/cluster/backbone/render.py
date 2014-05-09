@@ -49,13 +49,13 @@ class render_me(object):
             _user = {"idx" : self.request.user.pk, "pk" : self.request.user.pk}
             _num_bg_jobs = background_job.objects.exclude(Q(state__in=["done", "timeout", "ended", "merged"])).count()
             # routing info
-            _routing_types = {key: True for key in routing.srv_type_routing().routing_types}
+            _service_types = {key: True for key in routing.srv_type_routing().service_types}
         else:
             gp_dict = {}
             op_dict = {}
             _user = {}
             _num_bg_jobs = 0
-            _routing_types = {}
+            _service_types = {}
         # license cache
         cur_clc = cluster_license_cache()
         # import pprint
@@ -63,7 +63,7 @@ class render_me(object):
         self.my_dict["GLOBAL_PERMISSIONS"] = json.dumps(gp_dict)
         self.my_dict["OBJECT_PERMISSIONS"] = json.dumps(op_dict)
         # store routing types as json
-        self.my_dict["ROUTING_TYPES"] = json.dumps(_routing_types)
+        self.my_dict["SERVICE_TYPES"] = json.dumps(_service_types)
         # store as json for angular
         self.my_dict["CLUSTER_LICENSE"] = json.dumps(cur_clc.licenses)
         # store as dict for django templates

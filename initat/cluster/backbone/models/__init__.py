@@ -44,12 +44,12 @@ from initat.cluster.backbone.signals import user_changed, group_changed, bootset
 # from initat.cluster.backbone.models.partition import * # @UnusedWildImport
 
 LICENSE_CAPS = [
-    ("monitor", "Monitoring services"),
-    ("monext" , "Extended monitoring services"),
-    ("boot"   , "boot/config facility for nodes"),
-    ("package", "Package installation"),
-    ("rms"    , "Resource Management system"),
-    ("docu"   , "show documentation"),
+    ("monitor", "Monitoring services", ["md-config"]),
+    ("monext" , "Extended monitoring services", ["md-config"]),
+    ("boot"   , "boot/config facility for nodes", ["mother"]),
+    ("package", "Package installation", ["package"]),
+    ("rms"    , "Resource Management system", ["rms"]),
+    ("docu"   , "show documentation", []),
 ]
 
 ALLOWED_CFS = ["MAX", "MIN", "AVERAGE"]
@@ -1857,12 +1857,16 @@ class cluster_setting_serializer(serializers.ModelSerializer):
 
 class cluster_license_cache(object):
     def __init__(self, force=False):
-        self.__CLC_NAME = "__ICSW_CLC"
+        self.__CLC_NAME = "__ICSW_CLCV2"
         _cur_c = cache.get(self.__CLC_NAME)
-        _lic_dict = {_name : False for _name, _descr in LICENSE_CAPS}
+        _lic_dict = {
+            _name : {
+                "enabled"     : False,
+                "services"    : _srvs,
+                "description" : _descr} for _name, _descr, _srvs in LICENSE_CAPS}
         if not _cur_c or force:
             for cur_lic in cluster_license.objects.filter(Q(cluster_setting__name="GLOBAL")):
-                _lic_dict[cur_lic.name] = cur_lic.enabled
+                _lic_dict[cur_lic.name]["enabled"] = cur_lic.enabled
             cache.set(self.__CLC_NAME, marshal.dumps(_lic_dict), 300)
         else:
             _lic_dict.update(marshal.loads(_cur_c))
