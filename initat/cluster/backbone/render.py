@@ -64,6 +64,9 @@ class render_me(object):
         self.my_dict["OBJECT_PERMISSIONS"] = json.dumps(op_dict)
         # store routing types as json
         self.my_dict["SERVICE_TYPES"] = json.dumps(_service_types)
+        # add transformed dict ( md-config -> md_config )
+        _service_types.update({key.replace("-", "_") : value for key, value in _service_types.iteritems()})
+        self.my_dict["DJANGO_SERVICE_TYPES"] = _service_types
         # store as json for angular
         self.my_dict["CLUSTER_LICENSE"] = json.dumps(cur_clc.licenses)
         # store as dict for django templates
