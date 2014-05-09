@@ -75,11 +75,11 @@ class device_info
             <li><a href='#di_network'>Network#{addon_text}</a></li>
             <li><a href='#config'>Config#{addon_text}</a></li>
             <li><a href='#disk'>Disk#{addon_text}</a></li>
-{% if ROUTING_TYPES.md_config %}
+{% if SERVICE_TYPES.md_config %}
             <li><a href='#livestatus'>Livestatus#{addon_text}</a></li>
             <li><a href='#monconfig'>MonConfig#{addon_text}</a></li>
 {% endif %}
-{% if ROUTING_TYPES.grapher %}
+{% if SERVICE_TYPES.grapher %}
             <li><a href='#rrd'>Graphs#{addon_text}</a></li>
 {% endif %}
         </ul>
@@ -151,7 +151,7 @@ urn:uuid:{{ _edit_obj.uuid }}
                     </div>
                 </div>
             </div>
-{% if ROUTING_TYPES.md_config %}
+{% if SERVICE_TYPES.md_config %}
             <div class="tab-pane" id="livestatus">
                 <div id='icsw.device.livestatus'>
                     <div ng-controller='livestatus_ctrl'>
@@ -169,7 +169,7 @@ urn:uuid:{{ _edit_obj.uuid }}
                 </div>
             </div>
 {% endif %}
-{% if ROUTING_TYPES.grapher %}
+{% if SERVICE_TYPES.grapher %}
             <div class="tab-pane" id="rrd">
                 <div id='icsw.device.rrd'>
                     <div ng-controller='rrd_ctrl'>

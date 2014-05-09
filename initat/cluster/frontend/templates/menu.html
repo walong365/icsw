@@ -24,21 +24,21 @@
                     <li ng-show="check_perm('device.change_config')"><a href="{% url 'device:show_configs' %}">{% trans "Device configurations" %}</a></li>
                 </ul>
             </li>
-            <li ng-show="CLUSTER_LICENSE.boot || CLUSTER_LICENSE.package" class="dropdown">
+            <li ng-show="CLUSTER_LICENSE.boot.enabled || CLUSTER_LICENSE.package.enabled" class="dropdown">
                 <a class="dropdown-toggle" data-toggle="dropdown">{% trans "Cluster" %} <b class="caret"></b></a>
                 <ul class="dropdown-menu">
-                    {% if ROUTING_TYPES.mother %}
-                    <li ng-show="CLUSTER_LICENSE.boot"><a href="{% url 'boot:show_boot' %}">{% trans "Nodeboot" %}</a></li>
+                    {% if SERVICE_TYPES.mother %}
+                    <li ng-show="CLUSTER_LICENSE.boot.enabled"><a href="{% url 'boot:show_boot' %}">{% trans "Nodeboot" %}</a></li>
                     {% endif %}
-                    {% if ROUTING_TYPES.package %}
-                    <li ng-show="CLUSTER_LICENSE.package && check_perm('package.package_install')"><a href="{% url 'pack:repo_overview' %}">{% trans "Package install" %}</a></li>
+                    {% if SERVICE_TYPES.package %}
+                    <li ng-show="CLUSTER_LICENSE.package.enabled && check_perm('package.package_install')"><a href="{% url 'pack:repo_overview' %}">{% trans "Package install" %}</a></li>
                     {% endif %}
-                    {% if ROUTING_TYPES.mother or ROUTING_TYPES.package %}
-                    <li ng-show="CLUSTER_LICENSE.boot" class="divider"></li>
+                    {% if SERVICE_TYPES.mother or SERVICE_TYPES.package %}
+                    <li ng-show="CLUSTER_LICENSE.boot.enabled" class="divider"></li>
                     {% endif %}
-                    <li ng-show="CLUSTER_LICENSE.boot"><a href="{% url 'setup:image_overview' %}">{% trans "Image overview" %}</a></li>
-                    <li ng-show="CLUSTER_LICENSE.boot"><a href="{% url 'setup:kernel_overview' %}">{% trans "Kernel overview" %}</a></li>
-                    <li ng-show="CLUSTER_LICENSE.boot"><a href="{% url 'setup:partition_overview' %}">{% trans "Partition overview" %}</a></li>
+                    <li ng-show="CLUSTER_LICENSE.boot.enabled"><a href="{% url 'setup:image_overview' %}">{% trans "Image overview" %}</a></li>
+                    <li ng-show="CLUSTER_LICENSE.boot.enabled"><a href="{% url 'setup:kernel_overview' %}">{% trans "Kernel overview" %}</a></li>
+                    <li ng-show="CLUSTER_LICENSE.boot.enabled"><a href="{% url 'setup:partition_overview' %}">{% trans "Partition overview" %}</a></li>
                 </ul>
             </li>
             <li ng-show="check_perm('group.group_admin')" class="dropdown">
@@ -47,20 +47,20 @@
                     <li><a href="{% url 'user:overview' %}">{% trans "Overview" %}</a></li>
                 </ul>
             </li>
-            <li ng-show="CLUSTER_LICENSE.monitor" class="dropdown">
+            <li ng-show="CLUSTER_LICENSE.monitor.enabled" class="dropdown">
                 <a class="dropdown-toggle" data-toggle="dropdown">{% trans "Monitoring" %} <b class="caret"></b></a>
                 <ul class="dropdown-menu">
                     <li ng-show="check_perm('mon_check_command.setup_monitoring')"><a href="{% url 'mon:setup' %}">{% trans "Basic setup" %}</a></li>
                     <li ng-show="check_perm('mon_check_command.setup_monitoring') && check_perm('device.change_monitoring')"><a href="{% url 'mon:device_config' %}">{% trans "Device settings" %}</a></li>
-                    <li ng-show="CLUSTER_LICENSE.monext && check_perm('mon_check_command.setup_monitoring')" class="divider"></li>
-                    <li ng-show="CLUSTER_LICENSE.monext && check_perm('mon_check_command.setup_monitoring')"><a href="{% url 'mon:setup_cluster' %}">{% trans "Cluster / Dependency setup" %}</a></li>
-                    <li ng-show="CLUSTER_LICENSE.monext && check_perm('mon_check_command.setup_monitoring')"><a href="{% url 'mon:setup_escalation' %}">{% trans "Escalation setup" %}</a></li>
+                    <li ng-show="CLUSTER_LICENSE.monext.enabled && check_perm('mon_check_command.setup_monitoring')" class="divider"></li>
+                    <li ng-show="CLUSTER_LICENSE.monext.enabled && check_perm('mon_check_command.setup_monitoring')"><a href="{% url 'mon:setup_cluster' %}">{% trans "Cluster / Dependency setup" %}</a></li>
+                    <li ng-show="CLUSTER_LICENSE.monext.enabled && check_perm('mon_check_command.setup_monitoring')"><a href="{% url 'mon:setup_escalation' %}">{% trans "Escalation setup" %}</a></li>
                     <li ng-show="check_perm('mon_check_command.setup_monitoring')" class="divider"></li>
                     <li><a href="{% url 'mon:call_icinga' %}">{% trans "Icinga (replace)" %}</a></li>
                     <li><a href="{% url 'mon:call_icinga' %}" target="_blank">{% trans "Icinga (new tab)" %}</a></li>
                     <li ng-show="check_perm('mon_check_command.setup_monitoring')" class="divider"></li>
                     <li ng-show="check_perm('mon_check_command.setup_monitoring')"><a href="{% url 'mon:build_info' %}">{% trans "Build Info" %}</a></li>
-{% if ROUTING_TYPES.md_config %}                    
+{% if SERVICE_TYPES.md_config %}                    
                     <li><a href="{% url 'mon:livestatus' %}">{% trans "Livestatus" %}</a></li>
                     <li ng-show="check_perm('mon_check_command.setup_monitoring')" class="text-center">
                         <input id="create_monitoring_config" type="button" class="btn btn-success" value="rebuild config" ng-click="rebuild_config()"/>
@@ -68,7 +68,7 @@
 {% endif %}
                 </ul>
             </li>
-            <li ng-show="CLUSTER_LICENSE.rms" class="dropdown">
+            <li ng-show="CLUSTER_LICENSE.rms.enabled" class="dropdown">
                 <a class="dropdown-toggle" data-toggle="dropdown">{% trans "RMS" %} <b class="caret"></b></a>
                 <ul class="dropdown-menu">
                     <li><a href="{% url 'rms:overview' %}">{% trans "RMS overview" %}</a></li>
