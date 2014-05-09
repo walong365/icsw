@@ -55,19 +55,19 @@ class Command(BaseCommand):
         cur_gs = factories.ClusterSetting(name="GLOBAL", secret_key=SECRET_KEY, login_screen_type=LOGIN_SCREEN_TYPE)
         LICENSE_FILE = "/etc/sysconfig/cluster/cluster_license"
         # default: disable all
-        _lic_dict = {name : False for name, _descr in LICENSE_CAPS}
+        _lic_dict = {name : False for name, _descr, _srv_list in LICENSE_CAPS}
         try:
             cur_lic = etree.fromstring(file(LICENSE_FILE, "r").read())
         except:
             pass
         else:
-            for lic_name, _lic_descr in LICENSE_CAPS:
+            for lic_name, _lic_descr, _srv_list in LICENSE_CAPS:
                 _lic = cur_lic.xpath(".//license[@short='{}']".format(lic_name))
                 if len(_lic):
                     _lic = _lic[0]
                     _lic_dict[lic_name] = True if _lic.get("enabled", "no").lower() in ["yes"] else False
         # create fixtures
-        for lic_name, lic_descr in LICENSE_CAPS:
+        for lic_name, lic_descr, _srv_list in LICENSE_CAPS:
             factories.ClusterLicense(cluster_setting=cur_gs, name=lic_name, description=lic_descr, enabled=_lic_dict[lic_name])
         # log source
         factories.LogSource(identifier="user", name="Cluster user", description="Clusteruser")
