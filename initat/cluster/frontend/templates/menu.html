@@ -27,13 +27,9 @@
             <li ng-show="CLUSTER_LICENSE.boot.enabled || CLUSTER_LICENSE.package.enabled" class="dropdown">
                 <a class="dropdown-toggle" data-toggle="dropdown">{% trans "Cluster" %} <b class="caret"></b></a>
                 <ul class="dropdown-menu">
-                    {% if SERVICE_TYPES.mother %}
-                    <li ng-show="CLUSTER_LICENSE.boot.enabled"><a href="{% url 'boot:show_boot' %}">{% trans "Nodeboot" %}</a></li>
-                    {% endif %}
-                    {% if SERVICE_TYPES.package %}
-                    <li ng-show="CLUSTER_LICENSE.package.enabled && check_perm('package.package_install')"><a href="{% url 'pack:repo_overview' %}">{% trans "Package install" %}</a></li>
-                    {% endif %}
-                    {% if SERVICE_TYPES.mother or SERVICE_TYPES.package %}
+                    <li ng-show="SERVICE_TYPES.mother && CLUSTER_LICENSE.boot.enabled"><a href="{% url 'boot:show_boot' %}">{% trans "Nodeboot" %}</a></li>
+                    <li ng-show="SERVICE_TYPES.package && CLUSTER_LICENSE.package.enabled && check_perm('package.package_install')"><a href="{% url 'pack:repo_overview' %}">{% trans "Package install" %}</a></li>
+                    {% if DJANGO_SERVICE_TYPES.mother or DJANGO_SERVICE_TYPES.package %}
                     <li ng-show="CLUSTER_LICENSE.boot.enabled" class="divider"></li>
                     {% endif %}
                     <li ng-show="CLUSTER_LICENSE.boot.enabled"><a href="{% url 'setup:image_overview' %}">{% trans "Image overview" %}</a></li>
@@ -60,7 +56,7 @@
                     <li><a href="{% url 'mon:call_icinga' %}" target="_blank">{% trans "Icinga (new tab)" %}</a></li>
                     <li ng-show="check_perm('mon_check_command.setup_monitoring')" class="divider"></li>
                     <li ng-show="check_perm('mon_check_command.setup_monitoring')"><a href="{% url 'mon:build_info' %}">{% trans "Build Info" %}</a></li>
-{% if SERVICE_TYPES.md_config %}                    
+{% if DJANGO_SERVICE_TYPES.md_config %}                    
                     <li><a href="{% url 'mon:livestatus' %}">{% trans "Livestatus" %}</a></li>
                     <li ng-show="check_perm('mon_check_command.setup_monitoring')" class="text-center">
                         <input id="create_monitoring_config" type="button" class="btn btn-success" value="rebuild config" ng-click="rebuild_config()"/>
@@ -146,6 +142,7 @@ menu_controller = menu_module.controller("menu_base", ["$scope", "$timeout", "$w
         $scope.GLOBAL_PERMISSIONS = $window.GLOBAL_PERMISSIONS
         $scope.OBJECT_PERMISSIONS = $window.OBJECT_PERMISSIONS
         $scope.NUM_BACKGROUND_JOBS = $window.NUM_BACKGROUND_JOBS
+        $scope.SERVICE_TYPES = $window.SERVICE_TYPES
         $scope.HANDBOOK_PRESENT = {% if settings.HANDBOOK_PRESENT %}1{% else %}0{% endif %}
         $scope.check_perm = (p_name) ->
             if p_name.split(".").length == 2
