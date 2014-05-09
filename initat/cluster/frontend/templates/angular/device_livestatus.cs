@@ -161,7 +161,7 @@ serviceinfo_templ = """
         <div ng-switch-when="host">
             <ul class="list-group">
                 <li class="list-group-item">Devicegroup<span class="pull-right">{{ service.group_name }}</span></li>
-                <li class="list-group-item">Device<span class="pull-right">{{ service.host_name }}</span></li>
+                <li class="list-group-item">Device<span class="pull-right">{{ service.host_name }} ({{ service.address }})</span></li>
                 <li class="list-group-item">Output<span class="pull-right">{{ service.plugin_output }}</span></li>
                 <li class="list-group-item">State<span ng-class="get_state_class(service)">{{ get_state_string(service) }}</span></li>
                 <li class="list-group-item">State type<span class="pull-right">{{ get_state_type(service) }}</span></li>

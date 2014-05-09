@@ -208,7 +208,7 @@
     <td><input type="button" class="btn btn-danger btn-xs" ng-show="delete_ok(obj)" ng-click="delete(obj)" value="delete"/></td>
 </script>
 
-<tabset>
+<tabset ng-cloack>
     <tab heading="Host Clusters">
         <div ng-controller="mon_host_cluster_base">
             <div ng-controller="mon_host_cluster">

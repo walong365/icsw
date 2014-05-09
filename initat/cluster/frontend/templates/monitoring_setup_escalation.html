@@ -86,7 +86,7 @@
     <td><input type="button" class="btn btn-danger btn-xs" ng-show="delete_ok(obj)" ng-click="delete(obj)" value="delete"/></td>
 </script>
 
-<tabset>
+<tabset ng-cloack>
     <tab heading="Service escalation">
         <div ng-controller="mon_service_esc_templ_base">
             <div ng-controller="mon_service_esc_templ">

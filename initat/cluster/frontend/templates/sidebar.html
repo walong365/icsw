@@ -1,6 +1,6 @@
 {% load i18n coffeescript %}
 
-<div id="icsw.sidebar">
+<div id="icsw.sidebar" ng-cloack>
     <div ng-controller="sidebar_base">
         <div class="input-group">
             <input type="text" class="form-control" ng-disabled="is_loading" ng-model="searchstr" placeholder="search ..." ng-change="update_search()"></input>
