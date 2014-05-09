@@ -25,7 +25,7 @@ from django.core.management.base import BaseCommand
 from django.db.models import Q
 from django.utils.crypto import get_random_string
 from initat.cluster.backbone import factories
-from initat.cluster.backbone.models import LICENSE_CAPS
+from initat.cluster.backbone.models import ALL_LICENSES, get_license_descr
 from lxml import etree # @UnresolvedImport
 from lxml.builder import E # @UnresolvedImport
 import os
@@ -55,20 +55,20 @@ class Command(BaseCommand):
         cur_gs = factories.ClusterSetting(name="GLOBAL", secret_key=SECRET_KEY, login_screen_type=LOGIN_SCREEN_TYPE)
         LICENSE_FILE = "/etc/sysconfig/cluster/cluster_license"
         # default: disable all
-        _lic_dict = {name : False for name, _descr, _srv_list in LICENSE_CAPS}
+        _lic_dict = {name : False for name in ALL_LICENSES}
         try:
             cur_lic = etree.fromstring(file(LICENSE_FILE, "r").read())
         except:
             pass
         else:
-            for lic_name, _lic_descr, _srv_list in LICENSE_CAPS:
+            for lic_name in ALL_LICENSES:
                 _lic = cur_lic.xpath(".//license[@short='{}']".format(lic_name))
                 if len(_lic):
                     _lic = _lic[0]
                     _lic_dict[lic_name] = True if _lic.get("enabled", "no").lower() in ["yes"] else False
         # create fixtures
-        for lic_name, lic_descr, _srv_list in LICENSE_CAPS:
-            factories.ClusterLicense(cluster_setting=cur_gs, name=lic_name, description=lic_descr, enabled=_lic_dict[lic_name])
+        for lic_name in ALL_LICENSES:
+            factories.ClusterLicense(cluster_setting=cur_gs, name=lic_name, description=get_license_descr(name), enabled=_lic_dict[lic_name])
         # log source
         factories.LogSource(identifier="user", name="Cluster user", description="Clusteruser")
         # device type

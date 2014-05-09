@@ -43,6 +43,7 @@ from initat.cluster.backbone.signals import user_changed, group_changed, bootset
 # do not use, problems with import
 # from initat.cluster.backbone.models.partition import * # @UnusedWildImport
 
+# attention: this list is used in create_fixtures.py
 LICENSE_CAPS = [
     ("monitor", "Monitoring services", ["md-config"]),
     ("monext" , "Extended monitoring services", ["md-config"]),
@@ -51,6 +52,11 @@ LICENSE_CAPS = [
     ("rms"    , "Resource Management system", ["rms"]),
     ("docu"   , "show documentation", []),
 ]
+
+ALL_LICENSES = [name for name, _descr, _srv in LICENSE_CAPS]
+
+def get_license_descr(name):
+    return [_descr for _name, _descr, _srv in LICENSE_CAPS if name == _name][0]
 
 ALLOWED_CFS = ["MAX", "MIN", "AVERAGE"]
 
