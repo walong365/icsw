@@ -22,7 +22,7 @@
                     <th>Name</th>
                     <th>Description</th>
                     <th>Enabled</th>
-                    <th colspan="10">Services</th>
+                    <th colspan="10">Services needed</th>
                 </tr>
             </thead>
             <tbody>
@@ -32,6 +32,7 @@
                     <td>
                         <input type="button" ng-class="get_lic_class(lic)" ng-value="get_lic_value(lic)" ng-click="change_lic(lic)"></input>
                     </td>
+                    <td ng-show="get_services(lic.name).length == 0">---</td>
                     <td ng-repeat="srv in get_services(lic.name)" ng-class="get_service_state(srv)">{{ srv }}</td>
                 </tr>
             </tbody>
