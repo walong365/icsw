@@ -272,29 +272,30 @@ class data_store(object):
                 "merging %s (%s empty)" % (
                     logging_tools.get_plural("node result", len(res_list)),
                     logging_tools.get_plural("entry", empty_nodes)))
-            first_mv = res_list[0][0]
-            ref_dict = {"mve" : {}, "value" : {}}
-            for val_el in first_mv.xpath(".//*", smart_strings=False):
-                if val_el.tag in ["value", "mve"]:
-                    ref_dict[val_el.tag][val_el.get("name")] = val_el
-                val_el.attrib["devices"] = "1"
-            # pprint.pprint(ref_dict)
-            for other_node in res_list[1:]:
-                if len(other_node):
-                    other_mv = other_node[0]
-                    for add_el in other_mv.xpath(".//mve|.//value", smart_strings=False):
-                        add_tag, add_name = (add_el.tag, add_el.get("name"))
-                        ref_el = ref_dict[add_tag].get(add_name)
-                        if ref_el is not None:
-                            new_count = int(ref_el.get("devices")) + 1
-                            while "devices" in ref_el.attrib:
-                                if int(ref_el.get("devices")) < new_count:
-                                    ref_el.attrib["devices"] = "%d" % (new_count)
-                                # increase all above me
-                                ref_el = ref_el.getparent()
-                        else:
-                            print "***", add_tag, add_name
-                other_node.getparent().remove(other_node)
+            if len(res_list):
+                first_mv = res_list[0][0]
+                ref_dict = {"mve" : {}, "value" : {}}
+                for val_el in first_mv.xpath(".//*", smart_strings=False):
+                    if val_el.tag in ["value", "mve"]:
+                        ref_dict[val_el.tag][val_el.get("name")] = val_el
+                    val_el.attrib["devices"] = "1"
+                # pprint.pprint(ref_dict)
+                for other_node in res_list[1:]:
+                    if len(other_node):
+                        other_mv = other_node[0]
+                        for add_el in other_mv.xpath(".//mve|.//value", smart_strings=False):
+                            add_tag, add_name = (add_el.tag, add_el.get("name"))
+                            ref_el = ref_dict[add_tag].get(add_name)
+                            if ref_el is not None:
+                                new_count = int(ref_el.get("devices")) + 1
+                                while "devices" in ref_el.attrib:
+                                    if int(ref_el.get("devices")) < new_count:
+                                        ref_el.attrib["devices"] = "%d" % (new_count)
+                                    # increase all above me
+                                    ref_el = ref_el.getparent()
+                            else:
+                                print "***", add_tag, add_name
+                    other_node.getparent().remove(other_node)
         # print etree.tostring(res_list, pretty_print=True)
     def _expand_info(self, entry):
         info = entry.attrib["info"]

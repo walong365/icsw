@@ -140,7 +140,7 @@ class server_process(threading_tools.process_pool, threading_tools.operational_e
             for file_el in _struct.xml_vector.xpath(".//*[@file_name]", smart_strings=False):
                 f_name = file_el.attrib["file_name"]
                 if os.path.isfile(f_name):
-                    c_time = os.stat(f_name)[stat.ST_CTIME]
+                    c_time = os.stat(f_name)[stat.ST_MTIME]
                     stale = abs(cur_time - c_time) > MAX_DT
                     if stale and rrdtool:
                         # check via rrdtool
@@ -160,7 +160,7 @@ class server_process(threading_tools.process_pool, threading_tools.operational_e
                         disabled += 1
                     elif not is_active and not stale:
                         file_el.attrib["active"] = "1"
-                        disabled += 1
+                        enabled += 1
                 else:
                     self.log("file '{}' missing, disabling".format(file_el.attrib["file_name"]), logging_tools.LOG_LEVEL_ERROR)
                     file_el.attrib["active"] = "0"
