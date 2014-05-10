@@ -68,7 +68,7 @@ class Command(BaseCommand):
                     _lic_dict[lic_name] = True if _lic.get("enabled", "no").lower() in ["yes"] else False
         # create fixtures
         for lic_name in ALL_LICENSES:
-            factories.ClusterLicense(cluster_setting=cur_gs, name=lic_name, description=get_license_descr(name), enabled=_lic_dict[lic_name])
+            factories.ClusterLicense(cluster_setting=cur_gs, name=lic_name, description=get_license_descr(lic_name), enabled=_lic_dict[lic_name])
         # log source
         factories.LogSource(identifier="user", name="Cluster user", description="Clusteruser")
         # device type
