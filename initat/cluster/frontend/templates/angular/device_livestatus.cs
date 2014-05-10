@@ -314,7 +314,6 @@ device_livestatus_module.controller("livestatus_ctrl", ["$scope", "$compile", "$
                     # default (equal to system)
                     show_devs = []
             $scope.show_devs = show_devs
-            # console.log $scope.show_devs
             $scope.md_filter_changed()
         )
         $scope.parse_service = (srv) ->
@@ -686,7 +685,6 @@ device_livestatus_module.controller("livestatus_ctrl", ["$scope", "$compile", "$
                     .attr("font-size", "10pt")
                 svg = top_el.append("g").attr("class", "sunburst")
                     .attr("transform", "translate(#{width / 2},#{height / 2})")
-                #console.log svg
                 partition = d3.layout.partition()
                     .sort(null)
                     .size([2 * Math.PI, radius * radius])

@@ -173,7 +173,7 @@ device_rrd_module = angular.module("icsw.device.rrd", ["ngResource", "ngCookies"
 
 angular_module_setup([device_rrd_module])
 
-DT_FORM = "YYYY-MM-DD HH:mm"
+DT_FORM = "YYYY-MM-DD HH:mm ZZ"
 
 class pd_timerange
     constructor: (@name, @from, @to) ->
@@ -202,6 +202,7 @@ device_rrd_module.controller("rrd_ctrl", ["$scope", "$compile", "$filter", "$tem
             new pd_timerange("current year", moment().startOf("year"), moment().endOf("year"))
             new pd_timerange("last year", moment().subtract("year", 1).startOf("year"), moment().subtract("year", 1).endOf("year"))
         ]
+        moment().utc()
         $scope.dt_valid = true
         $scope.vector_valid = false
         $scope.to_date_mom = moment()
@@ -290,7 +291,6 @@ device_rrd_module.controller("rrd_ctrl", ["$scope", "$compile", "$filter", "$tem
                     cur_node._show_select = false
                 else
                     # value
-                    #console.log xml_node[0]
                     cur_node = $scope.g_tree.new_node({
                         folder : false
                         expand : false
