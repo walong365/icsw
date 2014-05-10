@@ -26,7 +26,7 @@ from initat.cluster.backbone.models import device
 from initat.rrd_grapher.config import global_config
 from lxml import etree # @UnresolvedImport
 from lxml.builder import E # @UnresolvedImport
-import datetime
+import dateutil.parser
 import logging_tools
 import os
 import pprint
@@ -169,6 +169,11 @@ class graph_var(object):
             "".join(["{:9s}".format(rep_name) for rep_name in ["min", "ave", "max", "latest", "total"]])
         )
 
+class RRDGraph(object):
+    def __init__(self, log_com, dev_pks, graph_keys, para_dict):
+        print "*", dev_pks, graph_keys, para_dict
+        pass
+
 class graph_process(threading_tools.process_obj, threading_tools.operational_error_mixin):
     def process_init(self):
         self.__log_template = logging_tools.get_logger(global_config["LOG_NAME"], global_config["LOG_DESTINATION"], zmq=True, context=self.zmq_context, init_logger=True)
@@ -215,8 +220,9 @@ class graph_process(threading_tools.process_obj, threading_tools.operational_err
         para_dict = dict([(key, int(value) if key in [] else value) for key, value in para_dict.iteritems()])
         for key in ["start_time", "end_time"]:
             # cast to datetime
-            para_dict[key] = datetime.datetime.strptime(para_dict[key], "%Y-%m-%d %H:%M")
-        para_dict["timeframe"] = abs((para_dict["end_time"] - para_dict["start_time"]).total_seconds())
+            para_dict[key] = dateutil.parser.parse(para_dict[key])
+        RRDGraph(self.log, dev_pks, graph_keys, para_dict)
+        timeframe = abs((para_dict["end_time"] - para_dict["start_time"]).total_seconds())
         graph_size = para_dict["size"]
         graph_width, graph_height = [int(value) for value in graph_size.split("x")]
         self.log("width / height : {:d} x {:d}".format(graph_width, graph_height))
@@ -229,7 +235,7 @@ class graph_process(threading_tools.process_obj, threading_tools.operational_err
                 os.path.join(self.graph_root, graph_name),
                 os.path.join("/{}/static/graphs/{}".format(settings.REL_SITE_ROOT, graph_name)),
             )
-            dt_1970 = datetime.datetime(1970, 1, 1)
+            dt_1970 = dateutil.parser.parse("1970-01-01 00:00 +0000")
             rrd_args = [
                     abs_file_loc,
                     "-E",
@@ -249,9 +255,9 @@ class graph_process(threading_tools.process_obj, threading_tools.operational_err
                     "-cBACK#ffffff",
                     "--end",
                     # offset to fix UTC, FIXME
-                    "{:d}".format(int((para_dict["end_time"] - dt_1970).total_seconds() - 1 * 3600)),
+                    "{:d}".format(int((para_dict["end_time"] - dt_1970).total_seconds())),
                     "--start",
-                    "{:d}".format(int((para_dict["start_time"] - dt_1970).total_seconds() - 1 * 3600)),
+                    "{:d}".format(int((para_dict["start_time"] - dt_1970).total_seconds())),
                     graph_var(None, "", graph_width=graph_width).header_line,
             ]
             graph_var.init(self.colorizer)
@@ -274,7 +280,7 @@ class graph_process(threading_tools.process_obj, threading_tools.operational_err
                     "{} ({}, {})".format(
                         tlk,
                         logging_tools.get_plural("DEF", graph_var.var_idx),
-                        logging_tools.get_diff_time_str(para_dict["timeframe"])),
+                        logging_tools.get_diff_time_str(timeframe)),
                 ])
                 try:
                     draw_result = rrdtool.graphv(*rrd_args)
