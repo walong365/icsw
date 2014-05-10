@@ -710,7 +710,7 @@ class cached_file(object):
                         content = open(self.__name, "r").read()
                     except:
                         self.log(
-                            "error reading from {}: {}".format(
+                            u"error reading from {}: {}".format(
                                 self.__name,
                                 get_except_info()),
                             logging_tools.LOG_LEVEL_ERROR)
