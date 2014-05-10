@@ -4,7 +4,11 @@
     </entry>
     <entry key="net">
         <range colortable='bupu9'/>
+        <modify key_match=".*rx.*" attribute="draw_type" value="AREA1"/>
+        <modify key_match=".*rx.*" attribute="transparency" value="100"/>
         <modify key_match=".*tx.*" attribute="invert" value="1"/>
+        <modify key_match=".*tx.*" attribute="draw_type" value="AREA1"/>
+        <modify key_match=".*tx.*" attribute="transparency" value="100"/>
         <modify key_match=".*err.*" attribute="draw_type" value="LINE2"/>
     </entry>
     <entry key="vms">
