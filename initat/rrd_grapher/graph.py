@@ -41,17 +41,23 @@ class colorizer(object):
     def __init__(self, log_com):
         self.log_com = log_com
         self.def_color_table = "dark28"
+        self._gc_base = global_config["GRAPHCONFIG_BASE"]
+        if not os.path.isdir(self._gc_base):
+            # not defined, set old value
+            self._gc_base = "/opt/cluster/share"
         self._read_files()
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
         self.log_com("[col] {}".format(what), log_level)
     def _read_files(self):
-        self.colortables = etree.fromstring(file(global_config["COLORTABLE_FILE"], "r").read())
+        _ct_file = os.path.join(self._gc_base, "color_tables.xml")
+        _cr_file = os.path.join(self._gc_base, "color_rules.xml")
+        self.colortables = etree.fromstring(file(_ct_file, "r").read())
         self.color_tables = {}
         for c_table in self.colortables.findall(".//colortable[@name]"):
             self.color_tables[c_table.get("name")] = ["#{:s}".format(color.get("rgb")) for color in c_table if self._check_color(color)]
-        self.log("read colortables from {}".format(global_config["COLORTABLE_FILE"]))
-        self.color_rules = etree.fromstring(file(global_config["COLORRULES_FILE"], "r").read())
-        self.log("read colorrules from {}".format(global_config["COLORRULES_FILE"]))
+        self.log("read colortables from {}".format(_ct_file))
+        self.color_rules = etree.fromstring(file(_cr_file, "r").read())
+        self.log("read colorrules from {}".format(_cr_file))
         self.match_re_keys = [
             (re.compile("^{}".format(entry.attrib["key"].replace(".", r"\."))),
              entry) for entry in self.color_rules.xpath(".//entry[@key]", smart_strings=False)]

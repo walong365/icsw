@@ -174,7 +174,8 @@ class data_store(object):
         entry.attrib["active"] = "1"
         entry.attrib["file_name"] = os.path.join(rrd_dir, self.store_name, "collserver", "icval-%s.rrd" % (entry.attrib["sane_name"]))
     def store(self):
-        file(self.data_file_name(), "wb").write(etree.tostring(self.xml_vector, pretty_print=True))
+        file(self.data_file_name(), "wb").write(etree.tostring(self.xml_vector))
+        # sync XML to grapher
         self.sync_to_grapher()
     def sync_to_grapher(self):
         data_store.process.send_to_process(
@@ -195,9 +196,12 @@ class data_store(object):
     def present_pks():
         return data_store.__devices.keys()
     def struct_xml_vector(self, mode):
+        """
+        rebuild the flat tree to a structured tree
+        """
         # mode is one of web or graph
         if mode not in ["web", "graph"]:
-            raise ValueError("mode '%s' is not correct" % (mode))
+            raise ValueError("mode '{}' is not correct".format(mode))
         web_mode = mode == "web"
         graph_mode = mode == "graph"
         cur_xml = self.xml_vector
@@ -236,7 +240,7 @@ class data_store(object):
                 v_key = sub_val.get("key", sub_val.get("name"))
                 sr_node = self._create_struct(xml_vect, "%s.%s" % (pde_key, v_key))
                 new_val.attrib["part"] = new_val.attrib["name"]
-                new_val.attrib["name"] = "pde:%s.%s%s" % (
+                new_val.attrib["name"] = "pde:{}.{}{}".format(
                     sr_node.get("name", sr_node.get("part")),
                     new_val.get("name"),
                     ti_str,
@@ -304,9 +308,9 @@ class data_store(object):
             info = info.replace("$%d" % (idx + 1), parts[idx])
         return info
     @staticmethod
-    def get_rrd_xml(dev_pk, sort=False):
-        if sort:
-            return data_store.__devices[dev_pk].struct_xml_vector("web")
+    def get_rrd_xml(dev_pk, mode=None):
+        if mode:
+            return data_store.__devices[dev_pk].struct_xml_vector(mode=mode)
         else:
             # do a deepcopy (just to be sure)
             return copy.deepcopy(data_store.__devices[dev_pk].xml_vector)

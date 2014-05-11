@@ -266,7 +266,8 @@ class server_process(threading_tools.process_pool, threading_tools.operational_e
         for dev_pk in pk_list:
             cur_res = E.node_result(pk="{:d}".format(dev_pk))
             if data_store.has_rrd_xml(dev_pk):
-                cur_res.append(data_store.get_rrd_xml(dev_pk, sort=True))
+                # web mode (sorts entries)
+                cur_res.append(data_store.get_rrd_xml(dev_pk, mode="web"))
             else:
                 self.log("no rrd_xml found for device {:d}".format(dev_pk), logging_tools.LOG_LEVEL_WARN)
             node_results.append(cur_res)

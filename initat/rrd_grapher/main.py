@@ -68,8 +68,7 @@ def main():
         ("SERVER_PATH"         , configfile.bool_c_var(False, help_string="set server_path to store RRDs [%(default)s]", only_commandline=True)),
         ("VERBOSE"             , configfile.int_c_var(0, help_string="set verbose level [%(default)d]", short_options="v", only_commandline=True)),
         ("RRD_DIR"             , configfile.str_c_var("/var/cache/rrd", help_string="directory of rrd-files on local disc")),
-        ("COLORTABLE_FILE"     , configfile.str_c_var("/opt/cluster/share/colortables.xml", help_string="name of colortable file")),
-        ("COLORRULES_FILE"     , configfile.str_c_var("/opt/cluster/share/color_rules.xml", help_string="name of color_rules file")),
+        ("GRAPHCONFIG_BASE"    , configfile.str_c_var("/opt/cluster/share/rrd_grapher/", help_string="name of colortable file")),
     ])
     global_config.parse_file()
     _options = global_config.handle_commandline(
