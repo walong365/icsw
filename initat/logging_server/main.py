@@ -161,6 +161,7 @@ class main_process(threading_tools.process_pool):
                 (zmq.IDENTITY, my_0mq_id),
                 (zmq.SNDHWM, 256),
                 (zmq.RCVHWM, 256),
+                (zmq.LINGER, 10),
                 (zmq.TCP_KEEPALIVE, 1),
                 (zmq.TCP_KEEPALIVE_IDLE, 300)]:
                 _forward.setsockopt(flag, value)
