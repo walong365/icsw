@@ -494,8 +494,11 @@ class configuration(object):
                                     # interpret using eval
                                     if cur_type == "s":
                                         if value not in ["\"\""]:
-                                            # escape strings
-                                            value = "\"{}\"".format(value)
+                                            if value[0] == value[-1] and value[0] in ['"', "'"]:
+                                                pass
+                                            else:
+                                                # escape strings
+                                                value = "\"{}\"".format(value)
                                     try:
                                         self[key] = (
                                             eval("{}".format(value)),
