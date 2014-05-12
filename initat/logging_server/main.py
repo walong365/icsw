@@ -332,8 +332,6 @@ class main_process(threading_tools.process_pool):
                 self.__num_open,
                 self.__num_close,
                 self.__num_write,
-                self.__num_forward_ok,
-                self.__num_forward_error,
                 process_tools.beautify_mem_info(),
                 fwd_str,
                 ))
