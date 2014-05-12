@@ -370,15 +370,22 @@ class inotify_process(threading_tools.process_obj):
         # self.register_func("connection", self._connection)
         self.send_pool_message("register_callback", "register_file_watch", "fw_handle")
         self.send_pool_message("register_callback", "unregister_file_watch", "fw_handle")
+        self.register_exception("term_error", self._sigint)
+        self.allow_signal(15)
         self.register_func("fw_handle", self._fw_handle)
         self.cb_func = self._check
         self.log("idle_timeout is {:d}".format(self.__idle_timeout))
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
         self.__log_template.log(log_level, what)
+    def _sigint(self, err_cause):
+        self.log(" got sigint '{}'".format(err_cause), logging_tools.LOG_LEVEL_ERROR)
     def _trigger(self, event):
         print event, "*", dir(event)
     def _check(self):
-        self.__watcher.check(self.__idle_timeout * 1000)
+        try:
+            self.__watcher.check(self.__idle_timeout * 1000)
+        except:
+            self.log("excepted")
         remove_ids = []
         for fw_id, fw_struct in self.__file_watcher_dict.iteritems():
             if not fw_struct.inotify():
