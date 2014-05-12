@@ -153,6 +153,25 @@ class main_process(threading_tools.process_pool):
             self.net_receiver.setsockopt(flag, value)
         _bind_str = "tcp://*:{:d}".format(global_config["LISTEN_PORT"])
         self.net_receiver.bind(_bind_str)
+        _fwd_string = global_config["FORWARDER"].strip()
+        if _fwd_string:
+            _forward = self.zmq_context.socket(zmq.PUSH)
+            for flag, value in [
+                (zmq.IDENTITY, my_0mq_id),
+                (zmq.SNDHWM, 256),
+                (zmq.RCVHWM, 256),
+                (zmq.TCP_KEEPALIVE, 1),
+                (zmq.TCP_KEEPALIVE_IDLE, 300)]:
+                _forward.setsockopt(flag, value)
+            self.log("connecting forward to {}".format(_fwd_string))
+            try:
+                _forward.connect(_fwd_string)
+            except:
+                self.log(" ... problem: {}".format(process_tools.get_except_info()), logging_tools.LOG_LEVEL_ERROR)
+                _forward = None
+        else:
+            _forward = None
+        self.net_forwarder = _forward
         self.register_poller(client, zmq.POLLIN, self._recv_data)
         self.register_poller(self.net_receiver, zmq.POLLIN, self._recv_data)
         self.std_client = client
@@ -189,6 +208,8 @@ class main_process(threading_tools.process_pool):
         if self.__msi_block:
             self.__msi_block.remove_meta_block()
         self.net_receiver.close()
+        if self.net_forwarder:
+            self.net_forwarder.close()
         self.std_client.close()
     def _flush_log_cache(self):
         for dst, what, level in self.__log_cache:
@@ -460,6 +481,9 @@ class main_process(threading_tools.process_pool):
         # zmq_socket.recv()
         in_str = zmq_socket.recv()
         self.any_message_received()
+        if self.net_forwarder:
+            # horay for 0MQ
+            self.net_forwarder.send(in_str)
         # print "received from %s: %s" % (str(addr), str(data))
         # self.transport.write("ok")
         try:
@@ -558,6 +582,7 @@ def main():
         ("STATISTICS_TIMER"    , configfile.int_c_var(600)),
         ("LOG_COMMANDS"        , configfile.bool_c_var(True)),
         ("KILL_RUNNING"        , configfile.bool_c_var(True)),
+        ("FORWARDER"           , configfile.str_c_var("", help_string="Address to forwared all logs to")),
         ("MAX_AGE_FILES"       , configfile.int_c_var(365, help_string="max age for logfiles in days [%(default)i]", short_options="age")),
         ("USER"                , configfile.str_c_var("idlog", help_string="run as user [%(default)s]", short_options="u")),
         ("GROUP"               , configfile.str_c_var("idg", help_string="run as group [%(default)s]", short_options="g")),
