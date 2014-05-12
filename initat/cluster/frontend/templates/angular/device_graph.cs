@@ -82,7 +82,7 @@ rrd_graph_template = """
                         &nbsp;from {{ graph.get_tv(graph.ts_start_mom) }} to {{ graph.get_tv(graph.ts_end_mom) }}
                     </h4>
                     <h4 ng-show="graph.removed_keys.length">
-                        {{ graph.removed_keys.length }} keys not shown <span class="glyphicon glyphicon-info-sign" title="{{ graph.get_removed_keys() }}"></span>
+                        {{ graph.removed_keys.length }} keys not shown (flatline) <span class="glyphicon glyphicon-info-sign" title="{{ graph.get_removed_keys() }}"></span>
                     </h4>
                     <span ng-show="graph.cropped && graph.active">cropped timerange: {{ graph.get_tv(graph.cts_start_mom) }} to {{ graph.get_tv(graph.cts_end_mom) }}
                         <input type="button" class="btn btn-xs btn-warning" value="apply" ng-click="use_crop(graph)"></input>
