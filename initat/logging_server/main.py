@@ -68,6 +68,7 @@ class main_process(threading_tools.process_pool):
         self.register_timer(self._update, 60)
         os.umask(2)
         self.__num_write, self.__num_close, self.__num_open = (0, 0, 0)
+        self.__num_forward_ok, self.__num_forward_error = (0, 0)
         self.log("logging_process {} is now awake (pid {:d})".format(self.name, self.pid))
         int_names = ["log", "log_py", "err_py"]
         for name in int_names:
@@ -323,8 +324,11 @@ class main_process(threading_tools.process_pool):
                 self.__num_open,
                 self.__num_close,
                 self.__num_write,
+                self.__num_forward_ok,
+                self.__num_forward_error,
                 process_tools.beautify_mem_info()))
             self.__num_open, self.__num_close, self.__num_write = (0, 0, 0)
+            self.__num_forward_ok, self.__num_forward_error = (0, 0)
     def remove_handle(self, h_name):
         self.log("closing handle {}".format(h_name))
         self.__num_close += 1
@@ -483,7 +487,12 @@ class main_process(threading_tools.process_pool):
         self.any_message_received()
         if self.net_forwarder:
             # horay for 0MQ
-            self.net_forwarder.send(in_str)
+            try:
+                self.net_forwarder.send(in_str, zmq.DONTWAIT)
+            except:
+                self.__num_forward_error += 1
+            else:
+                self.__num_forward_ok += 1
         # print "received from %s: %s" % (str(addr), str(data))
         # self.transport.write("ok")
         try:
