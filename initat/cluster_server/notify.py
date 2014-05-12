@@ -28,10 +28,8 @@ from initat.cluster.backbone.models import background_job, user, background_job_
 from django.db.models import Q
 import logging_tools
 import datetime
-import configfile
 import process_tools
 import config_tools
-import uuid_tools
 import server_command
 
 # background job command mapping
