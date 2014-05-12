@@ -29,6 +29,7 @@ import grp
 import io_stream_helper
 import logging
 import logging_tools
+import uuid_tools
 import mail_tools
 import os
 import pickle
@@ -141,7 +142,19 @@ class main_process(threading_tools.process_pool):
         for h_name in ["LOG_HANDLE", "ERR_HANDLE", "OUT_HANDLE"]:
             client.bind(io_stream_helper.zmq_socket_name(global_config[h_name], check_ipc_prefix=True))
             os.chmod(io_stream_helper.zmq_socket_name(global_config[h_name]), stat.S_IRWXU | stat.S_IRWXG | stat.S_IRWXO)
+        self.net_receiver = self.zmq_context.socket(zmq.PULL)
+        my_0mq_id = uuid_tools.get_uuid().get_urn()
+        for flag, value in [
+            (zmq.IDENTITY, my_0mq_id),
+            (zmq.SNDHWM, 256),
+            (zmq.RCVHWM, 256),
+            (zmq.TCP_KEEPALIVE, 1),
+            (zmq.TCP_KEEPALIVE_IDLE, 300)]:
+            self.net_receiver.setsockopt(flag, value)
+        _bind_str = "tcp://*:{:d}".format(global_config["LISTEN_PORT"])
+        self.net_receiver.bind(_bind_str)
         self.register_poller(client, zmq.POLLIN, self._recv_data)
+        self.register_poller(self.net_receiver, zmq.POLLIN, self._recv_data)
         self.std_client = client
     def process_start(self, src_process, src_pid):
         process_tools.append_pids("logserver/logserver", src_pid, mult=3)
@@ -175,6 +188,7 @@ class main_process(threading_tools.process_pool):
         process_tools.delete_pid("logserver/logserver")
         if self.__msi_block:
             self.__msi_block.remove_meta_block()
+        self.net_receiver.close()
         self.std_client.close()
     def _flush_log_cache(self):
         for dst, what, level in self.__log_cache:
