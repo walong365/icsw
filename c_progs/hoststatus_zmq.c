@@ -173,12 +173,15 @@ int main(int argc, char **argv)
     char *identity_str = parse_uuid(src_ip);
     struct stat my_stat;
     struct sysinfo s_info;
-    int64_t tcp_keepalive, tcp_keepalive_idle;
+    int64_t tcp_keepalive, tcp_keepalive_idle, tcp_linger;
     tcp_keepalive = 1;
     tcp_keepalive_idle = 300;
+    tcp_linger = 10;
     zmq_setsockopt(responder, ZMQ_IDENTITY, identity_str, strlen(identity_str));
     zmq_setsockopt(responder, ZMQ_TCP_KEEPALIVE, &tcp_keepalive,
                    sizeof(tcp_keepalive));
+    zmq_setsockopt(responder, ZMQ_TCP_LINGER, &tcp_linger,
+                   sizeof(tcp_linger));
     zmq_setsockopt(responder, ZMQ_TCP_KEEPALIVE_IDLE, &tcp_keepalive_idle,
                    sizeof(tcp_keepalive_idle));
     char bind_address[100];
