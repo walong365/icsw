@@ -100,8 +100,9 @@ class colorizer(object):
         return t_name, s_dict
 
 class graph_var(object):
-    def __init__(self, rrd_graph, entry, dev_name=""):
+    def __init__(self, rrd_graph, entry, key, dev_name=""):
         self.entry = entry
+        self.key = key
         self.dev_name = dev_name
         self.rrd_graph = rrd_graph
         self.max_info_width = 60 + int((self.rrd_graph.width - 800) / 8)
@@ -183,7 +184,9 @@ class graph_var(object):
                         self.name,
                         rep_name,
                         r"\l" if rep_name == "total" else r""
-                        ),
+                    ),
+                    # "VDEF:{}{}2={},{}".format(self.name, rep_name, self.name, cf),
+                    "PRINT:{}{}:{}.{}=%.4lf".format(self.name, rep_name, self.key.replace(":", r"\:"), cf),
                 ]
             )
         return c_lines
@@ -243,10 +246,10 @@ class RRDGraph(object):
             )
             dt_1970 = dateutil.parser.parse("1970-01-01 00:00 +0000")
             # clear list of defs
-            self.defs = []
+            self.defs = {}
             # reset colorizer for current graph
             self.colorizer.reset()
-            rrd_args = [
+            rrd_pre_args = [
                     abs_file_loc,
                     "-E",
                     "-Rlight",
@@ -280,29 +283,61 @@ class RRDGraph(object):
                         # machine vector entry
                         def_xml = dev_vector.find(".//mve[@name='{}']".format(graph_key))
                     if def_xml is not None:
-                        self.defs.append(graph_var(self, def_xml, dev_dict[cur_pk]).config)
+                        self.defs[graph_key] = graph_var(self, def_xml, graph_key, dev_dict[cur_pk]).config
             if self.defs:
-                rrd_args.extend(sum(self.defs, []))
-                rrd_args.extend([
-                    "--title",
-                    "{} ({}, timeframe is {})".format(
-                        tlk,
-                        logging_tools.get_plural("result", len(self.defs)),
-                        logging_tools.get_diff_time_str(timeframe)),
-                ])
-                try:
-                    draw_result = rrdtool.graphv(*rrd_args)
-                except:
-                    self.log("error creating graph: {}".format(process_tools.get_except_info()), logging_tools.LOG_LEVEL_ERROR)
-                    if global_config["DEBUG"]:
-                        pprint.pprint(rrd_args)
-                else:
-                    graph_list.append(
-                        E.graph(
-                            href=rel_file_loc,
-                            **dict([(key, "{:d}".format(value) if type(value) in [int, long] else "{:.6f}".format(value)) for key, value in draw_result.iteritems()])
-                        )
+                draw_it = True
+                removed_keys = set()
+                while draw_it:
+                    graph_keys = set(self.defs.keys())
+                    rrd_args = rrd_pre_args + sum(self.defs.values(), [])
+                    rrd_args.extend([
+                        "--title",
+                        "{} ({}, timeframe is {})".format(
+                            tlk,
+                            logging_tools.get_plural("result", len(self.defs)),
+                            logging_tools.get_diff_time_str(timeframe)),
+                    ])
+                    try:
+                        draw_result = rrdtool.graphv(*rrd_args)
+                    except:
+                        self.log("error creating graph: {}".format(process_tools.get_except_info()), logging_tools.LOG_LEVEL_ERROR)
+                        if global_config["DEBUG"]:
+                            pprint.pprint(rrd_args)
+                    else:
+                        res_dict = {value.split("=", 1)[0] : value.split("=", 1)[1] for key, value in draw_result.iteritems() if key.startswith("print[")}
+                        # reorganize
+                        val_dict = {}
+                        for key, value in res_dict.iteritems():
+                            cf = key.split(".")[-1]
+                            try:
+                                value = float(value)
+                            except:
+                                pass
+                            else:
+                                value = None if value == 0.0 else value
+                            if value is not None:
+                                val_dict.setdefault(key[:-len(cf) - 1], {})[cf] = value
+                        empty_keys = set(graph_keys) - set(val_dict.keys())
+                        if empty_keys:
+                            self.log(
+                                u"{}: {}".format(
+                                    logging_tools.get_plural("empty key", len(empty_keys)),
+                                    ", ".join(sorted(empty_keys)),
+                                )
+                            )
+                            removed_keys |= empty_keys
+                            self.defs = {key : value for key, value in self.defs.iteritems() if key not in empty_keys}
+                        else:
+                            draw_it = False
+                graph_list.append(
+                    E.graph(
+                        E.removed_keys(
+                            *[E.removed_key(_rk) for _rk in removed_keys]
+                        ),
+                        href=rel_file_loc,
+                        **dict([(key, "{:d}".format(value) if type(value) in [int, long] else "{:.6f}".format(value)) for key, value in draw_result.iteritems() if not key.startswith("print[")])
                     )
+                )
             else:
                 self.log("no DEFs for graph_key_dict {}".format(tlk), logging_tools.LOG_LEVEL_ERROR)
         return graph_list
