@@ -65,6 +65,9 @@ UNIFIED_NAME = "unified"
 def rewrite_log_destination(log_dest):
     if log_dest.startswith("uds:"):
         log_dest = log_dest.replace("uds:", "ipc://")
+    if log_dest.startswith("ipc://"):
+        if not log_dest.endswith("_zmq"):
+            log_dest = "{}_zmq".format(log_dest)
     return log_dest
 
 def map_old_to_new_level(in_level):
@@ -274,10 +277,9 @@ def get_logger(name, destination, **kwargs):
                 cur_context = zmq.Context()
             else:
                 cur_context = kwargs["context"]
-
             pub = cur_context.socket(zmq.PUSH)
             pub.setsockopt(zmq.LINGER, 0)
-            pub.connect(rewrite_log_destination(act_dest if act_dest.endswith("_zmq") else "{}_zmq".format(act_dest)))
+            pub.connect(rewrite_log_destination(act_dest))
             act_logger.addHandler(zmq_handler(pub, act_logger))
     if log_adapter:
         # by using the log_adapter we also add thread-safety to the logger
