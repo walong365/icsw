@@ -103,8 +103,8 @@ class data_store(object):
         # we ignore the global store name for perfdata stores
         old_keys = set(self.xml_vector.xpath(".//pde/@name", smart_strings=False))
         rrd_dir = global_config["RRD_DIR"]
-        print host_name, pd_type
-        print etree.tostring(pd_info, pretty_print=True)
+        # print host_name, pd_type
+        # print etree.tostring(pd_info, pretty_print=True)
         type_instance = pd_info.get("type_instance", "")
         # only one entry
         if type_instance:
