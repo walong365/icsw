@@ -321,13 +321,22 @@ class main_process(threading_tools.process_pool):
         self.__num_write += 1
         if not self.__last_stat_time or abs(act_time - self.__last_stat_time) > self.__stat_timer or self.__num_write % 10000 == 0:
             self.__last_stat_time = act_time
-            self.log("logstat (open/close/written): {:d} / {:d} / {:d}, mem_used is {}".format(
+            if self.__num_forward_ok or self.__num_forward_error:
+                fwd_str = ", {:d} fwd ({:d} error)".format(
+                    self.__num_forward_ok,
+                    self.__num_forward_error,
+                )
+            else:
+                fwd_str = ""
+            self.log("logstat (open/close/written): {:d} / {:d} / {:d}, mem_used is {}{}".format(
                 self.__num_open,
                 self.__num_close,
                 self.__num_write,
                 self.__num_forward_ok,
                 self.__num_forward_error,
-                process_tools.beautify_mem_info()))
+                process_tools.beautify_mem_info(),
+                fwd_str,
+                ))
             self.__num_open, self.__num_close, self.__num_write = (0, 0, 0)
             self.__num_forward_ok, self.__num_forward_error = (0, 0)
     def remove_handle(self, h_name):
