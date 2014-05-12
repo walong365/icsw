@@ -81,6 +81,9 @@ rrd_graph_template = """
                         </span>
                         &nbsp;from {{ graph.get_tv(graph.ts_start_mom) }} to {{ graph.get_tv(graph.ts_end_mom) }}
                     </h4>
+                    <h4 ng-show="graph.removed_keys.length">
+                        {{ graph.removed_keys.length }} keys not shown <span class="glyphicon glyphicon-info-sign" title="{{ graph.get_removed_keys() }}"></span>
+                    </h4>
                     <span ng-show="graph.cropped && graph.active">cropped timerange: {{ graph.get_tv(graph.cts_start_mom) }} to {{ graph.get_tv(graph.cts_end_mom) }}
                         <input type="button" class="btn btn-xs btn-warning" value="apply" ng-click="use_crop(graph)"></input>
                     </span>
@@ -117,12 +120,16 @@ class d_graph
         @ts_start_mom = moment.unix(@ts_start)
         @ts_end_mom = moment.unix(@ts_end)
         @cropped = false
-        #console.log @
+        @removed_keys = []
+        for entry in @xml.find("removed_keys removed_key")
+            @removed_keys.push($(entry).text())
     get_tv: (val) ->
         if val
             return val.format(DT_FORM)
         else
             return "???"
+    get_removed_keys: () ->
+        return @removed_keys.join(", ")
     set_crop: (sel) ->
         @cropped = true
         ts_range = @ts_end - @ts_start
