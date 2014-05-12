@@ -1,6 +1,6 @@
 #!/bin/bash
 #
-# Copyright (c) 2002,2003,2004,2005,2006,2012,2013 lang-nevyjel@init.at
+# Copyright (c) 2002-2006,2012-2014 lang-nevyjel@init.at
 #
 #
 # RedHat stuff
@@ -58,7 +58,7 @@ case "$1" in
         if [ -f ${SERVER_PID} ] ; then
             kill -s 15 `cat ${SERVER_PID} | head -n 1` || rc_failed
             if [ -f ${SERVER_PID} ] ; then
-            for i in $(seq 20) ; do
+            for i in $(seq 40) ; do
                 true 
                 echo -n "."
                 if [ -x /bin/usleep ] ; then
