@@ -1098,18 +1098,28 @@ class main_config(object):
                                is_host_file=True,
                                values=main_values)
         for log_descr, en in [
-            ("notifications" , 1), ("service_retries", 1), ("host_retries"     , 1),
-            ("event_handlers", 1),
-            ("initial_states", 1 if global_config["LOG_INITIAL_STATES"] else 0),
+            ("notifications"    , 1),
+            ("service_retries"  , 1),
+            ("host_retries"     , 1),
+            ("event_handlers"   , 1),
+            ("initial_states"   , 1 if global_config["LOG_INITIAL_STATES"] else 0),
             ("external_commands", 1 if global_config["LOG_EXTERNAL_COMMANDS"] else 0),
-            ("passive_checks", 1 if global_config["LOG_PASSIVE_CHECKS"] else 0)
+            ("passive_checks"   , 1 if global_config["LOG_PASSIVE_CHECKS"] else 0)
             ]:
             main_cfg["log_%s" % (log_descr)] = en
-        for to_descr, to in [("service_check", 60), ("host_check", 30), ("event_handler", 30),
-                             ("notification" , 30), ("ocsp"      , 5), ("perfdata"     , 5)]:
+        for to_descr, to in [
+            ("service_check", 60),
+            ("host_check"   , 30),
+            ("event_handler", 30),
+            ("notification" , 30),
+            ("ocsp"         , 5),
+            ("perfdata"     , 5)]:
             main_cfg["%s_timeout" % (to_descr)] = to
-        for th_descr, th in [("low_service", 5.0), ("high_service", 20.0),
-                             ("low_host"   , 5.0), ("high_host"   , 20.0)]:
+        for th_descr, th in [
+            ("low_service" , 5.0),
+            ("high_service", 20.0),
+            ("low_host"    , 5.0),
+            ("high_host"   , 20.0)]:
             main_cfg["%s_flap_threshold" % (th_descr)] = th
         admin_list = list([cur_u.login for cur_u in user.objects.filter(Q(active=True) & Q(group__active=True) & Q(mon_contact__pk__gt=0)) if cur_u.has_perm("backbone.device.all_devices")])
         if admin_list:
