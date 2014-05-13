@@ -155,6 +155,7 @@ class main_process(threading_tools.process_pool):
         _bind_str = "tcp://*:{:d}".format(global_config["LISTEN_PORT"])
         self.net_receiver.bind(_bind_str)
         _fwd_string = global_config["FORWARDER"].strip()
+        self.__only_forward = global_config["ONLY_FORWARD"]
         if _fwd_string:
             _forward = self.zmq_context.socket(zmq.PUSH)
             for flag, value in [
@@ -501,6 +502,8 @@ class main_process(threading_tools.process_pool):
                 self.__num_forward_error += 1
             else:
                 self.__num_forward_ok += 1
+            if self.__only_forward:
+                return
         # print "received from %s: %s" % (str(addr), str(data))
         # self.transport.write("ok")
         try:
@@ -600,6 +603,7 @@ def main():
         ("LOG_COMMANDS"        , configfile.bool_c_var(True)),
         ("KILL_RUNNING"        , configfile.bool_c_var(True)),
         ("FORWARDER"           , configfile.str_c_var("", help_string="Address to forwared all logs to")),
+        ("ONLY_FORWARD"        , configfile.bool_c_var(False, help_string="only forward (no local logging)")),
         ("MAX_AGE_FILES"       , configfile.int_c_var(365, help_string="max age for logfiles in days [%(default)i]", short_options="age")),
         ("USER"                , configfile.str_c_var("idlog", help_string="run as user [%(default)s]", short_options="u")),
         ("GROUP"               , configfile.str_c_var("idg", help_string="run as group [%(default)s]", short_options="g")),
