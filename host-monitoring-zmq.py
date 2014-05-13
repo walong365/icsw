@@ -21,7 +21,7 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
 
-""" host-monitoring, with 0MQ and twisted support """
+""" host-monitoring, with 0MQ and support of old pure TCP-based communication """
 
 import sys
 from initat.host_monitoring import main
