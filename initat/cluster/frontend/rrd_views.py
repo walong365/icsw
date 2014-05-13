@@ -82,10 +82,12 @@ class graph_rrds(View):
         else:
             start_time = datetime.datetime.now(dateutil.tz.tzutc()) - datetime.timedelta(4 * 3600)
             end_time = datetime.datetime.now(dateutil.tz.tzutc())
+        print _post
         srv_com["parameters"] = E.parameters(
             E.start_time(unicode(start_time)),
             E.end_time(unicode(end_time)),
-            E.size(_post.get("size", "400x200"))
+            E.size(_post.get("size", "400x200")),
+            E.hide_zero("1" if _post.get("hide_zero").lower() in ["1", "true"] else "0"),
         )
         result = contact_server(request, "grapher", srv_com, timeout=30)
         if result:

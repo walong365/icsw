@@ -3,10 +3,16 @@
 <div id="icsw.sidebar" ng-cloack>
     <div ng-controller="sidebar_base">
         <div class="input-group">
-            <input type="text" class="form-control" ng-disabled="is_loading" ng-model="searchstr" placeholder="search ..." ng-change="update_search()"></input>
+            <div ng-class="search_ok && 'form-group' || 'form-group has-error'">
+                <input type="text" class="form-control" ng-disabled="is_loading" ng-model="searchstr" placeholder="search ..." ng-change="update_search()"></input>
+            </div>
             <span class="input-group-btn">
-                <button class="btn btn-success" type="button" ng-click="call_devsel_func(false)" ng-show="devsel_func.length"><span title="use selection" class="glyphicon glyphicon-chevron-right"></span></button>
-                <button class="btn btn-danger" type="button" ng-click="clear_selection()"><span title="clear selection" class="glyphicon glyphicon-ban-circle"></span></button>
+                <button class="btn btn-success" type="button" ng-click="call_devsel_func(false)" ng-show="devsel_func.length">
+                    <span title="use selection" class="glyphicon glyphicon-chevron-right"></span>
+                </button>
+                <button class="btn btn-danger" type="button" ng-click="clear_selection()">
+                    <span title="clear selection" class="glyphicon glyphicon-ban-circle"></span>
+                </button>
             </span>  
         </div>
         <tabset>
@@ -71,6 +77,7 @@ class sidebar_tree extends tree_config
 sidebar_base = sidebar_module.controller("sidebar_base", ["$scope", "$compile", "restDataSource", "$q", "$timeout",
     ($scope, $compile, restDataSource, $q, $timeout) ->
         $scope.searchstr = ""
+        $scope.search_ok = true
         $scope.is_loading = true
         $scope.hidden_tabs = {"g" : true, "f" : true, "c" : true}
         # active tab, (d)evices, (f)qdn, (c)ategories
@@ -129,12 +136,17 @@ sidebar_base = sidebar_module.controller("sidebar_base", ["$scope", "$compile", 
                 cur_re = new RegExp("^$", "gi")
             cur_tree = $scope.get_tc($scope.active_tab) 
             cur_tree.toggle_tree_state(undefined, -1, false)
+            num_found = 0
             cur_tree.iter(
                 (entry, cur_re) ->
                     if entry._node_type == "d"
-                        entry.set_selected(if $scope.dev_lut[entry.obj].full_name.match(cur_re) then true else false)
+                        _sel = if $scope.dev_lut[entry.obj].full_name.match(cur_re) then true else false
+                        entry.set_selected(_sel)
+                        if _sel
+                            num_found++
                 cur_re
             )
+            $scope.search_ok = if num_found > 0 then true else false
             cur_tree.show_selected(false)
             $scope.selection_changed()
         # current device selection
@@ -191,6 +203,7 @@ sidebar_base = sidebar_module.controller("sidebar_base", ["$scope", "$compile", 
             )
         $scope.clear_selection = () ->
             $scope.get_tc($scope.active_tab).clear_selected()
+            $scope.search_ok = true
             $scope.selection_changed()
         $scope.activate_tab = (t_type) ->
             if $scope.hidden_tabs[t_type]
