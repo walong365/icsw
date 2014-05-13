@@ -203,6 +203,7 @@ class RRDGraph(object):
         self.para_dict = {
             "size"       : "400x200",
             "graph_root" : global_config["GRAPH_ROOT"],
+            "hide_zero"  : False,
         }
         self.para_dict.update(para_dict)
         self.colorizer = colorzer
@@ -318,7 +319,7 @@ class RRDGraph(object):
                             if value is not None:
                                 val_dict.setdefault(key[:-len(cf) - 1], {})[cf] = value
                         empty_keys = set(graph_keys) - set(val_dict.keys())
-                        if empty_keys:
+                        if empty_keys and self.para_dict["hide_zero"]:
                             self.log(
                                 u"{}: {}".format(
                                     logging_tools.get_plural("empty key", len(empty_keys)),
@@ -327,17 +328,30 @@ class RRDGraph(object):
                             )
                             removed_keys |= empty_keys
                             self.defs = {key : value for key, value in self.defs.iteritems() if key not in empty_keys}
+                            if not self.defs:
+                                draw_it = False
                         else:
                             draw_it = False
-                graph_list.append(
-                    E.graph(
-                        E.removed_keys(
-                            *[E.removed_key(_rk) for _rk in removed_keys]
-                        ),
-                        href=rel_file_loc,
-                        **dict([(key, "{:d}".format(value) if type(value) in [int, long] else "{:.6f}".format(value)) for key, value in draw_result.iteritems() if not key.startswith("print[")])
+                if self.defs:
+                    # defs present
+                    graph_list.append(
+                        E.graph(
+                            E.removed_keys(
+                                *[E.removed_key(_rk) for _rk in removed_keys]
+                            ),
+                            href=rel_file_loc,
+                            **dict([(key, "{:d}".format(value) if type(value) in [int, long] else "{:.6f}".format(value)) for key, value in draw_result.iteritems() if not key.startswith("print[")])
+                        )
                     )
-                )
+                else:
+                    # empty graph
+                    graph_list.append(
+                        E.graph(
+                            E.removed_keys(
+                                *[E.removed_key(_rk) for _rk in removed_keys]
+                            ),
+                        )
+                    )
             else:
                 self.log("no DEFs for graph_key_dict {}".format(tlk), logging_tools.LOG_LEVEL_ERROR)
         return graph_list
@@ -374,6 +388,8 @@ class graph_process(threading_tools.process_obj, threading_tools.operational_err
         for key in ["start_time", "end_time"]:
             # cast to datetime
             para_dict[key] = dateutil.parser.parse(para_dict[key])
+        for key in ["hide_zero"]:
+            para_dict[key] = True if int(para_dict.get(key, "0")) else False
         graph_list = RRDGraph(self.log, self.colorizer, para_dict).graph(self.vector_dict, dev_pks, graph_keys)
         srv_com["graphs"] = graph_list
         # print srv_com.pretty_print()
