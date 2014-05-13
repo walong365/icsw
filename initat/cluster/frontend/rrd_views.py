@@ -82,7 +82,6 @@ class graph_rrds(View):
         else:
             start_time = datetime.datetime.now(dateutil.tz.tzutc()) - datetime.timedelta(4 * 3600)
             end_time = datetime.datetime.now(dateutil.tz.tzutc())
-        print _post
         srv_com["parameters"] = E.parameters(
             E.start_time(unicode(start_time)),
             E.end_time(unicode(end_time)),
