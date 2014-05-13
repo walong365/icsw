@@ -125,7 +125,10 @@ def main():
         s_time = time.time()
         client.send_unicode(unicode(srv_com))
         if args.verbose:
-            print srv_com.pretty_print()
+            if args.raw:
+                print srv_com
+            else:
+                print srv_com.pretty_print()
         if not args.only_send:
             r_client = client if not recv_sock else recv_sock
             if r_client.poll(args.timeout * 1000):
