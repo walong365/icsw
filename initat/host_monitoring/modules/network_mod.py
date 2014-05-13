@@ -91,7 +91,11 @@ class argus_proc(object):
         self.log("pid is %d" % (self.popen.pid))
     def communicate(self):
         if self.popen:
-            return self.popen.communicate()
+            try:
+                return self.popen.communicate()
+            except:
+                self.log(u"error in communicate: {}".format(process_tools.get_except_info()), logging_tools.LOG_LEVEL_ERROR)
+                return ("", "")
         else:
             return ("", "")
     def finished(self):
@@ -116,7 +120,11 @@ class compress_job(object):
         return self.result
     def communicate(self):
         if self.popen:
-            return self.popen.communicate()
+            try:
+                return self.popen.communicate()
+            except:
+                self.log(u"error in communicate: {}".format(process_tools.get_except_info()), logging_tools.LOG_LEVEL_ERROR)
+                return ("", "")
         else:
             return ("", "")
 
