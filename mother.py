@@ -2472,6 +2472,9 @@ class server_process(threading_tools.process_pool):
             client.setsockopt(zmq.BACKLOG, 1)
             client.setsockopt(zmq.TCP_KEEPALIVE, 1)
             client.setsockopt(zmq.TCP_KEEPALIVE_IDLE, 300)
+            if key == "router":
+                # set mandatory flag
+                client.setsockopt(zmq.ROUTER_MANDATORY, 1)
             conn_str = "tcp://*:%d" % (bind_port)
             try:
                 client.bind(conn_str)
@@ -2577,20 +2580,39 @@ class server_process(threading_tools.process_pool):
         if zmq_id.endswith(":hoststatus:"):
             self.log("refuse to send return to %s" % (zmq_id), logging_tools.LOG_LEVEL_ERROR)
         else:
-            self.socket_dict["router"].send_unicode(zmq_id, zmq.SNDMORE)
-            self.socket_dict["router"].send_unicode(unicode(srv_com))
+            try:
+                self.socket_dict["router"].send_unicode(zmq_id, zmq.SNDMORE)
+                self.socket_dict["router"].send_unicode(unicode(srv_com))
+            except:
+                self.log(
+                    u"error sending to {}: {}".format(
+                        zmq_id,
+                        process_tools.get_except_info(),
+                    ),
+                    logging_tools.LOG_LEVEL_ERROR
+                )
     def _contact_hoststatus(self, src_id, src_pid, zmq_id, com_str, target_ip):
         dst_addr = "tcp://%s:2002" % (target_ip)
         if dst_addr not in self.connection_set:
             self.log("adding connection %s" % (dst_addr))
             self.connection_set.add(dst_addr)
             self.socket_dict["router"].connect(dst_addr)
-            # time.sleep(0.2)
         # print "done"
         zmq_id = "%s:hoststatus:" % (zmq_id)
-        self.log("sending '%s' to %s (%s)" % (com_str, zmq_id, dst_addr))
-        self.socket_dict["router"].send_unicode(zmq_id, zmq.SNDMORE)
-        self.socket_dict["router"].send_unicode(unicode(com_str))
+        try:
+            self.socket_dict["router"].send_unicode(zmq_id, zmq.SNDMORE)
+            self.socket_dict["router"].send_unicode(unicode(com_str))
+        except:
+            self.log(
+                u"error sending to {} ({}): {}".format(
+                    zmq_id,
+                    dst_addr,
+                    process_tools.get_except_info(),
+                ),
+                logging_tools.LOG_LEVEL_ERROR
+            )
+        else:
+            self.log("sent '%s' to %s (%s)" % (com_str, zmq_id, dst_addr))
     # utility calls
     def _prepare_directories(self):
         self.log("Checking directories ...")
