@@ -819,10 +819,10 @@ LoadPlugin unixsock
 #</Plugin>
 
 <Plugin python>
-	ModulePath "/opt/python-init/lib/python/site-packages/initat/"
+	ModulePath "/opt/python-init/lib/python/site-packages"
 	LogTraces true
 	Interactive false
-	Import "collserver_plugin"
+	Import "initat.collectd.collserver_plugin"
 
 	<Module collserver_plugin>
 	</Module>
