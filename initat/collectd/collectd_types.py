@@ -27,7 +27,7 @@ __all__ = [
     "perfdata_value", "perfdata_object",
     "win_memory_pdata", "win_disk_pdata",
     "win_load_pdata", "load_pdata",
-    "smc_chassis_psu_data", "ping_pdata",
+    "smc_chassis_psu_pdata", "ping_pdata",
     "value",
 ]
 
