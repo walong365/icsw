@@ -19,6 +19,8 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
 
+""" net receiver process for collectd-init """
+
 from initat.collectd.collectd_structs import host_info
 from initat.collectd.collectd_types import * # @UnusedWildImport
 from initat.collectd.config import COMMAND_PORT, GRAPHER_PORT, RECV_PORT, IPC_SOCK, log_base
@@ -28,9 +30,11 @@ import logging_tools
 import multiprocessing
 import process_tools
 import re
+import threading
 import server_command
 import time
 import uuid_tools
+import signal
 import zmq
 
 class net_receiver(multiprocessing.Process, log_base):
@@ -39,11 +43,14 @@ class net_receiver(multiprocessing.Process, log_base):
         self.zmq_id = "{}:collserver_plugin".format(process_tools.get_machine_name())
         self.grapher_id = "{}:rrd_grapher".format(uuid_tools.get_uuid().get_urn())
     def _init(self):
+        threading.currentThread().name = "netrecv"
         # init zmq_context and logging
         self.zmq_context = zmq.Context()
         log_base.__init__(self)
         self.poller = zmq.Poller()
         self.log("net receiver started")
+        # ignore signals
+        signal.signal(signal.SIGTERM, signal.SIG_IGN)
         self._init_perfdata()
         self._init_vars()
         self._init_hosts()
@@ -59,7 +66,8 @@ class net_receiver(multiprocessing.Process, log_base):
         self.__pd_re_list = re_list
     def _init_sockets(self):
         self.receiver = self.zmq_context.socket(zmq.PULL)
-        self.sender = self.zmq_context.socket(zmq.PUSH)
+        self.com = self.zmq_context.socket(zmq.ROUTER)
+        self.com.setsockopt(zmq.IDENTITY, "net")
         self.grapher = self.zmq_context.socket(zmq.ROUTER)
         self.command = self.zmq_context.socket(zmq.ROUTER)
         # set grapher flags
@@ -71,7 +79,7 @@ class net_receiver(multiprocessing.Process, log_base):
             (zmq.TCP_KEEPALIVE_IDLE, 300)]:
             self.grapher.setsockopt(flag, value)
             self.command.setsockopt(flag, value)
-        self.sender.connect(IPC_SOCK)
+        self.com.connect(IPC_SOCK)
         listener_url = "tcp://*:{:d}".format(RECV_PORT)
         command_url = "tcp://*:{:d}".format(COMMAND_PORT)
         grapher_url = "tcp://localhost:{:d}".format(GRAPHER_PORT)
@@ -86,10 +94,12 @@ class net_receiver(multiprocessing.Process, log_base):
         self.__poller_dict = {
             self.receiver : self._recv_data,
             self.command : self._recv_command,
+            self.com : self._recv_com,
             }
         self.__disabled_uuids = set()
         self.poller.register(self.receiver, zmq.POLLIN)
         self.poller.register(self.command, zmq.POLLIN)
+        self.poller.register(self.com, zmq.POLLIN)
     def _init_hosts(self):
         # init host and perfdata structs
         self.__hosts = {}
@@ -105,7 +115,7 @@ class net_receiver(multiprocessing.Process, log_base):
         self._log_stats()
         self._close_sockets()
     def _close_sockets(self):
-        self.sender.close()
+        self.com.close()
         self.receiver.close()
         self.grapher.close()
         self.command.close()
@@ -121,7 +131,10 @@ class net_receiver(multiprocessing.Process, log_base):
             exc_info = process_tools.exception_info()
             for line in exc_info.log_lines:
                 self.log(line, logging_tools.LOG_LEVEL_ERROR)
-            self.sender.send("stop")
+            self.com.send_unicode("main", zmq.SNDMORE)
+            self.com.send("stop")
+            self.com.send_unicode("bg", zmq.SNDMORE)
+            self.com.send("stop")
         self._close()
     def _log_stats(self):
         self.__end_time = time.time()
@@ -148,7 +161,8 @@ class net_receiver(multiprocessing.Process, log_base):
         self.grapher.send_unicode(self.grapher_id, zmq.SNDMORE)
         self.grapher.send_unicode(unicode(send_xml))
     def _loop(self):
-        while True:
+        self.__run = True
+        while self.__run:
             try:
                 rcv_list = self.poller.poll(timeout=1000)
             except zmq.error.ZMQError:
@@ -157,6 +171,12 @@ class net_receiver(multiprocessing.Process, log_base):
             else:
                 for in_sock, in_type in rcv_list:
                     self.__poller_dict[in_sock](in_sock)
+    def _recv_com(self, in_sock):
+        _src_proc = in_sock.recv_unicode()
+        _recv = in_sock.recv_pyobj()
+        self.log("got from {}: {}".format(_src_proc, str(_recv)))
+        if _recv == "exit":
+            self.__run = False
     def _recv_data(self, in_sock):
         in_data = in_sock.recv()
         self._process_data(in_data)
@@ -275,7 +295,8 @@ class net_receiver(multiprocessing.Process, log_base):
                 try:
                     # loop
                     for p_data in getattr(self, handle_name)(_xml, len(in_tree)):
-                        self.sender.send_pyobj(p_data)
+                        self.com.send_unicode("main", zmq.SNDMORE)
+                        self.com.send_pyobj(p_data)
                 except:
                     self.log(process_tools.get_except_info(), logging_tools.LOG_LEVEL_ERROR)
             else:

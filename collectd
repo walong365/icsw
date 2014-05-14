@@ -67,17 +67,24 @@ case "$1" in
         ;;
     stop)
         echo -n "Shutting down collectd "
-        if [ "${DB}" = "1" ] ; then
+        if [ -f ${PID_FILE} ] ; then
+            kill $(cat ${PID_FILE})
             if [ -f ${PID_FILE} ] ; then
-                kill $(cat ${PID_FILE})
-            else
-                echo "not running"
-                rc_failed
+                for i in $(seq 40) ; do
+                    true
+                    echo -n "."
+                    if [ -x /bin/usleep ] ; then
+                        usleep 250000
+                    else
+                        sleep 1
+                    fi
+                    [ ! -f ${PID_FILE} ] && break
+                done
             fi
         else
-            killproc $COLLECTD_BIN ; killproc $COLLECTD_BIN
+            echo "not running"
+            rc_failed
         fi
-    
 	rm -f ${SOCK_NAME}
         rc_status -v
         ;;

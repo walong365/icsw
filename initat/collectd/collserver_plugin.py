@@ -22,6 +22,7 @@
 from initat.collectd.collectd_types import * # @UnusedWildImport
 from initat.collectd.config import IPC_SOCK, log_base
 from initat.collectd.net_receiver import net_receiver
+from initat.collectd.background import background
 import collectd # @UnresolvedImport
 import os
 import process_tools
@@ -34,25 +35,34 @@ class receiver(log_base):
         self.recv_sock = None
         self.__last_sent = {}
         self.lock = threading.Lock()
-    def start_sub_proc(self):
-        self.log("start 0MQ process")
-        self.sub_proc = net_receiver()
-        self.sub_proc.start()
-        self.log("adding receiver pid {:d}".format(self.sub_proc.pid))
-        self.__msi_block.add_actual_pid(self.sub_proc.pid, mult=3, process_name="receiver", fuzzy_ceiling=3)
+    def start_sub_processes(self):
+        self.log("start sub-processes")
+        self.net_receiver_proc = net_receiver()
+        self.net_receiver_proc.start()
+        self.log("adding receiver pid {:d}".format(self.net_receiver_proc.pid))
+        self.background_proc = background()
+        self.background_proc.start()
+        self.log("adding background pid {:d}".format(self.background_proc.pid))
+        self.__msi_block.add_actual_pid(self.net_receiver_proc.pid, mult=3, process_name="receiver", fuzzy_ceiling=3)
+        self.__msi_block.add_actual_pid(self.background_proc.pid, mult=3, process_name="background", fuzzy_ceiling=3)
         self.__msi_block.save_block()
     def init_receiver(self):
         self.zmq_context = zmq.Context()
         log_base.__init__(self)
         self.log("init receiver")
         self._init_msi_block()
-        self.log("init 0MQ IPC receiver at {}".format(IPC_SOCK))
-        self.recv_sock = self.zmq_context.socket(zmq.PULL)
+        self.log("init 0MQ IPC receiver, socket at {}".format(
+            IPC_SOCK,
+            )
+        )
+        self.recv_sock = self.zmq_context.socket(zmq.ROUTER)
+        self.recv_sock.setsockopt(zmq.IDENTITY, "main")
         sock_dir = os.path.dirname(IPC_SOCK[6:])
         if not os.path.isdir(sock_dir):
             self.log("creating directory {}".format(sock_dir))
             os.mkdir(sock_dir)
         self.recv_sock.bind(IPC_SOCK)
+        self.start_sub_processes()
     def _init_msi_block(self):
         self.log("init meta-server-info block")
         msi_block = process_tools.meta_server_info("collectd")
@@ -67,21 +77,24 @@ class receiver(log_base):
         if self.recv_sock:
             while True:
                 try:
-                    data = self.recv_sock.recv_pyobj(zmq.DONTWAIT)
+                    sender = self.recv_sock.recv_unicode(zmq.DONTWAIT)
                 except:
                     break
                 else:
-                    if data == "stop":
-                        self.log("0MQ process exited, closing sockets")
-                        self.sub_proc.join()
-                        break
+                    data = self.recv_sock.recv_pyobj()
+                    if len(data) == 3:
+                        self._handle_tree(data)
                     else:
-                        if len(data) == 3:
-                            self._handle_tree(data)
-                        else:
-                            self._handle_perfdata(data)
+                        self._handle_perfdata(data)
         self.lock.release()
-    def close(self):
+    def shutdown(self):
+        self.log("shutdown received")
+        self.recv_sock.send_unicode("bg", zmq.SNDMORE)
+        self.recv_sock.send_pyobj("exit")
+        self.recv_sock.send_unicode("net", zmq.SNDMORE)
+        self.recv_sock.send_pyobj("exit")
+        self.net_receiver_proc.join()
+        self.background_proc.join()
         if self.recv_sock:
             self.recv_sock.close()
         self.log("exiting...")
@@ -119,7 +132,6 @@ def configer(ObjConfiguration):
 def initer(my_recv):
     signal.signal(signal.SIGCHLD, signal.SIG_DFL)
     my_recv.init_receiver()
-    my_recv.start_sub_proc()
 
 my_recv = receiver()
 
@@ -127,4 +139,4 @@ collectd.register_config(configer)
 collectd.register_init(initer, my_recv)
 # call every 15 seconds
 collectd.register_read(my_recv.recv, 15.0)
-collectd.register_shutdown(my_recv.close)
+collectd.register_shutdown(my_recv.shutdown)

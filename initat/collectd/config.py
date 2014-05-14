@@ -24,6 +24,7 @@
 import logging_tools
 
 IPC_SOCK = "ipc:///var/log/cluster/sockets/collectd/com"
+
 RECV_PORT = 8002
 COMMAND_PORT = 8008
 GRAPHER_PORT = 8003
