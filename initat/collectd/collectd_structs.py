@@ -37,7 +37,7 @@ class host_info(object):
         self.store_to_disk = True
         self.log("init host_info for {} ({})".format(name, uuid))
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
-        self.__log_tempalte.log(u"[h {}] {}".format(self.name, what), log_level)
+        self.__log_template.log(u"[h {}] {}".format(self.name, what), log_level)
     def get_host_info(self):
         return E.host_info(
             name=self.name,
