@@ -45,6 +45,9 @@ class log_base(object):
             LOG_DESTINATION,
             zmq=True,
             context=self.zmq_context)
+    @property
+    def log_template(self):
+        return self.__log_template
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
         self.__log_template.log(log_level, what)
     def close_log(self):
@@ -273,7 +276,7 @@ class net_receiver(multiprocessing.Process, log_base):
         in_com.set_result("got command {}".format(com_text))
     def _feed_host_info(self, host_uuid, host_name, _xml):
         if host_uuid not in self.__hosts:
-            self.__hosts[host_uuid] = host_info(self.__log_template, host_uuid, host_name)
+            self.__hosts[host_uuid] = host_info(self.log_template, host_uuid, host_name)
         if self.__hosts[host_uuid].update(_xml):
             # something changed
             new_com = server_command.srv_command(command="mv_info")
