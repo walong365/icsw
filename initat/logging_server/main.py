@@ -405,7 +405,6 @@ class main_process(threading_tools.process_pool):
         init_logger = record_name.startswith("init.at.")
         if init_logger:
             # init.at logger, create subdirectories
-            logger_name = "{}.{}".format(record_host, record_name)
             # generate list of dirs and file_name
             scr1_name = record_name[8:].replace("\.", "#").replace(".", "/").replace("#", ".")
             for path_part in os.path.dirname(scr1_name).split(os.path.sep):
@@ -420,8 +419,9 @@ class main_process(threading_tools.process_pool):
             else:
                 h_name = os.path.basename(scr1_name)
         else:
-            logger_name = record_name
             h_name = os.path.join(record.host, record_name)
+        # create logger_name
+        logger_name = "{}.{}".format(record_host, record_name)
         if h_name in self.__handles:
             if not (set([record_process, record_parent_process]) &
                     set([self.__handles[h_name].process_id,
@@ -462,12 +462,14 @@ class main_process(threading_tools.process_pool):
             # logging.config.fileConfig("logging.conf", {"file_name" : full_name})
             # base_logger = logging.getLogger("init.at")
             logger = logging.getLogger(logger_name)
+            # print "*", logger_name, h_name
             logger.propagate = 0
             # print logging.root.manager.loggerDict.keys()
             # print dir(base_logger)
             # print "***", logger_name, base_logger, logger
-            form = logging_tools.my_formatter(global_config["LOG_FORMAT"],
-                                              global_config["DATE_FORMAT"])
+            form = logging_tools.my_formatter(
+                global_config["LOG_FORMAT"],
+                global_config["DATE_FORMAT"])
             logger.setLevel(logging.DEBUG)
             full_name = full_name.encode("ascii", errors="replace")
             new_h = logging_tools.logfile(full_name, max_bytes=1000000, max_age_days=global_config["MAX_AGE_FILES"])
