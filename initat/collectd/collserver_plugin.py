@@ -19,9 +19,10 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
 
-from initat.collectd.collectd_types import * # @UnusedWildImport
 from initat.collectd.collectd_structs import host_info
-from initat.collectd.config import COMMAND_PORT, GRAPHER_PORT, RECV_PORT, IPC_SOCK
+from initat.collectd.collectd_types import * # @UnusedWildImport
+from initat.collectd.config import COMMAND_PORT, GRAPHER_PORT, RECV_PORT, IPC_SOCK, LOG_DESTINATION, \
+    LOG_NAME
 from lxml import etree # @UnresolvedImports
 from lxml.builder import E # @UnresolvedImports
 import collectd # @UnresolvedImport
@@ -37,13 +38,29 @@ import time
 import uuid_tools
 import zmq
 
-class net_receiver(multiprocessing.Process):
+class log_base(object):
+    def __init__(self):
+        self.__log_template = logging_tools.get_logger(
+            LOG_NAME,
+            LOG_DESTINATION,
+            zmq=True,
+            context=self.zmq_context)
+    def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
+        self.__log_template.log(log_level, what)
+    def close_log(self):
+        self.__log_template.close()
+
+class net_receiver(multiprocessing.Process, log_base):
     def __init__(self):
         multiprocessing.Process.__init__(self, target=self._code, name="0MQ_net_receiver")
         self.zmq_id = "{}:collserver_plugin".format(process_tools.get_machine_name())
         self.grapher_id = "{}:rrd_grapher".format(uuid_tools.get_uuid().get_urn())
-        self.poller = zmq.Poller()
     def _init(self):
+        # init zmq_context and logging
+        self.zmq_context = zmq.Context()
+        log_base.__init__(self)
+        self.poller = zmq.Poller()
+        self.log("net receiver started")
         self._init_perfdata()
         self._init_vars()
         self._init_hosts()
@@ -58,11 +75,10 @@ class net_receiver(multiprocessing.Process):
                     re_list.append((obj.PD_RE, obj))
         self.__pd_re_list = re_list
     def _init_sockets(self):
-        self.context = zmq.Context()
-        self.receiver = self.context.socket(zmq.PULL)
-        self.sender = self.context.socket(zmq.PUSH)
-        self.grapher = self.context.socket(zmq.ROUTER)
-        self.command = self.context.socket(zmq.ROUTER)
+        self.receiver = self.zmq_context.socket(zmq.PULL)
+        self.sender = self.zmq_context.socket(zmq.PUSH)
+        self.grapher = self.zmq_context.socket(zmq.ROUTER)
+        self.command = self.zmq_context.socket(zmq.ROUTER)
         # set grapher flags
         for flag, value in [
             (zmq.IDENTITY, self.zmq_id),
@@ -79,7 +95,7 @@ class net_receiver(multiprocessing.Process):
         self.receiver.bind(listener_url)
         self.command.bind(command_url)
         self.grapher.connect(grapher_url)
-        collectd.notice("listening on {}, connected to grapher on {}, command_url is {}".format(
+        self.log("listening on {}, connected to grapher on {}, command_url is {}".format(
             listener_url,
             grapher_url,
             command_url,
@@ -110,17 +126,18 @@ class net_receiver(multiprocessing.Process):
         self.receiver.close()
         self.grapher.close()
         self.command.close()
-        self.context.term()
-        collectd.notice("0MQ process finished")
+        self.log("0MQ net receiver finished")
+        self.close_log()
+        self.zmq_context.term()
     def _code(self):
         self._init()
         try:
             self._loop()
         except:
-            collectd.error("exception raised in loop, exiting")
+            self.log("exception raised in loop, exiting", logging_tools.LOG_LEVEL_ERROR)
             exc_info = process_tools.exception_info()
             for line in exc_info.log_lines:
-                collectd.error(line)
+                self.log(line, logging_tools.LOG_LEVEL_ERROR)
             self.sender.send("stop")
         self._close()
     def _log_stats(self):
@@ -130,7 +147,7 @@ class net_receiver(multiprocessing.Process):
         st_rate = self.__total_size_trees / diff_time
         bp_rate = self.__pds_read / diff_time
         sp_rate = self.__total_size_pds / diff_time
-        collectd.notice("read {} ({}) from {} (rate [{:.2f}, {}] / sec), {} ({}) from {} (rate [{:.2f}, {}] / sec) in {}".format(
+        self.log("read {} ({}) from {} (rate [{:.2f}, {}] / sec), {} ({}) from {} (rate [{:.2f}, {}] / sec) in {}".format(
             logging_tools.get_plural("tree", self.__trees_read),
             logging_tools.get_size_str(self.__total_size_trees),
             logging_tools.get_plural("host", len(self.__distinct_hosts_mv)),
@@ -152,7 +169,7 @@ class net_receiver(multiprocessing.Process):
             try:
                 rcv_list = self.poller.poll(timeout=1000)
             except zmq.error.ZMQError:
-                collectd.error("got ZMQError, exiting")
+                self.log("got ZMQError, exiting", logging_tools.LOG_LEVEL_ERROR)
                 break
             else:
                 for in_sock, in_type in rcv_list:
@@ -169,17 +186,17 @@ class net_receiver(multiprocessing.Process):
         try:
             in_com = server_command.srv_command(source=in_xml)
         except:
-            collectd.error("error decoding command {}: {}".format(in_xml, process_tools.get_except_info))
+            self.log("error decoding command {}: {}".format(in_xml, process_tools.get_except_info), logging_tools.LOG_LEVEL_ERROR)
         else:
             in_com.update_source()
             com_text = in_com["command"].text
-            collectd.info("got command {} from {}".format(com_text, in_uuid))
+            self.log("got command {} from {}".format(com_text, in_uuid))
             if com_text in ["host_list", "key_list"]:
                 self._handle_hk_command(in_com, com_text)
             elif com_text == "disabled_hosts":
                 self._handle_disabled_hosts(in_com, com_text)
             else:
-                collectd.error("unknown command {}".format(com_text))
+                self.log("unknown command {}".format(com_text), logging_tools.LOG_LEVEL_ERROR)
                 in_com.set_result(
                     "unknown command {}".format(com_text),
                     server_command.SRV_REPLY_STATE_ERROR
@@ -194,26 +211,27 @@ class net_receiver(multiprocessing.Process):
         to_disable = uuids_to_disable - cur_disabled
         to_enable = cur_disabled - uuids_to_disable
         if to_disable or to_enable:
-            collectd.warning(
+            self.log(
                 "{} to disable, {} to enable".format(
                     logging_tools.get_plural("UUID", len(to_disable)),
                     logging_tools.get_plural("UUID", len(to_enable)),
-                )
+                ),
+                logging_tools.LOG_LEVEL_WARN
             )
             for _to_dis in to_disable:
                 _host = self.__hosts[_to_dis]
                 _host.store_to_disk = False
-                collectd.warning("disabled {}".format(unicode(_host)))
+                self.log("disabled {}".format(unicode(_host)), logging_tools.LOG_LEVEL_WARN)
             for _to_en in to_enable:
                 _host = self.__hosts[_to_en]
                 _host.store_to_disk = True
-                collectd.warning("enabled {}".format(unicode(_host)))
+                self.log("enabled {}".format(unicode(_host)), logging_tools.LOG_LEVEL_WARN)
     def _handle_hk_command(self, in_com, com_text):
         h_filter, k_filter = (
             in_com.get("host_filter", ".*"),
             in_com.get("key_filter", ".*")
         )
-        collectd.info(
+        self.log(
             "host_filter: {}, key_filter: {}".format(
                 h_filter,
                 k_filter,
@@ -223,21 +241,23 @@ class net_receiver(multiprocessing.Process):
             host_filter = re.compile(h_filter)
         except:
             host_filter = re.compile(".*")
-            collectd.error(
+            self.log(
                 "error interpreting '{}' as host re: {}".format(
                     h_filter,
                     process_tools.get_except_info()
-                )
+                ),
+                logging_tools.LOG_LEVEL_ERROR
             )
         try:
             key_filter = re.compile(k_filter)
         except:
             key_filter = re.compile(".*")
-            collectd.error(
+            self.log(
                 "error interpreting '{}' as key re: {}".format(
                     k_filter,
                     process_tools.get_except_info()
-                )
+                ),
+                logging_tools.LOG_LEVEL_ERROR
             )
         match_uuids = [_value[1] for _value in sorted([(self.__hosts[cur_uuid].name, cur_uuid) for cur_uuid in self.__hosts.keys() if host_filter.match(self.__hosts[cur_uuid].name)])]
         if com_text == "host_list":
@@ -264,21 +284,19 @@ class net_receiver(multiprocessing.Process):
         try:
             _xml = etree.fromstring(in_tree)
         except:
-            collectd.error("cannot parse tree: {}".format(process_tools.get_except_info()))
+            self.log("cannot parse tree: {}".format(process_tools.get_except_info()), logging_tools.LOG_LEVEL_ERROR)
         else:
             xml_tag = _xml.tag.split("}")[-1]
-            # collectd.error(xml_tag)
             handle_name = "_handle_{}".format(xml_tag)
             if hasattr(self, handle_name):
                 try:
                     # loop
                     for p_data in getattr(self, handle_name)(_xml, len(in_tree)):
-                        # collectd.info(str(p_data))
                         self.sender.send_pyobj(p_data)
                 except:
-                    collectd.error(process_tools.get_except_info())
+                    self.log(process_tools.get_except_info(), logging_tools.LOG_LEVEL_ERROR)
             else:
-                collectd.error("unknown handle_name '{}'".format(handle_name))
+                self.log("unknown handle_name '{}'".format(handle_name), logging_tools.LOG_LEVEL_ERROR)
     def _check_for_ext_perfdata(self, mach_values):
         # unique tuple
         pd_tuple = (mach_values[0], mach_values[1])
@@ -304,11 +322,12 @@ class net_receiver(multiprocessing.Process):
         )
         self.__distinct_hosts_mv.add(host_uuid)
         if simple and host_uuid not in self.__hosts:
-            collectd.warning(
+            self.log(
                 "no full info for host {} ({}) received, discarding data".format(
                     host_name,
                     host_uuid,
-                )
+                ),
+                logging_tools.LOG_LEVEL_WARN
             )
             raise StopIteration
         else:
@@ -342,38 +361,41 @@ class net_receiver(multiprocessing.Process):
                 # stop loop
                 break
         if not values:
-            collectd.warning(
+            self.log(
                 "unparsed perfdata '{}' from {}".format(
                     perf_value,
                     p_data.get("host")
-                )
+                ),
+                logging_tools.LOG_LEVEL_WARN
             )
         return values
 
-class receiver(object):
+class receiver(log_base):
     def __init__(self):
-        self.context = zmq.Context()
         self.recv_sock = None
         self.__last_sent = {}
         self.lock = threading.Lock()
     def start_sub_proc(self):
-        collectd.notice("start 0MQ process")
+        self.log("start 0MQ process")
         self.sub_proc = net_receiver()
         self.sub_proc.start()
-        collectd.info("adding receiver pid {:d}".format(self.sub_proc.pid))
+        self.log("adding receiver pid {:d}".format(self.sub_proc.pid))
         self.__msi_block.add_actual_pid(self.sub_proc.pid, mult=3, process_name="receiver", fuzzy_ceiling=3)
         self.__msi_block.save_block()
     def init_receiver(self):
+        self.zmq_context = zmq.Context()
+        log_base.__init__(self)
+        self.log("init receiver")
         self._init_msi_block()
-        collectd.notice("init 0MQ IPC receiver at {}".format(IPC_SOCK))
-        self.recv_sock = self.context.socket(zmq.PULL)
+        self.log("init 0MQ IPC receiver at {}".format(IPC_SOCK))
+        self.recv_sock = self.zmq_context.socket(zmq.PULL)
         sock_dir = os.path.dirname(IPC_SOCK[6:])
         if not os.path.isdir(sock_dir):
-            collectd.notice("creating directory {}".format(sock_dir))
+            self.log("creating directory {}".format(sock_dir))
             os.mkdir(sock_dir)
         self.recv_sock.bind(IPC_SOCK)
     def _init_msi_block(self):
-        collectd.info("init meta-server-info block")
+        self.log("init meta-server-info block")
         msi_block = process_tools.meta_server_info("collectd")
         msi_block.add_actual_pid(mult=10, fuzzy_ceiling=10, process_name="main")
         msi_block.start_command = "/etc/init.d/collectd start"
@@ -391,12 +413,8 @@ class receiver(object):
                     break
                 else:
                     if data == "stop":
-                        collectd.notice("0MQ process exited, closing sockets")
+                        self.log("0MQ process exited, closing sockets")
                         self.sub_proc.join()
-                        self.recv_sock.close()
-                        self.context.term()
-                        self.recv_sock = None
-                        self.__msi_block.remove_meta_block()
                         break
                     else:
                         if len(data) == 3:
@@ -404,13 +422,21 @@ class receiver(object):
                         else:
                             self._handle_perfdata(data)
         self.lock.release()
+    def close(self):
+        if self.recv_sock:
+            self.recv_sock.close()
+        self.log("exiting...")
+        self.close_log()
+        self.zmq_context.term()
+        self.recv_sock = None
+        self.__msi_block.remove_meta_block()
     def get_time(self, h_tuple, cur_time):
         cur_time = int(cur_time)
         if h_tuple in self.__last_sent:
             if cur_time <= self.__last_sent[h_tuple]:
                 diff_time = self.__last_sent[h_tuple] + 1 - cur_time
                 cur_time += diff_time
-                collectd.notice("correcting time for {} (+{:d}s to {:d})".format(str(h_tuple), diff_time, int(cur_time)))
+                self.log("correcting time for {} (+{:d}s to {:d})".format(str(h_tuple), diff_time, int(cur_time)))
         self.__last_sent[h_tuple] = cur_time
         return self.__last_sent[h_tuple]
     def _handle_perfdata(self, data):
@@ -427,55 +453,19 @@ class receiver(object):
             if name:
                 collectd.Values(plugin="collserver", host=host_name, time=s_time, type="icval", type_instance=name).dispatch(values=[value])
 
-def main_for_collectd():
-    # our own functions go here
-    def configer(ObjConfiguration):
-        pass
-    def initer(my_recv):
-        signal.signal(signal.SIGCHLD, signal.SIG_DFL)
-        my_recv.init_receiver()
-        my_recv.start_sub_proc()
+# our own functions go here
+def configer(ObjConfiguration):
+    pass
 
-    my_recv = receiver()
+def initer(my_recv):
+    signal.signal(signal.SIGCHLD, signal.SIG_DFL)
+    my_recv.init_receiver()
+    my_recv.start_sub_proc()
 
-    collectd.register_config(configer)
-    collectd.register_init(initer, my_recv)
-    # call every 15 seconds
-    collectd.register_read(my_recv.recv, 15.0)
+my_recv = receiver()
 
-def main_for_direct():
-    out_list = logging_tools.new_form_list()
-    out_list.append([
-        logging_tools.form_entry("icval"),
-        logging_tools.form_entry("v:GAUGE:U:U"),
-        ])
-    for key in sorted(globals().keys()):
-        obj = globals()[key]
-        if type(obj) == type and obj != perfdata_object:
-            if issubclass(obj, perfdata_object):
-                obj = obj()
-                out_list.append(
-                    [
-                        logging_tools.form_entry(
-                            "ipd_{}".format(obj.PD_NAME)
-                        ),
-                        logging_tools.form_entry(
-                            " ".join(
-                                [
-                                    "{}:{}".format(
-                                        _e.get("name"),
-                                        _e.get("rrd_spec")
-                                    ) for _e in obj.default_xml_info.xpath(
-                                        ".//value[@rrd_spec]", smart_strings=False
-                                    )
-                                ]
-                            )
-                        ),
-                    ]
-                )
-    print(unicode(out_list))
-
-if __name__ != "__main__":
-    main_for_collectd()
-else:
-    main_for_direct()
+collectd.register_config(configer)
+collectd.register_init(initer, my_recv)
+# call every 15 seconds
+collectd.register_read(my_recv.recv, 15.0)
+collectd.register_shutdown(my_recv.close)

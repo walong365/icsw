@@ -24,3 +24,6 @@ RECV_PORT = 8002
 COMMAND_PORT = 8008
 GRAPHER_PORT = 8003
 
+LOG_NAME = "collectd"
+LOG_DESTINATION = "ipc:///var/lib/logging-server/py_log_zmq"
+

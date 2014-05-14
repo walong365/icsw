@@ -24,11 +24,10 @@ from initat.collectd.collectd_types import value
 import logging_tools
 import process_tools
 import time
-import collectd # @UnresolvedImport
 
 class host_info(object):
-    def __init__(self, uuid, name):
-        collectd.notice("init host_info for {} ({})".format(name, uuid))
+    def __init__(self, log_template, uuid, name):
+        self.__log_template = log_template
         self.name = name
         self.uuid = uuid
         self.__dict = {}
@@ -36,6 +35,9 @@ class host_info(object):
         self.updates = 0
         self.stores = 0
         self.store_to_disk = True
+        self.log("init host_info for {} ({})".format(name, uuid))
+    def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
+        self.__log_tempalte.log(u"[h {}] {}".format(self.name, what), log_level)
     def get_host_info(self):
         return E.host_info(
             name=self.name,
@@ -69,7 +71,7 @@ class host_info(object):
             del_keys = old_keys - new_keys
             for del_key in del_keys:
                 del self.__dict[del_key]
-            collectd.warning("{} changed for {}".format(logging_tools.get_plural("key", len(c_keys)), self.name))
+            self.log("{} changed".format(logging_tools.get_plural("key", len(c_keys))), logging_tools.LOG_LEVEL_WARN)
             return True
         else:
             return False
@@ -82,7 +84,7 @@ class host_info(object):
                     self.__dict[key].transform(value, cur_time),
                 )
             except:
-                collectd.error("error transforming {}: {}".format(key, process_tools.get_except_info()))
+                self.log("error transforming {}: {}".format(key, process_tools.get_except_info()), logging_tools.LOG_LEVEL_ERROR)
                 return (None, None)
         else:
             # key not known, skip
