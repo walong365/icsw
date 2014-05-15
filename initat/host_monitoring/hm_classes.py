@@ -21,7 +21,6 @@ import argparse
 import cPickle
 import logging_tools
 import marshal
-import process_tools
 import server_command
 import subprocess
 import time
@@ -229,90 +228,6 @@ class hm_command(object):
         if hasattr(res_ns, "arguments"):
             unknown.extend(res_ns.arguments)
         return res_ns, unknown
-
-class hm_fileinfo(object):
-    def __init__(self, name, info, **args):
-        self.name, self.info = (name, info)
-        self.logger = args.get("logger", None)
-        self.module = args.get("module", None)
-        self.commands = {}
-        self.priority = 0
-        self.has_own_thread = False
-    def add_command(self, com):
-        self.commands[com.name] = com
-    def log(self, what, level=logging_tools.LOG_LEVEL_OK):
-        self.logger.log(level, what)
-    def check_global_config(self, gc):
-        return 1
-    def process_server_args(self, basedir_name, logger):
-        return (1, "ok")
-    def process_client_args(self, opts, hmb):
-        return (1, "ok", [])
-    def needs_hourly_wakeup_call(self):
-        return False
-
-class hmb_command(object):
-    def __init__(self, name, **args):
-        self.name = name
-        self.module_info = args.get("module", None)
-        self.module_name = args.get("module_name", "mn not set")
-        self.relay_call = False
-        self.net_only = False
-        self.help_str = "not set"
-        # sever stuff
-        self.short_server_info = ""
-        self.long_server_info = ""
-        # client stuff
-        self.short_client_info = ""
-        self.long_client_info = ""
-        self.short_client_opts = ""
-        self.long_client_opts = []
-        # stuff
-        self.is_immediate = True
-        self.timeout = 5.
-        self.log_level = 0
-        self.cache_timeout = 60
-        self.special_hook = None
-    def process_client_args(self, opts):
-        return self.module_info.process_client_args(opts, self)
-    def log(self, what, lev=logging_tools.LOG_LEVEL_OK):
-        self.logger.log(lev, what)
-    def __call__(self, comline, logger, **in_args):
-        addr = in_args.get("addr", ("local", 0))
-        self.thread_pool = in_args.get("thread_pool", None)
-        args = comline.split()
-        try:
-            # remove command
-            args.pop(0)
-            self.source_host, self.source_port = addr
-            if self.log_level:
-                start_time = time.time()
-                self.module_info.log("calling {} in module {} from {} ({})".format(
-                    self.name,
-                    self.module_name,
-                    self.source_port and "{} (port {:d})".format(self.source_host, self.source_port) or self.source_host,
-                    args and "args: {}".format(" ".join(args)) or "no args"))
-            self.logger = logger
-            result = self.server_call(args)
-            self.logger = None
-            if self.log_level:
-                end_time = time.time()
-                self.module_info.log(
-                    "  - {} took {}".format(
-                        self.name,
-                        logging_tools.get_diff_time_str(end_time - start_time)))
-        except:
-            result = "error server throw an exception: {}".format(process_tools.get_except_info())
-            self.module_info.log(result, logging_tools.LOG_LEVEL_CRITICAL)
-            exc_info = process_tools.exception_info()
-            for line in exc_info.log_lines:
-                self.module_info.log(line, logging_tools.LOG_LEVEL_CRITICAL)
-        else:
-            if not result:
-                result = "error server returned None"
-        # cleanup
-        self.thread_pool = None
-        return result
 
 class mvect_entry(object):
     __slots__ = ["name", "default", "info", "unit", "base", "value", "factor", "v_type", "valid_until"]
