@@ -115,8 +115,8 @@ class bg_job(object):
         self.uuid = kwargs.get("uuid", "")
         self.comline = comline
         self.builder = builder
-        self.max_runtime = kwargs.get("max_runtime", 60)
-        self.run_every = kwargs.get("run_every", 2 * 60)
+        self.max_runtime = kwargs.get("max_runtime", 45)
+        self.run_every = kwargs.get("run_every", 60)
         self.counter = 0
         self.last_start = None
         self.running = False
