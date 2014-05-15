@@ -99,6 +99,13 @@ class ipmi_builder(object):
             )
             _tree.append(_val)
         return _tree
+    def get_comline(self, _dev_xml):
+        return "/usr/bin/ipmitool -H {} -U {} -P {} sensor list".format(
+            _dev_xml.get("ip"),
+            _dev_xml.get("ipmi_username"),
+            _dev_xml.get("ipmi_password"),
+        ),
+
 
 class bg_job(object):
     def __init__(self, id_str, comline, builder, **kwargs):
@@ -119,6 +126,14 @@ class bg_job(object):
         self.check()
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
         bg_job.bg_proc.log(u"[bgj {:d}] {}".format(self.idx, what), log_level)
+    def update_attribute(self, attr_name, attr_value):
+        if getattr(self, attr_name) != attr_value:
+            self.log("changed attribute {} from '{}' to '{}'".format(
+                attr_name,
+                getattr(self, attr_name),
+                attr_value,
+                ))
+            setattr(self, attr_name, attr_value)
     def _start_ext_com(self):
         self.counter += 1
         self.last_start = time.time()
@@ -186,17 +201,21 @@ class bg_job(object):
         new_job.idx = bg_job.run_idx
         bg_job.ref_dict[new_job.id_str] = new_job
     @staticmethod
+    def get_job(job_id):
+        return bg_job.ref_dict[job_id]
+    @staticmethod
     def sync_jobs_with_id_list(id_list):
         # sync the currently configures jobs with the new id_list
         _cur = set(bg_job.ref_dict.keys())
         _new = set(id_list)
         _to_remove = _cur - _new
+        _same = _cur & _new
         _to_create = _new - _cur
         if _to_remove:
             bg_job.g_log("{} to remove: {}".format(logging_tools.get_plural("background job", len(_to_remove)), ", ".join(sorted(list(_to_remove)))))
             for _rem in _to_remove:
                 bg_job.ref_dict[_rem].to_remove = True
-        return _to_create
+        return _to_create, _to_remove, _same
     @staticmethod
     def check_jobs():
         _to_delete = []
@@ -233,7 +252,6 @@ class background(multiprocessing.Process, log_base):
         self.net_target = self.zmq_context.socket(zmq.PUSH)
         listener_url = "tcp://127.0.0.1:{:d}".format(RECV_PORT)
         self.net_target.connect(listener_url)
-
         self.poller.register(self.com, zmq.POLLIN)
     def _close(self):
         self._close_sockets()
@@ -283,17 +301,25 @@ class background(multiprocessing.Process, log_base):
         if com_text == "ipmi_hosts":
             # create ids
             _id_dict = {"{}:IPMI".format(_dev.attrib["uuid"]) : _dev for _dev in in_com.xpath(".//ns:device_list/ns:device")}
-            for new_id in bg_job.sync_jobs_with_id_list(_id_dict.keys()):
+            _new_list, _remove_list, _same_list = bg_job.sync_jobs_with_id_list(_id_dict.keys())
+            for new_id in _new_list:
                 _dev = _id_dict[new_id]
                 bg_job(
                     new_id,
-                    "/usr/bin/ipmitool -H {} -U {} -P {} sensor list".format(
-                        _dev.get("ip"),
-                        _dev.get("ipmi_username"),
-                        _dev.get("ipmi_password"),
-                    ),
-                    ipmi_builder()
+                    ipmi_builder().get_comline(_dev),
+                    ipmi_builder(),
+                    device_name=_dev.get("full_name"),
+                    uuid=_dev.get("uuid"),
                 )
+            for same_id in _same_list:
+                _dev = _id_dict[same_id]
+                _job = bg_job.get_job(same_id)
+                for attr_name, attr_value in [
+                    ("comline", ipmi_builder().get_comline(_dev)),
+                    ("device_name", _dev.get("full_name")),
+                    ("uuid", _dev.get("uuid")),
+                ]:
+                    _job.update_attribute(attr_name, attr_value)
         else:
             self.log("got server_command with unknown command {}".format(com_text), logging_tools.LOG_LEVEL_ERROR)
 
