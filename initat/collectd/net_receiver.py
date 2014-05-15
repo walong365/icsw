@@ -41,7 +41,7 @@ class net_receiver(multiprocessing.Process, log_base):
     def __init__(self):
         multiprocessing.Process.__init__(self, target=self._code, name="0MQ_net_receiver")
         self.zmq_id = "{}:collserver_plugin".format(process_tools.get_machine_name())
-        self.grapher_id = "{}:rrd_grapher".format(uuid_tools.get_uuid().get_urn())
+        self.grapher_id = "{}:grapher:".format(uuid_tools.get_uuid().get_urn())
     def _init(self):
         threading.currentThread().name = "netrecv"
         # init zmq_context and logging
@@ -91,6 +91,7 @@ class net_receiver(multiprocessing.Process, log_base):
             grapher_url,
             command_url,
             ))
+        self.log("grapher_id is {}".format(self.grapher_id))
         self.__poller_dict = {
             self.receiver : self._recv_data,
             self.command : self._recv_command,
