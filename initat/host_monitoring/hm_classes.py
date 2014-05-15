@@ -24,7 +24,6 @@ import marshal
 import process_tools
 import server_command
 import subprocess
-import sys
 import time
 
 def net_to_sys(in_val):
@@ -441,6 +440,3 @@ class mvect_entry(object):
             "v_type" : self.v_type,
             "value"  : str(self.value)}
 
-if __name__ == "__main__":
-    print "Loadable module, exiting..."
-    sys.exit(-2)
