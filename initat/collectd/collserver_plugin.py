@@ -26,6 +26,7 @@ from initat.collectd.background import background
 import collectd # @UnresolvedImport
 import os
 import process_tools
+import logging_tools
 import signal
 import threading
 import zmq
@@ -82,17 +83,23 @@ class receiver(log_base):
                     break
                 else:
                     data = self.recv_sock.recv_pyobj()
-                    if len(data) == 3:
-                        self._handle_tree(data)
+                    _com = data[0]
+                    if _com == "mvector":
+                        self._handle_tree(data[1:])
+                    elif _com == "pdata":
+                        self._handle_perfdata(data[1:])
+                    elif _com.startswith("to_"):
+                        self.send_to_slave(_com[3:], data[1])
                     else:
-                        self._handle_perfdata(data)
+                        self.log("unknown data from {} : {}".format(sender, _com), logging_tools.LOG_LEVEL_ERROR)
         self.lock.release()
+    def send_to_slave(self, slave_name, snd):
+        self.recv_sock.send_unicode(slave_name, zmq.SNDMORE)
+        self.recv_sock.send_pyobj(snd)
     def shutdown(self):
         self.log("shutdown received")
-        self.recv_sock.send_unicode("bg", zmq.SNDMORE)
-        self.recv_sock.send_pyobj("exit")
-        self.recv_sock.send_unicode("net", zmq.SNDMORE)
-        self.recv_sock.send_pyobj("exit")
+        self.send_to_slave("bg", "exit")
+        self.send_to_slave("net", "exit")
         self.net_receiver_proc.join()
         self.background_proc.join()
         if self.recv_sock:

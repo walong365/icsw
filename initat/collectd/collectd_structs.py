@@ -23,7 +23,39 @@ from lxml.builder import E # @UnresolvedImports
 from initat.collectd.collectd_types import value
 import logging_tools
 import process_tools
+import subprocess
 import time
+
+class ext_com(object):
+    run_idx = 0
+    def __init__(self, log_com, command):
+        ext_com.run_idx += 1
+        self.idx = ext_com.run_idx
+        self.command = command
+        self.popen = None
+        self.__log_com = log_com
+    def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
+        self.__log_com(u"[ec {:d}] {}".format(self.idx, what), log_level)
+    def run(self):
+        self.start_time = time.time()
+        self.popen = subprocess.Popen(self.command, shell=True, stderr=subprocess.PIPE, stdout=subprocess.PIPE)
+        self.log("start with pid %d" % (self.popen.pid))
+    def communicate(self):
+        if self.popen:
+            try:
+                return self.popen.communicate()
+            except:
+                self.log(u"error in communicate: {}".format(process_tools.get_except_info()), logging_tools.LOG_LEVEL_ERROR)
+                return ("", "")
+        else:
+            return ("", "")
+    def finished(self):
+        self.result = self.popen.poll()
+        if self.result is not None:
+            self.end_time = time.time()
+        return self.result
+    def terminate(self):
+        self.popen.kill()
 
 class host_info(object):
     def __init__(self, log_template, uuid, name):

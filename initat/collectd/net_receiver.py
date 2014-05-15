@@ -131,10 +131,10 @@ class net_receiver(multiprocessing.Process, log_base):
             exc_info = process_tools.exception_info()
             for line in exc_info.log_lines:
                 self.log(line, logging_tools.LOG_LEVEL_ERROR)
-            self.com.send_unicode("main", zmq.SNDMORE)
-            self.com.send("stop")
-            self.com.send_unicode("bg", zmq.SNDMORE)
-            self.com.send("stop")
+            # self.com.send_unicode("main", zmq.SNDMORE)
+            # self.com.send("stop")
+            # self.com.send_unicode("bg", zmq.SNDMORE)
+            # self.com.send("stop")
         self._close()
     def _log_stats(self):
         self.__end_time = time.time()
@@ -160,6 +160,9 @@ class net_receiver(multiprocessing.Process, log_base):
     def _send_to_grapher(self, send_xml):
         self.grapher.send_unicode(self.grapher_id, zmq.SNDMORE)
         self.grapher.send_unicode(unicode(send_xml))
+    def _send_to_main(self, send_obj):
+        self.com.send_unicode("main", zmq.SNDMORE)
+        self.com.send_pyobj(send_obj)
     def _loop(self):
         self.__run = True
         while self.__run:
@@ -174,9 +177,12 @@ class net_receiver(multiprocessing.Process, log_base):
     def _recv_com(self, in_sock):
         _src_proc = in_sock.recv_unicode()
         _recv = in_sock.recv_pyobj()
-        self.log("got from {}: {}".format(_src_proc, str(_recv)))
+        self.log(str(_recv))
         if _recv == "exit":
             self.__run = False
+            _recv = None
+        if _recv is not None:
+            self.log("got unknown data {} {}".format(str(_recv), _src_proc), logging_tools.LOG_LEVEL_ERROR)
     def _recv_data(self, in_sock):
         in_data = in_sock.recv()
         self._process_data(in_data)
@@ -198,6 +204,9 @@ class net_receiver(multiprocessing.Process, log_base):
                 self._handle_hk_command(in_com, com_text)
             elif com_text == "disabled_hosts":
                 self._handle_disabled_hosts(in_com, com_text)
+            elif com_text == "ipmi_hosts":
+                # send ipmi_hosts to main because currently there is no direct communication possible between net and background process
+                self._send_to_main(("to_bg", unicode(in_com)))
             else:
                 self.log("unknown command {}".format(com_text), logging_tools.LOG_LEVEL_ERROR)
                 in_com.set_result(
@@ -295,8 +304,7 @@ class net_receiver(multiprocessing.Process, log_base):
                 try:
                     # loop
                     for p_data in getattr(self, handle_name)(_xml, len(in_tree)):
-                        self.com.send_unicode("main", zmq.SNDMORE)
-                        self.com.send_pyobj(p_data)
+                        self._send_to_main(p_data)
                 except:
                     self.log(process_tools.get_except_info(), logging_tools.LOG_LEVEL_ERROR)
             else:
@@ -341,7 +349,7 @@ class net_receiver(multiprocessing.Process, log_base):
                 # writing to disk not allowed
                 raise StopIteration
             values = self.__hosts[host_uuid].get_values(_xml, simple)
-            r_data = (host_name, recv_time, values)
+            r_data = ("mvector", host_name, recv_time, values)
             yield r_data
     def _handle_perf_data(self, _xml, data_len):
         self.__total_size_pds += data_len
