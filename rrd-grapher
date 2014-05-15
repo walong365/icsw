@@ -101,6 +101,15 @@ case "$1" in
             fi
         } 
         ;;
+    reload)
+        echo "Reloading $(basename $SERVER_BIN)"
+        if [ -f ${SERVER_PID} ] ; then
+            kill -HUP `cat ${SERVER_PID} | head -n 1` || rc_failed
+        else
+            rc_failed
+        fi
+        rc_status
+        ;;
     restart)
         $0 stop && sleep 2 ; $0 start
         rc_status
@@ -110,7 +119,7 @@ case "$1" in
         rc_status
         ;;
     *)
-        echo "Usage: $0 {start|stop|status|force-stop|restart|force-restart}"
+        echo "Usage: $0 {start|stop|status|force-stop|restart|force-restart|reload}"
         exit 1
         ;;
 esac

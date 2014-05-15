@@ -96,6 +96,7 @@ class server_process(threading_tools.process_pool, threading_tools.operational_e
             self["exit_requested"] = True
     def _hup_error(self, err_cause):
         self.log("got sighup", logging_tools.LOG_LEVEL_WARN)
+        self._connect_to_collectd()
     def process_start(self, src_process, src_pid):
         mult = 3
         process_tools.append_pids(self.__pid_name, src_pid, mult=mult)
@@ -131,7 +132,7 @@ class server_process(threading_tools.process_pool, threading_tools.operational_e
         _sc = config_tools.server_check(server_type="rrd_server")
         _reachable, _unreachable = ([], [])
         for ipmi_host in ipmi_hosts:
-            _path = _sc.get_route_to_other_device(_router, config_tools.server_check(device=ipmi_host, config=None, server_type="node"))
+            _path = _sc.get_route_to_other_device(_router, config_tools.server_check(device=ipmi_host, config=None, server_type="node"), allow_route_to_other_networks=True)
             if not len(_path):
                 _unreachable.append(ipmi_host)
             else:
@@ -149,7 +150,7 @@ class server_process(threading_tools.process_pool, threading_tools.operational_e
         if _reachable:
             self.log(
                 "{}: {}".format(
-                    logging_tools.get_plural("reachable IPMI device", len(_unreachable)),
+                    logging_tools.get_plural("reachable IPMI device", len(_reachable)),
                     logging_tools.compress_list([unicode(_dev) for _dev, _ip, _vars in _reachable])
                 ),
             )
