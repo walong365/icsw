@@ -42,7 +42,6 @@ import process_tools
 import server_command
 import threading_tools
 import time
-import uuid_tools
 import zmq
 
 class server_process(threading_tools.process_pool, version_check_mixin):
@@ -354,12 +353,12 @@ class server_process(threading_tools.process_pool, version_check_mixin):
         else:
             self.log("no external cmd_file defined", logging_tools.LOG_LEVEL_ERROR)
     def _send_command(self, *args, **kwargs):
-        src_proc, src_id, full_uuid, srv_com = args
+        _src_proc, _src_id, full_uuid, srv_com = args
         self.log("init send of {:d} bytes to {}".format(len(srv_com), full_uuid))
         self.com_socket.send_unicode(full_uuid, zmq.SNDMORE)
         self.com_socket.send_unicode(srv_com)
     def _set_external_cmd_file(self, *args, **kwargs):
-        src_proc, src_id, ext_name = args
+        _src_proc, _src_id, ext_name = args
         self.log("setting external cmd_file to '{}'".format(ext_name))
         self.__external_cmd_file = ext_name
     def _init_network_sockets(self):

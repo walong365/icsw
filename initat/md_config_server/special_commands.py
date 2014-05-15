@@ -32,7 +32,6 @@ import os
 import process_tools
 import re
 import server_command
-import sys
 import time
 
 EXPECTED_FILE = "/etc/sysconfig/host-monitoring.d/openvpn_expected"
@@ -781,8 +780,3 @@ class special_eonstor(special_base):
         # sc_array = [(name, ["", ""] + var_list) for name, var_list in sc_array]
         self.log("sc_array has %s" % (logging_tools.get_plural("entry", len(sc_array))))
         return sc_array
-
-if __name__ == "__main__":
-    print "Loadable module, exiting"
-    sys.exit(0)
-

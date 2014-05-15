@@ -1,5 +1,3 @@
-#!/usr/bin/python-init -OtW default
-#
 # Copyright (C) 2001-2014 Andreas Lang-Nevyjel, init.at
 #
 # this file is part of md-config-server

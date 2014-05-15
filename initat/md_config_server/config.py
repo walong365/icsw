@@ -61,6 +61,7 @@ class generic_cache(object):
         for v_list in mon_check_command.objects.all().values_list("name", "config__name"):
             self.mcc_lut_2.setdefault(v_list[1], []).append(v_list[0])
 
+# a similiar structure is used in the server process of rrd-grapher
 class var_cache(dict):
     def __init__(self, cdg):
         super(var_cache, self).__init__(self)
