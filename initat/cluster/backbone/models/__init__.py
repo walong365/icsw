@@ -1229,7 +1229,7 @@ class device(models.Model):
     monitor_server = models.ForeignKey("device", null=True, blank=True)
     monitor_checks = models.BooleanField(default=True, db_column="nagios_checks", verbose_name="Checks enabled")
     # performance data tracking, also needed for IPMI and SNMP active monitoring
-    enable_perfdata = models.BooleanField(default=False)
+    enable_perfdata = models.BooleanField(default=False, verbose_name="enable perfdata, check IPMI interfaces")
     flap_detection_enabled = models.BooleanField(default=False)
     show_in_bootcontrol = models.BooleanField(default=True)
     # not so clever here, better in extra table, FIXME
