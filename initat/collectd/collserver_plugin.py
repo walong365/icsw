@@ -87,7 +87,7 @@ class receiver(log_base):
                     if _com == "mvector":
                         self._handle_tree(data[1:])
                     elif _com == "pdata":
-                        self._handle_perfdata(data[1:])
+                        self._handle_perfdata(data[1])
                     elif _com.startswith("to_"):
                         self.send_to_slave(_com[3:], data[1])
                     else:
@@ -120,7 +120,7 @@ class receiver(log_base):
         return self.__last_sent[h_tuple]
     def _handle_perfdata(self, data):
         # print "***", data
-        _type, type_instance, host_name, time_recv, rsi, v_list = data[1]
+        _type, type_instance, host_name, time_recv, rsi, v_list = data
         s_time = self.get_time((host_name, "ipd_{}".format(_type)), time_recv)
         collectd.Values(plugin="perfdata", type_instance=type_instance, host=host_name, time=s_time, type="ipd_{}".format(_type), interval=5 * 60).dispatch(values=v_list[rsi:])
     def _handle_tree(self, data):
