@@ -100,9 +100,14 @@ class colorizer(object):
         return t_name, s_dict
 
 class graph_var(object):
-    def __init__(self, rrd_graph, entry, key, dev_name=""):
+    def __init__(self, rrd_graph, entry, dev_pk, key, dev_name=""):
+        # XML entry
         self.entry = entry
+        # graph key (load.1)
         self.key = key
+        # device pk
+        self.dev_pk = dev_pk
+        # device name
         self.dev_name = dev_name
         self.rrd_graph = rrd_graph
         self.max_info_width = 60 + int((self.rrd_graph.width - 800) / 8)
@@ -186,7 +191,13 @@ class graph_var(object):
                         r"\l" if rep_name == "total" else r""
                     ),
                     # "VDEF:{}{}2={},{}".format(self.name, rep_name, self.name, cf),
-                    "PRINT:{}{}:{}.{}=%.4lf".format(self.name, rep_name, self.key.replace(":", r"\:"), cf),
+                    "PRINT:{}{}:{:d}.{}.{}=%.4lf".format(
+                        self.name,
+                        rep_name,
+                        self.dev_pk,
+                        self.key.replace(":", r"\:"),
+                        cf
+                    ),
                 ]
             )
         return c_lines
@@ -272,7 +283,7 @@ class RRDGraph(object):
                     "{:d}".format(int((self.para_dict["end_time"] - dt_1970).total_seconds())),
                     "--start",
                     "{:d}".format(int((self.para_dict["start_time"] - dt_1970).total_seconds())),
-                    graph_var(self, None, "").header_line,
+                    graph_var(self, None, 0, "").header_line,
             ]
             for graph_key in sorted(graph_keys):
                 for cur_pk in dev_pks:
@@ -284,7 +295,7 @@ class RRDGraph(object):
                         # machine vector entry
                         def_xml = dev_vector.find(".//mve[@name='{}']".format(graph_key))
                     if def_xml is not None:
-                        self.defs[graph_key] = graph_var(self, def_xml, graph_key, dev_dict[cur_pk]).config
+                        self.defs[(cur_pk, graph_key)] = graph_var(self, def_xml, cur_pk, graph_key, dev_dict[cur_pk]).config
             if self.defs:
                 draw_it = True
                 removed_keys = set()
@@ -316,14 +327,17 @@ class RRDGraph(object):
                                 pass
                             else:
                                 value = None if value == 0.0 else value
+                            # extract device pk from key
+                            dev_pk = int(key.split(".")[0])
+                            _key = key.split(".", 1)[1]
                             if value is not None:
-                                val_dict.setdefault(key[:-len(cf) - 1], {})[cf] = value
+                                val_dict.setdefault((dev_pk, _key[:-len(cf) - 1]), {})[cf] = value
                         empty_keys = set(graph_keys) - set(val_dict.keys())
                         if empty_keys and self.para_dict["hide_zero"]:
                             self.log(
                                 u"{}: {}".format(
                                     logging_tools.get_plural("empty key", len(empty_keys)),
-                                    ", ".join(sorted(empty_keys)),
+                                    ", ".join(sorted(["{} (dev {:d})".format(_key, _pk) for _pk, _key in empty_keys])),
                                 )
                             )
                             removed_keys |= empty_keys
@@ -332,13 +346,14 @@ class RRDGraph(object):
                                 draw_it = False
                         else:
                             draw_it = False
+                rem_key_el = E.removed_keys(
+                    *[E.removed_key(_key, device="{:d}".format(_pk)) for _pk, _key in removed_keys]
+                )
                 if self.defs:
                     # defs present
                     graph_list.append(
                         E.graph(
-                            E.removed_keys(
-                                *[E.removed_key(_rk) for _rk in removed_keys]
-                            ),
+                            rem_key_el,
                             href=rel_file_loc,
                             **dict([(key, "{:d}".format(value) if type(value) in [int, long] else "{:.6f}".format(value)) for key, value in draw_result.iteritems() if not key.startswith("print[")])
                         )
@@ -347,9 +362,7 @@ class RRDGraph(object):
                     # empty graph
                     graph_list.append(
                         E.graph(
-                            E.removed_keys(
-                                *[E.removed_key(_rk) for _rk in removed_keys]
-                            ),
+                            rem_key_el
                         )
                     )
             else:

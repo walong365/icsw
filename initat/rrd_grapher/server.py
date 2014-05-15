@@ -297,7 +297,7 @@ class server_process(threading_tools.process_pool, threading_tools.operational_e
                 logging_tools.LOG_LEVEL_CRITICAL)
             raise
         else:
-            self.log("bound to {}".format(bind_str))
+            self.log("bound to {} (id {})".format(bind_str, self.bind_id))
             self.register_poller(client, zmq.POLLIN, self._recv_command)
             self.com_socket = client
         # connection to collectd clients
