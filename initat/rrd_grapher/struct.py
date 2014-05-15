@@ -23,7 +23,7 @@
 """ data_store structure for rrd-grapher """
 
 from django.db.models import Q
-from initat.cluster.backbone.models import device
+from initat.cluster.backbone.models import device, device_variable
 from initat.rrd_grapher.config import global_config
 from lxml import etree # @UnresolvedImport
 from lxml.builder import E # @UnresolvedImport
@@ -33,6 +33,40 @@ import os
 import process_tools
 import re
 import time
+
+# a similiar structure is used in md-config-server/config.py
+class var_cache(dict):
+    def __init__(self, cdg, def_dict=None):
+        super(var_cache, self).__init__(self)
+        self.__cdg = cdg
+        self.__def_dict = def_dict or {}
+    def get_vars(self, cur_dev):
+        global_key, dg_key, dev_key = (
+            "GLOBAL",
+            "dg__%d" % (cur_dev.device_group_id),
+            "dev__%d" % (cur_dev.pk))
+        if global_key not in self:
+            # read global configs
+            self[global_key] = dict([(cur_var.name, cur_var.get_value()) for cur_var in device_variable.objects.filter(Q(device=self.__cdg))])
+            # update with def_dict
+            for key, value in self.__def_dict.iteritems():
+                if key not in self[global_key]:
+                    self[global_key][key] = value
+        if dg_key not in self:
+            # read device_group configs
+            self[dg_key] = dict([(cur_var.name, cur_var.get_value()) for cur_var in device_variable.objects.filter(Q(device=cur_dev.device_group.device))])
+        if dev_key not in self:
+            # read device configs
+            self[dev_key] = dict([(cur_var.name, cur_var.get_value()) for cur_var in device_variable.objects.filter(Q(device=cur_dev))])
+        ret_dict, info_dict = ({}, {})
+        # for s_key in ret_dict.iterkeys():
+        for key, key_n in [(dev_key, "d"), (dg_key, "g"), (global_key, "c")]:
+            info_dict[key_n] = 0
+            for s_key, s_value in self.get(key, {}).iteritems():
+                if s_key not in ret_dict:
+                    ret_dict[s_key] = s_value
+                    info_dict[key_n] += 1
+        return ret_dict, info_dict
 
 class data_store(object):
     def __init__(self, cur_dev):
