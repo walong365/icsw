@@ -21,7 +21,7 @@
 
 from django.db import connection
 from django.db.models import Q
-from initat.cluster.backbone.models import device, netdevice
+from initat.cluster.backbone.models import device
 from initat.cluster.backbone.routing import get_server_uuid
 from initat.rrd_grapher.config import global_config, CD_COM_PORT
 from initat.rrd_grapher.graph import graph_process
@@ -332,7 +332,7 @@ class server_process(threading_tools.process_pool, threading_tools.operational_e
                 self.log("no rrd_xml found for device {:d}".format(dev_pk), logging_tools.LOG_LEVEL_WARN)
             node_results.append(cur_res)
         if int(dev_list.get("merge_results", "0")):
-            data_store.merge_node_results(node_results)
+            node_results = data_store.merge_node_results(node_results)
         srv_com["result"] = node_results
     def _recv_command(self, zmq_sock):
         in_data = []

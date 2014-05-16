@@ -301,40 +301,67 @@ class data_store(object):
         if len(res_list) > 1:
             # print etree.tostring(res_list, pretty_print=True)
             # remove empty node_results
-            empty_nodes = 0
+            empty_nodes = []
             for entry in res_list:
                 if len(entry) == 0:
-                    empty_nodes += 1
+                    # attrib is fairly empty (only pk)
+                    empty_nodes.append(entry.attrib)
                     entry.getparent().remove(entry)
             data_store.g_log(
                 "merging %s (%s empty)" % (
                     logging_tools.get_plural("node result", len(res_list)),
-                    logging_tools.get_plural("entry", empty_nodes)))
+                    logging_tools.get_plural("entry", len(empty_nodes))))
             if len(res_list):
-                first_mv = res_list[0][0]
-                ref_dict = {"mve" : {}, "value" : {}}
-                for val_el in first_mv.xpath(".//*", smart_strings=False):
-                    if val_el.tag in ["value", "mve"]:
-                        ref_dict[val_el.tag][val_el.get("name")] = val_el
-                    val_el.attrib["devices"] = "1"
-                # pprint.pprint(ref_dict)
-                for other_node in res_list[1:]:
-                    if len(other_node):
-                        other_mv = other_node[0]
-                        for add_el in other_mv.xpath(".//mve|.//value", smart_strings=False):
-                            add_tag, add_name = (add_el.tag, add_el.get("name"))
-                            ref_el = ref_dict[add_tag].get(add_name)
-                            if ref_el is not None:
-                                new_count = int(ref_el.get("devices")) + 1
-                                while "devices" in ref_el.attrib:
-                                    if int(ref_el.get("devices")) < new_count:
-                                        ref_el.attrib["devices"] = "%d" % (new_count)
-                                    # increase all above me
-                                    ref_el = ref_el.getparent()
-                            else:
-                                print "***", add_tag, add_name
-                    other_node.getparent().remove(other_node)
-        # print etree.tostring(res_list, pretty_print=True)
+                # build a list of all structural entries
+                all_keys = set()
+                for cur_node in res_list:
+                    for entry in cur_node[0].xpath(".//entry", smart_strings=False):
+                        parts = []
+                        _parent = entry
+                        while _parent.tag == "entry":
+                            parts.insert(0, _parent.attrib["part"])
+                            _parent = _parent.getparent()
+                        all_keys.add(".".join(parts))
+                merged_mv = E.machine_vector()
+                key_dict = {}
+                # build structural part of machine_vector and lookup dict (key_dict)
+                for key in sorted(all_keys):
+                    add_key = key.split(".")[-1]
+                    key_dict[key] = E.entry(part=add_key)
+                    if add_key == key:
+                        merged_mv.append(key_dict[key])
+                    else:
+                        key_dict[key[:-(len(add_key) + 1)]].append(key_dict[key])
+                # print etree.tostring(merged_mv, pretty_print=True)
+                # add entries
+                for cur_node in res_list:
+                    # print etree.tostring(cur_node, pretty_print=True)
+                    for val_el in cur_node[0].xpath(".//value|.//mve", smart_strings=False):
+                        # build unique key and distinguish between MV and PD values
+                        # (machine vector and performance data)
+                        _name = val_el.get("name")
+                        if val_el.tag == "value":
+                            # remove pde: prefix
+                            _name = _name.split(":", 1)[1]
+                        _key = "{}:{}".format(
+                            val_el.tag,
+                            _name,
+                        )
+                        _add_key = ".".join(_name.split(".")[:-1])
+                        if _key not in key_dict:
+                            key_dict[_key] = val_el
+                            key_dict[_add_key].append(val_el)
+                        else:
+                            val_el = key_dict[_key]
+                            cur_devc = int(val_el.attrib.get("devices", "1")) + 1
+                            val_el.attrib["devices"] = "{:d}".format(cur_devc)
+                            _parent = val_el.getparent()
+                            # iterate
+                            while _parent.tag == "entry":
+                                _parent.attrib["devices"] = "{:d}".format(max(cur_devc, int(_parent.get("attributes", "1"))))
+                                _parent = _parent.getparent()
+                # print etree.tostring(merged_mv, pretty_print=True)
+                return E.node_results(E.node_result(merged_mv, devices="{:d}".format(len(res_list))))
     def _expand_info(self, entry):
         info = entry.attrib["info"]
         parts = entry.attrib["name"].split(".")
