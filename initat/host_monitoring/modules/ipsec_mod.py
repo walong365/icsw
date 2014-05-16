@@ -37,10 +37,12 @@ class _general(hm_classes.hm_module):
                          logging_tools.LOG_LEVEL_ERROR)
                 com, out = ""
         if com:
-            stat, out = commands.getstatusoutput(com)
-            if stat:
-                self.log("cannot execute {} ({:d}: {}".format(com, stat, out),
-                         logging_tools.LOG_LEVEL_WARN)
+            c_stat, out = commands.getstatusoutput(com)
+            if c_stat:
+                self.log(
+                    "cannot execute {} ({:d}): {}".format(
+                        com, c_stat, out or "<NO OUTPUT>"),
+                     logging_tools.LOG_LEVEL_WARN)
                 out = ""
         return out.split("\n")
     def _update_ipsec_status(self):

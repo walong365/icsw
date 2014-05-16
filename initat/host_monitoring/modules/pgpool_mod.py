@@ -28,7 +28,11 @@ from initat.host_monitoring.hm_classes import hm_command, hm_module
 from initat.host_monitoring.server import server_command
 import cPickle
 import os
-import psycopg2
+import logging_tools
+try:
+    import psycopg2 # @UnresolvedImport
+except:
+    psycopg2 = None
 
 CONFIG_DIR = "/etc/sysconfig/host-monitoring.d/"
 CONFIG_FILE = "database.config"
@@ -50,7 +54,12 @@ NODE_UP = 2 # Node is up. Connections are pooled.
 NODE_DOWN = 3 # Node is down.
 
 class _general(hm_module):
-    pass
+    def init_module(self):
+        if psycopg2:
+            self.enabled = True
+        else:
+            self.log("no psycopg2 module, disabling module", logging_tools.LOG_LEVEL_ERROR)
+            self.enabled = False
 
 class ArgumentError(Exception):
     pass
