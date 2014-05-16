@@ -1268,6 +1268,8 @@ class device(models.Model):
     categories = models.ManyToManyField("backbone.category")
     # store rrd data to disk
     store_rrd_data = models.BooleanField(default=True)
+    # has active RRDs
+    has_active_rrds = models.BooleanField(default=False)
     @property
     def full_name(self):
         if not self.domain_tree_node_id:
@@ -1479,7 +1481,7 @@ class device_serializer(serializers.ModelSerializer):
             "act_partition_table", "enable_perfdata", "flap_detection_enabled",
             "automap_root_nagvis", "nagvis_parent", "monitor_server", "mon_ext_host",
             "is_meta_device", "device_type_identifier", "device_group_name", "bootserver",
-            "is_cluster_device_group", "root_passwd_set",
+            "is_cluster_device_group", "root_passwd_set", "has_active_rrds",
             "curl", "mon_resolve_name", "uuid", "access_level", "access_levels", "store_rrd_data",
             )
         read_only_fields = ("uuid",)
@@ -1498,7 +1500,7 @@ class device_serializer_cat(device_serializer):
             "act_partition_table", "enable_perfdata", "flap_detection_enabled",
             "automap_root_nagvis", "nagvis_parent", "monitor_server", "mon_ext_host",
             "is_meta_device", "device_type_identifier", "device_group_name", "bootserver",
-            "is_cluster_device_group", "root_passwd_set",
+            "is_cluster_device_group", "root_passwd_set", "has_active_rrds",
             "curl", "categories", "access_level", "access_levels",
             )
 
@@ -1512,7 +1514,7 @@ class device_serializer_variables(device_serializer):
             "act_partition_table", "enable_perfdata", "flap_detection_enabled",
             "automap_root_nagvis", "nagvis_parent", "monitor_server", "mon_ext_host",
             "is_meta_device", "device_type_identifier", "device_group_name", "bootserver",
-            "is_cluster_device_group", "root_passwd_set",
+            "is_cluster_device_group", "root_passwd_set", "has_active_rrds",
             "curl", "device_variable_set", "access_level", "access_levels", "store_rrd_data",
             )
 
@@ -1526,7 +1528,7 @@ class device_serializer_device_configs(device_serializer):
             "act_partition_table", "enable_perfdata", "flap_detection_enabled",
             "automap_root_nagvis", "nagvis_parent", "monitor_server", "mon_ext_host",
             "is_meta_device", "device_type_identifier", "device_group_name", "bootserver",
-            "is_cluster_device_group", "root_passwd_set",
+            "is_cluster_device_group", "root_passwd_set", "has_active_rrds",
             "curl", "device_config_set", "access_level", "access_levels", "store_rrd_data",
             )
 
@@ -1541,7 +1543,7 @@ class device_serializer_disk_info(device_serializer):
             "act_partition_table", "enable_perfdata", "flap_detection_enabled",
             "automap_root_nagvis", "nagvis_parent", "monitor_server", "mon_ext_host",
             "is_meta_device", "device_type_identifier", "device_group_name", "bootserver",
-            "is_cluster_device_group", "root_passwd_set",
+            "is_cluster_device_group", "root_passwd_set", "has_active_rrds",
             "curl", "partition_table", "access_level", "access_levels", "store_rrd_data",
             )
 
@@ -1555,7 +1557,7 @@ class device_serializer_network(device_serializer):
             "enable_perfdata", "flap_detection_enabled",
             "automap_root_nagvis", "nagvis_parent", "monitor_server", "mon_ext_host",
             "is_meta_device", "device_type_identifier", "device_group_name", "bootserver",
-            "is_cluster_device_group", "root_passwd_set",
+            "is_cluster_device_group", "root_passwd_set", "has_active_rrds",
             "curl", "netdevice_set", "access_level", "access_levels", "store_rrd_data",
             # for device.boot
             "new_state", "prod_link", "dhcp_mac", "dhcp_write",
