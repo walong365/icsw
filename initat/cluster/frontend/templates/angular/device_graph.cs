@@ -13,8 +13,8 @@ rrd_graph_template = """
         <p class="text-danger">{{ error_string }}</p>
         <h3 ng-show="vector_valid">
             Vector info:
-            <span class="label label-primary">{{ num_struct }}</span> /
-            <span class="label label-primary">{{ num_mve }}<span ng-show="num_mve_sel"> / {{ num_mve_sel }}</span></span>, 
+            <span class="label label-primary" title="structural entries">{{ num_struct }}<span ng-show="num_devices > 1" title="number of devices"> / {{ num_devices }}</span></span> /
+            <span class="label label-primary" title="entries">{{ num_mve }}<span ng-show="num_mve_sel" title="selected entries"> / {{ num_mve_sel }}</span></span>, 
             <input type="button" ng-class="show_options && 'btn btn-sm btn-primary' || 'btn btn-sm'" value="options" ng-click="show_options=!show_options"></input>
         </h3>
         <div class="input-group" ng-show="show_options">
@@ -69,11 +69,11 @@ rrd_graph_template = """
         <div class="row">
             <div class="col-md-3">  
                 <div class="input-group">
-                <input type="text" class="form-control" ng-disabled="is_loading" ng-model="searchstr" placeholder="search ..." ng-change="update_search()"></input>
-                <span class="input-group-btn">
-                    <button class="btn btn-success" ng-show="cur_selected.length && dt_valid" type="button" ng-click="draw_graph()"><span title="draw graph(s)" class="glyphicon glyphicon-pencil"></span></button>
-                    <button class="btn btn-danger" type="button" ng-click="clear_selection()"><span title="clear selection" class="glyphicon glyphicon-ban-circle"></span></button>
-                </span>
+                    <input type="text" class="form-control" ng-disabled="is_loading" ng-model="searchstr" placeholder="search ..." ng-change="update_search()"></input>
+                    <span class="input-group-btn">
+                        <button class="btn btn-success" ng-show="cur_selected.length && dt_valid" type="button" ng-click="draw_graph()"><span title="draw graph(s)" class="glyphicon glyphicon-pencil"></span></button>
+                        <button class="btn btn-danger" type="button" ng-click="clear_selection()"><span title="clear selection" class="glyphicon glyphicon-ban-circle"></span></button>
+                    </span>
                 </div>
                 <tree treeconfig="g_tree"></tree>
             </div>
@@ -165,9 +165,15 @@ class rrd_tree extends tree_config
         if t_entry._node_type == "h"
             return "vector"
         else if t_entry._node_type == "s"
-            return t_entry._name
+            if t_entry.node.attr("devices")?
+                return t_entry._name + " (" + t_entry.node.attr("devices") + ")"
+            else
+                return t_entry._name
         else
-            return t_entry._name
+            if t_entry.node.attr("devices")?
+                return t_entry._name + " (" + t_entry.node.attr("devices") + ")"
+            else
+                return t_entry._name
     get_title: (t_entry) ->
         if t_entry._node_type == "e"
             return t_entry._g_key
@@ -274,11 +280,14 @@ device_rrd_module.controller("rrd_ctrl", ["$scope", "$compile", "$filter", "$tem
                         $scope.vector = $(xml).find("machine_vector")
                         if $scope.vector.length
                             # we only get one vector at most (due to merge_results=1 in rrd_views.py)
+                            # node_result
+                            num_devs = parseInt($(xml).find("node_result").attr("devices") ? "1")
                             $scope.add_nodes(undefined, $scope.vector)
                             $scope.is_loading = false
                             $scope.$apply(
                                 $scope.vector_valid = true
                                 $scope.num_struct = $scope.vector.find("entry").length
+                                $scope.num_devices = num_devs
                                 $scope.num_mve = $scope.vector.find("mve").length
                                 $scope.num_mve_sel = 0
                             ) 
@@ -300,6 +309,7 @@ device_rrd_module.controller("rrd_ctrl", ["$scope", "$compile", "$filter", "$tem
                     cur_node = $scope.g_tree.new_node({
                         folder : true,
                         expand : false
+                        node   : xml_node
                         _name  : xml_node.attr("part")
                         _node_type : "s"
                     })
@@ -309,6 +319,7 @@ device_rrd_module.controller("rrd_ctrl", ["$scope", "$compile", "$filter", "$tem
                     cur_node = $scope.g_tree.new_node({
                         folder : false
                         expand : false
+                        node   : xml_node
                         _g_key : xml_node.attr("name")
                         _name  : xml_node.attr("info")
                         _node_type : "e"
