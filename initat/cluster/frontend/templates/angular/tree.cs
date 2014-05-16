@@ -9,7 +9,7 @@
 _tree_root_node = """
 <ul class="dynatree-container">
     <span ng-show="!treeconfig.root_nodes.length">No entries</span>
-    <li ng-repeat="entry in (tree || treeconfig.root_nodes)" ng-class="{\'dynatree-lastsib\' : $last}">
+    <li ng-repeat="entry in (tree || treeconfig.root_nodes)" ng-class="$last && 'dynatree-lastsib' || ''">
         <subnode entry="entry" treeconfig="treeconfig"></subnode>
         <subtree ng-if="entry.expand && entry.children.length" tree="entry.children" treeconfig="treeconfig"></subtree>
     </li>
@@ -19,7 +19,7 @@ _tree_root_node = """
 _tree_root_node_single = """
 <ul class="dynatree-container">
     <span ng-show="!treeconfig.root_nodes.length">No entries</span>
-    <li ng-repeat="entry in (tree || treeconfig.root_nodes)" ng-class="{\'dynatree-lastsib\' : $last}">
+    <li ng-repeat="entry in (tree || treeconfig.root_nodes)" ng-class="$last && 'dynatree-lastsib' || ''">
         <subnode entry="entry" treeconfig="treeconfig"></subnode>
         <subtreesingle ng-if="entry.expand && entry.children.length" tree="entry.children" treeconfig="treeconfig"></subtreesingle>
     </li>
@@ -28,7 +28,7 @@ _tree_root_node_single = """
 
 _subtree_node = """
 <ul>
-    <li ng-repeat="entry in tree" ng-class="{\'dynatree-lastsib\' : $last}">
+    <li ng-repeat="entry in tree" ng-class="$last && 'dynatree-lastsib' || ''">
         <subnode entry="entry" treeconfig="treeconfig"></subnode>
         <subtree ng-if="entry.expand && entry.children.length" tree="entry.children" treeconfig="treeconfig"></subtree>
     </li>
@@ -37,7 +37,7 @@ _subtree_node = """
 
 _subtree_node_single = """
 <ul>
-    <li ng-repeat="entry in tree" ng-class="{\'dynatree-lastsib\' : $last}">
+    <li ng-repeat="entry in tree" ng-class="$last && 'dynatree-lastsib' || ''">
         <subnode entry="entry" treeconfig="treeconfig"></subnode>
     </li>
 </ul>
@@ -48,7 +48,7 @@ _subnode = """
     <span ng-show="!entry._num_childs" class="dynatree-connector"></span>
     <span ng-show="entry._num_childs" class="dynatree-expander" ng-click="treeconfig.toggle_expand_node(entry)"></span>
     <span ng-if="treeconfig.show_select && entry._show_select" class="dynatree-checkbox" style="margin-left:2px;" ng-click="treeconfig.toggle_checkbox_node(entry)"></span>
-    <span ng-show="treeconfig.show_icons" class="dynatree-icon"></span>
+    <span ng-show="treeconfig.show_icons" ng-class="treeconfig.get_icon_class(entry)"></span>
     <div class="btn-group btn-group-xs" ng-show="entry._num_childs && treeconfig.show_selection_buttons">
         <input type="button" class="btn btn-success" value="S" ng-click="treeconfig.toggle_tree_state(entry, 1)" title="select subtree"></input>
         <input type="button" class="btn btn-primary" value="T" ng-click="treeconfig.toggle_tree_state(entry, 0)" title="toggle subtree selection"></input>
@@ -336,8 +336,12 @@ class tree_config
         (@_iter(child, cb_func, cb_data) for child in entry.children)
     clear_active: () =>
         @iter((entry) -> entry.active=false)
+    get_icon_class: (entry) ->
+        # override
+        return "dynatree-icon"
     get_span_class: (entry, last) ->
-        r_class = ["dynatree-node"]
+        r_class = []
+        r_class.push "dynatree-node"
         if entry.folder
             r_class.push "dynatree-folder"
         if entry.active

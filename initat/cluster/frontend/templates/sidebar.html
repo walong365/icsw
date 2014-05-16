@@ -49,17 +49,15 @@ class sidebar_tree extends tree_config
             if dev.device_type_identifier != "MD"
                 new device_info(event, dev.idx).show()                
     get_name: (t_entry) ->
+        entry = @get_dev_entry(t_entry)
         if t_entry._node_type == "f"
-            entry = @scope.fqdn_lut[t_entry.obj]
             if entry.parent
                 return "#{entry.name} (*.#{entry.full_name})"
             else
                 return "[TLN]"
         else if t_entry._node_type == "c"
-            entry = @scope.cat_lut[t_entry.obj]
             return if entry.depth then entry.name else "[TOP]"
         else
-            entry = @scope.dev_lut[t_entry.obj]
             info_f = []
             if entry.is_meta_device
                 d_name = entry.full_name.slice(8)
@@ -71,6 +69,25 @@ class sidebar_tree extends tree_config
             if info_f.length
                 d_name = "#{d_name} (" + info_f.join(", ") + ")"
             return d_name
+    get_icon_class: (t_entry) =>
+        if t_entry._node_type == "d"
+            entry = @get_dev_entry(t_entry)
+            if entry.is_meta_device
+                return "dynatree-icon"
+            else
+                if entry.has_active_rrds
+                    return "glyphicon glyphicon-pencil"
+                else
+                    return ""
+        else
+            return "dynatree-icon"
+    get_dev_entry: (t_entry) =>
+        if t_entry._node_type == "f"
+            return @scope.fqdn_lut[t_entry.obj]
+        else if t_entry._node_type == "c"
+            return @scope.cat_lut[t_entry.obj]
+        else
+            return @scope.dev_lut[t_entry.obj]
     selection_changed: () =>
         @scope.selection_changed()
         
