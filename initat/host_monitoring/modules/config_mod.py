@@ -136,77 +136,6 @@ class check_file_command(hm_classes.hm_command):
         return ret_state, "file %s %s" % (f_dict["file"],
                                           ", ".join(add_array))
 
-class my_modclass(hm_classes.hm_fileinfo):
-    def __init__(self, **args):
-        hm_classes.hm_fileinfo.__init__(self,
-                                        "config",
-                                        "provides an interface to control the node-configuration",
-                                        **args)
-        self.priority = -10
-    def process_client_args(self, opts, hmb):
-        ok, why = (1, "")
-        ret_dict = {"mod_diff_time"     : None,
-                    "file_size"         : None,
-                    "exclude_checkdate" : []}
-        my_lim = limits.limits()
-        for opt, arg in opts:
-            if opt == "--mod":
-                ret_dict["mod_diff_time"] = int(arg)
-            if opt == "--size":
-                ret_dict["min_file_size"] = int(arg)
-            if opt == "--exclude-checkdate":
-                ret_dict["exclude_checkdate"].append(self._parse_ecd(arg))
-                # ret_dict["min_file_size"] = int(arg)
-        return ok, why, [my_lim, ret_dict]
-    def _parse_ecd(self, in_str):
-        # parse exclude_checkdate, ecd has the form [WHHMM][-WHHMM]
-        # W ... weekday, 1 ... monday, 7 ... sunday
-        if in_str.count("-"):
-            start_str, end_str = in_str.strip().split("-")
-            if not len(start_str):
-                start_str = None
-            if not len(end_str):
-                end_str = None
-        else:
-            start_str, end_str = (in_str.strip(), None)
-        return (self._parse_ecd2(start_str), self._parse_ecd2(end_str))
-    def _parse_ecd2(self, in_str):
-        if in_str is None:
-            return in_str
-        else:
-            if len(in_str) != 5 or not in_str.isdigit():
-                raise SyntaxError, "exclude_checkdate '%s' has wrong form (not WHHMM)" % (in_str)
-            weekday, hour, minute = (int(in_str[0]),
-                                     int(in_str[1:3]),
-                                     int(in_str[3:5]))
-            if weekday < 1 or weekday > 7:
-                raise SyntaxError, "exclude_checkdate '%s' has invalid weekday" % (in_str)
-            if hour < 0 or hour > 23:
-                raise SyntaxError, "exclude_checkdate '%s' has invalid hour" % (in_str)
-            if minute < 0 or minute > 59:
-                raise SyntaxError, "exclude_checkdate '%s' has invalid minute" % (in_str)
-            return (weekday, hour, minute)
-    def process_server_args(self, glob_config, logger):
-        self.__logger = logger
-        return (True, "")
-    def init(self, mode, logger, basedir_name, **args):
-        if mode == "i":
-            self.__thread_pool = None
-        elif mode == "s":
-            self.__thread_pool = args["thread_pool"]
-    def start_resync(self):
-        if not self.__thread_pool:
-            return "error no thread_pool defined"
-        elif "config" in self.__thread_pool.get_thread_names():
-            return "error sync_thread already running"
-        else:
-            loc_queue = Queue.Queue(10)
-            t_obj = self.__thread_pool.add_thread(config_subthread(loc_queue, self.__logger), start_thread=True)
-            if t_obj:
-                return loc_queue.get()
-            else:
-                return "error cannot start sync_thread"
-
 class config_subthread(threading_tools.thread_obj):
     def __init__(self, loc_queue, logger):
         self.__logger = logger
@@ -261,7 +190,7 @@ class config_subthread(threading_tools.thread_obj):
     def _interpret_target_sn(self, in_str):
         return 1, in_str
 
-class resync_config_command(hm_classes.hmb_command):
+class resync_config_command(object):#s.hmb_command):
     def __init__(self, **args):
         hm_classes.hmb_command.__init__(self, "resync_config", **args)
         self.help_str = "call /root/bin/resync_config.sh (if present)"
@@ -475,7 +404,7 @@ class call_script_command(hm_classes.hm_command):
     def interpret(self, srv_com, cur_ns):
         return limits.nag_STATE_OK, srv_com["result"].attrib["reply"]
 
-class create_file(hm_classes.hmb_command):
+class create_file(object):#hm_classes.hmb_command):
     def __init__(self, **args):
         hm_classes.hmb_command.__init__(self, "create_file", **args)
         self.help_str = "creates a (preferable small) file"
