@@ -132,6 +132,7 @@ class data_store(object):
             self.log("mve: %d keys total, %d keys changed" % (len(new_keys), len(c_keys)))
         else:
             self.log("mve: %d keys total" % (len(new_keys)))
+        self.set_active_rrds()
         self.store()
     def feed_pd(self, host_name, pd_type, pd_info):
         # we ignore the global store name for perfdata stores
@@ -171,6 +172,7 @@ class data_store(object):
         # else:
         #    too verbose
         #    self.log("pde: %d keys total" % (len(new_keys)))
+        self.set_active_rrds()
         self.store()
     def _update_pd_entry(self, entry, src_entry, rrd_dir):
         entry.attrib["last_update"] = "%d" % (time.time())
@@ -211,6 +213,8 @@ class data_store(object):
         file(self.data_file_name(), "wb").write(etree.tostring(self.xml_vector))
         # sync XML to grapher
         self.sync_to_grapher()
+    def set_active_rrds(self):
+        device.objects.get(Q(pk=self.pk)).update(has_active_rrds=True)
     def sync_to_grapher(self):
         data_store.process.send_to_process(
             "graph",

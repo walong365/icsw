@@ -197,6 +197,7 @@ class server_process(threading_tools.process_pool, threading_tools.operational_e
         for pk in data_store.present_pks():
             _struct = data_store.get_instance(pk)
             enabled, disabled = (0, 0)
+            num_active = 0
             for file_el in _struct.xml_vector.xpath(".//*[@file_name]", smart_strings=False):
                 f_name = file_el.attrib["file_name"]
                 if os.path.isfile(f_name):
@@ -215,6 +216,8 @@ class server_process(threading_tools.process_pool, threading_tools.operational_e
                             c_time = int(rrd_info["last_update"])
                             stale = abs(cur_time - c_time) > MAX_DT
                     is_active = True if int(file_el.attrib["active"]) else False
+                    if is_active:
+                        num_active += 1
                     if is_active and stale:
                         file_el.attrib["active"] = "0"
                         disabled += 1
@@ -233,6 +236,11 @@ class server_process(threading_tools.process_pool, threading_tools.operational_e
                     disabled,
                     ))
                 _struct.store()
+            cur_dev = device.objects.get(Q(pk=pk))
+            is_active = num_active > 0
+            if is_active != cur_dev.has_active_rrds:
+                cur_dev.has_active_rrds = is_active
+                cur_dev.save(update_fields=["has_active_rrds"])
         self.log("checked for stale entries, modified {}".format(logging_tools.get_plural("device", num_changed)))
     def _clear_old_graphs(self):
         cur_time = time.time()
