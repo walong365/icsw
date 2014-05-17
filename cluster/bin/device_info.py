@@ -36,18 +36,20 @@ def main():
     try:
         cur_dev = device.objects.get(Q(name=opts.dev))
     except device.DoesNotExist:
-        print "No device named '{}' found".format(opts.dev)
+        print("No device named '{}' found".format(opts.dev))
         sys.exit(1)
     for cur_dev in [cur_dev]:
-        print u"Information about device '{}' (devicegroup {})".format(
+        print(u"Information about device '{}' (devicegroup {})".format(
             unicode(cur_dev),
             unicode(cur_dev.device_group))
-        print "UUID is '{}'".format(cur_dev.uuid)
+        )
+        print("UUID is '{}'".format(cur_dev.uuid))
         net_devs = cur_dev.netdevice_set.all().order_by("devname")
         for cur_nd in net_devs:
-            print "   {} ({})".format(
+            print("   {} ({})".format(
                 cur_nd.devname,
                 ", ".join([cur_ip.ip for cur_ip in cur_nd.net_ip_set.all().order_by("ip")]) or "no IPs")
-            
+            )
+
 if __name__ == "__main__":
     main()
