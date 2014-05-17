@@ -29,7 +29,11 @@ from initat.cluster.backbone.models import group, user
 from lxml import etree # @UnresolvedImport
 import codecs
 import logging_tools
-import pprint
+
+OBJ_DICT = {
+    "user" : user,
+    "group" : group,
+}
 
 def main():
     if len(sys.argv) != 3:
@@ -49,7 +53,7 @@ def main():
     group_dict, group_lut = ({}, {})
     # step 1: group
     for c_type in ["group", "user"]:
-        new_ot = globals()[c_type]
+        new_ot = OBJ_DICT[c_type]
         sprim_field, prim_field = {
             "group" : ("ggroupname", "groupname"),
             "user"  : ("login", "login")}[c_type]

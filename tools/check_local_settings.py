@@ -28,10 +28,8 @@ from django.utils.crypto import get_random_string
 
 LS_FILE = "/etc/sysconfig/cluster/local_settings.py"
 
-def main():
-    pass
-
-if __name__ == "__main__":
+# a similar routine exists in setup_cluster.py
+def check_local_settings():
     LS_DIR = os.path.dirname(LS_FILE)
     sys.path.append(LS_DIR)
     try:
@@ -41,11 +39,13 @@ if __name__ == "__main__":
     if SECRET_KEY in [None, "None"]:
         chars = 'abcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*(-_=+)'
         SECRET_KEY = get_random_string(50, chars)
-    file(LS_FILE, "w").write("\n".join(
-        [
-            "SECRET_KEY = \"%s\"" % (SECRET_KEY),
-            "",
-        ]
-        ))
+        file(LS_FILE, "w").write("\n".join(
+            [
+                "SECRET_KEY = \"%s\"" % (SECRET_KEY),
+                "",
+            ]
+            ))
     sys.path.remove(LS_DIR)
-    main()
+
+if __name__ == "__main__":
+    check_local_settings()

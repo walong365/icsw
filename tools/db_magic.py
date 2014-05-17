@@ -1,6 +1,5 @@
 #!/usr/bin/python-init -Otu
 
-import os
 import sys
 
 IGNORE_TABLES = ["config_type"]
@@ -14,7 +13,7 @@ class handle_insert_line(object):
         self.line = "INSERT INTO %s VALUES %s;" % (t_name, values)
     def handle(self, sub_value):
         return "_overwrite_handle"
-        
+
 class handle_network_network_device_type(handle_insert_line):
     def handle(self, sub_value):
         sub_parts = sub_value.split(",")
@@ -52,10 +51,10 @@ def main():
                 table_name = line.split("`")[1]
                 if table_name in IGNORE_TABLES:
                     line = None
-            
+
         if line is not None:
             print line
 
 if __name__ == "__main__":
     main()
-    
+

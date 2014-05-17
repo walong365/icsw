@@ -495,6 +495,10 @@ class user_manager(models.Manager):
         cache.set(_user.mc_key(), django.core.serializers.serialize("json", [_user]))
         return _user
     def create_superuser(self, login, email, password):
+        if not password:
+            if "DJANGO_SUPERUSER_PASSWORD" in os.environ:
+                # hack for setup_cluster.py
+                password = os.environ["DJANGO_SUPERUSER_PASSWORD"]
         # create group
         user_group = group.objects.create(
             groupname="{}grp".format(login),

@@ -2,11 +2,10 @@
 
 import sys
 import os
-import initat.cluster.enable_debug
 
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "initat.cluster.settings")
 
-from initat.cluster.backbone.models import user, group, capability
+from initat.cluster.backbone.models import user, group # , capability
 from django.contrib.auth.models import User, Group, Permission
 import logging_tools
 import django.contrib.auth.hashers
@@ -15,8 +14,8 @@ from django.contrib.contenttypes.models import ContentType
 CRYPT_HASH_FORMSTR = "crypt$$%s"
 
 def main():
-    #User.objects.all().delete()
-    #Group.objects.all().delete()
+    # User.objects.all().delete()
+    # Group.objects.all().delete()
     django_users, django_groups, django_permissions = (
         User.objects.all(),
         Group.objects.all(),
@@ -34,7 +33,9 @@ def main():
     cluster_users, cluster_groups, cluster_perms = (
         user.objects.all().order_by("pk"),
         group.objects.all().order_by("pk"),
-        capability.objects.all().order_by("pk"))
+        # capability.objects.all().order_by("pk")
+        [],
+    )
     user_content_type = ContentType.objects.get(app_label="backbone", model="user")
     print "Found %s:" % (logging_tools.get_plural("custer capability", len(cluster_perms)))
     perm_lut = {}

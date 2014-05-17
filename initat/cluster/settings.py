@@ -63,6 +63,8 @@ NEW_CONF_FILE = "/etc/sysconfig/cluster/db.cf"
 OLD_CONF_FILE = "/etc/sysconfig/cluster/mysql.cf"
 
 SLAVE_MODE = os.path.exists("/etc/sysconfig/cluster/is_slave")
+if not SLAVE_MODE:
+    SLAVE_MODE = not os.path.exists("/opt/python-init/lib/python/site-packages/initat/cluster/frontend")
 
 if os.path.isfile(NEW_CONF_FILE):
     try:
