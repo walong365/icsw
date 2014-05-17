@@ -264,7 +264,21 @@ def net_ip_pre_save(sender, **kwargs):
             if len(match_list):
                 cur_inst.network = match_list[0][1]
         if not cur_inst.network_id:
-            raise ValidationError("no matching network found for '{}'".format(cur_inst.ip))
+            if getattr(cur_inst, "create_default_network", False):
+                try:
+                    default_nw = network.objects.get(Q(network="0.0.0.0"))
+                except network.DoesNotExist:
+                    default_nw = network.objects.create(
+                        network="0.0.0.0",
+                        netmask="0.0.0.0",
+                        broadcast="255.255.255.255",
+                        gateway="0.0.0.0",
+                        identifier="all",
+                        network_type=network_type.objects.get(Q(identifier="o"))
+                    )
+                cur_inst.network = default_nw
+            else:
+                raise ValidationError("no matching network found for '{}'".format(cur_inst.ip))
         if not ipv_addr.network_matches(cur_inst.network):
             match_list = ipv_addr.find_matching_network(network.objects.all())
             if match_list:
@@ -505,6 +519,9 @@ def netdevice_pre_save(sender, **kwargs):
                 raise ValidationError("cannot be my own VLAN master")
             if cur_inst.master_device.master_device_id:
                 raise ValidationError("cannot chain VLAN devices")
+        if cur_inst.netdevice_speed_id == None:
+            # set a default
+            cur_inst.netdevice_speed = netdevice_speed.objects.get(Q(speed_bps=1000000000) & Q(full_duplex=True) & Q(check_via_ethtool=False))
         # if cur_inst.vlan_id and not cur_inst.master_device_id:
         #    raise ValidationError("need a VLAN master")
 

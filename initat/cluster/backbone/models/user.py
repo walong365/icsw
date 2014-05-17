@@ -511,7 +511,7 @@ class user_manager(models.Manager):
             email=email,
             uid=max(list(user.objects.all().values_list("uid", flat=True)) + [665]) + 1,
             group=user_group,
-            comment="admin create by createsuperuser",
+            comment="admin created by createsuperuser",
             password=password,
             is_superuser=True)
         return new_admin
