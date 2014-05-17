@@ -490,7 +490,8 @@ class category_tree extends tree_config
         @show_select = true
         @show_descendants = false
         @show_childs = false
-    selection_changed: () =>
+    selection_changed: (entry) =>
+        console.log entry
         sel_list = @get_selected((node) ->
             if node.selected
                 return [node.obj.idx]
@@ -514,16 +515,27 @@ cat_ctrl = device_config_module.controller("category_ctrl", ["$scope", "$compile
     ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, sharedDataSource, $q, $modal, access_level_service) ->
         access_level_service.install($scope)
         $scope.cat_tree = new category_tree($scope, {})            
-        $scope.reload = (dev_pk) ->
-            $scope.device_pk = dev_pk
+        $scope.reload = (pk_str) ->
+            if pk_str.match(/,/)
+                $scope.multi_device_mode = true
+                $scope.device_pks = (parseInt(_val) for _val in pk_str.split(","))
+            else
+                $scope.multi_device_mode = false
+                $scope.device_pks = [parseInt(pk_str)]
+            console.log $scope.device_pks
             wait_list = [
                 restDataSource.reload(["{% url 'rest:category_list' %}", {}])
-                restDataSource.reload(["{% url 'rest:device_tree_list' %}", {"pks" : angular.toJson([$scope.device_pk]), "with_categories" : true}])
+                restDataSource.reload(["{% url 'rest:device_tree_list' %}", {"pks" : angular.toJson($scope.device_pks), "with_categories" : true}])
             ]
             $q.all(wait_list).then((data) ->
                 $scope.device = data[1][0]
+                console.log data[1]
                 sel_list = $scope.device.categories
-                $scope.cat_tree.change_select = $scope.acl_all($scope.device, "backbone.device.change_category", 7)
+                $scope.cat_tree_change_select = true
+                for dev in data[1]
+                    # check all devices and disable change button when not all devices are in allowed list
+                    if not $scope.acl_all(dev, "backbone.device.change_category", 7)
+                        $scope.cat_tree.change_select = false
                 cat_tree_lut = {}
                 $scope.cat_tree.clear_root_nodes()
                 for entry in data[0]
@@ -555,7 +567,7 @@ cat_ctrl = device_config_module.controller("category_ctrl", ["$scope", "$compile
         restrict : "EA"
         link : (scope, el, attrs) ->
             if attrs["devicepk"]?
-                scope.reload(parseInt(attrs["devicepk"]))
+                scope.reload(attrs["devicepk"])
     }
 )
 
@@ -568,7 +580,7 @@ class location_tree extends tree_config
         @show_descendants = false
         @show_childs = false
         @single_select = true
-    selection_changed: () =>
+    selection_changed: (entry) =>
         sel_list = @get_selected((node) ->
             if node.selected
                 return [node.obj.idx]

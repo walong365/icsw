@@ -2820,3 +2820,30 @@ class device_network_scan_form(Form):
                 Submit("cancel", "cancel", css_class="btn btn-sm btn-warning"),
             ),
         )
+
+class create_device_form(Form):
+    helper = FormHelper()
+    helper.form_id = "form"
+    helper.form_name = "form"
+    helper.form_class = 'form-horizontal'
+    helper.label_class = 'col-sm-3'
+    helper.field_class = 'col-sm-7'
+    helper.ng_model = "_edit_obj"
+    helper.ng_submit = "cur_edit.modify(this)"
+    scan_address = CharField(max_length=128)
+    strict_mode = BooleanField(required=False)
+    helper.layout = Layout(
+        HTML("<h2>Create new device</h2>"),
+            Fieldset(
+                "Base data",
+                Field("scan_address"),
+            ),
+            Fieldset(
+                "Flags",
+                Field("strict_mode"),
+            ),
+            FormActions(
+                Button("scan", "scan", css_class="btn btn-sm btn-primary", ng_click="fetch_device_network()"),
+                Submit("cancel", "cancel", css_class="btn btn-sm btn-warning"),
+            ),
+        )

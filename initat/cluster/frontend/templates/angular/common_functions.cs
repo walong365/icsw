@@ -1152,6 +1152,15 @@ angular.module("ui.codemirror", []).constant("uiCodemirrorConfig", {}).directive
         }
 ])
 
+reload_sidebar_tree = () ->
+    sidebar_id = $("div[id='icsw.sidebar.ctrl']")
+    # sidebar found ?
+    if sidebar_id.length
+        scope = angular.element(sidebar_id[0]).scope()
+        scope.$apply(() ->
+            scope.reload()
+        )
+
 root = exports ? this
 root.angular_edit_mixin = angular_edit_mixin
 root.angular_modal_mixin = angular_modal_mixin
@@ -1161,6 +1170,7 @@ root.angular_add_simple_list_controller = angular_add_simple_list_controller
 root.angular_add_mixin_list_controller = angular_add_mixin_list_controller
 root.build_lut = build_lut
 root.simple_modal_template = simple_modal_template
+root.reload_sidebar_tree = reload_sidebar_tree
 
 {% endinlinecoffeescript %}
 

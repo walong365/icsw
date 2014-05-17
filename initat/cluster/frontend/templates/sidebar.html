@@ -1,7 +1,7 @@
 {% load i18n coffeescript %}
 
 <div id="icsw.sidebar" ng-cloack>
-    <div ng-controller="sidebar_base">
+    <div id="icsw.sidebar.ctrl" ng-controller="sidebar_base">
         <div class="input-group">
             <div ng-class="search_ok && 'form-group' || 'form-group has-error'">
                 <input type="text" class="form-control" ng-disabled="is_loading" ng-model="searchstr" placeholder="search ..." ng-change="update_search()"></input>
@@ -256,6 +256,10 @@ sidebar_base = sidebar_module.controller("sidebar_base", ["$scope", "$compile", 
         $scope.tc_categories = new sidebar_tree($scope, {show_selection_buttons : true, show_descendants : true})
         # remove empty FQDN nodes (iterative)
         $scope.rest_data_set = () ->
+            # clear root nodes
+            $scope.tc_devices.clear_root_nodes()
+            $scope.tc_fqdns.clear_root_nodes()
+            $scope.tc_categories.clear_root_nodes()
             # build FQDNs tree
             fqdn_lut = {}
             $scope.fqdn_lut = {}

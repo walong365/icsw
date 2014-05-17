@@ -18,6 +18,29 @@ rrd_graph_template = """
             <input type="button" ng-class="show_options && 'btn btn-sm btn-primary' || 'btn btn-sm'" value="options" ng-click="show_options=!show_options"></input>
         </h3>
         <div class="input-group" ng-show="show_options">
+            <div class="input-group-btn">
+                <div class="btn-group">
+                    <button type="button" class="btn btn-sm btn-success dropdown-toggle" data-toggle="dropdown">
+                        {{ cur_dim }} <span class="caret"></span>
+                    </button>
+                    <ul class="dropdown-menu">
+                        <li ng-repeat="dim in all_dims" ng-click="set_active_dim(dim)"><a href="#">{{ dim }}</a></li>
+                    </ul>
+                </div>
+            </div>&nbsp;
+            <div class="input-group-btn">
+                <div class="btn-group">
+                    <button type="button" class="btn btn-sm btn-primary dropdown-toggle" data-toggle="dropdown">
+                        timerange <span class="caret"></span>
+                    </button>
+                    <ul class="dropdown-menu">
+                        <li ng-repeat="tr in all_timeranges" ng-click="set_active_tr(tr)"><a href="#">{{ tr.name }}</a></li>
+                    </ul>
+                </div>
+            </div>
+            <div class="input-group-btn">
+                <input type="button" ng-class="hide_zero && 'btn btn-sm btn-success' || 'btn btn-sm'" value="hide zero" ng-click="hide_zero=!hide_zero"></input>
+            </div>
             <input type="text" class="form-control input-sm" ng-model="from_date"></input>
             <span class="input-group-btn">
                 <div class="btn-group">
@@ -42,29 +65,6 @@ rrd_graph_template = """
                     </ul>
                 </div>
             </span>
-            <div class="input-group-btn">
-                <div class="btn-group">
-                    <button type="button" class="btn btn-sm btn-success dropdown-toggle" data-toggle="dropdown">
-                        {{ cur_dim }} <span class="caret"></span>
-                    </button>
-                    <ul class="dropdown-menu">
-                        <li ng-repeat="dim in all_dims" ng-click="set_active_dim(dim)"><a href="#">{{ dim }}</a></li>
-                    </ul>
-                </div>
-            </div>&nbsp;
-            <div class="input-group-btn">
-                <div class="btn-group">
-                    <button type="button" class="btn btn-sm btn-primary dropdown-toggle" data-toggle="dropdown">
-                        timerange <span class="caret"></span>
-                    </button>
-                    <ul class="dropdown-menu">
-                        <li ng-repeat="tr in all_timeranges" ng-click="set_active_tr(tr)"><a href="#">{{ tr.name }}</a></li>
-                    </ul>
-                </div>
-            </div>
-            <div class="input-group-btn">
-                <input type="button" ng-class="hide_zero && 'btn btn-sm btn-success' || 'btn btn-sm'" value="hide zero" ng-click="hide_zero=!hide_zero"></input>
-            </div>
         </div>
         <div class="row">
             <div class="col-md-3">  

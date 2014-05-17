@@ -6,13 +6,16 @@
 
 {% block content %}
 
-<div id="center_content">
+<div id="icsw.index_app" ng-controller="index_base" ng-cloack>
     <h2 class="center">Please select a device from the tree on the left side</h2>
     <div class="well">
         <h3>Quicklinks</h3>
         <ul class="list-group">
-            <li class="list-group-item">Change account settings (password)
+            <li class="list-group-item">Change account settings (password, contact data)
                 <a href="{% url 'user:account_info' %}" class="btn btn-primary">{% trans "Account Info" %}</a>
+            </li>
+            <li class="list-group-item">Add a new device
+                <a ng-show="check_perm('backbone.user.modify_tree')" href="{% url 'mon:create_device' %}" class="btn btn-primary">{% trans "Create" %}</a>
             </li>
         </ul>
     </div>
@@ -23,6 +26,24 @@
 <script type="text/javascript">
 
 {% inlinecoffeescript %}
+
+root = exports ? this
+
+index_module = angular.module("icsw.index_app", ["ngSanitize", "ui.bootstrap"])
+
+index_controller = index_module.controller("index_base", ["$scope", "$timeout", "$window",
+    ($scope, $timeout, $window) ->
+        $scope.CLUSTER_LICENSE = $window.CLUSTER_LICENSE
+        $scope.GLOBAL_PERMISSIONS = $window.GLOBAL_PERMISSIONS
+        $scope.OBJECT_PERMISSIONS = $window.OBJECT_PERMISSIONS
+        $scope.check_perm = (p_name) ->
+            if p_name of GLOBAL_PERMISSIONS
+                return true
+            else if p_name of OBJECT_PERMISSIONS
+                return true
+            else
+                return false
+])
 
 use_devs = (dev_list) ->
     if dev_list.length
@@ -37,6 +58,7 @@ use_devs = (dev_list) ->
 
 add_config_handlers = ->
     install_devsel_link(use_devs, true, true, false)
+    angular.bootstrap($("div[id='icsw.index_app']"), ["icsw.index_app"])
 
 $(document).ready(add_config_handlers)
 
@@ -45,3 +67,4 @@ $(document).ready(add_config_handlers)
 </script>
 
 {% endblock %}
+

@@ -179,7 +179,7 @@ class tree_config
         @root_nodes = []
         @_node_idx = 0
         @_track_changes = false
-    selection_changed: () =>
+    selection_changed: (entry) =>
     clear_root_nodes: () =>
         @root_nodes = []
     handle_click: () =>
@@ -270,11 +270,11 @@ class tree_config
                 # remove all other selections
                 cur_idx = entry._idx
                 @iter(
-                    (entry) ->
-                        if entry.selected and entry._idx != cur_idx
-                            entry.selected = false
+                    (_entry) ->
+                        if _entry.selected and _entry._idx != cur_idx
+                            _entry.selected = false
                 )
-            @selection_changed()
+            @selection_changed(entry)
     toggle_tree_state: (entry, flag, signal=true) =>
         if entry == undefined
             (@toggle_tree_state(_entry, flag, signal) for _entry in @root_nodes)
@@ -292,7 +292,7 @@ class tree_config
                 @toggle_tree_state(sub_entry, flag, false)
             if signal
                 @stop_tracking_changes()
-                @selection_changed()
+                @selection_changed(entry)
     toggle_expand_tree: (flag, only_selected) ->
         exp_flag = if flag == 1 then true else false
         (@_toggle_expand_tree(entry, exp_flag, only_selected) for entry in @root_nodes)

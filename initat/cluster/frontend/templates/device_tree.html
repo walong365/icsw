@@ -8,7 +8,7 @@
 
 {% block content %}
 
-<div id="icsw.device">
+<div id="icsw.device" ng-cloack>
 
 <script type="text/ng-template" id="device_tree.html">
     {% crispy device_tree_form device_tree_form.helper %}
@@ -164,7 +164,14 @@
             <tr>
                 <td colspan="99">
                     <div class="btn-group btn-group-xs">
-                        <input type="button" ng-repeat="entry in hide_list" ng-value="entry[0]" ng-class="hide_lut[entry[0]] && 'btn btn-success' || 'btn'" ng-click="hide_lut[entry[0]]=!hide_lut[entry[0]]"></input>
+                        <input
+                            type="button"
+                            ng-repeat="entry in hide_list"
+                            title="{{ entry[3] }}"
+                            ng-value="entry[0]"
+                            ng-class="hide_lut[entry[0]] && 'btn btn-success' || 'btn'"
+                            ng-click="hide_lut[entry[0]]=!hide_lut[entry[0]]">
+                        </input>
                     </div>
                 </td>
             </tr>
@@ -186,11 +193,17 @@
 
 </div>
 
-<script>
-    // bootstrap angular
-    angular.element(document).ready(function() {
-        angular.bootstrap($("div[id='icsw.device']"), ["icsw.device"]);
-    });
+<script type="text/javascript">
+
+{% inlinecoffeescript %}
+
+angular.element(document).ready(() ->
+    angular.bootstrap($("div[id='icsw.device']"), ["icsw.device"])
+)
+
+{% endinlinecoffeescript %}
+
 </script>
-    
+
+
 {% endblock %}
