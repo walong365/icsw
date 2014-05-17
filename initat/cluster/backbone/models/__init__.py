@@ -114,7 +114,11 @@ def _insert_bg_job(cmd, cause, obj):
     _routing_key = "_WF_ROUTING"
     _resolv_dict = cache.get(_routing_key)
     if _resolv_dict:
-        _local_pk = json.loads(_resolv_dict)["_local_device"][0]
+        _r_dict = json.loads(_resolv_dict)
+        if "_local_device" in _r_dict:
+            _local_pk = _r_dict["_local_device"][0]
+        else:
+            _local_pk = 0
     else:
         try:
             _local_pk = device.objects.get(Q(name=process_tools.get_machine_name())).pk

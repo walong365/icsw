@@ -96,13 +96,19 @@ class srv_type_routing(object):
             if "_local_device" not in _resolv_dict:
                 # old version, recalc
                 _resolv_dict = self._build_resolv_dict()
-        self._local_device = device.objects.get(Q(pk=_resolv_dict["_local_device"][0]))
+        if "_local_device" in _resolv_dict:
+            self._local_device = device.objects.get(Q(pk=_resolv_dict["_local_device"][0]))
+        else:
+            self._local_device = None
         self._resolv_dict = _resolv_dict
     def update(self, force=False):
         if not cache.get(self.ROUTING_KEY) or force:
             self.logger.info("update srv_type_routing")
             self._resolv_dict = self._build_resolv_dict()
-            self._local_device = device.objects.get(Q(pk=self._resolv_dict["_local_device"][0]))
+            if "_local_device" in self._resolv_dict:
+                self._local_device = device.objects.get(Q(pk=self._resolv_dict["_local_device"][0]))
+            else:
+                self._local_device = None
     def has_type(self, srv_type):
         return srv_type in self._resolv_dict
     @property
@@ -204,7 +210,8 @@ class srv_type_routing(object):
             # format: device name, device IP, device_pk, penalty
             _resolv_dict[key] = [_v2[1] for _v2 in sorted([(_v[3], _v) for _v in value])]
         # set local device
-        _resolv_dict["_local_device"] = (_myself.device.pk,)
+        if _myself.device is not None:
+            _resolv_dict["_local_device"] = (_myself.device.pk,)
         # valid for 15 minutes
         cache.set(self.ROUTING_KEY, json.dumps(_resolv_dict), 60 * 15)
         return _resolv_dict
