@@ -366,6 +366,10 @@ class data_store(object):
                                 _parent = _parent.getparent()
                 # print etree.tostring(merged_mv, pretty_print=True)
                 return E.node_results(E.node_result(merged_mv, devices="{:d}".format(len(res_list))))
+            else:
+                return E.node_results()
+        else:
+            return res_list
     def _expand_info(self, entry):
         info = entry.attrib["info"]
         parts = entry.attrib["name"].split(".")
