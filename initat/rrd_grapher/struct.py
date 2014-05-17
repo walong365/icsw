@@ -214,7 +214,7 @@ class data_store(object):
         # sync XML to grapher
         self.sync_to_grapher()
     def set_active_rrds(self):
-        device.objects.get(Q(pk=self.pk)).update(has_active_rrds=True)
+        device.objects.filter(Q(pk=self.pk)).update(has_active_rrds=True)
     def sync_to_grapher(self):
         data_store.process.send_to_process(
             "graph",
