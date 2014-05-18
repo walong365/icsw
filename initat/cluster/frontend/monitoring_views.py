@@ -28,7 +28,8 @@ from django.db.models import Q
 from django.http import HttpResponseRedirect
 from django.utils.decorators import method_decorator
 from django.views.generic import View
-from initat.cluster.backbone.models import device, device_type, domain_name_tree, netdevice, net_ip
+from initat.cluster.backbone.models import device, device_type, domain_name_tree, netdevice, \
+    net_ip, peer_information
 from initat.cluster.frontend.forms import mon_period_form, mon_notification_form, mon_contact_form, \
     mon_service_templ_form, host_check_command_form, mon_contactgroup_form, mon_device_templ_form, \
     mon_host_cluster_form, mon_service_cluster_form, mon_host_dependency_templ_form, \
@@ -42,6 +43,7 @@ import base64
 import json
 import logging
 import process_tools
+import socket
 import logging_tools
 import server_command
 
@@ -192,6 +194,18 @@ class livestatus(View):
                 }
         )()
 
+class resolve_name(View):
+    @method_decorator(xml_wrapper)
+    def post(self, request):
+        fqdn = request.POST["fqdn"]
+        try:
+            _ip = socket.gethostbyname(fqdn)
+        except:
+            pass
+        else:
+            logger.info(u"resolved {} to {}".format(fqdn, _ip))
+            request.xml_response["ip"] = _ip
+
 class create_device(permission_required_mixin, View):
     all_required_permissions = ["backbone.user.modify_tree"]
     @method_decorator(login_required)
@@ -206,6 +220,7 @@ class create_device(permission_required_mixin, View):
     def post(self, request):
         _post = request.POST
         device_data = json.loads(_post["device_data"])
+        print device_data
         try:
             cur_dg = device_group.objects.get(Q(name=device_data["device_group"]))
         except device_group.DoesNotExist:
@@ -240,6 +255,7 @@ class create_device(permission_required_mixin, View):
                         device_type=device_type.objects.get(Q(identifier="H")),
                         domain_tree_node=dnt_node,
                         name=short_name,
+                        mon_resolve_name=device_data["resolve_via_name"],
                         comment=device_data["comment"],
                     )
                 except:
@@ -261,6 +277,13 @@ class create_device(permission_required_mixin, View):
                     cur_nd = netdevice.objects.create(
                         devname="eth0",
                         device=cur_dev,
+                        routing=device_data["routing_capable"],
+                        )
+                    if device_data["peer"]:
+                        peer_information.objects.create(
+                            s_netdevice=cur_nd,
+                            d_netdevice=netdevice.objects.get(Q(pk=device_data["peer"])),
+                            penalty=1,
                         )
                 try:
                     cur_ip = net_ip.objects.get(Q(netdevice=cur_nd) & Q(ip=device_data["ip"]))

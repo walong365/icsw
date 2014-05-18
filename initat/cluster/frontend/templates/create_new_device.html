@@ -21,7 +21,7 @@
                     <div class="form-group">
                         <label class="control-label col-md-5">Fully qualified device name</label>
                         <div class="controls col-md-6" ng-class="baseForm.full_name.$invalid && 'has-error'">
-                            <input name="full_name" class="form-control" ng-model="device_data.full_name" required ng-pattern="/^[a-zA-Z0-9\.-_]+$/"></input>
+                            <input name="full_name" class="form-control" ng-model="device_data.full_name" required ng-pattern="/^[a-zA-Z0-9\.-_]+$/" placeholder="device name" ng-blur="device_name_changed()"></input>
                             <span ng-show="baseForm.full_name.$invalid" class="text-danger">
                                 Need name without any special characters or whitespace (for instance 'server.my.domain')
                             </span>
@@ -46,10 +46,38 @@
                     <div class="form-group">
                         <label class="control-label col-md-5">IP Address</label>
                         <div class="controls col-md-6" ng-class="baseForm.ip.$invalid && 'has-error'">
-                            <input name="ip" class="form-control" ng-model="device_data.ip" required ng-pattern="/^(\d+)\.(\d+)\.(\d)+\.(\d+)$/"></input>
+                            <div class="form-inline">
+                                <input name="ip" class="form-control" ng-model="device_data.ip" required ng-pattern="/^(\d+)\.(\d+)\.(\d)+\.(\d+)$/" placeholder="IP Address"></input>
+                                <button class="btn btn-primary btn-sm" ng-show="!resolve_pending" ng-click="resolve_name()">Resolve</button>
+                                <span ng-show="resolve_pending" class="glyphicon glyphicon-refresh"></span>
+                            </div>
                             <span ng-show="baseForm.ip.$invalid" class="text-danger">
                                 Please enter a valid IP address
                             </span>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label class="control-label col-md-5">Monitor host via</label>
+                        <div class="controls col-md-6">
+                            <div class="btn-group btn-sn">
+                                <button ng-class="device_data.resolve_via_name && 'btn btn-success' || 'btn'" ng-click="device_data.resolve_via_name=true">via name</button>
+                                <button ng-class="device_data.resolve_via_name && 'btn' || 'btn btn-success'" ng-click="device_data.resolve_via_name=false">via IP</button>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label class="control-label col-md-5">is routing capable (switch, firewall)</label>
+                        <div class="controls col-md-6">
+                            <div class="btn-group btn-sn">
+                                <button ng-class="device_data.routing_capable && 'btn btn-success' || 'btn'" ng-click="device_data.routing_capable=true">yes</button>
+                                <button ng-class="device_data.routing_capable && 'btn' || 'btn btn-success'" ng-click="device_data.routing_capable=false">no</button>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="form-group" ng-show="any_peers()">
+                        <label class="control-label col-md-5">Connect to</label>
+                        <div class="controls col-md-6">
+                            <select name="peer" class="form-control" ng-model="device_data.peer" ng-options="value.idx as value.info group by value.device_group_name for value in all_peers()"></select>
                         </div>
                     </div>
                 </accordion-group>
@@ -58,6 +86,7 @@
                         <label class="control-label col-md-5">Comment</label>
                         <div class="controls col-md-6" ng-class="baseForm.comment.$invalid && 'has-error'">
                             <input name="comment" class="form-control" ng-model="device_data.comment"></input>
+                              
                         </div>
                     </div>
                 </accordion-group>
@@ -80,11 +109,15 @@ angular_module_setup([create_module])
 create_controller = create_module.controller("create_base", ["$scope", "$timeout", "$window", "$templateCache", "restDataSource", "$q",
     ($scope, $timeout, $window, $templateCache, restDataSource, $q) ->
         $scope.base_open = true
+        $scope.resolve_pending = false
         $scope.device_data = {
-            full_name    : "device.domain"
-            comment      : "new device"
-            device_group : "newgroup"
-            ip           : "1.2.3.4"
+            full_name        : ""
+            comment          : "new device"
+            device_group     : "newgroup"
+            ip               : ""
+            resolve_via_name : true
+            routing_capable  : false
+            peer             : 0
         }
         $scope.rest_map = [
             {"short" : "device_group", "url" : "{% url 'rest:device_group_list' %}"}
@@ -92,6 +125,7 @@ create_controller = create_module.controller("create_base", ["$scope", "$timeout
             {"short" : "mother_server", "url" : "{% url 'rest:device_tree_list' %}", "options" : {"all_mother_servers" : true}}
             {"short" : "monitor_server", "url" : "{% url 'rest:device_tree_list' %}", "options" : {"all_monitoring_servers" : true}}
             {"short" : "domain_tree_node", "url" : "{% url 'rest:domain_tree_node_list' %}"}
+            {"short" : "peers", "url" : "{% url 'rest:netdevice_peer_list' %}" },
         ]
         $scope.rest_data = {}
         $scope.reload = () ->
@@ -104,10 +138,39 @@ create_controller = create_module.controller("create_base", ["$scope", "$timeout
                 for value, idx in data
                     $scope.rest_data[$scope.rest_map[idx].short] = value
                 $.unblockUI()
-                #console.log $scope.rest_data
             )
+        $scope.device_name_changed = () ->
+            if not $scope.resolve_pending and $scope.device_data.full_name and not $scope.device_data.ip
+                $scope.resolve_name()
+        $scope.resolve_name = () ->
+            # clear ip
+            $scope.device_data.ip = ""
+            $scope.resolve_pending = true
+            call_ajax
+                url  : "{% url 'mon:resolve_name' %}"
+                data : {
+                    "fqdn" : $scope.device_data.full_name
+                }
+                success : (xml) =>
+                    $scope.$apply(
+                        $scope.resolve_pending = false
+                    )
+                    if parse_xml_response(xml)
+                        if $(xml).find("value[name='ip']").length and not $scope.device_data.ip
+                            $scope.$apply(
+                                $scope.device_data.ip = $(xml).find("value[name='ip']").text()
+                            )
         $scope.device_groups = () ->
             return (entry.name for entry in $scope.rest_data.device_group when entry.cluster_device_group == false)
+        $scope.any_peers = () ->
+            return if $scope.rest_data.peers.length > 1 then true else false
+        $scope.all_peers = () ->
+            r_list = [{"idx" : 0, "info" : "no peering", "device group name" : "---"}]
+            if $scope.rest_data?
+                for entry in $scope.rest_data.peers
+                    entry.info = "#{entry.devname} on #{entry.device_name}"
+                    r_list.push(entry)
+            return r_list
         $scope.build_device_dict = () ->
             return {
                 "full_name" : $scope.full_name

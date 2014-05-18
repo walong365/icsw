@@ -110,6 +110,7 @@ monitoring_patterns = patterns(
     url("^build_info$"         , monitoring_views.build_info.as_view()       , name="build_info"),
     url("^livestatus$"         , monitoring_views.livestatus.as_view()       , name="livestatus"),
     url("^create_device$"      , monitoring_views.create_device.as_view()    , name="create_device"),
+    url("^resolve_name$"       , monitoring_views.resolve_name.as_view()     , name="resolve_name"),
 )
 
 user_patterns = patterns(
