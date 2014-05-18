@@ -1266,7 +1266,7 @@ class device(models.Model):
         ], default=1)
     # system name
     domain_tree_node = models.ForeignKey("backbone.domain_tree_node", null=True, default=None)
-    # resolve name for monitoring
+    # resolve name for monitoring (i.e. use IP for monitoring)
     mon_resolve_name = models.BooleanField(default=True, verbose_name="Resolve to IP for monitoring")
     # categories for this device
     categories = models.ManyToManyField("backbone.category")
