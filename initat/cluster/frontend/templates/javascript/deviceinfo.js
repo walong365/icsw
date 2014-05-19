@@ -43,8 +43,9 @@ class device_info
                             @close()
                             $.simplemodal.close()
                 {% if index_view %}
-                $("div#center_content").hide()
-                $("div#center_deviceinfo").show()
+                #hm, not needed here ...
+                #set_index_visibility(false)
+                #$("div#center_deviceinfo").show()
                 {% endif %} 
                 @dev_div.find("a[href='##{@active_div}']").trigger("click")
     close: () =>

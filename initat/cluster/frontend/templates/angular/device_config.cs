@@ -377,7 +377,6 @@ device_config_module.controller("config_ctrl", ["$scope", "$compile", "$filter",
                 if $scope.only_selected and entry.show
                     sel = false
                     for cur_dev in $scope.all_devices
-                        #console.log cur_dev.full_name, cur_dev.local_selected
                         if entry.idx in cur_dev.local_selected
                             sel = true
                     entry.show = sel
@@ -491,18 +490,23 @@ class category_tree extends tree_config
         @show_descendants = false
         @show_childs = false
     selection_changed: (entry) =>
-        console.log entry
-        sel_list = @get_selected((node) ->
-            if node.selected
-                return [node.obj.idx]
-            else
-                return []
-        )
-        @scope.new_selection(sel_list)
+        if @scope.multi_device_mode
+            @scope.new_md_selection(entry)
+        else
+            sel_list = @get_selected((node) ->
+                if node.selected
+                    return [node.obj.idx]
+                else
+                    return []
+            )
+            @scope.new_selection(sel_list)
     get_name : (t_entry) ->
         cat = t_entry.obj
         if cat.depth > 1
             r_info = "#{cat.full_name} (#{cat.name})"
+            num_sel = @scope.sel_dict[cat.idx].length
+            if num_sel and num_sel < @scope.num_devices
+                r_info = "#{r_info}, #{num_sel} of #{@scope.num_devices}"
             if cat.num_refs
                 r_info = "#{r_info} (refs=#{cat.num_refs})"
             return r_info
@@ -522,25 +526,33 @@ cat_ctrl = device_config_module.controller("category_ctrl", ["$scope", "$compile
             else
                 $scope.multi_device_mode = false
                 $scope.device_pks = [parseInt(pk_str)]
-            console.log $scope.device_pks
             wait_list = [
                 restDataSource.reload(["{% url 'rest:category_list' %}", {}])
                 restDataSource.reload(["{% url 'rest:device_tree_list' %}", {"pks" : angular.toJson($scope.device_pks), "with_categories" : true}])
             ]
             $q.all(wait_list).then((data) ->
-                $scope.device = data[1][0]
-                console.log data[1]
-                sel_list = $scope.device.categories
+                $scope.devices = data[1]
+                $scope.num_devices = $scope.devices.length
                 $scope.cat_tree_change_select = true
-                for dev in data[1]
+                for dev in $scope.devices
                     # check all devices and disable change button when not all devices are in allowed list
                     if not $scope.acl_all(dev, "backbone.device.change_category", 7)
                         $scope.cat_tree.change_select = false
                 cat_tree_lut = {}
                 $scope.cat_tree.clear_root_nodes()
+                # selection dict
+                sel_dict = {}
                 for entry in data[0]
                     if entry.full_name.match(/^\/device/)
-                        t_entry = $scope.cat_tree.new_node({folder:false, obj:entry, expand:entry.depth < 2, selected: entry.idx in sel_list})
+                        sel_dict[entry.idx] = []
+                for dev in $scope.devices
+                    for _sel in dev.categories
+                        if _sel of sel_dict
+                            sel_dict[_sel].push(entry.idx)
+                $scope.sel_dict = sel_dict
+                for entry in data[0]
+                    if entry.full_name.match(/^\/device/)
+                        t_entry = $scope.cat_tree.new_node({folder:false, obj:entry, expand:entry.depth < 2, selected: sel_dict[entry.idx].length == $scope.num_devices})
                         cat_tree_lut[entry.idx] = t_entry
                         if entry.parent and entry.parent of cat_tree_lut
                             cat_tree_lut[entry.parent].add_child(t_entry)
@@ -551,12 +563,32 @@ cat_ctrl = device_config_module.controller("category_ctrl", ["$scope", "$compile
                 $scope.cat_tree_lut = cat_tree_lut
                 $scope.cat_tree.show_selected(false)
             )
-        $scope.new_selection = (sel_list) =>
+        $scope.new_md_selection = (entry) ->
+            # for multi-device selection
+            cat = entry.obj
             call_ajax
                 url     : "{% url 'base:change_category' %}"
                 data    :
                     "obj_type" : "device"
-                    "obj_pk"   : $scope.device_pk
+                    "multi"    : "1"
+                    "obj_pks"  : angular.toJson((_entry.idx for _entry in $scope.devices))
+                    "set"      : if entry.selected then "1" else "0"
+                    "cat_pk"   : cat.idx
+                success : (xml) =>
+                    parse_xml_response(xml)
+                    $scope.$apply(
+                        if entry.selected
+                            $scope.sel_dict[cat.idx] = (_entry.idx for _entry in $scope.devices)
+                        else
+                            $scope.sel_dict[cat.idx] = []
+                    )
+        $scope.new_selection = (sel_list) =>
+            # only for single-device mode
+            call_ajax
+                url     : "{% url 'base:change_category' %}"
+                data    :
+                    "obj_type" : "device"
+                    "obj_pk"   : $scope.devices[0].idx
                     "subtree"  : "/device"
                     "cur_sel"  : angular.toJson(sel_list)
                 success : (xml) =>
@@ -693,6 +725,14 @@ info_ctrl = device_config_module.controller("deviceinfo_ctrl", ["$scope", "$comp
     ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, sharedDataSource, $q, $modal, access_level_service) ->
         access_level_service.install($scope)
         $scope.show_uuid = false
+        $scope.image_url = ""
+        $scope.get_image_src = () ->
+            img_url = ""
+            if $scope._edit_obj.mon_ext_host
+                for entry in $scope.mon_ext_host_list
+                    if entry.idx == $scope._edit_obj.mon_ext_host
+                        img_url = entry.data_image
+            return img_url
         $scope.toggle_uuid = () ->
             $scope.show_uuid = !$scope.show_uuid
         $scope.modify = () ->
@@ -714,11 +754,13 @@ info_ctrl = device_config_module.controller("deviceinfo_ctrl", ["$scope", "$comp
                     restDataSource.reload(["{% url 'rest:fetch_forms' %}", {"forms" : angular.toJson(["device_info_form"])}])
                     restDataSource.reload(["{% url 'rest:domain_tree_node_list' %}", {}])
                     restDataSource.reload(["{% url 'rest:mon_device_templ_list' %}", {}])
+                    restDataSource.reload(["{% url 'rest:mon_ext_host_list' %}", {}])
                 ]
                 $q.all(wait_list).then((data) ->
                     form = data[0][0].form
                     scope.domain_tree_node = data[1]
                     scope.mon_device_templ_list = data[2]
+                    scope.mon_ext_host_list = data[3]
                     Restangular.one("{% url 'rest:device_detail' 1 %}".slice(1).slice(0, -2), device_pk).get().then((res) ->
                         scope._edit_obj = res
                         element.append($compile(form)(scope))

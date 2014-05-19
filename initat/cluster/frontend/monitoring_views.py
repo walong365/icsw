@@ -29,7 +29,7 @@ from django.http import HttpResponseRedirect
 from django.utils.decorators import method_decorator
 from django.views.generic import View
 from initat.cluster.backbone.models import device, device_type, domain_name_tree, netdevice, \
-    net_ip, peer_information
+    net_ip, peer_information, mon_ext_host
 from initat.cluster.frontend.forms import mon_period_form, mon_notification_form, mon_contact_form, \
     mon_service_templ_form, host_check_command_form, mon_contactgroup_form, mon_device_templ_form, \
     mon_host_cluster_form, mon_service_cluster_form, mon_host_dependency_templ_form, \
@@ -198,13 +198,14 @@ class resolve_name(View):
     @method_decorator(xml_wrapper)
     def post(self, request):
         fqdn = request.POST["fqdn"]
-        try:
-            _ip = socket.gethostbyname(fqdn)
-        except:
-            pass
-        else:
-            logger.info(u"resolved {} to {}".format(fqdn, _ip))
-            request.xml_response["ip"] = _ip
+        if fqdn.strip():
+            try:
+                _ip = socket.gethostbyname(fqdn)
+            except:
+                pass
+            else:
+                logger.info(u"resolved {} to {}".format(fqdn, _ip))
+                request.xml_response["ip"] = _ip
 
 class create_device(permission_required_mixin, View):
     all_required_permissions = ["backbone.user.modify_tree"]
@@ -249,14 +250,23 @@ class create_device(permission_required_mixin, View):
             try:
                 cur_dev = device.objects.get(Q(name=short_name) & Q(domain_tree_node=dnt_node))
             except device.DoesNotExist:
+                # check image
+                if device_data["icon_name"].strip():
+                    try:
+                        cur_img = mon_ext_host.objects.get(Q(name=device_data["icon_name"]))
+                    except mon_ext_host.DoesNotExist:
+                        cur_img = None
+                    else:
+                        pass
                 try:
                     cur_dev = device.objects.create(
                         device_group=cur_dg,
                         device_type=device_type.objects.get(Q(identifier="H")),
                         domain_tree_node=dnt_node,
                         name=short_name,
-                        mon_resolve_name=device_data["resolve_via_name"],
+                        mon_resolve_name=device_data["resolve_via_ip"],
                         comment=device_data["comment"],
+                        mon_ext_host=cur_img,
                     )
                 except:
                     request.xml_response.error(

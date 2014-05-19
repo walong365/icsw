@@ -203,7 +203,7 @@ class device_info_form(ModelForm):
     helper.ng_model = "_edit_obj"
     helper.layout = Layout(
         Div(
-            HTML("<h2>Device details for '{% verbatim %}{{ _edit_obj.name }}{% endverbatim %}'</h2>"),
+            HTML("<h2>Device details for '{% verbatim %}{{ _edit_obj.name }}'&nbsp;<img ng-if='_edit_obj.mon_ext_host' ng-src='{{ get_image_src() }}' width='16'></img></h2>{% endverbatim %}"),
             Fieldset(
                 "Device details",
                 Field("name"),

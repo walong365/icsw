@@ -6,7 +6,7 @@
 
 {% block content %}
 
-<div id="icsw.index_app" ng-controller="index_base" ng-cloack>
+<div id="icsw.index_app" ng-controller="index_base" ng-cloack ng-show="show_index">
     <h2 class="center">Please select a device from the tree on the left side</h2>
     <div class="well">
         <h3>Quicklinks</h3>
@@ -33,6 +33,7 @@ index_module = angular.module("icsw.index_app", ["ngSanitize", "ui.bootstrap"])
 
 index_controller = index_module.controller("index_base", ["$scope", "$timeout", "$window",
     ($scope, $timeout, $window) ->
+        $scope.show_index = true
         $scope.CLUSTER_LICENSE = $window.CLUSTER_LICENSE
         $scope.GLOBAL_PERMISSIONS = $window.GLOBAL_PERMISSIONS
         $scope.OBJECT_PERMISSIONS = $window.OBJECT_PERMISSIONS
@@ -43,17 +44,19 @@ index_controller = index_module.controller("index_base", ["$scope", "$timeout", 
                 return true
             else
                 return false
+        $scope.set_visibility = (flag) ->
+            $scope.show_index = flag
 ])
 
 use_devs = (dev_list) ->
     if dev_list.length
         # only use when at least one device is selected
         cur_di = new device_info(undefined, dev_list[0], (entry for entry in dev_list[1..]))
-        $("div#center_content").hide()
+        set_index_visibility(false)
         $("div#center_deviceinfo").show()
         cur_di.show()
     else
-        $("div#center_content").show()
+        set_index_visibility(true)
         $("div#center_deviceinfo").hide()
 
 add_config_handlers = ->

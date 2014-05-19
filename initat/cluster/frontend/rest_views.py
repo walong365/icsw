@@ -140,7 +140,7 @@ class db_prefetch_mixin(object):
     def _mon_period_prefetch(self):
         return ["service_check_period"]
     def _device_related(self):
-        return ["domain_tree_node", "device_type", "device_group"]
+        return ["domain_tree_node", "device_type", "device_group", "mon_ext_host"]
     def _mon_check_command_prefetch(self):
         return ["exclude_devices", "categories"]
     def _mon_host_cluster_prefetch(self):
