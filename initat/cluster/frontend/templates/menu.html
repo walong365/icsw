@@ -1,95 +1,95 @@
 {% load i18n coffeescript staticfiles %}
 
 <nav class="navbar navbar-default navbar-static-top" role="navigation" id="icsw.menu_app" ng-controller="menu_base">
-    <div class="navbar-header">
-        <ul class="nav navbar-nav">
-            {% if not index_view %}
-            <li>
-                <a href="{% url 'main:index' %}"><span class="glyphicon glyphicon-home"></span></a>
-            </li>
-            {% endif %}
-            <li class="dropdown">
-                <a class="dropdown-toggle" data-toggle="dropdown">{% trans "Base" %} <b class="caret"></b></a>
-                <ul class="dropdown-menu">
-                    <li ng-show="check_perm('user.modify_tree')"><a href="{% url 'mon:create_device' %}">{% trans "Create new device" %}</a></li>
-                    <li ng-show="check_perm('user.modify_tree')" class="divider"></li>
-                    <li ng-show="check_perm('user.modify_tree')"><a href="{% url 'device:tree' %}">{% trans "Device tree" %}</a></li>
-                    <li ng-show="check_perm('user.modify_domain_name_tree')"><a href="{% url 'network:domain_name_tree' %}">{% trans "Domain name tree" %}</a></li>
-                    <li ng-show="check_perm('user.modify_category_tree')"><a href="{% url 'base:category_tree' %}">{% trans "Category tree" %}</a></li>
-                    <li ng-show="check_perm('user.modify_category_tree') || check_perm('user.modify_domain_tree') || check_perm('user.modify_tree')" class="divider"></li>
-                    <li ng-show="check_perm('network.modify_network')"><a href="{% url 'network:show_networks' %}">{% trans "Networks" %}</a></li>
-                    <li ng-show="check_perm('config.modify_config')"><a href="{% url 'config:show_configs' %}">{% trans "Configurations" %}</a></li>
-                    <li ng-show="check_perm('network.modify_network') || check_perm('config.modify_config')" class="divider"></li>
-                    <li ng-show="check_perm('device.change_network')"><a href="{% url 'network:device_network' %}">{% trans "Device network" %}</a></li>
-                    <li ng-show="check_perm('device.change_connection')"><a href="{% url 'device:connections' %}">{% trans "Device connections" %}</a></li>
-                    <li ng-show="check_perm('device.change_variables')"><a href="{% url 'device:variables' %}">{% trans "Device variables" %}</a></li>
-                    <li ng-show="check_perm('device.change_config')"><a href="{% url 'device:show_configs' %}">{% trans "Device configurations" %}</a></li>
-                </ul>
-            </li>
-            <li ng-show="CLUSTER_LICENSE.boot.enabled || CLUSTER_LICENSE.package.enabled" class="dropdown">
-                <a class="dropdown-toggle" data-toggle="dropdown">{% trans "Cluster" %} <b class="caret"></b></a>
-                <ul class="dropdown-menu">
-                    <li ng-show="SERVICE_TYPES.mother && CLUSTER_LICENSE.boot.enabled"><a href="{% url 'boot:show_boot' %}">{% trans "Nodeboot" %}</a></li>
-                    <li ng-show="SERVICE_TYPES.package && CLUSTER_LICENSE.package.enabled && check_perm('package.package_install')"><a href="{% url 'pack:repo_overview' %}">{% trans "Package install" %}</a></li>
-                    {% if DJANGO_SERVICE_TYPES.mother or DJANGO_SERVICE_TYPES.package %}
-                    <li ng-show="CLUSTER_LICENSE.boot.enabled" class="divider"></li>
-                    {% endif %}
-                    <li ng-show="CLUSTER_LICENSE.boot.enabled"><a href="{% url 'setup:image_overview' %}">{% trans "Image overview" %}</a></li>
-                    <li ng-show="CLUSTER_LICENSE.boot.enabled"><a href="{% url 'setup:kernel_overview' %}">{% trans "Kernel overview" %}</a></li>
-                    <li ng-show="CLUSTER_LICENSE.boot.enabled"><a href="{% url 'setup:partition_overview' %}">{% trans "Partition overview" %}</a></li>
-                </ul>
-            </li>
-            <li ng-show="check_perm('group.group_admin')" class="dropdown">
-                <a class="dropdown-toggle" data-toggle="dropdown">{% trans "Users" %} <b class="caret"></b></a>
-                <ul class="dropdown-menu">
-                    <li><a href="{% url 'user:overview' %}">{% trans "Overview" %}</a></li>
-                </ul>
-            </li>
-            <li ng-show="CLUSTER_LICENSE.monitor.enabled" class="dropdown">
-                <a class="dropdown-toggle" data-toggle="dropdown">{% trans "Monitoring" %} <b class="caret"></b></a>
-                <ul class="dropdown-menu">
-                    <li ng-show="check_perm('mon_check_command.setup_monitoring')"><a href="{% url 'mon:setup' %}">{% trans "Basic setup" %}</a></li>
-                    <li ng-show="check_perm('mon_check_command.setup_monitoring') && check_perm('device.change_monitoring')"><a href="{% url 'mon:device_config' %}">{% trans "Device settings" %}</a></li>
-                    <li ng-show="CLUSTER_LICENSE.monext.enabled && check_perm('mon_check_command.setup_monitoring')" class="divider"></li>
-                    <li ng-show="CLUSTER_LICENSE.monext.enabled && check_perm('mon_check_command.setup_monitoring')"><a href="{% url 'mon:setup_cluster' %}">{% trans "Cluster / Dependency setup" %}</a></li>
-                    <li ng-show="CLUSTER_LICENSE.monext.enabled && check_perm('mon_check_command.setup_monitoring')"><a href="{% url 'mon:setup_escalation' %}">{% trans "Escalation setup" %}</a></li>
-                    <li ng-show="check_perm('mon_check_command.setup_monitoring')" class="divider"></li>
-                    <li><a href="{% url 'mon:call_icinga' %}">{% trans "Icinga (replace)" %}</a></li>
-                    <li><a href="{% url 'mon:call_icinga' %}" target="_blank">{% trans "Icinga (new tab)" %}</a></li>
-                    <li ng-show="check_perm('mon_check_command.setup_monitoring')" class="divider"></li>
-                    <li ng-show="check_perm('mon_check_command.setup_monitoring')"><a href="{% url 'mon:build_info' %}">{% trans "Build Info" %}</a></li>
+    <ul class="nav navbar-nav">
+        {% if not index_view %}
+        <li>
+            <a href="{% url 'main:index' %}"><span class="glyphicon glyphicon-home"></span></a>
+        </li>
+        {% endif %}
+        <li>
+            <a class="dropdown-toggle" data-toggle="dropdown">{% trans "Base" %} <b class="caret"></b></a>
+            <ul class="dropdown-menu">
+                <li ng-show="check_perm('user.modify_tree')"><a href="{% url 'mon:create_device' %}">{% trans "Create new device" %}</a></li>
+                <li ng-show="check_perm('user.modify_tree')" class="divider"></li>
+                <li ng-show="check_perm('user.modify_tree')"><a href="{% url 'device:tree' %}">{% trans "Device tree" %}</a></li>
+                <li ng-show="check_perm('user.modify_domain_name_tree')"><a href="{% url 'network:domain_name_tree' %}">{% trans "Domain name tree" %}</a></li>
+                <li ng-show="check_perm('user.modify_category_tree')"><a href="{% url 'base:category_tree' %}">{% trans "Category tree" %}</a></li>
+                <li ng-show="check_perm('user.modify_category_tree') || check_perm('user.modify_domain_tree') || check_perm('user.modify_tree')" class="divider"></li>
+                <li ng-show="check_perm('network.modify_network')"><a href="{% url 'network:show_networks' %}">{% trans "Networks" %}</a></li>
+                <li ng-show="check_perm('config.modify_config')"><a href="{% url 'config:show_configs' %}">{% trans "Configurations" %}</a></li>
+                <li ng-show="check_perm('network.modify_network') || check_perm('config.modify_config')" class="divider"></li>
+                <li ng-show="check_perm('device.change_network')"><a href="{% url 'network:device_network' %}">{% trans "Device network" %}</a></li>
+                <li ng-show="check_perm('device.change_connection')"><a href="{% url 'device:connections' %}">{% trans "Device connections" %}</a></li>
+                <li ng-show="check_perm('device.change_variables')"><a href="{% url 'device:variables' %}">{% trans "Device variables" %}</a></li>
+                <li ng-show="check_perm('device.change_config')"><a href="{% url 'device:show_configs' %}">{% trans "Device configurations" %}</a></li>
+            </ul>
+        </li>
+        <li ng-show="CLUSTER_LICENSE.boot.enabled || CLUSTER_LICENSE.package.enabled">
+            <a class="dropdown-toggle" data-toggle="dropdown">{% trans "Cluster" %} <b class="caret"></b></a>
+            <ul class="dropdown-menu">
+                <li ng-show="SERVICE_TYPES.mother && CLUSTER_LICENSE.boot.enabled"><a href="{% url 'boot:show_boot' %}">{% trans "Nodeboot" %}</a></li>
+                <li ng-show="SERVICE_TYPES.package && CLUSTER_LICENSE.package.enabled && check_perm('package.package_install')"><a href="{% url 'pack:repo_overview' %}">{% trans "Package install" %}</a></li>
+                {% if DJANGO_SERVICE_TYPES.mother or DJANGO_SERVICE_TYPES.package %}
+                <li ng-show="CLUSTER_LICENSE.boot.enabled" class="divider"></li>
+                {% endif %}
+                <li ng-show="CLUSTER_LICENSE.boot.enabled"><a href="{% url 'setup:image_overview' %}">{% trans "Image overview" %}</a></li>
+                <li ng-show="CLUSTER_LICENSE.boot.enabled"><a href="{% url 'setup:kernel_overview' %}">{% trans "Kernel overview" %}</a></li>
+                <li ng-show="CLUSTER_LICENSE.boot.enabled"><a href="{% url 'setup:partition_overview' %}">{% trans "Partition overview" %}</a></li>
+            </ul>
+        </li>
+        <li ng-show="check_perm('group.group_admin')">
+            <a class="dropdown-toggle" data-toggle="dropdown">{% trans "Users" %} <b class="caret"></b></a>
+            <ul class="dropdown-menu">
+                <li><a href="{% url 'user:overview' %}">{% trans "Overview" %}</a></li>
+            </ul>
+        </li>
+        <li ng-show="CLUSTER_LICENSE.monitor.enabled">
+            <a class="dropdown-toggle" data-toggle="dropdown">{% trans "Monitoring" %} <b class="caret"></b></a>
+            <ul class="dropdown-menu">
+                <li ng-show="check_perm('mon_check_command.setup_monitoring')"><a href="{% url 'mon:setup' %}">{% trans "Basic setup" %}</a></li>
+                <li ng-show="check_perm('mon_check_command.setup_monitoring') && check_perm('device.change_monitoring')"><a href="{% url 'mon:device_config' %}">{% trans "Device settings" %}</a></li>
+                <li ng-show="CLUSTER_LICENSE.monext.enabled && check_perm('mon_check_command.setup_monitoring')" class="divider"></li>
+                <li ng-show="CLUSTER_LICENSE.monext.enabled && check_perm('mon_check_command.setup_monitoring')"><a href="{% url 'mon:setup_cluster' %}">{% trans "Cluster / Dependency setup" %}</a></li>
+                <li ng-show="CLUSTER_LICENSE.monext.enabled && check_perm('mon_check_command.setup_monitoring')"><a href="{% url 'mon:setup_escalation' %}">{% trans "Escalation setup" %}</a></li>
+                <li ng-show="check_perm('mon_check_command.setup_monitoring')" class="divider"></li>
+                <li><a href="{% url 'mon:call_icinga' %}">{% trans "Icinga (replace)" %}</a></li>
+                <li><a href="{% url 'mon:call_icinga' %}" target="_blank">{% trans "Icinga (new tab)" %}</a></li>
+                <li ng-show="check_perm('mon_check_command.setup_monitoring')" class="divider"></li>
+                <li ng-show="check_perm('mon_check_command.setup_monitoring')"><a href="{% url 'mon:build_info' %}">{% trans "Build Info" %}</a></li>
 {% if DJANGO_SERVICE_TYPES.md_config %}                    
-                    <li><a href="{% url 'mon:livestatus' %}">{% trans "Livestatus" %}</a></li>
+                    <li>
+                        <a href="{% url 'mon:livestatus' %}">{% trans "Livestatus" %}</a>
+                    </li>
                     <li ng-show="check_perm('mon_check_command.setup_monitoring')" class="text-center">
                         <input id="create_monitoring_config" type="button" class="btn btn-success" value="rebuild config" ng-click="rebuild_config()"/>
                     </li>
 {% endif %}
                 </ul>
             </li>
-            <li ng-show="CLUSTER_LICENSE.rms.enabled" class="dropdown">
-                <a class="dropdown-toggle" data-toggle="dropdown">{% trans "RMS" %} <b class="caret"></b></a>
-                <ul class="dropdown-menu">
-                    <li><a href="{% url 'rms:overview' %}">{% trans "RMS overview" %}</a></li>
-                </ul>
-            </li>
-            {% for add_menu in settings.ADDITIONAL_MENU_FILES %}
-                {% include add_menu %}
-            {% endfor %}
-            <li class="visible-md visible-lg">
-                {% verbatim %}
-                <div ng-show="num_gauges" ng-repeat="(key, obj) in cur_gauges" class="progress" style="width:200px; margin-top:10px;">
-                    <progressbar animate="true" value="obj.value" type="success"><span>{{ obj.value }} %</span></progressbar>
-                </div>
-                {% endverbatim %}
-            </li>
-            <li ng-if="num_gauges == 0" class="visible-lg visible-md">
-                {% with "images/product/"|add:settings.INIT_PRODUCT_NAME|lower|add:"-flat-trans.png" as gfx_name %}
-                <img height="42px" src="{% static gfx_name %}" ng-click="redirect_to_init()" title="{{ settings.INIT_PRODUCT_NAME }}" alt="{{ settings.INIT_PRODUCT_NAME }} logo">
-                </img>
-                {% endwith %}
-            </li>
-        </ul>
-    </div>
+            <li ng-show="CLUSTER_LICENSE.rms.enabled">
+            <a class="dropdown-toggle" data-toggle="dropdown">{% trans "RMS" %} <b class="caret"></b></a>
+            <ul class="dropdown-menu">
+                <li><a href="{% url 'rms:overview' %}">{% trans "RMS overview" %}</a></li>
+            </ul>
+        </li>
+        {% for add_menu in settings.ADDITIONAL_MENU_FILES %}
+            {% include add_menu %}
+        {% endfor %}
+        <li class="visible-md visible-lg">
+            {% verbatim %}
+            <div ng-show="num_gauges" ng-repeat="(key, obj) in cur_gauges" class="progress" style="width:200px; margin-top:10px;">
+                <progressbar animate="true" value="obj.value" type="success"><span>{{ obj.value }} %</span></progressbar>
+            </div>
+            {% endverbatim %}
+        </li>
+        <li ng-if="num_gauges == 0" class="visible-lg visible-md">
+            {% with "images/product/"|add:settings.INIT_PRODUCT_NAME|lower|add:"-flat-trans.png" as gfx_name %}
+            <img height="42px" src="{% static gfx_name %}" ng-click="redirect_to_init()" title="{{ settings.INIT_PRODUCT_NAME }}" alt="{{ settings.INIT_PRODUCT_NAME }} logo">
+            </img>
+            {% endwith %}
+        </li>
+    </ul>
     <ul class="nav navbar-nav navbar-right">
         <li>
             <p class="navbar-text">
@@ -110,7 +110,7 @@
                 <span title="{{ user }}">user '{{ user.login }}'</span>{% ifnotequal user.login request.session.login_name %} (via alias {{ request.session.login_name }}){% endifnotequal %}
             </p>
         </li>
-        <li class="dropdown">
+        <li>
             <a class="dropdown-toggle" data-toggle="dropdown">{% trans "Session" %} <b class="caret"></b></a>
             <ul class="dropdown-menu">
                 <li><a href="{% url 'user:account_info' %}">{% trans "Account Info" %}</a></li>
@@ -208,8 +208,6 @@ menu_controller = menu_module.controller("menu_base", ["$scope", "$timeout", "$w
                 return "btn btn-xs btn-warning"
             else
                 return "btn btn-xs btn-danger"
-        $scope.show_time()
-        #$scope.update_progress_bar()
         $scope.rebuild_config = () ->
             call_ajax
                 url     : "{% url 'mon:create_config' %}"
@@ -219,6 +217,8 @@ menu_controller = menu_module.controller("menu_base", ["$scope", "$timeout", "$w
                         # make at least five iterations to catch slow startup of md-config-server
                         $scope.progress_iters = 5
                         $scope.update_progress_bar()
+        $scope.show_time()
+        #$scope.update_progress_bar()
 ])
 
 # bootstrap angular
