@@ -42,11 +42,6 @@ class device_info
                             # destroy scopes
                             @close()
                             $.simplemodal.close()
-                {% if index_view %}
-                #hm, not needed here ...
-                #set_index_visibility(false)
-                #$("div#center_deviceinfo").show()
-                {% endif %} 
                 @dev_div.find("a[href='##{@active_div}']").trigger("click")
     close: () =>
         # find all scopes and close them

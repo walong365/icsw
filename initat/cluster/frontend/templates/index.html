@@ -63,6 +63,8 @@ add_config_handlers = ->
     install_devsel_link(use_devs, true, true, false)
     angular.bootstrap($("div[id='icsw.index_app']"), ["icsw.index_app"])
 
+root.show_device_on_index = use_devs
+
 $(document).ready(add_config_handlers)
 
 {% endinlinecoffeescript %}

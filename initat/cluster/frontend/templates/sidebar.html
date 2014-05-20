@@ -47,7 +47,13 @@ class sidebar_tree extends tree_config
         if entry._node_type == "d"
             dev = @scope.dev_lut[entry.obj]
             if dev.device_type_identifier != "MD"
-                new device_info(event, dev.idx).show()                
+                # create modal or use main view
+                if @scope.index_view
+                    # replace index
+                    show_device_on_index([dev.idx])
+                else
+                    # modal
+                    new device_info(event, dev.idx).show()
     get_name: (t_entry) ->
         entry = @get_dev_entry(t_entry)
         if t_entry._node_type == "f"
@@ -91,13 +97,14 @@ class sidebar_tree extends tree_config
     selection_changed: () =>
         @scope.selection_changed()
         
-sidebar_base = sidebar_module.controller("sidebar_base", ["$scope", "$compile", "restDataSource", "$q", "$timeout", "Restangular",
-    ($scope, $compile, restDataSource, $q, $timeout, Restangular) ->
+sidebar_base = sidebar_module.controller("sidebar_base", ["$scope", "$compile", "restDataSource", "$q", "$timeout", "Restangular", "$window",
+    ($scope, $compile, restDataSource, $q, $timeout, Restangular, $window) ->
+        $scope.index_view = $window.INDEX_VIEW
         $scope.searchstr = ""
         $scope.search_ok = true
         $scope.is_loading = true
+        # active tab, (g)roups, (f)qdn, (c)ategories
         $scope.hidden_tabs = {"g" : true, "f" : true, "c" : true}
-        # active tab, (d)evices, (f)qdn, (c)ategories
         $scope.devsel_func = []
         $scope.call_devsel_func = (called_after_load) ->
             if $scope.devsel_func.length
