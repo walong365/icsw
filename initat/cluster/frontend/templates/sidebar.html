@@ -91,8 +91,8 @@ class sidebar_tree extends tree_config
     selection_changed: () =>
         @scope.selection_changed()
         
-sidebar_base = sidebar_module.controller("sidebar_base", ["$scope", "$compile", "restDataSource", "$q", "$timeout",
-    ($scope, $compile, restDataSource, $q, $timeout) ->
+sidebar_base = sidebar_module.controller("sidebar_base", ["$scope", "$compile", "restDataSource", "$q", "$timeout", "Restangular",
+    ($scope, $compile, restDataSource, $q, $timeout, Restangular) ->
         $scope.searchstr = ""
         $scope.search_ok = true
         $scope.is_loading = true
@@ -185,17 +185,24 @@ sidebar_base = sidebar_module.controller("sidebar_base", ["$scope", "$compile", 
             {"short" : "category", "url" : "{% url 'rest:category_list' %}"}
             {"short" : "device_sel", "url" : "{% url 'rest:device_selection_list' %}"}
         ]
-        $scope.reload = () ->
-            wait_list = []
-            for value, idx in $scope.rest_map
-                $scope.rest_data[value.short] = restDataSource.reload([value.url, value.options])
-                wait_list.push($scope.rest_data[value.short])
-            $q.all(wait_list).then((data) ->
-                for value, idx in data
-                    $scope.rest_data[$scope.rest_map[idx].short] = value
-                $.unblockUI()
-                $scope.rest_data_set()
-            )
+        $scope.reload = (pk) ->
+            if pk?
+                # only reload the given device
+                prev_dtn = $scope.dev_lut[pk].domain_tree_node
+                Restangular.all("{% url 'rest:device_tree_list' %}".slice(1)).getList({"pks" : angular.toJson([pk]), "ignore_cdg" : false, "tree_mode" : true, "with_categories" : true, "olp" : "{{ device_object_level_permission }}"}).then((data) ->
+                    $scope.update_device(data[0], prev_dtn)
+                )
+            else
+                wait_list = []
+                for value, idx in $scope.rest_map
+                    $scope.rest_data[value.short] = restDataSource.reload([value.url, value.options])
+                    wait_list.push($scope.rest_data[value.short])
+                $q.all(wait_list).then((data) ->
+                    for value, idx in data
+                        $scope.rest_data[$scope.rest_map[idx].short] = value
+                    $.unblockUI()
+                    $scope.rest_data_set()
+                )
         # load from server
         $scope.reload()
         $scope.get_tc = (short) ->
@@ -254,22 +261,36 @@ sidebar_base = sidebar_module.controller("sidebar_base", ["$scope", "$compile", 
         $scope.tc_fqdns = new sidebar_tree($scope, {show_childs : true})
         # treeconfig for categories
         $scope.tc_categories = new sidebar_tree($scope, {show_selection_buttons : true, show_descendants : true})
-        # remove empty FQDN nodes (iterative)
+        $scope.update_device = (new_dev, prev_dtn) ->
+            $scope.dev_lut[new_dev.idx] = new_dev
+            prev_node = $scope.t_fqdn_lut[prev_dtn]
+            # get previous node
+            del_c = (entry for entry in prev_node.children when entry.obj == new_dev.idx)[0]
+            # remove it
+            prev_node.remove_child(del_c)
+            # add new node
+            $scope.t_fqdn_lut[new_dev.domain_tree_node].add_child($scope.tc_fqdns.new_node({obj : new_dev.idx, _node_type : "d", selected:new_dev.idx in $scope.cur_sel}))
+            for cur_tc in [$scope.tc_devices, $scope.tc_fqdns, $scope.tc_categories]
+                cur_tc.prune(
+                    (entry) ->
+                        return entry._node_type == "d"
+                )
+                cur_tc.recalc()
+                cur_tc.show_selected()
         $scope.rest_data_set = () ->
             # clear root nodes
             $scope.tc_devices.clear_root_nodes()
             $scope.tc_fqdns.clear_root_nodes()
             $scope.tc_categories.clear_root_nodes()
             # build FQDNs tree
-            fqdn_lut = {}
+            $scope.t_fqdn_lut = {}
             $scope.fqdn_lut = {}
             for entry in $scope.rest_data["domain_tree_node"]
                 $scope.fqdn_lut[entry.idx] = entry
-                t_entry = $scope.tc_fqdns.new_node({folder:true, obj:entry.idx, _node_type:"f", expand:entry.depth == 0})
-                fqdn_lut[entry.idx] = t_entry
+                t_entry = $scope.tc_fqdns.new_node({folder : true, obj:entry.idx, _node_type : "f", expand:entry.depth == 0})
+                $scope.t_fqdn_lut[entry.idx] = t_entry
                 if entry.parent
-                    #$scope.fqdn_lut[entry.parent].fqdn_childs.push(entry)
-                    fqdn_lut[entry.parent].add_child(t_entry)
+                    $scope.t_fqdn_lut[entry.parent].add_child(t_entry)
                 else
                     $scope.tc_fqdns.add_root_node(t_entry)
             # build category tree
@@ -277,7 +298,7 @@ sidebar_base = sidebar_module.controller("sidebar_base", ["$scope", "$compile", 
             cat_lut = {}
             for entry in $scope.rest_data["category"]
                 $scope.cat_lut[entry.idx] = entry
-                t_entry = $scope.tc_categories.new_node({folder: true, obj:entry.idx, _node_type:"c", expand:entry.depth == 0})
+                t_entry = $scope.tc_categories.new_node({folder : true, obj:entry.idx, _node_type : "c", expand:entry.depth == 0})
                 cat_lut[entry.idx] = t_entry
                 if entry.parent
                     cat_lut[entry.parent].add_child(t_entry)
@@ -294,7 +315,7 @@ sidebar_base = sidebar_module.controller("sidebar_base", ["$scope", "$compile", 
                 $scope.dev_lut[entry.idx] = entry
                 # copy selection state to device selection (the selection state of the meta devices is keeped in sync with the selection states of the devicegroups )
                 t_entry = $scope.tc_devices.new_node({obj:entry.idx, folder:entry.is_meta_device, _node_type:"d", selected:entry.idx in dsel_list})
-                fqdn_lut[entry.domain_tree_node].add_child($scope.tc_fqdns.new_node({obj:entry.idx, _node_type:"d", selected:entry.idx in dsel_list}))
+                $scope.t_fqdn_lut[entry.domain_tree_node].add_child($scope.tc_fqdns.new_node({obj:entry.idx, _node_type:"d", selected:entry.idx in dsel_list}))
                 if entry.categories
                     cat_list = []
                     for t_cat in entry.categories

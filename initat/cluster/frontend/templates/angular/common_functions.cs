@@ -1152,13 +1152,13 @@ angular.module("ui.codemirror", []).constant("uiCodemirrorConfig", {}).directive
         }
 ])
 
-reload_sidebar_tree = () ->
+reload_sidebar_tree = (pk) ->
     sidebar_div = $("div[id='icsw.sidebar.ctrl']")
     # sidebar found ?
     if sidebar_div.length
         scope = angular.element(sidebar_div[0]).scope()
         scope.$apply(() ->
-            scope.reload()
+            scope.reload(pk)
         )
 
 set_index_visibility = (flag) ->

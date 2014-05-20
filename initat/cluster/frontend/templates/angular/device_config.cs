@@ -737,7 +737,10 @@ info_ctrl = device_config_module.controller("deviceinfo_ctrl", ["$scope", "$comp
             $scope.show_uuid = !$scope.show_uuid
         $scope.modify = () ->
             if not $scope.form.$invalid
-                $scope._edit_obj.put()
+                $scope._edit_obj.put().then(() ->
+                    # selectively reload sidebar tree
+                    reload_sidebar_tree($scope._edit_obj.idx)
+                )
             else
                 noty
                     text : "form validation problem"
