@@ -67,7 +67,7 @@ class device_info
         <ul class='nav nav-tabs' id="info_tab">
             <li><a href='#general'>General</a></li>
             <li><a href='#category'>Category#{addon_text}</a></li>
-            <li><a href='#location'>Location</a></li>
+            <li><a href='#location'>Location#{addon_text}</a></li>
             <li><a href='#di_network'>Network#{addon_text}</a></li>
             <li><a href='#config'>Config#{addon_text}</a></li>
             <li><a href='#disk'>Disk#{addon_text}</a></li>
@@ -111,7 +111,7 @@ urn:uuid:{{ _edit_obj.uuid }}
             <div class="tab-pane" id="location">
                 <div id="icsw.device.config">
                     <div ng-controller="location_ctrl">
-                        <devicelocation devicepk='#{main_pk}'>
+                        <devicelocation devicepk='#{pk_list}'>
                             <tree treeconfig="loc_tree"></tree>
                         </devicelocation>
                     </div>

@@ -84,6 +84,7 @@ class change_category(View):
                 if set_mode and sc_cat not in _obj.categories.all():
                     devs_added.append(_obj)
                     _obj.categories.add(sc_cat)
+                    _obj.categories.remove(*[_cat for _cat in _obj.categories.all() if _cat != sc_cat and _cat.single_select()])
                 elif not set_mode and sc_cat in _obj.categories.all():
                     devs_removed.append(_obj)
                     _obj.categories.remove(sc_cat)
