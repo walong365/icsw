@@ -29,6 +29,7 @@ import logging_tools
 import os
 import process_tools
 import random
+import stat
 import shutil
 import string
 import sys
@@ -359,6 +360,13 @@ def call_update_funcs():
     call_manage(["migrate_to_domain_name"])
     call_manage(["migrate_to_config_catalog"])
 
+def check_db_rights():
+    if os.path.isfile(DB_FILE):
+        c_stat = os.stat(DB_FILE)
+        if c_stat[stat.ST_UID] == 0 & c_stat[stat.ST_GID]:
+            if not c_stat.st_mode & stat.S_IROTH:
+                print "setting R_OTHER flag on {} (because owned by root.root)".format(DB_FILE)
+                os.chmod(DB_FILE, c_stat.st_mode | stat.S_IROTH)
 def main():
     default_pw = get_pw()
     my_p = argparse.ArgumentParser()
@@ -416,6 +424,7 @@ def main():
         if not create_db_cf(opts):
             print("Creation of {} not successfull, exiting".format(DB_FILE))
             sys.exit(3)
+    check_db_rights()
     if call_create_db:
         create_db(opts)
     if call_migrate_db:
@@ -423,3 +432,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+
