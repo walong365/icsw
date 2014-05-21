@@ -32,19 +32,28 @@ LS_FILE = "/etc/sysconfig/cluster/local_settings.py"
 def check_local_settings():
     LS_DIR = os.path.dirname(LS_FILE)
     sys.path.append(LS_DIR)
+    changed = False
     try:
         from local_settings import SECRET_KEY # @UnresolvedImports
     except:
         SECRET_KEY = None
+    try:
+        from local_settings import PASSWORD_HASH_FUNCTION # @UnresolvedImports
+    except:
+        PASSWORD_HASH_FUNCTION = "SHA1"
+        changed = True
     if SECRET_KEY in [None, "None"]:
         chars = 'abcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*(-_=+)'
         SECRET_KEY = get_random_string(50, chars)
+        changed = True
+    if changed:
         file(LS_FILE, "w").write("\n".join(
             [
-                "SECRET_KEY = \"%s\"" % (SECRET_KEY),
+                "SECRET_KEY = \"{}\"".format(SECRET_KEY),
+                "PASSWORD_HASH_FUNCTION = \"{}\"".format(PASSWORD_HASH_FUNCTION),
                 "",
             ]
-            ))
+        ))
     sys.path.remove(LS_DIR)
 
 if __name__ == "__main__":

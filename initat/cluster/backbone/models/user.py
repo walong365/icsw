@@ -530,8 +530,8 @@ class user(models.Model):
     home = models.TextField(blank=True, null=True)
     shell = models.CharField(max_length=765, blank=True, default="/bin/bash")
     # SHA encrypted
-    password = models.CharField(max_length=48, blank=True)
-    password_ssha = models.CharField(max_length=64, blank=True, default="")
+    password = models.CharField(max_length=128, blank=True)
+    password_ssha = models.CharField(max_length=128, blank=True, default="")
     # cluster_contact = models.BooleanField()
     first_name = models.CharField(max_length=765, blank=True, default="")
     last_name = models.CharField(max_length=765, blank=True, default="")

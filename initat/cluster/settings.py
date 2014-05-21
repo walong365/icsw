@@ -466,7 +466,7 @@ LOCAL_CONFIG = "/etc/sysconfig/cluster/local_settings.py"
 if os.path.isfile(LOCAL_CONFIG):
     local_dir = os.path.dirname(LOCAL_CONFIG)
     sys.path.append(local_dir)
-    from local_settings import SECRET_KEY # @UnresolvedImport
+    from local_settings import SECRET_KEY, PASSWORD_HASH_FUNCTION # @UnresolvedImport
     sys.path.remove(local_dir)
 else:
     chars = 'abcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*(-_=+)'
