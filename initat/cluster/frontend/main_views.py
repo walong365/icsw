@@ -51,7 +51,7 @@ class info_page(View):
         cur_routing = routing.srv_type_routing(force=True)
         return render_me(request, "info_page.html", {
             "routing" : json.dumps(cur_routing.resolv_dict),
-            "local_device" : unicode(cur_routing.local_device.full_name),
+            "local_device" : unicode(cur_routing.local_device.full_name if cur_routing.local_device is not None else "UNKNOWN"),
         })()
 
 class get_server_info(View):
