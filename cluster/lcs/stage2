@@ -841,12 +841,12 @@ done
 
 set_hoststat "Requesting modules"
 
-mods=`get_conf_str get_autodetect_mods disk ${pci_str} | cut -d " " -f 3-` 
+mods=$(get_conf_str get_autodetect_mods base | cut -d " " -f 3- )
 
-mods=`get_conf_str get_init_mods | cut -d " " -f 3-`
-# fscache and nfs_acl added (Somhegyi Bence)
-mods="$mods sunrpc lockd fscache nfs_acl nfs"
-#mods="scsi_mod sd_mod libata sata_via sata_promise"
+mods="${mods} $(get_conf_str get_autodetect_mods disk ${pci_str} | cut -d " " -f 3- )" 
+
+mods="${mods} $(get_conf_str get_init_mods | cut -d " " -f 3- )"
+
 echo -e "Loading modules: '${mods}'"
 
 [ ! -d "/lib/modules/`uname -r`/kernel" ] && mkdir -p /lib/modules/`uname -r`/kernel
