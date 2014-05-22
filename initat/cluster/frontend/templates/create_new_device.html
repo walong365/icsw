@@ -28,7 +28,7 @@
                 <div class="form-group">
                     <label class="control-label col-md-5">Fully qualified device name</label>
                     <div class="controls col-md-6" ng-class="baseForm.full_name.$invalid && 'has-error'">
-                        <input name="full_name" class="form-control" ng-model="device_data.full_name" required ng-pattern="/^[a-zA-Z0-9\.-_]+$/" placeholder="device name" ng-blur="device_name_changed()"></input>
+                        <input name="full_name" class="form-control" ng-model="device_data.full_name" required ng-pattern="/^[a-zA-Z0-9\.\-_]+$/" placeholder="device name" ng-blur="device_name_changed()"></input>
                         <span ng-show="baseForm.full_name.$invalid" class="text-danger">
                             Need name without any special characters or whitespace (for instance 'server.my.domain')
                         </span>
@@ -41,7 +41,7 @@
                             type="text"
                             name="device_group"
                             class="form-control"
-                            ng-model="device_data.device_group" required ng-pattern="/^[a-zA-Z0-9\.-_]+$/"
+                            ng-model="device_data.device_group" required ng-pattern="/^[a-zA-Z0-9\.\-_]+$/"
                             typeahead="value for value in device_groups()"
                             ng-change="new_dg()"
                         ></input>

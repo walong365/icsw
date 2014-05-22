@@ -301,6 +301,7 @@ class create_device(permission_required_mixin, View):
                     cur_ip = net_ip(
                         netdevice=cur_nd,
                         ip=device_data["ip"],
+                        domain_tree_node=dnt_node,
                     )
                     cur_ip.create_default_network = True
                     try:
