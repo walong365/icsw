@@ -46,6 +46,7 @@ class config_control(object):
             "get_package_server"      : self._handle_get_package_server,
             "hello"                   : self._handle_hello,
             "get_init_mods"           : self._handle_get_init_mods,
+            "get_autodetect_mods"     : self._handle_get_autodetect_mods,
             "locate_module"           : self._handle_locate_module,
             "get_target_sn"           : self._handle_get_target_sn,
             "get_partition"           : self._handle_get_partition,
@@ -235,9 +236,10 @@ class config_control(object):
             kernel_name = dev_kernel.name
             # build module dict
             # mod_dict = dict([(key, None) for key in [key.endswith(".ko") and key[:-3] or (key.endswith(".o") and key[:-2] or key) for key in s_req.data]])
-            kernel_dir = os.path.join(global_config["TFTP_DIR"],
-                                      "kernels",
-                                      kernel_name)
+            kernel_dir = os.path.join(
+                global_config["TFTP_DIR"],
+                "kernels",
+                kernel_name)
             dep_h = module_dependency_tools.dependency_handler(kernel_dir, log_com=self.log)
             dep_h.resolve(s_req.data.split(), firmware=False, resolve_module_dict=True)
             for key, value in dep_h.module_dict.iteritems():
@@ -252,10 +254,57 @@ class config_control(object):
     def _handle_get_init_mods(self, s_req):
         db_mod_list = s_req._get_config_str_vars("INIT_MODS")
         return "ok %s" % (" ".join(db_mod_list))
-        # add modules which depends to the used partition type
-        # not implemented, FIXME
-        # dc.execute("SELECT DISTINCT ps.name FROM partition_table pt INNER JOIN device d LEFT JOIN partition_disc pd ON pd.partition_table=pt.partition_table_idx LEFT JOIN partition p ON p.partition_disc=pd.partition_disc_idx LEFT JOIN partition_fs ps ON ps.partition_fs_idx=p.partition_fs WHERE d.device_idx=%s AND d.partition_table=pt.partition_table_idx AND ps.identifier='f'", c_req["device_idx"])
-        # db_mod_list.extend([db_rec["name"] for db_rec in dc.fetchall() if db_rec["name"] and db_rec["name"] not in db_mod_list])
+    def _handle_get_autodetect_mods(self, s_req):
+        dev_kernel = self.device.new_kernel
+        if dev_kernel:
+            kernel_name = dev_kernel.name
+            # build module dict
+            # mod_dict = dict([(key, None) for key in [key.endswith(".ko") and key[:-3] or (key.endswith(".o") and key[:-2] or key) for key in s_req.data]])
+            kernel_dir = os.path.join(
+                global_config["TFTP_DIR"],
+                "kernels",
+                kernel_name)
+            dep_h = module_dependency_tools.dependency_handler(kernel_dir, log_com=self.log)
+            in_parts = s_req.data.split()
+            if len(in_parts):
+                if in_parts[0] in ["disk", "all"]:
+                    _filter = in_parts.pop(0)
+                    if _filter == "all":
+                        _filter = None
+                else:
+                    _filter = None
+                # generator code from stage2
+                # pci_str=""
+                # for dev in /sys/bus/pci/devices/* ; do
+                #     pci_str="${pci_str}:::$(echo -n $(cat $dev/modalias)::$(cat $dev/class))" ;
+                # done
+                pci_list = [_entry.split("::") for _entry in in_parts if _entry.count("::")]
+                # apply filter
+                if _filter:
+                    self.log("filter is '{}'".format(_filter))
+                    filter_list = {"disk" : ["0x01"]}.get(_filter, [])
+                    if filter_list:
+                        new_list = []
+                        for _entry in pci_list:
+                            if not any([_entry[1].startswith(_cur_f) for _cur_f in filter_list]):
+                                self.log("removed {} ({}) due to filter".format(_entry[0], _entry[1]))
+                            else:
+                                new_list.append(_entry)
+                        pci_list = new_list
+                m_dict = dep_h.find_module_by_modalias([_entry[0] for _entry in pci_list])
+                for _entry in pci_list:
+                    self.log("{} ({}): {}".format(_entry[0], _entry[1], ", ".join(m_dict.get(_entry[0])) or "---"))
+                unique_mods = " ".join(sorted(list(set(sum(m_dict.values(), [])))))
+                self.log("returning {}: {}".format(
+                    logging_tools.get_plural("module", len(unique_mods)),
+                    ", ".join(unique_mods),
+                    )
+                )
+                return "ok {}".format(" ".join(unique_mods))
+            else:
+                return "error no data given"
+        else:
+            return "error no kernel set"
     def _handle_hello(self, s_req):
         return s_req.create_config_dir()
     def _handle_get_partition(self, s_req):
