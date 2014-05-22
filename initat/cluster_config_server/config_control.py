@@ -22,7 +22,7 @@
 """ cluster-config-server, config control """
 
 from django.db.models import Q
-from initat.cluster.backbone.models import device
+from initat.cluster.backbone.models import device, partition
 from initat.cluster_config_server.config import global_config
 from initat.cluster_config_server.simple_request import simple_request, var_cache
 import config_tools
@@ -280,7 +280,15 @@ class config_control(object):
                 # done
                 if _filter == "base":
                     # return list of base modules
-                    unique_mods = "sd_mod sunfs"
+                    unique_mods = ["sd_mod", "sunfs"]
+                    if self.device.partition_table:
+                        disc_mods = partition.objects.filter(Q(partition_disc__partition_table=self.device.partition_table)).values_list("partition_fs__kernel_module", flat=True)
+                        disc_mods = [_entry for _entry in list(set(sum([cur_part.strip().split() for cur_part in disc_mods], []))) if _entry]
+                        self.log("adding {}: {}".format(
+                            logging_tools.get_plural("disc mod", len(disc_mods)),
+                            ", ".join(disc_mods),
+                            ))
+                        unique_mods.extend(disc_mods)
                 else:
                     pci_list = [_entry.split("::") for _entry in in_parts if _entry.count("::")]
                     # apply filter
