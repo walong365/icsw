@@ -24,11 +24,15 @@ import copy
 import fnmatch
 import logging_tools
 import os
+import re
 
 class dependency_handler(object):
     def __init__(self, kernel_dir, **kwargs):
         self.log_com = kwargs.get("log_com", None)
         self.kernel_dir = kernel_dir
+        # linux_native = True for /lib/modules/<kernel> structure
+        # linux_natvie = False (default) for ICSW /tftpboot/kernels/<kernel>/lib/modules/<kernel> structure
+        self.linux_native = kwargs.get("linux_native", False)
         self.log("kernel_dir is {}".format(self.kernel_dir))
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
         if self.log_com:
@@ -37,6 +41,42 @@ class dependency_handler(object):
             print "[dh {:2d} {}] {}".format(log_level, logging_tools.get_log_level_str(log_level), what)
     def _shorten_module_name(self, mod_name):
         return mod_name.endswith(".ko") and mod_name[:-3] or (mod_name.endswith(".o") and mod_name[:-2] or mod_name)
+    def get_dep_file_name(self, ftype="dep"):
+        if self.linux_native:
+            dep_file_dir = self.kernel_dir
+        else:
+            dep_file_dir = os.path.join(self.kernel_dir, "lib", "modules")
+            if os.path.isdir(dep_file_dir):
+                dep_file_dir = os.path.join(dep_file_dir, os.listdir(dep_file_dir)[0])
+        if os.path.isdir(dep_file_dir):
+            dep_file = os.path.join(dep_file_dir, "modules.{}".format(ftype))
+            if os.path.isfile(dep_file):
+                pass
+            else:
+                self.log("dep_file {} not found".format(dep_file), logging_tools.LOG_LEVEL_ERROR)
+                dep_file = None
+        else:
+            self.log("dep_dir {} not found".format(dep_file_dir), logging_tools.LOG_LEVEL_ERROR)
+            dep_file = None
+        return dep_file
+    def find_module_by_modalias(self, alias_list, **kwargs):
+        dep_file = self.get_dep_file_name(ftype="alias")
+        resolv_dict = {key : [] for key in alias_list}
+        for line in file(dep_file, "r").readlines():
+            _parts = line.strip().split()
+            if len(_parts) > 2 and _parts[0] == "alias" and _parts[1].startswith("pci:"):
+                try:
+                    _mc = re.compile("^{}$".format(_parts[1].replace("*", ".*").replace("?", ".")))
+                except:
+                    # cannot create regexp, forget id
+                    pass
+                else:
+                    for cur_alias in alias_list:
+                        if _mc.match(cur_alias):
+                            _mod = _parts[2]
+                            if not _mod in resolv_dict[cur_alias]:
+                                resolv_dict[cur_alias].append(_mod)
+        return resolv_dict
     def resolve(self, mod_list, **kwargs):
         verbose = kwargs.get("verbose", 0)
         # pure module names
@@ -55,10 +95,8 @@ class dependency_handler(object):
                 match_list = [match_name for match_name in mod_names if fnmatch.fnmatch(mod_name, match_name)]
                 if match_list:
                     matches_found.add(f_name)
-        dep_file = os.path.join(self.kernel_dir, "lib", "modules")
-        if os.path.isdir(dep_file):
-            dep_file = os.path.join(dep_file, os.listdir(dep_file)[0], "modules.dep")
-        if os.path.isfile(dep_file):
+        dep_file = self.get_dep_file_name()
+        if dep_file:
             dep_lines = [line.replace("\t", " ").strip() for line in file(dep_file, "r").read().split("\n") if line.strip()]
             dep_lines2 = []
             add_next_line = False
@@ -129,3 +167,4 @@ class dependency_handler(object):
         self.module_dict = mod_dict
         self.module_list = [file_dict[entry] for entry in matches_found]
         self.error_list = not_found_mods
+

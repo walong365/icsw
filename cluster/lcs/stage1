@@ -374,11 +374,26 @@ if [ -z "$avail_nets" ] ; then
     /sbin/reboot -f
 fi
 
-if echo $avail_nets | grep "${nbd}" > /dev/null 2>&1
-then
-    avail_nets=$(echo "${nbd} $(echo $nbd | sed -e "s/${nbd}//")")
+# check for new ethernet mapping
+m_nbd=""
+if [ "${nbd}" == "em1" ] ; then
+    m_nbd=eth0
+elif [ "${nbd}" == "em2" ] ; then
+    m_nbd=eth1
+elif [ "${nbd}" == "em3" ] ; then
+    m_nbd=eth2
+elif [ "${nbd}" == "em4" ] ; then
+    m_nbd=eth3
 fi
 
+if [ "${m_nbd}" != "" ] ; then
+    echo "mapped ${nbd} to ${m_nbd}"
+    nbd=${m_nbd}
+fi
+
+if echo $avail_nets | grep "${nbd}" > /dev/null 2>&1 ; then
+    avail_nets=$(echo "${nbd} $(echo $nbd | sed -e "s/${nbd}//")")
+fi
 
 echo ${echo_opt} "Available netdevice: $avail_nets"
 

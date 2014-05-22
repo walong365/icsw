@@ -29,11 +29,9 @@ import gzip
 import hashlib
 import logging_tools
 import os
-# import pprint
 import process_tools
 import server_command
 import stat
-import sys
 import tempfile
 import threading
 import time
@@ -590,7 +588,3 @@ class kernel_helper(object):
                                                 ", ".join(self.__checks)) if self.__checks else "no checks"))
     def get_option_dict(self):
         return self.__option_dict
-
-if __name__ == "__main__":
-    print "Loadable module, exiting ..."
-    sys.exit(0)

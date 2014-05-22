@@ -833,7 +833,16 @@ echo -e "starting klogd"
 # say hello to the config-server
 get_conf_str "hello"
 
+# build pci id str for autodetection
+pci_str=""
+for dev in /sys/bus/pci/devices/* ; do
+    pci_str="${pci_str} $(echo -n $(cat $dev/modalias)::$(cat $dev/class))" ;
+done 
+
 set_hoststat "Requesting modules"
+
+mods=`get_conf_str get_autodetect_mods disk ${pci_str} | cut -d " " -f 3-` 
+
 mods=`get_conf_str get_init_mods | cut -d " " -f 3-`
 # fscache and nfs_acl added (Somhegyi Bence)
 mods="$mods sunrpc lockd fscache nfs_acl nfs"
