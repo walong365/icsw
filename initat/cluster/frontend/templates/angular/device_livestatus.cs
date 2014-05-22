@@ -281,7 +281,8 @@ device_livestatus_module.controller("livestatus_ctrl", ["$scope", "$compile", "$
         $scope.order_name = "host_name"
         $scope.order_dir = true
         $scope.md_filter_str = ""
-        $scope.cur_timeout = undefined
+        # not needed
+        #$scope.cur_timeout = undefined
         $scope.activeService = null
         $scope.focusService = null
         $scope.redrawSunburst = 0
@@ -453,7 +454,7 @@ device_livestatus_module.controller("livestatus_ctrl", ["$scope", "$compile", "$
             )
         $scope.load_data = () ->
             $scope.cur_timeout = $timeout($scope.load_data, 20000)#20000)
-            call_ajax
+            $scope.cur_xhr = call_ajax
                 url  : "{% url 'mon:get_node_status' %}"
                 data : {
                     "pk_list" : angular.toJson($scope.devsel_list)
@@ -631,8 +632,10 @@ device_livestatus_module.controller("livestatus_ctrl", ["$scope", "$compile", "$
         $scope.filter_mdr = (entry, scope) ->
             return entry._show
         $scope.$on("$destroy", () ->
-            if $scope.cur_timeout
+            if $scope.cur_timeout?
                 $timeout.cancel($scope.cur_timeout)
+            if $scope.cur_xhr?
+                $scope.cur_xhr.abort()
         )
 ]).directive("serviceinfo", ["$templateCache", ($templateCache) ->
     return {
@@ -1093,9 +1096,9 @@ device_livestatus_module.controller("monconfig_ctrl", ["$scope", "$compile", "$f
             _parts = name.split("_")
             return (_str.slice(0, 1) for _str in _parts).join("").toUpperCase()
         $scope.load_data = () ->
-            $timeout($scope.load_data, 20000)
+            $scope.cur_timeout = $timeout($scope.load_data, 20000)
             $scope.reload_pending = true
-            call_ajax
+            $scope.cur_xhr = call_ajax
                 url  : "{% url 'mon:get_node_config' %}"
                 data : {
                     "pk_list" : angular.toJson($scope.devsel_list)
@@ -1110,6 +1113,12 @@ device_livestatus_module.controller("monconfig_ctrl", ["$scope", "$compile", "$f
                             $scope.mc_tables = mc_tables
                             $scope.reload_pending = false
                         )
+        $scope.$on("$destroy", () ->
+            if $scope.cur_timeout?
+                $timeout.cancel($scope.cur_timeout)
+            if $scope.cur_xhr?
+                $scope.cur_xhr.abort()
+        )
 ]).directive("monconfig", ($templateCache) ->
     return {
         restrict : "EA"

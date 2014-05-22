@@ -56,6 +56,9 @@ use_devs = (dev_list) ->
         $("div#center_deviceinfo").show()
         cur_di.show()
     else
+        # check for active device_info
+        if window.ICSW_DEV_INFO?
+            window.ICSW_DEV_INFO.close()
         set_index_visibility(true)
         $("div#center_deviceinfo").hide()
 

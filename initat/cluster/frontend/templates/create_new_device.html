@@ -108,7 +108,6 @@
                     <label class="control-label col-md-5">Comment</label>
                     <div class="controls col-md-6" ng-class="baseForm.comment.$invalid && 'has-error'">
                         <input name="comment" class="form-control" ng-model="device_data.comment"></input>
-                          
                     </div>
                 </div>
             </accordion-group>
@@ -127,7 +126,7 @@
 
 {% inlinecoffeescript %}
 
-create_module = angular.module("icsw.monitoring.create", ["ngSanitize", "ui.bootstrap", "restangular"])
+create_module = angular.module("icsw.monitoring.create", ["ngSanitize", "ui.bootstrap", "restangular", "localytics.directives"])
 
 angular_module_setup([create_module])
 
@@ -144,6 +143,9 @@ create_controller = create_module.controller("create_base", ["$scope", "$timeout
             routing_capable  : false
             peer             : 0
             icon_name        : "linux40"
+        }
+        $scope.rest_data =  {
+           peers : []
         }
         $scope.rest_map = [
             {"short" : "device_group", "url" : "{% url 'rest:device_group_list' %}"}
@@ -168,6 +170,9 @@ create_controller = create_module.controller("create_base", ["$scope", "$timeout
                 $scope.img_lut = {}
                 for value in $scope.rest_data.mon_ext_host
                     $scope.img_lut[value.name] = value.data_image
+                # create info strings
+                for entry in $scope.rest_data.peers
+                    entry.info = "#{entry.devname} on #{entry.device_name}"
                 $.unblockUI()
             )
         $scope.get_image_src = () ->
@@ -203,10 +208,8 @@ create_controller = create_module.controller("create_base", ["$scope", "$timeout
             return if $scope.rest_data.peers.length > 1 then true else false
         $scope.all_peers = () ->
             r_list = [{"idx" : 0, "info" : "no peering", "device group name" : "---"}]
-            if $scope.rest_data?
-                for entry in $scope.rest_data.peers
-                    entry.info = "#{entry.devname} on #{entry.device_name}"
-                    r_list.push(entry)
+            for entry in $scope.rest_data.peers 
+                r_list.push(entry)
             return r_list
         $scope.build_device_dict = () ->
             return {

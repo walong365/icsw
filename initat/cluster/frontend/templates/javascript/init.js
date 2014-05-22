@@ -76,7 +76,8 @@ call_ajax = (in_dict) ->
     for key of default_ajax_dict
         if key not of in_dict
             in_dict[key] = default_ajax_dict[key]
-    $.ajax(in_dict)
+    cur_xhr = $.ajax(in_dict)
+    return cur_xhr
 
 parse_xml_response = (xml, min_level) ->
     success = false
