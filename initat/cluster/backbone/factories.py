@@ -40,6 +40,8 @@ class PartitionFS(factory.django.DjangoModelFactory):
     kernel_module = ""
     @factory.post_generation
     def kernel_module(self, create, extracted, **kwargs):
+        if extracted == None:
+            extracted = ""
         if self.kernel_module != extracted:
             self.kernel_module = extracted
             self.save()
