@@ -34,7 +34,7 @@ def main():
     k_dir.resolve(["mpt2sas.ko"], verbose=True)
     if len(sys.argv) > 2:
         m_dict = k_dir.find_module_by_modalias(sys.argv[2:])
-        print sum(m_dict.values(), [])
+        print sorted(list(set(sum(m_dict.values(), []))))
 
 if __name__ == "__main__":
     main()
