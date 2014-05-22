@@ -778,6 +778,8 @@ class partition_fs(models.Model):
     identifier = models.CharField(max_length=3)
     descr = models.CharField(max_length=765, blank=True)
     hexid = models.CharField(max_length=6)
+    # none, one or more (space sepearted) kernel modules needed for ths fs
+    kernel_module = models.CharField(max_length=128, default="")
     # flags
     date = models.DateTimeField(auto_now_add=True)
     def get_xml(self):

@@ -37,6 +37,11 @@ class DeviceType(factory.django.DjangoModelFactory):
 class PartitionFS(factory.django.DjangoModelFactory):
     FACTORY_FOR = partition_fs
     FACTORY_DJANGO_GET_OR_CREATE = ("name", "identifier",)
+    @factory.post_generation
+    def kernel_module(self, create, extracted, **kwargs):
+        if self.kernel_module != extracted:
+            self.kernel_module = extracted
+            self.save()
 
 class LogStatus(factory.django.DjangoModelFactory):
     FACTORY_FOR = log_status
