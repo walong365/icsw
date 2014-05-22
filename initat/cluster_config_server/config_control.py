@@ -267,7 +267,7 @@ class config_control(object):
             dep_h = module_dependency_tools.dependency_handler(kernel_dir, log_com=self.log)
             in_parts = s_req.data.split()
             if len(in_parts):
-                if in_parts[0] in ["disk", "all"]:
+                if in_parts[0] in ["disk", "all", "base"]:
                     _filter = in_parts.pop(0)
                     if _filter == "all":
                         _filter = None
@@ -280,14 +280,16 @@ class config_control(object):
                 # done
                 if _filter == "base":
                     # return list of base modules
-                    unique_mods = ["sd_mod", "sunfs"]
+                    unique_mods = ["sd_mod", "nfs"]
                     if self.device.partition_table:
                         disc_mods = partition.objects.filter(Q(partition_disc__partition_table=self.device.partition_table)).values_list("partition_fs__kernel_module", flat=True)
                         disc_mods = [_entry for _entry in list(set(sum([cur_part.strip().split() for cur_part in disc_mods], []))) if _entry]
-                        self.log("adding {}: {}".format(
-                            logging_tools.get_plural("disc mod", len(disc_mods)),
-                            ", ".join(disc_mods),
-                            ))
+                        self.log(
+                            "adding {}: {}".format(
+                                logging_tools.get_plural("disc mod", len(disc_mods)),
+                                ", ".join(disc_mods),
+                            )
+                        )
                         unique_mods.extend(disc_mods)
                 else:
                     pci_list = [_entry.split("::") for _entry in in_parts if _entry.count("::")]
