@@ -278,24 +278,28 @@ class config_control(object):
                 # for dev in /sys/bus/pci/devices/* ; do
                 #     pci_str="${pci_str}:::$(echo -n $(cat $dev/modalias)::$(cat $dev/class))" ;
                 # done
-                pci_list = [_entry.split("::") for _entry in in_parts if _entry.count("::")]
-                # apply filter
-                if _filter:
-                    self.log("filter is '{}'".format(_filter))
-                    filter_list = {"disk" : ["0x01"]}.get(_filter, [])
-                    if filter_list:
-                        new_list = []
-                        for _entry in pci_list:
-                            if not any([_entry[1].startswith(_cur_f) for _cur_f in filter_list]):
-                                self.log("removed {} ({}) due to filter".format(_entry[0], _entry[1]))
-                            else:
-                                new_list.append(_entry)
-                        pci_list = new_list
-                m_dict = dep_h.find_module_by_modalias([_entry[0] for _entry in pci_list])
-                for _entry in pci_list:
-                    self.log("{} ({}): {}".format(_entry[0], _entry[1], ", ".join(m_dict.get(_entry[0])) or "---"))
-                unique_mods = " ".join(sorted(list(set(sum(m_dict.values(), [])))))
-                self.log("returning {}: {}".format(
+                if _filter == "base":
+                    # return list of base modules
+                    unique_mods = "sd_mod sunfs"
+                else:
+                    pci_list = [_entry.split("::") for _entry in in_parts if _entry.count("::")]
+                    # apply filter
+                    if _filter:
+                        self.log("filter is '{}'".format(_filter))
+                        filter_list = {"disk" : ["0x01"]}.get(_filter, [])
+                        if filter_list:
+                            new_list = []
+                            for _entry in pci_list:
+                                if not any([_entry[1].startswith(_cur_f) for _cur_f in filter_list]):
+                                    self.log("removed {} ({}) due to filter".format(_entry[0], _entry[1]))
+                                else:
+                                    new_list.append(_entry)
+                            pci_list = new_list
+                    m_dict = dep_h.find_module_by_modalias([_entry[0] for _entry in pci_list])
+                    for _entry in pci_list:
+                        self.log("{} ({}): {}".format(_entry[0], _entry[1], ", ".join(m_dict.get(_entry[0])) or "---"))
+                    unique_mods = sorted(list(set(sum(m_dict.values(), []))))
+                self.log("unique mods: {}: {}".format(
                     logging_tools.get_plural("module", len(unique_mods)),
                     ", ".join(unique_mods),
                     )
