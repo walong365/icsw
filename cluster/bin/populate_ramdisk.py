@@ -98,7 +98,7 @@ stage2_dir_dict = {
 stage2_file_dict = {
     0 : [
         "inetd", "xinetd", "mkfs.xfs", "mkfs.btrfs", "rmmod.old", "lsmod.old", "depmod.old", "insmod.old",
-        "modprobe.old", "in.rshd", "in.rlogind", "mount.nfs", "xz",
+        "modprobe.old", "in.rshd", "in.rlogind", "mount.nfs", "xz", "mkfs.reiserfs",
         ],
     1 : [
         "ethtool", "sh", "strace", "bash", "echo", "cp", "mount", "cat", "ls", "mount", "mkdir",
@@ -106,7 +106,7 @@ stage2_file_dict = {
         "rm", "chmod", "ps", "touch", "sed", "dd", "sync", "dmesg", "ping", "mknod", "usleep",
         "sleep", "login", "true", "false", "logger", "fsck", "modprobe", "lsmod",
         "rmmod", "depmod", "insmod", "mkfs.ext2", "mv", "udevadm", "which",
-        "mkfs.ext3", "mkfs.ext4", "fdisk", "sfdisk", "parted", "ifconfig", "mkfs.reiserfs", "mkswap",
+        "mkfs.ext3", "mkfs.ext4", "fdisk", "sfdisk", "parted", "ifconfig", "mkswap",
         "reboot", "halt", "shutdown", "init", "route", "tell_mother_zmq", "date", "tune2fs",
         ["syslogd", "syslog-ng", "rsyslogd"], "bzip2", "bunzip2", "cut", "tr", "chroot", "whoami", "killall", "head", "tail",
         "seq", "tcpd", "hoststatus_zmq", "ldconfig", "sort", "dirname", "vi", "hostname", "lsof",
@@ -128,7 +128,7 @@ stageloc_dir_dict = {
 stageloc_file_dict = {
     0 : [
         "inetd", "xinetd", "mkfs.xfs", "rmmod.old", "lsmod.old", "depmod.old", "insmod.old",
-        "modprobe.old", "in.rshd", "in.rlogind", "mount.nfs",
+        "modprobe.old", "in.rshd", "in.rlogind", "mount.nfs", "mkfs.reiserfs",
         ],
     1 : [
         "awk", "ethtool", "sh", "strace", "bash", "echo", "cp", "mount", "cat", "ls", "mount", "mkdir",
@@ -136,7 +136,7 @@ stageloc_file_dict = {
         "rm", "chmod", "ps", "touch", "sed", "dd", "sync", "dmesg", "ping", "mknod", "usleep",
         "sleep", "login", "true", "false", "logger", "fsck", "modprobe", "lsmod",
         "rmmod", "depmod", "insmod", "mkfs.ext2", "mv", "pivot_root",
-        "mkfs.ext3", "mkfs.ext4", "fdisk", "sfdisk", "parted", "ifconfig", "mkfs.reiserfs", "mkswap",
+        "mkfs.ext3", "mkfs.ext4", "fdisk", "sfdisk", "parted", "ifconfig", "mkswap",
         "reboot", "halt", "shutdown", "init", "route", "tell_mother_zmq", "date", "tune2fs",
         ["syslogd", "syslog-ng", "rsyslogd"], "bzip2", "bunzip2", "cut", "tr", "chroot", "whoami", "killall", "head", "tail",
         "seq", "tcpd", "hoststatus_zmq", "ldconfig", "sort", "dirname", "vi", "hostname", "lsof",
@@ -1458,18 +1458,25 @@ def main_normal():
             os.makedirs(fw_dir)
             if fw_files:
                 for fw_file in fw_files:
-                    fw_src_file = "/%s/lib/firmware/%s/%s" % (my_args.kernel_dir, kverdir, fw_file)
-                    if os.path.isfile(fw_src_file):
-                        loc_fw_dir = "/%s/%s" % (fw_dir, os.path.dirname(fw_file))
-                        loc_fw_dir_2 = "/%s/%s" % (fw_dir_2, os.path.dirname(fw_file))
-                        if not os.path.isdir(loc_fw_dir):
-                            os.makedirs(loc_fw_dir)
-                        if not os.path.isdir(loc_fw_dir_2):
-                            os.makedirs(loc_fw_dir_2)
-                        shutil.copy2(fw_src_file, loc_fw_dir)
-                        shutil.copy2(fw_src_file, loc_fw_dir_2)
-                    else:
-                        print "*** cannot read firmware-file %s" % (fw_src_file)
+                    found = False
+                    fw_src_files = [
+                        "/{}/lib/firmware/{}/{}".format(my_args.kernel_dir, kverdir, fw_file),
+                        "/{}/lib/firmware/{}".format(my_args.kernel_dir, fw_file),
+                    ]
+                    for fw_src_file in fw_src_files:
+                        if os.path.isfile(fw_src_file):
+                            loc_fw_dir = "/%s/%s" % (fw_dir, os.path.dirname(fw_file))
+                            loc_fw_dir_2 = "/%s/%s" % (fw_dir_2, os.path.dirname(fw_file))
+                            if not os.path.isdir(loc_fw_dir):
+                                os.makedirs(loc_fw_dir)
+                            if not os.path.isdir(loc_fw_dir_2):
+                                os.makedirs(loc_fw_dir_2)
+                            shutil.copy2(fw_src_file, loc_fw_dir)
+                            shutil.copy2(fw_src_file, loc_fw_dir_2)
+                            found = True
+                            break
+                    if not found:
+                        print "*** cannot read firmware-file (one of {})".format(", ".join(fw_src_files))
     # umount stage1_dir
     act_dir = os.getcwd()
     stat_out = []
