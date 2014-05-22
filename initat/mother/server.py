@@ -463,11 +463,12 @@ class server_process(threading_tools.process_pool):
         print "no longer supported"
     def _reload_syslog(self):
         syslog_rc = None
-        for c_syslog_rc in ["/etc/init.d/syslog", "/etc/init.d/syslog-ng"]:
-            if os.path.isfile(c_syslog_rc):
-                syslog_rc = c_syslog_rc
+        syslog_found = False
+        for syslog_rc in ["/etc/init.d/syslog", "/etc/init.d/syslog-ng", "/etc/init.d/rsyslog"]:
+            if os.path.isfile(syslog_rc):
+                syslog_found = True
                 break
-        if syslog_rc:
+        if syslog_found:
             self.log("found syslog script at %s, restarting" % (syslog_rc))
             restart_com = "%s restart" % (syslog_rc)
         else:
