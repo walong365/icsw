@@ -41,8 +41,6 @@ export HOSTNAME=`/bin/hostname`
 # runlevel
 runlevel=`/sbin/runlevel | cut -d " " -f 2`
 
-set -x
-
 function kill_instances() {
     pids=$(ps -C $(basename ${HOSTSTAT_BIN}) -o pid= )
     if [ "${pids:-0}" != "0" ] ; then
