@@ -171,10 +171,17 @@ class server_process(threading_tools.process_pool):
             os.unlink(slcn)
         self._restart_syslog()
     def _restart_syslog(self):
-        for syslog_rc in ["/etc/init.d/syslog", "/etc/init.d/syslog-ng"]:
+        syslog_found = False
+        for syslog_rc in ["/etc/init.d/syslog", "/etc/init.d/syslog-ng", "/etc/init.d/rsyslog"]:
             if os.path.isfile(syslog_rc):
+                syslog_found = True
                 break
-        stat, out_f = process_tools.submit_at_command("%s restart" % (syslog_rc), 0)
-        self.log("restarting %s gave %d:" % (syslog_rc, stat))
-        for line in out_f:
-            self.log(line)
+        if syslog_found:
+            c_stat, out_f = process_tools.submit_at_command("%s restart" % (syslog_rc), 0)
+            self.log(u"restarting {} gave {:d}:".format(syslog_rc, c_stat))
+            for line in out_f:
+                self.log(line)
+        else:
+            self.log("no syslog rc-script found", logging_tools.LOG_LEVEL_ERROR)
+            
+
