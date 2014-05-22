@@ -51,8 +51,8 @@
 /* internal buffer sizes */
 #define ERRSTR_SIZE 512
 #define HOSTB_SIZE 256
-#define SENDBUFF_SIZE 16384
-#define IOBUFF_SIZE 16384
+#define SENDBUFF_SIZE 32768
+#define IOBUFF_SIZE 32768
 
 #include "parse_uuid.c"
 
