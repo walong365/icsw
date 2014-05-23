@@ -401,6 +401,7 @@ PIPELINE_JS = {
             "js/libs/angular-sanitize.min.js",
             "js/libs/angular-animate.min.js",
             "js/libs/angular-chosen-1.0.6/chosen.js",
+            "js/libs/angular-file-upload.js",
             "js/libs/restangular.min.js",
             # hm, not working
             # "js/libs/ui-select-0.2.1/select.js",
