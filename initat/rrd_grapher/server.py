@@ -126,7 +126,7 @@ class server_process(threading_tools.process_pool, threading_tools.operational_e
         return dis_com
     def _get_ipmi_hosts(self):
         # var cache
-        _vc = var_cache(device.objects.get(Q(device_group__cluster_device_group=True)), {"IPMI_USERNAME" : "notset", "IPMI_PASSWORD" : "notset"})
+        _vc = var_cache(device.objects.get(Q(device_group__cluster_device_group=True)), {"IPMI_USERNAME" : "notset", "IPMI_PASSWORD" : "notset", "IPMI_INTERFACE" : ""})
         ipmi_hosts = device.objects.filter(Q(enabled=True) & Q(device_group__enabled=True) & Q(curl__istartswith="ipmi://") & Q(enable_perfdata=True))
         _router = router_object(self.log)
         _sc = config_tools.server_check(server_type="rrd_server")
@@ -166,6 +166,7 @@ class server_process(threading_tools.process_pool, threading_tools.operational_e
                     ip="{}".format(_ip),
                     ipmi_username=_vars["IPMI_USERNAME"],
                     ipmi_password=_vars["IPMI_PASSWORD"],
+                    ipmi_interface=_vars["IPMI_INTERFACE"],
                 ) for cur_dev, _ip, _vars in _reachable
             ]
         )
