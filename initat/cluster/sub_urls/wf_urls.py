@@ -63,6 +63,8 @@ config_patterns = patterns(
     url("^xml/show_dev_vars"    , config_views.get_device_cvars.as_view()        , name="get_device_cvars"),
     url("^xml/copy_mon$"        , config_views.copy_mon.as_view()                , name="copy_mon"),
     url("^xml/delete_objects$"  , config_views.delete_objects.as_view()          , name="delete_objects"),
+    url("^get_cached_uploads$"  , config_views.get_cached_uploads.as_view()      , name="get_cached_uploads"),
+    url("^handle_cached_config$", config_views.handle_cached_config.as_view()    , name="handle_cached_config"),
 )
 
 boot_patterns = patterns(

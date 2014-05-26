@@ -34,7 +34,8 @@ from django.views.generic import View
 from initat.cluster.backbone import models
 from initat.cluster.backbone.models import config, device, device_config, tree_node, \
     get_related_models, config_dump_serializer, mon_check_command, mon_check_command_serializer, \
-    to_system_tz, category, config_str, config_script, config_bool, config_blob, config_int
+    to_system_tz, category, config_str, config_script, config_bool, config_blob, config_int, \
+    config_catalog
 from initat.cluster.backbone.render import permission_required_mixin, render_me
 from initat.cluster.frontend.forms import config_form, config_str_form, config_int_form, \
     config_bool_form, config_script_form, mon_check_command_form, config_catalog_form
@@ -44,6 +45,7 @@ from lxml.builder import E # @UnresolvedImports
 from rest_framework.parsers import XMLParser
 from rest_framework.renderers import XMLRenderer
 import StringIO
+import copy
 import datetime
 import json
 import logging
@@ -51,6 +53,7 @@ import logging_tools
 import process_tools
 import re
 import server_command
+import time
 
 logger = logging.getLogger("cluster.config")
 
@@ -409,53 +412,134 @@ class upload_config(View):
         except:
             logger.error("cannot interpret upload file: {}".format(process_tools.get_except_info()))
         else:
-            # print cache.get("x")
-            # print conf_list, _data.getvalue()
-            # print etree.tostring(conf_list, pretty_print=True)
-            added = 0
-            sub_added = 0
-            for conf in conf_list:
-                _sets = {}
-                for key in conf.iterkeys():
-                    # remove all subsets, needed because of limitations in DRF
-                    if key.endswith("_set") and conf[key]:
-                        _sets[key] = conf[key]
-                        conf[key] = []
-                _ent = config_dump_serializer(data=conf)
-                if _ent.is_valid():
-                    _ent.object.create_default_entries = False
-                    try:
-                        _ent.object.save()
-                        # pass
-                    except:
-                        logger.error("error saving entry '{}': {}".format(
-                            unicode(_ent),
-                            process_tools.get_except_info()
-                            ))
-                    else:
-                        # add sub-sets
-                        for key in _sets.iterkeys():
-                            for entry in _sets[key]:
-                                _sub_ent = getattr(models, "{}_nat_serializer".format(key[:-4]))(data=entry)
-                                if _sub_ent.is_valid():
-                                    try:
-                                        _sub_ent.object.save()
-                                    except:
-                                        logger.error("error saving subentry '{}': {}".format(
-                                            unicode(_sub_ent),
-                                            process_tools.get_except_info()
-                                            ))
-                                    else:
-                                        sub_added += 1
-                                else:
-                                    logger.error("cannot create {} object: {}".format(
-                                        key,
-                                        unicode(_sub_ent.errors)))
-                        added += 1
+            # store in local cache
+            # get list of uploads
+            _upload_list = cache.get("ICSW_UPLOAD_LIST", [])
+            new_key = "ICSW_UPLOAD_{:d}".format(int(time.time()))
+            store_cached_upload({"upload_key" : new_key, "list" : conf_list})
+            _upload_list.append(new_key)
+            cache.set("ICSW_UPLOAD_LIST", _upload_list, None)
+        return HttpResponse(json.dumps("done"), mimetype="application/json")
+
+def check_upload_config_cache(key):
+    _res = None
+    _up_list = cache.get("ICSW_UPLOAD_LIST", [])
+    if key in _up_list:
+        _res = cache.get(key, None)
+    return _res
+
+class get_cached_uploads(View):
+    @method_decorator(login_required)
+    def post(self, request):
+        _cur_list = []
+        _act_keys = []
+        for _key in cache.get("ICSW_UPLOAD_LIST", []):
+            _cur_val = cache.get(_key, None)
+            if _cur_val and type(_cur_val) == dict:
+                if all([_entry.get("_taken", False) for _entry in _cur_val["list"]]):
+                    remove_cached_upload(_cur_val)
                 else:
-                    logger.error("cannot create config object: {}".format(unicode(_ent.errors)))
-            logger.info("uploaded {:d}, added {:d} / {:d}".format(len(conf_list), added, sub_added))
-        return HttpResponseRedirect(reverse("config:show_configs"))
+                    _cur_list.append(_cur_val)
+                    _act_keys.append(_key)
+        cache.set("ICSW_UPLOAD_LIST", _act_keys, None)
+        return HttpResponse(json.dumps(_cur_list), mimetype="application/json")
+
+def store_cached_upload(struct):
+    if all([_entry.get("_taken", False) for _entry in struct["list"]]):
+        remove_cached_upload(struct)
+    else:
+        cache.set(struct["upload_key"], struct, 3600)
+
+def remove_cached_upload(struct):
+    cache.delete(struct["upload_key"])
+
+class handle_cached_config(View):
+    @method_decorator(login_required)
+    @method_decorator(xml_wrapper)
+    def post(self, request):
+        _post = request.POST
+        _struct = check_upload_config_cache(_post["upload_key"])
+        if _struct:
+            if _post["mode"] == "take":
+                self._handle_take(request, _struct, _post)
+            elif _post["mode"] == "delete":
+                self._handle_ignore(request, _struct, _post)
+            else:
+                request.xml_response.error("unknown mode {}".format(_post["mode"]), logger=logger)
+    def _handle_take(self, request, _struct, _post):
+        for _entry in _struct["list"]:
+            if _entry["name"] == _post["name"]:
+                # make a copy because take_config alters entry
+                _entry["_taken"] = self._take_config(request, copy.deepcopy(_entry), config_catalog.objects.get(Q(pk=_post["catalog"])))
+                store_cached_upload(_struct)
+    def _handle_ignore(self, request, _struct, _post):
+        _struct["list"] = [_entry for _entry in _struct["list"] if _entry["name"] != _post["name"]]
+        store_cached_upload(_struct)
+    def _take_config(self, request, conf, ccat):
+        _sets = {}
+        for key in conf.iterkeys():
+            # remove all subsets, needed because of limitations in DRF
+            if key.endswith("_set") and conf[key]:
+                _sets[key] = conf[key]
+                conf[key] = []
+        _ent = config_dump_serializer(data=conf)
+        added = 0
+        sub_added = 0
+        try:
+            _exists = config.objects.get(Q(name=conf["name"]) & Q(config_catalog=ccat))
+        except config.DoesNotExist:
+            _take = True
+        else:
+            request.xml_response.error("config {} already exists in config catalog {}".format(conf["name"], unicode(ccat)), logger=logger)
+            _take = False
+        # we create the config with a dummy name to simplify matching of vars / scripts / monccs against configs with same name but different catalogs
+        dummy_name = "_ul_config_{:d}".format(int(time.time()))
+        taken = False
+        if _take:
+            if _ent.is_valid():
+                _ent.object.create_default_entries = False
+                try:
+                    # store config catalog
+                    _ent.object.config_catalog = ccat
+                    _ent.object.name = dummy_name
+                    _ent.object.save()
+                    # pass
+                except:
+                    logger.error("error saving entry '{}': {}".format(
+                        unicode(_ent),
+                        process_tools.get_except_info()
+                        ))
+                else:
+                    taken = True
+                    # add sub-sets
+                    for key in _sets.iterkeys():
+                        for entry in _sets[key]:
+                            entry["config"] = dummy_name
+                            if not entry.get("description", None):
+                                # fix simple structure errors
+                                entry["description"] = "dummy description"
+                            _sub_ent = getattr(models, "{}_nat_serializer".format(key[:-4]))(data=entry)
+                            if _sub_ent.is_valid():
+                                try:
+                                    _sub_ent.object.save()
+                                except:
+                                    request.xml_response.error("error saving subentry '{}': {}".format(
+                                        unicode(_sub_ent),
+                                        process_tools.get_except_info()
+                                        ), logger=logger)
+                                else:
+                                    sub_added += 1
+                            else:
+                                request.xml_response.error("cannot create {} object: {}".format(
+                                    key,
+                                    unicode(_sub_ent.errors)), logger=logger)
+                    added += 1
+                    _ent.object.name = conf["name"]
+                    _ent.object.save()
+                    request.xml_response.info("create new config {} ({:d}) in config catalog {}".format(unicode(_ent.object), sub_added, unicode(ccat)))
+            else:
+                request.xml_response.error("cannot create config object: {}".format(unicode(_ent.errors)), logger=logger)
+        return taken
 
 class get_device_cvars(View):
     @method_decorator(login_required)

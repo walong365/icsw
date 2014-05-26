@@ -131,7 +131,7 @@ urn:uuid:{{ _edit_obj.uuid }}
                         <deviceconfig devicepk='#{pk_list}'>
                         </deviceconfig>
                     </div>
-                    {% if settings.INIT_PRODUCT_NAME = 'Corvus' %}
+                    {% if settings.INIT_PRODUCT_NAME = 'CORVUS' %}
                     <div ng-controller='config_vars_ctrl'>
                         <deviceconfigvars devicepk='#{pk_list}'>
                         </deviceconfigvars>

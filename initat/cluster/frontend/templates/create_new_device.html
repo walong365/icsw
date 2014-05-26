@@ -41,12 +41,12 @@
                             type="text"
                             name="device_group"
                             class="form-control"
-                            ng-model="device_data.device_group" required ng-pattern="/^[a-zA-Z0-9\.\-_]+$/"
-                            typeahead="value for value in device_groups()"
+                            ng-model="device_data.device_group" required ng-pattern="/^[a-zA-Z][a-zA-Z0-9\-_]*$/"
+                            typeahead="value for value in device_groups() | filter:$viewValue"
                             ng-change="new_dg()"
                         ></input>
                         <span ng-show="baseForm.device_group.$invalid" class="text-danger">
-                            Please enter a valid device group name (no spaces allowed)
+                            Please enter a valid device group name (no spaces or dots allowed)
                         </span>
                     </div>
                 </div>

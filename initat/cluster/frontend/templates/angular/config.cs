@@ -28,8 +28,8 @@ catalog_table_template = """
             <td>{{ catalog.author }}</td>
             <td>{{ catalog.version }}</td>
             <td>{{ get_num_configs(catalog) }}</td>
-            <td><input type="button" class="btn btn-primary btn-sm" ng-click="edit_catalog(catalog, $event)" value="modify"></input></td>
-            <td><input type="button" ng-show="get_num_configs(catalog) == 0" class="btn btn-danger btn-sm" ng-click="delete_catalog(catalog)" value="delete"></input></td>
+            <td><input type="button" class="btn btn-primary btn-xs" ng-click="edit_catalog(catalog, $event)" value="modify"></input></td>
+            <td><input type="button" ng-show="get_num_configs(catalog) == 0" class="btn btn-danger btn-xs" ng-click="delete_catalog(catalog)" value="delete"></input></td>
         </tr>
     </tbody>
 </table>
@@ -123,12 +123,12 @@ config_table_template = """
             </td>
             <td class="text-center">{{ get_num_cats(config) }}</td>
             <td>
-                <input type="button" class="btn btn-sm btn-success" value="modify" ng-click="config_edit.edit(config, $event)"></input>
+                <input type="button" class="btn btn-xs btn-success" value="modify" ng-click="config_edit.edit(config, $event)"></input>
             </td>
             <td>
                 <div class="input-group-btn">
                     <div class="btn-group">
-                        <button type="button" class="btn btn-warning btn-sm dropdown-toggle" data-toggle="dropdown">
+                        <button type="button" class="btn btn-warning btn-xs dropdown-toggle" data-toggle="dropdown">
                             Create <span class="caret"></span>
                         </button>
                         <ul class="dropdown-menu">
@@ -148,7 +148,7 @@ config_table_template = """
                     refs: {{ config.usecount }}
                 </span>
                 <span ng-if="!config.usecount">
-                    <input type="button" class="btn btn-sm btn-danger" value="delete" ng-click="config_edit.delete_obj(config)"></input>
+                    <input type="button" class="btn btn-xs btn-danger" value="delete" ng-click="config_edit.delete_obj(config)"></input>
                 </span>
             </td>
         </tr>
@@ -279,16 +279,61 @@ mon_table_template = """
 </table>
 """
 
+cached_upload_template = """
+<div>
+    <h3>upload ({{ upload.upload_key }}, {{ upload.list.length }} configs)</h3>
+    <ul class="list-group">
+        <li class="list-group-item" ng-repeat="conf in upload.list">
+            <cachedconfig config="conf" upload="upload" catalog="catalog"></cachedconfig>
+        </li>
+    </ul>
+</div>
+"""
+
+cached_config_template = """
+    {{ config.name }} ({{ config.description }})
+    <span class="label label-primary" title="number of config vars">{{ get_num_vars() }}</span>
+    <span class="label label-primary" title="number of config script">{{ get_num_scripts() }}</span>
+    <span class="label label-primary" title="number of monitoring check commands">{{ get_num_check_commands() }}</span>
+    <span class="pull-right">
+        <input type="button" ng-show="!config._taken" class="btn btn-xs btn-success" value="take" ng-click="take_config()"></input>
+        <input type="button" ng-show="!config._taken" class="btn btn-xs btn-danger" value="delete" ng-click="delete_config()"></input>
+        <span class="label label-warning" ng-show="config._taken">already taken</span>
+    </span>
+"""
+
 {% endverbatim %}
 
-config_module = angular.module("icsw.config", ["ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters", "localytics.directives", "restangular", "ui.codemirror"])
+config_module = angular.module("icsw.config", ["ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters", "localytics.directives", "restangular", "ui.codemirror", "angularFileUpload"])
 
 angular_module_setup([config_module])
 
-config_ctrl = config_module.controller("config_ctrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "sharedDataSource", "$q", "$modal",
-    ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, sharedDataSource, $q, $modal) ->
+config_ctrl = config_module.controller("config_ctrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "sharedDataSource", "$q", "$modal", "$fileUploader", "$http",
+    ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, sharedDataSource, $q, $modal, $fileUploader, $http) ->
         $scope.pagSettings = paginatorSettings.get_paginator("config_list", $scope)
         $scope.selected_objects = []
+        $scope.cached_uploads = []
+        $scope.catalog = 0
+        $scope.uploader = $fileUploader.create(
+            scope : $scope
+            url : "{% url 'config:upload_config' %}"
+            queueLimit : 1
+            alias : "config"
+            formData : [
+                 "csrfmiddlewaretoken" : '{{ csrf_token }}'
+            ]
+            removeAfterUpload : true
+        )
+        $scope.upload_list = []
+        $scope.uploader.bind("completeall", () ->
+            $scope.reload_upload()
+        )
+        $scope.$on("icsw.reload_upload", () ->
+            $scope.reload_upload()
+        )
+        $scope.$on("icsw.reload_all", () ->
+            $scope.reload()
+        )
         $scope.pagSettings.conf.filter_settings = {
             "filter_str" : ""
             "filter_name" : true
@@ -397,6 +442,8 @@ config_ctrl = config_module.controller("config_ctrl", ["$scope", "$compile", "$f
                 ($scope._set_fields(entry, true) for entry in data[0])
                 $scope.entries = data[0]
                 $scope.config_catalogs = data[3]
+                # catalog for uploads
+                $scope.catalog = $scope.config_catalogs[0].idx
                 $scope.config_edit.create_list = $scope.entries
                 $scope.config_edit.delete_list = $scope.entries
                 $scope.catalog_edit.create_list = $scope.config_catalogs
@@ -407,7 +454,16 @@ config_ctrl = config_module.controller("config_ctrl", ["$scope", "$compile", "$f
                     entry.var_lut = {}
                     for vh in entry.config_var_hint_set
                         entry.var_lut[vh.var_name] = vh
+                $scope.reload_upload()
             )
+        $scope.reload_upload = () ->
+            call_ajax
+                url     : "{% url 'config:get_cached_uploads' %}"
+                dataType : "json"
+                success : (json) ->
+                    $scope.$apply(() ->
+                        $scope.cached_uploads = angular.fromJson(json)
+                    )
         $scope._set_fields = (entry, init=false) ->
             entry.script_sel = 0
             entry.script_num = entry.config_script_set.length
@@ -495,6 +551,8 @@ config_ctrl = config_module.controller("config_ctrl", ["$scope", "$compile", "$f
         # hint functions
         $scope.get_config_hints = () ->
             return (entry for entry of $scope.config_hints)
+        $scope.get_name_filter = () ->
+            return if $scope._edit_obj.name? then $scope._edit_obj.name else ""
         $scope.get_config_var_hints = (config) ->
             if config and config.name of $scope.config_hints
                 return (entry for entry of $scope.config_hints[config.name].var_lut)
@@ -793,6 +851,71 @@ config_ctrl = config_module.controller("config_ctrl", ["$scope", "$compile", "$f
             scope.new_selection = (new_sel) ->
                 scope._edit_obj.categories = new_sel
     }
+).directive("uploadinfo", ($templateCache, $compile, $modal, Restangular) ->
+    return {
+        restrict : "EA"
+        template : $templateCache.get("cached_upload_template.html")
+        scope : {
+            "upload"  : "="
+            "catalog" : "="
+        }
+        replace : true
+    }
+).directive("cachedconfig", ($templateCache, $compile, $modal, Restangular) ->
+    return {
+        restrict : "EA"
+        template : $templateCache.get("cached_config_template.html")
+        scope : {
+            "config"  : "="
+            "upload"  : "="
+            "catalog" : "="
+        }
+        replace : false
+        link : (scope, el, attrs) ->
+            scope.get_num_vars = () ->
+                num = 0
+                for _en in ["config_blob_set", "config_bool_set", "config_int_set", "config_str_set"]
+                    if scope.config[_en]
+                        num += scope.config[_en].length
+                return num
+            scope.get_num_scripts = () ->
+                if scope.config.config_script_set
+                    return scope.config.config_script_set.length
+                else
+                    return 0
+            scope.get_num_check_commands = () ->
+                if scope.config.mon_check_command_set
+                    return scope.config.mon_check_command_set.length
+                else
+                    return 0
+            scope.take_config = () ->
+                $.blockUI
+                call_ajax
+                    url     : "{% url 'config:handle_cached_config' %}"
+                    data    : {
+                        "upload_key" : scope.upload.upload_key
+                        "name"       : scope.config.name
+                        "catalog"    : scope.catalog
+                        "mode"       : "take"
+                    }
+                    success : (xml) ->
+                        $.unblockUI
+                        parse_xml_response(xml)
+                        scope.$emit("icsw.reload_all")
+            scope.delete_config = () ->
+                $.blockUI
+                call_ajax
+                    url     : "{% url 'config:handle_cached_config' %}"
+                    data    : {
+                        "upload_key" : scope.upload.upload_key
+                        "name"       : scope.config.name
+                        "mode"       : "delete"
+                    }
+                    success : (xml) ->
+                        $.unblockUI
+                        parse_xml_response(xml)
+                        scope.$emit("icsw.reload_upload")
+    }
 ).run(($templateCache) ->
     $templateCache.put("simple_confirm.html", simple_modal_template)
     $templateCache.put("config_table.html", config_table_template)
@@ -800,6 +923,8 @@ config_ctrl = config_module.controller("config_ctrl", ["$scope", "$compile", "$f
     $templateCache.put("var_table.html", var_table_template)
     $templateCache.put("script_table.html", script_table_template)
     $templateCache.put("mon_table.html", mon_table_template)
+    $templateCache.put("cached_upload_template.html", cached_upload_template)
+    $templateCache.put("cached_config_template.html", cached_config_template)
 )
 
 class cat_tree extends tree_config
