@@ -17,7 +17,7 @@ running_table = """
         <tr headers struct="running_struct"></tr>
     </thead>
     <tbody>
-        <tr rmsrunline ng-repeat-start="data in run_list | paginator2:this.pagRun" struct="running_struct">
+        <tr rmsrunline ng-repeat-start="data in run_list | paginator2:this.pagRun" >
         </tr>
         <tr ng-repeat-end>
             <td colspan="10">{{ datax }}</td>
@@ -38,7 +38,7 @@ waiting_table = """
         <tr headers struct="waiting_struct"></tr>
     </thead>
     <tbody>
-        <tr rmsline ng-repeat="data in wait_list | paginator2:this.pagWait" struct="waiting_struct"></tr>
+        <tr rmsline ng-repeat="data in wait_list | paginator2:this.pagWait"></tr>
     </tbody>
     <tfoot>
         <tr headertoggle ng-show="header_filter_set" struct="waiting_struct"></tr>
@@ -55,7 +55,7 @@ node_table = """
         <tr headers struct="node_struct"></tr>
     </thead>
     <tbody>
-        <tr rmsnodeline ng-repeat="data in node_list | paginator2:this.pagNode" struct="node_struct" ng-class="get_class(data)"></tr>
+        <tr rmsnodeline ng-repeat="data in node_list | paginator2:this.pagNode" ng-class="get_class(data)"></tr>
     </tbody>
     <tfoot>
         <tr headertoggle ng-show="header_filter_set" struct="node_struct"></tr>
@@ -87,13 +87,6 @@ header_toggle = """
         </input>
     </form>
 </th>
-"""
-
-rmsline = """
-<td ng-repeat="entry in get_display_data(data) track by $index">
-<span ng-if="entry[0]" ng-bind-html="entry[1]"></span>
-<span ng-if="!entry[0]" ng-bind-html="entry[1]"></span>
-</td>
 """
 
 rmsnodeline = """
@@ -136,6 +129,48 @@ rmsnodeline = """
 </td>
 <td ng-show="node_struct.toggle['jobs']">
     {{ data.jobs }}
+</td>
+"""
+
+rmsline = """
+<td ng-show="waiting_struct.toggle['job_id']">
+    {{ data.job_id }}
+</td>
+<td ng-show="waiting_struct.toggle['task_id']">
+    {{ data.task_id }}
+</td>
+<td ng-show="waiting_struct.toggle['name']">
+    {{ data.name }}
+</td>
+<td ng-show="waiting_struct.toggle['requested_pe']">
+    {{ data.requested_pe }}
+</td>
+<td ng-show="waiting_struct.toggle['owner']">
+    {{ data.owner }}
+</td>
+<td ng-show="waiting_struct.toggle['state']">
+    <b>{{ data.state }}</b>
+</td>
+<td ng-show="waiting_struct.toggle['complex']">
+    {{ data.complex }}
+</td>
+<td ng-show="waiting_struct.toggle['queue']">
+    {{ data.queue }}
+</td>
+<td ng-show="waiting_struct.toggle['queue_time']">
+    {{ data.queue_time }}
+</td>
+<td ng-show="waiting_struct.toggle['wait_time']">
+    {{ data.wait_time }}
+</td>
+<td ng-show="waiting_struct.toggle['left_time']">
+    {{ data.left_time }}
+</td>
+<td ng-show="waiting_struct.toggle['priority']">
+    {{ data.priority }}
+</td>
+<td ng-show="waiting_struct.toggle['depends']">
+    {{ data.depends }}
 </td>
 """
 
@@ -206,6 +241,7 @@ rmsrunline = """
     {{ data.nodelist }}
 </td>
 """
+
 {% endverbatim %}
 
 rms_module = angular.module("icsw.rms", ["ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters", "localytics.directives", "restangular", "ui.codemirror"])
