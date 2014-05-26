@@ -100,7 +100,7 @@ class ipmi_builder(object):
             _tree.append(_val)
         return _tree
     def get_comline(self, _dev_xml):
-        if "ipmi_interface" in _dev_xml.attrib:
+        if _dev_xml.get("ipmi_interface", ""):
             _iface_str = " -I {}".format(_dev_xml.get("ipmi_interface"))
         else:
             _iface_str = ""
