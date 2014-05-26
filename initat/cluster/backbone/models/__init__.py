@@ -1171,7 +1171,7 @@ class device(models.Model):
     #    ("ssh://", "ssh://"),
     #    ("snmp://", "snmp://"),
     #    ("ipmi://", "ipmi://"),
-    #    ("ilo4://", "ilo4://"),
+    #    ("ilo4://", "ilo4://"), # no longer used ?
     #    ]
     # )
     date = models.DateTimeField(auto_now_add=True)
