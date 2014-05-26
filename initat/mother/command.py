@@ -112,7 +112,7 @@ class hc_command(object):
                      logging_tools.LOG_LEVEL_ERROR,
                      dev=cur_cd.child)
         else:
-            if self.curl_base in ["ipmi", "ilo4"]:
+            if self.curl_base in ["ipmi"]:
                 com_str = self._build_com_str(var_dict, com_ip, command)
                 self.log("com_str is '%s'" % (com_str))
                 self.log("sending com_str to '%s'" % (unicode(self.cd_obj.parent)), dev=self.cd_obj.child)
@@ -165,16 +165,17 @@ class hc_command(object):
                  "off"   : "off",
                  "cycle" : "cycle"}.get(command, "status")
             )
-        elif self.curl_base == "ilo4":
-            com_str = "%s -I lanplus -H %s -U %s -P %s chassis power %s" % (
-                process_tools.find_file("ipmitool"),
-                com_ip,
-                var_dict["ILO_USERNAME"],
-                var_dict["ILO_PASSWORD"],
-                {"on"    : "on",
-                 "off"   : "off",
-                 "cycle" : "cycle"}.get(command, "status")
-            )
+        # ilo4 is no longer supported, use ipmi with IPMI_INTERFACE=lanplus
+        # elif self.curl_base == "ilo4":
+        #    com_str = "%s -I lanplus -H %s -U %s -P %s chassis power %s" % (
+        #        process_tools.find_file("ipmitool"),
+        #        com_ip,
+        #        var_dict["ILO_USERNAME"],
+        #        var_dict["ILO_PASSWORD"],
+        #        {"on"    : "on",
+        #         "off"   : "off",
+        #         "cycle" : "cycle"}.get(command, "status")
+        #    )
         return com_str
     def hc_done(self, hc_sc):
         cur_out = hc_sc.read()
