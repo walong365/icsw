@@ -405,7 +405,6 @@ PIPELINE_JS = {
             "js/libs/restangular.min.js",
             # hm, not working
             # "js/libs/ui-select-0.2.1/select.js",
-            "js/libs/ui-bootstrap.min.js",
             "js/libs/ui-bootstrap-tpls.min.js",
             # now in common_function as coffeescript
             # "js/libs/ui-codemirror.min.js",
