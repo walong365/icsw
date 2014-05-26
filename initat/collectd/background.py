@@ -100,10 +100,15 @@ class ipmi_builder(object):
             _tree.append(_val)
         return _tree
     def get_comline(self, _dev_xml):
-        return "/usr/bin/ipmitool -H {} -U {} -P {} sensor list".format(
+        if "ipmi_interface" in _dev_xml.attrib:
+            _iface_str = " -I {}".format(_dev_xml.get("ipmi_interface"))
+        else:
+            _iface_str = ""
+        return "/usr/bin/ipmitool -H {} -U {} -P {} {} sensor list".format(
             _dev_xml.get("ip"),
             _dev_xml.get("ipmi_username"),
             _dev_xml.get("ipmi_password"),
+            _iface_str,
         ),
 
 
