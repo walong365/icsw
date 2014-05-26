@@ -43,7 +43,7 @@ class authentication_form(Form):
     helper.layout = Layout(
         Div(
             Fieldset(
-                "Please enter your login credentials",
+                "Please enter your login credentials {% if CLUSTER_NAME %} for {{ CLUSTER_NAME }}{% endif %}",
                 Field("username", placeholder="user name"),
                 Field("password", placeholder="password"),
             ),
