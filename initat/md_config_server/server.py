@@ -26,6 +26,7 @@ os.environ.setdefault("DJANGO_SETTINGS_MODULE", "initat.cluster.settings")
 from django.db import connection, connections
 from django.db.models import Q
 from initat.cluster.backbone.models import mon_notification, config_str, config_int
+from initat.cluster.backbone.routing import get_server_uuid
 from initat.host_monitoring.hm_classes import mvect_entry
 from initat.md_config_server import constants
 from initat.md_config_server.build import build_process
@@ -41,7 +42,6 @@ import process_tools
 import server_command
 import threading_tools
 import time
-import uuid_tools
 import zmq
 
 class server_process(threading_tools.process_pool, version_check_mixin):
@@ -353,17 +353,17 @@ class server_process(threading_tools.process_pool, version_check_mixin):
         else:
             self.log("no external cmd_file defined", logging_tools.LOG_LEVEL_ERROR)
     def _send_command(self, *args, **kwargs):
-        src_proc, src_id, full_uuid, srv_com = args
+        _src_proc, _src_id, full_uuid, srv_com = args
         self.log("init send of {:d} bytes to {}".format(len(srv_com), full_uuid))
         self.com_socket.send_unicode(full_uuid, zmq.SNDMORE)
         self.com_socket.send_unicode(srv_com)
     def _set_external_cmd_file(self, *args, **kwargs):
-        src_proc, src_id, ext_name = args
+        _src_proc, _src_id, ext_name = args
         self.log("setting external cmd_file to '{}'".format(ext_name))
         self.__external_cmd_file = ext_name
     def _init_network_sockets(self):
         client = self.zmq_context.socket(zmq.ROUTER)
-        client.setsockopt(zmq.IDENTITY, "{}:monitor_master".format(uuid_tools.get_uuid().get_urn()))
+        client.setsockopt(zmq.IDENTITY, get_server_uuid("md-config"))
         client.setsockopt(zmq.SNDHWM, 1024)
         client.setsockopt(zmq.RCVHWM, 1024)
         client.setsockopt(zmq.LINGER, 0)
@@ -425,6 +425,9 @@ class server_process(threading_tools.process_pool, version_check_mixin):
                     self._handle_ocp_event(srv_com)
                 elif cur_com in ["file_content_result", "relayer_info", "file_content_bulk_result"]:
                     self.send_to_process("syncer", cur_com, unicode(srv_com))
+                    if "sync_id" in srv_com:
+                        self.log("return with sync_id {:d}".format(int(srv_com["*sync_id"])))
+                        send_return = True
                 else:
                     self.log("got unknown command '{}' from '{}'".format(cur_com, srv_com["source"].attrib["host"]), logging_tools.LOG_LEVEL_ERROR)
                 if send_return:

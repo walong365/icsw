@@ -61,6 +61,7 @@ class generic_cache(object):
         for v_list in mon_check_command.objects.all().values_list("name", "config__name"):
             self.mcc_lut_2.setdefault(v_list[1], []).append(v_list[0])
 
+# a similiar structure is used in the server process of rrd-grapher
 class var_cache(dict):
     def __init__(self, cdg):
         super(var_cache, self).__init__(self)
@@ -115,7 +116,12 @@ class sync_config(object):
                 server_type="monitor_slave",
                 fetch_network_info=True)
             self.slave_uuid = monitor_server.uuid
-            route = master_cfg["monitor_server"][0].get_route_to_other_device(self.__process.router_obj, slave_cfg, allow_route_to_other_networks=True)
+            route = master_cfg["monitor_server"][0].get_route_to_other_device(
+                self.__process.router_obj,
+                slave_cfg,
+                allow_route_to_other_networks=True,
+                global_sort_results=True,
+                )
             if not route:
                 self.slave_ip = None
                 self.master_ip = None
@@ -160,6 +166,8 @@ class sync_config(object):
         # relayer info
         self.relayer_version = "?.?-0"
         self.mon_version = "?.?-0"
+        # clear md_struct
+        self.__md_struct = None
         if not self.master:
             # try to get relayer / mon_version from latest build
             _latest_build = mon_dist_slave.objects.filter(Q(device=self.monitor_server)).order_by("-pk")
@@ -229,9 +237,10 @@ class sync_config(object):
             self.log("resending files")
             self.distribute()
     def config_ts(self, ts_type):
-        # set config timestmap
-        setattr(self.__md_struct, "config_build_{}".format(ts_type), cluster_timezone.localize(datetime.datetime.now()))
-        self.__md_struct.save()
+        if self.__md_struct:
+            # set config timestamp
+            setattr(self.__md_struct, "config_build_{}".format(ts_type), cluster_timezone.localize(datetime.datetime.now()))
+            self.__md_struct.save()
     def start_build(self, b_version, master=None):
         # generate datbase entry for build
         self.config_version_build = b_version
@@ -977,7 +986,10 @@ class main_config(object):
             ("obsess_over_services"             , 1 if not self.master else 0),
             ("obsess_over_hosts"                , 1 if not self.master else 0),
             ("check_for_orphaned_services"      , 0),
-            ("check_service_freshness"          , 0),
+            ("check_service_freshness"          , 1 if global_config["CHECK_SERVICE_FRESHNESS"] else 0),
+            ("service_freshness_check_interval" , global_config["SERVICE_FRESHNESS_CHECK_INTERVAL"]),
+            ("check_host_freshness"             , 1 if global_config["CHECK_HOST_FRESHNESS"] else 0),
+            ("host_freshness_check_interval"    , global_config["HOST_FRESHNESS_CHECK_INTERVAL"]),
             ("freshness_check_interval"         , 15),
             ("enable_flap_detection"            , 1 if global_config["ENABLE_FLAP_DETECTION"] else 0),
             ("low_service_flap_threshold"       , 25),
@@ -1087,18 +1099,28 @@ class main_config(object):
                                is_host_file=True,
                                values=main_values)
         for log_descr, en in [
-            ("notifications" , 1), ("service_retries", 1), ("host_retries"     , 1),
-            ("event_handlers", 1),
-            ("initial_states", 1 if global_config["LOG_INITIAL_STATES"] else 0),
+            ("notifications"    , 1),
+            ("service_retries"  , 1),
+            ("host_retries"     , 1),
+            ("event_handlers"   , 1),
+            ("initial_states"   , 1 if global_config["LOG_INITIAL_STATES"] else 0),
             ("external_commands", 1 if global_config["LOG_EXTERNAL_COMMANDS"] else 0),
-            ("passive_checks", 1 if global_config["LOG_PASSIVE_CHECKS"] else 0)
+            ("passive_checks"   , 1 if global_config["LOG_PASSIVE_CHECKS"] else 0)
             ]:
             main_cfg["log_%s" % (log_descr)] = en
-        for to_descr, to in [("service_check", 60), ("host_check", 30), ("event_handler", 30),
-                             ("notification" , 30), ("ocsp"      , 5), ("perfdata"     , 5)]:
+        for to_descr, to in [
+            ("service_check", 60),
+            ("host_check"   , 30),
+            ("event_handler", 30),
+            ("notification" , 30),
+            ("ocsp"         , 5),
+            ("perfdata"     , 5)]:
             main_cfg["%s_timeout" % (to_descr)] = to
-        for th_descr, th in [("low_service", 5.0), ("high_service", 20.0),
-                             ("low_host"   , 5.0), ("high_host"   , 20.0)]:
+        for th_descr, th in [
+            ("low_service" , 5.0),
+            ("high_service", 20.0),
+            ("low_host"    , 5.0),
+            ("high_host"   , 20.0)]:
             main_cfg["%s_flap_threshold" % (th_descr)] = th
         admin_list = list([cur_u.login for cur_u in user.objects.filter(Q(active=True) & Q(group__active=True) & Q(mon_contact__pk__gt=0)) if cur_u.has_perm("backbone.device.all_devices")])
         if admin_list:
@@ -1718,8 +1740,10 @@ class all_commands(host_type_config):
             if ngc.pk:
                 # print ngc.categories.all()
                 cats = [cur_cat.full_name for cur_cat in ngc.categories.all()] # .values_list("full_name", flat=True)
+                cat_pks = [cur_cat.pk for cur_cat in ngc.categories.all()]
             else:
                 cats = [TOP_MONITORING_CATEGORY]
+                cat_pks = []
             cc_s = check_command(
                 ngc_name,
                 ngc.command_line,
@@ -1730,10 +1754,12 @@ class all_commands(host_type_config):
                 nagios_name=_nag_name,
                 special=special,
                 servicegroup_names=cats,
+                servicegroup_pks=cat_pks,
                 enable_perfdata=ngc.enable_perfdata,
                 is_event_handler=ngc.is_event_handler,
                 event_handler=ngc.event_handler,
                 event_handler_enabled=ngc.event_handler_enabled,
+                check_command_pk=ngc.pk,
                 db_entry=ngc,
                 volatile=ngc.volatile,
             )
@@ -2064,6 +2090,8 @@ class check_command(object):
         self.template = template
         self.exclude_devices = [cur_dev.pk for cur_dev in exclude_devices] or []
         self.servicegroup_names = kwargs.get("servicegroup_names", [TOP_MONITORING_CATEGORY])
+        self.servicegroup_pks = kwargs.get("servicegroup_pks", [])
+        self.check_command_pk = kwargs.get("check_command_pk", None)
         self.is_event_handler = kwargs.get("is_event_handler", False)
         self.event_handler = kwargs.get("event_handler", None)
         self.event_handler_enabled = kwargs.get("event_handler_enabled", True)

@@ -47,13 +47,15 @@ class version_check_mixin(object):
             else:
                 cstat, cout = commands.getstatusoutput("rpm -q {}".format(t_daemon))
                 if not cstat:
-                    rpm_m = re.match("^{}-(?P<version>.*)$".format(t_daemon), cout.split()[0].strip())
-                    if rpm_m:
-                        md_version = rpm_m.group("version")
-                    else:
-                        self.log("Cannot parse {}".format(cout.split()[0].strip()), logging_tools.LOG_LEVEL_WARN)
+                    # hm, dirty but working ... check all strings from output
+                    for _line in cout.strip().split():
+                        rpm_m = re.match("^{}-(?P<version>.*)$".format(t_daemon), _line)
+                        if rpm_m:
+                            md_version = rpm_m.group("version")
+                        else:
+                            self.log("Cannot parse {}".format(cout.split()[0].strip()), logging_tools.LOG_LEVEL_WARN)
                 else:
-                    self.log("Package {} not found in RPM database".format(t_daemon), logging_tools.LOG_LEVEL_ERROR)
+                    self.log("Package {} not found in RPM database (result was {})".format(t_daemon, cout), logging_tools.LOG_LEVEL_ERROR)
             if md_version != "unknown":
                 md_type = t_daemon.split("-")[0]
                 break
@@ -76,7 +78,7 @@ class version_check_mixin(object):
         cluster_location.db_device_variable(global_config["SERVER_IDX"], "md_version", description="Version of the Monitor-daemon RPM", value=md_version, force_update=True)
         cluster_location.db_device_variable(global_config["SERVER_IDX"], "md_type", description="Type of the Monitor-daemon RPM", value=md_type, force_update=True)
         if md_version == "unknown":
-            self.log("No installed monitor-daemon found (version set to {})".format(md_version), logging_tools.LOG_LEVEL_WARN)
+            self.log("No installed monitor-daemon found (version set to {})".format(md_version), logging_tools.LOG_LEVEL_CRITICAL)
         else:
             self.log("Discovered installed monitor-daemon {}, version {}".format(md_type, md_version))
         end_time = time.time()
