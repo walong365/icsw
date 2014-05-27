@@ -23,8 +23,8 @@ from initat.cluster.backbone.models import user, group, device_config, \
 from initat.cluster_server.config import global_config
 import commands
 import cs_base_class
-import ldap
-import ldap.modlist # important, do not remove
+import ldap # @UnresolvedImport
+import ldap.modlist # important, do not remove  @UnresolvedImport
 import logging_tools
 import os
 import pprint
