@@ -117,6 +117,7 @@ angular_add_simple_list_controller(
                 "ncritical" : true
                 "low_flap_threshold" : 20
                 "high_flap_threshold" : 80
+                "freshness_threshold" : 60
             }
         object_created  : (new_obj) -> new_obj.name = null
         fn:
@@ -206,6 +207,7 @@ angular_add_simple_list_controller(
                 "ncritical" : true
                 "low_flap_threshold" : 20
                 "high_flap_threshold" : 80
+                "freshness_threshold" : 60
             }
         object_created  : (new_obj) -> new_obj.name = null
         fn:

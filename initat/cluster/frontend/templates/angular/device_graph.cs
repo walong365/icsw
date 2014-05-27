@@ -11,12 +11,36 @@ root = exports ? this
 rrd_graph_template = """
     <div>
         <p class="text-danger">{{ error_string }}</p>
-        <div class="input-group">
-            <input type="text" class="form-control" ng-disabled="is_loading" ng-model="searchstr" placeholder="search ..." ng-change="update_search()"></input>
-            <span class="input-group-btn">
-                <button class="btn btn-success" ng-show="cur_selected.length && dt_valid" type="button" ng-click="draw_graph()"><span title="draw graph(s)" class="glyphicon glyphicon-pencil"></span></button>
-                <button class="btn btn-danger" type="button" ng-click="clear_selection()"><span title="clear selection" class="glyphicon glyphicon-ban-circle"></span></button>
-            </span>
+        <h3 ng-show="vector_valid">
+            Vector info:
+            <span class="label label-primary" title="structural entries">{{ num_struct }}<span ng-show="num_devices > 1" title="number of devices"> / {{ num_devices }}</span></span> /
+            <span class="label label-primary" title="entries">{{ num_mve }}<span ng-show="num_mve_sel" title="selected entries"> / {{ num_mve_sel }}</span></span>, 
+            <input type="button" ng-class="show_options && 'btn btn-sm btn-primary' || 'btn btn-sm'" value="options" ng-click="show_options=!show_options"></input>
+        </h3>
+        <div class="input-group" ng-show="show_options">
+            <div class="input-group-btn">
+                <div class="btn-group">
+                    <button type="button" class="btn btn-sm btn-success dropdown-toggle" data-toggle="dropdown">
+                        {{ cur_dim }} <span class="caret"></span>
+                    </button>
+                    <ul class="dropdown-menu">
+                        <li ng-repeat="dim in all_dims" ng-click="set_active_dim(dim)"><a href="#">{{ dim }}</a></li>
+                    </ul>
+                </div>
+            </div>&nbsp;
+            <div class="input-group-btn">
+                <div class="btn-group">
+                    <button type="button" class="btn btn-sm btn-primary dropdown-toggle" data-toggle="dropdown">
+                        timerange <span class="caret"></span>
+                    </button>
+                    <ul class="dropdown-menu">
+                        <li ng-repeat="tr in all_timeranges" ng-click="set_active_tr(tr)"><a href="#">{{ tr.name }}</a></li>
+                    </ul>
+                </div>
+            </div>
+            <div class="input-group-btn">
+                <input type="button" ng-class="hide_zero && 'btn btn-sm btn-success' || 'btn btn-sm'" value="hide zero" ng-click="hide_zero=!hide_zero"></input>
+            </div>
             <input type="text" class="form-control input-sm" ng-model="from_date"></input>
             <span class="input-group-btn">
                 <div class="btn-group">
@@ -41,34 +65,16 @@ rrd_graph_template = """
                     </ul>
                 </div>
             </span>
-            <div class="input-group-btn">
-                <div class="btn-group">
-                    <button type="button" class="btn btn-sm btn-success dropdown-toggle" data-toggle="dropdown">
-                        {{ cur_dim }} <span class="caret"></span>
-                    </button>
-                    <ul class="dropdown-menu">
-                        <li ng-repeat="dim in all_dims" ng-click="set_active_dim(dim)"><a href="#">{{ dim }}</a></li>
-                    </ul>
-                </div>
-            </div>&nbsp;
-            <div class="input-group-btn">
-                <div class="btn-group">
-                    <button type="button" class="btn btn-sm btn-primary dropdown-toggle" data-toggle="dropdown">
-                        timerange <span class="caret"></span>
-                    </button>
-                    <ul class="dropdown-menu">
-                        <li ng-repeat="tr in all_timeranges" ng-click="set_active_tr(tr)"><a href="#">{{ tr.name }}</a></li>
-                    </ul>
-                </div>
-            </div>
         </div>
         <div class="row">
-            <h4 ng-show="vector_valid">
-                Vector info:
-                <span class="label label-primary">{{ num_struct }}</span> /
-                <span class="label label-primary">{{ num_mve }}<span ng-show="num_mve_sel"> / {{ num_mve_sel }}</span></span>
-            </h4>
             <div class="col-md-3">  
+                <div class="input-group">
+                    <input type="text" class="form-control" ng-disabled="is_loading" ng-model="searchstr" placeholder="search ..." ng-change="update_search()"></input>
+                    <span class="input-group-btn">
+                        <button class="btn btn-success" ng-show="cur_selected.length && dt_valid" type="button" ng-click="draw_graph()"><span title="draw graph(s)" class="glyphicon glyphicon-pencil"></span></button>
+                        <button class="btn btn-danger" type="button" ng-click="clear_selection()"><span title="clear selection" class="glyphicon glyphicon-ban-circle"></span></button>
+                    </span>
+                </div>
                 <tree treeconfig="g_tree"></tree>
             </div>
             <div class="col-md-9" ng-show="graph_list.length">
@@ -80,6 +86,9 @@ rrd_graph_template = """
                             {{ graph.num }}
                         </span>
                         &nbsp;from {{ graph.get_tv(graph.ts_start_mom) }} to {{ graph.get_tv(graph.ts_end_mom) }}
+                    </h4>
+                    <h4 ng-show="graph.removed_keys.length">
+                        {{ graph.removed_keys.length }} keys not shown (zero data) <span class="glyphicon glyphicon-info-sign" title="{{ graph.get_removed_keys() }}"></span>
                     </h4>
                     <span ng-show="graph.cropped && graph.active">cropped timerange: {{ graph.get_tv(graph.cts_start_mom) }} to {{ graph.get_tv(graph.cts_end_mom) }}
                         <input type="button" class="btn btn-xs btn-warning" value="apply" ng-click="use_crop(graph)"></input>
@@ -117,12 +126,16 @@ class d_graph
         @ts_start_mom = moment.unix(@ts_start)
         @ts_end_mom = moment.unix(@ts_end)
         @cropped = false
-        #console.log @
+        @removed_keys = []
+        for entry in @xml.find("removed_keys removed_key")
+            @removed_keys.push($(entry).text())
     get_tv: (val) ->
         if val
             return val.format(DT_FORM)
         else
             return "???"
+    get_removed_keys: () ->
+        return @removed_keys.join(", ")
     set_crop: (sel) ->
         @cropped = true
         ts_range = @ts_end - @ts_start
@@ -152,9 +165,15 @@ class rrd_tree extends tree_config
         if t_entry._node_type == "h"
             return "vector"
         else if t_entry._node_type == "s"
-            return t_entry._name
+            if t_entry.node.attr("devices")?
+                return t_entry._name + " (" + t_entry.node.attr("devices") + ")"
+            else
+                return t_entry._name
         else
-            return t_entry._name
+            if t_entry.node.attr("devices")?
+                return t_entry._name + " (" + t_entry.node.attr("devices") + ")"
+            else
+                return t_entry._name
     get_title: (t_entry) ->
         if t_entry._node_type == "e"
             return t_entry._g_key
@@ -173,7 +192,7 @@ device_rrd_module = angular.module("icsw.device.rrd", ["ngResource", "ngCookies"
 
 angular_module_setup([device_rrd_module])
 
-DT_FORM = "YYYY-MM-DD HH:mm"
+DT_FORM = "YYYY-MM-DD HH:mm ZZ"
 
 class pd_timerange
     constructor: (@name, @from, @to) ->
@@ -202,6 +221,7 @@ device_rrd_module.controller("rrd_ctrl", ["$scope", "$compile", "$filter", "$tem
             new pd_timerange("current year", moment().startOf("year"), moment().endOf("year"))
             new pd_timerange("last year", moment().subtract("year", 1).startOf("year"), moment().subtract("year", 1).endOf("year"))
         ]
+        moment().utc()
         $scope.dt_valid = true
         $scope.vector_valid = false
         $scope.to_date_mom = moment()
@@ -214,6 +234,8 @@ device_rrd_module.controller("rrd_ctrl", ["$scope", "$compile", "$filter", "$tem
         $scope.is_loading = true
         $scope.cur_selected = []
         $scope.graph_list = []
+        $scope.hide_zero = false
+        $scope.show_options = false
         $scope.g_tree = new rrd_tree($scope)
         $scope.$watch("from_date", (new_val) ->
             $scope.from_date_mom = moment(new_val)
@@ -258,11 +280,14 @@ device_rrd_module.controller("rrd_ctrl", ["$scope", "$compile", "$filter", "$tem
                         $scope.vector = $(xml).find("machine_vector")
                         if $scope.vector.length
                             # we only get one vector at most (due to merge_results=1 in rrd_views.py)
+                            # node_result
+                            num_devs = parseInt($(xml).find("node_result").attr("devices") ? "1")
                             $scope.add_nodes(undefined, $scope.vector)
                             $scope.is_loading = false
                             $scope.$apply(
                                 $scope.vector_valid = true
                                 $scope.num_struct = $scope.vector.find("entry").length
+                                $scope.num_devices = num_devs
                                 $scope.num_mve = $scope.vector.find("mve").length
                                 $scope.num_mve_sel = 0
                             ) 
@@ -284,16 +309,17 @@ device_rrd_module.controller("rrd_ctrl", ["$scope", "$compile", "$filter", "$tem
                     cur_node = $scope.g_tree.new_node({
                         folder : true,
                         expand : false
+                        node   : xml_node
                         _name  : xml_node.attr("part")
                         _node_type : "s"
                     })
                     cur_node._show_select = false
                 else
                     # value
-                    #console.log xml_node[0]
                     cur_node = $scope.g_tree.new_node({
                         folder : false
                         expand : false
+                        node   : xml_node
                         _g_key : xml_node.attr("name")
                         _name  : xml_node.attr("info")
                         _node_type : "e"
@@ -349,6 +375,7 @@ device_rrd_module.controller("rrd_ctrl", ["$scope", "$compile", "$filter", "$tem
                     "start_time" : $scope.from_date_mom.format(DT_FORM)
                     "end_time"   : $scope.to_date_mom.format(DT_FORM)
                     "size"       : $scope.cur_dim
+                    "hide_zero"  : $scope.hide_zero
                 }
                 success : (xml) =>
                     graph_list = []

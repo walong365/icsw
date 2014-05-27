@@ -230,17 +230,19 @@ package_module.controller("install", ["$scope", "$compile", "$filter", "$templat
                 (data) ->
                     #console.log "reload"
                     for dev in data
-                        $scope.device_lut[dev.idx].latest_contact = dev.latest_contact
-                        $scope.device_lut[dev.idx].client_version = dev.client_version
-                        for pdc in dev.package_device_connection_set
-                            cur_pdc = $scope.state_dict[dev.idx][pdc.package]
-                            # cur_pdc can be undefined, FIXME
-                            if cur_pdc and cur_pdc.idx
-                                # update only relevant fields
-                                update_pdc(pdc, cur_pdc)
-                            else
-                                # use pdc from server
-                                $scope.state_dict[dev.idx][pdc.package] = pdc
+                        # check if device is still in lut
+                        if dev.idx of $scope.device_lut
+                            $scope.device_lut[dev.idx].latest_contact = dev.latest_contact
+                            $scope.device_lut[dev.idx].client_version = dev.client_version
+                            for pdc in dev.package_device_connection_set
+                                cur_pdc = $scope.state_dict[dev.idx][pdc.package]
+                                # cur_pdc can be undefined, FIXME
+                                if cur_pdc and cur_pdc.idx
+                                    # update only relevant fields
+                                    update_pdc(pdc, cur_pdc)
+                                else
+                                    # use pdc from server
+                                    $scope.state_dict[dev.idx][pdc.package] = pdc
                     $scope.reload_promise = $timeout($scope.reload_state, 10000)
             )
         $scope.$watch("entries", (new_val) ->
@@ -274,6 +276,30 @@ package_module.controller("install", ["$scope", "$compile", "$filter", "$templat
                     $scope.selected_pdcs[csd.idx] = csd
                 else if not csd.selected and csd.idx of $scope.selected_pdcs
                     delete $scope.selected_pdcs[csd.idx]
+        $scope.get_pdc_list = (pack) ->
+            # list of devices
+            dev_list = []
+            # number of devices associated but not shown
+            num_dns = 0
+            for dev_pk of $scope.state_dict
+                dev_pk = parseInt(dev_pk)
+                if dev_pk of $scope.device_lut
+                    _dev = $scope.device_lut[dev_pk]
+                else
+                    _dev = null
+                dev_lut = $scope.state_dict[dev_pk]
+                if dev_lut[pack.idx].idx?
+                    if _dev
+                        dev_list.push(_dev)
+                    else
+                        num_dns++
+            if dev_list.length
+                _rs = "#{dev_list.length}: " + (entry.name for entry in dev_list).join(", ")
+            else
+                _rs = "---"
+            if num_dns
+                _rs = "#{_rs} (#{num_dns})"
+            return _rs
         $scope.update_selected_pdcs = () ->
             # after remove / attach
             for d_key, d_value of $scope.state_dict
@@ -491,8 +517,8 @@ package_module.controller("install", ["$scope", "$compile", "$filter", "$templat
                             return "glyphicon glyphicon-asterisk"
                     else
                         return "glyphicon"
-                scope.change_sel = () ->
-                    pdc = scope.pdc
+                scope.change_sel = (pdc) ->
+                    pdc.selected = !pdc.selected
                     if pdc.idx
                         if pdc.selected and pdc.idx not of scope.selected_pdcs
                             scope.selected_pdcs[pdc.idx] = pdc

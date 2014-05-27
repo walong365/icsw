@@ -59,8 +59,8 @@
     <td>{{ obj.warn_value }}</td>
     <td>{{ obj.error_value }}</td>
     <td>{{ obj.user_editable | yesno1 }}</td>
-    <td><input type="button" class="btn btn-primary" ng-click="edit($event, obj)" value="modify"/></td>
-    <td><input type="button" class="btn btn-danger" ng-show="delete_ok(obj)" ng-click="delete(obj)" value="delete"/></td>
+    <td><input type="button" class="btn btn-primary btn-xs" ng-click="edit($event, obj)" value="modify"/></td>
+    <td><input type="button" class="btn btn-danger btn-xs" ng-show="delete_ok(obj)" ng-click="delete(obj)" value="delete"/></td>
 </script>
 
 <script type="text/ng-template" id="mon_service_cluster_head.html">
@@ -88,8 +88,8 @@
     <td>{{ obj.warn_value }}</td>
     <td>{{ obj.error_value }}</td>
     <td>{{ obj.user_editable | yesno1 }}</td>
-    <td><input type="button" class="btn btn-primary" ng-click="edit($event, obj)" value="modify"/></td>
-    <td><input type="button" class="btn btn-danger" ng-show="delete_ok(obj)" ng-click="delete(obj)" value="delete"/></td>
+    <td><input type="button" class="btn btn-primary btn-xs" ng-click="edit($event, obj)" value="modify"/></td>
+    <td><input type="button" class="btn btn-danger btn-xs" ng-show="delete_ok(obj)" ng-click="delete(obj)" value="delete"/></td>
 </script>
 
 <script type="text/ng-template" id="mon_host_dependency_templ_head.html">
@@ -123,8 +123,8 @@
     <td>{{ obj.nfc_down | yesno1 }}</td>
     <td>{{ obj.nfc_unreachable | yesno1 }}</td>
     <td>{{ obj.nfc_pending | yesno1 }}</td>
-    <td><input type="button" class="btn btn-primary" ng-click="edit($event, obj)" value="modify"/></td>
-    <td><input type="button" class="btn btn-danger" ng-show="delete_ok(obj)" ng-click="delete(obj)" value="delete"/></td>
+    <td><input type="button" class="btn btn-primary btn-xs" ng-click="edit($event, obj)" value="modify"/></td>
+    <td><input type="button" class="btn btn-danger btn-xs" ng-show="delete_ok(obj)" ng-click="delete(obj)" value="delete"/></td>
 </script>
 
 <script type="text/ng-template" id="mon_service_dependency_templ_head.html">
@@ -162,8 +162,8 @@
     <td>{{ obj.nfc_unknown | yesno1 }}</td>
     <td>{{ obj.nfc_critical | yesno1 }}</td>
     <td>{{ obj.nfc_pending | yesno1 }}</td>
-    <td><input type="button" class="btn btn-primary" ng-click="edit($event, obj)" value="modify"/></td>
-    <td><input type="button" class="btn btn-danger" ng-show="delete_ok(obj)" ng-click="delete(obj)" value="delete"/></td>
+    <td><input type="button" class="btn btn-primary btn-xs" ng-click="edit($event, obj)" value="modify"/></td>
+    <td><input type="button" class="btn btn-danger btn-xs" ng-show="delete_ok(obj)" ng-click="delete(obj)" value="delete"/></td>
 </script>
 
 <script type="text/ng-template" id="mon_host_dependency_head.html">
@@ -181,8 +181,8 @@
     <td>{{ obj.dependent_devices | resolve_n2m:this.rest_data.device:'name' }}</td>
     <td>{{ obj.mon_host_dependency_templ | array_lookup:this.rest_data.mon_host_dependency_templ:'name' }}</td>
     <td>{{ obj.mon_host_cluster | array_lookup:this.rest_data.mon_host_cluster:'name' }}</td>
-    <td><input type="button" class="btn btn-primary" ng-click="edit($event, obj)" value="modify"/></td>
-    <td><input type="button" class="btn btn-danger" ng-show="delete_ok(obj)" ng-click="delete(obj)" value="delete"/></td>
+    <td><input type="button" class="btn btn-primary btn-xs" ng-click="edit($event, obj)" value="modify"/></td>
+    <td><input type="button" class="btn btn-danger btn-xs" ng-show="delete_ok(obj)" ng-click="delete(obj)" value="delete"/></td>
 </script>
 
 <script type="text/ng-template" id="mon_service_dependency_head.html">
@@ -204,11 +204,11 @@
     <td>{{ obj.dependent_mon_check_command | array_lookup:this.rest_data.mon_check_command:'name' }}</td>
     <td>{{ obj.mon_service_dependency_templ | array_lookup:this.rest_data.mon_service_dependency_templ:'name' }}</td>
     <td>{{ obj.mon_service_cluster | array_lookup:this.rest_data.mon_service_cluster:'name' }}</td>
-    <td><input type="button" class="btn btn-primary" ng-click="edit($event, obj)" value="modify"/></td>
-    <td><input type="button" class="btn btn-danger" ng-show="delete_ok(obj)" ng-click="delete(obj)" value="delete"/></td>
+    <td><input type="button" class="btn btn-primary btn-xs" ng-click="edit($event, obj)" value="modify"/></td>
+    <td><input type="button" class="btn btn-danger btn-xs" ng-show="delete_ok(obj)" ng-click="delete(obj)" value="delete"/></td>
 </script>
 
-<tabset>
+<tabset ng-cloack>
     <tab heading="Host Clusters">
         <div ng-controller="mon_host_cluster_base">
             <div ng-controller="mon_host_cluster">

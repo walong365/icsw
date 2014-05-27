@@ -1,4 +1,3 @@
-#!/usr/bin/python -Ot
 # -*- coding: utf-8 -*-
 #
 # Copyright (C) 2012-2014 Andreas Lang-Nevyjel
@@ -30,7 +29,7 @@ from django.http import HttpResponseRedirect
 from django.utils.decorators import method_decorator
 from django.views.decorators.cache import never_cache
 from django.views.generic import View
-from initat.cluster.backbone.models import cluster_setting, user
+from initat.cluster.backbone.models import cluster_setting, user, device_variable
 from initat.cluster.backbone.render import render_me
 from initat.cluster.frontend.forms import authentication_form
 from initat.cluster.frontend.helper_functions import update_session_object
@@ -71,12 +70,23 @@ def _get_login_hints():
         _hints = []
     return json.dumps(_hints)
 
+def _get_cluster_name():
+    try:
+        c_name = device_variable.objects.values_list("val_str", flat=True).get(
+            Q(name="CLUSTER_NAME") &
+            Q(device__device_group__cluster_device_group=True))
+    except device_variable.DoesNotExist:
+        return ""
+    else:
+        return c_name
+
 class sess_logout(View):
     def get(self, request):
         from_logout = request.user.is_authenticated()
         logout(request)
         login_form = authentication_form()
         return render_me(request, "login.html", {
+            "CLUSTER_NAME"      : _get_cluster_name(),
             "LOGIN_SCREEN_TYPE" : _get_login_screen_type(),
             "login_form"        : login_form,
             "from_logout"       : from_logout,
@@ -86,6 +96,7 @@ class sess_logout(View):
 class sess_login(View):
     def get(self, request):
         return render_me(request, "login.html", {
+            "CLUSTER_NAME"      : _get_cluster_name(),
             "LOGIN_SCREEN_TYPE" : _get_login_screen_type(),
             "login_form"        : authentication_form(),
             "login_hints"       : _get_login_hints(),
@@ -106,3 +117,4 @@ class sess_login(View):
             "LOGIN_SCREEN_TYPE" : _get_login_screen_type(),
             "login_form"        : login_form,
             "app_path"          : reverse("session:login")})()
+

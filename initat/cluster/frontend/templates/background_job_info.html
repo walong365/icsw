@@ -1,0 +1,65 @@
+{% extends "main.html" %}
+
+{% load i18n coffeescript crispy_forms_tags %}
+
+{% block angular %}{% include "angular/background_job_info.cs" %}{% endblock %}
+
+{% block title %}{% trans "Background job info" %}{% endblock %}
+
+{% block content %}
+
+<div id="icsw.background_job_info">
+
+{% verbatim %}
+
+<div ng-controller="info_ctrl">
+    <h2>Job info ({{ jobs.length }} entries)</h2>
+    <table class="table table-condensed table-hover" style="width:auto;">
+        <thead>
+            <tr>
+                <th>command</th>
+                <th>XML</th>
+                <th>created</th>
+                <th>user</th>
+                <th>state</th>
+                <th>cause</th>
+                <th>initiator</th>
+                <th>commands</th>
+                <th>valid until</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr><td colspan="12" paginator entries="jobs" pag_settings="pagSettings" per_page="15"></td></tr>
+            <tr ng-repeat="job in jobs | paginator:this" ng-class="get_line_class(job)">
+                <th>{{ job.command }}</th>
+                <td title="{{ job.command_xml }}">{{ job.command_xml | limit_text:10 }}</td>
+                <td>{{ get_time(job.date) }} ({{ get_diff_time(job.date) }})</td>
+                <td>{{ job.user }}</td>
+                <td>{{ job.state }}</td>
+                <td>{{ job.cause }}</td>
+                <td>{{ job.initiator }}</td>
+                <td>{{ job.num_servers || '-' }}</td>
+                <td>{{ get_time(job.valid_until) }}</td>
+            </tr>
+        </tbody>
+    </table>
+
+</div>
+
+{% endverbatim %}
+
+</div>
+
+<script>
+
+{% inlinecoffeescript %}
+
+angular.element(document).ready(() ->
+    angular.bootstrap($("div[id='icsw.background_job_info']"), ["icsw.background_job_info"])
+)
+
+{% endinlinecoffeescript %}
+
+</script>
+
+{% endblock %}

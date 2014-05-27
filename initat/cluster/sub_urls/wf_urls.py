@@ -61,6 +61,10 @@ config_patterns = patterns(
     url("^download_config/(?P<hash>.*)$", config_views.download_configs.as_view(), name="download_configs"),
     url("^upload_config$"       , config_views.upload_config.as_view()           , name="upload_config"),
     url("^xml/show_dev_vars"    , config_views.get_device_cvars.as_view()        , name="get_device_cvars"),
+    url("^xml/copy_mon$"        , config_views.copy_mon.as_view()                , name="copy_mon"),
+    url("^xml/delete_objects$"  , config_views.delete_objects.as_view()          , name="delete_objects"),
+    url("^get_cached_uploads$"  , config_views.get_cached_uploads.as_view()      , name="get_cached_uploads"),
+    url("^handle_cached_config$", config_views.handle_cached_config.as_view()    , name="handle_cached_config"),
 )
 
 boot_patterns = patterns(
@@ -106,6 +110,9 @@ monitoring_patterns = patterns(
     url("^get_node_status"     , monitoring_views.get_node_status.as_view()  , name="get_node_status"),
     url("^get_node_config"     , monitoring_views.get_node_config.as_view()  , name="get_node_config"),
     url("^build_info$"         , monitoring_views.build_info.as_view()       , name="build_info"),
+    url("^livestatus$"         , monitoring_views.livestatus.as_view()       , name="livestatus"),
+    url("^create_device$"      , monitoring_views.create_device.as_view()    , name="create_device"),
+    url("^resolve_name$"       , monitoring_views.resolve_name.as_view()     , name="resolve_name"),
 )
 
 user_patterns = patterns(
@@ -118,6 +125,8 @@ user_patterns = patterns(
     url("^change_obj_perm$"         , user_views.change_object_permission.as_view(), name="change_object_permission"),
     url("^account_info$"            , user_views.account_info.as_view()          , name="account_info"),
     url("^global_settings$"         , user_views.global_settings.as_view()       , name="global_settings"),
+    url("^background_info$"         , user_views.background_job_info.as_view()   , name="background_job_info"),
+    url("^chdc$"                    , user_views.clear_home_dir_created.as_view(), name="clear_home_dir_created"),
 )
 
 pack_patterns = patterns(

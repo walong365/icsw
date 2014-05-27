@@ -16,6 +16,7 @@ from lxml.builder import E # @UnresolvedImport
 import initat.cluster.backbone.models
 import json
 import logging
+import logging_tools
 
 logger = logging.getLogger("cluster.base")
 
@@ -74,16 +75,41 @@ class change_category(View):
     @method_decorator(xml_wrapper)
     def post(self, request):
         _post = request.POST
-        # new style
-        cur_obj = getattr(initat.cluster.backbone.models, _post["obj_type"]).objects.get(Q(pk=_post["obj_pk"]))
-        cur_sel = set(cur_obj.categories.filter(Q(full_name__startswith=_post["subtree"])).values_list("pk", flat=True))
-        new_sel = set(json.loads(_post["cur_sel"]))
-        # remove
-        to_del = [_entry for _entry in cur_sel - new_sel]
-        to_add = [_entry for _entry in new_sel - cur_sel]
-        if to_del:
-            cur_obj.categories.remove(*category.objects.filter(Q(pk__in=to_del)))
-        if to_add:
-            cur_obj.categories.add(*category.objects.filter(Q(pk__in=to_add)))
-        request.xml_response.info("added %d, removed %d" % (len(to_add), len(to_del)))
+        multi_mode = True if _post.get("multi", "False").lower()[0] in ["1", "t", "y"] else False
+        if multi_mode:
+            set_mode = True if int(_post["set"]) else False
+            sc_cat = category.objects.get(Q(pk=_post["cat_pk"]))
+            devs_added, devs_removed = ([], [])
+            for _obj in getattr(initat.cluster.backbone.models, _post["obj_type"]).objects.filter(Q(pk__in=json.loads(_post["obj_pks"]))).prefetch_related("categories"):
+                if set_mode and sc_cat not in _obj.categories.all():
+                    devs_added.append(_obj)
+                    _obj.categories.add(sc_cat)
+                    _obj.categories.remove(*[_cat for _cat in _obj.categories.all() if _cat != sc_cat and _cat.single_select()])
+                elif not set_mode and sc_cat in _obj.categories.all():
+                    devs_removed.append(_obj)
+                    _obj.categories.remove(sc_cat)
+            request.xml_response.info(
+                u"{}: added to {}, removed from {}".format(
+                    unicode(sc_cat),
+                    logging_tools.get_plural("device", len(devs_added)),
+                    logging_tools.get_plural("device", len(devs_removed)),
+                )
+            )
+        else:
+            cur_obj = getattr(initat.cluster.backbone.models, _post["obj_type"]).objects.get(Q(pk=_post["obj_pk"]))
+            cur_sel = set(cur_obj.categories.filter(Q(full_name__startswith=_post["subtree"])).values_list("pk", flat=True))
+            new_sel = set(json.loads(_post["cur_sel"]))
+            # remove
+            to_del = [_entry for _entry in cur_sel - new_sel]
+            to_add = [_entry for _entry in new_sel - cur_sel]
+            if to_del:
+                cur_obj.categories.remove(*category.objects.filter(Q(pk__in=to_del)))
+            if to_add:
+                cur_obj.categories.add(*category.objects.filter(Q(pk__in=to_add)))
+            request.xml_response.info(
+                "added {:d}, removed {:d}".format(
+                    len(to_add),
+                    len(to_del)
+                )
+            )
 

@@ -49,9 +49,8 @@ class overview(permission_required_mixin, View):
     @method_decorator(login_required)
     def get(self, request, *args, **kwargs):
         return render_me(request, "user_overview_tree.html", {
-            # "user_detail_form" : user_detail_form(),
             "group_detail_form" : group_detail_form(),
-            "user_detail_form" : user_detail_form(),
+            "user_detail_form"  : user_detail_form(),
             })()
 
 class sync_users(View):
@@ -59,7 +58,6 @@ class sync_users(View):
     @method_decorator(xml_wrapper)
     def post(self, request):
         # create homedirs
-        # FIXME: only create users for local server
         create_user_list = user.objects.exclude(Q(export=None)).filter(Q(home_dir_created=False) & Q(active=True) & Q(group__active=True)).select_related("export__device")
         logger.info("user homes to create: %d" % (len(create_user_list)))
         for create_user in create_user_list:
@@ -260,3 +258,20 @@ class global_settings(View):
         return render_me(request, "global_settings.html", {
             "form" : global_settings_form()
             })()
+
+class background_job_info(View):
+    @method_decorator(login_required)
+    @method_decorator(xml_wrapper)
+    def get(self, request):
+        return render_me(request, "background_job_info.html", {
+            })()
+
+class clear_home_dir_created(View):
+    @method_decorator(login_required)
+    @method_decorator(xml_wrapper)
+    def post(self, request):
+        _post = request.POST
+        user_pk = int(_post["user_pk"])
+        cur_user = user.objects.get(Q(pk=user_pk))
+        cur_user.home_dir_created = False
+        cur_user.save(update_fields=["home_dir_created"])

@@ -28,8 +28,10 @@ from django.views.generic import View
 from initat.cluster.frontend.helper_functions import xml_wrapper, contact_server
 from lxml.builder import E # @UnresolvedImports
 import datetime
-import logging
+import dateutil.parser
+import dateutil.tz
 import json
+import logging
 import server_command
 
 logger = logging.getLogger("cluster.rrd")
@@ -75,17 +77,16 @@ class graph_rrds(View):
             *[E.graph_key(graph_key) for graph_key in graph_keys if not graph_key.startswith("_")]
         )
         if "start_time" in _post:
-            start_time = datetime.datetime.strptime(_post["start_time"], "%Y-%m-%d %H:%M")
-            end_time = datetime.datetime.strptime(_post["end_time"], "%Y-%m-%d %H:%M")
+            start_time = dateutil.parser.parse(_post["start_time"])
+            end_time = dateutil.parser.parse(_post["end_time"])
         else:
-            start_time = datetime.datetime.now() - datetime.timedelta(4 * 3600)
-            end_time = datetime.datetime.now()
+            start_time = datetime.datetime.now(dateutil.tz.tzutc()) - datetime.timedelta(4 * 3600)
+            end_time = datetime.datetime.now(dateutil.tz.tzutc())
         srv_com["parameters"] = E.parameters(
-            E.start_time(_post.get("start_time",
-                                   start_time.strftime("%Y-%m-%d %H:%M"))),
-            E.end_time(_post.get("end_time",
-                                end_time.strftime("%Y-%m-%d %H:%M"))),
-            E.size(_post.get("size", "400x200"))
+            E.start_time(unicode(start_time)),
+            E.end_time(unicode(end_time)),
+            E.size(_post.get("size", "400x200")),
+            E.hide_zero("1" if _post.get("hide_zero").lower() in ["1", "true"] else "0"),
         )
         result = contact_server(request, "grapher", srv_com, timeout=30)
         if result:

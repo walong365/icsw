@@ -1,4 +1,3 @@
-#!/usr/bin/python -Ot
 # -*- coding: utf-8 -*-
 #
 # Copyright (C) 2012-2014 Andreas Lang-Nevyjel
@@ -140,7 +139,7 @@ class db_prefetch_mixin(object):
     def _mon_period_prefetch(self):
         return ["service_check_period"]
     def _device_related(self):
-        return ["domain_tree_node", "device_type", "device_group"]
+        return ["domain_tree_node", "device_type", "device_group", "mon_ext_host"]
     def _mon_check_command_prefetch(self):
         return ["exclude_devices", "categories"]
     def _mon_host_cluster_prefetch(self):
@@ -162,6 +161,10 @@ class db_prefetch_mixin(object):
             "categories", "config_str_set", "config_int_set", "config_blob_set",
             "config_bool_set", "config_script_set", "mon_check_command_set__categories", "mon_check_command_set__exclude_devices",
             "device_config_set"]
+    def _config_hint_prefetch(self):
+        return [
+            "config_var_hint_set",
+        ]
     def _mon_dist_master_prefetch(self):
         return ["mon_dist_slave_set"]
     def _macbootlog_related(self):
@@ -437,6 +440,8 @@ class csw_object_list(viewsets.ViewSet):
             _q = _q.select_related("device_type", "device_group"). \
                 filter(Q(enabled=True, device_group__enabled=True)). \
                 order_by("-device_group__cluster_device_group", "device_group__name", "-device_type__priority", "name")
+        if _key == "backbone.user":
+            _q = _q.select_related("group")
         return [csw_object(cur_obj.pk, self._get_name(_key, cur_obj), self._get_group(_key, cur_obj), self._tr_class(_key, cur_obj)) for cur_obj in _q.all()]
     def _get_name(self, _key, cur_obj):
         if _key == "backbone.device":

@@ -47,6 +47,21 @@ device_tree_base = device_module.controller("device_tree_base", ["$scope", "$com
             {"short" : "domain_tree_node", "url" : "{% url 'rest:domain_tree_node_list' %}"}
             {"short" : "device_sel", "url" : "{% url 'rest:device_selection_list' %}"}
         ]
+        $scope.hide_list = [
+            # short, full, default
+            ["tln", "TLN", false, "Top level node"]
+            ["rrd_store", "RRD store", false, "flag if sensor data is store on disk"]
+            ["passwd", "Password", false, "password set"]
+            ["mon_master", "MonMaster", false, "show monitoring master"]
+            ["boot_master", "BootMaster", false, "show boot master"]
+            ["curl", "cURL", false, "show cluster URL"]
+        ]
+        $scope.num_shown = (exclude_list) ->
+            exclude_list = exclude_list ? []
+            return (entry for entry of $scope.hide_lut when $scope.hide_lut[entry] and entry not in exclude_list).length
+        $scope.hide_lut = {}
+        for entry in $scope.hide_list
+            $scope.hide_lut[entry[0]] = entry[2]
         $scope.edit_map = {
             "device"       : "device_tree.html",
             "device_group" : "device_group_tree.html",

@@ -63,7 +63,6 @@ class get_boot_info_json(View):
     @method_decorator(xml_wrapper)
     def post(self, request):
         _post = request.POST
-        # option_dict = dict([(short, True if _post.get("opt_%s" % (short)) in ["true"] else False) for short, _long_opt, _t_class in OPTION_LIST])
         sel_list = _post.getlist("sel_list[]")
         dev_result = device.objects.filter(Q(pk__in=sel_list)).prefetch_related(
             "bootnetdevice__net_ip_set__network__network_device_type",
@@ -87,7 +86,7 @@ class get_boot_info_json(View):
             srv_com = server_command.srv_command(command="status")
             srv_com["devices"] = srv_com.builder(
                 "devices",
-                *[srv_com.builder("device", pk="%d" % (cur_dev.pk)) for cur_dev in dev_result])
+                *[srv_com.builder("device", pk="{:d}".format(cur_dev.pk)) for cur_dev in dev_result])
             result = contact_server(request, "mother", srv_com, timeout=10, log_result=False, connection_id="webfrontend_status")
         else:
             result = None
@@ -98,7 +97,7 @@ class get_boot_info_json(View):
             if call_mother:
                 if result is not None:
                     # copy from mother
-                    dev_node = result.xpath(".//ns:device[@pk='%d']" % (cur_dev.pk), smart_strings=False)
+                    dev_node = result.xpath(".//ns:device[@pk='{:d}']".format(cur_dev.pk), smart_strings=False)
                     if len(dev_node):
                         dev_node = dev_node[0]
                     else:
@@ -168,7 +167,6 @@ class update_device(APIView):
                     new_image = image.objects.get(Q(pk=dev_data["new_image"])) if dev_data.get("new_image", None) else None
                     if new_image != cur_dev.new_image:
                         cur_dev.new_image = new_image
-                        print "***"
                         update_list.add("image")
                 if _en["k"]:
                     new_kernel = kernel.objects.get(Q(pk=dev_data["new_kernel"])) if dev_data.get("new_kernel", None) else None
@@ -202,14 +200,18 @@ class update_device(APIView):
                             _bc = True
                     if _bc:
                         update_list.add("bootdevice")
-                        _mother_commands.add("alter_macaddr")
+                        _mother_commands.add("refresh")
                 if update_list:
                     _changed = True
                     _all_update_list |= update_list
                 if _changed:
+                    cur_dev._no_bg_job = True
                     cur_dev.save()
                     if cur_dev.bootnetdevice:
+                        # promote no_bg_job flag
+                        cur_dev.bootnetdevice.device = cur_dev
                         cur_dev.bootnetdevice.save()
+                    cur_dev._no_bg_job = False
                     # print cur_dev.new_kernel, cur_dev.new_image
         _lines = []
         if _mother_commands:
@@ -217,16 +219,18 @@ class update_device(APIView):
                 srv_com = server_command.srv_command(command=_mother_com)
                 srv_com["devices"] = srv_com.builder(
                     "devices",
-                    srv_com.builder("device", name=cur_dev.name, pk="%d" % (cur_dev.pk)))
+                    srv_com.builder("device", name=cur_dev.name, pk="{:d}".format(cur_dev.pk)))
                 _res, _log_lines = contact_server(request, "mother", srv_com, timeout=10, connection_id="webfrontend_refresh")
                 # print "*", _mother_com, _log_lines
                 _lines.extend(_log_lines)
         if _all_update_list:
             if len(all_devs) > 1:
-                dev_info_str = "%s: %s" % (logging_tools.get_plural("device", len(all_devs)), ", ".join([unicode(cur_dev) for cur_dev in all_devs]))
+                dev_info_str = "{}: {}".format(
+                    logging_tools.get_plural("device", len(all_devs)),
+                    ", ".join([unicode(cur_dev) for cur_dev in all_devs]))
             else:
                 dev_info_str = unicode(all_devs[0])
-            _lines.append((logging_tools.LOG_LEVEL_OK, "updated %s for '%s'" % (", ".join(_all_update_list), dev_info_str)))
+            _lines.append((logging_tools.LOG_LEVEL_OK, "updated {} for '{}'".format(", ".join(_all_update_list), dev_info_str)))
         response = Response(
             {
                 "log_lines" : _lines
@@ -244,7 +248,7 @@ class get_devlog_info(View):
         lp_dict = dict([(key, latest) for key, latest in _pk_log_list])
         devs = device.objects.filter(Q(pk__in=lp_dict.keys()))
         oldest_pk = min(lp_dict.values() + [0])
-        logger.info("request devlogs for %s, oldest devlog_pk is %d" % (
+        logger.info("request devlogs for {}, oldest devlog_pk is {:d}".format(
             logging_tools.get_plural("device", len(lp_dict)),
             oldest_pk))
         _lines = []
@@ -284,11 +288,11 @@ class soft_control(View):
         srv_com["devices"] = srv_com.builder(
             "devices",
             *[
-                srv_com.builder("device", soft_command=soft_state, pk="%d" % (cur_dev.pk))
+                srv_com.builder("device", soft_command=soft_state, pk="{:d}".format(cur_dev.pk))
                 for cur_dev in cur_devs])
         result = contact_server(request, "mother", srv_com, timeout=10, log_result=False)
         if result:
-            request.xml_response.info("sent %s to %s" % (soft_state, unicode(cur_dev)), logger)
+            request.xml_response.info("sent {} to {}".format(soft_state, unicode(cur_dev)), logger)
 
 class hard_control(View):
     @method_decorator(login_required)

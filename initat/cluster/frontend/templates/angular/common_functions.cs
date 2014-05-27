@@ -1,4 +1,4 @@
-{% load coffeescript %}
+{% load coffeescript staticfiles %}
 
 <script type="text/javascript">
 
@@ -48,7 +48,7 @@ icsw_paginator = """
         </div> per page,
     </span>
     <span ng-show="pagSettings.simple_filter_mode()">
-        filter <div class="form-group"><input ng-model="pagSettings.conf.filter" class="form-control input-sm""></input></div>,
+        filter <div class="form-group"><input ng-model="pagSettings.conf.filter" class="form-control input-sm" placeholder="filter..."></input></div>,
     </span>
 </form>
 """
@@ -75,6 +75,8 @@ class paginator_class
             per_page         : 10
             filtered_len     : 0
             unfiltered_len   : 0
+            # length currently shown in header
+            shown_len        : 0 
             num_pages        : 0
             start_idx        : 0
             end_idx          : 0
@@ -147,12 +149,15 @@ class paginator_class
         @conf.entries_per_page = (parseInt(entry) for entry in in_str.split(","))
     set_entries: (el_list) =>
         # can also be used to reapply the filter
-        @conf.unfiltered_len = el_list.length
+        #@conf.unfiltered_len = el_list.length
         el_list = @apply_filter(el_list)
-        @filtered_list = el_list
+        #@filtered_list = el_list
         @conf.init = true
-        @conf.filtered_len = el_list.length
+        @recalculate()
+        #@conf.filtered_len = el_list.length
+    recalculate: () =>
         pp = @conf.per_page
+        @conf.shown_len = @conf.filtered_len
         @conf.num_pages = parseInt((@conf.filtered_len + pp - 1) / pp)
         if @conf.num_pages > 0
             @conf.page_list = (idx for idx in [1..@conf.num_pages])
@@ -171,6 +176,7 @@ class paginator_class
         if @conf.filter_mode
             @conf.filter = ""
     apply_filter: (el_list) =>
+        @conf.unfiltered_len = el_list.length
         if @conf.filter_changed
             @conf.filter_changed(@)
         if @conf.filter_mode
@@ -178,6 +184,11 @@ class paginator_class
                 el_list = (entry for entry in el_list when @conf.filter_func()(entry, @$scope))
             else
                 el_list = @$filter("filter")(el_list, @conf.filter)
+        @conf.filtered_len = el_list.length
+        @filtered_list = el_list
+        if @conf.filtered_len != @conf.shown_len
+            # force recalculation of header
+            @recalculate()
         return el_list
 
 class shared_data_source
@@ -733,6 +744,27 @@ angular_add_mixin_list_controller = (module, name, settings) ->
             $scope.load()
     ])
 
+d3js_module = angular.module("icsw.d3", []
+).factory("d3_service", ["$document", "$q", "$rootScope",
+    ($document, $q, $rootScope) ->
+        d = $q.defer()
+        on_script_load = () ->
+            $rootScope.$apply(() -> d.resolve(window.d3))
+        script_tag = $document[0].createElement('script')
+        script_tag.type = "text/javascript" 
+        script_tag.async = true
+        script_tag.src = "{% static 'js/d3.min.js' %}"
+        script_tag.onreadystatechange = () ->
+            if this.readyState == 'complete'
+                on_script_load()
+        script_tag.onload = on_script_load
+        s = $document[0].getElementsByTagName('body')[0]
+        s.appendChild(script_tag)
+        return {
+            "d3" : () -> return d.promise
+        }
+])
+
 angular.module(
     "init.csw.filters", []
 ).filter(
@@ -805,9 +837,12 @@ angular.module(
         return (in_value) ->
             return if in_value then "set" else "not set"
 ).filter("limit_text", () ->
-    return (text, max_len) ->
+    return (text, max_len, show_info) ->
         if text.length > max_len
-            return text[0..max_len] + "..."
+            if show_info
+                return text[0..max_len] + "... (#{max_len}/#{text.length})"
+            else
+                return text[0..max_len] + "..."
         else
             return text
 ).filter("show_user", () ->
@@ -1117,6 +1152,24 @@ angular.module("ui.codemirror", []).constant("uiCodemirrorConfig", {}).directive
         }
 ])
 
+reload_sidebar_tree = (pk_list) ->
+    sidebar_div = $("div[id='icsw.sidebar.ctrl']")
+    # sidebar found ?
+    if sidebar_div.length
+        scope = angular.element(sidebar_div[0]).scope()
+        scope.$apply(() ->
+            scope.reload(pk_list)
+        )
+
+set_index_visibility = (flag) ->
+    index_div = $("div[id='icsw.index_app']")
+    # sidebar found ?
+    if index_div.length
+        scope = angular.element(index_div[0]).scope()
+        scope.$apply(() ->
+            scope.set_visibility(flag)
+        )
+
 root = exports ? this
 root.angular_edit_mixin = angular_edit_mixin
 root.angular_modal_mixin = angular_modal_mixin
@@ -1126,6 +1179,8 @@ root.angular_add_simple_list_controller = angular_add_simple_list_controller
 root.angular_add_mixin_list_controller = angular_add_mixin_list_controller
 root.build_lut = build_lut
 root.simple_modal_template = simple_modal_template
+root.reload_sidebar_tree = reload_sidebar_tree
+root.set_index_visibility = set_index_visibility
 
 {% endinlinecoffeescript %}
 

@@ -45,7 +45,7 @@
                 <td><input type="button" class="btn btn-xs btn-danger" value="delete" ng-click="delete_permission(perm)"></input></td>
             </tr>
             <tr ng-repeat="perm in get_object_permission_set()">
-                <td>local</td>'
+                <td>local</td>
                 <td>{{ perm.csw_object_permission.csw_permission | array_lookup:csw_permission_list:'name' }}</td>
                 <td>{{ get_perm_level(perm) }}</td>
                 <td>{{ get_perm_object(perm) }}</td>
@@ -106,7 +106,7 @@ class user_tree extends tree_config
         @show_selection_buttons = false
         @show_icons = true
         @show_select = false
-        @show_descendants = false
+        @show_descendants = true
         @show_childs = false
     get_name : (t_entry) ->
         ug = t_entry.obj
@@ -293,7 +293,20 @@ user_tree_module.controller("user_tree", ["$scope", "$compile", "$filter", "$tem
             $scope._edit_obj.object = null
             return []
         $scope.get_export_list = () ->
-            return (entry for entry in $scope.home_export_list)
+            return $scope.home_export_list
+        $scope.get_home_info_string = (entry) ->
+            cur_group = (_entry for _entry in $scope.group_list when _entry.idx == $scope._edit_obj.group)
+            if cur_group.length
+                cur_group = cur_group[0]
+            else
+                cur_group = null
+            if entry.createdir
+                info_string = "#{entry.homeexport} (created in #{entry.createdir}) on #{entry.full_name}"
+            else
+                info_string = "#{entry.homeexport} on #{entry.full_name}"
+            if cur_group
+                info_string = "#{info_string}, #{cur_group.homestart}/#{$scope._edit_obj.login}"
+            return info_string
         $scope.update_filter = () ->
             if not $scope.filterstr
                 cur_re = new RegExp("^$", "gi")
@@ -325,7 +338,6 @@ user_tree_module.controller("user_tree", ["$scope", "$compile", "$filter", "$tem
             #console.log obj_type, obj
         $scope.$on("icsw.set_password", (event, new_pwd) ->
             $scope._edit_obj.password = new_pwd
-            $scope.user_edit.modify()
         )
         $scope.change_password = () ->
             $scope.$broadcast("icsw.enter_password")
@@ -415,6 +427,23 @@ user_tree_module.controller("user_tree", ["$scope", "$compile", "$filter", "$tem
             return $scope.csw_permission_lut[perm.csw_permission].content_type.model
         $scope.get_perm_type = (perm) ->
             return if $scope.csw_permission_lut[perm.csw_permission].valid_for_object_level then "G / O" else "G"
+        $scope.get_home_dir_created_class = (obj) ->
+            if obj.home_dir_created
+                return "btn btn-sm btn-success"
+            else
+                return "btn btn-sm btn-danger"
+        $scope.get_home_dir_created_value = (obj) ->
+            return if obj.home_dir_created then "homedir exists" else "no homedir"
+        $scope.clear_home_dir_created = (obj) ->
+            call_ajax
+                url     : "{% url 'user:clear_home_dir_created' %}"
+                data    :
+                    "user_pk" : obj.idx
+                success : (xml) =>
+                    if parse_xml_response(xml)
+                        $scope.$apply(() ->
+                            obj.home_dir_created = false
+                        )
         $scope.get_perm_object = (perm) ->
             obj_perm = perm.csw_object_permission
             csw_perm = $scope.csw_permission_lut[obj_perm.csw_permission]

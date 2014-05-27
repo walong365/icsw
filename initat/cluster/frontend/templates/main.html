@@ -19,7 +19,7 @@
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
     
     <!-- Mobile viewport optimized: h5bp.com/viewport -->
-    <meta name="viewport" content="width=device-width">
+    <meta name="viewport" content="width=device-width"/>
     
     <!-- Place favicon.ico and apple-touch-icon.png in the root directory: mathiasbynens.be/notes/touch-icons -->
 
@@ -53,11 +53,7 @@
     
     </style>
     
-    {% block extra_stylesheets %}
-    {% endblock %}
-    
     {% block tab_js %}{% endblock %}
-    {% block forms_media %}{% endblock %}
     
     {% endblock %}
     
@@ -69,7 +65,7 @@
     {% block javascript %}
         <!--[if lt IE 9]>
             <script type="text/javascript" src='{% static "js/libs/modernizr-2.7.1.ie8.js" %}'></script>
-            <script type="text/javascript" src='{% static "js/libs/jquery-1.11.0.js" %}'></script>
+            <script type="text/javascript" src='{% static "js/libs/jquery-1.11.1.js" %}'></script>
             <script type="text/javascript" src='{% static "js/plugins.js" %}'></script>
             <script type="text/javascript" src='{% static "js/libs/html5shiv.js" %}'></script>
         <![endif]-->
@@ -77,10 +73,13 @@
         <script type="text/javascript">
         {% inlinecoffeescript %}
         # attach global permissions and license info to window object (== global variable)
-        window.CLUSTER_LICENSE = {{ CLUSTER_LICENSE | safe }};
+        window.CLUSTER_LICENSE = {{ CLUSTER_LICENSE | safe }}
         window.GLOBAL_PERMISSIONS = {{ GLOBAL_PERMISSIONS | safe }}
         window.OBJECT_PERMISSIONS = {{ OBJECT_PERMISSIONS | safe }}
         window.CURRENT_USER = {{ CURRENT_USER | safe }}
+        window.NUM_BACKGROUND_JOBS = {{ NUM_BACKGROUND_JOBS }}
+        window.SERVICE_TYPES = {{ SERVICE_TYPES | safe }}
+        window.INDEX_VIEW = {% if index_view %}true{% else %}false{% endif %}
         {% endinlinecoffeescript %}
         </script>
         {% compressed_js 'js_base' %}
@@ -103,8 +102,6 @@
 
 </head>
 <body>
-    <!-- Prompt IE 6/7 users to install Chrome Frame. Remove this if you support IE 6/7.
-         chromium.org/developers/how-tos/chrome-frame-getting-started -->
     <!--[if lt IE 8]><p class=chromeframe>Your browser is <em>ancient!</em> <a href="http://browsehappy.com/">Upgrade to a different browser</a> or <a href="http://www.google.com/chromeframe/?redirect=true">install Google Chrome Frame</a> to experience this site.</p><![endif]-->
     <header>
     {% block header %}
@@ -114,7 +111,7 @@
     {% block main %}
     {% block body %}
     {% if user.is_authenticated %}
-        <div class="ui-layout-north ">
+        <div class="ui-layout-north">
             {% include "menu.html" %}
         </div>
     {% endif %}
@@ -176,10 +173,7 @@
             $.blockUI.defaults.fadeIn  = 0
             $.blockUI.defaults.overlayCSS.opacity = 0.1
             
-        add_handlers_main = ->
-            init_layout()
-            init_blockUI()
-            # init noty
+        init_noty = ->
             $.noty.defaults = {
                 "layout" : "topRight"
                 "theme"  : "defaultTheme"
@@ -205,6 +199,10 @@
                 },
                 buttons: false
             }
+        add_handlers_main = ->
+            init_layout()
+            init_blockUI()
+            init_noty()
         
         $(document).ready(add_handlers_main)
         
@@ -213,24 +211,6 @@
         </script>
         {% endblock %}
     </footer>
-  
-  
-    <!-- JavaScript at the bottom for fast page loading -->
-  
-    <!-- Grab Google CDN's jQuery, with a protocol relative URL; fall back to local if offline -->
-    <!--script src="//ajax.googleapis.com/ajax/libs/jquery/1.7.1/jquery.min.js"></script-->
-    <!--script>window.jQuery || document.write('<script src="js/libs/jquery-1.7.1.min.js"><\/script>')</script-->
-  
-    <!-- scripts concatenated and minified via build script -->
-    <!-- end scripts -->
-  
-    <!-- Asynchronous Google Analytics snippet. Change UA-XXXXX-X to be your site's ID.
-         mathiasbynens.be/notes/async-analytics-snippet -->
-    <!--script>
-      var _gaq=[['_setAccount','UA-XXXXX-X'],['_trackPageview']];
-      (function(d,t){var g=d.createElement(t),s=d.getElementsByTagName(t)[0];
-      g.src=('https:'==location.protocol?'//ssl':'//www')+'.google-analytics.com/ga.js';
-      s.parentNode.insertBefore(g,s)}(document,'script'));
-    </script-->
+
 </body>
 </html>

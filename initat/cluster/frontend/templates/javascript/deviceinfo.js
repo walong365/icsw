@@ -8,6 +8,13 @@ root = exports ? this
 
 class device_info
     constructor: (@event, @dev_key, @addon_devices=[]) ->
+        if window.ICSW_DEV_INFO
+            window.ICSW_DEV_INFO.close()
+            @active_div = window.ICSW_DEV_INFO.active_div
+        else
+            @active_div = "general"
+        window.ICSW_DEV_INFO = @
+        @active_divs = []
     show: () =>
         @replace_div = {% if index_view %}true{% else %}false{% endif %}
         call_ajax
@@ -32,12 +39,15 @@ class device_info
                             $("#simplemodal-container").css("height", "auto")
                             $("#simplemodal-container").css("width", "auto")
                         onClose: =>
+                            # destroy scopes
+                            @close()
                             $.simplemodal.close()
-                {% if index_view %}
-                $("div#center_content").hide()
-                $("div#center_deviceinfo").show()
-                {% endif %} 
-                @dev_div.find("a[href='#general']").trigger("click")
+                @dev_div.find("a[href='##{@active_div}']").trigger("click")
+    close: () =>
+        # find all scopes and close them
+        for active_div in @active_divs
+            $(active_div).find(".ng-scope").scope().$destroy()
+        @active_divs = []
     get_pk_list: (with_md=true) =>
         # get all pks
         return [@dev_json.idx].concat(@addon_devices)
@@ -45,8 +55,7 @@ class device_info
         return if @permissions.find("permissions[permission='#{perm_name}']").length then true else false
     build_div: () =>
         if @addon_devices.length
-            num_devs = @addon_devices.length + 1
-            addon_text = " (#{num_devs})"
+            addon_text = " (#{@addon_devices.length + 1})"
         else
             addon_text = ""
         main_pk = @dev_json.idx
@@ -57,14 +66,18 @@ class device_info
     <div class="panel-heading">
         <ul class='nav nav-tabs' id="info_tab">
             <li><a href='#general'>General</a></li>
-            <li><a href='#category'>Category</a></li>
-            <li><a href='#location'>Location</a></li>
+            <li><a href='#category'>Category#{addon_text}</a></li>
+            <li><a href='#location'>Location#{addon_text}</a></li>
             <li><a href='#di_network'>Network#{addon_text}</a></li>
             <li><a href='#config'>Config#{addon_text}</a></li>
             <li><a href='#disk'>Disk#{addon_text}</a></li>
+{% if DJANGO_SERVICE_TYPES.md_config %}
             <li><a href='#livestatus'>Livestatus#{addon_text}</a></li>
             <li><a href='#monconfig'>MonConfig#{addon_text}</a></li>
+{% endif %}
+{% if DJANGO_SERVICE_TYPES.grapher %}
             <li><a href='#rrd'>Graphs#{addon_text}</a></li>
+{% endif %}
         </ul>
     </div>
     <div class="panel-body">
@@ -89,7 +102,7 @@ urn:uuid:{{ _edit_obj.uuid }}
             <div class="tab-pane" id="category">
                 <div id="icsw.device.config">
                     <div ng-controller="category_ctrl">
-                        <devicecategory devicepk='#{main_pk}'>
+                        <devicecategory devicepk='#{pk_list}'>
                             <tree treeconfig="cat_tree"></tree>
                         </devicecategory>
                     </div>
@@ -98,7 +111,7 @@ urn:uuid:{{ _edit_obj.uuid }}
             <div class="tab-pane" id="location">
                 <div id="icsw.device.config">
                     <div ng-controller="location_ctrl">
-                        <devicelocation devicepk='#{main_pk}'>
+                        <devicelocation devicepk='#{pk_list}'>
                             <tree treeconfig="loc_tree"></tree>
                         </devicelocation>
                     </div>
@@ -118,7 +131,7 @@ urn:uuid:{{ _edit_obj.uuid }}
                         <deviceconfig devicepk='#{pk_list}'>
                         </deviceconfig>
                     </div>
-                    {% if settings.INIT_PRODUCT_NAME = 'Corvus' %}
+                    {% if settings.INIT_PRODUCT_NAME = 'CORVUS' %}
                     <div ng-controller='config_vars_ctrl'>
                         <deviceconfigvars devicepk='#{pk_list}'>
                         </deviceconfigvars>
@@ -126,6 +139,15 @@ urn:uuid:{{ _edit_obj.uuid }}
                     {% endif %}
                 </div>
             </div>
+            <div class="tab-pane" id="disk">
+                <div id='icsw.device.config'>
+                    <div ng-controller='partinfo_ctrl'>
+                        <partinfo devicepk='#{pk_list}'>
+                        </partinfo>
+                    </div>
+                </div>
+            </div>
+{% if DJANGO_SERVICE_TYPES.md_config %}
             <div class="tab-pane" id="livestatus">
                 <div id='icsw.device.livestatus'>
                     <div ng-controller='livestatus_ctrl'>
@@ -142,6 +164,8 @@ urn:uuid:{{ _edit_obj.uuid }}
                     </div>
                 </div>
             </div>
+{% endif %}
+{% if DJANGO_SERVICE_TYPES.grapher %}
             <div class="tab-pane" id="rrd">
                 <div id='icsw.device.rrd'>
                     <div ng-controller='rrd_ctrl'>
@@ -150,14 +174,7 @@ urn:uuid:{{ _edit_obj.uuid }}
                     </div>
                 </div>
             </div>
-            <div class="tab-pane" id="disk">
-                <div id='icsw.device.config'>
-                    <div ng-controller='partinfo_ctrl'>
-                        <partinfo devicepk='#{pk_list}'>
-                        </partinfo>
-                    </div>
-                </div>
-            </div>
+{% endif %}
         </div>
     </div>
 </div>
@@ -178,6 +195,9 @@ urn:uuid:{{ _edit_obj.uuid }}
                     target_div = @dev_div.find("div[class='tab-pane'][id='#{t_href}'] > div[id^='icsw']")
                     # bootstrap angular (app == id of device)
                     angular.bootstrap(target_div, [target_div.attr("id")])
+                    @active_divs.push(target_div[0])
+                # store active div
+                @active_div = t_href
                 el.tab("show")
         )
     

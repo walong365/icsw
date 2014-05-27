@@ -42,25 +42,32 @@
         <tabset>
             <tab heading="configurations">
                 <configtable></configtable>
-                <div class="input-group row panel panel-default">
-                    <form action="{% url 'config:upload_config' %}" method="post" enctype="multipart/form-data" class="form-inline">{% csrf_token %}
-                        {% verbatim %}
-                        <div class="col-md-4">
+                <div class="row panel panel-default">
+                    {% verbatim %}
+                    <div class="col-md-4">
                         <input type="button" class="btn btn-success btn-sm" value="download selected configs" ng-show="pagSettings.conf.filtered_len > 0" ng-click="download_selected()"></input>
-                        </div>
-                        <div class="col-md-4">
-                        <input ng-model="upload_file" type="file" name="config"></input>
-                        </div>
-                        <div class="col-md-4">
-                        <input ng-show="upload_file" type="submit" class="btn btn-warning" value="upload" class="form-control"></input>
-                        </div>
-                        {% endverbatim %}
-                    </form>
+                    </div>
+                    <div class="col-md-4">
+                        <input ng-file-select type="file" name="config" class="btn btn-default btn-sm"></input>
+                    </div>
+                    <div class="col-md-4">
+                        <input type="button" ng-show="uploader.queue.length "class="btn btn-warning btn-sm" value="upload" ng-click="uploader.uploadAll()"></input>
+                    </div>
+                    {% endverbatim %}
                 </div>
             </tab>
             <tab heading="catalogs">
                 <catalogtable></catalogtable>
             </tab>
+            {% verbatim %}
+            <tab heading="uploads ({{ cached_uploads.length }})" ng-show="cached_uploads.length">
+                <form class="form-inline">
+                    Upload to catalog <select name="catalog" class="select form-control input-sm" ng-model="catalog" ng-options="value.idx as value.name for value in config_catalogs"></select>
+                </form>
+                <uploadinfo ng-repeat="entry in cached_uploads" upload="entry" catalog="catalog">
+                </uploadinfo>
+            </tab>
+            {% endverbatim %}
         </tabset>
     </div>
 </div>

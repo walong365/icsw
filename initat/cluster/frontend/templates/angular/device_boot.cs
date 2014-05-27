@@ -90,7 +90,7 @@ device_boot_template = """
 </table>
 <form class="form-inline">
     <div class="btn-group">
-        <input type="button" ng-class="{'btn btn-sm btn-success' : show_mbl, 'btn btn-sm' : !show_mbl}" value="macbootlog" ng-click="show_mbl = !show_mbl"></input>
+        <input type="button" ng-class="show_mbl && 'btn btn-sm btn-success' || 'btn btn-sm'" value="macbootlog" ng-click="show_mbl = !show_mbl"></input>
     </div>
 </form>
 <div ng-show="show_mbl">
@@ -230,7 +230,6 @@ device_boot_module.controller("boot_ctrl", ["$scope", "$compile", "$filter", "$t
                 if $scope.bootserver_list.length == 1
                     return " on bootserver " + $scope.mother_servers[$scope.bootserver_list[0]].full_name
                 else
-                    console.log "."
                     return ", " + $scope.bootserver_list.length + " bootservers"
             else
                 return ""
@@ -280,13 +279,16 @@ device_boot_module.controller("boot_ctrl", ["$scope", "$compile", "$filter", "$t
             else
                 return "warning"
         $scope.get_bootserver_info = (dev) ->
-            if $scope.bootserver_list.length > 1
-                if dev.bootserver of $scope.mother_servers
-                    return " (" + $scope.mother_servers[dev.bootserver].full_name + ")"
+            if dev.bootserver
+                if $scope.bootserver_list.length > 1
+                    if dev.bootserver of $scope.mother_servers
+                        return " (" + $scope.mother_servers[dev.bootserver].full_name + ")"
+                    else
+                        return " (N/A)"
                 else
-                    return " (N/A)"
+                    return ""
             else
-                return ""
+                return " (no BS)"
         $scope.num_selected_hc = () ->
             num_hc = 0
             for dev in $scope.devices
@@ -376,7 +378,7 @@ device_boot_module.controller("boot_ctrl", ["$scope", "$compile", "$filter", "$t
                     $timeout.cancel($scope.update_info_timeout)
                 prod_nets = (entry for entry in data[5] when entry.network_type_identifier == "p")
                 # check for number of bootservers
-                $scope.bootserver_list = _.uniq(entry.bootserver for entry in $scope.devices)
+                $scope.bootserver_list = _.uniq(entry.bootserver for entry in $scope.devices when entry.bootserver)
                 valid_states = []
                 idx = 0
                 for entry in data[4]

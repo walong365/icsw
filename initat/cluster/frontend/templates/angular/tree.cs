@@ -9,9 +9,9 @@
 _tree_root_node = """
 <ul class="dynatree-container">
     <span ng-show="!treeconfig.root_nodes.length">No entries</span>
-    <li ng-repeat="entry in (tree || treeconfig.root_nodes)" ng-class="{\'dynatree-lastsib\' : $last}">
+    <li ng-repeat="entry in (tree || treeconfig.root_nodes)" ng-class="$last && 'dynatree-lastsib' || ''">
         <subnode entry="entry" treeconfig="treeconfig"></subnode>
-        <subtree ng-if="entry.expand && entry.children.length" tree="entry.children" treeconfig="treeconfig"></subtree>
+        <subtree ng-if="entry.expand && entry.children.length && !entry.pruned" tree="entry.children" treeconfig="treeconfig"></subtree>
     </li>
 </ul>
 """
@@ -19,25 +19,25 @@ _tree_root_node = """
 _tree_root_node_single = """
 <ul class="dynatree-container">
     <span ng-show="!treeconfig.root_nodes.length">No entries</span>
-    <li ng-repeat="entry in (tree || treeconfig.root_nodes)" ng-class="{\'dynatree-lastsib\' : $last}">
+    <li ng-repeat="entry in (tree || treeconfig.root_nodes)" ng-class="$last && 'dynatree-lastsib' || ''">
         <subnode entry="entry" treeconfig="treeconfig"></subnode>
-        <subtreesingle ng-if="entry.expand && entry.children.length" tree="entry.children" treeconfig="treeconfig"></subtreesingle>
+        <subtreesingle ng-if="entry.expand && entry.children.length && !entry.pruned" tree="entry.children" treeconfig="treeconfig"></subtreesingle>
     </li>
 </ul>
 """
 
 _subtree_node = """
 <ul>
-    <li ng-repeat="entry in tree" ng-class="{\'dynatree-lastsib\' : $last}">
+    <li ng-repeat="entry in tree" ng-class="$last && 'dynatree-lastsib' || ''" ng-if="!entry.pruned">
         <subnode entry="entry" treeconfig="treeconfig"></subnode>
-        <subtree ng-if="entry.expand && entry.children.length" tree="entry.children" treeconfig="treeconfig"></subtree>
+        <subtree ng-if="entry.expand && entry.children.length && !entry.pruned" tree="entry.children" treeconfig="treeconfig"></subtree>
     </li>
 </ul>
 """
 
 _subtree_node_single = """
 <ul>
-    <li ng-repeat="entry in tree" ng-class="{\'dynatree-lastsib\' : $last}">
+    <li ng-repeat="entry in tree" ng-class="$last && 'dynatree-lastsib' || ''" ng-if="!entry.pruned">
         <subnode entry="entry" treeconfig="treeconfig"></subnode>
     </li>
 </ul>
@@ -48,7 +48,7 @@ _subnode = """
     <span ng-show="!entry._num_childs" class="dynatree-connector"></span>
     <span ng-show="entry._num_childs" class="dynatree-expander" ng-click="treeconfig.toggle_expand_node(entry)"></span>
     <span ng-if="treeconfig.show_select && entry._show_select" class="dynatree-checkbox" style="margin-left:2px;" ng-click="treeconfig.toggle_checkbox_node(entry)"></span>
-    <span ng-show="treeconfig.show_icons" class="dynatree-icon"></span>
+    <span ng-show="treeconfig.show_icons" ng-class="treeconfig.get_icon_class(entry)"></span>
     <div class="btn-group btn-group-xs" ng-show="entry._num_childs && treeconfig.show_selection_buttons">
         <input type="button" class="btn btn-success" value="S" ng-click="treeconfig.toggle_tree_state(entry, 1)" title="select subtree"></input>
         <input type="button" class="btn btn-primary" value="T" ng-click="treeconfig.toggle_tree_state(entry, 0)" title="toggle subtree selection"></input>
@@ -103,8 +103,12 @@ class tree_node
         @_sel_childs = 0
         # number of selected descendants
         @_sel_descendants = 0
+        # pruned (currently not shown)
+        @pruned = false
     set_selected: (flag, propagate=true) ->
-        # console.log @selected, flag, flag != @selected
+        # if _show_select is false ignore selection request
+        if not @_show_select
+            return
         change = flag != @selected
         if change
             if propagate and @linklist.length
@@ -140,8 +144,14 @@ class tree_node
         while cur_p
             cur_p._num_descendants += 1 + child._num_descendants
             cur_p = cur_p.parent
+    remove_child: (child) ->
+        @children = (entry for entry in @children when entry != child)
+        cur_p = @
+        while cur_p
+            cur_p._num_descendants -= 1 + child._num_descendants
+            cur_p = cur_p.parent
     recalc_num_descendants: () => 
-        @_num_childs = @children.length
+        @_num_childs = (_entry for _entry in @children when !_entry.pruned).length
         @_num_descendants = @_num_childs
         for child in @children
             @_num_descendants += child.recalc_num_descendants()
@@ -177,7 +187,7 @@ class tree_config
         @root_nodes = []
         @_node_idx = 0
         @_track_changes = false
-    selection_changed: () =>
+    selection_changed: (entry) =>
     clear_root_nodes: () =>
         @root_nodes = []
     handle_click: () =>
@@ -219,18 +229,13 @@ class tree_config
         for entry in @root_nodes
             @_prune(entry, keep_func)
     _prune: (entry, keep_func) =>
-        remove = true
-        new_childs = []
-        for sub_entry in entry.children
-            keep = false
-            if keep_func(sub_entry)
-                keep = true
-            if not @_prune(sub_entry, keep_func)
-                keep = true
-            if keep
-                new_childs.push(sub_entry)
-        entry.children = new_childs
-        return if entry.children.length then false else true
+        any_shown = keep_func(entry)
+        if not any_shown
+            for sub_entry in entry.children
+                if not @_prune(sub_entry, keep_func)
+                    any_shown = true
+        entry.pruned = !any_shown
+        return entry.pruned
     show_active: (keep=true) =>
         # make all selected nodes visible
         (@_show_active(entry, keep) for entry in @root_nodes)
@@ -268,11 +273,11 @@ class tree_config
                 # remove all other selections
                 cur_idx = entry._idx
                 @iter(
-                    (entry) ->
-                        if entry.selected and entry._idx != cur_idx
-                            entry.selected = false
+                    (_entry) ->
+                        if _entry.selected and _entry._idx != cur_idx
+                            _entry.selected = false
                 )
-            @selection_changed()
+            @selection_changed(entry)
     toggle_tree_state: (entry, flag, signal=true) =>
         if entry == undefined
             (@toggle_tree_state(_entry, flag, signal) for _entry in @root_nodes)
@@ -290,7 +295,7 @@ class tree_config
                 @toggle_tree_state(sub_entry, flag, false)
             if signal
                 @stop_tracking_changes()
-                @selection_changed()
+                @selection_changed(entry)
     toggle_expand_tree: (flag, only_selected) ->
         exp_flag = if flag == 1 then true else false
         (@_toggle_expand_tree(entry, exp_flag, only_selected) for entry in @root_nodes)
@@ -334,8 +339,12 @@ class tree_config
         (@_iter(child, cb_func, cb_data) for child in entry.children)
     clear_active: () =>
         @iter((entry) -> entry.active=false)
+    get_icon_class: (entry) ->
+        # override
+        return "dynatree-icon"
     get_span_class: (entry, last) ->
-        r_class = ["dynatree-node"]
+        r_class = []
+        r_class.push "dynatree-node"
         if entry.folder
             r_class.push "dynatree-folder"
         if entry.active

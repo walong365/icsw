@@ -74,7 +74,6 @@ angular_add_mixin_list_controller(
         # function dict, scope gets extended with it
         fn: 
             before_load: () ->
-                console.log "set"
                 es = this.edit_scope
                 es.ippager = es.fn_lut.paginatorSettings.get_paginator("iplist", es)
                 es.iplist = []

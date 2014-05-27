@@ -1,4 +1,3 @@
-#!/usr/bin/python -Ot
 # -*- coding: utf-8 -*-
 #
 # Copyright (C) 2012-2014 Andreas Lang-Nevyjel
@@ -51,7 +50,7 @@ class info_page(View):
         cur_routing = routing.srv_type_routing(force=True)
         return render_me(request, "info_page.html", {
             "routing" : json.dumps(cur_routing.resolv_dict),
-            "local_device" : unicode(cur_routing.local_device.full_name),
+            "local_device" : unicode(cur_routing.local_device.full_name if cur_routing.local_device is not None else "UNKNOWN"),
         })()
 
 class get_server_info(View):
@@ -68,9 +67,11 @@ class get_server_info(View):
                 _res["command"].attrib["server_name"] = _server[0]
                 _res["command"].attrib["server_id"] = "{:d}".format(_server[2])
                 _server_list.append(_res.tree)
+                _res.tree.tag = _res.tree.tag.split("}")[-1]
             else:
                 srv_com["command"].attrib["server_name"] = _server[0]
                 srv_com["command"].attrib["server_id"] = "{:d}".format(_server[2])
+                srv_com.tree.tag = srv_com.tree.tag.split("}")[-1]
                 _server_list.append(srv_com.tree)
         request.xml_response["result"] = _server_list
 

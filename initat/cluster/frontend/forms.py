@@ -43,7 +43,7 @@ class authentication_form(Form):
     helper.layout = Layout(
         Div(
             Fieldset(
-                "Please enter your login credentials",
+                "Please enter your login credentials {% if CLUSTER_NAME %} for {{ CLUSTER_NAME }}{% endif %}",
                 Field("username", placeholder="user name"),
                 Field("password", placeholder="password"),
             ),
@@ -203,7 +203,7 @@ class device_info_form(ModelForm):
     helper.ng_model = "_edit_obj"
     helper.layout = Layout(
         Div(
-            HTML("<h2>Device details for '{% verbatim %}{{ _edit_obj.name }}{% endverbatim %}'</h2>"),
+            HTML("<h2>Device details for '{% verbatim %}{{ _edit_obj.name }}'&nbsp;<img ng-if='_edit_obj.mon_ext_host' ng-src='{{ get_image_src() }}' width='16'></img></h2>{% endverbatim %}"),
             Fieldset(
                 "Device details",
                 Field("name"),
@@ -215,7 +215,7 @@ class device_info_form(ModelForm):
             # HTML("<ui-select ng-model='_edit_obj.domain_tree_node'><choices repeat='value in domain_tree_node'>dd</choices></ui-select>"),
             Fieldset(
                 "Monitor settings",
-                # Field("mon_device_templ", ng_options="value.idx as value.name for value in mon_device_templ_list", chosen=True),
+                Field("mon_device_templ", ng_options="value.idx as value.name for value in mon_device_templ_list", chosen=True),
                 Div(
                     Div(
                         Field("monitor_checks"),
@@ -487,7 +487,27 @@ class user_detail_form(ModelForm):
             "Groups / export entry",
             Field("group", ng_options="value.idx as value.groupname for value in group_list", chosen=True),
             Field("secondary_groups", ng_options="value.idx as value.groupname for value in group_list", chosen=True),
-            Field("export", ng_options="value.idx as value.info_string for value in get_export_list()", chosen=True),
+            # do not use chosen here (will not refresh on export_list change)
+            Field("export", ng_options="value.idx as get_home_info_string(value) for value in get_export_list()"), # , chosen=True),
+            HTML(
+"""
+        <div class='form-group'>
+            <label class='control-label col-sm-2'>
+                Homedir status
+            </label>
+            <div class='col-sm-8'>
+                {% verbatim %}<input
+                    type="button"
+                    ng-disabled="!_edit_obj.home_dir_created"
+                    ng-class="get_home_dir_created_class(_edit_obj)"
+                    ng-value="get_home_dir_created_value(_edit_obj)"
+                    ng-click="clear_home_dir_created(_edit_obj)"
+                    ></input>
+                {% endverbatim %}
+            </div>
+        </div>
+"""
+            ),
         ),
         Fieldset(
             "Aliases",
@@ -506,14 +526,15 @@ class user_detail_form(ModelForm):
         ),
         FormActions(
             Submit("modify", "Modify", css_class="btn-success", ng_show="!create_mode"),
-            Submit("create", "Create", css_class="btn-success", ng_show="create_mode"),
+            Submit("create", "Create", css_class="btn-success", ng_show="create_mode", ng_disabled="!_edit_obj.password"),
             HTML("&nbsp;"),
             Button("close", "close", css_class="btn-primary", ng_click="user_edit.close_modal()", ng_show="!create_mode"),
             HTML("&nbsp;"),
             Button("delete", "delete", css_class="btn-danger", ng_click="user_edit.delete_obj(_edit_obj)", ng_show="!create_mode"),
             HTML("&nbsp;"),
             Button("change password", "change password", css_class="btn-warning", ng_click="change_password()", ng_show="!create_mode"),
-            Button("set password", "set password", css_class="btn-warning", ng_click="change_password()", ng_show="create_mode"),
+            Button("set password", "set password", css_class="btn-warning", ng_click="change_password()", ng_show="create_mode && !_edit_obj.password"),
+            Button("change password", "change password", css_class="btn-warning", ng_click="change_password()", ng_show="create_mode && _edit_obj.password"),
         ),
     )
     def __init__(self, *args, **kwargs):
@@ -661,7 +682,7 @@ class kernel_form(ModelForm):
                 {% verbatim %}<input
                     type="button"
                     disabled="disabled"
-                    ng-class="{'btn btn-sm btn-danger' : !edit_obj.stage1_lo_present, 'btn btn-sm btn-success' : edit_obj.stage1_lo_present}"
+                    ng-class="edit_obj.stage1_lo_present && 'btn btn-sm btn-success' || 'btn btn-sm btn-danger'"
                     ng-value="fn.get_flag_value(edit_obj, 'stage1_lo_present')"
                     ></input>{% endverbatim %}
             </div>
@@ -674,7 +695,7 @@ class kernel_form(ModelForm):
                 {% verbatim %}<input
                     type="button"
                     disabled="disabled"
-                    ng-class="{'btn btn-sm btn-danger' : !edit_obj.stage1_cpio_present, 'btn btn-sm btn-success' : edit_obj.stage1_cpio_present}"
+                    ng-class="edit_obj.stage1_cpio_present && 'btn btn-sm btn-success' || 'btn btn-sm btn-danger'"
                     ng-value="fn.get_flag_value(edit_obj, 'stage1_cpio_present')"
                     ></input>{% endverbatim %}
             </div>
@@ -687,7 +708,7 @@ class kernel_form(ModelForm):
                 {% verbatim %}<input
                     type="button"
                     disabled="disabled"
-                    ng-class="{'btn btn-sm btn-danger' : !edit_obj.stage1_cramfs_present, 'btn btn-sm btn-success' : edit_obj.stage1_cramfs_present}"
+                    ng-class="edit_obj.stage1_cramfs_present && 'btn btn-sm btn-success' || 'btn btn-sm btn-danger'"
                     ng-value="fn.get_flag_value(edit_obj, 'stage1_cramfs_present')"
                     ></input>{% endverbatim %}
             </div>
@@ -700,7 +721,7 @@ class kernel_form(ModelForm):
                 {% verbatim %}<input
                     type="button"
                     disabled="disabled"
-                    ng-class="{'btn btn-sm btn-danger' : !edit_obj.stage2_present, 'btn btn-sm btn-success' : edit_obj.stage2_present}"
+                    ng-class="edit_obj.stage2_present && 'btn btn-sm btn-success' || 'btn btn-sm btn-danger'"
                     ng-value="fn.get_flag_value(edit_obj, 'stage2_present')"
                     ></input>{% endverbatim %}
             </div>
@@ -767,8 +788,9 @@ class network_form(ModelForm):
                 Field("network_device_type", ng_options="value.idx as value.identifier for value in rest_data.network_device_types", chosen=True),
             ),
             Fieldset(
-                "Flags", # {% verbatim %}{{ _edit_obj }}{% endverbatim %}",
+                "Flags and priority", # {% verbatim %}{{ _edit_obj }}{% endverbatim %}",
                 Field("enforce_unique_ips"),
+                Field("gw_pri"),
             ),
             FormActions(
                 Submit("submit", "", css_class="primaryAction", ng_value="action_string"),
@@ -777,7 +799,7 @@ class network_form(ModelForm):
     class Meta:
         model = network
         fields = ("identifier", "network", "netmask", "broadcast", "gateway", "master_network", \
-            "network_type", "network_device_type", "enforce_unique_ips",)
+            "network_type", "network_device_type", "enforce_unique_ips", "gw_pri",)
 
 class network_type_form(ModelForm):
     helper = FormHelper()
@@ -1185,22 +1207,27 @@ class mon_service_templ_form(ModelForm):
                 css_class="row",
             ),
             Fieldset(
+                "Freshness settings",
+                Field("check_freshness"),
+                Field("freshness_threshold", wrapper_ng_show="edit_obj.check_freshness"),
+            ),
+            Fieldset(
                 "Flap settings",
                 Field("flap_detection_enabled"),
             ),
             FormActions(
-                Field("low_flap_threshold", min=0, max=100),
-                Field("high_flap_threshold", min=0, max=100),
+                Field("low_flap_threshold", min=0, max=100, wrapper_ng_show="edit_obj.flap_detection_enabled"),
+                Field("high_flap_threshold", min=0, max=100, wrapper_ng_show="edit_obj.flap_detection_enabled"),
             ),
             Div(
                 Div(
-                    Field("flap_detect_ok"),
-                    Field("flap_detect_warn"),
+                    Field("flap_detect_ok", wrapper_ng_show="edit_obj.flap_detection_enabled"),
+                    Field("flap_detect_warn", wrapper_ng_show="edit_obj.flap_detection_enabled"),
                     css_class="col-md-6",
                 ),
                 Div(
-                    Field("flap_detect_critical"),
-                    Field("flap_detect_unknown"),
+                    Field("flap_detect_critical", wrapper_ng_show="edit_obj.flap_detection_enabled"),
+                    Field("flap_detect_unknown", wrapper_ng_show="edit_obj.flap_detection_enabled"),
                     css_class="col-md-6",
                 ),
                 css_class="row",
@@ -1373,21 +1400,26 @@ class mon_device_templ_form(ModelForm):
                 css_class="row",
             ),
             Fieldset(
+                "Freshness settings",
+                Field("check_freshness"),
+                Field("freshness_threshold", wrapper_ng_show="edit_obj.check_freshness"),
+            ),
+            Fieldset(
                 "Flap settings",
                 Field("flap_detection_enabled"),
             ),
             FormActions(
-                Field("low_flap_threshold", min=0, max=100),
-                Field("high_flap_threshold", min=0, max=100),
+                Field("low_flap_threshold", min=0, max=100, wrapper_ng_show="edit_obj.flap_detection_enabled"),
+                Field("high_flap_threshold", min=0, max=100, wrapper_ng_show="edit_obj.flap_detection_enabled"),
             ),
             Div(
                 Div(
-                    Field("flap_detect_up"),
-                    Field("flap_detect_down"),
+                    Field("flap_detect_up", wrapper_ng_show="edit_obj.flap_detection_enabled"),
+                    Field("flap_detect_down", wrapper_ng_show="edit_obj.flap_detection_enabled"),
                     css_class="col-md-6",
                 ),
                 Div(
-                    Field("flap_detect_unreachable"),
+                    Field("flap_detect_unreachable", wrapper_ng_show="edit_obj.flap_detection_enabled"),
                     css_class="col-md-6",
                 ),
                 css_class="row",
@@ -1772,7 +1804,7 @@ class package_action_form(Form):
     helper.label_class = 'col-sm-3'
     helper.field_class = 'col-sm-7'
     helper.ng_model = "edit_obj"
-    target_state = ChoiceField()
+    target_state = ChoiceField(required=False)
     nodeps_flag = ChoiceField(required=False)
     force_flag = ChoiceField(required=False)
     image_dep = ChoiceField(required=False)
@@ -2107,9 +2139,12 @@ class config_form(ModelForm):
         HTML("<h2>Configuration '{% verbatim %}{{ _edit_obj.name }}{% endverbatim %}'</h2>"),
             Fieldset(
                 "Basic settings",
-                Field("name", wrapper_class="ng-class:form_error('name')"),
+                Field("name", wrapper_class="ng-class:form_error('name')", typeahead="hint for hint in get_config_hints() | filter:get_name_filter()"),
                 Field("description"),
                 Field("parent_config", ng_options="value.idx as value.name for value in this.get_valid_parents()", chosen=True),
+            ),
+            HTML(
+                "<div ng-bind-html='show_config_help()'></div>",
             ),
             Fieldset(
                 "other settings",
@@ -2172,9 +2207,12 @@ class config_str_form(ModelForm):
         HTML("<h2>String var '{% verbatim %}{{ _edit_obj.name }}{% endverbatim %}'</h2>"),
             Fieldset(
                 "Basic settings",
-                Field("name", wrapper_class="ng-class:form_error('name')"),
+                Field("name", wrapper_class="ng-class:form_error('name')", typeahead="hint for hint in get_config_var_hints(_config) | filter:get_name_filter()"),
                 Field("description"),
                 Field("value"),
+            ),
+            HTML(
+                "<div ng-bind-html='show_config_var_help()'></div>",
             ),
             FormActions(
                 Submit("submit", "", css_class="primaryAction", ng_value="action_string"),
@@ -2197,9 +2235,12 @@ class config_int_form(ModelForm):
         HTML("<h2>Integer var '{% verbatim %}{{ _edit_obj.name }}{% endverbatim %}'</h2>"),
             Fieldset(
                 "Basic settings",
-                Field("name", wrapper_class="ng-class:form_error('name')"),
+                Field("name", wrapper_class="ng-class:form_error('name')", typeahead="hint for hint in get_config_var_hints(_config) | filter:get_name_filter()"),
                 Field("description"),
                 Field("value"),
+            ),
+            HTML(
+                "<div ng-bind-html='show_config_var_help()'></div>",
             ),
             FormActions(
                 Submit("submit", "", css_class="primaryAction", ng_value="action_string"),
@@ -2222,9 +2263,12 @@ class config_bool_form(ModelForm):
         HTML("<h2>Bool var '{% verbatim %}{{ _edit_obj.name }}{% endverbatim %}'</h2>"),
             Fieldset(
                 "Basic settings",
-                Field("name", wrapper_class="ng-class:form_error('name')"),
+                Field("name", wrapper_class="ng-class:form_error('name')", typeahead="hint for hint in get_config_var_hints(_config) | filter:get_name_filter()"),
                 Field("description"),
                 Field("value", min=0, max=1),
+            ),
+            HTML(
+                "<div ng-bind-html='show_config_var_help()'></div>",
             ),
             FormActions(
                 Submit("submit", "", css_class="primaryAction", ng_value="action_string"),
@@ -2380,11 +2424,19 @@ class netdevice_form(ModelForm):
                 Field("inter_device_routing"),
             ),
             Fieldset(
-                "buttons",
-                Button("show ethtool", "show ethtool", ng_click="_edit_obj.show_ethtool = !_edit_obj.show_ethtool", ng_class="{'btn btn-sm btn-success' : !_edit_obj.show_ethtool, 'btn btn-sm' : _edit_obj.show_ethtool}"),
-                Button("show hardware", "show hardware", ng_click="_edit_obj.show_hardware = !_edit_obj.show_hardware", ng_class="{'btn btn-sm btn-success' : !_edit_obj.show_hardware, 'btn btn-sm' : _edit_obj.show_hardware}"),
-                Button("show vlan", "show vlan", ng_click="_edit_obj.show_vlan = !_edit_obj.show_vlan", ng_class="{'btn btn-sm btn-success' : !_edit_obj.show_vlan, 'btn btn-sm' : _edit_obj.show_vlan}"),
-                Button("show mac", "show mac", ng_click="_edit_obj.show_mac = !_edit_obj.show_mac", ng_class="{'btn btn-sm btn-success' : !_edit_obj.show_mac, 'btn btn-sm' : _edit_obj.show_mac}"),
+                "",
+                Button("show ethtool", "show ethtool", ng_click="_edit_obj.show_ethtool = !_edit_obj.show_ethtool",
+                    ng_class="_edit_obj.show_ethtool && 'btn btn-sm btn-success' || 'btn btn-sm'",
+                ),
+                Button("show hardware", "show hardware", ng_click="_edit_obj.show_hardware = !_edit_obj.show_hardware",
+                    ng_class="_edit_obj.show_hardware && 'btn btn-sm btn-success' || 'btn btn-sm'",
+                ),
+                Button("show vlan", "show vlan", ng_click="_edit_obj.show_vlan = !_edit_obj.show_vlan",
+                    ng_class="_edit_obj.show_vlan && 'btn btn-sm btn-success' || 'btn btn-sm'",
+                ),
+                Button("show mac", "show mac", ng_click="_edit_obj.show_mac = !_edit_obj.show_mac",
+                    ng_class="_edit_obj.show_mac && 'btn btn-sm btn-success' || 'btn btn-sm'",
+                ),
             ),
             Fieldset(
                 "hardware settings",
@@ -2755,6 +2807,33 @@ class device_network_scan_form(Form):
     strict_mode = BooleanField(required=False)
     helper.layout = Layout(
         HTML("<h2>Scan device</h2>"),
+            Fieldset(
+                "Base data",
+                Field("scan_address"),
+            ),
+            Fieldset(
+                "Flags",
+                Field("strict_mode"),
+            ),
+            FormActions(
+                Button("scan", "scan", css_class="btn btn-sm btn-primary", ng_click="fetch_device_network()"),
+                Submit("cancel", "cancel", css_class="btn btn-sm btn-warning"),
+            ),
+        )
+
+class create_device_form(Form):
+    helper = FormHelper()
+    helper.form_id = "form"
+    helper.form_name = "form"
+    helper.form_class = 'form-horizontal'
+    helper.label_class = 'col-sm-3'
+    helper.field_class = 'col-sm-7'
+    helper.ng_model = "_edit_obj"
+    helper.ng_submit = "cur_edit.modify(this)"
+    scan_address = CharField(max_length=128)
+    strict_mode = BooleanField(required=False)
+    helper.layout = Layout(
+        HTML("<h2>Create new device</h2>"),
             Fieldset(
                 "Base data",
                 Field("scan_address"),

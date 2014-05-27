@@ -28,18 +28,22 @@ from django.db.models import Q
 from django.http import HttpResponseRedirect
 from django.utils.decorators import method_decorator
 from django.views.generic import View
-from initat.cluster.backbone.models import device
+from initat.cluster.backbone.models import device, device_type, domain_name_tree, netdevice, \
+    net_ip, peer_information, mon_ext_host
 from initat.cluster.frontend.forms import mon_period_form, mon_notification_form, mon_contact_form, \
     mon_service_templ_form, host_check_command_form, mon_contactgroup_form, mon_device_templ_form, \
     mon_host_cluster_form, mon_service_cluster_form, mon_host_dependency_templ_form, \
     mon_service_esc_templ_form, mon_device_esc_templ_form, mon_service_dependency_templ_form, \
-    mon_host_dependency_form, mon_service_dependency_form, device_monitoring_form
+    mon_host_dependency_form, mon_service_dependency_form, device_monitoring_form, \
+    device_group
 from initat.cluster.frontend.helper_functions import contact_server, xml_wrapper
 from initat.cluster.backbone.render import permission_required_mixin, render_me
 from lxml.builder import E # @UnresolvedImports
 import base64
 import json
 import logging
+import process_tools
+import socket
 import logging_tools
 import server_command
 
@@ -171,16 +175,138 @@ class get_node_status(View):
         )
         result = contact_server(request, "md-config", srv_com, timeout=30)
         if result:
-            node_results = result.xpath(".//node_results", smart_strings=False)
-            if len(node_results):
-                node_results = node_results[0]
-                if len(node_results):
-                    # first device
-                    request.xml_response["result"] = E.node_results(
-                        *[E.node_result(
-                            *[E.result(cur_res.attrib.pop("plugin_output"), **cur_res.attrib) for cur_res in node_result],
-                            **node_result.attrib
-                        ) for node_result in node_results]
-                    )
+            host_results = result.xpath(".//ns:host_result/text()", smart_strings=False)
+            service_results = result.xpath(".//ns:service_result/text()", smart_strings=False)
+            if len(host_results) + len(service_results):
+                # import pprint
+                # pprint.pprint(json.loads(node_results[0]))
+                # simply copy json dump
+                request.xml_response["host_result"] = host_results[0]
+                request.xml_response["service_result"] = service_results[0]
             else:
-                request.xml_response.error("no node_results", logger=logger)
+                request.xml_response.error("no service or node_results", logger=logger)
+
+class livestatus(View):
+    @method_decorator(login_required)
+    def get(self, request):
+        return render_me(
+            request, "monitoring_livestatus.html", {
+                }
+        )()
+
+class resolve_name(View):
+    @method_decorator(xml_wrapper)
+    def post(self, request):
+        fqdn = request.POST["fqdn"]
+        if fqdn.strip():
+            try:
+                _ip = socket.gethostbyname(fqdn)
+            except:
+                pass
+            else:
+                logger.info(u"resolved {} to {}".format(fqdn, _ip))
+                request.xml_response["ip"] = _ip
+
+class create_device(permission_required_mixin, View):
+    all_required_permissions = ["backbone.user.modify_tree"]
+    @method_decorator(login_required)
+    def get(self, request):
+        return render_me(
+            request, "create_new_device.html", {
+            }
+        )()
+
+    @method_decorator(login_required)
+    @method_decorator(xml_wrapper)
+    def post(self, request):
+        _post = request.POST
+        device_data = json.loads(_post["device_data"])
+        print device_data
+        try:
+            cur_dg = device_group.objects.get(Q(name=device_data["device_group"]))
+        except device_group.DoesNotExist:
+            try:
+                cur_dg = device_group.objects.create(
+                    name=device_data["device_group"]
+                    )
+            except:
+                request.xml_response.error(
+                    u"cannot create new device group: {}".format(
+                        process_tools.get_except_info()
+                    ),
+                    logger=logger
+                )
+                cur_dg = None
+            else:
+                request.xml_response.info(u"created new device group '{}'".format(unicode(cur_dg)), logger=logger)
+        if cur_dg is not None:
+            dnt = domain_name_tree()
+            if device_data["full_name"].count("."):
+                short_name, domain_name = device_data["full_name"].split(".", 1)
+                dnt_node = dnt.add_domain(domain_name)
+            else:
+                short_name = device_data["full_name"]
+                dnt_node = None
+            try:
+                cur_dev = device.objects.get(Q(name=short_name) & Q(domain_tree_node=dnt_node))
+            except device.DoesNotExist:
+                # check image
+                if device_data["icon_name"].strip():
+                    try:
+                        cur_img = mon_ext_host.objects.get(Q(name=device_data["icon_name"]))
+                    except mon_ext_host.DoesNotExist:
+                        cur_img = None
+                    else:
+                        pass
+                try:
+                    cur_dev = device.objects.create(
+                        device_group=cur_dg,
+                        device_type=device_type.objects.get(Q(identifier="H")),
+                        domain_tree_node=dnt_node,
+                        name=short_name,
+                        mon_resolve_name=device_data["resolve_via_ip"],
+                        comment=device_data["comment"],
+                        mon_ext_host=cur_img,
+                    )
+                except:
+                    request.xml_response.error(
+                        u"cannot create new device: {}".format(
+                            process_tools.get_except_info()
+                        ),
+                        logger=logger
+                    )
+                    cur_dev = None
+                else:
+                    request.xml_response.info(u"created new device '{}'".format(unicode(cur_dev)), logger=logger)
+            else:
+                request.xml_response.warn(u"device {} already exists".format(unicode(cur_dev)), logger=logger)
+            if cur_dev is not None:
+                try:
+                    cur_nd = netdevice.objects.get(Q(device=cur_dev) & Q(devname='eth0'))
+                except netdevice.DoesNotExist:
+                    cur_nd = netdevice.objects.create(
+                        devname="eth0",
+                        device=cur_dev,
+                        routing=device_data["routing_capable"],
+                        )
+                    if device_data["peer"]:
+                        peer_information.objects.create(
+                            s_netdevice=cur_nd,
+                            d_netdevice=netdevice.objects.get(Q(pk=device_data["peer"])),
+                            penalty=1,
+                        )
+                try:
+                    cur_ip = net_ip.objects.get(Q(netdevice=cur_nd) & Q(ip=device_data["ip"]))
+                except net_ip.DoesNotExist:
+                    cur_ip = net_ip(
+                        netdevice=cur_nd,
+                        ip=device_data["ip"],
+                        domain_tree_node=dnt_node,
+                    )
+                    cur_ip.create_default_network = True
+                    try:
+                        cur_ip.save()
+                    except:
+                        request.xml_response.error(u"cannot create IP: {}".format(process_tools.get_except_info()), logger=logger)
+                        cur_ip = None
+
