@@ -1,4 +1,3 @@
-#!/usr/bin/python-init -Otu
 # -*- coding: utf-8 -*-
 #
 # Copyright (C) 2012-2014 Andreas Lang-Nevyjel
@@ -97,31 +96,44 @@ class srv_type_routing(object):
             if "_local_device" not in _resolv_dict:
                 # old version, recalc
                 _resolv_dict = self._build_resolv_dict()
-        self._local_device = device.objects.get(Q(pk=_resolv_dict["_local_device"][0]))
+        if "_local_device" in _resolv_dict:
+            self._local_device = device.objects.get(Q(pk=_resolv_dict["_local_device"][0]))
+        else:
+            self._local_device = None
         self._resolv_dict = _resolv_dict
     def update(self, force=False):
         if not cache.get(self.ROUTING_KEY) or force:
             self.logger.info("update srv_type_routing")
             self._resolv_dict = self._build_resolv_dict()
-            self._local_device = device.objects.get(Q(pk=self._resolv_dict["_local_device"][0]))
+            if "_local_device" in self._resolv_dict:
+                self._local_device = device.objects.get(Q(pk=self._resolv_dict["_local_device"][0]))
+            else:
+                self._local_device = None
     def has_type(self, srv_type):
         return srv_type in self._resolv_dict
+    @property
+    def service_types(self):
+        return [key for key in self._resolv_dict.keys() if not key.startswith("_")]
     def get_connection_string(self, srv_type, server_id=None):
-        # server list
-        _srv_list = self._resolv_dict[srv_type]
-        if server_id:
-            # filter
-            _found_srv = [entry for entry in _srv_list if entry[2] == server_id]
-            if not _found_srv:
-                self.logger.critical("no server_id {:d} found for srv_type {}, taking first one".format(server_id, srv_type))
+        if srv_type in self._resolv_dict:
+            # server list
+            _srv_list = self._resolv_dict[srv_type]
+            if server_id:
+                # filter
+                _found_srv = [entry for entry in _srv_list if entry[2] == server_id]
+                if not _found_srv:
+                    self.logger.critical("no server_id {:d} found for srv_type {}, taking first one".format(server_id, srv_type))
+                    _found_srv = _srv_list
+            else:
                 _found_srv = _srv_list
+            # no server id, take first one
+            return "tcp://{}:{:d}".format(
+                _found_srv[0][1],
+                _SRV_TYPE_PORT_MAPPING[srv_type],
+            )
         else:
-            _found_srv = _srv_list
-        # no server id, take first one
-        return "tcp://{}:{:d}".format(
-            _found_srv[0][1],
-            _SRV_TYPE_PORT_MAPPING[srv_type],
-        )
+            self.logger.critical("no srv_type {} defined".format(srv_type))
+            return None
     @property
     def resolv_dict(self):
         return dict([(key, value) for key, value in self._resolv_dict.iteritems() if not key.startswith("_")])
@@ -198,7 +210,8 @@ class srv_type_routing(object):
             # format: device name, device IP, device_pk, penalty
             _resolv_dict[key] = [_v2[1] for _v2 in sorted([(_v[3], _v) for _v in value])]
         # set local device
-        _resolv_dict["_local_device"] = (_myself.device.pk,)
+        if _myself.device is not None:
+            _resolv_dict["_local_device"] = (_myself.device.pk,)
         # valid for 15 minutes
         cache.set(self.ROUTING_KEY, json.dumps(_resolv_dict), 60 * 15)
         return _resolv_dict

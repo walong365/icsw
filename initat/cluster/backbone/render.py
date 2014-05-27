@@ -1,16 +1,38 @@
-#!/usr/bin/python -Otu
+# -*- coding: utf-8 -*-
+#
+# Copyright (C) 2014 Andreas Lang-Nevyjel
+#
+# Send feedback to: <lang-nevyjel@init.at>
+#
+# This file is part of cluster-backbone-sql
+#
+# This program is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License Version 2 as
+# published by the Free Software Foundation.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software
+# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+#
 
 from django.conf import settings
 from django.contrib.auth.decorators import login_required
 from django.core.exceptions import ImproperlyConfigured
 from django.core.urlresolvers import reverse
+from django.db.models import Q
 from django.shortcuts import render_to_response, redirect
 from django.template.loader import render_to_string
 from django.utils.decorators import method_decorator
-from initat.cluster.backbone.models import cluster_license_cache
+from initat.cluster.backbone.models import cluster_license_cache, background_job
 import django.template
 import json
 import logging
+import routing
 
 logger = logging.getLogger("cluster.render")
 
@@ -45,21 +67,32 @@ class render_me(object):
             self._unfold(gp_dict)
             self._unfold(op_dict)
             _user = {"idx" : self.request.user.pk, "pk" : self.request.user.pk}
+            _num_bg_jobs = background_job.objects.exclude(Q(state__in=["done", "timeout", "ended", "merged"])).count()
+            # routing info
+            _service_types = {key: True for key in routing.srv_type_routing().service_types}
         else:
             gp_dict = {}
             op_dict = {}
             _user = {}
+            _num_bg_jobs = 0
+            _service_types = {}
         # license cache
         cur_clc = cluster_license_cache()
         # import pprint
         # pprint.pprint(gp_dict)
         self.my_dict["GLOBAL_PERMISSIONS"] = json.dumps(gp_dict)
         self.my_dict["OBJECT_PERMISSIONS"] = json.dumps(op_dict)
+        # store routing types as json
+        self.my_dict["SERVICE_TYPES"] = json.dumps(_service_types)
+        # add transformed dict ( md-config -> md_config )
+        _service_types.update({key.replace("-", "_") : value for key, value in _service_types.iteritems()})
+        self.my_dict["DJANGO_SERVICE_TYPES"] = _service_types
         # store as json for angular
         self.my_dict["CLUSTER_LICENSE"] = json.dumps(cur_clc.licenses)
         # store as dict for django templates
         self.my_dict["DJANGO_CLUSTER_LICENSE"] = cur_clc.licenses
         self.my_dict["CURRENT_USER"] = json.dumps(_user)
+        self.my_dict["NUM_BACKGROUND_JOBS"] = _num_bg_jobs
         return render_to_response(
             self.template,
             self.my_dict,

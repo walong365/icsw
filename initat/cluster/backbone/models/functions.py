@@ -54,6 +54,9 @@ def _check_float(inst, attr_name):
 
 def _check_empty_string(inst, attr_name):
     cur_val = getattr(inst, attr_name)
+    if cur_val is None:
+        # cast to string
+        cur_val = ""
     if not cur_val.strip():
         raise ValidationError("{} can not be empty".format(attr_name))
 

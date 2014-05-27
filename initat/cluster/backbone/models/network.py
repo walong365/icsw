@@ -6,6 +6,7 @@ from django.db.models import Q, signals, get_model
 from django.dispatch import receiver
 from initat.cluster.backbone.models.functions import _check_empty_string, \
     _check_integer
+from initat.cluster.backbone.signals import user_changed, group_changed, bootsettings_changed
 from lxml.builder import E # @UnresolvedImport
 from rest_framework import serializers
 import ipvx_tools
@@ -115,7 +116,7 @@ class network(models.Model):
     short_names = models.BooleanField(default=True)
     # should no longer be used, now in domain_tree_node
     name = models.CharField(max_length=192, blank=True, default="")
-    penalty = models.PositiveIntegerField(default=1)
+    penalty = models.PositiveIntegerField(default=1, verbose_name="cost")
     # should no longer be used, now in domain_tree_node
     postfix = models.CharField(max_length=12, blank=True)
     info = models.CharField(max_length=255, blank=True)
@@ -218,7 +219,7 @@ class net_ip(models.Model):
     ip = models.CharField(max_length=48)
     network = models.ForeignKey("backbone.network")
     netdevice = models.ForeignKey("backbone.netdevice")
-    penalty = models.IntegerField(default=0)
+    penalty = models.IntegerField(default=0, verbose_name="cost")
     alias = models.CharField(max_length=765, blank=True, default="")
     alias_excl = models.NullBooleanField(null=True, blank=True, default=False)
     domain_tree_node = models.ForeignKey("backbone.domain_tree_node", null=True, default=None)
@@ -263,7 +264,21 @@ def net_ip_pre_save(sender, **kwargs):
             if len(match_list):
                 cur_inst.network = match_list[0][1]
         if not cur_inst.network_id:
-            raise ValidationError("no matching network found for '{}'".format(cur_inst.ip))
+            if getattr(cur_inst, "create_default_network", False):
+                try:
+                    default_nw = network.objects.get(Q(network="0.0.0.0"))
+                except network.DoesNotExist:
+                    default_nw = network.objects.create(
+                        network="0.0.0.0",
+                        netmask="0.0.0.0",
+                        broadcast="255.255.255.255",
+                        gateway="0.0.0.0",
+                        identifier="all",
+                        network_type=network_type.objects.get(Q(identifier="o"))
+                    )
+                cur_inst.network = default_nw
+            else:
+                raise ValidationError("no matching network found for '{}'".format(cur_inst.ip))
         if not ipv_addr.network_matches(cur_inst.network):
             match_list = ipv_addr.find_matching_network(network.objects.all())
             if match_list:
@@ -313,6 +328,8 @@ def net_ip_post_save(sender, **kwargs):
             cur_inst.netdevice.device.save()
             if num_boot_ips > 1:
                 raise ValidationError("too many IP-adresses in a boot network defined")
+            if cur_inst.netdevice.device.bootserver_id:
+                bootsettings_changed.send(sender=cur_inst, device=cur_inst.netdevice.device, cause="net_ip_changed")
 
 class network_device_type_serializer(serializers.ModelSerializer):
     info_string = serializers.Field(source="info_string")
@@ -355,7 +372,7 @@ class netdevice(models.Model):
     routing = models.BooleanField(default=False)
     # inter-device routing enabled
     inter_device_routing = models.BooleanField(default=True)
-    penalty = models.IntegerField(null=True, blank=True, default=1)
+    penalty = models.IntegerField(null=True, blank=True, default=1, verbose_name="cost")
     dhcp_device = models.NullBooleanField(null=True, blank=True, default=False)
     ethtool_options = models.IntegerField(null=True, blank=True, default=0)
     fake_macaddr = models.CharField(db_column="fake_macadr", max_length=177, blank=True)
@@ -502,6 +519,9 @@ def netdevice_pre_save(sender, **kwargs):
                 raise ValidationError("cannot be my own VLAN master")
             if cur_inst.master_device.master_device_id:
                 raise ValidationError("cannot chain VLAN devices")
+        if cur_inst.netdevice_speed_id == None:
+            # set a default
+            cur_inst.netdevice_speed = netdevice_speed.objects.get(Q(speed_bps=1000000000) & Q(full_duplex=True) & Q(check_via_ethtool=False))
         # if cur_inst.vlan_id and not cur_inst.master_device_id:
         #    raise ValidationError("need a VLAN master")
 
@@ -509,6 +529,8 @@ def netdevice_pre_save(sender, **kwargs):
 def netdevice_post_save(sender, **kwargs):
     if "instance" in kwargs:
         _cur_inst = kwargs["instance"]
+        if _cur_inst.device.bootserver_id:
+            bootsettings_changed.send(sender=_cur_inst, device=_cur_inst.device, cause="netdevice_changed")
 
 @receiver(signals.post_delete, sender=netdevice)
 def netdevice_post_delete(sender, **kwargs):
@@ -556,7 +578,7 @@ class peer_information(models.Model):
     idx = models.AutoField(db_column="peer_information_idx", primary_key=True)
     s_netdevice = models.ForeignKey("backbone.netdevice", related_name="peer_s_netdevice")
     d_netdevice = models.ForeignKey("backbone.netdevice", related_name="peer_d_netdevice")
-    penalty = models.IntegerField(default=0)
+    penalty = models.IntegerField(default=0, verbose_name="cost")
     date = models.DateTimeField(auto_now_add=True)
     def __unicode__(self):
         return u"{} [{:d}] {}".format(

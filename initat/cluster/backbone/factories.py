@@ -5,7 +5,8 @@ from initat.cluster.backbone.models import netdevice_speed, log_source, \
     device_type, partition_fs, log_status, hw_entry_type, status, network_device_type, \
     network_type, host_check_command, config, mon_check_command, device_group, \
     device, mon_period, mon_service_templ, mon_device_templ, user, group, mon_contact, \
-    network, netdevice, net_ip, device_config, cluster_license, cluster_setting
+    network, netdevice, net_ip, device_config, cluster_license, cluster_setting, \
+    config_hint, config_var_hint
 
 class Device(factory.django.DjangoModelFactory):
     FACTORY_FOR = device
@@ -36,6 +37,14 @@ class DeviceType(factory.django.DjangoModelFactory):
 class PartitionFS(factory.django.DjangoModelFactory):
     FACTORY_FOR = partition_fs
     FACTORY_DJANGO_GET_OR_CREATE = ("name", "identifier",)
+    kernel_module = ""
+    @factory.post_generation
+    def kernel_module(self, create, extracted, **kwargs):
+        if extracted == None:
+            extracted = ""
+        if self.kernel_module != extracted:
+            self.kernel_module = extracted
+            self.save()
 
 class LogStatus(factory.django.DjangoModelFactory):
     FACTORY_FOR = log_status
@@ -131,4 +140,32 @@ class ClusterSetting(factory.django.DjangoModelFactory):
 class ClusterLicense(factory.django.DjangoModelFactory):
     FACTORY_FOR = cluster_license
     FACTORY_DJANGO_GET_OR_CREATE = ("cluster_setting", "name",)
+
+class ConfigHint(factory.django.DjangoModelFactory):
+    FACTORY_FOR = config_hint
+    FACTORY_DJANGO_GET_OR_CREATE = ("config_name",)
+    @factory.post_generation
+    def help_text_short(self, create, extracted, **kwargs):
+        if self.help_text_short != extracted:
+            self.help_text_short = extracted
+            self.save()
+    @factory.post_generation
+    def help_text_html(self, create, extracted, **kwargs):
+        if self.help_text_html != extracted:
+            self.help_text_html = extracted
+            self.save()
+
+class ConfigVarHint(factory.django.DjangoModelFactory):
+    FACTORY_FOR = config_var_hint
+    FACTORY_DJANGO_GET_OR_CREATE = ("var_name",)
+    @factory.post_generation
+    def help_text_short(self, create, extracted, **kwargs):
+        if self.help_text_short != extracted:
+            self.help_text_short = extracted
+            self.save()
+    @factory.post_generation
+    def help_text_html(self, create, extracted, **kwargs):
+        if self.help_text_html != extracted:
+            self.help_text_html = extracted
+            self.save()
 

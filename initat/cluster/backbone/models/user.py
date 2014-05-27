@@ -1,4 +1,24 @@
-#!/usr/bin/python-init
+# -*- coding: utf-8 -*-
+#
+# Copyright (C) 2014 Andreas Lang-Nevyjel
+#
+# Send feedback to: <lang-nevyjel@init.at>
+#
+# This file is part of cluster-backbone-sql
+#
+# This program is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License Version 2 as
+# published by the Free Software Foundation.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software
+# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+#
 
 from django.conf import settings
 from django.contrib.contenttypes.models import ContentType
@@ -8,6 +28,7 @@ from django.db import models
 from django.db.models import Q, signals, get_model
 from django.dispatch import receiver
 from initat.cluster.backbone.models.functions import _check_empty_string, _check_integer
+from initat.cluster.backbone.signals import user_changed, group_changed
 from rest_framework import serializers
 import base64
 import crypt
@@ -31,7 +52,7 @@ __all__ = [
     "user_object_permission", "user_object_permission_serializer",
     "AC_MASK_READ", "AC_MASK_MODIFY", "AC_MASK_DELETE", "AC_MASK_CREATE",
     "AC_MASK_DICT",
-    ]
+]
 
 def _csw_key(perm):
     return "{}.{}.{}".format(
@@ -231,6 +252,18 @@ class group_permission(models.Model):
     class Meta:
         app_label = "backbone"
 
+@receiver(signals.post_save, sender=group_permission)
+def group_permission_save(sender, **kwargs):
+    if not kwargs["raw"] and "instance" in kwargs:
+        _cur_inst = kwargs["instance"]
+        group_changed.send(sender=_cur_inst, group=_cur_inst.group, cause="global_permission_create")
+
+@receiver(signals.post_delete, sender=group_permission)
+def group_permission_delete(sender, **kwargs):
+    if "instance" in kwargs:
+        _cur_inst = kwargs["instance"]
+        group_changed.send(sender=_cur_inst, group=_cur_inst.group, cause="global_permission_delete")
+
 class group_object_permission(models.Model):
     idx = models.AutoField(primary_key=True)
     group = models.ForeignKey("backbone.group")
@@ -240,6 +273,18 @@ class group_object_permission(models.Model):
     class Meta:
         app_label = "backbone"
 
+@receiver(signals.post_save, sender=group_object_permission)
+def group_object_permission_save(sender, **kwargs):
+    if not kwargs["raw"] and "instance" in kwargs:
+        _cur_inst = kwargs["instance"]
+        group_changed.send(sender=_cur_inst, group=_cur_inst.group, cause="object_permission_create")
+
+@receiver(signals.post_delete, sender=group_object_permission)
+def group_object_permission_delete(sender, **kwargs):
+    if "instance" in kwargs:
+        _cur_inst = kwargs["instance"]
+        group_changed.send(sender=_cur_inst, group=_cur_inst.group, cause="object_permission_delete")
+
 class user_permission(models.Model):
     idx = models.AutoField(primary_key=True)
     user = models.ForeignKey("backbone.user")
@@ -248,6 +293,18 @@ class user_permission(models.Model):
     date = models.DateTimeField(auto_now_add=True)
     class Meta:
         app_label = "backbone"
+
+@receiver(signals.post_save, sender=user_permission)
+def user_permission_save(sender, **kwargs):
+    if not kwargs["raw"] and "instance" in kwargs:
+        _cur_inst = kwargs["instance"]
+        user_changed.send(sender=_cur_inst, user=_cur_inst.user, cause="global_permission_create")
+
+@receiver(signals.post_delete, sender=user_permission)
+def user_permission_delete(sender, **kwargs):
+    if "instance" in kwargs:
+        _cur_inst = kwargs["instance"]
+        user_changed.send(sender=_cur_inst, user=_cur_inst.user, cause="global_permission_delete")
 
 AC_MASK_READ = 0
 AC_MASK_MODIFY = 1
@@ -274,6 +331,18 @@ class user_object_permission(models.Model):
     date = models.DateTimeField(auto_now_add=True)
     class Meta:
         app_label = "backbone"
+
+@receiver(signals.post_save, sender=user_object_permission)
+def user_object_permission_save(sender, **kwargs):
+    if not kwargs["raw"] and "instance" in kwargs:
+        _cur_inst = kwargs["instance"]
+        user_changed.send(sender=_cur_inst, user=_cur_inst.user, cause="object_permission_create")
+
+@receiver(signals.post_delete, sender=user_object_permission)
+def user_object_permission_delete(sender, **kwargs):
+    if "instance" in kwargs:
+        _cur_inst = kwargs["instance"]
+        user_changed.send(sender=_cur_inst, user=_cur_inst.user, cause="object_permission_delete")
 
 class group_permission_serializer(serializers.ModelSerializer):
     class Meta:
@@ -426,6 +495,10 @@ class user_manager(models.Manager):
         cache.set(_user.mc_key(), django.core.serializers.serialize("json", [_user]))
         return _user
     def create_superuser(self, login, email, password):
+        if not password:
+            if "DJANGO_SUPERUSER_PASSWORD" in os.environ:
+                # hack for setup_cluster.py
+                password = os.environ["DJANGO_SUPERUSER_PASSWORD"]
         # create group
         user_group = group.objects.create(
             groupname="{}grp".format(login),
@@ -438,7 +511,7 @@ class user_manager(models.Manager):
             email=email,
             uid=max(list(user.objects.all().values_list("uid", flat=True)) + [665]) + 1,
             group=user_group,
-            comment="admin create by createsuperuser",
+            comment="admin created by createsuperuser",
             password=password,
             is_superuser=True)
         return new_admin
@@ -457,8 +530,8 @@ class user(models.Model):
     home = models.TextField(blank=True, null=True)
     shell = models.CharField(max_length=765, blank=True, default="/bin/bash")
     # SHA encrypted
-    password = models.CharField(max_length=48, blank=True)
-    password_ssha = models.CharField(max_length=64, blank=True, default="")
+    password = models.CharField(max_length=128, blank=True)
+    password_ssha = models.CharField(max_length=128, blank=True, default="")
     # cluster_contact = models.BooleanField()
     first_name = models.CharField(max_length=765, blank=True, default="")
     last_name = models.CharField(max_length=765, blank=True, default="")
@@ -606,10 +679,10 @@ class user(models.Model):
             ("modify_category_tree", "modify category tree", False),
         )
         # foreign keys to ignore
-        fk_ignore_list = ["user_variable"]
+        fk_ignore_list = ["user_variable", "user_permission", "user_object_permission", "session_data"]
     class Meta:
         db_table = u'user'
-        ordering = ("login",)
+        ordering = ("login", "group__groupname")
         app_label = "backbone"
     def __unicode__(self):
         return u"{} ({}; {}, {})".format(
@@ -628,6 +701,7 @@ class user_serializer(serializers.ModelSerializer):
             "title", "email", "pager", "comment", "tel", "password", "active", "export",
             "secondary_groups", "user_permission_set", "user_object_permission_set",
             "allowed_device_groups", "aliases", "db_is_auth_for_password", "is_superuser",
+            "home_dir_created",
             )
 
 class user_flat_serializer(serializers.ModelSerializer):
@@ -635,7 +709,7 @@ class user_flat_serializer(serializers.ModelSerializer):
         model = user
         fields = ("idx", "login", "uid", "group", "first_name", "last_name", "shell",
             "title", "email", "pager", "comment", "tel", "password", "active", "export",
-            "aliases", "db_is_auth_for_password", "is_superuser",
+            "aliases", "db_is_auth_for_password", "is_superuser", "home_dir_created",
             )
 
 @receiver(signals.m2m_changed, sender=user.perms.through)
@@ -696,7 +770,13 @@ def user_pre_save(sender, **kwargs):
 def user_post_save(sender, **kwargs):
     if not kwargs["raw"] and "instance" in kwargs:
         _cur_inst = kwargs["instance"]
-        # cache.delete(_cur_inst.mc_key())
+        user_changed.send(sender=_cur_inst, user=_cur_inst, cause="save")
+
+@receiver(signals.post_delete, sender=user)
+def user_post_delete(sender, **kwargs):
+    if "instance" in kwargs:
+        _cur_inst = kwargs["instance"]
+        user_changed.send(sender=_cur_inst, user=_cur_inst, cause="delete")
 
 class group(models.Model):
     idx = models.AutoField(db_column="ggroup_idx", primary_key=True)
@@ -804,11 +884,13 @@ def group_pre_save(sender, **kwargs):
 def group_post_save(sender, **kwargs):
     if not kwargs["raw"] and "instance" in kwargs:
         _cur_inst = kwargs["instance"]
+        group_changed.send(sender=_cur_inst, group=_cur_inst, cause="save")
 
 @receiver(signals.post_delete, sender=group)
 def group_post_delete(sender, **kwargs):
     if "instance" in kwargs:
         _cur_inst = kwargs["instance"]
+        group_changed.send(sender=_cur_inst, group=_cur_inst, cause="delete")
 
 @receiver(signals.m2m_changed, sender=group.perms.through)
 def group_perms_changed(sender, *args, **kwargs):

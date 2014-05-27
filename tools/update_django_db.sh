@@ -1,5 +1,8 @@
 #!/bin/bash
 
+echo "deprecated, please use /opt/cluster/sbin/setup_cluster.py --migrate"
+exit -1
+
 C_DIR="/opt/python-init/lib/python/site-packages/initat/cluster/"
 MIG_DIR="${C_DIR}/backbone/migrations/"
 

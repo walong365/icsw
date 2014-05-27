@@ -1,6 +1,6 @@
 #!/usr/bin/python-init -Otu
 #
-# Copyright (C) 2013 Andreas Lang-Nevyjel
+# Copyright (C) 2013-2014 Andreas Lang-Nevyjel
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -24,15 +24,15 @@ import sys
 
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "initat.cluster.settings")
 
-import datetime
-import logging_tools
-import process_tools
 from django.db.models import Q, get_app, get_models
 from initat.cluster.backbone.models import device, device_group, \
      mon_contact, mon_contactgroup, mon_check_command_type, mon_check_command, \
      config, mon_service_templ, user, mon_period, mon_ext_host, mon_service_templ, \
      mon_device_templ, device_group, group, user, config_str, config_int, config_bool, \
      config_blob
+import datetime
+import logging_tools
+import process_tools
 
 def _parse_value(in_str):
     esc = False

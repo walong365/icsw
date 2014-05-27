@@ -3,26 +3,30 @@
 from django.conf import settings
 from django.core.cache import cache
 from django.core.exceptions import ValidationError, ImproperlyConfigured
+from django.core.signals import request_finished, request_started
 from django.db import models
 from django.db.models import Q, signals
 from django.dispatch import receiver
 from django.utils.functional import memoize
+from initat.cluster.backbone.middleware import thread_local_middleware, _thread_local
 from initat.cluster.backbone.models.functions import _check_empty_string, _check_float, \
-    _check_integer, _check_non_empty_string, to_system_tz, \
-    get_change_reset_list, get_related_models
+    _check_integer, _check_non_empty_string, to_system_tz, get_change_reset_list, get_related_models
 from lxml import etree # @UnresolvedImport
 from lxml.builder import E # @UnresolvedImport
 from rest_framework import serializers
+import crypt
 import datetime
 import ipvx_tools
-import crypt
-import random
+import json
 import logging
 import logging_tools
 import marshal
+import net_tools
 import process_tools
 import pytz
+import random
 import re
+import server_command
 import time
 import uuid
 
@@ -31,15 +35,28 @@ from initat.cluster.backbone.models.monitoring import * # @UnusedWildImport
 from initat.cluster.backbone.models.network import * # @UnusedWildImport
 from initat.cluster.backbone.models.package import * # @UnusedWildImport
 from initat.cluster.backbone.models.user import * # @UnusedWildImport
+from initat.cluster.backbone.models.background import * # @UnusedWildImport
+from initat.cluster.backbone.models.hints import * # @UnusedWildImport
+from initat.cluster.backbone.signals import user_changed, group_changed, bootsettings_changed
 
+
+# do not use, problems with import
+# from initat.cluster.backbone.models.partition import * # @UnusedWildImport
+
+# attention: this list is used in create_fixtures.py
 LICENSE_CAPS = [
-    ("monitor", "Monitoring services"),
-    ("monext" , "Extended monitoring services"),
-    ("boot"   , "boot/config facility for nodes"),
-    ("package", "Package installation"),
-    ("rms"    , "Resource Management system"),
-    ("docu"   , "show documentation"),
+    ("monitor", "Monitoring services", ["md-config"]),
+    ("monext" , "Extended monitoring services", ["md-config"]),
+    ("boot"   , "boot/config facility for nodes", ["mother"]),
+    ("package", "Package installation", ["package"]),
+    ("rms"    , "Resource Management system", ["rms"]),
+    ("docu"   , "show documentation", []),
 ]
+
+ALL_LICENSES = [name for name, _descr, _srv in LICENSE_CAPS]
+
+def get_license_descr(name):
+    return [_descr for _name, _descr, _srv in LICENSE_CAPS if name == _name][0]
 
 ALLOWED_CFS = ["MAX", "MIN", "AVERAGE"]
 
@@ -63,6 +80,87 @@ system_timezone = pytz.timezone(time.tzname[0])
 # cluster_log_source
 cluster_log_source = None
 
+@receiver(request_started)
+def bg_req_started(*args, **kwargs):
+    # init number of background jobs created
+    _thread_local.num_bg_jobs = 0
+
+@receiver(request_finished)
+def bg_req_finished(*args, **kwargs):
+    # check number of background jobs and signal localhost
+    if _thread_local.num_bg_jobs:
+        _thread_local.num_bg_jobs = 0
+        _signal_localhost()
+
+@receiver(user_changed)
+def user_changed(*args, **kwargs):
+    _insert_bg_job("sync_users", kwargs["cause"], kwargs["user"])
+
+@receiver(group_changed)
+def group_changed(*args, **kwargs):
+    _insert_bg_job("sync_users", kwargs["cause"], kwargs["group"])
+
+@receiver(bootsettings_changed)
+def rcv_bootsettings_changed(*args, **kwargs):
+    # not signal when bootserver is not set
+    if kwargs["device"].bootserver_id:
+        _insert_bg_job("change_bootsetting", kwargs["cause"], kwargs["device"])
+
+def _insert_bg_job(cmd, cause, obj):
+    if getattr(obj, "_no_bg_job", False):
+        return
+    # create entry to be handled by the cluster-server
+    # get local device, key is defined in routing.py
+    _routing_key = "_WF_ROUTING"
+    _resolv_dict = cache.get(_routing_key)
+    if _resolv_dict:
+        _r_dict = json.loads(_resolv_dict)
+        if "_local_device" in _r_dict:
+            _local_pk = _r_dict["_local_device"][0]
+        else:
+            _local_pk = 0
+    else:
+        try:
+            _local_pk = device.objects.get(Q(name=process_tools.get_machine_name())).pk
+        except device.DoesNotExist:
+            _local_pk = 0
+    # we need local_pk and a valid user (so we have to be called via webfrontend)
+    if _local_pk and thread_local_middleware().user:
+        srv_com = server_command.srv_command(
+            command=cmd,
+        )
+        _bld = srv_com.builder()
+        srv_com["object"] = _bld.object(
+            unicode(obj),
+            model=obj._meta.model_name,
+            app=obj._meta.app_label,
+            pk="{:d}".format(obj.pk)
+        )
+        background_job.objects.create(
+            command=cmd,
+            cause=u"{} of '{}'".format(cause, unicode(obj)),
+            state="pre-init",
+            initiator=device.objects.get(Q(pk=_local_pk)),
+            user=thread_local_middleware().user,
+            command_xml=unicode(srv_com),
+            # valid for 4 hours
+            valid_until=cluster_timezone.localize(datetime.datetime.now() + datetime.timedelta(seconds=60 * 5)), # 3600 * 4)),
+        )
+        # init if not already done
+        if not hasattr(_thread_local, "num_bg_jobs"):
+            _thread_local.num_bg_jobs = 1
+        else:
+            _thread_local.num_bg_jobs += 1
+    else:
+        if not _local_pk:
+            logger.error("cannot identify local device")
+
+def _signal_localhost():
+    # signal clusterserver running on localhost
+    _sender = net_tools.zmq_connection("wf_server_notify")
+    _sender.add_connection("tcp://localhost:8004", server_command.srv_command(command="wf_notify"), multi=True)
+    _sender.close()
+
 def boot_uuid(cur_uuid):
     return "{}-boot".format(cur_uuid[:-5])
 
@@ -72,17 +170,22 @@ class home_export_list(object):
         exp_entries = device_config.objects.filter(
             Q(config__name__icontains="homedir") &
             Q(config__name__icontains="export") &
-            Q(device__device_type__identifier="H")).prefetch_related("config__config_str_set").select_related("device")
+            Q(device__device_type__identifier="H")).prefetch_related("config__config_str_set").select_related("device", "device__domain_tree_node")
         home_exp_dict = {}
         for entry in exp_entries:
-            dev_name, act_pk = (entry.device.name,
-                                entry.pk)
+            dev_name, dev_name_full, act_pk = (
+                entry.device.name,
+                entry.device.full_name,
+                entry.pk
+            )
             home_exp_dict[act_pk] = {
                     "key"          : act_pk,
                     "entry"        : entry,
                     "name"         : dev_name,
+                    "full_name"    : dev_name_full,
                     "homeexport"   : "",
                     "node_postfix" : "",
+                    "createdir"    : "",
                     "options"      : "-soft"}
             for c_str in entry.config.config_str_set.all():
                 if c_str.name in home_exp_dict[act_pk]:
@@ -92,8 +195,9 @@ class home_export_list(object):
         for ihk in invalid_home_keys:
             del home_exp_dict[ihk]
         for key, value in home_exp_dict.iteritems():
-            value["info"] = "{} on {}".format(value["homeexport"], value["name"])
+            value["info"] = u"{} on {}".format(value["homeexport"], value["name"])
             value["entry"].info_str = value["info"]
+            value["entry"].info_dict = value
         self.exp_dict = home_exp_dict
     def get(self, *args, **kwargs):
         # hacky
@@ -101,18 +205,6 @@ class home_export_list(object):
     def all(self):
         for pk in [s_pk for _s_info, s_pk in sorted([(value["info"], key) for key, value in self.exp_dict.iteritems()])]:
             yield self.exp_dict[pk]["entry"]
-
-class apc_device(models.Model):
-    idx = models.AutoField(db_column="idx", primary_key=True)
-    device = models.ForeignKey("device")
-    power_on_delay = models.IntegerField(null=True, blank=True)
-    reboot_delay = models.IntegerField(null=True, blank=True)
-    apc_type = models.CharField(max_length=765, blank=True)
-    version_info = models.TextField(blank=True)
-    num_outlets = models.IntegerField(null=True, blank=True)
-    date = models.DateTimeField(auto_now_add=True)
-    class Meta:
-        db_table = u'apc_device'
 
 class architecture(models.Model):
     idx = models.AutoField(db_column="architecture_idx", primary_key=True)
@@ -134,404 +226,6 @@ class architecture_serializer(serializers.ModelSerializer):
     class Meta:
         model = architecture
 
-class partition_fs(models.Model):
-    # mix of partition and fs info, not perfect ...
-    idx = models.AutoField(db_column="partition_fs_idx", primary_key=True)
-    name = models.CharField(unique=True, max_length=48)
-    identifier = models.CharField(max_length=3)
-    descr = models.CharField(max_length=765, blank=True)
-    hexid = models.CharField(max_length=6)
-    # flags
-    date = models.DateTimeField(auto_now_add=True)
-    def get_xml(self):
-        return E.partition_fs(
-            self.name,
-            pk="{:d}".format(self.pk),
-            key="partfs__{:d}".format(self.pk),
-            identifier=self.identifier,
-            descr=self.descr,
-            hexid=self.hexid,
-        )
-    def need_mountpoint(self):
-        return True if self.hexid in ["83"] else False
-    def __unicode__(self):
-        return self.descr
-    class Meta:
-        db_table = u'partition_fs'
-        ordering = ("name",)
-
-class partition_fs_serializer(serializers.ModelSerializer):
-    need_mountpoint = serializers.Field(source="need_mountpoint")
-    class Meta:
-        model = partition_fs
-
-class sys_partition(models.Model):
-    idx = models.AutoField(db_column="sys_partition_idx", primary_key=True)
-    partition_table = models.ForeignKey("partition_table")
-    name = models.CharField(max_length=192)
-    mountpoint = models.CharField(max_length=192, default="/")
-    mount_options = models.CharField(max_length=255, blank=True)
-    date = models.DateTimeField(auto_now_add=True)
-    class Meta:
-        db_table = u'sys_partition'
-
-class sys_partition_serializer(serializers.ModelSerializer):
-    class Meta:
-        model = sys_partition
-
-class lvm_lv(models.Model):
-    idx = models.AutoField(db_column="lvm_lv_idx", primary_key=True)
-    partition_table = models.ForeignKey("partition_table")
-    lvm_vg = models.ForeignKey("lvm_vg")
-    size = models.BigIntegerField(null=True, blank=True)
-    mountpoint = models.CharField(max_length=192, default="/")
-    mount_options = models.CharField(max_length=384, blank=True)
-    fs_freq = models.IntegerField(null=True, blank=True)
-    fs_passno = models.IntegerField(null=True, blank=True)
-    name = models.CharField(max_length=192)
-    partition_fs = models.ForeignKey("partition_fs")
-    warn_threshold = models.IntegerField(null=True, blank=True, default=85)
-    crit_threshold = models.IntegerField(null=True, blank=True, default=95)
-    date = models.DateTimeField(auto_now_add=True)
-    def get_xml(self):
-        return E.lvm_lv(
-            pk="{:d}".format(self.pk),
-            key="lvm_lv__{:d}".format(self.pk),
-            lvm_vg="{:d}".format(self.lvm_vg_id or 0),
-            mountpoint="{}".format(self.mountpoint),
-            name="{}".format(self.name),
-            warn_threshold="{:d}".format(self.warn_threshold or 0),
-            crit_threshold="{:d}".format(self.crit_threshold or 0),
-       )
-    class Meta:
-        db_table = u'lvm_lv'
-        ordering = ("name",)
-
-class lvm_lv_serializer(serializers.ModelSerializer):
-    class Meta:
-        model = lvm_lv
-
-@receiver(signals.pre_save, sender=lvm_lv)
-def lvm_lv_pre_save(sender, **kwargs):
-    if "instance" in kwargs:
-        cur_inst = kwargs["instance"]
-        _check_integer(cur_inst, "warn_threshold", none_to_zero=True, min_val=0, max_val=100)
-        _check_integer(cur_inst, "crit_threshold", none_to_zero=True, min_val=0, max_val=100)
-        # fs_freq
-        _check_integer(cur_inst, "fs_freq", min_val=0, max_val=1)
-        # fs_passno
-        _check_integer(cur_inst, "fs_passno", min_val=0, max_val=2)
-
-class lvm_vg(models.Model):
-    idx = models.AutoField(db_column="lvm_vg_idx", primary_key=True)
-    partition_table = models.ForeignKey("partition_table")
-    name = models.CharField(max_length=192)
-    date = models.DateTimeField(auto_now_add=True)
-    def get_xml(self):
-        return E.lvm_vg(
-            E.lvm_lvs(
-                *[cur_lv.get_xml() for cur_lv in self.lvm_lv_set.all()]
-            ),
-            pk="{:d}".format(self.pk),
-            key="lvm_vg__{:d}".format(self.pk),
-            partition_table="{:d}".format(self.partition_table_id or 0),
-            name=self.name,
-        )
-    class Meta:
-        db_table = u'lvm_vg'
-        ordering = ("name",)
-
-class lvm_vg_serializer(serializers.ModelSerializer):
-    class Meta:
-        model = lvm_vg
-
-class partition(models.Model):
-    idx = models.AutoField(db_column="partition_idx", primary_key=True)
-    partition_disc = models.ForeignKey("partition_disc")
-    mountpoint = models.CharField(max_length=192, default="/", blank=True)
-    partition_hex = models.CharField(max_length=6, blank=True)
-    size = models.IntegerField(null=True, blank=True, default=100)
-    mount_options = models.CharField(max_length=255, blank=True, default="defaults")
-    pnum = models.IntegerField()
-    bootable = models.BooleanField(default=False)
-    fs_freq = models.IntegerField(null=True, blank=True, default=0)
-    fs_passno = models.IntegerField(null=True, blank=True, default=0)
-    partition_fs = models.ForeignKey("partition_fs")
-    # lut_blob = models.TextField(blank=True, null=True)
-    # comma-delimited list of /dev/disk/by-* entries
-    disk_by_info = models.TextField(default="", blank=True)
-    warn_threshold = models.IntegerField(null=True, blank=True, default=85)
-    crit_threshold = models.IntegerField(null=True, blank=True, default=95)
-    date = models.DateTimeField(auto_now_add=True)
-    def get_xml(self):
-        p_xml = E.partition(
-            pk="{:d}".format(self.pk),
-            key="part__{:d}".format(self.pk),
-            mountpoint=self.mountpoint or "",
-            mount_options=self.mount_options or "",
-            pnum="%d" % (self.pnum or 0),
-            partition_fs="%d" % (self.partition_fs_id),
-            size="%d" % (self.size if type(self.size) in [long, int] else 0),
-            bootable="%d" % (1 if self.bootable else 0),
-            fs_freq="%d" % (self.fs_freq),
-            fs_passno="%d" % (self.fs_passno),
-            warn_threshold="%d" % (self.warn_threshold or 0),
-            crit_threshold="%d" % (self.crit_threshold or 0),
-        )
-        if hasattr(self, "problems"):
-            p_xml.append(
-                E.problems(
-                    *[E.problem(what, level="%d" % (log_level)) for log_level, what, is_global in self.problems if is_global is False]
-                )
-            )
-        return p_xml
-    def _validate(self, p_disc):
-        p_list = []
-        p_name = "{}{:d}".format(p_disc, self.pnum)
-        if not self.partition_fs_id:
-            p_list.append((logging_tools.LOG_LEVEL_ERROR, "no partition_fs set ({})".format(p_name), False))
-        else:
-            if self.partition_fs.hexid == "0" and self.partition_fs.name == "empty":
-                p_list.append((logging_tools.LOG_LEVEL_ERROR, "empty partitionf_fs ({})".format(p_name), False))
-            if self.partition_fs.need_mountpoint():
-                if not self.mountpoint.startswith("/"):
-                    p_list.append((logging_tools.LOG_LEVEL_ERROR, "no mountpoint defined for {}".format(p_name), False))
-                if not self.mount_options.strip():
-                    p_list.append((logging_tools.LOG_LEVEL_ERROR, "no mount_options given for {}".format(p_name), False))
-        return p_list
-    class Meta:
-        db_table = u'partition'
-        ordering = ("pnum",)
-
-class partition_serializer(serializers.ModelSerializer):
-    class Meta:
-        model = partition
-
-@receiver(signals.pre_save, sender=partition)
-def partition_pre_save(sender, **kwargs):
-    if "instance" in kwargs:
-        cur_inst = kwargs["instance"]
-        p_num = cur_inst.pnum
-        try:
-            p_num = int(p_num)
-        except:
-            raise ValidationError("partition number '{}' not parseable".format(p_num))
-        if p_num == 0:
-            if partition.objects.filter(Q(partition_disc=cur_inst.partition_disc)).count() > 1:
-                raise ValidationError("for pnum==0 only one partition is allowed")
-        elif p_num < 1 or p_num > 32:
-            raise ValidationError("partition number {:d} out of bounds [1, 32]".format(p_num))
-        all_part_nums = partition.objects.exclude(Q(pk=cur_inst.pk)).filter(Q(partition_disc=cur_inst.partition_disc)).values_list("pnum", flat=True)
-        if p_num in all_part_nums:
-            raise ValidationError("partition number already used")
-        cur_inst.pnum = p_num
-        # size
-        _check_integer(cur_inst, "size", min_val=0)
-        _check_integer(cur_inst, "warn_threshold", none_to_zero=True, min_val=0, max_val=100)
-        _check_integer(cur_inst, "crit_threshold", none_to_zero=True, min_val=0, max_val=100)
-        # mountpoint
-        if cur_inst.partition_fs.need_mountpoint():
-            if cur_inst.mountpoint.strip() and not cur_inst.mountpoint.startswith("/"):
-                raise ValidationError("mountpoint must start with '/'")
-        # fs_freq
-        _check_integer(cur_inst, "fs_freq", min_val=0, max_val=1)
-        # fs_passno
-        _check_integer(cur_inst, "fs_passno", min_val=0, max_val=2)
-        if cur_inst.partition_fs_id:
-            if cur_inst.partition_fs.name == "swap":
-                cur_inst.mountpoint = "swap"
-            cur_inst.partition_hex = cur_inst.partition_fs.hexid
-
-class partition_disc(models.Model):
-    idx = models.AutoField(db_column="partition_disc_idx", primary_key=True)
-    partition_table = models.ForeignKey("partition_table")
-    disc = models.CharField(max_length=192)
-    label_type = models.CharField(max_length=128, default="gpt", choices=[("gpt", "GPT"), ("msdos", "MSDOS")])
-    priority = models.IntegerField(null=True, default=0)
-    date = models.DateTimeField(auto_now_add=True)
-    def get_xml(self):
-        pd_xml = E.partition_disc(
-            self.disc,
-            E.partitions(
-                *[sub_part.get_xml() for sub_part in self.partition_set.all()]
-                ),
-            pk="%d" % (self.pk),
-            key="pdisc__%d" % (self.pk),
-            priority="%d" % (self.priority),
-            disc=self.disc,
-        )
-        if hasattr(self, "problems"):
-            pd_xml.append(
-                E.problems(
-                    *[E.problem(what, level="%d" % (log_level)) for log_level, what, is_global in self.problems if not is_global]
-                )
-            )
-        return pd_xml
-    def _validate(self):
-        my_parts = self.partition_set.all()
-        p_list = sum([[(cur_lev, "*{:d} : {}".format(part.pnum, msg), flag) for cur_lev, msg, flag in part._validate(self)] for part in my_parts], [])
-        all_mps = [cur_mp.mountpoint for cur_mp in my_parts if cur_mp.mountpoint.strip() and cur_mp.mountpoint.strip() != "swap"]
-        if len(all_mps) != len(set(all_mps)):
-            p_list.append((logging_tools.LOG_LEVEL_ERROR, "mountpoints not unque", False))
-        if all_mps:
-            if "/usr" in all_mps:
-                p_list.append((logging_tools.LOG_LEVEL_ERROR, "cannot boot when /usr is on a separate partition", False))
-        ext_parts = [cur_p for cur_p in my_parts if cur_p.partition_fs_id and cur_p.partition_fs.name == "ext"]
-        if my_parts:
-            max_pnum = max([cur_p.pnum for cur_p in my_parts])
-            if self.label_type == "msdos":
-                # msdos label validation path
-                if len(ext_parts) == 0:
-                    if max_pnum > 4:
-                        p_list.append((logging_tools.LOG_LEVEL_ERROR, "too many partitions ({:d}), only 4 without ext allowed".format(max_pnum), False))
-                elif len(ext_parts) > 1:
-                    p_list.append((logging_tools.LOG_LEVEL_ERROR, "too many ext partitions ({:d}) defined".format(len(ext_parts)), False))
-                else:
-                    ext_part = ext_parts[0]
-                    if ext_part.pnum != 4:
-                        p_list.append((logging_tools.LOG_LEVEL_ERROR, "extended partition must have pnum 4", False))
-            else:
-                # gpt label validation path
-                if len(ext_parts):
-                    p_list.append((logging_tools.LOG_LEVEL_ERROR, "no extended partitions allowed for GPT label", False))
-        return p_list
-    class Meta:
-        db_table = u'partition_disc'
-        ordering = ("priority", "disc",)
-    def __unicode__(self):
-        return self.disc
-
-class partition_disc_serializer(serializers.ModelSerializer):
-    partition_set = partition_serializer(many=True)
-    class Meta:
-        model = partition_disc
-
-class partition_disc_serializer_save(serializers.ModelSerializer):
-    class Meta:
-        model = partition_disc
-        fields = ("disc", "label_type",)
-
-class partition_disc_serializer_create(serializers.ModelSerializer):
-    # partition_set = partition_serializer(many=True)
-    class Meta:
-        model = partition_disc
-        # fields = ("disc", "partition_table")
-
-@receiver(signals.pre_save, sender=partition_disc)
-def partition_disc_pre_save(sender, **kwargs):
-    if "instance" in kwargs:
-        disc_re = re.compile("^/dev/([shv]d[a-z]|dm-(\d+)|mapper/.*|ida/(.*)|cciss/(.*))$")
-        cur_inst = kwargs["instance"]
-        d_name = cur_inst.disc.strip().lower()
-        if not d_name:
-            raise ValidationError("name must not be zero")
-        if not disc_re.match(d_name):
-            raise ValidationError("illegal name '{}'".format(d_name))
-        all_discs = partition_disc.objects.exclude(Q(pk=cur_inst.pk)).filter(Q(partition_table=cur_inst.partition_table)).values_list("disc", flat=True)
-        if d_name in all_discs:
-            raise ValidationError("disc name '{}' already used".format(d_name))
-        cur_inst.disc = d_name
-
-class partition_table(models.Model):
-    idx = models.AutoField(db_column="partition_table_idx", primary_key=True)
-    name = models.CharField(unique=True, max_length=192)
-    description = models.CharField(max_length=255, blank=True, default="")
-    enabled = models.BooleanField(default=True)
-    valid = models.BooleanField(default=False)
-    modify_bootloader = models.IntegerField(default=0)
-    nodeboot = models.BooleanField(default=False)
-    # non users-created partition tables can be deleted automatically
-    user_created = models.BooleanField(default=True)
-    date = models.DateTimeField(auto_now_add=True)
-    def _msg_merge(self, parent, msg):
-        if msg.startswith("*"):
-            return "{}{}".format(parent, msg[1:])
-        else:
-            return "{}: {}".format(parent, msg)
-    def validate(self):
-        # problem list, format is level, problem, global (always True for partition_table)
-        prob_list = []
-        if not self.partition_disc_set.all():
-            prob_list.append((logging_tools.LOG_LEVEL_ERROR, "no discs defined", True))
-        prob_list.extend(
-            sum([
-                [
-                    (cur_lev, self._msg_merge(p_disc.disc, msg), flag) for cur_lev, msg, flag in p_disc._validate()
-                ] for p_disc in self.partition_disc_set.all()
-            ], [])
-        )
-        all_mps = sum([[cur_p.mountpoint for cur_p in p_disc.partition_set.all() if cur_p.mountpoint.strip() and cur_p.mountpoint.strip() != "swap"] for p_disc in self.partition_disc_set.all()], [])
-        all_mps.extend([sys_p.mountpoint for sys_p in self.sys_partition_set.all()])
-        unique_mps = set(all_mps)
-        for non_unique_mp in sorted([name for name in unique_mps if all_mps.count(name) > 1]):
-            prob_list.append(
-                (logging_tools.LOG_LEVEL_ERROR, "mountpoint '{}' is not unique ({:d})".format(
-                    non_unique_mp,
-                    all_mps.count(name),
-                ), True)
-                )
-        if u"/" not in all_mps:
-            prob_list.append(
-                (logging_tools.LOG_LEVEL_ERROR, "no '/' mountpoint defined", True)
-                )
-        new_valid = not any([log_level in [
-            logging_tools.LOG_LEVEL_ERROR,
-            logging_tools.LOG_LEVEL_CRITICAL] for log_level, _what, _is_global in prob_list])
-        # validate
-        if new_valid != self.valid:
-            self.valid = new_valid
-            self.save()
-        return prob_list
-    def get_xml(self, **kwargs):
-        pt_xml = E.partition_table(
-            unicode(self),
-            E.partition_discs(
-                *[sub_disc.get_xml() for sub_disc in self.partition_disc_set.all()]
-                ),
-            E.lvm_info(
-                *[cur_vg.get_xml() for cur_vg in self.lvm_vg_set.all().prefetch_related("lvm_lv_set")]
-            ),
-            name=self.name,
-            pk="%d" % (self.pk),
-            key="ptable__%d" % (self.pk),
-            description=unicode(self.description),
-            valid="1" if self.valid else "0",
-            enabled="1" if self.enabled else "0",
-            nodeboot="1" if self.nodeboot else "0",
-        )
-        return pt_xml
-    def __unicode__(self):
-        return self.name
-    class Meta:
-        db_table = u'partition_table'
-    class CSW_Meta:
-        fk_ignore_list = ["partition_disc", "sys_partition", "lvm_lv", "lvm_vg"]
-
-class partition_table_serializer(serializers.ModelSerializer):
-    partition_disc_set = partition_disc_serializer(many=True)
-    sys_partition_set = sys_partition_serializer(many=True)
-    lvm_lv_set = lvm_lv_serializer(many=True)
-    lvm_vg_set = lvm_vg_serializer(many=True)
-    class Meta:
-        model = partition_table
-        fields = ("partition_disc_set", "lvm_lv_set", "lvm_vg_set", "name", "idx", "description", "valid",
-            "enabled", "nodeboot", "act_partition_table", "new_partition_table", "sys_partition_set")
-        # otherwise the REST framework would try to store lvm_lv and lvm_vg
-        # read_only_fields = ("lvm_lv_set", "lvm_vg_set",) # "partition_disc_set",)
-
-class partition_table_serializer_save(serializers.ModelSerializer):
-    class Meta:
-        model = partition_table
-        fields = ("name", "idx", "description", "valid",
-            "enabled", "nodeboot",)
-
-@receiver(signals.pre_save, sender=partition_table)
-def partition_table_pre_save(sender, **kwargs):
-    if "instance" in kwargs:
-        cur_inst = kwargs["instance"]
-        if not cur_inst.name.strip():
-            raise ValidationError("name must not be zero")
-
 class config_catalog(models.Model):
     idx = models.AutoField(primary_key=True)
     # MySQL restriction
@@ -552,7 +246,7 @@ class config_catalog_serializer(serializers.ModelSerializer):
 
 class config(models.Model):
     idx = models.AutoField(db_column="new_config_idx", primary_key=True)
-    name = models.CharField(unique=True, max_length=192, blank=False)
+    name = models.CharField(max_length=192, blank=False)
     config_catalog = models.ForeignKey(config_catalog, null=True)
     description = models.CharField(max_length=765, default="", blank=True)
     priority = models.IntegerField(null=True, default=0)
@@ -564,32 +258,6 @@ class config(models.Model):
     categories = models.ManyToManyField("backbone.category")
     def get_use_count(self):
         return self.device_config_set.all().count()
-    def get_xml(self, full=True):
-        r_xml = E.config(
-            pk="%d" % (self.pk),
-            key="conf__%d" % (self.pk),
-            name=unicode(self.name),
-            description=unicode(self.description or ""),
-            priority="%d" % (self.priority or 0),
-            # config_type="%d" % (self.config_type_id),
-            parent_config="%d" % (self.parent_config_id or 0),
-            categories="::".join(["%d" % (cur_cat.pk) for cur_cat in self.categories.all()]),
-        )
-        if full:
-            # explicit but exposes chached queries
-            dev_names = [dev_conf.device.name for dev_conf in self.device_config_set.all()]
-            r_xml.attrib["num_device_configs"] = "%d" % (len(dev_names))
-            r_xml.attrib["device_list"] = logging_tools.compress_list(sorted(dev_names))
-            r_xml.extend([
-                E.config_vars(*[cur_var.get_xml() for cur_var in
-                                list(self.config_str_set.all()) + \
-                                list(self.config_int_set.all()) + \
-                                list(self.config_bool_set.all()) + \
-                                list(self.config_blob_set.all())]),
-                E.mon_check_commands(*[cur_ngc.get_xml(with_exclude_devices=full) for cur_ngc in list(self.mon_check_command_set.all())]),
-                E.config_scripts(*[cur_cs.get_xml() for cur_cs in list(self.config_script_set.all())])
-            ])
-        return r_xml
     def __unicode__(self):
         return self.name
     def show_variables(self, log_com, detail=False):
@@ -604,7 +272,8 @@ class config(models.Model):
         return self.name
     class Meta:
         db_table = u'new_config'
-        ordering = ["name"]
+        ordering = ["name", "config_catalog__name"]
+        unique_together = (("name", "config_catalog"),)
     class CSW_Meta:
         permissions = (
             ("modify_config", "modify global configurations", False),
@@ -676,7 +345,7 @@ def config_post_save(sender, **kwargs):
                         value="dc=test,dc=ac,dc=at"),
                     config_str(
                         name="admin_cn",
-                        description="Admin CN (relative to base_dn",
+                        description="Admin CN (relative to base_dn)",
                         value="admin"),
                     config_str(
                         name="root_passwd",
@@ -727,16 +396,8 @@ class config_str(models.Model):
     value = models.TextField(blank=True)
     device = models.ForeignKey("device", null=True, blank=True)
     date = models.DateTimeField(auto_now_add=True)
-    def get_xml(self):
-        return E.config_str(
-            pk="%d" % (self.pk),
-            key="varstr__%d" % (self.pk),
-            type="str",
-            name=self.name,
-            description=self.description,
-            config="%d" % (self.config_id),
-            value=self.value or ""
-        )
+    def get_object_type(self):
+        return "str"
     def __unicode__(self):
         return self.value or u""
     class Meta:
@@ -766,16 +427,8 @@ class config_blob(models.Model):
     value = models.TextField(blank=True)
     device = models.ForeignKey("device", null=True, blank=True)
     date = models.DateTimeField(auto_now_add=True)
-    def get_xml(self):
-        return E.config_str(
-            pk="%d" % (self.pk),
-            key="varblob__%d" % (self.pk),
-            type="blob",
-            name=self.name,
-            description=self.description,
-            config="%d" % (self.config_id),
-            value=self.value or ""
-        )
+    def get_object_type(self):
+        return "blob"
     class Meta:
         db_table = u'config_blob'
 
@@ -801,16 +454,8 @@ class config_bool(models.Model):
     value = models.IntegerField(null=True, blank=True)
     device = models.ForeignKey("device", null=True, blank=True)
     date = models.DateTimeField(auto_now_add=True)
-    def get_xml(self):
-        return E.config_str(
-            pk="%d" % (self.pk),
-            key="varbool__%d" % (self.pk),
-            type="bool",
-            name=self.name,
-            description=self.description,
-            config="%d" % (self.config_id),
-            value="1" if self.value else "0"
-        )
+    def get_object_type(self):
+        return "bool"
     def __unicode__(self):
         return "True" if self.value else "False"
     class Meta:
@@ -848,16 +493,8 @@ class config_int(models.Model):
     value = models.IntegerField(null=True, blank=True)
     device = models.ForeignKey("device", null=True, blank=True)
     date = models.DateTimeField(auto_now_add=True)
-    def get_xml(self):
-        return E.config_str(
-            pk="%d" % (self.pk),
-            key="varint__%d" % (self.pk),
-            type="int",
-            name=self.name,
-            description=self.description,
-            config="%d" % (self.config_id),
-            value="%d" % (self.value or 0)
-        )
+    def get_object_type(self):
+        return "int"
     def __unicode__(self):
         if type(self.value) in [str, unicode]:
             self.value = int(self.value)
@@ -890,17 +527,8 @@ class config_script(models.Model):
     error_text = models.TextField(blank=True, default="")
     device = models.ForeignKey("device", null=True, blank=True)
     date = models.DateTimeField(auto_now_add=True)
-    def get_xml(self):
-        self.enabled = self.enabled or False
-        return E.config_script(
-            pk="%d" % (self.pk),
-            key="cscript__%d" % (self.pk),
-            name=self.name,
-            enabled="1" if self.enabled else "0",
-            priority="%d" % (self.priority or 0),
-            config="%d" % (self.config_id),
-            value=self.value or ""
-        )
+    def get_object_type(self):
+        return "script"
     class Meta:
         db_table = u'config_script'
         ordering = ("priority", "name",)
@@ -1050,9 +678,423 @@ class device_config_serializer(serializers.ModelSerializer):
 
 class device_config_hel_serializer(serializers.ModelSerializer):
     info_string = serializers.Field(source="home_info")
+    homeexport = serializers.SerializerMethodField("get_homeexport")
+    createdir = serializers.SerializerMethodField("get_createdir")
+    name = serializers.SerializerMethodField("get_name")
+    full_name = serializers.SerializerMethodField("get_full_name")
+    def get_name(self, obj):
+        return obj.info_dict["name"]
+    def get_full_name(self, obj):
+        return obj.info_dict["full_name"]
+    def get_createdir(self, obj):
+        return obj.info_dict["createdir"]
+    def get_homeexport(self, obj):
+        return obj.info_dict["homeexport"]
     class Meta:
         model = device_config
-        fields = ("idx", "info_string")
+        fields = ("idx", "info_string", "homeexport", "createdir", "name", "full_name")
+
+class partition_fs(models.Model):
+    # mix of partition and fs info, not perfect ...
+    idx = models.AutoField(db_column="partition_fs_idx", primary_key=True)
+    name = models.CharField(unique=True, max_length=48)
+    identifier = models.CharField(max_length=3)
+    descr = models.CharField(max_length=765, blank=True)
+    hexid = models.CharField(max_length=6)
+    # none, one or more (space sepearted) kernel modules needed for ths fs
+    kernel_module = models.CharField(max_length=128, default="")
+    # flags
+    date = models.DateTimeField(auto_now_add=True)
+    def get_xml(self):
+        return E.partition_fs(
+            self.name,
+            pk="{:d}".format(self.pk),
+            key="partfs__{:d}".format(self.pk),
+            identifier=self.identifier,
+            descr=self.descr,
+            hexid=self.hexid,
+        )
+    def need_mountpoint(self):
+        return True if self.hexid in ["83"] else False
+    def __unicode__(self):
+        return self.descr
+    class Meta:
+        db_table = u'partition_fs'
+        ordering = ("name",)
+
+class sys_partition(models.Model):
+    idx = models.AutoField(db_column="sys_partition_idx", primary_key=True)
+    partition_table = models.ForeignKey("backbone.partition_table")
+    name = models.CharField(max_length=192)
+    mountpoint = models.CharField(max_length=192, default="/")
+    mount_options = models.CharField(max_length=255, blank=True)
+    date = models.DateTimeField(auto_now_add=True)
+    class Meta:
+        db_table = u'sys_partition'
+
+class lvm_lv(models.Model):
+    idx = models.AutoField(db_column="lvm_lv_idx", primary_key=True)
+    partition_table = models.ForeignKey("backbone.partition_table")
+    lvm_vg = models.ForeignKey("backbone.lvm_vg")
+    size = models.BigIntegerField(null=True, blank=True)
+    mountpoint = models.CharField(max_length=192, default="/")
+    mount_options = models.CharField(max_length=384, blank=True)
+    fs_freq = models.IntegerField(null=True, blank=True)
+    fs_passno = models.IntegerField(null=True, blank=True)
+    name = models.CharField(max_length=192)
+    partition_fs = models.ForeignKey("backbone.partition_fs")
+    warn_threshold = models.IntegerField(null=True, blank=True, default=85)
+    crit_threshold = models.IntegerField(null=True, blank=True, default=95)
+    date = models.DateTimeField(auto_now_add=True)
+    def get_xml(self):
+        return E.lvm_lv(
+            pk="{:d}".format(self.pk),
+            key="lvm_lv__{:d}".format(self.pk),
+            lvm_vg="{:d}".format(self.lvm_vg_id or 0),
+            mountpoint="{}".format(self.mountpoint),
+            name="{}".format(self.name),
+            warn_threshold="{:d}".format(self.warn_threshold or 0),
+            crit_threshold="{:d}".format(self.crit_threshold or 0),
+       )
+    class Meta:
+        db_table = u'lvm_lv'
+        ordering = ("name",)
+
+@receiver(signals.pre_save, sender=lvm_lv)
+def lvm_lv_pre_save(sender, **kwargs):
+    if "instance" in kwargs:
+        cur_inst = kwargs["instance"]
+        _check_integer(cur_inst, "warn_threshold", none_to_zero=True, min_val=0, max_val=100)
+        _check_integer(cur_inst, "crit_threshold", none_to_zero=True, min_val=0, max_val=100)
+        # fs_freq
+        _check_integer(cur_inst, "fs_freq", min_val=0, max_val=1)
+        # fs_passno
+        _check_integer(cur_inst, "fs_passno", min_val=0, max_val=2)
+
+class lvm_vg(models.Model):
+    idx = models.AutoField(db_column="lvm_vg_idx", primary_key=True)
+    partition_table = models.ForeignKey("backbone.partition_table")
+    name = models.CharField(max_length=192)
+    date = models.DateTimeField(auto_now_add=True)
+    def get_xml(self):
+        return E.lvm_vg(
+            E.lvm_lvs(
+                *[cur_lv.get_xml() for cur_lv in self.lvm_lv_set.all()]
+            ),
+            pk="{:d}".format(self.pk),
+            key="lvm_vg__{:d}".format(self.pk),
+            partition_table="{:d}".format(self.partition_table_id or 0),
+            name=self.name,
+        )
+    class Meta:
+        db_table = u'lvm_vg'
+        ordering = ("name",)
+
+class partition(models.Model):
+    idx = models.AutoField(db_column="partition_idx", primary_key=True)
+    partition_disc = models.ForeignKey("backbone.partition_disc")
+    mountpoint = models.CharField(max_length=192, default="/", blank=True)
+    partition_hex = models.CharField(max_length=6, blank=True)
+    size = models.IntegerField(null=True, blank=True, default=100)
+    mount_options = models.CharField(max_length=255, blank=True, default="defaults")
+    pnum = models.IntegerField()
+    bootable = models.BooleanField(default=False)
+    fs_freq = models.IntegerField(null=True, blank=True, default=0)
+    fs_passno = models.IntegerField(null=True, blank=True, default=0)
+    partition_fs = models.ForeignKey("backbone.partition_fs")
+    # lut_blob = models.TextField(blank=True, null=True)
+    # comma-delimited list of /dev/disk/by-* entries
+    disk_by_info = models.TextField(default="", blank=True)
+    warn_threshold = models.IntegerField(null=True, blank=True, default=85)
+    crit_threshold = models.IntegerField(null=True, blank=True, default=95)
+    date = models.DateTimeField(auto_now_add=True)
+    def get_xml(self):
+        p_xml = E.partition(
+            pk="{:d}".format(self.pk),
+            key="part__{:d}".format(self.pk),
+            mountpoint=self.mountpoint or "",
+            mount_options=self.mount_options or "",
+            pnum="%d" % (self.pnum or 0),
+            partition_fs="%d" % (self.partition_fs_id),
+            size="%d" % (self.size if type(self.size) in [long, int] else 0),
+            bootable="%d" % (1 if self.bootable else 0),
+            fs_freq="%d" % (self.fs_freq),
+            fs_passno="%d" % (self.fs_passno),
+            warn_threshold="%d" % (self.warn_threshold or 0),
+            crit_threshold="%d" % (self.crit_threshold or 0),
+        )
+        if hasattr(self, "problems"):
+            p_xml.append(
+                E.problems(
+                    *[E.problem(what, level="%d" % (log_level)) for log_level, what, is_global in self.problems if is_global is False]
+                )
+            )
+        return p_xml
+    def _validate(self, p_disc):
+        p_list = []
+        p_name = "{}{:d}".format(p_disc, self.pnum)
+        if not self.partition_fs_id:
+            p_list.append((logging_tools.LOG_LEVEL_ERROR, "no partition_fs set ({})".format(p_name), False))
+        else:
+            if self.partition_fs.hexid == "0" and self.partition_fs.name == "empty":
+                p_list.append((logging_tools.LOG_LEVEL_ERROR, "empty partitionf_fs ({})".format(p_name), False))
+            if self.partition_fs.need_mountpoint():
+                if not self.mountpoint.startswith("/"):
+                    p_list.append((logging_tools.LOG_LEVEL_ERROR, "no mountpoint defined for {}".format(p_name), False))
+                if not self.mount_options.strip():
+                    p_list.append((logging_tools.LOG_LEVEL_ERROR, "no mount_options given for {}".format(p_name), False))
+        return p_list
+    class Meta:
+        db_table = u'partition'
+        ordering = ("pnum",)
+
+@receiver(signals.pre_save, sender=partition)
+def partition_pre_save(sender, **kwargs):
+    if "instance" in kwargs:
+        cur_inst = kwargs["instance"]
+        p_num = cur_inst.pnum
+        try:
+            p_num = int(p_num)
+        except:
+            raise ValidationError("partition number '{}' not parseable".format(p_num))
+        if p_num == 0:
+            if partition.objects.filter(Q(partition_disc=cur_inst.partition_disc)).count() > 1:
+                raise ValidationError("for pnum==0 only one partition is allowed")
+        elif p_num < 1 or p_num > 32:
+            raise ValidationError("partition number {:d} out of bounds [1, 32]".format(p_num))
+        all_part_nums = partition.objects.exclude(Q(pk=cur_inst.pk)).filter(Q(partition_disc=cur_inst.partition_disc)).values_list("pnum", flat=True)
+        if p_num in all_part_nums:
+            raise ValidationError("partition number already used")
+        cur_inst.pnum = p_num
+        # size
+        _check_integer(cur_inst, "size", min_val=0)
+        _check_integer(cur_inst, "warn_threshold", none_to_zero=True, min_val=0, max_val=100)
+        _check_integer(cur_inst, "crit_threshold", none_to_zero=True, min_val=0, max_val=100)
+        # mountpoint
+        if cur_inst.partition_fs.need_mountpoint():
+            if cur_inst.mountpoint.strip() and not cur_inst.mountpoint.startswith("/"):
+                raise ValidationError("mountpoint must start with '/'")
+        # fs_freq
+        _check_integer(cur_inst, "fs_freq", min_val=0, max_val=1)
+        # fs_passno
+        _check_integer(cur_inst, "fs_passno", min_val=0, max_val=2)
+        if cur_inst.partition_fs_id:
+            if cur_inst.partition_fs.name == "swap":
+                cur_inst.mountpoint = "swap"
+            cur_inst.partition_hex = cur_inst.partition_fs.hexid
+
+class partition_disc(models.Model):
+    idx = models.AutoField(db_column="partition_disc_idx", primary_key=True)
+    partition_table = models.ForeignKey("backbone.partition_table")
+    disc = models.CharField(max_length=192)
+    label_type = models.CharField(max_length=128, default="gpt", choices=[("gpt", "GPT"), ("msdos", "MSDOS")])
+    priority = models.IntegerField(null=True, default=0)
+    date = models.DateTimeField(auto_now_add=True)
+    def get_xml(self):
+        pd_xml = E.partition_disc(
+            self.disc,
+            E.partitions(
+                *[sub_part.get_xml() for sub_part in self.partition_set.all()]
+                ),
+            pk="%d" % (self.pk),
+            key="pdisc__%d" % (self.pk),
+            priority="%d" % (self.priority),
+            disc=self.disc,
+        )
+        if hasattr(self, "problems"):
+            pd_xml.append(
+                E.problems(
+                    *[E.problem(what, level="%d" % (log_level)) for log_level, what, is_global in self.problems if not is_global]
+                )
+            )
+        return pd_xml
+    def _validate(self):
+        my_parts = self.partition_set.all()
+        p_list = sum([[(cur_lev, "*{:d} : {}".format(part.pnum, msg), flag) for cur_lev, msg, flag in part._validate(self)] for part in my_parts], [])
+        all_mps = [cur_mp.mountpoint for cur_mp in my_parts if cur_mp.mountpoint.strip() and cur_mp.mountpoint.strip() != "swap"]
+        if len(all_mps) != len(set(all_mps)):
+            p_list.append((logging_tools.LOG_LEVEL_ERROR, "mountpoints not unque", False))
+        if all_mps:
+            if "/usr" in all_mps:
+                p_list.append((logging_tools.LOG_LEVEL_ERROR, "cannot boot when /usr is on a separate partition", False))
+        ext_parts = [cur_p for cur_p in my_parts if cur_p.partition_fs_id and cur_p.partition_fs.name == "ext"]
+        if my_parts:
+            max_pnum = max([cur_p.pnum for cur_p in my_parts])
+            if self.label_type == "msdos":
+                # msdos label validation path
+                if len(ext_parts) == 0:
+                    if max_pnum > 4:
+                        p_list.append((logging_tools.LOG_LEVEL_ERROR, "too many partitions ({:d}), only 4 without ext allowed".format(max_pnum), False))
+                elif len(ext_parts) > 1:
+                    p_list.append((logging_tools.LOG_LEVEL_ERROR, "too many ext partitions ({:d}) defined".format(len(ext_parts)), False))
+                else:
+                    ext_part = ext_parts[0]
+                    if ext_part.pnum != 4:
+                        p_list.append((logging_tools.LOG_LEVEL_ERROR, "extended partition must have pnum 4", False))
+            else:
+                # gpt label validation path
+                if len(ext_parts):
+                    p_list.append((logging_tools.LOG_LEVEL_ERROR, "no extended partitions allowed for GPT label", False))
+        return p_list
+    class Meta:
+        db_table = u'partition_disc'
+        ordering = ("priority", "disc",)
+    def __unicode__(self):
+        return self.disc
+
+@receiver(signals.pre_save, sender=partition_disc)
+def partition_disc_pre_save(sender, **kwargs):
+    if "instance" in kwargs:
+        disc_re = re.compile("^/dev/([shv]d[a-z]|dm-(\d+)|mapper/.*|ida/(.*)|cciss/(.*))$")
+        cur_inst = kwargs["instance"]
+        d_name = cur_inst.disc.strip().lower()
+        if not d_name:
+            raise ValidationError("name must not be zero")
+        if not disc_re.match(d_name):
+            raise ValidationError("illegal name '{}'".format(d_name))
+        all_discs = partition_disc.objects.exclude(Q(pk=cur_inst.pk)).filter(Q(partition_table=cur_inst.partition_table)).values_list("disc", flat=True)
+        if d_name in all_discs:
+            raise ValidationError("disc name '{}' already used".format(d_name))
+        cur_inst.disc = d_name
+
+class partition_table(models.Model):
+    idx = models.AutoField(db_column="partition_table_idx", primary_key=True)
+    name = models.CharField(unique=True, max_length=192)
+    description = models.CharField(max_length=255, blank=True, default="")
+    enabled = models.BooleanField(default=True)
+    valid = models.BooleanField(default=False)
+    modify_bootloader = models.IntegerField(default=0)
+    nodeboot = models.BooleanField(default=False)
+    # non users-created partition tables can be deleted automatically
+    user_created = models.BooleanField(default=True)
+    date = models.DateTimeField(auto_now_add=True)
+    def _msg_merge(self, parent, msg):
+        if msg.startswith("*"):
+            return "{}{}".format(parent, msg[1:])
+        else:
+            return "{}: {}".format(parent, msg)
+    def validate(self):
+        # problem list, format is level, problem, global (always True for partition_table)
+        prob_list = []
+        if not self.partition_disc_set.all():
+            prob_list.append((logging_tools.LOG_LEVEL_ERROR, "no discs defined", True))
+        prob_list.extend(
+            sum([
+                [
+                    (cur_lev, self._msg_merge(p_disc.disc, msg), flag) for cur_lev, msg, flag in p_disc._validate()
+                ] for p_disc in self.partition_disc_set.all()
+            ], [])
+        )
+        all_mps = sum([[cur_p.mountpoint for cur_p in p_disc.partition_set.all() if cur_p.mountpoint.strip() and cur_p.mountpoint.strip() != "swap"] for p_disc in self.partition_disc_set.all()], [])
+        all_mps.extend([sys_p.mountpoint for sys_p in self.sys_partition_set.all()])
+        unique_mps = set(all_mps)
+        for non_unique_mp in sorted([name for name in unique_mps if all_mps.count(name) > 1]):
+            prob_list.append(
+                (logging_tools.LOG_LEVEL_ERROR, "mountpoint '{}' is not unique ({:d})".format(
+                    non_unique_mp,
+                    all_mps.count(name),
+                ), True)
+                )
+        if u"/" not in all_mps:
+            prob_list.append(
+                (logging_tools.LOG_LEVEL_ERROR, "no '/' mountpoint defined", True)
+                )
+        new_valid = not any([log_level in [
+            logging_tools.LOG_LEVEL_ERROR,
+            logging_tools.LOG_LEVEL_CRITICAL] for log_level, _what, _is_global in prob_list])
+        # validate
+        if new_valid != self.valid:
+            self.valid = new_valid
+            self.save()
+        return prob_list
+    def get_xml(self, **kwargs):
+        pt_xml = E.partition_table(
+            unicode(self),
+            E.partition_discs(
+                *[sub_disc.get_xml() for sub_disc in self.partition_disc_set.all()]
+                ),
+            E.lvm_info(
+                *[cur_vg.get_xml() for cur_vg in self.lvm_vg_set.all().prefetch_related("lvm_lv_set")]
+            ),
+            name=self.name,
+            pk="%d" % (self.pk),
+            key="ptable__%d" % (self.pk),
+            description=unicode(self.description),
+            valid="1" if self.valid else "0",
+            enabled="1" if self.enabled else "0",
+            nodeboot="1" if self.nodeboot else "0",
+        )
+        return pt_xml
+    def __unicode__(self):
+        return self.name
+    class Meta:
+        db_table = u'partition_table'
+    class CSW_Meta:
+        fk_ignore_list = ["partition_disc", "sys_partition", "lvm_lv", "lvm_vg"]
+
+@receiver(signals.pre_save, sender=partition_table)
+def partition_table_pre_save(sender, **kwargs):
+    if "instance" in kwargs:
+        cur_inst = kwargs["instance"]
+        if not cur_inst.name.strip():
+            raise ValidationError("name must not be zero")
+
+class partition_serializer(serializers.ModelSerializer):
+    class Meta:
+        model = partition
+
+class partition_fs_serializer(serializers.ModelSerializer):
+    need_mountpoint = serializers.Field(source="need_mountpoint")
+    class Meta:
+        model = partition_fs
+
+class sys_partition_serializer(serializers.ModelSerializer):
+    class Meta:
+        model = sys_partition
+
+class lvm_lv_serializer(serializers.ModelSerializer):
+    class Meta:
+        model = lvm_lv
+
+class lvm_vg_serializer(serializers.ModelSerializer):
+    class Meta:
+        model = lvm_vg
+
+class partition_disc_serializer_save(serializers.ModelSerializer):
+    class Meta:
+        model = partition_disc
+        fields = ("disc", "label_type",)
+
+class partition_disc_serializer_create(serializers.ModelSerializer):
+    # partition_set = partition_serializer(many=True)
+    class Meta:
+        model = partition_disc
+        # fields = ("disc", "partition_table")
+
+class partition_disc_serializer(serializers.ModelSerializer):
+    partition_set = partition_serializer(many=True)
+    class Meta:
+        model = partition_disc
+
+class partition_table_serializer(serializers.ModelSerializer):
+    partition_disc_set = partition_disc_serializer(many=True)
+    sys_partition_set = sys_partition_serializer(many=True)
+    lvm_lv_set = lvm_lv_serializer(many=True)
+    lvm_vg_set = lvm_vg_serializer(many=True)
+    class Meta:
+        model = partition_table
+        fields = ("partition_disc_set", "lvm_lv_set", "lvm_vg_set", "name", "idx", "description", "valid",
+            "enabled", "nodeboot", "act_partition_table", "new_partition_table", "sys_partition_set")
+        # otherwise the REST framework would try to store lvm_lv and lvm_vg
+        # read_only_fields = ("lvm_lv_set", "lvm_vg_set",) # "partition_disc_set",)
+
+class partition_table_serializer_save(serializers.ModelSerializer):
+    class Meta:
+        model = partition_table
+        fields = (
+            "name", "idx", "description", "valid",
+            "enabled", "nodeboot",
+        )
 
 class device(models.Model):
     idx = models.AutoField(db_column="device_idx", primary_key=True)
@@ -1082,9 +1124,9 @@ class device(models.Model):
     act_image = models.ForeignKey("image", null=True, related_name="act_image")
     imageversion = models.CharField(max_length=192, blank=True)
     # new partition table
-    partition_table = models.ForeignKey("partition_table", null=True, related_name="new_partition_table")
+    partition_table = models.ForeignKey("backbone.partition_table", null=True, related_name="new_partition_table")
     # current partition table
-    act_partition_table = models.ForeignKey("partition_table", null=True, related_name="act_partition_table", blank=True)
+    act_partition_table = models.ForeignKey("backbone.partition_table", null=True, related_name="act_partition_table", blank=True)
     partdev = models.CharField(max_length=192, blank=True)
     fixed_partdev = models.IntegerField(null=True, blank=True)
     bz2_capable = models.IntegerField(null=True, blank=True)
@@ -1115,8 +1157,8 @@ class device(models.Model):
     # link to monitor_server (or null for master)
     monitor_server = models.ForeignKey("device", null=True, blank=True)
     monitor_checks = models.BooleanField(default=True, db_column="nagios_checks", verbose_name="Checks enabled")
-    # performance data tracking
-    enable_perfdata = models.BooleanField(default=False)
+    # performance data tracking, also needed for IPMI and SNMP active monitoring
+    enable_perfdata = models.BooleanField(default=False, verbose_name="enable perfdata, check IPMI interfaces")
     flap_detection_enabled = models.BooleanField(default=False)
     show_in_bootcontrol = models.BooleanField(default=True)
     # not so clever here, better in extra table, FIXME
@@ -1129,7 +1171,7 @@ class device(models.Model):
     #    ("ssh://", "ssh://"),
     #    ("snmp://", "snmp://"),
     #    ("ipmi://", "ipmi://"),
-    #    ("ilo4://", "ilo4://"),
+    #    ("ilo4://", "ilo4://"), # no longer used ?
     #    ]
     # )
     date = models.DateTimeField(auto_now_add=True)
@@ -1149,12 +1191,14 @@ class device(models.Model):
         ], default=1)
     # system name
     domain_tree_node = models.ForeignKey("backbone.domain_tree_node", null=True, default=None)
-    # resolve name for monitoring
+    # resolve name for monitoring (i.e. use IP for monitoring)
     mon_resolve_name = models.BooleanField(default=True, verbose_name="Resolve to IP for monitoring")
     # categories for this device
     categories = models.ManyToManyField("backbone.category")
     # store rrd data to disk
     store_rrd_data = models.BooleanField(default=True)
+    # has active RRDs
+    has_active_rrds = models.BooleanField(default=False)
     @property
     def full_name(self):
         if not self.domain_tree_node_id:
@@ -1311,7 +1355,7 @@ class device(models.Model):
     def __unicode__(self):
         return u"{}{}".format(
             self.name,
-            " ({})".format(self.comment) if self.comment else "")
+            u" ({})".format(self.comment) if self.comment else "")
     class CSW_Meta:
         permissions = (
             ("all_devices", "access all devices", False),
@@ -1366,7 +1410,7 @@ class device_serializer(serializers.ModelSerializer):
             "act_partition_table", "enable_perfdata", "flap_detection_enabled",
             "automap_root_nagvis", "nagvis_parent", "monitor_server", "mon_ext_host",
             "is_meta_device", "device_type_identifier", "device_group_name", "bootserver",
-            "is_cluster_device_group", "root_passwd_set",
+            "is_cluster_device_group", "root_passwd_set", "has_active_rrds",
             "curl", "mon_resolve_name", "uuid", "access_level", "access_levels", "store_rrd_data",
             )
         read_only_fields = ("uuid",)
@@ -1385,7 +1429,7 @@ class device_serializer_cat(device_serializer):
             "act_partition_table", "enable_perfdata", "flap_detection_enabled",
             "automap_root_nagvis", "nagvis_parent", "monitor_server", "mon_ext_host",
             "is_meta_device", "device_type_identifier", "device_group_name", "bootserver",
-            "is_cluster_device_group", "root_passwd_set",
+            "is_cluster_device_group", "root_passwd_set", "has_active_rrds",
             "curl", "categories", "access_level", "access_levels",
             )
 
@@ -1399,7 +1443,7 @@ class device_serializer_variables(device_serializer):
             "act_partition_table", "enable_perfdata", "flap_detection_enabled",
             "automap_root_nagvis", "nagvis_parent", "monitor_server", "mon_ext_host",
             "is_meta_device", "device_type_identifier", "device_group_name", "bootserver",
-            "is_cluster_device_group", "root_passwd_set",
+            "is_cluster_device_group", "root_passwd_set", "has_active_rrds",
             "curl", "device_variable_set", "access_level", "access_levels", "store_rrd_data",
             )
 
@@ -1413,7 +1457,7 @@ class device_serializer_device_configs(device_serializer):
             "act_partition_table", "enable_perfdata", "flap_detection_enabled",
             "automap_root_nagvis", "nagvis_parent", "monitor_server", "mon_ext_host",
             "is_meta_device", "device_type_identifier", "device_group_name", "bootserver",
-            "is_cluster_device_group", "root_passwd_set",
+            "is_cluster_device_group", "root_passwd_set", "has_active_rrds",
             "curl", "device_config_set", "access_level", "access_levels", "store_rrd_data",
             )
 
@@ -1428,7 +1472,7 @@ class device_serializer_disk_info(device_serializer):
             "act_partition_table", "enable_perfdata", "flap_detection_enabled",
             "automap_root_nagvis", "nagvis_parent", "monitor_server", "mon_ext_host",
             "is_meta_device", "device_type_identifier", "device_group_name", "bootserver",
-            "is_cluster_device_group", "root_passwd_set",
+            "is_cluster_device_group", "root_passwd_set", "has_active_rrds",
             "curl", "partition_table", "access_level", "access_levels", "store_rrd_data",
             )
 
@@ -1442,7 +1486,7 @@ class device_serializer_network(device_serializer):
             "enable_perfdata", "flap_detection_enabled",
             "automap_root_nagvis", "nagvis_parent", "monitor_server", "mon_ext_host",
             "is_meta_device", "device_type_identifier", "device_group_name", "bootserver",
-            "is_cluster_device_group", "root_passwd_set",
+            "is_cluster_device_group", "root_passwd_set", "has_active_rrds",
             "curl", "netdevice_set", "access_level", "access_levels", "store_rrd_data",
             # for device.boot
             "new_state", "prod_link", "dhcp_mac", "dhcp_write",
@@ -1469,6 +1513,13 @@ class device_serializer_monitor_server(device_serializer):
         fields = ("idx", "name", "full_name", "device_group_name", "monitor_type",
             "access_level", "access_levels", "store_rrd_data",
             )
+
+@receiver(signals.post_save, sender=device)
+def device_post_save(sender, **kwargs):
+    if "instance" in kwargs:
+        _cur_inst = kwargs["instance"]
+        if _cur_inst.bootserver_id:
+            bootsettings_changed.send(sender=_cur_inst, device=_cur_inst, cause="device_changed")
 
 @receiver(signals.pre_save, sender=device)
 def device_pre_save(sender, **kwargs):
@@ -1743,12 +1794,16 @@ class cluster_setting_serializer(serializers.ModelSerializer):
 
 class cluster_license_cache(object):
     def __init__(self, force=False):
-        self.__CLC_NAME = "__ICSW_CLC"
+        self.__CLC_NAME = "__ICSW_CLCV2"
         _cur_c = cache.get(self.__CLC_NAME)
-        _lic_dict = {_name : False for _name, _descr in LICENSE_CAPS}
+        _lic_dict = {
+            _name : {
+                "enabled"     : False,
+                "services"    : _srvs,
+                "description" : _descr} for _name, _descr, _srvs in LICENSE_CAPS}
         if not _cur_c or force:
             for cur_lic in cluster_license.objects.filter(Q(cluster_setting__name="GLOBAL")):
-                _lic_dict[cur_lic.name] = cur_lic.enabled
+                _lic_dict[cur_lic.name]["enabled"] = cur_lic.enabled
             cache.set(self.__CLC_NAME, marshal.dumps(_lic_dict), 300)
         else:
             _lic_dict.update(marshal.loads(_cur_c))
@@ -1893,27 +1948,6 @@ class hw_entry_type(models.Model):
     date = models.DateTimeField(auto_now_add=True)
     class Meta:
         db_table = u'hw_entry_type'
-
-class ibc_connection(models.Model):
-    idx = models.AutoField(db_column="ibc_connection_idx", primary_key=True)
-    device = models.ForeignKey("device")
-    slave_device = models.ForeignKey("device", null=True, related_name="slave_device")
-    slave_info = models.CharField(max_length=192, blank=True)
-    blade = models.IntegerField()
-    state = models.CharField(max_length=96, blank=True)
-    blade_exists = models.IntegerField(null=True, blank=True)
-    date = models.DateTimeField(auto_now_add=True)
-    class Meta:
-        db_table = u'ibc_connection'
-
-class ibc_device(models.Model):
-    idx = models.AutoField(db_column="ibc_device_idx", primary_key=True)
-    device = models.ForeignKey("device")
-    blade_type = models.CharField(max_length=192, blank=True)
-    num_blades = models.IntegerField(null=True, blank=True)
-    date = models.DateTimeField(auto_now_add=True)
-    class Meta:
-        db_table = u'ibc_device'
 
 class image(models.Model):
     idx = models.AutoField(db_column="image_idx", primary_key=True)
@@ -2566,22 +2600,27 @@ class md_check_data_store(models.Model):
         return self.name
 
 class config_str_serializer(serializers.ModelSerializer):
+    object_type = serializers.Field(source="get_object_type")
     class Meta:
         model = config_str
 
 class config_int_serializer(serializers.ModelSerializer):
+    object_type = serializers.Field(source="get_object_type")
     class Meta:
         model = config_int
 
 class config_blob_serializer(serializers.ModelSerializer):
+    object_type = serializers.Field(source="get_object_type")
     class Meta:
         model = config_blob
 
 class config_bool_serializer(serializers.ModelSerializer):
+    object_type = serializers.Field(source="get_object_type")
     class Meta:
         model = config_bool
 
 class config_script_serializer(serializers.ModelSerializer):
+    object_type = serializers.Field(source="get_object_type")
     class Meta:
         model = config_script
 
@@ -2705,4 +2744,3 @@ class device_serializer_boot(device_serializer):
             # connections
             "master_connections", "slave_connections",
             )
-

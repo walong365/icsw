@@ -399,6 +399,8 @@ class category(models.Model):
         return [self.pk] + sum([pk_list for _sub_name, pk_list in sorted([(key, sum([sub_value.get_sorted_pks() for sub_value in value], [])) for key, value in self._sub_tree.iteritems()])], [])
     def __unicode__(self):
         return u"{}".format(self.full_name if self.depth else "[TLN]")
+    def single_select(self):
+        return True if self.full_name.startswith("/location/") else False
     def get_references(self):
         # print "*", self, dir(self._meta)
         num_refs = 0

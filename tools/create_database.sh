@@ -1,8 +1,10 @@
 #!/bin/bash
 
+echo "deprecated, please user /opt/cluster/sbin/cluster_setup.py"
+exit -1
+
 LIB_DIR="/opt/python-init/lib/python/site-packages"
 C_DIR="${LIB_DIR}/initat/cluster/"
-MIG_DIR="${C_DIR}/backbone/migrations/"
 
 if [ "${UID:-X}" != "0" ] ; then 
     echo "need to be root to create database"
@@ -41,18 +43,23 @@ if [ "${1:-X}" = "--no-initial-data" ] ; then
 else
     ID_FLAGS=""
 fi
-MIG_DIR="${C_DIR}/backbone/migrations/"
-echo "migration_dir is ${MIG_DIR}, ID_FLAGS is '${ID_FLAGS}'"
+
+echo "ID_FLAGS is '${ID_FLAGS}'"
 export NO_AUTO_ADD_APPLICATIONS=1
 export INITIAL_MIGRATION_RUN=1
+
 ${C_DIR}/manage.py syncdb --noinput ${ID_FLAGS}
+
 unset NO_AUTO_ADD_APPLICATIONS
 unset INITIAL_MIGRATION_RUN
+
 ${C_DIR}/manage.py schemamigration django.contrib.auth --initial
 ${C_DIR}/manage.py schemamigration backbone --initial
 ${C_DIR}/manage.py schemamigration reversion --initial
 ${C_DIR}/manage.py schemamigration static_precompiler --initial
+
 sync_apps="liebherr"
+
 for sync_app in ${sync_apps} ; do
     if [ -d "${C_DIR}${sync_app}" ] ; then
 	echo "syncing app ${sync_app}"
@@ -60,12 +67,14 @@ for sync_app in ${sync_apps} ; do
 	${C_DIR}/manage.py migrate ${sync_app}
     fi
 done
+
 ${C_DIR}/manage.py migrate auth
 ${C_DIR}/manage.py migrate backbone --no-initial-data
 ${C_DIR}/manage.py migrate reversion
 ${C_DIR}/manage.py migrate static_precompiler
 ${C_DIR}/manage.py syncdb --noinput ${ID_FLAGS}
 ${C_DIR}/manage.py migrate ${ID_FLAGS}
+
 if [ "${ID_FLAGS}" == "--no-initial-data" ] ; then
     echo "skipping initial data insert"
 else
@@ -81,3 +90,4 @@ else
     ${C_DIR}/manage.py migrate_to_config_catalog
     ${C_DIR}/manage.py create_cdg --name system
 fi
+

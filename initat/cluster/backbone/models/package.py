@@ -49,6 +49,10 @@ class package_repo(models.Model):
     service = models.ForeignKey(package_service, null=True, blank=True)
     publish_to_nodes = models.BooleanField(default=False, verbose_name="PublishFlag")
     priority = models.IntegerField(default=99)
+    system_type = models.CharField(max_length=64, choices=[
+        ("zypper", "zypper (suse)"),
+        ("yum", "yum (redhat)"),
+        ], default="zypper")
     # service = models.CharField(max_length=128, default="")
     def __unicode__(self):
         return self.name
@@ -207,7 +211,10 @@ class package(models.Model):
             always_latest="{:d}".format(1 if self.always_latest else 0),
         )
     def __unicode__(self):
-        return "{}-{}".format(self.name, self.version)
+        if self.always_latest:
+            return u"{}-LATEST".format(self.name)
+        else:
+            return u"{}-{}".format(self.name, self.version)
     class CSW_Meta:
         permissions = (
             ("package_install", "access package install site", False),
@@ -345,31 +352,55 @@ class package_device_connection(models.Model):
                     self.installed = "u"
                     self.install_time = 0
         elif self.response_type == "yum_flat":
-            lines = etree.fromstring(self.response_str).findtext("stdout").strip().split("\n")
-            if len(lines) == 1:
-                line = lines[0]
-                if line.startswith("package") and line.endswith("installed"):
-                    if line.count("not installed"):
-                        self.installed = "n"
-                    else:
-                        self.installed = "y"
-                else:
-                    # unsure
-                    self.installed = "u"
+            xml = etree.fromstring(self.response_str)
+            if xml.find("post_result/stdout") is not None:
+                pp_src, pp_text = ("post", xml.findtext("post_result/stdout"))
+            elif xml.find("pre_result/stdout") is not None:
+                pp_src, pp_text = ("pre", xml.findtext("pre_result/stdout"))
             else:
-                self.installed = "u"
-                cur_mode = 0
-                for _line_num, line in enumerate(lines):
-                    if line.startswith("Installed:"):
-                        cur_mode = 1
-                    elif line.startswith("Removed:"):
-                        cur_mode = 2
-                    elif not line.strip():
-                        cur_mode = 0
+                pp_src = "main"
+            if pp_src == "main":
+                lines = xml.findtext("stdout").strip().split("\n")
+                if len(lines) == 1:
+                    line = lines[0]
+                    if line.startswith("package") and line.endswith("installed"):
+                        if line.count("not installed"):
+                            self.installed = "n"
+                        else:
+                            self.installed = "y"
                     else:
-                        if cur_mode:
-                            if line.startswith(" ") and line.count(self.package.name):
-                                self.installed = "y" if cur_mode == 1 else "n"
+                        # unsure
+                        self.installed = "u"
+                else:
+                    self.installed = "u"
+                    cur_mode = 0
+                    for _line_num, line in enumerate(lines):
+                        if line.startswith("Installed:"):
+                            cur_mode = 1
+                        elif line.startswith("Removed:"):
+                            cur_mode = 2
+                        elif not line.strip():
+                            cur_mode = 0
+                        else:
+                            if cur_mode:
+                                if line.startswith(" ") and line.count(self.package.name):
+                                    self.installed = "y" if cur_mode == 1 else "n"
+            else:
+                pp_lines = pp_text.split("\n")
+                self.installed_name, self.installed_release, self.installed_version = ("", "", "")
+                if pp_lines[0].count("not installed"):
+                    self.installed = "n"
+                    self.install_time = 0
+                elif len(pp_lines) > 1 and pp_lines[1].isdigit():
+                    self.installed = "y"
+                    self.install_time = int(pp_lines[1])
+                    self.installed_name = pp_lines[0]
+                    if len(pp_lines) > 3:
+                        self.installed_version = pp_lines[2]
+                        self.installed_release = pp_lines[3]
+                else:
+                    self.installed = "u"
+                    self.install_time = 0
         else:
             self.installed = "u"
     class Meta:

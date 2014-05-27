@@ -126,7 +126,7 @@ class Command(BaseCommand):
                                 p_dict[(app_label, code_name)].save()
                 if created:
                     print "creation of {:d} took {:7.2f} seconds".format(created, time.time() - start_time),
-                    print "found {:7s} error(s)".format(len(errors))
+                    print "found {:7d} error(s)".format(len(errors))
                     if verbosity > 1:
                         pprint.pprint(errors)
         dup_keys = set([key for key in found_perms if found_perms_list.count(key) > 1])

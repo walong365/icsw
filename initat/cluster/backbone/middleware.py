@@ -19,6 +19,22 @@ import fcntl
 import struct
 import termios
 
+from threading import local
+
+_thread_local = local()
+
+class thread_local_middleware(object):
+    def process_request(self, request):
+        _thread_local.request = request
+        _thread_local.test = "test"
+        _thread_local.user = getattr(request, "user", None)
+    @property
+    def user(self):
+        return getattr(_thread_local, "user", None)
+    @property
+    def request(self):
+        return getattr(_thread_local, "request", None)
+
 REVISION_MIDDLEWARE_FLAG = "reversion.revision_middleware_active"
 
 # reversion 1.5
@@ -87,12 +103,12 @@ def show_database_calls(**kwargs):
                             if cur_str.startswith("[") and cur_str.endswith("]"):
                                 out_list.add(cur_str.split(".")[0])
                         # print sql_str
-                        sql_str = "{} FROM {} :: {}".format(
+                        sql_str = u"{} FROM {} :: {}".format(
                             oper_str,
                             ", ".join(sorted(list(out_list))),
                             sql_str)
                     out_str = sql_str[0:cur_width - 8]
-                print "{:6.2f} {}".format(float(act_sql["time"]), out_str)
+                print u"{:6.2f} {}".format(float(act_sql["time"]), out_str)
     else:
         print "django.db.connection not loaded in backbone.middleware.py"
 

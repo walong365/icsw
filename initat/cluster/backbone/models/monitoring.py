@@ -186,6 +186,8 @@ class mon_check_command(models.Model):
     is_event_handler = models.BooleanField(default=False)
     event_handler = models.ForeignKey("self", null=True, default=None, blank=True)
     event_handler_enabled = models.BooleanField(default=True)
+    def get_object_type(self):
+        return "mon"
     class Meta:
         db_table = u'ng_check_command'
         unique_together = (("name", "config"))
@@ -198,6 +200,7 @@ class mon_check_command(models.Model):
         return "mcc_{}".format(self.name)
 
 class mon_check_command_serializer(serializers.ModelSerializer):
+    object_type = serializers.Field(source="get_object_type")
     class Meta:
         model = mon_check_command
 
@@ -383,6 +386,9 @@ class mon_device_templ(models.Model):
     flap_detect_up = models.BooleanField(default=True)
     flap_detect_down = models.BooleanField(default=False)
     flap_detect_unreachable = models.BooleanField(default=False)
+    # freshness checks
+    check_freshness = models.BooleanField(default=False)
+    freshness_threshold = models.IntegerField(default=60)
     date = models.DateTimeField(auto_now_add=True)
     def __unicode__(self):
         return self.name
@@ -407,6 +413,7 @@ def mon_device_templ_pre_save(sender, **kwargs):
             ("high_flap_threshold", 0, 100),
             ("check_interval"     , 1, 60),
             ("retry_interval"     , 1, 60),
+            ("freshness_threshold", 10, 24 * 3600 * 365),
             ]:
             _check_integer(cur_inst, attr_name, min_val=min_val, max_val=max_val)
 
@@ -692,6 +699,9 @@ class mon_service_templ(models.Model):
     flap_detect_warn = models.BooleanField(default=False)
     flap_detect_critical = models.BooleanField(default=False)
     flap_detect_unknown = models.BooleanField(default=False)
+    # freshness checks
+    check_freshness = models.BooleanField(default=False)
+    freshness_threshold = models.IntegerField(default=60)
     date = models.DateTimeField(auto_now_add=True)
     def __unicode__(self):
         return self.name
@@ -716,6 +726,7 @@ def mon_service_templ_pre_save(sender, **kwargs):
             ("ninterval"     , 0, 60),
             ("low_flap_threshold" , 0, 100),
             ("high_flap_threshold", 0, 100),
+            ("freshness_threshold", 10, 24 * 3600 * 365),
             ]:
             _cur_val = _check_integer(cur_inst, attr_name, min_val=min_val, max_val=max_val)
 
