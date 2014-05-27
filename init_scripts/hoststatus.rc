@@ -1,6 +1,6 @@
 #! /bin/bash
 #
-# Copyright (c) 2001-2004,2006,2007,2012,2013 init.at
+# Copyright (c) 2001-2004,2006-2007,2012-2014 init.at
 #
 
 #
@@ -41,13 +41,25 @@ export HOSTNAME=`/bin/hostname`
 # runlevel
 runlevel=`/sbin/runlevel | cut -d " " -f 2`
 
+function kill_instances() {
+    pids=$(ps -C $(basename ${HOSTSTAT_BIN}) -o pid= )
+    if [ "${pids:-0}" != "0" ] ; then
+        for pid in $pids ; do
+            kill -${1:-15} $pid
+        done
+        return 0
+    else
+        return 1
+    fi 
+}
+
 [ ! -f /etc/motherserver ] && echo "localhost" > /etc/motherserver
 MOTHER_SERVER=`cat /etc/motherserver`
 
 case "$1" in
     start)
         # kill old instances
-        killall -9 $HOSTSTAT_BIN 2>/dev/null
+        kill_instances 9
         echo -n "Starting hoststatus (${HOSTSTAT_ARG})"
         ${HOSTSTAT_BIN} ${HOSTSTAT_ARG}
         rc_status -v
@@ -60,12 +72,12 @@ case "$1" in
         ${CHILD_BIN} -m ${MOTHER_SERVER} -p 8000 "down ${CRL_MESG} $runlevel" >/dev/null || rc_failed
         rc_status -v
         echo -n "Stopping hoststatus"
-        killall ${HOSTSTAT_BIN} 2>/dev/null || rc_failed
+        kill_instances || rc_failed
         rc_status -v
         ;;
     force-stop)
         echo -n "Force stopping hoststatus"
-        killall -9 ${HOSTSTAT_BIN}
+        kill_instances 9 
         rc_status -v
         ;;
     restart)
