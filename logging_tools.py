@@ -971,19 +971,3 @@ class logfile(logging.handlers.BaseRotatingHandler):
             self.mode = "w"
             self.stream = self._open()
 
-# def main():
-#    a = new_form_list()
-#    a.append([form_entry("xxx", header="a"),
-#              form_entry(u"öäöü", header="test"),
-#              form_entry_right(89, header="num")])
-#    print(unicode(a))
-#    # a = syslog_ng_config()
-#    # print a.get_dict_sort(a.get_multi_object("source"))
-#    # print "\n".join(a.get_config_lines())
-#    sys.exit(0)
-#
-# if __name__ == "__main__"
-#    main()
-#    print("Loadable module, exiting...")
-#    sys.exit(0)
-
