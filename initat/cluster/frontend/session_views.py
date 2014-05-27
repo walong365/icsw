@@ -84,11 +84,10 @@ class sess_logout(View):
     def get(self, request):
         from_logout = request.user.is_authenticated()
         logout(request)
-        login_form = authentication_form()
         return render_me(request, "login.html", {
             "CLUSTER_NAME"      : _get_cluster_name(),
             "LOGIN_SCREEN_TYPE" : _get_login_screen_type(),
-            "login_form"        : login_form,
+            "login_form"        : authentication_form(),
             "from_logout"       : from_logout,
             "login_hints"       : _get_login_hints(),
             "app_path"          : reverse("session:login")})()

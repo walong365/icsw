@@ -41,8 +41,11 @@ config_table_template = """
     </input>
     <span ng-show="selected_objects.length">
     , {{ selected_objects.length }} selected,
-    <input type="button" class="btn btn-sm btn-warning" value="clear selection" ng-click="unselect_objects()"></input>
-    <input type="button" class="btn btn-sm btn-danger" value="delete selected" ng-click="delete_selected_objects()"></input>
+    <div class="btn-group btn-sm">
+        <input type="button" class="btn btn-sm btn-warning" value="clear selection" ng-click="unselect_objects()"></input>
+        <input type="button" class="btn btn-sm btn-primary" value="modify selected" ng-click="modify_selected_objects()"></input>
+        <input type="button" class="btn btn-sm btn-danger" value="delete selected" ng-click="delete_selected_objects()"></input>
+    </div>
     </span>
 </h2>
 <table class="table table-condensed table-hover table-bordered" style="width:auto;">
@@ -177,7 +180,7 @@ var_table_template = """
         <tr>
             <th>Name</th>
             <th>value</th>
-            <th>descr</th>
+            <th>description</th>
             <th>type</th>
             <th colspan="2">Action</th>
         </tr>
@@ -191,7 +194,7 @@ var_table_template = """
                 </span>
                 {{ obj.name }}
             </td>
-            <td>{{ obj.value }}</td>
+            <td>{{ get_value(obj) }}</td>
             <td>{{ obj.description }}</td>
             <td>{{ obj.v_type }}</td>
             <td><input type="button" ng-class="obj._selected && 'btn btn-primary btn-xs' || 'btn btn-xs'" value="sel" ng-click="select_object(obj)"></input>
@@ -811,6 +814,12 @@ config_ctrl = config_module.controller("config_ctrl", ["$scope", "$compile", "$f
     return {
         restrict : "EA"
         template : $templateCache.get("var_table.html")
+        link : (scope, el, attrs) ->
+            scope.get_value = (obj) ->
+                if obj.v_type == "bool"
+                    return if obj.value then "true" else "false"
+                else
+                    return obj.value
     }
 ).directive("scripttable", ($templateCache, $compile, $modal, Restangular) ->
     return {

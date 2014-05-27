@@ -2265,7 +2265,16 @@ class config_bool_form(ModelForm):
                 "Basic settings",
                 Field("name", wrapper_class="ng-class:form_error('name')", typeahead="hint for hint in get_config_var_hints(_config) | filter:get_name_filter()"),
                 Field("description"),
-                Field("value", min=0, max=1),
+                HTML("""
+<div class='form-group'>
+    <label class='control-label col-sm-3'>Value</label>
+    <div class='controls col-sm-7'>
+        <input type='button' ng-class='_edit_obj.value && "btn btn-sm btn-success" || "btn btn-sm"' ng-click='_edit_obj.value = 1 - _edit_obj.value' ng-value='_edit_obj.value && "true" || "false"'>
+        </input>
+    </div>
+</div>
+"""),
+                # Field("value", min=0, max=1),
             ),
             HTML(
                 "<div ng-bind-html='show_config_var_help()'></div>",
@@ -2276,7 +2285,7 @@ class config_bool_form(ModelForm):
         )
     class Meta:
         model = config_bool
-        fields = ("name", "description", "value",)
+        fields = ("name", "description",)
 
 class config_script_form(ModelForm):
     helper = FormHelper()

@@ -41,30 +41,44 @@ rrd_graph_template = """
             <div class="input-group-btn">
                 <input type="button" ng-class="hide_zero && 'btn btn-sm btn-success' || 'btn btn-sm'" value="hide zero" ng-click="hide_zero=!hide_zero"></input>
             </div>
-            <input type="text" class="form-control input-sm" ng-model="from_date"></input>
-            <span class="input-group-btn">
-                <div class="btn-group">
-                    <button type="button" class="btn btn-sm dropdown-toggle btn-primary" data-toggle="dropdown">
-                       <span class="glyphicon glyphicon-calendar"></span>
-                    </button>
-                    <ul class="dropdown-menu" role="menu">
-                        <datetimepicker ng-model="from_date" datetimepicker-config="{ dropdownSelector: '.my-toggle-select' }">
-                        </datetimepicker>
-                    </ul>
+            <div style="width:240px;">
+                <div class="input-group">
+                    <span class="input-group-addon">
+                         from
+                    </span>
+                    <input type="text" class="form-control" ng-model="from_date_mom">
+                    </input>
+                    <span class="dropdown-toggle input-group-addon">
+                        <div class="dropdown">
+                            <button class="btn dropdown-toggle btn-xs">
+                                 <i class="glyphicon glyphicon-calendar"></i>
+                            </button>
+                            <ul class="dropdown-menu" role="menu">
+                                <datetimepicker ng-model="from_date_mom" data-datetimepicker-config="{ dropdownSelector: '#dropdownfrom' }"/>
+                            </ul>
+                        </div>
+                    </span>
                 </div>
-            </span>
-            <input type="text" class="form-control input-sm" ng-model="to_date"></input>
-            <span class="input-group-btn">
-                <div class="btn-group">
-                    <button type="button" class="btn btn-sm dropdown-toggle btn-primary" data-toggle="dropdown">
-                       <span class="glyphicon glyphicon-calendar"></span>
-                    </button>
-                    <ul class="dropdown-menu" role="menu">
-                        <datetimepicker ng-model="to_date" datetimepicker-config="{ dropdownSelector: '.my-toggle-select' }">
-                        </datetimepicker>
-                    </ul>
+            </div>
+            <div style="width:240px;">
+                <div class="input-group">
+                    <span class="input-group-addon">
+                         to
+                    </span>
+                    <input type="text" class="form-control" ng-model="to_date_mom">
+                    </input>
+                    <span class="dropdown-toggle input-group-addon">
+                        <div class="dropdown">
+                            <button class="btn dropdown-toggle btn-xs">
+                                 <i class="glyphicon glyphicon-calendar"></i>
+                            </button>
+                            <ul class="dropdown-menu" role="menu">
+                                <datetimepicker ng-model="to_date_mom" data-datetimepicker-config="{ dropdownSelector: '#dropdownfrom' }"/>
+                            </ul>
+                        </div>
+                    </span>
                 </div>
-            </span>
+            </div>
         </div>
         <div class="row">
             <div class="col-md-3">  
@@ -226,8 +240,6 @@ device_rrd_module.controller("rrd_ctrl", ["$scope", "$compile", "$filter", "$tem
         $scope.vector_valid = false
         $scope.to_date_mom = moment()
         $scope.from_date_mom = moment().subtract("days", 1)
-        $scope.from_date = $scope.from_date_mom.format(DT_FORM)
-        $scope.to_date = $scope.to_date_mom.format(DT_FORM)
         $scope.cur_dim = $scope.all_dims[1]
         $scope.error_string = ""
         $scope.searchstr = ""
@@ -237,31 +249,30 @@ device_rrd_module.controller("rrd_ctrl", ["$scope", "$compile", "$filter", "$tem
         $scope.hide_zero = false
         $scope.show_options = false
         $scope.g_tree = new rrd_tree($scope)
-        $scope.$watch("from_date", (new_val) ->
-            $scope.from_date_mom = moment(new_val)
+        $scope.$watch("from_date_mom", (new_val) ->
             $scope.update_dt() 
         )
-        $scope.$watch("to_date", (new_val) ->
-            $scope.to_date_mom = moment(new_val)
+        $scope.$watch("to_date_mom", (new_val) ->
             $scope.update_dt() 
         )
         $scope.update_dt = () ->
-            $scope.dt_valid = $scope.from_date_mom.isValid() and $scope.to_date_mom.isValid()
+            # force moment
+            from_date = moment($scope.from_date_mom)
+            to_date = moment($scope.to_date_mom)
+            $scope.dt_valid = from_date.isValid() and to_date.isValid()
             if $scope.dt_valid
-                diff = $scope.to_date_mom - $scope.from_date_mom 
+                diff = to_date - from_date 
                 if diff < 0
-                    $scope.from_date = $scope.to_date_mom.format(DT_FORM)
-                    $scope.to_date = $scope.from_date_mom.format(DT_FORM)
                     noty
                         text : "exchanged from with to date"
                         type : "warning"
+                    $scope.to_date_mom = from_date
+                    $scope.from_date_mom = to_date
                 else if diff < 60000
                     $scope.dt_valid = false
         $scope.set_active_tr = (new_tr) ->
             $scope.from_date_mom = new_tr.get_from()
             $scope.to_date_mom   = new_tr.get_to()
-            $scope.from_date = $scope.from_date_mom.format(DT_FORM)
-            $scope.to_date   = $scope.to_date_mom.format(DT_FORM)
             $scope.update_dt()
         $scope.set_active_dim = (cur_dim) ->
             $scope.cur_dim = cur_dim
@@ -363,8 +374,6 @@ device_rrd_module.controller("rrd_ctrl", ["$scope", "$compile", "$filter", "$tem
         $scope.use_crop = (graph) ->
             $scope.from_date_mom = graph.cts_start_mom
             $scope.to_date_mom = graph.cts_end_mom
-            $scope.from_date = $scope.from_date_mom.format(DT_FORM)
-            $scope.to_date = $scope.to_date_mom.format(DT_FORM)
             $scope.draw_graph()
         $scope.draw_graph = () =>
             call_ajax
@@ -372,8 +381,8 @@ device_rrd_module.controller("rrd_ctrl", ["$scope", "$compile", "$filter", "$tem
                 data : {
                     "keys"       : angular.toJson($scope.cur_selected)
                     "pks"        : angular.toJson($scope.devsel_list)
-                    "start_time" : $scope.from_date_mom.format(DT_FORM)
-                    "end_time"   : $scope.to_date_mom.format(DT_FORM)
+                    "start_time" : moment($scope.from_date_mom).format(DT_FORM)
+                    "end_time"   : moment($scope.to_date_mom).format(DT_FORM)
                     "size"       : $scope.cur_dim
                     "hide_zero"  : $scope.hide_zero
                 }
