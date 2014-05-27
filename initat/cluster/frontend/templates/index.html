@@ -11,11 +11,48 @@
     <div class="well">
         <h3>Quicklinks</h3>
         <ul class="list-group">
-            <li class="list-group-item">Change account settings (password, contact data)
-                <a href="{% url 'user:account_info' %}" class="btn btn-primary">{% trans "Account Info" %}</a>
+            <li class="list-group-item">
+                <div class="row">
+                    <div class="col-md-4">
+                        Change account settings (password, contact data)
+                    </div>
+                    <div class="col-md-4">
+                        <a href="{% url 'user:account_info' %}">{% trans "Account Info" %}</a>
+                    </div>
+                </div>
             </li>
-            <li class="list-group-item">Add a new device
-                <a ng-show="check_perm('backbone.user.modify_tree')" href="{% url 'mon:create_device' %}" class="btn btn-primary">{% trans "Create" %}</a>
+            <li class="list-group-item" ng-show="check_perm('backbone.user.modify_tree')">
+                <div class="row">
+                    <div class="col-md-4">
+                        Add a new device
+                    </div>
+                    <div class="col-md-4">
+                        <a href="{% url 'mon:create_device' %}">{% trans "Create device" %}</a>
+                    </div>
+                </div>
+            </li>
+        </ul>
+        <h3>External links</h3>
+        <ul class="list-group">
+            <li class="list-group-item">
+                <div class="row">
+                    <div class="col-md-4">
+                        Changelog for the current development master
+                    </div>
+                    <div class="col-md-4">
+                        <a href="http://www.initat.org/wordpress/?page_id=121" target="_blank" >{% trans "Changelog" %}</a>
+                    </div>
+                </div>
+            </li>
+            <li class="list-group-item">
+                <div class="row">
+                    <div class="col-md-4">
+                        Software support forum (register, discuss and ask questions)
+                    </div>
+                    <div class="col-md-4">
+                        <a href="http://www.initat.org/phpBB3/index.php" target="_blank">{% trans "Forum" %}</a>
+                    </div>
+                </div>
             </li>
         </ul>
     </div>
