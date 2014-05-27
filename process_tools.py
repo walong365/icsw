@@ -1795,6 +1795,3 @@ def create_password(**kwargs):
 def get_sys_bits():
     return int(platform.architecture()[0][0:2])
 
-if __name__ == "__main__":
-    print("Loadable module, exiting...")
-    sys.exit(0)
