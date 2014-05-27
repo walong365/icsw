@@ -3,7 +3,7 @@
 # Copyright (C) 2007,2012-2014 Andreas Lang-Nevyjel
 #
 # Send feedback to: <lang-nevyjel@init.at>
-# 
+#
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License Version 2 as
 # published by the Free Software Foundation.
@@ -63,7 +63,7 @@ class create_user_home(cs_base_class.server_com):
                 )
             else:
                 exp_dict = dict([(hd_export.name, hd_export.value) for hd_export in hd_exports])
-                self.log("export dict: %s" %  (", ".join(["%s='%s'" % (key, value) for key, value in exp_dict.iteritems()])))
+                self.log("export dict: %s" % (", ".join(["%s='%s'" % (key, value) for key, value in exp_dict.iteritems()])))
                 homestart = exp_dict.get("createdir", exp_dict["homeexport"])
                 # check for skeleton directory
                 skel_dir = None
@@ -72,7 +72,7 @@ class create_user_home(cs_base_class.server_com):
                         skel_dir = skel_dir
                         break
                 # get export directory
-                
+
                 home_start = cs_tools.hostname_expand(
                     global_config["SERVER_SHORT_NAME"],
                     homestart,
@@ -96,13 +96,14 @@ class create_user_home(cs_base_class.server_com):
                         create_hdir, hdir_exists, hdir_err_str = (
                             False,
                             True,
-                            "path %s already exists" % (full_home))
+                            "path {} already exists".format(full_home))
+                        cur_user.home_dir_created = False
+                        cur_user.save(update_fields=["home_dir_created"])
                     else:
                         if skel_dir:
                             try:
                                 shutil.copytree(skel_dir, full_home, 1)
                             except:
-                                exc_info = sys.exc_info()
                                 create_hdir, hdir_exists, hdir_err_str = (
                                     False,
                                     False,
@@ -118,7 +119,6 @@ class create_user_home(cs_base_class.server_com):
                             try:
                                 os.mkdir(full_home)
                             except:
-                                exc_info = sys.exc_info()
                                 create_hdir, hdir_exists, hdir_err_str = (
                                     False,
                                     False,

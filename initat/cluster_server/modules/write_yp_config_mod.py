@@ -157,7 +157,16 @@ class write_yp_config(cs_base_class.server_com):
             if pw_hash == "CRYPT":
                 pw_enc = password
             else:
-                pw_enc = "$5$$%s" % (password)
+                # from crypt(3):
+                #  ID  | Method
+                #  ----------------------------------------------------
+                #  1   | MD5
+                #  2a  | Blowfish, system-specific on 8-bit chars
+                #  2y  | Blowfish, correct handling of 8-bit chars
+                #  5   | SHA-256 (since glibc 2.7)
+                #  6   | SHA-512 (since glibc 2.7)
+                # hm, in fact we have an SHA1 password, this will not work...
+                pw_enc = "$5$${}".format(password)
             full_name = " ".join([(getattr(user_struct, key) or "").strip() for key in ["title", "first_name", "last_name"]]) or user_struct.login
             pbn.append((user_struct.login, "%s:%s:%d:%d:%s:%s:%s" % (user_struct.login, pw_enc, user_struct.uid, group_struct.gid, full_name, home, user_struct.shell)))
             pbu.append(("%d" % (user_struct.uid), "%s:%s:%d:%d:%s:%s:%s" % (user_struct.login, pw_enc, user_struct.uid, group_struct.gid, full_name, home, user_struct.shell)))

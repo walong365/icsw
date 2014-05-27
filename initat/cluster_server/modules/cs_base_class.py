@@ -75,10 +75,10 @@ class com_instance(object):
         self.Meta = meta_struct
         self.zmq_context = zmq_context
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
-        self.sc_obj.log("[ci] {}".format(what), log_level)
+        self.sc_obj.log(u"[ci] {}".format(what), log_level)
     def write_start_log(self):
         if self.Meta.write_log:
-            self.log("Got command {} (options {}) from host {} (port {:d}) to {}, {}: {}".format(
+            self.log(u"Got command {} (options {}) from host {} (port {:d}) to {}, {}: {}".format(
                 self.srv_com["command"].text,
                 "self.opt_str",
                 "self.src_host",
@@ -148,7 +148,7 @@ class com_instance(object):
             self.end_time = time.time()
             if int(self.srv_com["result"].attrib["state"]):
                 self.log(
-                    "result is ({:d}) {}".format(
+                    u"result is ({:d}) {}".format(
                         int(self.srv_com["result"].attrib["state"]),
                         self.srv_com["result"].attrib["reply"]
                     ),
@@ -156,7 +156,7 @@ class com_instance(object):
                 )
             if self.Meta.show_execution_time:
                 self.log("run took {}".format(logging_tools.get_diff_time_str(self.end_time - self.start_time)))
-                self.srv_com["result"].attrib["reply"] = "{} in {}".format(
+                self.srv_com["result"].attrib["reply"] = u"{} in {}".format(
                     self.srv_com["result"].attrib["reply"],
                     logging_tools.get_diff_time_str(self.end_time - self.start_time))
             if db_debug:
@@ -198,7 +198,7 @@ class server_com(object):
     def link(self, process_pool):
         self.process_pool = process_pool
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
-        self.process_pool.log("[com] {}".format(what), log_level)
+        self.process_pool.log(u"[com] {}".format(what), log_level)
     def check_config(self, loc_config, force=False):
         self.server_idx, self.act_config_name = (0, "")
         doit, srv_origin, err_str = (False, "---", "OK")

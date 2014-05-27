@@ -111,6 +111,7 @@ class quota_stuff(bg_stuff):
     def init_bg_stuff(self):
         self.Meta.min_time_between_runs = global_config["QUOTA_CHECK_TIME_SECS"]
         self.Meta.creates_machvector = global_config["MONITOR_QUOTA_USAGE"]
+        self.__track_all_quotas = global_config["TRACK_ALL_QUOTAS"]
         # user cache
         self.__user_dict = {}
         # last mail sent to admins
@@ -131,14 +132,15 @@ class quota_stuff(bg_stuff):
                         self.__user_dict[db_rec.uid][key] = value
                 else:
                     # new record
-                    self.__user_dict[db_rec["uid"]] = {"source"    : "SQL",
-                                                       "uid"       : db_rec.uid,
-                                                       "login"     : db_rec.login,
-                                                       "email"     : db_rec.email,
-                                                       "firstname" : db_rec.first_name,
-                                                       "lastname"  : db_rec.last_name}
+                    self.__user_dict[db_rec.uid] = {
+                        "source"    : "SQL",
+                        "uid"       : db_rec.uid,
+                        "login"     : db_rec.login,
+                        "email"     : db_rec.email,
+                        "firstname" : db_rec.first_name,
+                        "lastname"  : db_rec.last_name}
                 act_dict = self.__user_dict[db_rec.uid]
-                act_dict["info"] = "uid %d, login %s (from SQL), (%s %s, %s)" % (
+                act_dict["info"] = u"uid {:d}, login {} (from SQL), ({} {}, {})".format(
                     act_dict["uid"],
                     act_dict["login"],
                     act_dict["firstname"] or "<vname not set>",
@@ -234,7 +236,7 @@ class quota_stuff(bg_stuff):
                     f_frsize = 1024
                     for uid, u_stuff in u_dict.iteritems():
                         if self.Meta.creates_machvector:
-                            if u_stuff.quotas_defined():
+                            if u_stuff.quotas_defined() or self.__track_all_quotas:
                                 missing_uids.add(uid)
                                 quota_cache.append((dev, uid, u_stuff))
                         if not u_stuff.everything_ok():

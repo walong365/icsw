@@ -21,6 +21,7 @@ from initat.cluster.backbone.models import net_ip, device, \
     domain_tree_node, config, network, device_type
 from initat.cluster_server.config import global_config
 import commands
+import codecs
 import config_tools
 import cs_base_class
 import grp
@@ -248,9 +249,9 @@ class write_nameserver_config(cs_base_class.server_com):
                                     _form.add_line([s_name, "IN A", ret.ip, ret.netdevice.device.comment])
                                 else:
                                     _form.add_line([s_name, "CNAME", f_name, ret.netdevice.device.comment])
-                _lines.extend(str(_form).split("\n"))
+                _lines.extend(unicode(_form).split(u"\n"))
                 _file_name = "%s/%s/%s.zone" % (named_dir, sub_dir, nwname)
-                file(_file_name, "w").write("\n".join(_lines + [""]))
+                codecs.open(_file_name, "w", "utf-8").write("\n".join(_lines + [""]))
                 os.chmod(_file_name, 0600)
                 os.chown(_file_name, named_uid, named_gid)
 
@@ -268,7 +269,7 @@ class write_nameserver_config(cs_base_class.server_com):
                 nw_mask.parts)
             network_parts = 4
             while True:
-                if nw_mask_parts[-1]:
+                if not nw_mask_parts or nw_mask_parts[-1]:
                     break
                 network_parts -= 1
                 nw_mask_parts.pop(-1)
@@ -351,9 +352,9 @@ class write_nameserver_config(cs_base_class.server_com):
                             out_names.extend(ret.alias.strip().split())
                             for s_name in out_names:
                                 _form.add_line([fiand, "IN PTR", "%s.%s." % (s_name, cur_dtn.full_name), ret.netdevice.device.comment])
-                _lines.extend(str(_form).split("\n"))
+                _lines.extend(unicode(_form).split("\n"))
                 file_name = "%s/%s/%s.zone" % (named_dir, sub_dir, nw_ip)
-                file(file_name, "w").write("\n".join(_lines + [""]))
+                codecs.open(file_name, "w", "utf-8").write("\n".join(_lines + [""]))
                 os.chmod(file_name, 0600)
                 os.chown(file_name, named_uid, named_gid)
         cfile = "/etc/rndc.conf"

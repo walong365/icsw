@@ -775,7 +775,7 @@ class sync_ldap_config(cs_base_class.server_com, ldap_mixin):
                 for user_to_remove in users_to_remove:
                     ok, err_str = self._delete_entry(
                         ld_write,
-                        self._expand_dn("user", user(login=user_to_remove, uid=0), None)
+                        self._expand_dn("user", user(login=user_to_remove), None)
                     )
                     if ok:
                         self.log("deleted user %s" % (user_to_remove))
