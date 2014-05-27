@@ -368,7 +368,7 @@ def get_default_ns():
     def_ns = argparse.Namespace(all=True, instance=[], system=[], server=[], node=[], runlevel=True, memory=True, database=True, pid=True, time=True, thread=True)
     return def_ns
 
-def show_xml(opt_ns, res_xml, iter=0):
+def show_xml(opt_ns, res_xml, iteration=0):
     # color strings (green / yellow / red / normal)
     col_str_dict = {0 : "\033[1;32m",
                     1 : "\033[1;33m",
@@ -487,7 +487,7 @@ def show_xml(opt_ns, res_xml, iter=0):
             out_bl.append(cur_line)
     print(datetime.datetime.now().strftime("%a, %d. %b %Y %d %H:%M:%S"))
     # _lines = unicode(out_bl).split("\n")
-    # if iter and len(_lines) > 2:
+    # if iteration and len(_lines) > 2:
     #    print "\n".join(_lines[2:])
     # else:
     #    print "\n".join(_lines)

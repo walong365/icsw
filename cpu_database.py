@@ -40,7 +40,7 @@ def getstatusoutput(cmd):
 
 def get_cpu_basic_info():
     try:
-        cpu_dict = dict([(k.strip().lower(), v.strip()) for k, v in [x.strip().split(":", 1) for x in open("/proc/cpuinfo", "r").readlines() if x.count(":")]])
+        cpu_dict = {k.strip().lower() : v.strip() for k, v in [x.strip().split(":", 1) for x in open("/proc/cpuinfo", "r").readlines() if x.count(":")]}
     except:
         cpu_dict = {}
     return cpu_dict
@@ -769,9 +769,3 @@ def get_cpuid():
     return "0_%s_%s" % (first_cpu.get_short_cache_info(),
                         first_cpu["cpu_id"])
 
-def main():
-    print("Loadable module, exiting...")
-    sys.exit(0)
-
-if __name__ == "__main__":
-    main()

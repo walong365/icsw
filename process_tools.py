@@ -710,7 +710,7 @@ class cached_file(object):
                         content = open(self.__name, "r").read()
                     except:
                         self.log(
-                            "error reading from {}: {}".format(
+                            u"error reading from {}: {}".format(
                                 self.__name,
                                 get_except_info()),
                             logging_tools.LOG_LEVEL_ERROR)
@@ -1795,6 +1795,3 @@ def create_password(**kwargs):
 def get_sys_bits():
     return int(platform.architecture()[0][0:2])
 
-if __name__ == "__main__":
-    print("Loadable module, exiting...")
-    sys.exit(0)

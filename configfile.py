@@ -379,9 +379,6 @@ class configuration(object):
         gk = sorted(self.keys())
         if gk:
             f_obj = logging_tools.new_form_list()
-            # f_obj.set_format_string(2, "s", "-", " : ")
-            # f_obj.set_format_string(3, "s", "-", " , (")
-            # f_obj.set_format_string(4, "s", "", "from ", ")")
             for key in gk:
                 if self.get_type(key) in ["a", "d"]:
                     pv = self.pretty_print(key)
@@ -391,7 +388,6 @@ class configuration(object):
                         logging_tools.form_entry(self.get_type(key)),
                         logging_tools.form_entry(self.get_source(key)),
                         ])
-                    # f_obj.add_line((key, "list with %s:" % (logging_tools.get_plural("entry", len(pv))), self.get_type(key), self.get_source(key)))
                     for idx, entry in enumerate(pv):
                         f_obj.append([
                             logging_tools.form_entry(""),
@@ -400,7 +396,6 @@ class configuration(object):
                             logging_tools.form_entry(str(idx)),
                             logging_tools.form_entry("---"),
                             ])
-                        # f_obj.add_line(("", "", entry, str(idx), "---"))
                 else:
                     f_obj.append([
                         logging_tools.form_entry(key, header="key"),
@@ -409,8 +404,7 @@ class configuration(object):
                         logging_tools.form_entry(self.get_type(key), pre_str=", (", post_str=" from ", header="type"),
                         logging_tools.form_entry(self.get_source(key), post_str=")", header="source"),
                         ])
-                    # f_obj.add_line((key, self.is_global(key) and "global" or "local", str(self.pretty_print(key)), self.get_type(key), self.get_source(key)))
-            ret_str = str(f_obj).split("\n")
+            ret_str = unicode(f_obj).split("\n")
         else:
             ret_str = []
         return ret_str
@@ -500,8 +494,11 @@ class configuration(object):
                                     # interpret using eval
                                     if cur_type == "s":
                                         if value not in ["\"\""]:
-                                            # escape strings
-                                            value = "\"{}\"".format(value)
+                                            if value[0] == value[-1] and value[0] in ['"', "'"]:
+                                                pass
+                                            else:
+                                                # escape strings
+                                                value = "\"{}\"".format(value)
                                     try:
                                         self[key] = (
                                             eval("{}".format(value)),

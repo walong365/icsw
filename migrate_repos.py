@@ -1,4 +1,5 @@
 #!/usr/bin/python-init -Otu
+#
 # -*- coding: utf-8 -*-
 #
 # Copyright (C) 2012-2014 Andreas Lang-Nevyjel, init.at
@@ -60,7 +61,7 @@ class repo(dict):
         #    name)
         self._to_dict()
         if "baseurl" not in self:
-            print "no baseurl in repo %s, ingoring" % (self.name)
+            print u"no baseurl in repo {}, ingoring".format(self.name)
             return
         b_url = self["baseurl"]
         if b_url.count("www.initat.org") or (b_url.startswith("dir:///") and b_url.count("packages/RPMs")):
@@ -68,30 +69,30 @@ class repo(dict):
             # print b_url, url_m
             if url_m:
                 if self.opts.list:
-                    print "repo %s, current url is %s" % (self.name, b_url)
+                    print u"repo {}, current url is {}".format(self.name, b_url)
                 else:
                     rest = url_m.groupdict()["rest"]
                     if self.opts.migrate and rest in ["", "", None]:
-                        print "migrating repo %s to split-repo" % (self["name"])
+                        print "migrating repo {} to split-repo".format(self["name"])
                         # disable old
                         self._emit(self.name, enabled="0")
                         for new_repo in NEW_REPOS:
                             new_f_name = os.path.join(
                                 os.path.dirname(self.name),
-                                "%s_%s.repo" % (self["name"], new_repo)
+                                "{}_{}.repo".format(self["name"], new_repo)
                             )
                             self._emit(
                                 new_f_name,
-                                name="%s_%s" % (self["name"], new_repo),
+                                name="{}_{}".format(self["name"], new_repo),
                                 # to no migrate to devel repos
                                 baseurl=os.path.join(self["baseurl"], new_repo),
                                 )
                     elif rest and target_pf and not rest.endswith(target_pf):
                         repo_m = REPO_RE.match(rest)
-                        new_url = "%s/%s%s" % (b_url[:-(len(rest) + 1)], repo_m.group("name"), target_pf)
+                        new_url = "{}/{}{}".format(b_url[:-(len(rest) + 1)], repo_m.group("name"), target_pf)
                         if rest not in NO_SUB_REPOS:
-                            print "migrating repo %s to %s (rest is '%s')" % (self["name"], target_pf, rest)
-                            print "    relacing url '%s' with '%s'" % (b_url, new_url)
+                            print "migrating repo {} to {} (rest is '{}')".format(self["name"], target_pf, rest)
+                            print "    relacing url '{}' with '{}'".format(b_url, new_url)
                             self._emit(
                                 self.name,
                                 baseurl=new_url,
@@ -105,9 +106,9 @@ class repo(dict):
     def _emit(self, f_name, **kwargs):
         c_dict = dict([(key, kwargs.get(key, value)) for key, value in self.iteritems()])
         # pprint.pprint(c_dict)
-        content = ["[%s]" % (c_dict["name"])]
+        content = ["[{}]".format(c_dict["name"])]
         for key, value in c_dict.iteritems():
-            content.append("%s=%s" % (key, value))
+            content.append("{}={}".format(key, value))
         file(f_name, "w").write("\n".join(content + [""]))
 
 def main():
@@ -123,7 +124,7 @@ def main():
         try:
             _cur_repo = repo(os.path.join(REPO_DIR, r_name), opts)
         except:
-            print "error handling repo %s: %s" % (
+            print "error handling repo {}: {}".format(
                 r_name,
                 process_tools.get_except_info(),
             )

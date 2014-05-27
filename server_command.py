@@ -265,6 +265,8 @@ class srv_command(object):
             for sub_value in value:
                 sub_el = self._element(sub_value)
                 cur_element.append(sub_el)
+        elif etree.iselement(value):
+            cur_element = value
         else:
             raise ValueError("_element: unknown value type '{}'".format(type(value)))
         return cur_element

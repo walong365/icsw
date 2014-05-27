@@ -529,7 +529,8 @@ class server_check(object):
                     source_ip_lut.setdefault(self.ip_identifier_lut[unicode(s_ip)], []).append(unicode(s_ip))
                 for d_ip in other.netdevice_ip_lut[d_nd_pk]:
                     dest_ip_lut.setdefault(other.ip_identifier_lut[unicode(d_ip)], []).append(unicode(d_ip))
-                common_identifiers = set(source_ip_lut.keys()) & set(dest_ip_lut.keys())
+                # common identifiers, ignore localhost
+                common_identifiers = (set(source_ip_lut.keys()) & set(dest_ip_lut.keys())) - set(["l"])
                 if common_identifiers:
                     for act_id in common_identifiers:
                         add_actual = True
@@ -563,6 +564,8 @@ class server_check(object):
                                         )
                                     )
         r_list = sorted(c_ret_list) + sorted(nc_ret_list)
+        if kwargs.get("global_sort_results", False):
+            r_list = sorted(r_list)
         if kwargs.get("prefer_production_net", False):
             r_list = self.prefer_production_net(r_list)
         return r_list
@@ -663,7 +666,3 @@ class device_with_config(dict):
     def set_key_type(self, k_type):
         print "deprecated, only one key_type (config) supported"
         sys.exit(0)
-
-if __name__ == "__main__":
-    print "Loadable module, exiting ..."
-    sys.exit(1)

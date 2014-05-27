@@ -138,4 +138,7 @@ class zmq_connection(object):
         sock_fd = sock.getsockopt(zmq.FD)
         self.__results[sock_fd] = sock.recv()
         self._close_socket(sock_fd)
+    def close(self):
+        for sock_fd in list(self.__pending):
+            self._close_socket(sock_fd)
 
