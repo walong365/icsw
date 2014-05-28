@@ -451,11 +451,19 @@ class machine_vector(object):
             new_keys = self.__act_keys - last_keys
             lost_keys = last_keys - self.__act_keys
             if new_keys:
-                self.log("{}:".format(logging_tools.get_plural("new key", len(new_keys))))
-                self.log(self.optimize_list(new_keys))
+                self.log(
+                    "{}: {}".format(
+                        logging_tools.get_plural("new key", len(new_keys)),
+                        self.optimize_list(new_keys),
+                    )
+                )
             if lost_keys:
-                self.log("{}:".format(logging_tools.get_plural("lost key", len(lost_keys))))
-                self.log(self.optimize_list(lost_keys))
+                self.log(
+                    "{}: {}".format(
+                        logging_tools.get_plural("lost key", len(lost_keys)),
+                        self.optimize_list(lost_keys),
+                    )
+                )
             self.log("Machine_vector has changed, setting actual key to {:d} ({:d} keys)".format(self.__act_key, len(self.__act_dict)))
     def check_timeout(self):
         cur_time = time.time()
