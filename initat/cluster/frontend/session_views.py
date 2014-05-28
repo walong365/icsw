@@ -80,26 +80,24 @@ def _get_cluster_name():
     else:
         return c_name
 
+def login_page(request, **kwargs):
+        return render_me(request, "login.html", {
+            "CLUSTER_NAME"      : _get_cluster_name(),
+            "LOGIN_SCREEN_TYPE" : _get_login_screen_type(),
+            "login_form"        : kwargs.get("login_form", authentication_form()),
+            "from_logout"       : kwargs.get("from_logout", False),
+            "login_hints"       : _get_login_hints(),
+            "app_path"          : reverse("session:login")})()
+
 class sess_logout(View):
     def get(self, request):
         from_logout = request.user.is_authenticated()
         logout(request)
-        return render_me(request, "login.html", {
-            "CLUSTER_NAME"      : _get_cluster_name(),
-            "LOGIN_SCREEN_TYPE" : _get_login_screen_type(),
-            "login_form"        : authentication_form(),
-            "from_logout"       : from_logout,
-            "login_hints"       : _get_login_hints(),
-            "app_path"          : reverse("session:login")})()
+        return login_page(request, from_logout=from_logout)
 
 class sess_login(View):
     def get(self, request):
-        return render_me(request, "login.html", {
-            "CLUSTER_NAME"      : _get_cluster_name(),
-            "LOGIN_SCREEN_TYPE" : _get_login_screen_type(),
-            "login_form"        : authentication_form(),
-            "login_hints"       : _get_login_hints(),
-            "app_path"          : reverse("session:login")})()
+        return login_page(request)
     def post(self, request):
         _post = request.POST
         login_form = authentication_form(data=_post)
@@ -112,8 +110,5 @@ class sess_login(View):
             request.session["login_name"] = login_form.get_login_name()
             update_session_object(request)
             return HttpResponseRedirect(reverse("main:index"))
-        return render_me(request, "login.html", {
-            "LOGIN_SCREEN_TYPE" : _get_login_screen_type(),
-            "login_form"        : login_form,
-            "app_path"          : reverse("session:login")})()
+        return login_page(request, login_form=login_form)
 
