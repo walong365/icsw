@@ -270,7 +270,7 @@ mon_table_template = """
             <td>{{ obj.volatile | yesno1 }}</td>
             <td>{{ obj.enable_perfdata | yesno1 }}</td>
             <td>{{ obj.is_event_handler | yesno1 }}</td>
-            <td>{{ obj.event_handler }}</td>
+            <td>{{ get_event_handler(obj.event_handler) }}</td>
             <td>{{ obj.event_handler_enabled }}</td>
             <td>{{ get_num_cats(obj) }}</td>
             <td><input type="button" ng-class="obj._selected && 'btn btn-primary btn-xs' || 'btn btn-xs'" value="sel" ng-click="select_object(obj)"></input>
@@ -784,6 +784,16 @@ config_ctrl = config_module.controller("config_ctrl", ["$scope", "$compile", "$f
                     if new_obj != false
                         $scope.filter_conf(config, $scope)
             ) 
+        $scope.get_event_handler = (ev_idx) ->
+            if ev_idx
+                # not fast but working
+                ev_config = (entry for entry in $scope.entries when ev_idx in (mcc.idx for mcc in entry.mon_check_command_set))
+                if ev_config.length
+                    return (entry for entry in ev_config[0].mon_check_command_set when entry.idx == ev_idx)[0].name
+                else
+                    return "???"
+            else
+                return "---"
         $scope.get_event_handlers = (edit_obj) ->
             ev_handlers = []
             for entry in $scope.entries
@@ -812,6 +822,33 @@ config_ctrl = config_module.controller("config_ctrl", ["$scope", "$compile", "$f
                     max_argn = Math.max(max_argn, parseInt(cur_match.substring(3)))
             max_argn++
             $scope._edit_obj.command_line = "#{cur_cl} ${ARG#{max_argn}:#{$scope._edit_obj.arg_name.toUpperCase()}:#{$scope._edit_obj.arg_value}}"
+        $scope.get_moncc_info = () ->
+            cur_cl = $scope._edit_obj.command_line
+            complex_re = new RegExp("\\$\\{arg(\\d+):([^\\}^:]+):*(\\S+)*\\}\\$*|\\$\\arg(\\d+)\\$", "ig")
+            if cur_cl
+                simple_list = []
+                default_list = []
+                complex_list = []
+                while cur_m = complex_re.exec(cur_cl)
+                    if cur_m[4]
+                        # simple $ARG##$
+                        simple_list.push([parseInt(cur_m[4])])
+                    else if cur_m[3]
+                        # complex ${ARG##:NAME:DEFAULT}
+                        complex_list.push([parseInt(cur_m[1]), cur_m[2], cur_m[3]])
+                    else
+                        # form with default #{ARG##:DEFAULT}
+                        default_list.push([parseInt(cur_m[1]), cur_m[2]])
+                info_field = ["#{simple_list.length} simple args, #{default_list.length} args with default and #{complex_list.length} complex args"]
+                for entry in simple_list
+                    info_field.push("simple argument $ARG#{entry[0]}$")
+                for entry in default_list
+                    info_field.push("argument $ARG#{entry[0]}$ with default value #{entry[1]}")
+                for entry in complex_list
+                    info_field.push("argument $ARG#{entry[0]}$ from DevVar '#{entry[1]}' (default value #{entry[2]})")
+                return info_field
+            else
+                return ["no args parsed"]
         $scope.reload()
 ]).directive("catalogtable", ($templateCache, $compile, $modal, Restangular) ->
     return {
@@ -872,6 +909,11 @@ config_ctrl = config_module.controller("config_ctrl", ["$scope", "$compile", "$f
             scope.cat_tree.show_selected(true)
             scope.new_selection = (new_sel) ->
                 scope._edit_obj.categories = new_sel
+            scope.show_cat_tree = () ->
+                scope.cat_tree.toggle_expand_tree(1, false)
+            scope.hide_cat_tree = () ->
+                scope.cat_tree.toggle_expand_tree(-1, false)
+            scope.hide_cat_tree()
     }
 ).directive("uploadinfo", ($templateCache, $compile, $modal, Restangular) ->
     return {

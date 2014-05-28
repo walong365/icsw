@@ -2354,14 +2354,23 @@ class mon_check_command_form(ModelForm):
         <input type='button' ng-class='"btn btn-sm btn-primary"' ng-click='add_argument()' ng-value='"add argument"'>
         </input>
         name:
-        <input type='text' class="form-control" title="default value" ng-model="_edit_obj.arg_name"></input>
+        <input type='text' class="form-control input-sm" title="default value" ng-model="_edit_obj.arg_name"></input>
         value:
-        <input type='text' class="form-control" title="default value" ng-model="_edit_obj.arg_value"></input>
+        <input type='text' class="form-control input-sm" title="default value" ng-model="_edit_obj.arg_value"></input>
         </div>
     </div>
 </div>
-"""),
-
+                """),
+                HTML("""
+<div class='form-group'>
+    <label class="control-label col-sm-2">Info</label>
+    <div class="col-sm-9 list-group">
+        <ul>
+            <li class="list-group-item" ng-repeat="value in get_moncc_info()">{% verbatim %}{{ value }}{% endverbatim %}</li>
+        </ul>
+    </div>
+</div>
+                """),
             ),
             Fieldset(
                 "Additional settings",
@@ -2387,7 +2396,10 @@ class mon_check_command_form(ModelForm):
             ),
             Fieldset(
                 "Categories",
-                HTML("<div category edit_obj='{% verbatim %}{{_edit_obj }}{% endverbatim %}' mode='mon'></div>"),
+                HTML("""
+<div ng-mouseenter='show_cat_tree()' ng-mouseleave='hide_cat_tree()' category edit_obj='{% verbatim %}{{_edit_obj }}{% endverbatim %}' mode='mon'>
+</div>
+                """),
             ),
             FormActions(
                 Submit("submit", "", css_class="primaryAction", ng_value="action_string"),
