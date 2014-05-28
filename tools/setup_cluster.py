@@ -89,6 +89,8 @@ def call_manage(args):
     s_time = time.time()
     c_stat, c_out = commands.getstatusoutput(com_str)
     e_time = time.time()
+    if c_stat == 256 and c_out.lower().count("nothing seems to have changed"):
+        c_stat = 0
     if c_stat:
         print("something went wrong calling '{}' in {} ({:d}):".format(
             com_str,
@@ -341,11 +343,18 @@ def create_db(opts):
 
 def migrate_db(opts):
     if os.path.isdir(CMIG_DIR):
-        print("migrating current cluster database schema")
+        print("migrating current cluster database schemata")
         for _sync_app in SYNC_APPS:
-            if os.path.isdir(os.path.join(LIB_DIR, "initat", "cluster", _sync_app)):
-                call_manage(["schemamigration", _sync_app, "--auto"])
-                call_manage(["migrate", _sync_app])
+            _app_dir = os.path.join(LIB_DIR, "initat", "cluster", _sync_app)
+            if os.path.isdir(_app_dir):
+                _mig_dir = os.path.join(_app_dir, "migrations")
+                if os.path.isdir(_mig_dir):
+                    _py_files = [_entry for _entry in os.listdir(_mig_dir) if _entry.endswith(".py")]
+                    if _py_files == ["__init__.py"]:
+                        # initial schema migration call
+                        call_manage(["schemamigration", _sync_app, "--initial"])
+                    call_manage(["schemamigration", _sync_app, "--auto"])
+                    call_manage(["migrate", _sync_app])
         check_local_settings()
         call_manage(["schemamigration", "backbone", "--auto"])
         call_manage(["migrate", "--no-initial-data", "backbone"])
