@@ -2346,6 +2346,22 @@ class mon_check_command_form(ModelForm):
                 Field("name", wrapper_class="ng-class:form_error('name')"),
                 Field("description"),
                 Field("command_line"),
+                HTML("""
+<div class='form-group'>
+    <label class='control-label col-sm-2'>Tools</label>
+    <div class='controls col-sm-9'>
+        <div class="form-inline">
+        <input type='button' ng-class='"btn btn-sm btn-primary"' ng-click='add_argument()' ng-value='"add argument"'>
+        </input>
+        name:
+        <input type='text' class="form-control" title="default value" ng-model="_edit_obj.arg_name"></input>
+        value:
+        <input type='text' class="form-control" title="default value" ng-model="_edit_obj.arg_value"></input>
+        </div>
+    </div>
+</div>
+"""),
+
             ),
             Fieldset(
                 "Additional settings",

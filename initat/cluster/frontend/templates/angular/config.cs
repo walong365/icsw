@@ -42,8 +42,8 @@ config_table_template = """
     <span ng-show="selected_objects.length">
     , {{ selected_objects.length }} selected,
     <div class="btn-group btn-sm">
-        <input type="button" class="btn btn-sm btn-warning" value="clear selection" ng-click="unselect_objects()"></input>
-        <input type="button" class="btn btn-sm btn-primary" value="modify selected" ng-click="modify_selected_objects()"></input>
+        <input type="button" class="btn btn-sm btn-primary" value="clear selection" ng-click="unselect_objects()"></input>
+        <input type="button" class="btn btn-sm btn-warning" value="modify selected" ng-click="modify_selected_objects()"></input>
         <input type="button" class="btn btn-sm btn-danger" value="delete selected" ng-click="delete_selected_objects()"></input>
     </div>
     </span>
@@ -747,6 +747,8 @@ config_ctrl = config_module.controller("config_ctrl", ["$scope", "$compile", "$f
             )
         $scope.edit_mon = (config, obj, event) ->
             $scope.mon_edit.create_list = config.mon_check_command_set
+            obj.arg_name = "argument"
+            obj.arg_value = "80"
             $scope.mon_edit.edit(obj, event).then(
                 (mod_obj) ->
                     if mod_obj != false
@@ -774,6 +776,8 @@ config_ctrl = config_module.controller("config_ctrl", ["$scope", "$compile", "$f
                     "description" : "Check command"
                     "command_line" : "$USER2$ -m $HOSTADDRESS$ uptime"
                     "categories" : []
+                    "arg_name" : "argument"
+                    "arg_value" : "80"
                 }
             $scope.mon_edit.create(event).then(
                 (new_obj) ->
@@ -799,6 +803,15 @@ config_ctrl = config_module.controller("config_ctrl", ["$scope", "$compile", "$f
         $scope.delete_catalog = (cat) ->
             $scope.catalog_edit.delete_obj(cat).then((res) ->
             )
+        $scope.add_argument = () ->
+            cur_cl = $scope._edit_obj.command_line
+            max_argn = 0
+            match_list = cur_cl.match(/arg(\d+)/ig)
+            if match_list?
+                for cur_match in match_list 
+                    max_argn = Math.max(max_argn, parseInt(cur_match.substring(3)))
+            max_argn++
+            $scope._edit_obj.command_line = "#{cur_cl} ${ARG#{max_argn}:#{$scope._edit_obj.arg_name.toUpperCase()}:#{$scope._edit_obj.arg_value}}"
         $scope.reload()
 ]).directive("catalogtable", ($templateCache, $compile, $modal, Restangular) ->
     return {
