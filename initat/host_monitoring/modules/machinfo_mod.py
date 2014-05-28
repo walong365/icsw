@@ -1,5 +1,3 @@
-#!/usr/bin/python-init -Ot
-#
 # -*- coding: utf-8 -*-
 #
 # Copyright (C) 2001-2014 Andreas Lang-Nevyjel, init.at
@@ -50,6 +48,8 @@ nw_classes = ["ethernet", "network", "infiniband"]
 EXTRA_BLOCK_DEVS = "/etc/sysconfig/host-monitoring.d/extra_block_devs"
 
 class _general(hm_classes.hm_module):
+    def base_init(self):
+        self.dmi_bin = process_tools.find_file("dmidecode")
     def init_module(self):
         self.local_lvm_info = partition_tools.lvm_struct("bin")
         self.local_mp_info = partition_tools.multipath_struct("bin")
@@ -1846,14 +1846,14 @@ class uname_command(hm_classes.hm_command):
 
 class dmiinfo_command(hm_classes.hm_command):
     def __call__(self, srv_com, cur_ns):
-        dmi_stat, dmi_result = commands.getstatusoutput("/opt/cluster/bin/dmidecode")
+        _dmi_stat, _dmi_result = commands.getstatusoutput(self.module.dmi_bin)
         with tempfile.NamedTemporaryFile()  as tmp_file:
-            dmi_stat, dmi_result = commands.getstatusoutput("/opt/cluster/bin/dmidecode --dump-bin %s" % (tmp_file.name))
+            _dmi_stat, _dmi_result = commands.getstatusoutput("{} --dump-bin {}".format(self.module.dmi_bin, tmp_file.name))
             srv_com["dmi_dump"] = server_command.compress(file(tmp_file.name, "r").read())
     def interpret(self, srv_com, cur_ns):
         with tempfile.NamedTemporaryFile() as tmp_file:
             file(tmp_file.name, "w").write(server_command.decompress(srv_com["dmi_dump"].text))
-            dmi_stat, dmi_result = commands.getstatusoutput("/opt/cluster/bin/dmidecode --from-dump %s" % (tmp_file.name))
+            _dmi_stat, dmi_result = commands.getstatusoutput("{} --from-dump {}".format(self.module.dmi_bin, tmp_file.name))
             # decode dmi-info
             dec_lines = []
             for line in dmi_result.split("\n"):
@@ -1866,6 +1866,7 @@ class dmiinfo_command(hm_classes.hm_command):
             dmi_struct = {"info"    : [],
                           "handles" : []}
             # info
+            print dec_lines
             while True:
                 if dec_lines[0][1].lower().startswith("handle"):
                     break
@@ -1950,6 +1951,3 @@ def trim_string(in_str):
         in_str = in_str.replace("  ", " ")
     return in_str.strip()
 
-if __name__ == "__main__":
-    print "This is a loadable module."
-    sys.exit(0)

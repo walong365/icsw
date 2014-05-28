@@ -352,8 +352,8 @@ class resync_config_command(object):#s.hmb_command):
 class call_script_command(hm_classes.hm_command):
     def __init__(self, name):
         hm_classes.hm_command.__init__(self, name, positional_arguments=True, server_arguments=True)
-        self.server_parser.add_argument("--at-time", dest="time", type=int, default=0)
-        self.server_parser.add_argument("--use-at", dest="use_at", default=False, action="store_true")
+        self.parser.add_argument("--at-time", dest="time", type=int, default=0)
+        self.parser.add_argument("--use-at", dest="use_at", default=False, action="store_true")
     def __call__(self, srv_com, cur_ns):
         if not "arguments:arg0" in srv_com:
             srv_com["result"].attrib.update({

@@ -1,4 +1,3 @@
-#!/usr/bin/python-init -Ot
 # -*- coding: utf-8 -*-
 #
 # Copyright (C) 2011-2014 Andreas Lang-Nevyjel
@@ -36,7 +35,6 @@ def client_code():
         print "{:d} import errors:".format(len(modules.IMPORT_ERRORS))
         for mod, com, _str in modules.IMPORT_ERRORS:
             print "{:<30s} {:<20s} {}".format(com, mod.split(".")[-1], _str)
-    # log_template = logging_tools.get_logger(global_config["LOG_NAME"], global_config["LOG_DESTINATION"], zmq=True, context=)
     conn_str = "tcp://{}:{:d}".format(
         global_config["HOST"],
         global_config["COM_PORT"])
@@ -44,7 +42,7 @@ def client_code():
     arg_list = arg_stuff["arg_list"]
     com_name = arg_list.pop(0)
     if com_name in modules.command_dict:
-        srv_com = server_command.srv_command(command=com_name) # " ".join(arg_list))
+        srv_com = server_command.srv_command(command=com_name)
         for src_key, dst_key in [("HOST"    , "host"),
                                  ("COM_PORT", "port")]:
             srv_com[dst_key] = global_config[src_key]

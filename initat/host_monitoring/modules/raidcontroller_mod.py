@@ -1581,8 +1581,8 @@ class lsi_status_command(hm_classes.hm_command):
 class ibmbcraid_status_command(hm_classes.hm_command):
     def __init__(self, name):
         hm_classes.hm_command.__init__(self, name, positional_arguments=True)
-        self.server_parser.add_argument("--user", dest="user", type=str)
-        self.server_parser.add_argument("--pass", dest="passwd", type=str)
+        self.parser.add_argument("--user", dest="user", type=str)
+        self.parser.add_argument("--pass", dest="passwd", type=str)
     def __call__(self, srv_com, cur_ns):
         ctrl_type.update("ibmbcraid")
         ctrl_type.cur_ns = cur_ns

@@ -90,9 +90,9 @@ class smcipmi_command(hm_classes.hm_command):
     info_str = "SMCIPMITool frontend"
     def __init__(self, name):
         hm_classes.hm_command.__init__(self, name, server_arguments=True, positional_arguments=True)
-        self.server_parser.add_argument("--user", dest="user", type=str, default="ADMIN")
-        self.server_parser.add_argument("--passwd", dest="passwd", type=str, default="ADMIN")
-        self.server_parser.add_argument("--ip", dest="ip", type=str)
+        self.parser.add_argument("--user", dest="user", type=str, default="ADMIN")
+        self.parser.add_argument("--passwd", dest="passwd", type=str, default="ADMIN")
+        self.parser.add_argument("--ip", dest="ip", type=str)
     def __call__(self, srv_com, cur_ns):
         args = cur_ns.arguments
         if not len(args):

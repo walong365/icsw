@@ -165,6 +165,7 @@ class hm_module(object):
         self.name = name
         self.obj = mod_obj
         self.__commands = {}
+        self.base_init()
     def add_command(self, com_name, call_obj):
         if type(call_obj) == type:
             if com_name.endswith("_command"):
@@ -177,6 +178,9 @@ class hm_module(object):
         return self.__commands
     def register_server(self, proc_pool):
         self.process_pool = proc_pool
+    def base_init(self):
+        # called directly after init (usefull for collclient)
+        pass
     def init_module(self):
         pass
     def close_module(self):
@@ -187,28 +191,33 @@ class hm_module(object):
         return u"module {}, priority {:d}".format(self.name, self.Meta.priority)
 
 class hm_command(object):
+    info_str = ""
     def __init__(self, name, **kwargs):
         self.name = name
-        self.parser = argparse.ArgumentParser(description="help for command {}".format(self.name))
-        self.server_parser = argparse.ArgumentParser(description="help for command {}".format(self.name))
+        # argument parser
+        self.parser = argparse.ArgumentParser(
+            description="description: {}".format(self.info_str) if self.info_str else "",
+            add_help=False,
+            prog="collclient.py --host HOST {}".format(self.name),
+        )
         parg_flag = kwargs.get("positional_arguments", False)
         self.server_arguments = kwargs.get("server_arguments", False)
         # used to pass commandline arguments to the server
         self.partial = kwargs.get("partial", False)
         if parg_flag is not False:
             if parg_flag is True:
-                self.parser.add_argument("arguments", nargs="*", help="additional arguments")
-                self.server_parser.add_argument("arguments", nargs="*", help="additional arguments")
+                # self.parser.add_argument("arguments", nargs="*", help="additional arguments")
+                self.parser.add_argument("arguments", nargs="*", help=kwargs.get("arguments_name", "additional arguments"))
             elif parg_flag == 1:
-                self.parser.add_argument("arguments", nargs="+", help="additional arguments")
-                self.server_parser.add_argument("arguments", nargs="+", help="additional arguments")
+                # self.parser.add_argument("arguments", nargs="+", help="additional arguments")
+                self.parser.add_argument("arguments", nargs="+", help=kwargs.get("arguments_name", "additional arguments"))
             else:
                 raise ValueError, "positonal_argument flag not in [1, True, False]"
         # monkey patch parsers
+        # self.parser.exit = self._parser_exit
+        # self.parser.error = self._parser_error
         self.parser.exit = self._parser_exit
         self.parser.error = self._parser_error
-        self.server_parser.exit = self._parser_exit
-        self.server_parser.error = self._parser_error
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
         self.module.process_pool.log("[{}] {}".format(self.name, what), log_level)
     def _parser_exit(self, status=0, message=None):
@@ -218,7 +227,7 @@ class hm_command(object):
         raise ValueError, (2, message)
         self.parser_exit, self.parser_message = (2, message)
     def handle_server_commandline(self, arg_list):
-        return self.server_parser.parse_args(arg_list)
+        return self.parser.parse_args(arg_list)
     def handle_commandline(self, arg_list):
         # for arguments use "--" to separate them from the commandline arguments
         if self.partial or self.server_arguments:

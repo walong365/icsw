@@ -870,7 +870,7 @@ class ping_command(hm_classes.hm_command):
 class net_command(hm_classes.hm_command):
     info_str = "network information"
     def __init__(self, name):
-        hm_classes.hm_command.__init__(self, name, positional_arguments=True)
+        hm_classes.hm_command.__init__(self, name, positional_arguments=True, arguments_name="interface")
         self.parser.add_argument("-w", dest="warn", type=str)
         self.parser.add_argument("-c", dest="crit", type=str)
         self.parser.add_argument("-s", dest="speed", type=str)
@@ -972,8 +972,11 @@ class net_command(hm_classes.hm_command):
             cur_ns.warn = self._parse_speed_str(cur_ns.warn)
         if cur_ns.crit:
             cur_ns.crit = self._parse_speed_str(cur_ns.crit)
-        add_errors, add_oks, ret_state = ([], [],
-                                          limits.check_ceiling(max_rxtx, cur_ns.warn, cur_ns.crit))
+        add_errors, add_oks, ret_state = (
+            [],
+            [],
+            limits.check_ceiling(max_rxtx, cur_ns.warn, cur_ns.crit)
+        )
         if not connected:
             add_errors.append("No cable connected?")
             ret_state = max(ret_state, limits.nag_STATE_WARNING)

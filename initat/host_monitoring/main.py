@@ -30,6 +30,7 @@ from initat.host_monitoring.relay import relay_code
 from initat.host_monitoring.server import server_code
 from initat.host_monitoring.version import VERSION_STRING
 import configfile
+import logging_tools
 import os
 import process_tools
 import sys
@@ -42,15 +43,27 @@ def show_command_info():
             print "%-24s %-32s %s" % (mod_name.split(".")[-1], com_name, error_str)
     valid_names = sorted(modules.command_dict.keys())
     for mod in modules.module_list:
-        print
-        print unicode(mod)
-        print
         c_names = [name for name in valid_names if modules.command_dict[name].module == mod]
+        local_valid_names = []
         for com_name in c_names:
             cur_com = modules.command_dict[com_name]
             if isinstance(cur_com, hm_classes.hm_command):
-                # print "\n".join(["", "command %s" % (com_name), ""])
-                cur_com.parser.print_help()
+                local_valid_names.append(com_name)
+        local_valid_names = sorted(local_valid_names)
+        print("\n{}\n{}\n{}\n{}".format(
+            "-" * 50,
+            unicode(mod),
+            "{} defined: {}".format(
+                logging_tools.get_plural("command", len(local_valid_names)),
+                ", ".join(local_valid_names),
+            ) if local_valid_names else "no commands defined",
+            "-" * 50,
+            ))
+        for com_name in local_valid_names:
+            cur_com = modules.command_dict[com_name]
+            print("\ncommand {}:\n".format(com_name))
+            cur_com.parser.print_help()
+            print("-" * 10)
     sys.exit(0)
 
 def main():
@@ -62,11 +75,9 @@ def main():
         ("LOG_NAME"               , configfile.str_c_var(prog_name)),
         ("KILL_RUNNING"           , configfile.bool_c_var(True)),
         ("SHOW_COMMAND_INFO"      , configfile.bool_c_var(False, help_string="show command info", only_commandline=True)),
-        ("MACHVECTOR_POLL_COUNTER", configfile.int_c_var(30, help_string="machvector poll counter")),
         ("BACKLOG_SIZE"           , configfile.int_c_var(5, help_string="backlog size for 0MQ sockets [%(default)d]")),
         ("VERBOSE"                , configfile.int_c_var(0, help_string="set verbose level [%(default)d]", short_options="v", only_commandline=True)),
         ("OBJGRAPH"               , configfile.bool_c_var(False, help_string="enable objgraph [%(default)c]", only_commandline=True)),
-        ("RUN_ARGUS"              , configfile.bool_c_var(False, help_string="enable argus [%(default)c]")),
         ("NICE_LEVEL"             , configfile.int_c_var(10, help_string="nice level [%(default)d]")),
         ("PID_NAME"               , configfile.str_c_var(
             os.path.join(
@@ -81,7 +92,9 @@ def main():
             ("NO_INOTIFY" , configfile.bool_c_var(False, info="disable inotify process", help_string="disable inotify proces [%(default)s]", action="store_true")),
             ("AFFINITY"   , configfile.bool_c_var(False, info="enable process_affinity tools", help_string="enables pinning of processes to certain cores", action="store_true")),
             ("TRACK_IPMI" , configfile.bool_c_var(False, info="enable tracking of IPMI sensors", help_string="enable tracking of IPMI sensor data", action="store_true")),
-            ("INOTIFY_IDLE_TIMEOUT", configfile.int_c_var(5, info="seconds to wait between two inotify() checks", help_string="loop timer for inotify_check [%(default)d]")),
+            ("INOTIFY_IDLE_TIMEOUT"   , configfile.int_c_var(5, info="seconds to wait between two inotify() checks", help_string="loop timer for inotify_check [%(default)d]")),
+            ("RUN_ARGUS"              , configfile.bool_c_var(False, help_string="enable argus [%(default)c]")),
+            ("MACHVECTOR_POLL_COUNTER", configfile.int_c_var(30, help_string="machvector poll counter")),
         ])
     elif prog_name == "collclient":
         global_config.add_config_entries([
@@ -96,6 +109,8 @@ def main():
             ("TIMEOUT"  , configfile.int_c_var(8, help_string="timeout for calls to distance machines [%(default)d]")),
             ("AUTOSENSE", configfile.bool_c_var(True, help_string="enable autosensing of 0MQ/TCP Clients [%(default)s]")),
             ])
+    if prog_name in ["collrelay", "collserver"]:
+        pass
     global_config.parse_file()
     options = global_config.handle_commandline(
         description="{}, version is {}".format(
@@ -112,8 +127,12 @@ def main():
     if not options.DEBUG and prog_name in ["collserver", "collrelay"]:
         process_tools.become_daemon()
     elif prog_name in ["collserver", "collrelay"]:
-        print "Debugging %s on %s" % (prog_name,
-                                      process_tools.get_machine_name())
+        print(
+            "Debugging {} on {}".format(
+                prog_name,
+                process_tools.get_machine_name()
+            )
+        )
     if prog_name == "collserver":
         ret_state = server_code().loop()
     elif prog_name == "collrelay":
@@ -124,3 +143,4 @@ def main():
         print "Unknown operation mode %s" % (prog_name)
         ret_state = -1
     return ret_state
+
