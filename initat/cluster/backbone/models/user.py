@@ -677,6 +677,7 @@ class user(models.Model):
             ("modify_tree", "modify device tree", False),
             ("modify_domain_name_tree", "modify domain name tree", False),
             ("modify_category_tree", "modify category tree", False),
+            ("rms_operator", "change RMS settings", True),
         )
         # foreign keys to ignore
         fk_ignore_list = ["user_variable", "user_permission", "user_object_permission", "session_data"]
