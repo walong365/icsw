@@ -203,13 +203,26 @@ class control_job(View):
     @method_decorator(xml_wrapper)
     def post(self, request):
         _post = request.POST
-        c_id = _post["control_id"]
-        c_action = c_id.split(":")[1]
-        job_id = ".".join([entry for entry in c_id.split(":")[2:] if entry.strip()])
+        c_action = _post["command"]
+        job_id = ".".join([entry for entry in [_post["job_id"], _post["task_id"]]])
         srv_com = server_command.srv_command(command="job_control", action=c_action)
         srv_com["job_list"] = srv_com.builder(
             "job_list",
             srv_com.builder("job", job_id=job_id))
+        contact_server(request, "rms", srv_com, timeout=10)
+
+class control_queue(View):
+    @method_decorator(login_required)
+    @method_decorator(xml_wrapper)
+    def post(self, request):
+        _post = request.POST
+        queue_spec = "{}@{}".format(_post["queue"], _post["host"])
+        logger.info("{} on {}".format(_post["command"], queue_spec))
+        srv_com = server_command.srv_command(command="queue_control", action=_post["command"])
+        srv_com["queue_list"] = srv_com.builder(
+            "queue_list",
+            srv_com.builder("queue", queue_spec=queue_spec)
+        )
         contact_server(request, "rms", srv_com, timeout=10)
 
 class get_file_content(View):

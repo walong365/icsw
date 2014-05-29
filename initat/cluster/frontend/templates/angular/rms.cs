@@ -83,8 +83,14 @@ headers = """
 header_toggle = """
 <th colspan="{{ struct.headers.length }}">
     <form class="inline">
-        <input ng-repeat="entry in struct.headers" type="button" ng-class="struct.get_btn_class(entry)" value="{{ entry }}" ng-click="struct.change_entry(entry)">
-        </input>
+        <input
+            ng-repeat="entry in struct.headers"
+            type="button"
+            ng-class="struct.get_btn_class(entry)"
+            value="{{ entry }}"
+            ng-click="struct.change_entry(entry)"
+            ng-show="struct.header_not_hidden(entry)"
+        ></input>
     </form>
 </th>
 """
@@ -94,10 +100,7 @@ rmsnodeline = """
     {{ data.host }}
 </td>
 <td ng-show="node_struct.toggle['queues']">
-    {{ data.queues }}
-</td>
-<td ng-show="node_struct.toggle['state']">
-    {{ data.state }}
+    <queuestate operator="rms_operator" host="data"></queuestate>
 </td>
 <td ng-show="node_struct.toggle['complex']">
     {{ data.complex }}
@@ -130,6 +133,59 @@ rmsnodeline = """
 <td ng-show="node_struct.toggle['jobs']">
     {{ data.jobs }}
 </td>
+"""
+
+queuestateoper = """
+<div>
+    <div class="btn-group" ng-repeat="(queue, state) in get_states()">
+        <button type="button" class="btn btn-xs dropdown-toggle" ng-class="get_queue_class(state, 'btn')" data-toggle="dropdown">
+            {{ queue }} : {{ state }} <span class="caret"></span>
+        </button>
+        <ul class="dropdown-menu">
+            <li ng-show="enable_ok(state)" ng-click="queue_control('enable', queue)">
+                <a href="#">Enable {{ queue }}@{{ host.host }}</a>
+            </li>
+            <li ng-show="disable_ok(state)" ng-click="queue_control('disable', queue)">
+                <a href="#">Disable {{ queue }}@{{ host.host }}</a>
+            </li>
+            <li ng-show="clear_error_ok(state)" ng-click="queue_control('clear_error', queue)">
+                <a href="#">Clear error on {{ queue }}@{{ host.host }}</a>
+            </li>
+        </ul>
+    </div>
+</div>    
+"""
+
+queuestate = """
+<div>
+    <span class="label" ng-class="get_queue_class(state, 'label')" ng-repeat="(queue, state) in get_states()">
+        {{ queue }} : {{ state }}
+    </span>
+</div>    
+"""
+
+jobactionoper = """
+<div>
+    <div class="btn-group">
+        <button type="button" class="btn btn-xs dropdown-toggle btn-primary" data-toggle="dropdown">
+            Action <span class="caret"></span>
+        </button>
+        <ul class="dropdown-menu">
+            <li ng-click="job_control('delete', false)">
+                <a href="#">Delete</a>
+            </li>
+            <li ng-click="job_control('delete', true)">
+                <a href="#">force Delete</a>
+            </li>
+        </ul>
+    </div>
+</div>
+"""
+
+jobaction = """
+<div>
+---
+</div>
 """
 
 rmsline = """
@@ -170,7 +226,10 @@ rmsline = """
     {{ data.priority }}
 </td>
 <td ng-show="waiting_struct.toggle['depends']">
-    {{ data.depends }}
+    {{ data.depends || '---' }}
+</td>
+<td ng-show="waiting_struct.toggle['action']">
+    <jobaction job="data" operator="rms_operator"></jobaction>
 </td>
 """
 
@@ -240,6 +299,9 @@ rmsrunline = """
 <td ng-show="running_struct.toggle['nodelist']">
     {{ data.nodelist }}
 </td>
+<td ng-show="running_struct.toggle['action']">
+    <jobaction job="data" operator="rms_operator"></jobaction>
+</td>
 """
 
 {% endverbatim %}
@@ -251,7 +313,7 @@ angular_module_setup([rms_module])
 LOAD_RE = /(\d+.\d+).*/
 
 class header_struct
-    constructor: (@table, @headers) ->
+    constructor: (@table, @headers, @hidden_headers) ->
         _dict = {}
         for entry in @headers
             _dict[entry] = true
@@ -279,7 +341,7 @@ class header_struct
             success  : (json) =>
         @build_cache()
     display_headers : () =>
-        return (v[0] for v in _.zip.apply(null, [@headers, @togglec]) when v[1][0])
+        return (v[0] for v in _.zip.apply(null, [@headers, @togglec]) when v[1][0] and v[0] not in @hidden_headers)
     add_headers : (data) =>
         # get display list
         return ([v[1][1], v[0]] for v in _.zip.apply(null, [data, @togglec]))
@@ -293,6 +355,8 @@ class header_struct
             return "btn btn-sm"
     map_headers : (simple_list) =>
         return (_.zipObject(@headers, _line) for _line in simple_list)
+    header_not_hidden : (entry) ->
+        return entry not in @hidden_headers
         
 class io_struct
     constructor : (@job_id, @task_id, @type) ->
@@ -364,15 +428,17 @@ rms_module.controller("rms_ctrl", ["$scope", "$compile", "$filter", "$templateCa
         $scope.run_list = []
         $scope.wait_list = []
         $scope.node_list = []
-        $scope.running_struct = new header_struct("running", $scope.rms_headers.running_headers)
-        $scope.waiting_struct = new header_struct("waiting", $scope.rms_headers.waiting_headers)
-        $scope.node_struct = new header_struct("node", $scope.rms_headers.node_headers)
+        $scope.running_struct = new header_struct("running", $scope.rms_headers.running_headers, [])
+        $scope.waiting_struct = new header_struct("waiting", $scope.rms_headers.waiting_headers, [])
+        $scope.node_struct = new header_struct("node", $scope.rms_headers.node_headers, ["state"])
+        $scope.rms_operator = false
         $scope.structs = {
             "running" : $scope.running_struct
             "waiting" : $scope.waiting_struct
             "node" : $scope.node_struct
         }
         $scope.reload= () ->
+            $scope.rms_operator = $scope.acl_modify(null, "backbone.user.rms_operator")
             if $scope.update_info_timeout
                 $timeout.cancel($scope.update_info_timeout)
             # refresh every 10 seconds
@@ -430,6 +496,28 @@ rms_module.controller("rms_ctrl", ["$scope", "$compile", "$filter", "$templateCa
         $scope.close_io = (io_struct) ->
             $scope.io_list = (entry for entry in $scope.io_list when entry != io_struct.get_id())
             delete $scope.io_dict[io_struct.get_id()]
+        $scope.$on("queue_control", (event, host, command, queue) ->
+            call_ajax
+                url      : "{% url 'rms:control_queue' %}"
+                data     : {
+                    "queue"   : queue
+                    "host"    : host.host
+                    "command" : command 
+                }
+                success  : (xml) =>
+                    parse_xml_response(xml)
+        )
+        $scope.$on("job_control", (event, job, command, force) ->
+            call_ajax
+                url      : "{% url 'rms:control_job' %}"
+                data     : {
+                    "job_id"  : job.job_id
+                    "task_id" : job.task_id
+                    "command" : command 
+                }
+                success  : (xml) =>
+                    parse_xml_response(xml)
+        )
         call_ajax
             url      : "{% url 'rms:get_user_setting' %}"
             dataType : "json"
@@ -459,10 +547,10 @@ rms_module.controller("rms_ctrl", ["$scope", "$compile", "$filter", "$templateCa
         link : (scope, el, attrs) ->
             scope.get_class = (data) ->
                 parts = data.state.split("")
-                if _.indexOf(parts, "d") >= 0
-                    return "warning"
-                else if _.indexOf(parts, "a") >= 0 or _.indexOf(parts, "u") >= 0
+                if _.indexOf(parts, "a") >= 0 or _.indexOf(parts, "u") >= 0
                     return "danger"
+                else if _.indexOf(parts, "d") >= 0
+                    return "warning"
                 else
                     return ""
     }
@@ -523,6 +611,61 @@ rms_module.controller("rms_ctrl", ["$scope", "$compile", "$filter", "$templateCa
             struct : "="
         link : (scope, el, attrs) ->
     }
+).directive("jobaction", ($compile, $templateCache) ->
+    return {
+        restrict : "EA"
+        #template : $templateCache.get("queue_state.html")
+        scope:
+            job : "="
+            operator : "="
+        replace : true
+        compile : (tElement, tAttr) ->
+            return (scope, el, attrs) ->
+                scope.job_control = (command, force) ->
+                    scope.$emit("job_control", scope.job, command, force)
+                if scope.operator
+                    is_oper = true
+                else if scope.job.real_user == '{{ user.login }}'
+                    is_oper = true
+                else
+                    is_oper = false
+                el.append($compile($templateCache.get(if is_oper then "job_action_oper.html" else "job_action.html"))(scope))
+      
+    }
+).directive("queuestate", ($compile, $templateCache) ->
+    return {
+        restrict : "EA"
+        #template : $templateCache.get("queue_state.html")
+        scope:
+            host : "="
+            operator : "="
+        replace : true
+        compile : (tElement, tAttr) ->
+            return (scope, el, attrs) ->
+                scope.get_states = () ->
+                    states = scope.host.state.split("/")
+                    queues = scope.host.queues.split("/")
+                    if queues.length != states.length
+                        states = (states[0] for queue in queues)
+                    return _.zipObject(queues, states)
+                scope.enable_ok = (state) ->
+                    return if state.match(/d/g) then true else false
+                scope.disable_ok = (state) ->
+                    return if not state.match(/d/g) then true else false
+                scope.clear_error_ok = (state) ->
+                    return if state.match(/e/gi) then true else false
+                scope.get_queue_class = (state, prefix) ->
+                    if state.match(/a|u/gi)
+                        return "#{prefix}-danger"
+                    else if state.match(/d/gi)
+                        return "#{prefix}-warning"
+                    else
+                        return "#{prefix}-success"
+                scope.queue_control = (command, queue) ->
+                    scope.$emit("queue_control", scope.host, command, queue)
+                el.append($compile($templateCache.get(if scope.operator then "queue_state_oper.html" else "queue_state.html"))(scope))
+      
+    }
 ).run(($templateCache) ->
     $templateCache.put("running_table.html", running_table)
     $templateCache.put("waiting_table.html", waiting_table)
@@ -533,6 +676,10 @@ rms_module.controller("rms_ctrl", ["$scope", "$compile", "$filter", "$templateCa
     $templateCache.put("rmsnodeline.html", rmsnodeline)
     $templateCache.put("header_toggle.html", header_toggle)
     $templateCache.put("iostruct.html", iostruct)
+    $templateCache.put("queue_state_oper.html", queuestateoper)
+    $templateCache.put("queue_state.html", queuestate)
+    $templateCache.put("job_action_oper.html", jobactionoper)
+    $templateCache.put("job_action.html", jobaction)
 )
 
 {% endinlinecoffeescript %}
