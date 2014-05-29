@@ -805,24 +805,39 @@ info_ctrl = device_config_module.controller("deviceinfo_ctrl", ["$scope", "$comp
         # bugfix for ui-select2, not working ...
         priority : 2
         link : (scope, element, attrs) ->
+            scope._edit_obj = null
             if attrs["devicepk"]?
-                device_pk = parseInt(attrs["devicepk"])
+                scope.device_pk = parseInt(attrs["devicepk"])
                 wait_list = [
                     restDataSource.reload(["{% url 'rest:fetch_forms' %}", {"forms" : angular.toJson(["device_info_form"])}])
                     restDataSource.reload(["{% url 'rest:domain_tree_node_list' %}", {}])
                     restDataSource.reload(["{% url 'rest:mon_device_templ_list' %}", {}])
                     restDataSource.reload(["{% url 'rest:mon_ext_host_list' %}", {}])
+                    restDataSource.reload(["{% url 'rest:device_tree_list' %}", {"with_network" : true, "with_disk_info" : true, "pks" : angular.toJson([scope.device_pk])}])
                 ]
                 $q.all(wait_list).then((data) ->
                     form = data[0][0].form
                     scope.domain_tree_node = data[1]
                     scope.mon_device_templ_list = data[2]
                     scope.mon_ext_host_list = data[3]
-                    Restangular.one("{% url 'rest:device_detail' 1 %}".slice(1).slice(0, -2), device_pk).get().then((res) ->
-                        scope._edit_obj = res
-                        element.append($compile(form)(scope))
-                    )
+                    scope._edit_obj = data[4][0]
+                    #Restangular.restangularizeElement(null, scope._edit_obj, "{% url 'rest:device_detail' 1 %}".slice(1).slice(0, -2))
+                    element.append($compile(form)(scope))
                 )
+            else
+                scope.device_pk = null
+            scope.get_ip_info = () ->
+                if scope._edit_obj?
+                    ip_list = []
+                    for _nd in scope._edit_obj.netdevice_set
+                        for _ip in _nd.net_ip_set
+                            ip_list.push(_ip.ip)
+                    if ip_list.length
+                        return ip_list.join(", ")
+                    else
+                        return "none"
+                else
+                    return "---"
     }
 )
 

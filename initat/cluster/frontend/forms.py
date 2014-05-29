@@ -5,7 +5,7 @@
 # from crispy_forms.bootstrap import FormActions
 from crispy_forms.bootstrap import FormActions
 from crispy_forms.helper import FormHelper
-from crispy_forms.layout import Submit, Layout, Field, Button, Fieldset, Div, HTML
+from crispy_forms.layout import Submit, Layout, Field, Button, Fieldset, Div, HTML, MultiField
 from django.contrib.auth import authenticate
 from django.core.urlresolvers import reverse
 from django.db.models import Q
@@ -203,19 +203,30 @@ class device_info_form(ModelForm):
     helper.ng_model = "_edit_obj"
     helper.layout = Layout(
         Div(
-            HTML("<h2>Device details for '{% verbatim %}{{ _edit_obj.name }}'&nbsp;<img ng-if='_edit_obj.mon_ext_host' ng-src='{{ get_image_src() }}' width='16'></img></h2>{% endverbatim %}"),
+            HTML("<h2>Details for '{% verbatim %}{{ _edit_obj.name }}'&nbsp;<img ng-if='_edit_obj.mon_ext_host' ng-src='{{ get_image_src() }}' width='16'></img></h2>{% endverbatim %}"),
             Fieldset(
-                "Device details",
+                "Basic settings",
                 Field("name"),
                 Field("domain_tree_node", ng_options="value.idx as value.tree_info for value in domain_tree_node", chosen=True),
                 # Field("domain_tree_node", ng_options="value.idx as value.tree_info for value in domain_tree_node", ui_select2=True),
                 Field("comment"),
                 Field("curl"),
+                HTML(
+"""
+        <div class='form-group'>
+            <label class='control-label col-sm-3'>
+                IP Info
+            </label>
+            <div class='col-sm-9'>
+                {% verbatim %}{{ get_ip_info() }}{% endverbatim %}
+            </div>
+        </div>
+"""),
             ),
             # HTML("<ui-select ng-model='_edit_obj.domain_tree_node'><choices repeat='value in domain_tree_node'>dd</choices></ui-select>"),
             Fieldset(
                 "Monitor settings",
-                Field("mon_device_templ", ng_options="value.idx as value.name for value in mon_device_templ_list", chosen=True),
+                Field("mon_device_templ", ng_options="value.idx as value.name for value in mon_device_templ_list", chosen=True, wrapper_ng_show="mon_device_templ_list"),
                 Div(
                     Div(
                         Field("monitor_checks"),
@@ -659,14 +670,14 @@ class kernel_form(ModelForm):
             Field("module_list", readonly=True, rows=3),
             ),
         HTML("""
-        <div class='form-group'>
-            <label class='control-label col-sm-3'>
-                initrd built
-            </label>
-            <div class='col-sm-7'>
-                {% verbatim %}{{ fn.get_initrd_built(edit_obj) }}{% endverbatim %}
-            </div>
-        </div>
+<div class='form-group'>
+    <label class='control-label col-sm-3'>
+        initrd built
+    </label>
+    <div class='col-sm-7'>
+        {% verbatim %}{{ fn.get_initrd_built(edit_obj) }}{% endverbatim %}
+    </div>
+</div>
         """),
         Div(
             FormActions(
@@ -674,58 +685,58 @@ class kernel_form(ModelForm):
             ),
         ),
         HTML("""
-        <div class='form-group'>
-            <label class='control-label col-sm-6'>
-                stage1 lo present
-            </label>
-            <div class='col-sm-6'>
-                {% verbatim %}<input
-                    type="button"
-                    disabled="disabled"
-                    ng-class="edit_obj.stage1_lo_present && 'btn btn-sm btn-success' || 'btn btn-sm btn-danger'"
-                    ng-value="fn.get_flag_value(edit_obj, 'stage1_lo_present')"
-                    ></input>{% endverbatim %}
-            </div>
-        </div>
-        <div class='form-group'>
-            <label class='control-label col-sm-6'>
-                stage1 cpio present
-            </label>
-            <div class='col-sm-6'>
-                {% verbatim %}<input
-                    type="button"
-                    disabled="disabled"
-                    ng-class="edit_obj.stage1_cpio_present && 'btn btn-sm btn-success' || 'btn btn-sm btn-danger'"
-                    ng-value="fn.get_flag_value(edit_obj, 'stage1_cpio_present')"
-                    ></input>{% endverbatim %}
-            </div>
-        </div>
-        <div class='form-group'>
-            <label class='control-label col-sm-6'>
-                stage1 cramfs present
-            </label>
-            <div class='col-sm-6'>
-                {% verbatim %}<input
-                    type="button"
-                    disabled="disabled"
-                    ng-class="edit_obj.stage1_cramfs_present && 'btn btn-sm btn-success' || 'btn btn-sm btn-danger'"
-                    ng-value="fn.get_flag_value(edit_obj, 'stage1_cramfs_present')"
-                    ></input>{% endverbatim %}
-            </div>
-        </div>
-        <div class='form-group'>
-            <label class='control-label col-sm-6'>
-                stage2 present
-            </label>
-            <div class='col-sm-6'>
-                {% verbatim %}<input
-                    type="button"
-                    disabled="disabled"
-                    ng-class="edit_obj.stage2_present && 'btn btn-sm btn-success' || 'btn btn-sm btn-danger'"
-                    ng-value="fn.get_flag_value(edit_obj, 'stage2_present')"
-                    ></input>{% endverbatim %}
-            </div>
-        </div>
+<div class='form-group'>
+    <label class='control-label col-sm-6'>
+        stage1 lo present
+    </label>
+    <div class='col-sm-6'>
+        {% verbatim %}<input
+            type="button"
+            disabled="disabled"
+            ng-class="edit_obj.stage1_lo_present && 'btn btn-sm btn-success' || 'btn btn-sm btn-danger'"
+            ng-value="fn.get_flag_value(edit_obj, 'stage1_lo_present')"
+            ></input>{% endverbatim %}
+    </div>
+</div>
+<div class='form-group'>
+    <label class='control-label col-sm-6'>
+        stage1 cpio present
+    </label>
+    <div class='col-sm-6'>
+        {% verbatim %}<input
+            type="button"
+            disabled="disabled"
+            ng-class="edit_obj.stage1_cpio_present && 'btn btn-sm btn-success' || 'btn btn-sm btn-danger'"
+            ng-value="fn.get_flag_value(edit_obj, 'stage1_cpio_present')"
+            ></input>{% endverbatim %}
+    </div>
+</div>
+<div class='form-group'>
+    <label class='control-label col-sm-6'>
+        stage1 cramfs present
+    </label>
+    <div class='col-sm-6'>
+        {% verbatim %}<input
+            type="button"
+            disabled="disabled"
+            ng-class="edit_obj.stage1_cramfs_present && 'btn btn-sm btn-success' || 'btn btn-sm btn-danger'"
+            ng-value="fn.get_flag_value(edit_obj, 'stage1_cramfs_present')"
+            ></input>{% endverbatim %}
+    </div>
+</div>
+<div class='form-group'>
+    <label class='control-label col-sm-6'>
+        stage2 present
+    </label>
+    <div class='col-sm-6'>
+        {% verbatim %}<input
+            type="button"
+            disabled="disabled"
+            ng-class="edit_obj.stage2_present && 'btn btn-sm btn-success' || 'btn btn-sm btn-danger'"
+            ng-value="fn.get_flag_value(edit_obj, 'stage2_present')"
+            ></input>{% endverbatim %}
+    </div>
+</div>
         """),
         FormActions(
             Submit("submit", "", ng_value="get_action_string()", css_class="primaryAction"),

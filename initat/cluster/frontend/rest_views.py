@@ -28,12 +28,11 @@ from initat.core.render import render_string
 from initat.cluster.backbone import models
 from initat.cluster.backbone.models import user , group, \
      get_related_models, get_change_reset_list, device, device_serializer, \
-     device_serializer_package_state, device_serializer_monitoring, domain_name_tree, \
-     device_serializer_monitor_server, category_tree, device_serializer_cat, device_selection, \
+     device_serializer_package_state, domain_name_tree, \
+     device_serializer_monitor_server, category_tree, device_selection, \
      device_selection_serializer, partition_table_serializer_save, partition_disc_serializer_save, \
-     partition_disc_serializer_create, device_serializer_variables, device_serializer_device_configs, \
-     device_config, device_config_hel_serializer, home_export_list, csw_permission, \
-     device_serializer_disk_info, device_serializer_network, peer_information, netdevice, \
+     partition_disc_serializer_create, device_config, device_config_hel_serializer, home_export_list, \
+     csw_permission, peer_information, netdevice, \
      csw_object_permission, cd_connection, device_serializer_only_boot, network_with_ip_serializer
 # from initat.cluster.backbone.forms import * # @UnusedWildImport
 from initat.cluster.frontend import forms
@@ -45,11 +44,9 @@ from rest_framework.response import Response
 from rest_framework.reverse import reverse
 from rest_framework.views import exception_handler, APIView
 import json
-import crypt
 import logging
 import logging_tools
 import operator
-import random
 import process_tools
 import time
 import types
@@ -307,7 +304,7 @@ class device_tree_detail(detail_view):
         if self._get_post_boolean("only_boot", False):
             return device_serializer_only_boot
         else:
-            return device_serializer_monitoring
+            return device_serializer
 
 class form_serializer(serializers.Serializer):
     name = serializers.CharField()
@@ -473,23 +470,26 @@ class device_tree_list(mixins.ListModelMixin,
         ctx = {"request" : self.request}
         if self.request.QUERY_PARAMS.get("olp", ""):
             ctx["olp"] = self.request.QUERY_PARAMS["olp"]
+        _fields = []
+        if self._get_post_boolean("with_disk_info", False):
+            _fields.extend(["partition_table", "act_partition_table"])
+        if self._get_post_boolean("with_network", False):
+            _fields.append("netdevice_set")
+        if self._get_post_boolean("with_categories", False):
+            _fields.append("categories")
+        if self._get_post_boolean("with_variables", False):
+            _fields.append("device_variable_set")
+        if self._get_post_boolean("with_device_configs", False):
+            _fields.append("device_config_set")
+        if self._get_post_boolean("package_state", False):
+            _fields.extend(["package_device_connection_set", "latest_contact", "client_version"])
+        if _fields:
+            ctx["fields"] = _fields
         return ctx
     @rest_logging
     def get_serializer_class(self):
-        if self._get_post_boolean("package_state", False):
-            return device_serializer_package_state
-        elif self._get_post_boolean("all_monitoring_servers", False):
+        if self._get_post_boolean("all_monitoring_servers", False):
             return device_serializer_monitor_server
-        elif self._get_post_boolean("with_categories", False):
-            return device_serializer_cat
-        elif self._get_post_boolean("with_variables", False):
-            return device_serializer_variables
-        elif self._get_post_boolean("with_device_configs", False):
-            return device_serializer_device_configs
-        elif self._get_post_boolean("with_disk_info", False):
-            return device_serializer_disk_info
-        elif self._get_post_boolean("with_network", False):
-            return device_serializer_network
         else:
             return device_serializer
     @rest_logging
