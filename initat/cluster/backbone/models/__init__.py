@@ -1145,7 +1145,7 @@ class device(models.Model):
     bootnetdevice = models.ForeignKey("backbone.netdevice", null=True, related_name="boot_net_device")
     bootserver = models.ForeignKey("device", null=True, related_name="boot_server", blank=True)
     reachable_via_bootserver = models.BooleanField(default=False)
-    dhcp_mac = models.NullBooleanField(null=True, blank=True)
+    dhcp_mac = models.NullBooleanField(null=True, blank=True, default=False)
     dhcp_write = models.NullBooleanField(default=False)
     dhcp_written = models.NullBooleanField(default=False)
     dhcp_error = models.CharField(max_length=765, blank=True)
@@ -1387,133 +1387,6 @@ class device_selection_serializer(serializers.Serializer):
     class Meta:
         model = device_selection
 
-class device_serializer(serializers.ModelSerializer):
-    full_name = serializers.Field(source="full_name")
-    is_meta_device = serializers.Field(source="is_meta_device")
-    is_cluster_device_group = serializers.Field(source="is_cluster_device_group")
-    device_type_identifier = serializers.Field(source="device_type_identifier")
-    device_group_name = serializers.Field(source="device_group_name")
-    access_level = serializers.SerializerMethodField("get_access_level")
-    access_levels = serializers.SerializerMethodField("get_access_levels")
-    root_passwd_set = serializers.Field(source="root_passwd_set")
-    def get_access_level(self, obj):
-        if "olp" in self.context:
-            return self.context["request"].user.get_object_perm_level(self.context["olp"], obj)
-        return -1
-    def get_access_levels(self, obj):
-        return ",".join(["{}={:d}".format(key, value) for key, value in self.context["request"].user.get_object_access_levels(obj).iteritems()])
-    class Meta:
-        model = device
-        fields = ("idx", "name", "device_group", "device_type",
-            "comment", "full_name", "domain_tree_node", "enabled",
-            "monitor_checks", "mon_device_templ", "mon_device_esc_templ", "md_cache_mode",
-            "act_partition_table", "enable_perfdata", "flap_detection_enabled",
-            "automap_root_nagvis", "nagvis_parent", "monitor_server", "mon_ext_host",
-            "is_meta_device", "device_type_identifier", "device_group_name", "bootserver",
-            "is_cluster_device_group", "root_passwd_set", "has_active_rrds",
-            "curl", "mon_resolve_name", "uuid", "access_level", "access_levels", "store_rrd_data",
-            )
-        read_only_fields = ("uuid",)
-
-class device_serializer_only_boot(serializers.ModelSerializer):
-    class Meta:
-        model = device
-        fields = ("idx", "dhcp_mac", "dhcp_write",)
-
-class device_serializer_cat(device_serializer):
-    class Meta:
-        model = device
-        fields = ("idx", "name", "device_group", "device_type",
-            "comment", "full_name", "domain_tree_node", "enabled",
-            "monitor_checks", "mon_device_templ", "mon_device_esc_templ", "md_cache_mode",
-            "act_partition_table", "enable_perfdata", "flap_detection_enabled",
-            "automap_root_nagvis", "nagvis_parent", "monitor_server", "mon_ext_host",
-            "is_meta_device", "device_type_identifier", "device_group_name", "bootserver",
-            "is_cluster_device_group", "root_passwd_set", "has_active_rrds",
-            "curl", "categories", "access_level", "access_levels",
-            )
-
-class device_serializer_variables(device_serializer):
-    device_variable_set = device_variable_serializer(many=True)
-    class Meta:
-        model = device
-        fields = ("idx", "name", "device_group", "device_type",
-            "comment", "full_name", "domain_tree_node", "enabled",
-            "monitor_checks", "mon_device_templ", "mon_device_esc_templ", "md_cache_mode",
-            "act_partition_table", "enable_perfdata", "flap_detection_enabled",
-            "automap_root_nagvis", "nagvis_parent", "monitor_server", "mon_ext_host",
-            "is_meta_device", "device_type_identifier", "device_group_name", "bootserver",
-            "is_cluster_device_group", "root_passwd_set", "has_active_rrds",
-            "curl", "device_variable_set", "access_level", "access_levels", "store_rrd_data",
-            )
-
-class device_serializer_device_configs(device_serializer):
-    device_config_set = device_config_serializer(many=True)
-    class Meta:
-        model = device
-        fields = ("idx", "name", "device_group", "device_type",
-            "comment", "full_name", "domain_tree_node", "enabled",
-            "monitor_checks", "mon_device_templ", "mon_device_esc_templ", "md_cache_mode",
-            "act_partition_table", "enable_perfdata", "flap_detection_enabled",
-            "automap_root_nagvis", "nagvis_parent", "monitor_server", "mon_ext_host",
-            "is_meta_device", "device_type_identifier", "device_group_name", "bootserver",
-            "is_cluster_device_group", "root_passwd_set", "has_active_rrds",
-            "curl", "device_config_set", "access_level", "access_levels", "store_rrd_data",
-            )
-
-class device_serializer_disk_info(device_serializer):
-    act_partition_table = partition_table_serializer()
-    partition_table = partition_table_serializer()
-    class Meta:
-        model = device
-        fields = ("idx", "name", "device_group", "device_type",
-            "comment", "full_name", "domain_tree_node", "enabled",
-            "monitor_checks", "mon_device_templ", "mon_device_esc_templ", "md_cache_mode",
-            "act_partition_table", "enable_perfdata", "flap_detection_enabled",
-            "automap_root_nagvis", "nagvis_parent", "monitor_server", "mon_ext_host",
-            "is_meta_device", "device_type_identifier", "device_group_name", "bootserver",
-            "is_cluster_device_group", "root_passwd_set", "has_active_rrds",
-            "curl", "partition_table", "access_level", "access_levels", "store_rrd_data",
-            )
-
-class device_serializer_network(device_serializer):
-    netdevice_set = netdevice_serializer(many=True)
-    class Meta:
-        model = device
-        fields = ("idx", "name", "device_group", "device_type", "uuid",
-            "comment", "full_name", "domain_tree_node", "enabled",
-            "monitor_checks", "mon_device_templ", "mon_device_esc_templ", "md_cache_mode",
-            "enable_perfdata", "flap_detection_enabled",
-            "automap_root_nagvis", "nagvis_parent", "monitor_server", "mon_ext_host",
-            "is_meta_device", "device_type_identifier", "device_group_name", "bootserver",
-            "is_cluster_device_group", "root_passwd_set", "has_active_rrds",
-            "curl", "netdevice_set", "access_level", "access_levels", "store_rrd_data",
-            # for device.boot
-            "new_state", "prod_link", "dhcp_mac", "dhcp_write",
-            )
-        read_only_fields = ("uuid",)
-
-class device_serializer_monitoring(device_serializer):
-    # only used for updating (no read)
-    class Meta:
-        model = device
-        fields = (
-            "monitor_checks", "mon_device_templ", "mon_device_esc_templ", "md_cache_mode",
-            "act_partition_table", "enable_perfdata", "flap_detection_enabled",
-            "automap_root_nagvis", "nagvis_parent", "monitor_server", "mon_ext_host",
-            "mon_resolve_name", "access_level", "access_levels", "store_rrd_data",
-            )
-        read_only_fields = ("act_partition_table",)
-
-class device_serializer_monitor_server(device_serializer):
-    # only used for reading (no write)
-    monitor_type = serializers.Field(source="get_monitor_type")
-    class Meta:
-        model = device
-        fields = ("idx", "name", "full_name", "device_group_name", "monitor_type",
-            "access_level", "access_levels", "store_rrd_data",
-            )
-
 @receiver(signals.post_save, sender=device)
 def device_post_save(sender, **kwargs):
     if "instance" in kwargs:
@@ -1623,10 +1496,6 @@ def cd_connection_pre_save(sender, **kwargs):
         else:
             if cur_inst.pk is None:
                 raise ValidationError("connection already exists")
-
-class cd_connection_serializer(serializers.ModelSerializer):
-    class Meta:
-        model = cd_connection
 
 class device_group(models.Model):
     idx = models.AutoField(db_column="device_group_idx", primary_key=True)
@@ -2689,18 +2558,6 @@ class package_device_connection_wp_serializer(serializers.ModelSerializer):
     class Meta:
         model = package_device_connection
 
-class device_serializer_package_state(device_serializer):
-    package_device_connection_set = package_device_connection_serializer(many=True)
-    latest_contact = serializers.Field(source="latest_contact")
-    client_version = serializers.Field(source="client_version")
-    class Meta:
-        model = device
-        fields = ("idx", "name", "device_group", "device_type",
-            "comment", "full_name", "domain_tree_node", "enabled",
-            "package_device_connection_set", "latest_contact", "is_meta_device",
-            "access_level", "access_levels", "client_version",
-            )
-
 class mon_dist_slave_serializer(serializers.ModelSerializer):
     class Meta:
         model = mon_dist_slave
@@ -2709,6 +2566,102 @@ class mon_dist_master_serializer(serializers.ModelSerializer):
     mon_dist_slave_set = mon_dist_slave_serializer(many=True)
     class Meta:
         model = mon_dist_master
+
+class device_serializer(serializers.ModelSerializer):
+    full_name = serializers.Field(source="full_name")
+    is_meta_device = serializers.Field(source="is_meta_device")
+    is_cluster_device_group = serializers.Field(source="is_cluster_device_group")
+    device_type_identifier = serializers.Field(source="device_type_identifier")
+    device_group_name = serializers.Field(source="device_group_name")
+    access_level = serializers.SerializerMethodField("get_access_level")
+    access_levels = serializers.SerializerMethodField("get_access_levels")
+    root_passwd_set = serializers.Field(source="root_passwd_set")
+    act_partition_table = partition_table_serializer(read_only=True)
+    partition_table = partition_table_serializer()
+    netdevice_set = netdevice_serializer(many=True)
+    device_variable_set = device_variable_serializer(many=True)
+    device_config_set = device_config_serializer(many=True)
+    package_device_connection_set = package_device_connection_serializer(many=True)
+    latest_contact = serializers.Field(source="latest_contact")
+    client_version = serializers.Field(source="client_version")
+    def __init__(self, *args, **kwargs):
+        fields = kwargs.get("context", {}).pop("fields", None)
+        serializers.ModelSerializer.__init__(self, *args, **kwargs)
+        _optional_fields = set(["act_partition_table", "partition_table", "netdevice_set", "categories", "device_variable_set", "device_config_set",
+            "package_device_connection_set", "latest_contact", "client_version"])
+        if fields:
+            for _to_remove in  _optional_fields - set(fields):
+                self.fields.pop(_to_remove)
+    def get_access_level(self, obj):
+        if "olp" in self.context:
+            return self.context["request"].user.get_object_perm_level(self.context["olp"], obj)
+        return -1
+    def get_access_levels(self, obj):
+        return ",".join(["{}={:d}".format(key, value) for key, value in self.context["request"].user.get_object_access_levels(obj).iteritems()])
+    class Meta:
+        model = device
+        fields = ("idx", "name", "device_group", "device_type",
+            "comment", "full_name", "domain_tree_node", "enabled",
+            "monitor_checks", "mon_device_templ", "mon_device_esc_templ", "md_cache_mode",
+            "enable_perfdata", "flap_detection_enabled",
+            "automap_root_nagvis", "nagvis_parent", "monitor_server", "mon_ext_host",
+            "is_meta_device", "device_type_identifier", "device_group_name", "bootserver",
+            "is_cluster_device_group", "root_passwd_set", "has_active_rrds",
+            "curl", "mon_resolve_name", "access_level", "access_levels", "store_rrd_data",
+            "access_level", "access_levels", "store_rrd_data",
+            # disk info
+            "partition_table", "act_partition_table",
+            # for network view
+            "new_state", "prod_link", "dhcp_mac", "dhcp_write", "netdevice_set",
+            # for categories
+            "categories",
+            # variables
+            "device_variable_set",
+            # config
+            "device_config_set",
+            # package info
+            "package_device_connection_set", "latest_contact", "client_version",
+            )
+        read_only_fields = ("uuid",)
+
+class cd_connection_serializer(serializers.ModelSerializer):
+    class Meta:
+        model = cd_connection
+
+class device_serializer_package_state(device_serializer):
+    class Meta:
+        model = device
+        fields = ("idx", "name", "device_group", "device_type",
+            "comment", "full_name", "domain_tree_node", "enabled",
+            "package_device_connection_set", "latest_contact", "is_meta_device",
+            "access_level", "access_levels", "client_version",
+            )
+
+class device_serializer_only_boot(serializers.ModelSerializer):
+    class Meta:
+        model = device
+        fields = ("idx", "dhcp_mac", "dhcp_write",)
+
+class device_serializer_monitoring(device_serializer):
+    # only used for updating (no read)
+    class Meta:
+        model = device
+        fields = (
+            "monitor_checks", "mon_device_templ", "mon_device_esc_templ", "md_cache_mode",
+            "act_partition_table", "enable_perfdata", "flap_detection_enabled",
+            "automap_root_nagvis", "nagvis_parent", "monitor_server", "mon_ext_host",
+            "mon_resolve_name", "access_level", "access_levels", "store_rrd_data",
+            )
+        read_only_fields = ("act_partition_table",)
+
+class device_serializer_monitor_server(device_serializer):
+    # only used for reading (no write)
+    monitor_type = serializers.Field(source="get_monitor_type")
+    class Meta:
+        model = device
+        fields = ("idx", "name", "full_name", "device_group_name", "monitor_type",
+            "access_level", "access_levels", "store_rrd_data",
+            )
 
 class cd_connection_serializer_boot(serializers.ModelSerializer):
     parent = device_serializer()
@@ -2744,3 +2697,4 @@ class device_serializer_boot(device_serializer):
             # connections
             "master_connections", "slave_connections",
             )
+
