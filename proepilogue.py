@@ -2086,7 +2086,8 @@ class job_object(object):
         self.__log_template.close()
 
 class process_pool(threading_tools.process_pool):
-    def __init__(self):
+    def __init__(self, **kwargs):
+        self.dummy_call = kwargs.get("dummy_call", False)
         self.start_time = time.time()
         self.global_config = global_config
         self.__log_cache, self.__log_template = ([], None)
@@ -2106,10 +2107,11 @@ class process_pool(threading_tools.process_pool):
         self._set_sge_environment()
         self._read_config()
         self._show_config()
-        self._job = job_object(p_pool=self)
-        self.loop_function = self._job.loop_function
-        # self["return_value"] = "a"
-        self.register_timer(self._force_exit, global_config["MAX_RUN_TIME"])
+        if not self.dummy_call:
+            self._job = job_object(p_pool=self)
+            self.loop_function = self._job.loop_function
+            # self["return_value"] = "a"
+            self.register_timer(self._force_exit, global_config["MAX_RUN_TIME"])
     def log(self, what, lev=logging_tools.LOG_LEVEL_OK, **kwargs):
         if self.__log_template:
             while self.__log_cache:
@@ -2174,25 +2176,32 @@ class process_pool(threading_tools.process_pool):
         else:
             conf_file = os.path.join(conf_dir, CONFIG_FILE_NAME)
             if not os.path.isfile(conf_file):
-                self.log("no config_file %s found, using defaults" % (conf_file),
-                         logging_tools.LOG_LEVEL_ERROR,
-                         do_print=True)
-                self._print("Copy the following lines to %s :" % (conf_file))
-                self._print("")
-                self._print("[global]")
-                for key in [c_key for c_key in sorted(global_config.keys()) if not c_key.startswith("SGE_") and global_config.get_source(c_key) == "default"]:
-                    # don't write SGE_* stuff
-                    self._print("%s=%s" % (key, str(global_config[key])))
-                self._print("")
+                if not self.dummy_call:
+                    self.log(
+                        "no config_file %s found, using defaults" % (conf_file),
+                        logging_tools.LOG_LEVEL_ERROR,
+                        do_print=True)
+                    print("Copy the following lines to %s :" % (conf_file))
+                    print("")
+                self.show_cnf()
             else:
                 global_config.add_config_entries([("CONFIG_FILE", configfile.str_c_var(conf_file))])
                 self.log("reading config from %s" % (conf_file))
                 global_config.parse_file(global_config["CONFIG_FILE"])
+    def show_cnf(self):
+        conf_dir = "%s/3rd_party" % (global_config["SGE_ROOT"])
+        conf_file = os.path.join(conf_dir, CONFIG_FILE_NAME)
+        print("[global]")
+        for key in [c_key for c_key in sorted(global_config.keys()) if not c_key.startswith("SGE_") and global_config.get_source(c_key) == "default"]:
+            # don't write SGE_* stuff
+            print("%s=%s" % (key, str(global_config[key])))
+        print("")
     def loop_end(self):
         self.log("execution time was %s" % (logging_tools.get_diff_time_str(time.time() - self.start_time)))
     def loop_post(self):
         self._job.close()
         self.__log_template.close()
+
 
 global_config = configfile.get_global_config(process_tools.get_programm_name())
 
@@ -2214,8 +2223,11 @@ def zmq_main_code():
         ("UMOUNT_CALL"          , configfile.bool_c_var(True))
     ])
     global_config.parse_file()
-    options = global_config.handle_commandline(add_writeback_option=True,
-                                               positional_arguments=True)
+    options = global_config.handle_commandline(
+        add_writeback_option=True,
+        positional_arguments=True,
+        positional_arguments_optional=True,
+    )
     _exit = False
     if len(options.arguments) in [5, 8]:
         global_config.add_config_entries([
@@ -2231,6 +2243,9 @@ def zmq_main_code():
                 ("PE"         , configfile.str_c_var(options.arguments[6], source="cmdline")),
                 ("PE_SLOTS"   , configfile.str_c_var(options.arguments[7], source="cmdline"))
             ])
+    elif len(options.arguments) == 0:
+        process_pool(dummy_call=True)
+        _exit = True
     else:
         print "Unable to determine execution mode for %s, exiting (%d args)" % (
             global_config.name(),

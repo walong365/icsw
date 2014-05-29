@@ -1,5 +1,5 @@
 #!/bin/bash
-# Copyright (C) 2007,2008,2009,2012 Andreas Lang-Nevyjel, init.at
+# Copyright (C) 2007-2009,2012,2014 Andreas Lang-Nevyjel, init.at
 #
 # Send feedback to: <lang-nevyjel@init.at>
 # 
@@ -19,6 +19,8 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
 
+# """ configure, build and install a current version of SGE """
+
 # untar (s)ge-6x.tar.gz
 
 # cd gridengine/source
@@ -28,19 +30,21 @@ if [ ! -f /etc/sge_root ] ; then
     exit -1
 fi
 
-echo "/etc/sge_root found, setting environment"
 export SGE_ROOT=$(cat /etc/sge_root)
 export SGE_CELL=$(cat /etc/sge_cell)
+
+echo "/etc/sge_root found, setting environment"
 echo "SGE_ROOT=$SGE_ROOT, SGE_CELL=$SGE_CELL"
+
 if [ ! -d ${SGE_ROOT}/bin ] ; then
     echo "No ${SGE_ROOT}/bin found, compiling SGE ..."
     if [ ! -f aimk ] ; then
         echo "Not in source directory (aimk has to be in the actual directory)"
-    exit -1
+        exit -1
     fi
     if [ ! -f /bin/csh ] ; then
-    echo "need /bin/csh, exiting"
-    exit -1
+        echo "need /bin/csh, exiting"
+        exit -1
     fi
     # SECLIBS_STATIC fix
     sed -i s/set\ SECLIB.*=\ \"\"/set\ SECLIB=\"\"\;\ set\ SECLIBS_STATIC=\"\"/g aimk
@@ -55,36 +59,65 @@ if [ ! -d ${SGE_ROOT}/bin ] ; then
     # removed parallel, not working with SoG
     # -parallel $(( $(cat /proc/cpuinfo | grep processor | wc -l ) * 2))
     #./aimk -spool-classic -no-dump -no-secure -no-jni -no-java  || { echo "Compilation failed, exiting" ; exit -1 ; }
-    ./aimk -spool-classic -no-secure -no-jni -no-java  || { echo "Compilation failed, exiting" ; exit -1 ; }
+    # set include path to find hwloc
+    export SGE_INPUT_CFLAGS="-I/opt/cluster/include"
+    export SGE_INPUT_LDFLAGS="-L/opt/cluster/lib64"
+    ./aimk -spool-classic -no-secure -no-jni -no-java -no-qmake || {
+        echo "Compilation failed, exiting" ;
+	echo "maybe one of the following packages is missing:"
+        echo "  - pam-devel"
+        echo "  - xorg-x11-devel"
+        echo "  - motif-devel"
+        echo "is missing"
+        exit -1 ;
+    }
+  
     echo "Installing"
     echo Y | scripts/distinst -noexit -local -allall 
     echo "Modifying ownership of $SGE_ROOT to sge.sge"
+
     chown -R sge.sge ${SGE_ROOT}/
     # sge60/sge61/sge6x
     cd $SGE_ROOT
     # check for util/arch bug
+
     echo "Checking for buggy util/arch"
     ./util/arch | grep UNSUPPO >/dev/null && {
-    echo "Fixing ${SGE_ROOT}/util/arch"
-    cat util/arch | sed s/3\|4\|5/3\|4\|5\|6/g > /tmp/bla
-    mv /tmp/bla util/arch
-    chown sge.sge util/arch
-    chmod 0755 util/arch
+        echo "Fixing ${SGE_ROOT}/util/arch"
+        cat util/arch | sed s/3\|4\|5/3\|4\|5\|6/g > /tmp/bla
+        mv /tmp/bla util/arch
+        chown sge.sge util/arch
+        chmod 0755 util/arch
     }
+
     echo "Modify ld.so.conf.d"
     if [ ! -f /etc/ld.so.conf.d/sge.conf ] ; then
-    echo "${SGE_ROOT}/lib/$(util/arch)" > /etc/ld.so.conf.d/sge.conf
-    ldconfig
+        echo "${SGE_ROOT}/lib/$(util/arch)" > /etc/ld.so.conf.d/sge.conf
+        ldconfig
     fi
+    # remove qmake reference
+    sed -i s/qmake//g $(find . -iname inst_common.sh)
 fi
+
 sge_flavour=$(basename $SGE_ROOT)
 cd $SGE_ROOT
 inst_file=/tmp/sge_inst
 echo "Creating installation template in $inst_file"
+
+CELL_DIR="${SGE_ROOT}/${SGE_CELL}"
+if [ -d "${CELL_DIR}" ] ; then
+    echo "cell_dir ${CELL_DIR} already exists, moving to /tmp ..."
+    if [ -d /tmp/${SGE_CELL} ] ; then
+        mv ${CELL_DIR} /tmp/${SGE_CELL}
+    else
+        mv ${CELL_DIR} /tmp
+    fi
+fi
+
 cat > $inst_file << EOF
 SGE_ROOT=${SGE_ROOT}
-SGE_QMASTER_PORT=$(cat /etc/services | grep sge_qmaster | tr "\t" " " | grep tcp | tr -s " " | cut -d " " -f 2 | cut -d "/" -f 1)
-SGE_EXECD_PORT=$(cat /etc/services | grep sge_execd | tr "\t" " " | grep tcp | tr -s " " | cut -d " " -f 2 | cut -d "/" -f 1)
+SGE_QMASTER_PORT=$(cat /etc/services | grep sge_qmaster | tr "\t" " " | grep tcp | tr -s " " | cut -d " " -f 2 | cut -d "/" -f 1 | sort | uniq )
+SGE_EXECD_PORT=$(cat /etc/services | grep sge_execd | tr "\t" " " | grep tcp | tr -s " " | cut -d " " -f 2 | cut -d "/" -f 1 | sort | uniq)
 CELL_NAME=${SGE_CELL}
 ADMIN_USER="sge"
 QMASTER_SPOOL_DIR=/var/spool/${sge_flavour}
@@ -96,6 +129,7 @@ SUBMIT_HOST_LIST=$(hostname)
 EXEC_HOST_LIST=""
 SGE_ENABLE_SMF="false"
 EXECD_SPOOL_DIR_LOCAL=/var/spool/${sge_flavour}
+EXECD_SPOOL_DIR=/var/spool/${sge_flavour}
 HOSTNAME_RESOLVING="true"
 SHELL_NAME="rsh"
 COPY_COMMAND="rcp"
@@ -110,5 +144,6 @@ REMOVE_RC="false"
 WINDOWS_SUPPORT="false"
 SGE_CLUSTER_NAME="cluster"
 EOF
-    ./inst_sge  -m  -auto /tmp/sge_inst
+
+./inst_sge  -m  -auto /tmp/sge_inst
 

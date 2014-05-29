@@ -74,26 +74,55 @@ xacl NONE " > ${conf_temp}
     qconf -Aprj ${conf_temp}
 }
 
-# generate general config file
-echo "prolog root@${SGE_ROOT}/3rd_party/prologue \$host \$job_owner \$job_id \$job_name \$queue " > /tmp/.qconf_config
-echo "epilog root@${SGE_ROOT}/3rd_party/epilogue \$host \$job_owner \$job_id \$job_name \$queue " >> /tmp/.qconf_config
-echo "shell_start_mode posix_compliant " >> /tmp/.qconf_config
-echo "reschedule_unknown 00:30:00 " >> /tmp/.qconf_config
-echo "enforce_project true " >> /tmp/.qconf_config
-echo "enforce_user true " >> /tmp/.qconf_config
-echo "qmaster_params ENABLE_FORCED_QDEL " >> /tmp/.qconf_config
-echo "execd_params ACCT_RESERVED_USAGE,NO_REPRIORITIZATION,SHARETREE_RESERVED_USAGE,ENABLE_ADDGRP_KILL=true " >> /tmp/.qconf_config
-echo "qlogin_command ${SGE_ROOT}/3rd_party/qlogin_wrapper.sh" >> /tmp/.qconf_config
-#echo "rsh_command none" >> /tmp/.qconf_config
-echo "rlogin_command /usr/bin/ssh" >> /tmp/.qconf_config
-echo "qlogin_daemon /usr/sbin/sshd -i" >> /tmp/.qconf_config
-echo "rlogin_daemon /usr/sbin/sshd -i" >> /tmp/.qconf_config
-#echo "rsh_daemon none" >> /tmp/.qconf_config
-echo "xterm /usr/bin/xterm" >> /tmp/.qconf_config
 export EDITOR=${SGE_ROOT}/bin/noarch/sge_editor_conf.py
+
+# generate general config file
+cat > /tmp/.qconf_config << EOF
+prolog root@${SGE_ROOT}/3rd_party/prologue \$host \$job_owner \$job_id \$job_name \$queue 
+epilog root@${SGE_ROOT}/3rd_party/epilogue \$host \$job_owner \$job_id \$job_name \$queue 
+shell_start_mode posix_compliant
+reschedule_unknown 00:30:00
+enforce_project true
+enforce_user true
+qmaster_params ENABLE_FORCED_QDEL
+execd_params ACCT_RESERVED_USAGE,NO_REPRIORITIZATION,SHARETREE_RESERVED_USAGE,ENABLE_ADDGRP_KILL=true
+qlogin_command ${SGE_ROOT}/3rd_party/qlogin_wrapper.sh
+rlogin_command /usr/bin/ssh
+qlogin_daemon /usr/sbin/sshd -i
+rlogin_daemon /usr/sbin/sshd -i
+xterm /usr/bin/xterm
+enforce_project false
+enforce_user false
+EOF
+#echo "rsh_command none" >> /tmp/.qconf_config
+#echo "rsh_daemon none" >> /tmp/.qconf_config
+
 echo "Modifying general SGE-config, storing old one in /tmp/.sge_conf_old ..."
 qconf -sconf > /tmp/.sge_conf_old
 qconf -mconf global
+
+# generate scheduler config file
+# generate general config file
+cat > /tmp/.qconf_config << EOF
+flush_submit_sec 1
+flush_finish_sec 1
+EOF
+
+echo "Modifying SGE schedulerconfig, storing old one in /tmp/.sge_sconf_old ..."
+qconf -ssconf > /tmp/.sge_sconf_old
+qconf -msconf
+
 rm -f ${pe_tmp} ${conf_temp}
 unset EDITOR
+
+echo "Copying sge_request and sge_qstat to ${SGE_ROOT}/${SGE_CELL}/common"
+cp -a /opt/cluster/sge/sge_request /opt/cluster/sge/sge_qstat ${SGE_ROOT}/${SGE_CELL}/common
+
+CONF_FILE="${SGE_ROOT}/3rd_party/proepilogue.conf"
+
+if [ ! -f ${CONF_FILE} ] ; then
+    echo "Creating ${CONF_FILE}"
+    ${SGE_ROOT}/3rd_party/proepilogue.py > ${CONF_FILE}
+fi
+
 

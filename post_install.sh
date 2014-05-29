@@ -17,7 +17,7 @@ if [ ! -f /etc/sge_root ] ; then
     if [ ! -f /etc/sge_root   ] ; then
         echo "/opt/sge" > /etc/sge_root
     fi
-    [ ! -f /etc/sge_cell   ] && echo "not_set"    > /etc/sge_cell
+    [ ! -f /etc/sge_cell   ] && echo "sgecell"    > /etc/sge_cell
     [ ! -f /etc/sge_server ] && echo "localhost"  > /etc/sge_server
 fi
 
