@@ -1,7 +1,7 @@
 #!/usr/bin/python-init -Ot
 # -*- coding: utf-8 -*-
 #
-# Copyright (C) 2005,2007,2008,2010,2012 Andreas Lang-Nevyjel, init.at
+# Copyright (C) 2005-2008,2012-2014 Andreas Lang-Nevyjel, init.at
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -21,12 +21,12 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
 
-import sys
-import os
-import re
 import commands
-import process_tools
 import logging_tools
+import os
+import process_tools
+import re
+import sys
 
 SITE_CONF_NAME = "lic_SITES.conf"
 ACT_SITE_NAME = "actual_SITE"
@@ -252,15 +252,17 @@ def parse_license_lines(lines, act_site, **kwargs):
         simple_lic = slic_re.match(line)
         compound_lic = clic_re.match(line)
         if simple_lic:
-            new_lic = sge_license(simple_lic.group("attribute"),
-                                  license_server=simple_lic.group("act_lic_server_setting"),
-                                  license_type="simple",
-                                  ng_dict=kwargs.get("ng_dict", {}))
+            new_lic = sge_license(
+                simple_lic.group("attribute"),
+                license_server=simple_lic.group("act_lic_server_setting"),
+                license_type="simple",
+                ng_dict=kwargs.get("ng_dict", {}))
             new_lic.set_total_num(int(simple_lic.group("tot_num")))
         elif compound_lic:
-            new_lic = sge_license(compound_lic.group("attribute"),
-                                  license_type="compound",
-                                  ng_dict=kwargs.get("ng_dict", {}))
+            new_lic = sge_license(
+                compound_lic.group("attribute"),
+                license_type="compound",
+                ng_dict=kwargs.get("ng_dict", {}))
             new_lic.set_compound_operand(compound_lic.group("lic_operand"))
             new_lic.set_source_licenses([part.strip() for part in compound_lic.group("source_licenses").split(",")])
         else:
@@ -289,8 +291,4 @@ def call_command(command, exit_on_fail=0, show_output=False):
             for line in out.split("\n"):
                 print " - %s" % (line)
     return stat, out
-
-if __name__ == "__main__":
-    print "Loadable module, exiting..."
-    sys.exit(0)
 
