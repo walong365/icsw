@@ -66,6 +66,7 @@ class rms_mon_process(threading_tools.process_obj):
         self.__job_content_dict = {}
         self.register_func("get_config", self._get_config)
         self.register_func("job_control", self._job_control)
+        self.register_func("queue_control", self._queue_control)
         self.register_func("file_watch_content", self._file_watch_content)
         self.register_func("full_reload", self._full_reload)
         # self.register_func("get_job_xml", self._get_job_xml)
@@ -116,18 +117,43 @@ class rms_mon_process(threading_tools.process_obj):
             )
             for log_line in log_lines:
                 self.log(log_line, logging_tools.LOG_LEVEL_OK if not cur_stat else logging_tools.LOG_LEVEL_ERROR)
-            srv_com["result"].attrib.update(
-                {
-                    "state" : "%d" % (server_command.SRV_REPLY_STATE_ERROR if cur_stat else server_command.SRV_REPLY_STATE_OK),
-                    "reply" : "%s gave: %s" % (job_action, cur_out),
-                }
+            srv_com.set_result(
+                "%s gave: %s" % (job_action, cur_out),
+                server_command.SRV_REPLY_STATE_ERROR if cur_stat else server_command.SRV_REPLY_STATE_OK
             )
         else:
-            srv_com["result"].attrib.update(
-                {
-                    "state" : "%d" % (server_command.SRV_REPLY_STATE_ERROR),
-                    "reply" : "unknown job_action %s" % (job_action),
-                }
+            srv_com.set_result(
+                "unknown job_action %s" % (job_action),
+                server_command.SRV_REPLY_STATE_ERROR,
+            )
+        self.send_to_socket(self.__main_socket, ["command_result", src_id, unicode(srv_com)])
+    def _queue_control(self, *args , **kwargs):
+        src_id, srv_com_str = args
+        srv_com = server_command.srv_command(source=srv_com_str)
+        queue_action = srv_com["action"].text
+        queue_spec = srv_com.xpath(".//ns:queue_list/ns:queue/@queue_spec", smart_strings=False)[0]
+        self.log("queue action '%s' for job '%s'" % (queue_action, queue_spec))
+        if queue_action in ["enable", "disable", "clear_error"]:
+            cur_stat, cur_out, log_lines = call_command(
+                "/opt/sge/bin/lx-amd64/qmod {} {}".format(
+                    {
+                        "enable" : "-e",
+                        "disable" : "-d",
+                        "clear_error" : "-c",
+                    }[queue_action],
+                    queue_spec,
+                )
+            )
+            for log_line in log_lines:
+                self.log(log_line, logging_tools.LOG_LEVEL_OK if not cur_stat else logging_tools.LOG_LEVEL_ERROR)
+            srv_com.set_result(
+                "%s gave: %s" % (queue_action, cur_out),
+                server_command.SRV_REPLY_STATE_ERROR if cur_stat else server_command.SRV_REPLY_STATE_OK
+            )
+        else:
+            srv_com.set_result(
+                "unknown job_action %s" % (queue_action),
+                server_command.SRV_REPLY_STATE_ERROR,
             )
         self.send_to_socket(self.__main_socket, ["command_result", src_id, unicode(srv_com)])
     def _file_watch_content(self, *args , **kwargs):
@@ -280,6 +306,8 @@ class server_process(threading_tools.process_pool):
                 self.send_to_process("rms_mon", "get_config", src_id, unicode(srv_com))
             elif cur_com == "job_control":
                 self.send_to_process("rms_mon", "job_control", src_id, unicode(srv_com))
+            elif cur_com == "queue_control":
+                self.send_to_process("rms_mon", "queue_control", src_id, unicode(srv_com))
             elif cur_com == "get_0mq_id":
                 srv_com["zmq_id"] = self.bind_id
                 srv_com["result"].attrib.update({
