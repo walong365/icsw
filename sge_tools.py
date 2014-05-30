@@ -363,7 +363,10 @@ class sge_info(object):
         if self.__verbose:
             self.log("dicts to update after check: {}".format(", ".join(dicts_to_update) or "none"))
         # print "to update: ", dicts_to_update
-        server_update = set([dict_name for dict_name in dicts_to_update if (self.__update_pref_dict[dict_name] + ["not set"])[0] == "server"])
+        if not self.__always_direct:
+            server_update = set([dict_name for dict_name in dicts_to_update if (self.__update_pref_dict[dict_name] + ["not set"])[0] == "server"])
+        else:
+            server_update = set()
         if self.__verbose:
             self.log("dicts to update from server: {}".format(", ".join(server_update) or "none"))
         # direct results
