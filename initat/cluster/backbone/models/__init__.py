@@ -2585,13 +2585,12 @@ class device_serializer(serializers.ModelSerializer):
     latest_contact = serializers.Field(source="latest_contact")
     client_version = serializers.Field(source="client_version")
     def __init__(self, *args, **kwargs):
-        fields = kwargs.get("context", {}).pop("fields", None)
+        fields = kwargs.get("context", {}).pop("fields", [])
         serializers.ModelSerializer.__init__(self, *args, **kwargs)
         _optional_fields = set(["act_partition_table", "partition_table", "netdevice_set", "categories", "device_variable_set", "device_config_set",
             "package_device_connection_set", "latest_contact", "client_version"])
-        if fields:
-            for _to_remove in  _optional_fields - set(fields):
-                self.fields.pop(_to_remove)
+        for _to_remove in  _optional_fields - set(fields):
+            self.fields.pop(_to_remove)
     def get_access_level(self, obj):
         if "olp" in self.context:
             return self.context["request"].user.get_object_perm_level(self.context["olp"], obj)
