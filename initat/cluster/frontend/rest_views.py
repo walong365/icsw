@@ -286,26 +286,6 @@ class list_view(mixins.ListModelMixin,
             res = res[0:special_dict["num_entries"]]
         return res
 
-class device_tree_detail(detail_view):
-    model = device
-    def _get_post_boolean(self, name, default):
-        if name in self.request.QUERY_PARAMS:
-            p_val = self.request.QUERY_PARAMS[name]
-            if p_val.lower() in ["1", "true"]:
-                return True
-            else:
-                return False
-        else:
-            return default
-    @rest_logging
-    def get_serializer_class(self):
-        if self._get_post_boolean("tree_mode", False):
-            return device_serializer
-        if self._get_post_boolean("only_boot", False):
-            return device_serializer_only_boot
-        else:
-            return device_serializer
-
 class form_serializer(serializers.Serializer):
     name = serializers.CharField()
     form = serializers.CharField()
@@ -459,14 +439,18 @@ class csw_object_list(viewsets.ViewSet):
                 _lt = "warning"
         return _lt
 
-class device_tree_list(mixins.ListModelMixin,
-                       mixins.CreateModelMixin,
-                       generics.MultipleObjectAPIView):
-    authentication_classes = (SessionAuthentication,)
-    permission_classes = (IsAuthenticated,)
-    model = device
+class device_tree_mixin(object):
+    def _get_post_boolean(self, name, default):
+        if name in self.request.QUERY_PARAMS:
+            p_val = self.request.QUERY_PARAMS[name]
+            if p_val.lower() in ["1", "true"]:
+                return True
+            else:
+                return False
+        else:
+            return default
     @rest_logging
-    def get_serializer_context(self):
+    def _get_serializer_context(self):
         ctx = {"request" : self.request}
         if self.request.QUERY_PARAMS.get("olp", ""):
             ctx["olp"] = self.request.QUERY_PARAMS["olp"]
@@ -485,7 +469,34 @@ class device_tree_list(mixins.ListModelMixin,
             _fields.extend(["package_device_connection_set", "latest_contact", "client_version"])
         if _fields:
             ctx["fields"] = _fields
+        print "mic"
         return ctx
+
+class device_tree_detail(detail_view, device_tree_mixin):
+    model = device
+    @rest_logging
+    def get_serializer_context(self):
+        return self._get_serializer_context()
+    @rest_logging
+    def get_serializer_class(self):
+        if self._get_post_boolean("tree_mode", False):
+            return device_serializer
+        if self._get_post_boolean("only_boot", False):
+            return device_serializer_only_boot
+        else:
+            return device_serializer
+
+class device_tree_list(mixins.ListModelMixin,
+                       mixins.CreateModelMixin,
+                       generics.MultipleObjectAPIView,
+                       device_tree_mixin,
+                       ):
+    authentication_classes = (SessionAuthentication,)
+    permission_classes = (IsAuthenticated,)
+    model = device
+    @rest_logging
+    def get_serializer_context(self):
+        return self._get_serializer_context()
     @rest_logging
     def get_serializer_class(self):
         if self._get_post_boolean("all_monitoring_servers", False):
@@ -502,15 +513,6 @@ class device_tree_list(mixins.ListModelMixin,
         if resp.status_code in [200, 201, 202, 203]:
             resp.data["_messages"] = [u"created '%s'" % (unicode(self.object))]
         return resp
-    def _get_post_boolean(self, name, default):
-        if name in self.request.QUERY_PARAMS:
-            p_val = self.request.QUERY_PARAMS[name]
-            if p_val.lower() in ["1", "true"]:
-                return True
-            else:
-                return False
-        else:
-            return default
     @rest_logging
     def get_queryset(self):
         # with_variables = self._get_post_boolean("with_variables", False)
