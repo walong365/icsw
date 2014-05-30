@@ -29,7 +29,7 @@ from initat.cluster.backbone import models
 from initat.cluster.backbone.models import user , group, \
      get_related_models, get_change_reset_list, device, device_serializer, \
      device_serializer_package_state, domain_name_tree, \
-     device_serializer_monitor_server, category_tree, device_selection, \
+     category_tree, device_selection, \
      device_selection_serializer, partition_table_serializer_save, partition_disc_serializer_save, \
      partition_disc_serializer_create, device_config, device_config_hel_serializer, home_export_list, \
      csw_permission, peer_information, netdevice, \
@@ -317,7 +317,6 @@ class fetch_forms(viewsets.ViewSet):
                         "form" : "<strong>form '%s' not found</strong>" % (cur_form)
                     }
                 )
-                print ext_list[-1]
         _ser = form_serializer(ext_list, many=True)
         return Response(_ser.data)
 
@@ -467,9 +466,10 @@ class device_tree_mixin(object):
             _fields.append("device_config_set")
         if self._get_post_boolean("package_state", False):
             _fields.extend(["package_device_connection_set", "latest_contact", "client_version"])
+        if self._get_post_boolean("monitor_server_type", False):
+            _fields.append("monitor_type")
         if _fields:
             ctx["fields"] = _fields
-        print "mic"
         return ctx
 
 class device_tree_detail(detail_view, device_tree_mixin):
@@ -499,10 +499,7 @@ class device_tree_list(mixins.ListModelMixin,
         return self._get_serializer_context()
     @rest_logging
     def get_serializer_class(self):
-        if self._get_post_boolean("all_monitoring_servers", False):
-            return device_serializer_monitor_server
-        else:
-            return device_serializer
+        return device_serializer
     @rest_logging
     def get(self, request, *args, **kwargs):
         # print self.list(request, *args, **kwargs)
@@ -531,7 +528,7 @@ class device_tree_list(mixins.ListModelMixin,
                 _q = _q.filter(meta_list | device_list)
             if not self.request.user.has_perm("backbone.device.all_devices"):
                 _q = _q.filter(Q(device_group__in=self.request.user.allowed_device_groups.all()))
-        if self._get_post_boolean("all_monitoring_servers", False):
+        if self._get_post_boolean("monitor_server_type", False):
             _q = _q.filter(Q(device_config__config__name__in=["monitor_server", "monitor_slave"]))
         elif self._get_post_boolean("all_mother_servers", False):
             _q = _q.filter(Q(device_config__config__name__in=["mother_server", "mother"]))

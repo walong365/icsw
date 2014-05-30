@@ -1928,7 +1928,7 @@ class device_tree_form(ModelForm):
                 Field("curl"),
                 Field("domain_tree_node", ng_options="value.idx as value.tree_info for value in rest_data.domain_tree_node", chosen=True),
                 Field("bootserver", ng_options="value.idx as value.full_name for value in rest_data.mother_server", chosen=True),
-                Field("monitor_server", ng_options="value.idx as value.full_name for value in rest_data.monitor_server", chosen=True),
+                Field("monitor_server", ng_options="value.idx as value.full_name_wt for value in rest_data.monitor_server", chosen=True),
             ),
             Fieldset(
                 "Security",
@@ -1995,7 +1995,7 @@ class device_tree_many_form(ModelForm):
                 ("curl", None, {}),
                 ("domain_tree_node", "value.idx as value.tree_info for value in rest_data.domain_tree_node", {"chosen" : True}),
                 ("bootserver", "value.idx as value.full_name for value in rest_data.mother_server", {"chosen" : True}),
-                ("monitor_server", "value.idx as value.full_name for value in rest_data.monitor_server", {"chosen" : True}),
+                ("monitor_server", "value.idx as value.full_name_wt for value in rest_data.monitor_server", {"chosen" : True}),
             ]
         ),
         (

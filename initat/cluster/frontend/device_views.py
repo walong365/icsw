@@ -63,7 +63,6 @@ class change_devices(View):
         _post = request.POST
         c_dict = json.loads(_post.get("change_dict", ""))
         pk_list = json.loads(_post.get("device_list"))
-        print "*"
         if c_dict.get("delete", False):
             device.objects.filter(Q(pk__in=pk_list)).delete()
             request.xml_response.info("delete {}".format(logging_tools.get_plural("device", len(pk_list))))

@@ -38,12 +38,13 @@ device_tree_base = device_module.controller("device_tree_base", ["$scope", "$com
         $scope.settings.filter_settings = {"dg_filter" : "b", "en_filter" : "b", "sel_filter" : "b", "mon_filter" : "i", "boot_filter" : "i", "str_filter" : ""}
         $scope.pagSettings = paginatorSettings.get_paginator("device_tree_base", $scope)
         $scope.rest_data = {}
+        $scope.monitor_servers = {}
         $scope.rest_map = [
             {"short" : "device", "url" : "{% url 'rest:device_tree_list' %}", "options" : {"all_devices" : true, "ignore_cdg" : false, "tree_mode" : true, "ignore_disabled" : true}} 
             {"short" : "device_group", "url" : "{% url 'rest:device_group_list' %}"}
             {"short" : "device_type", "url" : "{% url 'rest:device_type_list' %}"}
             {"short" : "mother_server", "url" : "{% url 'rest:device_tree_list' %}", "options" : {"all_mother_servers" : true}}
-            {"short" : "monitor_server", "url" : "{% url 'rest:device_tree_list' %}", "options" : {"all_monitoring_servers" : true}}
+            {"short" : "monitor_server", "url" : "{% url 'rest:device_tree_list' %}", "options" : {"monitor_server_type" : true}}
             {"short" : "domain_tree_node", "url" : "{% url 'rest:domain_tree_node_list' %}"}
             {"short" : "device_sel", "url" : "{% url 'rest:device_selection_list' %}"}
         ]
@@ -212,6 +213,9 @@ device_tree_base = device_module.controller("device_tree_base", ["$scope", "$com
                 if pk of $scope.device_lut
                     # ignore deleted devices
                     $scope.device_lut[pk].selected = true
+            # monitor servers
+            for entry in $scope.rest_data.monitor_server
+                entry.full_name_wt = "#{entry.full_name} (#{entry.monitor_type})"
             $scope.initial_load = false
         $scope.num_selected = () ->
             if $scope.entries

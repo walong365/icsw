@@ -802,6 +802,8 @@ angular.module(
         return (in_value, f_array, fk_key, null_msg) ->
             if in_value != null
                 if fk_key
+                    if angular.isString(in_value)
+                        in_value = parseInt(in_value)
                     res_list = (entry[fk_key] for key, entry of f_array when typeof(entry) == "object" and entry and entry["idx"] == in_value)
                 else
                     res_list = (entry for key, entry of f_array when typeof(entry) == "object" and entry and entry["idx"] == in_value)
