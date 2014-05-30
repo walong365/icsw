@@ -207,7 +207,6 @@ class detail_view(mixins.RetrieveModelMixin,
             if root_pwd:
                 new_model.root_passwd = root_pwd
                 new_model.save()
-            # print "+" * 10, root_pwd
         c_list, r_list = get_change_reset_list(prev_model, new_model, req_changes)
         # print c_list, r_list
         resp.data["_change_list"] = c_list

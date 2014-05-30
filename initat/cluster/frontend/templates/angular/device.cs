@@ -38,7 +38,6 @@ device_tree_base = device_module.controller("device_tree_base", ["$scope", "$com
         $scope.settings.filter_settings = {"dg_filter" : "b", "en_filter" : "b", "sel_filter" : "b", "mon_filter" : "i", "boot_filter" : "i", "str_filter" : ""}
         $scope.pagSettings = paginatorSettings.get_paginator("device_tree_base", $scope)
         $scope.rest_data = {}
-        $scope.monitor_servers = {}
         $scope.rest_map = [
             {"short" : "device", "url" : "{% url 'rest:device_tree_list' %}", "options" : {"all_devices" : true, "ignore_cdg" : false, "tree_mode" : true, "ignore_disabled" : true}} 
             {"short" : "device_group", "url" : "{% url 'rest:device_group_list' %}"}
@@ -95,6 +94,8 @@ device_tree_base = device_module.controller("device_tree_base", ["$scope", "$com
                 rest_entry = (entry for entry in $scope.rest_map when entry.short == $scope._array_name)[0]
                 if $scope.create_mode
                     Restangular.all(rest_entry["url"].slice(1)).post($scope.new_obj, rest_entry.options).then((new_data) ->
+                        if $scope.new_obj.root_passwd
+                            new_data.root_passwd_set = true
                         $scope.object_created(new_data)
                     )
                 else
@@ -106,6 +107,10 @@ device_tree_base = device_module.controller("device_tree_base", ["$scope", "$com
                         (data) -> 
                             $.simplemodal.close()
                             handle_reset(data, cur_f, $scope.edit_obj.idx)
+                            if $scope.edit_obj.root_passwd
+                                # hm, fixme
+                                data.root_passwd_set = true
+                                $scope.edit_obj.root_passwd_set = true
                             $scope.object_modified(data)
                         (resp) -> handle_reset(resp.data, cur_f, $scope.edit_obj.idx)
                     )
