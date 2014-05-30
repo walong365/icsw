@@ -22,6 +22,7 @@
 #
 """ python interface to emulate a loadsensor for SGE """
 
+from initat.host_monitoring import hm_classes
 import commands
 import license_tool # @UnresolvedImport
 import logging_tools
@@ -34,7 +35,6 @@ import stat
 import sys
 import time
 import zmq
-from initat.host_monitoring import hm_classes
 
 class error(Exception):
     def __init__(self, value):
@@ -196,7 +196,7 @@ def main():
         init_logger=True,
         zmq=True,
         context=zmq_context,
-        )
+    )
     base_dir = "/etc/sysconfig/licenses"
     my_pid = os.getpid()
     log_template.info("starting for pid %d, base_dir is %s" % (my_pid, base_dir))
