@@ -1210,9 +1210,8 @@ class device(models.Model):
             return self.name
     def crypt(self, in_pwd):
         if in_pwd:
-            _crypted = crypt.crypt(in_pwd, "{}{}".format(
-                chr(random.randint(65, 96)),
-                chr(random.randint(65, 96))))
+            salt = "".join([chr(random.randint(65, 90)) for _idx in xrange(4)])
+            _crypted = crypt.crypt(in_pwd, salt)
             if _crypted == "*0":
                 _crypted = ""
         else:
