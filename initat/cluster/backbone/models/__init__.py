@@ -2481,11 +2481,12 @@ class device_serializer(serializers.ModelSerializer):
     package_device_connection_set = package_device_connection_serializer(many=True)
     latest_contact = serializers.Field(source="latest_contact")
     client_version = serializers.Field(source="client_version")
+    monitor_type = serializers.Field(source="get_monitor_type")
     def __init__(self, *args, **kwargs):
         fields = kwargs.get("context", {}).pop("fields", [])
         serializers.ModelSerializer.__init__(self, *args, **kwargs)
         _optional_fields = set(["act_partition_table", "partition_table", "netdevice_set", "categories", "device_variable_set", "device_config_set",
-            "package_device_connection_set", "latest_contact", "client_version"])
+            "package_device_connection_set", "latest_contact", "client_version", "monitor_type"])
         for _to_remove in  _optional_fields - set(fields):
             self.fields.pop(_to_remove)
     def get_access_level(self, obj):
@@ -2517,6 +2518,8 @@ class device_serializer(serializers.ModelSerializer):
             "device_config_set",
             # package info
             "package_device_connection_set", "latest_contact", "client_version",
+            # monitor type
+            "monitor_type",
             )
         read_only_fields = ("uuid",)
 
@@ -2549,15 +2552,6 @@ class device_serializer_monitoring(device_serializer):
             "mon_resolve_name", "access_level", "access_levels", "store_rrd_data",
             )
         read_only_fields = ("act_partition_table",)
-
-class device_serializer_monitor_server(device_serializer):
-    # only used for reading (no write)
-    monitor_type = serializers.Field(source="get_monitor_type")
-    class Meta:
-        model = device
-        fields = ("idx", "name", "full_name", "device_group_name", "monitor_type",
-            "access_level", "access_levels", "store_rrd_data",
-            )
 
 class cd_connection_serializer_boot(serializers.ModelSerializer):
     parent = device_serializer()
