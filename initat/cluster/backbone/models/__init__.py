@@ -1757,67 +1757,6 @@ class devicelog(models.Model):
         db_table = u'devicelog'
         ordering = ("date",)
 
-class dmi_entry(models.Model):
-    idx = models.AutoField(db_column="dmi_entry_idx", primary_key=True)
-    device = models.ForeignKey("device")
-    dmi_type = models.IntegerField()
-    handle = models.IntegerField()
-    dmi_length = models.IntegerField()
-    info = models.CharField(max_length=765)
-    date = models.DateTimeField(auto_now_add=True)
-    class Meta:
-        db_table = u'dmi_entry'
-
-class dmi_ext_key(models.Model):
-    idx = models.AutoField(db_column="dmi_ext_key_idx", primary_key=True)
-    dmi_key = models.ForeignKey("dmi_key")
-    ext_value_string = models.CharField(max_length=765)
-    date = models.DateTimeField(auto_now_add=True)
-    class Meta:
-        db_table = u'dmi_ext_key'
-
-class dmi_key(models.Model):
-    idx = models.AutoField(db_column="dmi_key_idx", primary_key=True)
-    dmi_entry = models.ForeignKey("dmi_entry")
-    key_string = models.CharField(max_length=765)
-    value_string = models.CharField(max_length=765, blank=True)
-    date = models.DateTimeField(auto_now_add=True)
-    class Meta:
-        db_table = u'dmi_key'
-
-class genstuff(models.Model):
-    idx = models.AutoField(db_column="genstuff_idx", primary_key=True)
-    name = models.CharField(unique=True, max_length=192)
-    description = models.CharField(max_length=384, blank=True)
-    value = models.CharField(max_length=192, blank=True)
-    date = models.DateTimeField(auto_now_add=True)
-    class Meta:
-        db_table = u'genstuff'
-
-class hw_entry(models.Model):
-    idx = models.AutoField(db_column="hw_entry_idx", primary_key=True)
-    device = models.ForeignKey("device")
-    hw_entry_type = models.ForeignKey("hw_entry_type")
-    iarg0 = models.IntegerField(null=True, blank=True)
-    iarg1 = models.IntegerField(null=True, blank=True)
-    sarg0 = models.CharField(max_length=765, blank=True)
-    sarg1 = models.CharField(max_length=765, blank=True)
-    date = models.DateTimeField(auto_now_add=True)
-    class Meta:
-        db_table = u'hw_entry'
-
-class hw_entry_type(models.Model):
-    idx = models.AutoField(db_column="hw_entry_type_idx", primary_key=True)
-    identifier = models.CharField(max_length=24)
-    description = models.CharField(max_length=765)
-    iarg0_descr = models.CharField(max_length=765, blank=True)
-    iarg1_descr = models.CharField(max_length=765, blank=True)
-    sarg0_descr = models.CharField(max_length=765, blank=True)
-    sarg1_descr = models.CharField(max_length=765, blank=True)
-    date = models.DateTimeField(auto_now_add=True)
-    class Meta:
-        db_table = u'hw_entry_type'
-
 class image(models.Model):
     idx = models.AutoField(db_column="image_idx", primary_key=True)
     name = models.CharField(max_length=192, blank=True, unique=True)
@@ -2114,57 +2053,40 @@ class macbootlog_serializer(serializers.ModelSerializer):
     class Meta:
         model = macbootlog
 
-class ms_outlet(models.Model):
-    idx = models.AutoField(db_column="msoutlet_idx", primary_key=True)
-    device = models.ForeignKey("device")
-    slave_device = models.ForeignKey("device", null=True, related_name="ms_slave_device")
-    slave_info = models.CharField(max_length=192, blank=True)
-    outlet = models.IntegerField()
-    state = models.CharField(max_length=96, blank=True)
-    t_power_on_delay = models.IntegerField(null=True, blank=True)
-    t_power_off_delay = models.IntegerField(null=True, blank=True)
-    t_reboot_delay = models.IntegerField(null=True, blank=True)
-    power_on_delay = models.IntegerField(null=True, blank=True)
-    power_off_delay = models.IntegerField(null=True, blank=True)
-    reboot_delay = models.IntegerField(null=True, blank=True)
-    date = models.DateTimeField(auto_now_add=True)
-    class Meta:
-        db_table = u'msoutlet'
+# class pci_entry(models.Model):
+#    idx = models.AutoField(db_column="pci_entry_idx", primary_key=True)
+#    device_idx = models.ForeignKey("device")
+#    domain = models.IntegerField(null=True, blank=True)
+#    bus = models.IntegerField(null=True, blank=True)
+#    slot = models.IntegerField(null=True, blank=True)
+#    func = models.IntegerField(null=True, blank=True)
+#    vendor = models.CharField(max_length=18)
+#    vendorname = models.CharField(max_length=192)
+#    device = models.CharField(max_length=18)
+#    devicename = models.CharField(max_length=192)
+#    class_field = models.CharField(max_length=18, db_column='class') # Field renamed because it was a Python reserved word. Field name made lowercase.
+#    classname = models.CharField(max_length=192)
+#    subclass = models.CharField(max_length=18)
+#    subclassname = models.CharField(max_length=192)
+#    revision = models.CharField(max_length=96)
+#    date = models.DateTimeField(auto_now_add=True)
+#    class Meta:
+#        db_table = u'pci_entry'
 
-class pci_entry(models.Model):
-    idx = models.AutoField(db_column="pci_entry_idx", primary_key=True)
-    device_idx = models.ForeignKey("device")
-    domain = models.IntegerField(null=True, blank=True)
-    bus = models.IntegerField(null=True, blank=True)
-    slot = models.IntegerField(null=True, blank=True)
-    func = models.IntegerField(null=True, blank=True)
-    vendor = models.CharField(max_length=18)
-    vendorname = models.CharField(max_length=192)
-    device = models.CharField(max_length=18)
-    devicename = models.CharField(max_length=192)
-    class_field = models.CharField(max_length=18, db_column='class') # Field renamed because it was a Python reserved word. Field name made lowercase.
-    classname = models.CharField(max_length=192)
-    subclass = models.CharField(max_length=18)
-    subclassname = models.CharField(max_length=192)
-    revision = models.CharField(max_length=96)
-    date = models.DateTimeField(auto_now_add=True)
-    class Meta:
-        db_table = u'pci_entry'
-
-class session_data(models.Model):
-    idx = models.AutoField(db_column="session_data_idx", primary_key=True)
-    session_id = models.CharField(unique=True, max_length=96)
-    value = models.TextField()
-    user = models.ForeignKey("user")
-    remote_addr = models.TextField(blank=True)
-    alias = models.CharField(max_length=255, blank=True)
-    login_time = models.DateTimeField(null=True, blank=True)
-    logout_time = models.DateTimeField(null=True, blank=True)
-    forced_logout = models.BooleanField()
-    rebuild_server_routes = models.BooleanField(default=False)
-    date = models.DateTimeField(auto_now_add=True)
-    class Meta:
-        db_table = u'session_data'
+# class session_data(models.Model):
+#    idx = models.AutoField(db_column="session_data_idx", primary_key=True)
+#    session_id = models.CharField(unique=True, max_length=96)
+#    value = models.TextField()
+#    user = models.ForeignKey("user")
+#    remote_addr = models.TextField(blank=True)
+#    alias = models.CharField(max_length=255, blank=True)
+#    login_time = models.DateTimeField(null=True, blank=True)
+#    logout_time = models.DateTimeField(null=True, blank=True)
+#    forced_logout = models.BooleanField()
+#    rebuild_server_routes = models.BooleanField(default=False)
+#    date = models.DateTimeField(auto_now_add=True)
+#    class Meta:
+#        db_table = u'session_data'
 
 class sge_complex(models.Model):
     idx = models.AutoField(db_column="sge_complex_idx", primary_key=True)
@@ -2308,31 +2230,6 @@ class sge_userlist_type(models.Model):
     date = models.DateTimeField(auto_now_add=True)
     class Meta:
         db_table = u'sge_userlist_type'
-
-class snmp_config(models.Model):
-    idx = models.AutoField(db_column="snmp_config_idx", primary_key=True)
-    config_old = models.IntegerField(null=True, blank=True, db_column="config")
-    config = models.ForeignKey("config", db_column="new_config_id")
-    snmp_mib = models.ForeignKey("snmp_mib")
-    device = models.ForeignKey("device", null=True, default=None)
-    date = models.DateTimeField(auto_now_add=True)
-    class Meta:
-        db_table = u'snmp_config'
-
-class snmp_mib(models.Model):
-    idx = models.AutoField(db_column="snmp_mib_idx", primary_key=True)
-    name = models.CharField(unique=True, max_length=192)
-    descr = models.CharField(max_length=765, blank=True)
-    mib = models.CharField(max_length=255)
-    rrd_key = models.CharField(max_length=192)
-    unit = models.CharField(max_length=96, blank=True)
-    base = models.IntegerField(null=True, blank=True)
-    factor = models.FloatField(null=True, blank=True)
-    var_type = models.CharField(max_length=3, blank=True)
-    special_command = models.CharField(max_length=765, blank=True)
-    date = models.DateTimeField(auto_now_add=True)
-    class Meta:
-        db_table = u'snmp_mib'
 
 class status(models.Model):
     idx = models.AutoField(db_column="status_idx", primary_key=True)

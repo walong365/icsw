@@ -2,7 +2,7 @@
 
 import factory
 from initat.cluster.backbone.models import netdevice_speed, log_source, \
-    device_type, partition_fs, log_status, hw_entry_type, status, network_device_type, \
+    device_type, partition_fs, log_status, status, network_device_type, \
     network_type, host_check_command, config, mon_check_command, device_group, \
     device, mon_period, mon_service_templ, mon_device_templ, user, group, mon_contact, \
     network, netdevice, net_ip, device_config, cluster_license, cluster_setting, \
@@ -54,14 +54,6 @@ class LogStatus(factory.django.DjangoModelFactory):
         if self.name != extracted:
             self.name = extracted
             self.save()
-
-class HWEntryType(factory.django.DjangoModelFactory):
-    FACTORY_FOR = hw_entry_type
-    FACTORY_DJANGO_GET_OR_CREATE = ("identifier",)
-    iarg0_descr = ""
-    iarg1_descr = ""
-    sarg0_descr = ""
-    sarg1_descr = ""
 
 class Status(factory.django.DjangoModelFactory):
     FACTORY_FOR = status

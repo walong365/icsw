@@ -680,7 +680,7 @@ class user(models.Model):
             ("rms_operator", "change RMS settings", True),
         )
         # foreign keys to ignore
-        fk_ignore_list = ["user_variable", "user_permission", "user_object_permission", "session_data"]
+        fk_ignore_list = ["user_variable", "user_permission", "user_object_permission"]
     class Meta:
         db_table = u'user'
         ordering = ("login", "group__groupname")

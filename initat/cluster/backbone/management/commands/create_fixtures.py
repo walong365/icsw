@@ -99,12 +99,6 @@ class Command(BaseCommand):
         factories.LogStatus(identifier="w", log_level=50, name="warning")
         factories.LogStatus(identifier="i", log_level=0, name="info")
         factories.LogStatus(identifier="n", log_level= -50, name="notice")
-        # hw entry type
-        factories.HWEntryType(identifier="cpu", description="CPU", iarg0_descr="Speed in MHz", sarg0_descr="Model Type")
-        factories.HWEntryType(identifier="mem", description="Memory", iarg0_descr="Physikal Memory", iarg1_descr="Virtual Memory")
-        factories.HWEntryType(identifier="disks", description="Harddisks", iarg0_descr="Number of harddisks", iarg1_descr="total size")
-        factories.HWEntryType(identifier="cdroms", description="CDRoms", iarg0_descr="Number of CD-Roms")
-        factories.HWEntryType(identifier="gfx", description="Graphicscard", sarg0_descr="Type of Gfx")
         # status
         factories.Status(status="memtest", memory_test=True)
         factories.Status(status="boot_local", boot_local=True)
