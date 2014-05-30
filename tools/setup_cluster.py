@@ -45,6 +45,7 @@ MIGRATION_DIRS = [
     "initat/cluster/backbone",
     "initat/cluster/liebherr",
 ]
+AUTO_FLAG = "/etc/sysconfig/cluster/db_auto_update"
 SYNC_APPS = ["liebherr"]
 
 try:
@@ -379,19 +380,25 @@ def check_db_rights():
 def main():
     default_pw = get_pw()
     my_p = argparse.ArgumentParser()
-    my_p.add_argument("--ignore-existing", default=False, action="store_true", help="Ignore existing db.cf file {} [%(default)s]".format(DB_FILE))
-    my_p.add_argument("--use-existing", default=False, action="store_true", help="use existing db.cf file {} [%(default)s]".format(DB_FILE))
-    my_p.add_argument("--user", type=str, default="cdbuser", help="set name of database user")
-    my_p.add_argument("--passwd", type=str, default=default_pw, help="set password for database user")
-    my_p.add_argument("--database", type=str, default="cdbase", help="set name of cluster database")
-    my_p.add_argument("--host", type=str, default="localhost", help="set database host")
-    my_p.add_argument("--clear-migrations", default=False, action="store_true", help="clear migrations before database creationg [%(default)s]")
-    my_p.add_argument("--no-initial-data", default=False, action="store_true", help="disable inserting of initial data [%(default)s], only usefull for the migration form an older version of the clustersoftware")
-    my_p.add_argument("--superuser", default="admin", type=str, help="name of the superuser [%(default)s]")
-    my_p.add_argument("--email", default="admin@localhost", type=str, help="admin address of superuser [%(default)s]")
-    my_p.add_argument("--no-superuser", default=False, action="store_true", help="do not create a superuser [%(default)s]")
-    my_p.add_argument("--system-group-name", default="system", type=str, help="name of system group [%(default)s]")
-    my_p.add_argument("--migrate", default=False, action="store_true", help="migrate current cluster database [%(default)s]")
+    db_flags = my_p.add_argument_group("database options")
+    db_flags.add_argument("--ignore-existing", default=False, action="store_true", help="Ignore existing db.cf file {} [%(default)s]".format(DB_FILE))
+    db_flags.add_argument("--use-existing", default=False, action="store_true", help="use existing db.cf file {} [%(default)s]".format(DB_FILE))
+    db_flags.add_argument("--user", type=str, default="cdbuser", help="set name of database user")
+    db_flags.add_argument("--passwd", type=str, default=default_pw, help="set password for database user")
+    db_flags.add_argument("--database", type=str, default="cdbase", help="set name of cluster database")
+    db_flags.add_argument("--host", type=str, default="localhost", help="set database host")
+    mig_opts = my_p.add_argument_group("migration options")
+    mig_opts.add_argument("--clear-migrations", default=False, action="store_true", help="clear migrations before database creationg [%(default)s]")
+    mig_opts.add_argument("--no-initial-data", default=False, action="store_true", help="disable inserting of initial data [%(default)s], only usefull for the migration form an older version of the clustersoftware")
+    mig_opts.add_argument("--migrate", default=False, action="store_true", help="migrate current cluster database [%(default)s]")
+    create_opts = my_p.add_argument_group("database creation options")
+    create_opts.add_argument("--superuser", default="admin", type=str, help="name of the superuser [%(default)s]")
+    create_opts.add_argument("--email", default="admin@localhost", type=str, help="admin address of superuser [%(default)s]")
+    create_opts.add_argument("--no-superuser", default=False, action="store_true", help="do not create a superuser [%(default)s]")
+    create_opts.add_argument("--system-group-name", default="system", type=str, help="name of system group [%(default)s]")
+    auc_flags = my_p.add_argument_group("automatic update options")
+    auc_flags.add_argument("--enable-auto-update", default=False, action="store_true", help="enable automatic update [%(default)s]")
+    auc_flags.add_argument("--disable-auto-update", default=False, action="store_true", help="disable automatic update [%(default)s]")
     opts = my_p.parse_args()
     DB_MAPPINGS = {
         "psql"  : "python-modules-psycopg2",
@@ -409,6 +416,23 @@ def main():
     db_exists = os.path.exists(DB_FILE)
     call_create_db = True
     call_migrate_db = False
+    if opts.enable_auto_update:
+        try:
+            file(AUTO_FLAG, "w").write("\n")
+        except:
+            print("cannot create auto_update_flag {}: {}".format(AUTO_FLAG, process_tools.get_except_info()))
+            sys.exit(-1)
+        else:
+            print("created auto_update_flag {}".format(AUTO_FLAG))
+    elif opts.disable_auto_update:
+        if os.path.isfile(AUTO_FLAG):
+            try:
+                os.unlink(AUTO_FLAG)
+            except:
+                print("cannot remove auto_update_flag {}: {}".format(AUTO_FLAG, process_tools.get_except_info()))
+                sys.exit(-1)
+            else:
+                print("removed auto_update_flag {}".format(AUTO_FLAG))
     if db_exists:
         if opts.migrate:
             setup_db_cf = False
