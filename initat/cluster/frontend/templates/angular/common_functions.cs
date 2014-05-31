@@ -464,6 +464,23 @@ simple_modal_ctrl = ($scope, $modalInstance, question) ->
     $scope.cancel = () ->
         $modalInstance.dismiss("cancel")
 
+simple_modal = ($modal, $q, question) ->
+    c_modal = $modal.open
+        template : simple_modal_template
+        controller : simple_modal_ctrl
+        backdrop : "static"
+        resolve :
+            question : () ->
+                return question
+    d = $q.defer()
+    c_modal.result.then(
+        () ->
+            return d.resolve()
+        () ->
+            return d.reject()
+    )
+    return d.promise    
+
 simple_modal_template = """
 <div class="modal-header"><h3>Please confirm</h3></div>
 <div class="modal-body">
@@ -1181,6 +1198,7 @@ root.angular_add_simple_list_controller = angular_add_simple_list_controller
 root.angular_add_mixin_list_controller = angular_add_mixin_list_controller
 root.build_lut = build_lut
 root.simple_modal_template = simple_modal_template
+root.simple_modal = simple_modal
 root.reload_sidebar_tree = reload_sidebar_tree
 root.set_index_visibility = set_index_visibility
 
