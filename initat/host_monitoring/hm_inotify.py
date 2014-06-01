@@ -429,6 +429,7 @@ class inotify_process(threading_tools.process_obj):
             logging_tools.get_plural("argument", len(args)),
             ", ".join(["{}='{}' ({})".format(key, value, type(value)) for key, value in args.iteritems()])
             ))
+        args = {key.replace("-", "_") : value for key, value in args.iteritems()}
         found_keys = set(args.keys())
         needed_keys = {
             "register_file_watch" : set(["send_id", "mode", "target_server", "target_port", "dir", "match"]),
@@ -488,7 +489,7 @@ class inotify_process(threading_tools.process_obj):
     def send_to_server(self, target_server, target_port, srv_com):
         targ_str = "tcp://{}:{:d}".format(target_server, target_port)
         if targ_str not in self.__target_dict:
-            send_socket = self.zmq_context.socket(zmq.PUSH)
+            send_socket = self.zmq_context.socket(zmq.DEALER)
             send_socket.setsockopt(zmq.LINGER, 0)
             send_socket.setsockopt(zmq.IDENTITY, "{}_csin".format(uuid_tools.get_uuid().get_urn()))
             send_socket.connect(targ_str)
@@ -507,4 +508,3 @@ class inotify_process(threading_tools.process_obj):
             targ_sock.close()
         self.__log_template.close()
         self.__relayer_socket.close()
-
