@@ -19,8 +19,8 @@ running_table = """
     <tbody>
         <tr rmsrunline ng-repeat-start="data in run_list | paginator2:this.pagRun" >
         </tr>
-        <tr ng-repeat-end>
-            <td colspan="10">{{ datax }}</td>
+        <tr ng-repeat-end ng-show="data.files != '0' && running_struct.toggle['files']">
+            <td colspan="99"><fileinfo job="data" files="files" fis="fis"></fileinfo></td>
         </tr>
     </tbody>
     <tfoot>
@@ -93,6 +93,22 @@ header_toggle = """
         ></input>
     </form>
 </th>
+"""
+
+filesinfo = """
+<div ng-repeat="file in jfiles">
+    <div>
+        <input
+            type="button"
+            ng-class="fis[file[0]].show && 'btn btn-xs btn-success' || 'btn btn-xs'"
+            ng-click="fis[file[0]].show = !fis[file[0]].show"
+            ng-value="fis[file[0]].show && 'hide' || 'show'"></input>
+        {{ file[0] }}, {{ file[2] }} Bytes
+    </div>
+    <div ng-show="fis[file[0]].show">
+        <textarea rows="{{ file[4] }}" cols="120" readonly="readonly">{{ file[1] }}</textarea>
+    </div>
+</div>
 """
 
 rmsnodeline = """
@@ -428,6 +444,8 @@ rms_module.controller("rms_ctrl", ["$scope", "$compile", "$filter", "$templateCa
         $scope.run_list = []
         $scope.wait_list = []
         $scope.node_list = []
+        # fileinfostruct
+        $scope.fis = {}
         $scope.running_struct = new header_struct("running", $scope.rms_headers.running_headers, [])
         $scope.waiting_struct = new header_struct("waiting", $scope.rms_headers.waiting_headers, [])
         $scope.node_struct = new header_struct("node", $scope.rms_headers.node_headers, ["state"])
@@ -450,6 +468,7 @@ rms_module.controller("rms_ctrl", ["$scope", "$compile", "$filter", "$templateCa
                     "angular" : true
                 success  : (json) =>
                     $scope.$apply(() ->
+                        $scope.files = json.files
                         $scope.run_list = $scope.running_struct.map_headers(json.run_table)
                         $scope.wait_list = $scope.waiting_struct.map_headers(json.wait_table)
                         $scope.node_list = $scope.node_struct.map_headers(json.node_table)
@@ -666,6 +685,27 @@ rms_module.controller("rms_ctrl", ["$scope", "$compile", "$filter", "$templateCa
                 el.append($compile($templateCache.get(if scope.operator then "queue_state_oper.html" else "queue_state.html"))(scope))
       
     }
+).directive("fileinfo", ($compile, $templateCache) ->
+    return {
+        restrict : "EA"
+        scope:
+            job   : "="
+            files : "="
+            fis   : "="
+        template : $templateCache.get("files_info.html")
+        link : (scope, el, attrs) ->
+            full_id = if scope.job.task_id then "#{scope.job.job_id}.#{scope.job.task_id}" else scope.job.job_id
+            scope.full_id = full_id
+            if full_id of scope.files
+                scope.jfiles = scope.files[full_id]
+                for file in scope.jfiles
+                    if not scope.fis[file[0]]?
+                        scope.fis[file[0]] = {
+                            "show" : true
+                        }
+            else
+                scope.jfiles = []
+    }
 ).run(($templateCache) ->
     $templateCache.put("running_table.html", running_table)
     $templateCache.put("waiting_table.html", waiting_table)
@@ -680,6 +720,7 @@ rms_module.controller("rms_ctrl", ["$scope", "$compile", "$filter", "$templateCa
     $templateCache.put("queue_state.html", queuestate)
     $templateCache.put("job_action_oper.html", jobactionoper)
     $templateCache.put("job_action.html", jobaction)
+    $templateCache.put("files_info.html", filesinfo)
 )
 
 {% endinlinecoffeescript %}
