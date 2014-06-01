@@ -36,41 +36,44 @@ import uuid_tools
 import zmq
 
 class file_watcher(object):
-    def __init__(self, process_obj, **args):
+    global_id = 1
+    def __init__(self, process_obj, **kwargs):
         self.__process = process_obj
-        self.mode = args.get("mode", "content")
-        self.comment = args.get("comment", "")
+        self.mode = kwargs.get("mode", "content")
+        self.comment = kwargs.get("comment", "")
         # verbose flag
         self.__verbose = global_config["VERBOSE"]
         # exit flag
         self.__exit_flag = False
         # check for valid id, target_server and target_port
-        self.fw_id = args.get("id", "")
+        self.fw_id = "fw{}".format(file_watcher.global_id) # args.get("id", "")
+        self.send_id = kwargs["send_id"]
+        file_watcher.global_id += 1
         # files and dirs
         self.__act_files, self.__act_dirs = (set([]), [])
         self.__new_files = []
-        self.__use_inotify = not "poll" in args
-        if not self.fw_id:
-            raise ValueError, "ID not given or empty ID"
+        self.__use_inotify = not "poll" in kwargs
+        # if not self.fw_id:
+        #    raise ValueError, "ID not given or empty ID"
         if self.mode == "content":
             # watch the content of files
-            self.target_server = args.get("target_server", "")
+            self.target_server = kwargs.get("target_server", "")
             if not self.target_server:
                 raise ValueError, "target_server not given or empty"
             try:
-                self.target_port = int(args.get("target_port", ""))
+                self.target_port = int(kwargs.get("target_port", ""))
             except:
                 raise ValueError, "target_port not given or not integer"
             # name of file to check
-            if "name" in args:
+            if "name" in kwargs:
                 self.search_mode = "file"
-                self.__new_files = set([args["name"]])
+                self.__new_files = set([kwargs["name"]])
                 if not self.__new_files:
                     raise ValueError, "name of file to watch not given or empty"
                 self.__fixed_name = True
-            elif "dir" in args and "match" in args:
+            elif "dir" in kwargs and "match" in kwargs:
                 self.search_mode = "dir"
-                self.dir_name, self.match_name = (os.path.normpath(args["dir"]), args["match"])
+                self.dir_name, self.match_name = (os.path.normpath(kwargs["dir"]), kwargs["match"])
                 if not self.dir_name or not self.match_name:
                     raise ValueError, "dir or match not given or empty"
                 self.__new_files = set([])
@@ -79,24 +82,24 @@ class file_watcher(object):
                 raise ValueError, "neither file_name nor dir/match info given"
         elif self.mode == "timeout":
             # check for timeout on files or dirs
-            if "dir" in args:
-                self.dir_name = os.path.normpath(args["dir"])
+            if "dir" in kwargs:
+                self.dir_name = os.path.normpath(kwargs["dir"])
             else:
                 raise ValueError, "no directory name given for timeout check"
             self.search_mode = "dir"
-            if "timeout" in args:
-                self.__timeout = int(args["timeout"])
+            if "timeout" in kwargs:
+                self.__timeout = int(kwargs["timeout"])
             else:
                 raise ValueError, "no timeout given for timeout check"
-            if "action" in args:
-                self.__action = args["action"]
+            if "action" in kwargs:
+                self.__action = kwargs["action"]
             else:
                 raise ValueError, "no action given for timeout check"
         else:
             raise ValueError, "unknown mode {}".format(self.mode)
         self.log("created filewatcher object (mode is {})".format(self.mode))
-        for args_key in sorted(args.keys()):
-            self.log(" - {:<20s}: {}".format(args_key, args[args_key]))
+        for args_key in sorted(kwargs.keys()):
+            self.log(" - {:<20s}: {}".format(args_key, kwargs[args_key]))
         # check for inotify-support
         self.__inotify_support = (self.__process.inotify_watcher and True or False) if self.__use_inotify else False
         self.__inotify_link = False
@@ -344,6 +347,7 @@ class file_watcher(object):
                                 content=self.content.get(f_name, ""),
                                 last_change="{:d}".format(int(file_stat[stat.ST_MTIME])),
                                 id=self.fw_id,
+                                send_id=self.send_id,
                                 update=self.__content_update)
                     except:
                         self.log(
@@ -427,7 +431,7 @@ class inotify_process(threading_tools.process_obj):
             ))
         found_keys = set(args.keys())
         needed_keys = {
-            "register_file_watch" : set(["id", "mode", "target_server", "target_port", "dir", "match"]),
+            "register_file_watch" : set(["send_id", "mode", "target_server", "target_port", "dir", "match"]),
             "unregister_file_watch" : set(["id"]),
         }.get(in_com, set())
         if needed_keys & found_keys == needed_keys:
@@ -455,17 +459,10 @@ class inotify_process(threading_tools.process_obj):
         self.send_pool_message("callback_result", src_id, unicode(srv_com))
     def _register_file_watch(self, cur_com, kwargs):
         new_fw = file_watcher(self, **kwargs)
-        if new_fw.fw_id in self.__file_watcher_dict:
-            cur_com.set_result(
-                "file_watcher with ID {} already present".format(new_fw.fw_id),
-                server_command.SRV_REPLY_STATE_ERROR
-            )
-            del new_fw
-        else:
-            self.__file_watcher_dict[new_fw.fw_id] = new_fw
-            cur_com.set_result(
-                "ok added file_watcher with id {}".format(new_fw.fw_id)
-            )
+        self.__file_watcher_dict[new_fw.fw_id] = new_fw
+        cur_com.set_result(
+            "{}".format(new_fw.fw_id)
+        )
     def _unregister_file_watch(self, cur_com, kwargs):
         fw_id = kwargs["id"]
         if fw_id:
