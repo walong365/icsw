@@ -167,7 +167,7 @@ config_gen_ctrl = config_gen_module.controller("config_gen_ctrl", ["$scope", "$c
                 return "text-success"
             else
                 return "text-warning"
-        install_devsel_link($scope.new_devsel, true, true)
+        install_devsel_link($scope.new_devsel, true)
 ])
 
 add_tree_directive(config_gen_ctrl)

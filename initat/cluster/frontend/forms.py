@@ -210,17 +210,17 @@ class device_info_form(ModelForm):
                 Field("domain_tree_node", ng_options="value.idx as value.tree_info for value in domain_tree_node", chosen=True),
                 # Field("domain_tree_node", ng_options="value.idx as value.tree_info for value in domain_tree_node", ui_select2=True),
                 Field("comment"),
-                Field("curl"),
+                Field("curl", wrapper_ng_show="is_device()"),
                 HTML(
 """
-        <div class='form-group'>
-            <label class='control-label col-sm-3'>
-                IP Info
-            </label>
-            <div class='col-sm-9'>
-                {% verbatim %}{{ get_ip_info() }}{% endverbatim %}
-            </div>
-        </div>
+<div class='form-group' ng-show="is_device()">
+    <label class='control-label col-sm-3'>
+        IP Info
+    </label>
+    <div class='col-sm-9'>
+        {% verbatim %}{{ get_ip_info() }}{% endverbatim %}
+    </div>
+</div>
 """),
             ),
             # HTML("<ui-select ng-model='_edit_obj.domain_tree_node'><choices repeat='value in domain_tree_node'>dd</choices></ui-select>"),
@@ -240,10 +240,12 @@ class device_info_form(ModelForm):
                     ),
                     css_class="row",
                 ),
+                ng_show="is_device()",
             ),
             Fieldset(
                 "RRD / graph settings",
                 Field("store_rrd_data"),
+                ng_show="is_device()",
             ),
             Fieldset(
                 "Info",
@@ -251,6 +253,7 @@ class device_info_form(ModelForm):
                     Div(
                         Button("uuid", "UUID info", css_class="btn-info", ng_click="toggle_uuid()"),
                         css_class="col-md-6",
+                        ng_show="is_device()",
                     ),
                     Div(
                         Submit("modify", "modify", css_class="primaryAction", ng_show="acl_modify(_edit_obj, 'backbone.device.change_basic')"),

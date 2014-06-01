@@ -223,7 +223,7 @@ package_module.controller("install", ["$scope", "$compile", "$filter", "$templat
                 $.unblockUI()
             )
         # not working right now, f*ck, will draw to many widgets
-        install_devsel_link($scope.reload_devices, true)
+        install_devsel_link($scope.reload_devices, false)
         $scope.reload_state = () ->
             #console.log "rls"
             Restangular.all("{% url 'rest:device_tree_list' %}".slice(1)).getList({"package_state" : true, "ignore_meta_devices" : true}).then(

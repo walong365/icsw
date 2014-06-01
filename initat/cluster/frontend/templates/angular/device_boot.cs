@@ -601,7 +601,7 @@ device_boot_module.controller("boot_ctrl", ["$scope", "$compile", "$filter", "$t
         $scope.get_mbl_created = (mbl) ->
             return moment.unix(mbl.created).format(DT_FORM)
         $scope.fetch_macbootlog_entries()
-        install_devsel_link($scope.new_devsel, true, true, false)
+        install_devsel_link($scope.new_devsel, false)
 ]).directive("boottable", ($templateCache) ->
     return {
         restrict : "EA"

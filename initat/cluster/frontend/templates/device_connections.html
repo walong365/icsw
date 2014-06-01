@@ -215,7 +215,7 @@ device_connection_module.controller("connection_ctrl", ["$scope", "$compile", "$
             $scope.cd_edit.create_rest_url.post(new_obj).then((data) ->
                 dev.master_list.push(data)
             )
-        install_devsel_link($scope.new_devsel, true, true, false)
+        install_devsel_link($scope.new_devsel, false)
     ]
 ).run(($templateCache) ->
     $templateCache.put("simple_confirm.html", simple_modal_template)

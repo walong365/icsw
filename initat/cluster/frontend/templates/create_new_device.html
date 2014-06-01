@@ -151,7 +151,7 @@ create_controller = create_module.controller("create_base", ["$scope", "$timeout
             {"short" : "device_group", "url" : "{% url 'rest:device_group_list' %}"}
             {"short" : "device_type", "url" : "{% url 'rest:device_type_list' %}"}
             {"short" : "mother_server", "url" : "{% url 'rest:device_tree_list' %}", "options" : {"all_mother_servers" : true}}
-            {"short" : "monitor_server", "url" : "{% url 'rest:device_tree_list' %}", "options" : {"all_monitoring_servers" : true}}
+            {"short" : "monitor_server", "url" : "{% url 'rest:device_tree_list' %}", "options" : {"monitor_server_type" : true}}
             {"short" : "domain_tree_node", "url" : "{% url 'rest:domain_tree_node_list' %}"}
             {"short" : "peers", "url" : "{% url 'rest:netdevice_peer_list' %}" },
             {"short" : "mon_ext_host"    , "url" : "{% url 'rest:mon_ext_host_list' %}"}

@@ -396,7 +396,7 @@ device_config_module.controller("config_ctrl", ["$scope", "$compile", "$filter",
             if conf_idx != null
                 cur_conf = $scope.configs_lut[conf_idx]
                 return cur_conf.info_str
-        install_devsel_link($scope.new_devsel, true, true)
+        install_devsel_link($scope.new_devsel, false)
 ]).directive("dcrow", ($templateCache) ->
     return {
         restrict : "EA"
@@ -791,7 +791,11 @@ info_ctrl = device_config_module.controller("deviceinfo_ctrl", ["$scope", "$comp
             $scope.show_uuid = !$scope.show_uuid
         $scope.modify = () ->
             if not $scope.form.$invalid
+                if $scope._edit_obj.device_type_identifier == "MD"
+                    $scope._edit_obj.name = "METADEV_" + $scope._edit_obj.name
                 $scope._edit_obj.put().then(() ->
+                    if $scope._edit_obj.device_type_identifier == "MD"
+                        $scope._edit_obj.name = $scope._edit_obj.name.substr(8)
                     # selectively reload sidebar tree
                     reload_sidebar_tree([$scope._edit_obj.idx])
                 )
@@ -813,7 +817,7 @@ info_ctrl = device_config_module.controller("deviceinfo_ctrl", ["$scope", "$comp
                     restDataSource.reload(["{% url 'rest:domain_tree_node_list' %}", {}])
                     restDataSource.reload(["{% url 'rest:mon_device_templ_list' %}", {}])
                     restDataSource.reload(["{% url 'rest:mon_ext_host_list' %}", {}])
-                    restDataSource.reload(["{% url 'rest:device_tree_list' %}", {"with_network" : true, "with_disk_info" : true, "pks" : angular.toJson([scope.device_pk])}])
+                    restDataSource.reload(["{% url 'rest:device_tree_list' %}", {"with_network" : true, "with_disk_info" : true, "pks" : angular.toJson([scope.device_pk]), "ignore_cdg" : false}])
                 ]
                 $q.all(wait_list).then((data) ->
                     form = data[0][0].form
@@ -821,11 +825,16 @@ info_ctrl = device_config_module.controller("deviceinfo_ctrl", ["$scope", "$comp
                     scope.mon_device_templ_list = data[2]
                     scope.mon_ext_host_list = data[3]
                     scope._edit_obj = data[4][0]
+                    #console.log scope._edit_obj.device_type_identifier
                     #Restangular.restangularizeElement(null, scope._edit_obj, "{% url 'rest:device_detail' 1 %}".slice(1).slice(0, -2))
+                    if scope._edit_obj.device_type_identifier == "MD"
+                        scope._edit_obj.name = scope._edit_obj.name.substr(8)
                     element.append($compile(form)(scope))
                 )
             else
                 scope.device_pk = null
+            scope.is_device = () ->
+                return if scope._edit_obj.device_type_identifier in ["MD"] then false else true
             scope.get_ip_info = () ->
                 if scope._edit_obj?
                     ip_list = []

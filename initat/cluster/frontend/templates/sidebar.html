@@ -46,7 +46,7 @@ class sidebar_tree extends tree_config
     handle_click: (entry, event) =>
         if entry._node_type == "d"
             dev = @scope.dev_lut[entry.obj]
-            if dev.device_type_identifier != "MD"
+            if dev.device_type_identifier != "MDX"
                 # create modal or use main view
                 if @scope.index_view
                     # replace index
@@ -108,38 +108,32 @@ sidebar_base = sidebar_module.controller("sidebar_base", ["$scope", "$compile", 
         $scope.devsel_func = []
         $scope.call_devsel_func = (called_after_load) ->
             if $scope.devsel_func.length
-                dev_list = []
-                dev_nmd_list = []
+                # list of devices
                 dev_pk_list = []
+                # list of devices without meta device list
                 dev_pk_nmd_list = []
-                devg_list = []
+                # list of device groups
                 devg_pk_list = []
+                # list of metadevices
+                dev_pk_md_list = []
                 for idx in $scope.cur_sel
                     if idx of $scope.dev_lut
                         # in case dev_lut is not valid
                         if $scope.dev_lut[idx].device_type_identifier == "MD"
-                            devg_list.push("devg__" + $scope.dev_lut[idx].device_group)
                             devg_pk_list.push($scope.dev_lut[idx].device_group)
+                            dev_pk_md_list.push(idx)
                         else
-                            dev_nmd_list.push("dev__#{idx}")
                             dev_pk_nmd_list.push(idx)
-                        dev_list.push("dev__#{idx}")
                         dev_pk_list.push(idx)
                 for entry in $scope.devsel_func
                     if called_after_load and not entry.fire_when_loaded
                         true
                     else
                         # build device, device_group list
-                        if entry.use_pks
-                            if entry.with_meta_devices
-                                entry.func(dev_pk_list, devg_pk_list)
-                            else
-                                entry.func(dev_pk_nmd_list, devg_pk_list)
+                        if entry.with_meta_devices
+                            entry.func(dev_pk_list, devg_pk_list, dev_pk_md_list)
                         else
-                            if entry.with_meta_devices
-                                entry.func(dev_list, devg_list)
-                            else
-                                entry.func(dev_nmd_list, devg_list)
+                            entry.func(dev_pk_nmd_list, devg_pk_list, dev_pk_md_list)
         $scope.resolve_device_keys = (key_list) =>
             list_len = key_list.length
             ret_list = list_len + (if list_len == 1 then " device" else " devices")
@@ -175,8 +169,9 @@ sidebar_base = sidebar_module.controller("sidebar_base", ["$scope", "$compile", 
             $scope.selection_changed()
         # current device selection
         $scope.cur_sel = []            
-        $scope.install_devsel_link = (ds_func, fire_when_loaded, use_pks=false, with_meta_devices=true) ->
-            $scope.devsel_func.push({"func" : ds_func, "fire_when_loaded" : fire_when_loaded, "use_pks" : use_pks, "with_meta_devices" : with_meta_devices})
+        $scope.install_devsel_link = (ds_func, with_meta_devices) ->
+            fire_when_loaded = true
+            $scope.devsel_func.push({"func" : ds_func, "fire_when_loaded" : fire_when_loaded, "with_meta_devices" : with_meta_devices})
         root.install_devsel_link = $scope.install_devsel_link
         root.resolve_device_keys = $scope.resolve_device_keys
         root.sidebar = {"resolve_device_keys" : $scope.resolve_device_keys}

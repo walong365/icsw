@@ -583,7 +583,7 @@ device_network_module.controller("network_ctrl", ["$scope", "$compile", "$filter
             return num_bootips
         $scope.get_boot_value = (obj) ->
             return "boot (" + (if obj.dhcp_write then "write" else "no write") + " / " + (if obj.dhcp_mac then "greedy" else "not greedy") + ")"
-        install_devsel_link($scope.new_devsel, true, true, false)
+        install_devsel_link($scope.new_devsel, false)
 ]).directive("devicenetworks", ($templateCache) ->
     return {
         restrict : "EA"
