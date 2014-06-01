@@ -99,7 +99,7 @@ class rms_mon_process(threading_tools.process_obj):
         # needed_dicts = opt_dict.get("needed_dicts", ["hostgroup", "queueconf", "qhost", "complexes"])
         # update_list = opt_dict.get("update_list", [])
         self.__sge_info.update(update_list=needed_dicts)
-        srv_com["sge"] = self.__sge_info.get_tree() # file_dict=self.__job_content_dict)
+        srv_com["sge"] = self.__sge_info.get_tree(file_dict=self.__job_content_dict)
         self.send_to_socket(self.__main_socket, ["command_result", src_id, unicode(srv_com)])
         del srv_com
     def _job_control(self, *args , **kwargs):
@@ -159,33 +159,37 @@ class rms_mon_process(threading_tools.process_obj):
     def _file_watch_content(self, *args , **kwargs):
         src_id, srv_src = args
         srv_com = server_command.srv_command(source=srv_src)
-        job_id = srv_com["id"].text.split(":")[0]
+        job_id = srv_com["send_id"].text.split(":")[0]
         file_name = srv_com["name"].text
         content = srv_com["content"].text
         last_update = int(float(srv_com["update"].text))
-        self.log("got content for '%s' (job %s), len %d bytes, update_ts %d" % (
+        self.log("got content for '{}' (job {}), len {:d} bytes, update_ts {:d}".format(
             file_name,
             job_id,
             len(content),
             last_update,
             ))
-        try:
-            self.__job_content_dict.setdefault(job_id, {})[file_name] = E.file_content(
-                content,
-                name=file_name,
-                last_update="%d" % (last_update),
-                size="%d" % (len(content)),
-                )
-        except:
-            self.log("error settings content of file %s: %s" % (
-                file_name,
-                process_tools.get_except_info()
-                ),
-                logging_tools.LOG_LEVEL_ERROR)
+        if len(job_id) and job_id[0].isdigit():
+            # job_id is ok
+            try:
+                self.__job_content_dict.setdefault(job_id, {})[file_name] = E.file_content(
+                    content,
+                    name=file_name,
+                    last_update="%d" % (last_update),
+                    size="%d" % (len(content)),
+                    )
+            except:
+                self.log("error settings content of file {}: {}".format(
+                    file_name,
+                    process_tools.get_except_info()
+                    ),
+                    logging_tools.LOG_LEVEL_ERROR)
+            else:
+                tot_files = sum([len(value) for value in self.__job_content_dict.itervalues()], 0)
+                tot_length = sum([sum([len(cur_el.text) for _name, cur_el in _dict.iteritems()], 0) for job_id, _dict in self.__job_content_dict.iteritems()])
+                self.log("cached: {:d} files, {} ({:d} bytes)".format(tot_files, logging_tools.get_size_str(tot_length), tot_length))
         else:
-            tot_files = sum([len(value) for value in self.__job_content_dict.itervalues()], 0)
-            tot_length = sum([sum([len(cur_el.text) for _name, cur_el in _dict.iteritems()], 0) for job_id, _dict in self.__job_content_dict.iteritems()])
-            self.log("cached: %d files, %s (%d bytes)" % (tot_files, logging_tools.get_size_str(tot_length), tot_length))
+            self.log("job_id {} is suspicious, ignoring".format(job_id), logging_tools.LOG_LEVEL_WARN)
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
         self.__log_template.log(log_level, what)
     def loop_post(self):
@@ -293,6 +297,7 @@ class server_process(threading_tools.process_pool):
             if not more:
                 break
         if len(data) == 2:
+            # print data
             src_id, xml_input = data
             srv_com = server_command.srv_command(source=xml_input)
             in_com_text = srv_com["command"].text
