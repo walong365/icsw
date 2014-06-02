@@ -39,7 +39,7 @@ def call_command(command, log_com=None):
     start_time = time.time()
     stat, out = commands.getstatusoutput(command)
     end_time = time.time()
-    log_lines = ["calling '%s' took %s, result (stat %d) is %s (%s)" % (
+    log_lines = ["calling '{}' took {}, result (stat {:d}) is {} ({})".format(
         command,
         logging_tools.get_diff_time_str(end_time - start_time),
         stat,
@@ -47,15 +47,15 @@ def call_command(command, log_com=None):
         logging_tools.get_plural("line", len(out.split("\n"))))]
     if log_com:
         for log_line in log_lines:
-            log_com(" - %s" % (log_line))
+            log_com(" - {}".format(log_line))
         if stat:
             for log_line in out.split("\n"):
-                log_com(" - %s" % (log_line))
+                log_com(" - {}".format(log_line))
         return stat, out
     else:
         if stat:
             # append output to log_lines if error
-            log_lines.extend([" - %s" % (line) for line in out.split("\n")])
+            log_lines.extend([" - {}".format(line) for line in out.split("\n")])
         return stat, out, log_lines
 
 class rms_mon_process(threading_tools.process_obj):
@@ -102,6 +102,8 @@ class rms_mon_process(threading_tools.process_obj):
         srv_com["sge"] = self.__sge_info.get_tree(file_dict=self.__job_content_dict)
         self.send_to_socket(self.__main_socket, ["command_result", src_id, unicode(srv_com)])
         del srv_com
+    def _get_sge_bin(self, name):
+        return os.path.join(global_config["SGE_ROOT"], "bin", global_config["SGE_ARCH"], name)
     def _job_control(self, *args , **kwargs):
         src_id, srv_com_str = args
         srv_com = server_command.srv_command(source=srv_com_str)
@@ -110,7 +112,8 @@ class rms_mon_process(threading_tools.process_obj):
         self.log("job action '%s' for job '%s'" % (job_action, job_id))
         if job_action in ["force_delete", "delete"]:
             cur_stat, cur_out, log_lines = call_command(
-                "/opt/sge/bin/lx-amd64/qdel %s %s" % (
+                "{} {} {}".format(
+                    self._get_sge_bin("qdel"),
                     "-f" if job_action == "force_delete" else "",
                     job_id
                 )
@@ -135,7 +138,8 @@ class rms_mon_process(threading_tools.process_obj):
         self.log("queue action '%s' for job '%s'" % (queue_action, queue_spec))
         if queue_action in ["enable", "disable", "clear_error"]:
             cur_stat, cur_out, log_lines = call_command(
-                "/opt/sge/bin/lx-amd64/qmod {} {}".format(
+                "{} {} {}".format(
+                    self._get_sge_bin("qmod"),
                     {
                         "enable" : "-e",
                         "disable" : "-d",
