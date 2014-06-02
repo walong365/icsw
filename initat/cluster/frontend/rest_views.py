@@ -552,7 +552,11 @@ class device_tree_list(mixins.ListModelMixin,
                 # only selected ones
                 # normally (frontend in-sync with backend) meta-devices have the same selection state
                 # as their device_groups, devg_keys are in fact redundant ...
-                dev_keys = [key.split("__")[1] for key in self.request.session.get("sel_list", []) if key.startswith("dev_")]
+                if self._get_post_boolean("ignore_selection", False):
+                    # take all devices the user is allowed to access
+                    dev_keys = device.objects.all().values_list("pk", flat=True)
+                else:
+                    dev_keys = [key.split("__")[1] for key in self.request.session.get("sel_list", []) if key.startswith("dev_")]
             # devg_keys = [key.split("__")[1] for key in self.request.session.get("sel_list", []) if key.startswith("devg_")]
             if ignore_cdg:
                 # ignore cluster device group
