@@ -38,32 +38,24 @@ device_config_template = """
     <h2>
         Device config ({{ devices.length }} devices), {{ configs.length }} configurations ({{ active_configs.length }} shown)
     </h2>
-    <div class="row">
-        <div class="form-inline col-sm-3">
-            <div class="form-group">
-                <input class="form-control" ng-model="name_filter" placeholder="filter"></input>
-            </div>,
-            <div class="form-group">
-                <input
-                    type="button"
-                    ng-class="only_selected && 'btn btn-sm btn-success' || 'btn btn-sm'"
-                    ng-click="only_selected = !only_selected"
-                    value="only selected"
-                    title="show only configs selected anywhere in the curren selection"
-                ></input>
-            </div>
-        </div>
-        <div class="form-inline col-sm-4">
-            <div class="form-group" ng-show="acl_create(null, 'backbone.config.modify_config') && config_catalogs.length > 0">
-                <input placeholder="new config" ng-model="new_config_name" class="form-control input-sm"></input>
-                <div class="btn-group" ng-show="new_config_name">
-                    <button type="button" class="btn btn-sm btn-success dropdown-toggle" data-toggle="dropdown">
-                        Create in catalog <span class="caret"></span>
-                    </button>
-                    <ul class="dropdown-menu">
-                        <li ng-repeat="entry in config_catalogs" ng-click="create_config(entry.idx)"><a href="#">{{ entry.name }}</a></li>
-                    </ul>
-                </div>
+    <div class="form-inline">
+        <input class="form-control" ng-model="name_filter" placeholder="filter"></input>,
+        <input
+            type="button"
+            ng-class="only_selected && 'btn btn-sm btn-success' || 'btn btn-sm'"
+            ng-click="only_selected = !only_selected"
+            value="only selected"
+            title="show only configs selected anywhere in the curren selection"
+        ></input>
+        <div class="form-group" ng-show="acl_create(null, 'backbone.config.modify_config') && config_catalogs.length > 0">
+            <input placeholder="new config" ng-model="new_config_name" class="form-control input-sm"></input>
+            <div class="btn-group" ng-show="new_config_name">
+                <button type="button" class="btn btn-sm btn-success dropdown-toggle" data-toggle="dropdown">
+                    Create in catalog <span class="caret"></span>
+                </button>
+                <ul class="dropdown-menu">
+                    <li ng-repeat="entry in config_catalogs" ng-click="create_config(entry.idx)"><a href="#">{{ entry.name }}</a></li>
+                </ul>
             </div>
         </div>
     </div>
