@@ -879,8 +879,8 @@ class build_process(threading_tools.process_obj, version_check_mixin):
                         if len(mhc_checks):
                             self.mach_log("adding %s" % (logging_tools.get_plural("host_cluster check", len(mhc_checks))))
                             for mhc_check in mhc_checks:
-                                dev_names = ",".join(["$HOSTSTATEID:%s$" % (cur_dev.full_name) for cur_dev in mhc_check.devices.all().select_related("domain_tree_node")])
-                                if dev_names.strip():
+                                dev_names = [cur_dev.full_name for cur_dev in mhc_check.devices.all().select_related("domain_tree_node")]
+                                if len(dev_names):
                                     s_check = cur_gc["command"]["check_host_cluster"]
                                     serv_temp = serv_templates[mhc_check.mon_service_templ_id]
                                     serv_cgs = set(serv_temp.contact_groups).intersection(host_groups)
@@ -892,9 +892,13 @@ class build_process(threading_tools.process_obj, version_check_mixin):
                                             s_check,
                                             "%s %s" % (s_check.get_description(), mhc_check.description),
                                             arg1=mhc_check.description,
+                                            # arg2="@{:d}:".format(mhc_check.warn_value),
+                                            # arg3="@{:d}:".format(mhc_check.error_value),
                                             arg2=mhc_check.warn_value,
                                             arg3=mhc_check.error_value,
-                                            arg4=dev_names)
+                                            arg4=",".join(["$HOSTSTATEID:{}$".format(_dev_name) for _dev_name in dev_names]),
+                                            arg5=",".join(dev_names),
+                                            )
                                          ],
                                         act_def_serv,
                                         serv_cgs,
@@ -912,8 +916,9 @@ class build_process(threading_tools.process_obj, version_check_mixin):
                             for msc_check in msc_checks:
                                 if msc_check.mon_check_command.name in cur_gc["command"]:
                                     c_com = cur_gc["command"][msc_check.mon_check_command.name]
-                                    dev_names = ",".join(["$SERVICESTATEID:%s:%s$" % (cur_dev.full_name, c_com.get_description()) for cur_dev in msc_check.devices.all().select_related("domain_tree_node")])
-                                    if dev_names.strip():
+                                    #dev_names = ",".join(["$SERVICESTATEID:%s:%s$" % (cur_dev.full_name, c_com.get_description()) for cur_dev in msc_check.devices.all().select_related("domain_tree_node")])
+                                    dev_names = [(cur_dev.full_name, c_com.get_description()) for cur_dev in msc_check.devices.all().select_related("domain_tree_node")]
+                                    if len(dev_names):
                                         s_check = cur_gc["command"]["check_service_cluster"]
                                         serv_temp = serv_templates[msc_check.mon_service_templ_id]
                                         serv_cgs = set(serv_temp.contact_groups).intersection(host_groups)
@@ -926,9 +931,12 @@ class build_process(threading_tools.process_obj, version_check_mixin):
                                                     s_check,
                                                     "%s / %s" % (s_check.get_description(), c_com.get_description()),
                                                     arg1=msc_check.description,
+                                                    # arg2="@{:d}:".format(msc_check.warn_value),
+                                                    # arg3="@{:d}:".format(msc_check.error_value),
                                                     arg2=msc_check.warn_value,
                                                     arg3=msc_check.error_value,
-                                                    arg4=dev_names,
+                                                    arg4=",".join(["$SERVICESTATEID:{}:{}$".format(_dev_name, _srv_name) for _dev_name, _srv_name in dev_names]),
+                                                    arg5=",".join(["{} {}".format(_dev_name, _srv_name).replace(",", " ") for _dev_name, _srv_name in dev_names]),
                                                 )
                                             ],
                                             act_def_serv,

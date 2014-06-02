@@ -1716,12 +1716,12 @@ class all_commands(host_type_config):
                 ),
             mon_check_command(
                 name="check_service_cluster",
-                command_line="$USER1$/check_cluster --service -l $ARG1$ -w $ARG2$ -c $ARG3$ -d $ARG4$",
+                command_line="/opt/cluster/bin/check_icinga_cluster.py --service -l $ARG1$ -w $ARG2$ -c $ARG3$ -d $ARG4$ -n $ARG5$",
                 description="Check Service Cluster"
                 ),
             mon_check_command(
                 name="check_host_cluster",
-                command_line="$USER1$/check_cluster --host -l $ARG1$ -w $ARG2$ -c $ARG3$ -d $ARG4$",
+                command_line="/opt/cluster/bin/check_icinga_cluster.py --host -l $ARG1$ -w $ARG2$ -c $ARG3$ -d $ARG4$ -n $ARG5$",
                 description="Check Host Cluster"
                 ),
             ]:
