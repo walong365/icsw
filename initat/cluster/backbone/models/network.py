@@ -178,7 +178,7 @@ def network_pre_save(sender, **kwargs):
         if nw_type != "s" and cur_inst.master_network_id:
             raise ValidationError("only slave networks can have a master")
         if nw_type == "s" and cur_inst.master_network_id:
-            print cur_inst.pk, cur_inst.master_network_id
+            # print cur_inst.pk, cur_inst.master_network_id
             if cur_inst.master_network.network_type.identifier != "p":
                 raise ValidationError("master network must be a production network")
         # validate IP
