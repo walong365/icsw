@@ -92,7 +92,7 @@ class Command(BaseCommand):
         factories.PartitionFS(name="lvm", identifier="l", descr="LVM Partition", hexid="8e", kernel_module="dm_map")
         factories.PartitionFS(name="xfs", identifier="f", descr="XFS Filesystem", hexid="83", kernel_module="xfs")
         factories.PartitionFS(name="btrfs", identifier="f", descr="BTRFS Filesystem", hexid="83", kernel_module="btrfs")
-        factories.PartitionFS(name="ocfs2", identifier="f", descr="OCFS2 Filesystem", hexid="83", kenrel_module="ocfs2")
+        factories.PartitionFS(name="ocfs2", identifier="f", descr="OCFS2 Filesystem", hexid="83", kernel_module="ocfs2")
         # log status
         factories.LogStatus(identifier="c", log_level=200, name="critical")
         factories.LogStatus(identifier="e", log_level=100, name="error")
