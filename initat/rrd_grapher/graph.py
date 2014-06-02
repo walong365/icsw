@@ -315,6 +315,8 @@ class RRDGraph(object):
                         self.log("error creating graph: {}".format(process_tools.get_except_info()), logging_tools.LOG_LEVEL_ERROR)
                         if global_config["DEBUG"]:
                             pprint.pprint(rrd_args)
+                        draw_result = None
+                        draw_it = False
                     else:
                         res_dict = {value.split("=", 1)[0] : value.split("=", 1)[1] for key, value in draw_result.iteritems() if key.startswith("print[")}
                         # reorganize
@@ -349,7 +351,7 @@ class RRDGraph(object):
                 rem_key_el = E.removed_keys(
                     *[E.removed_key(_key, device="{:d}".format(_pk)) for _pk, _key in removed_keys]
                 )
-                if self.defs:
+                if self.defs and (draw_result is not None):
                     # defs present
                     graph_list.append(
                         E.graph(
