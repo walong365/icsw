@@ -321,7 +321,7 @@ class fetch_partition_info(cs_base_class.server_com):
                     cur_inst.log(u"set partition_table for '%s'" % (unicode(target_dev)))
                     target_dev.act_partition_table = new_part_table
                     target_dev.partdev = ""
-                    target_dev.save()
+                    target_dev.save(update_fields=["act_partition_table", "partdev"])
                 ret_f.append(u"%s: %s, %s, %s and %s" % (
                     target_dev,
                     logging_tools.get_plural("disc", len(dev_dict.keys())),
