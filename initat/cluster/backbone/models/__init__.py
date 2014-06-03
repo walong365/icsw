@@ -2487,7 +2487,9 @@ class device_serializer(serializers.ModelSerializer):
         _optional_fields = set(["act_partition_table", "partition_table", "netdevice_set", "categories", "device_variable_set", "device_config_set",
             "package_device_connection_set", "latest_contact", "client_version", "monitor_type"])
         for _to_remove in  _optional_fields - set(fields):
-            self.fields.pop(_to_remove)
+            # in case we have been subclassed
+            if _to_remove in self.fields:
+                self.fields.pop(_to_remove)
     def get_access_level(self, obj):
         if "olp" in self.context:
             return self.context["request"].user.get_object_perm_level(self.context["olp"], obj)
@@ -2585,5 +2587,5 @@ class device_serializer_boot(device_serializer):
             "dhcp_mac", "dhcp_write", "dhcp_written", "dhcp_error", "bootnetdevice", "bootnetdevice",
             # connections
             "master_connections", "slave_connections",
-            )
+        )
 
