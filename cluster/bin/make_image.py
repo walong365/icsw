@@ -362,7 +362,13 @@ class server_process(threading_tools.process_pool):
     def _clean_image(self, cur_img):
         """ clean system after copy """
         self.log("cleaning image")
-        self._clean_directory(os.path.join(self.__system_dir, "lib", "modules"))
+        for clean_dir in [
+            "/lib/modules",
+            "/var/lib/meta-server",
+            "/etc/zypp/repos.d",
+            ]:
+            t_dir = os.path.join(self.__system_dir, clean_dir[1:])
+            self._clean_directory(t_dir)
         boot_dir = os.path.join(self.__system_dir, "boot")
         if os.path.isdir(boot_dir):
             for cur_entry in os.listdir(boot_dir):
@@ -370,7 +376,6 @@ class server_process(threading_tools.process_pool):
                     full_path = os.path.join(self.__system_dir, "boot", cur_entry)
                     self.log("removing %s" % (full_path))
                     os.unlink(full_path)
-        self._clean_directory(os.path.join(self.__system_dir, "etc", "zypp", "repos.d"),)
         # call SuSEconfig, FIXME
         # check init-scripts, FIXME
     def _check_size(self, cur_img):
@@ -435,23 +440,26 @@ class server_process(threading_tools.process_pool):
             self._clean_directory(self.__system_dir)
     def _clean_directory(self, t_dir, **kwargs):
         if os.path.isdir(t_dir):
-            self.log("cleaning directory %s" % (t_dir))
-            for entry in os.listdir(t_dir):
-                f_path = os.path.join(t_dir, entry)
-                if os.path.isfile(f_path):
-                    os.unlink(f_path)
-                else:
-                    try:
-                        shutil.rmtree(f_path)
-                    except:
-                        raise
+            if t_dir.startswith(self.__system_dir):
+                self.log("cleaning directory {}".format(t_dir))
+                for entry in os.listdir(t_dir):
+                    f_path = os.path.join(t_dir, entry)
+                    if os.path.isfile(f_path):
+                        os.unlink(f_path)
                     else:
-                        self.log("removed %s" % (f_path))
-            if kwargs.get("remove_directory", False):
-                os.rmdir(t_dir)
-                self.log("removed %s" % (t_dir))
+                        try:
+                            shutil.rmtree(f_path)
+                        except:
+                            raise
+                        else:
+                            self.log("removed %s" % (f_path))
+                if kwargs.get("remove_directory", False):
+                    os.rmdir(t_dir)
+                    self.log("removed %s" % (t_dir))
+            else:
+                self.log("directory '{}' does not start with {}".format(t_dir, self.__system_dir), logging_tools.LOG_LEVEL_ERROR)
         else:
-            self.log("directory '%s' does not exist" % (t_dir))
+            self.log("directory '{}' does not exist".format(t_dir), logging_tools.LOG_LEVEL_WARN)
     def _get_image(self):
         return image.objects.get(Q(name=global_config["IMAGE_NAME"]))
     def check_build_lock(self):
