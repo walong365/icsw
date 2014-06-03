@@ -61,13 +61,14 @@ if [ ! -d ${SGE_ROOT}/bin ] ; then
     #./aimk -spool-classic -no-dump -no-secure -no-jni -no-java  || { echo "Compilation failed, exiting" ; exit -1 ; }
     # set include path to find hwloc
     export SGE_INPUT_CFLAGS="-I/opt/cluster/include"
-    export SGE_INPUT_LDFLAGS="-L/opt/cluster/lib64"
+    # -lncurses is needed for centos
+    export SGE_INPUT_LDFLAGS="-L/opt/cluster/lib64 -lncurses"
     ./aimk -spool-classic -no-secure -no-jni -no-java -no-qmake || {
         echo "Compilation failed, exiting" ;
 	echo "maybe one of the following packages is missing:"
         echo "  - pam-devel"
         echo "  - xorg-x11-devel"
-        echo "  - motif-devel"
+        echo "  - motif-devel (or openmotif-devel)"
         echo "is missing"
         exit -1 ;
     }
