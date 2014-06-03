@@ -194,7 +194,8 @@ def do_nets(conf):
                 "DEVICE"    : cur_nd.devname,
                 "ONBOOT"    : "yes"}
             if global_config["WRITE_REDHAT_HWADDR_ENTRY"]:
-                new_co += {"HWADDR" : cur_nd.macaddr.lower()}
+                if cur_nd.macaddr.replace(":", "").replace("0", "").strip():
+                    new_co += {"HWADDR" : cur_nd.macaddr.lower()}
         # print log_str
     # handle virtual interfaces for Systems above SUSE 9.0
     for orig, virtuals in append_dict.iteritems():
