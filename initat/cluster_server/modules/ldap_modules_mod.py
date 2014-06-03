@@ -605,6 +605,7 @@ class sync_ldap_config(cs_base_class.server_com, ldap_mixin):
                                 u_stuff.email)],
                         "gidNumber"        : [str(g_stuff.gid)],
                         "uidNumber"        : [str(u_stuff.uid)],
+                        # "memberOf"         : [self._expand_dn("group", None, g_stuff)],
                         "userPassword"     : [u_password],
                         "homeDirectory"    : [os.path.normpath(u"{}/{}".format(g_stuff.homestart, u_stuff.home or u_stuff.login))],
                         "loginShell"       : [u_stuff.shell],
