@@ -1166,7 +1166,7 @@ class device(models.Model):
     # machine uuid, cannot be unique due to MySQL problems with unique TextFields
     uuid = models.TextField(default="", max_length=64) # , unique=True)
     # cluster url
-    curl = models.CharField(default="ssh://", max_length=512)
+    curl = models.CharField(default="ssh://", max_length=512, verbose_name="cURL")
     # , choices=[
     #    ("ssh://", "ssh://"),
     #    ("snmp://", "snmp://"),
@@ -2561,6 +2561,9 @@ class cd_connection_serializer_boot(serializers.ModelSerializer):
         model = cd_connection
 
 class device_serializer_boot(device_serializer):
+    partition_table = serializers.SerializerMethodField("get_partition_table")
+    # current partition table
+    act_partition_table = serializers.SerializerMethodField("get_act_partition_table")
     bootnetdevice = netdevice_serializer()
     valid_state = serializers.Field(source="valid_state")
     uptime = serializers.Field(source="get_uptime")
@@ -2569,6 +2572,10 @@ class device_serializer_boot(device_serializer):
     net_state = serializers.Field(source="net_state")
     master_connections = cd_connection_serializer_boot(source="get_master_cons", many=True)
     slave_connections = cd_connection_serializer_boot(source="get_slave_cons", many=True)
+    def get_partition_table(self, obj):
+        return obj.partition_table_id or None
+    def get_act_partition_table(self, obj):
+        return obj.act_partition_table_id or None
     class Meta:
         model = device
         fields = ("idx" , "name", "full_name", "device_group_name", "access_level", "access_levels",
