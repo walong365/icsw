@@ -100,6 +100,8 @@ partinfo_template = """
                     <h4>
                         Partition table '{{ dev.act_partition_table.name}}',
                         <input type="button" class="btn btn-sm btn-warning" value="fetch partition info" ng-click="fetch(dev.idx)"></input>
+                        <input type="button" class="btn btn-sm btn-danger" value="clear" ng-click="clear(dev.idx)" ng-show="dev.act_partition_table"></input>
+                        <input type="button" class="btn btn-sm btn-success" value="use {{ dev.partition_table.name }}" ng-click="use(dev.idx)" ng-show="dev.partition_table"></input>
                     </h4>
                     <table class="table table-condensed table-hover table-bordered" style="width:auto;">
                         <tbody>
@@ -136,6 +138,7 @@ partinfo_template = """
                     <h4>
                         <span class="text-danger">No partition table defined</span>, 
                         <input type="button" class="btn btn-sm btn-warning" value="fetch partition info" ng-click="fetch(dev.idx)"></input>
+                        <input type="button" class="btn btn-sm btn-success" value="use {{ dev.partition_table.name }}" ng-click="use(dev.idx)" ng-show="dev.partition_table"></input>
                     </h4>
                 </div>
             </tab> 
@@ -744,11 +747,35 @@ device_config_module.controller("partinfo_ctrl", ["$scope", "$compile", "$filter
             )
         $scope.get_vg = (dev, vg_idx) ->
             return (cur_vg for cur_vg in dev.act_partition_table.lvm_vg_set when cur_vg.idx == vg_idx)[0]
+        $scope.clear = (pk) ->
+            if pk?
+                $.blockUI()
+                call_ajax
+                    url     : "{% url 'mon:clear_partition' %}"
+                    data    : {
+                        "pk" : pk
+                    }
+                    success : (xml) ->
+                        $.unblockUI()
+                        parse_xml_response(xml)
+                        $scope.reload()
         $scope.fetch = (pk) ->
             if pk?
                 $.blockUI()
                 call_ajax
                     url     : "{% url 'mon:fetch_partition' %}"
+                    data    : {
+                        "pk" : pk
+                    }
+                    success : (xml) ->
+                        $.unblockUI()
+                        parse_xml_response(xml)
+                        $scope.reload()
+        $scope.use = (pk) ->
+            if pk?
+                $.blockUI()
+                call_ajax
+                    url     : "{% url 'mon:use_partition' %}"
                     data    : {
                         "pk" : pk
                     }

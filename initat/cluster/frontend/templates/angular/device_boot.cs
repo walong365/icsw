@@ -695,7 +695,8 @@ device_boot_module.controller("boot_ctrl", ["$scope", "$compile", "$filter", "$t
             scope.get_info_str = (s_type, act_val, new_val, lut) ->
                 if act_val == new_val
                     if act_val
-                        return scope.get_lut_val(s_type, lut, act_val)
+                        # hm, show a nice icon here
+                        return scope.get_lut_val(s_type, lut, act_val) +  "(==)"
                     else
                         return "---"
                 else
