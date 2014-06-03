@@ -113,15 +113,17 @@
         <li>
             <a class="dropdown-toggle" data-toggle="dropdown">{% trans "Session" %} <b class="caret"></b></a>
             <ul class="dropdown-menu">
-                <li><a href="{% url 'user:account_info' %}">{% trans "Account Info" %}</a></li>
-                <li><a href="{% url 'session:logout' %}">{% trans "Logout" %}</a></li>
+                <li><a href="{% url 'user:account_info' %}"><span class="glyphicon glyphicon-info-sign"></span>&nbsp;{% trans "Account Info" %}</a></li>
+                <li><a href="{% url 'session:logout' %}"><span class="glyphicon glyphicon-arrow-left"></span>&nbsp;{% trans "Logout" %}</a></li>
                 {% if csw_perms.backbone.user.admin %}
-                    <li><a href="{% url 'admin:index' %}">{% trans "Admin" %}</a></li>
+                    <li><a href="{% url 'admin:index' %}"><span class="glyphicon glyphicon-wrench"></span>&nbsp;{% trans "Admin" %}</a></li>
                 {% endif %}
                 {% if user.is_superuser %}
-                    <li><a href="{% url 'user:global_settings' %}">{% trans "Settings" %}</a></li>
+                    <li><a href="{% url 'user:global_settings' %}"><span class="glyphicon glyphicon-pencil"></span>&nbsp;{% trans "Settings" %}</a></li>
                 {% endif %}
-                <li ng-show="check_perm('background_job.show_background')"><a href="{% url 'user:background_job_info' %}">{% trans "Background Job Info" %}</a></li>
+                <li ng-show="check_perm('background_job.show_background')">
+                    <a href="{% url 'user:background_job_info' %}"><span class="glyphicon glyphicon-list"></span>&nbsp;{% trans "Background Job Info" %}</a>
+                </li>
             </ul>
         </li>
         <li>
