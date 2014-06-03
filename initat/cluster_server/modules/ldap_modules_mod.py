@@ -74,7 +74,11 @@ olcAccess: {0}to *  by dn.base="gidNumber=0+uidNumber=0,cn=peercred,cn=externa
 
 adding cluster.ldif:
 
-ldapadd -Y EXTERNAL -H ldapi:/// -D cn=config -f /tmp/x/cn\=config/cn\=schema/cn\=\{0\}cluster.ldif
+ldapadd -Y EXTERNAL -H ldapi:/// -D cn=config -f /tmp/cluster.ldif
+
+## not correct : /cn\=config/cn\=schema/cn\=\{0\}cluster.ldif ##
+
+ldapadd -Y EXTERNAL -H ldapi:/// -D cn=config -f /tmp/x
 
 cluster.ldif
 dn: cn=cluster,cn=schema,cn=config
@@ -87,6 +91,13 @@ olcObjectClasses: {1}( 1.3.6.4.1.1.2.1 NAME 'clusterAccount' DESC 'account was
 olcObjectClasses: {2}( 1.3.6.4.1.1.2.2 NAME 'clusterAutomount' DESC 'automount
   was created from cluster-server' SUP top AUXILIARY )
 
+"""
+
+"""
+Centos:
+
+/usr/libexec/openldap/create-certdb.sh
+/usr/libexec/openldap/generate-server-cert.sh -h <HOSTNAME> -a <ALTNAMES>
 """
 
 class ldap_mixin(object):
@@ -270,7 +281,6 @@ class ldap_mixin(object):
         self.par_dict = par_dict
         return par_dict
 
-
 class setup_ldap_server(cs_base_class.server_com, ldap_mixin):
     class Meta:
         needed_configs = ["ldap_server"]
@@ -282,7 +292,7 @@ class setup_ldap_server(cs_base_class.server_com, ldap_mixin):
             par_dict = self._read_config_from_db(cur_inst)
             if par_dict:
                 # step one: hash root_password
-                cmd_stat, root_hash = commands.getstatusoutput("slappasswd -h {SSHA} -s {}".format(par_dict["root_passwd"]))
+                cmd_stat, root_hash = commands.getstatusoutput("slappasswd -h {{SSHA}} -s {}".format(par_dict["root_passwd"]))
                 if cmd_stat:
                     cur_inst.srv_com.set_result(
                         "error hashing root-password ({:d}): {}".format(cmd_stat, root_hash),
