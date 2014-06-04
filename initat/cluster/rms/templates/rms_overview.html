@@ -32,22 +32,9 @@
 
 {% endverbatim %}
 
-<!-- <h1 class="center">RMS Overview, <input type="button" id="reload_button" value="reload"></input></h1> -->
-
-<div id="top_rms_divx"></div>
-
  <script type="text/javascript">
 
 {% inlinecoffeescript %}
-
-addHandlers = ->
-    my_view = new rms_view(
-        $("div#top_rms_div"),
-        $("input#reload_button"),
-    )
-    my_view.setup()
-
-$(document).ready(addHandlers);
 
 angular.element(document).ready(() ->
     angular.bootstrap($("div[id='icsw.rms']"), ["icsw.rms"])

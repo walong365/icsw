@@ -27,6 +27,7 @@ rms_patterns = patterns(
     url(r"overview"        , rms_views.overview.as_view()         , name="overview"),
     url(r"get_header_xml"  , rms_views.get_header_xml.as_view()   , name="get_header_xml"),
     url(r"get_rms_json"    , rms_views.get_rms_json.as_view()     , name="get_rms_json"),
+    url(r"get_node_info"   , rms_views.get_node_info.as_view()    , name="get_node_info"),
     url(r"control_job"     , rms_views.control_job.as_view()      , name="control_job"),
     url(r"control_queue"   , rms_views.control_queue.as_view()    , name="control_queue"),
     url(r"get_file_content", rms_views.get_file_content.as_view() , name="get_file_content"),

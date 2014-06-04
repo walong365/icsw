@@ -114,6 +114,9 @@ filesinfo = """
 rmsnodeline = """
 <td ng-show="node_struct.toggle['host']">
     {{ data.host }}
+    <button type="button" class="btn btn-xs btn-primary" ng-show="has_rrd(data.host)" ng-click="show_rrd($event, data.host)">
+        <span class="glyphicon glyphicon-pencil"></span>
+    </buttont>
 </td>
 <td ng-show="node_struct.toggle['queues']">
     <queuestate operator="rms_operator" host="data"></queuestate>
@@ -424,6 +427,11 @@ rms_module.value('ui.config', {
     }
 })
 
+class device_info
+    constructor: (@name, in_list) ->
+        @pk = in_list[0]
+        @rrd = in_list[1]
+
 rms_module.controller("rms_ctrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "sharedDataSource", "$q", "$modal", "access_level_service", "$timeout", "$sce", 
     ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, sharedDataSource, $q, $modal, access_level_service, $timeout, $sce) ->
         access_level_service.install($scope)
@@ -444,6 +452,10 @@ rms_module.controller("rms_ctrl", ["$scope", "$compile", "$filter", "$templateCa
         $scope.run_list = []
         $scope.wait_list = []
         $scope.node_list = []
+        $scope.device_dict = {}
+        $scope.device_dict_set = false
+        # set to false to avoid destroying of subscopes (graphs)
+        $scope.refresh = true
         # fileinfostruct
         $scope.fis = {}
         $scope.running_struct = new header_struct("running", $scope.rms_headers.running_headers, [])
@@ -461,41 +473,51 @@ rms_module.controller("rms_ctrl", ["$scope", "$compile", "$filter", "$templateCa
                 $timeout.cancel($scope.update_info_timeout)
             # refresh every 10 seconds
             $scope.update_info_timeout = $timeout($scope.reload, 10000)
-            call_ajax
-                url      : "{% url 'rms:get_rms_json' %}"
-                dataType : "json"
-                data:
-                    "angular" : true
-                success  : (json) =>
-                    $scope.$apply(() ->
-                        $scope.files = json.files
-                        $scope.run_list = $scope.running_struct.map_headers(json.run_table)
-                        $scope.wait_list = $scope.waiting_struct.map_headers(json.wait_table)
-                        $scope.node_list = $scope.node_struct.map_headers(json.node_table)
-                        # calculate max load
-                        valid_loads = (parseFloat(entry.load) for entry in $scope.node_list when entry.load.match(LOAD_RE))
-                        if valid_loads.length
-                            $scope.max_load = _.max(valid_loads)
-                            # round to next multiple of 4
-                            $scope.max_load = 4 * parseInt(($scope.max_load + 3.9999) / 4)
-                        else
-                            $scope.max_load = 4
-                    )
-                    # fetch file ids
-                    fetch_list = []
-                    for _id in $scope.io_list
-                        fetch_list.push($scope.io_dict[_id].get_id())
-                    if fetch_list.length
-                        call_ajax
-                            url     : "{% url 'rms:get_file_content' %}"
-                            data    :
-                                "file_ids" : angular.toJson(fetch_list)
-                            success : (xml) =>
-                                parse_xml_response(xml)
-                                xml = $(xml)
-                                for _id in $scope.io_list
-                                    $scope.io_dict[_id].feed(xml)
-                                $scope.$digest()
+            if $scope.refresh
+                call_ajax
+                    url      : "{% url 'rms:get_rms_json' %}"
+                    dataType : "json"
+                    success  : (json) =>
+                        $scope.$apply(() ->
+                            $scope.files = json.files
+                            $scope.run_list = $scope.running_struct.map_headers(json.run_table)
+                            $scope.wait_list = $scope.waiting_struct.map_headers(json.wait_table)
+                            $scope.node_list = $scope.node_struct.map_headers(json.node_table)
+                            # calculate max load
+                            valid_loads = (parseFloat(entry.load) for entry in $scope.node_list when entry.load.match(LOAD_RE))
+                            if valid_loads.length
+                                $scope.max_load = _.max(valid_loads)
+                                # round to next multiple of 4
+                                $scope.max_load = 4 * parseInt(($scope.max_load + 3.9999) / 4)
+                            else
+                                $scope.max_load = 4
+                        )
+                        if not $scope.device_dict_set
+                            node_names = (entry[0] for entry in json.node_table)
+                            $scope.device_dict_set = true
+                            call_ajax
+                                url      : "{% url 'rms:get_node_info' %}"
+                                data     :
+                                    devnames : angular.toJson(node_names)
+                                dataType : "json"
+                                success  : (json) =>
+                                    for name of json
+                                        $scope.device_dict[name] = new device_info(name, json[name])
+                        # fetch file ids
+                        fetch_list = []
+                        for _id in $scope.io_list
+                            fetch_list.push($scope.io_dict[_id].get_id())
+                        if fetch_list.length
+                            call_ajax
+                                url     : "{% url 'rms:get_file_content' %}"
+                                data    :
+                                    "file_ids" : angular.toJson(fetch_list)
+                                success : (xml) =>
+                                    parse_xml_response(xml)
+                                    xml = $(xml)
+                                    for _id in $scope.io_list
+                                        $scope.io_dict[_id].feed(xml)
+                                    $scope.$digest()
         $scope.get_io_link_class = (job, io_type) ->
             io_id = "#{job.job_id}.#{job.task_id}.#{io_type}"
             if io_id in $scope.io_list
@@ -608,7 +630,7 @@ rms_module.controller("rms_ctrl", ["$scope", "$compile", "$filter", "$templateCa
                  else
                      return 1
     }
-).directive("rmsnodeline", ($templateCache, $sce) ->
+).directive("rmsnodeline", ($templateCache, $sce, $compile) ->
     return {
         restrict : "EA"
         template : $templateCache.get("rmsnodeline.html")
@@ -621,6 +643,47 @@ rms_module.controller("rms_ctrl", ["$scope", "$compile", "$filter", "$templateCa
                     return parseInt(100 * load / scope.max_load)
                 else
                     return 0
+            scope.has_rrd = (name) ->
+                if name of scope.device_dict
+                    return scope.device_dict[name].rrd
+                else
+                    return false
+            scope.show_rrd = (event, name) ->
+                dev_pk = scope.device_dict[name].pk
+                rrd_txt = """
+<div class="panel panel-default">
+    <div class="panel-body">
+        <h2>Device #{name}</h2>
+        <div ng-controller='rrd_ctrl'>
+            <rrdgraph devicepk='#{dev_pk}'>
+            </rrdgraph>
+        </div>
+    </div>
+</div>
+"""
+                # disenable refreshing
+                scope.refresh = false
+                scope.rrd_div = angular.element(rrd_txt)
+                $compile(scope.rrd_div)(scope)
+                scope.rrd_div.simplemodal
+                    opacity      : 50
+                    position     : [event.pageY, event.pageX]
+                    autoResize   : true
+                    autoPosition : true
+                    minWidth     : "1024px"
+                    minHeight   : "800px"
+                    onShow: (dialog) -> 
+                        dialog.container.draggable()
+                        #$("#simplemodal-container").css("height", "auto")
+                        #$("#simplemodal-container").css("width", "auto")
+                    onClose: =>
+                        # destroy scopes
+                        scope.close()
+                        $.simplemodal.close()
+            scope.close = () ->
+                #console.log "sc", scope.rrd_div, scope.rrd_div.find(".ng-scope").scope().$destroy()
+                # reenable refreshing
+                scope.refresh = true
     }
 ).directive("headertoggle", ($templateCache) ->
     return {
@@ -722,6 +785,8 @@ rms_module.controller("rms_ctrl", ["$scope", "$compile", "$filter", "$templateCa
     $templateCache.put("job_action.html", jobaction)
     $templateCache.put("files_info.html", filesinfo)
 )
+
+add_rrd_directive(rms_module)
 
 {% endinlinecoffeescript %}
 
