@@ -1,4 +1,3 @@
-#!/usr/bin/python-init -Ot
 # -*- coding: utf-8 -*-
 #
 # Copyright (C) 2001-2008,2010-2014 Andreas Lang-Nevyjel
@@ -278,27 +277,38 @@ class main_process(threading_tools.process_pool):
             self._do_commands(act_commands)
             del_list = []
             mem_info_dict = {}
-            act_pid_list = process_tools.get_process_id_list(True, True)
-            act_pid_dict = process_tools.get_proc_list()
+            act_tc_dict = process_tools.get_process_id_list(True, True)
+            act_pid_dict = process_tools.get_proc_list(int_pid_list=act_tc_dict.keys(), add_cmdline=False, add_exe=False)
+            # import pprint
+            # pprint.pprint(act_pid_dict)
+            # print act_pid_list
             problem_list = []
             for key, struct in self.__check_dict.iteritems():
-                struct.check_block(act_pid_list, act_pid_dict)
+                struct.check_block(act_tc_dict, act_pid_dict)
                 if struct.pid_checks_failed:
                     problem_list.append(key)
                     pids_failed_time = abs(struct.get_last_pid_check_ok_time() - act_time)
                     do_sthg_pids = (struct.pid_checks_failed >= 2 and pids_failed_time > global_config["FAILED_CHECK_TIME"])
                     do_sthg = do_sthg_pids
                     if do_sthg_pids:
-                        self.log("*** pid check failed for {}: {}".format(key, struct.pid_check_string),
-                                 logging_tools.LOG_LEVEL_WARN)
-                    self.log("*** {} (pid failed {}, {}): {} remaining, grace time {}, {}".format(
-                        key,
-                        logging_tools.get_plural("time", struct.pid_checks_failed),
-                        struct.pid_check_string,
-                        logging_tools.get_plural("grace_period", max(0, 2 - struct.pid_checks_failed)),
-                        logging_tools.get_plural("second", global_config["FAILED_CHECK_TIME"] - pids_failed_time),
-                        do_sthg and "starting countermeasures" or "still waiting..."),
-                             logging_tools.LOG_LEVEL_WARN)
+                        self.log(
+                            "*** pid check failed for {}: {}".format(
+                                key,
+                                struct.pid_check_string,
+                            ),
+                            logging_tools.LOG_LEVEL_WARN
+                        )
+                    self.log(
+                        "*** {} (pid failed {}, {}): {} remaining, grace time {}, {}".format(
+                            key,
+                            logging_tools.get_plural("time", struct.pid_checks_failed),
+                            struct.pid_check_string,
+                            logging_tools.get_plural("grace_period", max(0, 2 - struct.pid_checks_failed)),
+                            logging_tools.get_plural("second", global_config["FAILED_CHECK_TIME"] - pids_failed_time),
+                            do_sthg and "starting countermeasures" or "still waiting...",
+                        ),
+                        logging_tools.LOG_LEVEL_WARN
+                    )
                     if do_sthg:
                         # first submit the at-commands
                         if struct.stop_command:
