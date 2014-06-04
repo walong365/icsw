@@ -591,19 +591,19 @@ class meta_server_info(object):
                 self.__file_name,
                 self.__name,
                 get_except_info()))
-    def check_block(self, act_pids=[], act_dict={}):
-        if not act_pids:
-            act_pids = get_process_id_list(True, True)
+    def check_block(self, act_tc_dict=None, act_dict={}):
+        if not act_tc_dict:
+            act_tc_dict = get_process_id_list(True, True)
         if not self.__pids:
             if not act_dict:
                 act_dict = get_proc_list()
             # search pids
             pids_found = [key for key, value in act_dict.items() if value["name"] == self.__exe_name]
-            self.__pids = sum([[key] * act_pids.get(key, 1) for key in pids_found], [])
+            self.__pids = sum([[key] * act_tc_dict.get(key, 1) for key in pids_found], [])
             self.__pid_names.update({key : self.__exe_name for key in pids_found})
-        self.__pids_found = dict([(cur_pid, act_pids[cur_pid]) for cur_pid in self.__pids if cur_pid in act_pids.keys()])
+        self.__pids_found = dict([(cur_pid, act_tc_dict[cur_pid]) for cur_pid in self.__pids if cur_pid in act_tc_dict.keys()])
         # structure for check_scripts
-        self.pids_found = sum([[cur_pid] * act_pids.get(cur_pid, 0) for cur_pid in self.__pids_found.iterkeys()], [])
+        self.pids_found = sum([[cur_pid] * act_tc_dict.get(cur_pid, 0) for cur_pid in self.__pids_found.iterkeys()], [])
         self.__pids_expected = dict([(cur_pid, (
             self.__pids.count(cur_pid) + self.__pid_fuzzy.get(cur_pid, (0, 0))[0],
             self.__pids.count(cur_pid) + self.__pid_fuzzy.get(cur_pid, (0, 0))[1])
@@ -1175,14 +1175,15 @@ def get_process_id_list(with_threadcount=True, with_dotprocs=False):
     max_try_count = 10
     for _idx in xrange(max_try_count):
         try:
+            _proc_list = os.listdir("/proc")
             if with_dotprocs:
                 pid_list, dotpid_list = (
-                    [int(x) for x in os.listdir("/proc") if x.isdigit()],
-                    [int(x[1:]) for x in os.listdir("/proc") if x.startswith(".") and x[1:].isdigit()]
+                    [int(x) for x in _proc_list if x.isdigit()],
+                    [int(x[1:]) for x in _proc_list if x.startswith(".") and x[1:].isdigit()]
                 )
             else:
                 pid_list, dotpid_list = (
-                    [int(x) for x in os.listdir("/proc") if x.isdigit()],
+                    [int(x) for x in _proc_list if x.isdigit()],
                     []
                 )
         except:
@@ -1194,14 +1195,11 @@ def get_process_id_list(with_threadcount=True, with_dotprocs=False):
         for pid in pid_list:
             stat_f = "/proc/{:d}/status".format(pid)
             if os.path.isfile(stat_f):
-                for _idx in range(max_try_count):
-                    try:
-                        stat_dict = dict([(z[0].lower(), z[1].strip()) for z in [y.split(":", 1) for y in [x.strip() for x in open(stat_f, "r").read().replace("\t", " ").split("\n") if x.count(":")]]])
-                    except:
-                        stat_dict = {}
-                    else:
-                        break
-                pid_dict[pid] = int(stat_dict.get("threads", "1"))
+                try:
+                    _threads = int([_entry for _entry in open(stat_f, "r").xreadlines() if _entry.startswith("Threads")][0].split()[1])
+                except:
+                    _threads = 1
+                pid_dict[pid] = _threads
             else:
                 pid_dict[pid] = 1
         # add dotpid-files
@@ -1209,19 +1207,17 @@ def get_process_id_list(with_threadcount=True, with_dotprocs=False):
             stat_f = "/proc/.{:d}/status".format(pid)
             if os.path.isfile(stat_f):
                 try:
-                    stat_dict = dict([(z[0].lower(), z[1].strip()) for z in [y.split(":", 1) for y in [x.strip() for x in open(stat_f, "r").read().replace("\t", " ").split("\n") if x.count(":")]]])
+                    _ppid = int([_entry for _entry in open(stat_f, "r").xreadlines() if _entry.startswith("PPid")][0].split()[1])
                 except:
-                    pass
+                    _ppid = 0
                 else:
-                    if "ppid" in stat_dict:
-                        ppid = int(stat_dict["ppid"])
-                        if ppid in pid_dict:
-                            pid_dict[ppid] += 1
+                    if _ppid in pid_dict:
+                        pid_dict[_ppid] += 1
         return pid_dict
     else:
         return pid_list + [".{:d}".format(x) for x in dotpid_list]
 
-def get_proc_list(last_dict=None, **kwargs):
+def get_proc_list(**kwargs):
     # s_time = time.time()
     s_fields = ["name", "state"]
     i_fields = ["pid", "uid", "gid", "ppid"]
@@ -1231,16 +1227,16 @@ def get_proc_list(last_dict=None, **kwargs):
     add_cmdline = kwargs.get("add_cmdline", True)
     add_exe = kwargs.get("add_exe", True)
     try:
-        pid_list = set([int(key) for key in os.listdir("/proc") if key.isdigit()])
+        if "int_pid_list" in kwargs:
+            pid_list = kwargs["int_pid_list"]
+        else:
+            pid_list = set([int(key) for key in os.listdir("/proc") if key.isdigit()])
     except:
-        p_dict = last_dict
+        p_dict = None
     else:
         p_dict = {}
         for pid in pid_list:
             check_pid = True
-            if last_dict and pid in last_dict:
-                p_dict[pid] = last_dict[pid]
-                check_pid = False
             if check_pid:
                 try:
                     t_dict = {}
