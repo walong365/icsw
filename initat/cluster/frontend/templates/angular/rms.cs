@@ -467,6 +467,12 @@ rms_module.controller("rms_ctrl", ["$scope", "$compile", "$filter", "$templateCa
             "waiting" : $scope.waiting_struct
             "node" : $scope.node_struct
         }
+        $scope.$on("icsw.disable_refresh", () ->
+            $scope.refresh = false
+        )
+        $scope.$on("icsw.enable_refresh", () ->
+            $scope.refresh = true
+        )
         $scope.reload= () ->
             $scope.rms_operator = $scope.acl_modify(null, "backbone.user.rms_operator")
             if $scope.update_info_timeout
@@ -655,14 +661,14 @@ rms_module.controller("rms_ctrl", ["$scope", "$compile", "$filter", "$templateCa
     <div class="panel-body">
         <h2>Device #{name}</h2>
         <div ng-controller='rrd_ctrl'>
-            <rrdgraph devicepk='#{dev_pk}'>
+            <rrdgraph devicepk='#{dev_pk}' selectkeys="load.*,net.all.*,mem.used.phys$" draw="1">
             </rrdgraph>
         </div>
     </div>
 </div>
 """
-                # disenable refreshing
-                scope.refresh = false
+                # disable refreshing
+                scope.$emit("icsw.disable_refresh")
                 scope.rrd_div = angular.element(rrd_txt)
                 $compile(scope.rrd_div)(scope)
                 scope.rrd_div.simplemodal
@@ -683,7 +689,7 @@ rms_module.controller("rms_ctrl", ["$scope", "$compile", "$filter", "$templateCa
             scope.close = () ->
                 #console.log "sc", scope.rrd_div, scope.rrd_div.find(".ng-scope").scope().$destroy()
                 # reenable refreshing
-                scope.refresh = true
+                scope.$emit("icsw.enable_refresh")
     }
 ).directive("headertoggle", ($templateCache) ->
     return {

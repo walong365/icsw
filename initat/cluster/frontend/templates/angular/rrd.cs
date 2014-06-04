@@ -244,6 +244,9 @@ add_rrd_directive = (mod) ->
             $scope.searchstr = ""
             $scope.is_loading = true
             $scope.cur_selected = []
+            # to be set by directive
+            $scope.auto_select_keys = []
+            $scope.draw_on_init = false
             $scope.graph_list = []
             $scope.hide_zero = false
             $scope.show_options = false
@@ -292,6 +295,10 @@ add_rrd_directive = (mod) ->
                                 # we only get one vector at most (due to merge_results=1 in rrd_views.py)
                                 # node_result
                                 num_devs = parseInt($(xml).find("node_result").attr("devices") ? "1")
+                                if $scope.auto_select_keys.length
+                                    $scope.auto_select_re = new RegExp($scope.auto_select_keys.join("|"))
+                                else
+                                    $scope.auto_select_re = null
                                 $scope.add_nodes(undefined, $scope.vector)
                                 $scope.is_loading = false
                                 $scope.$apply(
@@ -300,6 +307,12 @@ add_rrd_directive = (mod) ->
                                     $scope.num_devices = num_devs
                                     $scope.num_mve = $scope.vector.find("mve").length
                                     $scope.num_mve_sel = 0
+                                    if $scope.auto_select_re
+                                        # recalc tree when an autoselect_re is present
+                                        $scope.g_tree.show_selected(false)
+                                        $scope.selection_changed()
+                                        if $scope.draw_on_init and $scope.num_mve_sel
+                                            $scope.draw_graph()
                                 ) 
                             else
                                 $scope.error_string = "No vector found"
@@ -325,10 +338,15 @@ add_rrd_directive = (mod) ->
                         })
                         cur_node._show_select = false
                     else
+                        if $scope.auto_select_re
+                            _sel = $scope.auto_select_re.test(xml_node.attr("name"))
+                        else
+                            _sel = false
                         # value
                         cur_node = $scope.g_tree.new_node({
                             folder : false
                             expand : false
+                            selected : _sel
                             node   : xml_node
                             _g_key : xml_node.attr("name")
                             _name  : xml_node.attr("info")
@@ -396,12 +414,16 @@ add_rrd_directive = (mod) ->
                             $scope.graph_list = graph_list
                         )
             $scope.$on("$destroy", (aa) ->
+                console.log "dest"
             )                
     ]).directive("rrdgraph", ($templateCache) ->
         return {
             restrict : "EA"
             template : $templateCache.get("rrd_graph_template.html")
             link : (scope, el, attrs) ->
+                if attrs["selectkeys"]?
+                    scope.auto_select_keys = attrs["selectkeys"].split(",")
+                scope.draw_on_init = attrs["draw"] ? false
                 scope.new_devsel((parseInt(entry) for entry in attrs["devicepk"].split(",")), [])
         }
     ).run(($templateCache) ->
