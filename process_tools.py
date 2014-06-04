@@ -1196,7 +1196,11 @@ def get_process_id_list(with_threadcount=True, with_dotprocs=False):
             stat_f = "/proc/{:d}/status".format(pid)
             if os.path.isfile(stat_f):
                 try:
-                    _threads = int([_entry for _entry in open(stat_f, "r").xreadlines() if _entry.startswith("Threads")][0].split()[1])
+                    _threads = 1
+                    for _line in open(stat_f, "r"):
+                        if _line.startswith("Threads"):
+                            _threads = int(_line.split()[1])
+                            break
                 except:
                     _threads = 1
                 pid_dict[pid] = _threads
@@ -1207,7 +1211,11 @@ def get_process_id_list(with_threadcount=True, with_dotprocs=False):
             stat_f = "/proc/.{:d}/status".format(pid)
             if os.path.isfile(stat_f):
                 try:
-                    _ppid = int([_entry for _entry in open(stat_f, "r").xreadlines() if _entry.startswith("PPid")][0].split()[1])
+                    _ppid = 0
+                    for _line in open(stat_f, "r"):
+                        if _line.startswith("PPid"):
+                            _ppid = int(_line.split()[1])
+                            break
                 except:
                     _ppid = 0
                 else:
@@ -1242,7 +1250,7 @@ def get_proc_list(**kwargs):
                     t_dict = {}
                     _lnum = 0
                     _affinity_lines = []
-                    for line in open("/proc/{:d}/status".format(pid), "r").xreadlines():
+                    for line in open("/proc/{:d}/status".format(pid), "r"):
                         _parts = line.split()
                         if not _lnum:
                             # first line, check for exclusion criteria
