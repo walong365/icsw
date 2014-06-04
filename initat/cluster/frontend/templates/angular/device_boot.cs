@@ -126,8 +126,7 @@ device_row_template = """
     <td class="center"><input type="button" ng-class="get_dev_sel_class(dev)" ng-click="toggle_dev_sel(dev, 0)" value="sel"></button></td>
     <td ng-class="dev.recvreq_state">{{ dev.recvreq_str }}</td>
     <td ng-class="dev.network_state">{{ dev.network }}</td>
-    <td ng-repeat="entry in type_1_options()" ng-show="bo_enabled[entry[0]]" ng-class="get_td_class(entry)">
-        {{ show_boot_option(entry) }}
+    <td ng-repeat="entry in type_1_options()" ng-show="bo_enabled[entry[0]]" ng-class="get_td_class(entry)" ng-bind-html="show_boot_option(entry)">
     </td>
     <td ng-show="bo_enabled['s']">
         <div class="btn-group">
@@ -695,19 +694,21 @@ device_boot_module.controller("boot_ctrl", ["$scope", "$compile", "$filter", "$t
             scope.get_info_str = (s_type, act_val, new_val, lut) ->
                 if act_val == new_val
                     if act_val
-                        # hm, show a nice icon here
-                        return scope.get_lut_val(s_type, lut, act_val) +  "(==)"
+                        # everything ok
+                        return "<span class='glyphicon glyphicon-ok'></span> " + scope.get_lut_val(s_type, lut, act_val)  
                     else
-                        return "---"
+                        # both values are empty
+                        return "<span class='glyphicon glyphicon-ban-circle'></span>"
                 else
                     new_val_str = if new_val then scope.get_lut_val(s_type, lut, new_val) else "---"
                     act_val_str = if act_val then scope.get_lut_val(s_type, lut, act_val) else "---"
                     if act_val and new_val
-                        return "#{act_val_str} (#{new_val_str})"
+                        # show source and target value
+                        return "#{act_val_str} <span class='glyphicon glyphicon-arrow-right'></span> #{new_val_str}"
                     else if act_val
-                        return act_val_str
+                        return "#{act_val_str} <span class='glyphicon glyphicon-arrow-right'>"
                     else
-                        return "[#{new_val_str}]"
+                        return "<span class='glyphicon glyphicon-arrow-right'> #{new_val_str}"
     }
 ).directive("devicelogs", ($templateCache) ->
     return {
