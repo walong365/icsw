@@ -114,9 +114,9 @@ filesinfo = """
 rmsnodeline = """
 <td ng-show="node_struct.toggle['host']">
     {{ data.host }}
-    <button type="button" class="btn btn-xs btn-primary" ng-show="has_rrd(data.host)" ng-click="show_rrd($event, data.host)">
+    <button type="button" class="btn btn-xs btn-primary" ng-show="has_rrd(data.host)" ng-click="show_node_rrd($event, data)">
         <span class="glyphicon glyphicon-pencil"></span>
-    </buttont>
+    </button>
 </td>
 <td ng-show="node_struct.toggle['queues']">
     <queuestate operator="rms_operator" host="data"></queuestate>
@@ -255,6 +255,9 @@ rmsline = """
 rmsrunline = """
 <td ng-show="running_struct.toggle['job_id']">
     {{ data.job_id }}
+    <button type="button" class="btn btn-xs btn-primary" ng-show="has_rrd(data.nodelist)" ng-click="show_job_rrd($event, data)">
+        <span class="glyphicon glyphicon-pencil"></span>
+    </button>
 </td>
 <td ng-show="running_struct.toggle['task_id']">
     {{ data.task_id }}
@@ -316,7 +319,7 @@ rmsrunline = """
     {{ data.files }}
 </td>
 <td ng-show="running_struct.toggle['nodelist']">
-    {{ data.nodelist }}
+    {{ get_nodelist(data) }}
 </td>
 <td ng-show="running_struct.toggle['action']">
     <jobaction job="data" operator="rms_operator"></jobaction>
@@ -565,6 +568,38 @@ rms_module.controller("rms_ctrl", ["$scope", "$compile", "$filter", "$templateCa
                 success  : (xml) =>
                     parse_xml_response(xml)
         )
+        $scope.show_rrd = (event, name_list) ->
+            dev_pks = ($scope.device_dict[name].pk for name in name_list).join(",")
+            rrd_txt = """
+<div class="panel panel-default">
+    <div class="panel-body">
+        <h2>Device #{name}</h2>
+        <div ng-controller='rrd_ctrl'>
+            <rrdgraph devicepk='#{dev_pks}' selectkeys="load.*,net.all.*,mem.used.phys$" draw="1">
+            </rrdgraph>
+        </div>
+    </div>
+</div>
+"""
+            # disable refreshing
+            $scope.refresh = false
+            $scope.rrd_div = angular.element(rrd_txt)
+            $compile($scope.rrd_div)($scope)
+            $scope.rrd_div.simplemodal
+                opacity      : 50
+                position     : [event.pageY, event.pageX]
+                autoResize   : true
+                autoPosition : true
+                minWidth     : "1024px"
+                minHeight   : "800px"
+                onShow: (dialog) -> 
+                    dialog.container.draggable()
+                    #$("#simplemodal-container").css("height", "auto")
+                    #$("#simplemodal-container").css("width", "auto")
+                onClose: =>
+                    # destroy scopes
+                    $scope.refresh = true
+                    $.simplemodal.close()
         call_ajax
             url      : "{% url 'rms:get_user_setting' %}"
             dataType : "json"
@@ -630,11 +665,31 @@ rms_module.controller("rms_ctrl", ["$scope", "$compile", "$filter", "$templateCa
         template : $templateCache.get("rmsrunline.html")
         link : (scope, el, attrs) ->
             scope.valid_file = (std_val) ->
-                 # to be improved, transfer raw data (error = -1, 0 = no file, > 0 = file with content)
-                 if std_val == "---" or std_val == "err" or std_val == "error" or std_val == "0 B"
-                     return 0
-                 else
-                     return 1
+                # to be improved, transfer raw data (error = -1, 0 = no file, > 0 = file with content)
+                if std_val == "---" or std_val == "err" or std_val == "error" or std_val == "0 B"
+                    return 0
+                else
+                    return 1
+            scope.get_nodelist = (job) ->
+                nodes = job.nodelist.split(",")
+                r_list = []
+                _.forEach(_.countBy(nodes), (key, value) ->
+                    if key == 1
+                        r_list.push(value)
+                    else
+                        r_list.push("#{value}(#{key})")
+                )
+                return r_list.join(",")
+            scope.get_rrd_nodes = (nodelist) ->
+                nodes = _.uniq((entry.split("(")[0] for entry in nodelist.split(",")))
+                rrd_nodes = (entry for entry in nodes when entry of scope.device_dict and scope.device_dict[entry].rrd)
+                return rrd_nodes
+            scope.has_rrd = (nodelist) ->
+                rrd_nodes = scope.get_rrd_nodes(nodelist)
+                return if rrd_nodes.length then true else false
+            scope.show_job_rrd = (event, job) ->
+                rrd_nodes = scope.get_rrd_nodes(job.nodelist)
+                scope.show_rrd(event, rrd_nodes)
     }
 ).directive("rmsnodeline", ($templateCache, $sce, $compile) ->
     return {
@@ -654,42 +709,8 @@ rms_module.controller("rms_ctrl", ["$scope", "$compile", "$filter", "$templateCa
                     return scope.device_dict[name].rrd
                 else
                     return false
-            scope.show_rrd = (event, name) ->
-                dev_pk = scope.device_dict[name].pk
-                rrd_txt = """
-<div class="panel panel-default">
-    <div class="panel-body">
-        <h2>Device #{name}</h2>
-        <div ng-controller='rrd_ctrl'>
-            <rrdgraph devicepk='#{dev_pk}' selectkeys="load.*,net.all.*,mem.used.phys$" draw="1">
-            </rrdgraph>
-        </div>
-    </div>
-</div>
-"""
-                # disable refreshing
-                scope.$emit("icsw.disable_refresh")
-                scope.rrd_div = angular.element(rrd_txt)
-                $compile(scope.rrd_div)(scope)
-                scope.rrd_div.simplemodal
-                    opacity      : 50
-                    position     : [event.pageY, event.pageX]
-                    autoResize   : true
-                    autoPosition : true
-                    minWidth     : "1024px"
-                    minHeight   : "800px"
-                    onShow: (dialog) -> 
-                        dialog.container.draggable()
-                        #$("#simplemodal-container").css("height", "auto")
-                        #$("#simplemodal-container").css("width", "auto")
-                    onClose: =>
-                        # destroy scopes
-                        scope.close()
-                        $.simplemodal.close()
-            scope.close = () ->
-                #console.log "sc", scope.rrd_div, scope.rrd_div.find(".ng-scope").scope().$destroy()
-                # reenable refreshing
-                scope.$emit("icsw.enable_refresh")
+            scope.show_node_rrd = (event, node) ->
+                scope.show_rrd(event, [node.host])
     }
 ).directive("headertoggle", ($templateCache) ->
     return {

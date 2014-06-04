@@ -63,7 +63,7 @@ else:
 my_sge_info = tl_sge_info()
 
 def get_job_options(request):
-    return sge_tools.get_empty_job_options()
+    return sge_tools.get_empty_job_options(compress_nodelist=False)
 
 def get_node_options(request):
     return sge_tools.get_empty_node_options(merge_node_queue=True)

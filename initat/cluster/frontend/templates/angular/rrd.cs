@@ -414,7 +414,7 @@ add_rrd_directive = (mod) ->
                             $scope.graph_list = graph_list
                         )
             $scope.$on("$destroy", (aa) ->
-                console.log "dest"
+                #console.log "dest"
             )                
     ]).directive("rrdgraph", ($templateCache) ->
         return {
