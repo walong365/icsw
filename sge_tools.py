@@ -31,7 +31,6 @@ import process_tools
 import re
 import server_command
 import stat
-import sys
 import time
 import zmq
 try:
