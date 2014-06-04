@@ -45,11 +45,15 @@ def get_empty_job_options(**kwargs):
     options.show_memory = False
     options.suppress_times = False
     options.suppress_nodelist = False
+    options.compress_nodelist = True
     options.only_valid_waiting = False
     options.long_status = False
     options.show_stdoutstderr = True
     for key, value in kwargs.iteritems():
-        setattr(options, key, value)
+        if not hasattr(options, key):
+            print("wrong key in get_empty_node_options: {}".format(key))
+        else:
+            setattr(options, key, value)
     return options
 
 def get_empty_node_options(**kwargs):
@@ -70,7 +74,10 @@ def get_empty_node_options(**kwargs):
     options.show_acl = False
     options.merge_node_queue = False
     for key, value in kwargs.iteritems():
-        setattr(options, key, value)
+        if not hasattr(options, key):
+            print("wrong key in get_empty_node_options: {}".format(key))
+        else:
+            setattr(options, key, value)
     return options
 
 def compress_list(ql, queues=None, postfix=""):
@@ -195,11 +202,12 @@ class sge_info(object):
         self._init_cache()
         # key : (relevance, call)
         setup_dict = {
-            "hostgroup" : (0, self._check_hostgroup_dict),
-            "queueconf" : (1, self._check_queueconf_dict),
-            "complexes" : (2, self._check_complexes_dict),
-            "qhost"     : (3, self._check_qhost_dict),
-            "qstat"     : (4, self._check_qstat_dict)}
+            "pes"       : (0, self._check_pe_dict),
+            "hostgroup" : (1, self._check_hostgroup_dict),
+            "queueconf" : (2, self._check_queueconf_dict),
+            "complexes" : (3, self._check_complexes_dict),
+            "qhost"     : (4, self._check_qhost_dict),
+            "qstat"     : (5, self._check_qstat_dict)}
         self.__valid_dicts = [v_key for _bla, v_key in sorted([(rel, key) for key, (rel, _s_call) in setup_dict.iteritems()]) if v_key not in kwargs.get("ignore_dicts", [])]
         self.__update_call_dict = dict([(key, s_call) for key, (rel, s_call) in setup_dict.iteritems()])
         self.__update_pref_dict = dict([(key, kwargs.get("update_pref", {}).get(key, kwargs.get("default_pref", ["direct", "server"]))) for key in self.__valid_dicts])
@@ -565,6 +573,27 @@ class sge_info(object):
                     cur_q.append(getattr(E, key)(value))
             all_queues.append(cur_q)
         return all_queues
+    def _check_pe_dict(self):
+        qconf_com = self._get_com_name("qconf")
+        c_stat, c_out = self._execute_command("{} -spl".format(qconf_com))
+        cur_pes = E.pe()
+        if not c_stat:
+            for pe_name in c_out.split("\n"):
+                c_stat, c_out = self._execute_command(
+                    "{} -sp {}".format(
+                        qconf_com,
+                        pe_name
+                    ),
+                    simple_split=True
+                )
+                if not c_stat:
+                    new_pe = E.pe(name=pe_name)
+                    for key, value in c_out:
+                        value = {"TRUE" : "true", "FALSE" : "false", "NONE" : "none"}.get(value, value)
+                        new_pe.append(E.value(name=key, value=value))
+                    cur_pes.append(new_pe)
+        # print etree.tostring(cur_pes, pretty_print=True)
+        return cur_pes
     def _check_hostgroup_dict(self):
         qconf_com = self._get_com_name("qconf")
         c_stat, c_out = self._execute_command("{} -shgrpl".format(qconf_com))
@@ -837,6 +866,7 @@ def create_file_content(act_job):
 def build_running_list(s_info, options, **kwargs):
     user = kwargs.get("user", None)
     # build various local luts
+    # print s_info, etree.tostring(s_info.tree, pretty_print=True)
     r_jobs = sorted(s_info.running_jobs, key=lambda x : x.get("full_id"))
     job_host_lut, job_host_pe_lut = ({}, {})
     for cur_host in s_info.get_all_hosts():
@@ -904,7 +934,10 @@ def build_running_list(s_info, options, **kwargs):
         if not options.suppress_nodelist:
             if act_job.get("full_id") in job_host_pe_lut:
                 jh_pe_lut = job_host_pe_lut[act_job.get("full_id")]
-                cur_job.append(E.nodelist(",".join([compress_list(sorted(jh_pe_lut[key]), postfix="(M)" if key == "MASTER" else "") for key in ["MASTER", "SLAVE"] if key in jh_pe_lut])))
+                if options.compress_nodelist:
+                    cur_job.append(E.nodelist(",".join([compress_list(sorted(jh_pe_lut[key]), postfix="(M)" if key == "MASTER" else "") for key in ["MASTER", "SLAVE"] if key in jh_pe_lut])))
+                else:
+                    cur_job.append(E.nodelist(",".join([",".join([u"{}{}".format(_entry, "(M)" if key == "MASTER" else "") for _entry in sorted(jh_pe_lut[key])]) for key in ["MASTER", "SLAVE"] if key in jh_pe_lut])))
             else:
                 cur_job.append(E.nodelist("not found"))
         cur_job.append(create_action_field(act_job, user))
@@ -1057,6 +1090,7 @@ def build_node_list(s_info, options):
     if options.merge_node_queue:
         for h_name, q_list in d_list:
             act_q_list, act_h = ([s_info.get_queue(q_name) for q_name in q_list], s_info.get_host(h_name))
+            act_q_list = [_entry for _entry in act_q_list if _entry is not None]
             s_name = act_h.get("short_name")
             m_queue_list = [act_h.find("queue[@name='{}']".format(act_q.attrib["name"])) for act_q in act_q_list]
             if options.suppress_empty and all([int(m_queue.findtext("queuevalue[@name='slots_used']")) == 0 for m_queue in m_queue_list]):
