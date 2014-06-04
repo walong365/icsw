@@ -61,8 +61,8 @@ if [ ! -d ${SGE_ROOT}/bin ] ; then
     #./aimk -spool-classic -no-dump -no-secure -no-jni -no-java  || { echo "Compilation failed, exiting" ; exit -1 ; }
     # set include path to find hwloc
     export SGE_INPUT_CFLAGS="-I/opt/cluster/include"
-    # -lncurses is needed for centos
-    export SGE_INPUT_LDFLAGS="-L/opt/cluster/lib64 -lncurses"
+    # -lncurses is needed for centos, -ldl for build on eddie (13.1)
+    export SGE_INPUT_LDFLAGS="-L/opt/cluster/lib64 -lncurses -ldl"
     ./aimk -spool-classic -no-secure -no-jni -no-java -no-qmake || {
         echo "Compilation failed, exiting" ;
 	echo "maybe one of the following packages is missing:"
