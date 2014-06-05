@@ -47,6 +47,8 @@ SERVER_ARGS=""
 SERVER_USER="idrrd"
 SERVER_GROUP="idg"
 META_FILE="/var/lib/meta-server/rrd-${ACT_SERVER_TYPE}"
+# set default font
+export RRD_DEFAULT_FONT="verdana 8"
 
 test -x ${SERVER_BIN} || exit 5
 test -x ${PYTHON_BIN} || exit 5

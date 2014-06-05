@@ -248,7 +248,10 @@ class RRDGraph(object):
         self.height = graph_height
         dev_dict = dict([(cur_dev.pk, unicode(cur_dev.full_name)) for cur_dev in device.objects.filter(Q(pk__in=dev_pks))])
         s_graph_key_dict = self._create_graph_keys(graph_keys)
-        self.log("found devics: {}".format(", ".join(["{:d} ({})".format(pk, dev_dict.get(pk, "unknown")) for pk in dev_pks])))
+        self.log(
+            "found {}: {}".format(
+                logging_tools.get_plural("device", len(dev_pks)),
+                ", ".join(["{:d} ({})".format(pk, dev_dict.get(pk, "unknown")) for pk in dev_pks])))
         self.log("graph keys: {}".format(", ".join(graph_keys)))
         self.log(
             "top level keys: {:d}; {}".format(
@@ -268,7 +271,8 @@ class RRDGraph(object):
         self.log("number of graphs to create: {:d}".format(len(graph_key_list)))
         graph_list = E.graph_list()
         for tlk, dev_list, graph_keys in sorted(graph_key_list):
-            graph_name = "gfx_{}_{:d}.png".format(tlk, int(time.time()))
+            dev_id_str = ",".join([dev_id for dev_id, dev_pk in dev_list])
+            graph_name = "gfx_{}_{}_{:d}.png".format(tlk, dev_id_str, int(time.time()))
             abs_file_loc, rel_file_loc = (
                 os.path.join(self.para_dict["graph_root"], graph_name),
                 os.path.join("/{}/static/graphs/{}".format(settings.REL_SITE_ROOT, graph_name)),
@@ -304,7 +308,7 @@ class RRDGraph(object):
             ]
             _unique = 0
             for graph_key in sorted(graph_keys):
-                for cur_id, cur_pk in dev_list:
+                for _cur_id, cur_pk in dev_list:
                     dev_vector = vector_dict[cur_pk]
                     if graph_key.startswith("pde:"):
                         # performance data from icinga
@@ -383,7 +387,7 @@ class RRDGraph(object):
                             # graph key
                             fmt_graph_key="gk_{}".format(tlk),
                             # devices key
-                            fmt_device_key="dk_{}".format(",".join([dev_id for dev_id, dev_pk in dev_list])),
+                            fmt_device_key="dk_{}".format(dev_id_str),
                             href=rel_file_loc,
                             **dict([(key, "{:d}".format(value) if type(value) in [int, long] else "{:.6f}".format(value)) for key, value in draw_result.iteritems() if not key.startswith("print[")])
                         )
