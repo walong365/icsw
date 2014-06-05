@@ -212,9 +212,10 @@ class RRDGraph(object):
     def __init__(self, log_com, colorzer, para_dict):
         self.log_com = log_com
         self.para_dict = {
-            "size"       : "400x200",
-            "graph_root" : global_config["GRAPH_ROOT"],
-            "hide_zero"  : False,
+            "size"          : "400x200",
+            "graph_root"    : global_config["GRAPH_ROOT"],
+            "hide_zero"     : False,
+            "merge_devices" : True,
         }
         self.para_dict.update(para_dict)
         self.colorizer = colorzer
@@ -240,17 +241,26 @@ class RRDGraph(object):
         self.width = graph_width
         self.height = graph_height
         dev_dict = dict([(cur_dev.pk, unicode(cur_dev.full_name)) for cur_dev in device.objects.filter(Q(pk__in=dev_pks))])
-        graph_key_dict = self._create_graph_keys(graph_keys)
-        self.log("found device pks: {}".format(", ".join(["{:d}".format(pk) for pk in dev_pks])))
+        s_graph_key_dict = self._create_graph_keys(graph_keys)
+        self.log("found devics: {}".format(", ".join(["{:d} ({})".format(pk, dev_dict.get(pk, "unknown")) for pk in dev_pks])))
         self.log("graph keys: {}".format(", ".join(graph_keys)))
-        self.log("top level keys (== distinct graphs): {:d}; {}".format(
-            len(graph_key_dict),
-            ", ".join(sorted(graph_key_dict)),
-            ))
-
+        self.log(
+            "top level keys: {:d}; {}".format(
+                len(s_graph_key_dict),
+                ", ".join(sorted(s_graph_key_dict)),
+            )
+        )
+        graph_key_list = []
+        # one device per graph
+        if self.para_dict["merge_devices"]:
+            for g_key, v_list in s_graph_key_dict.iteritems():
+                for dev_pk in dev_pks:
+                    graph_key_list.append((g_key, [dev_pk], v_list))
+        else:
+            graph_key_list = [(g_key, dev_pks, v_list) for g_key, v_list in s_graph_key_dict.iteritems()]
+        self.log("number of graphs to create: {:d}".format(len(graph_key_list)))
         graph_list = E.graph_list()
-        for tlk in sorted(graph_key_dict):
-            graph_keys = graph_key_dict[tlk]
+        for tlk, dev_list, graph_keys in sorted(graph_key_list):
             graph_name = "gfx_{}_{:d}.png".format(tlk, int(time.time()))
             abs_file_loc, rel_file_loc = (
                 os.path.join(self.para_dict["graph_root"], graph_name),
@@ -275,7 +285,7 @@ class RRDGraph(object):
                     "PNG",
                     "--daemon",
                     "unix:/var/run/rrdcached.sock",
-                    "-W init.at clustersoftware",
+                    "-W CORVUS by init.at",
                     "--slope-mode",
                     "-cBACK#ffffff",
                     "--end",
@@ -286,7 +296,7 @@ class RRDGraph(object):
                     graph_var(self, None, 0, "").header_line,
             ]
             for graph_key in sorted(graph_keys):
-                for cur_pk in dev_pks:
+                for cur_pk in dev_list:
                     dev_vector = vector_dict[cur_pk]
                     if graph_key.startswith("pde:"):
                         # performance data from icinga
@@ -304,8 +314,9 @@ class RRDGraph(object):
                     rrd_args = rrd_pre_args + sum(self.defs.values(), [])
                     rrd_args.extend([
                         "--title",
-                        "{} ({}, timeframe is {})".format(
+                        "{} on {} ({}, timeframe is {})".format(
                             tlk,
+                            dev_dict.get(dev_list[0], "unknown") if len(dev_list) == 1 else logging_tools.get_plural("device", len(dev_list)),
                             logging_tools.get_plural("result", len(self.defs)),
                             logging_tools.get_diff_time_str(timeframe)),
                     ])
@@ -403,7 +414,7 @@ class graph_process(threading_tools.process_obj, threading_tools.operational_err
         for key in ["start_time", "end_time"]:
             # cast to datetime
             para_dict[key] = dateutil.parser.parse(para_dict[key])
-        for key in ["hide_zero"]:
+        for key, _default in [("hide_zero", "0"), ("merge_devices", "1")]:
             para_dict[key] = True if int(para_dict.get(key, "0")) else False
         graph_list = RRDGraph(self.log, self.colorizer, para_dict).graph(self.vector_dict, dev_pks, graph_keys)
         srv_com["graphs"] = graph_list
