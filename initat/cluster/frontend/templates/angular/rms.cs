@@ -510,8 +510,10 @@ rms_module.controller("rms_ctrl", ["$scope", "$compile", "$filter", "$templateCa
                                     devnames : angular.toJson(node_names)
                                 dataType : "json"
                                 success  : (json) =>
-                                    for name of json
-                                        $scope.device_dict[name] = new device_info(name, json[name])
+                                    $scope.$apply(() ->
+                                        for name of json
+                                            $scope.device_dict[name] = new device_info(name, json[name])
+                                    )
                         # fetch file ids
                         fetch_list = []
                         for _id in $scope.io_list
@@ -575,7 +577,7 @@ rms_module.controller("rms_ctrl", ["$scope", "$compile", "$filter", "$templateCa
     <div class="panel-body">
         <h2>Device #{name}</h2>
         <div ng-controller='rrd_ctrl'>
-            <rrdgraph devicepk='#{dev_pks}' selectkeys="load.*,net.all.*,mem.used.phys$" draw="1">
+            <rrdgraph devicepk='#{dev_pks}' selectkeys="load.*,net.all.*,mem.used.phys$" draw="1" mergedevices="0" graphsize="240x100">
             </rrdgraph>
         </div>
     </div>
@@ -590,7 +592,7 @@ rms_module.controller("rms_ctrl", ["$scope", "$compile", "$filter", "$templateCa
                 position     : [event.pageY, event.pageX]
                 autoResize   : true
                 autoPosition : true
-                minWidth     : "1024px"
+                minWidth     : "1280px"
                 minHeight   : "800px"
                 onShow: (dialog) -> 
                     dialog.container.draggable()
@@ -689,6 +691,7 @@ rms_module.controller("rms_ctrl", ["$scope", "$compile", "$filter", "$templateCa
                 return if rrd_nodes.length then true else false
             scope.show_job_rrd = (event, job) ->
                 rrd_nodes = scope.get_rrd_nodes(job.nodelist)
+                rrd_nodes = ["lemmy", "lemmy"]
                 scope.show_rrd(event, rrd_nodes)
     }
 ).directive("rmsnodeline", ($templateCache, $sce, $compile) ->

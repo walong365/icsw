@@ -41,43 +41,42 @@ rrd_graph_template = """
             <div class="input-group-btn">
                 <input type="button" ng-class="hide_zero && 'btn btn-sm btn-success' || 'btn btn-sm'" value="hide zero" ng-click="hide_zero=!hide_zero"></input>
             </div>
-            <div style="width:240px;">
-                <div class="input-group">
-                    <span class="input-group-addon">
-                         from
-                    </span>
-                    <input type="text" class="form-control" ng-model="from_date_mom">
-                    </input>
-                    <span class="dropdown-toggle input-group-addon">
-                        <div class="dropdown">
-                            <button class="btn dropdown-toggle btn-xs">
-                                 <i class="glyphicon glyphicon-calendar"></i>
-                            </button>
-                            <ul class="dropdown-menu" role="menu">
-                                <datetimepicker ng-model="from_date_mom" data-datetimepicker-config="{ dropdownSelector: '#dropdownfrom' }"/>
-                            </ul>
-                        </div>
-                    </span>
-                </div>
+            <div class="input-group-btn">
+                <input type="button" ng-class="merge_devices && 'btn btn-sm btn-success' || 'btn btn-sm'" value="merge devices" ng-click="merge_devices=!merge_devices"></input>
             </div>
-            <div style="width:240px;">
-                <div class="input-group">
-                    <span class="input-group-addon">
-                         to
-                    </span>
-                    <input type="text" class="form-control" ng-model="to_date_mom">
-                    </input>
-                    <span class="dropdown-toggle input-group-addon">
-                        <div class="dropdown">
-                            <button class="btn dropdown-toggle btn-xs">
-                                 <i class="glyphicon glyphicon-calendar"></i>
-                            </button>
-                            <ul class="dropdown-menu" role="menu">
-                                <datetimepicker ng-model="to_date_mom" data-datetimepicker-config="{ dropdownSelector: '#dropdownfrom' }"/>
-                            </ul>
-                        </div>
-                    </span>
-                </div>
+            <div class="input-group">
+                <span class="input-group-addon">
+                     from
+                </span>
+                <input type="text" class="form-control" ng-model="from_date_mom">
+                </input>
+                <span class="dropdown-toggle input-group-addon">
+                    <div class="dropdown">
+                        <button class="btn dropdown-toggle btn-xs">
+                             <i class="glyphicon glyphicon-calendar"></i>
+                        </button>
+                        <ul class="dropdown-menu" role="menu">
+                            <datetimepicker ng-model="from_date_mom" data-datetimepicker-config="{ dropdownSelector: '#dropdownfrom' }"/>
+                        </ul>
+                    </div>
+                </span>
+            </div>
+            <div class="input-group">
+                <span class="input-group-addon">
+                     to
+                </span>
+                <input type="text" class="form-control" ng-model="to_date_mom">
+                </input>
+                <span class="dropdown-toggle input-group-addon">
+                    <div class="dropdown">
+                        <button class="btn dropdown-toggle btn-xs">
+                             <i class="glyphicon glyphicon-calendar"></i>
+                        </button>
+                        <ul class="dropdown-menu" role="menu">
+                            <datetimepicker ng-model="to_date_mom" data-datetimepicker-config="{ dropdownSelector: '#dropdownfrom' }"/>
+                        </ul>
+                    </div>
+                </span>
             </div>
         </div>
         <div class="row">
@@ -92,27 +91,30 @@ rrd_graph_template = """
                 <tree treeconfig="g_tree"></tree>
             </div>
             <div class="col-md-9" ng-show="graph_list.length">
-                <h3>{{ graph_list.length }} graphs</h3>
-                <div ng-repeat="graph in graph_list">
-                    <h4>
-                        <span class="label label-default" ng-click="graph.toggle_expand()" ng-show="!graph.error">
-                            <span ng-class="graph.get_expand_class()"></span>
-                            {{ graph.num }}
-                        </span>
-                        &nbsp;from {{ graph.get_tv(graph.ts_start_mom) }} to {{ graph.get_tv(graph.ts_end_mom) }}
-                    </h4>
-                    <h4 ng-show="graph.removed_keys.length">
-                        {{ graph.removed_keys.length }} keys not shown (zero data) <span class="glyphicon glyphicon-info-sign" title="{{ graph.get_removed_keys() }}"></span>
-                    </h4>
-                    <h4 class="text-danger" ng-show="graph.error">Error loading graph</h4>
-                    <span ng-show="graph.cropped && graph.active">cropped timerange: {{ graph.get_tv(graph.cts_start_mom) }} to {{ graph.get_tv(graph.cts_end_mom) }}
-                        <input type="button" class="btn btn-xs btn-warning" value="apply" ng-click="use_crop(graph)"></input>
-                    </span>
-                    <div ng-show="graph.active && !graph.error">
-                        <img-cropped ng-src="{{ graph.src }}" graph="graph">
-                        </img-cropped>
-                    </div>
-                </div>
+                <h4>{{ graph_list.length }} graphs, {{ graph_list[0].get_tv(graph_list[0].ts_start_mom) }} to {{ graph_list[0].get_tv(graph_list[0].ts_end_mom) }}</h4>
+                <table class="table-condensed">
+                    <tr ng-repeat="gkey in get_graph_keys()">
+                        <td ng-repeat="(dkey, graph) in graph_mat[gkey]">
+                            <h4  ng-show="!graph.error">
+                                <span class="label label-default" ng-click="graph.toggle_expand()">
+                                    <span ng-class="graph.get_expand_class()"></span>
+                                    {{ graph.num }}
+                                </span>
+                            </h4>
+                            <h4 ng-show="graph.removed_keys.length">
+                                {{ graph.removed_keys.length }} keys not shown (zero data) <span class="glyphicon glyphicon-info-sign" title="{{ graph.get_removed_keys() }}"></span>
+                            </h4>
+                            <h4 class="text-danger" ng-show="graph.error">Error loading graph ({{ graph.num }})</h4>
+                            <span ng-show="graph.cropped && graph.active">cropped timerange: {{ graph.get_tv(graph.cts_start_mom) }} to {{ graph.get_tv(graph.cts_end_mom) }}
+                                <input type="button" class="btn btn-xs btn-warning" value="apply" ng-click="use_crop(graph)"></input>
+                            </span>
+                            <div ng-show="graph.active && !graph.error">
+                                <img-cropped ng-src="{{ graph.src }}" graph="graph">
+                                </img-cropped>
+                            </div>
+                        </td>
+                    </tr>
+                </table>
             </div>
         </div>
     </div>
@@ -247,8 +249,10 @@ add_rrd_directive = (mod) ->
             # to be set by directive
             $scope.auto_select_keys = []
             $scope.draw_on_init = false
+            $scope.graph_list = {}
             $scope.graph_list = []
             $scope.hide_zero = false
+            $scope.merge_devices = true
             $scope.show_options = false
             $scope.g_tree = new rrd_tree($scope)
             $scope.$watch("from_date_mom", (new_val) ->
@@ -401,19 +405,32 @@ add_rrd_directive = (mod) ->
                         "start_time" : moment($scope.from_date_mom).format(DT_FORM)
                         "end_time"   : moment($scope.to_date_mom).format(DT_FORM)
                         "size"       : $scope.cur_dim
-                        "hide_zero"  : $scope.hide_zero
+                        "hide_zero"     : $scope.hide_zero
+                        "merge_devices" : $scope.merge_devices
                     }
                     success : (xml) =>
                         graph_list = []
+                        # graph matrix
+                        graph_mat = {}
                         if parse_xml_response(xml)
                             num_graph = 0
                             for graph in $(xml).find("graph_list > graph")
+                                graph = $(graph)
+                                graph_key = graph.attr("fmt_graph_key")
+                                dev_key = graph.attr("fmt_device_key")
+                                if !(graph_key of graph_mat)
+                                    graph_mat[graph_key] = {}
                                 num_graph++
-                                graph_list.push(new d_graph(num_graph, $(graph)))
+                                cur_graph = new d_graph(num_graph, graph)
+                                graph_mat[graph_key][dev_key] = cur_graph
+                                graph_list.push(cur_graph)
                         $scope.$apply(
+                            $scope.graph_mat = graph_mat
                             $scope.graph_list = graph_list
                         )
-            $scope.$on("$destroy", (aa) ->
+            $scope.get_graph_keys = () ->
+                return (key for key of $scope.graph_mat)
+            $scope.$on("$destroy", () ->
                 #console.log "dest"
             )                
     ]).directive("rrdgraph", ($templateCache) ->
@@ -423,6 +440,11 @@ add_rrd_directive = (mod) ->
             link : (scope, el, attrs) ->
                 if attrs["selectkeys"]?
                     scope.auto_select_keys = attrs["selectkeys"].split(",")
+                if attrs["mergedevices"]?
+                    scope.merge_devices = if parseInt(attrs["mergedevices"]) then true else false
+                if attrs["graphsize"]?
+                    scope.all_dims.push(attrs["graphsize"])
+                    scope.cur_dim = attrs["graphsize"]
                 scope.draw_on_init = attrs["draw"] ? false
                 scope.new_devsel((parseInt(entry) for entry in attrs["devicepk"].split(",")), [])
         }
@@ -441,15 +463,16 @@ add_rrd_directive = (mod) ->
                 # clear error
                 scope.graph.error = false
                 clear = () ->
-                    if myImg
-                        myImg.next().remove()
-                        myImg.remove()
-                        myImg = undefined
+                    if scope.img
+                        scope.img.next().remove()
+                        scope.img.remove()
+                        scope.img = undefined
                 scope.$watch("src", (nv) ->
                     clear()
                     if nv
                         element.after("<img />")
                         myImg = element.next()
+                        scope.img = myImg
                         myImg.attr("src", nv)
                         $(myImg).Jcrop({
                             trackDocument: true
