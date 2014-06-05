@@ -100,17 +100,17 @@ class colorizer(object):
         return t_name, s_dict
 
 class graph_var(object):
-    def __init__(self, rrd_graph, entry, dev_pk, key, dev_name=""):
+    def __init__(self, rrd_graph, entry, unique_id, key, dev_name=""):
         # XML entry
         self.entry = entry
         # graph key (load.1)
         self.key = key
         # device pk
-        self.dev_pk = dev_pk
+        self.unique_id = unique_id
         # device name
         self.dev_name = dev_name
         self.rrd_graph = rrd_graph
-        self.max_info_width = 60 + int((self.rrd_graph.width - 800) / 8)
+        self.max_info_width = max(2, 60 + int((self.rrd_graph.width - 800) / 8))
         self.name = "v{:d}".format(self.rrd_graph.get_def_idx())
     def __getitem__(self, key):
         return self.entry.attrib[key]
@@ -176,36 +176,42 @@ class graph_var(object):
                     self.color,
                     ("{{:<{:d}s}}".format(self.max_info_width)).format(self.info)[:self.max_info_width]),
             )
-        for rep_name, cf in [
-            ("min"  , "MINIMUM"),
-            ("ave"  , "AVERAGE"),
-            ("max"  , "MAXIMUM"),
-            ("last" , "LAST"),
-            ("total", "TOTAL")]:
+        # legend list
+        l_list = self.get_legend_list()
+        for rep_name, cf in l_list:
             c_lines.extend(
                 [
                     "VDEF:{}{}={},{}".format(self.name, rep_name, self.name, cf),
                     "GPRINT:{}{}:<tt>%6.1lf%s</tt>{}".format(
                         self.name,
                         rep_name,
-                        r"\l" if rep_name == "total" else r""
+                        r"\l" if rep_name == l_list[-1][0] else r""
                     ),
                     # "VDEF:{}{}2={},{}".format(self.name, rep_name, self.name, cf),
                     "PRINT:{}{}:{:d}.{}.{}=%.4lf".format(
                         self.name,
                         rep_name,
-                        self.dev_pk,
+                        self.unique_id,
                         self.key.replace(":", r"\:"),
                         cf
                     ),
                 ]
             )
         return c_lines
+    def get_legend_list(self):
+        l_list = [
+            ("min"  , "MINIMUM", 39),
+            ("ave"  , "AVERAGE", 0),
+            ("max"  , "MAXIMUM", 39),
+            ("last" , "LAST"   , 0),
+            ("total", "TOTAL"  , 39)]
+        l_list = [(rep_name, cf) for rep_name, cf, min_width in l_list if self.max_info_width > min_width or True]
+        return l_list
     @property
     def header_line(self):
         return "COMMENT:<tt>{}{}</tt>\\n".format(
-            ("{{:<{:d}s}}".format(self.max_info_width + 2)).format("Description"),
-            "".join(["{:9s}".format(rep_name) for rep_name in ["min", "ave", "max", "latest", "total"]])
+            ("{{:<{:d}s}}".format(self.max_info_width + 2)).format("Description")[:self.max_info_width + 2],
+            "".join(["{:>9s}".format(rep_name) for rep_name, cf in self.get_legend_list()])
         )
 
 class RRDGraph(object):
@@ -232,7 +238,7 @@ class RRDGraph(object):
         timeframe = abs((self.para_dict["end_time"] - self.para_dict["start_time"]).total_seconds())
         graph_size = self.para_dict["size"]
         graph_width, graph_height = [int(value) for value in graph_size.split("x")]
-        self.log("width / height : {:d} x {:d}, timeframe is {}".format(
+        self.log("width / height : {:d} x {:d}, timeframe {}".format(
             graph_width,
             graph_height,
             logging_tools.get_diff_time_str(timeframe),
@@ -251,13 +257,14 @@ class RRDGraph(object):
             )
         )
         graph_key_list = []
+        enumerated_dev_pks = [("{:d}.{:d}".format(_idx, _pk), _pk) for _idx, _pk in enumerate(dev_pks)]
         # one device per graph
         if self.para_dict["merge_devices"]:
-            for g_key, v_list in s_graph_key_dict.iteritems():
-                for dev_pk in dev_pks:
-                    graph_key_list.append((g_key, [dev_pk], v_list))
+            graph_key_list = [(g_key, enumerated_dev_pks, v_list) for g_key, v_list in s_graph_key_dict.iteritems()]
         else:
-            graph_key_list = [(g_key, dev_pks, v_list) for g_key, v_list in s_graph_key_dict.iteritems()]
+            for g_key, v_list in s_graph_key_dict.iteritems():
+                for dev_id, dev_pk in enumerated_dev_pks:
+                    graph_key_list.append((g_key, [(dev_id, dev_pk)], v_list))
         self.log("number of graphs to create: {:d}".format(len(graph_key_list)))
         graph_list = E.graph_list()
         for tlk, dev_list, graph_keys in sorted(graph_key_list):
@@ -295,8 +302,9 @@ class RRDGraph(object):
                     "{:d}".format(int((self.para_dict["start_time"] - dt_1970).total_seconds())),
                     graph_var(self, None, 0, "").header_line,
             ]
+            _unique = 0
             for graph_key in sorted(graph_keys):
-                for cur_pk in dev_list:
+                for cur_id, cur_pk in dev_list:
                     dev_vector = vector_dict[cur_pk]
                     if graph_key.startswith("pde:"):
                         # performance data from icinga
@@ -305,7 +313,8 @@ class RRDGraph(object):
                         # machine vector entry
                         def_xml = dev_vector.find(".//mve[@name='{}']".format(graph_key))
                     if def_xml is not None:
-                        self.defs[(cur_pk, graph_key)] = graph_var(self, def_xml, cur_pk, graph_key, dev_dict[cur_pk]).config
+                        _unique += 1
+                        self.defs[(_unique, graph_key)] = graph_var(self, def_xml, _unique, graph_key, dev_dict[cur_pk]).config
             if self.defs:
                 draw_it = True
                 removed_keys = set()
@@ -314,10 +323,10 @@ class RRDGraph(object):
                     rrd_args = rrd_pre_args + sum(self.defs.values(), [])
                     rrd_args.extend([
                         "--title",
-                        "{} on {} ({}, timeframe is {})".format(
+                        "{} on {} (tf: {})".format(
                             tlk,
-                            dev_dict.get(dev_list[0], "unknown") if len(dev_list) == 1 else logging_tools.get_plural("device", len(dev_list)),
-                            logging_tools.get_plural("result", len(self.defs)),
+                            dev_dict.get(dev_list[0][1], "unknown") if len(dev_list) == 1 else logging_tools.get_plural("device", len(dev_list)),
+                            # logging_tools.get_plural("result", len(self.defs)),
                             logging_tools.get_diff_time_str(timeframe)),
                     ])
                     try:
@@ -341,10 +350,10 @@ class RRDGraph(object):
                             else:
                                 value = None if value == 0.0 else value
                             # extract device pk from key
-                            dev_pk = int(key.split(".")[0])
+                            _unique_id = int(key.split(".")[0])
                             _key = key.split(".", 1)[1]
                             if value is not None:
-                                val_dict.setdefault((dev_pk, _key[:-len(cf) - 1]), {})[cf] = value
+                                val_dict.setdefault((_unique_id, _key[:-len(cf) - 1]), {})[cf] = value
                         empty_keys = set(graph_keys) - set(val_dict.keys())
                         if empty_keys and self.para_dict["hide_zero"]:
                             self.log(
@@ -366,7 +375,15 @@ class RRDGraph(object):
                     # defs present
                     graph_list.append(
                         E.graph(
+                            # not needed right now
+                            # E.devices(
+                            #    *[E.device(pk="{:d}".format(dev_pk)) for dev_pk in dev_list]
+                            # ),
                             rem_key_el,
+                            # graph key
+                            fmt_graph_key="gk_{}".format(tlk),
+                            # devices key
+                            fmt_device_key="dk_{}".format(",".join([dev_id for dev_id, dev_pk in dev_list])),
                             href=rel_file_loc,
                             **dict([(key, "{:d}".format(value) if type(value) in [int, long] else "{:.6f}".format(value)) for key, value in draw_result.iteritems() if not key.startswith("print[")])
                         )
@@ -380,6 +397,7 @@ class RRDGraph(object):
                     )
             else:
                 self.log("no DEFs for graph_key_dict {}".format(tlk), logging_tools.LOG_LEVEL_ERROR)
+        # print etree.tostring(graph_list, pretty_print=True)
         return graph_list
 
 class graph_process(threading_tools.process_obj, threading_tools.operational_error_mixin):
