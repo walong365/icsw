@@ -691,7 +691,6 @@ rms_module.controller("rms_ctrl", ["$scope", "$compile", "$filter", "$templateCa
                 return if rrd_nodes.length then true else false
             scope.show_job_rrd = (event, job) ->
                 rrd_nodes = scope.get_rrd_nodes(job.nodelist)
-                rrd_nodes = ["lemmy", "lemmy"]
                 scope.show_rrd(event, rrd_nodes)
     }
 ).directive("rmsnodeline", ($templateCache, $sce, $compile) ->
