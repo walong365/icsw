@@ -504,7 +504,7 @@ class config_script(models.Model):
     name = models.CharField(max_length=192)
     description = models.CharField(max_length=765, db_column="descr")
     enabled = models.BooleanField(default=True)
-    priority = models.IntegerField(null=True, blank=True)
+    priority = models.IntegerField(null=True, blank=True, default=0)
     config = models.ForeignKey("config", db_column="new_config_id")
     value = models.TextField(blank=True)
     # to be removed

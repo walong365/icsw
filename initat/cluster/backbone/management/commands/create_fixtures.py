@@ -156,7 +156,7 @@ class Command(BaseCommand):
         )
         factories.ConfigScriptHint(
             config_hint=modules_cfg,
-            var_name="client_modules",
+            script_name="client_modules",
             help_text_short="configures module access for clients",
             help_text_html="""
 <h3>Enables the module system on a client</h3>
@@ -173,7 +173,58 @@ path_file = config.add_file_object("/opt/cluster/Modules/init/.modulespath")
 path_file += ["/opt/modulesdir"]
             """,
         )
-
+        # modules export
+        modules_export_cfg = factories.ConfigHint(
+            config_name="modules_export",
+            exact_match=False,
+            config_description="export entry for the modules share",
+            valid_for_meta=True,
+            help_text_short="export entry for the modules share",
+            help_text_html="""
+<h2>Configures an export entry for the modules system</h2>
+Configures a cluster-wide filesystem share for the modules dir. Attach to
+a device to create the according automounter entries
+            """,
+        )
+        factories.ConfigVarHint(
+            config_hint=modules_export_cfg,
+            var_name="export",
+            help_text_short="the directory to export",
+            help_text_html="""
+<h3>Define the directory to export</h3>
+May be relative to the NFS4 root export
+""",
+            ac_flag=True,
+            ac_type="str",
+            ac_description="export path",
+            ac_value="/opt/modulesdir",
+        )
+        factories.ConfigVarHint(
+            config_hint=modules_export_cfg,
+            var_name="import",
+            help_text_short="the import path",
+            help_text_html="""
+<h3>Define the import path</h3>
+Used for automounter maps
+""",
+            ac_flag=True,
+            ac_type="str",
+            ac_description="import path",
+            ac_value="/.opt/modulesdir",
+        )
+        factories.ConfigVarHint(
+            config_hint=modules_export_cfg,
+            var_name="options",
+            help_text_short="the mount options",
+            help_text_html="""
+<h3>Sets the mount options</h3>
+Used for automounter maps
+""",
+            ac_flag=True,
+            ac_type="str",
+            ac_description="options",
+            ac_value="-soft,tcp,lock,rsize=8192,wsize=8192,noac,lookupcache=none,vers=4,port=2049",
+        )
         # export entries
         export_cfg = factories.ConfigHint(
             config_name="export",
