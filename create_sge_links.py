@@ -1,7 +1,7 @@
 #!/usr/bin/python-init -Ot
-# -*- coding: iso-8859-1 -*-
+# -*- coding: utf-8 -*-
 #
-# Copyright (C) 2005,2007,2008,2012 Andreas Lang-Nevyjel, init.at
+# Copyright (C) 2005-2008,2012-2014 Andreas Lang-Nevyjel, init.at
 #
 # Send feedback to: <lang-nevyjel@init.at>
 # 
@@ -21,11 +21,12 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
 
-import sys
-import os
-import os.path
+""" create links for SGE """
+
 import commands
+import os
 import shutil
+import sys
 
 def read_base_config():
     files_ok = True
