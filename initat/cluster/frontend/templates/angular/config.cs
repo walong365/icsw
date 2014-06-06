@@ -452,8 +452,15 @@ config_ctrl = config_module.controller("config_ctrl", ["$scope", "$compile", "$f
                 $scope.catalog_edit.create_list = $scope.config_catalogs
                 $scope.catalog_edit.delete_list = $scope.config_catalogs
                 $scope.config_hints = {}
+                $scope.soft_config_hints = []
+                # configs found (positive cache)
+                $scope.resolved_config_hints = {}
+                # configs not found (negative cache)
+                $scope.no_config_hints = {}
                 for entry in data[4]
                     $scope.config_hints[entry.config_name] = entry
+                    if not entry.exact_match
+                        $scope.soft_config_hints.push(entry)
                     entry.var_lut = {}
                     for vh in entry.config_var_hint_set
                         entry.var_lut[vh.var_name] = vh
@@ -552,30 +559,55 @@ config_ctrl = config_module.controller("config_ctrl", ["$scope", "$compile", "$f
                 obj._selected = true
                 $scope.selected_objects.push(obj)
         # hint functions
+        $scope.re_compare = (_array, _input) ->
+            console.log _array, _input, $scope.config_hints[_array].exact_match
+            return true
+            cur_pat = new RegExp(_array, "i")
+            console.log cur_pat, _input
+            return cur_pat.test(_input)
         $scope.get_config_hints = () ->
             return (entry for entry of $scope.config_hints)
-        $scope.get_name_filter = () ->
-            return if $scope._edit_obj.name? then $scope._edit_obj.name else ""
+        $scope.config_selected_vt = (item, model, label) ->
+            if item of $scope.config_hints
+                # set description
+                if not $scope._edit_obj.description
+                    $scope._edit_obj.description = $scope.config_hints[item].config_description
         $scope.get_config_var_hints = (config) ->
             if config and config.name of $scope.config_hints
                 return (entry for entry of $scope.config_hints[config.name].var_lut)
             else
                 return []
         $scope.config_has_info = (config) ->
-            return config.name of $scope.config_hints
+            if config.name of $scope.resolved_config_hints
+                return true
+            else if config.name of $scope.no_config_hints
+                return false 
+            else if config.name of $scope.config_hints
+                $scope.resolved_config_hints[config.name] = $scope.config_hints[config.name]
+                return true
+            else
+                # soft match
+                found_names = _.sortBy((entry.config_name for entry in $scope.soft_config_hints when new RegExp(entry.config_name).test(config.name)), (_str) -> return -_str.length)
+                if found_names.length
+                    found_name = found_names[0]
+                    $scope.resolved_config_hints[config.name] = $scope.config_hints[found_name]
+                    return true
+                else
+                    $scope.no_config_hints[config.name] = true
+                    return false
         $scope.get_config_help_text = (config) ->
             if $scope.config_has_info(config) 
-                return $scope.config_hints[config.name].help_text_short or "no short help"
+                return $scope.resolved_config_hints[config.name].help_text_short or "no short help"
             else
                 return ""
         $scope.var_has_info = (config, cvar) ->
-            if config.name of $scope.config_hints
-                return cvar.name of $scope.config_hints[config.name].var_lut
+            if config.name of $scope.resolved_config_hints
+                return cvar.name of $scope.resolved_config_hints[config.name].var_lut
             else
                 return false
         $scope.get_var_help_text = (config, cvar) ->
             if $scope.var_has_info(config, cvar)
-                return $scope.config_hints[config.name].var_lut[cvar.name].help_text_short or "no short help"
+                return $scope.resolved_config_hints[config.name].var_lut[cvar.name].help_text_short or "no short help"
             else
                 return ""
         $scope.show_config_help = () ->
