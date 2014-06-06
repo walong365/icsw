@@ -157,6 +157,7 @@ class Command(BaseCommand):
         # export entries
         export_cfg = factories.ConfigHint(
             config_name="export",
+            exact_match=False,
             config_description="export entry (share)",
             valid_for_meta=True,
             help_text_short="creates an export entry",
@@ -194,6 +195,58 @@ Used for automounter maps
         )
         factories.ConfigVarHint(
             config_hint=export_cfg,
+            var_name="options",
+            help_text_short="the mount options",
+            help_text_html="""
+<h3>Sets the mount options</h3>
+Used for automounter maps
+""",
+            ac_flag=True,
+            ac_type="str",
+            ac_description="options",
+            ac_value="-soft,tcp,lock,rsize=8192,wsize=8192,noac,lookupcache=none,vers=4,port=2049",
+        )
+        # home export entries
+        home_export_cfg = factories.ConfigHint(
+            config_name="home_export",
+            exact_match=False,
+            config_description="export entry (share) for home",
+            valid_for_meta=True,
+            help_text_short="creates an export entry for home",
+            help_text_html="""
+<h2>Configures an export entry (for sharing)</h2>
+Configures a cluster-wide filesystem share. Attach to
+a device to create the according automounter entries
+            """,
+        )
+        factories.ConfigVarHint(
+            config_hint=home_export_cfg,
+            var_name="homeexport",
+            help_text_short="the directory to export",
+            help_text_html="""
+<h3>Define the directory to export</h3>
+May be relative to the NFS4 root export
+""",
+            ac_flag=True,
+            ac_type="str",
+            ac_description="export path",
+            ac_value="/export_change_me",
+        )
+        factories.ConfigVarHint(
+            config_hint=home_export_cfg,
+            var_name="createdir",
+            help_text_short="where to create the homes",
+            help_text_html="""
+<h3>Define the creation path</h3>
+Used by the clusterserver, can be different from export_path (for example when NFSv4 is used)
+""",
+            ac_flag=True,
+            ac_type="str",
+            ac_description="create path",
+            ac_value="/create_change_me",
+        )
+        factories.ConfigVarHint(
+            config_hint=home_export_cfg,
             var_name="options",
             help_text_short="the mount options",
             help_text_html="""

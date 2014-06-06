@@ -301,12 +301,15 @@ def config_post_save(sender, **kwargs):
                 my_hint = ch_model.objects.get(Q(config_name=cur_inst.name))
             except ch_model.DoesNotExist:
                 # soft search
-                print "***", cur_inst.name
-                my_hint = None
-            print "+++", my_hint
+                nem_names = ch_model.objects.filter(Q(exact_match=False)).values_list("config_name", flat=True)
+                m_list = [_entry for _entry in nem_names if cur_inst.name.count(_entry)]
+                if m_list:
+                    m_list = [_name for _len, _name in sorted([(-len(_entry), _entry) for _entry in m_list])]
+                    my_hint = ch_model.objects.get(Q(config_name=m_list[0]))
+                else:
+                    my_hint = None
             if my_hint is not None:
                 ac_vars = my_hint.config_var_hint_set.filter(ac_flag=True)
-                print len(ac_vars)
                 for ac_var in ac_vars:
 
                     if ac_var.ac_type == "str":
@@ -325,64 +328,7 @@ def config_post_save(sender, **kwargs):
                     new_var.name = ac_var.var_name
                     add_list.append(new_var)
             if False:
-                if cur_inst.name.count("export"):
-                    if cur_inst.name.count("home"):
-                        # create a homedir export
-                        # add export / options config_vars
-                        add_list = [
-                            config_str(
-                                name="homeexport",
-                                description="export path for automounter maps",
-                                value="/export_change_me"),
-                            config_str(
-                                name="createdir",
-                                description="create path for directory creation",
-                                value="/create_change_me"),
-                            config_str(
-                                name="options",
-                                description="Options",
-                                value="-soft,tcp,lock,rsize=8192,wsize=8192,noac,lookupcache=none,vers=4,port=2049"
-                            ),
-                            config_str(
-                                name="node_postfix",
-                                description="postfix (to change network interface)",
-                                value=""
-                            )
-                        ]
-                    else:
-                        # create a normal export
-                        # add import / export / options config_vars
-                        add_list = [
-                            config_str(
-                                name="export",
-                                description="export path",
-                                value="/export_change_me"),
-                            config_str(
-                                name="import",
-                                description="import path (for automounter)",
-                                value="/import_change_me"),
-                            config_str(
-                                name="options",
-                                description="Options",
-                                value="-soft,tcp,lock,rsize=8192,wsize=8192,noac,lookupcache=none,vers=4,port=2049"
-                                )
-                        ]
-                elif cur_inst.name == "ldap_server":
-                    add_list = [
-                        config_str(
-                            name="base_dn",
-                            description="Base DN",
-                            value="dc=test,dc=ac,dc=at"),
-                        config_str(
-                            name="admin_cn",
-                            description="Admin CN (relative to base_dn)",
-                            value="admin"),
-                        config_str(
-                            name="root_passwd",
-                            description="LDAP Admin passwd",
-                            value="changeme"),
-                    ]
-                elif cur_inst.name == "name_server":
+                if cur_inst.name == "name_server":
                     add_list = [
                         config_str(
                             name="FORWARDER_1",

@@ -159,14 +159,14 @@ class ConfigHint(factory.django.DjangoModelFactory):
             self.save()
     @factory.post_generation
     def exact_match(self, create, extracted, **kwargs):
-        extracted = extracted or True
+        extracted = True if extracted is None else extracted
         if self.exact_match != extracted:
             self.exact_match = extracted
             self.save()
 
 class ConfigVarHint(factory.django.DjangoModelFactory):
     FACTORY_FOR = config_var_hint
-    FACTORY_DJANGO_GET_OR_CREATE = ("var_name",)
+    FACTORY_DJANGO_GET_OR_CREATE = ("var_name", "config_hint")
     help_text_short = ""
     help_text_html = ""
     ac_flag = False
