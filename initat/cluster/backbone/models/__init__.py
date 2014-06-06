@@ -294,85 +294,113 @@ def config_post_save(sender, **kwargs):
     if not kwargs["raw"] and "instance" in kwargs:
         cur_inst = kwargs["instance"]
         if kwargs["created"] and getattr(cur_inst, "create_default_entries", True):
-            hints = get_model("backbone", "config_hint")
-            print hints.objects.all()
+            # list of vars to create
             add_list = []
-            if cur_inst.name.count("export"):
-                if cur_inst.name.count("home"):
-                    # create a homedir export
-                    # add export / options config_vars
-                    add_list = [
-                        config_str(
-                            name="homeexport",
-                            description="export path for automounter maps",
-                            value="/export_change_me"),
-                        config_str(
-                            name="createdir",
-                            description="create path for directory creation",
-                            value="/create_change_me"),
-                        config_str(
-                            name="options",
-                            description="Options",
-                            value="-soft,tcp,lock,rsize=8192,wsize=8192,noac,lookupcache=none,vers=4,port=2049"
-                        ),
-                        config_str(
-                            name="node_postfix",
-                            description="postfix (to change network interface)",
-                            value=""
+            ch_model = get_model("backbone", "config_hint")
+            try:
+                my_hint = ch_model.objects.get(Q(config_name=cur_inst.name))
+            except ch_model.DoesNotExist:
+                # soft search
+                print "***", cur_inst.name
+                my_hint = None
+            print "+++", my_hint
+            if my_hint is not None:
+                ac_vars = my_hint.config_var_hint_set.filter(ac_flag=True)
+                print len(ac_vars)
+                for ac_var in ac_vars:
+
+                    if ac_var.ac_type == "str":
+                        new_var = config_str(
+                            value=ac_var.ac_value,
                         )
-                    ]
-                else:
-                    # create a normal export
-                    # add import / export / options config_vars
+                    elif ac_var.ac_type == "int":
+                        new_var = config_int(
+                            value=int(ac_var.ac_value),
+                        )
+                    elif ac_var.ac_type == "bool":
+                        new_var = config_bool(
+                            value=True if ac_var.ac_value.lower() in ["1", "t", "yes", "true"] else False,
+                        )
+                    new_var.description = ac_var.ac_description
+                    new_var.name = ac_var.var_name
+                    add_list.append(new_var)
+            if False:
+                if cur_inst.name.count("export"):
+                    if cur_inst.name.count("home"):
+                        # create a homedir export
+                        # add export / options config_vars
+                        add_list = [
+                            config_str(
+                                name="homeexport",
+                                description="export path for automounter maps",
+                                value="/export_change_me"),
+                            config_str(
+                                name="createdir",
+                                description="create path for directory creation",
+                                value="/create_change_me"),
+                            config_str(
+                                name="options",
+                                description="Options",
+                                value="-soft,tcp,lock,rsize=8192,wsize=8192,noac,lookupcache=none,vers=4,port=2049"
+                            ),
+                            config_str(
+                                name="node_postfix",
+                                description="postfix (to change network interface)",
+                                value=""
+                            )
+                        ]
+                    else:
+                        # create a normal export
+                        # add import / export / options config_vars
+                        add_list = [
+                            config_str(
+                                name="export",
+                                description="export path",
+                                value="/export_change_me"),
+                            config_str(
+                                name="import",
+                                description="import path (for automounter)",
+                                value="/import_change_me"),
+                            config_str(
+                                name="options",
+                                description="Options",
+                                value="-soft,tcp,lock,rsize=8192,wsize=8192,noac,lookupcache=none,vers=4,port=2049"
+                                )
+                        ]
+                elif cur_inst.name == "ldap_server":
                     add_list = [
                         config_str(
-                            name="export",
-                            description="export path",
-                            value="/export_change_me"),
+                            name="base_dn",
+                            description="Base DN",
+                            value="dc=test,dc=ac,dc=at"),
                         config_str(
-                            name="import",
-                            description="import path (for automounter)",
-                            value="/import_change_me"),
+                            name="admin_cn",
+                            description="Admin CN (relative to base_dn)",
+                            value="admin"),
                         config_str(
-                            name="options",
-                            description="Options",
-                            value="-soft,tcp,lock,rsize=8192,wsize=8192,noac,lookupcache=none,vers=4,port=2049"
-                            )
+                            name="root_passwd",
+                            description="LDAP Admin passwd",
+                            value="changeme"),
                     ]
-            elif cur_inst.name == "ldap_server":
-                add_list = [
-                    config_str(
-                        name="base_dn",
-                        description="Base DN",
-                        value="dc=test,dc=ac,dc=at"),
-                    config_str(
-                        name="admin_cn",
-                        description="Admin CN (relative to base_dn)",
-                        value="admin"),
-                    config_str(
-                        name="root_passwd",
-                        description="LDAP Admin passwd",
-                        value="changeme"),
-                ]
-            elif cur_inst.name == "name_server":
-                add_list = [
-                    config_str(
-                        name="FORWARDER_1",
-                        description="first forward",
-                        value="192.168.1.1"),
-                    config_str(
-                        name="USER",
-                        description="named user",
-                        value="named"),
-                    config_str(
-                        name="GROUP",
-                        description="named group",
-                        value="named"),
-                    config_str(
-                        name="SECRET",
-                        description="ndc secret",
-                        value="h8DM8opPS3ThdswucAoUqQ=="),
-                ]
+                elif cur_inst.name == "name_server":
+                    add_list = [
+                        config_str(
+                            name="FORWARDER_1",
+                            description="first forward",
+                            value="192.168.1.1"),
+                        config_str(
+                            name="USER",
+                            description="named user",
+                            value="named"),
+                        config_str(
+                            name="GROUP",
+                            description="named group",
+                            value="named"),
+                        config_str(
+                            name="SECRET",
+                            description="ndc secret",
+                            value="h8DM8opPS3ThdswucAoUqQ=="),
+                    ]
             for cur_var in add_list:
                 cur_var.config = cur_inst
                 cur_var.save()

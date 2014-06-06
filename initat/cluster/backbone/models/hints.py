@@ -16,6 +16,7 @@ class config_hint(models.Model):
     config_name = models.CharField(max_length=192, blank=False, unique=True)
     config_description = models.CharField(max_length=192, default="")
     valid_for_meta = models.BooleanField(default=True)
+    exact_match = models.BooleanField(default=True)
     # short and long help text
     help_text_short = models.TextField(default="")
     help_text_html = models.TextField(default="")
@@ -36,7 +37,7 @@ class config_var_hint(models.Model):
     ac_type = models.CharField(default="", max_length=64)
     ac_description = models.CharField(default="description", max_length=128)
     # will be casted to int, bool
-    ac_value = models.CharField(default="", max_length=64)
+    ac_value = models.TextField(default="")
     date = models.DateTimeField(auto_now_add=True)
     class Meta:
         app_label = "backbone"

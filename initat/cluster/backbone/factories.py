@@ -136,6 +136,11 @@ class ClusterLicense(factory.django.DjangoModelFactory):
 class ConfigHint(factory.django.DjangoModelFactory):
     FACTORY_FOR = config_hint
     FACTORY_DJANGO_GET_OR_CREATE = ("config_name",)
+    help_text_short = ""
+    help_text_html = ""
+    config_description = ""
+    valid_for_meta = False
+    exact_match = True
     @factory.post_generation
     def help_text_short(self, create, extracted, **kwargs):
         if self.help_text_short != extracted:
@@ -148,35 +153,52 @@ class ConfigHint(factory.django.DjangoModelFactory):
             self.save()
     @factory.post_generation
     def config_description(self, create, extracted, **kwargs):
+        extracted = extracted or ""
         if self.config_description != extracted:
             self.config_description = extracted
+            self.save()
+    @factory.post_generation
+    def exact_match(self, create, extracted, **kwargs):
+        extracted = extracted or True
+        if self.exact_match != extracted:
+            self.exact_match = extracted
             self.save()
 
 class ConfigVarHint(factory.django.DjangoModelFactory):
     FACTORY_FOR = config_var_hint
     FACTORY_DJANGO_GET_OR_CREATE = ("var_name",)
+    help_text_short = ""
+    help_text_html = ""
+    ac_flag = False
+    ac_description = ""
+    ac_value = ""
     @factory.post_generation
     def help_text_short(self, create, extracted, **kwargs):
+        extracted = extracted or ""
         if self.help_text_short != extracted:
             self.help_text_short = extracted
             self.save()
     @factory.post_generation
     def help_text_html(self, create, extracted, **kwargs):
+        extracted = extracted or ""
         if self.help_text_html != extracted:
             self.help_text_html = extracted
             self.save()
     @factory.post_generation
-    def ac_type(self, create, extracted, **kwargs):
-        if self.ac_type != extracted:
-            self.ac_type = extracted
+    def ac_flag(self, create, extracted, **kwargs):
+        extracted = extracted or False
+        if self.ac_flag != extracted:
+            self.ac_flag = extracted
             self.save()
     @factory.post_generation
     def ac_description(self, create, extracted, **kwargs):
+        extracted = extracted or ""
         if self.ac_description != extracted:
             self.ac_description = extracted
             self.save()
     @factory.post_generation
     def ac_value(self, create, extracted, **kwargs):
+        extracted = extracted or ""
         if self.ac_value != extracted:
             self.ac_value = extracted
             self.save()

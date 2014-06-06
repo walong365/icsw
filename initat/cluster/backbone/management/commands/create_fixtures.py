@@ -140,10 +140,11 @@ class Command(BaseCommand):
         server_cfg = factories.ConfigHint(
             config_name="server",
             valid_for_meta=False,
+            config_description="server device",
             help_text_short="activate device as a server",
             help_text_html="""
 <h2>Use this option to activate server functionality</h2>
-"""
+            """,
         )
         modules_cfg = factories.ConfigHint(
             config_name="modules_system",
@@ -156,6 +157,7 @@ class Command(BaseCommand):
         # export entries
         export_cfg = factories.ConfigHint(
             config_name="export",
+            config_description="export entry (share)",
             valid_for_meta=True,
             help_text_short="creates an export entry",
             help_text_html="""
@@ -172,7 +174,7 @@ a device to create the according automounter entries
 <h3>Define the directory to export</h3>
 May be relative to the NFS4 root export
 """,
-            ac_create=True,
+            ac_flag=True,
             ac_type="str",
             ac_description="export path",
             ac_value="/export",
@@ -185,7 +187,7 @@ May be relative to the NFS4 root export
 <h3>Define the import path</h3>
 Used for automounter maps
 """,
-            ac_create=True,
+            ac_flag=True,
             ac_type="str",
             ac_description="import path",
             ac_value="/import",
@@ -198,7 +200,7 @@ Used for automounter maps
 <h3>Sets the mount options</h3>
 Used for automounter maps
 """,
-            ac_create=True,
+            ac_flag=True,
             ac_type="str",
             ac_description="options",
             ac_value="-soft,tcp,lock,rsize=8192,wsize=8192,noac,lookupcache=none,vers=4,port=2049",
@@ -217,19 +219,19 @@ The following server command are available:
 </ul>
 """
         )
-        _base_dn_hint = factories.ConfigVarHint(
+        factories.ConfigVarHint(
             config_hint=ldap_server_cfg,
             var_name="base_dn",
             help_text_short="define LDAP base DN",
             help_text_html="""
 <h3>Define the base DN for the LDAP sync</h3>
 """,
-            ac_create=True,
+            ac_flag=True,
             ac_type="str",
             ac_description="Base DN",
             ac_value="dc=test,dc=ac,dc=at",
         )
-        _admin_cn_hint = factories.ConfigVarHint(
+        factories.ConfigVarHint(
             config_hint=ldap_server_cfg,
             var_name="admin_cn",
             help_text_short="CN of the admin user",
@@ -237,12 +239,12 @@ The following server command are available:
 <h3>CN of the admin user</h3>
 Enter without 'cn=', in most cases admin is enough
 """,
-            ac_create=True,
+            ac_flag=True,
             ac_type="str",
             ac_description="admin CN (relative to base DN without 'cn=')",
             ac_value="admin",
         )
-        _root_passwd_hint = factories.ConfigVarHint(
+        factories.ConfigVarHint(
             config_hint=ldap_server_cfg,
             var_name="root_passwd",
             help_text_short="password of the admin user",
@@ -250,12 +252,12 @@ Enter without 'cn=', in most cases admin is enough
 <h3>Password of the admin user</h3>
 Stored as cleartext password, handle with care.
 """,
-            ac_create=True,
+            ac_flag=True,
             ac_type="str",
             ac_description="LDAP admin password",
             ac_value="changeme",
         )
-        _user_object_classes = factories.ConfigVarHint(
+        factories.ConfigVarHint(
             config_hint=ldap_server_cfg,
             var_name="user_object_classes",
             help_text_short="object classes for user objects",
@@ -272,7 +274,7 @@ for user objects. Can contain one or more of
 </ul>
 """
         )
-        _group_object_classes = factories.ConfigVarHint(
+        factories.ConfigVarHint(
             config_hint=ldap_server_cfg,
             var_name="group_object_classes",
             help_text_short="object classes for group objects",
@@ -287,7 +289,7 @@ for group objects. Can contain one or more of
 </ul>
 """
         )
-        _group_dn_template = factories.ConfigVarHint(
+        factories.ConfigVarHint(
             config_hint=ldap_server_cfg,
             var_name="group_dn_template",
             help_text_short="template to create group dn",
@@ -298,7 +300,7 @@ cn={GROUPNAME}<br>
 where GROUPNAME extends to the name of the group.
 """
         )
-        _user_dn_template = factories.ConfigVarHint(
+        factories.ConfigVarHint(
             config_hint=ldap_server_cfg,
             var_name="user_dn_template",
             help_text_short="template to create user dn",
@@ -309,7 +311,7 @@ uid={USERNAME}<br>
 where USERNAME extends to the login name of the user.
 """
         )
-        _group_base_template = factories.ConfigVarHint(
+        factories.ConfigVarHint(
             config_hint=ldap_server_cfg,
             var_name="group_base_template",
             help_text_short="template to create the group base dn",
@@ -320,7 +322,7 @@ of the group_dn_template plus the group_base template:<br>
 GROUP_DN={GROUP_DN_TEMPLATE},{GROUP_BASE_TEMPLATE}
 """
         )
-        _user_base_template = factories.ConfigVarHint(
+        factories.ConfigVarHint(
             config_hint=ldap_server_cfg,
             var_name="user_base_template",
             help_text_short="template to create the user base dn",
