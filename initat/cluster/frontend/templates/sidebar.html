@@ -245,7 +245,12 @@ sidebar_base = sidebar_module.controller("sidebar_base", ["$scope", "$compile", 
             cur_sel = $scope.get_active_selection($scope.active_tab)
             $scope.set_active_selection(t_type, cur_sel)
             $scope.active_tab = t_type
-            store_user_var("sidebar_mode", {"c" : "category", "f" : "fqdn", "g" : "group"}[$scope.active_tab], "str")
+            call_ajax
+                url  : "{% url 'user:set_user_var' %}"
+                data : 
+                    key   : "sidebar_mode"
+                    value : {"c" : "category", "f" : "fqdn", "g" : "group"}[$scope.active_tab]
+                    type  : "str"
         $scope.selection_changed = () ->
             cur_sel = $scope.get_active_selection($scope.active_tab)
             # cast to string to compare the arrays

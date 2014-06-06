@@ -12,11 +12,6 @@ remove_by_idx = (in_array, idx) ->
             remove_from_array(in_array, c_idx)
             break
 
-remove_from_array = (in_array, from, to) ->
-    rest = in_array.slice((to | from) + 1 || in_array.length)
-    in_array.length = if from < 0 then in_array.length + from else from
-    return in_array.push.apply(in_array, rest)
-
 class ajax_struct
     constructor: (@top_div_name) ->
         @ajax_uuid = 0
@@ -99,84 +94,9 @@ parse_xml_response = (xml, min_level) ->
             noty({"text" : "error parsing response", "type" : "error", "timeout" : false})
     return success
 
-# create a dictionary from a list of elements
-create_dict_unserialized = (top_el, id_prefix, use_name=false, django_save=false) ->
-    in_list = top_el.find("input[id^='#{id_prefix}'], select[id^='#{id_prefix}'], textarea[id^='#{id_prefix}']")
-    out_dict = {}
-    in_list.each (idx, cur_el) ->
-        cur_el = $(cur_el)
-        if use_name
-            key = cur_el.attr("name")
-        else
-            key = cur_el.attr("id")
-        if cur_el.prop("tagName") == "TEXTAREA"
-            if cur_el.is(":visible")
-                out_dict[key] = cur_el.val()
-            else
-                out_dict[key] = cur_el.text()
-        else if cur_el.is(":checkbox")
-            if django_save
-                if cur_el.is(":checked")
-                    out_dict[key] = "1"
-            else
-                out_dict[key] = if cur_el.is(":checked") then "1" else "0"
-        else if cur_el.prop("tagName") == "SELECT" and cur_el.attr("multiple")
-            sel_field = []
-            cur_el.find("option:selected").each (idx, opt_field) ->
-                sel_field.push($(opt_field).attr("value"))
-            if django_save
-                out_dict[key] = sel_field
-            else
-                out_dict[key] = sel_field.join("::")
-        else
-            out_dict[key] = cur_el.attr("value")
-    return out_dict
-    
-create_dict = (top_el, id_prefix, use_name=false, django_save=false) ->
-    out_dict = create_dict_unserialized(top_el, id_prefix, use_name, django_save)
-    return $.param(out_dict, traditional=true)
-
-store_user_var = (var_name, var_value, var_type="str") -> 
-    call_ajax
-        url  : "{% url 'user:set_user_var' %}"
-        data : 
-            key   : var_name
-            value : var_value
-            type  : var_type
-            
-load_user_var = (var_name) ->
-    ret_dict = {}
-    call_ajax
-        url     : "{% url 'user:get_user_var' %}"
-        data    :
-            var_name : var_name
-        async   : false
-        success : (xml) ->
-            if parse_xml_response(xml)
-                #console.log xml
-                $(xml).find("user_variable").each (idx, cur_var) =>
-                    cur_var = $(cur_var)
-                    var_name = cur_var.attr("name")
-                    var_type = cur_var.attr("type")
-                    switch var_type
-                        when "s"
-                            ret_dict[var_name] = cur_var.text()
-                        when "i"
-                            ret_dict[var_name] = parseInt(cur_var.text())
-                        when "b"
-                            ret_dict[var_name] = if cur_var.text() == "True" then true else false
-                    # very important for CS
-                    true
-    return ret_dict
-
-root.parse_xml_response       = parse_xml_response
-root.store_user_var           = store_user_var
-root.load_user_var            = load_user_var
-root.create_dict              = create_dict
-root.create_dict_unserialized = create_dict_unserialized
-root.my_ajax_struct           = my_ajax_struct
-root.call_ajax                = call_ajax
-root.remove_by_idx = remove_by_idx
+root.parse_xml_response = parse_xml_response
+root.my_ajax_struct     = my_ajax_struct
+root.call_ajax          = call_ajax
 
 {% endinlinecoffeescript %}
 
