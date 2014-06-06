@@ -161,6 +161,7 @@ class db_prefetch_mixin(object):
     def _config_hint_prefetch(self):
         return [
             "config_var_hint_set",
+            "config_script_hint_set",
         ]
     def _mon_dist_master_prefetch(self):
         return ["mon_dist_slave_set"]
