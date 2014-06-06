@@ -146,6 +146,11 @@ class ConfigHint(factory.django.DjangoModelFactory):
         if self.help_text_html != extracted:
             self.help_text_html = extracted
             self.save()
+    @factory.post_generation
+    def config_description(self, create, extracted, **kwargs):
+        if self.config_description != extracted:
+            self.config_description = extracted
+            self.save()
 
 class ConfigVarHint(factory.django.DjangoModelFactory):
     FACTORY_FOR = config_var_hint
@@ -160,4 +165,18 @@ class ConfigVarHint(factory.django.DjangoModelFactory):
         if self.help_text_html != extracted:
             self.help_text_html = extracted
             self.save()
-
+    @factory.post_generation
+    def ac_type(self, create, extracted, **kwargs):
+        if self.ac_type != extracted:
+            self.ac_type = extracted
+            self.save()
+    @factory.post_generation
+    def ac_description(self, create, extracted, **kwargs):
+        if self.ac_description != extracted:
+            self.ac_description = extracted
+            self.save()
+    @factory.post_generation
+    def ac_value(self, create, extracted, **kwargs):
+        if self.ac_value != extracted:
+            self.ac_value = extracted
+            self.save()

@@ -5,7 +5,7 @@ from django.core.cache import cache
 from django.core.exceptions import ValidationError, ImproperlyConfigured
 from django.core.signals import request_finished, request_started
 from django.db import models
-from django.db.models import Q, signals
+from django.db.models import Q, signals, get_model
 from django.dispatch import receiver
 from django.utils.functional import memoize
 from initat.cluster.backbone.middleware import thread_local_middleware, _thread_local
@@ -294,6 +294,8 @@ def config_post_save(sender, **kwargs):
     if not kwargs["raw"] and "instance" in kwargs:
         cur_inst = kwargs["instance"]
         if kwargs["created"] and getattr(cur_inst, "create_default_entries", True):
+            hints = get_model("backbone", "config_hint")
+            print hints.objects.all()
             add_list = []
             if cur_inst.name.count("export"):
                 if cur_inst.name.count("home"):
