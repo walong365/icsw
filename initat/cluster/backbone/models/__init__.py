@@ -295,7 +295,7 @@ def config_post_save(sender, **kwargs):
         cur_inst = kwargs["instance"]
         if kwargs["created"] and getattr(cur_inst, "create_default_entries", True):
             # list of vars to create
-            add_list = []
+            var_add_list, script_add_list = ([], [])
             ch_model = get_model("backbone", "config_hint")
             try:
                 my_hint = ch_model.objects.get(Q(config_name=cur_inst.name))
@@ -311,7 +311,6 @@ def config_post_save(sender, **kwargs):
             if my_hint is not None:
                 ac_vars = my_hint.config_var_hint_set.filter(ac_flag=True)
                 for ac_var in ac_vars:
-
                     if ac_var.ac_type == "str":
                         new_var = config_str(
                             value=ac_var.ac_value,
@@ -326,10 +325,19 @@ def config_post_save(sender, **kwargs):
                         )
                     new_var.description = ac_var.ac_description
                     new_var.name = ac_var.var_name
-                    add_list.append(new_var)
+                    var_add_list.append(new_var)
+                ac_scripts = my_hint.config_script_hint_set.filter(ac_flag=True)
+                for ac_script in ac_scripts:
+                    script_add_list.append(
+                        config_script(
+                                name=ac_script.script_name,
+                                description=ac_script.ac_description,
+                                value=ac_script.ac_value,
+                            )
+                        )
             if False:
                 if cur_inst.name == "name_server":
-                    add_list = [
+                    _add_list = [
                         config_str(
                             name="FORWARDER_1",
                             description="first forward",
@@ -347,9 +355,9 @@ def config_post_save(sender, **kwargs):
                             description="ndc secret",
                             value="h8DM8opPS3ThdswucAoUqQ=="),
                     ]
-            for cur_var in add_list:
-                cur_var.config = cur_inst
-                cur_var.save()
+            for _cvs in var_add_list + script_add_list:
+                _cvs.config = cur_inst
+                _cvs.save()
         parent_list = []
         cur_parent = cur_inst
         while True:

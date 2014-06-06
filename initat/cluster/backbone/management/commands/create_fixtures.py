@@ -149,11 +149,31 @@ class Command(BaseCommand):
         modules_cfg = factories.ConfigHint(
             config_name="modules_system",
             valid_for_meta=True,
-            help_text_short="active module system",
+            help_text_short="activate module system",
             help_text_html="""
 <h2>Enable the module system<h2>
             """,
         )
+        factories.ConfigScriptHint(
+            config_hint=modules_cfg,
+            var_name="client_modules",
+            help_text_short="configures module access for clients",
+            help_text_html="""
+<h3>Enables the module system on a client</h3>
+May be relative to the NFS4 root export
+""",
+            ac_flag=True,
+            ac_description="config script",
+            ac_value="""
+# add links
+config.add_link_object("/opt/cluster/Modules/bin/modulecmd", "/opt/cluster/bin/modulecmd")
+config.add_link_object("/etc/profile.d/modules.sh", "/opt/cluster/Modules/init/bash")
+config.add_link_object("/opt/modulesdir", "/.opt/modulesdir")
+path_file = config.add_file_object("/opt/cluster/Modules/init/.modulespath")
+path_file += ["/opt/modulesdir"]
+            """,
+        )
+
         # export entries
         export_cfg = factories.ConfigHint(
             config_name="export",
