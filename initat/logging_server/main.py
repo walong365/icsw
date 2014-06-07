@@ -286,7 +286,8 @@ class main_process(threading_tools.process_pool):
             if force or (t_diff < 0 or t_diff > 60):
                 subject = "Python error for pid {:d} on {}@{} ({})".format(
                     ep,
-                    global_config["LONG_HOST_NAME"], c_name,
+                    global_config["LONG_HOST_NAME"],
+                    c_name,
                     process_tools.get_machine_name())
                 msg_body = "\n".join(["Processinfo {}".format(self._get_process_info(es))] +
                                      ["{:3d} {}".format(line_num + 1, line) for line_num, line in enumerate(es["errors"])])
