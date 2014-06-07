@@ -59,6 +59,7 @@ NEEDED_PACKAGES = [
     "loadmodules",
     "python-modules-base",
     "child",
+    "modules-init",
 ]
 
 START_SCRIPTS = [
@@ -66,7 +67,6 @@ START_SCRIPTS = [
     "logging-server",
     "meta-server",
     "host-monitoring",
-    "gmond",
     "package-client",
 ]
 
