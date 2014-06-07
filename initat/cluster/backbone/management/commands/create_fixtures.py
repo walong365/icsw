@@ -148,6 +148,7 @@ class Command(BaseCommand):
         )
         modules_cfg = factories.ConfigHint(
             config_name="modules_system",
+            config_description="modules system (client part)",
             valid_for_meta=True,
             help_text_short="activate module system",
             help_text_html="""
@@ -165,19 +166,15 @@ May be relative to the NFS4 root export
             ac_flag=True,
             ac_description="config script",
             ac_value="""
-# add links
-config.add_link_object("/opt/cluster/Modules/bin/modulecmd", "/opt/cluster/bin/modulecmd")
-config.add_link_object("/etc/profile.d/modules.sh", "/opt/cluster/Modules/init/bash")
-config.add_link_object("/opt/modulesdir", "/.opt/modulesdir")
-path_file = config.add_file_object("/opt/cluster/Modules/init/.modulespath")
-path_file += ["/opt/modulesdir"]
+# add link
+config.add_link_object("/opt/modulefiles", "/.opt/modulefiles")
             """,
         )
         # modules export
         modules_export_cfg = factories.ConfigHint(
             config_name="modules_export",
             exact_match=False,
-            config_description="export entry for the modules share",
+            config_description="export entry for the modules share (server)",
             valid_for_meta=True,
             help_text_short="export entry for the modules share",
             help_text_html="""
@@ -197,7 +194,7 @@ May be relative to the NFS4 root export
             ac_flag=True,
             ac_type="str",
             ac_description="export path",
-            ac_value="/opt/modulesdir",
+            ac_value="/opt/cluster/Modules/modulefiles",
         )
         factories.ConfigVarHint(
             config_hint=modules_export_cfg,
@@ -210,7 +207,7 @@ Used for automounter maps
             ac_flag=True,
             ac_type="str",
             ac_description="import path",
-            ac_value="/.opt/modulesdir",
+            ac_value="/.opt/modulefiles",
         )
         factories.ConfigVarHint(
             config_hint=modules_export_cfg,

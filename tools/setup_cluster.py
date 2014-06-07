@@ -413,9 +413,6 @@ def main():
         print("No Database access libraries installed, please install some of them")
         sys.exit(1)
     # flag: setup db_cf data
-    db_exists = os.path.exists(DB_FILE)
-    call_create_db = True
-    call_migrate_db = False
     if opts.enable_auto_update:
         try:
             file(AUTO_FLAG, "w").write("\n")
@@ -433,35 +430,39 @@ def main():
                 sys.exit(-1)
             else:
                 print("removed auto_update_flag {}".format(AUTO_FLAG))
-    if db_exists:
-        if opts.migrate:
-            setup_db_cf = False
-            call_create_db = False
-            call_migrate_db = True
-        else:
-            if opts.use_existing:
-                # use existing db_cf
-                setup_db_cf = False
-            else:
-                if opts.ignore_existing:
-                    print("DB access file {} already exists, ignoring ...".format(DB_FILE))
-                    setup_db_cf = True
-                else:
-                    print("DB access file {} already exists, exiting ...".format(DB_FILE))
-                    sys.exit(1)
     else:
-        setup_db_cf = True
-        if opts.use_existing:
-            print("DB access file {} does not exist ...".format(DB_FILE))
-    if setup_db_cf:
-        if not create_db_cf(opts):
-            print("Creation of {} not successfull, exiting".format(DB_FILE))
-            sys.exit(3)
-    check_db_rights()
-    if call_create_db:
-        create_db(opts)
-    if call_migrate_db:
-        migrate_db(opts)
+        db_exists = os.path.exists(DB_FILE)
+        call_create_db = True
+        call_migrate_db = False
+        if db_exists:
+            if opts.migrate:
+                setup_db_cf = False
+                call_create_db = False
+                call_migrate_db = True
+            else:
+                if opts.use_existing:
+                    # use existing db_cf
+                    setup_db_cf = False
+                else:
+                    if opts.ignore_existing:
+                        print("DB access file {} already exists, ignoring ...".format(DB_FILE))
+                        setup_db_cf = True
+                    else:
+                        print("DB access file {} already exists, exiting ...".format(DB_FILE))
+                        sys.exit(1)
+        else:
+            setup_db_cf = True
+            if opts.use_existing:
+                print("DB access file {} does not exist ...".format(DB_FILE))
+        if setup_db_cf:
+            if not create_db_cf(opts):
+                print("Creation of {} not successfull, exiting".format(DB_FILE))
+                sys.exit(3)
+        check_db_rights()
+        if call_create_db:
+            create_db(opts)
+        if call_migrate_db:
+            migrate_db(opts)
 
 if __name__ == "__main__":
     main()
