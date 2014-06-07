@@ -275,8 +275,8 @@ Used for automounter maps
             ac_value="-soft,tcp,lock,rsize=8192,wsize=8192,noac,lookupcache=none,vers=4,port=2049",
         )
         # home export entries
-        home_export_cfg = factories.ConfigHint(
-            config_name="home_export",
+        homedir_export_cfg = factories.ConfigHint(
+            config_name="homedir_export",
             exact_match=False,
             config_description="export entry (share) for home",
             valid_for_meta=True,
@@ -288,7 +288,7 @@ a device to create the according automounter entries
             """,
         )
         factories.ConfigVarHint(
-            config_hint=home_export_cfg,
+            config_hint=homedir_export_cfg,
             var_name="homeexport",
             help_text_short="the directory to export",
             help_text_html="""
@@ -301,7 +301,7 @@ May be relative to the NFS4 root export
             ac_value="/export_change_me",
         )
         factories.ConfigVarHint(
-            config_hint=home_export_cfg,
+            config_hint=homedir_export_cfg,
             var_name="createdir",
             help_text_short="where to create the homes",
             help_text_html="""
@@ -314,7 +314,7 @@ Used by the clusterserver, can be different from export_path (for example when N
             ac_value="/create_change_me",
         )
         factories.ConfigVarHint(
-            config_hint=home_export_cfg,
+            config_hint=homedir_export_cfg,
             var_name="options",
             help_text_short="the mount options",
             help_text_html="""
