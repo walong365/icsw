@@ -96,6 +96,7 @@ parse_xml_response = (xml, min_level) ->
 
 root.parse_xml_response = parse_xml_response
 root.my_ajax_struct     = my_ajax_struct
+root.remove_by_idx      = remove_by_idx
 root.call_ajax          = call_ajax
 
 {% endinlinecoffeescript %}
