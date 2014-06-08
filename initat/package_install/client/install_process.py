@@ -270,7 +270,7 @@ class install_process(threading_tools.process_obj):
             if cur_com in ["send_info"]:
                 self.log("... ignoring", logging_tools.LOG_LEVEL_WARN)
             elif cur_com in ["repo_list"]:
-                self._handle_repo_list(first_com)
+                self._handle_repo_list(first_com, force_refresh=True if int(cur_com.get("refresh", "0")) else False)
                 self._process_commands()
             elif cur_com in ["package_list"]:
                 # print first_com.pretty_print()
@@ -396,7 +396,7 @@ class yum_install_process(install_process):
                 info="handle package",
                 data=cur_pdc)
             # return False, None
-    def _handle_repo_list(self, in_com):
+    def _handle_repo_list(self, in_com, **kwargs):
         # print etree.tostring(in_com.tree, pretty_print=True)
         # new code
         in_repos = in_com.xpath(".//ns:repo_list/root")[0]
@@ -440,6 +440,7 @@ class yum_install_process(install_process):
                     self.log("cannot create {}: {}".format(f_name, process_tools.get_except_info()), logging_tools.LOG_LEVEL_ERROR)
                 else:
                     self.log("created {}".format(f_name))
+        if rewrite_repos or kwargs.get("force_refresh", False):
             self.package_commands.append(E.special_command(send_return="0", command="refresh", init="0"))
 
 class zypper_install_process(install_process):
@@ -534,7 +535,7 @@ class zypper_install_process(install_process):
 #             pass
 #             # flags: xml output, non-interactive
 #             # return False, None
-    def _handle_repo_list(self, in_com):
+    def _handle_repo_list(self, in_com, **kwargs):
         # print etree.tostring(in_com.tree, pretty_print=True)
         # new code
         in_repos = in_com.xpath(".//ns:repo_list/root")[0]
@@ -578,5 +579,6 @@ class zypper_install_process(install_process):
                     self.log("cannot create {}: {}".format(f_name, process_tools.get_except_info()), logging_tools.LOG_LEVEL_ERROR)
                 else:
                     self.log("created {}".format(f_name))
+        if rewrite_repos or kwargs.get("force_refresh", False):
             self.package_commands.append(E.special_command(send_return="0", command="refresh", init="0"))
 

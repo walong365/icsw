@@ -186,7 +186,7 @@ class server_process(threading_tools.process_pool):
                 valid_devs = list(client.name_set)
             else:
                 valid_devs = [name for name in all_devs if name in client.name_set]
-            self.log("%s requested, %s found" % (
+            self.log("{} requested, {} found".format(
                 logging_tools.get_plural("device", len(all_devs)),
                 logging_tools.get_plural("device" , len(valid_devs))))
             for cur_dev in all_devs:
@@ -194,7 +194,7 @@ class server_process(threading_tools.process_pool):
             if valid_devs:
                 self._send_update(command="new_config", dev_list=valid_devs)
             srv_com.set_result(
-                "send update to %d of %s" % (
+                "send update to {:d} of {}".format(
                     len(valid_devs),
                     logging_tools.get_plural("device", len(all_devs))),
                     server_command.SRV_REPLY_STATE_OK if len(valid_devs) == len(all_devs) else server_command.SRV_REPLY_STATE_WARN)
@@ -212,7 +212,14 @@ class server_process(threading_tools.process_pool):
             self.log("sending sync_repos to %s" % (logging_tools.get_plural("device", len(all_devs))))
             if all_devs:
                 self._send_update(command="sync_repos", dev_list=all_devs)
-            srv_com.set_result("send sync_repos to %s" % (
+            srv_com.set_result("send sync_repos to {}".format (
+                    logging_tools.get_plural("device", len(all_devs))))
+        elif in_com == "clear_caches":
+            all_devs = list(client.name_set)
+            self.log("sending sync_repos to %s" % (logging_tools.get_plural("device", len(all_devs))))
+            if all_devs:
+                self._send_update(command="sync_repos", dev_list=all_devs, refresh="1")
+            srv_com.set_result("send sync_repos (with refresh) to {}".format(
                     logging_tools.get_plural("device", len(all_devs))))
         else:
             srv_com.set_result("command %s not known" % (in_com), server_command.SRV_REPLY_STATE_ERROR)
@@ -260,15 +267,19 @@ class server_process(threading_tools.process_pool):
         send_sock = self.socket_dict["router"]
         send_sock.send_unicode(t_uid, zmq.SNDMORE | zmq.NOBLOCK)
         send_sock.send_unicode(unicode(srv_com), zmq.NOBLOCK)
-    def _send_update(self, command="send_info", dev_list=[]):
+    def _send_update(self, command="send_info", dev_list=[], **kwargs):
         send_list = dev_list or client.name_set
-        self.log("send command %s to %s" % (command,
-                                            logging_tools.get_plural("client", len(send_list))))
-        send_com = server_command.srv_command(command=command)
+        self.log(
+            "send command {} to {} ({})".format(
+                command,
+                logging_tools.get_plural("client", len(send_list)),
+                ", ".join(["{}={}".format(key, value) for key, value in kwargs.iteritems()]) if kwargs else "no kwargs",
+            )
+        )
+        send_com = server_command.srv_command(command=command, **kwargs)
         for target_name in send_list:
             cur_c = client.get(target_name)
             if cur_c is not None:
                 self.send_reply(cur_c.uid, send_com)
             else:
                 self.log("no client with name '%s' found" % (target_name), logging_tools.LOG_LEVEL_WARN)
-

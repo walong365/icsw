@@ -126,6 +126,12 @@ class repo_type_rpm_yum(repo_type):
             if global_config["DELETE_MISSING_REPOS"]:
                 self.log(" ... removing them from DB", logging_tools.LOG_LEVEL_WARN)
                 package_repo.objects.filter(Q(name__in=old_repos)).delete()
+        if s_struct.src_id:
+            self.master_process.send_pool_message(
+                "delayed_result",
+                s_struct.src_id,
+                "rescanned {}".format(logging_tools.get_plural("repository", len(found_repos))),
+                server_command.SRV_REPLY_STATE_OK)
         self.master_process._reload_searches()
     def search_result(self, s_struct):
         cur_mode = 0
