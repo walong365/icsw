@@ -11,7 +11,7 @@
 
 {% block content %}
 
-<div id="icsw.package">
+<div id="icsw.package" ng-cloack>
 
 <script type="text/ng-template" id="package_search.html">
     {% crispy package_search_form package_search_form.helper %}
@@ -155,7 +155,15 @@
             <table class="table table-condensed table-hover" style="width:auto;">
                 <thead packagerepohead></thead>
                 <tbody>
-                    <tr><td colspan="11" paginator entries="entries" pag_settings="pagSettings" per_page="10" paginator-epp="10,20,50,100"></td></tr>
+                    <tr>
+                        <td colspan="5" paginator entries="entries" pag_settings="pagSettings" paginator-filter="func" paginator-filter-func="fn.filter_repo" per_page="10" paginator-epp="10,20,50,100">
+                        </td>
+                        <td>
+                            show:
+                            <input type="button" ng-class="show_enabled && 'btn btn-sm btn-success' || 'btn btn-sm'" value="enabled" ng-click="show_enabled =! show_enabled"></input> 
+                            <input type="button" ng-class="show_published && 'btn btn-sm btn-success' || 'btn btn-sm'" value="published" ng-click="show_published =! show_published"></input> 
+                        </td>
+                    </tr>
                     <tr packagereporow ng-repeat="obj in entries | orderBy:'-name':true | paginator:this"></tr>
                 </tbody>
             </table>
@@ -163,7 +171,16 @@
     </tab>
     <tab heading="Package search">
         <div ng-controller="package_search_base">
-            <h3>Searches ({{entries.length}} entries), <input type="button" class="btn btn-success" value="create new" ng-click="create($event)"/></h3>
+            <h3>Searches ({{entries.length}} entries)</h3>
+            <div class="row">
+                <div class="form-inline col-md-8">
+                    <form class="form-inline" ng-submit="fn.create_search(this)">
+                        New search :
+                        <input class="form-control input-ms" placeholder="search string ..." type="text" ng-model="search_string" />
+                        <input type="submit" class="btn btn-sm btn-warning" value="create"/>  
+                    </form>
+                </div>
+            </div>
             <table class="table table-condensed table-hover" style="width:auto;">
                 <thead packagesearchhead></thead>
                 <tbody>

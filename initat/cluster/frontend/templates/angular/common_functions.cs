@@ -690,7 +690,7 @@ angular_add_simple_list_controller = (module, name, settings) ->
                 )
             # call the external init function after the rest has been declared
             if $scope.settings.init_fn
-                $scope.settings.init_fn($scope, $timeout)
+                $scope.settings.init_fn($scope, $timeout, Restangular)
     ])
 
 angular_add_mixin_list_controller = (module, name, settings) ->

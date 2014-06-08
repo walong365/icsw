@@ -20,6 +20,9 @@ angular_add_simple_list_controller(
         rest_map            : [
             {"short" : "service", "url" : "{% url 'rest:package_service_list' %}"}
         ]
+        init_fn : ($scope, timeout) ->
+            $scope.show_enabled = false
+            $scope.show_published = false
         fn :
             get_service_name : ($scope, repo) ->
                 if repo.service
@@ -60,6 +63,13 @@ angular_add_simple_list_controller(
                     success : (xml) ->
                         $.unblockUI()
                         parse_xml_response(xml)
+            filter_repo : (obj, $scope) ->
+                _show = true
+                if $scope.show_enabled and not obj.enabled
+                    _show = false
+                if $scope.show_published and not obj.publish_to_nodes
+                    _show = false
+                return _show
     }
 )
 
@@ -75,22 +85,19 @@ angular_add_simple_list_controller(
         delete_confirm_str  : (obj) -> return "Really delete Package search '#{obj.name}' ?"
         template_cache_list : ["package_search_row.html", "package_search_head.html"]
         entries_filter      : {deleted : false}
-        new_object          : {"search_string" : "", "user" : {{ request.user.pk }}}
         post_delete : ($scope, del_obj) ->
             if $scope.shared_data.result_obj and $scope.shared_data.result_obj.idx == del_obj.idx
                 $scope.shared_data.result_obj = undefined
-        object_created  : (new_obj, srv_data) -> 
-            new_obj.search_string = ""
-            call_ajax
-                url     : "{% url 'pack:repo_overview' %}"
-                data    : {
-                    "mode" : "reload_searches"
-                }
-                success : (xml) ->
-                    parse_xml_response(xml)
         fn:
             object_modified : (edit_obj, srv_data, $scope) ->
-                $scope.reload()
+                call_ajax
+                    url     : "{% url 'pack:retry_search' %}"
+                    data    : {
+                        "pk" : edit_obj.idx
+                    }
+                    success : (xml) ->
+                        parse_xml_response(xml)
+                        $scope.reload()
             retry : ($scope, obj) ->
                 if $scope.shared_data.result_obj and $scope.shared_data.result_obj.idx == obj.idx
                     $scope.shared_data.result_obj = undefined
@@ -104,8 +111,23 @@ angular_add_simple_list_controller(
                         $scope.reload()
             show : ($scope, obj) ->
                 $scope.shared_data.result_obj = obj
+            create_search : ($scope) ->
+                if $scope.search_string
+                    $scope.Restangular.all("{% url 'rest:package_search_list' %}".slice(1)).post({"search_string" : $scope.search_string, "user" : {{ request.user.pk }}}).then((data) ->
+                        call_ajax
+                            url     : "{% url 'pack:repo_overview' %}"
+                            data    : {
+                                "mode" : "reload_searches"
+                            }
+                            success : (xml) ->
+                                parse_xml_response(xml)
+                                $scope.reload()
+                        $scope.search_string = ""
+                    )
         init_fn:
-            ($scope, $timeout) ->
+            ($scope, $timeout, Restangular) ->
+                $scope.Restangular = Restangular
+                $scope.search_string = ""
                 $scope.$timeout = $timeout
                 $scope.reload_searches = () ->
                     # check all search states
