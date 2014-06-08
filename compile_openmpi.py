@@ -427,7 +427,7 @@ class openmpi_builder(object):
             fc_list.append(
                 "{0}{1}:{1}".format(
                     self.tempdir,
-                    os.path.join(self.parse.options.module_dir, self.modulefile_name),
+                    os.path.join(self.parser.options.module_dir, self.modulefile_name),
                 )
             )
         content = rpm_build_tools.file_content_list(fc_list)
