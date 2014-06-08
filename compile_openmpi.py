@@ -63,7 +63,7 @@ class my_opt_parser(argparse.ArgumentParser):
         self.add_argument("-d", type=str, dest="target_dir", help="Sets target directory [%(default)s]", default=target_dir, action="store")
         self.add_argument("--extra", type=str, dest="extra_settings", help="Sets extra options for configure, i.e. installation directory and package name [%(default)s]", action="store", default="")
         self.add_argument("--extra-filename", type=str, dest="extra_filename", help="Sets extra filename string [%(default)s]", action="store", default="")
-        self.add_argument("--arch", type=str, dest="arch", help="Set package architecture [%(default)s]", default="")
+        self.add_argument("--arch", type=str, dest="arch", help="Set package architecture [%(default)s]", default={"i686" : "i586"}.get(os.uname()[4], os.uname()[4]))
         self.add_argument("--log", dest="include_log", help="Include log of make-command in README [%(default)s]", action="store_true", default=False)
         self.add_argument("-v", dest="verbose", help="Set verbose level [%(default)s]", action="store_true", default=False)
         self.add_argument("--release", dest="release", type=str, help="Set release [%(default)s]", default="1")
