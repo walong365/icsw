@@ -216,10 +216,10 @@ class server_process(threading_tools.process_pool):
                     logging_tools.get_plural("device", len(all_devs))))
         elif in_com == "clear_caches":
             all_devs = list(client.name_set)
-            self.log("sending sync_repos to %s" % (logging_tools.get_plural("device", len(all_devs))))
+            self.log("sending clear_cache to %s" % (logging_tools.get_plural("device", len(all_devs))))
             if all_devs:
-                self._send_update(command="sync_repos", dev_list=all_devs, refresh="1")
-            srv_com.set_result("send sync_repos (with refresh) to {}".format(
+                self._send_update(command="clear_cache", dev_list=all_devs)
+            srv_com.set_result("send clear_cache to {}".format(
                     logging_tools.get_plural("device", len(all_devs))))
         else:
             srv_com.set_result("command %s not known" % (in_com), server_command.SRV_REPLY_STATE_ERROR)
