@@ -45,6 +45,7 @@ class repo_process(threading_tools.process_obj):
         connection.close()
         self.register_func("rescan_repos", self._rescan_repos)
         self.register_func("reload_searches", self._reload_searches)
+        self.register_func("clear_cache", self._clear_cache)
         self.register_func("search", self._search)
         self._correct_search_states()
         self.__background_commands = []
@@ -85,6 +86,15 @@ class repo_process(threading_tools.process_obj):
                     new_list.append(cur_del)
         self.__background_commands = new_list
     # commands
+    def _clear_cache(self, *args, **kwargs):
+        self.log("clearing cache")
+        self.__background_commands.append(subprocess_struct(
+            self,
+            0,
+            self.repo_type.CLEAR_CACHE,
+            start=True,
+            verbose=global_config["DEBUG"],
+        ))
     def _rescan_repos(self, *args, **kwargs):
         if args:
             srv_com = server_command.srv_command(source=args[0])
@@ -118,4 +128,3 @@ class repo_process(threading_tools.process_obj):
                 post_cb_func=self.repo_type.search_result))
         else:
             self.log("nothing to search", logging_tools.LOG_LEVEL_WARN)
-

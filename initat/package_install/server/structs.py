@@ -68,6 +68,7 @@ class repo_type_rpm_yum(repo_type):
     REPO_TYPE_STR = "rpm"
     REPO_SUBTYPE_STR = "yum"
     SCAN_REPOS = "yum -v repolist all --color=no"
+    CLEAR_CACHE = "yum -y clean all"
     REPO_CLASS = rpm_repository
     def search_package(self, s_string):
         return "yum -q --showduplicates search {}".format(s_string)
@@ -176,6 +177,7 @@ class repo_type_rpm_zypper(repo_type):
     REPO_SUBTYPE_STR = "zypper"
     # changed on 2014-02-27, query services (includes repositories)
     SCAN_REPOS = "zypper --xml ls -r -d"
+    CLEAR_CACHE = "zypper clean -a"
     REPO_CLASS = rpm_repository
     def search_package(self, s_string):
         return "zypper --xml search -s {}".format(s_string)

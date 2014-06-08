@@ -29,10 +29,10 @@ from initat.package_install.server.structs import client
 import cluster_location
 import configfile
 import logging_tools
+import os
 import process_tools
 import server_command
 import threading_tools
-import uuid_tools
 import zmq
 
 class server_process(threading_tools.process_pool):
@@ -216,6 +216,10 @@ class server_process(threading_tools.process_pool):
                     logging_tools.get_plural("device", len(all_devs))))
         elif in_com == "clear_caches":
             all_devs = list(client.name_set)
+            if os.getuid():
+                self.log("root privileges required to clear cache", logging_tools.LOG_LEVEL_ERROR)
+            else:
+                self.send_to_process("repo", "clear_cache", unicode(srv_com))
             self.log("sending clear_cache to %s" % (logging_tools.get_plural("device", len(all_devs))))
             if all_devs:
                 self._send_update(command="clear_cache", dev_list=all_devs)
