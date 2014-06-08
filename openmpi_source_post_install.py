@@ -27,9 +27,12 @@ VERS_FILE = "/opt/cluster/share/openmpi_versions"
 
 def main():
     if len(sys.argv) < 3:
-        print "Need version and filename"
+        print("Need version and filename")
         sys.exit(-1)
     new_v, new_f = (sys.argv[1], sys.argv[2])
+    if not os.path.exists(new_f):
+        print("File {} (version {}) does not exist".format(new_f, new_v))
+        sys.exit(-2)
     if os.path.isfile(VERS_FILE):
         cur_vers = dict([line.strip().split(None, 1) for line in file(VERS_FILE, "r").read().split("\n") if line.strip().count(" ")])
     else:
@@ -37,7 +40,7 @@ def main():
     cur_vers[new_v] = new_f
     print("content of version dict:")
     pprint.pprint(cur_vers)
-    file(VERS_FILE, "w").write("\n".join(["{} {}".format(key, value) for key, value in cur_vers.iteritems()]))
+    file(VERS_FILE, "w").write("\n".join(["{} {}".format(key, value) for key, value in cur_vers.iteritems()] + [""]))
 
 if __name__ == "__main__":
     main()
