@@ -23,7 +23,7 @@ import os
 import pprint
 import sys
 
-VERS_FILE = "/opt/cluster/share/openmpi_version"
+VERS_FILE = "/opt/cluster/share/openmpi_versions"
 
 def main():
     if len(sys.argv) < 3:
