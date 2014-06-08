@@ -426,7 +426,7 @@ class openmpi_builder(object):
         if self.parser.options.module_file:
             fc_list.append(
                 "{0}{1}:{1}".format(
-                    self.tepmdir,
+                    self.tempdir,
                     os.path.join(self.parse.options.module_dir, self.modulefile_name),
                 )
             )
