@@ -32,6 +32,8 @@ def main():
     new_v, new_f = (sys.argv[1], sys.argv[2])
     if os.path.isfile(VERS_FILE):
         cur_vers = dict([line.strip().split(None, 1) for line in file(VERS_FILE, "r").read().split("\n") if line.strip().count(" ")])
+    else:
+        cur_vers = {}
     cur_vers[new_v] = new_f
     print("content of version dict:")
     pprint.pprint(cur_vers)
