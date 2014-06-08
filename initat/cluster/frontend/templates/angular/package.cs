@@ -474,6 +474,16 @@ package_module.controller("install", ["$scope", "$compile", "$filter", "$templat
                 success : (xml) ->
                     $.unblockUI()
                     parse_xml_response(xml)
+        $scope.send_clear_caches = (event) ->
+            $.blockUI()
+            call_ajax
+                url     : "{% url 'pack:repo_overview' %}"
+                data    : {
+                    "mode" : "clear_caches"
+                }
+                success : (xml) ->
+                    $.unblockUI()
+                    parse_xml_response(xml)
         $scope.latest_contact = (dev) ->
             if dev.latest_contact
                 return moment.unix(dev.latest_contact).fromNow(true)

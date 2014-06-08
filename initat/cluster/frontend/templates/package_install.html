@@ -196,7 +196,8 @@
                             <input ng-model="package_filter" class="form-control input-sm"></input>
                         </div>,
                         <input ng-show="selected_pdcs_length()" type="button" class="btn btn-success btm-sm" value="action" ng-click="action($event)"></input>&nbsp;
-                        <input type="button" class="btn btn-warning btm-sm" value="sync" ng-click="send_sync()"></input>
+                        <input type="button" class="btn btn-warning btm-sm" value="sync" ng-click="send_sync()"></input>,
+                        <input type="button" class="btn btn-warning btn-sm" value="Clear caches" ng-click="send_clear_caches()"/>
                     </form>
                 </h3>
                 <table class="table table-condensed" style="width:auto;">
