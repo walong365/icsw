@@ -69,7 +69,7 @@ class show_exportfs(cs_base_class.server_com):
             if _vals:
                 print("\nshowing {:d} {} export entries:\n".format(num_dict[_type], _type))
                 for _val in _vals:
-                    print("{:<30s} *(rw,no_root_squash,async,no_subtree_check)".format(_val[1]))
+                    print("{:<40s} *(rw,no_root_squash,async,no_subtree_check)".format(_val[1]))
                 print("\n")
         cur_inst.srv_com.set_result(
             "ok showed {:d} local and {:d} foreign exports".format(num_dict["local"], num_dict["foreign"])
