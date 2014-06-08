@@ -18,7 +18,13 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
 """ compiles openmpi """
+"""
+to compile openmpi 1.8.1 with PGC 14.4 on Centos 6.5:
 
+ o rename all OMPI_DATATYPE_INIT_UNAVAILABLE_BASIC_TYPE to OMPI_DATATYPE_INIT_PREDEFINED_BASIC_TYPE in ompi/datatype/ompi_datatype_module.c
+ o add #include <stdlib.h> to include/mpi.h (to define size_t)
+ 
+"""
 import argparse
 import commands
 import compile_tools
@@ -48,6 +54,7 @@ class my_opt_parser(argparse.ArgumentParser):
         target_dir = "/opt/libs/"
         fc_choices = sorted(["GNU",
                              "INTEL",
+                             "PGI",
                              "PATHSCALE"])
         self.cpu_id = cpu_database.get_cpuid()
         self.add_argument("-c", type=str, dest="fcompiler", help="Set Compiler type [%(default)s]", action="store", choices=fc_choices, default="GNU")
@@ -60,28 +67,28 @@ class my_opt_parser(argparse.ArgumentParser):
         self.add_argument("--log", dest="include_log", help="Include log of make-command in README [%(default)s]", action="store_true", default=False)
         self.add_argument("-v", dest="verbose", help="Set verbose level [%(default)s]", action="store_true", default=False)
         self.add_argument("--release", dest="release", type=str, help="Set release [%(default)s]", default="1")
+        self.add_argument("--module-dir", dest="module_dir", type=str, default="/opt/cluster/Modules/modulefiles", help="target dir for module file [%(default)s]")
         self.add_argument("--without-mpi-selecter", dest="mpi_selector", default=True, action="store_false", help="disable support for MPI-Selector [%(default)s]")
         self.add_argument("--without-module", dest="module_file", default=True, action="store_false", help="disable support for modules [%(default)s]")
         self.add_argument("--without-hwloc", dest="hwloc", default=True, action="store_false", help="disable hwloc support [%(default)s]")
+        self.add_argument("--no-parallel-make", dest="pmake", default=True, action="store_false", help="disable parallel make [%(default)s]")
         if is_64_bit:
             # add option for 32-bit goto if machine is NOT 32 bit
             self.add_argument("--32", dest="use_64_bit", help="Set 32-Bit build [%(default)s]", action="store_false", default=True)
         else:
             self.add_argument("--64", dest="use_64_bit", help="Set 64-Bit build [%(default)s]", action="store_true", default=False)
     def parse(self):
-        options = self.parse_args()
-        self.options = options
-        self.mpi_selector = options.mpi_selector
-        self.module_file = options.module_file
-        self.hwloc = options.hwloc
+        self.options = self.parse_args()
         self._check_compiler_settings()
-        self.package_name = "openmpi-%s-%s-%s-%s%s" % (self.options.openmpi_version,
-                                                       self.options.fcompiler,
-                                                       self.small_version,
-                                                       self.options.use_64_bit and "64" or "32",
-                                                       self.options.extra_filename and "-%s" % (self.options.extra_filename.strip()) or "")
-        self.openmpi_dir = "%s/%s" % (self.options.target_dir,
-                                      self.package_name)
+        self.package_name = "openmpi-{}-{}-{}-{}{}".format(
+            self.options.openmpi_version,
+            self.options.fcompiler,
+            self.small_version,
+            self.options.use_64_bit and "64" or "32",
+            self.options.extra_filename and "-{}".format(self.options.extra_filename.strip()) or "")
+        self.openmpi_dir = os.path.join(
+            self.options.target_dir,
+            self.package_name)
     def _check_compiler_settings(self):
         self.add_path_dict = {}
         if self.options.fcompiler == "GNU":
@@ -92,6 +99,7 @@ class my_opt_parser(argparse.ArgumentParser):
                 self.compiler_dict = {"CC"  : "%s/bin/gcc" % (self.options.fcompiler_path),
                                       "CXX" : "%s/bin/g++" % (self.options.fcompiler_path),
                                       "F77" : "%s/bin/gfortran" % (self.options.fcompiler_path),
+
                                       "FC"  : "%s/bin/gfortran" % (self.options.fcompiler_path)}
             else:
                 self.compiler_dict = {"CC"  : "gcc",
@@ -132,19 +140,37 @@ class my_opt_parser(argparse.ArgumentParser):
                                       "CXX" : "pathCC",
                                       "F77" : "pathf95",
                                       "FC"  : "pathf95"}
-                stat, pathf95_out = commands.getstatusoutput("%s/bin/pathf95 -dumpversion" % (self.options.fcompiler_path))
-                if stat:
-                    raise ValueError, "Cannot get Version from pathf95 (%d): %s" % (stat, pathf95_out)
+                _stat, pathf95_out = commands.getstatusoutput("%s/bin/pathf95 -dumpversion" % (self.options.fcompiler_path))
+                if _stat:
+                    raise ValueError, "Cannot get Version from pathf95 (%d): %s" % (_stat, pathf95_out)
                 self.small_version = pathf95_out.split("\n")[0]
                 self.compiler_version_dict = {"pathf95" : pathf95_out}
-                stat, pathcc_out = commands.getstatusoutput("%s/bin/pathcc -dumpversion" % (self.options.fcompiler_path))
-                if stat:
-                    raise ValueError, "Cannot get Version from pathcc (%d): %s" % (stat, pathcc_out)
+                _stat, pathcc_out = commands.getstatusoutput("%s/bin/pathcc -dumpversion" % (self.options.fcompiler_path))
+                if _stat:
+                    raise ValueError, "Cannot get Version from pathcc (%d): %s" % (_stat, pathcc_out)
                 self.compiler_version_dict = {"pathf95" : pathf95_out,
                                               "pathcc"   : pathcc_out}
             else:
-                raise IOError, "Compiler base path '%s' for compiler setting %s is not a directory" % (self.options.fcompiler_path,
-                                                                                                       self.options.fcompiler)
+                raise IOError, "Compiler base path '%s' for compiler setting %s is not a directory" % (
+                    self.options.fcompiler_path,
+                    self.options.fcompiler)
+        elif self.options.fcompiler == "PGI":
+            # portlan group compiler
+            self.compiler_dict = {
+                "CC"  : "pgcc",
+                "FC"  : "pgf90",
+                "F77" : "pgf77",
+                "CXX" : "pgCC",
+                "CFLAGS"   : "-fast",
+                "CXXFLAGS" : "-fast",
+                "FFFLAGS"  : "-fast",
+                # "CPPFLAGS" : "-DNO_PGI_OFFSET",
+                "FCFLAGS"  : "-fast",
+            }
+            _stat, _out = commands.getstatusoutput("pgf90 -V")
+            self.small_version = _out.strip().split()[1]
+            self.compiler_version_dict = {"pgf90" : _out}
+            print _stat, _out
         else:
             raise ValueError, "Compiler settings %s unknown" % (self.options.fcompiler)
     def _read_openmpi_versions(self):
@@ -207,7 +233,7 @@ class openmpi_builder(object):
             success = True
         return success
     def _compile_it(self):
-        num_cores = cpu_database.global_cpu_info(parse=True).num_cores() * 2
+        num_cores = cpu_database.global_cpu_info(parse=True).num_cores() * 2 if self.parser.options.pmake else 1
         act_dir = os.getcwd()
         os.chdir("%s/openmpi-%s" % (self.tempdir, self.parser.options.openmpi_version))
         print "Modifying environment"
@@ -221,19 +247,19 @@ class openmpi_builder(object):
             os.unlink("%s/etc/openmpi-mca-params.conf" % (self.parser.openmpi_dir))
         success = True
         config_list = [("--prefix", self.parser.openmpi_dir)]
-        if self.parser.hwloc:
+        if self.parser.options.hwloc:
             config_list.append(("--with-hwloc", "/opt/cluster"))
-        for command, time_name in [("./configure %s %s" % (
-            " ".join(["%s=%s" % (key, value) for key, value in config_list]),
+        for command, time_name in [("./configure {} {}".format(
+            " ".join(["{}={}".format(key, value) for key, value in config_list]),
             self.parser.options.extra_settings), "configure"),
                                    ("make -j %d" % (num_cores), "make"),
                                    ("make install", "install")]:
             self.time_dict[time_name] = {"start" : time.time()}
-            print "Doing command %s" % (command)
+            print "Doing command {}".format(command)
             sp_obj = subprocess.Popen(command.split(), 0, None, None, subprocess.PIPE, subprocess.STDOUT)
             out_lines = []
             while True:
-                stat = sp_obj.poll()
+                c_stat = sp_obj.poll()
                 while True:
                     try:
                         new_lines = sp_obj.stdout.next()
@@ -246,39 +272,39 @@ class openmpi_builder(object):
                             out_lines.extend(new_lines)
                         else:
                             out_lines.append(new_lines)
-                if stat is not None:
+                if c_stat is not None:
                     break
             self.time_dict[time_name]["end"] = time.time()
             self.time_dict[time_name]["diff"] = self.time_dict[time_name]["end"] - self.time_dict[time_name]["start"]
             self.log_dict[time_name] = "".join(out_lines)
-            if stat:
-                print "Something went wrong (%d):" % (stat)
+            if c_stat:
+                print "Something went wrong ({:d}):".format(c_stat)
                 if not self.parser.options.verbose:
                     print "".join(out_lines)
                 success = False
                 break
             else:
-                print "done, took %s" % (logging_tools.get_diff_time_str(self.time_dict[time_name]["diff"]))
+                print "done, took {}".format(logging_tools.get_diff_time_str(self.time_dict[time_name]["diff"]))
         os.chdir(act_dir)
         return success
     def _create_module_file(self):
         self.modulefile_name = self.parser.package_name.replace("-", "_").replace("__", "_")
-        targ_dir = "%s/module_dir" % (self.parser.openmpi_dir)
         dir_list = os.listdir(self.parser.openmpi_dir)
         if "lib64" in dir_list:
-            lib_dir = "%s/lib64" % (self.parser.openmpi_dir)
+            lib_dir = os.path.join(self.parser.openmpi_dir, "lib64")
         else:
-            lib_dir = "%s/lib" % (self.parser.openmpi_dir)
+            lib_dir = os.path.join(self.parser.openmpi_dir, "lib")
         mod_lines = [
             "#%Module1.0",
             "",
-            "append-path PATH %s/bin" % (self.parser.openmpi_dir),
-            "append-path LD_LIBRARY_PATH %s" % (lib_dir),
+            "append-path PATH {}/bin".format(self.parser.openmpi_dir),
+            "append-path LD_LIBRARY_PATH {}".format(lib_dir),
             ""
             ]
+        targ_dir = "{}{}".format(self.tempdir, self.parser.options.module_dir)
         if not os.path.isdir(targ_dir):
             os.makedirs(targ_dir)
-        file("%s/%s" % (targ_dir, self.modulefile_name), "w").write("\n".join(mod_lines))
+        file(os.path.join(targ_dir, self.modulefile_name), "w").write("\n".join(mod_lines))
     def _create_mpi_selector_file(self):
         self.mpi_selector_sh_name = "%s.sh" % (self.parser.package_name)
         self.mpi_selector_csh_name = "%s.csh" % (self.parser.package_name)
@@ -348,17 +374,20 @@ class openmpi_builder(object):
         package_name, package_version, package_release = (self.parser.package_name,
                                                           self.parser.options.openmpi_version,
                                                           self.parser.options.release)
-        if self.parser.module_file:
+        if self.parser.options.module_file:
             self._create_module_file()
-        if self.parser.mpi_selector:
+        if self.parser.options.mpi_selector:
             self._create_mpi_selector_file()
-        new_p = rpm_build_tools.build_package()
-        if self.parser.options.arch:
-            new_p["arch"] = self.parser.options.arch
-        new_p["name"] = package_name
-        new_p["version"] = package_version
-        new_p["release"] = package_release
-        new_p["package_group"] = "System/Libraries"
+        dummy_args = argparse.Namespace(
+            name=package_name,
+            version=package_version,
+            release=package_release,
+            package_group="System/Libraries",
+            arch=self.parser.options.arch,
+            description="OpenMPI",
+            summary="OpenMPI",
+            )
+        new_p = rpm_build_tools.build_package(dummy_args)
         new_p["inst_options"] = " -p "
         # remove config files
         for file_name in os.listdir("%s/etc" % (self.parser.openmpi_dir)):
@@ -381,11 +410,26 @@ class openmpi_builder(object):
             os.unlink("%s/%s" % (self.parser.openmpi_dir, info_name))
         fc_list = [self.parser.openmpi_dir,
                    "%s/%s:%s/%s" % (self.tempdir, info_name, self.parser.openmpi_dir, info_name)]
-        if self.parser.mpi_selector:
-            fc_list.append("%s/%s/%s:/%s/%s" % (self.tempdir, self.mpi_selector_dir, self.mpi_selector_sh_name,
-                                                self.mpi_selector_dir, self.mpi_selector_sh_name))
-            fc_list.append("%s/%s/%s:/%s/%s" % (self.tempdir, self.mpi_selector_dir, self.mpi_selector_csh_name,
-                                                self.mpi_selector_dir, self.mpi_selector_csh_name))
+        if self.parser.options.mpi_selector:
+            fc_list.append(
+                "{0}{1}:{1}".format(
+                    self.tempdir,
+                    os.path.join(self.mpi_selector_dir, self.mpi_selector_sh_name)
+                )
+            )
+            fc_list.append(
+                "{0}{1}:{1}".format(
+                    self.tempdir,
+                    os.path.join(self.mpi_selector_dir, self.mpi_selector_csh_name)
+                )
+            )
+        if self.parser.options.module_file:
+            fc_list.append(
+                "{0}{1}:{1}".format(
+                    self.tepmdir,
+                    os.path.join(self.parse.options.module_dir, self.modulefile_name),
+                )
+            )
         content = rpm_build_tools.file_content_list(fc_list)
         new_p.create_tgz_file(content)
         new_p.write_specfile(content)
