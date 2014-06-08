@@ -50,6 +50,16 @@ angular_add_simple_list_controller(
                     success : (xml) ->
                         $.unblockUI()
                         parse_xml_response(xml)
+            clearcaches : () ->
+                $.blockUI()
+                call_ajax
+                    url     : "{% url 'pack:repo_overview' %}"
+                    data    : {
+                        "mode" : "clear_caches"
+                    }
+                    success : (xml) ->
+                        $.unblockUI()
+                        parse_xml_response(xml)
     }
 )
 

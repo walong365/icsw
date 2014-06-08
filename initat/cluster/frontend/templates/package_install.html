@@ -149,7 +149,8 @@
         <div ng-controller="package_repo_base">
             <h3>Repositories ({{ entries.length }} entries, {{ rest_data.service.length }} services),
                 <input type="button" class="btn btn-primary" value="Rescan" ng-click="fn.rescan(this)"/>,
-                <input type="button" class="btn btn-warning" value="Sync to clients" ng-click="fn.sync(this)"/>
+                <input type="button" class="btn btn-warning" value="Sync to clients" ng-click="fn.sync(this)"/>,
+                <input type="button" class="btn btn-warning" value="Clear caches" ng-click="fn.clearcaches(this)"/>
             </h3>
             <table class="table table-condensed table-hover" style="width:auto;">
                 <thead packagerepohead></thead>
