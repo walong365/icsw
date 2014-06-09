@@ -156,7 +156,7 @@ rmsnodeline = """
 
 queuestateoper = """
 <div>
-    <div class="btn-group" ng-repeat="(queue, state) in get_states()">
+    <div class="btn-group" ng-repeat="(queue, state) in get_states()" ng-show="queues_defined()">
         <button type="button" class="btn btn-xs dropdown-toggle" ng-class="get_queue_class(state, 'btn')" data-toggle="dropdown">
             {{ queue }} : {{ state }} <span class="caret"></span>
         </button>
@@ -172,6 +172,9 @@ queuestateoper = """
             </li>
         </ul>
     </div>
+    <span ng-show="!queues_defined()">
+        N/A
+    </span>
 </div>    
 """
 
@@ -759,6 +762,8 @@ rms_module.controller("rms_ctrl", ["$scope", "$compile", "$filter", "$templateCa
                     if queues.length != states.length
                         states = (states[0] for queue in queues)
                     return _.zipObject(queues, states)
+                scope.queues_defined = () ->
+                    return if scope.host.state.length then true else false
                 scope.enable_ok = (state) ->
                     return if state.match(/d/g) then true else false
                 scope.disable_ok = (state) ->
