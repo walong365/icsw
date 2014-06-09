@@ -19,7 +19,7 @@ device_networks_template = """
             <th>Bridge</th>
             <th>MAC / Network</th>
             <th>Devtype / DTN</th>
-            <th>routing / alias</th>
+            <th>routing / alias / enabled</th>
             <th colspan="3">action</th>
         </tr>
     </thead>
@@ -81,7 +81,7 @@ nd_row_template = """
 <td>{{ get_bridge_info(ndip_obj) }}</td>
 <td>{{ ndip_obj.macaddr }}</td>
 <td>{{ ndip_obj.network_device_type | array_lookup:network_device_types:'info_string':'-' }}</td>
-<td>{{ ndip_obj.routing | yesno2 }} ({{ ndip_obj.penalty }}) / {{ ndip_obj.inter_device_routing | yesno2 }}</td>
+<td>{{ ndip_obj.routing | yesno2 }} ({{ ndip_obj.penalty }}) / {{ ndip_obj.inter_device_routing | yesno2 }} / {{ ndip_obj.enabled | yesno2 }}</td>
 <td>
     <input type="button" class="btn btn-xs btn-info" value="info" tooltip-placement="right"
      tooltip-html-unsafe="<div class='text-left'>

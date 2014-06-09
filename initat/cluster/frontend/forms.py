@@ -2455,6 +2455,7 @@ class netdevice_form(ModelForm):
     show_vlan = BooleanField(required=False)
     routing = BooleanField(required=False, label="routing target")
     inter_device_routing = BooleanField(required=False)
+    enabled = BooleanField(required=False)
     helper.layout = Layout(
         HTML("<h2>Netdevice '{% verbatim %}{{ _edit_obj.devname }}{% endverbatim %}'</h2>"),
             Fieldset(
@@ -2462,6 +2463,7 @@ class netdevice_form(ModelForm):
                 Field("devname", wrapper_class="ng-class:form_error('devname')", placeholder="devicename"),
                 Field("description"),
                 Field("netdevice_speed", ng_options="value.idx as value.info_string for value in netdevice_speeds", chosen=True),
+                Field("enabled"),
                 Field(
                     "is_bridge",
                     wrapper_ng_show="!_edit_obj.vlan_id && !_edit_obj.bridge_device",
@@ -2546,7 +2548,7 @@ class netdevice_form(ModelForm):
         model = netdevice
         fields = ("devname", "netdevice_speed", "description", "driver", "driver_options", "is_bridge",
             "macaddr", "fake_macaddr", "dhcp_device", "vlan_id", "master_device", "routing", "penalty",
-            "bridge_device", "inter_device_routing")
+            "bridge_device", "inter_device_routing", "enabled")
 
 class net_ip_form(ModelForm):
     helper = FormHelper()

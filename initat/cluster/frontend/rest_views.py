@@ -343,6 +343,7 @@ class netdevice_peer_list(viewsets.ViewSet):
     def list(self, request):
         ext_list = [ext_peer_object(**_obj) for _obj in netdevice.objects \
             .filter(Q(device__enabled=True) & Q(device__device_group__enabled=True)) \
+            .filter(Q(enabled=True)) \
             .filter(Q(peer_s_netdevice__gt=0) | Q(peer_d_netdevice__gt=0) | Q(routing=True)) \
             .distinct() \
             .order_by("device__device_group__name", "device__name", "devname") \
