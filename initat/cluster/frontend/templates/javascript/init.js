@@ -6,6 +6,11 @@
 
 root = exports ? this
 
+remove_from_array = (in_array, from, to) ->
+    rest = in_array.slice((to | from) + 1 || in_array.length)
+    in_array.length = if from < 0 then in_array.length + from else from
+    return in_array.push.apply(in_array, rest)
+
 remove_by_idx = (in_array, idx) ->
     for c_idx, val of in_array
         if val.idx == idx
@@ -97,6 +102,7 @@ parse_xml_response = (xml, min_level) ->
 root.parse_xml_response = parse_xml_response
 root.my_ajax_struct     = my_ajax_struct
 root.remove_by_idx      = remove_by_idx
+root.remove_from_array  = remove_from_array
 root.call_ajax          = call_ajax
 
 {% endinlinecoffeescript %}
