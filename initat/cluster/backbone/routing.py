@@ -56,6 +56,7 @@ _SRV_TYPE_UUID_MAPPING = {
     "package"   : "package-server"
 }
 
+
 # mapping: server type -> valid config names
 _SRV_NAME_TYPE_MAPPING = {
     "mother"    : ["mother_server"],
@@ -70,6 +71,16 @@ _SRV_NAME_TYPE_MAPPING = {
 }
 
 _NODE_SPLIT = ["mother", "config"]
+
+_REVERSE_MAP = {
+    "package_server" : "package",
+    "package-server" : "package",
+    "config-server" : "config",
+    "config_server" : "config",
+}
+
+def get_type_from_config(c_name):
+    return _REVERSE_MAP.get(c_name, None)
 
 def get_server_uuid(srv_type, uuid=None):
     if uuid is None:
