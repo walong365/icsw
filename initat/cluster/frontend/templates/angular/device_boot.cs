@@ -291,7 +291,7 @@ device_boot_module.controller("boot_ctrl", ["$scope", "$compile", "$filter", "$t
         $scope.num_selected_hc = () ->
             num_hc = 0
             for dev in $scope.devices
-                if dev.selected and dev.slave_connections.length
+                if dev.selected and dev.slave_connections and dev.slave_connections.length
                     num_hc += dev.slave_connections.length
             return num_hc
         $scope.toggle_gdev_sel = (sel_mode) ->
