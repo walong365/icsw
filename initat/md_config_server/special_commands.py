@@ -638,14 +638,20 @@ class special_net(special_base):
         self.log("eth_check is %s" % ("on" if eth_check else "off"))
         # never check duplex and stuff for a loopback-device
         if eth_check:
-            nd_list = netdevice.objects.exclude(Q(devname='lo')).filter(Q(device=self.host) & Q(netdevice_speed__check_via_ethtool=True)).order_by("devname").select_related("netdevice_speed")
+            nd_list = netdevice.objects.exclude(Q(devname='lo')).filter(
+                Q(device=self.host) &
+                Q(enabled=True) &
+                Q(netdevice_speed__check_via_ethtool=True)).order_by("devname").select_related("netdevice_speed")
         else:
-            nd_list = netdevice.objects.filter(Q(device=self.host) & (Q(devname='lo') | Q(netdevice_speed__check_via_ethtool=False)))
+            nd_list = netdevice.objects.filter(
+                Q(device=self.host) &
+                Q(enabled=True) &
+                (Q(devname='lo') | Q(netdevice_speed__check_via_ethtool=False)))
         for net_dev in nd_list:
             if not virt_check.match(net_dev.devname):
                 name_with_descr = "%s%s" % (
                     net_dev.devname,
-                    " (%s)" % (net_dev.description) if net_dev.description else "")
+                    " ({})".format(net_dev.description) if net_dev.description else "")
                 cur_temp = self.get_arg_template(
                     name_with_descr,
                     w="%.0f" % (net_dev.netdevice_speed.speed_bps * 0.9),
