@@ -63,6 +63,7 @@ class router_object(object):
         if latest_gen != self.__cur_gen:
             s_time = time.time()
             self.all_nds = netdevice.objects.exclude(Q(device__device_type__identifier="MD")).\
+                exclude(Q(enabled=False)).\
                 filter(Q(device__enabled=True) & Q(device__device_group__enabled=True)). \
                 values_list("idx", "device", "routing", "penalty", "inter_device_routing")
             self.dev_dict = {}
