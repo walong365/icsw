@@ -184,7 +184,11 @@ class debug_zmq_ctx(zmq.Context):
         super(debug_zmq_ctx, self).term()
 
 class _timer_obj(object):
+    timer_id = 0
     def __init__(self, step, next_time, cb_func, **kwargs):
+        # unique id
+        self.timer_id = _timer_obj.timer_id
+        _timer_obj.timer_id += 1
         # step value
         self.step = step
         # next wakeup time
@@ -237,10 +241,18 @@ class timer_base(object):
         for cur_to in self.__timer_list:
             _diff = cur_to.next_time - cur_time
             if _diff <= 0:
+                prev_ids = [_obj.timer_id for _obj in self.__timer_list]
                 cur_to()
                 # also remove if cur_to not in self.__timer_list (due to removal while processing cur_to() )
-                if not cur_to.oneshot and cur_to in self.__timer_list:
-                    new_tl.append(cur_to)
+                if not cur_to.oneshot:
+                    cur_ids = [_obj.timer_id for _obj in self.__timer_list]
+                    if cur_to.timer_id in cur_ids:
+                        new_tl.append(cur_to)
+                    else:
+                        # print "**", cur_ids, prev_ids
+                        new_ids = set(cur_ids) - set(prev_ids)
+                        if new_ids:
+                            new_tl.extend([cur_to for cur_to in self.__timer_list if cur_to.timer_id in new_ids])
             else:
                 # min_next = min(_diff, min_next)
                 new_tl.append(cur_to)
