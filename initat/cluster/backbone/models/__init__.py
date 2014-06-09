@@ -88,7 +88,7 @@ def bg_req_started(*args, **kwargs):
 @receiver(request_finished)
 def bg_req_finished(*args, **kwargs):
     # check number of background jobs and signal localhost
-    if _thread_local.num_bg_jobs:
+    if getattr(_thread_local, "num_bg_jobs", 0):
         _thread_local.num_bg_jobs = 0
         _signal_localhost()
 
