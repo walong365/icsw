@@ -1188,6 +1188,8 @@ def build_node_list(s_info, options):
             m_queue = act_h.find("queue[@name='{}']".format(act_q.attrib["name"]))
             if options.suppress_empty and int(m_queue.findtext("queuevalue[@name='slots_used']")) == 0:
                 continue
+            if m_queue is None:
+                continue
             if options.show_nonstd:
                 if m_queue.findtext("queuevalue[@name='state_string']") not in [""]:
                     if m_queue.findtext("queuevalue[@name='state_string']") == "a" and options.show_nonstd > 1:
