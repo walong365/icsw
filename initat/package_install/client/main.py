@@ -46,7 +46,8 @@ def main():
         ("LOG_NAME"               , configfile.str_c_var(prog_name)),
         ("VAR_DIR"                , configfile.str_c_var("/var/lib/cluster/package-client", help_string="location of var-directory [%(default)s]")),
         ("MODIFY_REPOS"           , configfile.bool_c_var(False, help_string="modify repository files")),
-        ("PACKAGE_SERVER_FILE"    , configfile.str_c_var("/etc/packageserver", help_string="filename where packageserver location is stored [%(default)s]"))
+        ("PACKAGE_SERVER_FILE"    , configfile.str_c_var("/etc/packageserver", help_string="filename where packageserver location is stored [%(default)s]")),
+        ("PACKAGE_SERVER_ID_FILE" , configfile.str_c_var("/etc/packageserver_id", help_string="filename where packageserver ID for 0MQ communication is stored [%(default)s]")),
     ])
     global_config.parse_file()
     _options = global_config.handle_commandline(
@@ -61,6 +62,7 @@ def main():
     if _options.exit_after_writeback and _options.writeback:
         sys.exit(0)
     ps_file_name = global_config["PACKAGE_SERVER_FILE"]
+    ps_id_file_name = global_config["PACKAGE_SERVER_ID_FILE"]
     if not os.path.isfile(ps_file_name):
         try:
             file(ps_file_name, "w").write("localhost\n")
@@ -75,8 +77,18 @@ def main():
             ("VERSION", configfile.str_c_var(VERSION_STRING)),
         ])
     except:
-        print "error reading from %s: %s" % (ps_file_name, process_tools.get_except_info())
+        print "error reading from {}: {}".format(ps_file_name, process_tools.get_except_info())
         sys.exit(5)
+    if os.path.exists(ps_id_file_name):
+        try:
+            global_config.add_config_entries(
+                [
+                    ("PACKAGE_SERVER_ID", configfile.str_c_var(file(ps_id_file_name, "r").read().strip().split("\n")[0].strip())),
+                ]
+            )
+        except:
+            # ignore, use old com style
+            pass
     global_config.add_config_entries([("DEBIAN", configfile.bool_c_var(os.path.isfile("/etc/debian_version")))])
     if global_config["KILL_RUNNING"]:
         process_tools.kill_running_processes(exclude=configfile.get_manager_pid())

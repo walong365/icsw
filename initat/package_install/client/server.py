@@ -56,8 +56,11 @@ class server_process(threading_tools.process_pool):
         process_tools.set_lockfile_msg(LF_NAME, "connect...")
         # log buffer
         self._show_config()
+        # send buffer
+        self.__send_buffer = []
         # log limits
         self._log_limits()
+        self._set_resend_timeout(None)
         self._init_network_sockets()
         self.register_func("send_to_server", self._send_to_server)
         if os.path.isfile("/etc/centos-release"):
@@ -140,7 +143,16 @@ class server_process(threading_tools.process_pool):
                 self.log("no limits found, strange ...", logging_tools.LOG_LEVEL_WARN)
     def _init_network_sockets(self):
         # connect to server
-        srv_port = self.zmq_context.socket(zmq.DEALER)
+        self.router_com = True if "PACKAGE_SERVER_ID" in global_config else False
+        if self.router_com:
+            self.__package_server_id = global_config["PACKAGE_SERVER_ID"]
+            self.log("using a ROUTER socket to communicate with the package server {}".format(self.__package_server_id))
+            srv_port = self.zmq_context.socket(zmq.ROUTER)
+            srv_port.setsockopt(zmq.ROUTER_MANDATORY, 1)
+        else:
+            self.__package_server_id = None
+            self.log("using a DEALER socket to communicate with the package server", logging_tools.LOG_LEVEL_WARN)
+            srv_port = self.zmq_context.socket(zmq.DEALER)
         srv_port.setsockopt(zmq.LINGER, 1000)
         srv_port.setsockopt(zmq.IDENTITY, uuid_tools.get_uuid().get_urn())
         srv_port.setsockopt(zmq.TCP_KEEPALIVE, 1)
@@ -172,19 +184,62 @@ class server_process(threading_tools.process_pool):
         self.log("bound to {} (ID {})".format(bind_str, self.bind_id))
         self.client_socket = client_sock
         self.register_poller(client_sock, zmq.POLLIN, self._recv_client)
-        # wait a litte for 0MQ to settle ...
-        self.log("waiting 1 second for 0MQ to settle down...")
-        time.sleep(1)
         # send commands
         self._send_to_server_int(get_srv_command(command="register"))
         self._get_repos()
         self._get_new_config()
+    def _check_send_buffer(self):
+        new_buffer = []
+        _send_ok = 0
+        _success = True
+        for _msg in self.__send_buffer:
+            if _success:
+                try:
+                    if self.__package_server_id:
+                        self.srv_port.send_unicode(self.__package_server_id, zmq.SNDMORE)
+                    self.srv_port.send_unicode(_msg)
+                except zmq.error.ZMQError:
+                    _success = False
+                    new_buffer.append(_msg)
+                else:
+                    _send_ok += 1
+            else:
+                new_buffer.append(_msg)
+        self.__send_buffer = new_buffer
+        self.log("trying to resend {}: {:d} ok, {:d} still pending".format(
+            logging_tools.get_plural("message", len(self.__send_buffer)),
+            _send_ok,
+            len(self.__send_buffer),
+            )
+        )
+        # print len(self.__send_buffer)
+        if not self.__send_buffer:
+            self._set_resend_timeout(300)
+    def _set_resend_timeout(self, cur_to):
+        if cur_to is None:
+            self.__rst = 0
+        else:
+            if cur_to != self.__rst:
+                if self.__rst:
+                    self.log("changing check_send_buffer timeout from {:d} to {:d} secs".format(self.__rst, cur_to))
+                    self.unregister_timer(self._check_send_buffer)
+                else:
+                    self.log("setting check_send_buffer timeout to {:d} secs".format(cur_to))
+                self.register_timer(self._check_send_buffer, cur_to)
+                self.__rst = cur_to
     def _send_to_server_int(self, xml_com):
         self._send_to_server("self", os.getpid(), xml_com["command"].text, unicode(xml_com), "server command")
     def _send_to_server(self, src_proc, *args, **kwargs):
         _src_pid, com_name, send_com, send_info = args
         self.log("sending {} ({}) to server {}".format(com_name, send_info, self.conn_str))
-        self.srv_port.send_unicode(send_com)
+        try:
+            if self.__package_server_id:
+                self.srv_port.send_unicode(self.__package_server_id, zmq.SNDMORE)
+            self.srv_port.send_unicode(send_com)
+        except zmq.error.ZMQError:
+            self.__send_buffer.append(send_com)
+            self.log("error sending message to server, buffering ({:d})".format(len(self.__send_buffer)))
+            self._set_resend_timeout(10)
     def _get_new_config(self):
         self._send_to_server_int(get_srv_command(command="get_package_list"))
         # self._send_to_server_int(get_srv_command(command="get_rsync_list"))
@@ -226,10 +281,18 @@ class server_process(threading_tools.process_pool):
     def _recv(self, zmq_sock):
         batch_list = []
         while True:
-            data = []
+            raw_data = []
             while True:
+                raw_data.append(zmq_sock.recv_unicode())
+                if not zmq_sock.getsockopt(zmq.RCVMORE):
+                    break
+            # rewrite to srv_coms
+            data = []
+            while raw_data:
+                if self.__package_server_id:
+                    raw_data.pop(0)
                 try:
-                    in_com = server_command.srv_command(source=zmq_sock.recv_unicode())
+                    in_com = server_command.srv_command(source=raw_data.pop(0))
                 except:
                     self.log("error decoding command: {}".format(process_tools.get_except_info()),
                              logging_tools.LOG_LEVEL_ERROR)
@@ -248,9 +311,10 @@ class server_process(threading_tools.process_pool):
             if not zmq_sock.poll(zmq.POLLIN):
                 break
         # batch_list = self._optimize_list(batch_list)
-        self.send_to_process("install",
-                             "command_batch",
-                             [unicode(cur_com) for cur_com in batch_list])
+        self.send_to_process(
+            "install",
+            "command_batch",
+            [unicode(cur_com) for cur_com in batch_list])
     # def _optimize_list(self, in_list):
     #    return in_list
     def _int_error(self, err_cause):
