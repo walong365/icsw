@@ -38,6 +38,7 @@ import sys
 import threading
 import time
 import traceback
+import psutil
 if sys.version_info[0] == 3:
     unicode = str
     long = int
@@ -250,54 +251,62 @@ def get_mem_info(pid=0, **kwargs):
         pid = [pid]
     ps_list = []
     for cur_pid in pid:
-        tot_size = 0
-        smap_file_name = "/proc/{:d}/smaps".format(cur_pid)
-        map_file_name = "/proc/{:d}/maps".format(cur_pid)
-        if os.path.isfile(smap_file_name):
-            have_pss = False
-            shared, private, pss = (0, 0, 0.)
-            try:
-                for line in open(smap_file_name, "r").readlines():
-                    if line.startswith("Shared"):
-                        shared += int(line.split()[1])
-                    elif line.startswith("Private"):
-                        private += int(line.split()[1])
-                    elif line.startswith("Pss"):
-                        have_pss = True
-                        pss += float(line.split()[1]) + 0.5
-            except IOError:
-                pass
-            if have_pss:
-                # print shared, pss - private
-                shared = pss - private
-            tot_size = int((shared + private) * 1024)
-        elif os.path.isfile(map_file_name):
-            # not always correct ...
-            try:
-                map_lines = [
-                    [y.strip() for y in x.strip().split()] for x in
-                    open(map_file_name, "r").read().split("\n") if x.strip()]
-            except:
-                pass
-            else:
-                for map_p in map_lines:
-                    # print "map_p", map_p
-                    try:
-                        mem_start, mem_end = map_p[0].split("-")
-                        mem_start, mem_end = (int(mem_start, 16),
-                                              int(mem_end  , 16))
-                        mem_size = mem_end - mem_start
-                        _perm, _offset, _dev, inode = (
-                            map_p[1],
-                            int(map_p[2], 16),
-                            map_p[3],
-                            int(map_p[4]))
-                        if not inode:
-                            tot_size += mem_size
-                    except:
-                        pass
-        ps_list.append(tot_size)
+        try:
+            ps_list.append(psutil.Process(cur_pid).memory_info()[0])
+        except:
+            # ignore missing process
+            pass
     return sum(ps_list)
+
+# old code, very slow compared to psutil (due to .so)
+if False:
+    cur_pid = 0
+    tot_size = 0
+    smap_file_name = "/proc/{:d}/smaps".format(cur_pid)
+    map_file_name = "/proc/{:d}/maps".format(cur_pid)
+    if os.path.isfile(smap_file_name):
+        have_pss = False
+        shared, private, pss = (0, 0, 0.)
+        try:
+            for line in open(smap_file_name, "r"):
+                if line.startswith("Shared"):
+                    shared += int(line.split()[1])
+                elif line.startswith("Private"):
+                    private += int(line.split()[1])
+                elif line.startswith("Pss"):
+                    have_pss = True
+                    pss += float(line.split()[1]) + 0.5
+        except IOError:
+            pass
+        if have_pss:
+            # print shared, pss - private
+            shared = pss - private
+        tot_size = int((shared + private) * 1024)
+    elif os.path.isfile(map_file_name):
+        # not always correct ...
+        try:
+            map_lines = [
+                [_part.strip() for _part in _line.strip().split()] for _line in
+                open(map_file_name, "r") if _line.strip()]
+        except:
+            pass
+        else:
+            for map_p in map_lines:
+                # print "map_p", map_p
+                try:
+                    mem_start, mem_end = map_p[0].split("-")
+                    mem_start, mem_end = (int(mem_start, 16),
+                                          int(mem_end  , 16))
+                    mem_size = mem_end - mem_start
+                    _perm, _offset, _dev, inode = (
+                        map_p[1],
+                        int(map_p[2], 16),
+                        map_p[3],
+                        int(map_p[4]))
+                    if not inode:
+                        tot_size += mem_size
+                except:
+                    pass
 
 def get_stat_info(pid=0):
     if not pid:
@@ -1799,3 +1808,11 @@ def create_password(**kwargs):
 def get_sys_bits():
     return int(platform.architecture()[0][0:2])
 
+if __name__ == "__main__":
+    num = 1000
+    s_time = time.time()
+    for i in xrange(num):
+        a = get_mem_info(int(sys.argv[1]))
+    e_time = time.time()
+    d_time = e_time - s_time
+    print "stresstest {:d} : {:.2f} sec ({:.8f} per call)".format(num, d_time, d_time / num)
