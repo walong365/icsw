@@ -691,7 +691,7 @@ class form_entry(object):
             form_str = "{{:{}}}".format(form_str)
         else:
             form_str = "{{:{}{:d}{}}}".format(
-                "<" if self.left else "",
+                "<" if self.left else ">",
                 max_len,
                 form_str,
                 )
