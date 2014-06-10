@@ -28,6 +28,9 @@ import server_command
 import shutil
 import stat
 
+# max file size to read, can be overridden
+MAX_FILE_SIZE = 5 * 1024 * 1024
+
 def _set_attributes(xml_el, log_com):
     try:
         if "user" in xml_el.attrib or "group" in xml_el.attrib:
@@ -133,27 +136,41 @@ def remove_dir(srv_com, log_com):
             server_command.SRV_REPLY_STATE_ERROR if failed else server_command.SRV_REPLY_STATE_OK
         )
 
-def get_file_content(srv_com, log_com):
+def get_file_content(srv_com, log_com, **kwargs):
+    max_size = kwargs.get("max_file_size", MAX_FILE_SIZE)
     for file_entry in srv_com.xpath(".//ns:file", smart_strings=False):
         if os.path.isfile(file_entry.attrib["name"]):
             try:
-                if "encoding" in file_entry.attrib:
-                    content = codecs.open(file_entry.attrib["name"], "r", file_entry.attrib["encoding"]).read()
-                else:
-                    content = open(file_entry.attrib["name"], "r").read()
+                cur_size = os.stat(file_entry.attrib["name"])[stat.ST_SIZE]
             except:
                 file_entry.attrib["error"] = "1"
-                file_entry.attrib["error_str"] = "error reading: {}".format(process_tools.get_except_info())
+                file_entry.attrib["error_str"] = "error stating: {}".format(process_tools.get_except_info())
             else:
-                try:
-                    file_entry.text = content
-                except:
-                    file_entry.attrib["error"] = "1"
-                    file_entry.attrib["error_str"] = "error setting content: {}".format(process_tools.get_except_info())
+                if cur_size <= max_size:
+                    try:
+                        if "encoding" in file_entry.attrib:
+                            content = codecs.open(file_entry.attrib["name"], "r", file_entry.attrib["encoding"]).read()
+                        else:
+                            content = open(file_entry.attrib["name"], "r").read()
+                    except:
+                        file_entry.attrib["error"] = "1"
+                        file_entry.attrib["error_str"] = "error reading: {}".format(process_tools.get_except_info())
+                    else:
+                        try:
+                            file_entry.text = content
+                        except:
+                            file_entry.attrib["error"] = "1"
+                            file_entry.attrib["error_str"] = "error setting content: {}".format(process_tools.get_except_info())
+                        else:
+                            file_entry.attrib["error"] = "0"
+                            file_entry.attrib["size"] = "{:d}".format(len(content))
+                            file_entry.attrib["lines"] = "{:d}".format(content.count("\n") + 1)
                 else:
-                    file_entry.attrib["error"] = "0"
-                    file_entry.attrib["size"] = "{:d}".format(len(content))
-                    file_entry.attrib["lines"] = "{:d}".format(content.count("\n") + 1)
+                    file_entry.attrib["error"] = "1"
+                    file_entry.attrib["error_str"] = "file is too big: {} > {}".format(
+                        logging_tools.get_size_str(cur_size, long_format=True),
+                        logging_tools.get_size_str(max_size, long_format=True),
+                    )
         else:
             file_entry.attrib["error"] = "1"
             file_entry.attrib["error_str"] = "file does not exist"

@@ -561,7 +561,7 @@ class eonstor_object(object):
     def get_state_str(self):
         return ", ".join(self.state_strs) or "ok"
     def get_ret_str(self, **kwargs):
-        out_str = self.long_string if (self.long_string and kwargs.get("long_version", False)) else self.out_string
+        out_str = self.long_string if (self.long_string and kwargs.get("long_format", False)) else self.out_string
         if self.nag_state == limits.nag_STATE_OK and out_str:
             return "%s: %s" % (
                 self.name,
@@ -970,7 +970,7 @@ class eonstor_proto_scheme(snmp_scheme):
                 else:
                     value = dev_dict[dev_idx]
                     ret_state = value.nag_state
-                    ret_field.append(value.get_ret_str(long_version=True) or "%s is OK" % (value.name))
+                    ret_field.append(value.get_ret_str(long_format=True) or "%s is OK" % (value.name))
             else:
                 ret_state = limits.nag_STATE_CRITICAL
                 ret_field.append("idx %d not found in dict (possible values: %s)" % (
