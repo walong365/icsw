@@ -67,6 +67,7 @@ iostruct = """
     <h4>
         {{ io_struct.get_file_info() }}, 
         <input type="button" class="btn btn-sm btn-warning" value="close" ng-click="close_io(io_struct)"></input>
+        <input type="button" ng-class="io_struct.update && 'btn btn-sm btn-success' || 'btn btn-sm'" value="update" ng_click="io_struct.update = !io_struct.update"></input>
     </h4>
     <div ng-show="io_struct.valid"> 
         <tt>
@@ -387,9 +388,11 @@ class io_struct
     constructor : (@job_id, @task_id, @type) ->
         @resp_xml = undefined
         @text = ""
+        # is set to true as soon as we got any data
         @valid = false
         @waiting = true
         @refresh = 0
+        @update = true
     get_name : () =>
         if @task_id
             return "#{@job_id}.#{@task_id} (#{@type})"
@@ -420,9 +423,10 @@ class io_struct
                 @text = @resp_xml.text()
                 @refresh++
         else
-            @valid = false
-            @resp_xml = undefined
-            @text = ""
+            @update = false
+            #@valid = false
+            #@resp_xml = undefined
+            #@text = ""
             @refresh++
           
 rms_module.value('ui.config', {
@@ -520,7 +524,8 @@ rms_module.controller("rms_ctrl", ["$scope", "$compile", "$filter", "$templateCa
                         # fetch file ids
                         fetch_list = []
                         for _id in $scope.io_list
-                            fetch_list.push($scope.io_dict[_id].get_id())
+                            if $scope.io_dict[_id].update
+                                fetch_list.push($scope.io_dict[_id].get_id())
                         if fetch_list.length
                             call_ajax
                                 url     : "{% url 'rms:get_file_content' %}"

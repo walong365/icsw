@@ -76,7 +76,12 @@ nd_row_template = """
         {{ ndip_obj.net_ip_set.length }} / {{ ndip_obj.peers.length }} {{ get_netdevice_boot_info(ndip_obj) }}
         </span>
     </button>
-    {{ get_netdevice_name(ndip_obj) }}
+    <span ng-show="ndip_obj.enabled">
+        {{ get_netdevice_name(ndip_obj) }}
+    </span>
+    <span ng-show="!ndip_obj.enabled">
+        <em>{{ get_netdevice_name(ndip_obj) }}</em>
+    </span>
 </td>
 <td>{{ get_bridge_info(ndip_obj) }}</td>
 <td>{{ ndip_obj.macaddr }}</td>
@@ -85,6 +90,9 @@ nd_row_template = """
 <td>
     <input type="button" class="btn btn-xs btn-info" value="info" tooltip-placement="right"
      tooltip-html-unsafe="<div class='text-left'>
+        device: {{ ndip_obj.devname }}<br>
+        enabled: {{ ndip_obj.enabled | yesno2 }}<br>
+        <hr>  
         driver: {{ ndip_obj.driver }}<br>
         driver options: {{ ndip_obj.driver_options }}<br>
         fake MACAddress: {{ ndip_obj.fake_macaddr }}<br>
