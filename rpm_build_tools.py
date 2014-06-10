@@ -365,7 +365,7 @@ class file_content_list(object):
                 print "%s: added %s (total %s)" % (
                     start_point,
                     logging_tools.get_plural("file", len(files_found)),
-                    logging_tools.get_size_str(sum(files_found), long_version=True))
+                    logging_tools.get_size_str(sum(files_found), long_format=True))
             if sum([len(e_list) for e_list in excl_dict.values()]):
                 print "\nexclude info for %s: %s\n" % (
                     start_point,

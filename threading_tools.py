@@ -374,11 +374,11 @@ class process_base(object):
         try:
             threading.stack_size(s_size)
         except:
-            self.log("Error setting stack_size to %s: %s" % (logging_tools.get_size_str(s_size, long_version=True),
+            self.log("Error setting stack_size to %s: %s" % (logging_tools.get_size_str(s_size, long_format=True),
                                                              get_except_info()),
                      logging_tools.LOG_LEVEL_ERROR)
         else:
-            self.log("setting stack_size to %s" % (logging_tools.get_size_str(s_size, long_version=True)))
+            self.log("setting stack_size to %s" % (logging_tools.get_size_str(s_size, long_format=True)))
 
 class exception_handling_mixin(object):
     def __init__(self):
