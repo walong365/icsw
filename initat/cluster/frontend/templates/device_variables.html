@@ -30,7 +30,7 @@
 
 <script type="text/ng-template" id="dv_row.html">
     <td>
-        <button class="btn btn-primary btn-xs" ng-disabled="obj.num_filtered == 0" ng-click="expand_vt(obj)">
+        <button class="btn btn-primary btn-xs" ng-disabled="!num_vars(obj)" ng-click="expand_vt(obj)">
             <span ng_class="get_expand_class(obj)">
             </span> {{ obj.device_variable_set.length }}
             <span ng-if="var_filter.length"> / {{ obj.num_filtered }} shown</span>
@@ -45,7 +45,7 @@
 </script>
 
 <script type="text/ng-template" id="vartable.html">
-    <table ng-show="device.num_filtered" class="table table-condensed table-hover" style="width:auto;">
+    <table ng-show="device.expanded || device.num_filtered" class="table table-condensed table-hover" style="width:auto;">
         <thead>
             <tr>
                 <th>Name</th>
@@ -282,6 +282,8 @@ device_variable_module.controller("dv_base", ["$scope", "$compile", "$filter", "
                         num_meta += (entry for entry in meta_server.device_variable_set when entry.name not in my_names).length
                     num_meta += (entry for entry in scope.cdg.device_variable_set when entry.name not in my_names).length
                 return num_meta
+            scope.num_vars = (obj) ->
+                return scope.num_parent_vars + obj.device_variable_set.length
             scope.parent_vars_defined = (obj) ->
                 return if scope.num_parent_vars(obj) then true else false
             scope.num_shadowed_vars = (obj) ->
