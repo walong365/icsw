@@ -17,7 +17,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
-""" compiles openmpi """
+""" compiles openmpi or mpich """
 """
 to compile openmpi 1.8.1 with PGC 14.4 on Centos 6.5:
 
@@ -39,18 +39,23 @@ import tarfile
 import tempfile
 import time
 
-OPENMPI_VERSION_FILE = "/opt/cluster/share/openmpi_versions"
+MPI_VERSION_FD = {
+    "openmpi" : "/opt/cluster/share/openmpi_versions",
+    "mpich" : "/opt/cluster/share/mpich_versions",
+}
 
 class my_opt_parser(argparse.ArgumentParser):
     def __init__(self):
-        argparse.ArgumentParser.__init__(self)
+        self.mode = os.path.basename(sys.argv[0]).split("_")[1].split(".")[0]
+        self.MPI_VERSION_FILE = MPI_VERSION_FD[self.mode]
+        argparse.ArgumentParser.__init__(self, description="compile MPI implementation {}".format(self.mode))
         # check for 64-bit Machine
         self.mach_arch = os.uname()[4]
         if self.mach_arch in ["x86_64", "ia64"]:
             is_64_bit = True
         else:
             is_64_bit = False
-        self._read_openmpi_versions()
+        self._read_mpi_versions()
         target_dir = "/opt/libs/"
         fc_choices = sorted(["GNU",
                              "INTEL",
@@ -59,7 +64,7 @@ class my_opt_parser(argparse.ArgumentParser):
         self.cpu_id = cpu_database.get_cpuid()
         self.add_argument("-c", type=str, dest="fcompiler", help="Set Compiler type [%(default)s]", action="store", choices=fc_choices, default="GNU")
         self.add_argument("--fpath", type=str, dest="fcompiler_path", help="Compiler Base Path, for instance /opt/intel/compiler-9.1 [%(default)s]", default="NOT_SET")
-        self.add_argument("-o", type=str, dest="openmpi_version", help="Choose OpenMPI Version [%(default)s]", action="store", choices=self.version_dict.keys(), default=self.highest_version)
+        self.add_argument("-o", type=str, dest="mpi_version", help="Choose MPI Version [%(default)s]", action="store", choices=self.version_dict.keys(), default=self.highest_version)
         self.add_argument("-d", type=str, dest="target_dir", help="Sets target directory [%(default)s]", default=target_dir, action="store")
         self.add_argument("--extra", type=str, dest="extra_settings", help="Sets extra options for configure, i.e. installation directory and package name [%(default)s]", action="store", default="")
         self.add_argument("--extra-filename", type=str, dest="extra_filename", help="Sets extra filename string [%(default)s]", action="store", default="")
@@ -80,13 +85,14 @@ class my_opt_parser(argparse.ArgumentParser):
     def parse(self):
         self.options = self.parse_args()
         self._check_compiler_settings()
-        self.package_name = "openmpi-{}-{}-{}-{}{}".format(
-            self.options.openmpi_version,
+        self.package_name = "{}-{}-{}-{}-{}{}".format(
+            self.mode,
+            self.options.mpi_version,
             self.options.fcompiler,
             self.small_version,
             self.options.use_64_bit and "64" or "32",
             self.options.extra_filename and "-{}".format(self.options.extra_filename.strip()) or "")
-        self.openmpi_dir = os.path.join(
+        self.mpi_dir = os.path.join(
             self.options.target_dir,
             self.package_name)
     def _check_compiler_settings(self):
@@ -173,31 +179,36 @@ class my_opt_parser(argparse.ArgumentParser):
             print _stat, _out
         else:
             raise ValueError, "Compiler settings %s unknown" % (self.options.fcompiler)
-    def _read_openmpi_versions(self):
-        if os.path.isfile(OPENMPI_VERSION_FILE):
-            version_lines = [line.strip().split() for line in file(OPENMPI_VERSION_FILE, "r").read().split("\n") if line.strip()]
+    def _read_mpi_versions(self):
+        if os.path.isfile(self.MPI_VERSION_FILE):
+            version_lines = [line.strip().split() for line in file(self.MPI_VERSION_FILE, "r").read().split("\n") if line.strip()]
             self.version_dict = dict([(key, value) for key, value in version_lines])
             vers_dict = dict([(tuple([part.isdigit() and int(part) or part for part in key.split(".")]), key) for key in self.version_dict.keys()])
             vers_keys = sorted(vers_dict.keys())
             self.highest_version = vers_dict[vers_keys[-1]]
         else:
-            raise IOError, "No %s found" % (OPENMPI_VERSION_FILE)
+            raise IOError, "No {} found".format(self.MPI_VERSION_FILE)
     def get_compile_options(self):
-        return "\n".join([" - build_date is %s" % (time.ctime()),
-                          " - openmpi Version is %s, cpuid is %s" % (self.options.openmpi_version,
-                                                                     self.cpu_id),
-                          " - Compiler is %s, Compiler Base path is %s" % (self.options.fcompiler,
-                                                                           self.options.fcompiler_path),
-                          " - small_version is %s" % (self.small_version),
-                          " - source package is %s, target directory is %s" % (self.version_dict[self.options.openmpi_version],
-                                                                               self.openmpi_dir),
-                          " - extra_settings for configure: %s" % (self.options.extra_settings),
-                          "compiler settings: %s" % ", ".join(["%s=%s" % (key, value) for key, value in self.compiler_dict.iteritems()]),
-                          "add_path_dict    : %s" % ", ".join(["%s=%s:$%s" % (key, ":".join(value), key) for key, value in self.add_path_dict.iteritems()]),
-                          "version info:"] + \
-                         ["%s:\n%s" % (key, "\n".join(["    %s" % (line.strip()) for line in value.split("\n")])) for key, value in self.compiler_version_dict.iteritems()])
+        return "\n".join(
+            [
+                " - build_date is %s" % (time.ctime()),
+                " - implementation is {}".format(self.mode),
+                " - mpi Version is %s, cpuid is %s" % (self.options.mpi_version,
+                                                           self.cpu_id),
+                " - Compiler is %s, Compiler Base path is %s" % (self.options.fcompiler,
+                                                                 self.options.fcompiler_path),
+                " - small_version is %s" % (self.small_version),
+                " - source package is %s, target directory is %s" % (self.version_dict[self.options.mpi_version],
+                                                                     self.mpi_dir),
+                " - extra_settings for configure: %s" % (self.options.extra_settings),
+                "compiler settings: %s" % ", ".join(["%s=%s" % (key, value) for key, value in self.compiler_dict.iteritems()]),
+                "add_path_dict    : %s" % ", ".join(["%s=%s:$%s" % (key, ":".join(value), key) for key, value in self.add_path_dict.iteritems()]),
+                "version info:"] + \
+                         ["%s:\n%s" % (key, "\n".join(["    %s" % (line.strip()) for line in value.split("\n")])) for key, value in self.compiler_version_dict.iteritems()
+            ]
+        )
 
-class openmpi_builder(object):
+class mpi_builder(object):
     def __init__(self, parser):
         self.parser = parser
     def build_it(self):
@@ -211,7 +222,7 @@ class openmpi_builder(object):
         if not self.compile_ok:
             print "Not removing temporary directory %s" % (self.tempdir)
     def _init_tempdir(self):
-        self.tempdir = tempfile.mkdtemp("_openmpi")
+        self.tempdir = tempfile.mkdtemp("_mpi")
     def _remove_tempdir(self):
         print "Removing temporary directory"
         shutil.rmtree(self.tempdir)
@@ -220,9 +231,9 @@ class openmpi_builder(object):
         except:
             pass
     def _untar_source(self):
-        tar_source = self.parser.version_dict[self.parser.options.openmpi_version]
+        tar_source = self.parser.version_dict[self.parser.options.mpi_version]
         if not os.path.isfile(tar_source):
-            print "Cannot find OpenMPI source %s" % (tar_source)
+            print "Cannot find MPI source {} ({})".format(tar_source, self.parser.mode)
             success = False
         else:
             print "Extracting tarfile %s ..." % (tar_source),
@@ -235,7 +246,7 @@ class openmpi_builder(object):
     def _compile_it(self):
         num_cores = cpu_database.global_cpu_info(parse=True).num_cores() * 2 if self.parser.options.pmake else 1
         act_dir = os.getcwd()
-        os.chdir("%s/openmpi-%s" % (self.tempdir, self.parser.options.openmpi_version))
+        os.chdir(os.path.join(self.tempdir, "{}-{}".format(self.parser.mode, self.parser.options.mpi_version)))
         print "Modifying environment"
         for env_name, env_value in self.parser.compiler_dict.iteritems():
             os.environ[env_name] = env_value
@@ -243,10 +254,11 @@ class openmpi_builder(object):
             os.environ[path_name] = "%s:%s" % (":".join(path_add_value), os.environ.get(path_name, ""))
         self.time_dict, self.log_dict = ({}, {})
         # remove link if needed
-        if os.path.islink("%s/etc/openmpi-mca-params.conf" % (self.parser.openmpi_dir)):
-            os.unlink("%s/etc/openmpi-mca-params.conf" % (self.parser.openmpi_dir))
+        if self.parser.mode == "openmpi":
+            if os.path.islink("%s/etc/openmpi-mca-params.conf" % (self.parser.mpi_dir)):
+                os.unlink("%s/etc/openmpi-mca-params.conf" % (self.parser.mpi_dir))
         success = True
-        config_list = [("--prefix", self.parser.openmpi_dir)]
+        config_list = [("--prefix", self.parser.mpi_dir)]
         if self.parser.options.hwloc:
             config_list.append(("--with-hwloc", "/opt/cluster"))
         for command, time_name in [("./configure {} {}".format(
@@ -289,15 +301,15 @@ class openmpi_builder(object):
         return success
     def _create_module_file(self):
         self.modulefile_name = self.parser.package_name.replace("-", "_").replace("__", "_")
-        dir_list = os.listdir(self.parser.openmpi_dir)
+        dir_list = os.listdir(self.parser.mpi_dir)
         if "lib64" in dir_list:
-            lib_dir = os.path.join(self.parser.openmpi_dir, "lib64")
+            lib_dir = os.path.join(self.parser.mpi_dir, "lib64")
         else:
-            lib_dir = os.path.join(self.parser.openmpi_dir, "lib")
+            lib_dir = os.path.join(self.parser.mpi_dir, "lib")
         mod_lines = [
             "#%Module1.0",
             "",
-            "append-path PATH {}/bin".format(self.parser.openmpi_dir),
+            "append-path PATH {}/bin".format(self.parser.mpi_dir),
             "append-path LD_LIBRARY_PATH {}".format(lib_dir),
             ""
             ]
@@ -310,27 +322,27 @@ class openmpi_builder(object):
         self.mpi_selector_csh_name = "%s.csh" % (self.parser.package_name)
         self.mpi_selector_dir = "/var/mpi-selector/data"
         sh_lines = ['#PATH',
-                    'if test -z "`echo $PATH | grep %s/bin`"; then' % (self.parser.openmpi_dir),
-                    '    PATH="%s/bin:${PATH}"' % (self.parser.openmpi_dir),
+                    'if test -z "`echo $PATH | grep %s/bin`"; then' % (self.parser.mpi_dir),
+                    '    PATH="%s/bin:${PATH}"' % (self.parser.mpi_dir),
                     '    export PATH',
                     'fi',
                     '# LD_LIBRARY_PATH',
-                    'if test -z "`echo $LD_LIBRARY_PATH | grep %s/lib64`"; then' % (self.parser.openmpi_dir),
-                    '    if [ -d "%s/lib64" ] ; then' % (self.parser.openmpi_dir),
-                    '        LD_LIBRARY_PATH=%s/lib64:${LD_LIBRARY_PATH}' % (self.parser.openmpi_dir),
+                    'if test -z "`echo $LD_LIBRARY_PATH | grep %s/lib64`"; then' % (self.parser.mpi_dir),
+                    '    if [ -d "%s/lib64" ] ; then' % (self.parser.mpi_dir),
+                    '        LD_LIBRARY_PATH=%s/lib64:${LD_LIBRARY_PATH}' % (self.parser.mpi_dir),
                     '        export LD_LIBRARY_PATH',
                     '    fi',
                     'fi',
-                    'if test -z "`echo $LD_LIBRARY_PATH | grep %s/lib`"; then' % (self.parser.openmpi_dir),
-                    '    if [ -d "%s/lib" ] ; then' % (self.parser.openmpi_dir),
-                    '        LD_LIBRARY_PATH=%s/lib:${LD_LIBRARY_PATH}' % (self.parser.openmpi_dir),
+                    'if test -z "`echo $LD_LIBRARY_PATH | grep %s/lib`"; then' % (self.parser.mpi_dir),
+                    '    if [ -d "%s/lib" ] ; then' % (self.parser.mpi_dir),
+                    '        LD_LIBRARY_PATH=%s/lib:${LD_LIBRARY_PATH}' % (self.parser.mpi_dir),
                     '        export LD_LIBRARY_PATH',
                     '    fi',
                     'fi',
                     '',
                     '# MANPATH',
-                    'if test -z "`echo $MANPATH | grep %s/share/man`"; then' % (self.parser.openmpi_dir),
-                    '    MANPATH=%s/man:${MANPATH}' % (self.parser.openmpi_dir),
+                    'if test -z "`echo $MANPATH | grep %s/share/man`"; then' % (self.parser.mpi_dir),
+                    '    MANPATH=%s/man:${MANPATH}' % (self.parser.mpi_dir),
                     '    export MANPATH',
                     'fi']
         csh_lines = ['# path',
@@ -340,20 +352,20 @@ class openmpi_builder(object):
                      '',
                      '# LD_LIBRARY_PATH',
                      'if ("1" == "$?LD_LIBRARY_PATH") then',
-                     '    if ("$LD_LIBRARY_PATH" !~ *%s/lib64*) then' % (self.parser.openmpi_dir),
-                     '        setenv LD_LIBRARY_PATH %s/lib64:${LD_LIBRARY_PATH}' % (self.parser.openmpi_dir),
+                     '    if ("$LD_LIBRARY_PATH" !~ *%s/lib64*) then' % (self.parser.mpi_dir),
+                     '        setenv LD_LIBRARY_PATH %s/lib64:${LD_LIBRARY_PATH}' % (self.parser.mpi_dir),
                      '    endif',
                      'else',
-                     '    setenv LD_LIBRARY_PATH %s/lib64' % (self.parser.openmpi_dir),
+                     '    setenv LD_LIBRARY_PATH %s/lib64' % (self.parser.mpi_dir),
                      'endif',
                      '',
                      '# MANPATH',
                      'if ("1" == "$?MANPATH") then',
-                     '    if ("$MANPATH" !~ *%s/share/man*) then' % (self.parser.openmpi_dir),
-                     '        setenv MANPATH %s/share/man:${MANPATH}' % (self.parser.openmpi_dir),
+                     '    if ("$MANPATH" !~ *%s/share/man*) then' % (self.parser.mpi_dir),
+                     '        setenv MANPATH %s/share/man:${MANPATH}' % (self.parser.mpi_dir),
                      '    endif',
                      'else',
-                     '    setenv MANPATH %s/share/man:' % (self.parser.openmpi_dir),
+                     '    setenv MANPATH %s/share/man:' % (self.parser.mpi_dir),
                      'endif']
         targ_dir = "%s/%s" % (self.tempdir, self.mpi_selector_dir)
         if not os.path.isdir(targ_dir):
@@ -371,9 +383,10 @@ class openmpi_builder(object):
             readme_lines.extend(["Compile logs:"] + \
                                 sum([self.log_dict[key].split("\n") + [sep_str] for key in self.log_dict.keys()], []))
         file("%s/%s" % (self.tempdir, info_name), "w").write("\n".join(readme_lines))
-        package_name, package_version, package_release = (self.parser.package_name,
-                                                          self.parser.options.openmpi_version,
-                                                          self.parser.options.release)
+        package_name, package_version, package_release = (
+            self.parser.package_name,
+            self.parser.options.mpi_version,
+            self.parser.options.release)
         if self.parser.options.module_file:
             self._create_module_file()
         if self.parser.options.mpi_selector:
@@ -384,32 +397,33 @@ class openmpi_builder(object):
             release=package_release,
             package_group="System/Libraries",
             arch=self.parser.options.arch,
-            description="OpenMPI",
-            summary="OpenMPI",
+            description="MPI via {}".format(self.parser.mode),
+            summary="{}".format(self.parser.mode),
             )
         new_p = rpm_build_tools.build_package(dummy_args)
         new_p["inst_options"] = " -p "
         # remove config files
-        for file_name in os.listdir("%s/etc" % (self.parser.openmpi_dir)):
+        for file_name in os.listdir("%s/etc" % (self.parser.mpi_dir)):
             try:
-                os.unlink("%s/etc/%s" % (self.parser.openmpi_dir, file_name))
+                os.unlink("%s/etc/%s" % (self.parser.mpi_dir, file_name))
             except:
                 pass
         # generate empty hosts file
-        file("%s/etc/openmpi-default-hostfile" % (self.parser.openmpi_dir), "w").write("")
-        # generate link
-        mca_local_file = "/etc/openmpi-mca-params.conf"
-        os.symlink(mca_local_file, "%s/etc/openmpi-mca-params.conf" % (self.parser.openmpi_dir))
-        # generate dummy file if not existent
-        remove_mca = False
-        if not os.path.exists(mca_local_file):
-            remove_mca = True
-            open(mca_local_file, "w").write("")
+        if self.parser.mode == "openmpi":
+            file("%s/etc/openmpi-default-hostfile" % (self.parser.openmpi_dir), "w").write("")
+            # generate link
+            mca_local_file = "/etc/openmpi-mca-params.conf"
+            os.symlink(mca_local_file, "%s/etc/openmpi-mca-params.conf" % (self.parser.openmpi_dir))
+            # generate dummy file if not existent
+            remove_mca = False
+            if not os.path.exists(mca_local_file):
+                remove_mca = True
+                open(mca_local_file, "w").write("")
         # remove old info if present
-        if os.path.isfile("%s/%s" % (self.parser.openmpi_dir, info_name)):
-            os.unlink("%s/%s" % (self.parser.openmpi_dir, info_name))
-        fc_list = [self.parser.openmpi_dir,
-                   "%s/%s:%s/%s" % (self.tempdir, info_name, self.parser.openmpi_dir, info_name)]
+        if os.path.isfile("%s/%s" % (self.parser.mpi_dir, info_name)):
+            os.unlink("%s/%s" % (self.parser.mpi_dir, info_name))
+        fc_list = [self.parser.mpi_dir,
+                   "%s/%s:%s/%s" % (self.tempdir, info_name, self.parser.mpi_dir, info_name)]
         if self.parser.options.mpi_selector:
             fc_list.append(
                 "{0}{1}:{1}".format(
@@ -450,7 +464,7 @@ def main():
     my_parser = my_opt_parser()
     my_parser.parse()
     print my_parser.get_compile_options()
-    my_builder = openmpi_builder(my_parser)
+    my_builder = mpi_builder(my_parser)
     my_builder.build_it()
 
 if __name__ == "__main__":
