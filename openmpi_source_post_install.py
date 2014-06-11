@@ -23,9 +23,14 @@ import os
 import pprint
 import sys
 
-VERS_FILE = "/opt/cluster/share/openmpi_versions"
+VERS_FILES = {
+    "openmpi" : "/opt/cluster/share/openmpi_versions",
+    "mpich"   : "/opt/cluster/share/mpich_versions",
+}
 
 def main():
+    mode = os.path.basename(sys.argv[0]).split("_")[0]
+    VERS_FILE = VERS_FILES[mode]
     if len(sys.argv) < 3:
         print("Need version and filename")
         sys.exit(-1)
@@ -38,7 +43,7 @@ def main():
     else:
         cur_vers = {}
     cur_vers[new_v] = new_f
-    print("content of version dict:")
+    print("content of version dict {}:".format(VERS_FILE))
     pprint.pprint(cur_vers)
     file(VERS_FILE, "w").write("\n".join(["{} {}".format(key, value) for key, value in cur_vers.iteritems()] + [""]))
 
