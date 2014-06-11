@@ -402,20 +402,21 @@ class mpi_builder(object):
             )
         new_p = rpm_build_tools.build_package(dummy_args)
         new_p["inst_options"] = " -p "
-        # remove config files
-        for file_name in os.listdir("%s/etc" % (self.parser.mpi_dir)):
-            try:
-                os.unlink("%s/etc/%s" % (self.parser.mpi_dir, file_name))
-            except:
-                pass
-        # generate empty hosts file
+        # set flag
+        remove_mca = False
         if self.parser.mode == "openmpi":
+            # remove config files
+            for file_name in os.listdir("%s/etc" % (self.parser.mpi_dir)):
+                try:
+                    os.unlink("%s/etc/%s" % (self.parser.mpi_dir, file_name))
+                except:
+                    pass
+            # generate empty hosts file
             file("%s/etc/openmpi-default-hostfile" % (self.parser.openmpi_dir), "w").write("")
             # generate link
             mca_local_file = "/etc/openmpi-mca-params.conf"
             os.symlink(mca_local_file, "%s/etc/openmpi-mca-params.conf" % (self.parser.openmpi_dir))
             # generate dummy file if not existent
-            remove_mca = False
             if not os.path.exists(mca_local_file):
                 remove_mca = True
                 open(mca_local_file, "w").write("")
