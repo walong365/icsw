@@ -161,12 +161,16 @@ class my_opt_parser(argparse.ArgumentParser):
                     self.options.fcompiler_path,
                     self.options.fcompiler)
         elif self.options.fcompiler == "PGI":
+            # for PGI / mpich: unset F90 / F90FLAGS
             # portlan group compiler
             self.compiler_dict = {
                 "CC"  : "pgcc",
-                "FC"  : "pgf90",
+                "FC"  : {"openmpi" : "pgf90", "mpich" : "pgfortran"}[self.mode],
                 "F77" : "pgf77",
                 "CXX" : "pgCC",
+                "CPP" : "cpp",
+                # for mpich
+                "LD"  : "ld",
                 "CFLAGS"   : "-fast",
                 "CXXFLAGS" : "-fast",
                 "FFFLAGS"  : "-fast",
@@ -261,6 +265,8 @@ class mpi_builder(object):
         config_list = [("--prefix", self.parser.mpi_dir)]
         if self.parser.options.hwloc:
             config_list.append(("--with-hwloc", "/opt/cluster"))
+        if self.parser.mode == "mpich":
+            config_list.append(("--with-device", "ch3:nemesis"))
         for command, time_name in [("./configure {} {}".format(
             " ".join(["{}={}".format(key, value) for key, value in config_list]),
             self.parser.options.extra_settings), "configure"),
@@ -412,10 +418,10 @@ class mpi_builder(object):
                 except:
                     pass
             # generate empty hosts file
-            file("%s/etc/openmpi-default-hostfile" % (self.parser.openmpi_dir), "w").write("")
+            file("%s/etc/openmpi-default-hostfile" % (self.parser.mpi_dir), "w").write("")
             # generate link
             mca_local_file = "/etc/openmpi-mca-params.conf"
-            os.symlink(mca_local_file, "%s/etc/openmpi-mca-params.conf" % (self.parser.openmpi_dir))
+            os.symlink(mca_local_file, "%s/etc/openmpi-mca-params.conf" % (self.parser.mpi_dir))
             # generate dummy file if not existent
             if not os.path.exists(mca_local_file):
                 remove_mca = True
