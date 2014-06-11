@@ -300,8 +300,8 @@ class _general(hm_classes.hm_module):
                     # cannot read, take all devs
                     mount_list = ds_dict.keys()
                 else:
-                    # print mount_list
-                    pass
+                    # check for by-* devices
+                    mount_list = [os.path.normpath(os.path.join(os.path.dirname(os.path.join("/dev", _value)), os.readlink(os.path.join("/dev", _value)))).split("/", 2)[2] if _value.count("/by-") else _value for _value in mount_list]
                 # get unique devices
                 ds_keys_ok_by_name = sorted([key for key in ds_dict.iterkeys() if key in self.valid_block_devs])
                 # sort out partition stuff
@@ -388,16 +388,17 @@ class _general(hm_classes.hm_module):
                 for name, idx in [("in", 0), ("out", 1)]:
                     mvect["pages.%s" % (name)] = int(sub_wrap(stat_dict["pages"][idx], self.vmstat_dict["pages"][idx]) / tdiff)
             # print unique_dev_list
-            for act_disk in unique_dev_list:
-                if not self.disk_stat.has_key(act_disk):
-                    info_str = act_disk == "total" and "total" or "on /dev/$2"
-                    mvect.register_entry("io.%s.blks.read" % (act_disk)    , 0 , "number of blocks read per second %s" % (info_str)   , "1/s")
-                    mvect.register_entry("io.%s.blks.written" % (act_disk) , 0 , "number of blocks written per second %s" % (info_str), "1/s")
-                    mvect.register_entry("io.%s.bytes.read" % (act_disk)   , 0 , "bytes read per second %s" % (info_str)   , "B/s", 1024)
-                    mvect.register_entry("io.%s.bytes.written" % (act_disk), 0 , "bytes written per second %s" % (info_str), "B/s", 1024)
-                    mvect.register_entry("io.%s.time.read" % (act_disk)    , 0., "milliseconds spent reading %s" % (info_str)         , "s")
-                    mvect.register_entry("io.%s.time.written" % (act_disk) , 0., "milliseconds spent writing %s" % (info_str)         , "s")
-                    mvect.register_entry("io.%s.time.io" % (act_disk)      , 0., "milliseconds spent doing I/O %s" % (info_str)       , "s")
+            if unique_dev_list != ["total"]:
+                for act_disk in unique_dev_list:
+                    if not self.disk_stat.has_key(act_disk):
+                        info_str = act_disk == "total" and "total" or "on /dev/$2"
+                        mvect.register_entry("io.%s.blks.read" % (act_disk)    , 0 , "number of blocks read per second %s" % (info_str)   , "1/s")
+                        mvect.register_entry("io.%s.blks.written" % (act_disk) , 0 , "number of blocks written per second %s" % (info_str), "1/s")
+                        mvect.register_entry("io.%s.bytes.read" % (act_disk)   , 0 , "bytes read per second %s" % (info_str)   , "B/s", 1024)
+                        mvect.register_entry("io.%s.bytes.written" % (act_disk), 0 , "bytes written per second %s" % (info_str), "B/s", 1024)
+                        mvect.register_entry("io.%s.time.read" % (act_disk)    , 0., "milliseconds spent reading %s" % (info_str)         , "s")
+                        mvect.register_entry("io.%s.time.written" % (act_disk) , 0., "milliseconds spent writing %s" % (info_str)         , "s")
+                        mvect.register_entry("io.%s.time.io" % (act_disk)      , 0., "milliseconds spent doing I/O %s" % (info_str)       , "s")
             for old_disk in self.disk_stat.keys():
                 if not disk_stat.has_key(old_disk):
                     mvect.unregister_entry("io.%s.blks.read" % (old_disk))
