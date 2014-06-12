@@ -2430,6 +2430,7 @@ class package_device_connection_serializer(serializers.ModelSerializer):
         model = package_device_connection
 
 class package_serializer(serializers.ModelSerializer):
+    target_repo_name = serializers.Field(source="target_repo_name")
     class Meta:
         model = package
 

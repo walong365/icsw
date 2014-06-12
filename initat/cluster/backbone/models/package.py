@@ -157,7 +157,7 @@ class package_search_result(models.Model):
     copied = models.BooleanField(default=False)
     package_repo = models.ForeignKey("backbone.package_repo", null=True)
     created = models.DateTimeField(auto_now_add=True)
-    def create_package(self, exact=True):
+    def create_package(self, exact=True, target_repo=None):
         new_p = package(
             name=self.name,
             # set empty version in case of always latest (== not exact)
@@ -166,6 +166,7 @@ class package_search_result(models.Model):
             arch=self.arch,
             package_repo=self.package_repo,
             always_latest=not exact,
+            target_repo=target_repo,
             )
         try:
             new_p.save()
@@ -196,6 +197,7 @@ class package(models.Model):
     # hard to determine ...
     size = models.IntegerField(default=0)
     package_repo = models.ForeignKey("backbone.package_repo", null=True)
+    target_repo = models.ForeignKey("backbone.package_repo", null=True, related_name="target_repo_package")
     created = models.DateTimeField(auto_now_add=True)
     def get_xml(self):
         return E.package(
@@ -219,9 +221,14 @@ class package(models.Model):
         permissions = (
             ("package_install", "access package install site", False),
         )
+    def target_repo_name(self):
+        if self.target_repo_id:
+            return self.target_repo.name
+        else:
+            return ""
     class Meta:
         db_table = u'package'
-        unique_together = (("name", "version", "arch", "kind",),)
+        unique_together = (("name", "version", "arch", "kind", "target_repo",),)
         app_label = "backbone"
 
 @receiver(signals.pre_save, sender=package)
