@@ -295,7 +295,7 @@ class install_process(threading_tools.process_obj):
                                 pass
                         package = E.package()
                         for entry in _cur_pdc.find("package"):
-                            if entry.tag in ["name", "version", "idx", "package_repo", "device"]:
+                            if entry.tag in ["name", "version", "idx", "package_repo", "device", "target_repo_name"]:
                                 package.attrib[entry.tag] = entry.text or ""
                             elif entry.tag in ["always_latest"]:
                                 package.attrib[entry.tag] = "1" if entry.text.lower() in ["true"] else "0"
@@ -506,9 +506,14 @@ class zypper_install_process(install_process):
                 self.log("changing zypper_com to '{}' (always_latest flag)".format(zypper_com), logging_tools.LOG_LEVEL_WARN)
             self.log("starting action '{}'".format(zypper_com))
             cur_pdc.attrib["pre_zypper_com"] = zypper_com
+            if pack_xml.attrib["target_repo_name"]:
+                _repo_filter = "-r {}".format(pack_xml.attrib["target_repo_name"])
+            else:
+                _repo_filter = ""
             # flags: xml output, non-interactive
-            zypper_com = "/usr/bin/zypper -x -n {} {} {}".format(
+            zypper_com = "/usr/bin/zypper -x -n {} {} {} {}".format(
                 zypper_com,
+                _repo_filter,
                 "-f" if (int(cur_pdc.attrib["force_flag"]) and zypper_com not in ["rm"]) else "",
                 package_name,
             )

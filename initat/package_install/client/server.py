@@ -185,7 +185,7 @@ class server_process(threading_tools.process_pool):
         self.client_socket = client_sock
         self.register_poller(client_sock, zmq.POLLIN, self._recv_client)
         # send commands
-        self._send_to_server_int(get_srv_command(command="register"))
+        self._register()
         self._get_repos()
         self._get_new_config()
     def _check_send_buffer(self):
@@ -240,6 +240,8 @@ class server_process(threading_tools.process_pool):
             self.__send_buffer.append(send_com)
             self.log("error sending message to server, buffering ({:d})".format(len(self.__send_buffer)))
             self._set_resend_timeout(10)
+    def _register(self):
+        self._send_to_server_int(get_srv_command(command="register"))
     def _get_new_config(self):
         self._send_to_server_int(get_srv_command(command="get_package_list"))
         # self._send_to_server_int(get_srv_command(command="get_rsync_list"))

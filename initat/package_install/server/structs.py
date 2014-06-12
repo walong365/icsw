@@ -506,7 +506,7 @@ class client(object):
         cur_kernel = self.device.act_kernel
         # for testing
         # cur_kernel = self.device.new_kernel
-        pdc_list = package_device_connection.objects.filter(Q(device=self.device)).prefetch_related("kernel_list", "image_list").select_related("package")
+        pdc_list = package_device_connection.objects.filter(Q(device=self.device)).prefetch_related("kernel_list", "image_list").select_related("package", "package__target_repo")
         # send to client
         send_list = []
         for cur_pdc in pdc_list:

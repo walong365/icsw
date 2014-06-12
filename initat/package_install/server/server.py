@@ -209,7 +209,7 @@ class server_process(threading_tools.process_pool):
             immediate_return = False
         elif in_com == "sync_repos":
             all_devs = list(client.name_set)
-            self.log("sending sync_repos to %s" % (logging_tools.get_plural("device", len(all_devs))))
+            self.log("sending sync_repos to {}".format(logging_tools.get_plural("device", len(all_devs))))
             if all_devs:
                 self._send_update(command="sync_repos", dev_list=all_devs)
             srv_com.set_result("send sync_repos to {}".format (
@@ -247,6 +247,8 @@ class server_process(threading_tools.process_pool):
             client.setsockopt(zmq.BACKLOG, 1)
             client.setsockopt(zmq.TCP_KEEPALIVE, 1)
             client.setsockopt(zmq.TCP_KEEPALIVE_IDLE, 300)
+            # hm, this can be dangerous
+            # client.setsockopt(zmq.ROUTER_MANDATORY, 1)
             conn_str = "tcp://*:%d" % (bind_port)
             try:
                 client.bind(conn_str)
