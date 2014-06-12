@@ -36,6 +36,30 @@ MAX_CACHE_TIME = 15 * 60
 # timeout of Eonstor
 EONSTOR_TIMEOUT = 5 * 60
 
+# conatins all scheme classes set via scheme_meta
+ALL_SCHEMES = dict ()
+
+class scheme_meta (type) :
+    """registers all snmp schemes
+    """
+
+    def __new__ (meta, name, bases, dict) :
+        # set self.name as class attribute
+        name = "_".join (name.split ("_")[:-1])
+        dict ["name"] = name
+        return super (scheme_meta, meta).__new__ (meta, name, bases, dict)
+    # end def __new__
+
+    def __init__ (cls, name, bases, dict) :
+        name = dict ["name"]
+        if name != "snmp_scheme" :
+            if name in ALL_SCHEMES :
+                raise ValueError ("class %r is already registerd")
+            ALL_SCHEMES [name] = cls
+        super (scheme_meta, cls).__init__ (name, bases, dict)
+    # end def __init__
+# end class scheme_meta
+
 class net_object(object):
     def __init__(self, log_com, verb_level, host, snmp_community, snmp_version):
         self.__verbose_level = verb_level
@@ -143,8 +167,9 @@ class snmp_oid(simple_snmp_oid):
         return self._str_max_oid
 
 class snmp_scheme(object):
-    def __init__(self, name, **kwargs):
-        self.name = name
+    __metaclass__ = scheme_meta
+
+    def __init__(self, **kwargs):
         self.parser = optparse.OptionParser(usage="", prog=self.name)
         self.__init_time = kwargs["init_time"]
         # public stuff
@@ -161,7 +186,11 @@ class snmp_scheme(object):
         self.__req_list = []
         self.transform_single_key = False
         self.__info_tuple = ()
+        self.scheme_init (**kwargs)
     def __del__(self):
+        pass
+    def scheme_init (self) :
+        # put scheme specific init stuff in here
         pass
     @property
     def proc_data(self):
@@ -350,23 +379,24 @@ class snmp_scheme(object):
                         key = key[0]
                     self.snmp_dict.setdefault(header, {})[key] = value
 
-class load_scheme(snmp_scheme):
-    def __init__(self, **kwargs):
-        snmp_scheme.__init__(self, "load", **kwargs)
-        # T for table, G for get
-        self.requests = snmp_oid("1.3.6.1.4.1.2021.10.1.3", cache=True)
-        self.parser.add_option("-w", type="float", dest="warn", help="warning value [%default]", default=5.0)
-        self.parser.add_option("-c", type="float", dest="crit", help="critical value [%default]", default=10.0)
-        self.parse_options(kwargs["options"])
-    def process_return(self):
-        simple_dict = self._simplify_keys(self.snmp_dict.values()[0])
-        load_array = [float(simple_dict[key]) for key in [1, 2, 3]]
-        max_load = max(load_array)
-        ret_state = limits.nag_STATE_CRITICAL if max_load > self.opts.crit else (limits.nag_STATE_WARNING if max_load > self.opts.warn else limits.nag_STATE_OK)
-        return ret_state, "load 1/5/15: %.2f / %.2f / %.2f" % (
-            load_array[0],
-            load_array[1],
-            load_array[2])
+## see schemes/load_scheme.py
+##
+## class load_scheme(snmp_scheme):
+##     def scheme_init(self, **kwargs):
+##         # T for table, G for get
+##         self.requests = snmp_oid("1.3.6.1.4.1.2021.10.1.3", cache=True)
+##         self.parser.add_option("-w", type="float", dest="warn", help="warning value [%default]", default=5.0)
+##         self.parser.add_option("-c", type="float", dest="crit", help="critical value [%default]", default=10.0)
+##         self.parse_options(kwargs["options"])
+##     def process_return(self):
+##         simple_dict = self._simplify_keys(self.snmp_dict.values()[0])
+##         load_array = [float(simple_dict[key]) for key in [1, 2, 3]]
+##         max_load = max(load_array)
+##         ret_state = limits.nag_STATE_CRITICAL if max_load > self.opts.crit else (limits.nag_STATE_WARNING if max_load > self.opts.warn else limits.nag_STATE_OK)
+##         return ret_state, "load 1/5/15: %.2f / %.2f / %.2f" % (
+##             load_array[0],
+##             load_array[1],
+##             load_array[2])
 
 def k_str(i_val):
     f_val = float(i_val)
@@ -379,8 +409,7 @@ def k_str(i_val):
     return "%.2f GB" % (f_val)
 
 class linux_memory_scheme(snmp_scheme):
-    def __init__(self, **kwargs):
-        snmp_scheme.__init__(self, "linux_memory", **kwargs)
+    def scheme_init(self, **kwargs):
         # T for table, G for get
         self.requests = snmp_oid("1.3.6.1.2.1.25.2.3.1", cache=True, cache_timeout=5)
         self.parse_options(kwargs["options"])
@@ -423,8 +452,7 @@ class linux_memory_scheme(snmp_scheme):
             k_str(all_total))
 
 class snmp_info_scheme(snmp_scheme):
-    def __init__(self, **kwargs):
-        snmp_scheme.__init__(self, "snmp_info", **kwargs)
+    def scheme_init(self, **kwargs):
         # T for table, G for get
         self.requests = snmp_oid("1.3.6.1.2.1.1", cache=True)
         self.parse_options(kwargs["options"])
@@ -461,8 +489,7 @@ class qos_cfg(object):
             ", ".join([str(value) for value in self.class_dict.itervalues()]) if self.class_dict else "<NC>")
 
 class check_snmp_qos_scheme(snmp_scheme):
-    def __init__(self, **kwargs):
-        snmp_scheme.__init__(self, "check_snmp_qos", **kwargs)
+    def scheme_init(self, **kwargs):
         self.oid_dict = {"if_name"                 : (1, 3, 6, 1, 2, 1, 31, 1, 1, 1, 1),
                          "if_alias"                : (1, 3, 6, 1, 2, 1, 31, 1, 1, 1, 18),
                          "cb_qos_policy_direction" : (1, 3, 6, 1, 4, 1, 9, 9, 166, 1, 1, 1, 1, 3),
@@ -867,8 +894,7 @@ class eonstor_voltage(eonstor_object):
             self.out_string)
 
 class eonstor_info_scheme(snmp_scheme):
-    def __init__(self, **kwargs):
-        snmp_scheme.__init__(self, "eonstor_info", **kwargs)
+    def scheme_init(self, **kwargs):
         net_obj = kwargs["net_obj"]
         if not hasattr(net_obj, "eonstor_version"):
             net_obj.eonstor_version = 1
@@ -926,8 +952,7 @@ class eonstor_info_scheme(snmp_scheme):
         return ret_state, "; ".join(ret_field) or "no errors or warnings"
 
 class eonstor_proto_scheme(snmp_scheme):
-    def __init__(self, name, **kwargs):
-        snmp_scheme.__init__(self, name, **kwargs)
+    def scheme_init(self, **kwargs):
         net_obj = kwargs["net_obj"]
         if not hasattr(net_obj, "eonstor_version"):
             net_obj.eonstor_version = 1
@@ -1080,8 +1105,7 @@ class eonstor_get_counter_scheme(eonstor_proto_scheme):
             return limits.nag_STATE_OK, process_tools.sys_to_net(info_dict)
 
 class port_info_scheme(snmp_scheme):
-    def __init__(self, **kwargs):
-        snmp_scheme.__init__(self, "port_info", **kwargs)
+    def scheme_init(self, **kwargs):
         self.__th_mac = (1, 3, 6, 1, 2, 1, 17, 4, 3, 1, 2)
         self.__th_type = (1, 3, 6, 1, 2, 1, 17, 4, 3, 1, 3)
         self.requests = [snmp_oid(self.__th_mac , cache=True, cache_timeout=240),
@@ -1124,8 +1148,7 @@ class port_info_scheme(snmp_scheme):
             return limits.nag_STATE_OK, "port %d: ---" % (p_num)
 
 class trunk_info_scheme(snmp_scheme):
-    def __init__(self, **kwargs):
-        snmp_scheme.__init__(self, "trunk_info", **kwargs)
+    def scheme_init(self, **kwargs):
         self.requests = snmp_oid("1.0.8802.1.1.2.1.4.1.1", cache=True)
     def process_return(self):
         simple_dict = self._simplify_keys(self.snmp_dict.values()[0])
@@ -1158,8 +1181,7 @@ class trunk_info_scheme(snmp_scheme):
             limits.nag_STATE_OK, "no trunks"
 
 class apc_rpdu_load_scheme(snmp_scheme):
-    def __init__(self, **kwargs):
-        snmp_scheme.__init__(self, "apc_rpdu_load", **kwargs)
+    def scheme_init(self, **kwargs):
         # T for table, G for get
         self.requests = snmp_oid("1.3.6.1.4.1.318.1.1.12.2.3.1.1")
     def process_return(self):
@@ -1174,8 +1196,7 @@ class apc_rpdu_load_scheme(snmp_scheme):
         return ret_state, "load is %.2f Ampere" % (float(act_load) / 10.)
 
 class usv_apc_load_scheme(snmp_scheme):
-    def __init__(self, **kwargs):
-        snmp_scheme.__init__(self, "usv_apc_load", **kwargs)
+    def scheme_init(self, **kwargs):
         self.requests = snmp_oid((1, 3, 6, 1, 4, 1, 318, 1, 1, 1, 4, 2), cache=True)
     def process_return(self):
         WARN_LOAD, CRIT_LOAD = (70, 85)
@@ -1197,8 +1218,7 @@ class usv_apc_load_scheme(snmp_scheme):
                 ": %s" % ("; ".join(prob_f)) if prob_f else "")
 
 class usv_apc_output_scheme(snmp_scheme):
-    def __init__(self, **kwargs):
-        snmp_scheme.__init__(self, "usv_apc_output", **kwargs)
+    def scheme_init(self, **kwargs):
         self.requests = snmp_oid((1, 3, 6, 1, 4, 1, 318, 1, 1, 1, 4, 2), cache=True)
     def process_return(self):
         MIN_HZ, MAX_HZ = (49, 52)
@@ -1223,8 +1243,7 @@ class usv_apc_output_scheme(snmp_scheme):
             ": %s" % ("; ".join(prob_f)) if prob_f else "")
 
 class usv_apc_input_scheme(snmp_scheme):
-    def __init__(self, **kwargs):
-        snmp_scheme.__init__(self, "usv_apc_input", **kwargs)
+    def scheme_init(self, **kwargs):
         self.requests = snmp_oid((1, 3, 6, 1, 4, 1, 318, 1, 1, 1, 3, 2), cache=True)
     def process_return(self):
         MIN_HZ, MAX_HZ = (49, 52)
@@ -1249,8 +1268,7 @@ class usv_apc_input_scheme(snmp_scheme):
             ": %s" % ("; ".join(prob_f)) if prob_f else "")
 
 class usv_apc_battery_scheme(snmp_scheme):
-    def __init__(self, **kwargs):
-        snmp_scheme.__init__(self, "usv_apc_battery", **kwargs)
+    def scheme_init(self, **kwargs):
         self.requests = snmp_oid((1, 3, 6, 1, 4, 1, 318, 1, 1, 1, 2, 2), cache=True)
         self.parser.add_option("-w", type="float", dest="warn", help="warning value [%default]", default=35.0)
         self.parser.add_option("-c", type="float", dest="crit", help="critical value [%default]", default=40.0)
@@ -1297,8 +1315,7 @@ class usv_apc_battery_scheme(snmp_scheme):
             ": %s" % ("; ".join(prob_f)) if prob_f else "")
 
 class ibm_bc_blade_status_scheme(snmp_scheme):
-    def __init__(self, **kwargs):
-        snmp_scheme.__init__(self, "ibm_bc_blade_status", **kwargs)
+    def scheme_init(self, **kwargs):
         self.__blade_oids = dict([(key, (1, 3, 6, 1, 4, 1, 2, 3, 51, 2, 22, 1, 5, 1, 1, idx + 1)) for idx, key in enumerate(
             ["idx", "id", "exists", "power_state", "health_state", "name"])])
         for value in self.__blade_oids.values():
@@ -1333,8 +1350,7 @@ class ibm_bc_blade_status_scheme(snmp_scheme):
             "; ".join(["%s: %s" % (key, ", ".join(value)) for key, value in state_dict.iteritems()]))
 
 class ibm_bc_storage_status_scheme(snmp_scheme):
-    def __init__(self, **kwargs):
-        snmp_scheme.__init__(self, "ibm_bc_storage_status", **kwargs)
+    def scheme_init(self, **kwargs):
         self.__blade_oids = dict([(key, (1, 3, 6, 1, 4, 1, 2, 3, 51, 2, 22, 6, 1, 1, 1, idx + 1)) for idx, key in enumerate(
             ["idx", "module", "status", "name"])])
         for value in self.__blade_oids.values():
@@ -1361,8 +1377,7 @@ class ibm_bc_storage_status_scheme(snmp_scheme):
             "; ".join(["%s: %s" % (key, ", ".join(value)) for key, value in state_dict.iteritems()]))
 
 class temperature_probe_scheme(snmp_scheme):
-    def __init__(self, **kwargs):
-        snmp_scheme.__init__(self, "temperature_probe_scheme", **kwargs)
+    def scheme_init(self, **kwargs):
         self.requests = snmp_oid((1, 3, 6, 1, 4, 1, 22626, 1, 2, 1, 1), cache=True)
         self.parser.add_option("-w", type="float", dest="warn", help="warning value [%default]", default=35.0)
         self.parser.add_option("-c", type="float", dest="crit", help="critical value [%default]", default=40.0)
@@ -1383,8 +1398,7 @@ class temperature_probe_scheme(snmp_scheme):
             cur_temp)
 
 class temperature_probe_hum_scheme(snmp_scheme):
-    def __init__(self, **kwargs):
-        snmp_scheme.__init__(self, "temperature_probe_hum_scheme", **kwargs)
+    def scheme_init(self, **kwargs):
         self.requests = snmp_oid((1, 3, 6, 1, 4, 1, 22626, 1, 2, 1, 2), cache=True)
         self.parser.add_option("-w", type="float", dest="warn", help="warning value [%default]", default=80.0)
         self.parser.add_option("-c", type="float", dest="crit", help="critical value [%default]", default=95.0)
@@ -1405,8 +1419,7 @@ class temperature_probe_hum_scheme(snmp_scheme):
             cur_hum)
 
 class temperature_knurr_scheme(snmp_scheme):
-    def __init__(self, **kwargs):
-        snmp_scheme.__init__(self, "temperature_knurr_scheme", **kwargs)
+    def scheme_init(self, **kwargs):
         self.parser.add_option("--type", type="choice", dest="sensor_type", choices=["outlet", "inlet"], help="temperature probe [%default]", default="outlet")
         self.requests = snmp_oid((1, 3, 6, 1, 4, 1, 2769, 2, 1, 1), cache=True, cache_timeout=10)
         self.parse_options(kwargs["options"])
@@ -1428,8 +1441,7 @@ class temperature_knurr_scheme(snmp_scheme):
             cur_val)
 
 class humidity_knurr_scheme(snmp_scheme):
-    def __init__(self, **kwargs):
-        snmp_scheme.__init__(self, "humidity_knurr_scheme", **kwargs)
+    def scheme_init(self, **kwargs):
         self.requests = snmp_oid((1, 3, 6, 1, 4, 1, 2769, 2, 1, 1, 7), cache=True, cache_timeout=10)
         self.parse_options(kwargs["options"])
     def process_return(self):
@@ -1447,8 +1459,7 @@ class humidity_knurr_scheme(snmp_scheme):
             cur_val)
 
 class environment_knurr_scheme(snmp_scheme):
-    def __init__(self, **kwargs):
-        snmp_scheme.__init__(self, "environment_knurr_scheme", **kwargs)
+    def scheme_init(self, **kwargs):
         self.requests = snmp_oid((1, 3, 6, 1, 4, 1, 2769, 2, 1, 2, 4), cache=True, cache_timeout=10)
         self.parse_options(kwargs["options"])
     def process_return(self):
@@ -1469,6 +1480,19 @@ class environment_knurr_scheme(snmp_scheme):
             }
         return cur_state, ", ".join([
             "%s: %s" % (info_dict[key], {0 : "OK", 1 : "faild"}[new_dict[key]]) for key in sorted(new_dict.keys())])
+
+# import all files under schemes directory
+import os
+import glob
+schemes_dir = os.path.join \
+    (os.path.abspath (os.path.split (__file__)[0]), "schemes/*.py")
+
+for name in glob.glob (schemes_dir) :
+    mod_name, ext = os.path.splitext (name)
+    if ext == ".py" :
+        # XXX: huge security problem if you want a customer to write its own
+        #      code !!!!
+        execfile (name, globals (), locals ())
 
 if __name__ == "__main__":
     print "Loadable module, exiting"

@@ -34,7 +34,7 @@ csnmpclientzmq: csnmpclientzmq.o
 	strip csnmpclientzmq
 
 %.o: %.c
-	$(comp) $< -O1 -c -I. -I/opt/cluster/include -o $@
+	$(comp) $< -O0 -c -I. -I/opt/cluster/include -o $@
 
 install: ccollclientzmq csnmpclientzmq
 	${INSTALL} ${INSTALLOPTS} -d ${DESTDIR}/${CLUSTERBIN}

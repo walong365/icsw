@@ -60,7 +60,7 @@ class server_process(threading_tools.process_pool):
         self._log_config()
         # init luts
         self.__ip_lut, self.__forward_lut = ({}, {})
-        self._check_schemes()
+        self.__all_schemes = snmp_relay_schemes.ALL_SCHEMES
         self._init_host_objects()
         # dict to suppress too fast sending
         self.__ret_dict = {}
@@ -75,14 +75,6 @@ class server_process(threading_tools.process_pool):
             self.log("exit already requested, ignoring", logging_tools.LOG_LEVEL_WARN)
         else:
             self["exit_requested"] = True
-    def _check_schemes(self):
-        self.__all_schemes = {}
-        glob_keys = dir(snmp_relay_schemes)
-        for glob_key in sorted(glob_keys):
-            if glob_key.endswith("_scheme") and glob_key != "snmp_scheme":
-                glob_val = getattr(snmp_relay_schemes, glob_key)
-                if issubclass(glob_val, snmp_relay_schemes.snmp_scheme):
-                    self.__all_schemes[glob_key[:-7]] = glob_val
     def _init_host_objects(self):
         self.__host_objects = {}
     def _init_processes(self, num_processes):
@@ -155,7 +147,7 @@ class server_process(threading_tools.process_pool):
                      ("sender"  , zmq.PUB , 1024)]
         [setattr(self, "%s_socket" % (short_sock_name), None) for short_sock_name, a0, b0 in sock_list]
         for short_sock_name, sock_type, hwm_size in sock_list:
-            sock_name = process_tools.get_zmq_ipc_name(short_sock_name)
+            sock_name = process_tools.get_zmq_ipc_name(short_sock_name,  connect_to_root_instance=True)
             file_name = sock_name[5:]
             self.log("init %s ipc_socket '%s' (HWM: %d)" % (short_sock_name, sock_name,
                                                             hwm_size))
