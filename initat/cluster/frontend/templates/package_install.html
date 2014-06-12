@@ -57,6 +57,14 @@
     </div>
 </script>
 
+<script type="text/ng-template" id="pdc_version.html">
+    <div>
+        <span ng-show="show_pdc()" tooltip-placement="bottom" tooltip-html-unsafe="{{ get_tooltip() }}">
+            {{ get_installed_version() }}
+        </span>
+    </div>
+</script>
+
 <script type="text/ng-template" id="package_repo_row.html">
     <td>{{ obj.name }}</td>
     <td>{{ obj.alias }}</td>
@@ -116,7 +124,21 @@
     <td>{{ obj.package_repo | array_lookup:this.rest_data.package_repo:"name" }}</td>
     <td>{{ obj.arch }}</td>
     <td><input type="button" ng-show="obj.copied == 0" class="btn btn-xs btn-primary" ng-click="fn.take(this, obj, true)" value="take exact"/></td>
-    <td><input type="button" ng-show="obj.copied == 0" class="btn btn-xs btn-primary" ng-click="fn.take(this, obj, false)" value="take latest"/></td>
+    <td>
+        <div ng-show="!obj.copied">
+        <input type="button" class="btn btn-xs btn-primary" ng-click="fn.take(this, obj, false)" value="take latest"/>
+        <div class="btn-group">
+            <button type="button" class="btn btn-warning btn-xs dropdown-toggle" data-toggle="dropdown">
+                from repo <span class="caret"></span>
+            </button>
+            <ul class="dropdown-menu">
+                <li><a href="#" ng-click="obj.target_repo=0">ignore</a></li>
+                <li ng-repeat="repo in rest_data.package_repo"><a href="#" ng-click="obj.target_repo=repo.idx"><span ng-show="repo.idx == obj.package_repo">(*) </span>{{ repo.name }}</a></li>
+            </ul>
+        </div>
+        {{ fn.show_repo(this, obj) }}
+        </div>
+    </td>
     <td><input type="button" class="btn btn-xs btn-danger" ng-click="delete(obj)" value="delete"/></td>
 </script>
 
@@ -125,6 +147,7 @@
         <th>name</th>
         <th>version</th>
         <th>Repository</th>
+        <th>forced</th>
         <th>kind</th>
         <th>arch</th>
         <th colspan="3" class="text-center">action</th>   
@@ -136,6 +159,7 @@
     <td ng-show="obj.always_latest == false">{{ obj.version }}</td>
     <td ng-show="obj.always_latest == true">&lt;latest&gt;</td>
     <td>{{ obj.package_repo | array_lookup:this.rest_data.package_repo:"name" }}</td>
+    <td>{{ obj.target_repo | array_lookup:this.rest_data.package_repo:"name":"---" }}</td>
     <td>{{ obj.kind }}</td>
     <td>{{ obj.arch }}</td>
     <td><input type="button" class="btn btn-primary btn-xs" ng-click="attach(obj)" value="attach" title="attach to selected devices"/></td>
@@ -206,7 +230,7 @@
         <div ng-controller="package_base">
             <div ng-controller="install">
                 <h3>
-                    <form class="form-inline" role="form">
+                    <div class="form-inline">
                         <!-- <input type="button" class="btn btn-success" ng-value="fn.get_grid_style(this)" ng-click="fn.toggle_grid_style(this)"></input> -->
                         ({{ devices.length }} devices, {{ entries.length }} packages), {{ selected_pdcs_length() }} selected, package filter:
                         <div class="form-group">
@@ -214,8 +238,12 @@
                         </div>,
                         <input ng-show="selected_pdcs_length()" type="button" class="btn btn-success btm-sm" value="action" ng-click="action($event)"></input>&nbsp;
                         <input type="button" class="btn btn-warning btm-sm" value="sync" ng-click="send_sync()"></input>,
-                        <input type="button" class="btn btn-warning btn-sm" value="Clear caches" ng-click="send_clear_caches()"/>
-                    </form>
+                        <input type="button" class="btn btn-warning btn-sm" value="Clear caches" ng-click="send_clear_caches()"/>,
+                        <div class="btn-group btn-group-sm">
+                            <input type="button" ng-class="is_mode == 'a' && 'btn btn-success' || 'btn'" ng-click="is_mode = 'a'" value="action"/>
+                            <input type="button" ng-class="is_mode == 'v' && 'btn btn-success' || 'btn'" ng-click="is_mode = 'v'" value="version"/>
+                        </div>
+                    </div>
                 </h3>
                 <table class="table table-condensed" style="width:auto;">
                     <thead>
@@ -247,6 +275,7 @@
                                 {{ pack.name }}
                                 <span ng-show="pack.always_latest == false">{{ pack.version }}</span>
                                 <span ng-show="pack.always_latest == true">&lt;latest&gt;</span>
+                                <span ng-show="pack.target_repo"> from {{ pack.target_repo | array_lookup:this.rest_data.package_repo:"name" }}</span>
                             </td>
                             <td>
                                 <div class="btn-group btn-group-xs">
@@ -255,7 +284,7 @@
                                     <input type="button" class="btn btn-warning" ng-click="change_package_sel(pack, -1)" value="C"></input>
                                 </div>
                             </td>
-                            <td ng-repeat="device in devices" istate pdc="state_dict[device.idx][pack.idx]" parent="$parent.$parent" pdcs="$parent.selected_pdcs" ng-class="get_td_class(device.idx, pack.idx)"></td>
+                            <td ng-repeat="device in devices" istate mode="is_mode" pdc="state_dict[device.idx][pack.idx]" parent="$parent.$parent" pdcs="$parent.selected_pdcs" ng-class="get_td_class(device.idx, pack.idx)"></td>
                         </tr>
                     </tbody>
                 </table>

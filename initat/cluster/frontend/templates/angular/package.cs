@@ -196,18 +196,26 @@ angular_add_simple_list_controller(
                                 (data) ->
                                     $.unblockUI()
                                     $scope.entries = data
+                                    for entry in $scope.entries
+                                        entry.target_repo = 0
                             )
                         else
                             $scope.entries = []
                 )
         fn:
+            show_repo : ($scope, obj) ->
+                if obj.target_repo
+                    return $scope.rest_data["package_repo"][obj.target_repo].name
+                else
+                    return "ignore"
             take : ($scope, obj, exact) ->
                 obj.copied = 1
                 call_ajax
                     url     : "{% url 'pack:use_package' %}"
                     data    : {
-                        "pk"    : obj.idx
-                        "exact" : if exact then 1 else 0
+                        "pk"          : obj.idx
+                        "exact"       : if exact then 1 else 0
+                        "target_repo" : obj.target_repo
                     }
                     success : (xml) ->
                         if parse_xml_response(xml)
@@ -230,6 +238,8 @@ package_module.controller("install", ["$scope", "$compile", "$filter", "$templat
         $scope.image_list = []
         $scope.kernel_list = []
         $scope.package_filter = ""
+        # is mode
+        $scope.is_mode = "a"
         # init state dict
         $scope.state_dict = {}
         $scope.selected_pdcs = {}
@@ -516,9 +526,10 @@ package_module.controller("install", ["$scope", "$compile", "$filter", "$templat
     return {
         restrict : "EA"
         scope:
-            pdc: "=pdc"
+            pdc          : "=pdc"
             selected_pdcs: "=pdcs"
-            parent: "=parent"
+            parent       : "=parent"
+            mode         : "=mode"
         replace  : true
         transclude : true
         compile : (tElement, tAttrs) ->
@@ -581,15 +592,7 @@ package_module.controller("install", ["$scope", "$compile", "$filter", "$templat
                             else
                                 t_field.push("<br>installtime: unknown")
                             if pdc.installed_name
-                                inst_name = pdc.installed_name
-                                if pdc.installed_version
-                                    inst_name = "#{inst_name}-#{pdc.installed_version}"
-                                else
-                                    inst_name = "#{inst_name}-?"
-                                if pdc.installed_release
-                                    inst_name = "#{inst_name}-#{pdc.installed_release}"
-                                else
-                                    inst_name = "#{inst_name}-?"
+                                inst_name = scope.get_installed_version()
                                 t_field.push("<br>installed: #{inst_name}")
                         else
                             t_field.push("<br>unknown install state '#{pdc.installed}")
@@ -606,8 +609,35 @@ package_module.controller("install", ["$scope", "$compile", "$filter", "$templat
                         return "<div class='text-left'>" + t_field.join("") + "<div>"
                     else
                         return ""
-                new_el = $compile($templateCache.get("pdc_state.html"))
-                iElement.append(new_el(scope))
+                scope.get_installed_version = () ->
+                    if scope.pdc and scope.pdc.idx
+                        pdc = scope.pdc
+                        if pdc.installed == "y" and pdc.installed_name
+                            inst_name = pdc.installed_name
+                            if pdc.installed_version
+                                inst_name = "#{inst_name}-#{pdc.installed_version}"
+                            else
+                                inst_name = "#{inst_name}-?"
+                            if pdc.installed_release
+                                inst_name = "#{inst_name}-#{pdc.installed_release}"
+                            else
+                                inst_name = "#{inst_name}-?"
+                            return inst_name
+                        else
+                            return "---"
+                    else
+                        return "---"
+                scope.draw = () ->
+                    iElement.children().remove()
+                    if scope.mode == "a"
+                        new_el = $compile($templateCache.get("pdc_state.html"))
+                    else if scope.mode == "v"
+                        new_el = $compile($templateCache.get("pdc_version.html"))
+                    iElement.append(new_el(scope))
+                scope.$watch("mode", () ->
+                    scope.draw()
+                )
+                scope.draw()
     }
 )
 
