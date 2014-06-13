@@ -719,6 +719,8 @@ class new_form_list(object):
             if "header" in item:
                 self.__header_dict[row_idx] = (item["left"], item["header"])
         self.__content.append(add_list)
+    def extend(self, add_list):
+        [self.append(_line) for _line in add_list]
     def __str__(self):
         return unicode(self)
     def __unicode__(self):

@@ -244,6 +244,30 @@ def submit_at_command(com, diff_time=0, as_root=False):
         log_f.append(" - {}".format(out_l))
     return cstat, log_f
 
+PROC_STATUSES = {
+    "R" : psutil.STATUS_RUNNING,
+    "S" : psutil.STATUS_SLEEPING,
+    "D" : psutil.STATUS_DISK_SLEEP,
+    "T" : psutil.STATUS_STOPPED,
+    "t" : psutil.STATUS_TRACING_STOP,
+    "Z" : psutil.STATUS_ZOMBIE,
+    "X" : psutil.STATUS_DEAD,
+    "W" : psutil.STATUS_WAKING
+}
+
+PROC_INFO_DICT = {
+    psutil.STATUS_RUNNING :  "number of running processes",
+    psutil.STATUS_ZOMBIE : "number of zombie processes",
+    psutil.STATUS_DISK_SLEEP : "processess in uninterruptable sleep",
+    psutil.STATUS_STOPPED : "processes stopped",
+    psutil.STATUS_TRACING_STOP : "processes traced",
+    psutil.STATUS_SLEEPING : "processes sleeping",
+    psutil.STATUS_WAKING : "processes waking",
+    psutil.STATUS_DEAD : "processes dead",
+}
+
+PROC_STATUSES_REV = {value: key for key, value in PROC_STATUSES.iteritems()}
+
 def get_mem_info(pid=0, **kwargs):
     if not pid:
         pid = os.getpid()
@@ -1234,6 +1258,33 @@ def get_process_id_list(with_threadcount=True, with_dotprocs=False):
     else:
         return pid_list + [".{:d}".format(x) for x in dotpid_list]
 
+def get_proc_list_new(**kwargs):
+    attrs = kwargs.get("attrs", None)
+    try:
+        if "int_pid_list" in kwargs:
+            pid_list = kwargs["int_pid_list"]
+        else:
+            pid_list = set(psutil.pids())
+    except:
+        p_dict = None
+    else:
+        p_dict = {}
+        if attrs:
+            for cur_proc in psutil.process_iter():
+                try:
+                    p_dict[cur_proc.pid] = cur_proc.as_dict(attrs)
+                except psutil.NoSuchProcess:
+                    pass
+        else:
+            for pid in pid_list:
+                try:
+                    cur_proc = psutil.Process(pid)
+                except psutil.NoSuchProcess:
+                    pass
+                else:
+                    p_dict[pid] = cur_proc
+    return p_dict
+
 def get_proc_list(**kwargs):
     # s_time = time.time()
     s_fields = ["name", "state"]
@@ -1364,51 +1415,73 @@ def build_kill_dict(name, exclude_list=[]):
     ppl = build_ppid_list(pdict, os.getpid())
     kill_dict = {}
     for pid, p_struct in pdict.items():
-        if name.startswith(p_struct["name"]) and pid not in ppl and pid not in exclude_list:
-            kill_dict[pid] = p_struct["name"]
+        if get_python_cmd(p_struct["cmdline"]) == name and pid not in ppl and pid not in exclude_list:
+            kill_dict[pid] = " ".join(p_struct["cmdline"])
     return kill_dict
+
+def get_python_cmd(cmdline):
+    p_name = None
+    for entry in cmdline:
+        _base_exe = os.path.basename(entry)
+        if _base_exe.startswith("python"):
+            continue
+        elif _base_exe.startswith("-"):
+            continue
+        elif _base_exe.endswith(".py"):
+            p_name = _base_exe
+            break
+        else:
+            break
+    return p_name
 
 def kill_running_processes(p_name=None, **kwargs):
     my_pid = os.getpid()
+    log_lines = []
     exclude_pids = kwargs.get("exclude", [])
     kill_sig = kwargs.get("kill_signal", 9)
     if type(exclude_pids) != list:
         exclude_pids = [exclude_pids]
     if p_name is None:
-        p_name = open("/proc/{:d}/status".format(my_pid), "r").readline().strip().split()[1]
-    log_lines = ["my_pid is {:d}, searching for process '{}' to kill, kill_signal is {:d}, exclude_list is {}".format(
-        my_pid,
-        p_name,
-        kill_sig,
-        "empty" if not exclude_pids else ", ".join(["{:d}".format(exc_pid) for exc_pid in sorted(exclude_pids)]))]
-    kill_dict = build_kill_dict(p_name, exclude_pids)
-    any_killed = False
-    if kill_dict:
-        for pid, name in kill_dict.items():
-            if name not in kwargs.get("ignore_names", []):
-                log_str = "{} ({:d}): Trying to kill pid {:d} ({}) with signal {:d} ...".format(
-                    p_name,
-                    my_pid,
-                    pid,
-                    name,
-                    kill_sig)
-                try:
-                    os.kill(pid, kill_sig)
-                except:
-                    log_lines.append("{} error ({})".format(log_str, get_except_info()))
-                else:
-                    log_lines.append("{} ok".format(log_str))
-                    any_killed = True
-    else:
-        log_lines[-1] = "{}, nothing to do".format(log_lines[-1])
-    wait_time = kwargs.get("wait_time", 1)
-    if any_killed:
-        log_lines.append("sleeping for {:.2f} seconds".format(wait_time))
-    if kwargs.get("do_syslog", True):
-        for log_line in log_lines:
-            logging_tools.my_syslog(log_line)
-    if any_killed:
-        time.sleep(wait_time)
+        my_proc = psutil.Process(my_pid)
+        p_name = get_python_cmd(my_proc.cmdline())
+        if not p_name:
+            log_lines.append("cannot extract process name from cmdline '{}'".format(" ".join(my_proc.cmdline())))
+    if p_name:
+        log_lines.append("my_pid is {:d}, searching for process '{}' to kill, kill_signal is {:d}, exclude_list is {}".format(
+            my_pid,
+            p_name,
+            kill_sig,
+            "empty" if not exclude_pids else ", ".join(["{:d}".format(exc_pid) for exc_pid in sorted(exclude_pids)])))
+        kill_dict = build_kill_dict(p_name, exclude_pids)
+        any_killed = False
+        if kill_dict:
+            for pid, name in kill_dict.items():
+                if name not in kwargs.get("ignore_names", []):
+                    log_str = "{} ({:d}): Trying to kill pid {:d} ({}) with signal {:d} ...".format(
+                        p_name,
+                        my_pid,
+                        pid,
+                        name,
+                        kill_sig)
+                    try:
+                        # print log_str
+                        os.kill(pid, kill_sig)
+                        pass
+                    except:
+                        log_lines.append("{} error ({})".format(log_str, get_except_info()))
+                    else:
+                        log_lines.append("{} ok".format(log_str))
+                        any_killed = True
+        else:
+            log_lines[-1] = "{}, nothing to do".format(log_lines[-1])
+        wait_time = kwargs.get("wait_time", 1)
+        if any_killed:
+            log_lines.append("sleeping for {:.2f} seconds".format(wait_time))
+        if kwargs.get("do_syslog", True):
+            for log_line in log_lines:
+                logging_tools.my_syslog(log_line)
+        if any_killed:
+            time.sleep(wait_time)
     return log_lines
 
 def fd_change(uid_gid_tuple, d_name, files):
@@ -1809,10 +1882,14 @@ def get_sys_bits():
     return int(platform.architecture()[0][0:2])
 
 if __name__ == "__main__":
-    num = 1000
-    s_time = time.time()
-    for i in xrange(num):
-        a = get_mem_info(int(sys.argv[1]))
-    e_time = time.time()
-    d_time = e_time - s_time
-    print "stresstest {:d} : {:.2f} sec ({:.8f} per call)".format(num, d_time, d_time / num)
+    import pprint
+    num = 100
+    for call in [get_proc_list, get_proc_list_new]:
+        s_time = time.time()
+        for i in xrange(num):
+            a = call(add_affinity=True, add_stat_info=True)
+        e_time = time.time()
+        d_time = e_time - s_time
+        print "stresstest {:d} : {:.2f} sec ({:.8f} per call)".format(num, d_time, d_time / num)
+    # pprint.pprint(a)
+
