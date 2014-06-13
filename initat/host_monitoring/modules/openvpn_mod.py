@@ -246,7 +246,7 @@ class openvpn_instance(object):
                         stat_name = line_p[0]
                         if stat_name != self.__status_name:
                             self.__status_name = stat_name
-                            self.__status_obj = process_tools.cached_file(self.__status_name)
+                            self.__status_obj = process_tools.cached_file(self.__status_name, log_handle=self.__log_handle)
                 if key == "client":
                     self.ovpn_type = "client"
                 elif key == "server":

@@ -38,6 +38,7 @@ import sys
 import tempfile
 import time
 import uuid_tools
+import psutil
 try:
     from initat.host_monitoring_version import VERSION_STRING
 except ImportError:
@@ -62,30 +63,8 @@ class _general(hm_classes.hm_module):
         self.last_nfsstat_time = None
         self.nfsstat_used = False
     def _proc_stat_info(self, first_line=None):
-        if first_line is None:
-            first_line = open("/proc/stat").readline().strip().split()
-        if len(first_line) >= 11:
-            # since 2.6.33 guest_nice
-            stat_list = ["user", "nice", "sys", "idle", "iowait", "irq", "softirq", "steal", "guest", "guest_nice"]
-            kernel = 26
-        elif len(first_line) >= 10:
-            # since 2.6.24 guest
-            stat_list = ["user", "nice", "sys", "idle", "iowait", "irq", "softirq", "steal", "guest"]
-            kernel = 26
-        elif len(first_line) >= 9:
-            # kernel 2.5 and above with additional steal-value
-            stat_list = ["user", "nice", "sys", "idle", "iowait", "irq", "softirq", "steal"]
-            kernel = 26
-        elif len(first_line) == 8:
-            # kernel 2.5 and above
-            stat_list = ["user", "nice", "sys", "idle", "iowait", "irq", "softirq"]
-            kernel = 25
-        else:
-            # up to kernel 2.4
-            stat_list = ["user", "nice", "sys", "idle"]
-            kernel = 24
-        self.stat_list, self.kernel = (stat_list, kernel)
-        return stat_list
+        self.stat_list = psutil.cpu_times(percpu=False)._fields
+        return self.stat_list
     def _rescan_valid_disk_stuff(self):
         self.log("checking valid block_device names and major numbers")
         valid_block_devs, valid_major_nums = ({}, {})
@@ -122,6 +101,8 @@ class _general(hm_classes.hm_module):
                 ", ".join(["%d" % (x) for x in valid_major_nums.keys()])))
         self.valid_block_devs, self.valid_major_nums = (valid_block_devs,
                                                         valid_major_nums)
+        # pprint.pprint(psutil.disk_io_counters(perdisk=True))
+        # print "*", self.valid_block_devs, self.valid_major_nums
     def set_machine_vector_flags(self, mv):
         mv.vector_flags["detailed_cpu_statistics"] = False
     def init_machine_vector(self, mv):
@@ -143,22 +124,19 @@ class _general(hm_classes.hm_module):
         mv.register_entry("mem.used.total.bc", 0, "used total memory with b+c"      , "Byte", 1024, 1024)
         mv.register_entry("mem.used.buffers" , 0, "memory used for buffers"         , "Byte", 1024, 1024)
         mv.register_entry("mem.used.cached"  , 0, "memory used for caches"          , "Byte", 1024, 1024)
-        mv.register_entry("mem.used.shared"  , 0, "shared memory"                   , "Byte", 1024, 1024)
+        # mv.register_entry("mem.used.shared"  , 0, "shared memory"                   , "Byte", 1024, 1024)
         # check for /proc/stat
         stat_list = self._proc_stat_info()
         for what in stat_list:
-            mv.register_entry("vms.%s" % (what), 0., "percentage of time spent for $2 (total)", "%")
-        self.cpu_list = []
-        for stuff in [line.strip().split()[0] for line in file("/proc/stat", "r").readlines() if line.strip().startswith("cpu")]:
-            if stuff != "cpu":
-                self.cpu_list.append(stuff[3:])
+            mv.register_entry("vms.{}".format(what), 0., "percentage of time spent for $2 (total)", "%")
+        self.cpu_list = ["{:d}".format(_cpu_idx) for _cpu_idx in xrange(psutil.cpu_count(logical=True))]
         if mv.vector_flags["detailed_cpu_statistics"]:
             if not self.cpu_list:
                 self.cpu_list = ["0"]
             if len(self.cpu_list) > 1:
                 for cpu_idx in self.cpu_list:
                     for what in stat_list:
-                        mv.register_entry("vms.%s.p%s" % (what, cpu_idx), 0., "percentage of time spent for $2 on cpu %s" % (cpu_idx), "%")
+                        mv.register_entry("vms.{}.p{}".format(what, cpu_idx), 0., "percentage of time spent for $2 on cpu {}".format(cpu_idx), "%")
         mv.register_entry("num.interrupts", 0, "number of interrupts per second"      , "1/s")
         mv.register_entry("num.context"   , 0, "number of context switches per second", "1/s")
         # mv.register_entry("blks.in"       , 0, "number of blocks read per second"     , "1/s")
@@ -173,9 +151,7 @@ class _general(hm_classes.hm_module):
     def _load_int(self):
         return [float(value) for value in open("/proc/loadavg", "r").read().strip().split()[0:3]]
     def _mem_int(self):
-        valid_keys = set(["MemTotal", "MemFree", "Buffers", "Cached", "SwapTotal", "SwapFree", "MemShared", "Inactive", "SwapCache", "SReclaimable"])
-        p_dict = dict([r_line.strip().split()[:2] for r_line in open("/proc/meminfo", "r").readlines() if r_line.strip().endswith("kB")])
-        return dict([(key, int(p_dict.get("%s:" % (key), "0"))) for key in valid_keys])
+        return psutil.virtual_memory(), psutil.swap_memory()
     def _df_int(self, mvect=None):
         act_time, update_dict = (time.time(), False)
         if mvect or abs(self.disk_dict_last_update - act_time) > 90:
@@ -271,13 +247,20 @@ class _general(hm_classes.hm_module):
         act_time = time.time()
         # disk_stat format: device -> (sectors read/written, milliseconds spent read/written)
         stat_dict, disk_stat = ({}, {})
-        for line in [cur_line.strip().split() for cur_line in open("/proc/stat", "r").readlines() if cur_line.strip()]:
-            if line[0].startswith("cpu"):
-                stat_dict[line[0]] = [long(_line) for _line in line[1:]]
-            elif line[0] == "ctxt":
+        for line in [cur_line.strip().split() for cur_line in open("/proc/stat", "r") if cur_line.strip()]:
+            # if line[0].startswith("cpu"):
+            #    if not mvect.vector_flags["detailed_cpu_statistics"] and line[0] != "cpu":
+            #        continue
+            #    stat_dict[line[0]] = [long(_line) for _line in line[1:]]
+            if line[0] == "ctxt":
                 stat_dict["ctxt"] = long(line[1])
             elif line[0] == "intr":
                 stat_dict["intr"] = long(line[1])
+        # use psutil
+        stat_dict["cpu"] = psutil.cpu_times()
+        if mvect.vector_flags["detailed_cpu_statistics"]:
+            for cpu_num, cpu_stat in enumerate(psutil.cpu_times(percpu=True)):
+                stat_dict["cpu{}".format(self.cpu_list[cpu_num])] = cpu_stat
         if os.path.isfile("/proc/vmstat"):
             _vm_dict = {}
             for line in [cur_line.strip().split() for cur_line in open("/proc/vmstat", "r").readlines() if cur_line.strip()]:
@@ -285,6 +268,8 @@ class _general(hm_classes.hm_module):
                     key, value = line
                     if value.isdigit():
                         _vm_dict[key] = int(value)
+            # print _vm_dict
+            # print psutil.disk_io_counters(perdisk=True)
             stat_dict["swap"] = [_vm_dict.get("pswpin", 0), _vm_dict.get("pswpout", 0)]
             stat_dict["pages"] = [_vm_dict.get("pgpgin", 0), _vm_dict.get("pgpgout", 0)]
         if os.path.isfile("/proc/diskstats"):
@@ -342,12 +327,14 @@ class _general(hm_classes.hm_module):
                         cur_bs = int(file("/sys/block/%s/queue/hw_sector_size" % (bname), "r").read().strip())
                     except:
                         cur_bs = 512
-                        self.log("cannot get bs of %s (using %d): %s" % (
-                            dl,
-                            cur_bs,
-                            process_tools.get_except_info()),
+                        self.log(
+                            "cannot get bs of {} (using {:d}): {}".format(
+                                dl,
+                                cur_bs,
+                                process_tools.get_except_info()
+                            ),
                             logging_tools.LOG_LEVEL_ERROR
-                            )
+                        )
                     disk_stat[dl] = (
                         ds_dict[dl][4],
                         ds_dict[dl][8],
@@ -357,6 +344,9 @@ class _general(hm_classes.hm_module):
                         ds_dict[dl][4] * cur_bs,
                         ds_dict[dl][8] * cur_bs,
                         )
+                # pprint.pprint(disk_stat)
+                # pprint.pprint(psutil.disk_io_counters(perdisk=False))
+                # pprint.pprint(psutil.disk_io_counters(perdisk=True))
                 disk_stat["total"] = []
                 for idx in xrange(7):
                     disk_stat["total"].append(sum([disk_stat[d_name][idx] for d_name in dev_list]))
@@ -372,11 +362,11 @@ class _general(hm_classes.hm_module):
                 mvect["num.context"] = int((stat_dict["ctxt"] - self.vmstat_dict["ctxt"]) / tdiff)
             _cpu_update_list = [("cpu", "")]
             if mvect.vector_flags["detailed_cpu_statistics"]:
-                _cpu_update_list.extend([("cpu%s" % (cpu_idx), ".p%s" % (cpu_idx)) for cpu_idx in self.cpu_list] if len(self.cpu_list) > 1 else [])
+                _cpu_update_list.extend([("cpu{}".format(cpu_idx), ".p{}".format(cpu_idx)) for cpu_idx in self.cpu_list] if len(self.cpu_list) > 1 else [])
             for cpu_str, name_p in _cpu_update_list:
                 if cpu_str in stat_dict and cpu_str in self.vmstat_dict:
                     for idx, name in enumerate(self.stat_list):
-                        mvect["vms.%s%s" % (name, name_p)] = float(sub_wrap(stat_dict[cpu_str][idx], self.vmstat_dict[cpu_str][idx]) / vms_tdiff)
+                        mvect["vms.{}{}".format(name, name_p)] = float(sub_wrap(stat_dict[cpu_str][idx], self.vmstat_dict[cpu_str][idx]) / (vms_tdiff / 100.))
                 else:
                     break
             if "intr" in stat_dict and "intr" in self.vmstat_dict:
@@ -481,7 +471,7 @@ class _general(hm_classes.hm_module):
         mv["load.5"] = load_list[1]
         mv["load.15"] = load_list[2]
         try:
-            mem_list = self._mem_int()
+            virt_info, swap_info = self._mem_int()
         except:
             mv["mem.avail.phys"] = 0
             mv["mem.avail.swap"] = 0
@@ -498,26 +488,26 @@ class _general(hm_classes.hm_module):
             mv["mem.used.total.bc"] = 0
             mv["mem.used.buffers"] = 0
             mv["mem.used.cached"] = 0
-            mv["mem.used.shared"] = 0
+            # mv["mem.used.shared"] = 0
         else:
-            # buffers + cached + swapcache + reclaimable
-            bc_mem = mem_list["Buffers"] + mem_list["Cached"] # + mem_list["SwapCache"] + mem_list["SReclaimable"]
-            mv["mem.avail.phys"] = mem_list["MemTotal"]
-            mv["mem.avail.swap"] = mem_list["SwapTotal"]
-            mv["mem.avail.total"] = mem_list["MemTotal"] + mem_list["SwapTotal"]
-            mv["mem.free.phys"] = mem_list["MemFree"]
-            mv["mem.free.phys.bc"] = mem_list["MemFree"] + bc_mem
-            mv["mem.free.swap"] = mem_list["SwapFree"]
-            mv["mem.free.total"] = mem_list["MemFree"] + mem_list["SwapFree"]
-            mv["mem.free.total.bc"] = mem_list["MemFree"] + bc_mem + mem_list["SwapFree"]
-            mv["mem.used.phys"] = mem_list["MemTotal"] - (mem_list["MemFree"] + bc_mem)
-            mv["mem.used.phys.bc"] = mem_list["MemTotal"] - mem_list["MemFree"]
-            mv["mem.used.swap"] = mem_list["SwapTotal"] - mem_list["SwapFree"]
-            mv["mem.used.total"] = mem_list["MemTotal"] + mem_list["SwapTotal"] - (mem_list["MemFree"] + mem_list["SwapFree"] + bc_mem)
-            mv["mem.used.total.bc"] = mem_list["MemTotal"] + mem_list["SwapTotal"] - (mem_list["MemFree"] + mem_list["SwapFree"])
-            mv["mem.used.buffers"] = mem_list["Buffers"]
-            mv["mem.used.cached"] = mem_list["Cached"] # + mem_list["SwapCache"] + mem_list["SReclaimable"]
-            mv["mem.used.shared"] = mem_list["MemShared"]
+            # buffers + cached
+            bc_mem = virt_info.buffers + virt_info.cached
+            mv["mem.avail.phys"] = virt_info.total / 1024
+            mv["mem.avail.swap"] = swap_info.total / 1024
+            mv["mem.avail.total"] = (virt_info.total + swap_info.total) / 1024
+            mv["mem.free.phys"] = virt_info.free / 1024
+            mv["mem.free.phys.bc"] = (virt_info.free + bc_mem) / 1024
+            mv["mem.free.swap"] = swap_info.free / 1024
+            mv["mem.free.total"] = (virt_info.free + swap_info.free) / 1024
+            mv["mem.free.total.bc"] = (virt_info.free + bc_mem + swap_info.free) / 1024
+            mv["mem.used.phys"] = (virt_info.total - (virt_info.free + bc_mem)) / 1024
+            mv["mem.used.phys.bc"] = (virt_info.total - virt_info.free) / 1024
+            mv["mem.used.swap"] = (swap_info.total - swap_info.free) / 1024
+            mv["mem.used.total"] = (virt_info.total + swap_info.total - (virt_info.free + swap_info.free + bc_mem)) / 1024
+            mv["mem.used.total.bc"] = (virt_info.total + swap_info.total - (virt_info.free + swap_info.free)) / 1024
+            mv["mem.used.buffers"] = virt_info.buffers / 1024
+            mv["mem.used.cached"] = virt_info.cached / 1024
+            # mv["mem.used.shared"] = mem_list["MemShared"]
         for call_name in ["_df_int", "_vmstat_int", "_nfsstat_int"]:
             try:
                 getattr(self, call_name)(mv)
@@ -1134,10 +1124,19 @@ class swap_command(hm_classes.hm_command):
         self.parser.add_argument("-w", dest="warn", type=float)
         self.parser.add_argument("-c", dest="crit", type=float)
     def __call__(self, srv_com, cur_ns):
-        srv_com["mem"] = self.module._mem_int()
+        _virt_info, swap_info = self.module._mem_int()
+        srv_com["swap"] = dict(swap_info._asdict())
     def interpret(self, srv_com, cur_ns):
-        swap_total, swap_free = (srv_com.get_int("mem:SwapTotal"),
-                                 srv_com.get_int("mem:SwapFree"))
+        if "swap" in srv_com:
+            # new style with psutil
+            _fac = 1
+            swap_dict = srv_com["swap"]
+            swap_total, swap_free = (swap_dict["total"], swap_dict["free"])
+        else:
+            # old style
+            _fac = 1024
+            swap_dict = srv_com["mem"]
+            swap_total, swap_free = (swap_dict["SwapTotal"], swap_dict["SwapFree"])
         if swap_total == 0:
             return limits.nag_STATE_CRITICAL, "no swap space found"
         else:
@@ -1145,7 +1144,7 @@ class swap_command(hm_classes.hm_command):
             ret_state = limits.check_ceiling(swap, cur_ns.warn , cur_ns.crit)
             return ret_state, "swapinfo: %d %% of %s swap" % (
                 swap,
-                logging_tools.get_size_str(swap_total * 1024, strip_spaces=True),
+                logging_tools.get_size_str(swap_total * _fac, strip_spaces=True),
             )
     def interpret_old(self, result, parsed_coms):
         result = hm_classes.net_to_sys(result[3:])
@@ -1167,17 +1166,41 @@ class mem_command(hm_classes.hm_command):
         self.parser.add_argument("-w", dest="warn", type=float)
         self.parser.add_argument("-c", dest="crit", type=float)
     def __call__(self, srv_com, cur_ns):
-        srv_com["mem"] = self.module._mem_int()
+        virt_info, swap_info = self.module._mem_int()
+        srv_com["mem"] = dict(virt_info._asdict())
+        srv_com["swap"] = dict(swap_info._asdict())
     def interpret(self, srv_com, cur_ns):
-        buffers = srv_com.get_int("mem:Buffers")
-        cached = srv_com.get_int("mem:Cached") # + srv_com.get_int("mem:SwapCache", 0) + srv_com.get_int("mem:SReclaimable", 0)
-        mem_total, mem_free = (
-            srv_com.get_int("mem:MemTotal"),
-            srv_com.get_int("mem:MemFree") + buffers + cached
-        )
-        swap_total, swap_free = (
-            srv_com.get_int("mem:SwapTotal"),
-            srv_com.get_int("mem:SwapFree"))
+        mem_dict = srv_com["mem"]
+        if "swap" in srv_com:
+            swap_dict = srv_com["swap"]
+        else:
+            swap_dict = None
+        if swap_dict is None:
+            # old format (without psutil)
+            buffers = mem_dict["Buffers"]
+            cached = mem_dict["Cached"]
+            mem_total, mem_free = (
+                mem_dict["MemTotal"],
+                mem_dict["MemFree"],
+            )
+            swap_total, swap_free = (
+                mem_dict["SwapTotal"],
+                mem_dict["SwapFree"],
+            )
+            _fact = 1024
+        else:
+            print mem_dict, swap_dict
+            buffers = mem_dict["buffers"]
+            cached = mem_dict["cached"]
+            mem_total, mem_free = (
+                mem_dict["total"],
+                mem_dict["free"],
+            )
+            swap_total, swap_free = (
+                swap_dict["total"],
+                swap_dict["free"],
+            )
+            _fact = 1
         all_total = mem_total + swap_total
         all_free = mem_free + swap_free
         mem_p = 100 * (1 if mem_total == 0 else float(mem_total - mem_free) / mem_total)
@@ -1186,11 +1209,11 @@ class mem_command(hm_classes.hm_command):
         ret_state = limits.check_ceiling(all_p, cur_ns.warn, cur_ns.crit)
         return ret_state, "meminfo: %d %% of %s phys, %d %% of %s tot (%s buffers, %s cached)" % (
             mem_p,
-            logging_tools.get_size_str(mem_total * 1024, strip_spaces=True),
+            logging_tools.get_size_str(mem_total * _fact, strip_spaces=True),
             all_p,
-            logging_tools.get_size_str(all_total * 1024, strip_spaces=True),
-            logging_tools.get_size_str(buffers * 1024, strip_spaces=True),
-            logging_tools.get_size_str(cached * 1024, strip_spaces=True),
+            logging_tools.get_size_str(all_total * _fact, strip_spaces=True),
+            logging_tools.get_size_str(buffers * _fact, strip_spaces=True),
+            logging_tools.get_size_str(cached * _fact, strip_spaces=True),
         )
     def interpret_old(self, result, parsed_coms):
         result = hm_classes.net_to_sys(result[3:])
