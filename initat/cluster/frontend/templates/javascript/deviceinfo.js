@@ -86,6 +86,10 @@ class device_info
             dev_div_txt += """
 <li><a href='#disk'>Disk#{addon_text_nmd}</a></li>
 """
+        dev_div_txt += """ 
+<li><a href='#vars'>Vars#{addon_text}</a></li>
+"""
+        if pk_list_nmd.length
             if window.SERVICE_TYPES["md-config"]?
                 dev_div_txt += """            
 <li><a href='#livestatus'>Livestatus#{addon_text_nmd}</a></li>
@@ -158,6 +162,13 @@ urn:uuid:{{ _edit_obj.uuid }}
 </div>
 """
         dev_div_txt += """
+    </div>
+</div>
+<div class="tab-pane" id="vars">
+    <div id='icsw.device.variables'>
+        <div ng-controller='dv_base'>
+            <devicevars devicepk='#{pk_list}' disablemodal='#{dis_modal}'></devicevars>
+        </div>
     </div>
 </div>
 <div class="tab-pane" id="disk">

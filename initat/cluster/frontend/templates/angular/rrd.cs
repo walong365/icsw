@@ -9,115 +9,115 @@ root = exports ? this
 {% verbatim %}
 
 rrd_graph_template = """
-    <div>
-        <p class="text-danger">{{ error_string }}</p>
-        <h3 ng-show="vector_valid">
-            Vector info:
-            <span class="label label-primary" title="structural entries">{{ num_struct }}<span ng-show="num_devices > 1" title="number of devices"> / {{ num_devices }}</span></span> /
-            <span class="label label-primary" title="entries">{{ num_mve }}<span ng-show="num_mve_sel" title="selected entries"> / {{ num_mve_sel }}</span></span>, 
-            <input type="button" ng-class="show_options && 'btn btn-sm btn-primary' || 'btn btn-sm'" value="options" ng-click="show_options=!show_options"></input>
-        </h3>
-        <div class="input-group" ng-show="show_options">
-            <div class="input-group-btn">
-                <div class="btn-group">
-                    <button type="button" class="btn btn-sm btn-success dropdown-toggle" data-toggle="dropdown">
-                        {{ cur_dim }} <span class="caret"></span>
-                    </button>
-                    <ul class="dropdown-menu">
-                        <li ng-repeat="dim in all_dims" ng-click="set_active_dim(dim)"><a href="#">{{ dim }}</a></li>
-                    </ul>
-                </div>
-            </div>&nbsp;
-            <div class="input-group-btn">
-                <div class="btn-group">
-                    <button type="button" class="btn btn-sm btn-primary dropdown-toggle" data-toggle="dropdown">
-                        timerange <span class="caret"></span>
-                    </button>
-                    <ul class="dropdown-menu">
-                        <li ng-repeat="tr in all_timeranges" ng-click="set_active_tr(tr)"><a href="#">{{ tr.name }}</a></li>
-                    </ul>
-                </div>
+<div>
+    <p class="text-danger">{{ error_string }}</p>
+    <h3 ng-show="vector_valid">
+        Vector info:
+        <span class="label label-primary" title="structural entries">{{ num_struct }}<span ng-show="num_devices > 1" title="number of devices"> / {{ num_devices }}</span></span> /
+        <span class="label label-primary" title="entries">{{ num_mve }}<span ng-show="num_mve_sel" title="selected entries"> / {{ num_mve_sel }}</span></span>, 
+        <input type="button" ng-class="show_options && 'btn btn-sm btn-primary' || 'btn btn-sm'" value="options" ng-click="show_options=!show_options"></input>
+    </h3>
+    <div class="input-group" ng-show="show_options">
+        <div class="input-group-btn">
+            <div class="btn-group">
+                <button type="button" class="btn btn-sm btn-success dropdown-toggle" data-toggle="dropdown">
+                    {{ cur_dim }} <span class="caret"></span>
+                </button>
+                <ul class="dropdown-menu">
+                    <li ng-repeat="dim in all_dims" ng-click="set_active_dim(dim)"><a href="#">{{ dim }}</a></li>
+                </ul>
             </div>
-            <div class="input-group-btn">
-                <input type="button" ng-class="hide_zero && 'btn btn-sm btn-success' || 'btn btn-sm'" value="hide zero" ng-click="hide_zero=!hide_zero"></input>
-            </div>
-            <div class="input-group-btn">
-                <input type="button" ng-class="merge_devices && 'btn btn-sm btn-success' || 'btn btn-sm'" value="merge devices" ng-click="merge_devices=!merge_devices"></input>
-            </div>
-            <div class="input-group">
-                <span class="input-group-addon">
-                     from
-                </span>
-                <input type="text" class="form-control" ng-model="from_date_mom">
-                </input>
-                <span class="dropdown-toggle input-group-addon">
-                    <div class="dropdown">
-                        <button class="btn dropdown-toggle btn-xs">
-                             <i class="glyphicon glyphicon-calendar"></i>
-                        </button>
-                        <ul class="dropdown-menu" role="menu">
-                            <datetimepicker ng-model="from_date_mom" data-datetimepicker-config="{ dropdownSelector: '#dropdownfrom' }"/>
-                        </ul>
-                    </div>
-                </span>
-            </div>
-            <div class="input-group">
-                <span class="input-group-addon">
-                     to
-                </span>
-                <input type="text" class="form-control" ng-model="to_date_mom">
-                </input>
-                <span class="dropdown-toggle input-group-addon">
-                    <div class="dropdown">
-                        <button class="btn dropdown-toggle btn-xs">
-                             <i class="glyphicon glyphicon-calendar"></i>
-                        </button>
-                        <ul class="dropdown-menu" role="menu">
-                            <datetimepicker ng-model="to_date_mom" data-datetimepicker-config="{ dropdownSelector: '#dropdownfrom' }"/>
-                        </ul>
-                    </div>
-                </span>
+        </div>&nbsp;
+        <div class="input-group-btn">
+            <div class="btn-group">
+                <button type="button" class="btn btn-sm btn-primary dropdown-toggle" data-toggle="dropdown">
+                    timerange <span class="caret"></span>
+                </button>
+                <ul class="dropdown-menu">
+                    <li ng-repeat="tr in all_timeranges" ng-click="set_active_tr(tr)"><a href="#">{{ tr.name }}</a></li>
+                </ul>
             </div>
         </div>
-        <div class="row">
-            <div class="col-md-3">  
-                <div class="input-group">
-                    <input type="text" class="form-control" ng-disabled="is_loading" ng-model="searchstr" placeholder="search ..." ng-change="update_search()"></input>
-                    <span class="input-group-btn">
-                        <button class="btn btn-success" ng-show="cur_selected.length && dt_valid" type="button" ng-click="draw_graph()"><span title="draw graph(s)" class="glyphicon glyphicon-pencil"></span></button>
-                        <button class="btn btn-danger" type="button" ng-click="clear_selection()"><span title="clear selection" class="glyphicon glyphicon-ban-circle"></span></button>
-                    </span>
+        <div class="input-group-btn">
+            <input type="button" ng-class="hide_zero && 'btn btn-sm btn-success' || 'btn btn-sm'" value="hide zero" ng-click="hide_zero=!hide_zero"></input>
+        </div>
+        <div class="input-group-btn">
+            <input type="button" ng-class="merge_devices && 'btn btn-sm btn-success' || 'btn btn-sm'" value="merge devices" ng-click="merge_devices=!merge_devices"></input>
+        </div>
+        <div class="input-group">
+            <span class="input-group-addon">
+                 from
+            </span>
+            <input type="text" class="form-control" ng-model="from_date_mom">
+            </input>
+            <span class="dropdown-toggle input-group-addon">
+                <div class="dropdown">
+                    <button class="btn dropdown-toggle btn-xs">
+                         <i class="glyphicon glyphicon-calendar"></i>
+                    </button>
+                    <ul class="dropdown-menu" role="menu">
+                        <datetimepicker ng-model="from_date_mom" data-datetimepicker-config="{ dropdownSelector: '#dropdownfrom' }"/>
+                    </ul>
                 </div>
-                <tree treeconfig="g_tree"></tree>
-            </div>
-            <div class="col-md-9" ng-show="graph_list.length">
-                <h4>{{ graph_list.length }} graphs, {{ graph_list[0].get_tv(graph_list[0].ts_start_mom) }} to {{ graph_list[0].get_tv(graph_list[0].ts_end_mom) }}</h4>
-                <table class="table-condensed">
-                    <tr ng-repeat="gkey in get_graph_keys()">
-                        <td ng-repeat="(dkey, graph) in graph_mat[gkey]">
-                            <h4  ng-show="!graph.error">
-                                <span class="label label-default" ng-click="graph.toggle_expand()">
-                                    <span ng-class="graph.get_expand_class()"></span>
-                                    {{ graph.num }}
-                                </span>
-                            </h4>
-                            <h4 ng-show="graph.removed_keys.length">
-                                {{ graph.removed_keys.length }} keys not shown (zero data) <span class="glyphicon glyphicon-info-sign" title="{{ graph.get_removed_keys() }}"></span>
-                            </h4>
-                            <h4 class="text-danger" ng-show="graph.error">Error loading graph ({{ graph.num }})</h4>
-                            <span ng-show="graph.cropped && graph.active">cropped timerange: {{ graph.get_tv(graph.cts_start_mom) }} to {{ graph.get_tv(graph.cts_end_mom) }}
-                                <input type="button" class="btn btn-xs btn-warning" value="apply" ng-click="use_crop(graph)"></input>
-                            </span>
-                            <div ng-show="graph.active && !graph.error">
-                                <img-cropped ng-src="{{ graph.src }}" graph="graph">
-                                </img-cropped>
-                            </div>
-                        </td>
-                    </tr>
-                </table>
-            </div>
+            </span>
+        </div>
+        <div class="input-group">
+            <span class="input-group-addon">
+                 to
+            </span>
+            <input type="text" class="form-control" ng-model="to_date_mom">
+            </input>
+            <span class="dropdown-toggle input-group-addon">
+                <div class="dropdown">
+                    <button class="btn dropdown-toggle btn-xs">
+                         <i class="glyphicon glyphicon-calendar"></i>
+                    </button>
+                    <ul class="dropdown-menu" role="menu">
+                        <datetimepicker ng-model="to_date_mom" data-datetimepicker-config="{ dropdownSelector: '#dropdownfrom' }"/>
+                    </ul>
+                </div>
+            </span>
         </div>
     </div>
+    <div class="row">
+        <div class="col-md-3">  
+            <div class="input-group">
+                <input type="text" class="form-control" ng-disabled="is_loading" ng-model="searchstr" placeholder="search ..." ng-change="update_search()"></input>
+                <span class="input-group-btn">
+                    <button class="btn btn-success" ng-show="cur_selected.length && dt_valid" type="button" ng-click="draw_graph()"><span title="draw graph(s)" class="glyphicon glyphicon-pencil"></span></button>
+                    <button class="btn btn-danger" type="button" ng-click="clear_selection()"><span title="clear selection" class="glyphicon glyphicon-ban-circle"></span></button>
+                </span>
+            </div>
+            <tree treeconfig="g_tree"></tree>
+        </div>
+        <div class="col-md-9" ng-show="graph_list.length">
+            <h4>{{ graph_list.length }} graphs, {{ graph_list[0].get_tv(graph_list[0].ts_start_mom) }} to {{ graph_list[0].get_tv(graph_list[0].ts_end_mom) }}</h4>
+            <table class="table-condensed">
+                <tr ng-repeat="gkey in get_graph_keys()">
+                    <td ng-repeat="(dkey, graph) in graph_mat[gkey]">
+                        <h4  ng-show="!graph.error">
+                            <span class="label label-default" ng-click="graph.toggle_expand()">
+                                <span ng-class="graph.get_expand_class()"></span>
+                                {{ graph.num }}
+                            </span>
+                        </h4>
+                        <h4 ng-show="graph.removed_keys.length">
+                            {{ graph.removed_keys.length }} keys not shown (zero data) <span class="glyphicon glyphicon-info-sign" title="{{ graph.get_removed_keys() }}"></span>
+                        </h4>
+                        <h4 class="text-danger" ng-show="graph.error">Error loading graph ({{ graph.num }})</h4>
+                        <span ng-show="graph.cropped && graph.active">cropped timerange: {{ graph.get_tv(graph.cts_start_mom) }} to {{ graph.get_tv(graph.cts_end_mom) }}
+                            <input type="button" class="btn btn-xs btn-warning" value="apply" ng-click="use_crop(graph)"></input>
+                        </span>
+                        <div ng-show="graph.active && !graph.error">
+                            <img-cropped ng-src="{{ graph.src }}" graph="graph">
+                            </img-cropped>
+                        </div>
+                    </td>
+                </tr>
+            </table>
+        </div>
+    </div>
+</div>
 """
 
 {% endverbatim %}
