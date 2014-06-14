@@ -26,6 +26,7 @@ import getopt
 import logging_tools
 import os
 import process_tools
+import psutil
 import sys
 import time
 
@@ -104,9 +105,9 @@ class license_object(object):
     def get_pid(self):
         # try to extract the pid of the (running ?) license server
         exe_lut = {}
-        for _pid, value in process_tools.get_proc_list_new().iteritems():
+        for value in psutil.proces_iter():
             if value.exe():
-                exe_lut.setdefault(value.exe(), []).append(_pid)
+                exe_lut.setdefault(value.exe(), []).append(value.pid)
         pid = exe_lut.get(self["LMGRD_BINARY"], [0])[0]
         return pid
     def start_server(self):
