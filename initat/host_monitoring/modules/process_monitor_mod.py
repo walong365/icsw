@@ -54,7 +54,7 @@ class affinity_struct(object):
     def feed(self, p_dict):
         self.__counter += 1
         cur_time = time.time()
-        proc_keys = set([key for key, value in p_dict.iteritems() if self.affinity_re.match(value.name())])
+        proc_keys = set([key for key, value in p_dict.iteritems() if value.is_running() and self.affinity_re.match(value.name())])
         used_keys = set(self.dict.keys())
         new_keys = proc_keys - used_keys
         old_keys = used_keys - proc_keys
@@ -165,15 +165,18 @@ class _general(hm_classes.hm_module):
         # mem_mon_procs = []
         # mem_found_procs = {}
         for p_stuff in pdict.values():
-            if n_dict.has_key(p_stuff.status()):
-                n_dict[p_stuff.status()] += 1
-            else:
-                self.log(
-                    "*** unknown process state '{}' for process {} (pid {:d})".format(
-                        p_stuff.status(),
-                        p_stuff.name(),
-                        p_stuff.pid()),
-                logging_tools.LOG_LEVEL_ERROR)
+            try:
+                if n_dict.has_key(p_stuff.status()):
+                    n_dict[p_stuff.status()] += 1
+                else:
+                    self.log(
+                        "*** unknown process state '{}' for process {} (pid {:d})".format(
+                            p_stuff.status(),
+                            p_stuff.name(),
+                            p_stuff.pid()),
+                    logging_tools.LOG_LEVEL_ERROR)
+            except psutil.NoSuchProcess:
+                pass
             # if p_stuff.get("name", "") in mem_mon_procs:
             #    mem_found_procs.setdefault(p_stuff["name"], []).append(p_stuff["pid"])
 # #         print "-"
@@ -216,7 +219,7 @@ class procstat_command(hm_classes.hm_command):
         srv_com["process_tree"] = base64.b64encode(bz2.compress(json.dumps(
             {key : value.as_dict(
                 attrs=["pid", "ppid", "uids", "gids", "name", "exe", "cmdline", "status", "ppid", "cpu_affinity"]
-            ) for key, value in p_dict.iteritems()})))
+            ) for key, value in p_dict.iteritems() if value.is_running()})))
         # format 1: base64 encoded compressed dump of p_dict
         srv_com["process_tree"].attrib["format"] = "2"
         del p_dict
@@ -421,7 +424,7 @@ class ipckill_command(hm_classes.hm_command):
             {"file" : "msg", "key_name" : "msqid", "ipcrm_opt" : "q"},
             {"file" : "sem", "key_name" : "semid", "ipcrm_opt" : "s"},
             ]:
-            ipcv_file = "/proc/sysvipc/%s" % (ipc_dict["file"])
+            ipcv_file = "/proc/sysvipc/{}".format(ipc_dict["file"])
             d_key = ipc_dict["file"]
             cur_typenode = srv_com.builder("ipc_list", ipctype=ipc_dict["file"])
             srv_com["ipc_result"].append(cur_typenode)
@@ -547,19 +550,23 @@ def find_pids(ptree, check):
         # if 1 is returned, all subsequent process are added
         # if 0 is returned, the actual add-value is used
         # if -1 is returned, the add value is set to zero and all subsequent checks are disabled
-        new_add = check(start, _dict[start])
-        if new_add == -1:
-            add = 0
-        elif new_add == 1:
-            add = 1
-        if add:
-            r_list, add = ([_dict[start]], 1)
-        else:
+        try:
+            new_add = check(start, _dict[start])
+        except psutil.NoSuchProcess:
             r_list = []
-        if new_add >= 0:
-            p_dict = {_sp.pid : _sp for _sp in ptree.itervalues() if _sp.ppid() == start}
-            if p_dict:
-                for pid in p_dict.keys():
-                    r_list.extend(search(p_dict, add, pid))
+        else:
+            if new_add == -1:
+                add = 0
+            elif new_add == 1:
+                add = 1
+            if add:
+                r_list, add = ([_dict[start]], 1)
+            else:
+                r_list = []
+            if new_add >= 0:
+                p_dict = {_sp.pid : _sp for _sp in ptree.itervalues() if _sp.is_running() and _sp.ppid() == start}
+                if p_dict:
+                    for pid in p_dict.keys():
+                        r_list.extend(search(p_dict, add, pid))
         return r_list
     return search(ptree, 0, ptree.keys()[0])

@@ -25,6 +25,7 @@ import datetime
 import logging_tools
 import os
 import process_tools
+import psutil
 import re
 import server_command
 import stat
@@ -168,7 +169,7 @@ class _general(hm_classes.hm_module):
             if not os.path.isdir(ARGUS_TARGET):
                 os.mkdir(ARGUS_TARGET)
             # kill all argus jobs
-            kill_procs = [_proc for _proc in process_tools.get_proc_list_new().itervalues() if _proc.name() == "argus"]
+            kill_procs = [_proc for _proc in psutil.process_iter() if _proc.is_running() and _proc.name() == "argus"]
             if kill_procs:
                 self.log("killing {}: {}".format(
                     logging_tools.get_plural("argus process", len(kill_procs)),
