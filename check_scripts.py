@@ -210,7 +210,7 @@ def check_system(opt_ns):
     for cur_el in instance_xml.xpath(".//instance[@runs_on]", smart_strings=False):
         if cur_el.attrib["name"] in getattr(opt_ns, cur_el.attrib["runs_on"]) or cur_el.attrib["name"] in opt_ns.instance:
             cur_el.attrib["to_check"] = "1"
-    act_proc_dict = process_tools.get_proc_list()
+    act_proc_dict = process_tools.get_proc_list_new()
     pid_thread_dict = process_tools.get_process_id_list(True, True)
     r_stat, out = commands.getstatusoutput("chkconfig --list")
     stat_dict = {}
@@ -237,10 +237,10 @@ def check_system(opt_ns):
         init_script_name = os.path.join("/etc", "init.d", entry.attrib["init_script_name"])
         if entry.attrib["check_type"] == "simple":
             if os.path.isfile(init_script_name):
-                running_procs = [pid for pid in act_proc_dict.values() if pid["name"] == entry.attrib["process_name"]]
+                running_procs = [pid for pid in act_proc_dict.values() if pid.name() == entry.attrib["process_name"]]
                 if running_procs:
                     act_state, act_str = (0, "running")
-                    act_pids = [p_struct["pid"] for p_struct in running_procs]
+                    act_pids = [p_struct.pid for p_struct in running_procs]
                 else:
                     act_state, act_str = (7, "not running")
             else:
@@ -302,7 +302,7 @@ def check_system(opt_ns):
             else:
                 if os.path.isfile(init_script_name):
                     if pid_file_name == "":
-                        found_procs = {key : (value, pid_thread_dict.get(value["pid"], 1)) for key, value in act_proc_dict.iteritems() if value["name"] == entry.attrib["process_name"]}
+                        found_procs = {key : (value, pid_thread_dict.get(value.pid, 1)) for key, value in act_proc_dict.iteritems() if value.name() == entry.attrib["process_name"]}
                         act_pids = sum([[key] * value[1] for key, value in found_procs.iteritems()], [])
                         threads_found = sum([value[1] for value in found_procs.itervalues()])
                         entry.append(

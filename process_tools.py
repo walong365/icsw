@@ -625,13 +625,14 @@ class meta_server_info(object):
                 self.__name,
                 get_except_info()))
     def check_block(self, act_tc_dict=None, act_dict={}):
+        # threadcount dict
         if not act_tc_dict:
             act_tc_dict = get_process_id_list(True, True)
         if not self.__pids:
             if not act_dict:
-                act_dict = get_proc_list()
+                act_dict = get_proc_list_new()
             # search pids
-            pids_found = [key for key, value in act_dict.items() if value["name"] == self.__exe_name]
+            pids_found = [key for key, value in act_dict.iteritems() if value.name() == self.__exe_name]
             self.__pids = sum([[key] * act_tc_dict.get(key, 1) for key in pids_found], [])
             self.__pid_names.update({key : self.__exe_name for key in pids_found})
         self.__pids_found = dict([(cur_pid, act_tc_dict[cur_pid]) for cur_pid in self.__pids if cur_pid in act_tc_dict.keys()])
@@ -1260,6 +1261,7 @@ def get_process_id_list(with_threadcount=True, with_dotprocs=False):
 
 def get_proc_list_new(**kwargs):
     attrs = kwargs.get("attrs", None)
+    proc_name_list = set(kwargs.get("proc_name_list", []))
     try:
         if "int_pid_list" in kwargs:
             pid_list = kwargs["int_pid_list"]
@@ -1282,7 +1284,11 @@ def get_proc_list_new(**kwargs):
                 except psutil.NoSuchProcess:
                     pass
                 else:
-                    p_dict[pid] = cur_proc
+                    if proc_name_list:
+                        if cur_proc.name() in proc_name_list:
+                            p_dict[pid] = cur_proc
+                    else:
+                        p_dict[pid] = cur_proc
     return p_dict
 
 def get_proc_list(**kwargs):
@@ -1382,19 +1388,23 @@ def bpt_show_childs(in_dict, idx, start):
         for pid in p_list:
             bpt_show_childs(in_dict[start]["childs"], idx + 2, pid)
 
-def build_ps_tree(pdict):
-    def bpt_get_childs(master):
-        r_dict = {}
-        for pid in pdict.keys():
-            if pdict[pid]["ppid"] == master:
-                r_dict[pid] = pdict[pid]
-                r_dict[pid]["master"] = master
-                r_dict[pid]["childs"] = bpt_get_childs(pid)
-        return r_dict
-    # find master process (with ppid == 0)
-    ps_tree = bpt_get_childs(0)
-    # show_childs(ps_tree, 0,ps_tree.keys()[0])
-    return ps_tree
+# no longer used (only reference was in process_monitor_mod.py)
+# def build_ps_tree(pdict):
+#    # only usable for old-style pslist
+#    def bpt_get_childs(master):
+#        r_dict = {}
+#        for pid in pdict.keys():
+#            _ps = pdict[pid]
+#            if _ps["ppid"] == master:
+#                r_dict[pid] = pdict[pid]
+#                r_dict[pid]["master"] = master
+#                r_dict[pid]["childs"] = bpt_get_childs(pid)
+#        return r_dict
+#    # find master process (with ppid == 0)
+#    ps_tree = bpt_get_childs(0)
+#    # show_childs(ps_tree, 0,ps_tree.keys()[0])
+#    print ps_tree
+#    return ps_tree
 
 def build_ppid_list(p_dict, pid=None):
     if not pid:
@@ -1402,21 +1412,21 @@ def build_ppid_list(p_dict, pid=None):
         ppid_list = []
     else:
         ppid_list = [pid]
-    while pid in p_dict and "ppid" in p_dict[pid]:
-        pid = p_dict[pid]["ppid"]
+    while pid in p_dict and p_dict[pid].ppid():
+        pid = p_dict[pid].ppid()
         if pid:
             ppid_list.append(pid)
     return ppid_list
 
 def build_kill_dict(name, exclude_list=[]):
     # process dict
-    pdict = get_proc_list()
+    pdict = get_proc_list_new()
     # list of parent pids (up to init)
     ppl = build_ppid_list(pdict, os.getpid())
     kill_dict = {}
     for pid, p_struct in pdict.items():
-        if get_python_cmd(p_struct["cmdline"]) == name and pid not in ppl and pid not in exclude_list:
-            kill_dict[pid] = " ".join(p_struct["cmdline"])
+        if get_python_cmd(p_struct.cmdline()) == name and pid not in ppl and pid not in exclude_list:
+            kill_dict[pid] = " ".join(p_struct.cmdline())
     return kill_dict
 
 def get_python_cmd(cmdline):
