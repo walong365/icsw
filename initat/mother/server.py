@@ -423,7 +423,7 @@ class server_process(threading_tools.process_pool):
                 for log_line in add_log_lines:
                     self.log(log_line)
     def _enable_syslog_config(self):
-        syslog_exe_dict = dict([(key, value) for key, value in process_tools.get_proc_list().iteritems() if value and value.get("exe", "") and value["exe"].count("syslog")])
+        syslog_exe_dict = {key : value for key, value in process_tools.get_proc_list_new().iteritems() if value.exe().count("syslog")}
         syslog_type = None
         for key, value in syslog_exe_dict.iteritems():
             self.log("syslog process found: %6d = %s" % (key, value["exe"]))
