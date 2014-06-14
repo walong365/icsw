@@ -200,22 +200,25 @@ class procstat_command(hm_classes.hm_command):
                 name_list.append("crond")
         else:
             name_list = []
-        p_dict = process_tools.get_proc_list(proc_name_list=name_list)
+        p_dict = process_tools.get_proc_list_new(proc_name_list=name_list)
         # e_time = time.time()
         # print e_time - s_time
         # pprint.pprint(p_dict)
         if cur_ns.arguments:
             # try to be smart about cron / crond
-            t_dict = {key : value for key, value in p_dict.iteritems() if value["name"] in cur_ns.arguments}
+            t_dict = {key : value for key, value in p_dict.iteritems() if value.name() in cur_ns.arguments}
             if not t_dict and cur_ns.arguments[0] == "cron":
-                t_dict = {key : value for key, value in p_dict.iteritems() if value["name"] in ["crond"]}
+                t_dict = {key : value for key, value in p_dict.iteritems() if value.name() in ["crond"]}
             p_dict = t_dict
         # s_time = time.time()
         # _b = srv_com.builder()
         # print _b
-        srv_com["process_tree"] = base64.b64encode(bz2.compress(marshal.dumps(p_dict)))
+        srv_com["process_tree"] = base64.b64encode(bz2.compress(json.dumps(
+            {key : value.as_dict(
+                attrs=["pid", "ppid", "uids", "gids", "name", "exe", "cmdline", "status", "ppid", "cpu_affinity"]
+            ) for key, value in p_dict.iteritems()})))
         # format 1: base64 encoded compressed dump of p_dict
-        srv_com["process_tree"].attrib["format"] = "1"
+        srv_com["process_tree"].attrib["format"] = "2"
         del p_dict
         # print len(srv_com["process_tree"].text)
         # e_time = time.time()
@@ -226,11 +229,13 @@ class procstat_command(hm_classes.hm_command):
         # pprint.pprint(result)
         if type(result) == dict:
             # old version, gives a dict
-            pass
+            _form = 0
         else:
             _form = int(result.get("format", "1"))
             if _form == 1:
                 result = marshal.loads(bz2.decompress(base64.b64decode(result.text)))
+            elif _form == 2:
+                result = json.loads(bz2.decompress(base64.b64decode(result.text)))
             else:
                 return limits.nag_STATE_CRITICAL, "unknown format %d" % (_form)
             # print result.text
@@ -245,7 +250,11 @@ class procstat_command(hm_classes.hm_command):
         }
         zombie_dict = {}
         for _pid, value in result.iteritems():
-            if value["state"] == "Z":
+            if _form < 2:
+                _is_zombie = value["state"] == "Z"
+            else:
+                _is_zombie = value["status"] == psutil.STATUS_ZOMBIE
+            if _is_zombie:
                 zombie_dict.setdefault(value["name"], []).append(True)
                 if value["name"].lower() in zombie_ok_list:
                     res_dict["zombie_ok"] += 1
@@ -272,15 +281,15 @@ class procstat_command(hm_classes.hm_command):
             # print p_names, result
         zombie_dict = {key : len(value) for key, value in zombie_dict.iteritems()}
         ret_state = max(ret_state, limits.check_floor(res_dict["ok"], cur_ns.warn, cur_ns.crit))
-        ret_str = "%s running (%s%s%s)" % (
+        ret_str = "{} running ({}{}{})".format(
             " + ".join(
-                [logging_tools.get_plural("%s process" % (key), res_dict[key]) for key in ["userspace", "kernel"] if res_dict[key]]) or "nothing",
+                [logging_tools.get_plural("{} process".format(key), res_dict[key]) for key in ["userspace", "kernel"] if res_dict[key]]) or "nothing",
             ", ".join(sorted(p_names)) if p_names else "all",
-            ", %s [%s]" % (
+            ", {} [{}]".format(
                 logging_tools.get_plural("zombie", res_dict["fail"]),
                 ", ".join(["%s%s" % (key, " (x %d)" % (zombie_dict[key]) if zombie_dict[key] > 1 else "") for key in sorted(zombie_dict)]),
                 ) if res_dict["fail"] else "",
-            ", %s" % (logging_tools.get_plural("accepted zombie", res_dict["zombie_ok"])) if res_dict["zombie_ok"] else "",
+            ", {}".format(logging_tools.get_plural("accepted zombie", res_dict["zombie_ok"])) if res_dict["zombie_ok"] else "",
         )
         return ret_state, ret_str
     def interpret_old(self, result, parsed_coms):
@@ -320,11 +329,11 @@ class proclist_command(hm_classes.hm_command):
     def __call__(self, srv_com, cur_ns):
         srv_com["psutil"] = "yes"
         srv_com["num_cores"] = psutil.cpu_count(logical=True)
-        srv_com["process_tree"] = base64.b64encode(bz2.compress(marshal.dumps(json.dumps(
+        srv_com["process_tree"] = base64.b64encode(bz2.compress(json.dumps(
             process_tools.get_proc_list_new(attrs=[
                 "pid", "ppid", "uids", "gids", "name", "exe", "cmdline", "status", "ppid", "cpu_affinity",
             ])
-        ))))
+        )))
     def interpret(self, srv_com, cur_ns):
         _fe = logging_tools.form_entry
         def proc_line(_ps, **kwargs):
@@ -367,7 +376,7 @@ class proclist_command(hm_classes.hm_command):
         if _psutil:
             num_cores = srv_com["*num_cores"]
             # unpack and cast pid to integer
-            result = {int(key) : value for key, value in json.loads(marshal.loads(bz2.decompress(base64.b64decode(result.text)))).iteritems()}
+            result = {int(key) : value for key, value in json.loads(bz2.decompress(base64.b64decode(result.text))).iteritems()}
             for _val in result.itervalues():
                 _val["state"] = process_tools.PROC_STATUSES_REV[_val["status"]]
         # print etree.tostring(srv_com.tree, pretty_print=True)
@@ -470,18 +479,19 @@ class signal_command(hm_classes.hm_command):
         return self.__signal_dict.get(cur_sig, "#%d" % (cur_sig))
     def __call__(self, srv_com, cur_ns):
         def priv_check(key, what):
+            _name, _uid = (what.name(), what.uids()[0])
             if include_list:
-                if what["name"] in include_list or "%d" % (what["pid"]) in include_list:
+                if _name in include_list or "{:d}".format(what.pid) in include_list:
                     # take it and everything beneath
                     return 1
                 else:
                     # do not take it
                     return 0
-            if what["name"] in exclude_list:
+            if _name in exclude_list:
                 # do not take leaf and stop iteration
                 return -1
             else:
-                if what["uid"] >= cur_ns.min_uid and what["uid"] <= cur_ns.max_uid:
+                if _uid >= cur_ns.min_uid and _uid <= cur_ns.max_uid:
                     # take it
                     return 1
                 else:
@@ -503,19 +513,23 @@ class signal_command(hm_classes.hm_command):
                 ", ".join(include_list) or "<empty>"
             )
             self.log(sig_str)
-            pid_list = find_pids(process_tools.build_ps_tree(process_tools.get_proc_list()), priv_check)
+            pid_list = find_pids(process_tools.get_proc_list_new(), priv_check)
             for struct in pid_list:
                 try:
-                    os.kill(struct["pid"], cur_ns.signal)
+                    # print struct, cur_ns.signal
+                    os.kill(struct.pid, cur_ns.signal)
                 except:
                     info_str, is_error = (process_tools.get_except_info(), True)
                 else:
-                    info_str, is_error = ("sent %d to %d" % (cur_ns.signal, struct["pid"]), False)
-                self.log("%d: %s" % (struct["pid"], info_str), logging_tools.LOG_LEVEL_ERROR if is_error else logging_tools.LOG_LEVEL_OK)
-                srv_com["signal_list"].append(srv_com.builder("signal", struct["name"],
-                                                              error="1" if is_error else "0",
-                                                              result=info_str,
-                                                              cmdline=" ".join(struct["cmdline"])))
+                    info_str, is_error = ("sent {:d} to {:d} ({})".format(cur_ns.signal, struct.pid, struct.name()), False)
+                self.log("{:d}: {}".format(struct.pid, info_str), logging_tools.LOG_LEVEL_ERROR if is_error else logging_tools.LOG_LEVEL_OK)
+                srv_com["signal_list"].append(
+                    srv_com.builder(
+                        "signal",
+                        struct.name(),
+                        error="1" if is_error else "0",
+                        result=info_str,
+                        cmdline=" ".join(struct.cmdline())))
         srv_com["signal_list"].attrib.update({"signal" : "{:d}".format(cur_ns.signal)})
     def interpret(self, srv_com, cur_ns):
         ok_list, error_list = (srv_com.xpath(".//ns:signal[@error='0']/text()", smart_strings=False),
@@ -542,10 +556,10 @@ def find_pids(ptree, check):
             r_list, add = ([_dict[start]], 1)
         else:
             r_list = []
-        if _dict[start]["childs"] and new_add >= 0:
-            p_list = _dict[start]["childs"].keys()
-            for pid in p_list:
-                r_list.extend(search(_dict[start]["childs"], add, pid))
+        if new_add >= 0:
+            p_dict = {_sp.pid : _sp for _sp in ptree.itervalues() if _sp.ppid() == start}
+            if p_dict:
+                for pid in p_dict.keys():
+                    r_list.extend(search(p_dict, add, pid))
         return r_list
     return search(ptree, 0, ptree.keys()[0])
-

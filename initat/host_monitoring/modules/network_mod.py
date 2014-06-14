@@ -168,13 +168,13 @@ class _general(hm_classes.hm_module):
             if not os.path.isdir(ARGUS_TARGET):
                 os.mkdir(ARGUS_TARGET)
             # kill all argus jobs
-            kill_pids = [_pid for _pid, _value in process_tools.get_proc_list().iteritems() if _value.get("name", "???") == "argus"]
-            if kill_pids:
-                self.log("killing %s: %s" % (
-                    logging_tools.get_plural("argus process", len(kill_pids)),
-                    ", ".join(["%d" % (_pid) for _pid in sorted(kill_pids)]),
+            kill_procs = [_proc for _proc in process_tools.get_proc_list_new().itervalues() if _proc.name() == "argus"]
+            if kill_procs:
+                self.log("killing {}: {}".format(
+                    logging_tools.get_plural("argus process", len(kill_procs)),
+                    ", ".join(["{:d}".format(_proc.pid) for _proc in sorted(kill_procs)]),
                     ))
-                [os.kill(_pid, 9) for _pid in kill_pids]
+                [_proc.kill() for _proc in kill_procs]
             self.__bzip2_path = process_tools.find_file("bzip2")
             self.__argus_path = argus_path
             self.__argus_interfaces = set()
