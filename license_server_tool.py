@@ -103,9 +103,11 @@ class license_object(object):
         os.chmod(self["START_SCRIPT"], 0550)
     def get_pid(self):
         # try to extract the pid of the (running ?) license server
-        exe_dict = dict([(k, v["exe"]) for k, v in process_tools.get_proc_list().iteritems() if v["exe"]])
-        exe_lut = dict([(v, k) for k, v in exe_dict.iteritems()])
-        pid = exe_lut.get(self["LMGRD_BINARY"], 0)
+        exe_lut = {}
+        for _pid, value in process_tools.get_proc_list_new().iteritems():
+            if value.exe():
+                exe_lut.setdefault(value.exe(), []).append(_pid)
+        pid = exe_lut.get(self["LMGRD_BINARY"], [0])[0]
         return pid
     def start_server(self):
         if self.get_pid():
