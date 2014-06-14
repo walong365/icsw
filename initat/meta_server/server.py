@@ -278,7 +278,7 @@ class main_process(threading_tools.process_pool):
             del_list = []
             mem_info_dict = {}
             act_tc_dict = process_tools.get_process_id_list(True, True)
-            act_pid_dict = process_tools.get_proc_list(int_pid_list=act_tc_dict.keys(), add_cmdline=False, add_exe=False)
+            act_pid_dict = process_tools.get_proc_list_new(int_pid_list=act_tc_dict.keys())
             # import pprint
             # pprint.pprint(act_pid_dict)
             # print act_pid_list
