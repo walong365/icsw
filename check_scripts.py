@@ -237,7 +237,7 @@ def check_system(opt_ns):
         init_script_name = os.path.join("/etc", "init.d", entry.attrib["init_script_name"])
         if entry.attrib["check_type"] == "simple":
             if os.path.isfile(init_script_name):
-                running_procs = [pid for pid in act_proc_dict.values() if pid.name() == entry.attrib["process_name"]]
+                running_procs = [pid for pid in act_proc_dict.values() if pid.is_running() and pid.name() == entry.attrib["process_name"]]
                 if running_procs:
                     act_state, act_str = (0, "running")
                     act_pids = [p_struct.pid for p_struct in running_procs]

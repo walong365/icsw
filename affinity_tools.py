@@ -110,16 +110,19 @@ class proc_struct(object):
         self.usage = {}
         self.read_mask()
     def feed(self, p_struct, diff_time):
-        _cpu_t = p_struct.cpu_times()
-        stat_dict = {"u" : _cpu_t.user, "s" : _cpu_t.system}
-        usage_dict = {
-            key : 100. * float(
-                stat_dict[key] - self.stat[key]
-            ) / diff_time for key in stat_dict.iterkeys()}
-        usage_dict["t"] = usage_dict["u"] + usage_dict["s"]
-        self.stat = stat_dict
-        # usage dict is now populated with (u)ser, (s)ystem and (t)otal load in percent
-        self.usage = usage_dict
+        try:
+            _cpu_t = p_struct.cpu_times()
+            stat_dict = {"u" : _cpu_t.user, "s" : _cpu_t.system}
+            usage_dict = {
+                key : 100. * float(
+                    stat_dict[key] - self.stat[key]
+                ) / diff_time for key in stat_dict.iterkeys()}
+            usage_dict["t"] = usage_dict["u"] + usage_dict["s"]
+            self.stat = stat_dict
+            # usage dict is now populated with (u)ser, (s)ystem and (t)otal load in percent
+            self.usage = usage_dict
+        except psutil.NoSuchProcess:
+            pass
     def clear_usage(self):
         self.usage = {}
     @property
