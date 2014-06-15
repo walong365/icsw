@@ -171,11 +171,14 @@ class key_list_com(base_com):
             print "{:30s} ({}) : last updated {}".format(value[1], key, time.ctime(value[0]))
         out_f = logging_tools.new_form_list()
         for h_uuid, h_struct in k_dict.iteritems():
-            for num_key, entry in enumerate(sorted(h_struct)):
-                if entry[0] == 0:
-                    # simple format
-                    cur_mv = mvect_entry(entry[1], info=entry[2], unit=entry[3], v_type=entry[4], value=entry[5], base=entry[6], factor=entry[7])
-                    out_f.append([logging_tools.form_entry(v_dict[h_uuid][1], header="device")] + cur_mv.get_form_entry(num_key + 1))
+            num_key = 0
+            for entry in sorted(h_struct):
+                if v_re.match(entry[1]):
+                    num_key += 1
+                    if entry[0] == 0:
+                        # simple format
+                        cur_mv = mvect_entry(entry[1], info=entry[2], unit=entry[3], v_type=entry[4], value=entry[5], base=entry[6], factor=entry[7])
+                    out_f.append([logging_tools.form_entry(v_dict[h_uuid][1], header="device")] + cur_mv.get_form_entry(num_key))
         print unicode(out_f)
         # print v_list
     def _interpret(self, srv_com):
