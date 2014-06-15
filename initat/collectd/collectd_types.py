@@ -211,6 +211,8 @@ class value(object):
         else:
             self.set_value = self._set_value_str
         self.set_value(entry.attrib["value"], cur_time)
+    def update_ov(self, entry, cur_time):
+        self.set_value(entry.attrib["v"], cur_time)
     def _set_value_int(self, value, cur_time):
         self.last_update = cur_time
         self.value = int(value)
@@ -232,3 +234,16 @@ class value(object):
             factor="{:d}".format(self.factor),
             unit=self.unit,
         )
+    def get_json(self):
+        return (
+            # version type
+            0,
+            self.name,
+            self.info,
+            self.unit,
+            self.v_type,
+            self.value,
+            self.base,
+            self.factor,
+        )
+

@@ -103,6 +103,7 @@ class net_receiver(multiprocessing.Process, log_base):
         self.poller.register(self.com, zmq.POLLIN)
     def _init_hosts(self):
         # init host and perfdata structs
+        host_info.setup()
         self.__hosts = {}
         # counter when to send data to rrd-grapher
         self.__perfdatas_cnt = {}
@@ -292,6 +293,9 @@ class net_receiver(multiprocessing.Process, log_base):
             new_com = server_command.srv_command(command="mv_info")
             new_com["vector"] = _xml
             self._send_to_grapher(new_com)
+    def _feed_host_info_ov(self, host_uuid, host_name, _xml):
+        # update only values
+        self.__hosts[host_uuid].update_ov(_xml)
     def _process_data(self, in_tree):
         # adopt tree format for faster handling in collectd loop
         try:
@@ -344,7 +348,11 @@ class net_receiver(multiprocessing.Process, log_base):
             )
             raise StopIteration
         else:
-            if not simple:
+            # store values in host_info (and memcached)
+            if simple:
+                # only values
+                self._feed_host_info_ov(host_uuid, host_name, _xml)
+            else:
                 self._feed_host_info(host_uuid, host_name, _xml)
             if not self.__hosts[host_uuid].store_to_disk:
                 # writing to disk not allowed

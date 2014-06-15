@@ -19,12 +19,17 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
 
-from lxml.builder import E # @UnresolvedImports
 from initat.collectd.collectd_types import value
+from initat.collectd.config import MEMCACHE_ADDRESS, MEMCACHE_TIMEOUT
+from lxml.builder import E # @UnresolvedImports
+import memcache
+import json
 import logging_tools
 import process_tools
 import subprocess
 import time
+
+mc = memcache.Client([MEMCACHE_ADDRESS])
 
 class ext_com(object):
     run_idx = 0
@@ -68,6 +73,27 @@ class host_info(object):
         self.stores = 0
         self.store_to_disk = True
         self.log("init host_info for {} ({})".format(name, uuid))
+    @staticmethod
+    def setup():
+        host_info.entries = {}
+    @staticmethod
+    def host_update(hi):
+        cur_time = time.time()
+        _changed = False
+        # delete old entries
+        del_keys = [key for key, value in host_info.entries.iteritems() if abs(value - cur_time) > 15 * 60]
+        if del_keys:
+            _changed = True
+            for del_key in del_keys:
+                del host_info.entries[del_key]
+        # set new entry
+        if hi.uuid not in host_info.entries:
+            _changed = True
+            host_info.entries[hi.uuid] = time.time()
+        if _changed:
+            mc.set("cc_hc_list", json.dumps(host_info.entries))
+    def mc_key(self):
+        return "cc_hc_{}".format(self.uuid)
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
         self.__log_template.log(u"[h {}] {}".format(self.name, what), log_level)
     def get_host_info(self):
@@ -94,8 +120,11 @@ class host_info(object):
         for entry in _xml.findall("mve"):
             cur_name = entry.attrib["name"]
             if cur_name not in self.__dict:
+                # set new value
                 self.__dict[cur_name] = value(cur_name)
+            # update value
             self.__dict[cur_name].update(entry, cur_time)
+        self._store_json_to_memcached()
         new_keys = set(self.__dict.keys())
         c_keys = old_keys ^ new_keys
         if c_keys:
@@ -107,6 +136,18 @@ class host_info(object):
             return True
         else:
             return False
+    def update_ov(self, _xml):
+        cur_time = time.time()
+        for entry in _xml.findall("m"):
+            cur_name = entry.attrib["n"]
+            if cur_name in self.__dict:
+                self.__dict[cur_name].update_ov(entry, cur_time)
+        self._store_json_to_memcached()
+    def _store_json_to_memcached(self):
+        json_vector = [_value.get_json() for _value in self.__dict.itervalues()]
+        host_info.host_update(self)
+        # set and ignore errors, default timeout is 2 minutes
+        mc.set(self.mc_key(), json.dumps(json_vector), MEMCACHE_TIMEOUT)
     def transform(self, key, value, cur_time):
         self.last_update = cur_time
         if key in self.__dict:

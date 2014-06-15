@@ -32,6 +32,10 @@ GRAPHER_PORT = 8003
 LOG_NAME = "collectd"
 LOG_DESTINATION = "ipc:///var/lib/logging-server/py_log_zmq"
 
+# memcache related
+MEMCACHE_ADDRESS = "127.0.0.1:11211"
+MEMCACHE_TIMEOUT = 2 * 60
+
 class log_base(object):
     def __init__(self):
         self.__log_template = logging_tools.get_logger(
