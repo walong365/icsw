@@ -22,9 +22,12 @@
 from initat.host_monitoring.hm_classes import mvect_entry
 from lxml import etree # @UnresolvedImports
 import argparse
+import json
 import logging_tools
+import memcache
 import process_tools
 import server_command
+import re
 import sys
 import time
 import zmq
@@ -32,22 +35,34 @@ import zmq
 class base_com(object):
     def __init__(self, options, *args):
         self.options = options
-        srv_com = server_command.srv_command(command=self.Meta.command)
-        srv_com["identity"] = process_tools.zmq_identity_str(self.options.identity_string)
-        for arg_index, arg in enumerate(args):
-            if self.options.verbose:
-                print " arg {:d}: {}".format(arg_index, arg)
-                srv_com["arguments:arg{:d}".format(arg_index)] = arg
-        srv_com["arg_list"] = " ".join(args)
-        srv_com["host_filter"] = self.options.host_filter
-        srv_com["key_filter"] = self.options.key_filter
-        self.srv_com = srv_com #
+        self.args = args
+        if self.options.mode == "tcp":
+            srv_com = server_command.srv_command(command=self.Meta.command)
+            srv_com["identity"] = process_tools.zmq_identity_str(self.options.identity_string)
+            for arg_index, arg in enumerate(args):
+                if self.options.verbose:
+                    print " arg {:d}: {}".format(arg_index, arg)
+                    srv_com["arguments:arg{:d}".format(arg_index)] = arg
+            srv_com["arg_list"] = " ".join(args)
+            srv_com["host_filter"] = self.options.host_filter
+            srv_com["key_filter"] = self.options.key_filter
+            self.srv_com = srv_com #
         self.ret_state = 1
     def __getitem__(self, key):
         return self.srv_com[key]
     def __unicode__(self):
         return unicode(self.srv_com)
+    def get_mc(self):
+        return memcache.Client([self.options.mc_addr])
+    def compile_re(self, re_str):
+        try:
+            cur_re = re.compile(re_str)
+        except:
+            print("error transforming '{}' to re".format(re_str))
+            cur_re = re.compile(".*")
+        return cur_re
     def send_and_receive(self, client):
+        # tcp (0MQ) mode
         conn_str = "tcp://{}:{:d}".format(self.options.host, self.options.port)
         if self.options.verbose:
             print "Identity_string is '{}', connection_string is '{}'".format(
@@ -84,7 +99,7 @@ class base_com(object):
                     len(recv_str),
                 )
         return True if not timeout else False
-    def interpret(self):
+    def interpret_tcp(self):
         recv_id, recv_str = self.receive_tuple
         try:
             srv_reply = server_command.srv_command(source=recv_str)
@@ -114,6 +129,15 @@ class base_com(object):
 class host_list_com(base_com):
     class Meta:
         command = "host_list"
+    def fetch(self):
+        _mc = self.get_mc()
+        hlist = json.loads(_mc.get("cc_hc_list"))
+        h_re = self.compile_re(self.options.host_filter)
+        v_dict = {key : value for key, value in hlist.iteritems() if h_re.match(value[1])}
+        print("{} found : {}").format(logging_tools.get_plural("host", len(v_dict)), ", ".join(sorted([value[1] for value in v_dict.itervalues()])))
+        for key, value in v_dict.iteritems():
+            print "{:30s} ({}) : last updated {}".format(value[1], key, time.ctime(value[0]))
+        # print v_list
     def _interpret(self, srv_com):
         h_list = srv_com.xpath(".//host_list", smart_strings=False)
         if len(h_list):
@@ -135,6 +159,25 @@ class host_list_com(base_com):
 class key_list_com(base_com):
     class Meta:
         command = "key_list"
+    def fetch(self):
+        _mc = self.get_mc()
+        hlist = json.loads(_mc.get("cc_hc_list"))
+        h_re = self.compile_re(self.options.host_filter)
+        v_re = self.compile_re(self.options.key_filter)
+        v_dict = {key : value for key, value in hlist.iteritems() if h_re.match(value[1])}
+        print("{} found : {}").format(logging_tools.get_plural("host", len(v_dict)), ", ".join(sorted([value[1] for value in v_dict.itervalues()])))
+        k_dict = {key : json.loads(_mc.get("cc_hc_{}".format(key))) for key in v_dict.iterkeys()}
+        for key, value in v_dict.iteritems():
+            print "{:30s} ({}) : last updated {}".format(value[1], key, time.ctime(value[0]))
+        out_f = logging_tools.new_form_list()
+        for h_uuid, h_struct in k_dict.iteritems():
+            for num_key, entry in enumerate(sorted(h_struct)):
+                if entry[0] == 0:
+                    # simple format
+                    cur_mv = mvect_entry(entry[1], info=entry[2], unit=entry[3], v_type=entry[4], value=entry[5], base=entry[6], factor=entry[7])
+                    out_f.append([logging_tools.form_entry(v_dict[h_uuid][1], header="device")] + cur_mv.get_form_entry(num_key + 1))
+        print unicode(out_f)
+        # print v_list
     def _interpret(self, srv_com):
         h_list = srv_com.xpath(".//host_list", smart_strings=False)
         if len(h_list):
@@ -168,6 +211,8 @@ def main():
     parser.add_argument("-i", help="set identity substring [%(default)s]", type=str, default="cdf", dest="identity_string")
     parser.add_argument("--host-filter", help="set filter for host name [%(default)s]", type=str, default=".*", dest="host_filter")
     parser.add_argument("--key-filter", help="set filter for key name [%(default)s]", type=str, default=".*", dest="key_filter")
+    parser.add_argument("--mode", type=str, default="tcp", choices=["tcp", "memcached"], help="set access type [%(default)s]")
+    parser.add_argument("--mc-addr", type=str, default="127.0.0.1:11211", help="address of memcached [%(default)s]")
     # parser.add_argument("arguments", nargs="+", help="additional arguments")
     ret_state = 1
     args, other_args = parser.parse_known_args()
@@ -183,15 +228,18 @@ def main():
     else:
         print "Unknown command '{}'".format(command)
         sys.exit(ret_state)
-    zmq_context = zmq.Context(1)
-    client = zmq_context.socket(zmq.DEALER) # if not args.split else zmq.PUB) # ROUTER)#DEALER)
-    client.setsockopt(zmq.IDENTITY, cur_com["identity"].text)
-    client.setsockopt(zmq.LINGER, args.timeout)
-    was_ok = cur_com.send_and_receive(client)
-    if was_ok:
-        cur_com.interpret()
-    client.close()
-    zmq_context.term()
+    if args.mode == "tcp":
+        zmq_context = zmq.Context(1)
+        client = zmq_context.socket(zmq.DEALER) # if not args.split else zmq.PUB) # ROUTER)#DEALER)
+        client.setsockopt(zmq.IDENTITY, cur_com["identity"].text)
+        client.setsockopt(zmq.LINGER, args.timeout)
+        was_ok = cur_com.send_and_receive(client)
+        if was_ok:
+            cur_com.interpret_tcp()
+        client.close()
+        zmq_context.term()
+    else:
+        cur_com.fetch()
     sys.exit(cur_com.ret_state)
 
 if __name__ == "__main__":

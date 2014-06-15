@@ -81,7 +81,7 @@ class host_info(object):
         cur_time = time.time()
         _changed = False
         # delete old entries
-        del_keys = [key for key, value in host_info.entries.iteritems() if abs(value - cur_time) > 15 * 60]
+        del_keys = [key for key, value in host_info.entries.iteritems() if abs(value[0] - cur_time) > 15 * 60]
         if del_keys:
             _changed = True
             for del_key in del_keys:
@@ -89,9 +89,8 @@ class host_info(object):
         # set new entry
         if hi.uuid not in host_info.entries:
             _changed = True
-            host_info.entries[hi.uuid] = time.time()
-        if _changed:
-            mc.set("cc_hc_list", json.dumps(host_info.entries))
+            host_info.entries[hi.uuid] = (time.time(), hi.name)
+        mc.set("cc_hc_list", json.dumps(host_info.entries))
     def mc_key(self):
         return "cc_hc_{}".format(self.uuid)
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
