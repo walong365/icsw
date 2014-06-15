@@ -362,5 +362,8 @@ class mvect_entry(object):
             "info"   : self.info,
             "unit"   : self.unit,
             "v_type" : self.v_type,
-            "value"  : str(self.value)}
+            "value"  : str(self.value),
+            "base"   : self.base,
+            "factor" : self.factor,
+            }
 
