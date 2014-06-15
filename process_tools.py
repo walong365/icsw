@@ -258,7 +258,7 @@ PROC_STATUSES = {
 PROC_INFO_DICT = {
     psutil.STATUS_RUNNING :  "number of running processes",
     psutil.STATUS_ZOMBIE : "number of zombie processes",
-    psutil.STATUS_DISK_SLEEP : "processess in uninterruptable sleep",
+    psutil.STATUS_DISK_SLEEP : "processes in uninterruptable sleep",
     psutil.STATUS_STOPPED : "processes stopped",
     psutil.STATUS_TRACING_STOP : "processes traced",
     psutil.STATUS_SLEEPING : "processes sleeping",
