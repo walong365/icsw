@@ -21,7 +21,7 @@
 
 from django.db.models import Q
 from initat.cluster.backbone.models import partition, netdevice, lvm_lv, device_variable, \
-    md_check_data_store
+    md_check_data_store, monitoring_hint
 from initat.host_monitoring import ipc_comtools
 from initat.host_monitoring.modules import supermicro_mod
 from lxml import etree # @UnresolvedImport
@@ -395,7 +395,9 @@ class special_base(object):
 class arg_template(dict):
     def __init__(self, s_base, *args, **kwargs):
         dict.__init__(self)
+        self._addon_dict = {}
         self.info = args[0]
+        self.is_active = True
         if s_base is not None:
             if s_base.__class__.__name__ == "check_command":
                 self.__arg_lut, self.__arg_list = s_base.arg_ll
@@ -409,6 +411,9 @@ class arg_template(dict):
             dict.__setitem__(self, arg_name, "")
         for key, value in kwargs.iteritems():
             self[key] = value
+    @property
+    def addon_dict(self):
+        return self._addon_dict
     def __setitem__(self, key, value):
         l_key = key.lower()
         if l_key.startswith("arg"):
@@ -422,6 +427,8 @@ class arg_template(dict):
                 )
             else:
                 dict.__setitem__(self, key.upper(), value)
+        elif key.startswith("_"):
+            self._addon_dict[key] = value
         else:
             if key in self.__arg_lut:
                 dict.__setitem__(self, self.__arg_lut[key].upper(), value)
@@ -649,7 +656,7 @@ class special_net(special_base):
                 (Q(devname='lo') | Q(netdevice_speed__check_via_ethtool=False)))
         for net_dev in nd_list:
             if not virt_check.match(net_dev.devname):
-                name_with_descr = "%s%s" % (
+                name_with_descr = "{}{}".format(
                     net_dev.devname,
                     " ({})".format(net_dev.description) if net_dev.description else "")
                 cur_temp = self.get_arg_template(
@@ -712,6 +719,22 @@ class special_ipmi(special_base):
                             arg7=sensor.attrib["key"],
                             )
                         )
+        return sc_array
+
+class special_ipmi_ext(special_base):
+    class Meta:
+        command = ""
+    def _call(self):
+        sc_array = []
+        for ipmi_ext in monitoring_hint.objects.filter(
+            Q(device=self.host) & \
+            Q(m_type="ipmi")):
+            new_at = self.get_arg_template(
+                ipmi_ext.info,
+                _monitoring_hint=ipmi_ext.pk,
+            )
+            new_at.is_active = False
+            sc_array.append(new_at)
         return sc_array
 
 class special_eonstor(special_base):

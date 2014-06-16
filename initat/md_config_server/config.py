@@ -2222,7 +2222,7 @@ class check_command(object):
         if key == "command_name":
             return self.__nag_name
         else:
-            raise SyntaxError("illegal call to __getitem__ of check_command (key='%s')" % (key))
+            raise SyntaxError("illegal call to __getitem__ of check_command (key='{}')".format(key))
     def get_special(self):
         return self.__special
     def get_config(self):

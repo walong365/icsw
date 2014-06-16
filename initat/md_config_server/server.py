@@ -34,6 +34,7 @@ from initat.md_config_server.config import global_config
 from initat.md_config_server.mixins import version_check_mixin
 from initat.md_config_server.status import status_process, live_socket
 from initat.md_config_server.syncer import syncer_process
+from initat.md_config_server.dynconfig import dynconfig_process
 import cluster_location
 import codecs
 import configfile
@@ -72,10 +73,12 @@ class server_process(threading_tools.process_pool, version_check_mixin):
         self._init_network_sockets()
         self.register_func("register_slave", self._register_slave)
         self.register_func("send_command", self._send_command)
+        self.register_func("ocsp_results", self._ocsp_results)
         self.__external_cmd_file = None
         self.register_func("external_cmd_file", self._set_external_cmd_file)
         self.add_process(status_process("status"), start=True)
         self.add_process(syncer_process("syncer"), start=True)
+        self.add_process(dynconfig_process("dynconfig"), start=True)
         # wait for the processes to start
         time.sleep(0.5)
         self.register_timer(self._check_for_redistribute, 30 if global_config["DEBUG"] else 300)
@@ -296,12 +299,12 @@ class server_process(threading_tools.process_pool, version_check_mixin):
             self.__msi_block.save_block()
     def _init_msi_block(self):
         process_tools.save_pid(self.__pid_name, mult=3)
-        process_tools.append_pids(self.__pid_name, pid=configfile.get_manager_pid(), mult=4)
+        process_tools.append_pids(self.__pid_name, pid=configfile.get_manager_pid(), mult=5)
         if not global_config["DEBUG"] or True:
             self.log("Initialising meta-server-info block")
             msi_block = process_tools.meta_server_info("md-config-server")
             msi_block.add_actual_pid(mult=3, fuzzy_ceiling=3, process_name="main")
-            msi_block.add_actual_pid(act_pid=configfile.get_manager_pid(), mult=5, process_name="manager")
+            msi_block.add_actual_pid(act_pid=configfile.get_manager_pid(), mult=6, process_name="manager")
             msi_block.start_command = "/etc/init.d/md-config-server start"
             msi_block.stop_command = "/etc/init.d/md-config-server force-stop"
             msi_block.kill_pids = True
@@ -318,12 +321,16 @@ class server_process(threading_tools.process_pool, version_check_mixin):
             self.log("connecting to slave on {} ({})".format(conn_str, slave_uuid))
             self.com_socket.connect(conn_str)
             self.__slaves[conn_str] = slave_uuid
+    def _ocsp_results(self, *args, **kwargs):
+        _src_proc, _src_pid, lines = args
+        self._write_external_cmd_file(lines)
     def _handle_ocp_event(self, in_com):
         com_type = in_com["command"].text
         targ_list = [cur_arg.text for cur_arg in in_com.xpath(".//ns:arguments", smart_strings=False)[0]]
         target_com = {
             "ocsp-event" : "PROCESS_SERVICE_CHECK_RESULT",
-            "ochp-event" : "PROCESS_HOST_CHECK_RESULT"}[com_type]
+            "ochp-event" : "PROCESS_HOST_CHECK_RESULT",
+        }[com_type]
         # rewrite state information
         state_idx, error_state = (1, 1) if com_type == "ochp-event" else (2, 2)
         targ_list[state_idx] = "{:d}".format({
@@ -342,9 +349,13 @@ class server_process(threading_tools.process_pool, version_check_mixin):
             int(time.time()),
             target_com,
             ";".join(targ_list))
+        self._write_external_cmd_file(out_line)
+    def _write_external_cmd_file(self, lines):
+        if type(lines) != list:
+            lines = [lines]
         if self.__external_cmd_file:
             try:
-                codecs.open(self.__external_cmd_file, "w", "utf-8").write(out_line)
+                codecs.open(self.__external_cmd_file, "w", "utf-8").write("\n".join(lines + [""]))
             except:
                 self.log("error writing to {}: {}".format(
                     self.__external_cmd_file,
@@ -405,7 +416,7 @@ class server_process(threading_tools.process_pool, version_check_mixin):
                 self.com_socket.send_unicode("internal error")
             else:
                 cur_com = srv_com["command"].text
-                if self.__verbose or cur_com not in ["ocsp-event", "ochp-event", "file_content_result"]:
+                if self.__verbose or cur_com not in ["ocsp-event", "ochp-event", "file_content_result", "monitoring_info"]:
                     self.log("got command '{}' from '{}'".format(
                         cur_com,
                         srv_com["source"].attrib["host"]))
@@ -423,6 +434,8 @@ class server_process(threading_tools.process_pool, version_check_mixin):
                     self.send_to_process("build", "sync_http_users")
                 elif cur_com in ["ocsp-event", "ochp-event"]:
                     self._handle_ocp_event(srv_com)
+                elif cur_com in ["monitoring_info"]:
+                    self.send_to_process("dynconfig", "monitoring_info", unicode(srv_com))
                 elif cur_com in ["file_content_result", "relayer_info", "file_content_bulk_result"]:
                     self.send_to_process("syncer", cur_com, unicode(srv_com))
                     if "sync_id" in srv_com:

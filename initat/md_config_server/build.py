@@ -916,7 +916,7 @@ class build_process(threading_tools.process_obj, version_check_mixin):
                             for msc_check in msc_checks:
                                 if msc_check.mon_check_command.name in cur_gc["command"]:
                                     c_com = cur_gc["command"][msc_check.mon_check_command.name]
-                                    #dev_names = ",".join(["$SERVICESTATEID:%s:%s$" % (cur_dev.full_name, c_com.get_description()) for cur_dev in msc_check.devices.all().select_related("domain_tree_node")])
+                                    # dev_names = ",".join(["$SERVICESTATEID:%s:%s$" % (cur_dev.full_name, c_com.get_description()) for cur_dev in msc_check.devices.all().select_related("domain_tree_node")])
                                     dev_names = [(cur_dev.full_name, c_com.get_description()) for cur_dev in msc_check.devices.all().select_related("domain_tree_node")]
                                     if len(dev_names):
                                         s_check = cur_gc["command"]["check_service_cluster"]
@@ -1359,8 +1359,12 @@ class build_process(threading_tools.process_obj, version_check_mixin):
             if s_check.event_handler:
                 act_serv["event_handler"] = s_check.event_handler.name
                 act_serv["event_handler_enabled"] = "1" if s_check.event_handler_enabled else "0"
-            act_serv["%s_checks_enabled" % ("active" if checks_are_active else "passive")] = 1
-            act_serv["%s_checks_enabled" % ("passive" if checks_are_active else "active")] = 0
+            if arg_temp.is_active:
+                act_serv["{}_checks_enabled".format("active" if checks_are_active else "passive")] = 1
+                act_serv["{}_checks_enabled".format("passive" if checks_are_active else "active")] = 0
+            else:
+                act_serv["passive_checks_enabled"] = 1
+                act_serv["active_checks_enabled"] = 0
             act_serv["service_description"] = arg_temp.info.replace("(", "[").replace(")", "]")
             act_serv["host_name"] = host.full_name
             # volatile
@@ -1405,6 +1409,9 @@ class build_process(threading_tools.process_obj, version_check_mixin):
                 act_serv["servicegroups"] = ",".join(s_check.servicegroup_names)
                 cur_gc["servicegroup"].add_host(host.name, act_serv["servicegroups"])
             act_serv["check_command"] = "!".join([s_check["command_name"]] + s_check.correct_argument_list(arg_temp, host.dev_variables))
+            # add addon vars
+            for key, value in arg_temp.addon_dict.iteritems():
+                act_serv[key] = value
             # if act_host["check_command"] == "check-host-alive-2" and s_check["command_name"].startswith("check_ping"):
             #    self.mach_log(
             #        "   removing command %s because of %s" % (
