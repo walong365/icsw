@@ -119,7 +119,7 @@ device_variable_module.controller("dv_base", ["$scope", "$compile", "$filter", "
     ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, sharedDataSource, $q, $modal) ->
         $scope.enable_modal = true
         $scope.base_edit = new angular_edit_mixin($scope, $templateCache, $compile, $modal, Restangular)
-        $scope.base_edit.create_template = "device_variable_new.html"
+        $scope.base_edit.create_template = "device_variable_new_form.html"
         $scope.base_edit.create_rest_url = Restangular.all("{% url 'rest:device_variable_list' %}".slice(1))
         $scope.base_edit.new_object = (scope) -> return {"device" : scope._obj.idx, "var_type" : "?"}
         $scope.base_edit.change_signal = "icsw.dv.changed"
@@ -148,7 +148,7 @@ device_variable_module.controller("dv_base", ["$scope", "$compile", "$filter", "
                 return "btn btn-sm"
         $scope.new_devsel = (dev_pks, group_pks) ->
             wait_list = [
-                restDataSource.reload(["{% url 'rest:device_tree_list' %}", {"with_variables" : true, "with_meta_devices" : true, "ignore_cdg" : false, "olp" : "backbone.change_variables"}])
+                restDataSource.reload(["{% url 'rest:device_tree_list' %}", {"pks" : angular.toJson(dev_pks), "with_variables" : true, "with_meta_devices" : true, "ignore_cdg" : false, "olp" : "backbone.change_variables"}])
                 restDataSource.reload(["{% url 'rest:fetch_forms' %}", {"forms" : angular.toJson(["device_variable_form", "device_variable_new_form"])}])
             ]
             $q.all(wait_list).then((data) ->
