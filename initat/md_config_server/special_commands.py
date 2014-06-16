@@ -672,7 +672,7 @@ class special_net(special_base):
                     c="%.0f" % (net_dev.netdevice_speed.speed_bps * 0.95),
                     arg_1=net_dev.devname,
                 )
-                if net_dev.netdevice_speed.check_via_ethtool:
+                if net_dev.netdevice_speed.check_via_ethtool and net_dev.devname != "lo":
                     cur_temp["duplex"] = net_dev.netdevice_speed.full_duplex and "full" or "half"
                     cur_temp["s"] = "%d" % (net_dev.netdevice_speed.speed_bps)
                 else:
