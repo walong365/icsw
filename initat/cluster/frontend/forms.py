@@ -2364,9 +2364,23 @@ class mon_check_command_form(ModelForm):
                 "Basic settings",
                 Field("name", wrapper_class="ng-class:form_error('name')"),
                 Field("description"),
-                Field("command_line"),
+                Field("mon_check_command_special", ng_options="value.idx as value.name for value in mccs_list", chosen=True),
+                Field("command_line", wrapper_ng_show="!_edit_obj.mon_check_command_special"),
                 HTML("""
-<div class='form-group'>
+<div class='form-group' ng-show="_edit_obj.mon_check_command_special">
+    <label class="control-label col-sm-2">Info</label>
+    <div class="col-sm-9 list-group">
+        {% verbatim %}
+        <ul>
+            <li class="list-group-item">{{ get_mccs_info() }}</li>
+            <li class="list-group-item">{{ get_mccs_cmdline() }}</li>
+        </ul>
+        {% endverbatim %}
+    </div>
+</div>
+                """),
+                HTML("""
+<div class='form-group' ng-show="!_edit_obj.mon_check_command_special">
     <label class='control-label col-sm-2'>Tools</label>
     <div class='controls col-sm-9'>
         <div class="form-inline">
@@ -2381,7 +2395,7 @@ class mon_check_command_form(ModelForm):
 </div>
                 """),
                 HTML("""
-<div class='form-group'>
+<div class='form-group' ng-show="!_edit_obj.mon_check_command_special">
     <label class="control-label col-sm-2">Info</label>
     <div class="col-sm-9 list-group">
         <ul>
@@ -2433,7 +2447,7 @@ class mon_check_command_form(ModelForm):
         model = mon_check_command
         fields = ("name", "mon_service_templ", "command_line",
             "description", "enable_perfdata", "volatile", "is_event_handler",
-            "event_handler", "event_handler_enabled",)
+            "event_handler", "event_handler_enabled", "mon_check_command_special")
 
 
 class netdevice_form(ModelForm):

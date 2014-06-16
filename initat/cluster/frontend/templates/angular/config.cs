@@ -242,6 +242,7 @@ mon_table_template = """
             <th>Name</th>
             <th>template</th>
             <th>description</th>
+            <th>special</th>
             <th>command line</th>
             <th>vol</th>
             <th>perf</th>
@@ -257,15 +258,16 @@ mon_table_template = """
             <td>{{ obj.name }}</td>
             <td>{{ obj.mon_service_templ | array_lookup:this.mon_service_templ:'name':'-' }}</td>
             <td>{{ obj.description }}</td>
-            <td title="{{ obj.command_line }}">
+            <td>{{ obj.mon_check_command_special && 'yes' || 'no' }}</td>
+            <td title="{{ get_mon_command_line(obj) }}">
                 <input
                     type="button"
                     title="expand / collapse full command line"
                     ng-class="obj._show_full_command && 'btn btn-xs btn-success' || 'btn btn-xs btn-default'"
                     value="e" ng-click="obj._show_full_command = !obj._show_full_command">
                 </input>
-                <span ng-if="!obj._show_full_command">{{ obj.command_line | limit_text:60:true }}</span>
-                <span ng-if="obj._show_full_command">{{ obj.command_line }}</span>
+                <span ng-if="!obj._show_full_command">{{ get_mon_command_line(obj) | limit_text:40:true }}</span>
+                <span ng-if="obj._show_full_command">{{ get_mon_command_line(obj) }}</span>
             </td>
             <td>{{ obj.volatile | yesno1 }}</td>
             <td>{{ obj.enable_perfdata | yesno1 }}</td>
@@ -437,6 +439,7 @@ config_ctrl = config_module.controller("config_ctrl", ["$scope", "$compile", "$f
                 restDataSource.reload(["{% url 'rest:category_list' %}", {}]),
                 restDataSource.reload(["{% url 'rest:config_catalog_list' %}", {}]),
                 restDataSource.reload(["{% url 'rest:config_hint_list' %}", {}]),
+                restDataSource.reload(["{% url 'rest:mon_check_command_special_list' %}", {}]),
             ]
             $q.all(wait_list).then((data) ->
                 $scope.mon_service_templ = data[1]
@@ -445,6 +448,8 @@ config_ctrl = config_module.controller("config_ctrl", ["$scope", "$compile", "$f
                 ($scope._set_fields(entry, true) for entry in data[0])
                 $scope.entries = data[0]
                 $scope.config_catalogs = data[3]
+                $scope.mccs_list = data[5]
+                $scope.mccs_lut = build_lut(data[5])
                 # catalog for uploads
                 $scope.catalog = $scope.config_catalogs[0].idx
                 $scope.config_edit.create_list = $scope.entries
@@ -786,6 +791,11 @@ config_ctrl = config_module.controller("config_ctrl", ["$scope", "$compile", "$f
                     if mod_obj != false
                         $scope.filter_conf(config, $scope)
             )
+        $scope.get_mon_command_line = (obj) ->
+            if obj.mon_check_command_special
+                return $scope.mccs_lut[obj.mon_check_command_special].command_line
+            else
+                return obj.command_line 
         $scope.copy_mon = (config, obj, event) ->
             call_ajax
                 url     : "{% url 'config:copy_mon' %}"
@@ -845,6 +855,18 @@ config_ctrl = config_module.controller("config_ctrl", ["$scope", "$compile", "$f
         $scope.delete_catalog = (cat) ->
             $scope.catalog_edit.delete_obj(cat).then((res) ->
             )
+        $scope.get_mccs_info = () ->
+            cur_mccs = $scope._edit_obj.mon_check_command_special
+            if cur_mccs
+                return $scope.mccs_lut[cur_mccs].description
+            else
+                return ""
+        $scope.get_mccs_cmdline = () ->
+            cur_mccs = $scope._edit_obj.mon_check_command_special
+            if cur_mccs
+                return $scope.mccs_lut[cur_mccs].command_line
+            else
+                return ""
         $scope.add_argument = () ->
             cur_cl = $scope._edit_obj.command_line
             max_argn = 0
