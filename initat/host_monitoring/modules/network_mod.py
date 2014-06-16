@@ -1035,9 +1035,9 @@ class net_command(hm_classes.hm_command):
                         # pprint.pprint(ibv_dict)
                         # print ethtool_dict, dev_name, cur_ns
             else:
-                if cur_ns.speed:
+                if cur_ns.speed and cur_ns.speed != "-":
                     ret_state = self._check_speed(None, cur_ns, ethtool_dict.get("speed", -1), add_oks, add_errors, ret_state)
-                if cur_ns.duplex:
+                if cur_ns.duplex and cur_ns.duplex != "-":
                     ret_state = self._check_duplex(None, cur_ns, ethtool_dict.get("duplex", None), add_oks, add_errors, ret_state)
         if ibv_dict:
             # add ib info
