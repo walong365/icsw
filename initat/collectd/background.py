@@ -62,6 +62,8 @@ def parse_ipmi_type(name, sensor_type):
         if lparts[-1] == "tach":
             lparts.pop(-1)
         key = "fan.{}".format(key_str)
+        if parts and parts[0].lower() in ["fan"]:
+            parts.pop(0)
         info = "rotation of fan {}".format(" ".join(parts))
         unit = "RPM"
         base = 1000
