@@ -32,6 +32,7 @@ __all__ = [
     # distribution models
     "mon_dist_master", # "mon_dist_master_serializer",
     "mon_dist_slave", # "mon_dist_slave_serializer",
+    "monitoring_hint",
     ]
 
 # distribution models, one per run
@@ -766,3 +767,18 @@ def mon_service_esc_templ_pre_save(sender, **kwargs):
             ("last_notification" , 1, 10),
             ("ninterval"         , 0, 60)]:
             _check_integer(cur_inst, attr_name, min_val=min_val, max_val=max_val)
+
+class monitoring_hint(models.Model):
+    idx = models.AutoField(primary_key=True)
+    device = models.ForeignKey("backbone.device")
+    m_type = models.CharField(max_length=32, choices=[("ipmi", "IPMI"), ("snmp", "SNMP"), ])
+    # key of vector or OID
+    key = models.CharField(default="", max_length=255)
+    # info string
+    info = models.CharField(default="", max_length=255)
+    date = models.DateTimeField(auto_now_add=True)
+    def __unicode__(self):
+        return u"{} ({}) for {}".format(self.m_type, self.key, unicode(self.device))
+    class Meta:
+        app_label = "backbone"
+
