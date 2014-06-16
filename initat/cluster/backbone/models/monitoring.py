@@ -33,6 +33,7 @@ __all__ = [
     "mon_dist_master", # "mon_dist_master_serializer",
     "mon_dist_slave", # "mon_dist_slave_serializer",
     "monitoring_hint",
+    "mon_check_command_special", "mon_check_command_special_serializer",
     ]
 
 # distribution models, one per run
@@ -162,6 +163,25 @@ class host_check_command_serializer(serializers.ModelSerializer):
     class Meta:
         model = host_check_command
 
+class mon_check_command_special(models.Model):
+    idx = models.AutoField(primary_key=True)
+    name = models.CharField(max_length=64, unique=True)
+    command_line = models.CharField(max_length=256, default="")
+    description = models.CharField(max_length=256, default="")
+    is_active = models.BooleanField(default=True)
+    date = models.DateTimeField(auto_now_add=True)
+    @property
+    def md_name(self):
+        return "special_{:d}_{}".format(self.idx, self.name)
+    class Meta:
+        app_label = "backbone"
+    def __unicode__(self):
+        return "mccs_{}".format(self.name)
+
+class mon_check_command_special_serializer(serializers.ModelSerializer):
+    class Meta:
+        model = mon_check_command_special
+
 class mon_check_command(models.Model):
     idx = models.AutoField(db_column="ng_check_command_idx", primary_key=True)
     config_old = models.IntegerField(null=True, blank=True, db_column="config")
@@ -172,8 +192,9 @@ class mon_check_command(models.Model):
     # only unique per config
     name = models.CharField(max_length=192) # , unique=True)
     # flag for special commands (@<SREF>@command)
-    is_special_command = models.BooleanField(default=False)
-    command_line = models.CharField(max_length=765)
+    mon_check_command_special = models.ForeignKey("backbone.mon_check_command_special", null=True, blank=True)
+    # for mon_check_special_command this is empty
+    command_line = models.CharField(max_length=765, default="")
     description = models.CharField(max_length=192, blank=True)
     # device = models.ForeignKey("backbone.device", null=True, blank=True)
     date = models.DateTimeField(auto_now_add=True)
@@ -217,7 +238,7 @@ def mon_check_command_pre_save(sender, **kwargs):
     if "instance" in kwargs:
         cur_inst = kwargs["instance"]
         special_re = re.compile("^@.+@.+$")
-        cur_inst.is_special_command = True if special_re.match(cur_inst.name) else False
+        # cur_inst.is_special_command = True if special_re.match(cur_inst.name) else False
         if not cur_inst.name:
             raise ValidationError("name is empty")
         if not cur_inst.command_line:
@@ -228,7 +249,7 @@ def mon_check_command_pre_save(sender, **kwargs):
             mc_refs = cur_inst.mon_check_command_set.all()
             if len(mc_refs):
                 raise ValidationError("still referenced by {}".format(logging_tools.get_plural("check_command", len(mc_refs))))
-        if cur_inst.is_special_command and cur_inst.is_event_handler:
+        if cur_inst.mon_check_command_special_id and cur_inst.is_event_handler:
             cur_inst.is_event_handler = False
             cur_inst.save()
             raise ValidationError("special command not allowed as event handler")
