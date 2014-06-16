@@ -42,7 +42,7 @@ class dynconfig_process(threading_tools.process_obj):
         connection.close()
         self.register_func("monitoring_info", self._monitoring_info)
         # feed as test
-        self._monitoring_info('<ns0:ics_batch xmlns:ns0="http://www.initat.org/lxml/ns" srvc_version="1"><ns0:source host="eddie" pid="19855"/><ns0:command>monitoring_info</ns0:command><ns0:identity>not set</ns0:identity><ns0:mon_info><monitor_info uuid="ee567638-581b-4154-9734-0e437db12ba0" name="kvm01-ipmi" time="1402922591"><value info="rotation of fan Fan 4B Tach" v_type="f" lc="468.000" m_type="ipmi" value="4140.000000" base="1000" unit="RPM" name="ipmi.fan.fan_4b_tach"/><value info="Power usage of Avg Power" v_type="f" name="ipmi.watts.avg_power" m_type="ipmi" value="190.000000" base="1" unit="W"/><value info="Voltage of Planar VBAT" v_type="f" lc="2.095" m_type="ipmi" value="3.226000" lw="2.248" base="1" unit="V" name="ipmi.volts.planar_vbat"/><value info="Temperature of Ambient Temp" v_type="f" name="ipmi.temp.ambient_temp" m_type="ipmi" uw="38.000" value="20.000000" un="45.000" uc="41.000" base="1" unit="C"/><value info="rotation of fan Fan 1B Tach" v_type="f" lc="468.000" m_type="ipmi" value="4176.000000" base="1000" unit="RPM" name="ipmi.fan.fan_1b_tach"/><value info="rotation of fan Fan 1A Tach" v_type="f" lc="492.000" m_type="ipmi" value="4018.000000" base="1000" unit="RPM" name="ipmi.fan.fan_1a_tach"/><value info="Voltage of Planar 3.3V" v_type="f" lc="3.039" m_type="ipmi" value="3.351000" base="1" uc="3.564" unit="V" name="ipmi.volts.planar_3,3v"/><value info="Voltage of Planar 5V" v_type="f" lc="4.475" m_type="ipmi" value="5.108000" base="1" uc="5.582" unit="V" name="ipmi.volts.planar_5v"/><value info="rotation of fan Fan 2A Tach" v_type="f" lc="492.000" m_type="ipmi" value="4018.000000" base="1000" unit="RPM" name="ipmi.fan.fan_2a_tach"/><value info="rotation of fan Fan 3A Tach" v_type="f" lc="492.000" m_type="ipmi" value="3977.000000" base="1000" unit="RPM" name="ipmi.fan.fan_3a_tach"/><value info="rotation of fan Fan 4A Tach" v_type="f" lc="492.000" m_type="ipmi" value="4018.000000" base="1000" unit="RPM" name="ipmi.fan.fan_4a_tach"/><value info="rotation of fan Fan 3B Tach" v_type="f" lc="468.000" m_type="ipmi" value="4176.000000" base="1000" unit="RPM" name="ipmi.fan.fan_3b_tach"/><value info="Voltage of Planar 12V" v_type="f" lc="10.692" m_type="ipmi" value="12.204000" base="1" uc="13.446" unit="V" name="ipmi.volts.planar_12v"/><value info="rotation of fan Fan 2B Tach" v_type="f" lc="468.000" m_type="ipmi" value="4176.000000" base="1000" unit="RPM" name="ipmi.fan.fan_2b_tach"/></monitor_info></ns0:mon_info></ns0:ics_batch>')
+        # self._monitoring_info('<ns0:ics_batch xmlns:ns0="http://www.initat.org/lxml/ns" srvc_version="1"><ns0:source host="eddie" pid="19855"/><ns0:command>monitoring_info</ns0:command><ns0:identity>not set</ns0:identity><ns0:mon_info><monitor_info uuid="ee567638-581b-4154-9734-0e437db12ba0" name="kvm01-ipmi" time="1402922591"><value info="rotation of fan Fan 4B Tach" v_type="f" lc="468.000" m_type="ipmi" value="4140.000000" base="1000" unit="RPM" name="ipmi.fan.fan_4b_tach"/><value info="Power usage of Avg Power" v_type="f" name="ipmi.watts.avg_power" m_type="ipmi" value="190.000000" base="1" unit="W"/><value info="Voltage of Planar VBAT" v_type="f" lc="2.095" m_type="ipmi" value="3.226000" lw="2.248" base="1" unit="V" name="ipmi.volts.planar_vbat"/><value info="Temperature of Ambient Temp" v_type="f" name="ipmi.temp.ambient_temp" m_type="ipmi" uw="38.000" value="20.000000" un="45.000" uc="41.000" base="1" unit="C"/><value info="rotation of fan Fan 1B Tach" v_type="f" lc="468.000" m_type="ipmi" value="4176.000000" base="1000" unit="RPM" name="ipmi.fan.fan_1b_tach"/><value info="rotation of fan Fan 1A Tach" v_type="f" lc="492.000" m_type="ipmi" value="4018.000000" base="1000" unit="RPM" name="ipmi.fan.fan_1a_tach"/><value info="Voltage of Planar 3.3V" v_type="f" lc="3.039" m_type="ipmi" value="3.351000" base="1" uc="3.564" unit="V" name="ipmi.volts.planar_3,3v"/><value info="Voltage of Planar 5V" v_type="f" lc="4.475" m_type="ipmi" value="5.108000" base="1" uc="5.582" unit="V" name="ipmi.volts.planar_5v"/><value info="rotation of fan Fan 2A Tach" v_type="f" lc="492.000" m_type="ipmi" value="4018.000000" base="1000" unit="RPM" name="ipmi.fan.fan_2a_tach"/><value info="rotation of fan Fan 3A Tach" v_type="f" lc="492.000" m_type="ipmi" value="3977.000000" base="1000" unit="RPM" name="ipmi.fan.fan_3a_tach"/><value info="rotation of fan Fan 4A Tach" v_type="f" lc="492.000" m_type="ipmi" value="4018.000000" base="1000" unit="RPM" name="ipmi.fan.fan_4a_tach"/><value info="rotation of fan Fan 3B Tach" v_type="f" lc="468.000" m_type="ipmi" value="4176.000000" base="1000" unit="RPM" name="ipmi.fan.fan_3b_tach"/><value info="Voltage of Planar 12V" v_type="f" lc="10.692" m_type="ipmi" value="12.204000" base="1" uc="13.446" unit="V" name="ipmi.volts.planar_12v"/><value info="rotation of fan Fan 2B Tach" v_type="f" lc="468.000" m_type="ipmi" value="4176.000000" base="1000" unit="RPM" name="ipmi.fan.fan_2b_tach"/></monitor_info></ns0:mon_info></ns0:ics_batch>')
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
         self.__log_template.log(log_level, what)
     def loop_post(self):
@@ -117,18 +117,18 @@ class dynconfig_process(threading_tools.process_obj):
                 _val_str = "{:d}".format(_val)
             else:
                 _val_str = "{:.2f}".format(_val)
-            for _ck, _rv, _ul, _add_str in [
-                ("lw", limits.nag_STATE_WARNING, False, "["),
-                ("uw", limits.nag_STATE_WARNING, True, "]"),
-                ("lc", limits.nag_STATE_CRITICAL, False, "["),
-                ("uc", limits.nag_STATE_CRITICAL, True, "]"),
+            for _ck, _rv, _ul, _add_strc in [
+                ("lw", limits.nag_STATE_WARNING, False, 1),
+                ("uw", limits.nag_STATE_WARNING, True, 1),
+                ("lc", limits.nag_STATE_CRITICAL, False, 2),
+                ("uc", limits.nag_STATE_CRITICAL, True, 2),
                 ]:
                 if _ck in _xml.attrib:
                     _cval = float(_xml.get(_ck))
                     if _ul:
-                        _val_str = "{} {:.2f}({}){}".format(_val_str, _cval, _ck[1], _add_str)
+                        _val_str = "{} {}{:.2f}{}".format(_val_str, "<" * _add_strc, _cval, ">" * _add_strc)
                     else:
-                        _val_str = "{}{:.2f}({}) {}".format(_add_str, _cval, _ck[1], _val_str)
+                        _val_str = "{}{:.2f}{} {}".format("<" * _add_strc, _cval, ">" * _add_strc, _val_str)
                     if (_ul and _val > _cval) or (not _ul and _val < _cval):
                         _ret = max(_ret, _rv)
         # print _val_str
