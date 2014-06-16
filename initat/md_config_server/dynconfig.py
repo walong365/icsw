@@ -98,7 +98,7 @@ class dynconfig_process(threading_tools.process_obj):
                 _val.get("info"),
                 ret_code,
                 ret_str,
-                )
+            )
             ocsp_lines.append(ocsp_line)
         # pprint.pprint(ocsp_lines)
         self.send_pool_message("ocsp_results", ocsp_lines)

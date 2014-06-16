@@ -24,7 +24,7 @@ from django.db.models import Q
 from initat.cluster.backbone.models import device, device_group, device_variable, mon_device_templ, \
      mon_check_command, mon_period, mon_contact, mon_contactgroup, mon_service_templ, \
      user, category_tree, TOP_MONITORING_CATEGORY, mon_notification, host_check_command , \
-     mon_dist_master, mon_dist_slave, cluster_timezone
+     mon_dist_master, mon_dist_slave, cluster_timezone, mon_check_command_special
 from initat.md_config_server.version import VERSION_STRING
 from lxml.builder import E # @UnresolvedImport
 import ConfigParser
@@ -1661,10 +1661,11 @@ class all_commands(host_type_config):
             # simple nag_config, we do not add this to the command dict
             # self.__dict[cur_nc["command_name"]] = cur_nc
             command_names.add(hc_com.name)
-        ngc_re1 = re.compile("^\@(?P<special>\S+)\@(?P<comname>\S+)$")
-        check_coms = list(mon_check_command.objects.all()
-                          .prefetch_related("categories", "exclude_devices")
-                          .select_related("mon_service_templ", "config", "event_handler").order_by("name"))
+        check_coms = list(
+            mon_check_command.objects.all()
+            .prefetch_related("categories", "exclude_devices")
+            .select_related("mon_service_templ", "config", "event_handler").order_by("name")
+        )
         enable_perfd = global_config["ENABLE_PNP"] or global_config["ENABLE_COLLECTD"]
         if enable_perfd and gen_conf.master:
             if global_config["ENABLE_COLLECTD"]:
@@ -1703,7 +1704,15 @@ class all_commands(host_type_config):
                         description="Process host performance data",
                         ),
                 ]
-        for ngc in check_coms + [
+        all_mccs = mon_check_command_special.objects.all()
+        check_coms += [
+            mon_check_command(
+                name=ccs.md_name,
+                command_line=ccs.command_line or "/bin/true",
+                description=ccs.description,
+                ) for ccs in all_mccs
+            ]
+        check_coms += [
             mon_check_command(
                 name="ochp-command",
                 command_line="$USER2$ -m DIRECT -s ochp-event \"$HOSTNAME$\" \"$HOSTSTATE$\" \"%s\"" % ("$HOSTOUTPUT$|$HOSTPERFDATA$" if enable_perfd else "$HOSTOUTPUT$"),
@@ -1724,14 +1733,11 @@ class all_commands(host_type_config):
                 command_line="/opt/cluster/bin/check_icinga_cluster.py --host -l \"$ARG1$\" -w \"$ARG2$\" -c \"$ARG3$\" -d \"$ARG4$\" -n \"$ARG5$\"",
                 description="Check Host Cluster"
                 ),
-            ]:
+        ]
+        for ngc in check_coms:
             # pprint.pprint(ngc)
             # build / extract ngc_name
-            re1m = ngc_re1.match(ngc.name)
-            if re1m:
-                ngc_name, special = (re1m.group("comname"), re1m.group("special"))
-            else:
-                ngc_name, special = (ngc.name, None)
+            ngc_name = ngc.name
             _ngc_name = cc_command_names.add(ngc_name)
             if _ngc_name != ngc_name:
                 self.log("rewrite %s to %s" % (ngc_name, _ngc_name), logging_tools.LOG_LEVEL_WARN)
@@ -1752,7 +1758,7 @@ class all_commands(host_type_config):
                 ngc.description,
                 exclude_devices=ngc.exclude_devices.all() if ngc.pk else [],
                 nagios_name=_nag_name,
-                special=special,
+                mccs_id=ngc.mon_check_command_special_id,
                 servicegroup_names=cats,
                 servicegroup_pks=cat_pks,
                 enable_perfdata=ngc.enable_perfdata,
@@ -2081,12 +2087,13 @@ class all_services(host_type_config):
         return []
 
 class check_command(object):
-    def __init__(self, name, com_line, config, template, descr, exclude_devices=None, special=None, **kwargs):
+    def __init__(self, name, com_line, config, template, descr, exclude_devices=None, **kwargs):
         self.__name = name
         self.__nag_name = kwargs.pop("nagios_name", self.__name)
         # print self.__name, self.__nag_name
         self.__com_line = com_line
         self.config = config
+        self.mccs_id = kwargs.pop("mccs_id", 0)
         self.template = template
         self.exclude_devices = [cur_dev.pk for cur_dev in exclude_devices] or []
         self.servicegroup_names = kwargs.get("servicegroup_names", [TOP_MONITORING_CATEGORY])
@@ -2098,7 +2105,6 @@ class check_command(object):
         self.__descr = descr.replace(",", ".")
         self.enable_perfdata = kwargs.get("enable_perfdata", False)
         self.volatile = kwargs.get("volatile", False)
-        self.__special = special
         self.mon_check_command = None
         if "db_entry" in kwargs:
             if kwargs["db_entry"].pk:
@@ -2144,7 +2150,6 @@ class check_command(object):
                 m_dict = cur_m.groupdict()
                 # check for -X or --Y switch
                 prev_part = m_dict["pre_text"].strip().split()
-
                 if prev_part and prev_part[-1].startswith("-"):
                     prev_part = prev_part[-1]
                 else:
@@ -2176,10 +2181,10 @@ class check_command(object):
                 break
         self.__md_com_line = cur_line
         if self.command_line == self.md_command_line:
-            self.log("command_line in/out is '%s'" % (self.command_line))
+            self.log("command_line in/out is '{}'".format(self.command_line))
         else:
-            self.log("command_line in     is '%s'" % (self.command_line))
-            self.log("command_line out    is '%s'" % (self.md_command_line))
+            self.log("command_line in     is '{}'".format(self.command_line))
+            self.log("command_line out    is '{}'".format(self.md_command_line))
         if arg_lut:
             self.log("lut : %s; %s" % (
                 logging_tools.get_plural("key", len(arg_lut)),
@@ -2223,8 +2228,11 @@ class check_command(object):
             return self.__nag_name
         else:
             raise SyntaxError("illegal call to __getitem__ of check_command (key='{}')".format(key))
-    def get_special(self):
-        return self.__special
+    def __setitem__(self, key, value):
+        if key == "command_name":
+            self.__nag_name = value
+        else:
+            raise SyntaxError("illegal call to __setitem__ of check_command (key='{}')".format(key))
     def get_config(self):
         return self.config
     def get_template(self, default):
@@ -2295,7 +2303,6 @@ class service_templates(dict):
         dict.__init__(self)
         self.__build_proc = build_proc
         self.__default = 0
-        # dc.execute("SELECT ng.*, nc.name AS ncname FROM ng_service_templ ng LEFT JOIN ng_cgservicet ngc ON ngc.ng_service_templ=ng.ng_service_templ_idx LEFT JOIN ng_contactgroup nc ON ngc.ng_contactgroup=nc.ng_contactgroup_idx")
         for srv_templ in mon_service_templ.objects.all().prefetch_related(
             "mon_device_templ_set",
             "mon_contactgroup_set"):

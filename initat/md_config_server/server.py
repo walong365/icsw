@@ -25,7 +25,8 @@ os.environ.setdefault("DJANGO_SETTINGS_MODULE", "initat.cluster.settings")
 
 from django.db import connection, connections
 from django.db.models import Q
-from initat.cluster.backbone.models import mon_notification, config_str, config_int
+from initat.cluster.backbone.models import mon_notification, config_str, config_int, \
+    mon_check_command_special, mon_check_command
 from initat.cluster.backbone.routing import get_server_uuid
 from initat.host_monitoring.hm_classes import mvect_entry
 from initat.md_config_server import constants
@@ -37,6 +38,7 @@ from initat.md_config_server.syncer import syncer_process
 from initat.md_config_server.dynconfig import dynconfig_process
 import cluster_location
 import codecs
+import inspect
 import configfile
 import logging_tools
 import process_tools
@@ -66,23 +68,27 @@ class server_process(threading_tools.process_pool, version_check_mixin):
         self.register_exception("term_error", self._int_error)
         self.register_exception("hup_error", self._hup_error)
         self._check_notification()
+        self._check_special_commands()
         # from mixins
         self._check_md_version()
         self._check_relay_version()
         self._log_config()
         self._init_network_sockets()
-        self.register_func("register_slave", self._register_slave)
-        self.register_func("send_command", self._send_command)
-        self.register_func("ocsp_results", self._ocsp_results)
-        self.__external_cmd_file = None
-        self.register_func("external_cmd_file", self._set_external_cmd_file)
-        self.add_process(status_process("status"), start=True)
-        self.add_process(syncer_process("syncer"), start=True)
-        self.add_process(dynconfig_process("dynconfig"), start=True)
-        # wait for the processes to start
-        time.sleep(0.5)
-        self.register_timer(self._check_for_redistribute, 30 if global_config["DEBUG"] else 300)
-        self.register_timer(self._update, 30, instant=True)
+        if "MD_TYPE" in global_config:
+            self.register_func("register_slave", self._register_slave)
+            self.register_func("send_command", self._send_command)
+            self.register_func("ocsp_results", self._ocsp_results)
+            self.__external_cmd_file = None
+            self.register_func("external_cmd_file", self._set_external_cmd_file)
+            self.add_process(status_process("status"), start=True)
+            self.add_process(syncer_process("syncer"), start=True)
+            self.add_process(dynconfig_process("dynconfig"), start=True)
+            # wait for the processes to start
+            time.sleep(0.5)
+            self.register_timer(self._check_for_redistribute, 30 if global_config["DEBUG"] else 300)
+            self.register_timer(self._update, 30, instant=True)
+        else:
+            self._int_error("no MD found")
     def _check_for_redistribute(self):
         self.send_to_process("syncer", "check_for_redistribute")
     def _update(self):
@@ -157,6 +163,41 @@ class server_process(threading_tools.process_pool, version_check_mixin):
             self.log("Config : {}".format(conf))
     def _re_insert_config(self):
         cluster_location.write_config("monitor_server", global_config)
+    def _check_special_commands(self):
+        from initat.md_config_server import special_commands
+        pks_found = set()
+        mccs_dict = {}
+        for key in dir(special_commands):
+            _entry = getattr(special_commands, key)
+            if key.startswith("special_"):
+                if inspect.isclass(_entry) and _entry != special_commands.special_base:
+                    if issubclass(_entry, special_commands.special_base):
+                        _inst = _entry()
+                        try:
+                            cur_mccs = mon_check_command_special.objects.get(Q(name=_inst.Meta.name))
+                        except mon_check_command_special.DoesNotExist:
+                            cur_mccs = mon_check_command_special(name=_inst.Meta.name)
+                        cur_mccs.command_line = _inst.Meta.command
+                        cur_mccs.description = _inst.Meta.description
+                        cur_mccs.is_active = _inst.Meta.is_active
+                        cur_mccs.save()
+                        mccs_dict[cur_mccs.name] = cur_mccs
+                        pks_found.add(cur_mccs.pk)
+        # delete stale
+        del_mccs = mon_check_command_special.objects.exclude(pk__in=pks_found)
+        if del_mccs:
+            self.log("removing {}".format(logging_tools.get_plural("stale mccs", len(del_mccs))))
+            del_mccs.delete()
+        # rewrite
+        for to_rewrite in mon_check_command.objects.filter(Q(name__startswith="@")):
+            self.log("rewriting {} to new format... ".format(unicode(to_rewrite)))
+            _key = to_rewrite.name.split("@")[1].lower()
+            if _key in mccs_dict:
+                to_rewrite.name = to_rewrite.name.split("@")[2]
+                to_rewrite.mon_check_command_special = mccs_dict[_key]
+                to_rewrite.save()
+            else:
+                self.log("key {} not found in dict".format(_key), logging_tools.LOG_LEVEL_ERROR)
     def _check_notification(self):
         cur_not = mon_notification.objects.all().count()
         if cur_not:

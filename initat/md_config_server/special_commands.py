@@ -83,7 +83,13 @@ class special_base(object):
         error_wait = 5
         # contact server
         server_contact = False
-    def __init__(self, build_proc, s_check, host, global_config, **kwargs):
+        # is active ?
+        is_active = True
+        # command
+        command = ""
+        # description
+        description = "no description available"
+    def __init__(self, build_proc=None, s_check=None, host=None, global_config=None, **kwargs):
         for key in dir(special_base.Meta):
             if not key.startswith("__") and not hasattr(self.Meta, key):
                 setattr(self.Meta, key, getattr(special_base.Meta, key))
@@ -390,14 +396,14 @@ class special_base(object):
             )
         return cur_ret
     def get_arg_template(self, *args, **kwargs):
-        return arg_template(self, *args, **kwargs)
+        return arg_template(self.s_check, *args, is_active=self.Meta.is_active, **kwargs)
 
 class arg_template(dict):
     def __init__(self, s_base, *args, **kwargs):
         dict.__init__(self)
         self._addon_dict = {}
         self.info = args[0]
-        self.is_active = True
+        self.is_active = kwargs.pop("is_active", True)
         if s_base is not None:
             if s_base.__class__.__name__ == "check_command":
                 self.__arg_lut, self.__arg_list = s_base.arg_ll
@@ -418,9 +424,9 @@ class arg_template(dict):
         l_key = key.lower()
         if l_key.startswith("arg"):
             if l_key.startswith("arg_"):
-                key = "arg%d" % (len(self.argument_names) + 1 - int(l_key[4:]))
+                key = "arg{:d}".format(len(self.argument_names) + 1 - int(l_key[4:]))
             if key.upper() not in self.argument_names:
-                raise KeyError, "key '%s' not defined in arg_list (%s, %s)" % (
+                raise KeyError, "key '{}' not defined in arg_list ({}, {})".format(
                     key,
                     self.info,
                     ", ".join(self.argument_names)
@@ -432,18 +438,20 @@ class arg_template(dict):
         else:
             if key in self.__arg_lut:
                 dict.__setitem__(self, self.__arg_lut[key].upper(), value)
-            elif "-%s" % (key) in self.__arg_lut:
-                dict.__setitem__(self, self.__arg_lut["-%s" % (key)].upper(), value)
-            elif "--%s" % (key) in self.__arg_lut:
-                dict.__setitem__(self, self.__arg_lut["--%s" % (key)].upper(), value)
+            elif "-{}".format(key) in self.__arg_lut:
+                dict.__setitem__(self, self.__arg_lut["-{}".format(key)].upper(), value)
+            elif "--{}".format(key) in self.__arg_lut:
+                dict.__setitem__(self, self.__arg_lut["--{}".format(key)].upper(), value)
             else:
-                raise KeyError, "key '%s' not defined in arg_list (%s)" % (
+                raise KeyError, "key '{}' not defined in arg_list ({})".format(
                     key,
                     self.info)
 
 class special_openvpn(special_base):
     class Meta:
         server_contact = True
+        command = "$USER2$ -m $HOSTADDRESS$ openvpn_status -i $ARG1$ -p $ARG2$"
+        description = "checks for running OpenVPN instances"
     def _call(self):
         sc_array = []
         exp_dict = parse_expected()
@@ -476,6 +484,8 @@ class special_openvpn(special_base):
 class special_supermicro(special_base):
     class Meta:
         server_contact = True
+        command = "$USER2$ -m 127.0.0.1 smcipmi --ip=$HOSTADDRESS$ --user=${ARG1:SMC_USER:ADMIN} --passwd=${ARG2:SMC_PASSWD:ADMIN} $ARG3$"
+        description = "queries IPMI Bladecenters via the collserver on the localhost"
     def _call(self):
         # parameter list
         para_list = ["num_ibqdr", "num_power", "num_gigabit", "num_blade", "num_cmm"]
@@ -551,11 +561,17 @@ class special_supermicro(special_base):
         return sc_array
 
 class special_disc_all(special_base):
+    class Meta:
+        command = "$USER2$ -m $HOSTADDRESS$ df -w ${ARG1:85} -c ${ARG2:95} $ARG3$"
+        description = "queries the collserver on the target system for the partition with the lowest space"
     def _call(self):
         sc_array = [self.get_arg_template("All partitions", arg3="ALL")]
         return sc_array
 
 class special_disc(special_base):
+    class Meta:
+        command = "$USER2$ -m $HOSTADDRESS$ df -w ${ARG1:85} -c ${ARG2:95} $ARG3$"
+        description = "queries the partition on the target system via collserver"
     def _call(self):
         part_dev = self.host.partdev
         first_disc = None
@@ -636,24 +652,15 @@ class special_disc(special_base):
 
 class special_net(special_base):
     class Meta:
-        command = "$USER2$ -m $HOSTADDRESS$ net -w $ARG1$ -c $ARG2$ $ARG3$"
-        command2 = "$USER2$ -m $HOSTADDRESS$ net --duplex $ARG1$ -s $ARG2$ -w $ARG3$ -c $ARG4$ $ARG5$"
+        command = "$USER2$ -m $HOSTADDRESS$ net --duplex $ARG1$ -s $ARG2$ -w $ARG3$ -c $ARG4$ $ARG5$"
+        description = "queries all configured network devices"
     def _call(self):
         sc_array = []
-        eth_check = True if re.match(".*ethtool.*", self.s_check["command_name"]) else False
         virt_check = re.compile("^.*:\S+$")
-        self.log("eth_check is %s" % ("on" if eth_check else "off"))
         # never check duplex and stuff for a loopback-device
-        if eth_check:
-            nd_list = netdevice.objects.exclude(Q(devname='lo')).filter(
-                Q(device=self.host) &
-                Q(enabled=True) &
-                Q(netdevice_speed__check_via_ethtool=True)).order_by("devname").select_related("netdevice_speed")
-        else:
-            nd_list = netdevice.objects.filter(
-                Q(device=self.host) &
-                Q(enabled=True) &
-                (Q(devname='lo') | Q(netdevice_speed__check_via_ethtool=False)))
+        nd_list = netdevice.objects.filter(
+            Q(device=self.host) &
+            Q(enabled=True)).select_related("netdevice_speed")
         for net_dev in nd_list:
             if not virt_check.match(net_dev.devname):
                 name_with_descr = "{}{}".format(
@@ -665,9 +672,12 @@ class special_net(special_base):
                     c="%.0f" % (net_dev.netdevice_speed.speed_bps * 0.95),
                     arg_1=net_dev.devname,
                 )
-                if eth_check:
+                if net_dev.netdevice_speed.check_via_ethtool:
                     cur_temp["duplex"] = net_dev.netdevice_speed.full_duplex and "full" or "half"
                     cur_temp["s"] = "%d" % (net_dev.netdevice_speed.speed_bps)
+                else:
+                    cur_temp["duplex"] = "-"
+                    cur_temp["s"] = "-"
                 self.log(" - netdevice %s with %s: %s" % (
                     name_with_descr,
                     logging_tools.get_plural("option", len(cur_temp.argument_names)),
@@ -679,6 +689,8 @@ class special_net(special_base):
 class special_libvirt(special_base):
     class Meta:
         server_contact = True
+        command = "$USER2$ -m $HOSTADDRESS$ domain_status $ARG1$"
+        description = "checks running virtual machines on the target host via libvirt"
     def _call(self):
         sc_array = []
         srv_result = self.collrelay("domain_overview")
@@ -701,6 +713,7 @@ class special_ipmi(special_base):
     class Meta:
         server_contact = True
         command = "$USER2$ -m $HOSTADDRESS$ ipmi_sensor --lowern=${ARG1:na} --lowerc=${ARG2:na} --lowerw=${ARG3:na} --upperw=${ARG4:na} --upperc=${ARG5:na} --uppern=${ARG6:na} $ARG7$"
+        description = "queries the IPMI sensors of the underlying IPMI interface of the target device"
     def _call(self):
         sc_array = []
         srv_result = self.collrelay("ipmi_sensor")
@@ -724,6 +737,8 @@ class special_ipmi(special_base):
 class special_ipmi_ext(special_base):
     class Meta:
         command = ""
+        is_active = False
+        description = "queries the IPMI sensors of the IPMI interface directly (not via the target host)"
     def _call(self):
         sc_array = []
         for ipmi_ext in monitoring_hint.objects.filter(
@@ -733,7 +748,6 @@ class special_ipmi_ext(special_base):
                 ipmi_ext.info,
                 _monitoring_hint=ipmi_ext.pk,
             )
-            new_at.is_active = False
             sc_array.append(new_at)
         return sc_array
 
@@ -742,6 +756,7 @@ class special_eonstor(special_base):
         retries = 4
         server_contact = True
         command = "$USER3$ -m $HOSTADDRESS$ -C ${ARG1:SNMP_COMMUNITY:public} -V ${ARG2:SNMP_VERSION:2} $ARG3$ $ARG4$"
+        description = "checks the eonstore disc chassis via SNMP"
     def _call(self):
         sc_array = []
         srv_reply = self.snmprelay(
