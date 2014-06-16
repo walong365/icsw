@@ -1425,8 +1425,12 @@ def build_kill_dict(name, exclude_list=[]):
     ppl = build_ppid_list(pdict, os.getpid())
     kill_dict = {}
     for pid, p_struct in pdict.items():
-        if get_python_cmd(p_struct.cmdline()) == name and pid not in ppl and pid not in exclude_list:
-            kill_dict[pid] = " ".join(p_struct.cmdline())
+        try:
+            if get_python_cmd(p_struct.cmdline()) == name and pid not in ppl and pid not in exclude_list:
+                kill_dict[pid] = " ".join(p_struct.cmdline())
+        except psutil.NoSuchProcess:
+            # process has vanished, ignore
+            pass
     return kill_dict
 
 def get_python_cmd(cmdline):
