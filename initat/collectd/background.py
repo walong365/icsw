@@ -23,7 +23,8 @@
 
 from initat.collectd.collectd_structs import ext_com
 from initat.collectd.collectd_types import * # @UnusedWildImport
-from initat.collectd.config import IPC_SOCK, RECV_PORT, log_base
+from initat.collectd.config import IPC_SOCK, RECV_PORT, log_base, \
+    MD_SERVER_PORT, MD_SERVER_UUID, MD_SERVER_HOST
 from lxml import etree # @UnresolvedImports
 from lxml.builder import E # @UnresolvedImports
 import logging_tools
@@ -36,7 +37,20 @@ import zmq
 import time
 
 IPMI_LIMITS = ["ln", "lc", "lw", "uw", "uc", "un"]
-# IPMI_LONG_LIMITS = ["{}{}".format({"l" : "lower", "u" : "upper"}[key[0]], key[1:]) for key in IPMI_LIMITS]
+
+# just info
+IPMI_LONG_LIMITS = [
+    "{} {}".format(
+        {
+            "l" : "lower",
+            "u" : "upper",
+        }[key[0]],
+        {
+            "n" : "non-critical",
+            "w" : "warning",
+            "c" : "critical",
+        }.get(key[1:], key[1:]),
+    ) for key in IPMI_LIMITS]
 
 def parse_ipmi_type(name, sensor_type):
     key, info, unit, base = ("", "", "", 1)
@@ -88,6 +102,9 @@ class ipmi_builder(object):
             simple="0",
             **kwargs
         )
+        _mon_info = E.monitor_info(
+            **kwargs
+        )
         for key, value in ipmi_dict.iteritems():
             _val = E.mve(
                 info=value[1],
@@ -98,7 +115,18 @@ class ipmi_builder(object):
                 name="ipmi.{}".format(key),
             )
             _tree.append(_val)
-        return _tree
+            _mon = E.value(
+                info=value[1],
+                unit=value[2],
+                m_type="ipmi",
+                base="{:d}".format(value[3]),
+                v_type="f",
+                value="{:.6f}".format(value[0]),
+                name="ipmi.{}".format(key),
+                **{_wn : _wv for _wn, _wv in value[4].iteritems() if _wv.strip()}
+            )
+            _mon_info.append(_mon)
+        return _tree, _mon_info
     def get_comline(self, _dev_xml):
         if _dev_xml.get("ipmi_interface", ""):
             _iface_str = " -I {}".format(_dev_xml.get("ipmi_interface"))
@@ -167,6 +195,7 @@ class bg_job(object):
             if self.result is None:
                 if self.check_for_timeout():
                     self.terminate()
+                    self.running = False
             else:
                 self.running = False
                 stdout, stderr = self.__ec.communicate()
@@ -180,8 +209,11 @@ class bg_job(object):
                 )
                 if stdout and self.result == 0:
                     if self.builder is not None:
-                        _tree = self.builder.build(stdout, name=self.device_name, uuid=self.uuid, time="{:d}".format(int(self.last_start)))
+                        _tree, _mon_info = self.builder.build(stdout, name=self.device_name, uuid=self.uuid, time="{:d}".format(int(self.last_start)))
+                        # graphing
                         bg_job.bg_proc.send_to_net(etree.tostring(_tree))
+                        # monitoring
+                        bg_job.bg_proc.send_to_md(unicode(server_command.srv_command(command="monitoring_info", mon_info=_mon_info)))
                     else:
                         bg_job.log("no builder set", logging_tools.LOG_LEVEL_ERROR)
                 if stderr:
@@ -247,9 +279,8 @@ class background(multiprocessing.Process, log_base):
         self._init_sockets()
         self.__ipmi_list = []
         bg_job.setup(self)
-        # bg_job("a", "/usr/bin/ipmitool -H 192.168.2.21 -U USERID -P PASSW0RD sensor list", ipmi_builder())
-        # bg_job("b", "/usr/bin/ipmitool -H 192.168.2.22 -U USERID -P PASSW0RD sensor list", ipmi_builder())
     def _init_sockets(self):
+        self.zmq_id = "{}:collserver_plugin".format(process_tools.get_machine_name())
         self.com = self.zmq_context.socket(zmq.ROUTER)
         self.poller = zmq.Poller()
         self.com.setsockopt(zmq.IDENTITY, "bg")
@@ -258,16 +289,46 @@ class background(multiprocessing.Process, log_base):
         listener_url = "tcp://127.0.0.1:{:d}".format(RECV_PORT)
         self.net_target.connect(listener_url)
         self.poller.register(self.com, zmq.POLLIN)
+        self.md_target = self.zmq_context.socket(zmq.DEALER)
+        for flag, value in [
+            (zmq.IDENTITY, self.zmq_id),
+            (zmq.SNDHWM, 4),
+            (zmq.RCVHWM, 4),
+            (zmq.TCP_KEEPALIVE, 1),
+            (zmq.TCP_KEEPALIVE_IDLE, 300),
+            ]:
+            self.md_target.setsockopt(flag, value)
+
+        self.md_target_addr = "tcp://{}:{:d}".format(
+            MD_SERVER_HOST,
+            MD_SERVER_PORT
+        )
+        self.md_target.connect(self.md_target_addr)
+        self.md_target_id = "{}:{}:".format(
+             MD_SERVER_UUID,
+            "md-config-server",
+        )
+        self.md_target.connect(self.md_target_addr)
+        self.log("connection to md-config-server at {} (id {})".format(self.md_target_addr, self.md_target_id))
     def _close(self):
         self._close_sockets()
     def _close_sockets(self):
         self.com.close()
         self.net_target.close()
+        self.md_target.close()
         self.log("background finished")
         self.close_log()
         self.zmq_context.term()
     def send_to_net(self, _send_str):
         self.net_target.send_unicode(_send_str)
+    def send_to_md(self, _send_str):
+        try:
+            self.md_target.send_unicode(_send_str)
+        except zmq.error.ZMQError:
+            # this will never happen because we are using a REQ socket
+            self.log("cannot send to md: {}".format(process_tools.get_except_info()), logging_tools.LOG_LEVEL_CRITICAL)
+        else:
+            pass
     def _code(self):
         self._init()
         try:

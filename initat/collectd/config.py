@@ -22,6 +22,7 @@
 """ base constants and logging base """
 
 import logging_tools
+import uuid_tools
 
 IPC_SOCK = "ipc:///var/log/cluster/sockets/collectd/com"
 
@@ -33,8 +34,14 @@ LOG_NAME = "collectd"
 LOG_DESTINATION = "ipc:///var/lib/logging-server/py_log_zmq"
 
 # memcache related
-MEMCACHE_ADDRESS = "127.0.0.1:11211"
+MEMCACHE_HOST = "127.0.0.1"
+MEMCACHE_PORT = 11211
 MEMCACHE_TIMEOUT = 2 * 60
+
+# md config server
+MD_SERVER_PORT = 8010
+MD_SERVER_HOST = "127.0.0.1"
+MD_SERVER_UUID = uuid_tools.get_uuid().get_urn()
 
 class log_base(object):
     def __init__(self):

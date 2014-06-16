@@ -236,7 +236,7 @@ class value(object):
         )
     def get_json(self):
         return (
-            # version type
+            # version field, for future enhancements
             0,
             self.name,
             self.info,

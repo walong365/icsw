@@ -20,7 +20,7 @@
 #
 
 from initat.collectd.collectd_types import value
-from initat.collectd.config import MEMCACHE_ADDRESS, MEMCACHE_TIMEOUT
+from initat.collectd.config import MEMCACHE_HOST, MEMCACHE_PORT, MEMCACHE_TIMEOUT
 from lxml.builder import E # @UnresolvedImports
 import memcache
 import json
@@ -29,7 +29,7 @@ import process_tools
 import subprocess
 import time
 
-mc = memcache.Client([MEMCACHE_ADDRESS])
+mc = memcache.Client(["{}:{:d}".format(MEMCACHE_HOST, MEMCACHE_PORT)])
 
 class ext_com(object):
     run_idx = 0
