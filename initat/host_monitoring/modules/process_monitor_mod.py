@@ -519,20 +519,22 @@ class signal_command(hm_classes.hm_command):
             pid_list = find_pids(process_tools.get_proc_list_new(), priv_check)
             for struct in pid_list:
                 try:
+                    _name = struct.name()
+                    _cmdline = struct.cmdline()
                     # print struct, cur_ns.signal
                     os.kill(struct.pid, cur_ns.signal)
                 except:
                     info_str, is_error = (process_tools.get_except_info(), True)
                 else:
-                    info_str, is_error = ("sent {:d} to {:d} ({})".format(cur_ns.signal, struct.pid, struct.name()), False)
+                    info_str, is_error = ("sent {:d} to {:d} ({})".format(cur_ns.signal, struct.pid, _name), False)
                 self.log("{:d}: {}".format(struct.pid, info_str), logging_tools.LOG_LEVEL_ERROR if is_error else logging_tools.LOG_LEVEL_OK)
                 srv_com["signal_list"].append(
                     srv_com.builder(
                         "signal",
-                        struct.name(),
+                        _name,
                         error="1" if is_error else "0",
                         result=info_str,
-                        cmdline=" ".join(struct.cmdline())))
+                        cmdline=" ".join(_cmdline)))
         srv_com["signal_list"].attrib.update({"signal" : "{:d}".format(cur_ns.signal)})
     def interpret(self, srv_com, cur_ns):
         ok_list, error_list = (srv_com.xpath(".//ns:signal[@error='0']/text()", smart_strings=False),

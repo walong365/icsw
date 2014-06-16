@@ -1175,7 +1175,7 @@ class net_command(hm_classes.hm_command):
         if ethtool_stuff is None:
             ethtool_stuff = {}
         connected = False if ethtool_stuff.get("link detected", "yes") == "no" else True
-        if parsed_coms.speed:
+        if parsed_coms.speed and parsed_coms.speed != "-":
             if device.startswith("ib"):
                 if ethtool_stuff.has_key("state"):
                     if ethtool_stuff["state"][0] == "4":
@@ -1209,8 +1209,9 @@ class net_command(hm_classes.hm_command):
                         try:
                             targ_speed_bit = parse_speed_bit(parsed_coms.speed)
                         except ValueError:
-                            return limits.nag_STATE_CRITICAL, "Error parsing target_speed '%s' for net: %s" % (parsed_coms.speed,
-                                                                                                               process_tools.get_except_info())
+                            return limits.nag_STATE_CRITICAL, "Error parsing target_speed '{}' for net: {}".format(
+                                parsed_coms.speed,
+                                process_tools.get_except_info())
                         else:
                             if targ_speed_bit == parse_speed_bit(ethtool_stuff["speed"]):
                                 add_oks.append("target_speed %s" % (ethtool_stuff["speed"]))
@@ -1223,7 +1224,7 @@ class net_command(hm_classes.hm_command):
                     else:
                         add_errors.append("Cannot check target_speed: no ethtool information")
                         ret_state = limits.nag_STATE_CRITICAL
-        if parsed_coms.duplex and not device.startswith("ib"):
+        if parsed_coms.duplex and not device.startswith("ib") and parsed_coms.duplex != "-":
             if connected:
                 if ethtool_stuff.has_key("duplex"):
                     try:
