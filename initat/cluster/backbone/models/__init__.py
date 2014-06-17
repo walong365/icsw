@@ -2460,6 +2460,7 @@ class device_serializer(serializers.ModelSerializer):
     act_partition_table = partition_table_serializer(read_only=True)
     partition_table = partition_table_serializer()
     netdevice_set = netdevice_serializer(many=True)
+    monitoring_hint_set = monitoring_hint_serializer(many=True)
     device_variable_set = device_variable_serializer(many=True)
     device_config_set = device_config_serializer(many=True)
     package_device_connection_set = package_device_connection_serializer(many=True)
@@ -2506,6 +2507,8 @@ class device_serializer(serializers.ModelSerializer):
             "package_device_connection_set", "latest_contact", "client_version",
             # monitor type
             "monitor_type",
+            # monitoring hint
+            "monitoring_hint_set",
             )
         read_only_fields = ("uuid",)
 

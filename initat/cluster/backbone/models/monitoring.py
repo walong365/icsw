@@ -795,11 +795,61 @@ class monitoring_hint(models.Model):
     m_type = models.CharField(max_length=32, choices=[("ipmi", "IPMI"), ("snmp", "SNMP"), ])
     # key of vector or OID
     key = models.CharField(default="", max_length=255)
+    # type of value
+    v_type = models.CharField(default="f", choices=[("f", "float"), ("i", "integer"), ("b", "boolean")], max_length=6)
+    # current value
+    value_float = models.FloatField(default=0.0)
+    value_int = models.IntegerField(default=0)
+    # limits
+    lower_crit_float = models.FloatField(default=0.0)
+    lower_warn_float = models.FloatField(default=0.0)
+    upper_warn_float = models.FloatField(default=0.0)
+    upper_crit_float = models.FloatField(default=0.0)
+    lower_crit_int = models.IntegerField(default=0)
+    lower_warn_int = models.IntegerField(default=0)
+    upper_warn_int = models.IntegerField(default=0)
+    upper_crit_int = models.IntegerField(default=0)
+    lower_crit_float_source = models.CharField(default="n", choices=[("n", "not set"), ("s", "system"), ("u", "user")], max_length=4)
+    lower_warn_float_source = models.CharField(default="n", choices=[("n", "not set"), ("s", "system"), ("u", "user")], max_length=4)
+    upper_warn_float_source = models.CharField(default="n", choices=[("n", "not set"), ("s", "system"), ("u", "user")], max_length=4)
+    upper_crit_float_source = models.CharField(default="n", choices=[("n", "not set"), ("s", "system"), ("u", "user")], max_length=4)
+    lower_crit_int_source = models.CharField(default="n", choices=[("n", "not set"), ("s", "system"), ("u", "user")], max_length=4)
+    lower_warn_int_source = models.CharField(default="n", choices=[("n", "not set"), ("s", "system"), ("u", "user")], max_length=4)
+    upper_warn_int_source = models.CharField(default="n", choices=[("n", "not set"), ("s", "system"), ("u", "user")], max_length=4)
+    upper_crit_int_source = models.CharField(default="n", choices=[("n", "not set"), ("s", "system"), ("u", "user")], max_length=4)
     # info string
     info = models.CharField(default="", max_length=255)
     # used in monitoring
     check_created = models.BooleanField(default=False)
     date = models.DateTimeField(auto_now_add=True)
+    def update_limits(self, value, limit_dict):
+        if type(value) in [int, long]:
+            v_type = "int"
+        else:
+            v_type = "float"
+        changed = False
+        for key, value in limit_dict.iteritems():
+            v_key = "{}_{}".format(key, v_type)
+            s_key = "{}_{}".format(v_key, "source")
+            if getattr(self, s_key) in ["n", "s"]:
+                if getattr(self, s_key) == "n":
+                    setattr(self, s_key, "s")
+                    changed = True
+                if getattr(self, v_key) != value:
+                    changed = True
+                    setattr(self, s_key, value)
+        return changed
+    def set_value(self, value):
+        if type(value) in [int, long]:
+            v_type = "int"
+        else:
+            v_type = "float"
+        v_key = "value_{}".format(v_type)
+        setattr(self, v_key, value)
+        self.save(update_fields=[v_key])
+    def get_limit_list(self):
+        v_type = {"f" : "float", "i" : "int"}[self.v_type]
+        return [(s_key, getattr(self, "{}_{}".format(key, v_type))) for s_key, key in [("lc", "lower_crit"), ("lw", "lower_warn"), ("uw", "upper_warn"), ("uc", "upper_crit")] if getattr(self, "{}_{}_source".format(key, v_type)) != "n"]
     def __unicode__(self):
         return u"{} ({}) for {}".format(self.m_type, self.key, unicode(self.device))
     class Meta:
