@@ -749,6 +749,9 @@ class special_ipmi_ext(special_base):
                 _monitoring_hint=ipmi_ext.pk,
             )
             sc_array.append(new_at)
+            if not ipmi_ext.check_created:
+                ipmi_ext.check_created = True
+                ipmi_ext.save(update_fields=["check_created"])
         return sc_array
 
 class special_eonstor(special_base):
