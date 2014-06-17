@@ -739,14 +739,14 @@ class ctrl_type_megaraid_sas(ctrl_type):
                     self._dict[ctrl_num] = {
                         "info"          : " ".join(line_p),
                         "logical_lines" : {}}
-                    self.log("Found Controller '%s' with ID %d" % (self._dict[ctrl_num]["info"],
-                                                                   ctrl_num))
+                    self.log("Found Controller '{}' with ID {:d}".format(
+                        self._dict[ctrl_num]["info"],
+                        ctrl_num))
     def process(self, ccs):
-        com_line, ctrl_id, run_type = ccs.run_info["command"]
+        _com_line, ctrl_id, run_type = ccs.run_info["command"]
         ctrl_stuff = self._dict[ctrl_id]
         if run_type == "ld":
             cur_mode, mode_sense, count_dict, cont_mode = (None, True, {}, False)
-            log_drive_num = None
             for line in [cur_line.rstrip() for cur_line in ccs.read().split("\n")]:
                 empty_line = not line.strip()
                 parts = line.lower().strip().split()
@@ -855,7 +855,7 @@ class ctrl_type_megaraid_sas(ctrl_type):
                                      "yes" : True}.get(value.lower(), value)
                             ctrl_stuff["bbu_keys"].setdefault(main_key, {})[act_key] = value
             # store in ccs
-            ccs.srv_com["result:ctrl_%d" % (ctrl_id)] = ctrl_stuff
+            ccs.srv_com["result:ctrl_{:d}".format(ctrl_id)] = ctrl_stuff
     def update_ok(self, srv_com):
         if self._dict:
             return ctrl_type.update_ok(self, srv_com)
@@ -869,6 +869,11 @@ class ctrl_type_megaraid_sas(ctrl_type):
         drive_stats = []
         num_enc = 0
         for ctrl_num, ctrl_stuff in ctrl_dict.iteritems():
+            bbu_mc = ctrl_stuff.get("bbu_keys", {}).get("main", {})
+            if bbu_mc:
+                bbu_present = bbu_mc.get("exit code") == "0x00"
+            else:
+                bbu_present = False
             if "virt" not in ctrl_stuff:
                 # rewrite from old to new format
                 ctrl_stuff["virt"] = dict([(key, {"lines" : [(line[0].lower().replace(" ", "_"), line[1]) for line in value]}) for key, value in ctrl_stuff["logical_lines"].iteritems()])
@@ -893,8 +898,12 @@ class ctrl_type_megaraid_sas(ctrl_type):
                 if "current_cache_policy" in log_dict:
                     _cur_cps = [entry.strip().lower() for entry in log_dict["current_cache_policy"].split(",") if entry.strip()]
                     if _cur_cps and _cur_cps[0] != "writeback":
-                        num_e += 1
-                        drive_stats.append("suboptimal cache mode: %s" % (_cur_cps[0]))
+                        if bbu_present:
+                            num_e += 1
+                            drive_stats.append("suboptimal cache mode: {}".format(_cur_cps[0]))
+                        else:
+                            num_w += 1
+                            drive_stats.append("suboptimal cache mode: {}, bbu absent".format(_cur_cps[0]))
                 drives_missing = []
                 if "pd" in log_stuff:
                     for pd_num in xrange(num_drives):
