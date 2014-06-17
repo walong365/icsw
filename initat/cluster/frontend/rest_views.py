@@ -459,6 +459,8 @@ class device_tree_mixin(object):
             _fields.extend(["partition_table", "act_partition_table"])
         if self._get_post_boolean("with_network", False):
             _fields.append("netdevice_set")
+        if self._get_post_boolean("with_monitoring_hint", False):
+            _fields.append("monitoring_hint_set")
         if self._get_post_boolean("with_categories", False):
             _fields.append("categories")
         if self._get_post_boolean("with_variables", False):

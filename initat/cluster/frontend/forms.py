@@ -227,6 +227,18 @@ class device_info_form(ModelForm):
             Fieldset(
                 "Monitor settings",
                 Field("mon_device_templ", ng_options="value.idx as value.name for value in mon_device_templ_list", chosen=True, wrapper_ng_show="mon_device_templ_list"),
+                HTML(
+"""
+<div class='form-group' ng-show="is_device()">
+    <label class='control-label col-sm-3'>
+        Monitoring hints
+    </label>
+    <div class='col-sm-9'>
+        {% verbatim %}{{ get_monitoring_hint_info() }}{% endverbatim %}
+    </div>
+</div>
+"""
+                ),
                 Div(
                     Div(
                         Field("monitor_checks"),

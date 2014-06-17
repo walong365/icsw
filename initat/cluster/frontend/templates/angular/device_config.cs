@@ -635,6 +635,7 @@ class location_tree extends tree_config
         else
             return "TOP"
 
+
 loc_ctrl = device_config_module.controller("location_ctrl", ["$scope", "restDataSource", "$q", "access_level_service",
     ($scope, restDataSource, $q, access_level_service) ->
         access_level_service.install($scope)
@@ -836,7 +837,7 @@ info_ctrl = device_config_module.controller("deviceinfo_ctrl", ["$scope", "$comp
                     restDataSource.reload(["{% url 'rest:domain_tree_node_list' %}", {}])
                     restDataSource.reload(["{% url 'rest:mon_device_templ_list' %}", {}])
                     restDataSource.reload(["{% url 'rest:mon_ext_host_list' %}", {}])
-                    restDataSource.reload(["{% url 'rest:device_tree_list' %}", {"with_network" : true, "with_disk_info" : true, "pks" : angular.toJson([scope.device_pk]), "ignore_cdg" : false}])
+                    restDataSource.reload(["{% url 'rest:device_tree_list' %}", {"with_network" : true, "with_monitoring_hint" : true, "with_disk_info" : true, "pks" : angular.toJson([scope.device_pk]), "ignore_cdg" : false}])
                 ]
                 $q.all(wait_list).then((data) ->
                     form = data[0][0].form
@@ -854,6 +855,12 @@ info_ctrl = device_config_module.controller("deviceinfo_ctrl", ["$scope", "$comp
                 scope.device_pk = null
             scope.is_device = () ->
                 return if scope._edit_obj.device_type_identifier in ["MD"] then false else true
+            scope.get_monitoring_hint_info = () ->
+                if scope._edit_obj.monitoring_hint_set.length
+                    mhs = scope._edit_obj.monitoring_hint_set
+                    return "#{mhs.length} (#{(entry for entry in mhs when entry.check_created).length} used for service checks)"
+                else
+                    return "---"
             scope.get_ip_info = () ->
                 if scope._edit_obj?
                     ip_list = []
@@ -867,6 +874,172 @@ info_ctrl = device_config_module.controller("deviceinfo_ctrl", ["$scope", "$comp
                 else
                     return "---"
     }
+)
+
+{% verbatim %}
+
+mh_devrow_template = """
+<td>
+    <button class="btn btn-primary btn-xs" ng-click="expand_vt(obj)">
+        <span ng_class="get_expand_class(obj)">
+        </span> {{ obj.device_variable_set.length }}
+        <span ng-if="var_filter.length"> / {{ obj.num_filtered }} shown<span>
+    </button>
+</td>
+<td>{{ get_name(obj) }}</td>
+<td>{{ obj.device_group_name }}</td>
+<td>{{ obj.comment }}</td>
+<td>hints : {{ obj.monitoring_hint_set.length }}</td>
+"""
+
+mh_row_template = """
+<td>{{ hint.m_type }}</td>
+<td>{{ get_v_type() }}</td>
+<td class="text-right" ng-class="get_td_class('lower_crit')">{{ get_limit('lower_crit') }}</td>
+<td class="text-right" ng-class="get_td_class('lower_warn')">{{ get_limit('lower_warn') }}</td>
+<td class="text-right" ng-class="get_td_class('upper_warn')">{{ get_limit('upper_warn') }}</td>
+<td class="text-right" ng-class="get_td_class('upper_crit')">{{ get_limit('upper_crit') }}</td>
+<td class="text-right success">{{ get_value() }}</td>>
+<td>{{ hint.info }}</td>
+"""
+
+mh_table_template = """
+<table class="table table-condensed table-hover table-bordered" style="width:auto;">
+    <thead>
+        <tr>
+            <th>Source</th>
+            <th>Type</th>
+            <th>lower crit</th>
+            <th>lower warn</th>
+            <th>upper warn</th>
+            <th>upper crit</th>
+            <th>value</th>
+            <th>info</th>
+        </tr>
+    </thead>
+    <tbody>
+        <tr mhrow ng-repeat="hint in obj.monitoring_hint_set"></tr>
+    </tbody>
+</table>
+"""
+
+mh_template = """
+<h2>
+    Monitoring hint ({{ devices.length }} devices)
+</h2>
+<table ng-show="devices.length" class="table table-condensed table-hover" style="width:auto;">
+    <thead>
+        <tr>
+            <th></th>
+            <th>Device</th>
+            <th>Group</th>
+            <th>Comment</th>
+            <th>Info</th>
+        </tr>
+    </thead>
+    <tbody>
+        <tr mhdevrow ng-repeat-start="obj in devices" ng-class="get_tr_class(obj)"></tr>
+        <tr ng-repeat-end ng-if="obj.expanded" ng-show="obj.monitoring_hint_set.length">
+            <td colspan="9"><monitoringhinttable></monitoringhinttable></td>
+        </tr>
+    </tbody>
+</table>
+"""
+
+{% endverbatim %}
+
+# monitoring hint controller
+device_config_module.controller("monitoring_hint_ctrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "sharedDataSource", "$q", "$modal", "access_level_service",
+    ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, sharedDataSource, $q, $modal, access_level_service) ->
+        access_level_service.install($scope)
+        $scope.devices = []
+        $scope.configs = []
+        $scope.new_devsel = (_dev_sel, _devg_sel) ->
+            $scope.devsel_list = _dev_sel
+            $scope.reload()
+        $scope.reload = () ->
+            pre_sel = (dev.idx for dev in $scope.devices when dev.expanded)
+            restDataSource.reset()
+            wait_list = restDataSource.add_sources([
+                ["{% url 'rest:device_tree_list' %}", {"with_monitoring_hint" : true, "pks" : angular.toJson($scope.devsel_list), "olp" : "backbone.device.change_monitoring"}],
+            ])
+            $q.all(wait_list).then((data) ->
+                $scope.devices = []
+                $scope.device_lut = {}
+                for entry in data[0]
+                    entry.expanded = true
+                    $scope.devices.push(entry)
+                    $scope.device_lut[entry.idx] = entry
+                #$scope.init_devices(pre_sel)
+                #$scope.new_filter_set($scope.name_filter, false)
+            )
+        $scope.get_tr_class = (obj) ->
+            if obj.device_type_identifier == "MD"
+                return "success"
+            else
+                return ""
+        $scope.expand_vt = (obj) ->
+            obj.expanded = not obj.expanded
+        $scope.get_expand_class = (obj) ->
+            if obj.expanded
+                return "glyphicon glyphicon-chevron-down"
+            else
+                return "glyphicon glyphicon-chevron-right"
+        #$scope.init_devices = (pre_sel) ->
+        #    # called after load
+        install_devsel_link($scope.new_devsel, false)
+]).directive("mhdevrow", ($templateCache) ->
+    return {
+        restrict : "EA"
+        template : $templateCache.get("mhdevrow.html")
+    }
+).directive("mhrow", ($templateCache) ->
+    return {
+        restrict : "EA"
+        template : $templateCache.get("mhrow.html")
+        link : (scope) ->
+            scope.get_v_type = () ->
+                return {"f" : "float", "i" : "integer"}[scope.hint.v_type]
+            scope.get_value = () ->
+                return scope.hint["value_" + scope.get_v_type()]
+            scope.get_td_class = (name) ->
+                v_type = scope.get_v_type()
+                key = "#{name}_#{v_type}"
+                skey = "#{key}_source"
+                if scope.hint[skey] == "n"
+                    return ""
+                else if scope.hint[skey] == "s"
+                    return "warning"
+                else if scope.hint[skey] == "u"
+                    return "success"
+            scope.get_limit = (name) ->
+                v_type = scope.get_v_type()
+                key = "#{name}_#{v_type}"
+                skey = "#{key}_source"
+                if scope.hint[skey] == "s" or scope.hint[skey] == "u"
+                    return scope.hint[key]
+                else
+                    return "---"
+    }
+).directive("monitoringhint", ($templateCache) ->
+    return {
+        restrict : "EA"
+        template : $templateCache.get("mh.html")
+        link : (scope, el, attrs) ->
+            if attrs["devicepk"]?
+                scope.new_devsel((parseInt(entry) for entry in attrs["devicepk"].split(",")), [])
+    }
+).directive("monitoringhinttable", ($templateCache, $compile, $modal, Restangular) ->
+    return {
+        restrict : "EA"
+        template : $templateCache.get("mhtable.html")
+        link : (scope) ->
+    }
+).run(($templateCache) ->
+    $templateCache.put("mhdevrow.html", mh_devrow_template)
+    $templateCache.put("mhrow.html", mh_row_template)
+    $templateCache.put("mh.html", mh_template)
+    $templateCache.put("mhtable.html", mh_table_template)
 )
 
 add_tree_directive(cat_ctrl)

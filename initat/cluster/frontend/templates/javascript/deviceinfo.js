@@ -94,6 +94,7 @@ class device_info
                 dev_div_txt += """            
 <li><a href='#livestatus'>Livestatus#{addon_text_nmd}</a></li>
 <li><a href='#monconfig'>MonConfig#{addon_text_nmd}</a></li>
+<li><a href='#monhint'>MonHint#{addon_text_nmd}</a></li>
 """
             if window.SERVICE_TYPES["grapher"]?
                 dev_div_txt += """            
@@ -195,6 +196,14 @@ urn:uuid:{{ _edit_obj.uuid }}
         <div ng-controller='monconfig_ctrl'>
             <monconfig devicepk='#{pk_list_nmd}'>
             </monconfig>
+        </div>
+    </div>
+</div>
+<div class="tab-pane" id="monhint">
+    <div id='icsw.device.config'>
+        <div ng-controller='monitoring_hint_ctrl'>
+            <monitoringhint devicepk='#{pk_list_nmd}'>
+            </monitoringhint>
         </div>
     </div>
 </div>
