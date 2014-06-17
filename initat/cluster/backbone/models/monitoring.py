@@ -32,7 +32,7 @@ __all__ = [
     # distribution models
     "mon_dist_master", # "mon_dist_master_serializer",
     "mon_dist_slave", # "mon_dist_slave_serializer",
-    "monitoring_hint",
+    "monitoring_hint", "monitoring_hint_serializer",
     "mon_check_command_special", "mon_check_command_special_serializer",
     ]
 
@@ -797,9 +797,14 @@ class monitoring_hint(models.Model):
     key = models.CharField(default="", max_length=255)
     # info string
     info = models.CharField(default="", max_length=255)
+    # used in monitoring
+    check_created = models.BooleanField(default=False)
     date = models.DateTimeField(auto_now_add=True)
     def __unicode__(self):
         return u"{} ({}) for {}".format(self.m_type, self.key, unicode(self.device))
     class Meta:
         app_label = "backbone"
 
+class monitoring_hint_serializer(serializers.ModelSerializer):
+    class Meta:
+        model = monitoring_hint
