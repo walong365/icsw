@@ -414,13 +414,16 @@ def main():
         sys.exit(1)
     # flag: setup db_cf data
     if opts.enable_auto_update:
-        try:
-            file(AUTO_FLAG, "w").write("\n")
-        except:
-            print("cannot create auto_update_flag {}: {}".format(AUTO_FLAG, process_tools.get_except_info()))
-            sys.exit(-1)
+        if os.path.exists(AUTO_FLAG):
+            print("auto_udpate_flag {} already exists".format(AUTO_FLAG))
         else:
-            print("created auto_update_flag {}".format(AUTO_FLAG))
+            try:
+                file(AUTO_FLAG, "w").write("\n")
+            except:
+                print("cannot create auto_update_flag {}: {}".format(AUTO_FLAG, process_tools.get_except_info()))
+                sys.exit(-1)
+            else:
+                print("created auto_update_flag {}".format(AUTO_FLAG))
     elif opts.disable_auto_update:
         if os.path.isfile(AUTO_FLAG):
             try:
@@ -430,6 +433,8 @@ def main():
                 sys.exit(-1)
             else:
                 print("removed auto_update_flag {}".format(AUTO_FLAG))
+        else:
+            print("auto_udpate_flag {} not present".format(AUTO_FLAG))
     else:
         db_exists = os.path.exists(DB_FILE)
         call_create_db = True
