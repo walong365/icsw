@@ -884,7 +884,7 @@ class ctrl_type_megaraid_sas(ctrl_type):
                 num_drives = int(log_dict["number_of_drives"])
                 if "state" in log_dict:
                     status = log_dict["state"]
-                    if status.lower() != "optimal":
+                    if not status.lower().startswith("optimal"):
                         num_e += 1
                     drive_stats.append("ld %d (ctrl %d, %s, %s): %s" % (
                         log_num,

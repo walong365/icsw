@@ -85,7 +85,7 @@ class _general(hm_classes.hm_module):
                     dev_file = "%s/%s/dev" % (block_dir, entry)
                     if os.path.isfile(dev_file):
                         major, minor = [int(x) for x in open(dev_file, "r").read().strip().split(":")]
-                        if block_devs_dict.has_key(major):
+                        if major in block_devs_dict:
                             dev_name = entry.replace("!", "/")
                             valid_block_devs[dev_name] = major
                             valid_major_nums.setdefault(major, []).append(dev_name)
@@ -380,7 +380,7 @@ class _general(hm_classes.hm_module):
             # print unique_dev_list
             if unique_dev_list != ["total"]:
                 for act_disk in unique_dev_list:
-                    if not self.disk_stat.has_key(act_disk):
+                    if not act_disk in self.disk_stat:
                         info_str = act_disk == "total" and "total" or "on /dev/$2"
                         mvect.register_entry("io.%s.blks.read" % (act_disk)    , 0 , "number of blocks read per second %s" % (info_str)   , "1/s")
                         mvect.register_entry("io.%s.blks.written" % (act_disk) , 0 , "number of blocks written per second %s" % (info_str), "1/s")
@@ -390,7 +390,7 @@ class _general(hm_classes.hm_module):
                         mvect.register_entry("io.%s.time.written" % (act_disk) , 0., "milliseconds spent writing %s" % (info_str)         , "s")
                         mvect.register_entry("io.%s.time.io" % (act_disk)      , 0., "milliseconds spent doing I/O %s" % (info_str)       , "s")
             for old_disk in self.disk_stat.keys():
-                if not disk_stat.has_key(old_disk):
+                if not old_disk in disk_stat:
                     mvect.unregister_entry("io.%s.blks.read" % (old_disk))
                     mvect.unregister_entry("io.%s.blks.written" % (old_disk))
                     mvect.unregister_entry("io.%s.bytes.read" % (old_disk))
@@ -658,7 +658,7 @@ class _general(hm_classes.hm_module):
                                 hextype = "0x%02x" % (int(parts.pop(-1).split("=", 1)[1], 16))
                             else:
                                 # no hextype
-                                if any ([fs_name in (" ".join(parts)).lower() for fs_name in ["ext3", "ext4", "btrfs"]]):
+                                if any ([fs_name in (" ".join(parts)).lower() for fs_name in ["ext3", "ext4", "btrfs", "xfs"]]):
                                     hextype = "0x83"
                                 elif any ([fs_name in (" ".join(parts)).lower() for fs_name in ["swap"]]):
                                     hextype = "0x82"
@@ -712,7 +712,7 @@ class _general(hm_classes.hm_module):
                                     dev_name = dev_name[:-1]
                                 part_num = int(part_name[len(dev_name):])
                                 dev_name = "/dev/%s" % (dev_name)
-                                if not dev_dict.has_key(dev_name):
+                                if not dev_name in dev_dict:
                                     dev_dict[dev_name] = {}
                                 dev_dict[dev_name]["%d" % (part_num)] = {
                                     "size"    : part_size / 1024,
@@ -768,7 +768,13 @@ class _general(hm_classes.hm_module):
                             else:
                                 dump, fsck = (0, 0)
                             real_mounts.append((part, mp, fstype, opts, dump, fsck))
-                            if not part_lut.has_key(part):
+                            # check for disks without parts (IMS)
+                            _part1 = "{}1".format(part)
+                            if not part[0].isdigit() and _part1 in part_lut and part not in part_lut:
+                                # rewrite part_lut
+                                part_lut[part] = part_lut[_part1]
+                                del part_lut[_part1]
+                            if not part in part_lut:
                                 # check for LVM-partition
                                 part = self.local_lvm_info.dm_dict["dmtolv"].get(part, part)
                                 try:
