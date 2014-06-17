@@ -115,6 +115,8 @@ class srv_command(object):
     def builder(self, tag_name=None, *args, **kwargs):
         if tag_name is None:
             return self.__builder
+        elif tag_name == "":
+            tag_name = "__empty__"
         if type(tag_name) == int:
             tag_name = "__int__{:d}".format(tag_name)
         elif tag_name == None:
@@ -149,6 +151,8 @@ class srv_command(object):
             tag_name = tag_name.replace("__colon__", ":")
         if tag_name.startswith("__int__"):
             tag_name = int(tag_name[7:])
+        elif tag_name == "__empty__":
+            tag_name = ""
         elif tag_name == "__none__":
             tag_name = None
         else:
