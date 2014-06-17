@@ -128,6 +128,8 @@ TIME_ZONE = "Europe/Vienna"
 # http://www.i18nguy.com/unicode/language-identifiers.html
 LANGUAGE_CODE = "en-us"
 
+ANONYMOUS_USER_ID = -1
+
 SITE_ID = 1
 
 REL_SITE_ROOT = "cluster"
