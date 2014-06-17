@@ -837,6 +837,8 @@ def partition_pre_save(sender, **kwargs):
     if "instance" in kwargs:
         cur_inst = kwargs["instance"]
         p_num = cur_inst.pnum
+        if not p_num.strip():
+            p_num = "0"
         try:
             p_num = int(p_num)
         except:
