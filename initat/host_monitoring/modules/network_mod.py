@@ -890,7 +890,7 @@ class net_command(hm_classes.hm_command):
                     "reply" : "netdevice %s not found" % (net_device),
                     "state" : "%d" % (server_command.SRV_REPLY_STATE_ERROR)})
     def _parse_duplex_str(self, in_dup):
-        if in_dup.lower().count("unk"):
+        if in_dup.lower().count("unk") or in_dup == "-":
             return "unknown"
         elif in_dup.lower()[0] == "f":
             return "full"
@@ -929,7 +929,7 @@ class net_command(hm_classes.hm_command):
                           "g" : 1000 * 1000 * 1000,
                           "t" : 1000 * 1000 * 1000 * 1000}[pfix] * num * mult
             return targ_speed
-        elif in_str_l.startswith("unkn"):
+        elif in_str_l.startswith("unkn") or in_str_l == "-":
             return -1
         else:
             raise ValueError, "Cannot parse target_speed '%s'" % (in_str)
