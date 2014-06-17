@@ -752,7 +752,7 @@ class _general(hm_classes.hm_module):
                                 auto_mps.append(mp)
                             continue
                         if part == "/dev/root":
-                            part = "/dev/%s" % (real_root_dev_name)
+                            part = "/dev/{}".format(real_root_dev_name)
                         if part.startswith("/") and part != mp:
                             if any([mp.startswith(entry) for entry in auto_mps]):
                                 # ignore automounted stuff
@@ -772,7 +772,9 @@ class _general(hm_classes.hm_module):
                             _part1 = "{}1".format(part)
                             if not part[0].isdigit() and _part1 in part_lut and part not in part_lut:
                                 # rewrite part_lut
-                                part_lut[part] = part_lut[_part1]
+                                part_lut[part] = (part_lut[_part1][0], "")
+                                dev_dict[part][""] = dev_dict[part]["1"]
+                                del dev_dict[part]["1"]
                                 del part_lut[_part1]
                             if not part in part_lut:
                                 # check for LVM-partition
