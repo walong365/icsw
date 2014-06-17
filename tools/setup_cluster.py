@@ -321,13 +321,13 @@ def create_db(opts):
     for _sync_app in SYNC_APPS:
         if os.path.isdir(os.path.join(LIB_DIR, "initat", "cluster", _sync_app)):
             call_manage(["schemamigration", _sync_app, "--auto"])
-            call_manage(["migrate", _sync_app])
-    call_manage(["migrate", "auth"])
-    call_manage(["migrate", "backbone", "--no-initial-data"])
-    call_manage(["migrate", "reversion"])
-    call_manage(["migrate", "static_precompiler"])
+            call_manage(["migrate", _sync_app, "--noinput"])
+    call_manage(["migrate", "auth", "--noinput"])
+    call_manage(["migrate", "backbone", "--no-initial-data", "--noinput"])
+    call_manage(["migrate", "reversion", "--noinput"])
+    call_manage(["migrate", "static_precompiler", "--noinput"])
     call_manage(["syncdb", "--noinput"] + id_flags)
-    call_manage(["migrate"] + id_flags)
+    call_manage(["migrate"] + id_flags + ["--noinput"])
     if opts.no_initial_data:
         print("")
         print("skipping initial data insert")
@@ -355,10 +355,10 @@ def migrate_db(opts):
                         # initial schema migration call
                         call_manage(["schemamigration", _sync_app, "--initial"])
                     call_manage(["schemamigration", _sync_app, "--auto"])
-                    call_manage(["migrate", _sync_app])
+                    call_manage(["migrate", _sync_app, "--noinput"])
         check_local_settings()
         call_manage(["schemamigration", "backbone", "--auto"])
-        call_manage(["migrate", "--no-initial-data", "backbone"])
+        call_manage(["migrate", "--no-initial-data", "backbone", "--noinput"])
         call_update_funcs()
     else:
         print("cluster migration dir {} not present, please create database".format(CMIG_DIR))
