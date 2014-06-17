@@ -594,13 +594,13 @@ class special_disc(special_base):
             else:
                 part_pf = ""
             if act_pnum:
-                act_part = "%s%s%d" % (act_disc, part_pf, act_pnum)
+                act_part = "{}{}{}".format(act_disc, part_pf, "{:d}".format(act_pnum) if act_pnum else "")
             else:
                 # handle special case for unpartitioned disc
                 act_part = act_disc
             if part_p.partition_fs.hexid == "82":
                 # swap partiton
-                self.log("ignoring %s (is swap)" % (act_part))
+                self.log("ignoring {} (is swap)".format(act_part))
             else:
                 # which partition to check
                 check_part = act_part
@@ -619,8 +619,8 @@ class special_disc(special_base):
                         part_p.warn_threshold,
                         part_p.crit_threshold)
                     warn_level_str, crit_level_str = (
-                        "%d" % (warn_level if warn_level else 85),
-                        "%d" % (crit_level if crit_level else 95))
+                        "{:d}".format(warn_level if warn_level else 85),
+                        "{:d}".format(crit_level if crit_level else 95))
                     if part_p.mountpoint.strip():
                         part_list.append((part_p.mountpoint,
                                           check_part, warn_level_str, crit_level_str))
