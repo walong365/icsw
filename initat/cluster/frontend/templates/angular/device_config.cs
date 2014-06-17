@@ -112,7 +112,7 @@ partinfo_template = """
                                 <th>crit</th>
                             </tr>
                             <tr ng-repeat-end ng-repeat="part in disk.partition_set" ng-show="part.mountpoint">
-                                <td>{{ disk.disc }}{{ part.pnum }}</td>
+                                <td>{{ disk.disc }}{{ part.pnum || '' }}</td>
                                 <td>{{ part.mountpoint }}</td>
                                 <td class="text-right">{{ part.size | get_size:1000000:1000 }}</td>
                                 <td class="text-center">{{ part.warn_threshold }} %</td>
