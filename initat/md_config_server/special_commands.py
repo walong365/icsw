@@ -21,12 +21,11 @@
 
 from django.db.models import Q
 from initat.cluster.backbone.models import partition, netdevice, lvm_lv, device_variable, \
-    md_check_data_store, monitoring_hint
+    monitoring_hint, cluster_timezone
 from initat.host_monitoring import ipc_comtools
 from initat.host_monitoring.modules import supermicro_mod
-from lxml import etree # @UnresolvedImport
 from lxml.builder import E # @UnresolvedImport
-import copy
+import datetime
 import logging_tools
 import os
 import process_tools
@@ -95,111 +94,31 @@ class special_base(object):
                 setattr(self.Meta, key, getattr(special_base.Meta, key))
         self.Meta.name = self.__class__.__name__.split("_", 1)[1]
         self.ds_name = self.Meta.name
+        # print "ds_name=", self.ds_name
         self.cache_mode = kwargs.get("cache_mode", DEFAULT_CACHE_MODE)
         self.build_process = build_proc
         self.s_check = s_check
         self.host = host
-    def _cache_name(self):
-        return "/tmp/.md-config-server/%s_%s" % (
-            self.host.name,
-            self.host.valid_ip.ip)
     def _store_cache(self):
-        if self.__force_store_cache:
-            cache = E.cache(
-                *[cur_res.tree for cur_res in self.__cache],
-                num_entries="%d" % (len(self.__cache)),
-                created="%d" % (int(time.time()))
-            )
-        else:
-            cache = E.cache(
-                *[cur_res.tree for cur_res in self.__server_results],
-                num_entries="%d" % (len(self.__server_results)),
-                created="%d" % (int(time.time()))
-            )
-        if False:
-            # old file-based cache, ignore
-            c_name = self._cache_name()
-            if not os.path.isdir(os.path.dirname(c_name)):
-                os.makedirs(os.path.dirname(c_name))
-                file(c_name, "wb").write(etree.tostring(cache, pretty_print=True))
-            self.log("stored tree to %s" % (c_name))
-        else:
-            # new code for db
-            try:
-                cur_ds = md_check_data_store.objects.get(
-                    Q(device=self.host) &
-                    Q(mon_check_command=self.s_check.mon_check_command) &
-                    Q(name=self.ds_name))
-            except md_check_data_store.DoesNotExist:
-                cur_ds = md_check_data_store(
-                    device=self.host,
-                    mon_check_command=self.s_check.mon_check_command,
-                    name=self.ds_name)
-                self.log("creating DB-cache")
-            else:
-                self.log("updating DB-cache")
-            cur_ds.data = etree.tostring(cache)
-            cur_ds.save()
+        monitoring_hint.objects.filter(Q(device=self.host) & Q(m_type=self.ds_name)).delete()
+        for ch in self.__hint_list:
+            ch.save()
     def _load_cache(self):
         self.__cache, self.__cache_created, self.__cache_age = ([], 0, 0)
         self.__cache_valid = False
-        c_name = self._cache_name()
-        if os.path.isfile(c_name):
-            # old code
-            try:
-                c_tree = etree.fromstring(file(c_name, "rb").read())
-            except:
-                self.log("cannot read xml_tree from %s: %s" % (
-                    c_name,
-                    process_tools.get_except_info()),
-                         logging_tools.LOG_LEVEL_ERROR)
-                try:
-                    os.unlink(c_name)
-                except:
-                    self.log("cannot remove invalid cache_file %s: %s" % (c_name, process_tools.get_except_info()),
-                             logging_tools.LOG_LEVEL_ERROR)
-            else:
-                self.log("loaded cache (%s) from %s" % (
-                    logging_tools.get_plural("entry", int(c_tree.attrib["num_entries"])),
-                    c_name)
-                         )
-                self.__cache_created = int(c_tree.get("created", "0"))
-                self.__cache_age = abs(time.time() - self.__cache_created)
-                self.__cache_valid = self.__cache_age < self.Meta.cache_timeout
-                # the copy.deepcopy is important to preserve the root element
-                self.__cache = [server_command.srv_command(source=copy.deepcopy(entry)) for entry in c_tree]
-                self.__force_store_cache = True
-            try:
-                os.unlink(c_name)
-            except:
-                self.log("cannot remove old cache_file %s: %s" % (
-                    c_name,
-                    process_tools.get_except_info()),
-                         logging_tools.LOG_LEVEL_ERROR)
-            else:
-                self.log("removed old cache_file %s" % (c_name))
-        else:
-            try:
-                cur_ds = md_check_data_store.objects.get(
-                    Q(device=self.host) &
-                    Q(mon_check_command=self.s_check.mon_check_command) &
-                    Q(name=self.ds_name))
-            except md_check_data_store.DoesNotExist:
-                pass
-            else:
-                c_tree = etree.fromstring(cur_ds.data)
-                self.log("loaded cache (%s) from db" % (
-                    logging_tools.get_plural("entry", int(c_tree.attrib["num_entries"]))
-                ))
-                self.__cache_created = int(c_tree.get("created", "0"))
-                self.__cache_age = abs(time.time() - self.__cache_created)
-                self.__cache_valid = self.__cache_age < self.Meta.cache_timeout
-                # the copy.deepcopy is important to preserve the root element
-                self.__cache = [server_command.srv_command(source=copy.deepcopy(entry)) for entry in c_tree]
+        self.__cache = monitoring_hint.objects.filter(Q(device=self.host) & Q(m_type=self.ds_name))
+        self.log(
+            "loaded hints ({}) from db".format(
+                logging_tools.get_plural("entry", len(self.__cache))
+            )
+        )
+        _now = cluster_timezone.localize(datetime.datetime.now())
+        self.__cache_age = max([abs(_now - _entry.changed).total_seconds() for _entry in self.__cache])
+        self.__cache_valid = self.__cache_age < self.Meta.cache_timeout
     def _show_cache_info(self):
         if self.__cache:
             self.log(
-                "cache is present (%s, age is %s, timeout %s, %s)" % (
+                "cache is present ({}, age is {}, timeout {}, {})".format(
                     logging_tools.get_plural("entry", len(self.__cache)),
                     logging_tools.get_diff_time_str(self.__cache_age),
                     logging_tools.get_diff_time_str(self.Meta.cache_timeout),
@@ -228,6 +147,18 @@ class special_base(object):
             snmp_version=self.host.dev_variables["SNMP_VERSION"],
             **kwargs
         )
+    def to_hint(self, srv_reply):
+        # transforms server reply to monitoring hints
+        return []
+    def _salt_hints(self, in_list):
+        for hint in in_list:
+            hint.device = self.host
+            hint.m_type = self.ds_name
+        return in_list
+    @property
+    def call_idx(self):
+        # gives current server call number
+        return self.__call_idx
     def _call_server(self, command, server_name, *args, **kwargs):
         if not self.Meta.server_contact:
             # not beautifull but working
@@ -237,17 +168,18 @@ class special_base(object):
             server_name,
             self.host.valid_ip.ip,
             command,
-            "args is '%s'" % (", ".join([str(value) for value in args])) if args else "no arguments",
-            ", ".join(["%s='%s'" % (key, value) for key, value in kwargs.iteritems()]) if kwargs else "no kwargs",
+            "args is '{}'".format(", ".join([str(value) for value in args])) if args else "no arguments",
+            ", ".join(["{}='{}'".format(key, str(value)) for key, value in kwargs.iteritems()]) if kwargs else "no kwargs",
         ))
         connect_to_localhost = kwargs.pop("connect_to_localhost", False)
         conn_ip = "127.0.0.1" if connect_to_localhost else self.host.valid_ip.ip
         if not self.__use_cache:
             # contact the server / device
-            srv_reply = None
+            hint_list = []
             for cur_iter in xrange(self.Meta.retries):
+                _result_ok = False
                 log_str, log_level = (
-                    "iteration %d of %d (timeout=%d)" % (cur_iter, self.Meta.retries, self.Meta.timeout),
+                    "iteration {:d} of {:d} (timeout={:d})".format(cur_iter, self.Meta.retries, self.Meta.timeout),
                     logging_tools.LOG_LEVEL_ERROR,
                 )
                 s_time = time.time()
@@ -262,63 +194,66 @@ class special_base(object):
                         timeout=self.Meta.timeout,
                         **kwargs)
                 except:
-                    log_str = "%s, error connecting to '%s' (%s, %s): %s" % (
+                    log_str = "{}, error connecting to '{}' ({}, {}): {}".format(
                         log_str,
                         server_name,
                         conn_ip,
                         command,
                         process_tools.get_except_info()
                     )
-                    srv_reply = None
                     self.__server_contact_ok = False
                 else:
                     srv_error = srv_reply.xpath(".//ns:result[@state != '0']", smart_strings=False)
                     if srv_error:
                         self.__server_contact_ok = False
-                        log_str = "%s, got an error (%d): %s" % (
+                        log_str = "{}, got an error ({:d}): {}".format(
                             log_str,
                             int(srv_error[0].attrib["state"]),
                             srv_error[0].attrib["reply"],
                         )
-                        srv_reply = None
                     else:
                         e_time = time.time()
-                        log_str = "%s, got a valid result in %s" % (
+                        log_str = "{}, got a valid result in {}".format(
                             log_str,
                             logging_tools.get_diff_time_str(e_time - s_time),
                         )
+                        _result_ok = True
                         log_level = logging_tools.LOG_LEVEL_OK
+                        hint_list = self._salt_hints(self.to_hint(srv_reply))
                         self.__server_contacts += 1
-                        self.__server_results.append(srv_reply)
+                        self.__hint_list.extend(hint_list)
                 self.log(log_str, log_level)
-                if srv_reply is not None:
+                if _result_ok:
                     break
-                self.log("waiting for %d seconds" % (self.Meta.error_wait), logging_tools.LOG_LEVEL_WARN)
+                self.log("waiting for {:d} seconds".format(self.Meta.error_wait), logging_tools.LOG_LEVEL_WARN)
                 time.sleep(self.Meta.error_wait)
-            if srv_reply is None and self.__call_idx == 0 and len(self.__cache):
+            if hint_list == [] and self.__call_idx == 0 and len(self.__cache):
                 # use cache only when first call went wrong and we have something in the cache
                 self.__use_cache = True
         if self.__use_cache:
-            if len(self.__cache) > self.__call_idx:
-                srv_reply = self.__cache[self.__call_idx]
-                self.log("take result from cache [index %d]" % (
-                    self.__call_idx
-                ))
-            else:
-                self.log(
-                    "cache too small (%s)" % (
-                        "%d <= %d" % (len(self.__cache), self.__call_idx) if self.__cache else "is empty",
-                    ),
-                    logging_tools.LOG_LEVEL_WARN
-                )
-                srv_reply = None
+            hint_list = self.__cache
+            # print "uc"
+            # hint_list = []
+            # if len(self.__cache) > self.__call_idx:
+            #    srv_reply = self.__cache[self.__call_idx]
+            #    self.log("take result from cache [index %d]" % (
+            #        self.__call_idx
+            #    ))
+            # else:
+            #    self.log(
+            #        "cache too small (%s)" % (
+            #            "%d <= %d" % (len(self.__cache), self.__call_idx) if self.__cache else "is empty",
+            #        ),
+            #        logging_tools.LOG_LEVEL_WARN
+            #    )
+            #    srv_reply = None
         self.__call_idx += 1
-        return srv_reply
+        return hint_list
     def real_parameter_name(self, in_name):
-        return "{MDC}_%s" % (in_name)
+        return "{MDC}_{}".format(in_name)
     def get_parameter(self, para_name, xpath_str, command, *args, **kwargs):
         """
-        get a paramter, by default as device_variable
+        get a parameter, by default as device_variable
         """
         server_type = kwargs.pop("target_server", "collrelay")
         var_type = kwargs.pop("var_type", "s")
@@ -346,16 +281,16 @@ class special_base(object):
                 cur_var.set_value(cur_val)
                 cur_var.save()
         else:
-            self.log("read parameter %s from database" % (para_name))
+            self.log("read parameter {} from database".format(para_name))
         if cur_var is None:
             return cur_var
         else:
             return cur_var.get_value()
     def __call__(self):
         s_name = self.__class__.__name__.split("_", 1)[1]
-        self.log("starting %s for %s, cache_mode is %s" % (s_name, self.host.name, self.cache_mode))
+        self.log("starting {} for {}, cache_mode is {}".format(s_name, self.host.name, self.cache_mode))
         s_time = time.time()
-        # flag to force store the cache (in case of migration of cache entries from FS to DB)
+        # flag to force store the cache (in case of migration of cache entries from FS to DB), only used internally
         self.__force_store_cache = False
         if self.Meta.server_contact:
             # at first we load the current cache
@@ -372,20 +307,20 @@ class special_base(object):
             # anything got from a direct all
             self.__server_contact_ok, self.__server_contacts = (True, 0)
             # init result list and number of server calls
-            self.__server_results, self.__call_idx = ([], 0)
+            self.__hint_list, self.__call_idx = ([], 0)
         cur_ret = self._call()
         e_time = time.time()
         if self.Meta.server_contact:
             self.log(
-                "took %s, (%d of %d ok, %d server contacts [%s])" % (
+                "took {}, ({:d} ok, {:d} server contacts [{}], {})".format(
                     logging_tools.get_diff_time_str(e_time - s_time),
-                    len(self.__server_results),
                     self.__call_idx,
                     self.__server_contacts,
-                    "ok" if self.__server_contact_ok else "failed"
+                    "ok" if self.__server_contact_ok else "failed",
+                    logging_tools.get_plural("hint", len(self.__hint_list))
                 ))
             # anything set (from cache or direct) and all server contacts ok (a little bit redundant)
-            if (len(self.__server_results) == self.__call_idx and self.__call_idx) or self.__force_store_cache:
+            if (self.__server_contacts == self.__call_idx and self.__call_idx) or self.__force_store_cache:
                 if (self.__server_contacts and self.__server_contact_ok) or self.__force_store_cache:
                     self._store_cache()
         else:
@@ -452,31 +387,55 @@ class special_openvpn(special_base):
         server_contact = True
         command = "$USER2$ -m $HOSTADDRESS$ openvpn_status -i $ARG1$ -p $ARG2$"
         description = "checks for running OpenVPN instances"
+    def to_hint(self, srv_reply):
+        _hints = []
+        if "openvpn_instances" in srv_reply:
+            ovpn_dict = srv_reply["openvpn_instances"]
+            for inst_name in ovpn_dict:
+                if ovpn_dict[inst_name]["type"] == "server":
+                    for c_name in ovpn_dict[inst_name]["dict"]:
+                        _hints.append(
+                            monitoring_hint(
+                                key="{}|{}".format(inst_name, c_name),
+                                v_type="s",
+                                value_string="used",
+                                info="Client {} on instance {}".format(c_name, inst_name),
+                                )
+                            )
+        return _hints
     def _call(self):
+        import pprint
         sc_array = []
         exp_dict = parse_expected()
         if exp_dict.has_key(self.host.name):
             exp_dict = {} # exp_dict[host["name"]]
         else:
             exp_dict = {}
-        if not exp_dict:
-            # no expected_dict found, try to get the actual config from the server
-            srv_result = self.collrelay("openvpn_status")
-            # print etree.tostring(srv_result.tree, pretty_print=True)
-            if srv_result is not None:
-                if "openvpn_instances" in srv_result:
-                    ovpn_dict = srv_result["openvpn_instances"]
-                    # build exp_dict
-                    for inst_name in ovpn_dict:
-                        if ovpn_dict[inst_name]["type"] == "server":
-                            for c_name in ovpn_dict[inst_name]["dict"]:
-                                exp_dict.setdefault(inst_name, {})[c_name] = True
         if exp_dict:
+            pprint.pprint(exp_dict)
             for inst_name in sorted(exp_dict):
                 for peer_name in sorted(exp_dict[inst_name]):
-                    sc_array.append(self.get_arg_template("OpenVPN peer %s on %s" % (peer_name, inst_name),
-                                                          arg1=inst_name,
-                                                          arg2=peer_name))
+                    sc_array.append(
+                        self.get_arg_template(
+                            "OpenVPN peer {} on {}".format(
+                                peer_name,
+                                inst_name),
+                            arg1=inst_name,
+                            arg2=peer_name
+                        )
+                    )
+        else:
+            # no expected_dict found, try to get the actual config from the server
+            hint_list = self.collrelay("openvpn_status")
+            for hint in hint_list:
+                inst_name, peer_name = hint.key.split("|")
+                sc_array.append(
+                    self.get_arg_template(
+                        hint.info,
+                        arg1=inst_name,
+                        arg2=peer_name
+                    )
+                )
         if not sc_array:
             sc_array.append(self.get_arg_template("OpenVPN", arg1="ALL", arg2="ALL"))
         return sc_array
@@ -504,9 +463,9 @@ class special_supermicro(special_base):
         if len(para_list) != len(para_dict):
             self.log("updating info from BMC")
             srv_result = self.collrelay("smcipmi",
-                "--ip=%s" % (self.host.valid_ip.ip),
-                "--user=%s" % (user_name),
-                "--passwd=%s" % (cur_pwd),
+                "--ip={}".format(self.host.valid_ip.ip),
+                "--user={}".format(user_name),
+                "--passwd={}".format(cur_pwd),
                 "counter", connect_to_localhost=True)
             # xpath string origins in supermiro_mod, server part (scmipmi_struct)
             r_dict = supermicro_mod.generate_dict(srv_result.xpath(".//ns:output/text()", smart_strings=False)[0].split("\n"))
@@ -604,16 +563,6 @@ class special_disc(special_base):
             else:
                 # which partition to check
                 check_part = act_part
-                # check for lut_blob
-                # lut_blob = None # part_p.get("lut_blob", None)
-                # if lut_blob:
-                #    lut_blob = process_tools.net_to_sys(lut_blob)
-                #    if lut_blob:
-                #        if lut_blob.has_key("id"):
-                #            scsi_id = [act_id for act_id in lut_blob["id"] if act_id.startswith("scsi")]
-                #            if scsi_id:
-                #                scsi_id = scsi_id[0]
-                #                check_part = "/dev/disk/by-id/%s" % (scsi_id)
                 if check_part.startswith("/"):
                     warn_level, crit_level = (
                         part_p.warn_threshold,
@@ -668,17 +617,17 @@ class special_net(special_base):
                     " ({})".format(net_dev.description) if net_dev.description else "")
                 cur_temp = self.get_arg_template(
                     name_with_descr,
-                    w="%.0f" % (net_dev.netdevice_speed.speed_bps * 0.9),
-                    c="%.0f" % (net_dev.netdevice_speed.speed_bps * 0.95),
+                    w="{:.0f}".format(net_dev.netdevice_speed.speed_bps * 0.9),
+                    c="{:.0f}".format(net_dev.netdevice_speed.speed_bps * 0.95),
                     arg_1=net_dev.devname,
                 )
                 if net_dev.netdevice_speed.check_via_ethtool and net_dev.devname != "lo":
                     cur_temp["duplex"] = net_dev.netdevice_speed.full_duplex and "full" or "half"
-                    cur_temp["s"] = "%d" % (net_dev.netdevice_speed.speed_bps)
+                    cur_temp["s"] = "{:d}".format(net_dev.netdevice_speed.speed_bps)
                 else:
                     cur_temp["duplex"] = "-"
                     cur_temp["s"] = "-"
-                self.log(" - netdevice %s with %s: %s" % (
+                self.log(" - netdevice {} with {}: {}".format(
                     name_with_descr,
                     logging_tools.get_plural("option", len(cur_temp.argument_names)),
                     ", ".join(cur_temp.argument_names)))
@@ -691,22 +640,31 @@ class special_libvirt(special_base):
         server_contact = True
         command = "$USER2$ -m $HOSTADDRESS$ domain_status $ARG1$"
         description = "checks running virtual machines on the target host via libvirt"
-    def _call(self):
-        sc_array = []
-        srv_result = self.collrelay("domain_overview")
-        if srv_result is not None:
-            if "domain_overview" in srv_result:
-                domain_info = srv_result["domain_overview"]
+    def to_hint(self, srv_reply):
+        _hints = []
+        if srv_reply is not None:
+            if "domain_overview" in srv_reply:
+                domain_info = srv_reply["domain_overview"]
                 if "running" in domain_info and "defined" in domain_info:
                     domain_info = domain_info["running"]
-                # build sc_array
-                for inst_id in domain_info:
-                    d_dict = domain_info[inst_id]
-                    sc_array.append(
-                        self.get_arg_template(
-                            "Domain %s" % (d_dict["name"]),
-                            arg1=d_dict["name"])
+                for d_idx, d_dict in domain_info.iteritems():
+                    new_hint = monitoring_hint(
+                        key=d_dict["name"],
+                        v_type="s",
+                        info="Domain {}".format(d_dict["name"]),
+                        value_string="running",
                     )
+                    _hints.append(new_hint)
+        return _hints
+    def _call(self):
+        sc_array = []
+        for hint in self.collrelay("domain_overview"):
+            sc_array.append(
+                self.get_arg_template(
+                    hint.info,
+                    arg1=hint.key,
+                )
+            )
         return sc_array
 
 class special_ipmi(special_base):
@@ -714,24 +672,39 @@ class special_ipmi(special_base):
         server_contact = True
         command = "$USER2$ -m $HOSTADDRESS$ ipmi_sensor --lowern=${ARG1:na} --lowerc=${ARG2:na} --lowerw=${ARG3:na} --upperw=${ARG4:na} --upperc=${ARG5:na} --uppern=${ARG6:na} $ARG7$"
         description = "queries the IPMI sensors of the underlying IPMI interface of the target device"
+    def to_hint(self, srv_reply):
+        _hints = []
+        if srv_reply is not None:
+            if "list:sensor_list" in srv_reply:
+                for sensor in srv_reply["list:sensor_list"]:
+                    lim_dict = {l_key : sensor.attrib[key] for l_key, key in [
+                        ("lower_warn", "limit_lw"),
+                        ("lower_crit", "limit_lc"),
+                        ("upper_warn", "limit_uw"),
+                        ("upper_crit", "limit_uc")] if key in sensor.attrib}
+                    new_hint = monitoring_hint(
+                        key=sensor.attrib["key"],
+                        v_type="f",
+                        info=sensor.attrib["info"],
+                    )
+                    new_hint.update_limits(0.0, lim_dict)
+                    _hints.append(new_hint)
+        return _hints
     def _call(self):
         sc_array = []
-        srv_result = self.collrelay("ipmi_sensor")
-        if srv_result is not None:
-            if "list:sensor_list" in srv_result:
-                for sensor in srv_result["list:sensor_list"]:
-                    sc_array.append(
-                        self.get_arg_template(
-                            sensor.attrib["info"],
-                            arg1=sensor.attrib.get("limit_ln", "na"),
-                            arg2=sensor.attrib.get("limit_lc", "na"),
-                            arg3=sensor.attrib.get("limit_lw", "na"),
-                            arg4=sensor.attrib.get("limit_uw", "na"),
-                            arg5=sensor.attrib.get("limit_uc", "na"),
-                            arg6=sensor.attrib.get("limit_un", "na"),
-                            arg7=sensor.attrib["key"],
-                            )
-                        )
+        for hint in self.collrelay("ipmi_sensor"):
+            sc_array.append(
+                self.get_arg_template(
+                    hint.info,
+                    arg1="na",
+                    arg2=hint.get_limit("lower_crit", "na"),
+                    arg3=hint.get_limit("lower_warn", "na"),
+                    arg4=hint.get_limit("upper_warn", "na"),
+                    arg5=hint.get_limit("upper_crit", "na"),
+                    arg6="na",
+                    arg7=hint.key,
+                )
+            )
         return sc_array
 
 class special_ipmi_ext(special_base):
@@ -756,74 +729,84 @@ class special_ipmi_ext(special_base):
 
 class special_eonstor(special_base):
     class Meta:
-        retries = 4
+        retries = 2
         server_contact = True
         command = "$USER3$ -m $HOSTADDRESS$ -C ${ARG1:SNMP_COMMUNITY:public} -V ${ARG2:SNMP_VERSION:2} $ARG3$ $ARG4$"
         description = "checks the eonstore disc chassis via SNMP"
+    def to_hint(self, srv_reply):
+        _hints = []
+        if srv_reply is not None:
+            if self.call_idx == 0:
+                if "eonstor_info" in srv_reply:
+                    info_dict = srv_reply["eonstor_info"]
+                    self.info_dict = info_dict
+                    # disks
+                    for disk_id in sorted(info_dict.get("disc_ids", [])):
+                        _hints.append(self._get_env_check("eonstor_disc_info", disk_id, "Disc {:2d}".format(disk_id)))
+                    # lds
+                    for ld_id in sorted(info_dict.get("ld_ids", [])):
+                        _hints.append(self._get_env_check("eonstor_ld_info", ld_id, "Logical Drive {:2d}".format(ld_id)))
+                    # env_dicts
+                    for env_dict_name in sorted(info_dict.get("ent_dict", {}).keys()):
+                        if env_dict_name not in ["ups", "bbu"]:
+                            env_dict = info_dict["ent_dict"][env_dict_name]
+                            for idx in sorted(env_dict.keys()):
+                                _hints.append(self._get_env_check(env_dict[idx], "eonstor_{}_info".format(env_dict_name), idx))
+            else:
+                if "eonstor_info:state" in srv_reply:
+                    _com = srv_reply["*command"]
+                    act_state = int(srv_reply["eonstor_info:state"].text)
+                    self.log(
+                        "state for {} ({}) is {:d}".format(
+                            _com,
+                            srv_reply["*arg_list"],
+                            act_state
+                        )
+                    )
+                    idx = int(srv_reply["*arg_list"])
+                    env_dict_name = _com.split("_")[1]
+                    if env_dict_name == "ups" and act_state & 128:
+                        self.log("disabling psu because not present",
+                                 logging_tools.LOG_LEVEL_ERROR)
+                    elif env_dict_name == " bbu" and act_state & 128:
+                        self.log("disabling bbu because not present",
+                                 logging_tools.LOG_LEVEL_ERROR)
+                    else:
+                        _hints.append(self._get_env_check(self.info_dict["ent_dict"][env_dict_name][idx], "eonstor_{}_info".format(env_dict_name), idx))
+        return _hints
+    def _get_env_check(self, info, key, idx):
+        return monitoring_hint(
+            key=key,
+            v_type="i",
+            value_int=idx,
+            info=info,
+        )
     def _call(self):
-        sc_array = []
-        srv_reply = self.snmprelay(
+        self.info_dict = {}
+        hints = self.snmprelay(
             "eonstor_get_counter",
         )
-        if srv_reply and "eonstor_info" in srv_reply:
-            info_dict = srv_reply["eonstor_info"]
-            # disks
-            for disk_id in sorted(info_dict.get("disc_ids", [])):
-                sc_array.append(
-                    self.get_arg_template(
-                        "Disc %2d" % (disk_id),
-                        arg3="eonstor_disc_info",
-                        arg4="%d" % (disk_id),
-                    )
-                )
-            # lds
-            for ld_id in sorted(info_dict.get("ld_ids", [])):
-                sc_array.append(
-                    self.get_arg_template(
-                        "LD %2d" % (ld_id),
-                        arg3="eonstor_ld_info",
-                        arg4="%d" % (ld_id)
-                    )
-                )
-            # env_dicts
-            for env_dict_name in sorted(info_dict.get("ent_dict", {}).keys()):
+        if self.info_dict:
+            info_dict = self.info_dict
+            for env_dict_name in sorted([_entry for _entry in info_dict.get("ent_dict", {}) if _entry in ["ups", "bbu"]]):
                 env_dict = info_dict["ent_dict"][env_dict_name]
                 for idx in sorted(env_dict.keys()):
-                    nag_name = env_dict[idx]
-                    add_check = True
-                    # get info for certain environment types
-                    if env_dict_name in ["ups", "bbu"]:
-                        act_com = "eonstor_%s_info" % (env_dict_name)
-                        srv_reply = self.snmprelay(
-                            act_com,
-                            "%d" % (idx)
+                    hints.extend(
+                        self.snmprelay(
+                            "eonstor_{}_info".format(env_dict_name),
+                            "{:d}".format(idx)
                         )
-                        if srv_reply and "eonstor_info:state" in srv_reply:
-                            act_state = int(srv_reply["eonstor_info:state"].text)
-                            self.log("state for %s:%d is %d" % (act_com, idx, act_state))
-                            if env_dict_name == "ups":
-                                # check for inactive psus
-                                if act_state & 128:
-                                    self.log("disabling psu with idx %d because not present" % (idx),
-                                             logging_tools.LOG_LEVEL_ERROR)
-                                    add_check = False
-                            elif env_dict_name == "bbu":
-                                if act_state & 128:
-                                    self.log("disabling bbu with idx %d because not present" % (idx),
-                                             logging_tools.LOG_LEVEL_ERROR)
-                                    add_check = False
-                    if add_check:
-                        if not nag_name.lower().startswith(env_dict_name):
-                            nag_name = "%s %s" % (env_dict_name, nag_name)
-                        sc_array.append(
-                            self.get_arg_template(
-                                nag_name,
-                                # not correct, fixme
-                                arg3="eonstor_%s_info" % (env_dict_name),
-                                arg4="%d" % (idx)
-                            )
-                        )
-        # rewrite sc_array to include community and version
-        # sc_array = [(name, ["", ""] + var_list) for name, var_list in sc_array]
+                    )
+        sc_array = []
+        for hint in hints:
+            sc_array.append(
+                self.get_arg_template(
+                    hint.info,
+                    arg1=self.host.dev_variables["SNMP_READ_COMMUNITY"],
+                    arg2=self.host.dev_variables["SNMP_VERSION"],
+                    arg3=hint.key,
+                    arg4="{:d}".format(hint.value_int),
+                )
+            )
         self.log("sc_array has %s" % (logging_tools.get_plural("entry", len(sc_array))))
         return sc_array
