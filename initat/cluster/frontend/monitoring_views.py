@@ -110,7 +110,7 @@ class create_config(View):
     @method_decorator(login_required)
     @method_decorator(xml_wrapper)
     def post(self, request):
-        srv_com = server_command.srv_command(command="rebuild_host_config", cache_mode="ALWAYS")
+        srv_com = server_command.srv_command(command="rebuild_host_config", cache_mode=request.POST.get("cache_mode", "DYNAMIC"))
         result = contact_server(request, "md-config", srv_com, connection_id="wf_mdrc")
         if result:
             request.xml_response["result"] = E.devices()

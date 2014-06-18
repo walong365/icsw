@@ -61,8 +61,18 @@
                     <li>
                         <a href="{% url 'mon:livestatus' %}">{% trans "Livestatus" %}</a>
                     </li>
-                    <li ng-show="check_perm('mon_check_command.setup_monitoring')" class="text-center">
-                        <input id="create_monitoring_config" type="button" class="btn btn-success" value="rebuild config" ng-click="rebuild_config()"/>
+                    <li ng-show="check_perm('mon_check_command.setup_monitoring')" class="text-left">
+                        <ul class="list-group">
+                            <li class="list-group-item">
+                                <input type="button" class="btn btn-success btn-xs" value="rebuild config (cached)" ng-click="rebuild_config('ALWAYS')"/>
+                            </li>
+                            <li class="list-group-item">
+                                <input type="button" class="btn btn-warning btn-xs" value="rebuild config (dynamic)" ng-click="rebuild_config('DYNAMIC')"/>
+                            </li>
+                            <li class="list-group-item">
+                                <input type="button" class="btn btn-danger btn-xs" value="rebuild config (refresh)" ng-click="rebuild_config('REFRESH')"/>
+                            </li>
+                        </ul>
                     </li>
 {% endif %}
                 </ul>
@@ -210,9 +220,12 @@ menu_controller = menu_module.controller("menu_base", ["$scope", "$timeout", "$w
                 return "btn btn-xs btn-warning"
             else
                 return "btn btn-xs btn-danger"
-        $scope.rebuild_config = () ->
+        $scope.rebuild_config = (cache_mode) ->
             call_ajax
                 url     : "{% url 'mon:create_config' %}"
+                data    : {
+                    "cache_mode" : cache_mode
+                }
                 title   : "create config"
                 success : (xml) =>
                     if parse_xml_response(xml)
