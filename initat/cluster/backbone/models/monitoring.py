@@ -238,7 +238,6 @@ class mon_check_command_nat_serializer(serializers.ModelSerializer):
 def mon_check_command_pre_save(sender, **kwargs):
     if "instance" in kwargs:
         cur_inst = kwargs["instance"]
-        special_re = re.compile("^@.+@.+$")
         # cur_inst.is_special_command = True if special_re.match(cur_inst.name) else False
         if not cur_inst.name:
             raise ValidationError("name is empty")
