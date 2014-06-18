@@ -871,7 +871,7 @@ class eonstor_info_scheme(snmp_scheme):
         snmp_scheme.__init__(self, "eonstor_info", **kwargs)
         net_obj = kwargs["net_obj"]
         if not hasattr(net_obj, "eonstor_version"):
-            net_obj.eonstor_version = 1
+            net_obj.eonstor_version = 2
         if net_obj.eonstor_version == 1:
             self.__th_system = snmp_oid((1, 3, 6, 1, 4, 1, 1714, 1, 9, 1), cache=True, cache_timeout=EONSTOR_TIMEOUT)
             self.__th_disc = snmp_oid((1, 3, 6, 1, 4, 1, 1714, 1, 6, 1), cache=True, cache_timeout=EONSTOR_TIMEOUT)
