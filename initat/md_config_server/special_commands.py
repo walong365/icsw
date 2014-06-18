@@ -220,6 +220,9 @@ class special_base(object):
                         _result_ok = True
                         log_level = logging_tools.LOG_LEVEL_OK
                         hint_list = self._salt_hints(self.to_hint(srv_reply))
+                        # as default all hints are used for monitor checks
+                        for _entry in hint_list:
+                            _entry.check_created = True
                         self.__server_contacts += 1
                         self.__hint_list.extend(hint_list)
                 self.log(log_str, log_level)
@@ -743,10 +746,10 @@ class special_eonstor(special_base):
                     self.info_dict = info_dict
                     # disks
                     for disk_id in sorted(info_dict.get("disc_ids", [])):
-                        _hints.append(self._get_env_check("eonstor_disc_info", disk_id, "Disc {:2d}".format(disk_id)))
+                        _hints.append(self._get_env_check("eonstor_disc_info", "Disc {:2d}".format(disk_id), disk_id))
                     # lds
                     for ld_id in sorted(info_dict.get("ld_ids", [])):
-                        _hints.append(self._get_env_check("eonstor_ld_info", ld_id, "Logical Drive {:2d}".format(ld_id)))
+                        _hints.append(self._get_env_check("eonstor_ld_info", "Logical Drive {:2d}".format(ld_id), ld_id))
                     # env_dicts
                     for env_dict_name in sorted(info_dict.get("ent_dict", {}).keys()):
                         if env_dict_name not in ["ups", "bbu"]:
