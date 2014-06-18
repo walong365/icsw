@@ -864,7 +864,7 @@ config_ctrl = config_module.controller("config_ctrl", ["$scope", "$compile", "$f
         $scope.get_mccs_cmdline = () ->
             cur_mccs = $scope._edit_obj.mon_check_command_special
             if cur_mccs
-                if cur_mccs.is_active
+                if $scope.mccs_lut[cur_mccs].is_active
                     return $scope.mccs_lut[cur_mccs].command_line
                 else
                     return "passive check"

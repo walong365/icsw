@@ -894,6 +894,7 @@ mh_devrow_template = """
 
 mh_row_template = """
 <td>{{ hint.m_type }}</td>
+<td>{{ hint.key }}</td>
 <td>{{ get_v_type() }}</td>
 <td class="text-right" ng-class="get_td_class('lower_crit')">{{ get_limit('lower_crit') }}</td>
 <td class="text-right" ng-class="get_td_class('lower_warn')">{{ get_limit('lower_warn') }}</td>
@@ -908,6 +909,7 @@ mh_table_template = """
     <thead>
         <tr>
             <th>Source</th>
+            <th>key</th>
             <th>Type</th>
             <th>lower crit</th>
             <th>lower warn</th>
@@ -999,8 +1001,9 @@ device_config_module.controller("monitoring_hint_ctrl", ["$scope", "$compile", "
         template : $templateCache.get("mhrow.html")
         link : (scope) ->
             scope.get_v_type = () ->
-                return {"f" : "float", "i" : "integer"}[scope.hint.v_type]
+                return {"f" : "float", "i" : "int", "s" : "string"}[scope.hint.v_type]
             scope.get_value = () ->
+                console.log "value_" + scope.get_v_type()
                 return scope.hint["value_" + scope.get_v_type()]
             scope.get_td_class = (name) ->
                 v_type = scope.get_v_type()
