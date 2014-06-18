@@ -30,7 +30,6 @@ import logging_tools
 import os
 import process_tools
 import re
-import server_command
 import time
 
 EXPECTED_FILE = "/etc/sysconfig/host-monitoring.d/openvpn_expected"
@@ -100,21 +99,22 @@ class special_base(object):
         self.s_check = s_check
         self.host = host
     def _store_cache(self):
+        self.log("storing cache ({})".format(logging_tools.get_plural("entry", len(self.__cache))))
         monitoring_hint.objects.filter(Q(device=self.host) & Q(m_type=self.ds_name)).delete()
         for ch in self.__hint_list:
             ch.save()
     def _load_cache(self):
-        self.__cache, self.__cache_created, self.__cache_age = ([], 0, 0)
-        self.__cache_valid = False
+        self.__cache_created, self.__cache_age, self.__cache_valid = (0, 0, False)
         self.__cache = monitoring_hint.objects.filter(Q(device=self.host) & Q(m_type=self.ds_name))
         self.log(
             "loaded hints ({}) from db".format(
                 logging_tools.get_plural("entry", len(self.__cache))
             )
         )
-        _now = cluster_timezone.localize(datetime.datetime.now())
-        self.__cache_age = max([abs(_now - _entry.changed).total_seconds() for _entry in self.__cache])
-        self.__cache_valid = self.__cache_age < self.Meta.cache_timeout
+        if self.__cache:
+            _now = cluster_timezone.localize(datetime.datetime.now())
+            self.__cache_age = max([abs(_now - _entry.changed).total_seconds() for _entry in self.__cache])
+            self.__cache_valid = self.__cache_age < self.Meta.cache_timeout
     def _show_cache_info(self):
         if self.__cache:
             self.log(
@@ -232,6 +232,7 @@ class special_base(object):
                 self.__use_cache = True
         if self.__use_cache:
             hint_list = self.__cache
+            self.log("take result from cache")
             # print "uc"
             # hint_list = []
             # if len(self.__cache) > self.__call_idx:
@@ -310,7 +311,7 @@ class special_base(object):
             self.__hint_list, self.__call_idx = ([], 0)
         cur_ret = self._call()
         e_time = time.time()
-        if self.Meta.server_contact:
+        if self.Meta.server_contact and not self.__use_cache:
             self.log(
                 "took {}, ({:d} ok, {:d} server contacts [{}], {})".format(
                     logging_tools.get_diff_time_str(e_time - s_time),
