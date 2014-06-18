@@ -1116,10 +1116,10 @@ class device(models.Model):
     partdev = models.CharField(max_length=192, blank=True)
     fixed_partdev = models.IntegerField(null=True, blank=True)
     bz2_capable = models.IntegerField(null=True, blank=True)
-    new_state = models.ForeignKey("status", null=True, db_column="newstate_id")
+    new_state = models.ForeignKey("status", null=True, db_column="newstate_id", blank=True)
     rsync = models.BooleanField(default=False)
     rsync_compressed = models.BooleanField(default=False)
-    prod_link = models.ForeignKey("backbone.network", db_column="prod_link", null=True)
+    prod_link = models.ForeignKey("backbone.network", db_column="prod_link", null=True, blank=True)
     # states (with timestamp)
     recvstate = models.TextField(blank=True, default="not set")
     recvstate_timestamp = models.DateTimeField(null=True)
@@ -2329,26 +2329,6 @@ class wc_files(models.Model):
         )
     class Meta:
         db_table = u'wc_files'
-
-class md_check_data_store(models.Model):
-    idx = models.AutoField(primary_key=True)
-    device = models.ForeignKey(device)
-    name = models.CharField(max_length=64, default="")
-    mon_check_command = models.ForeignKey(mon_check_command)
-    data = models.TextField(default="")
-    created = models.DateTimeField(auto_now_add=True, auto_now=True)
-    def get_xml(self):
-        return E.md_check_data_store(
-            unicode(self),
-            pk="%d" % (self.pk),
-            key="mdcds__%d" % (self.pk),
-            device="%d" % (self.device_id),
-            name="%s" % (self.name),
-            mon_check_command="%d" % (self.mon_check_command_id),
-            data="%s" % (etree.tostring(etree.fromstring(self.data), pretty_print=True)),
-        )
-    def __unicode__(self):
-        return self.name
 
 class config_str_serializer(serializers.ModelSerializer):
     object_type = serializers.Field(source="get_object_type")

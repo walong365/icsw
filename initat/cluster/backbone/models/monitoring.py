@@ -7,6 +7,7 @@ from django.dispatch import receiver
 from initat.cluster.backbone.models.functions import _check_empty_string, _check_integer
 from rest_framework import serializers
 from django.conf import settings
+import datetime
 import logging_tools
 import re
 
@@ -796,10 +797,11 @@ class monitoring_hint(models.Model):
     # key of vector or OID
     key = models.CharField(default="", max_length=255)
     # type of value
-    v_type = models.CharField(default="f", choices=[("f", "float"), ("i", "integer"), ("b", "boolean")], max_length=6)
+    v_type = models.CharField(default="f", choices=[("f", "float"), ("i", "integer"), ("b", "boolean"), ("s", "string")], max_length=6)
     # current value
     value_float = models.FloatField(default=0.0)
     value_int = models.IntegerField(default=0)
+    value_string = models.CharField(default="", max_length=256)
     # limits
     lower_crit_float = models.FloatField(default=0.0)
     lower_warn_float = models.FloatField(default=0.0)
@@ -821,9 +823,10 @@ class monitoring_hint(models.Model):
     info = models.CharField(default="", max_length=255)
     # used in monitoring
     check_created = models.BooleanField(default=False)
+    changed = models.DateTimeField(auto_now_add=True, auto_now=True, default=datetime.datetime.now())
     date = models.DateTimeField(auto_now_add=True)
-    def update_limits(self, value, limit_dict):
-        if type(value) in [int, long]:
+    def update_limits(self, m_value, limit_dict):
+        if type(m_value) in [int, long]:
             v_type = "int"
         else:
             v_type = "float"
@@ -837,11 +840,19 @@ class monitoring_hint(models.Model):
                     changed = True
                 if getattr(self, v_key) != value:
                     changed = True
-                    setattr(self, s_key, value)
+                    setattr(self, v_key, value)
         return changed
+    def get_limit(self, name, default):
+        key = "{}_{}".format(name, self.get_v_type_display())
+        if getattr(self, "{}_source".format(key)) == "n":
+            return default
+        else:
+            return str(getattr(self, key))
     def set_value(self, value):
         if type(value) in [int, long]:
             v_type = "int"
+        elif type(value) in [str, unicode]:
+            v_type = "str"
         else:
             v_type = "float"
         v_key = "value_{}".format(v_type)
@@ -854,6 +865,7 @@ class monitoring_hint(models.Model):
         return u"{} ({}) for {}".format(self.m_type, self.key, unicode(self.device))
     class Meta:
         app_label = "backbone"
+        ordering = ("m_type", "key",)
 
 class monitoring_hint_serializer(serializers.ModelSerializer):
     class Meta:
