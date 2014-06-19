@@ -61,7 +61,6 @@ def call_command(command, log_com=None):
 class rms_mon_process(threading_tools.process_obj):
     def process_init(self):
         self.__log_template = logging_tools.get_logger(global_config["LOG_NAME"], global_config["LOG_DESTINATION"], zmq=True, context=self.zmq_context, init_logger=True)
-        self.__main_socket = self.connect_to_socket("internal")
         self._init_sge_info()
         self.__job_content_dict = {}
         self.register_func("get_config", self._get_config)
@@ -100,7 +99,7 @@ class rms_mon_process(threading_tools.process_obj):
         # update_list = opt_dict.get("update_list", [])
         self.__sge_info.update(update_list=needed_dicts)
         srv_com["sge"] = self.__sge_info.get_tree(file_dict=self.__job_content_dict)
-        self.send_to_socket(self.__main_socket, ["command_result", src_id, unicode(srv_com)])
+        self.send_pool_message("command_result", src_id, unicode(srv_com))
         del srv_com
     def _get_sge_bin(self, name):
         return os.path.join(global_config["SGE_ROOT"], "bin", global_config["SGE_ARCH"], name)
@@ -109,7 +108,7 @@ class rms_mon_process(threading_tools.process_obj):
         srv_com = server_command.srv_command(source=srv_com_str)
         job_action = srv_com["action"].text
         job_id = srv_com.xpath(".//ns:job_list/ns:job/@job_id", smart_strings=False)[0]
-        self.log("job action '%s' for job '%s'" % (job_action, job_id))
+        self.log("job action '{}' for job '{}'".format(job_action, job_id))
         if job_action in ["force_delete", "delete"]:
             cur_stat, cur_out, log_lines = call_command(
                 "{} {} {}".format(
@@ -129,7 +128,7 @@ class rms_mon_process(threading_tools.process_obj):
                 "unknown job_action %s" % (job_action),
                 server_command.SRV_REPLY_STATE_ERROR,
             )
-        self.send_to_socket(self.__main_socket, ["command_result", src_id, unicode(srv_com)])
+        self.send_pool_message("command_result", src_id, unicode(srv_com))
     def _queue_control(self, *args , **kwargs):
         src_id, srv_com_str = args
         srv_com = server_command.srv_command(source=srv_com_str)
@@ -159,7 +158,7 @@ class rms_mon_process(threading_tools.process_obj):
                 "unknown job_action %s" % (queue_action),
                 server_command.SRV_REPLY_STATE_ERROR,
             )
-        self.send_to_socket(self.__main_socket, ["command_result", src_id, unicode(srv_com)])
+        self.send_pool_message("command_result", src_id, unicode(srv_com))
     def _file_watch_content(self, *args , **kwargs):
         src_id, srv_src = args
         srv_com = server_command.srv_command(source=srv_src)
@@ -197,7 +196,6 @@ class rms_mon_process(threading_tools.process_obj):
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
         self.__log_template.log(log_level, what)
     def loop_post(self):
-        self.__main_socket.close()
         self.__log_template.close()
 
 class server_process(threading_tools.process_pool):
