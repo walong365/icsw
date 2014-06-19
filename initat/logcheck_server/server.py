@@ -122,7 +122,7 @@ class server_process(threading_tools.process_pool):
         syslog_exe_dict = {value.pid : value.exe() for value in psutil.process_iter() if value.is_running() and value.exe().count("syslog")}
         syslog_type = None
         for key, value in syslog_exe_dict.iteritems():
-            self.log("syslog process found: {:6d} = {}".format(key))
+            self.log("syslog process found: {}".format(key))
             if value.endswith("rsyslogd"):
                 syslog_type = "rsyslogd"
             elif value.endswith("syslog-ng"):
