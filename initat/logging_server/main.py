@@ -55,6 +55,7 @@ class main_process(threading_tools.process_pool):
         # log structures
         self.__log_cache = []
         self.__handles = {}
+        self.__handle_usage = {}
         threading_tools.process_pool.__init__(self, "main", stack_size=2 * 1024 * 1024, zmq=True, zmq_debug=global_config["ZMQ_DEBUG"])
         process_tools.delete_lockfile(global_config["LOCKFILE_NAME"])
         self.register_exception("int_error", self._int_error)
@@ -291,8 +292,9 @@ class main_process(threading_tools.process_pool):
                     process_tools.get_machine_name())
                 msg_body = "\n".join(["Processinfo {}".format(self._get_process_info(es))] +
                                      ["{:3d} {}".format(line_num + 1, line) for line_num, line in enumerate(es["errors"])])
-                self._send_mail(subject, msg_body)
-                mails_sent += 1
+                if global_config["SEND_ERROR_MAILS"]:
+                    self._send_mail(subject, msg_body)
+                    mails_sent += 1
                 ep_dels.append(ep)
         for epd in ep_dels:
             del self.__eg_dict[epd]
@@ -353,6 +355,8 @@ class main_process(threading_tools.process_pool):
             handle.write("closed {} by pid {:d} [plain]".format(h_name, self.pid))
             handle.close()
         del self.__handles[h_name]
+        if h_name in self.__handle_usage:
+            del self.__handle_usage[h_name]
     def _update(self, **kwargs):
         c_handles = sorted([key for key, value in self.__handles.items() if isinstance(value, logging_tools.logfile) and value.check_for_temp_close()])
         if c_handles:
@@ -485,6 +489,7 @@ class main_process(threading_tools.process_pool):
             logger.ignore_process_id = False
             logger.handle_name = h_name
             self.__handles[h_name] = logger
+            self.__handle_usage[h_name] = set()
             logger.info(SEP_STR)
             logger.info("opened {} (file {} in {}) by pid {}".format(full_name, base_name, base_dir, self.pid))
             self.log("added handle {} (file {} in dir {}), total open: {}".format(
@@ -536,14 +541,29 @@ class main_process(threading_tools.process_pool):
                     log_com = new_log_com
                     python_log_com = True
                 handle = self.get_python_handle(log_com)
+                h_name = handle.handle_name
                 log_msg = log_com.msg
                 is_command = False
+                try:
+                    src_key = (log_com.processName, log_com.threadName)
+                except:
+                    src_key = ("main", "main")
+                # flag to disable logging of close message (would polute the usage_cache)
+                log_it = True
                 if type(log_msg) == type(""):
                     if log_msg.lower().startswith("<lch>") and log_msg.lower().endswith("</lch>"):
                         is_command = True
                         log_msg = log_msg[5:-6]
                         if log_msg.lower() == "close":
-                            self.remove_handle(handle.handle_name)
+                            _close = True
+                            if h_name in self.__handle_usage:
+                                if src_key in self.__handle_usage[h_name]:
+                                    self.__handle_usage[h_name].remove(src_key)
+                                if self.__handle_usage[h_name]:
+                                    _close = False
+                            if _close:
+                                self.remove_handle(handle.handle_name)
+                            log_it = False
                         elif log_msg.lower().startswith("set_file_size"):
                             try:
                                 file_size = int(log_msg.split()[1])
@@ -567,7 +587,8 @@ class main_process(threading_tools.process_pool):
                         else:
                             self.log("unknown command '{}'".format(log_msg),
                                      logging_tools.LOG_LEVEL_ERROR)
-                if not is_command or (is_command and global_config["LOG_COMMANDS"]):
+                if (not is_command or (is_command and global_config["LOG_COMMANDS"])) and log_it:
+                    self.__handle_usage[handle.handle_name].add(src_key)
                     try:
                         handle.handle(log_com)
                     except:
@@ -603,6 +624,7 @@ def main():
         ("LOCKFILE_NAME"       , configfile.str_c_var("/var/lock/logserver/logging_server.lock")),
         ("LISTEN_PORT"         , configfile.int_c_var(8011)),
         ("STATISTICS_TIMER"    , configfile.int_c_var(600)),
+        ("SEND_ERROR_MAILS"    , configfile.bool_c_var(True, help="send error mails")),
         ("LOG_COMMANDS"        , configfile.bool_c_var(True)),
         ("KILL_RUNNING"        , configfile.bool_c_var(True)),
         ("FORWARDER"           , configfile.str_c_var("", help_string="Address to forwared all logs to")),
