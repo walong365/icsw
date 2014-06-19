@@ -19,7 +19,7 @@
 #
 """
 SNMP relayer, SNMP process
-also used by the control process of mother
+also used by the control process of mother and cluster-server
 """
 
 from pyasn1.codec.ber import encoder, decoder # @UnresolvedImport
@@ -33,6 +33,7 @@ import process_tools
 import pyasn1 # @UnresolvedImport
 import threading_tools
 import time
+import signal
 
 # --- hack Counter type, from http://pysnmp.sourceforge.net/faq.html
 
@@ -343,20 +344,23 @@ class snmp_batch(object):
             return False
 
 class snmp_process(threading_tools.process_obj):
-    def __init__(self, name, conf_dict):
+    def __init__(self, name, conf_dict, **kwargs):
         self.__log_name, self.__log_destination = (
             conf_dict["LOG_NAME"],
             conf_dict["LOG_DESTINATION"],
         )
-        self.__verbose = conf_dict["VERBOSE"]
+        self.__verbose = conf_dict.get("VERBOSE", False)
+        self.debug_zmq = conf_dict.get("DEBUG_ZMQ", False)
         threading_tools.process_obj.__init__(self, name, busy_loop=True)
+        if kwargs.get("ignore_signals", False):
+            signal.signal(signal.SIGTERM, signal.SIG_IGN)
     def process_init(self):
         self.__log_template = logging_tools.get_logger(
             self.__log_name,
             self.__log_destination,
             zmq=True,
             context=self.zmq_context)
-        self.__return_socket = None
+        self.__return_proc_name = None
         self.register_func("fetch_snmp", self._fetch_snmp)
         self.register_func("register_return", self._register_return)
         self._init_dispatcher()
@@ -415,8 +419,8 @@ class snmp_process(threading_tools.process_obj):
         self.__req_id_lut[cur_batch.request_id] = cur_batch
         self.__disp.sendMessage(*next_tuple)
     def _register_return(self, proc_name, **kwargs):
-        self.__return_socket = self.connect_to_socket(proc_name)
-        self.send_to_socket(self.__return_socket, "helloxx", "hello2", "hello3")
+        self.__return_proc_name = proc_name
+        self.send_pool_message("hellox", "hello2", "hello3", target=self.__return_proc_name)
     def _fetch_snmp(self, *scheme_data, **kwargs):
         self._inject(snmp_batch(self, *scheme_data, verbose=self.__verbose, **kwargs))
     def _timer_func(self, act_time):
@@ -448,10 +452,6 @@ class snmp_process(threading_tools.process_obj):
         return whole_msg
     def loop_post(self):
         self.__log_template.close()
-        if self.__return_socket:
-            self.__return_socket.close()
     def send_return(self, envelope, error_list, received, snmp):
-        if self.__return_socket:
-            self.send_to_socket(self.__return_socket, "snmp_finished", envelope, error_list, received, snmp)
-        else:
-            self.send_pool_message("snmp_finished", envelope, error_list, received, snmp)
+        self.send_pool_message("snmp_finished", envelope, error_list, received, snmp, target=self.__return_proc_name or "main")
+

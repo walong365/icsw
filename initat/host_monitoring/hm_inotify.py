@@ -365,7 +365,6 @@ class file_watcher(object):
 class inotify_process(threading_tools.process_obj):
     def process_init(self):
         self.__log_template = logging_tools.get_logger(global_config["LOG_NAME"], global_config["LOG_DESTINATION"], zmq=True, context=self.zmq_context)
-        self.__relayer_socket = self.connect_to_socket("internal")
         self.__watcher = inotify_tools.inotify_watcher()
         self.__idle_timeout = global_config["INOTIFY_IDLE_TIMEOUT"]
         # self.__watcher.add_watcher("internal", "/etc/sysconfig/host-monitoring.d", inotify_tools.IN_CREATE | inotify_tools.IN_MODIFY, self._trigger)
@@ -507,4 +506,3 @@ class inotify_process(threading_tools.process_obj):
             self.log("closing socket to {}".format(targ_str))
             targ_sock.close()
         self.__log_template.close()
-        self.__relayer_socket.close()

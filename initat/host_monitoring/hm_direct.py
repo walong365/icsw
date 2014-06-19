@@ -1,4 +1,3 @@
-#!/usr/bin/python-init -Ot
 # -*- coding: utf-8 -*-
 #
 # Copyright (C) 2011-2014 Andreas Lang-Nevyjel
@@ -248,7 +247,6 @@ class tcp_con(object):
 class socket_process(threading_tools.process_obj):
     def process_init(self):
         self.__log_template = logging_tools.get_logger(global_config["LOG_NAME"], global_config["LOG_DESTINATION"], zmq=True, context=self.zmq_context)
-        self.__relayer_socket = self.connect_to_socket("internal")
         # log.startLoggingWithObserver(my_observer, setStdout=False)
         self.register_func("connection", self._connection)
         # clear flag for extra twisted thread
@@ -273,19 +271,17 @@ class socket_process(threading_tools.process_obj):
     def _connection(self, src_id, srv_com, *args, **kwargs):
         srv_com = server_command.srv_command(source=srv_com)
         tcp_con(self, src_id, srv_com)
-        # self.__connected.setdefault(cur_id, []).append((src_id, srv_com))
     def _ping(self, *args, **kwargs):
         self.icmp_protocol.ping(*args)
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
         self.__log_template.log(log_level, what)
     def send_result(self, src_id, srv_com, data):
-        self.send_to_socket(self.__relayer_socket, ["socket_result", src_id, srv_com, data])
+        self.send_pool_message("socket_result", src_id, srv_com, data, target="main")
     def send_ping_result(self, *args):
-        self.send_to_socket(self.__relayer_socket, ["socket_ping_result"] + list(args))
+        self.send_pool_message("socket_ping_result", *args, target="main") # src_id, srv_com, data, target="main")
     def loop_post(self):
         # self.twisted_observer.close()
         if self.icmp_protocol:
             self.icmp_protocol.close()
         self.__log_template.close()
-        self.__relayer_socket.close()
 
