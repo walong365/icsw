@@ -214,7 +214,7 @@ class machine(object):
                     cur_id_str = "mp_{:d}".format(cur_id)
                     cur_id += 1
                     # init ping
-                    machine.process.send_to_socket(machine.process.direct_socket, ["ping", cur_id_str, ip, 4, 3.0])
+                    machine.process.send_pool_message("ping", cur_id_str, ip, 4, 3.0, target="direct")
                     ping_list.append(_bldr.ping(cur_id_str, pk="{:d}".format(cur_dev.pk)))
             dev_node.attrib.update(
                 {
@@ -239,7 +239,7 @@ class machine(object):
             for master_pk, master_ip in _master_dict.iteritems():
                 cur_id_str = "mps_{:d}".format(master_id)
                 master_id += 1
-                machine.process.send_to_socket(machine.process.direct_socket, ["ping", cur_id_str, master_ip, 2, 3.0])
+                machine.process.send_pool_message("ping", cur_id_str, master_ip, 2, 3.0, "direct")
                 cd_ping_list.append(_bldr.cd_ping(cur_id_str, pk="{:d}".format(master_pk), pending="1"))
             srv_com["cd_ping_list"] = cd_ping_list
         machine.ping_id = cur_id
@@ -1173,15 +1173,13 @@ class direct_process(threading_tools.process_obj):
         self.__verbose = global_config["VERBOSE"]
         self.icmp_protocol = hm_icmp_protocol(self, self.__log_template, self.__verbose)
         self.register_func("ping", self._ping)
-        self.control_socket = self.connect_to_socket("control")
     def _ping(self, *args, **kwargs):
         self.icmp_protocol.ping(*args, **kwargs)
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
         self.__log_template.log(log_level, what)
     def send_ping_result(self, *args):
-        self.send_to_socket(self.control_socket, ["ping_result"] + list(args))
+        self.send_pool_message("ping_result", *args, target="control")
     def loop_post(self):
-        self.control_socket.close()
         self.__log_template.close()
 
 class node_control_process(threading_tools.process_obj):
@@ -1215,8 +1213,6 @@ class node_control_process(threading_tools.process_obj):
         else:
             self.server_ip = None
             self.log("no IP address in boot-net", logging_tools.LOG_LEVEL_ERROR)
-        # create connection to ICMP (direct) process
-        self.direct_socket = self.connect_to_socket("direct")
         self.router_obj = config_tools.router_object(self.log)
         machine.setup(self)
         machine.sync()
@@ -1337,7 +1333,6 @@ class node_control_process(threading_tools.process_obj):
             self.log("error no node with id '%s' found" % (node_id), logging_tools.LOG_LEVEL_ERROR)
     def loop_post(self):
         machine.shutdown()
-        self.direct_socket.close()
         self.__log_template.close()
     def set_check_freq(self, cur_to):
         self.log("changing check_freq of check_commands to %d msecs" % (cur_to))

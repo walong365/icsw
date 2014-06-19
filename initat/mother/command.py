@@ -138,7 +138,7 @@ class hc_command(object):
                     cur_scheme = _SNMP_SCHEME_LUT[var_dict["SNMP_SCHEME"]](self.cd_obj)
                     hc_command.register(self)
                     # snmp_ver, snmp_host, snmp_community, self.envelope, self.transform_single_key, self.__timeout
-                    self.process.send_to_socket(self.process.snmp_socket, "fetch_snmp",
+                    self.process.send_pool_message(
                         int(var_dict["SNMP_VERSION"]),
                         com_ip,
                         var_dict["SNMP_WRITE_COMMUNITY"],
@@ -146,7 +146,8 @@ class hc_command(object):
                         False,
                         10,
                         cur_scheme.set_command(command),
-                        )
+                        target="snmp_process",
+                    )
             else:
                 self.log("cannot handle curl_base '%s' for %s" % (
                     self.curl_base,
@@ -278,14 +279,11 @@ class external_command_process(threading_tools.process_obj):
         self.register_func("hard_control", self._hard_control)
         self.register_func("snmp_finished", self._snmp_finished)
         self.register_timer(self._check_commands, 10)
-        self.snmp_socket = self.connect_to_socket("snmp_process")
         hc_command.setup(self)
-        self.send_to_socket(self.snmp_socket, "register_return", "command")
-        # self.send_to_socket(self.snmp_socket, "ping", "test")
+        self.send_pool_message("register_return", "command", target="snmp_process")
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
         self.__log_template.log(log_level, what)
     def loop_post(self):
-        self.snmp_socket.close()
         self.__log_template.close()
     def _delay_command(self, *args, **kwargs):
         if simple_command.idle():
