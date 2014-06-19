@@ -55,7 +55,6 @@ class build_process(threading_tools.process_obj, version_check_mixin):
         connection.close()
         self.__mach_loggers = {}
         self.version = int(time.time())
-        self.syncer_socket = self.connect_to_socket("syncer")
         self.log("initial config_version is %d" % (self.version))
         self.router_obj = config_tools.router_object(self.log)
         self.register_func("check_for_slaves", self._check_for_slaves)
@@ -73,7 +72,6 @@ class build_process(threading_tools.process_obj, version_check_mixin):
     def loop_post(self):
         for mach_logger in self.__mach_loggers.itervalues():
             mach_logger.close()
-        self.syncer_socket.close()
         self.__log_template.close()
     def _check_for_slaves(self, **kwargs):
         master_server = device.objects.get(Q(pk=global_config["SERVER_IDX"]))
@@ -281,7 +279,7 @@ class build_process(threading_tools.process_obj, version_check_mixin):
             else:
                 self.version += 1
             self.log("config_version for full build is %d" % (self.version))
-            self.send_to_socket(self.syncer_socket, ["build_info", "start_build", self.version])
+            self.send_pool_message("build_info", "start_build", self.version, target="syncer")
         # fetch SNMP-stuff from cluster and initialise var cache
         var_stack = var_cache(cdg)
         rebuild_gen_config = False
@@ -345,9 +343,9 @@ class build_process(threading_tools.process_obj, version_check_mixin):
                 if cur_gc.master and not single_build:
                     # recreate access files
                     cur_gc._create_access_entries()
-                self.send_to_socket(self.syncer_socket, ["build_info", "start_config_build", cur_gc.monitor_server.full_name])
+                self.send_pool_message("build_info", "start_config_build", cur_gc.monitor_server.full_name, target="syncer")
                 self._create_host_config_files(my_co, cur_gc, h_list, dev_templates, serv_templates, var_stack, cur_dmap, single_build, hdep_from_topo)
-                self.send_to_socket(self.syncer_socket, ["build_info", "end_config_build", cur_gc.monitor_server.full_name])
+                self.send_pool_message("build_info", "end_config_build", cur_gc.monitor_server.full_name, target="syncer")
                 if not single_build:
                     # refresh implies _write_entries
                     cur_gc.refresh()
@@ -355,7 +353,7 @@ class build_process(threading_tools.process_obj, version_check_mixin):
                         # write config to disk
                         cur_gc._write_entries()
                         # start syncing
-                        self.send_to_socket(self.syncer_socket, ["build_info", "sync_slave", cur_gc.monitor_server.full_name])
+                        self.send_pool_message("build_info", "sync_slave", cur_gc.monitor_server.full_name, target="syncer")
             if build_dv:
                 build_dv.delete()
             del my_co
@@ -364,7 +362,7 @@ class build_process(threading_tools.process_obj, version_check_mixin):
             if bc_valid and (cfgs_written or rebuild_gen_config):
                 # send reload to remote instance ?
                 self._reload_md_daemon()
-            self.send_to_socket(self.syncer_socket, ["build_info", "end_build", self.version])
+            self.send_pool_message("build_info", "end_build", self.version, target="syncer")
         else:
             cur_gc = self.__gen_config
             res_node = E.config(
