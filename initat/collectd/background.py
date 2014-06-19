@@ -24,7 +24,8 @@
 from initat.collectd.collectd_structs import ext_com
 from initat.collectd.collectd_types import * # @UnusedWildImport
 from initat.collectd.config import IPC_SOCK, RECV_PORT, log_base, \
-    MD_SERVER_PORT, MD_SERVER_UUID, MD_SERVER_HOST
+    MD_SERVER_PORT, MD_SERVER_UUID, MD_SERVER_HOST, LOG_NAME, LOG_DESTINATION, IPC_SOCK_SNMP, SNMP_PROCS
+from initat.snmp_relay.snmp_process import snmp_process
 from lxml import etree # @UnresolvedImports
 from lxml.builder import E # @UnresolvedImports
 import logging_tools
@@ -33,6 +34,7 @@ import server_command
 import process_tools
 import threading
 import signal
+import os
 import zmq
 import time
 
@@ -268,7 +270,8 @@ class bg_job(object):
                 del bg_job.ref_dict[_del]
 
 class background(multiprocessing.Process, log_base):
-    def __init__(self):
+    def __init__(self, main_pid):
+        self.main_pid = main_pid
         multiprocessing.Process.__init__(self, target=self._code, name="collectd_background")
     def _init(self):
         threading.currentThread().name = "background"
@@ -279,18 +282,30 @@ class background(multiprocessing.Process, log_base):
         # ignore signals
         signal.signal(signal.SIGTERM, signal.SIG_IGN)
         self._init_sockets()
+        self.__msi_block = None
+        self._init_snmp()
         self.__ipmi_list = []
         bg_job.setup(self)
+    def _read_msi_block(self):
+        self.log("reading MSI-block")
+        self.__msi_block = process_tools.meta_server_info("/var/lib/meta-server/collectd")
+        # add SNMP Processes
+        self._check_snmp_procs()
     def _init_sockets(self):
         self.zmq_id = "{}:collserver_plugin".format(process_tools.get_machine_name())
         self.com = self.zmq_context.socket(zmq.ROUTER)
+        self.snmp = self.zmq_context.socket(zmq.ROUTER)
         self.poller = zmq.Poller()
         self.com.setsockopt(zmq.IDENTITY, "bg")
+        self.snmp.setsockopt(zmq.IDENTITY, "main")
         self.com.connect(IPC_SOCK)
+        self.snmp.bind(IPC_SOCK_SNMP)
         self.net_target = self.zmq_context.socket(zmq.PUSH)
         listener_url = "tcp://127.0.0.1:{:d}".format(RECV_PORT)
         self.net_target.connect(listener_url)
         self.poller.register(self.com, zmq.POLLIN)
+        self.poller.register(self.snmp, zmq.POLLIN)
+        self.__hdict = {self.com : self._handle_com, self.snmp : self._handle_snmp}
         self.md_target = self.zmq_context.socket(zmq.DEALER)
         for flag, value in [
             (zmq.IDENTITY, self.zmq_id),
@@ -300,7 +315,6 @@ class background(multiprocessing.Process, log_base):
             (zmq.TCP_KEEPALIVE_IDLE, 300),
             ]:
             self.md_target.setsockopt(flag, value)
-
         self.md_target_addr = "tcp://{}:{:d}".format(
             MD_SERVER_HOST,
             MD_SERVER_PORT
@@ -312,10 +326,51 @@ class background(multiprocessing.Process, log_base):
         )
         self.md_target.connect(self.md_target_addr)
         self.log("connection to md-config-server at {} (id {})".format(self.md_target_addr, self.md_target_id))
+    def _init_snmp(self):
+        self.queue_name = IPC_SOCK_SNMP
+        self.__snmp_dict = {}
+    def _check_snmp_procs(self):
+        cur_running = self.__snmp_dict.keys()
+        to_start = SNMP_PROCS - len(cur_running)
+        if to_start:
+            conf_dict = {
+               "VERBOSE" : True,
+               "LOG_NAME" : LOG_NAME,
+               "LOG_DESTINATION" : LOG_DESTINATION
+            }
+            min_idx = 1 if not self.__snmp_dict else max(self.__snmp_dict.keys()) + 1
+            self.log("starting {} (starting at {:d})".format(
+                logging_tools.get_plural("SNMP process", to_start),
+                min_idx,
+                ))
+            for new_idx in xrange(min_idx, min_idx + to_start - 1):
+                cur_struct = {
+                    "name" : "snmp_{:d}".format(new_idx),
+                    "proc" : snmp_process("snmp_{:d}".format(new_idx), conf_dict, ignore_signals=True),
+                    "running" : False,
+                    "stopped" : False,
+                    "jobs" : 0
+                    }
+                cur_struct["proc"].process_pool = self
+                cur_struct["proc"].start()
+                self.__snmp_dict[new_idx] = cur_struct
+    def _stop_snmp_procs(self):
+        for key, value in self.__snmp_dict.iteritems():
+            if value["running"] and not value["stopped"]:
+                self.snmp.send_unicode(value["name"], zmq.SNDMORE)
+                self.snmp.send_pyobj({
+                    "pid"    : self.pid,
+                    "type"   : "exit",
+                    "args"   : [],
+                    "kwargs" : {},
+                })
+        if not self.__snmp_dict:
+            self.__exit_ok = True
     def _close(self):
         self._close_sockets()
     def _close_sockets(self):
         self.com.close()
+        self.snmp.close()
         self.net_target.close()
         self.md_target.close()
         self.log("background finished")
@@ -340,30 +395,65 @@ class background(multiprocessing.Process, log_base):
             for line in exc_info.log_lines:
                 self.log(line, logging_tools.LOG_LEVEL_ERROR)
     def _loop(self):
+        self.__exit_ok = False
         self.__run = True
-        while self.__run:
+        while self.__run or not self.__exit_ok:
             try:
                 _rcv_list = self.poller.poll(timeout=1000)
             except:
                 self.log("exception raised in poll:", logging_tools.LOG_LEVEL_ERROR)
                 exc_info = process_tools.exception_info()
-                for line in exc_info.log_lines:
-                    self.log(line, logging_tools.LOG_LEVEL_ERROR)
+                if exc_info.except_info[1].strerror.lower().count("interrupted"):
+                    self.__run = False
+                else:
+                    for line in exc_info.log_lines:
+                        self.log(line, logging_tools.LOG_LEVEL_ERROR)
+                os.kill(self.main_pid, 15)
+                self._stop_snmp_procs()
             else:
                 if len(_rcv_list):
-                    src_id = self.com.recv_unicode()
-                    data = self.com.recv_pyobj()
-                    if data == "exit":
-                        self.__run = False
-                    elif data.startswith("<"):
-                        _in_xml = server_command.srv_command(source=data)
-                        self._handle_xml(_in_xml)
-                    else:
-                        self.log("got unknown data {} from {}".format(str(data), src_id), logging_tools.LOG_LEVEL_WARN)
+                    for _rcv_part in _rcv_list:
+                        self.__hdict[_rcv_part[0]]()
                 else:
                     # timeout, update background jobs
                     bg_job.check_jobs()
         self._close()
+    def _handle_com(self):
+        src_id = self.com.recv_unicode()
+        data = self.com.recv_pyobj()
+        if data == "exit":
+            self.log("got exit from {}".format(src_id))
+            self.__run = False
+            self._stop_snmp_procs()
+        elif data == "read_msi_block":
+            self._read_msi_block()
+        elif data.startswith("<"):
+            _in_xml = server_command.srv_command(source=data)
+            self._handle_xml(_in_xml)
+        else:
+            self.log("got unknown data {} from {}".format(str(data), src_id), logging_tools.LOG_LEVEL_WARN)
+    def _handle_snmp(self):
+        src_proc = self.snmp.recv_unicode()
+        snmp_idx = int(src_proc.split("_")[1])
+        data = self.snmp.recv_pyobj()
+        if data["type"] == "process_start":
+            self.__snmp_dict[snmp_idx]["running"] = True
+            # print data
+            self.__msi_block.add_actual_pid(data["pid"], mult=3, process_name=src_proc, fuzzy_ceiling=3)
+            self.__msi_block.save_block()
+        elif data["type"] == "process_exit":
+            self.__snmp_dict[snmp_idx]["stopped"] = True
+            self.__snmp_dict[snmp_idx]["proc"].join()
+            del self.__snmp_dict[snmp_idx]
+            self.__msi_block.remove_actual_pid(data["pid"], mult=3)
+            self.__msi_block.save_block()
+            if self.__run:
+                # spawn new processes
+                self._check_snmp_procs()
+            else:
+                if not self.__snmp_dict:
+                    self.log("all SNMP processes stopped")
+                    self.__exit_ok = True
     def _handle_xml(self, in_com):
         com_text = in_com["*command"]
         if com_text == "ipmi_hosts":

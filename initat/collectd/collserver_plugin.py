@@ -25,6 +25,7 @@ from initat.collectd.net_receiver import net_receiver
 from initat.collectd.background import background
 import collectd # @UnresolvedImport
 import os
+import time
 import process_tools
 import logging_tools
 import signal
@@ -41,15 +42,20 @@ class receiver(log_base):
         self.net_receiver_proc = net_receiver()
         self.net_receiver_proc.start()
         self.log("adding receiver pid {:d}".format(self.net_receiver_proc.pid))
-        self.background_proc = background()
+        self.background_proc = background(self.main_pid)
         self.background_proc.start()
         self.log("adding background pid {:d}".format(self.background_proc.pid))
         self.__msi_block.add_actual_pid(self.net_receiver_proc.pid, mult=3, process_name="receiver", fuzzy_ceiling=3)
         self.__msi_block.add_actual_pid(self.background_proc.pid, mult=3, process_name="background", fuzzy_ceiling=3)
+        # save msi block, then signal background
         self.__msi_block.save_block()
-    def init_receiver(self):
+        self.send_to_slave("bg", "read_msi_block")
+    def init_receiver(self, main_pid):
+        self.pid = os.getpid()
+        self.name = "main"
         self.zmq_context = zmq.Context()
         log_base.__init__(self)
+        self.main_pid = main_pid
         self.log("init receiver")
         self._init_msi_block()
         self.log("init 0MQ IPC receiver, socket at {}".format(
@@ -57,6 +63,7 @@ class receiver(log_base):
             )
         )
         self.recv_sock = self.zmq_context.socket(zmq.ROUTER)
+        self.recv_sock.setsockopt(zmq.ROUTER_MANDATORY, True)
         self.recv_sock.setsockopt(zmq.IDENTITY, "main")
         sock_dir = os.path.dirname(IPC_SOCK[6:])
         if not os.path.isdir(sock_dir):
@@ -93,13 +100,26 @@ class receiver(log_base):
                     else:
                         self.log("unknown data from {} : {}".format(sender, _com), logging_tools.LOG_LEVEL_ERROR)
         self.lock.release()
-    def send_to_slave(self, slave_name, snd):
-        self.recv_sock.send_unicode(slave_name, zmq.SNDMORE)
-        self.recv_sock.send_pyobj(snd)
+    def send_to_slave(self, slave_name, snd, **kwargs):
+        _ign = kwargs.get("ignore_error", False)
+        _iter = 0
+        while True:
+            try:
+                self.recv_sock.send_unicode(slave_name, zmq.SNDMORE)
+                self.recv_sock.send_pyobj(snd)
+            except zmq.error.ZMQError:
+                if _ign:
+                    break
+                _iter += 1
+                if _iter > 10:
+                    raise
+                time.sleep(0.1)
+            else:
+                break
     def shutdown(self):
         self.log("shutdown received")
-        self.send_to_slave("bg", "exit")
-        self.send_to_slave("net", "exit")
+        self.send_to_slave("bg", "exit", ignore_error=True)
+        self.send_to_slave("net", "exit", ignore_error=True)
         self.net_receiver_proc.join()
         self.background_proc.join()
         if self.recv_sock:
@@ -107,6 +127,8 @@ class receiver(log_base):
         self.log("exiting...")
         self.close_log()
         self.zmq_context.term()
+        self.background_proc.join()
+        self.net_receiver_proc.join()
         self.recv_sock = None
         self.__msi_block.remove_meta_block()
     def get_time(self, h_tuple, cur_time):
@@ -138,7 +160,7 @@ def configer(ObjConfiguration):
 
 def initer(my_recv):
     signal.signal(signal.SIGCHLD, signal.SIG_DFL)
-    my_recv.init_receiver()
+    my_recv.init_receiver(os.getpid())
 
 my_recv = receiver()
 

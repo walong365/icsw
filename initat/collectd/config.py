@@ -25,6 +25,8 @@ import logging_tools
 import uuid_tools
 
 IPC_SOCK = "ipc:///var/log/cluster/sockets/collectd/com"
+IPC_SOCK_SNMP = "ipc:///var/log/cluster/sockets/collectd/snmp"
+SNMP_PROCS = 4
 
 RECV_PORT = 8002
 COMMAND_PORT = 8008
@@ -50,6 +52,7 @@ class log_base(object):
             LOG_DESTINATION,
             zmq=True,
             context=self.zmq_context)
+        self.__log_template.log_command("ignore_process_id")
     @property
     def log_template(self):
         return self.__log_template
