@@ -273,7 +273,8 @@ class create_device(permission_required_mixin, View):
                 dnt_node = dnt.add_domain(domain_name)
             else:
                 short_name = device_data["full_name"]
-                dnt_node = None
+                # top level node
+                dnt_node = dnt.get_domain_tree_node("")
             try:
                 cur_dev = device.objects.get(Q(name=short_name) & Q(domain_tree_node=dnt_node))
             except device.DoesNotExist:
