@@ -676,10 +676,10 @@ cur_manager = config_manager()
 
 CONFIG_INIT = False
 
-def get_global_config(c_name, single_process=False):
-    # lock against double-init, for instance md-config-server includes process_monitor_mod whic
+def get_global_config(c_name, single_process=False, ignore_lock=False):
+    # lock against double-init, for instance md-config-server includes process_monitor_mod which
     # in turn tries to start the global_config manager (but from a different module)
-    if not globals()["CONFIG_INIT"]:
+    if not globals()["CONFIG_INIT"] or ignore_lock:
         globals()["CONFIG_INIT"] = True
         if single_process:
             return configuration(c_name, single_process_mode=True)
