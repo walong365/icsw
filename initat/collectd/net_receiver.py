@@ -23,7 +23,7 @@
 
 from initat.collectd.collectd_structs import host_info
 from initat.collectd.collectd_types import * # @UnusedWildImport
-from initat.collectd.config import COMMAND_PORT, GRAPHER_PORT, RECV_PORT, IPC_SOCK, log_base
+from initat.collectd.config import global_config, IPC_SOCK, log_base
 from lxml import etree # @UnresolvedImports
 from lxml.builder import E # @UnresolvedImports
 import logging_tools
@@ -80,9 +80,9 @@ class net_receiver(multiprocessing.Process, log_base):
             self.grapher.setsockopt(flag, value)
             self.command.setsockopt(flag, value)
         self.com.connect(IPC_SOCK)
-        listener_url = "tcp://*:{:d}".format(RECV_PORT)
-        command_url = "tcp://*:{:d}".format(COMMAND_PORT)
-        grapher_url = "tcp://localhost:{:d}".format(GRAPHER_PORT)
+        listener_url = "tcp://*:{:d}".format(global_config["RECV_PORT"])
+        command_url = "tcp://*:{:d}".format(global_config["COMMAND_PORT"])
+        grapher_url = "tcp://localhost:{:d}".format(global_config["GRAPHER_PORT"])
         self.receiver.bind(listener_url)
         self.command.bind(command_url)
         self.grapher.connect(grapher_url)

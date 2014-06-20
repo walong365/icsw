@@ -22,37 +22,43 @@
 """ base constants and logging base """
 
 import logging_tools
+import process_tools
 import uuid_tools
+import configfile
 
-IPC_SOCK = "ipc:///var/log/cluster/sockets/collectd/com"
-IPC_SOCK_SNMP = "ipc:///var/log/cluster/sockets/collectd/snmp"
-SNMP_PROCS = 4
-MAX_SNMP_JOBS = 20
+global_config = configfile.get_global_config("collectd-init", single_process=True, ignore_lock=True)
+global_config.add_config_entries([
+    ("SNMP_PROCS", configfile.int_c_var(4, help_string="number of SNMP processes to use [%(default)s]")),
+    ("MAX_SNMP_JOBS", configfile.int_c_var(40, help_string="maximum number of jobs a SNMP process shall handle [%(default)s]")),
+    ("LOG_NAME", configfile.str_c_var("collectd", help_string="log instance name to use [%(default)s]")),
+    ("RECV_PORT", configfile.int_c_var(8002, help_string="receive port, do not change [%(default)s]")),
+    ("COMMAND_PORT", configfile.int_c_var(8008, help_string="command port, do not change [%(default)s]")),
+    ("GRAPHER_PORT", configfile.int_c_var(8003, help_string="grapher port, do not change [%(default)s]")),
+    ("MD_SERVER_HOST", configfile.str_c_var("127.0.0.1", help_string="md-config-server host [%(default)s]")),
+    ("MD_SERVER_PORT", configfile.int_c_var(8010, help_string="md-config-server port, do not change [%(default)s]")),
+    ("MEMCACHE_HOST", configfile.str_c_var("127.0.0.1", help_string="host where memcache resides [%(default)s]")),
+    ("MEMCACHE_PORT", configfile.int_c_var(11211, help_string="port on which memcache is reachable [%(default)s]")),
+    ("MEMCACHE_TIMEOUT", configfile.int_c_var(2 * 60, help_string="timeout in seconds for values stored in memcache [%(default)s]"))
+])
+global_config.parse_file()
+global_config.write_file()
 
-RECV_PORT = 8002
-COMMAND_PORT = 8008
-GRAPHER_PORT = 8003
+IPC_SOCK = process_tools.get_zmq_ipc_name("com", connect_to_root_instance=True, s_name="collectd")
+IPC_SOCK_SNMP = process_tools.get_zmq_ipc_name("snmp", connect_to_root_instance=True, s_name="collectd")
 
-LOG_NAME = "collectd"
 LOG_DESTINATION = "ipc:///var/lib/logging-server/py_log_zmq"
 
-# memcache related
-MEMCACHE_HOST = "127.0.0.1"
-MEMCACHE_PORT = 11211
-MEMCACHE_TIMEOUT = 2 * 60
-
-# md config server
-MD_SERVER_PORT = 8010
-MD_SERVER_HOST = "127.0.0.1"
 MD_SERVER_UUID = uuid_tools.get_uuid().get_urn()
 
 class log_base(object):
     def __init__(self):
         self.__log_template = logging_tools.get_logger(
-            LOG_NAME,
+            global_config["LOG_NAME"],
             LOG_DESTINATION,
             zmq=True,
-            context=self.zmq_context)
+            context=self.zmq_context,
+        )
+        # ignore alternating process ids
         self.__log_template.log_command("ignore_process_id")
     @property
     def log_template(self):

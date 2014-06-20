@@ -23,9 +23,8 @@
 
 from initat.collectd.collectd_structs import ext_com
 from initat.collectd.collectd_types import * # @UnusedWildImport
-from initat.collectd.config import IPC_SOCK, RECV_PORT, log_base, \
-    MD_SERVER_PORT, MD_SERVER_UUID, MD_SERVER_HOST, LOG_NAME, LOG_DESTINATION, IPC_SOCK_SNMP, \
-    SNMP_PROCS, MAX_SNMP_JOBS
+from initat.collectd.config import IPC_SOCK, log_base, global_config, LOG_DESTINATION, \
+    IPC_SOCK_SNMP, MD_SERVER_UUID
 from initat.snmp_relay.snmp_process import snmp_process, simple_snmp_oid
 from lxml import etree # @UnresolvedImports
 from lxml.builder import E # @UnresolvedImports
@@ -520,7 +519,7 @@ class background(multiprocessing.Process, log_base):
         self.com.connect(IPC_SOCK)
         self.snmp.bind(IPC_SOCK_SNMP)
         self.net_target = self.zmq_context.socket(zmq.PUSH)
-        listener_url = "tcp://127.0.0.1:{:d}".format(RECV_PORT)
+        listener_url = "tcp://127.0.0.1:{:d}".format(global_config["RECV_PORT"])
         self.net_target.connect(listener_url)
         self.poller.register(self.com, zmq.POLLIN)
         self.poller.register(self.snmp, zmq.POLLIN)
@@ -535,12 +534,12 @@ class background(multiprocessing.Process, log_base):
             ]:
             self.md_target.setsockopt(flag, value)
         self.md_target_addr = "tcp://{}:{:d}".format(
-            MD_SERVER_HOST,
-            MD_SERVER_PORT
+            global_config["MD_SERVER_HOST"],
+            global_config["MD_SERVER_PORT"],
         )
         self.md_target.connect(self.md_target_addr)
         self.md_target_id = "{}:{}:".format(
-             MD_SERVER_UUID,
+            MD_SERVER_UUID,
             "md-config-server",
         )
         self.md_target.connect(self.md_target_addr)
@@ -550,11 +549,11 @@ class background(multiprocessing.Process, log_base):
         self.__snmp_dict = {}
     def _check_snmp_procs(self):
         cur_running = self.__snmp_dict.keys()
-        to_start = SNMP_PROCS - len(cur_running)
+        to_start = global_config["SNMP_PROCS"] - len(cur_running)
         if to_start:
             conf_dict = {
                "VERBOSE" : True,
-               "LOG_NAME" : LOG_NAME,
+               "LOG_NAME" : global_config["LOG_NAME"],
                "LOG_DESTINATION" : LOG_DESTINATION
             }
             min_idx = 1 if not self.__snmp_dict else max(self.__snmp_dict.keys()) + 1
@@ -680,11 +679,11 @@ class background(multiprocessing.Process, log_base):
         elif data["type"] == "snmp_finished":
             self.__snmp_dict[snmp_idx]["pending"] -= 1
             snmp_job.feed_result(data["args"])
-            if self.__snmp_dict[snmp_idx]["jobs"] > MAX_SNMP_JOBS:
+            if self.__snmp_dict[snmp_idx]["jobs"] > global_config["MAX_SNMP_JOBS"]:
                 self.log("stopping SNMP process {:d} ({:d} > {:d})".format(
                     snmp_idx,
                     self.__snmp_dict[snmp_idx]["jobs"],
-                    MAX_SNMP_JOBS,
+                    global_config["MAX_SNMP_JOBS"],
                     ))
                 self._send_to_snmp("snmp_{:d}".format(snmp_idx), "exit")
         else:

@@ -50,6 +50,8 @@ class receiver(log_base):
         # save msi block, then signal background
         self.__msi_block.save_block()
         self.send_to_slave("bg", "read_msi_block")
+    # def config(self, *args, **kwargs):
+    #    print "c", args, kwargs
     def init_receiver(self, main_pid):
         self.pid = os.getpid()
         self.name = "main"
@@ -156,6 +158,7 @@ class receiver(log_base):
 
 # our own functions go here
 def configer(ObjConfiguration):
+    # print ObjConfiguration, dir(ObjConfiguration)
     pass
 
 def initer(my_recv):
@@ -164,7 +167,7 @@ def initer(my_recv):
 
 my_recv = receiver()
 
-collectd.register_config(configer)
+# print "c", collectd.register_config(configer) # my_recv.config)
 collectd.register_init(initer, my_recv)
 # call every 15 seconds
 collectd.register_read(my_recv.recv, 15.0)

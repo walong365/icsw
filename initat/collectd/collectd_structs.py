@@ -20,7 +20,7 @@
 #
 
 from initat.collectd.collectd_types import value
-from initat.collectd.config import MEMCACHE_HOST, MEMCACHE_PORT, MEMCACHE_TIMEOUT
+from initat.collectd.config import global_config
 from lxml.builder import E # @UnresolvedImports
 import memcache
 import json
@@ -29,7 +29,7 @@ import process_tools
 import subprocess
 import time
 
-mc = memcache.Client(["{}:{:d}".format(MEMCACHE_HOST, MEMCACHE_PORT)])
+mc = memcache.Client(["{}:{:d}".format(global_config["MEMCACHE_HOST"], global_config["MEMCACHE_PORT"])])
 
 class ext_com(object):
     run_idx = 0
@@ -73,6 +73,7 @@ class host_info(object):
         self.stores = 0
         self.store_to_disk = True
         self.log("init host_info for {} ({})".format(name, uuid))
+        self.__mc_timeout = global_config["MEMCACHE_TIMEOUT"]
     @staticmethod
     def setup():
         host_info.entries = {}
@@ -146,7 +147,7 @@ class host_info(object):
         json_vector = [_value.get_json() for _value in self.__dict.itervalues()]
         host_info.host_update(self)
         # set and ignore errors, default timeout is 2 minutes
-        mc.set(self.mc_key(), json.dumps(json_vector), MEMCACHE_TIMEOUT)
+        mc.set(self.mc_key(), json.dumps(json_vector), self.__mc_timeout)
     def transform(self, key, value, cur_time):
         self.last_update = cur_time
         if key in self.__dict:
