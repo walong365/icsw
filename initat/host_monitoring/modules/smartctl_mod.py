@@ -32,7 +32,7 @@ class _general(hm_classes.hm_module):
         if self.smartctl_bin:
             _stat, _lines = self.smcall("--scan")
             if not _stat:
-                for line in _lines:
+                for line in [_entry for _entry in _lines if not _entry.strip().startswith("#")]:
                     line = line.strip().split("#")[0].strip()
                     _dev_name, _dev_opts = line.split(None, 1)
                     self.log("found device {} ({})".format(_dev_name, _dev_opts))
