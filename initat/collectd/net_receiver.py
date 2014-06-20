@@ -206,7 +206,7 @@ class net_receiver(multiprocessing.Process, log_base):
                 self._handle_hk_command(in_com, com_text)
             elif com_text == "disabled_hosts":
                 self._handle_disabled_hosts(in_com, com_text)
-            elif com_text == "ipmi_hosts":
+            elif com_text in ["ipmi_hosts", "snmp_hosts"]:
                 # send ipmi_hosts to main because currently there is no direct communication possible between net and background process
                 self._send_to_main(("to_bg", unicode(in_com)))
             else:

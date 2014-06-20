@@ -25,7 +25,7 @@ from initat.collectd.collectd_structs import ext_com
 from initat.collectd.collectd_types import * # @UnusedWildImport
 from initat.collectd.config import IPC_SOCK, RECV_PORT, log_base, \
     MD_SERVER_PORT, MD_SERVER_UUID, MD_SERVER_HOST, LOG_NAME, LOG_DESTINATION, IPC_SOCK_SNMP, SNMP_PROCS
-from initat.snmp_relay.snmp_process import snmp_process
+from initat.snmp_relay.snmp_process import snmp_process, simple_snmp_oid
 from lxml import etree # @UnresolvedImports
 from lxml.builder import E # @UnresolvedImports
 import logging_tools
@@ -96,6 +96,219 @@ def parse_ipmi(in_lines):
                     limits = {key : l_val for key, l_val in zip(IPMI_LIMITS, [{"na" : ""}.get(value, value) for value in parts[4:10]])}
                     result[key] = (float(parts[1]), info, unit, base, limits)
     return result
+
+class snmp_scheme(object):
+    def __init__(self):
+        pass
+    def get_oid_list(self):
+        _list = []
+        if hasattr(self, "var_list"):
+            _list.append(("V", self.var_list))
+        if hasattr(self, "table_list"):
+            _list.append(("T", self.table_list))
+        return _list
+    def build(self, job, res_dict):
+        headers = {
+            "name" : job.device_name,
+            "uuid" : job.uuid,
+            "time" : "{:d}".format(int(job.last_start))
+        }
+        _tree = E.machine_vector(
+            simple="0",
+            **headers
+        )
+        _mon_info = E.monitor_info(
+            **headers
+        )
+        self.feed_trees(_tree, _mon_info, res_dict)
+        return _tree, _mon_info
+
+
+class apcv1_scheme(snmp_scheme):
+    var_list = [simple_snmp_oid("1.3.6.1.4.1.318.1.1.12.2.3.1.1.2.1")]
+    def feed_trees(self, mv_tree, mon_tree, res_dict):
+        mv_tree.append(
+            E.mve(
+                info="Ampere",
+                unit="A",
+                base="1",
+                v_type="f",
+                value="{:.1f}".format(float(res_dict.values()[0]) / 10.),
+                name="apc.ampere.used",
+            )
+        )
+
+class snmp_job(object):
+    def __init__(self, id_str, ip, snmp_scheme, snmp_version, snmp_read_community, **kwargs):
+        self.id_str = id_str
+        snmp_job.add_job(self)
+        self.ip = ip
+        self.snmp_version = snmp_version
+        self.snmp_scheme = snmp_scheme
+        self.snmp_read_community = snmp_read_community
+        self.device_name = kwargs.get("device_name", "")
+        self.uuid = kwargs.get("uuid", "")
+        self.max_runtime = kwargs.get("max_runtime", 45)
+        self.run_every = kwargs.get("run_every", 30)
+        self.counter = 0
+        self.last_start = None
+        # batch id we are currently waiting for
+        self.waiting_for = None
+        self.running = False
+        # to remove from list
+        self.to_remove = False
+        # get snmp scheme object
+        scheme_name = "{}_scheme".format(self.snmp_scheme) 
+        if scheme_name in globals():
+            self.snmp_scheme_object = globals()[scheme_name]()
+            self.log(
+                "new SNMP {}, ip is {} (V{:d}, {}), valid scheme {}".format(
+                    self.id_str,
+                    self.ip,
+                    self.snmp_version,
+                    self.snmp_read_community,
+                    self.snmp_scheme
+                )
+            )
+        else:
+            self.snmp_scheme_object = None
+            self.log(
+                "new SNMP {}, ip is {} (V{:d}, {}), invalid scheme {}".format(
+                    self.id_str,
+                    self.ip,
+                    self.snmp_version,
+                    self.snmp_read_community,
+                    self.snmp_scheme
+                ),
+                logging_tools.LOG_LEVEL_CRITICAL
+            )
+        self.check()
+    def update_attribute(self, attr_name, attr_value):
+        if getattr(self, attr_name) != attr_value:
+            self.log("changed attribute {} from '{}' to '{}'".format(
+                attr_name,
+                getattr(self, attr_name),
+                attr_value,
+                ))
+            setattr(self, attr_name, attr_value)
+    def _start_snmp_batch(self):
+        if self.snmp_scheme_object:
+            self.counter += 1
+            self.last_start = time.time()
+            self.running = True
+            self.waiting_for = "{}_{:d}".format(self.uuid, self.counter)
+            self.bg_proc.start_snmp_batch(
+                self.waiting_for,
+                self.ip,
+                self.snmp_version,
+                self.snmp_read_community,
+                self.snmp_scheme_object.get_oid_list()
+                # [("V", [simple_snmp_oid("1.3.6.1.4.1.318.1.1.12.2.3.1.1.2.1")])]
+                )
+    def feed(self, *res_list):
+        self.waiting_for = None
+        self.running = False
+        error_list, ok_list, res_dict = res_list[0:3]
+        if error_list:
+            self.log("error fetching SNMP data from {}".format(self.device_name), logging_tools.LOG_LEVEL_ERROR)
+        else:
+            _tree, _mon_info = self.snmp_scheme_object.build(self, res_dict)
+            # graphing
+            self.bg_proc.send_to_net(etree.tostring(_tree))
+    def check_for_timeout(self):
+        diff_time = int(abs(time.time() - self.last_start))
+        if  diff_time > self.max_runtime:
+            self.log("timeout ({:d} > {:d})".format(diff_time, self.max_runtime), logging_tools.LOG_LEVEL_WARN)
+            return True
+        else:
+            return False
+    def check(self):
+        # return True if process is still running
+        if self.running:
+            if self.waiting_for:
+                if self.check_for_timeout():
+                    self.waiting_for = None
+                    self.running = False
+            # else:
+            #    self.running = False
+            #    print "done"
+            #    stdout, stderr = self.__ec.communicate()
+            #    self.log(
+            #        "done (RC={:d}) in {} (stdout: {}, stderr: {})".format(
+            #            self.result,
+            #            logging_tools.get_diff_time_str(self.__ec.end_time - self.__ec.start_time),
+            #            logging_tools.get_plural("byte", len(stdout)),
+            #            logging_tools.get_plural("byte", len(stderr)),
+            #        )
+            #    )
+            #    if stdout and self.result == 0:
+            #        if self.builder is not None:
+            #            _tree, _mon_info = self.builder.build(stdout, name=self.device_name, uuid=self.uuid, time="{:d}".format(int(self.last_start)))
+            #            # graphing
+            #            bg_job.bg_proc.send_to_net(etree.tostring(_tree))
+            #            # monitoring
+            #            bg_job.bg_proc.send_to_md(unicode(server_command.srv_command(command="monitoring_info", mon_info=_mon_info)))
+            #        else:
+            #            bg_job.log("no builder set", logging_tools.LOG_LEVEL_ERROR)
+            #    if stderr:
+            #        for line_num, line in enumerate(stderr.strip().split("\n")):
+            #            self.log("  {:3d} {}".format(line_num + 1 , line), logging_tools.LOG_LEVEL_ERROR)
+        else:
+            if self.last_start is None or abs(int(time.time() - self.last_start)) >= self.run_every and not self.to_remove:
+                self._start_snmp_batch()
+        return self.running
+    def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
+        self.bg_proc.log(u"[snmp {:d}] {}".format(self.idx, what), log_level)
+    @staticmethod
+    def feed_result(recv_data):
+        job_id = recv_data[0]
+        _found = False
+        for _job in snmp_job.ref_dict.itervalues():
+            if _job.waiting_for == job_id:
+                _job.feed(*recv_data[1:])
+                _found = True
+        if not _found:
+            snmp_job.g_log("job_id {} unknown".format(job_id), logging_tools.LOG_LEVEL_ERROR)
+    @staticmethod
+    def setup(bg_proc):
+        snmp_job.run_idx = 0
+        snmp_job.bg_proc = bg_proc
+        snmp_job.ref_dict = {}
+    @staticmethod
+    def add_job(new_job):
+        snmp_job.run_idx += 1
+        new_job.idx = snmp_job.run_idx
+        snmp_job.ref_dict[new_job.id_str] = new_job
+    @staticmethod
+    def g_log(what, log_level=logging_tools.LOG_LEVEL_OK):
+        snmp_job.bg_proc.log(u"[SNMP] {}".format(what), log_level)
+    @staticmethod
+    def get_job(job_id):
+        return snmp_job.ref_dict[job_id]
+    @staticmethod
+    def sync_jobs_with_id_list(id_list):
+        # sync the currently configures jobs with the new id_list
+        _cur = set(snmp_job.ref_dict.keys())
+        _new = set(id_list)
+        _to_remove = _cur - _new
+        _same = _cur & _new
+        _to_create = _new - _cur
+        if _to_remove:
+            snmp_job.g_log("{} to remove: {}".format(logging_tools.get_plural("SNMP job", len(_to_remove)), ", ".join(sorted(list(_to_remove)))))
+            for _rem in _to_remove:
+                snmp_job.ref_dict[_rem].to_remove = True
+        return _to_create, _to_remove, _same
+    @staticmethod
+    def check_jobs():
+        _to_delete = []
+        for id_str, job in snmp_job.ref_dict.iteritems():
+            job.check()
+            if job.to_remove and not job.running:
+                _to_delete.append(id_str)
+        if _to_delete:
+            snmp_job.g_log("removing {}: {}".format(logging_tools.get_plural("SNMP job", len(_to_delete)), ", ".join(sorted(_to_delete))), logging_tools.LOG_LEVEL_WARN)
+            for _del in _to_delete:
+                del bg_job.ref_dict[_del]
 
 class ipmi_builder(object):
     def __init__(self):
@@ -286,6 +499,7 @@ class background(multiprocessing.Process, log_base):
         self._init_snmp()
         self.__ipmi_list = []
         bg_job.setup(self)
+        snmp_job.setup(self)
     def _read_msi_block(self):
         self.log("reading MSI-block")
         self.__msi_block = process_tools.meta_server_info("/var/lib/meta-server/collectd")
@@ -343,7 +557,7 @@ class background(multiprocessing.Process, log_base):
                 logging_tools.get_plural("SNMP process", to_start),
                 min_idx,
                 ))
-            for new_idx in xrange(min_idx, min_idx + to_start - 1):
+            for new_idx in xrange(min_idx, min_idx + to_start):
                 cur_struct = {
                     "name" : "snmp_{:d}".format(new_idx),
                     "proc" : snmp_process("snmp_{:d}".format(new_idx), conf_dict, ignore_signals=True),
@@ -354,16 +568,18 @@ class background(multiprocessing.Process, log_base):
                 cur_struct["proc"].process_pool = self
                 cur_struct["proc"].start()
                 self.__snmp_dict[new_idx] = cur_struct
+    def _send_to_snmp(self, target, m_type, *args, **kwargs):
+        self.snmp.send_unicode(target, zmq.SNDMORE)
+        self.snmp.send_pyobj({
+            "pid"    : self.pid,
+            "type"   : m_type,
+            "args"   : args,
+            "kwargs" : kwargs,
+        })
     def _stop_snmp_procs(self):
         for key, value in self.__snmp_dict.iteritems():
             if value["running"] and not value["stopped"]:
-                self.snmp.send_unicode(value["name"], zmq.SNDMORE)
-                self.snmp.send_pyobj({
-                    "pid"    : self.pid,
-                    "type"   : "exit",
-                    "args"   : [],
-                    "kwargs" : {},
-                })
+                self._send_to_snmp(value["name"], "exit")
         if not self.__snmp_dict:
             self.__exit_ok = True
     def _close(self):
@@ -417,6 +633,7 @@ class background(multiprocessing.Process, log_base):
                 else:
                     # timeout, update background jobs
                     bg_job.check_jobs()
+                    snmp_job.check_jobs()
         self._close()
     def _handle_com(self):
         src_id = self.com.recv_unicode()
@@ -454,30 +671,57 @@ class background(multiprocessing.Process, log_base):
                 if not self.__snmp_dict:
                     self.log("all SNMP processes stopped")
                     self.__exit_ok = True
+        elif data["type"] == "snmp_finished":
+            snmp_job.feed_result(data["args"])
+        else:
+            self.log("unknown type {} from {}".format(data["type"], src_proc), logging_tools.LOG_LEVEL_ERROR)
     def _handle_xml(self, in_com):
         com_text = in_com["*command"]
-        if com_text == "ipmi_hosts":
+        if com_text in ["ipmi_hosts", "snmp_hosts"]:
+            j_type = com_text.split("_")[0]
+            t_obj = {"ipmi" : bg_job, "snmp" : snmp_job}[j_type]
             # create ids
-            _id_dict = {"{}:IPMI".format(_dev.attrib["uuid"]) : _dev for _dev in in_com.xpath(".//ns:device_list/ns:device")}
-            _new_list, _remove_list, _same_list = bg_job.sync_jobs_with_id_list(_id_dict.keys())
+            _id_dict = {"{}:{}".format(_dev.attrib["uuid"], j_type) : _dev for _dev in in_com.xpath(".//ns:device_list/ns:device")}
+            _new_list, _remove_list, _same_list = t_obj.sync_jobs_with_id_list(_id_dict.keys())
             for new_id in _new_list:
                 _dev = _id_dict[new_id]
-                bg_job(
-                    new_id,
-                    ipmi_builder().get_comline(_dev),
-                    ipmi_builder(),
-                    device_name=_dev.get("full_name"),
-                    uuid=_dev.get("uuid"),
-                )
+                if j_type == "ipmi":
+                    t_obj(
+                        new_id,
+                        ipmi_builder().get_comline(_dev),
+                        ipmi_builder(),
+                        device_name=_dev.get("full_name"),
+                        uuid=_dev.get("uuid"),
+                    )
+                else:
+                    t_obj(
+                        new_id,
+                        _dev.get("ip"),
+                        _dev.get("snmp_scheme"),
+                        int(_dev.get("snmp_version")),
+                        _dev.get("snmp_read_community"),
+                        device_name=_dev.get("full_name"),
+                        uuid=_dev.get("uuid"),
+                    )
             for same_id in _same_list:
                 _dev = _id_dict[same_id]
-                _job = bg_job.get_job(same_id)
-                for attr_name, attr_value in [
-                    ("comline", ipmi_builder().get_comline(_dev)),
-                    ("device_name", _dev.get("full_name")),
-                    ("uuid", _dev.get("uuid")),
-                ]:
-                    _job.update_attribute(attr_name, attr_value)
+                _job = t_obj.get_job(same_id)
+                if j_type == "ipmi":
+                    for attr_name, attr_value in [
+                        ("comline", ipmi_builder().get_comline(_dev)),
+                        ("device_name", _dev.get("full_name")),
+                        ("uuid", _dev.get("uuid")),
+                    ]:
+                        _job.update_attribute(attr_name, attr_value)
+                else:
+                    for attr_name, attr_value in [
+                        ("ip", _dev.get("ip")),
+                        ("snmp_scheme", _dev.get("snmp_scheme")),
+                        ("snmp_version", int(_dev.get("snmp_version"))),
+                        ("snmp_read_community", _dev.get("snmp_read_community")),
+                        ]:
+                        _job.update_attribute(attr_name, attr_value)
         else:
             self.log("got server_command with unknown command {}".format(com_text), logging_tools.LOG_LEVEL_ERROR)
-
+    def start_snmp_batch(self, batch_id, ip, vers, com, oid_list):
+        self._send_to_snmp("snmp_1", "fetch_snmp", vers, ip, com, batch_id, True, 10, *oid_list, VERBOSE=0)
