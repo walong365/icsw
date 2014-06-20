@@ -125,13 +125,13 @@ class hc_command(object):
                 if not var_dict["SNMP_SCHEME"]:
                     self.log("no SNMP_SCHEME defined for '%s'" % (unicode(self.cd_obj.parent)), logging_tools.LOG_LEVEL_ERROR, dev=self.cd_obj.child)
                 elif var_dict["SNMP_SCHEME"] not in _SNMP_SCHEME_LUT:
-                    self.log("SNMP_SCHEME '%s' not found for '%s' (%s)" % (
+                    self.log("SNMP_SCHEME '{}' not found for '{}' ({})".format(
                         var_dict["SNMP_SCHEME"],
                         unicode(self.cd_obj.parent),
                         ", ".join(sorted(_SNMP_SCHEME_LUT.keys())),
                         ), logging_tools.LOG_LEVEL_ERROR, dev=self.cd_obj.child)
                 else:
-                    self.log("sending command '%s' (scheme %s) to %s" % (
+                    self.log("sending command '{}' (scheme {}) to {}".format(
                         command,
                         var_dict["SNMP_SCHEME"],
                         unicode(self.cd_obj.parent)), dev=self.cd_obj.child)
