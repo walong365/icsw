@@ -152,7 +152,7 @@ def remove_zmq_dirs(dir_name):
     except:
         pass
 
-LOCAL_ZMQ_DIR = "/tmp/.zmq_{:d}:{:d}".format(
+LOCAL_ZMQ_DIR = "/tmp/.icsw_zmq/.zmq_{:d}:{:d}".format(
     os.getuid(),
     os.getpid())
 
@@ -177,6 +177,10 @@ def get_zmq_ipc_name(name, **kwargs):
     if os.getuid() and not ctri:
         # non-root call
         root_dir = LOCAL_ZMQ_DIR
+        _root_base = os.path.dirname(root_dir)
+        if not os.path.isdir(_root_base):
+            os.mkdir(_root_base)
+            os.chmod(_root_base, 01777)
         atexit.register(remove_zmq_dirs, root_dir)
     else:
         if ALLOW_MULTIPLE_INSTANCES and not ctri:

@@ -759,12 +759,16 @@ class process_pool(timer_base, poller_obj, process_base, exception_handling_mixi
         try:
             os.nice(nice_level)
         except:
-            self.log("cannot renice pid %d to %d: %s" % (self.pid,
-                                                         nice_level,
-                                                         process_tools.get_except_info()),
-                     logging_tools.LOG_LEVEL_ERROR)
+            self.log(
+                "cannot renice pid {:d} to {:d}: {}".format(
+                    self.pid,
+                    nice_level,
+                    process_tools.get_except_info()
+                ),
+                logging_tools.LOG_LEVEL_ERROR
+            )
         else:
-            self.log("reniced pid %d to %d" % (self.pid, nice_level))
+            self.log("reniced pid {:d} to {:d}".format(self.pid, nice_level))
     def get_name(self):
         return self.name
     def __getitem__(self, fn):
@@ -788,8 +792,6 @@ class process_pool(timer_base, poller_obj, process_base, exception_handling_mixi
             f_str = [f_str]
         self.__ignore_funcs.extend(f_str)
     def _close_pp_sockets(self):
-        # for _sock_name, zmq_sock in self.__sockets.items():
-        #    zmq_sock.close()
         self.__com_socket.close()
         self.zmq_context.term()
     def add_process(self, t_obj, **kwargs):
