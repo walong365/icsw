@@ -27,6 +27,7 @@ import uuid_tools
 IPC_SOCK = "ipc:///var/log/cluster/sockets/collectd/com"
 IPC_SOCK_SNMP = "ipc:///var/log/cluster/sockets/collectd/snmp"
 SNMP_PROCS = 4
+MAX_SNMP_JOBS = 20
 
 RECV_PORT = 8002
 COMMAND_PORT = 8008

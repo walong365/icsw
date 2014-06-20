@@ -24,7 +24,8 @@
 from initat.collectd.collectd_structs import ext_com
 from initat.collectd.collectd_types import * # @UnusedWildImport
 from initat.collectd.config import IPC_SOCK, RECV_PORT, log_base, \
-    MD_SERVER_PORT, MD_SERVER_UUID, MD_SERVER_HOST, LOG_NAME, LOG_DESTINATION, IPC_SOCK_SNMP, SNMP_PROCS
+    MD_SERVER_PORT, MD_SERVER_UUID, MD_SERVER_HOST, LOG_NAME, LOG_DESTINATION, IPC_SOCK_SNMP, \
+    SNMP_PROCS, MAX_SNMP_JOBS
 from initat.snmp_relay.snmp_process import snmp_process, simple_snmp_oid
 from lxml import etree # @UnresolvedImports
 from lxml.builder import E # @UnresolvedImports
@@ -161,7 +162,7 @@ class snmp_job(object):
         self.check()
     def _init_scheme_object(self):
         # get snmp scheme object
-        scheme_name = "{}_scheme".format(self.snmp_scheme) 
+        scheme_name = "{}_scheme".format(self.snmp_scheme)
         if scheme_name in globals():
             self.snmp_scheme_object = globals()[scheme_name]()
             self.log(
@@ -567,7 +568,8 @@ class background(multiprocessing.Process, log_base):
                     "proc" : snmp_process("snmp_{:d}".format(new_idx), conf_dict, ignore_signals=True),
                     "running" : False,
                     "stopped" : False,
-                    "jobs" : 0
+                    "jobs"    : 0,
+                    "pending" : 0,
                     }
                 cur_struct["proc"].process_pool = self
                 cur_struct["proc"].start()
@@ -676,7 +678,15 @@ class background(multiprocessing.Process, log_base):
                     self.log("all SNMP processes stopped")
                     self.__exit_ok = True
         elif data["type"] == "snmp_finished":
+            self.__snmp_dict[snmp_idx]["pending"] -= 1
             snmp_job.feed_result(data["args"])
+            if self.__snmp_dict[snmp_idx]["jobs"] > MAX_SNMP_JOBS:
+                self.log("stopping SNMP process {:d} ({:d} > {:d})".format(
+                    snmp_idx,
+                    self.__snmp_dict[snmp_idx]["jobs"],
+                    MAX_SNMP_JOBS,
+                    ))
+                self._send_to_snmp("snmp_{:d}".format(snmp_idx), "exit")
         else:
             self.log("unknown type {} from {}".format(data["type"], src_proc), logging_tools.LOG_LEVEL_ERROR)
     def _handle_xml(self, in_com):
@@ -727,5 +737,16 @@ class background(multiprocessing.Process, log_base):
                         _job.update_attribute(attr_name, attr_value)
         else:
             self.log("got server_command with unknown command {}".format(com_text), logging_tools.LOG_LEVEL_ERROR)
+    def _get_free_snmp_id(self):
+        idle_procs = sorted([(value["jobs"], key) for key, value in self.__snmp_dict.iteritems() if not value["stopped"] and not value["pending"]])
+        running_procs = sorted([(value["jobs"], key) for key, value in self.__snmp_dict.iteritems() if not value["stopped"] and value["pending"]])
+        if idle_procs:
+            proc_id = idle_procs[0][1]
+        else:
+            proc_id = running_procs[0][1]
+        return proc_id
     def start_snmp_batch(self, batch_id, ip, vers, com, oid_list):
-        self._send_to_snmp("snmp_1", "fetch_snmp", vers, ip, com, batch_id, True, 10, *oid_list, VERBOSE=0)
+        snmp_id = self._get_free_snmp_id()
+        self.__snmp_dict[snmp_id]["jobs"] += 1
+        self.__snmp_dict[snmp_id]["pending"] += 1
+        self._send_to_snmp("snmp_{:d}".format(snmp_id), "fetch_snmp", vers, ip, com, batch_id, True, 10, *oid_list, VERBOSE=0)
