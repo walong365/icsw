@@ -878,9 +878,10 @@ class net_command(hm_classes.hm_command):
         self.parser.add_argument("--duplex", dest="duplex", type=str)
     def __call__(self, srv_com, cur_ns):
         if not "arguments:arg0" in srv_com:
-            srv_com["result"].attrib.update({
-                "reply" : "missing argument",
-                "state" : "%d" % (server_command.SRV_REPLY_STATE_ERROR)})
+            srv_com.set_result(
+                "missing argument",
+                server_command.SRV_REPLY_STATE_ERROR
+            )
         else:
             net_device = srv_com["arguments:arg0"].text.strip()
             if net_device in self.module.act_nds:
