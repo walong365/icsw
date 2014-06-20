@@ -555,6 +555,8 @@ class user(models.Model):
     object_perms = models.ManyToManyField(csw_object_permission, related_name="db_user_perms", blank=True, through=user_object_permission)
     is_superuser = models.BooleanField(default=False)
     db_is_auth_for_password = models.BooleanField(default=False)
+    # rms user created ?
+    user_user_created = models.BooleanField(default=False)
     @property
     def is_anonymous(self):
         return False
