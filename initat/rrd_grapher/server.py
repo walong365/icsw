@@ -318,6 +318,8 @@ class server_process(threading_tools.process_pool, threading_tools.operational_e
             _cs.setsockopt(zmq.IDENTITY, self.bind_id)
             _cs.setsockopt(zmq.SNDHWM, 256)
             _cs.setsockopt(zmq.RCVHWM, 256)
+            _cs.setsockopt(zmq.SNDTIMEO, 500)
+            _cs.setsockopt(zmq.IMMEDIATE, True)
             _cs.setsockopt(zmq.TCP_KEEPALIVE, 1)
             _cs.setsockopt(zmq.TCP_KEEPALIVE_IDLE, 300)
             _conn_str = "tcp://{}:{:d}".format(_ch, CD_COM_PORT)
