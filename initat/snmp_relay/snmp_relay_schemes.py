@@ -128,7 +128,7 @@ class snmp_oid(simple_snmp_oid):
         self._max_oid = kwargs.get("max_oid", None)
         if self._max_oid:
             self._max_oid_len = len(self._max_oid)
-            self._str_max_oid = ".".join(["%d" % (i_val) for i_val in self._max_oid])
+            self._str_max_oid = ".".join(["{:d}".format(i_val) for i_val in self._max_oid])
         else:
             self._max_oid_len, self._str_max_oid = (0, "")
         self.cache_it = kwargs.get("cache", False)

@@ -124,6 +124,7 @@ class snmp_batch(object):
     def loop(self):
         for key, header_list in self.kh_list:
             if self.run_ok() and header_list:
+                # header_list has to be a list
                 if key == "T":
                     # get table (bulk)
                     if self.__verbose > 1:
