@@ -157,6 +157,9 @@ class snmp_job(object):
         self.running = False
         # to remove from list
         self.to_remove = False
+        self._init_scheme_object()
+        self.check()
+    def _init_scheme_object(self):
         # get snmp scheme object
         scheme_name = "{}_scheme".format(self.snmp_scheme) 
         if scheme_name in globals():
@@ -182,7 +185,6 @@ class snmp_job(object):
                 ),
                 logging_tools.LOG_LEVEL_CRITICAL
             )
-        self.check()
     def update_attribute(self, attr_name, attr_value):
         if getattr(self, attr_name) != attr_value:
             self.log("changed attribute {} from '{}' to '{}'".format(
@@ -191,6 +193,8 @@ class snmp_job(object):
                 attr_value,
                 ))
             setattr(self, attr_name, attr_value)
+            if attr_name == "snmp_scheme":
+                self._init_scheme_object()
     def _start_snmp_batch(self):
         if self.snmp_scheme_object:
             self.counter += 1
