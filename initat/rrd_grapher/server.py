@@ -124,25 +124,21 @@ class server_process(threading_tools.process_pool, threading_tools.operational_e
                 ) for cur_dev in disabled_hosts]
             )
         return dis_com
-    def _get_ipmi_hosts(self):
-        # var cache
-        _vc = var_cache(device.objects.get(Q(device_group__cluster_device_group=True)), {"IPMI_USERNAME" : "notset", "IPMI_PASSWORD" : "notset", "IPMI_INTERFACE" : ""})
-        ipmi_hosts = device.objects.filter(Q(enabled=True) & Q(device_group__enabled=True) & Q(curl__istartswith="ipmi://") & Q(enable_perfdata=True))
-        _router = router_object(self.log)
-        _sc = config_tools.server_check(server_type="rrd_server")
+    def _check_reachability(self, devs, var_cache, _router, _type):
         _reachable, _unreachable = ([], [])
-        for ipmi_host in ipmi_hosts:
-            _path = _sc.get_route_to_other_device(_router, config_tools.server_check(device=ipmi_host, config=None, server_type="node"), allow_route_to_other_networks=True)
+        _sc = config_tools.server_check(server_type="rrd_server")
+        for dev in devs:
+            _path = _sc.get_route_to_other_device(_router, config_tools.server_check(device=dev, config=None, server_type="node"), allow_route_to_other_networks=True)
             if not len(_path):
-                _unreachable.append(ipmi_host)
+                _unreachable.append(dev)
             else:
                 _ip = _path[0][3][1][0]
                 # self.log("IPMI device {} is reachable via {}".format(unicode(ipmi_host), _ip))
-                _reachable.append((ipmi_host, _ip, _vc.get_vars(ipmi_host)[0]))
+                _reachable.append((dev, _ip, var_cache.get_vars(dev)[0]))
         if _unreachable:
             self.log(
                 "{}: {}".format(
-                    logging_tools.get_plural("unreachable IPMI device", len(_unreachable)),
+                    logging_tools.get_plural("unreachable {} device".format(_type), len(_unreachable)),
                     logging_tools.compress_list([unicode(_dev) for _dev in _unreachable])
                 ),
                 logging_tools.LOG_LEVEL_ERROR
@@ -150,13 +146,41 @@ class server_process(threading_tools.process_pool, threading_tools.operational_e
         if _reachable:
             self.log(
                 "{}: {}".format(
-                    logging_tools.get_plural("reachable IPMI device", len(_reachable)),
+                    logging_tools.get_plural("reachable {} device".format(_type), len(_reachable)),
                     logging_tools.compress_list([unicode(_dev) for _dev, _ip, _vars in _reachable])
                 ),
             )
+        return _reachable
+    def _get_snmp_hosts(self, _router):
+        # var cache
+        _vc = var_cache(device.objects.get(Q(device_group__cluster_device_group=True)), {"SNMP_VERSION" : 1, "SNMP_READ_COMMUNITY" : "public", "SNMP_SCHEME" : "unknown"})
+        snmp_hosts = device.objects.filter(Q(enabled=True) & Q(device_group__enabled=True) & Q(curl__istartswith="snmp://") & Q(enable_perfdata=True))
+        _reachable = self._check_reachability(snmp_hosts, _vc, _router, "SNMP")
+        snmp_com = server_command.srv_command(command="snmp_hosts")
+        _bld = snmp_com.builder()
+        snmp_com["devices"] = _bld.device_list(
+            *[
+                _bld.device(
+                    pk="{:d}".format(cur_dev.pk),
+                    short_name="{}".format(cur_dev.name),
+                    full_name="{}".format(cur_dev.full_name),
+                    uuid="{}".format(cur_dev.uuid),
+                    ip="{}".format(_ip),
+                    snmp_version="{:d}".format(_vars["SNMP_VERSION"]),
+                    snmp_read_community=_vars["SNMP_READ_COMMUNITY"],
+                    snmp_scheme=_vars["SNMP_SCHEME"],
+                ) for cur_dev, _ip, _vars in _reachable
+            ]
+        )
+        return snmp_com
+    def _get_ipmi_hosts(self, _router):
+        # var cache
+        _vc = var_cache(device.objects.get(Q(device_group__cluster_device_group=True)), {"IPMI_USERNAME" : "notset", "IPMI_PASSWORD" : "notset", "IPMI_INTERFACE" : ""})
+        ipmi_hosts = device.objects.filter(Q(enabled=True) & Q(device_group__enabled=True) & Q(curl__istartswith="ipmi://") & Q(enable_perfdata=True))
+        _reachable = self._check_reachability(ipmi_hosts, _vc, _router, "IPMI")
         ipmi_com = server_command.srv_command(command="ipmi_hosts")
         _bld = ipmi_com.builder()
-        ipmi_com["ipmi_devices"] = _bld.device_list(
+        ipmi_com["devices"] = _bld.device_list(
             *[
                 _bld.device(
                     pk="{:d}".format(cur_dev.pk),
@@ -172,7 +196,8 @@ class server_process(threading_tools.process_pool, threading_tools.operational_e
         )
         return ipmi_com
     def _connect_to_collectd(self):
-        send_coms = [self._get_disabled_hosts(), self._get_ipmi_hosts()]
+        _router = router_object(self.log)
+        send_coms = [self._get_disabled_hosts(), self._get_ipmi_hosts(_router), self._get_snmp_hosts(_router)]
         snd_ok, snd_try = (0, 0)
         for send_com in send_coms:
             for key in sorted(self._collectd_sockets):
