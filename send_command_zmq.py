@@ -38,7 +38,8 @@ def main():
     parser.add_argument("-S", help="servername [%(default)s]", type=str, default="collrelay", dest="server_name")
     parser.add_argument("-H", help="host [%(default)s] or server", default="localhost", dest="host")
     parser.add_argument("-v", help="verbose mode [%(default)s]", default=False, dest="verbose", action="store_true")
-    parser.add_argument("-i", help="set identity substring [%(default)s]", type=str, default="sc", dest="identity_string")
+    parser.add_argument("-i", help="set identity substring [%(default)s]", type=str, default="sc", dest="identity_substring")
+    parser.add_argument("-I", help="set identity string [%(default)s], has precedence over -i", type=str, default="", dest="identity_string")
     parser.add_argument("-n", help="set number of iterations [%(default)d]", type=int, default=1, dest="iterations")
     parser.add_argument("--raw", help="do not convert to server_command", default=False, action="store_true")
     parser.add_argument("--root", help="connect to root-socket [%(default)s]", default=False, action="store_true")
@@ -53,7 +54,10 @@ def main():
     # print args.arguments, other_args
     command = args.arguments.pop(0)
     other_args = args.arguments + other_args
-    identity_str = process_tools.zmq_identity_str(args.identity_string)
+    if args.identity_string:
+        identity_str = args.identity_string
+    else:
+        identity_str = process_tools.zmq_identity_str(args.identity_substring)
     zmq_context = zmq.Context(1)
     s_type = "DEALER" if not args.split else "PUSH"
     client = zmq_context.socket(getattr(zmq, s_type))

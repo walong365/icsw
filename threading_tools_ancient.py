@@ -405,11 +405,11 @@ class thread_pool(object):
         try:
             threading.stack_size(s_size)
         except:
-            self.log("Error setting stack_size to %s: %s" % (logging_tools.get_size_str(s_size, long_version=True),
+            self.log("Error setting stack_size to %s: %s" % (logging_tools.get_size_str(s_size, long_format=True),
                                                              get_except_info()),
                      logging_tools.LOG_LEVEL_ERROR)
         else:
-            self.log("setting stack_size to %s" % (logging_tools.get_size_str(s_size, long_version=True)))
+            self.log("setting stack_size to %s" % (logging_tools.get_size_str(s_size, long_format=True)))
     def get_own_queue(self):
         return self.__queues[self.__my_queue_name]
     def get_own_queue_name(self):
@@ -761,11 +761,11 @@ class twisted_main_thread(object):
         try:
             threading.stack_size(s_size)
         except:
-            self.log("Error setting stack_size to %s: %s" % (logging_tools.get_size_str(s_size, long_version=True),
+            self.log("Error setting stack_size to %s: %s" % (logging_tools.get_size_str(s_size, long_format=True),
                                                              get_except_info()),
                      logging_tools.LOG_LEVEL_ERROR)
         else:
-            self.log("setting stack_size to %s" % (logging_tools.get_size_str(s_size, long_version=True)))
+            self.log("setting stack_size to %s" % (logging_tools.get_size_str(s_size, long_format=True)))
     def _sig_handler(self, signum, frame):
         sig_str = "got signal %d" % (signum)
         self.log(sig_str)

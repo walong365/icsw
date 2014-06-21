@@ -554,6 +554,7 @@ class configuration(object):
         add_writeback_option = kwargs.pop("add_writeback_option", True)
         add_exit_after_writeback_option = kwargs.pop("add_exit_after_writeback_option", False)
         pos_arguments = kwargs.pop("positional_arguments", False)
+        pos_arguments_optional = kwargs.pop("positional_arguments_optional", False)
         partial = kwargs.pop("partial", False)
         self.exit_code = None
         my_parser = argparse.ArgumentParser(**kwargs)
@@ -573,7 +574,7 @@ class configuration(object):
                 if add_exit_after_writeback_option:
                     my_parser.add_argument("--exit-after-writeback", dest="exit_after_writeback", default=False, action="store_true", help="exit after config file is written [%(default)s]")
             if pos_arguments:
-                my_parser.add_argument("arguments", nargs="+", help="additional arguments")
+                my_parser.add_argument("arguments", nargs="*" if pos_arguments_optional else "+", help="additional arguments")
             try:
                 if partial:
                     options, rest_args = my_parser.parse_known_args()
@@ -675,10 +676,10 @@ cur_manager = config_manager()
 
 CONFIG_INIT = False
 
-def get_global_config(c_name, single_process=False):
-    # lock against double-init, for instance md-config-server includes process_monitor_mod whic
+def get_global_config(c_name, single_process=False, ignore_lock=False):
+    # lock against double-init, for instance md-config-server includes process_monitor_mod which
     # in turn tries to start the global_config manager (but from a different module)
-    if not globals()["CONFIG_INIT"]:
+    if not globals()["CONFIG_INIT"] or ignore_lock:
         globals()["CONFIG_INIT"] = True
         if single_process:
             return configuration(c_name, single_process_mode=True)

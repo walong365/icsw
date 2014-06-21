@@ -63,6 +63,7 @@ class router_object(object):
         if latest_gen != self.__cur_gen:
             s_time = time.time()
             self.all_nds = netdevice.objects.exclude(Q(device__device_type__identifier="MD")).\
+                exclude(Q(enabled=False)).\
                 filter(Q(device__enabled=True) & Q(device__device_group__enabled=True)). \
                 values_list("idx", "device", "routing", "penalty", "inter_device_routing")
             self.dev_dict = {}
@@ -72,9 +73,12 @@ class router_object(object):
                 self.dev_dict[cur_nd[1]].append(cur_nd)
             self.nd_lut = dict([(value[0], value[1]) for value in netdevice.objects.all().values_list("pk", "device") if value[1] in self.dev_dict])
             self.nd_dict = dict([(cur_nd[0], cur_nd) for cur_nd in self.all_nds])
-            self.log("init router helper object, %s / %s" % (
-                logging_tools.get_plural("netdevice", len(self.all_nds)),
-                logging_tools.get_plural("peer information", peer_information.objects.count())))
+            self.log(
+                "init router helper object, {} / {}".format(
+                    logging_tools.get_plural("netdevice", len(self.all_nds)),
+                    logging_tools.get_plural("peer information", peer_information.objects.count())
+                )
+            )
             # peer dict
             self.peer_dict, self.simple_peer_dict = ({}, {})
             all_peers = peer_information.objects.all().values_list("s_netdevice_id", "d_netdevice_id", "penalty")

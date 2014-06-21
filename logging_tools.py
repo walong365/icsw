@@ -130,12 +130,12 @@ def get_plural(in_str, num, show_int=1, fstr_len=0, **kwargs):
         in_str[0 : end_idx],
         p_str)
 
-def get_size_str(in_s, long_version=False, divider=1024, strip_spaces=False):
+def get_size_str(in_s, long_format=False, divider=1024, strip_spaces=False, long_version=True):
     if type(in_s) in [str, unicode]:
         _len_in_s = len(in_s)
     else:
         _len_in_s = in_s
-    b_str = long_version and "Byte" or "B"
+    b_str = long_format and "Byte" or "B"
     pf_f, pf_str = (["k", "M", "G", "T", "P", "E"], "")
     while in_s > divider:
         in_s = in_s / float(divider)
@@ -691,7 +691,7 @@ class form_entry(object):
             form_str = "{{:{}}}".format(form_str)
         else:
             form_str = "{{:{}{:d}{}}}".format(
-                "<" if self.left else "",
+                "<" if self.left else ">",
                 max_len,
                 form_str,
                 )
@@ -719,6 +719,8 @@ class new_form_list(object):
             if "header" in item:
                 self.__header_dict[row_idx] = (item["left"], item["header"])
         self.__content.append(add_list)
+    def extend(self, add_list):
+        [self.append(_line) for _line in add_list]
     def __str__(self):
         return unicode(self)
     def __unicode__(self):
