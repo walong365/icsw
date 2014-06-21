@@ -23,7 +23,7 @@ monitoring_build_info_module.controller("info_ctrl", ["$scope", "$compile", "$fi
             wait_list = restDataSource.add_sources([
                 ["{% url 'rest:mon_dist_master_list' %}", {}]
                 #["{% url 'rest:mon_dist_slave_list' %}", {}]
-                ["{% url 'rest:device_tree_list' %}", {"all_monitoring_servers" : true}]
+                ["{% url 'rest:device_tree_list' %}", {"monitor_server_type" : true}]
             ])
             $q.all(wait_list).then((data) ->
                 $timeout($scope.reload, 5000)

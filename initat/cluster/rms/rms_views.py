@@ -8,6 +8,7 @@ from initat.cluster.backbone.models import user_variable
 from django.utils.decorators import method_decorator
 from django.views.generic import View
 from initat.cluster.backbone.render import render_me
+from initat.cluster.backbone.models import device
 from initat.cluster.frontend.helper_functions import contact_server, xml_wrapper, \
     update_session_object
 from initat.cluster.rms.rms_addons import *
@@ -62,7 +63,7 @@ else:
 my_sge_info = tl_sge_info()
 
 def get_job_options(request):
-    return sge_tools.get_empty_job_options()
+    return sge_tools.get_empty_job_options(compress_nodelist=False)
 
 def get_node_options(request):
     return sge_tools.get_empty_node_options(merge_node_queue=True)
@@ -122,42 +123,18 @@ def _value_to_str(in_value):
     else:
         return in_value
 
-def _sort_list(in_list, _post, angular_mode=False):
-    # for key in sorted(_post):
-    #    print key, _post[key]
-    start_idx = int(_post.get("iDisplayStart", "0"))
-    num_disp = int(_post.get("iDisplayLength", "10000"))
-    total_data_len = len(in_list)
-    # interpet nodes according to optional type attribute, TODO: use format from attrib to reformat later
+def _sort_list(in_list, _post):
+    # interpret nodes according to optional type attribute, TODO: use format from attrib to reformat later
     in_list = [[_node_to_value(sub_node) for sub_node in row] for row in in_list]
-    s_str = _post.get("sSearch", "").strip()
-    if s_str:
-        in_list = [row for row in in_list if any([str(cur_text).count(s_str) for cur_text in row])]
-    filter_data_len = len(in_list)
-    for sort_key in [key for key in _post.keys() if key.startswith("sSortDir_")]:
-        sort_dir = _post[sort_key]
-        sort_idx = int(_post["iSortCol_%s" % (sort_key.split("_")[-1])])
-        if sort_dir == "asc":
-            in_list = sorted(in_list, cmp=lambda x, y: cmp(x[sort_idx], y[sort_idx]))
-        else:
-            in_list = sorted(in_list, cmp=lambda x, y: cmp(y[sort_idx], x[sort_idx]))
     # reformat
-    show_list = [[_value_to_str(value) for value in line] for line in in_list[start_idx : start_idx + num_disp]]
+    show_list = [[_value_to_str(value) for value in line] for line in in_list]
     # print show_list
-    if angular_mode:
-        return show_list
-    else:
-        return {
-            "sEcho"                : int(_post.get("sEcho", "28")),
-            "iTotalRecords"        : total_data_len,
-            "iTotalDisplayRecords" : filter_data_len,
-            "aaData"               : show_list}
+    return show_list
 
 class get_rms_json(View):
     @method_decorator(login_required)
     def post(self, request):
         _post = request.POST
-        angular_mode = "angular" in _post
         my_sge_info.update()
         run_job_list = sge_tools.build_running_list(my_sge_info, get_job_options(request), user=request.user)
 
@@ -191,11 +168,20 @@ class get_rms_json(View):
                     )
                 fc_dict[file_el.attrib["full_id"]] = list(reversed(sorted(cur_fcd, cmp=lambda x, y: cmp(x[3], y[3]))))
         json_resp = {
-            "run_table"  : _sort_list(run_job_list, _post, angular_mode),
-            "wait_table" : _sort_list(wait_job_list, _post, angular_mode),
-            "node_table" : _sort_list(node_list, _post, angular_mode),
+            "run_table"  : _sort_list(run_job_list, _post),
+            "wait_table" : _sort_list(wait_job_list, _post),
+            "node_table" : _sort_list(node_list, _post),
             "files"      : fc_dict,
         }
+        return HttpResponse(json.dumps(json_resp), mimetype="application/json")
+
+class get_node_info(View):
+    @method_decorator(login_required)
+    def post(self, request):
+        _post = request.POST
+        _dev_names = json.loads(_post["devnames"])
+        dev_list = device.objects.filter(Q(name__in=_dev_names))
+        json_resp = {_entry.name : (_entry.idx, _entry.has_active_rrds) for _entry in dev_list}
         return HttpResponse(json.dumps(json_resp), mimetype="application/json")
 
 class control_job(View):
@@ -203,13 +189,26 @@ class control_job(View):
     @method_decorator(xml_wrapper)
     def post(self, request):
         _post = request.POST
-        c_id = _post["control_id"]
-        c_action = c_id.split(":")[1]
-        job_id = ".".join([entry for entry in c_id.split(":")[2:] if entry.strip()])
+        c_action = _post["command"]
+        job_id = ".".join([entry for entry in [_post["job_id"], _post["task_id"]] if entry.strip()])
         srv_com = server_command.srv_command(command="job_control", action=c_action)
         srv_com["job_list"] = srv_com.builder(
             "job_list",
             srv_com.builder("job", job_id=job_id))
+        contact_server(request, "rms", srv_com, timeout=10)
+
+class control_queue(View):
+    @method_decorator(login_required)
+    @method_decorator(xml_wrapper)
+    def post(self, request):
+        _post = request.POST
+        queue_spec = "{}@{}".format(_post["queue"], _post["host"])
+        logger.info("{} on {}".format(_post["command"], queue_spec))
+        srv_com = server_command.srv_command(command="queue_control", action=_post["command"])
+        srv_com["queue_list"] = srv_com.builder(
+            "queue_list",
+            srv_com.builder("queue", queue_spec=queue_spec)
+        )
         contact_server(request, "rms", srv_com, timeout=10)
 
 class get_file_content(View):

@@ -7,7 +7,7 @@
 root = exports ? this
 
 class device_info
-    constructor: (@event, @dev_key, @addon_devices=[]) ->
+    constructor: (@event, @dev_key, @addon_devices=[], @md_list=[]) ->
         if window.ICSW_DEV_INFO
             window.ICSW_DEV_INFO.close()
             @active_div = window.ICSW_DEV_INFO.active_div
@@ -23,6 +23,8 @@ class device_info
             dataType  : "json"
             success : (json) =>
                 @dev_json = json[0]
+                if @dev_json.device_type_identifier == "MD" and @dev_key not in @md_list
+                    @md_list.push(@dev_key)
                 @permissions = []
                 @build_div()
                 if @replace_div
@@ -48,137 +50,181 @@ class device_info
         for active_div in @active_divs
             $(active_div).find(".ng-scope").scope().$destroy()
         @active_divs = []
-    get_pk_list: (with_md=true) =>
-        # get all pks
-        return [@dev_json.idx].concat(@addon_devices)
     has_perm: (perm_name) =>
         return if @permissions.find("permissions[permission='#{perm_name}']").length then true else false
     build_div: () =>
+        main_pk = @dev_json.idx
+        # pks for all devices
+        pk_list = [@dev_json.idx].concat(@addon_devices)
+        # pks for devices which are no meta devices
+        pk_list_nmd = (entry for entry in pk_list when entry not in @md_list)
+        dis_modal = if @replace_div then 0 else 1
         if @addon_devices.length
             addon_text = " (#{@addon_devices.length + 1})"
         else
             addon_text = ""
-        main_pk = @dev_json.idx
-        pk_list = @get_pk_list().join(",")
-        dis_modal = if @replace_div then 0 else 1
-        dev_div = $("""
+        if pk_list_nmd.length > 1
+            addon_text_nmd = " (#{pk_list_nmd.length})"
+        else
+            addon_text_nmd = ""
+        dev_div_txt = """
 <div class="panel panel-default">
     <div class="panel-heading">
         <ul class='nav nav-tabs' id="info_tab">
             <li><a href='#general'>General</a></li>
-            <li><a href='#category'>Category#{addon_text}</a></li>
-            <li><a href='#location'>Location#{addon_text}</a></li>
-            <li><a href='#di_network'>Network#{addon_text}</a></li>
-            <li><a href='#config'>Config#{addon_text}</a></li>
-            <li><a href='#disk'>Disk#{addon_text}</a></li>
-{% if DJANGO_SERVICE_TYPES.md_config %}
-            <li><a href='#livestatus'>Livestatus#{addon_text}</a></li>
-            <li><a href='#monconfig'>MonConfig#{addon_text}</a></li>
-{% endif %}
-{% if DJANGO_SERVICE_TYPES.grapher %}
-            <li><a href='#rrd'>Graphs#{addon_text}</a></li>
-{% endif %}
+"""
+        if pk_list_nmd.length
+            dev_div_txt += """
+<li><a href='#category'>Category#{addon_text_nmd}</a></li>
+<li><a href='#location'>Location#{addon_text_nmd}</a></li>
+<li><a href='#di_network'>Network#{addon_text_nmd}</a></li>
+"""
+        dev_div_txt += """
+<li><a href='#config'>Config#{addon_text}</a></li>
+"""
+        if pk_list_nmd.length
+            dev_div_txt += """
+<li><a href='#disk'>Disk#{addon_text_nmd}</a></li>
+"""
+        dev_div_txt += """ 
+<li><a href='#vars'>Vars#{addon_text}</a></li>
+"""
+        if pk_list_nmd.length
+            if window.SERVICE_TYPES["md-config"]?
+                dev_div_txt += """            
+<li><a href='#livestatus'>Livestatus#{addon_text_nmd}</a></li>
+<li><a href='#monconfig'>MonConfig#{addon_text_nmd}</a></li>
+<li><a href='#monhint'>MonHint#{addon_text_nmd}</a></li>
+"""
+            if window.SERVICE_TYPES["grapher"]?
+                dev_div_txt += """            
+<li><a href='#rrd'>Graphs#{addon_text_nmd}</a></li>
+"""
+        dev_div_txt += """
         </ul>
     </div>
-    <div class="panel-body">
-        <div class="tab-content">
-            <div class="tab-pane" id="general">
-                <div id="icsw.device.config">
-                    <div ng-controller="deviceinfo_ctrl">
-                        <deviceinfo devicepk='#{main_pk}'>
-                        </deviceinfo>
-                        {% verbatim %}
-                        <div ng-show="show_uuid">
-                            <h4>Copy the following snippet to /etc/sysconfig/cluster/.cluster_device_uuid :</h4>
-                            <pre>
+<div class="panel-body">
+    <div class="tab-content">
+<div class="tab-pane" id="general">
+    <div id="icsw.device.config">
+        <div ng-controller="deviceinfo_ctrl">
+            <deviceinfo devicepk='#{main_pk}'>
+            </deviceinfo>
+            {% verbatim %}
+            <div ng-show="show_uuid">
+                <h4>Copy the following snippet to /etc/sysconfig/cluster/.cluster_device_uuid :</h4>
+                <pre>
 urn:uuid:{{ _edit_obj.uuid }}
-                            </pre>
-                            <h4>and restart host-monitoring .</h4>
-                        </div>
-                        {% endverbatim %}
-                    </div>
-                </div>
+                </pre>
+                <h4>and restart host-monitoring .</h4>
             </div>
-            <div class="tab-pane" id="category">
-                <div id="icsw.device.config">
-                    <div ng-controller="category_ctrl">
-                        <devicecategory devicepk='#{pk_list}'>
-                            <tree treeconfig="cat_tree"></tree>
-                        </devicecategory>
-                    </div>
-                </div>
-            </div>
-            <div class="tab-pane" id="location">
-                <div id="icsw.device.config">
-                    <div ng-controller="location_ctrl">
-                        <devicelocation devicepk='#{pk_list}'>
-                            <tree treeconfig="loc_tree"></tree>
-                        </devicelocation>
-                    </div>
-                </div>
-            </div>
-            <div class="tab-pane" id="di_network">
-                <div id='icsw.network.device'>
-                    <div ng-controller='network_ctrl'>
-                        <devicenetworks devicepk='#{pk_list}' disablemodal='#{dis_modal}'>
-                        </devicenetworks>
-                    </div>
-                </div>
-            </div>
-            <div class="tab-pane" id="config">
-                <div id='icsw.device.config'>
-                    <div ng-controller='config_ctrl'>
-                        <deviceconfig devicepk='#{pk_list}'>
-                        </deviceconfig>
-                    </div>
-                    {% if settings.INIT_PRODUCT_NAME = 'CORVUS' %}
-                    <div ng-controller='config_vars_ctrl'>
-                        <deviceconfigvars devicepk='#{pk_list}'>
-                        </deviceconfigvars>
-                    </div>
-                    {% endif %}
-                </div>
-            </div>
-            <div class="tab-pane" id="disk">
-                <div id='icsw.device.config'>
-                    <div ng-controller='partinfo_ctrl'>
-                        <partinfo devicepk='#{pk_list}'>
-                        </partinfo>
-                    </div>
-                </div>
-            </div>
-{% if DJANGO_SERVICE_TYPES.md_config %}
-            <div class="tab-pane" id="livestatus">
-                <div id='icsw.device.livestatus'>
-                    <div ng-controller='livestatus_ctrl'>
-                        <livestatus devicepk='#{pk_list}'>
-                        </livestatus>
-                    </div>
-                </div>
-            </div>
-            <div class="tab-pane" id="monconfig">
-                <div id='icsw.device.livestatus'>
-                    <div ng-controller='monconfig_ctrl'>
-                        <monconfig devicepk='#{pk_list}'>
-                        </monconfig>
-                    </div>
-                </div>
-            </div>
-{% endif %}
-{% if DJANGO_SERVICE_TYPES.grapher %}
-            <div class="tab-pane" id="rrd">
-                <div id='icsw.device.rrd'>
-                    <div ng-controller='rrd_ctrl'>
-                        <rrdgraph devicepk='#{pk_list}'>
-                        </rrdgraph>
-                    </div>
-                </div>
-            </div>
-{% endif %}
+            {% endverbatim %}
         </div>
     </div>
 </div>
-            """)
+<div class="tab-pane" id="category">
+    <div id="icsw.device.config">
+        <div ng-controller="category_ctrl">
+            <devicecategory devicepk='#{pk_list_nmd}'>
+                <tree treeconfig="cat_tree"></tree>
+            </devicecategory>
+        </div>
+    </div>
+</div>
+<div class="tab-pane" id="location">
+    <div id="icsw.device.config">
+        <div ng-controller="location_ctrl">
+            <devicelocation devicepk='#{pk_list_nmd}'>
+                <tree treeconfig="loc_tree"></tree>
+            </devicelocation>
+        </div>
+    </div>
+</div>
+<div class="tab-pane" id="di_network">
+    <div id='icsw.network.device'>
+        <div ng-controller='network_ctrl'>
+            <devicenetworks devicepk='#{pk_list_nmd}' disablemodal='#{dis_modal}'>
+            </devicenetworks>
+        </div>
+    </div>
+</div>
+<div class="tab-pane" id="config">
+    <div id='icsw.device.config'>
+        <div ng-controller='config_ctrl'>
+            <deviceconfig devicepk='#{pk_list}'>
+            </deviceconfig>
+        </div>
+"""
+        if window.INIT_PRODUCT_NAME.toLowerCase() == "corvus"
+            dev_div_txt += """
+<div ng-controller='config_vars_ctrl'>
+    <deviceconfigvars devicepk='#{pk_list}'>
+    </deviceconfigvars>
+</div>
+"""
+        dev_div_txt += """
+    </div>
+</div>
+<div class="tab-pane" id="vars">
+    <div id='icsw.device.variables'>
+        <div ng-controller='dv_base'>
+            <devicevars devicepk='#{pk_list}' disablemodal='#{dis_modal}'></devicevars>
+        </div>
+    </div>
+</div>
+<div class="tab-pane" id="disk">
+    <div id='icsw.device.config'>
+        <div ng-controller='partinfo_ctrl'>
+            <partinfo devicepk='#{pk_list_nmd}'>
+            </partinfo>
+        </div>
+    </div>
+</div>
+"""
+        if window.SERVICE_TYPES["md-config"]?
+            dev_div_txt += """
+<div class="tab-pane" id="livestatus">
+    <div id='icsw.device.livestatus'>
+        <div ng-controller='livestatus_ctrl'>
+            <livestatus devicepk='#{pk_list_nmd}'>
+            </livestatus>
+        </div>
+    </div>
+</div>
+<div class="tab-pane" id="monconfig">
+    <div id='icsw.device.livestatus'>
+        <div ng-controller='monconfig_ctrl'>
+            <monconfig devicepk='#{pk_list_nmd}'>
+            </monconfig>
+        </div>
+    </div>
+</div>
+<div class="tab-pane" id="monhint">
+    <div id='icsw.device.config'>
+        <div ng-controller='monitoring_hint_ctrl'>
+            <monitoringhint devicepk='#{pk_list_nmd}'>
+            </monitoringhint>
+        </div>
+    </div>
+</div>
+"""
+        if window.SERVICE_TYPES["grapher"]?
+            dev_div_txt += """
+<div class="tab-pane" id="rrd">
+    <div id='icsw.device.rrd'>
+        <div ng-controller='rrd_ctrl'>
+            <rrdgraph devicepk='#{pk_list_nmd}'>
+            </rrdgraph>
+        </div>
+    </div>
+</div>
+"""
+        dev_div_txt += """
+        </div>
+    </div>
+</div>
+            """
+        dev_div = $(dev_div_txt)
         # if @has_perm("change_network")
         # if @has_perm("show_graphs")
         @dev_div = dev_div

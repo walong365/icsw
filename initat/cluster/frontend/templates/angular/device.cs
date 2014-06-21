@@ -30,8 +30,8 @@ angular_add_simple_list_controller(
     }
 )
 
-device_tree_base = device_module.controller("device_tree_base", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "sharedDataSource", "$q", "$timeout", 
-    ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, sharedDataSource, $q, $timeout) ->
+device_tree_base = device_module.controller("device_tree_base", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "sharedDataSource", "$q", "$timeout", "$modal", 
+    ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, sharedDataSource, $q, $timeout, $modal) ->
         $scope.initial_load = true
         # init pagSettings /w. filter
         $scope.settings = {}
@@ -43,7 +43,7 @@ device_tree_base = device_module.controller("device_tree_base", ["$scope", "$com
             {"short" : "device_group", "url" : "{% url 'rest:device_group_list' %}"}
             {"short" : "device_type", "url" : "{% url 'rest:device_type_list' %}"}
             {"short" : "mother_server", "url" : "{% url 'rest:device_tree_list' %}", "options" : {"all_mother_servers" : true}}
-            {"short" : "monitor_server", "url" : "{% url 'rest:device_tree_list' %}", "options" : {"all_monitoring_servers" : true}}
+            {"short" : "monitor_server", "url" : "{% url 'rest:device_tree_list' %}", "options" : {"monitor_server_type" : true}}
             {"short" : "domain_tree_node", "url" : "{% url 'rest:domain_tree_node_list' %}"}
             {"short" : "device_sel", "url" : "{% url 'rest:device_selection_list' %}"}
         ]
@@ -94,6 +94,8 @@ device_tree_base = device_module.controller("device_tree_base", ["$scope", "$com
                 rest_entry = (entry for entry in $scope.rest_map when entry.short == $scope._array_name)[0]
                 if $scope.create_mode
                     Restangular.all(rest_entry["url"].slice(1)).post($scope.new_obj, rest_entry.options).then((new_data) ->
+                        if $scope.new_obj.root_passwd
+                            new_data.root_passwd_set = true
                         $scope.object_created(new_data)
                     )
                 else
@@ -105,6 +107,10 @@ device_tree_base = device_module.controller("device_tree_base", ["$scope", "$com
                         (data) -> 
                             $.simplemodal.close()
                             handle_reset(data, cur_f, $scope.edit_obj.idx)
+                            if $scope.edit_obj.root_passwd
+                                # hm, fixme
+                                data.root_passwd_set = true
+                                $scope.edit_obj.root_passwd_set = true
                             $scope.object_modified(data)
                         (resp) -> handle_reset(resp.data, cur_f, $scope.edit_obj.idx)
                     )
@@ -167,33 +173,37 @@ device_tree_base = device_module.controller("device_tree_base", ["$scope", "$com
                             $.simplemodal.close()
                             $scope.reload()
         $scope.delete_many = (event) ->
-            if confirm("Really delete " + $scope.num_selected() + " devices ?")
-                call_ajax
-                    url     : "{% url 'device:change_devices' %}"
-                    data    : {
-                        "change_dict" : angular.toJson({"delete" : true})
-                        "device_list" : angular.toJson((entry.idx for entry in $scope.entries when entry.is_meta_device == false and entry.selected))
-                    }
-                    success : (xml) ->
-                        if parse_xml_response(xml)
-                            $scope.reload()
+            simple_modal($modal, $q, "Really delete " + $scope.num_selected() + " devices ?").then(
+                () ->
+                    call_ajax
+                        url     : "{% url 'device:change_devices' %}"
+                        data    : {
+                            "change_dict" : angular.toJson({"delete" : true})
+                            "device_list" : angular.toJson((entry.idx for entry in $scope.entries when entry.is_meta_device == false and entry.selected))
+                        }
+                        success : (xml) ->
+                            if parse_xml_response(xml)
+                                $scope.reload()
+            )
         $scope.get_action_string = () ->
             return if $scope.create_mode then "Create" else "Modify"
         $scope.delete = (a_name, obj) ->
-            if confirm("Really delete #{a_name} '#{obj.name}' ?")
-                obj.remove().then((resp) ->
-                    noty
-                        text : "deleted #{a_name}"
-                    if a_name == "device"
-                        $scope.device_group_lut[obj.device_group].num_devices--
-                        remove_by_idx($scope.entries, obj.idx)
-                    else
-                        remove_by_idx($scope.rest_data[a_name], obj.idx)
-                        if a_name == "device_group"
-                            # remove meta device
-                            remove_by_idx($scope.entries, (entry.idx for entry in $scope.entries when entry.device_group == obj.idx and entry.is_meta_device)[0])
-                    $scope.pagSettings.set_entries($scope.entries)
-                )
+            simple_modal($modal, $q, "Really delete #{a_name} '#{obj.name}' ?").then(
+                () ->
+                    obj.remove().then((resp) ->
+                        noty
+                            text : "deleted #{a_name}"
+                        if a_name == "device"
+                            $scope.device_group_lut[obj.device_group].num_devices--
+                            remove_by_idx($scope.entries, obj.idx)
+                        else
+                            remove_by_idx($scope.rest_data[a_name], obj.idx)
+                            if a_name == "device_group"
+                                # remove meta device
+                                remove_by_idx($scope.entries, (entry.idx for entry in $scope.entries when entry.device_group == obj.idx and entry.is_meta_device)[0])
+                        $scope.pagSettings.set_entries($scope.entries)
+                    )
+            )
         $scope.rest_data_set = () ->
             $scope.device_lut = build_lut($scope.entries)
             $scope.device_group_lut = build_lut($scope.rest_data.device_group)
@@ -212,6 +222,9 @@ device_tree_base = device_module.controller("device_tree_base", ["$scope", "$com
                 if pk of $scope.device_lut
                     # ignore deleted devices
                     $scope.device_lut[pk].selected = true
+            # monitor servers
+            for entry in $scope.rest_data.monitor_server
+                entry.full_name_wt = "#{entry.full_name} (#{entry.monitor_type})"
             $scope.initial_load = false
         $scope.num_selected = () ->
             if $scope.entries

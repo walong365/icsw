@@ -28,12 +28,11 @@ from initat.core.render import render_string
 from initat.cluster.backbone import models
 from initat.cluster.backbone.models import user , group, \
      get_related_models, get_change_reset_list, device, device_serializer, \
-     device_serializer_package_state, device_serializer_monitoring, domain_name_tree, \
-     device_serializer_monitor_server, category_tree, device_serializer_cat, device_selection, \
+     device_serializer_package_state, domain_name_tree, \
+     category_tree, device_selection, \
      device_selection_serializer, partition_table_serializer_save, partition_disc_serializer_save, \
-     partition_disc_serializer_create, device_serializer_variables, device_serializer_device_configs, \
-     device_config, device_config_hel_serializer, home_export_list, csw_permission, \
-     device_serializer_disk_info, device_serializer_network, peer_information, netdevice, \
+     partition_disc_serializer_create, device_config, device_config_hel_serializer, home_export_list, \
+     csw_permission, peer_information, netdevice, \
      csw_object_permission, cd_connection, device_serializer_only_boot, network_with_ip_serializer
 # from initat.cluster.backbone.forms import * # @UnusedWildImport
 from initat.cluster.frontend import forms
@@ -45,11 +44,9 @@ from rest_framework.response import Response
 from rest_framework.reverse import reverse
 from rest_framework.views import exception_handler, APIView
 import json
-import crypt
 import logging
 import logging_tools
 import operator
-import random
 import process_tools
 import time
 import types
@@ -164,6 +161,7 @@ class db_prefetch_mixin(object):
     def _config_hint_prefetch(self):
         return [
             "config_var_hint_set",
+            "config_script_hint_set",
         ]
     def _mon_dist_master_prefetch(self):
         return ["mon_dist_slave_set"]
@@ -210,7 +208,6 @@ class detail_view(mixins.RetrieveModelMixin,
             if root_pwd:
                 new_model.root_passwd = root_pwd
                 new_model.save()
-            # print "+" * 10, root_pwd
         c_list, r_list = get_change_reset_list(prev_model, new_model, req_changes)
         # print c_list, r_list
         resp.data["_change_list"] = c_list
@@ -289,26 +286,6 @@ class list_view(mixins.ListModelMixin,
             res = res[0:special_dict["num_entries"]]
         return res
 
-class device_tree_detail(detail_view):
-    model = device
-    def _get_post_boolean(self, name, default):
-        if name in self.request.QUERY_PARAMS:
-            p_val = self.request.QUERY_PARAMS[name]
-            if p_val.lower() in ["1", "true"]:
-                return True
-            else:
-                return False
-        else:
-            return default
-    @rest_logging
-    def get_serializer_class(self):
-        if self._get_post_boolean("tree_mode", False):
-            return device_serializer
-        if self._get_post_boolean("only_boot", False):
-            return device_serializer_only_boot
-        else:
-            return device_serializer_monitoring
-
 class form_serializer(serializers.Serializer):
     name = serializers.CharField()
     form = serializers.CharField()
@@ -340,7 +317,6 @@ class fetch_forms(viewsets.ViewSet):
                         "form" : "<strong>form '%s' not found</strong>" % (cur_form)
                     }
                 )
-                print ext_list[-1]
         _ser = form_serializer(ext_list, many=True)
         return Response(_ser.data)
 
@@ -367,6 +343,7 @@ class netdevice_peer_list(viewsets.ViewSet):
     def list(self, request):
         ext_list = [ext_peer_object(**_obj) for _obj in netdevice.objects \
             .filter(Q(device__enabled=True) & Q(device__device_group__enabled=True)) \
+            .filter(Q(enabled=True)) \
             .filter(Q(peer_s_netdevice__gt=0) | Q(peer_d_netdevice__gt=0) | Q(routing=True)) \
             .distinct() \
             .order_by("device__device_group__name", "device__name", "devname") \
@@ -462,36 +439,70 @@ class csw_object_list(viewsets.ViewSet):
                 _lt = "warning"
         return _lt
 
+class device_tree_mixin(object):
+    def _get_post_boolean(self, name, default):
+        if name in self.request.QUERY_PARAMS:
+            p_val = self.request.QUERY_PARAMS[name]
+            if p_val.lower() in ["1", "true"]:
+                return True
+            else:
+                return False
+        else:
+            return default
+    @rest_logging
+    def _get_serializer_context(self):
+        ctx = {"request" : self.request}
+        if self.request.QUERY_PARAMS.get("olp", ""):
+            ctx["olp"] = self.request.QUERY_PARAMS["olp"]
+        _fields = []
+        if self._get_post_boolean("with_disk_info", False):
+            _fields.extend(["partition_table", "act_partition_table"])
+        if self._get_post_boolean("with_network", False):
+            _fields.append("netdevice_set")
+        if self._get_post_boolean("with_monitoring_hint", False):
+            _fields.append("monitoring_hint_set")
+        if self._get_post_boolean("with_categories", False):
+            _fields.append("categories")
+        if self._get_post_boolean("with_variables", False):
+            _fields.append("device_variable_set")
+        if self._get_post_boolean("with_device_configs", False):
+            _fields.append("device_config_set")
+        if self._get_post_boolean("package_state", False):
+            _fields.extend(["package_device_connection_set", "latest_contact", "client_version"])
+        if self._get_post_boolean("monitor_server_type", False):
+            _fields.append("monitor_type")
+        if _fields:
+            ctx["fields"] = _fields
+        return ctx
+
+class device_tree_detail(detail_view, device_tree_mixin):
+    model = device
+    @rest_logging
+    def get_serializer_context(self):
+        return self._get_serializer_context()
+    @rest_logging
+    def get_serializer_class(self):
+        if self._get_post_boolean("tree_mode", False):
+            return device_serializer
+        if self._get_post_boolean("only_boot", False):
+            return device_serializer_only_boot
+        else:
+            return device_serializer
+
 class device_tree_list(mixins.ListModelMixin,
                        mixins.CreateModelMixin,
-                       generics.MultipleObjectAPIView):
+                       generics.MultipleObjectAPIView,
+                       device_tree_mixin,
+                       ):
     authentication_classes = (SessionAuthentication,)
     permission_classes = (IsAuthenticated,)
     model = device
     @rest_logging
     def get_serializer_context(self):
-        ctx = {"request" : self.request}
-        if self.request.QUERY_PARAMS.get("olp", ""):
-            ctx["olp"] = self.request.QUERY_PARAMS["olp"]
-        return ctx
+        return self._get_serializer_context()
     @rest_logging
     def get_serializer_class(self):
-        if self._get_post_boolean("package_state", False):
-            return device_serializer_package_state
-        elif self._get_post_boolean("all_monitoring_servers", False):
-            return device_serializer_monitor_server
-        elif self._get_post_boolean("with_categories", False):
-            return device_serializer_cat
-        elif self._get_post_boolean("with_variables", False):
-            return device_serializer_variables
-        elif self._get_post_boolean("with_device_configs", False):
-            return device_serializer_device_configs
-        elif self._get_post_boolean("with_disk_info", False):
-            return device_serializer_disk_info
-        elif self._get_post_boolean("with_network", False):
-            return device_serializer_network
-        else:
-            return device_serializer
+        return device_serializer
     @rest_logging
     def get(self, request, *args, **kwargs):
         # print self.list(request, *args, **kwargs)
@@ -502,15 +513,6 @@ class device_tree_list(mixins.ListModelMixin,
         if resp.status_code in [200, 201, 202, 203]:
             resp.data["_messages"] = [u"created '%s'" % (unicode(self.object))]
         return resp
-    def _get_post_boolean(self, name, default):
-        if name in self.request.QUERY_PARAMS:
-            p_val = self.request.QUERY_PARAMS[name]
-            if p_val.lower() in ["1", "true"]:
-                return True
-            else:
-                return False
-        else:
-            return default
     @rest_logging
     def get_queryset(self):
         # with_variables = self._get_post_boolean("with_variables", False)
@@ -529,7 +531,7 @@ class device_tree_list(mixins.ListModelMixin,
                 _q = _q.filter(meta_list | device_list)
             if not self.request.user.has_perm("backbone.device.all_devices"):
                 _q = _q.filter(Q(device_group__in=self.request.user.allowed_device_groups.all()))
-        if self._get_post_boolean("all_monitoring_servers", False):
+        if self._get_post_boolean("monitor_server_type", False):
             _q = _q.filter(Q(device_config__config__name__in=["monitor_server", "monitor_slave"]))
         elif self._get_post_boolean("all_mother_servers", False):
             _q = _q.filter(Q(device_config__config__name__in=["mother_server", "mother"]))
@@ -554,7 +556,11 @@ class device_tree_list(mixins.ListModelMixin,
                 # only selected ones
                 # normally (frontend in-sync with backend) meta-devices have the same selection state
                 # as their device_groups, devg_keys are in fact redundant ...
-                dev_keys = [key.split("__")[1] for key in self.request.session.get("sel_list", []) if key.startswith("dev_")]
+                if self._get_post_boolean("ignore_selection", False):
+                    # take all devices the user is allowed to access
+                    dev_keys = device.objects.all().values_list("pk", flat=True)
+                else:
+                    dev_keys = [key.split("__")[1] for key in self.request.session.get("sel_list", []) if key.startswith("dev_")]
             # devg_keys = [key.split("__")[1] for key in self.request.session.get("sel_list", []) if key.startswith("devg_")]
             if ignore_cdg:
                 # ignore cluster device group

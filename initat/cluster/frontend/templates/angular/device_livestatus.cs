@@ -962,7 +962,7 @@ device_livestatus_module.controller("livestatus_ctrl", ["$scope", "$compile", "$
             if attrs.devicepk?
                 scope.new_devsel((parseInt(entry) for entry in attrs["devicepk"].split(",")), [])
             else
-                install_devsel_link(scope.new_devsel, true, true, false)
+                install_devsel_link(scope.new_devsel, false)
             scope.get_state_class = (entry) ->
                 state_class = {
                     0 : "success"

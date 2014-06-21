@@ -90,12 +90,12 @@ device_boot_template = """
 </table>
 <form class="form-inline">
     <div class="btn-group">
-        <input type="button" ng-class="show_mbl && 'btn btn-sm btn-success' || 'btn btn-sm'" value="macbootlog" ng-click="show_mbl = !show_mbl"></input>
+        <input type="button" ng-class="show_mbl && 'btn btn-sm btn-success' || 'btn btn-sm'" value="macbootlog" ng-click="toggle_show_mbl()"></input>
     </div>
 </form>
 <div ng-show="show_mbl">
     <h4>Showing {{ mbl_entries.length }} Macbootlog entries</h4>
-    <table class="table table-condensed table-hower" style="width:auto;">
+    <table class="table table-condensed table-hover table-striped" style="width:auto;">
         <thead>
             <tr>
                 <th>Device</th>
@@ -126,8 +126,7 @@ device_row_template = """
     <td class="center"><input type="button" ng-class="get_dev_sel_class(dev)" ng-click="toggle_dev_sel(dev, 0)" value="sel"></button></td>
     <td ng-class="dev.recvreq_state">{{ dev.recvreq_str }}</td>
     <td ng-class="dev.network_state">{{ dev.network }}</td>
-    <td ng-repeat="entry in type_1_options()" ng-show="bo_enabled[entry[0]]" ng-class="get_td_class(entry)">
-        {{ show_boot_option(entry) }}
+    <td ng-repeat="entry in type_1_options()" ng-show="bo_enabled[entry[0]]" ng-class="get_td_class(entry)" ng-bind-html="show_boot_option(entry)">
     </td>
     <td ng-show="bo_enabled['s']">
         <div class="btn-group">
@@ -292,7 +291,7 @@ device_boot_module.controller("boot_ctrl", ["$scope", "$compile", "$filter", "$t
         $scope.num_selected_hc = () ->
             num_hc = 0
             for dev in $scope.devices
-                if dev.selected and dev.slave_connections.length
+                if dev.selected and dev.slave_connections and dev.slave_connections.length
                     num_hc += dev.slave_connections.length
             return num_hc
         $scope.toggle_gdev_sel = (sel_mode) ->
@@ -325,6 +324,8 @@ device_boot_module.controller("boot_ctrl", ["$scope", "$compile", "$filter", "$t
         # dict if controlling devices are reachable
         $scope.cd_reachable = {}
         $scope.devices = []
+        # macbootlog timeout
+        $scope.mbl_timeout = undefined
         # at least one boot_info received
         $scope.info_ok = false
         $scope.new_devsel = (_dev_sel, _devg_sel) ->
@@ -592,16 +593,22 @@ device_boot_module.controller("boot_ctrl", ["$scope", "$compile", "$filter", "$t
                 return "#{r_str} (#{info_str})"
             else
                 return r_str
+        $scope.toggle_show_mbl = () ->
+            if $scope.mbl_timeout
+                $timeout.cancel($scope.mbl_timeout)
+                $scope.mbl_timeout = undefined
+            $scope.show_mbl = !$scope.show_mbl
+            if $scope.show_mbl
+                $scope.fetch_macbootlog_entries()
         $scope.fetch_macbootlog_entries = () ->
             Restangular.all("{% url 'rest:macbootlog_list' %}".slice(1)).getList({"_num_entries" : 50, "_order_by" : "-pk"}).then(
                 (data) ->
                     $scope.mbl_entries = data
-                    $timeout($scope.fetch_macbootlog_entries, 5000)
+                    $scope.mbl_timeout = $timeout($scope.fetch_macbootlog_entries, 5000)
             )
         $scope.get_mbl_created = (mbl) ->
             return moment.unix(mbl.created).format(DT_FORM)
-        $scope.fetch_macbootlog_entries()
-        install_devsel_link($scope.new_devsel, true, true, false)
+        install_devsel_link($scope.new_devsel, false)
 ]).directive("boottable", ($templateCache) ->
     return {
         restrict : "EA"
@@ -640,7 +647,7 @@ device_boot_module.controller("boot_ctrl", ["$scope", "$compile", "$filter", "$t
                         #console.log dev.new_state, dev.prod_link
                     else if entry[0] == "i"
                         # image
-                        img_str = scope.get_info_str(dev.act_image, dev.new_image, scope.image_lut)
+                        img_str = scope.get_info_str("i", dev.act_image, dev.new_image, scope.image_lut)
                         # check version
                         cur_vers = dev.imageversion
                         if dev.act_image
@@ -651,7 +658,7 @@ device_boot_module.controller("boot_ctrl", ["$scope", "$compile", "$filter", "$t
                         return img_str
                     else if entry[0] == "k"
                         # kernel
-                        _k_str = scope.get_info_str(dev.act_kernel, dev.new_kernel, scope.kernel_lut)
+                        _k_str = scope.get_info_str("k", dev.act_kernel, dev.new_kernel, scope.kernel_lut)
                         if dev.act_kernel or dev.new_kernel
                             _k_str = "#{_k_str}, flavour is #{dev.stage1_flavour}"
                             if dev.kernel_append
@@ -659,7 +666,7 @@ device_boot_module.controller("boot_ctrl", ["$scope", "$compile", "$filter", "$t
                         return _k_str
                     else if entry[0] == "p"
                         # partition info
-                        return scope.get_info_str(dev.act_partition_table, dev.partition_table, scope.partition_lut)
+                        return scope.get_info_str("p", dev.act_partition_table, dev.partition_table, scope.partition_lut)
                     else if entry[0] == "b"
                         # bootdevice
                         if dev.bootnetdevice
@@ -679,21 +686,29 @@ device_boot_module.controller("boot_ctrl", ["$scope", "$compile", "$filter", "$t
                         return "---"
                 else
                     return "..."
-            scope.get_info_str = (act_val, new_val, lut) ->
+            scope.get_lut_val = (s_type, lut, val) ->
+                if val of lut
+                    return lut[val].name
+                else
+                    return "? #{s_type}: #{val} ?"
+            scope.get_info_str = (s_type, act_val, new_val, lut) ->
                 if act_val == new_val
                     if act_val
-                        return lut[act_val].name
+                        # everything ok
+                        return "<span class='glyphicon glyphicon-ok'></span> " + scope.get_lut_val(s_type, lut, act_val)  
                     else
-                        return "---"
+                        # both values are empty
+                        return "<span class='glyphicon glyphicon-ban-circle'></span>"
                 else
-                    new_val_str = if new_val then lut[new_val].name else "---"
-                    act_val_str = if act_val then lut[act_val].name else "---"
+                    new_val_str = if new_val then scope.get_lut_val(s_type, lut, new_val) else "---"
+                    act_val_str = if act_val then scope.get_lut_val(s_type, lut, act_val) else "---"
                     if act_val and new_val
-                        return "#{act_val_str} (#{new_val_str})"
+                        # show source and target value
+                        return "#{act_val_str} <span class='glyphicon glyphicon-arrow-right'></span> #{new_val_str}"
                     else if act_val
-                        return act_val_str
+                        return "#{act_val_str} <span class='glyphicon glyphicon-arrow-right'>"
                     else
-                        return "[#{new_val_str}]"
+                        return "<span class='glyphicon glyphicon-arrow-right'> #{new_val_str}"
     }
 ).directive("devicelogs", ($templateCache) ->
     return {

@@ -5,7 +5,7 @@
 # from crispy_forms.bootstrap import FormActions
 from crispy_forms.bootstrap import FormActions
 from crispy_forms.helper import FormHelper
-from crispy_forms.layout import Submit, Layout, Field, Button, Fieldset, Div, HTML
+from crispy_forms.layout import Submit, Layout, Field, Button, Fieldset, Div, HTML, MultiField
 from django.contrib.auth import authenticate
 from django.core.urlresolvers import reverse
 from django.db.models import Q
@@ -203,19 +203,42 @@ class device_info_form(ModelForm):
     helper.ng_model = "_edit_obj"
     helper.layout = Layout(
         Div(
-            HTML("<h2>Device details for '{% verbatim %}{{ _edit_obj.name }}'&nbsp;<img ng-if='_edit_obj.mon_ext_host' ng-src='{{ get_image_src() }}' width='16'></img></h2>{% endverbatim %}"),
+            HTML("<h2>Details for '{% verbatim %}{{ _edit_obj.name }}'&nbsp;<img ng-if='_edit_obj.mon_ext_host' ng-src='{{ get_image_src() }}' width='16'></img></h2>{% endverbatim %}"),
             Fieldset(
-                "Device details",
+                "Basic settings",
                 Field("name"),
                 Field("domain_tree_node", ng_options="value.idx as value.tree_info for value in domain_tree_node", chosen=True),
                 # Field("domain_tree_node", ng_options="value.idx as value.tree_info for value in domain_tree_node", ui_select2=True),
                 Field("comment"),
-                Field("curl"),
+                Field("curl", wrapper_ng_show="is_device()"),
+                HTML(
+"""
+<div class='form-group' ng-show="is_device()">
+    <label class='control-label col-sm-3'>
+        IP Info
+    </label>
+    <div class='col-sm-9'>
+        {% verbatim %}{{ get_ip_info() }}{% endverbatim %}
+    </div>
+</div>
+"""),
             ),
             # HTML("<ui-select ng-model='_edit_obj.domain_tree_node'><choices repeat='value in domain_tree_node'>dd</choices></ui-select>"),
             Fieldset(
                 "Monitor settings",
-                Field("mon_device_templ", ng_options="value.idx as value.name for value in mon_device_templ_list", chosen=True),
+                Field("mon_device_templ", ng_options="value.idx as value.name for value in mon_device_templ_list", chosen=True, wrapper_ng_show="mon_device_templ_list"),
+                HTML(
+"""
+<div class='form-group' ng-show="is_device()">
+    <label class='control-label col-sm-3'>
+        Monitoring hints
+    </label>
+    <div class='col-sm-9'>
+        {% verbatim %}{{ get_monitoring_hint_info() }}{% endverbatim %}
+    </div>
+</div>
+"""
+                ),
                 Div(
                     Div(
                         Field("monitor_checks"),
@@ -229,10 +252,12 @@ class device_info_form(ModelForm):
                     ),
                     css_class="row",
                 ),
+                ng_show="is_device()",
             ),
             Fieldset(
                 "RRD / graph settings",
                 Field("store_rrd_data"),
+                ng_show="is_device()",
             ),
             Fieldset(
                 "Info",
@@ -240,6 +265,7 @@ class device_info_form(ModelForm):
                     Div(
                         Button("uuid", "UUID info", css_class="btn-info", ng_click="toggle_uuid()"),
                         css_class="col-md-6",
+                        ng_show="is_device()",
                     ),
                     Div(
                         Submit("modify", "modify", css_class="primaryAction", ng_show="acl_modify(_edit_obj, 'backbone.device.change_basic')"),
@@ -659,14 +685,14 @@ class kernel_form(ModelForm):
             Field("module_list", readonly=True, rows=3),
             ),
         HTML("""
-        <div class='form-group'>
-            <label class='control-label col-sm-3'>
-                initrd built
-            </label>
-            <div class='col-sm-7'>
-                {% verbatim %}{{ fn.get_initrd_built(edit_obj) }}{% endverbatim %}
-            </div>
-        </div>
+<div class='form-group'>
+    <label class='control-label col-sm-3'>
+        initrd built
+    </label>
+    <div class='col-sm-7'>
+        {% verbatim %}{{ fn.get_initrd_built(edit_obj) }}{% endverbatim %}
+    </div>
+</div>
         """),
         Div(
             FormActions(
@@ -674,58 +700,58 @@ class kernel_form(ModelForm):
             ),
         ),
         HTML("""
-        <div class='form-group'>
-            <label class='control-label col-sm-6'>
-                stage1 lo present
-            </label>
-            <div class='col-sm-6'>
-                {% verbatim %}<input
-                    type="button"
-                    disabled="disabled"
-                    ng-class="edit_obj.stage1_lo_present && 'btn btn-sm btn-success' || 'btn btn-sm btn-danger'"
-                    ng-value="fn.get_flag_value(edit_obj, 'stage1_lo_present')"
-                    ></input>{% endverbatim %}
-            </div>
-        </div>
-        <div class='form-group'>
-            <label class='control-label col-sm-6'>
-                stage1 cpio present
-            </label>
-            <div class='col-sm-6'>
-                {% verbatim %}<input
-                    type="button"
-                    disabled="disabled"
-                    ng-class="edit_obj.stage1_cpio_present && 'btn btn-sm btn-success' || 'btn btn-sm btn-danger'"
-                    ng-value="fn.get_flag_value(edit_obj, 'stage1_cpio_present')"
-                    ></input>{% endverbatim %}
-            </div>
-        </div>
-        <div class='form-group'>
-            <label class='control-label col-sm-6'>
-                stage1 cramfs present
-            </label>
-            <div class='col-sm-6'>
-                {% verbatim %}<input
-                    type="button"
-                    disabled="disabled"
-                    ng-class="edit_obj.stage1_cramfs_present && 'btn btn-sm btn-success' || 'btn btn-sm btn-danger'"
-                    ng-value="fn.get_flag_value(edit_obj, 'stage1_cramfs_present')"
-                    ></input>{% endverbatim %}
-            </div>
-        </div>
-        <div class='form-group'>
-            <label class='control-label col-sm-6'>
-                stage2 present
-            </label>
-            <div class='col-sm-6'>
-                {% verbatim %}<input
-                    type="button"
-                    disabled="disabled"
-                    ng-class="edit_obj.stage2_present && 'btn btn-sm btn-success' || 'btn btn-sm btn-danger'"
-                    ng-value="fn.get_flag_value(edit_obj, 'stage2_present')"
-                    ></input>{% endverbatim %}
-            </div>
-        </div>
+<div class='form-group'>
+    <label class='control-label col-sm-6'>
+        stage1 lo present
+    </label>
+    <div class='col-sm-6'>
+        {% verbatim %}<input
+            type="button"
+            disabled="disabled"
+            ng-class="edit_obj.stage1_lo_present && 'btn btn-sm btn-success' || 'btn btn-sm btn-danger'"
+            ng-value="fn.get_flag_value(edit_obj, 'stage1_lo_present')"
+            ></input>{% endverbatim %}
+    </div>
+</div>
+<div class='form-group'>
+    <label class='control-label col-sm-6'>
+        stage1 cpio present
+    </label>
+    <div class='col-sm-6'>
+        {% verbatim %}<input
+            type="button"
+            disabled="disabled"
+            ng-class="edit_obj.stage1_cpio_present && 'btn btn-sm btn-success' || 'btn btn-sm btn-danger'"
+            ng-value="fn.get_flag_value(edit_obj, 'stage1_cpio_present')"
+            ></input>{% endverbatim %}
+    </div>
+</div>
+<div class='form-group'>
+    <label class='control-label col-sm-6'>
+        stage1 cramfs present
+    </label>
+    <div class='col-sm-6'>
+        {% verbatim %}<input
+            type="button"
+            disabled="disabled"
+            ng-class="edit_obj.stage1_cramfs_present && 'btn btn-sm btn-success' || 'btn btn-sm btn-danger'"
+            ng-value="fn.get_flag_value(edit_obj, 'stage1_cramfs_present')"
+            ></input>{% endverbatim %}
+    </div>
+</div>
+<div class='form-group'>
+    <label class='control-label col-sm-6'>
+        stage2 present
+    </label>
+    <div class='col-sm-6'>
+        {% verbatim %}<input
+            type="button"
+            disabled="disabled"
+            ng-class="edit_obj.stage2_present && 'btn btn-sm btn-success' || 'btn btn-sm btn-danger'"
+            ng-value="fn.get_flag_value(edit_obj, 'stage2_present')"
+            ></input>{% endverbatim %}
+    </div>
+</div>
         """),
         FormActions(
             Submit("submit", "", ng_value="get_action_string()", css_class="primaryAction"),
@@ -1917,7 +1943,7 @@ class device_tree_form(ModelForm):
                 Field("curl"),
                 Field("domain_tree_node", ng_options="value.idx as value.tree_info for value in rest_data.domain_tree_node", chosen=True),
                 Field("bootserver", ng_options="value.idx as value.full_name for value in rest_data.mother_server", chosen=True),
-                Field("monitor_server", ng_options="value.idx as value.full_name for value in rest_data.monitor_server", chosen=True),
+                Field("monitor_server", ng_options="value.idx as value.full_name_wt for value in rest_data.monitor_server", chosen=True),
             ),
             Fieldset(
                 "Security",
@@ -1984,7 +2010,7 @@ class device_tree_many_form(ModelForm):
                 ("curl", None, {}),
                 ("domain_tree_node", "value.idx as value.tree_info for value in rest_data.domain_tree_node", {"chosen" : True}),
                 ("bootserver", "value.idx as value.full_name for value in rest_data.mother_server", {"chosen" : True}),
-                ("monitor_server", "value.idx as value.full_name for value in rest_data.monitor_server", {"chosen" : True}),
+                ("monitor_server", "value.idx as value.full_name_wt for value in rest_data.monitor_server", {"chosen" : True}),
             ]
         ),
         (
@@ -2139,7 +2165,12 @@ class config_form(ModelForm):
         HTML("<h2>Configuration '{% verbatim %}{{ _edit_obj.name }}{% endverbatim %}'</h2>"),
             Fieldset(
                 "Basic settings",
-                Field("name", wrapper_class="ng-class:form_error('name')", typeahead="hint for hint in get_config_hints() | filter:get_name_filter()"),
+                Field("name",
+                    wrapper_class="ng-class:form_error('name')",
+                    typeahead="hint for hint in get_config_hints() | filter:$viewValue",
+                    typeahead_on_select="config_selected_vt($item, $model, $label)",
+                    typeahead_min_length=1,
+                ),
                 Field("description"),
                 Field("parent_config", ng_options="value.idx as value.name for value in this.get_valid_parents()", chosen=True),
             ),
@@ -2207,7 +2238,7 @@ class config_str_form(ModelForm):
         HTML("<h2>String var '{% verbatim %}{{ _edit_obj.name }}{% endverbatim %}'</h2>"),
             Fieldset(
                 "Basic settings",
-                Field("name", wrapper_class="ng-class:form_error('name')", typeahead="hint for hint in get_config_var_hints(_config) | filter:get_name_filter()"),
+                Field("name", wrapper_class="ng-class:form_error('name')", typeahead="hint for hint in get_config_var_hints(_config) | filter:$viewValue"),
                 Field("description"),
                 Field("value"),
             ),
@@ -2235,7 +2266,7 @@ class config_int_form(ModelForm):
         HTML("<h2>Integer var '{% verbatim %}{{ _edit_obj.name }}{% endverbatim %}'</h2>"),
             Fieldset(
                 "Basic settings",
-                Field("name", wrapper_class="ng-class:form_error('name')", typeahead="hint for hint in get_config_var_hints(_config) | filter:get_name_filter()"),
+                Field("name", wrapper_class="ng-class:form_error('name')", typeahead="hint for hint in get_config_var_hints(_config) | filter:$viewValue"),
                 Field("description"),
                 Field("value"),
             ),
@@ -2263,9 +2294,18 @@ class config_bool_form(ModelForm):
         HTML("<h2>Bool var '{% verbatim %}{{ _edit_obj.name }}{% endverbatim %}'</h2>"),
             Fieldset(
                 "Basic settings",
-                Field("name", wrapper_class="ng-class:form_error('name')", typeahead="hint for hint in get_config_var_hints(_config) | filter:get_name_filter()"),
+                Field("name", wrapper_class="ng-class:form_error('name')", typeahead="hint for hint in get_config_var_hints(_config) | filter:$viewValue"),
                 Field("description"),
-                Field("value", min=0, max=1),
+                HTML("""
+<div class='form-group'>
+    <label class='control-label col-sm-3'>Value</label>
+    <div class='controls col-sm-7'>
+        <input type='button' ng-class='_edit_obj.value && "btn btn-sm btn-success" || "btn btn-sm"' ng-click='_edit_obj.value = 1 - _edit_obj.value' ng-value='_edit_obj.value && "true" || "false"'>
+        </input>
+    </div>
+</div>
+"""),
+                # Field("value", min=0, max=1),
             ),
             HTML(
                 "<div ng-bind-html='show_config_var_help()'></div>",
@@ -2276,7 +2316,7 @@ class config_bool_form(ModelForm):
         )
     class Meta:
         model = config_bool
-        fields = ("name", "description", "value",)
+        fields = ("name", "description",)
 
 class config_script_form(ModelForm):
     helper = FormHelper()
@@ -2336,7 +2376,46 @@ class mon_check_command_form(ModelForm):
                 "Basic settings",
                 Field("name", wrapper_class="ng-class:form_error('name')"),
                 Field("description"),
-                Field("command_line"),
+                Field("mon_check_command_special", ng_options="value.idx as value.name for value in mccs_list", chosen=True),
+                Field("command_line", wrapper_ng_show="!_edit_obj.mon_check_command_special"),
+                HTML("""
+<div class='form-group' ng-show="_edit_obj.mon_check_command_special">
+    <label class="control-label col-sm-2">Info</label>
+    <div class="col-sm-9 list-group">
+        {% verbatim %}
+        <ul>
+            <li class="list-group-item">{{ get_mccs_info() }}</li>
+            <li class="list-group-item">{{ get_mccs_cmdline() }}</li>
+        </ul>
+        {% endverbatim %}
+    </div>
+</div>
+                """),
+                HTML("""
+<div class='form-group' ng-show="!_edit_obj.mon_check_command_special">
+    <label class='control-label col-sm-2'>Tools</label>
+    <div class='controls col-sm-9'>
+        <div class="form-inline">
+        <input type='button' ng-class='"btn btn-sm btn-primary"' ng-click='add_argument()' ng-value='"add argument"'>
+        </input>
+        name:
+        <input type='text' class="form-control input-sm" title="default value" ng-model="_edit_obj.arg_name"></input>
+        value:
+        <input type='text' class="form-control input-sm" title="default value" ng-model="_edit_obj.arg_value"></input>
+        </div>
+    </div>
+</div>
+                """),
+                HTML("""
+<div class='form-group' ng-show="!_edit_obj.mon_check_command_special">
+    <label class="control-label col-sm-2">Info</label>
+    <div class="col-sm-9 list-group">
+        <ul>
+            <li class="list-group-item" ng-repeat="value in get_moncc_info()">{% verbatim %}{{ value }}{% endverbatim %}</li>
+        </ul>
+    </div>
+</div>
+                """),
             ),
             Fieldset(
                 "Additional settings",
@@ -2362,7 +2441,10 @@ class mon_check_command_form(ModelForm):
             ),
             Fieldset(
                 "Categories",
-                HTML("<div category edit_obj='{% verbatim %}{{_edit_obj }}{% endverbatim %}' mode='mon'></div>"),
+                HTML("""
+<div ng-mouseenter='show_cat_tree()' ng-mouseleave='hide_cat_tree()' category edit_obj='{% verbatim %}{{_edit_obj }}{% endverbatim %}' mode='mon'>
+</div>
+                """),
             ),
             FormActions(
                 Submit("submit", "", css_class="primaryAction", ng_value="action_string"),
@@ -2377,7 +2459,7 @@ class mon_check_command_form(ModelForm):
         model = mon_check_command
         fields = ("name", "mon_service_templ", "command_line",
             "description", "enable_perfdata", "volatile", "is_event_handler",
-            "event_handler", "event_handler_enabled",)
+            "event_handler", "event_handler_enabled", "mon_check_command_special")
 
 
 class netdevice_form(ModelForm):
@@ -2399,6 +2481,7 @@ class netdevice_form(ModelForm):
     show_vlan = BooleanField(required=False)
     routing = BooleanField(required=False, label="routing target")
     inter_device_routing = BooleanField(required=False)
+    enabled = BooleanField(required=False)
     helper.layout = Layout(
         HTML("<h2>Netdevice '{% verbatim %}{{ _edit_obj.devname }}{% endverbatim %}'</h2>"),
             Fieldset(
@@ -2406,6 +2489,7 @@ class netdevice_form(ModelForm):
                 Field("devname", wrapper_class="ng-class:form_error('devname')", placeholder="devicename"),
                 Field("description"),
                 Field("netdevice_speed", ng_options="value.idx as value.info_string for value in netdevice_speeds", chosen=True),
+                Field("enabled"),
                 Field(
                     "is_bridge",
                     wrapper_ng_show="!_edit_obj.vlan_id && !_edit_obj.bridge_device",
@@ -2490,7 +2574,7 @@ class netdevice_form(ModelForm):
         model = netdevice
         fields = ("devname", "netdevice_speed", "description", "driver", "driver_options", "is_bridge",
             "macaddr", "fake_macaddr", "dhcp_device", "vlan_id", "master_device", "routing", "penalty",
-            "bridge_device", "inter_device_routing")
+            "bridge_device", "inter_device_routing", "enabled")
 
 class net_ip_form(ModelForm):
     helper = FormHelper()

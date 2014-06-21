@@ -73,6 +73,7 @@
         <script type="text/javascript">
         {% inlinecoffeescript %}
         # attach global permissions and license info to window object (== global variable)
+        window.INIT_PRODUCT_NAME = "{{ settings.INIT_PRODUCT_NAME }}"
         window.CLUSTER_LICENSE = {{ CLUSTER_LICENSE | safe }}
         window.GLOBAL_PERMISSIONS = {{ GLOBAL_PERMISSIONS | safe }}
         window.OBJECT_PERMISSIONS = {{ OBJECT_PERMISSIONS | safe }}
@@ -87,14 +88,15 @@
     
     {% include "javascript/init.js" %}
     {% include "javascript/deviceinfo.js" %}
-    {% include "javascript/rms.js" %}
     {# common angular modules #}
     {% include "angular/common_functions.cs" %}
     {% include "angular/tree.cs" %}
+    {% include "angular/rrd.cs" %}
     {% include "angular/device_config.cs" %}
     {% include "angular/device_livestatus.cs" %}
     {% include "angular/device_graph.cs" %}
     {% include "angular/device_network.cs" %}
+    {% include "angular/device_variable.cs" %}
     {# site-related angular modules #}
     {% block angular %}{% endblock %}
     

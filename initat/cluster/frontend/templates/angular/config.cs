@@ -41,8 +41,11 @@ config_table_template = """
     </input>
     <span ng-show="selected_objects.length">
     , {{ selected_objects.length }} selected,
-    <input type="button" class="btn btn-sm btn-warning" value="clear selection" ng-click="unselect_objects()"></input>
-    <input type="button" class="btn btn-sm btn-danger" value="delete selected" ng-click="delete_selected_objects()"></input>
+    <div class="btn-group btn-sm">
+        <input type="button" class="btn btn-sm btn-primary" value="clear selection" ng-click="unselect_objects()"></input>
+        <input type="button" class="btn btn-sm btn-warning" value="modify selected" ng-click="modify_selected_objects()"></input>
+        <input type="button" class="btn btn-sm btn-danger" value="delete selected" ng-click="delete_selected_objects()"></input>
+    </div>
     </span>
 </h2>
 <table class="table table-condensed table-hover table-bordered" style="width:auto;">
@@ -177,7 +180,7 @@ var_table_template = """
         <tr>
             <th>Name</th>
             <th>value</th>
-            <th>descr</th>
+            <th>description</th>
             <th>type</th>
             <th colspan="2">Action</th>
         </tr>
@@ -191,7 +194,7 @@ var_table_template = """
                 </span>
                 {{ obj.name }}
             </td>
-            <td>{{ obj.value }}</td>
+            <td>{{ get_value(obj) }}</td>
             <td>{{ obj.description }}</td>
             <td>{{ obj.v_type }}</td>
             <td><input type="button" ng-class="obj._selected && 'btn btn-primary btn-xs' || 'btn btn-xs'" value="sel" ng-click="select_object(obj)"></input>
@@ -239,6 +242,7 @@ mon_table_template = """
             <th>Name</th>
             <th>template</th>
             <th>description</th>
+            <th>special</th>
             <th>command line</th>
             <th>vol</th>
             <th>perf</th>
@@ -254,20 +258,21 @@ mon_table_template = """
             <td>{{ obj.name }}</td>
             <td>{{ obj.mon_service_templ | array_lookup:this.mon_service_templ:'name':'-' }}</td>
             <td>{{ obj.description }}</td>
-            <td title="{{ obj.command_line }}">
+            <td>{{ obj.mon_check_command_special && 'yes' || 'no' }}</td>
+            <td title="{{ get_mon_command_line(obj) }}">
                 <input
                     type="button"
                     title="expand / collapse full command line"
                     ng-class="obj._show_full_command && 'btn btn-xs btn-success' || 'btn btn-xs btn-default'"
                     value="e" ng-click="obj._show_full_command = !obj._show_full_command">
                 </input>
-                <span ng-if="!obj._show_full_command">{{ obj.command_line | limit_text:60:true }}</span>
-                <span ng-if="obj._show_full_command">{{ obj.command_line }}</span>
+                <span ng-if="!obj._show_full_command">{{ get_mon_command_line(obj) | limit_text:40:true }}</span>
+                <span ng-if="obj._show_full_command">{{ get_mon_command_line(obj) }}</span>
             </td>
             <td>{{ obj.volatile | yesno1 }}</td>
             <td>{{ obj.enable_perfdata | yesno1 }}</td>
             <td>{{ obj.is_event_handler | yesno1 }}</td>
-            <td>{{ obj.event_handler }}</td>
+            <td>{{ get_event_handler(obj.event_handler) }}</td>
             <td>{{ obj.event_handler_enabled }}</td>
             <td>{{ get_num_cats(obj) }}</td>
             <td><input type="button" ng-class="obj._selected && 'btn btn-primary btn-xs' || 'btn btn-xs'" value="sel" ng-click="select_object(obj)"></input>
@@ -434,6 +439,7 @@ config_ctrl = config_module.controller("config_ctrl", ["$scope", "$compile", "$f
                 restDataSource.reload(["{% url 'rest:category_list' %}", {}]),
                 restDataSource.reload(["{% url 'rest:config_catalog_list' %}", {}]),
                 restDataSource.reload(["{% url 'rest:config_hint_list' %}", {}]),
+                restDataSource.reload(["{% url 'rest:mon_check_command_special_list' %}", {}]),
             ]
             $q.all(wait_list).then((data) ->
                 $scope.mon_service_templ = data[1]
@@ -442,6 +448,8 @@ config_ctrl = config_module.controller("config_ctrl", ["$scope", "$compile", "$f
                 ($scope._set_fields(entry, true) for entry in data[0])
                 $scope.entries = data[0]
                 $scope.config_catalogs = data[3]
+                $scope.mccs_list = data[5]
+                $scope.mccs_lut = build_lut(data[5])
                 # catalog for uploads
                 $scope.catalog = $scope.config_catalogs[0].idx
                 $scope.config_edit.create_list = $scope.entries
@@ -449,8 +457,15 @@ config_ctrl = config_module.controller("config_ctrl", ["$scope", "$compile", "$f
                 $scope.catalog_edit.create_list = $scope.config_catalogs
                 $scope.catalog_edit.delete_list = $scope.config_catalogs
                 $scope.config_hints = {}
+                $scope.soft_config_hints = []
+                # configs found (positive cache)
+                $scope.resolved_config_hints = {}
+                # configs not found (negative cache)
+                $scope.no_config_hints = {}
                 for entry in data[4]
                     $scope.config_hints[entry.config_name] = entry
+                    if not entry.exact_match
+                        $scope.soft_config_hints.push(entry)
                     entry.var_lut = {}
                     for vh in entry.config_var_hint_set
                         entry.var_lut[vh.var_name] = vh
@@ -549,30 +564,55 @@ config_ctrl = config_module.controller("config_ctrl", ["$scope", "$compile", "$f
                 obj._selected = true
                 $scope.selected_objects.push(obj)
         # hint functions
+        $scope.re_compare = (_array, _input) ->
+            console.log _array, _input, $scope.config_hints[_array].exact_match
+            return true
+            cur_pat = new RegExp(_array, "i")
+            console.log cur_pat, _input
+            return cur_pat.test(_input)
         $scope.get_config_hints = () ->
             return (entry for entry of $scope.config_hints)
-        $scope.get_name_filter = () ->
-            return if $scope._edit_obj.name? then $scope._edit_obj.name else ""
+        $scope.config_selected_vt = (item, model, label) ->
+            if item of $scope.config_hints
+                # set description
+                if not $scope._edit_obj.description
+                    $scope._edit_obj.description = $scope.config_hints[item].config_description
         $scope.get_config_var_hints = (config) ->
             if config and config.name of $scope.config_hints
                 return (entry for entry of $scope.config_hints[config.name].var_lut)
             else
                 return []
         $scope.config_has_info = (config) ->
-            return config.name of $scope.config_hints
+            if config.name of $scope.resolved_config_hints
+                return true
+            else if config.name of $scope.no_config_hints
+                return false 
+            else if config.name of $scope.config_hints
+                $scope.resolved_config_hints[config.name] = $scope.config_hints[config.name]
+                return true
+            else
+                # soft match
+                found_names = _.sortBy((entry.config_name for entry in $scope.soft_config_hints when new RegExp(entry.config_name).test(config.name)), (_str) -> return -_str.length)
+                if found_names.length
+                    found_name = found_names[0]
+                    $scope.resolved_config_hints[config.name] = $scope.config_hints[found_name]
+                    return true
+                else
+                    $scope.no_config_hints[config.name] = true
+                    return false
         $scope.get_config_help_text = (config) ->
             if $scope.config_has_info(config) 
-                return $scope.config_hints[config.name].help_text_short or "no short help"
+                return $scope.resolved_config_hints[config.name].help_text_short or "no short help"
             else
                 return ""
         $scope.var_has_info = (config, cvar) ->
-            if config.name of $scope.config_hints
-                return cvar.name of $scope.config_hints[config.name].var_lut
+            if config.name of $scope.resolved_config_hints
+                return cvar.name of $scope.resolved_config_hints[config.name].var_lut
             else
                 return false
         $scope.get_var_help_text = (config, cvar) ->
             if $scope.var_has_info(config, cvar)
-                return $scope.config_hints[config.name].var_lut[cvar.name].help_text_short or "no short help"
+                return $scope.resolved_config_hints[config.name].var_lut[cvar.name].help_text_short or "no short help"
             else
                 return ""
         $scope.show_config_help = () ->
@@ -744,11 +784,18 @@ config_ctrl = config_module.controller("config_ctrl", ["$scope", "$compile", "$f
             )
         $scope.edit_mon = (config, obj, event) ->
             $scope.mon_edit.create_list = config.mon_check_command_set
+            obj.arg_name = "argument"
+            obj.arg_value = "80"
             $scope.mon_edit.edit(obj, event).then(
                 (mod_obj) ->
                     if mod_obj != false
                         $scope.filter_conf(config, $scope)
             )
+        $scope.get_mon_command_line = (obj) ->
+            if obj.mon_check_command_special
+                return $scope.mccs_lut[obj.mon_check_command_special].command_line
+            else
+                return obj.command_line 
         $scope.copy_mon = (config, obj, event) ->
             call_ajax
                 url     : "{% url 'config:copy_mon' %}"
@@ -771,12 +818,24 @@ config_ctrl = config_module.controller("config_ctrl", ["$scope", "$compile", "$f
                     "description" : "Check command"
                     "command_line" : "$USER2$ -m $HOSTADDRESS$ uptime"
                     "categories" : []
+                    "arg_name" : "argument"
+                    "arg_value" : "80"
                 }
             $scope.mon_edit.create(event).then(
                 (new_obj) ->
                     if new_obj != false
                         $scope.filter_conf(config, $scope)
             ) 
+        $scope.get_event_handler = (ev_idx) ->
+            if ev_idx
+                # not fast but working
+                ev_config = (entry for entry in $scope.entries when ev_idx in (mcc.idx for mcc in entry.mon_check_command_set))
+                if ev_config.length
+                    return (entry for entry in ev_config[0].mon_check_command_set when entry.idx == ev_idx)[0].name
+                else
+                    return "???"
+            else
+                return "---"
         $scope.get_event_handlers = (edit_obj) ->
             ev_handlers = []
             for entry in $scope.entries
@@ -796,6 +855,57 @@ config_ctrl = config_module.controller("config_ctrl", ["$scope", "$compile", "$f
         $scope.delete_catalog = (cat) ->
             $scope.catalog_edit.delete_obj(cat).then((res) ->
             )
+        $scope.get_mccs_info = () ->
+            cur_mccs = $scope._edit_obj.mon_check_command_special
+            if cur_mccs
+                return $scope.mccs_lut[cur_mccs].description
+            else
+                return ""
+        $scope.get_mccs_cmdline = () ->
+            cur_mccs = $scope._edit_obj.mon_check_command_special
+            if cur_mccs
+                if $scope.mccs_lut[cur_mccs].is_active
+                    return $scope.mccs_lut[cur_mccs].command_line
+                else
+                    return "passive check"
+            else
+                return ""
+        $scope.add_argument = () ->
+            cur_cl = $scope._edit_obj.command_line
+            max_argn = 0
+            match_list = cur_cl.match(/arg(\d+)/ig)
+            if match_list?
+                for cur_match in match_list 
+                    max_argn = Math.max(max_argn, parseInt(cur_match.substring(3)))
+            max_argn++
+            $scope._edit_obj.command_line = "#{cur_cl} ${ARG#{max_argn}:#{$scope._edit_obj.arg_name.toUpperCase()}:#{$scope._edit_obj.arg_value}}"
+        $scope.get_moncc_info = () ->
+            cur_cl = $scope._edit_obj.command_line
+            complex_re = new RegExp("\\$\\{arg(\\d+):([^\\}^:]+):*(\\S+)*\\}\\$*|\\$\\arg(\\d+)\\$", "ig")
+            if cur_cl
+                simple_list = []
+                default_list = []
+                complex_list = []
+                while cur_m = complex_re.exec(cur_cl)
+                    if cur_m[4]
+                        # simple $ARG##$
+                        simple_list.push([parseInt(cur_m[4])])
+                    else if cur_m[3]
+                        # complex ${ARG##:NAME:DEFAULT}
+                        complex_list.push([parseInt(cur_m[1]), cur_m[2], cur_m[3]])
+                    else
+                        # form with default #{ARG##:DEFAULT}
+                        default_list.push([parseInt(cur_m[1]), cur_m[2]])
+                info_field = ["#{simple_list.length} simple args, #{default_list.length} args with default and #{complex_list.length} complex args"]
+                for entry in simple_list
+                    info_field.push("simple argument $ARG#{entry[0]}$")
+                for entry in default_list
+                    info_field.push("argument $ARG#{entry[0]}$ with default value #{entry[1]}")
+                for entry in complex_list
+                    info_field.push("argument $ARG#{entry[0]}$ from DevVar '#{entry[1]}' (default value #{entry[2]})")
+                return info_field
+            else
+                return ["no args parsed"]
         $scope.reload()
 ]).directive("catalogtable", ($templateCache, $compile, $modal, Restangular) ->
     return {
@@ -811,6 +921,12 @@ config_ctrl = config_module.controller("config_ctrl", ["$scope", "$compile", "$f
     return {
         restrict : "EA"
         template : $templateCache.get("var_table.html")
+        link : (scope, el, attrs) ->
+            scope.get_value = (obj) ->
+                if obj.v_type == "bool"
+                    return if obj.value then "true" else "false"
+                else
+                    return obj.value
     }
 ).directive("scripttable", ($templateCache, $compile, $modal, Restangular) ->
     return {
@@ -850,6 +966,11 @@ config_ctrl = config_module.controller("config_ctrl", ["$scope", "$compile", "$f
             scope.cat_tree.show_selected(true)
             scope.new_selection = (new_sel) ->
                 scope._edit_obj.categories = new_sel
+            scope.show_cat_tree = () ->
+                scope.cat_tree.toggle_expand_tree(1, false)
+            scope.hide_cat_tree = () ->
+                scope.cat_tree.toggle_expand_tree(-1, false)
+            scope.hide_cat_tree()
     }
 ).directive("uploadinfo", ($templateCache, $compile, $modal, Restangular) ->
     return {

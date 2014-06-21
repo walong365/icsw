@@ -1,4 +1,3 @@
-#!/usr/bin/python -Ot
 # -*- coding: utf-8 -*-
 #
 # Copyright (C) 2012-2014 Andreas Lang-Nevyjel
@@ -29,7 +28,7 @@ from django.http import HttpResponseRedirect
 from django.utils.decorators import method_decorator
 from django.views.generic import View
 from initat.cluster.backbone.models import device, device_type, domain_name_tree, netdevice, \
-    net_ip, peer_information, mon_ext_host
+    net_ip, peer_information, mon_ext_host, get_related_models
 from initat.cluster.frontend.forms import mon_period_form, mon_notification_form, mon_contact_form, \
     mon_service_templ_form, host_check_command_form, mon_contactgroup_form, mon_device_templ_form, \
     mon_host_cluster_form, mon_service_cluster_form, mon_host_dependency_templ_form, \
@@ -42,10 +41,10 @@ from lxml.builder import E # @UnresolvedImports
 import base64
 import json
 import logging
-import process_tools
-import socket
 import logging_tools
+import process_tools
 import server_command
+import socket
 
 logger = logging.getLogger("cluster.monitoring")
 
@@ -111,7 +110,7 @@ class create_config(View):
     @method_decorator(login_required)
     @method_decorator(xml_wrapper)
     def post(self, request):
-        srv_com = server_command.srv_command(command="rebuild_host_config", cache_mode="ALWAYS")
+        srv_com = server_command.srv_command(command="rebuild_host_config", cache_mode=request.POST.get("cache_mode", "DYNAMIC"))
         result = contact_server(request, "md-config", srv_com, connection_id="wf_mdrc")
         if result:
             request.xml_response["result"] = E.devices()
@@ -139,6 +138,34 @@ class fetch_partition(View):
         srv_com["server_key:device_pk"] = "%d" % (part_dev.pk)
         srv_com["server_key:device_pk"] = "%d" % (part_dev.pk)
         _result = contact_server(request, "server", srv_com, timeout=30)
+
+class clear_partition(View):
+    @method_decorator(login_required)
+    @method_decorator(xml_wrapper)
+    def post(self, request):
+        _post = request.POST
+        part_dev = device.objects.get(Q(pk=_post["pk"]))
+        logger.info("clearing partition info from {}".format(unicode(part_dev)))
+        _part = part_dev.act_partition_table
+        if _part is None:
+            request.xml_response.error(u"no partition table defined for {}".format(unicode(part_dev)))
+        else:
+            part_dev.act_partition_table = None
+            part_dev.save(update_fields=["act_partition_table"])
+            if not _part.user_created and not get_related_models(_part):
+                request.xml_response.warn(u"partition table {} removed".format(_part))
+                _part.delete()
+
+class use_partition(View):
+    @method_decorator(login_required)
+    @method_decorator(xml_wrapper)
+    def post(self, request):
+        _post = request.POST
+        part_dev = device.objects.get(Q(pk=_post["pk"]))
+        logger.info("using partition info from {} as act_partition".format(unicode(part_dev)))
+        part_dev.act_partition_table = part_dev.partition_table
+        part_dev.save(update_fields=["act_partition_table"])
+        request.xml_response.info("set {} as act_partition_table".format(unicode(part_dev.partition_table)))
 
 class get_node_config(View):
     @method_decorator(login_required)
@@ -246,7 +273,8 @@ class create_device(permission_required_mixin, View):
                 dnt_node = dnt.add_domain(domain_name)
             else:
                 short_name = device_data["full_name"]
-                dnt_node = None
+                # top level node
+                dnt_node = dnt.get_domain_tree_node("")
             try:
                 cur_dev = device.objects.get(Q(name=short_name) & Q(domain_tree_node=dnt_node))
             except device.DoesNotExist:

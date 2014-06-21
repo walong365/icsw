@@ -20,6 +20,9 @@ angular_add_simple_list_controller(
         rest_map            : [
             {"short" : "service", "url" : "{% url 'rest:package_service_list' %}"}
         ]
+        init_fn : ($scope, timeout) ->
+            $scope.show_enabled = false
+            $scope.show_published = false
         fn :
             get_service_name : ($scope, repo) ->
                 if repo.service
@@ -50,6 +53,23 @@ angular_add_simple_list_controller(
                     success : (xml) ->
                         $.unblockUI()
                         parse_xml_response(xml)
+            clearcaches : () ->
+                $.blockUI()
+                call_ajax
+                    url     : "{% url 'pack:repo_overview' %}"
+                    data    : {
+                        "mode" : "clear_caches"
+                    }
+                    success : (xml) ->
+                        $.unblockUI()
+                        parse_xml_response(xml)
+            filter_repo : (obj, $scope) ->
+                _show = true
+                if $scope.show_enabled and not obj.enabled
+                    _show = false
+                if $scope.show_published and not obj.publish_to_nodes
+                    _show = false
+                return _show
     }
 )
 
@@ -65,22 +85,19 @@ angular_add_simple_list_controller(
         delete_confirm_str  : (obj) -> return "Really delete Package search '#{obj.name}' ?"
         template_cache_list : ["package_search_row.html", "package_search_head.html"]
         entries_filter      : {deleted : false}
-        new_object          : {"search_string" : "", "user" : {{ request.user.pk }}}
         post_delete : ($scope, del_obj) ->
             if $scope.shared_data.result_obj and $scope.shared_data.result_obj.idx == del_obj.idx
                 $scope.shared_data.result_obj = undefined
-        object_created  : (new_obj, srv_data) -> 
-            new_obj.search_string = ""
-            call_ajax
-                url     : "{% url 'pack:repo_overview' %}"
-                data    : {
-                    "mode" : "reload_searches"
-                }
-                success : (xml) ->
-                    parse_xml_response(xml)
         fn:
             object_modified : (edit_obj, srv_data, $scope) ->
-                $scope.reload()
+                call_ajax
+                    url     : "{% url 'pack:retry_search' %}"
+                    data    : {
+                        "pk" : edit_obj.idx
+                    }
+                    success : (xml) ->
+                        parse_xml_response(xml)
+                        $scope.reload()
             retry : ($scope, obj) ->
                 if $scope.shared_data.result_obj and $scope.shared_data.result_obj.idx == obj.idx
                     $scope.shared_data.result_obj = undefined
@@ -94,8 +111,23 @@ angular_add_simple_list_controller(
                         $scope.reload()
             show : ($scope, obj) ->
                 $scope.shared_data.result_obj = obj
+            create_search : ($scope) ->
+                if $scope.search_string
+                    $scope.Restangular.all("{% url 'rest:package_search_list' %}".slice(1)).post({"search_string" : $scope.search_string, "user" : {{ request.user.pk }}}).then((data) ->
+                        call_ajax
+                            url     : "{% url 'pack:repo_overview' %}"
+                            data    : {
+                                "mode" : "reload_searches"
+                            }
+                            success : (xml) ->
+                                parse_xml_response(xml)
+                                $scope.reload()
+                        $scope.search_string = ""
+                    )
         init_fn:
-            ($scope, $timeout) ->
+            ($scope, $timeout, Restangular) ->
+                $scope.Restangular = Restangular
+                $scope.search_string = ""
                 $scope.$timeout = $timeout
                 $scope.reload_searches = () ->
                     # check all search states
@@ -164,18 +196,26 @@ angular_add_simple_list_controller(
                                 (data) ->
                                     $.unblockUI()
                                     $scope.entries = data
+                                    for entry in $scope.entries
+                                        entry.target_repo = 0
                             )
                         else
                             $scope.entries = []
                 )
         fn:
+            show_repo : ($scope, obj) ->
+                if obj.target_repo
+                    return $scope.rest_data["package_repo"][obj.target_repo].name
+                else
+                    return "ignore"
             take : ($scope, obj, exact) ->
                 obj.copied = 1
                 call_ajax
                     url     : "{% url 'pack:use_package' %}"
                     data    : {
-                        "pk"    : obj.idx
-                        "exact" : if exact then 1 else 0
+                        "pk"          : obj.idx
+                        "exact"       : if exact then 1 else 0
+                        "target_repo" : obj.target_repo
                     }
                     success : (xml) ->
                         if parse_xml_response(xml)
@@ -198,6 +238,8 @@ package_module.controller("install", ["$scope", "$compile", "$filter", "$templat
         $scope.image_list = []
         $scope.kernel_list = []
         $scope.package_filter = ""
+        # is mode
+        $scope.is_mode = "a"
         # init state dict
         $scope.state_dict = {}
         $scope.selected_pdcs = {}
@@ -223,7 +265,7 @@ package_module.controller("install", ["$scope", "$compile", "$filter", "$templat
                 $.unblockUI()
             )
         # not working right now, f*ck, will draw to many widgets
-        install_devsel_link($scope.reload_devices, true)
+        install_devsel_link($scope.reload_devices, false)
         $scope.reload_state = () ->
             #console.log "rls"
             Restangular.all("{% url 'rest:device_tree_list' %}".slice(1)).getList({"package_state" : true, "ignore_meta_devices" : true}).then(
@@ -464,6 +506,16 @@ package_module.controller("install", ["$scope", "$compile", "$filter", "$templat
                 success : (xml) ->
                     $.unblockUI()
                     parse_xml_response(xml)
+        $scope.send_clear_caches = (event) ->
+            $.blockUI()
+            call_ajax
+                url     : "{% url 'pack:repo_overview' %}"
+                data    : {
+                    "mode" : "clear_caches"
+                }
+                success : (xml) ->
+                    $.unblockUI()
+                    parse_xml_response(xml)
         $scope.latest_contact = (dev) ->
             if dev.latest_contact
                 return moment.unix(dev.latest_contact).fromNow(true)
@@ -474,9 +526,10 @@ package_module.controller("install", ["$scope", "$compile", "$filter", "$templat
     return {
         restrict : "EA"
         scope:
-            pdc: "=pdc"
+            pdc          : "=pdc"
             selected_pdcs: "=pdcs"
-            parent: "=parent"
+            parent       : "=parent"
+            mode         : "=mode"
         replace  : true
         transclude : true
         compile : (tElement, tAttrs) ->
@@ -539,15 +592,7 @@ package_module.controller("install", ["$scope", "$compile", "$filter", "$templat
                             else
                                 t_field.push("<br>installtime: unknown")
                             if pdc.installed_name
-                                inst_name = pdc.installed_name
-                                if pdc.installed_version
-                                    inst_name = "#{inst_name}-#{pdc.installed_version}"
-                                else
-                                    inst_name = "#{inst_name}-?"
-                                if pdc.installed_release
-                                    inst_name = "#{inst_name}-#{pdc.installed_release}"
-                                else
-                                    inst_name = "#{inst_name}-?"
+                                inst_name = scope.get_installed_version()
                                 t_field.push("<br>installed: #{inst_name}")
                         else
                             t_field.push("<br>unknown install state '#{pdc.installed}")
@@ -564,8 +609,35 @@ package_module.controller("install", ["$scope", "$compile", "$filter", "$templat
                         return "<div class='text-left'>" + t_field.join("") + "<div>"
                     else
                         return ""
-                new_el = $compile($templateCache.get("pdc_state.html"))
-                iElement.append(new_el(scope))
+                scope.get_installed_version = () ->
+                    if scope.pdc and scope.pdc.idx
+                        pdc = scope.pdc
+                        if pdc.installed == "y" and pdc.installed_name
+                            inst_name = pdc.installed_name
+                            if pdc.installed_version
+                                inst_name = "#{inst_name}-#{pdc.installed_version}"
+                            else
+                                inst_name = "#{inst_name}-?"
+                            if pdc.installed_release
+                                inst_name = "#{inst_name}-#{pdc.installed_release}"
+                            else
+                                inst_name = "#{inst_name}-?"
+                            return inst_name
+                        else
+                            return "---"
+                    else
+                        return "---"
+                scope.draw = () ->
+                    iElement.children().remove()
+                    if scope.mode == "a"
+                        new_el = $compile($templateCache.get("pdc_state.html"))
+                    else if scope.mode == "v"
+                        new_el = $compile($templateCache.get("pdc_version.html"))
+                    iElement.append(new_el(scope))
+                scope.$watch("mode", () ->
+                    scope.draw()
+                )
+                scope.draw()
     }
 )
 

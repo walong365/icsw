@@ -23,7 +23,6 @@ background_job_info_module.controller("info_ctrl", ["$scope", "$compile", "$filt
             wait_list = restDataSource.add_sources([
                 ["{% url 'rest:background_job_list' %}", {}]
                 #["{% url 'rest:mon_dist_slave_list' %}", {}]
-                #["{% url 'rest:user_list' %}", {"all_monitoring_servers" : true}]
             ])
             $q.all(wait_list).then((data) ->
                 $timeout($scope.reload, 5000)

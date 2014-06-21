@@ -20,7 +20,7 @@ angular_add_simple_list_controller(
         rest_map            : [
             {"short" : "mon_device_templ", "url" : "{% url 'rest:mon_device_templ_list' %}"}
             {"short" : "mon_ext_host"    , "url" : "{% url 'rest:mon_ext_host_list' %}"}
-            {"short" : "mon_server"      , "url" : "{% url 'rest:device_tree_list' %}", "options" : {"all_monitoring_servers" : true}}
+            {"short" : "mon_server"      , "url" : "{% url 'rest:device_tree_list' %}", "options" : {"monitor_server_type" : true}}
         ]
         template_cache_list : ["mon_device_head.html"]
         md_cache_modes : [
@@ -29,7 +29,7 @@ angular_add_simple_list_controller(
             {"idx" : 3, "name" : "once (until successfull)"} 
         ]
         init_fn: ($scope, $timeout) ->
-            install_devsel_link($scope.reload, true)
+            install_devsel_link($scope.reload, false)
         fn:
             fetch : (edit_obj) ->
                 $.blockUI()

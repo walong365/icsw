@@ -37,7 +37,7 @@
             <li class="list-group-item">
                 <div class="row">
                     <div class="col-md-4">
-                        Changelog for the current development master
+                        Changelog of the current development master
                     </div>
                     <div class="col-md-4">
                         <a href="http://www.initat.org/wordpress/?page_id=121" target="_blank" >{% trans "Changelog" %}</a>
@@ -51,6 +51,16 @@
                     </div>
                     <div class="col-md-4">
                         <a href="http://www.initat.org/phpBB3/index.php" target="_blank">{% trans "Forum" %}</a>
+                    </div>
+                </div>
+            </li>
+            <li class="list-group-item">
+                <div class="row">
+                    <div class="col-md-4">
+                        Mailing list (subscribe)
+                    </div>
+                    <div class="col-md-4">
+                        <a href="http://www.initat.org/mailman/listinfo" target="_blank">{% trans "Mailman" %}</a>
                     </div>
                 </div>
             </li>
@@ -85,10 +95,10 @@ index_controller = index_module.controller("index_base", ["$scope", "$timeout", 
             $scope.show_index = flag
 ])
 
-use_devs = (dev_list) ->
+use_devs = (dev_list, devg_list, md_list) ->
     if dev_list.length
         # only use when at least one device is selected
-        cur_di = new device_info(undefined, dev_list[0], (entry for entry in dev_list[1..]))
+        cur_di = new device_info(undefined, dev_list[0], (entry for entry in dev_list[1..]), md_list)
         set_index_visibility(false)
         $("div#center_deviceinfo").show()
         cur_di.show()
@@ -100,7 +110,7 @@ use_devs = (dev_list) ->
         $("div#center_deviceinfo").hide()
 
 add_config_handlers = ->
-    install_devsel_link(use_devs, true, true, false)
+    install_devsel_link(use_devs, true)
     angular.bootstrap($("div[id='icsw.index_app']"), ["icsw.index_app"])
 
 root.show_device_on_index = use_devs

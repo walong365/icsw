@@ -38,32 +38,24 @@ device_config_template = """
     <h2>
         Device config ({{ devices.length }} devices), {{ configs.length }} configurations ({{ active_configs.length }} shown)
     </h2>
-    <div class="row">
-        <div class="form-inline col-sm-3">
-            <div class="form-group">
-                <input class="form-control" ng-model="name_filter" placeholder="filter"></input>
-            </div>,
-            <div class="form-group">
-                <input
-                    type="button"
-                    ng-class="only_selected && 'btn btn-sm btn-success' || 'btn btn-sm'"
-                    ng-click="only_selected = !only_selected"
-                    value="only selected"
-                    title="show only configs selected anywhere in the curren selection"
-                ></input>
-            </div>
-        </div>
-        <div class="form-inline col-sm-4">
-            <div class="form-group" ng-show="acl_create(null, 'backbone.config.modify_config') && config_catalogs.length > 0">
-                <input placeholder="new config" ng-model="new_config_name" class="form-control input-sm"></input>
-                <div class="btn-group" ng-show="new_config_name">
-                    <button type="button" class="btn btn-sm btn-success dropdown-toggle" data-toggle="dropdown">
-                        Create in catalog <span class="caret"></span>
-                    </button>
-                    <ul class="dropdown-menu">
-                        <li ng-repeat="entry in config_catalogs" ng-click="create_config(entry.idx)"><a href="#">{{ entry.name }}</a></li>
-                    </ul>
-                </div>
+    <div class="form-inline">
+        <input class="form-control" ng-model="name_filter" placeholder="filter"></input>,
+        <input
+            type="button"
+            ng-class="only_selected && 'btn btn-sm btn-success' || 'btn btn-sm'"
+            ng-click="only_selected = !only_selected"
+            value="only selected"
+            title="show only configs selected anywhere in the curren selection"
+        ></input>
+        <div class="form-group" ng-show="acl_create(null, 'backbone.config.modify_config') && config_catalogs.length > 0">
+            <input placeholder="new config" ng-model="new_config_name" class="form-control input-sm"></input>
+            <div class="btn-group" ng-show="new_config_name">
+                <button type="button" class="btn btn-sm btn-success dropdown-toggle" data-toggle="dropdown">
+                    Create in catalog <span class="caret"></span>
+                </button>
+                <ul class="dropdown-menu">
+                    <li ng-repeat="entry in config_catalogs" ng-click="create_config(entry.idx)"><a href="#">{{ entry.name }}</a></li>
+                </ul>
             </div>
         </div>
     </div>
@@ -108,6 +100,8 @@ partinfo_template = """
                     <h4>
                         Partition table '{{ dev.act_partition_table.name}}',
                         <input type="button" class="btn btn-sm btn-warning" value="fetch partition info" ng-click="fetch(dev.idx)"></input>
+                        <input type="button" class="btn btn-sm btn-danger" value="clear" ng-click="clear(dev.idx)" ng-show="dev.act_partition_table"></input>
+                        <input type="button" class="btn btn-sm btn-success" value="use {{ dev.partition_table.name }}" ng-click="use(dev.idx)" ng-show="dev.partition_table"></input>
                     </h4>
                     <table class="table table-condensed table-hover table-bordered" style="width:auto;">
                         <tbody>
@@ -118,7 +112,7 @@ partinfo_template = """
                                 <th>crit</th>
                             </tr>
                             <tr ng-repeat-end ng-repeat="part in disk.partition_set" ng-show="part.mountpoint">
-                                <td>{{ disk.disc }}{{ part.pnum }}</td>
+                                <td>{{ disk.disc }}{{ part.pnum || '' }}</td>
                                 <td>{{ part.mountpoint }}</td>
                                 <td class="text-right">{{ part.size | get_size:1000000:1000 }}</td>
                                 <td class="text-center">{{ part.warn_threshold }} %</td>
@@ -144,6 +138,7 @@ partinfo_template = """
                     <h4>
                         <span class="text-danger">No partition table defined</span>, 
                         <input type="button" class="btn btn-sm btn-warning" value="fetch partition info" ng-click="fetch(dev.idx)"></input>
+                        <input type="button" class="btn btn-sm btn-success" value="use {{ dev.partition_table.name }}" ng-click="use(dev.idx)" ng-show="dev.partition_table"></input>
                     </h4>
                 </div>
             </tab> 
@@ -396,7 +391,7 @@ device_config_module.controller("config_ctrl", ["$scope", "$compile", "$filter",
             if conf_idx != null
                 cur_conf = $scope.configs_lut[conf_idx]
                 return cur_conf.info_str
-        install_devsel_link($scope.new_devsel, true, true)
+        install_devsel_link($scope.new_devsel, false)
 ]).directive("dcrow", ($templateCache) ->
     return {
         restrict : "EA"
@@ -640,6 +635,7 @@ class location_tree extends tree_config
         else
             return "TOP"
 
+
 loc_ctrl = device_config_module.controller("location_ctrl", ["$scope", "restDataSource", "$q", "access_level_service",
     ($scope, restDataSource, $q, access_level_service) ->
         access_level_service.install($scope)
@@ -752,11 +748,35 @@ device_config_module.controller("partinfo_ctrl", ["$scope", "$compile", "$filter
             )
         $scope.get_vg = (dev, vg_idx) ->
             return (cur_vg for cur_vg in dev.act_partition_table.lvm_vg_set when cur_vg.idx == vg_idx)[0]
+        $scope.clear = (pk) ->
+            if pk?
+                $.blockUI()
+                call_ajax
+                    url     : "{% url 'mon:clear_partition' %}"
+                    data    : {
+                        "pk" : pk
+                    }
+                    success : (xml) ->
+                        $.unblockUI()
+                        parse_xml_response(xml)
+                        $scope.reload()
         $scope.fetch = (pk) ->
             if pk?
                 $.blockUI()
                 call_ajax
                     url     : "{% url 'mon:fetch_partition' %}"
+                    data    : {
+                        "pk" : pk
+                    }
+                    success : (xml) ->
+                        $.unblockUI()
+                        parse_xml_response(xml)
+                        $scope.reload()
+        $scope.use = (pk) ->
+            if pk?
+                $.blockUI()
+                call_ajax
+                    url     : "{% url 'mon:use_partition' %}"
                     data    : {
                         "pk" : pk
                     }
@@ -791,7 +811,11 @@ info_ctrl = device_config_module.controller("deviceinfo_ctrl", ["$scope", "$comp
             $scope.show_uuid = !$scope.show_uuid
         $scope.modify = () ->
             if not $scope.form.$invalid
+                if $scope._edit_obj.device_type_identifier == "MD"
+                    $scope._edit_obj.name = "METADEV_" + $scope._edit_obj.name
                 $scope._edit_obj.put().then(() ->
+                    if $scope._edit_obj.device_type_identifier == "MD"
+                        $scope._edit_obj.name = $scope._edit_obj.name.substr(8)
                     # selectively reload sidebar tree
                     reload_sidebar_tree([$scope._edit_obj.idx])
                 )
@@ -805,25 +829,220 @@ info_ctrl = device_config_module.controller("deviceinfo_ctrl", ["$scope", "$comp
         # bugfix for ui-select2, not working ...
         priority : 2
         link : (scope, element, attrs) ->
+            scope._edit_obj = null
             if attrs["devicepk"]?
-                device_pk = parseInt(attrs["devicepk"])
+                scope.device_pk = parseInt(attrs["devicepk"])
                 wait_list = [
                     restDataSource.reload(["{% url 'rest:fetch_forms' %}", {"forms" : angular.toJson(["device_info_form"])}])
                     restDataSource.reload(["{% url 'rest:domain_tree_node_list' %}", {}])
                     restDataSource.reload(["{% url 'rest:mon_device_templ_list' %}", {}])
                     restDataSource.reload(["{% url 'rest:mon_ext_host_list' %}", {}])
+                    restDataSource.reload(["{% url 'rest:device_tree_list' %}", {"with_network" : true, "with_monitoring_hint" : true, "with_disk_info" : true, "pks" : angular.toJson([scope.device_pk]), "ignore_cdg" : false}])
                 ]
                 $q.all(wait_list).then((data) ->
                     form = data[0][0].form
                     scope.domain_tree_node = data[1]
                     scope.mon_device_templ_list = data[2]
                     scope.mon_ext_host_list = data[3]
-                    Restangular.one("{% url 'rest:device_detail' 1 %}".slice(1).slice(0, -2), device_pk).get().then((res) ->
-                        scope._edit_obj = res
-                        element.append($compile(form)(scope))
-                    )
+                    scope._edit_obj = data[4][0]
+                    #console.log scope._edit_obj.device_type_identifier
+                    #Restangular.restangularizeElement(null, scope._edit_obj, "{% url 'rest:device_detail' 1 %}".slice(1).slice(0, -2))
+                    if scope._edit_obj.device_type_identifier == "MD"
+                        scope._edit_obj.name = scope._edit_obj.name.substr(8)
+                    element.append($compile(form)(scope))
                 )
+            else
+                scope.device_pk = null
+            scope.is_device = () ->
+                return if scope._edit_obj.device_type_identifier in ["MD"] then false else true
+            scope.get_monitoring_hint_info = () ->
+                if scope._edit_obj.monitoring_hint_set.length
+                    mhs = scope._edit_obj.monitoring_hint_set
+                    return "#{mhs.length} (#{(entry for entry in mhs when entry.check_created).length} used for service checks)"
+                else
+                    return "---"
+            scope.get_ip_info = () ->
+                if scope._edit_obj?
+                    ip_list = []
+                    for _nd in scope._edit_obj.netdevice_set
+                        for _ip in _nd.net_ip_set
+                            ip_list.push(_ip.ip)
+                    if ip_list.length
+                        return ip_list.join(", ")
+                    else
+                        return "none"
+                else
+                    return "---"
     }
+)
+
+{% verbatim %}
+
+mh_devrow_template = """
+<td>
+    <button class="btn btn-primary btn-xs" ng-click="expand_vt(obj)">
+        <span ng_class="get_expand_class(obj)">
+        </span> {{ obj.device_variable_set.length }}
+        <span ng-if="var_filter.length"> / {{ obj.num_filtered }} shown<span>
+    </button>
+</td>
+<td>{{ get_name(obj) }}</td>
+<td>{{ obj.device_group_name }}</td>
+<td>{{ obj.comment }}</td>
+<td>hints : {{ obj.monitoring_hint_set.length }}</td>
+"""
+
+mh_row_template = """
+<td>{{ hint.m_type }}</td>
+<td>{{ hint.key }}</td>
+<td>{{ get_v_type() }}</td>
+<td class="text-right" ng-class="get_td_class('lower_crit')">{{ get_limit('lower_crit') }}</td>
+<td class="text-right" ng-class="get_td_class('lower_warn')">{{ get_limit('lower_warn') }}</td>
+<td class="text-right" ng-class="get_td_class('upper_warn')">{{ get_limit('upper_warn') }}</td>
+<td class="text-right" ng-class="get_td_class('upper_crit')">{{ get_limit('upper_crit') }}</td>
+<td class="text-right success">{{ get_value() }}</td>>
+<td>{{ hint.info }}</td>
+"""
+
+mh_table_template = """
+<table class="table table-condensed table-hover table-bordered" style="width:auto;">
+    <thead>
+        <tr>
+            <th>Source</th>
+            <th>key</th>
+            <th>Type</th>
+            <th>lower crit</th>
+            <th>lower warn</th>
+            <th>upper warn</th>
+            <th>upper crit</th>
+            <th>value</th>
+            <th>info</th>
+        </tr>
+    </thead>
+    <tbody>
+        <tr mhrow ng-repeat="hint in obj.monitoring_hint_set"></tr>
+    </tbody>
+</table>
+"""
+
+mh_template = """
+<h2>
+    Monitoring hint ({{ devices.length }} devices)
+</h2>
+<table ng-show="devices.length" class="table table-condensed table-hover" style="width:auto;">
+    <thead>
+        <tr>
+            <th></th>
+            <th>Device</th>
+            <th>Group</th>
+            <th>Comment</th>
+            <th>Info</th>
+        </tr>
+    </thead>
+    <tbody>
+        <tr mhdevrow ng-repeat-start="obj in devices" ng-class="get_tr_class(obj)"></tr>
+        <tr ng-repeat-end ng-if="obj.expanded" ng-show="obj.monitoring_hint_set.length">
+            <td colspan="9"><monitoringhinttable></monitoringhinttable></td>
+        </tr>
+    </tbody>
+</table>
+"""
+
+{% endverbatim %}
+
+# monitoring hint controller
+device_config_module.controller("monitoring_hint_ctrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "sharedDataSource", "$q", "$modal", "access_level_service",
+    ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, sharedDataSource, $q, $modal, access_level_service) ->
+        access_level_service.install($scope)
+        $scope.devices = []
+        $scope.configs = []
+        $scope.new_devsel = (_dev_sel, _devg_sel) ->
+            $scope.devsel_list = _dev_sel
+            $scope.reload()
+        $scope.reload = () ->
+            pre_sel = (dev.idx for dev in $scope.devices when dev.expanded)
+            restDataSource.reset()
+            wait_list = restDataSource.add_sources([
+                ["{% url 'rest:device_tree_list' %}", {"with_monitoring_hint" : true, "pks" : angular.toJson($scope.devsel_list), "olp" : "backbone.device.change_monitoring"}],
+            ])
+            $q.all(wait_list).then((data) ->
+                $scope.devices = []
+                $scope.device_lut = {}
+                for entry in data[0]
+                    entry.expanded = true
+                    $scope.devices.push(entry)
+                    $scope.device_lut[entry.idx] = entry
+                #$scope.init_devices(pre_sel)
+                #$scope.new_filter_set($scope.name_filter, false)
+            )
+        $scope.get_tr_class = (obj) ->
+            if obj.device_type_identifier == "MD"
+                return "success"
+            else
+                return ""
+        $scope.expand_vt = (obj) ->
+            obj.expanded = not obj.expanded
+        $scope.get_expand_class = (obj) ->
+            if obj.expanded
+                return "glyphicon glyphicon-chevron-down"
+            else
+                return "glyphicon glyphicon-chevron-right"
+        #$scope.init_devices = (pre_sel) ->
+        #    # called after load
+        install_devsel_link($scope.new_devsel, false)
+]).directive("mhdevrow", ($templateCache) ->
+    return {
+        restrict : "EA"
+        template : $templateCache.get("mhdevrow.html")
+    }
+).directive("mhrow", ($templateCache) ->
+    return {
+        restrict : "EA"
+        template : $templateCache.get("mhrow.html")
+        link : (scope) ->
+            scope.get_v_type = () ->
+                return {"f" : "float", "i" : "int", "s" : "string"}[scope.hint.v_type]
+            scope.get_value = () ->
+                console.log "value_" + scope.get_v_type()
+                return scope.hint["value_" + scope.get_v_type()]
+            scope.get_td_class = (name) ->
+                v_type = scope.get_v_type()
+                key = "#{name}_#{v_type}"
+                skey = "#{key}_source"
+                if scope.hint[skey] == "n"
+                    return ""
+                else if scope.hint[skey] == "s"
+                    return "warning"
+                else if scope.hint[skey] == "u"
+                    return "success"
+            scope.get_limit = (name) ->
+                v_type = scope.get_v_type()
+                key = "#{name}_#{v_type}"
+                skey = "#{key}_source"
+                if scope.hint[skey] == "s" or scope.hint[skey] == "u"
+                    return scope.hint[key]
+                else
+                    return "---"
+    }
+).directive("monitoringhint", ($templateCache) ->
+    return {
+        restrict : "EA"
+        template : $templateCache.get("mh.html")
+        link : (scope, el, attrs) ->
+            if attrs["devicepk"]?
+                scope.new_devsel((parseInt(entry) for entry in attrs["devicepk"].split(",")), [])
+    }
+).directive("monitoringhinttable", ($templateCache, $compile, $modal, Restangular) ->
+    return {
+        restrict : "EA"
+        template : $templateCache.get("mhtable.html")
+        link : (scope) ->
+    }
+).run(($templateCache) ->
+    $templateCache.put("mhdevrow.html", mh_devrow_template)
+    $templateCache.put("mhrow.html", mh_row_template)
+    $templateCache.put("mh.html", mh_template)
+    $templateCache.put("mhtable.html", mh_table_template)
 )
 
 add_tree_directive(cat_ctrl)

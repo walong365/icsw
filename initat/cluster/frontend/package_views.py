@@ -32,7 +32,7 @@ from django.utils.decorators import method_decorator
 from django.views.generic import View
 from initat.cluster.backbone.models import package_search, package_search_result, \
     package, get_related_models, package_device_connection, device, kernel, image, \
-    package_device_connection_serializer
+    package_device_connection_serializer, package_repo
 from initat.cluster.frontend.helper_functions import contact_server, xml_wrapper
 from initat.cluster.frontend.forms import package_search_form, package_action_form
 from initat.cluster.backbone.render import permission_required_mixin, render_me
@@ -56,7 +56,7 @@ class repo_overview(permission_required_mixin, View):
     @method_decorator(xml_wrapper)
     def post(self, request):
         cur_mode = request.POST.get("mode", None)
-        if cur_mode in ["rescan_repos", "reload_searches", "sync_repos", "new_config"]:
+        if cur_mode in ["rescan_repos", "reload_searches", "sync_repos", "new_config", "clear_caches"]:
             srv_com = server_command.srv_command(command=cur_mode)
             _result = contact_server(request, "package", srv_com, timeout=10, log_result=True)
         else:
@@ -92,13 +92,18 @@ class use_package(View):
     def post(self, request):
         _post = request.POST
         exact = True if int(_post["exact"]) else False
+        target_repo = int(_post["target_repo"])
+        if target_repo and not exact:
+            t_repo = package_repo.objects.get(Q(pk=target_repo))
+        else:
+            t_repo = None
         try:
             cur_sr = package_search_result.objects.get(Q(pk=_post["pk"]))
         except package_search_result.DoesNotExist:
             request.xml_response.error("package_result not found", logger)
         else:
             try:
-                _new_p = cur_sr.create_package(exact=exact)
+                _new_p = cur_sr.create_package(exact=exact, target_repo=t_repo)
             except IntegrityError, what:
                 request.xml_response.error("error modifying: %s" % (unicode(what)), logger)
             except ValidationError, what:

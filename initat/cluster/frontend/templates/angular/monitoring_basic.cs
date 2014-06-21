@@ -204,6 +204,7 @@ angular_add_simple_list_controller(
                 "check_interval" : 2
                 "retry_interval" : 2
                 "nrecovery" : true
+                "ndown"     : true
                 "ncritical" : true
                 "low_flap_threshold" : 20
                 "high_flap_threshold" : 80

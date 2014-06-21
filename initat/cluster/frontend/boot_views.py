@@ -112,7 +112,7 @@ class get_boot_info_json(View):
             for cd_ping in result.xpath(".//ns:cd_ping_list/ns:cd_ping"):
                 cd_result[int(cd_ping.attrib["pk"])] = True if int(cd_ping.attrib["reachable"]) else False
             request.xml_response["cd_response"] = json.dumps(cd_result)
-        ctx = {"request" : request}
+        ctx = {"request" : request, "fields" : ["partition_table", "act_partition_table"]}
         request.xml_response["response"] = JSONRenderer().render(device_serializer_boot(dev_result, many=True, context=ctx).data)
 
 class update_device(APIView):

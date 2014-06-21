@@ -19,7 +19,7 @@ device_networks_template = """
             <th>Bridge</th>
             <th>MAC / Network</th>
             <th>Devtype / DTN</th>
-            <th>routing / alias</th>
+            <th>routing / alias / enabled</th>
             <th colspan="3">action</th>
         </tr>
     </thead>
@@ -76,15 +76,23 @@ nd_row_template = """
         {{ ndip_obj.net_ip_set.length }} / {{ ndip_obj.peers.length }} {{ get_netdevice_boot_info(ndip_obj) }}
         </span>
     </button>
-    {{ get_netdevice_name(ndip_obj) }}
+    <span ng-show="ndip_obj.enabled">
+        {{ get_netdevice_name(ndip_obj) }}
+    </span>
+    <span ng-show="!ndip_obj.enabled">
+        <em>{{ get_netdevice_name(ndip_obj) }}</em>
+    </span>
 </td>
 <td>{{ get_bridge_info(ndip_obj) }}</td>
 <td>{{ ndip_obj.macaddr }}</td>
 <td>{{ ndip_obj.network_device_type | array_lookup:network_device_types:'info_string':'-' }}</td>
-<td>{{ ndip_obj.routing | yesno2 }} ({{ ndip_obj.penalty }}) / {{ ndip_obj.inter_device_routing | yesno2 }}</td>
+<td>{{ ndip_obj.routing | yesno2 }} ({{ ndip_obj.penalty }}) / {{ ndip_obj.inter_device_routing | yesno2 }} / {{ ndip_obj.enabled | yesno2 }}</td>
 <td>
     <input type="button" class="btn btn-xs btn-info" value="info" tooltip-placement="right"
      tooltip-html-unsafe="<div class='text-left'>
+        device: {{ ndip_obj.devname }}<br>
+        enabled: {{ ndip_obj.enabled | yesno2 }}<br>
+        <hr>  
         driver: {{ ndip_obj.driver }}<br>
         driver options: {{ ndip_obj.driver_options }}<br>
         fake MACAddress: {{ ndip_obj.fake_macaddr }}<br>
@@ -583,7 +591,7 @@ device_network_module.controller("network_ctrl", ["$scope", "$compile", "$filter
             return num_bootips
         $scope.get_boot_value = (obj) ->
             return "boot (" + (if obj.dhcp_write then "write" else "no write") + " / " + (if obj.dhcp_mac then "greedy" else "not greedy") + ")"
-        install_devsel_link($scope.new_devsel, true, true, false)
+        install_devsel_link($scope.new_devsel, false)
 ]).directive("devicenetworks", ($templateCache) ->
     return {
         restrict : "EA"
