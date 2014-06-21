@@ -78,6 +78,7 @@ class smartstat_command(hm_classes.hm_command):
                     server_command.SRV_REPLY_STATE_ERROR,
                 )
         else:
+            self.module.update_smart()
             srv_com["smartstat"] = [self.module.devices[_dev] for _dev in self.module.devices.keys()]
     def interpret(self, srv_com, cur_ns):
         smartstat = srv_com["*smartstat"]
