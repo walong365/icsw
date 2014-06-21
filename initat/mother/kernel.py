@@ -297,7 +297,7 @@ class kernel_sync_process(threading_tools.process_obj):
                     send_com = server_command.server_command(command="kernel_sync_data",
                                                              option_dict=act_kernel.get_sync_dict())
                     self.log("send_com for %s has %s" % (act_kernel.name,
-                                                         logging_tools.get_size_str(len(str(send_com)), long_version=True)))
+                                                         logging_tools.get_size_str(len(str(send_com)), long_format=True)))
                     unreach_list, reach_list = ([], [])
                     self.__sync_dict[db_rec["name"]] = {"start_time" : time.time()}
                     # build reach_list

@@ -36,6 +36,7 @@ import initat.mother.kernel
 import logging_tools
 import os
 import process_tools
+import psutil
 import server_command
 import threading_tools
 import uuid_tools
@@ -423,13 +424,15 @@ class server_process(threading_tools.process_pool):
                 for log_line in add_log_lines:
                     self.log(log_line)
     def _enable_syslog_config(self):
-        syslog_exe_dict = dict([(key, value) for key, value in process_tools.get_proc_list().iteritems() if value and value.get("exe", "") and value["exe"].count("syslog")])
+        syslog_exe_dict = {value.pid : value.exe() for value in psutil.process_iter() if value.is_running() and value.exe().count("syslog")}
         syslog_type = None
         for key, value in syslog_exe_dict.iteritems():
-            self.log("syslog process found: %6d = %s" % (key, value["exe"]))
-            if value["exe"].endswith("rsyslogd"):
+            self.log("syslog process found: {}".format(key))
+            if value.endswith("rsyslogd"):
                 syslog_type = "rsyslogd"
-        self.log("syslog type found: %s" % (syslog_type or "none"))
+            elif value.endswith("syslog-ng"):
+                syslog_type = "syslog-ng"
+        self.log("syslog type found: {}".format(syslog_type or "none"))
         self.__syslog_type = syslog_type
         if self.__syslog_type == "rsyslogd":
             self._enable_rsyslog()
