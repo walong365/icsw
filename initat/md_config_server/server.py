@@ -25,7 +25,8 @@ os.environ.setdefault("DJANGO_SETTINGS_MODULE", "initat.cluster.settings")
 
 from django.db import connection, connections
 from django.db.models import Q
-from initat.cluster.backbone.models import mon_notification, config_str, config_int
+from initat.cluster.backbone.models import mon_notification, config_str, config_int, \
+    mon_check_command_special, mon_check_command
 from initat.cluster.backbone.routing import get_server_uuid
 from initat.host_monitoring.hm_classes import mvect_entry
 from initat.md_config_server import constants
@@ -34,8 +35,10 @@ from initat.md_config_server.config import global_config
 from initat.md_config_server.mixins import version_check_mixin
 from initat.md_config_server.status import status_process, live_socket
 from initat.md_config_server.syncer import syncer_process
+from initat.md_config_server.dynconfig import dynconfig_process
 import cluster_location
 import codecs
+import inspect
 import configfile
 import logging_tools
 import process_tools
@@ -65,21 +68,27 @@ class server_process(threading_tools.process_pool, version_check_mixin):
         self.register_exception("term_error", self._int_error)
         self.register_exception("hup_error", self._hup_error)
         self._check_notification()
+        self._check_special_commands()
         # from mixins
         self._check_md_version()
         self._check_relay_version()
         self._log_config()
         self._init_network_sockets()
-        self.register_func("register_slave", self._register_slave)
-        self.register_func("send_command", self._send_command)
-        self.__external_cmd_file = None
-        self.register_func("external_cmd_file", self._set_external_cmd_file)
-        self.add_process(status_process("status"), start=True)
-        self.add_process(syncer_process("syncer"), start=True)
-        # wait for the processes to start
-        time.sleep(0.5)
-        self.register_timer(self._check_for_redistribute, 30 if global_config["DEBUG"] else 300)
-        self.register_timer(self._update, 30, instant=True)
+        if "MD_TYPE" in global_config:
+            self.register_func("register_slave", self._register_slave)
+            self.register_func("send_command", self._send_command)
+            self.register_func("ocsp_results", self._ocsp_results)
+            self.__external_cmd_file = None
+            self.register_func("external_cmd_file", self._set_external_cmd_file)
+            self.add_process(status_process("status"), start=True)
+            self.add_process(syncer_process("syncer"), start=True)
+            self.add_process(dynconfig_process("dynconfig"), start=True)
+            # wait for the processes to start
+            time.sleep(0.5)
+            self.register_timer(self._check_for_redistribute, 30 if global_config["DEBUG"] else 300)
+            self.register_timer(self._update, 30, instant=True)
+        else:
+            self._int_error("no MD found")
     def _check_for_redistribute(self):
         self.send_to_process("syncer", "check_for_redistribute")
     def _update(self):
@@ -154,6 +163,41 @@ class server_process(threading_tools.process_pool, version_check_mixin):
             self.log("Config : {}".format(conf))
     def _re_insert_config(self):
         cluster_location.write_config("monitor_server", global_config)
+    def _check_special_commands(self):
+        from initat.md_config_server import special_commands
+        pks_found = set()
+        mccs_dict = {}
+        for key in dir(special_commands):
+            _entry = getattr(special_commands, key)
+            if key.startswith("special_"):
+                if inspect.isclass(_entry) and _entry != special_commands.special_base:
+                    if issubclass(_entry, special_commands.special_base):
+                        _inst = _entry()
+                        try:
+                            cur_mccs = mon_check_command_special.objects.get(Q(name=_inst.Meta.name))
+                        except mon_check_command_special.DoesNotExist:
+                            cur_mccs = mon_check_command_special(name=_inst.Meta.name)
+                        cur_mccs.command_line = _inst.Meta.command
+                        cur_mccs.description = _inst.Meta.description
+                        cur_mccs.is_active = _inst.Meta.is_active
+                        cur_mccs.save()
+                        mccs_dict[cur_mccs.name] = cur_mccs
+                        pks_found.add(cur_mccs.pk)
+        # delete stale
+        del_mccs = mon_check_command_special.objects.exclude(pk__in=pks_found)
+        if del_mccs:
+            self.log("removing {}".format(logging_tools.get_plural("stale mccs", len(del_mccs))))
+            del_mccs.delete()
+        # rewrite
+        for to_rewrite in mon_check_command.objects.filter(Q(name__startswith="@")):
+            self.log("rewriting {} to new format... ".format(unicode(to_rewrite)))
+            _key = to_rewrite.name.split("@")[1].lower()
+            if _key in mccs_dict:
+                to_rewrite.name = to_rewrite.name.split("@")[2]
+                to_rewrite.mon_check_command_special = mccs_dict[_key]
+                to_rewrite.save()
+            else:
+                self.log("key {} not found in dict".format(_key), logging_tools.LOG_LEVEL_ERROR)
     def _check_notification(self):
         cur_not = mon_notification.objects.all().count()
         if cur_not:
@@ -296,12 +340,12 @@ class server_process(threading_tools.process_pool, version_check_mixin):
             self.__msi_block.save_block()
     def _init_msi_block(self):
         process_tools.save_pid(self.__pid_name, mult=3)
-        process_tools.append_pids(self.__pid_name, pid=configfile.get_manager_pid(), mult=4)
+        process_tools.append_pids(self.__pid_name, pid=configfile.get_manager_pid(), mult=5)
         if not global_config["DEBUG"] or True:
             self.log("Initialising meta-server-info block")
             msi_block = process_tools.meta_server_info("md-config-server")
             msi_block.add_actual_pid(mult=3, fuzzy_ceiling=3, process_name="main")
-            msi_block.add_actual_pid(act_pid=configfile.get_manager_pid(), mult=5, process_name="manager")
+            msi_block.add_actual_pid(act_pid=configfile.get_manager_pid(), mult=6, process_name="manager")
             msi_block.start_command = "/etc/init.d/md-config-server start"
             msi_block.stop_command = "/etc/init.d/md-config-server force-stop"
             msi_block.kill_pids = True
@@ -318,12 +362,16 @@ class server_process(threading_tools.process_pool, version_check_mixin):
             self.log("connecting to slave on {} ({})".format(conn_str, slave_uuid))
             self.com_socket.connect(conn_str)
             self.__slaves[conn_str] = slave_uuid
+    def _ocsp_results(self, *args, **kwargs):
+        _src_proc, _src_pid, lines = args
+        self._write_external_cmd_file(lines)
     def _handle_ocp_event(self, in_com):
         com_type = in_com["command"].text
         targ_list = [cur_arg.text for cur_arg in in_com.xpath(".//ns:arguments", smart_strings=False)[0]]
         target_com = {
             "ocsp-event" : "PROCESS_SERVICE_CHECK_RESULT",
-            "ochp-event" : "PROCESS_HOST_CHECK_RESULT"}[com_type]
+            "ochp-event" : "PROCESS_HOST_CHECK_RESULT",
+        }[com_type]
         # rewrite state information
         state_idx, error_state = (1, 1) if com_type == "ochp-event" else (2, 2)
         targ_list[state_idx] = "{:d}".format({
@@ -342,9 +390,13 @@ class server_process(threading_tools.process_pool, version_check_mixin):
             int(time.time()),
             target_com,
             ";".join(targ_list))
+        self._write_external_cmd_file(out_line)
+    def _write_external_cmd_file(self, lines):
+        if type(lines) != list:
+            lines = [lines]
         if self.__external_cmd_file:
             try:
-                codecs.open(self.__external_cmd_file, "w", "utf-8").write(out_line)
+                codecs.open(self.__external_cmd_file, "w", "utf-8").write("\n".join(lines + [""]))
             except:
                 self.log("error writing to {}: {}".format(
                     self.__external_cmd_file,
@@ -405,7 +457,7 @@ class server_process(threading_tools.process_pool, version_check_mixin):
                 self.com_socket.send_unicode("internal error")
             else:
                 cur_com = srv_com["command"].text
-                if self.__verbose or cur_com not in ["ocsp-event", "ochp-event", "file_content_result"]:
+                if self.__verbose or cur_com not in ["ocsp-event", "ochp-event", "file_content_result", "monitoring_info"]:
                     self.log("got command '{}' from '{}'".format(
                         cur_com,
                         srv_com["source"].attrib["host"]))
@@ -423,6 +475,8 @@ class server_process(threading_tools.process_pool, version_check_mixin):
                     self.send_to_process("build", "sync_http_users")
                 elif cur_com in ["ocsp-event", "ochp-event"]:
                     self._handle_ocp_event(srv_com)
+                elif cur_com in ["monitoring_info"]:
+                    self.send_to_process("dynconfig", "monitoring_info", unicode(srv_com))
                 elif cur_com in ["file_content_result", "relayer_info", "file_content_bulk_result"]:
                     self.send_to_process("syncer", cur_com, unicode(srv_com))
                     if "sync_id" in srv_com:

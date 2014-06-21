@@ -23,7 +23,8 @@ from django.db import connection
 from django.db.models import Q
 from initat.cluster.backbone.models import device, device_group, device_variable, mon_ext_host, \
     mon_check_command, mon_contactgroup, netdevice, network_type, user, config, \
-    mon_host_dependency_templ, mon_host_dependency, mon_service_dependency, net_ip
+    mon_host_dependency_templ, mon_host_dependency, mon_service_dependency, net_ip, \
+    mon_check_command_special
 from initat.md_config_server import special_commands, constants
 from initat.md_config_server.config import global_config, main_config, var_cache, all_commands, \
     all_service_groups, time_periods, all_contacts, all_contact_groups, all_host_groups, all_hosts, \
@@ -50,11 +51,10 @@ class build_process(threading_tools.process_obj, version_check_mixin):
     def process_init(self):
         self.__log_template = logging_tools.get_logger(global_config["LOG_NAME"], global_config["LOG_DESTINATION"], zmq=True, context=self.zmq_context, init_logger=True)
         self.__hosts_pending, self.__hosts_waiting = (set(), set())
-        self.__nagios_lock_file_name = "%s/var/%s" % (global_config["MD_BASEDIR"], global_config["MD_LOCK_FILE"])
+        self.__nagios_lock_file_name = os.path.join(global_config["MD_BASEDIR"], "var", global_config["MD_LOCK_FILE"])
         connection.close()
         self.__mach_loggers = {}
         self.version = int(time.time())
-        self.syncer_socket = self.connect_to_socket("syncer")
         self.log("initial config_version is %d" % (self.version))
         self.router_obj = config_tools.router_object(self.log)
         self.register_func("check_for_slaves", self._check_for_slaves)
@@ -72,7 +72,6 @@ class build_process(threading_tools.process_obj, version_check_mixin):
     def loop_post(self):
         for mach_logger in self.__mach_loggers.itervalues():
             mach_logger.close()
-        self.syncer_socket.close()
         self.__log_template.close()
     def _check_for_slaves(self, **kwargs):
         master_server = device.objects.get(Q(pk=global_config["SERVER_IDX"]))
@@ -280,7 +279,7 @@ class build_process(threading_tools.process_obj, version_check_mixin):
             else:
                 self.version += 1
             self.log("config_version for full build is %d" % (self.version))
-            self.send_to_socket(self.syncer_socket, ["build_info", "start_build", self.version])
+            self.send_pool_message("build_info", "start_build", self.version, target="syncer")
         # fetch SNMP-stuff from cluster and initialise var cache
         var_stack = var_cache(cdg)
         rebuild_gen_config = False
@@ -344,9 +343,9 @@ class build_process(threading_tools.process_obj, version_check_mixin):
                 if cur_gc.master and not single_build:
                     # recreate access files
                     cur_gc._create_access_entries()
-                self.send_to_socket(self.syncer_socket, ["build_info", "start_config_build", cur_gc.monitor_server.full_name])
+                self.send_pool_message("build_info", "start_config_build", cur_gc.monitor_server.full_name, target="syncer")
                 self._create_host_config_files(my_co, cur_gc, h_list, dev_templates, serv_templates, var_stack, cur_dmap, single_build, hdep_from_topo)
-                self.send_to_socket(self.syncer_socket, ["build_info", "end_config_build", cur_gc.monitor_server.full_name])
+                self.send_pool_message("build_info", "end_config_build", cur_gc.monitor_server.full_name, target="syncer")
                 if not single_build:
                     # refresh implies _write_entries
                     cur_gc.refresh()
@@ -354,7 +353,7 @@ class build_process(threading_tools.process_obj, version_check_mixin):
                         # write config to disk
                         cur_gc._write_entries()
                         # start syncing
-                        self.send_to_socket(self.syncer_socket, ["build_info", "sync_slave", cur_gc.monitor_server.full_name])
+                        self.send_pool_message("build_info", "sync_slave", cur_gc.monitor_server.full_name, target="syncer")
             if build_dv:
                 build_dv.delete()
             del my_co
@@ -363,7 +362,7 @@ class build_process(threading_tools.process_obj, version_check_mixin):
             if bc_valid and (cfgs_written or rebuild_gen_config):
                 # send reload to remote instance ?
                 self._reload_md_daemon()
-            self.send_to_socket(self.syncer_socket, ["build_info", "end_build", self.version])
+            self.send_pool_message("build_info", "end_build", self.version, target="syncer")
         else:
             cur_gc = self.__gen_config
             res_node = E.config(
@@ -380,13 +379,13 @@ class build_process(threading_tools.process_obj, version_check_mixin):
     def _build_distance_map(self, root_node, show_unroutable=True):
         self.log("building distance map, root node is '%s'" % (root_node))
         # exclude all without attached netdevices
-        dm_dict = dict([(cur_dev.pk, cur_dev) for cur_dev in device.objects.filter(Q(enabled=True)).exclude(netdevice=None) \
+        dm_dict = {cur_dev.pk : cur_dev for cur_dev in device.objects.filter(Q(enabled=True) & Q(device_group__enabled=True)).exclude(netdevice=None) \
             .select_related("domain_tree_node") \
-            .prefetch_related("netdevice_set")])
+            .prefetch_related("netdevice_set")}
         nd_dict = {}
-        for dev_pk, nd_pk in netdevice.objects.all().values_list("device", "pk"):
+        for dev_pk, nd_pk in netdevice.objects.filter(Q(enabled=True)).values_list("device", "pk"):
             nd_dict.setdefault(dev_pk, set()).add(nd_pk)
-        nd_lut = dict([(value[0], value[1]) for value in netdevice.objects.all().values_list("pk", "device") if value[1] in dm_dict.keys()])
+        nd_lut = {value[0] : value[1] for value in netdevice.objects.filter(Q(enabled=True)).values_list("pk", "device") if value[1] in dm_dict.keys()}
         for cur_dev in dm_dict.itervalues():
             # set 0 for root_node, -1 for all other devices
             cur_dev.md_dist_level = 0 if cur_dev.pk == root_node.pk else -1
@@ -399,11 +398,11 @@ class build_process(threading_tools.process_obj, version_check_mixin):
             # iterate until all nodes have a valid dist_level set
             src_nodes = set([key for key, value in dm_dict.iteritems() if value.md_dist_level >= 0])
             dst_nodes = all_pks - src_nodes
-            self.log("dm_run %3d, %s, %s" % (
+            self.log("dm_run {:3d}, {}, {}".format(
                 cur_iter,
                 logging_tools.get_plural("source node", len(src_nodes)),
                 logging_tools.get_plural("dest node", len(dst_nodes))))
-            src_nds = reduce(operator.ior, [nd_dict[key] for key in src_nodes], set())
+            src_nds = reduce(operator.ior, [nd_dict[key] for key in src_nodes if key in nd_dict], set())
             # dst_nds = reduce(operator.ior, [nd_dict[key] for key in dst_nodes], set())
             # build list of src_nd, dst_nd tuples
             nb_list = []
@@ -446,7 +445,7 @@ class build_process(threading_tools.process_obj, version_check_mixin):
                 len([True for value in dm_dict.itervalues() if value.md_dist_level == level])
             )
                      )
-        return dict([(key, value.md_dist_level) for key, value in dm_dict.iteritems()])
+        return {key : value.md_dist_level for key, value in dm_dict.iteritems()}
     def _create_general_config(self, write_entries=None):
         self.__gen_config_built = True
         config_list = [self.__gen_config] + self.__slave_configs.values()
@@ -492,7 +491,7 @@ class build_process(threading_tools.process_obj, version_check_mixin):
             end_time = time.time()
             cur_gc.log("created host_configs in %s" % (logging_tools.get_diff_time_str(end_time - start_time)))
     def _get_mon_ext_hosts(self):
-        return dict([(cur_ext.pk, cur_ext) for cur_ext in mon_ext_host.objects.all()])
+        return {cur_ext.pk : cur_ext for cur_ext in mon_ext_host.objects.all()}
     def _check_image_maps(self):
         min_width, max_width, min_height, max_height = (16, 64, 16, 64)
         all_image_stuff = self._get_mon_ext_hosts()
@@ -529,7 +528,7 @@ class build_process(threading_tools.process_obj, version_check_mixin):
                                 max_width,
                                 min_height,
                                 max_height))
-        name_lut = dict([(eh.name.lower(), pk) for pk, eh in all_image_stuff.iteritems()])
+        name_lut = {eh.name.lower() : pk for pk, eh in all_image_stuff.iteritems()}
         all_images_present = set([eh.name for eh in all_image_stuff.values()])
         all_images_present_lower = set([name.lower() for name in all_images_present])
         base_names_lower = set([name.lower() for name in base_names])
@@ -580,6 +579,7 @@ class build_process(threading_tools.process_obj, version_check_mixin):
                                    all_configs,
                                    nagvis_maps,
                                    single_build,
+                                   mccs_dict,
                                    ):
 
         start_time = time.time()
@@ -821,12 +821,12 @@ class build_process(threading_tools.process_obj, version_check_mixin):
                         # cluster config names
                         cconf_names = set(host.devs_mon_service_cluster.all().values_list("mon_check_command__name", flat=True))
                         # build lut
-                        conf_dict = dict([(
-                            cur_c["command_name"], cur_c) for cur_c in cur_gc["command"].values() if
+                        conf_dict = {
+                            cur_c["command_name"] : cur_c for cur_c in cur_gc["command"].values() if
                                 not cur_c.is_event_handler and (
                                     ((cur_c.get_config() in conf_names) and (host.pk not in cur_c.exclude_devices)) or
-                                          cur_c["command_name"] in cconf_names
-                                )])
+                                    cur_c["command_name"] in cconf_names)
+                        }
                         # list of already used checks
                         used_checks = set()
                         conf_names = sorted(conf_dict.keys())
@@ -839,17 +839,26 @@ class build_process(threading_tools.process_obj, version_check_mixin):
                                 num_warning += 1
                             else:
                                 used_checks.add(s_check.name)
-                                special = s_check.get_special()
-                                if special:
+                                if s_check.mccs_id:
+                                    # map to mccs
+                                    mccs = mccs_dict[s_check.mccs_id]
+                                    # rewrite command name to mccs
+                                    s_check["command_name"] = mccs.md_name
+                                    # print dir(s_check)
+                                    # s_check["check_command"] = mccs.md_name
                                     sc_array = []
                                     try:
-                                        cur_special = getattr(special_commands, "special_%s" % (special.lower()))(
+                                        cur_special = getattr(special_commands, "special_{}".format(mccs.name))(
                                             self,
-                                            s_check,
-                                            host, self.gc, cache_mode=cur_gc.cache_mode)
+                                            # get mon_check_command (we need arg_ll)
+                                            cur_gc["command"][mccs.md_name],
+                                            host,
+                                            self.gc,
+                                            cache_mode=cur_gc.cache_mode,
+                                        )
                                     except:
-                                        self.log("unable to initialize special '%s': %s" % (
-                                            special,
+                                        self.log("unable to initialize special '{}': {}".format(
+                                            mccs.name,
                                             process_tools.get_except_info()),
                                                  logging_tools.LOG_LEVEL_CRITICAL)
                                     else:
@@ -859,10 +868,10 @@ class build_process(threading_tools.process_obj, version_check_mixin):
                                             sc_array = cur_special()
                                         except:
                                             exc_info = process_tools.exception_info()
-                                            self.log("error calling special %s:" % (special),
+                                            self.log("error calling special {}:".format(mccs.name),
                                                      logging_tools.LOG_LEVEL_CRITICAL)
                                             for line in exc_info.log_lines:
-                                                self.log(" - %s" % (line), logging_tools.LOG_LEVEL_CRITICAL)
+                                                self.log(" - {}".format(line), logging_tools.LOG_LEVEL_CRITICAL)
                                             sc_array = []
                                         finally:
                                             cur_special.cleanup()
@@ -879,8 +888,8 @@ class build_process(threading_tools.process_obj, version_check_mixin):
                         if len(mhc_checks):
                             self.mach_log("adding %s" % (logging_tools.get_plural("host_cluster check", len(mhc_checks))))
                             for mhc_check in mhc_checks:
-                                dev_names = ",".join(["$HOSTSTATEID:%s$" % (cur_dev.full_name) for cur_dev in mhc_check.devices.all().select_related("domain_tree_node")])
-                                if dev_names.strip():
+                                dev_names = [cur_dev.full_name for cur_dev in mhc_check.devices.all().select_related("domain_tree_node")]
+                                if len(dev_names):
                                     s_check = cur_gc["command"]["check_host_cluster"]
                                     serv_temp = serv_templates[mhc_check.mon_service_templ_id]
                                     serv_cgs = set(serv_temp.contact_groups).intersection(host_groups)
@@ -892,9 +901,13 @@ class build_process(threading_tools.process_obj, version_check_mixin):
                                             s_check,
                                             "%s %s" % (s_check.get_description(), mhc_check.description),
                                             arg1=mhc_check.description,
+                                            # arg2="@{:d}:".format(mhc_check.warn_value),
+                                            # arg3="@{:d}:".format(mhc_check.error_value),
                                             arg2=mhc_check.warn_value,
                                             arg3=mhc_check.error_value,
-                                            arg4=dev_names)
+                                            arg4=",".join(["$HOSTSTATEID:{}$".format(_dev_name) for _dev_name in dev_names]),
+                                            arg5=",".join(dev_names),
+                                            )
                                          ],
                                         act_def_serv,
                                         serv_cgs,
@@ -912,8 +925,9 @@ class build_process(threading_tools.process_obj, version_check_mixin):
                             for msc_check in msc_checks:
                                 if msc_check.mon_check_command.name in cur_gc["command"]:
                                     c_com = cur_gc["command"][msc_check.mon_check_command.name]
-                                    dev_names = ",".join(["$SERVICESTATEID:%s:%s$" % (cur_dev.full_name, c_com.get_description()) for cur_dev in msc_check.devices.all().select_related("domain_tree_node")])
-                                    if dev_names.strip():
+                                    # dev_names = ",".join(["$SERVICESTATEID:%s:%s$" % (cur_dev.full_name, c_com.get_description()) for cur_dev in msc_check.devices.all().select_related("domain_tree_node")])
+                                    dev_names = [(cur_dev.full_name, c_com.get_description()) for cur_dev in msc_check.devices.all().select_related("domain_tree_node")]
+                                    if len(dev_names):
                                         s_check = cur_gc["command"]["check_service_cluster"]
                                         serv_temp = serv_templates[msc_check.mon_service_templ_id]
                                         serv_cgs = set(serv_temp.contact_groups).intersection(host_groups)
@@ -926,9 +940,12 @@ class build_process(threading_tools.process_obj, version_check_mixin):
                                                     s_check,
                                                     "%s / %s" % (s_check.get_description(), c_com.get_description()),
                                                     arg1=msc_check.description,
+                                                    # arg2="@{:d}:".format(msc_check.warn_value),
+                                                    # arg3="@{:d}:".format(msc_check.error_value),
                                                     arg2=msc_check.warn_value,
                                                     arg3=msc_check.error_value,
-                                                    arg4=dev_names,
+                                                    arg4=",".join(["$SERVICESTATEID:{}:{}$".format(_dev_name, _srv_name) for _dev_name, _srv_name in dev_names]),
+                                                    arg5=",".join(["{} {}".format(_dev_name, _srv_name).replace(",", " ") for _dev_name, _srv_name in dev_names]),
                                                 )
                                             ],
                                             act_def_serv,
@@ -1055,11 +1072,11 @@ class build_process(threading_tools.process_obj, version_check_mixin):
         self.log("users with access to all devices: %s" % (", ".join(sorted(all_access))))
         server_idxs = [cur_gc.monitor_server.pk]
         # get netip-idxs of own host
-        my_net_idxs = set(netdevice.objects.filter(Q(device__in=server_idxs)).values_list("pk", flat=True))
+        my_net_idxs = set(netdevice.objects.filter(Q(device__in=server_idxs)).filter(Q(enabled=True)).values_list("pk", flat=True))
         # get ext_hosts stuff
         ng_ext_hosts = self._get_mon_ext_hosts()
         # all hosts
-        all_hosts_dict = dict([(cur_dev.pk, cur_dev) for cur_dev in device.objects.filter(Q(device_group__enabled=True) & Q(enabled=True)).select_related("device_type", "domain_tree_node")])
+        all_hosts_dict = {cur_dev.pk : cur_dev for cur_dev in device.objects.filter(Q(device_group__enabled=True) & Q(enabled=True)).select_related("device_type", "domain_tree_node")}
         # check_hosts
         if hosts:
             # not beautiful but ok
@@ -1093,12 +1110,12 @@ class build_process(threading_tools.process_obj, version_check_mixin):
         ps_dict = {}
         for ps_config in config.objects.exclude(Q(parent_config=None)).select_related("parent_config"):
             ps_dict[ps_config.name] = ps_config.parent_config.name
-        check_hosts = dict([(cur_dev.pk, cur_dev) for cur_dev in device.objects.exclude(Q(device_type__identifier='MD')).filter(h_filter).select_related("domain_tree_node")])
+        check_hosts = {cur_dev.pk : cur_dev for cur_dev in device.objects.exclude(Q(device_type__identifier='MD')).filter(h_filter).select_related("domain_tree_node")}
         for cur_dev in check_hosts.itervalues():
             # set default values
             cur_dev.valid_ips = {}
             cur_dev.invalid_ips = {}
-        meta_devices = dict([(md.device_group.pk, md) for md in device.objects.filter(Q(device_type__identifier='MD')).prefetch_related("device_config_set", "device_config_set__config").select_related("device_group")])
+        meta_devices = {md.device_group.pk : md for md in device.objects.filter(Q(device_type__identifier='MD')).prefetch_related("device_config_set", "device_config_set__config").select_related("device_group")}
         all_configs = {}
         for cur_dev in device.objects.filter(ac_filter).select_related("domain_tree_node").prefetch_related("device_config_set", "device_config_set__config"):
             loc_config = [cur_dc.config.name for cur_dc in cur_dev.device_config_set.all()]
@@ -1154,29 +1171,14 @@ class build_process(threading_tools.process_obj, version_check_mixin):
                 cur_host = check_hosts[d_pk]
                 # populate valid_ips and invalid_ips
                 getattr(cur_host, "valid_ips" if n_t in valid_nwt_list else "invalid_ips").setdefault(n_d, []).append((n_i, dom_name))
-        # get all masterswitch connections, FIXME
-        # dc.execute("SELECT d.device_idx, ms.device FROM device d, msoutlet ms WHERE ms.slave_device = d.device_idx")
-        # all_ms_connections = {}
-        # for db_rec in dc.fetchall():
-        #    all_ms_connections.setdefault(db_rec["device_idx"], []).append(db_rec["device"])
-        # get all device relationships
-        # all_dev_relationships = {}
-        # FIXME
-        # dc.execute("SELECT * FROM device_relationship")
-        # for db_rec in dc.fetchall():
-        #    all_dev_relationships[db_rec["domain_device"]] = db_rec
-        # get all ibm bladecenter connections
-        # FIXME
-        # dc.execute("SELECT d.device_idx, ib.device FROM device d, ibc_connection ib WHERE #ib.slave_device = d.device_idx")
-        # all_ib_connections = {}
-        # for db_rec in dc.fetchall():
-        #    all_ib_connections.setdefault(db_rec["device_idx"], []).append(db_rec["device"])
         host_nc = cur_gc["device.d"]
         # delete host if already present in host_table
         for host_pk, host in check_hosts.iteritems():
             if host.full_name in host_nc:
                 # now very simple
                 del host_nc[host.full_name]
+        # mccs dict
+        mccs_dict = {mccs.pk : mccs for mccs in mon_check_command_special.objects.all()}
         # caching object
         # build lookup-table
         nagvis_maps = set()
@@ -1203,6 +1205,7 @@ class build_process(threading_tools.process_obj, version_check_mixin):
                 all_configs,
                 nagvis_maps,
                 single_build,
+                mccs_dict,
             )
         host_names = host_nc.keys()
         self.log("start parenting run")
@@ -1351,8 +1354,12 @@ class build_process(threading_tools.process_obj, version_check_mixin):
             if s_check.event_handler:
                 act_serv["event_handler"] = s_check.event_handler.name
                 act_serv["event_handler_enabled"] = "1" if s_check.event_handler_enabled else "0"
-            act_serv["%s_checks_enabled" % ("active" if checks_are_active else "passive")] = 1
-            act_serv["%s_checks_enabled" % ("passive" if checks_are_active else "active")] = 0
+            if arg_temp.is_active:
+                act_serv["{}_checks_enabled".format("active" if checks_are_active else "passive")] = 1
+                act_serv["{}_checks_enabled".format("passive" if checks_are_active else "active")] = 0
+            else:
+                act_serv["passive_checks_enabled"] = 1
+                act_serv["active_checks_enabled"] = 0
             act_serv["service_description"] = arg_temp.info.replace("(", "[").replace(")", "]")
             act_serv["host_name"] = host.full_name
             # volatile
@@ -1397,6 +1404,9 @@ class build_process(threading_tools.process_obj, version_check_mixin):
                 act_serv["servicegroups"] = ",".join(s_check.servicegroup_names)
                 cur_gc["servicegroup"].add_host(host.name, act_serv["servicegroups"])
             act_serv["check_command"] = "!".join([s_check["command_name"]] + s_check.correct_argument_list(arg_temp, host.dev_variables))
+            # add addon vars
+            for key, value in arg_temp.addon_dict.iteritems():
+                act_serv[key] = value
             # if act_host["check_command"] == "check-host-alive-2" and s_check["command_name"].startswith("check_ping"):
             #    self.mach_log(
             #        "   removing command %s because of %s" % (
