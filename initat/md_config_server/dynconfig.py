@@ -67,6 +67,7 @@ class dynconfig_process(threading_tools.process_obj):
         ocsp_lines = []
         # pprint.pprint(cur_hints)
         n_updated, n_created = (0, 0)
+        updated, created = (False, False)
         for _val in mon_info:
             _key = (_val.get("m_type"), _val.get("name"))
             updated, created = (False, False)
