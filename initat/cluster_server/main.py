@@ -95,7 +95,6 @@ def main():
         ("FROM_ADDR"            , configfile.str_c_var(long_host_name)),
         ("VERSION"              , configfile.str_c_var(VERSION_STRING, database=False)),
         ("QUOTA_ADMINS"         , configfile.str_c_var("cluster@init.at")),
-        ("LDAP_SCHEMATA_VERSION", configfile.int_c_var(1)),
         ("MONITOR_QUOTA_USAGE"  , configfile.bool_c_var(False, info="enabled quota usage tracking")),
         ("TRACK_ALL_QUOTAS"     , configfile.bool_c_var(False, info="also track quotas without limit")),
         ("QUOTA_CHECK_TIME_SECS", configfile.int_c_var(3600)),

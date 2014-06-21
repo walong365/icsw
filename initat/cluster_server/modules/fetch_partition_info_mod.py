@@ -150,7 +150,7 @@ class fetch_partition_info(cs_base_class.server_com):
                     # fetch partition_fs
                     fs_dict = {}
                     for db_rec in partition_fs.objects.all():
-                        fs_dict.setdefault(("%02x" % (int(db_rec.hexid, 16))).lower(), {})[db_rec.name] = db_rec
+                        fs_dict.setdefault(("{:02x}".format(int(db_rec.hexid, 16))).lower(), {})[db_rec.name] = db_rec
                         fs_dict[db_rec.name] = db_rec
                     new_part_table = partition_table(
                         name=partition_name,
@@ -160,7 +160,7 @@ class fetch_partition_info(cs_base_class.server_com):
                     new_part_table.save()
                     for dev, dev_stuff in dev_dict.iteritems():
                         if dev.startswith("/dev/sr"):
-                            self.log("skipping device %s" % (dev), logging_tools.LOG_LEVEL_WARN)
+                            self.log("skipping device {}".format(dev), logging_tools.LOG_LEVEL_WARN)
                             continue
                         self.log("handling device %s" % (dev))
                         new_disc = partition_disc(partition_table=new_part_table,
@@ -221,20 +221,22 @@ class fetch_partition_info(cs_base_class.server_com):
                                             disk_by_info=",".join(part_stuff.get("lut", [])),
                                         )
                                     else:
-                                        self.log("skipping partition because fs_stuff is None", logging_tools.LOG_LEVEL_WARN)
+                                        self.log("skipping partition {} because fs_stuff is None".format(part), logging_tools.LOG_LEVEL_WARN)
                                         new_part = None
                                 else:
                                     if fs_dict.has_key(hex_type):
-                                        new_part = partition(
-                                            partition_disc=new_disc,
-                                            partition_hex=hex_type,
-                                            size=part_stuff["size"],
-                                            pnum=part,
-                                            # partition_fs=fs_dict[hex_type],
-                                            mount_options="defaults",
-                                        )
-                                        self.log("skipping partition because no mountpoint and no matching fs_dict (hex_type %s)" % (hex_type), logging_tools.LOG_LEVEL_ERROR)
-                                        new_part = None
+                                        if hex_type == "82":
+                                            new_part = partition(
+                                                partition_disc=new_disc,
+                                                partition_hex=hex_type,
+                                                size=part_stuff["size"],
+                                                pnum=part,
+                                                partition_fs=fs_dict[hex_type].values()[0],
+                                                mount_options="defaults",
+                                            )
+                                        else:
+                                            self.log("skipping partition {} because no mountpoint and no matching fs_dict (hex_type {})".format(part, hex_type), logging_tools.LOG_LEVEL_ERROR)
+                                            new_part = None
                                     else:
                                         new_part = partition(
                                             partition_disc=new_disc,
@@ -319,7 +321,7 @@ class fetch_partition_info(cs_base_class.server_com):
                     cur_inst.log(u"set partition_table for '%s'" % (unicode(target_dev)))
                     target_dev.act_partition_table = new_part_table
                     target_dev.partdev = ""
-                    target_dev.save()
+                    target_dev.save(update_fields=["act_partition_table", "partdev"])
                 ret_f.append(u"%s: %s, %s, %s and %s" % (
                     target_dev,
                     logging_tools.get_plural("disc", len(dev_dict.keys())),
