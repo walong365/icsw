@@ -178,7 +178,7 @@ def network_pre_save(sender, **kwargs):
         if nw_type != "s" and cur_inst.master_network_id:
             raise ValidationError("only slave networks can have a master")
         if nw_type == "s" and cur_inst.master_network_id:
-            print cur_inst.pk, cur_inst.master_network_id
+            # print cur_inst.pk, cur_inst.master_network_id
             if cur_inst.master_network.network_type.identifier != "p":
                 raise ValidationError("master network must be a production network")
         # validate IP
@@ -384,6 +384,8 @@ class netdevice(models.Model):
     vlan_id = models.IntegerField(null=True, blank=True, default=0)
     # for VLAN devices
     master_device = models.ForeignKey("self", null=True, related_name="vlan_slaves", blank=True)
+    # enabled, in fact admin enabled
+    enabled = models.BooleanField(default=True)
     date = models.DateTimeField(auto_now_add=True)
     def __init__(self, *args, **kwargs):
         models.Model.__init__(self, *args, **kwargs)
@@ -410,9 +412,10 @@ class netdevice(models.Model):
             is_bridge=self.is_bridge,
             bridge_name=self.bridge_name,
             vlan_id=self.vlan_id,
+            enabled=self.enabled,
             # hm ...
             # bridge_device=self.bridge_device,
-            )
+        )
     def find_matching_network_device_type(self):
         match_list = [ndt for ndt in network_device_type.objects.all() if ndt.match(self.devname)]
         if len(match_list) == 0:

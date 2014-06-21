@@ -2,11 +2,11 @@
 
 import factory
 from initat.cluster.backbone.models import netdevice_speed, log_source, \
-    device_type, partition_fs, log_status, hw_entry_type, status, network_device_type, \
+    device_type, partition_fs, log_status, status, network_device_type, \
     network_type, host_check_command, config, mon_check_command, device_group, \
     device, mon_period, mon_service_templ, mon_device_templ, user, group, mon_contact, \
     network, netdevice, net_ip, device_config, cluster_license, cluster_setting, \
-    config_hint, config_var_hint
+    config_hint, config_var_hint, config_script_hint
 
 class Device(factory.django.DjangoModelFactory):
     FACTORY_FOR = device
@@ -54,14 +54,6 @@ class LogStatus(factory.django.DjangoModelFactory):
         if self.name != extracted:
             self.name = extracted
             self.save()
-
-class HWEntryType(factory.django.DjangoModelFactory):
-    FACTORY_FOR = hw_entry_type
-    FACTORY_DJANGO_GET_OR_CREATE = ("identifier",)
-    iarg0_descr = ""
-    iarg1_descr = ""
-    sarg0_descr = ""
-    sarg1_descr = ""
 
 class Status(factory.django.DjangoModelFactory):
     FACTORY_FOR = status
@@ -144,6 +136,11 @@ class ClusterLicense(factory.django.DjangoModelFactory):
 class ConfigHint(factory.django.DjangoModelFactory):
     FACTORY_FOR = config_hint
     FACTORY_DJANGO_GET_OR_CREATE = ("config_name",)
+    help_text_short = ""
+    help_text_html = ""
+    config_description = ""
+    valid_for_meta = False
+    exact_match = True
     @factory.post_generation
     def help_text_short(self, create, extracted, **kwargs):
         if self.help_text_short != extracted:
@@ -153,19 +150,94 @@ class ConfigHint(factory.django.DjangoModelFactory):
     def help_text_html(self, create, extracted, **kwargs):
         if self.help_text_html != extracted:
             self.help_text_html = extracted
+            self.save()
+    @factory.post_generation
+    def config_description(self, create, extracted, **kwargs):
+        extracted = extracted or ""
+        if self.config_description != extracted:
+            self.config_description = extracted
+            self.save()
+    @factory.post_generation
+    def exact_match(self, create, extracted, **kwargs):
+        extracted = True if extracted is None else extracted
+        if self.exact_match != extracted:
+            self.exact_match = extracted
             self.save()
 
 class ConfigVarHint(factory.django.DjangoModelFactory):
     FACTORY_FOR = config_var_hint
-    FACTORY_DJANGO_GET_OR_CREATE = ("var_name",)
+    FACTORY_DJANGO_GET_OR_CREATE = ("var_name", "config_hint")
+    help_text_short = ""
+    help_text_html = ""
+    ac_flag = False
+    ac_description = ""
+    ac_value = ""
     @factory.post_generation
     def help_text_short(self, create, extracted, **kwargs):
+        extracted = extracted or ""
         if self.help_text_short != extracted:
             self.help_text_short = extracted
             self.save()
     @factory.post_generation
     def help_text_html(self, create, extracted, **kwargs):
+        extracted = extracted or ""
         if self.help_text_html != extracted:
             self.help_text_html = extracted
             self.save()
+    @factory.post_generation
+    def ac_flag(self, create, extracted, **kwargs):
+        extracted = extracted or False
+        if self.ac_flag != extracted:
+            self.ac_flag = extracted
+            self.save()
+    @factory.post_generation
+    def ac_description(self, create, extracted, **kwargs):
+        extracted = extracted or ""
+        if self.ac_description != extracted:
+            self.ac_description = extracted
+            self.save()
+    @factory.post_generation
+    def ac_value(self, create, extracted, **kwargs):
+        extracted = extracted or ""
+        if self.ac_value != extracted:
+            self.ac_value = extracted
+            self.save()
 
+class ConfigScriptHint(factory.django.DjangoModelFactory):
+    FACTORY_FOR = config_script_hint
+    FACTORY_DJANGO_GET_OR_CREATE = ("script_name", "config_hint")
+    help_text_short = ""
+    help_text_html = ""
+    ac_flag = False
+    ac_description = ""
+    ac_value = ""
+    @factory.post_generation
+    def help_text_short(self, create, extracted, **kwargs):
+        extracted = extracted or ""
+        if self.help_text_short != extracted:
+            self.help_text_short = extracted
+            self.save()
+    @factory.post_generation
+    def help_text_html(self, create, extracted, **kwargs):
+        extracted = extracted or ""
+        if self.help_text_html != extracted:
+            self.help_text_html = extracted
+            self.save()
+    @factory.post_generation
+    def ac_flag(self, create, extracted, **kwargs):
+        extracted = extracted or False
+        if self.ac_flag != extracted:
+            self.ac_flag = extracted
+            self.save()
+    @factory.post_generation
+    def ac_description(self, create, extracted, **kwargs):
+        extracted = extracted or ""
+        if self.ac_description != extracted:
+            self.ac_description = extracted
+            self.save()
+    @factory.post_generation
+    def ac_value(self, create, extracted, **kwargs):
+        extracted = extracted or ""
+        if self.ac_value != extracted:
+            self.ac_value = extracted
+            self.save()

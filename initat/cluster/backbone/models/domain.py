@@ -43,7 +43,8 @@ class domain_name_tree(object):
         self.__domain_lut = {}
         for cur_node in domain_tree_node.objects.all().order_by("depth"):
             self.__node_dict[cur_node.pk] = cur_node
-            self.__domain_lut.setdefault(cur_node.full_name, []).append(cur_node)
+            # self.__domain_lut.setdefault(cur_node.full_name, []).append(cur_node)
+            self.__domain_lut[cur_node.full_name] = cur_node
             cur_node._sub_tree = {}
             if cur_node.parent_id is None:
                 self._root_node = cur_node

@@ -7,6 +7,7 @@ from django.dispatch import receiver
 from initat.cluster.backbone.models.functions import _check_empty_string, _check_integer
 from rest_framework import serializers
 from django.conf import settings
+import datetime
 import logging_tools
 import re
 
@@ -32,6 +33,8 @@ __all__ = [
     # distribution models
     "mon_dist_master", # "mon_dist_master_serializer",
     "mon_dist_slave", # "mon_dist_slave_serializer",
+    "monitoring_hint", "monitoring_hint_serializer",
+    "mon_check_command_special", "mon_check_command_special_serializer",
     ]
 
 # distribution models, one per run
@@ -161,6 +164,25 @@ class host_check_command_serializer(serializers.ModelSerializer):
     class Meta:
         model = host_check_command
 
+class mon_check_command_special(models.Model):
+    idx = models.AutoField(primary_key=True)
+    name = models.CharField(max_length=64, unique=True)
+    command_line = models.CharField(max_length=256, default="")
+    description = models.CharField(max_length=256, default="")
+    is_active = models.BooleanField(default=True)
+    date = models.DateTimeField(auto_now_add=True)
+    @property
+    def md_name(self):
+        return "special_{:d}_{}".format(self.idx, self.name)
+    class Meta:
+        app_label = "backbone"
+    def __unicode__(self):
+        return "mccs_{}".format(self.name)
+
+class mon_check_command_special_serializer(serializers.ModelSerializer):
+    class Meta:
+        model = mon_check_command_special
+
 class mon_check_command(models.Model):
     idx = models.AutoField(db_column="ng_check_command_idx", primary_key=True)
     config_old = models.IntegerField(null=True, blank=True, db_column="config")
@@ -171,8 +193,9 @@ class mon_check_command(models.Model):
     # only unique per config
     name = models.CharField(max_length=192) # , unique=True)
     # flag for special commands (@<SREF>@command)
-    is_special_command = models.BooleanField(default=False)
-    command_line = models.CharField(max_length=765)
+    mon_check_command_special = models.ForeignKey("backbone.mon_check_command_special", null=True, blank=True)
+    # for mon_check_special_command this is empty
+    command_line = models.CharField(max_length=765, default="")
     description = models.CharField(max_length=192, blank=True)
     # device = models.ForeignKey("backbone.device", null=True, blank=True)
     date = models.DateTimeField(auto_now_add=True)
@@ -186,6 +209,8 @@ class mon_check_command(models.Model):
     is_event_handler = models.BooleanField(default=False)
     event_handler = models.ForeignKey("self", null=True, default=None, blank=True)
     event_handler_enabled = models.BooleanField(default=True)
+    # which tcp port(s) cover this check
+    tcp_coverage = models.CharField(default="", max_length=256, blank=True)
     def get_object_type(self):
         return "mon"
     class Meta:
@@ -213,8 +238,7 @@ class mon_check_command_nat_serializer(serializers.ModelSerializer):
 def mon_check_command_pre_save(sender, **kwargs):
     if "instance" in kwargs:
         cur_inst = kwargs["instance"]
-        special_re = re.compile("^@.+@.+$")
-        cur_inst.is_special_command = True if special_re.match(cur_inst.name) else False
+        # cur_inst.is_special_command = True if special_re.match(cur_inst.name) else False
         if not cur_inst.name:
             raise ValidationError("name is empty")
         if not cur_inst.command_line:
@@ -225,7 +249,7 @@ def mon_check_command_pre_save(sender, **kwargs):
             mc_refs = cur_inst.mon_check_command_set.all()
             if len(mc_refs):
                 raise ValidationError("still referenced by {}".format(logging_tools.get_plural("check_command", len(mc_refs))))
-        if cur_inst.is_special_command and cur_inst.is_event_handler:
+        if cur_inst.mon_check_command_special_id and cur_inst.is_event_handler:
             cur_inst.is_event_handler = False
             cur_inst.save()
             raise ValidationError("special command not allowed as event handler")
@@ -764,3 +788,84 @@ def mon_service_esc_templ_pre_save(sender, **kwargs):
             ("last_notification" , 1, 10),
             ("ninterval"         , 0, 60)]:
             _check_integer(cur_inst, attr_name, min_val=min_val, max_val=max_val)
+
+class monitoring_hint(models.Model):
+    idx = models.AutoField(primary_key=True)
+    device = models.ForeignKey("backbone.device")
+    m_type = models.CharField(max_length=32, choices=[("ipmi", "IPMI"), ("snmp", "SNMP"), ])
+    # key of vector or OID
+    key = models.CharField(default="", max_length=255)
+    # type of value
+    v_type = models.CharField(default="f", choices=[("f", "float"), ("i", "integer"), ("b", "boolean"), ("s", "string")], max_length=6)
+    # current value
+    value_float = models.FloatField(default=0.0)
+    value_int = models.IntegerField(default=0)
+    value_string = models.CharField(default="", max_length=256)
+    # limits
+    lower_crit_float = models.FloatField(default=0.0)
+    lower_warn_float = models.FloatField(default=0.0)
+    upper_warn_float = models.FloatField(default=0.0)
+    upper_crit_float = models.FloatField(default=0.0)
+    lower_crit_int = models.IntegerField(default=0)
+    lower_warn_int = models.IntegerField(default=0)
+    upper_warn_int = models.IntegerField(default=0)
+    upper_crit_int = models.IntegerField(default=0)
+    lower_crit_float_source = models.CharField(default="n", choices=[("n", "not set"), ("s", "system"), ("u", "user")], max_length=4)
+    lower_warn_float_source = models.CharField(default="n", choices=[("n", "not set"), ("s", "system"), ("u", "user")], max_length=4)
+    upper_warn_float_source = models.CharField(default="n", choices=[("n", "not set"), ("s", "system"), ("u", "user")], max_length=4)
+    upper_crit_float_source = models.CharField(default="n", choices=[("n", "not set"), ("s", "system"), ("u", "user")], max_length=4)
+    lower_crit_int_source = models.CharField(default="n", choices=[("n", "not set"), ("s", "system"), ("u", "user")], max_length=4)
+    lower_warn_int_source = models.CharField(default="n", choices=[("n", "not set"), ("s", "system"), ("u", "user")], max_length=4)
+    upper_warn_int_source = models.CharField(default="n", choices=[("n", "not set"), ("s", "system"), ("u", "user")], max_length=4)
+    upper_crit_int_source = models.CharField(default="n", choices=[("n", "not set"), ("s", "system"), ("u", "user")], max_length=4)
+    # info string
+    info = models.CharField(default="", max_length=255)
+    # used in monitoring
+    check_created = models.BooleanField(default=False)
+    changed = models.DateTimeField(auto_now_add=True, auto_now=True, default=datetime.datetime.now())
+    date = models.DateTimeField(auto_now_add=True)
+    def update_limits(self, m_value, limit_dict):
+        if type(m_value) in [int, long]:
+            v_type = "int"
+        else:
+            v_type = "float"
+        changed = False
+        for key, value in limit_dict.iteritems():
+            v_key = "{}_{}".format(key, v_type)
+            s_key = "{}_{}".format(v_key, "source")
+            if getattr(self, s_key) in ["n", "s"]:
+                if getattr(self, s_key) == "n":
+                    setattr(self, s_key, "s")
+                    changed = True
+                if getattr(self, v_key) != value:
+                    changed = True
+                    setattr(self, v_key, value)
+        return changed
+    def get_limit(self, name, default):
+        key = "{}_{}".format(name, self.get_v_type_display())
+        if getattr(self, "{}_source".format(key)) == "n":
+            return default
+        else:
+            return str(getattr(self, key))
+    def set_value(self, value):
+        if type(value) in [int, long]:
+            v_type = "int"
+        elif type(value) in [str, unicode]:
+            v_type = "str"
+        else:
+            v_type = "float"
+        v_key = "value_{}".format(v_type)
+        setattr(self, v_key, value)
+        self.save(update_fields=[v_key])
+    def get_limit_list(self):
+        v_type = {"f" : "float", "i" : "int"}[self.v_type]
+        return [(s_key, getattr(self, "{}_{}".format(key, v_type))) for s_key, key in [("lc", "lower_crit"), ("lw", "lower_warn"), ("uw", "upper_warn"), ("uc", "upper_crit")] if getattr(self, "{}_{}_source".format(key, v_type)) != "n"]
+    def __unicode__(self):
+        return u"{} ({}) for {}".format(self.m_type, self.key, unicode(self.device))
+    class Meta:
+        app_label = "backbone"
+        ordering = ("m_type", "key",)
+
+class monitoring_hint_serializer(serializers.ModelSerializer):
+    class Meta:
+        model = monitoring_hint

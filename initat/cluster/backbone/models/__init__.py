@@ -1,11 +1,9 @@
-#!/usr/bin/python-init
-
 from django.conf import settings
 from django.core.cache import cache
 from django.core.exceptions import ValidationError, ImproperlyConfigured
 from django.core.signals import request_finished, request_started
 from django.db import models
-from django.db.models import Q, signals
+from django.db.models import Q, signals, get_model
 from django.dispatch import receiver
 from django.utils.functional import memoize
 from initat.cluster.backbone.middleware import thread_local_middleware, _thread_local
@@ -88,7 +86,7 @@ def bg_req_started(*args, **kwargs):
 @receiver(request_finished)
 def bg_req_finished(*args, **kwargs):
     # check number of background jobs and signal localhost
-    if _thread_local.num_bg_jobs:
+    if getattr(_thread_local, "num_bg_jobs", 0):
         _thread_local.num_bg_jobs = 0
         _signal_localhost()
 
@@ -294,86 +292,70 @@ def config_post_save(sender, **kwargs):
     if not kwargs["raw"] and "instance" in kwargs:
         cur_inst = kwargs["instance"]
         if kwargs["created"] and getattr(cur_inst, "create_default_entries", True):
-            add_list = []
-            if cur_inst.name.count("export"):
-                if cur_inst.name.count("home"):
-                    # create a homedir export
-                    # add export / options config_vars
-                    add_list = [
-                        config_str(
-                            name="homeexport",
-                            description="export path for automounter maps",
-                            value="/export_change_me"),
-                        config_str(
-                            name="createdir",
-                            description="create path for directory creation",
-                            value="/create_change_me"),
-                        config_str(
-                            name="options",
-                            description="Options",
-                            value="-soft,tcp,lock,rsize=8192,wsize=8192,noac,lookupcache=none,vers=4,port=2049"
-                        ),
-                        config_str(
-                            name="node_postfix",
-                            description="postfix (to change network interface)",
-                            value=""
-                        )
-                    ]
+            # list of vars to create
+            var_add_list, script_add_list = ([], [])
+            ch_model = get_model("backbone", "config_hint")
+            try:
+                my_hint = ch_model.objects.get(Q(config_name=cur_inst.name))
+            except ch_model.DoesNotExist:
+                # soft search
+                nem_names = ch_model.objects.filter(Q(exact_match=False)).values_list("config_name", flat=True)
+                m_list = [_entry for _entry in nem_names if cur_inst.name.count(_entry)]
+                if m_list:
+                    m_list = [_name for _len, _name in sorted([(-len(_entry), _entry) for _entry in m_list])]
+                    my_hint = ch_model.objects.get(Q(config_name=m_list[0]))
                 else:
-                    # create a normal export
-                    # add import / export / options config_vars
-                    add_list = [
-                        config_str(
-                            name="export",
-                            description="export path",
-                            value="/export_change_me"),
-                        config_str(
-                            name="import",
-                            description="import path (for automounter)",
-                            value="/import_change_me"),
-                        config_str(
-                            name="options",
-                            description="Options",
-                            value="-soft,tcp,lock,rsize=8192,wsize=8192,noac,lookupcache=none,vers=4,port=2049"
+                    my_hint = None
+            if my_hint is not None:
+                ac_vars = my_hint.config_var_hint_set.filter(ac_flag=True)
+                for ac_var in ac_vars:
+                    if ac_var.ac_type == "str":
+                        new_var = config_str(
+                            value=ac_var.ac_value,
+                        )
+                    elif ac_var.ac_type == "int":
+                        new_var = config_int(
+                            value=int(ac_var.ac_value),
+                        )
+                    elif ac_var.ac_type == "bool":
+                        new_var = config_bool(
+                            value=True if ac_var.ac_value.lower() in ["1", "t", "yes", "true"] else False,
+                        )
+                    new_var.description = ac_var.ac_description
+                    new_var.name = ac_var.var_name
+                    var_add_list.append(new_var)
+                ac_scripts = my_hint.config_script_hint_set.filter(ac_flag=True)
+                for ac_script in ac_scripts:
+                    script_add_list.append(
+                        config_script(
+                                name=ac_script.script_name,
+                                description=ac_script.ac_description,
+                                value=ac_script.ac_value,
                             )
+                        )
+            if False:
+                if cur_inst.name == "name_server":
+                    _add_list = [
+                        config_str(
+                            name="FORWARDER_1",
+                            description="first forward",
+                            value="192.168.1.1"),
+                        config_str(
+                            name="USER",
+                            description="named user",
+                            value="named"),
+                        config_str(
+                            name="GROUP",
+                            description="named group",
+                            value="named"),
+                        config_str(
+                            name="SECRET",
+                            description="ndc secret",
+                            value="h8DM8opPS3ThdswucAoUqQ=="),
                     ]
-            elif cur_inst.name == "ldap_server":
-                add_list = [
-                    config_str(
-                        name="base_dn",
-                        description="Base DN",
-                        value="dc=test,dc=ac,dc=at"),
-                    config_str(
-                        name="admin_cn",
-                        description="Admin CN (relative to base_dn)",
-                        value="admin"),
-                    config_str(
-                        name="root_passwd",
-                        description="LDAP Admin passwd",
-                        value="changeme"),
-                ]
-            elif cur_inst.name == "name_server":
-                add_list = [
-                    config_str(
-                        name="FORWARDER_1",
-                        description="first forward",
-                        value="192.168.1.1"),
-                    config_str(
-                        name="USER",
-                        description="named user",
-                        value="named"),
-                    config_str(
-                        name="GROUP",
-                        description="named group",
-                        value="named"),
-                    config_str(
-                        name="SECRET",
-                        description="ndc secret",
-                        value="h8DM8opPS3ThdswucAoUqQ=="),
-                ]
-            for cur_var in add_list:
-                cur_var.config = cur_inst
-                cur_var.save()
+            for _cvs in var_add_list + script_add_list:
+                _cvs.config = cur_inst
+                _cvs.save()
         parent_list = []
         cur_parent = cur_inst
         while True:
@@ -520,7 +502,7 @@ class config_script(models.Model):
     name = models.CharField(max_length=192)
     description = models.CharField(max_length=765, db_column="descr")
     enabled = models.BooleanField(default=True)
-    priority = models.IntegerField(null=True, blank=True)
+    priority = models.IntegerField(null=True, blank=True, default=0)
     config = models.ForeignKey("config", db_column="new_config_id")
     value = models.TextField(blank=True)
     # to be removed
@@ -853,6 +835,8 @@ def partition_pre_save(sender, **kwargs):
     if "instance" in kwargs:
         cur_inst = kwargs["instance"]
         p_num = cur_inst.pnum
+        if not p_num.strip():
+            p_num = "0"
         try:
             p_num = int(p_num)
         except:
@@ -1130,10 +1114,10 @@ class device(models.Model):
     partdev = models.CharField(max_length=192, blank=True)
     fixed_partdev = models.IntegerField(null=True, blank=True)
     bz2_capable = models.IntegerField(null=True, blank=True)
-    new_state = models.ForeignKey("status", null=True, db_column="newstate_id")
+    new_state = models.ForeignKey("status", null=True, db_column="newstate_id", blank=True)
     rsync = models.BooleanField(default=False)
     rsync_compressed = models.BooleanField(default=False)
-    prod_link = models.ForeignKey("backbone.network", db_column="prod_link", null=True)
+    prod_link = models.ForeignKey("backbone.network", db_column="prod_link", null=True, blank=True)
     # states (with timestamp)
     recvstate = models.TextField(blank=True, default="not set")
     recvstate_timestamp = models.DateTimeField(null=True)
@@ -1145,7 +1129,7 @@ class device(models.Model):
     bootnetdevice = models.ForeignKey("backbone.netdevice", null=True, related_name="boot_net_device")
     bootserver = models.ForeignKey("device", null=True, related_name="boot_server", blank=True)
     reachable_via_bootserver = models.BooleanField(default=False)
-    dhcp_mac = models.NullBooleanField(null=True, blank=True)
+    dhcp_mac = models.NullBooleanField(null=True, blank=True, default=False)
     dhcp_write = models.NullBooleanField(default=False)
     dhcp_written = models.NullBooleanField(default=False)
     dhcp_error = models.CharField(max_length=765, blank=True)
@@ -1158,7 +1142,7 @@ class device(models.Model):
     monitor_server = models.ForeignKey("device", null=True, blank=True)
     monitor_checks = models.BooleanField(default=True, db_column="nagios_checks", verbose_name="Checks enabled")
     # performance data tracking, also needed for IPMI and SNMP active monitoring
-    enable_perfdata = models.BooleanField(default=False, verbose_name="enable perfdata, check IPMI interfaces")
+    enable_perfdata = models.BooleanField(default=False, verbose_name="enable perfdata, check IPMI and SNMP")
     flap_detection_enabled = models.BooleanField(default=False)
     show_in_bootcontrol = models.BooleanField(default=True)
     # not so clever here, better in extra table, FIXME
@@ -1166,7 +1150,7 @@ class device(models.Model):
     # machine uuid, cannot be unique due to MySQL problems with unique TextFields
     uuid = models.TextField(default="", max_length=64) # , unique=True)
     # cluster url
-    curl = models.CharField(default="ssh://", max_length=512)
+    curl = models.CharField(default="ssh://", max_length=512, verbose_name="cURL")
     # , choices=[
     #    ("ssh://", "ssh://"),
     #    ("snmp://", "snmp://"),
@@ -1210,9 +1194,8 @@ class device(models.Model):
             return self.name
     def crypt(self, in_pwd):
         if in_pwd:
-            _crypted = crypt.crypt(in_pwd, "{}{}".format(
-                chr(random.randint(65, 96)),
-                chr(random.randint(65, 96))))
+            salt = "".join([chr(random.randint(65, 90)) for _idx in xrange(4)])
+            _crypted = crypt.crypt(in_pwd, salt)
             if _crypted == "*0":
                 _crypted = ""
         else:
@@ -1370,6 +1353,7 @@ class device(models.Model):
             ("change_location", "Change device location", True),
             ("change_category", "Change device category", True),
         )
+        fk_ignore_list = ["netdevice", ]
     class Meta:
         db_table = u'device'
         ordering = ("name",)
@@ -1386,133 +1370,6 @@ class device_selection_serializer(serializers.Serializer):
     sel_type = serializers.CharField(max_length=2)
     class Meta:
         model = device_selection
-
-class device_serializer(serializers.ModelSerializer):
-    full_name = serializers.Field(source="full_name")
-    is_meta_device = serializers.Field(source="is_meta_device")
-    is_cluster_device_group = serializers.Field(source="is_cluster_device_group")
-    device_type_identifier = serializers.Field(source="device_type_identifier")
-    device_group_name = serializers.Field(source="device_group_name")
-    access_level = serializers.SerializerMethodField("get_access_level")
-    access_levels = serializers.SerializerMethodField("get_access_levels")
-    root_passwd_set = serializers.Field(source="root_passwd_set")
-    def get_access_level(self, obj):
-        if "olp" in self.context:
-            return self.context["request"].user.get_object_perm_level(self.context["olp"], obj)
-        return -1
-    def get_access_levels(self, obj):
-        return ",".join(["{}={:d}".format(key, value) for key, value in self.context["request"].user.get_object_access_levels(obj).iteritems()])
-    class Meta:
-        model = device
-        fields = ("idx", "name", "device_group", "device_type",
-            "comment", "full_name", "domain_tree_node", "enabled",
-            "monitor_checks", "mon_device_templ", "mon_device_esc_templ", "md_cache_mode",
-            "act_partition_table", "enable_perfdata", "flap_detection_enabled",
-            "automap_root_nagvis", "nagvis_parent", "monitor_server", "mon_ext_host",
-            "is_meta_device", "device_type_identifier", "device_group_name", "bootserver",
-            "is_cluster_device_group", "root_passwd_set", "has_active_rrds",
-            "curl", "mon_resolve_name", "uuid", "access_level", "access_levels", "store_rrd_data",
-            )
-        read_only_fields = ("uuid",)
-
-class device_serializer_only_boot(serializers.ModelSerializer):
-    class Meta:
-        model = device
-        fields = ("idx", "dhcp_mac", "dhcp_write",)
-
-class device_serializer_cat(device_serializer):
-    class Meta:
-        model = device
-        fields = ("idx", "name", "device_group", "device_type",
-            "comment", "full_name", "domain_tree_node", "enabled",
-            "monitor_checks", "mon_device_templ", "mon_device_esc_templ", "md_cache_mode",
-            "act_partition_table", "enable_perfdata", "flap_detection_enabled",
-            "automap_root_nagvis", "nagvis_parent", "monitor_server", "mon_ext_host",
-            "is_meta_device", "device_type_identifier", "device_group_name", "bootserver",
-            "is_cluster_device_group", "root_passwd_set", "has_active_rrds",
-            "curl", "categories", "access_level", "access_levels",
-            )
-
-class device_serializer_variables(device_serializer):
-    device_variable_set = device_variable_serializer(many=True)
-    class Meta:
-        model = device
-        fields = ("idx", "name", "device_group", "device_type",
-            "comment", "full_name", "domain_tree_node", "enabled",
-            "monitor_checks", "mon_device_templ", "mon_device_esc_templ", "md_cache_mode",
-            "act_partition_table", "enable_perfdata", "flap_detection_enabled",
-            "automap_root_nagvis", "nagvis_parent", "monitor_server", "mon_ext_host",
-            "is_meta_device", "device_type_identifier", "device_group_name", "bootserver",
-            "is_cluster_device_group", "root_passwd_set", "has_active_rrds",
-            "curl", "device_variable_set", "access_level", "access_levels", "store_rrd_data",
-            )
-
-class device_serializer_device_configs(device_serializer):
-    device_config_set = device_config_serializer(many=True)
-    class Meta:
-        model = device
-        fields = ("idx", "name", "device_group", "device_type",
-            "comment", "full_name", "domain_tree_node", "enabled",
-            "monitor_checks", "mon_device_templ", "mon_device_esc_templ", "md_cache_mode",
-            "act_partition_table", "enable_perfdata", "flap_detection_enabled",
-            "automap_root_nagvis", "nagvis_parent", "monitor_server", "mon_ext_host",
-            "is_meta_device", "device_type_identifier", "device_group_name", "bootserver",
-            "is_cluster_device_group", "root_passwd_set", "has_active_rrds",
-            "curl", "device_config_set", "access_level", "access_levels", "store_rrd_data",
-            )
-
-class device_serializer_disk_info(device_serializer):
-    act_partition_table = partition_table_serializer()
-    partition_table = partition_table_serializer()
-    class Meta:
-        model = device
-        fields = ("idx", "name", "device_group", "device_type",
-            "comment", "full_name", "domain_tree_node", "enabled",
-            "monitor_checks", "mon_device_templ", "mon_device_esc_templ", "md_cache_mode",
-            "act_partition_table", "enable_perfdata", "flap_detection_enabled",
-            "automap_root_nagvis", "nagvis_parent", "monitor_server", "mon_ext_host",
-            "is_meta_device", "device_type_identifier", "device_group_name", "bootserver",
-            "is_cluster_device_group", "root_passwd_set", "has_active_rrds",
-            "curl", "partition_table", "access_level", "access_levels", "store_rrd_data",
-            )
-
-class device_serializer_network(device_serializer):
-    netdevice_set = netdevice_serializer(many=True)
-    class Meta:
-        model = device
-        fields = ("idx", "name", "device_group", "device_type", "uuid",
-            "comment", "full_name", "domain_tree_node", "enabled",
-            "monitor_checks", "mon_device_templ", "mon_device_esc_templ", "md_cache_mode",
-            "enable_perfdata", "flap_detection_enabled",
-            "automap_root_nagvis", "nagvis_parent", "monitor_server", "mon_ext_host",
-            "is_meta_device", "device_type_identifier", "device_group_name", "bootserver",
-            "is_cluster_device_group", "root_passwd_set", "has_active_rrds",
-            "curl", "netdevice_set", "access_level", "access_levels", "store_rrd_data",
-            # for device.boot
-            "new_state", "prod_link", "dhcp_mac", "dhcp_write",
-            )
-        read_only_fields = ("uuid",)
-
-class device_serializer_monitoring(device_serializer):
-    # only used for updating (no read)
-    class Meta:
-        model = device
-        fields = (
-            "monitor_checks", "mon_device_templ", "mon_device_esc_templ", "md_cache_mode",
-            "act_partition_table", "enable_perfdata", "flap_detection_enabled",
-            "automap_root_nagvis", "nagvis_parent", "monitor_server", "mon_ext_host",
-            "mon_resolve_name", "access_level", "access_levels", "store_rrd_data",
-            )
-        read_only_fields = ("act_partition_table",)
-
-class device_serializer_monitor_server(device_serializer):
-    # only used for reading (no write)
-    monitor_type = serializers.Field(source="get_monitor_type")
-    class Meta:
-        model = device
-        fields = ("idx", "name", "full_name", "device_group_name", "monitor_type",
-            "access_level", "access_levels", "store_rrd_data",
-            )
 
 @receiver(signals.post_save, sender=device)
 def device_post_save(sender, **kwargs):
@@ -1623,10 +1480,6 @@ def cd_connection_pre_save(sender, **kwargs):
         else:
             if cur_inst.pk is None:
                 raise ValidationError("connection already exists")
-
-class cd_connection_serializer(serializers.ModelSerializer):
-    class Meta:
-        model = cd_connection
 
 class device_group(models.Model):
     idx = models.AutoField(db_column="device_group_idx", primary_key=True)
@@ -1887,67 +1740,6 @@ class devicelog(models.Model):
     class Meta:
         db_table = u'devicelog'
         ordering = ("date",)
-
-class dmi_entry(models.Model):
-    idx = models.AutoField(db_column="dmi_entry_idx", primary_key=True)
-    device = models.ForeignKey("device")
-    dmi_type = models.IntegerField()
-    handle = models.IntegerField()
-    dmi_length = models.IntegerField()
-    info = models.CharField(max_length=765)
-    date = models.DateTimeField(auto_now_add=True)
-    class Meta:
-        db_table = u'dmi_entry'
-
-class dmi_ext_key(models.Model):
-    idx = models.AutoField(db_column="dmi_ext_key_idx", primary_key=True)
-    dmi_key = models.ForeignKey("dmi_key")
-    ext_value_string = models.CharField(max_length=765)
-    date = models.DateTimeField(auto_now_add=True)
-    class Meta:
-        db_table = u'dmi_ext_key'
-
-class dmi_key(models.Model):
-    idx = models.AutoField(db_column="dmi_key_idx", primary_key=True)
-    dmi_entry = models.ForeignKey("dmi_entry")
-    key_string = models.CharField(max_length=765)
-    value_string = models.CharField(max_length=765, blank=True)
-    date = models.DateTimeField(auto_now_add=True)
-    class Meta:
-        db_table = u'dmi_key'
-
-class genstuff(models.Model):
-    idx = models.AutoField(db_column="genstuff_idx", primary_key=True)
-    name = models.CharField(unique=True, max_length=192)
-    description = models.CharField(max_length=384, blank=True)
-    value = models.CharField(max_length=192, blank=True)
-    date = models.DateTimeField(auto_now_add=True)
-    class Meta:
-        db_table = u'genstuff'
-
-class hw_entry(models.Model):
-    idx = models.AutoField(db_column="hw_entry_idx", primary_key=True)
-    device = models.ForeignKey("device")
-    hw_entry_type = models.ForeignKey("hw_entry_type")
-    iarg0 = models.IntegerField(null=True, blank=True)
-    iarg1 = models.IntegerField(null=True, blank=True)
-    sarg0 = models.CharField(max_length=765, blank=True)
-    sarg1 = models.CharField(max_length=765, blank=True)
-    date = models.DateTimeField(auto_now_add=True)
-    class Meta:
-        db_table = u'hw_entry'
-
-class hw_entry_type(models.Model):
-    idx = models.AutoField(db_column="hw_entry_type_idx", primary_key=True)
-    identifier = models.CharField(max_length=24)
-    description = models.CharField(max_length=765)
-    iarg0_descr = models.CharField(max_length=765, blank=True)
-    iarg1_descr = models.CharField(max_length=765, blank=True)
-    sarg0_descr = models.CharField(max_length=765, blank=True)
-    sarg1_descr = models.CharField(max_length=765, blank=True)
-    date = models.DateTimeField(auto_now_add=True)
-    class Meta:
-        db_table = u'hw_entry_type'
 
 class image(models.Model):
     idx = models.AutoField(db_column="image_idx", primary_key=True)
@@ -2245,57 +2037,40 @@ class macbootlog_serializer(serializers.ModelSerializer):
     class Meta:
         model = macbootlog
 
-class ms_outlet(models.Model):
-    idx = models.AutoField(db_column="msoutlet_idx", primary_key=True)
-    device = models.ForeignKey("device")
-    slave_device = models.ForeignKey("device", null=True, related_name="ms_slave_device")
-    slave_info = models.CharField(max_length=192, blank=True)
-    outlet = models.IntegerField()
-    state = models.CharField(max_length=96, blank=True)
-    t_power_on_delay = models.IntegerField(null=True, blank=True)
-    t_power_off_delay = models.IntegerField(null=True, blank=True)
-    t_reboot_delay = models.IntegerField(null=True, blank=True)
-    power_on_delay = models.IntegerField(null=True, blank=True)
-    power_off_delay = models.IntegerField(null=True, blank=True)
-    reboot_delay = models.IntegerField(null=True, blank=True)
-    date = models.DateTimeField(auto_now_add=True)
-    class Meta:
-        db_table = u'msoutlet'
+# class pci_entry(models.Model):
+#    idx = models.AutoField(db_column="pci_entry_idx", primary_key=True)
+#    device_idx = models.ForeignKey("device")
+#    domain = models.IntegerField(null=True, blank=True)
+#    bus = models.IntegerField(null=True, blank=True)
+#    slot = models.IntegerField(null=True, blank=True)
+#    func = models.IntegerField(null=True, blank=True)
+#    vendor = models.CharField(max_length=18)
+#    vendorname = models.CharField(max_length=192)
+#    device = models.CharField(max_length=18)
+#    devicename = models.CharField(max_length=192)
+#    class_field = models.CharField(max_length=18, db_column='class') # Field renamed because it was a Python reserved word. Field name made lowercase.
+#    classname = models.CharField(max_length=192)
+#    subclass = models.CharField(max_length=18)
+#    subclassname = models.CharField(max_length=192)
+#    revision = models.CharField(max_length=96)
+#    date = models.DateTimeField(auto_now_add=True)
+#    class Meta:
+#        db_table = u'pci_entry'
 
-class pci_entry(models.Model):
-    idx = models.AutoField(db_column="pci_entry_idx", primary_key=True)
-    device_idx = models.ForeignKey("device")
-    domain = models.IntegerField(null=True, blank=True)
-    bus = models.IntegerField(null=True, blank=True)
-    slot = models.IntegerField(null=True, blank=True)
-    func = models.IntegerField(null=True, blank=True)
-    vendor = models.CharField(max_length=18)
-    vendorname = models.CharField(max_length=192)
-    device = models.CharField(max_length=18)
-    devicename = models.CharField(max_length=192)
-    class_field = models.CharField(max_length=18, db_column='class') # Field renamed because it was a Python reserved word. Field name made lowercase.
-    classname = models.CharField(max_length=192)
-    subclass = models.CharField(max_length=18)
-    subclassname = models.CharField(max_length=192)
-    revision = models.CharField(max_length=96)
-    date = models.DateTimeField(auto_now_add=True)
-    class Meta:
-        db_table = u'pci_entry'
-
-class session_data(models.Model):
-    idx = models.AutoField(db_column="session_data_idx", primary_key=True)
-    session_id = models.CharField(unique=True, max_length=96)
-    value = models.TextField()
-    user = models.ForeignKey("user")
-    remote_addr = models.TextField(blank=True)
-    alias = models.CharField(max_length=255, blank=True)
-    login_time = models.DateTimeField(null=True, blank=True)
-    logout_time = models.DateTimeField(null=True, blank=True)
-    forced_logout = models.BooleanField()
-    rebuild_server_routes = models.BooleanField(default=False)
-    date = models.DateTimeField(auto_now_add=True)
-    class Meta:
-        db_table = u'session_data'
+# class session_data(models.Model):
+#    idx = models.AutoField(db_column="session_data_idx", primary_key=True)
+#    session_id = models.CharField(unique=True, max_length=96)
+#    value = models.TextField()
+#    user = models.ForeignKey("user")
+#    remote_addr = models.TextField(blank=True)
+#    alias = models.CharField(max_length=255, blank=True)
+#    login_time = models.DateTimeField(null=True, blank=True)
+#    logout_time = models.DateTimeField(null=True, blank=True)
+#    forced_logout = models.BooleanField()
+#    rebuild_server_routes = models.BooleanField(default=False)
+#    date = models.DateTimeField(auto_now_add=True)
+#    class Meta:
+#        db_table = u'session_data'
 
 class sge_complex(models.Model):
     idx = models.AutoField(db_column="sge_complex_idx", primary_key=True)
@@ -2440,31 +2215,6 @@ class sge_userlist_type(models.Model):
     class Meta:
         db_table = u'sge_userlist_type'
 
-class snmp_config(models.Model):
-    idx = models.AutoField(db_column="snmp_config_idx", primary_key=True)
-    config_old = models.IntegerField(null=True, blank=True, db_column="config")
-    config = models.ForeignKey("config", db_column="new_config_id")
-    snmp_mib = models.ForeignKey("snmp_mib")
-    device = models.ForeignKey("device", null=True, default=None)
-    date = models.DateTimeField(auto_now_add=True)
-    class Meta:
-        db_table = u'snmp_config'
-
-class snmp_mib(models.Model):
-    idx = models.AutoField(db_column="snmp_mib_idx", primary_key=True)
-    name = models.CharField(unique=True, max_length=192)
-    descr = models.CharField(max_length=765, blank=True)
-    mib = models.CharField(max_length=255)
-    rrd_key = models.CharField(max_length=192)
-    unit = models.CharField(max_length=96, blank=True)
-    base = models.IntegerField(null=True, blank=True)
-    factor = models.FloatField(null=True, blank=True)
-    var_type = models.CharField(max_length=3, blank=True)
-    special_command = models.CharField(max_length=765, blank=True)
-    date = models.DateTimeField(auto_now_add=True)
-    class Meta:
-        db_table = u'snmp_mib'
-
 class status(models.Model):
     idx = models.AutoField(db_column="status_idx", primary_key=True)
     status = models.CharField(unique=True, max_length=255)
@@ -2579,26 +2329,6 @@ class wc_files(models.Model):
     class Meta:
         db_table = u'wc_files'
 
-class md_check_data_store(models.Model):
-    idx = models.AutoField(primary_key=True)
-    device = models.ForeignKey(device)
-    name = models.CharField(max_length=64, default="")
-    mon_check_command = models.ForeignKey(mon_check_command)
-    data = models.TextField(default="")
-    created = models.DateTimeField(auto_now_add=True, auto_now=True)
-    def get_xml(self):
-        return E.md_check_data_store(
-            unicode(self),
-            pk="%d" % (self.pk),
-            key="mdcds__%d" % (self.pk),
-            device="%d" % (self.device_id),
-            name="%s" % (self.name),
-            mon_check_command="%d" % (self.mon_check_command_id),
-            data="%s" % (etree.tostring(etree.fromstring(self.data), pretty_print=True)),
-        )
-    def __unicode__(self):
-        return self.name
-
 class config_str_serializer(serializers.ModelSerializer):
     object_type = serializers.Field(source="get_object_type")
     class Meta:
@@ -2681,6 +2411,7 @@ class package_device_connection_serializer(serializers.ModelSerializer):
         model = package_device_connection
 
 class package_serializer(serializers.ModelSerializer):
+    target_repo_name = serializers.Field(source="target_repo_name")
     class Meta:
         model = package
 
@@ -2688,18 +2419,6 @@ class package_device_connection_wp_serializer(serializers.ModelSerializer):
     package = package_serializer()
     class Meta:
         model = package_device_connection
-
-class device_serializer_package_state(device_serializer):
-    package_device_connection_set = package_device_connection_serializer(many=True)
-    latest_contact = serializers.Field(source="latest_contact")
-    client_version = serializers.Field(source="client_version")
-    class Meta:
-        model = device
-        fields = ("idx", "name", "device_group", "device_type",
-            "comment", "full_name", "domain_tree_node", "enabled",
-            "package_device_connection_set", "latest_contact", "is_meta_device",
-            "access_level", "access_levels", "client_version",
-            )
 
 class mon_dist_slave_serializer(serializers.ModelSerializer):
     class Meta:
@@ -2710,6 +2429,100 @@ class mon_dist_master_serializer(serializers.ModelSerializer):
     class Meta:
         model = mon_dist_master
 
+class device_serializer(serializers.ModelSerializer):
+    full_name = serializers.Field(source="full_name")
+    is_meta_device = serializers.Field(source="is_meta_device")
+    is_cluster_device_group = serializers.Field(source="is_cluster_device_group")
+    device_type_identifier = serializers.Field(source="device_type_identifier")
+    device_group_name = serializers.Field(source="device_group_name")
+    access_level = serializers.SerializerMethodField("get_access_level")
+    access_levels = serializers.SerializerMethodField("get_access_levels")
+    root_passwd_set = serializers.Field(source="root_passwd_set")
+    act_partition_table = partition_table_serializer(read_only=True)
+    partition_table = partition_table_serializer()
+    netdevice_set = netdevice_serializer(many=True)
+    monitoring_hint_set = monitoring_hint_serializer(many=True)
+    device_variable_set = device_variable_serializer(many=True)
+    device_config_set = device_config_serializer(many=True)
+    package_device_connection_set = package_device_connection_serializer(many=True)
+    latest_contact = serializers.Field(source="latest_contact")
+    client_version = serializers.Field(source="client_version")
+    monitor_type = serializers.Field(source="get_monitor_type")
+    def __init__(self, *args, **kwargs):
+        fields = kwargs.get("context", {}).pop("fields", [])
+        serializers.ModelSerializer.__init__(self, *args, **kwargs)
+        _optional_fields = set(["act_partition_table", "partition_table", "netdevice_set", "categories", "device_variable_set", "device_config_set",
+            "package_device_connection_set", "latest_contact", "client_version", "monitor_type", "monitoring_hint_set"])
+        for _to_remove in  _optional_fields - set(fields):
+            # in case we have been subclassed
+            if _to_remove in self.fields:
+                self.fields.pop(_to_remove)
+    def get_access_level(self, obj):
+        if "olp" in self.context:
+            return self.context["request"].user.get_object_perm_level(self.context["olp"], obj)
+        return -1
+    def get_access_levels(self, obj):
+        return ",".join(["{}={:d}".format(key, value) for key, value in self.context["request"].user.get_object_access_levels(obj).iteritems()])
+    class Meta:
+        model = device
+        fields = ("idx", "name", "device_group", "device_type",
+            "comment", "full_name", "domain_tree_node", "enabled",
+            "monitor_checks", "mon_device_templ", "mon_device_esc_templ", "md_cache_mode",
+            "enable_perfdata", "flap_detection_enabled",
+            "automap_root_nagvis", "nagvis_parent", "monitor_server", "mon_ext_host",
+            "is_meta_device", "device_type_identifier", "device_group_name", "bootserver",
+            "is_cluster_device_group", "root_passwd_set", "has_active_rrds",
+            "curl", "mon_resolve_name", "access_level", "access_levels", "store_rrd_data",
+            "access_level", "access_levels", "store_rrd_data",
+            # disk info
+            "partition_table", "act_partition_table",
+            # for network view
+            "new_state", "prod_link", "dhcp_mac", "dhcp_write", "netdevice_set",
+            # for categories
+            "categories",
+            # variables
+            "device_variable_set",
+            # config
+            "device_config_set",
+            # package info
+            "package_device_connection_set", "latest_contact", "client_version",
+            # monitor type
+            "monitor_type",
+            # monitoring hint
+            "monitoring_hint_set",
+            )
+        read_only_fields = ("uuid",)
+
+class cd_connection_serializer(serializers.ModelSerializer):
+    class Meta:
+        model = cd_connection
+
+class device_serializer_package_state(device_serializer):
+    class Meta:
+        model = device
+        fields = ("idx", "name", "device_group", "device_type",
+            "comment", "full_name", "domain_tree_node", "enabled",
+            "package_device_connection_set", "latest_contact", "is_meta_device",
+            "access_level", "access_levels", "client_version",
+            )
+
+class device_serializer_only_boot(serializers.ModelSerializer):
+    class Meta:
+        model = device
+        fields = ("idx", "dhcp_mac", "dhcp_write",)
+
+class device_serializer_monitoring(device_serializer):
+    # only used for updating (no read)
+    class Meta:
+        model = device
+        fields = (
+            "monitor_checks", "mon_device_templ", "mon_device_esc_templ", "md_cache_mode",
+            "act_partition_table", "enable_perfdata", "flap_detection_enabled",
+            "automap_root_nagvis", "nagvis_parent", "monitor_server", "mon_ext_host",
+            "mon_resolve_name", "access_level", "access_levels", "store_rrd_data",
+            )
+        read_only_fields = ("act_partition_table",)
+
 class cd_connection_serializer_boot(serializers.ModelSerializer):
     parent = device_serializer()
     child = device_serializer()
@@ -2717,6 +2530,9 @@ class cd_connection_serializer_boot(serializers.ModelSerializer):
         model = cd_connection
 
 class device_serializer_boot(device_serializer):
+    partition_table = serializers.SerializerMethodField("get_partition_table")
+    # current partition table
+    act_partition_table = serializers.SerializerMethodField("get_act_partition_table")
     bootnetdevice = netdevice_serializer()
     valid_state = serializers.Field(source="valid_state")
     uptime = serializers.Field(source="get_uptime")
@@ -2725,6 +2541,10 @@ class device_serializer_boot(device_serializer):
     net_state = serializers.Field(source="net_state")
     master_connections = cd_connection_serializer_boot(source="get_master_cons", many=True)
     slave_connections = cd_connection_serializer_boot(source="get_slave_cons", many=True)
+    def get_partition_table(self, obj):
+        return obj.partition_table_id or None
+    def get_act_partition_table(self, obj):
+        return obj.act_partition_table_id or None
     class Meta:
         model = device
         fields = ("idx" , "name", "full_name", "device_group_name", "access_level", "access_levels",
@@ -2743,4 +2563,5 @@ class device_serializer_boot(device_serializer):
             "dhcp_mac", "dhcp_write", "dhcp_written", "dhcp_error", "bootnetdevice", "bootnetdevice",
             # connections
             "master_connections", "slave_connections",
-            )
+        )
+

@@ -45,6 +45,7 @@ MIGRATION_DIRS = [
     "initat/cluster/backbone",
     "initat/cluster/liebherr",
 ]
+AUTO_FLAG = "/etc/sysconfig/cluster/db_auto_update"
 SYNC_APPS = ["liebherr"]
 
 try:
@@ -89,6 +90,8 @@ def call_manage(args):
     s_time = time.time()
     c_stat, c_out = commands.getstatusoutput(com_str)
     e_time = time.time()
+    if c_stat == 256 and c_out.lower().count("nothing seems to have changed"):
+        c_stat = 0
     if c_stat:
         print("something went wrong calling '{}' in {} ({:d}):".format(
             com_str,
@@ -318,13 +321,13 @@ def create_db(opts):
     for _sync_app in SYNC_APPS:
         if os.path.isdir(os.path.join(LIB_DIR, "initat", "cluster", _sync_app)):
             call_manage(["schemamigration", _sync_app, "--auto"])
-            call_manage(["migrate", _sync_app])
-    call_manage(["migrate", "auth"])
-    call_manage(["migrate", "backbone", "--no-initial-data"])
-    call_manage(["migrate", "reversion"])
-    call_manage(["migrate", "static_precompiler"])
+            call_manage(["migrate", _sync_app, "--noinput"])
+    call_manage(["migrate", "auth", "--noinput"])
+    call_manage(["migrate", "backbone", "--no-initial-data", "--noinput"])
+    call_manage(["migrate", "reversion", "--noinput"])
+    call_manage(["migrate", "static_precompiler", "--noinput"])
     call_manage(["syncdb", "--noinput"] + id_flags)
-    call_manage(["migrate"] + id_flags)
+    call_manage(["migrate"] + id_flags + ["--noinput"])
     if opts.no_initial_data:
         print("")
         print("skipping initial data insert")
@@ -341,14 +344,21 @@ def create_db(opts):
 
 def migrate_db(opts):
     if os.path.isdir(CMIG_DIR):
-        print("migrating current cluster database schema")
+        print("migrating current cluster database schemata")
         for _sync_app in SYNC_APPS:
-            if os.path.isdir(os.path.join(LIB_DIR, "initat", "cluster", _sync_app)):
-                call_manage(["schemamigration", _sync_app, "--auto"])
-                call_manage(["migrate", _sync_app])
+            _app_dir = os.path.join(LIB_DIR, "initat", "cluster", _sync_app)
+            if os.path.isdir(_app_dir):
+                _mig_dir = os.path.join(_app_dir, "migrations")
+                if os.path.isdir(_mig_dir):
+                    _py_files = [_entry for _entry in os.listdir(_mig_dir) if _entry.endswith(".py")]
+                    if _py_files == ["__init__.py"]:
+                        # initial schema migration call
+                        call_manage(["schemamigration", _sync_app, "--initial"])
+                    call_manage(["schemamigration", _sync_app, "--auto"])
+                    call_manage(["migrate", _sync_app, "--noinput"])
         check_local_settings()
         call_manage(["schemamigration", "backbone", "--auto"])
-        call_manage(["migrate", "--no-initial-data", "backbone"])
+        call_manage(["migrate", "--no-initial-data", "backbone", "--noinput"])
         call_update_funcs()
     else:
         print("cluster migration dir {} not present, please create database".format(CMIG_DIR))
@@ -370,19 +380,25 @@ def check_db_rights():
 def main():
     default_pw = get_pw()
     my_p = argparse.ArgumentParser()
-    my_p.add_argument("--ignore-existing", default=False, action="store_true", help="Ignore existing db.cf file {} [%(default)s]".format(DB_FILE))
-    my_p.add_argument("--use-existing", default=False, action="store_true", help="use existing db.cf file {} [%(default)s]".format(DB_FILE))
-    my_p.add_argument("--user", type=str, default="cdbuser", help="set name of database user")
-    my_p.add_argument("--passwd", type=str, default=default_pw, help="set password for database user")
-    my_p.add_argument("--database", type=str, default="cdbase", help="set name of cluster database")
-    my_p.add_argument("--host", type=str, default="localhost", help="set database host")
-    my_p.add_argument("--clear-migrations", default=False, action="store_true", help="clear migrations before database creationg [%(default)s]")
-    my_p.add_argument("--no-initial-data", default=False, action="store_true", help="disable inserting of initial data [%(default)s], only usefull for the migration form an older version of the clustersoftware")
-    my_p.add_argument("--superuser", default="admin", type=str, help="name of the superuser [%(default)s]")
-    my_p.add_argument("--email", default="admin@localhost", type=str, help="admin address of superuser [%(default)s]")
-    my_p.add_argument("--no-superuser", default=False, action="store_true", help="do not create a superuser [%(default)s]")
-    my_p.add_argument("--system-group-name", default="system", type=str, help="name of system group [%(default)s]")
-    my_p.add_argument("--migrate", default=False, action="store_true", help="migrate current cluster database [%(default)s]")
+    db_flags = my_p.add_argument_group("database options")
+    db_flags.add_argument("--ignore-existing", default=False, action="store_true", help="Ignore existing db.cf file {} [%(default)s]".format(DB_FILE))
+    db_flags.add_argument("--use-existing", default=False, action="store_true", help="use existing db.cf file {} [%(default)s]".format(DB_FILE))
+    db_flags.add_argument("--user", type=str, default="cdbuser", help="set name of database user")
+    db_flags.add_argument("--passwd", type=str, default=default_pw, help="set password for database user")
+    db_flags.add_argument("--database", type=str, default="cdbase", help="set name of cluster database")
+    db_flags.add_argument("--host", type=str, default="localhost", help="set database host")
+    mig_opts = my_p.add_argument_group("migration options")
+    mig_opts.add_argument("--clear-migrations", default=False, action="store_true", help="clear migrations before database creationg [%(default)s]")
+    mig_opts.add_argument("--no-initial-data", default=False, action="store_true", help="disable inserting of initial data [%(default)s], only usefull for the migration form an older version of the clustersoftware")
+    mig_opts.add_argument("--migrate", default=False, action="store_true", help="migrate current cluster database [%(default)s]")
+    create_opts = my_p.add_argument_group("database creation options")
+    create_opts.add_argument("--superuser", default="admin", type=str, help="name of the superuser [%(default)s]")
+    create_opts.add_argument("--email", default="admin@localhost", type=str, help="admin address of superuser [%(default)s]")
+    create_opts.add_argument("--no-superuser", default=False, action="store_true", help="do not create a superuser [%(default)s]")
+    create_opts.add_argument("--system-group-name", default="system", type=str, help="name of system group [%(default)s]")
+    auc_flags = my_p.add_argument_group("automatic update options")
+    auc_flags.add_argument("--enable-auto-update", default=False, action="store_true", help="enable automatic update [%(default)s]")
+    auc_flags.add_argument("--disable-auto-update", default=False, action="store_true", help="disable automatic update [%(default)s]")
     opts = my_p.parse_args()
     DB_MAPPINGS = {
         "psql"  : "python-modules-psycopg2",
@@ -397,38 +413,61 @@ def main():
         print("No Database access libraries installed, please install some of them")
         sys.exit(1)
     # flag: setup db_cf data
-    db_exists = os.path.exists(DB_FILE)
-    call_create_db = True
-    call_migrate_db = False
-    if db_exists:
-        if opts.migrate:
-            setup_db_cf = False
-            call_create_db = False
-            call_migrate_db = True
+    if opts.enable_auto_update:
+        if os.path.exists(AUTO_FLAG):
+            print("auto_udpate_flag {} already exists".format(AUTO_FLAG))
         else:
-            if opts.use_existing:
-                # use existing db_cf
-                setup_db_cf = False
+            try:
+                file(AUTO_FLAG, "w").write("\n")
+            except:
+                print("cannot create auto_update_flag {}: {}".format(AUTO_FLAG, process_tools.get_except_info()))
+                sys.exit(-1)
             else:
-                if opts.ignore_existing:
-                    print("DB access file {} already exists, ignoring ...".format(DB_FILE))
-                    setup_db_cf = True
-                else:
-                    print("DB access file {} already exists, exiting ...".format(DB_FILE))
-                    sys.exit(1)
+                print("created auto_update_flag {}".format(AUTO_FLAG))
+    elif opts.disable_auto_update:
+        if os.path.isfile(AUTO_FLAG):
+            try:
+                os.unlink(AUTO_FLAG)
+            except:
+                print("cannot remove auto_update_flag {}: {}".format(AUTO_FLAG, process_tools.get_except_info()))
+                sys.exit(-1)
+            else:
+                print("removed auto_update_flag {}".format(AUTO_FLAG))
+        else:
+            print("auto_udpate_flag {} not present".format(AUTO_FLAG))
     else:
-        setup_db_cf = True
-        if opts.use_existing:
-            print("DB access file {} does not exist ...".format(DB_FILE))
-    if setup_db_cf:
-        if not create_db_cf(opts):
-            print("Creation of {} not successfull, exiting".format(DB_FILE))
-            sys.exit(3)
-    check_db_rights()
-    if call_create_db:
-        create_db(opts)
-    if call_migrate_db:
-        migrate_db(opts)
+        db_exists = os.path.exists(DB_FILE)
+        call_create_db = True
+        call_migrate_db = False
+        if db_exists:
+            if opts.migrate:
+                setup_db_cf = False
+                call_create_db = False
+                call_migrate_db = True
+            else:
+                if opts.use_existing:
+                    # use existing db_cf
+                    setup_db_cf = False
+                else:
+                    if opts.ignore_existing:
+                        print("DB access file {} already exists, ignoring ...".format(DB_FILE))
+                        setup_db_cf = True
+                    else:
+                        print("DB access file {} already exists, exiting ...".format(DB_FILE))
+                        sys.exit(1)
+        else:
+            setup_db_cf = True
+            if opts.use_existing:
+                print("DB access file {} does not exist ...".format(DB_FILE))
+        if setup_db_cf:
+            if not create_db_cf(opts):
+                print("Creation of {} not successfull, exiting".format(DB_FILE))
+                sys.exit(3)
+        check_db_rights()
+        if call_create_db:
+            create_db(opts)
+        if call_migrate_db:
+            migrate_db(opts)
 
 if __name__ == "__main__":
     main()

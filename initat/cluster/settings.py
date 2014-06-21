@@ -128,6 +128,8 @@ TIME_ZONE = "Europe/Vienna"
 # http://www.i18nguy.com/unicode/language-identifiers.html
 LANGUAGE_CODE = "en-us"
 
+ANONYMOUS_USER_ID = -1
+
 SITE_ID = 1
 
 REL_SITE_ROOT = "cluster"
@@ -391,9 +393,9 @@ PIPELINE_JS = {
         "source_filenames" : {
             "js/jquery.dataTables.rowGrouping.js",
             "js/codemirror/addon/selection/active-line.js",
-            "js/codemirror/python.js",
-            "js/codemirror/xml.js",
-            "js/codemirror/shell.js",
+            "js/codemirror/mode/python/python.js",
+            "js/codemirror/mode/xml/xml.js",
+            "js/codemirror/mode/shell/shell.js",
             "js/libs/jquery-ui-timepicker-addon.js",
             "js/libs/angular-route.min.js",
             "js/libs/angular-resource.min.js",

@@ -92,19 +92,13 @@ class Command(BaseCommand):
         factories.PartitionFS(name="lvm", identifier="l", descr="LVM Partition", hexid="8e", kernel_module="dm_map")
         factories.PartitionFS(name="xfs", identifier="f", descr="XFS Filesystem", hexid="83", kernel_module="xfs")
         factories.PartitionFS(name="btrfs", identifier="f", descr="BTRFS Filesystem", hexid="83", kernel_module="btrfs")
-        factories.PartitionFS(name="ocfs2", identifier="f", descr="OCFS2 Filesystem", hexid="83", kenrel_module="ocfs2")
+        factories.PartitionFS(name="ocfs2", identifier="f", descr="OCFS2 Filesystem", hexid="83", kernel_module="ocfs2")
         # log status
         factories.LogStatus(identifier="c", log_level=200, name="critical")
         factories.LogStatus(identifier="e", log_level=100, name="error")
         factories.LogStatus(identifier="w", log_level=50, name="warning")
         factories.LogStatus(identifier="i", log_level=0, name="info")
         factories.LogStatus(identifier="n", log_level= -50, name="notice")
-        # hw entry type
-        factories.HWEntryType(identifier="cpu", description="CPU", iarg0_descr="Speed in MHz", sarg0_descr="Model Type")
-        factories.HWEntryType(identifier="mem", description="Memory", iarg0_descr="Physikal Memory", iarg1_descr="Virtual Memory")
-        factories.HWEntryType(identifier="disks", description="Harddisks", iarg0_descr="Number of harddisks", iarg1_descr="total size")
-        factories.HWEntryType(identifier="cdroms", description="CDRoms", iarg0_descr="Number of CD-Roms")
-        factories.HWEntryType(identifier="gfx", description="Graphicscard", sarg0_descr="Type of Gfx")
         # status
         factories.Status(status="memtest", memory_test=True)
         factories.Status(status="boot_local", boot_local=True)
@@ -146,15 +140,197 @@ class Command(BaseCommand):
         server_cfg = factories.ConfigHint(
             config_name="server",
             valid_for_meta=False,
+            config_description="server device",
             help_text_short="activate device as a server",
             help_text_html="""
 <h2>Use this option to activate server functionality</h2>
-"""
+            """,
+        )
+        modules_cfg = factories.ConfigHint(
+            config_name="modules_system",
+            config_description="modules system (client part)",
+            valid_for_meta=True,
+            help_text_short="activate module system",
+            help_text_html="""
+<h2>Enable the module system<h2>
+            """,
+        )
+        factories.ConfigScriptHint(
+            config_hint=modules_cfg,
+            script_name="client_modules",
+            help_text_short="configures module access for clients",
+            help_text_html="""
+<h3>Enables the module system on a client</h3>
+May be relative to the NFS4 root export
+""",
+            ac_flag=True,
+            ac_description="config script",
+            ac_value="""
+# add link
+config.add_link_object("/opt/modulefiles", "/.opt/modulefiles")
+            """,
+        )
+        # modules export
+        modules_export_cfg = factories.ConfigHint(
+            config_name="modules_export",
+            exact_match=False,
+            config_description="export entry for the modules share (server)",
+            valid_for_meta=True,
+            help_text_short="export entry for the modules share",
+            help_text_html="""
+<h2>Configures an export entry for the modules system</h2>
+Configures a cluster-wide filesystem share for the modules dir. Attach to
+a device to create the according automounter entries
+            """,
+        )
+        factories.ConfigVarHint(
+            config_hint=modules_export_cfg,
+            var_name="export",
+            help_text_short="the directory to export",
+            help_text_html="""
+<h3>Define the directory to export</h3>
+May be relative to the NFS4 root export
+""",
+            ac_flag=True,
+            ac_type="str",
+            ac_description="export path",
+            ac_value="/opt/cluster/Modules/modulefiles",
+        )
+        factories.ConfigVarHint(
+            config_hint=modules_export_cfg,
+            var_name="import",
+            help_text_short="the import path",
+            help_text_html="""
+<h3>Define the import path</h3>
+Used for automounter maps
+""",
+            ac_flag=True,
+            ac_type="str",
+            ac_description="import path",
+            ac_value="/.opt/modulefiles",
+        )
+        factories.ConfigVarHint(
+            config_hint=modules_export_cfg,
+            var_name="options",
+            help_text_short="the mount options",
+            help_text_html="""
+<h3>Sets the mount options</h3>
+Used for automounter maps
+""",
+            ac_flag=True,
+            ac_type="str",
+            ac_description="options",
+            ac_value="-soft,tcp,lock,rsize=8192,wsize=8192,noac,lookupcache=none,vers=4,port=2049",
+        )
+        # export entries
+        export_cfg = factories.ConfigHint(
+            config_name="export",
+            exact_match=False,
+            config_description="export entry (share)",
+            valid_for_meta=True,
+            help_text_short="creates an export entry",
+            help_text_html="""
+<h2>Configures an export entry (for sharing)</h2>
+Configures a cluster-wide filesystem share. Attach to
+a device to create the according automounter entries
+            """,
+        )
+        factories.ConfigVarHint(
+            config_hint=export_cfg,
+            var_name="export",
+            help_text_short="the directory to export",
+            help_text_html="""
+<h3>Define the directory to export</h3>
+May be relative to the NFS4 root export
+""",
+            ac_flag=True,
+            ac_type="str",
+            ac_description="export path",
+            ac_value="/export",
+        )
+        factories.ConfigVarHint(
+            config_hint=export_cfg,
+            var_name="import",
+            help_text_short="the import path",
+            help_text_html="""
+<h3>Define the import path</h3>
+Used for automounter maps
+""",
+            ac_flag=True,
+            ac_type="str",
+            ac_description="import path",
+            ac_value="/import",
+        )
+        factories.ConfigVarHint(
+            config_hint=export_cfg,
+            var_name="options",
+            help_text_short="the mount options",
+            help_text_html="""
+<h3>Sets the mount options</h3>
+Used for automounter maps
+""",
+            ac_flag=True,
+            ac_type="str",
+            ac_description="options",
+            ac_value="-soft,tcp,lock,rsize=8192,wsize=8192,noac,lookupcache=none,vers=4,port=2049",
+        )
+        # home export entries
+        homedir_export_cfg = factories.ConfigHint(
+            config_name="homedir_export",
+            exact_match=False,
+            config_description="export entry (share) for home",
+            valid_for_meta=True,
+            help_text_short="creates an export entry for home",
+            help_text_html="""
+<h2>Configures an export entry (for sharing)</h2>
+Configures a cluster-wide filesystem share. Attach to
+a device to create the according automounter entries
+            """,
+        )
+        factories.ConfigVarHint(
+            config_hint=homedir_export_cfg,
+            var_name="homeexport",
+            help_text_short="the directory to export",
+            help_text_html="""
+<h3>Define the directory to export</h3>
+May be relative to the NFS4 root export
+""",
+            ac_flag=True,
+            ac_type="str",
+            ac_description="export path",
+            ac_value="/export_change_me",
+        )
+        factories.ConfigVarHint(
+            config_hint=homedir_export_cfg,
+            var_name="createdir",
+            help_text_short="where to create the homes",
+            help_text_html="""
+<h3>Define the creation path</h3>
+Used by the clusterserver, can be different from export_path (for example when NFSv4 is used)
+""",
+            ac_flag=True,
+            ac_type="str",
+            ac_description="create path",
+            ac_value="/create_change_me",
+        )
+        factories.ConfigVarHint(
+            config_hint=homedir_export_cfg,
+            var_name="options",
+            help_text_short="the mount options",
+            help_text_html="""
+<h3>Sets the mount options</h3>
+Used for automounter maps
+""",
+            ac_flag=True,
+            ac_type="str",
+            ac_description="options",
+            ac_value="-soft,tcp,lock,rsize=8192,wsize=8192,noac,lookupcache=none,vers=4,port=2049",
         )
         ldap_server_cfg = factories.ConfigHint(
             config_name="ldap_server",
+            config_description="LDAP Server",
             valid_for_meta=False,
-            help_text_short="device controlls an LDAP-server",
+            help_text_short="device acts as an LDAP-server",
             help_text_html="""
 <h2>Enable LDAP-server functionality</h2>
 The following server command are available:
@@ -164,33 +340,45 @@ The following server command are available:
 </ul>
 """
         )
-        _base_dn_hint = factories.ConfigVarHint(
+        factories.ConfigVarHint(
             config_hint=ldap_server_cfg,
             var_name="base_dn",
             help_text_short="define LDAP base DN",
             help_text_html="""
 <h3>Define the base DN for the LDAP sync</h3>
-"""
+""",
+            ac_flag=True,
+            ac_type="str",
+            ac_description="Base DN",
+            ac_value="dc=test,dc=ac,dc=at",
         )
-        _admin_cn_hint = factories.ConfigVarHint(
+        factories.ConfigVarHint(
             config_hint=ldap_server_cfg,
             var_name="admin_cn",
             help_text_short="CN of the admin user",
             help_text_html="""
 <h3>CN of the admin user</h3>
 Enter without 'cn=', in most cases admin is enough
-"""
+""",
+            ac_flag=True,
+            ac_type="str",
+            ac_description="admin CN (relative to base DN without 'cn=')",
+            ac_value="admin",
         )
-        _root_passwd_hint = factories.ConfigVarHint(
+        factories.ConfigVarHint(
             config_hint=ldap_server_cfg,
             var_name="root_passwd",
             help_text_short="password of the admin user",
             help_text_html="""
 <h3>Password of the admin user</h3>
 Stored as cleartext password, handle with care.
-"""
+""",
+            ac_flag=True,
+            ac_type="str",
+            ac_description="LDAP admin password",
+            ac_value="changeme",
         )
-        _user_object_classes = factories.ConfigVarHint(
+        factories.ConfigVarHint(
             config_hint=ldap_server_cfg,
             var_name="user_object_classes",
             help_text_short="object classes for user objects",
@@ -207,7 +395,7 @@ for user objects. Can contain one or more of
 </ul>
 """
         )
-        _group_object_classes = factories.ConfigVarHint(
+        factories.ConfigVarHint(
             config_hint=ldap_server_cfg,
             var_name="group_object_classes",
             help_text_short="object classes for group objects",
@@ -222,7 +410,7 @@ for group objects. Can contain one or more of
 </ul>
 """
         )
-        _group_dn_template = factories.ConfigVarHint(
+        factories.ConfigVarHint(
             config_hint=ldap_server_cfg,
             var_name="group_dn_template",
             help_text_short="template to create group dn",
@@ -233,7 +421,7 @@ cn={GROUPNAME}<br>
 where GROUPNAME extends to the name of the group.
 """
         )
-        _user_dn_template = factories.ConfigVarHint(
+        factories.ConfigVarHint(
             config_hint=ldap_server_cfg,
             var_name="user_dn_template",
             help_text_short="template to create user dn",
@@ -244,7 +432,7 @@ uid={USERNAME}<br>
 where USERNAME extends to the login name of the user.
 """
         )
-        _group_base_template = factories.ConfigVarHint(
+        factories.ConfigVarHint(
             config_hint=ldap_server_cfg,
             var_name="group_base_template",
             help_text_short="template to create the group base dn",
@@ -255,7 +443,7 @@ of the group_dn_template plus the group_base template:<br>
 GROUP_DN={GROUP_DN_TEMPLATE},{GROUP_BASE_TEMPLATE}
 """
         )
-        _user_base_template = factories.ConfigVarHint(
+        factories.ConfigVarHint(
             config_hint=ldap_server_cfg,
             var_name="user_base_template",
             help_text_short="template to create the user base dn",

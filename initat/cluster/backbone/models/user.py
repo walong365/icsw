@@ -555,6 +555,10 @@ class user(models.Model):
     object_perms = models.ManyToManyField(csw_object_permission, related_name="db_user_perms", blank=True, through=user_object_permission)
     is_superuser = models.BooleanField(default=False)
     db_is_auth_for_password = models.BooleanField(default=False)
+    # create rms user ?
+    create_rms_user = models.BooleanField(default=False)
+    # rms user created ?
+    rms_user_created = models.BooleanField(default=False)
     @property
     def is_anonymous(self):
         return False
@@ -677,9 +681,10 @@ class user(models.Model):
             ("modify_tree", "modify device tree", False),
             ("modify_domain_name_tree", "modify domain name tree", False),
             ("modify_category_tree", "modify category tree", False),
+            ("rms_operator", "change RMS settings", True),
         )
         # foreign keys to ignore
-        fk_ignore_list = ["user_variable", "user_permission", "user_object_permission", "session_data"]
+        fk_ignore_list = ["user_variable", "user_permission", "user_object_permission"]
     class Meta:
         db_table = u'user'
         ordering = ("login", "group__groupname")
