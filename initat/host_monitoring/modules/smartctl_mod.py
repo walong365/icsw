@@ -67,19 +67,25 @@ class smartstat_command(hm_classes.hm_command):
     def __init__(self, name):
         hm_classes.hm_command.__init__(self, name, positional_arguments=True, arguments_name="interface")
     def __call__(self, srv_com, cur_ns):
-        if "arguments:arg0" in srv_com:
-            dev = srv_com["*arguments:arg0"]
-            if dev in self.module.devices:
-                self.module.update_smart([dev])
-                srv_com["smartstat"] = [self.module.devices[dev]]
+        if self.module.smartctl_bin:
+            if "arguments:arg0" in srv_com:
+                dev = srv_com["*arguments:arg0"]
+                if dev in self.module.devices:
+                    self.module.update_smart([dev])
+                    srv_com["smartstat"] = [self.module.devices[dev]]
+                else:
+                    srv_com.set_result(
+                        "device '{}' not found".format(dev),
+                        server_command.SRV_REPLY_STATE_ERROR,
+                    )
             else:
-                srv_com.set_result(
-                    "device '{}' not found".format(dev),
-                    server_command.SRV_REPLY_STATE_ERROR,
-                )
+                self.module.update_smart()
+                srv_com["smartstat"] = [self.module.devices[_dev] for _dev in self.module.devices.keys()]
         else:
-            self.module.update_smart()
-            srv_com["smartstat"] = [self.module.devices[_dev] for _dev in self.module.devices.keys()]
+            srv_com.set_result(
+                "no smartctl binary found",
+                server_command.SRV_REPLY_STATE_ERROR,
+            )
     def interpret(self, srv_com, cur_ns):
         smartstat = srv_com["*smartstat"]
         if smartstat:
