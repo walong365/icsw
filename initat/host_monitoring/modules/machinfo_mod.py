@@ -1209,15 +1209,17 @@ class mem_command(hm_classes.hm_command):
             )
             _fact = 1
         all_total = mem_total + swap_total
+        # add buffers and cached to free memory
+        mem_free += cached + buffers
         all_free = mem_free + swap_free
         mem_p = 100 * (1 if mem_total == 0 else float(mem_total - mem_free) / mem_total)
         # swap_p = 100 * (1 if swap_total == 0 else float(swap_total - swap_free) / swap_total)
         all_p = 100 * (1 if all_total == 0 else float(all_total - all_free) / all_total)
         ret_state = limits.check_ceiling(all_p, cur_ns.warn, cur_ns.crit)
-        return ret_state, "meminfo: %d %% of %s phys, %d %% of %s tot (%s buffers, %s cached)" % (
-            mem_p,
+        return ret_state, "meminfo: {:d} % of {} phys, {:d} % of {} tot ({} buffers, {} cached)".format(
+            int(mem_p),
             logging_tools.get_size_str(mem_total * _fact, strip_spaces=True),
-            all_p,
+            int(all_p),
             logging_tools.get_size_str(all_total * _fact, strip_spaces=True),
             logging_tools.get_size_str(buffers * _fact, strip_spaces=True),
             logging_tools.get_size_str(cached * _fact, strip_spaces=True),
