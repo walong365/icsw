@@ -38,7 +38,7 @@ class _general(hm_classes.hm_module):
 
 class sge_queue_status_command(hm_classes.hm_command):
     def __init__(self, name):
-        super(sge_queue_status_command, self).__init__(name, server_arguments=True)
+        super(sge_queue_status_command, self).__init__(name)
         self.parser.add_argument("--sge-queue", dest="sge_queue", type=str)
         self.parser.add_argument("--sge-host", dest="sge_host", type=str)
     def __call__(self, srv_com, cur_ns):

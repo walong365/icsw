@@ -79,9 +79,10 @@ class smcipmi_struct(hm_classes.subprocess_struct):
         self.__log_com("[smcipmi] %s" % (what), level)
     def process(self):
         if self.run_info["result"]:
-            self.srv_com["result"].attrib.update({
-                "reply" : "error (%d): %s" % (self.run_info["result"], self.read().strip()),
-                "state" : "%d" % (server_command.SRV_REPLY_STATE_ERROR)})
+            self.srv_com.set_result(
+                "error ({:d}): {}".format(self.run_info["result"], self.read().strip()),
+                server_command.SRV_REPLY_STATE_ERROR,
+            )
         else:
             output = self.read()
             self.srv_com["output"] = output
@@ -89,16 +90,17 @@ class smcipmi_struct(hm_classes.subprocess_struct):
 class smcipmi_command(hm_classes.hm_command):
     info_str = "SMCIPMITool frontend"
     def __init__(self, name):
-        hm_classes.hm_command.__init__(self, name, server_arguments=True, positional_arguments=True)
+        hm_classes.hm_command.__init__(self, name, positional_arguments=True)
         self.parser.add_argument("--user", dest="user", type=str, default="ADMIN")
         self.parser.add_argument("--passwd", dest="passwd", type=str, default="ADMIN")
         self.parser.add_argument("--ip", dest="ip", type=str)
     def __call__(self, srv_com, cur_ns):
         args = cur_ns.arguments
         if not len(args):
-            srv_com["result"].attrib.update({
-                "reply" : "no arguments specified",
-                "state" : "%d" % (server_command.SRV_REPLY_STATE_ERROR)})
+            srv_com.set_result(
+                "no arguments specified",
+                server_command.SRV_REPLY_STATE_ERROR,
+            )
             cur_smcc = None
         else:
             com = args[0]
@@ -112,7 +114,7 @@ class smcipmi_command(hm_classes.hm_command):
             }.get(com, com)
             srv_com["orig_command"] = com
             srv_com["mapped_command"] = real_com
-            self.log("mapping command '%s' to '%s'" % (com, real_com))
+            self.log("mapping command '{}' to '{}'".format(com, real_com))
             cur_smcc = smcipmi_struct(
                 self.log,
                 srv_com,

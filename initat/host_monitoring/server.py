@@ -29,6 +29,7 @@ from initat.host_monitoring.hm_inotify import inotify_process
 from initat.host_monitoring.hm_direct import socket_process
 from lxml import etree # @UnresolvedImport
 from lxml.builder import E # @UnresolvedImport
+import argparse
 import StringIO
 import configfile
 import difflib
@@ -454,17 +455,22 @@ class server_code(threading_tools.process_pool):
         if len(data) == 2:
             src_id = data.pop(0)
             data = data[0]
-            # zmq_sock.send_unicode(src_id, zmq.SNDMORE)
-            # zmq_sock.send_unicode(data)
-            # del data
-            # return
             srv_com = server_command.srv_command(source=data)
-            # print srv_com.pretty_print()
-            rest_el = srv_com.xpath(".//ns:arguments/ns:rest", smart_strings=False)
-            if rest_el:
-                rest_str = rest_el[0].text or u""
-            else:
+            if "namespace" in srv_com:
+                # namespace given, parse and use it
+                cur_ns = argparse.Namespace()
+                for _entry in srv_com.xpath(".//ns:namespace/ns:*", smart_strings=False):
+                    ns_key = _entry.tag.split("}", 1)[-1]
+                    setattr(cur_ns, ns_key, srv_com["*namespace:{}".format(ns_key)])
                 rest_str = u""
+            else:
+                # no namespace given, parse what we got form server
+                cur_ns = None
+                rest_el = srv_com.xpath(".//ns:arguments/ns:rest", smart_strings=False)
+                if rest_el:
+                    rest_str = rest_el[0].text or u""
+                else:
+                    rest_str = u""
             # is a delayed command
             delayed = False
             cur_com = srv_com["command"].text
@@ -473,7 +479,7 @@ class server_code(threading_tools.process_pool):
                 "start_time" : TIME_FORMAT % (time.time())
             })
             if cur_com in self.commands:
-                delayed = self._handle_module_command(srv_com, rest_str)
+                delayed = self._handle_module_command(srv_com, cur_ns, rest_str)
             else:
                 c_matches = difflib.get_close_matches(cur_com, self.commands.keys())
                 if c_matches:
@@ -555,11 +561,12 @@ class server_code(threading_tools.process_pool):
         if not self.__delayed:
             self.loop_granularity = 1000.0
             self.unregister_timer(self._check_delayed)
-    def _handle_module_command(self, srv_com, rest_str):
+    def _handle_module_command(self, srv_com, cur_ns, rest_str):
         cur_com = self.commands[srv_com["command"].text]
         sp_struct = None
         try:
-            cur_ns = cur_com.handle_server_commandline(rest_str.split())
+            if cur_ns is None:
+                cur_ns, _rest = cur_com.handle_commandline(rest_str.strip().split())
             sp_struct = cur_com(srv_com, cur_ns)
         except:
             exc_info = process_tools.exception_info()

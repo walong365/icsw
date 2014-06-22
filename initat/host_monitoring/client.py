@@ -52,10 +52,13 @@ def client_code():
         except ValueError, what:
             ret_state, ret_str = (limits.nag_STATE_CRITICAL, "error parsing: {}".format(what[1]))
         else:
+            # see also struct.py in collrelay
             if hasattr(cur_ns, "arguments"):
                 for arg_index, arg in enumerate(cur_ns.arguments):
                     srv_com["arguments:arg{:d}".format(arg_index)] = arg
             srv_com["arguments:rest"] = " ".join(rest)
+            for key, value in vars(cur_ns).iteritems():
+                srv_com["namespace:{}".format(key)] = value
             result = net_tools.zmq_connection(
                 "{}:{:d}".format(
                     global_config["IDENTITY_STRING"],

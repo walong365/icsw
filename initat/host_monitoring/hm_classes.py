@@ -201,7 +201,6 @@ class hm_command(object):
             prog="collclient.py --host HOST {}".format(self.name),
         )
         parg_flag = kwargs.get("positional_arguments", False)
-        self.server_arguments = kwargs.get("server_arguments", False)
         # used to pass commandline arguments to the server
         self.partial = kwargs.get("partial", False)
         if parg_flag is not False:
@@ -214,8 +213,6 @@ class hm_command(object):
             else:
                 raise ValueError, "positonal_argument flag not in [1, True, False]"
         # monkey patch parsers
-        # self.parser.exit = self._parser_exit
-        # self.parser.error = self._parser_error
         self.parser.exit = self._parser_exit
         self.parser.error = self._parser_error
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
@@ -226,11 +223,9 @@ class hm_command(object):
     def _parser_error(self, message):
         raise ValueError, (2, message)
         self.parser_exit, self.parser_message = (2, message)
-    def handle_server_commandline(self, arg_list):
-        return self.parser.parse_args(arg_list)
     def handle_commandline(self, arg_list):
         # for arguments use "--" to separate them from the commandline arguments
-        if self.partial or self.server_arguments:
+        if self.partial:
             res_ns, unknown = self.parser.parse_known_args(arg_list)
         else:
             res_ns, unknown = self.parser.parse_args(arg_list), []

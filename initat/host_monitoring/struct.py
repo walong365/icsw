@@ -326,6 +326,9 @@ class host_message(object):
                     *([getattr(_e, "arg%d" % (arg_idx))(arg) for arg_idx, arg in enumerate(rest)] + [_e.rest(" ".join(rest))])
                 )
             )
+            self.srv_com.delete_subtree("namespace")
+            for key, value in vars(cur_ns).iteritems():
+                self.srv_com["namespace:{}".format(key)] = value
             # print self.srv_com.pretty_print()
             # for arg_idx, arg in enumerate(rest):
             #    self.srv_com["arguments:arg%d" % (arg_idx)] = arg

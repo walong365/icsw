@@ -862,7 +862,7 @@ class relay_code(threading_tools.process_pool):
             for log_line in process_tools.exception_info().log_lines:
                 self.log(log_line, logging_tools.LOG_LEVEL_ERROR)
                 srv_com.set_result(
-                    "caught server exception '%s'" % (process_tools.get_except_info()),
+                    "caught server exception '{}'".format(process_tools.get_except_info()),
                     server_command.SRV_REPLY_STATE_CRITICAL,
                     )
     def _show_config(self):

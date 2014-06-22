@@ -190,12 +190,13 @@ class _general(hm_classes.hm_module):
 
 class procstat_command(hm_classes.hm_command):
     def __init__(self, name):
-        hm_classes.hm_command.__init__(self, name, server_arguments=True, positional_arguments=True)
+        hm_classes.hm_command.__init__(self, name, positional_arguments=True)
         self.parser.add_argument("-f", dest="filter", action="store_true", default=False)
         self.parser.add_argument("-w", dest="warn", type=int, default=0)
         self.parser.add_argument("-c", dest="crit", type=int, default=0)
         self.parser.add_argument("-Z", dest="zombie", default=False, action="store_true", help="ignore zombie processes")
     def __call__(self, srv_com, cur_ns):
+        print cur_ns
         # s_time = time.time()
         if cur_ns.arguments:
             name_list = cur_ns.arguments
@@ -409,7 +410,6 @@ class proclist_command(hm_classes.hm_command):
 class ipckill_command(hm_classes.hm_command):
     def __init__(self, name):
         hm_classes.hm_command.__init__(self, name, positional_arguments=True)
-        self.server_arguments = True
         self.parser.add_argument("--min-uid", dest="min_uid", type=int, default=0)
         self.parser.add_argument("--max-uid", dest="max_uid", type=int, default=65535)
     def __call__(self, srv_com, cur_ns):
@@ -472,7 +472,6 @@ class signal_command(hm_classes.hm_command):
     info_str = "send signal to processes"
     def __init__(self, name):
         hm_classes.hm_command.__init__(self, name, positional_arguments=True)
-        self.server_arguments = True
         self.parser.add_argument("--signal", dest="signal", type=int, default=15)
         self.parser.add_argument("--min-uid", dest="min_uid", type=int, default=0)
         self.parser.add_argument("--max-uid", dest="max_uid", type=int, default=65535)
