@@ -253,43 +253,6 @@ class special_base(object):
             #    srv_reply = None
         self.__call_idx += 1
         return hint_list
-    def real_parameter_name(self, in_name):
-        return "{MDC}_{}".format(in_name)
-    def get_parameter(self, para_name, xpath_str, command, *args, **kwargs):
-        """
-        get a parameter, by default as device_variable
-        """
-        server_type = kwargs.pop("target_server", "collrelay")
-        var_type = kwargs.pop("var_type", "s")
-        r_para_name = self.real_parameter_name(para_name)
-        try:
-            cur_var = device_variable.objects.get(Q(device=self.host) & Q(name=r_para_name))
-        except device_variable.DoesNotExist:
-            srv_result = getattr(self, server_type)(command, *args)
-            if srv_result is None:
-                self.log("no result, returning None vor parameter %s" % (para_name),
-                         logging_tools.LOG_LEVEL_ERROR)
-                cur_var = None
-            else:
-                self.log("requested parameter %s from device via %s" % (para_name, server_type))
-                cur_val = srv_result.xpath(xpath_str, smart_strings=False)[0].text
-                if var_type == "i":
-                    cur_val = int(cur_val)
-                cur_var = device_variable(
-                    device=self.host,
-                    is_public=True,
-                    name=r_para_name,
-                    description="requested from md-config-server",
-                    var_type=var_type,
-                )
-                cur_var.set_value(cur_val)
-                cur_var.save()
-        else:
-            self.log("read parameter {} from database".format(para_name))
-        if cur_var is None:
-            return cur_var
-        else:
-            return cur_var.get_value()
     def __call__(self):
         s_name = self.__class__.__name__.split("_", 1)[1]
         self.log("starting {} for {}, cache_mode is {}".format(s_name, self.host.name, self.cache_mode))
@@ -408,7 +371,6 @@ class special_openvpn(special_base):
                             )
         return _hints
     def _call(self):
-        import pprint
         sc_array = []
         exp_dict = parse_expected()
         if exp_dict.has_key(self.host.name):
@@ -416,7 +378,6 @@ class special_openvpn(special_base):
         else:
             exp_dict = {}
         if exp_dict:
-            pprint.pprint(exp_dict)
             for inst_name in sorted(exp_dict):
                 for peer_name in sorted(exp_dict[inst_name]):
                     sc_array.append(
@@ -449,77 +410,47 @@ class special_supermicro(special_base):
         server_contact = True
         command = "$USER2$ -m 127.0.0.1 smcipmi --ip=$HOSTADDRESS$ --user=${ARG1:SMC_USER:ADMIN} --passwd=${ARG2:SMC_PASSWD:ADMIN} $ARG3$"
         description = "queries IPMI Bladecenters via the collserver on the localhost"
+    def to_hint(self, srv_reply):
+        r_dict = supermicro_mod.generate_dict(srv_reply.xpath(".//ns:output/text()", smart_strings=False)[0].split("\n"))
+        _hints = []
+        for m_key in sorted(r_dict):
+            _struct = r_dict[m_key]
+            for e_key in sorted([_key for _key in _struct.iterkeys() if type(_key) in [int]]):
+                _hints.append(
+                    monitoring_hint(
+                        key="{}.{:d}".format(m_key, e_key),
+                        v_type="s",
+                        value_string="present",
+                        info="{} {:d}".format(_struct["info"], e_key),
+                    )
+                )
+        return _hints
     def _call(self):
-        # parameter list
-        para_list = ["num_ibqdr", "num_power", "num_gigabit", "num_blade", "num_cmm"]
-        para_dict = {}
-        for para_name in para_list:
-            r_para_name = self.real_parameter_name(para_name)
-            try:
-                cur_var = device_variable.objects.get(Q(device=self.host) & Q(name=r_para_name))
-            except device_variable.DoesNotExist:
-                self.log("variable %s does not exist, requesting info from BMC" % (r_para_name), logging_tools.LOG_LEVEL_WARN)
-                break
-            else:
-                para_dict[para_name] = cur_var.get_value()
         user_name = self.host.dev_variables.get("SMC_USER", "ADMIN")
         cur_pwd = self.host.dev_variables.get("SMC_PASSWD", "ADMIN")
-        if len(para_list) != len(para_dict):
-            self.log("updating info from BMC")
-            srv_result = self.collrelay("smcipmi",
-                "--ip={}".format(self.host.valid_ip.ip),
-                "--user={}".format(user_name),
-                "--passwd={}".format(cur_pwd),
-                "counter", connect_to_localhost=True)
-            # xpath string origins in supermiro_mod, server part (scmipmi_struct)
-            r_dict = supermicro_mod.generate_dict(srv_result.xpath(".//ns:output/text()", smart_strings=False)[0].split("\n"))
-            for para_name in para_list:
-                r_para_name = self.real_parameter_name(para_name)
-                s_name = para_name.split("_", 1)[1]
-                if s_name in r_dict:
-                    v_val = r_dict[s_name]["present"]
-                    self.log("parameter %s: %d" % (para_name, v_val))
-                else:
-                    v_val = 0
-                    self.log("parameter %s: %d (not found in dict)" % (para_name, v_val), logging_tools.LOG_LEVEL_WARN)
-                try:
-                    cur_var = device_variable.objects.get(Q(device=self.host) & Q(name=r_para_name))
-                except device_variable.DoesNotExist:
-                    cur_var = device_variable(
-                        device=self.host,
-                        name=r_para_name,
-                        is_public=True,
-                        description="Read from BMC",
-                        var_type="i",
-                        val_int=v_val)
-                else:
-                    cur_var.set_value(v_val)
-                cur_var.save()
-                para_dict[para_name] = cur_var.get_value()
-        self.log("para_dict: %s" % (", ".join(["%s=%d" % (key, value) for key, value in para_dict.iteritems()])))
+        hint_list = self.collrelay("smcipmi",
+            "--ip={}".format(self.host.valid_ip.ip),
+            "--user={}".format(user_name),
+            "--passwd={}".format(cur_pwd),
+            "counter", connect_to_localhost=True)
         sc_array = []
         sc_array.append(
             self.get_arg_template(
-                "Overview",
-                arg1=user_name,
-                arg2=cur_pwd,
-                arg3="counter",
-                ))
-        for ps_num in xrange(para_dict.get("num_power", 0)):
-            sc_array.append(self.get_arg_template(
-                "Power supply %2d" % (ps_num + 1),
-                arg1=user_name,
-                arg2=cur_pwd,
-                arg3="power %d" % (ps_num + 1)
+                    "Overview",
+                    arg1=user_name,
+                    arg2=cur_pwd,
+                    arg3="counter",
+                )
             )
-            )
-        for blade_num in xrange(para_dict.get("num_blade", 0)):
-            sc_array.append(self.get_arg_template(
-                "Blade %2d" % (blade_num + 1),
-                arg1=user_name,
-                arg2=cur_pwd,
-                arg3="blade %d" % (blade_num + 1)
-            )
+        for hint in hint_list:
+            inst_name, inst_id = hint.key.split(".")
+            sc_array.append(
+                self.get_arg_template(
+                    hint.info,
+                    arg1=user_name,
+                    arg2=cur_pwd,
+                    arg3="{} {}".format(inst_name, inst_id),
+                )
             )
         return sc_array
 
@@ -539,8 +470,6 @@ class special_disc(special_base):
         part_dev = self.host.partdev
         first_disc = None
         part_list = []
-        # print self.get_parameter("num_discs", "df", "/dev/sda1")
-        # print self.get_parameter("num_discs", ".//ns:load1", "load")
         for part_p in partition.objects.filter(Q(partition_disc__partition_table=self.host.act_partition_table)).select_related(
             "partition_fs").order_by(
                 "partition_disc__disc",
