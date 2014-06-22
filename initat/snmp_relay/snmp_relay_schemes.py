@@ -1,5 +1,3 @@
-#!/usr/bin/python-init -Otu
-#
 # Copyright (C) 2009-2014 Andreas Lang-Nevyjel
 #
 # Send feedback to: <lang-nevyjel@init.at>
@@ -19,16 +17,15 @@
 #
 """ SNMP schemes for SNMP relayer """
 
+from initat.host_monitoring import limits
+from initat.snmp_relay.snmp_process import simple_snmp_oid
 import cStringIO
 import logging_tools
 import optparse
 import process_tools
-import pprint
 import socket
 import sys
 import time
-from initat.host_monitoring import limits
-from initat.snmp_relay.snmp_process import simple_snmp_oid
 
 # maximum cache time, 15 minutes
 MAX_CACHE_TIME = 15 * 60
@@ -1470,6 +1467,3 @@ class environment_knurr_scheme(snmp_scheme):
         return cur_state, ", ".join([
             "%s: %s" % (info_dict[key], {0 : "OK", 1 : "faild"}[new_dict[key]]) for key in sorted(new_dict.keys())])
 
-if __name__ == "__main__":
-    print "Loadable module, exiting"
-    sys.exit(0)

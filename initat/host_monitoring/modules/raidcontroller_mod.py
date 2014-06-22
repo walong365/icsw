@@ -1,5 +1,3 @@
-#!/usr/bin/python-init -Ot
-#
 # Copyright (C) 2001-2008,2012-2014 Andreas Lang-Nevyjel, init.at
 #
 # Send feedback to: <lang-nevyjel@init.at>
@@ -19,6 +17,7 @@
 #
 """ checks for various RAID controllers """
 
+from initat.host_monitoring import limits, hm_classes
 import base64
 import bz2
 import commands
@@ -30,9 +29,7 @@ import pprint
 import re
 import server_command
 import stat
-import sys
 import time
-from initat.host_monitoring import limits, hm_classes
 
 TW_EXEC = "/sbin/tw_cli"
 ARCCONF_BIN = "/usr/sbin/arcconf"
@@ -1605,6 +1602,3 @@ class ibmbcraid_status_command(hm_classes.hm_command):
     def _interpret(self, ctrl_dict, cur_ns):
         return ctrl_type.ctrl("ibmbcraid")._interpret(ctrl_dict, cur_ns)
 
-if __name__ == "__main__":
-    print "This is a loadable module."
-    sys.exit(0)

@@ -38,8 +38,11 @@ def generate_dict(in_list):
                 if handle_lines:
                     cur_mode = parts[0]
                     num_present, num_possible = [int(entry) for entry in line.split("(")[1].split(")")[0].split("/")]
-                    cur_dict = {"possible" : num_possible,
-                                "present"  : num_present}
+                    cur_dict = {
+                        "possible" : num_possible,
+                        "present"  : num_present,
+                        "info"     : line.split("(")[0].strip(),
+                    }
                     r_dict[cur_mode] = cur_dict
                 offset = 0
                 sense_flag = False
@@ -110,6 +113,8 @@ class smcipmi_command(hm_classes.hm_command):
                 "gigabit" : "gigabit status",
                 "blade"   : "blade status",
                 "ib"      : "ib status",
+                "ibqdr"   : "ib status",
+                "ibfdr"   : "ib status",
                 "cmm"     : "cmm status",
             }.get(com, com)
             srv_com["orig_command"] = com
@@ -124,7 +129,7 @@ class smcipmi_command(hm_classes.hm_command):
                 real_com,
             )
         return cur_smcc
-    def _handle_power(self, in_dict):
+    def _handle_power(self, in_dict, **kwargs):
         if in_dict["power"] == "on":
             ret_state = limits.nag_STATE_OK
         else:
@@ -144,7 +149,7 @@ class smcipmi_command(hm_classes.hm_command):
             int(in_dict["fan 1"]),
             int(in_dict["fan 2"]),
         )
-    def _handle_blade(self, in_dict):
+    def _handle_blade(self, in_dict, **kwargs):
         if in_dict["power"] == "on" or in_dict["error"]:
             ret_state = limits.nag_STATE_OK
         else:
@@ -153,6 +158,40 @@ class smcipmi_command(hm_classes.hm_command):
             in_dict["blade"],
             in_dict["power"],
             in_dict["error"] if in_dict["error"] else "no error",
+        )
+    def _handle_gigabit(self, in_dict, **kwargs):
+        if in_dict["power"] == "on" or in_dict["error"]:
+            ret_state = limits.nag_STATE_OK
+        else:
+            ret_state = limits.nag_STATE_CRITICAL
+        return ret_state, "gigabit switch '%s' is %s (%s)" % (
+            in_dict["gbsw"],
+            in_dict["power"],
+            in_dict["error"] if in_dict["error"] else "no error",
+        )
+    def _handle_cmm(self, in_dict, **kwargs):
+        if in_dict["status"] == "ok":
+            ret_state = limits.nag_STATE_OK
+        else:
+            ret_state = limits.nag_STATE_CRITICAL
+        return ret_state, "CMM '%s' is %s (%s)" % (
+            in_dict["cmm"],
+            in_dict["status"],
+            in_dict["m/s"],
+        )
+    def _handle_ibqdr(self, in_dict, **kwargs):
+        return self._handle_ib(in_dict, **kwargs)
+    def _handle_ibfdr(self, in_dict, **kwargs):
+        return self._handle_ib(in_dict, **kwargs)
+    def _handle_ib(self, in_dict, **kwargs):
+        obj_type = kwargs["obj_type"]
+        if in_dict["power"] == "on":
+            ret_state = limits.nag_STATE_OK
+        else:
+            ret_state = limits.nag_STATE_CRITICAL
+        return ret_state, "IB switch '{}' is {}".format(
+            in_dict[obj_type],
+            in_dict["power"],
         )
     def interpret(self, srv_com, cur_ns):
         orig_com, _mapped_com = (
@@ -169,17 +208,17 @@ class smcipmi_command(hm_classes.hm_command):
             # get number
             obj_type = orig_com
             obj_num = int(srv_com.xpath(".//ns:arguments/ns:rest/text()", smart_strings=False)[0].strip().split()[-1])
-            obj_key = {"ib" : "ibqdr"}.get(obj_type, obj_type)
-            if obj_key in r_dict:
-                if obj_num in r_dict[obj_key]:
-                    return getattr(self, "_handle_%s" % (obj_type))(r_dict[obj_key][obj_num])
+            # obj_key = {"ib" : "ibqdr"}.get(obj_type, obj_type)
+            if obj_type in r_dict:
+                if obj_num in r_dict[obj_type]:
+                    return getattr(self, "_handle_%s" % (obj_type))(r_dict[obj_type][obj_num], obj_type=obj_type)
                 else:
                     return limits.nag_STATE_CRITICAL, "no %s#%d found" % (
-                        obj_key,
+                        obj_type,
                         obj_num,
                     )
             else:
                 return limits.nag_STATE_CRITICAL, "key %s not found in %s" % (
-                    obj_key,
+                    obj_type,
                     ", ".join(sorted(r_dict.keys())) or "EMPTY")
 

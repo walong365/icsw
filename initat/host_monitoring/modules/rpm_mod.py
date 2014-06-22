@@ -1,6 +1,4 @@
-#!/usr/bin/python-init -Ot
-#
-# Copyright (C) 2001,2002,2003,2004,2005,2006,2007,2008,2012,2013 Andreas Lang-Nevyjel, init.at
+# Copyright (C) 2001-2008,2012-2014 Andreas Lang-Nevyjel, init.at
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -18,17 +16,16 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
 
-import commands
+from initat.host_monitoring import hm_classes
+from initat.host_monitoring import limits
 import base64
+import commands
 import logging_tools
 import marshal
 import os
 import re
 import server_command
-import sys
 import time
-from initat.host_monitoring import limits
-from initat.host_monitoring import hm_classes
 
 class _general(hm_classes.hm_module):
     pass
@@ -218,6 +215,3 @@ def rpmlist_int(rpm_root_dir, re_strs, is_debian):
                 ret_dict = ipl
     return log_list, ret_dict, stat
 
-if __name__ == "__main__":
-    print "This is a loadable module."
-    sys.exit(0)

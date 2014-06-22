@@ -1197,7 +1197,6 @@ class mem_command(hm_classes.hm_command):
             )
             _fact = 1024
         else:
-            print mem_dict, swap_dict
             buffers = mem_dict["buffers"]
             cached = mem_dict["cached"]
             mem_total, mem_free = (
@@ -1898,7 +1897,6 @@ class dmiinfo_command(hm_classes.hm_command):
             dmi_struct = {"info"    : [],
                           "handles" : []}
             # info
-            print dec_lines
             while True:
                 if dec_lines[0][1].lower().startswith("handle"):
                     break

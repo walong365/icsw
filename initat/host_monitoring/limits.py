@@ -19,7 +19,6 @@
 #
 
 import logging_tools
-import sys
 
 # nagios exit codes
 nag_STATE_CRITICAL = 2
@@ -192,6 +191,3 @@ class limits(object):
             ret_code, state = (nag_STATE_CRITICAL, "TypeError")
         return ret_code, state
 
-if __name__ == "__main__":
-    print "No executable, exiting..."
-    sys.exit(-2)

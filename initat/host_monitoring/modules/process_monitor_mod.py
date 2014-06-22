@@ -196,7 +196,6 @@ class procstat_command(hm_classes.hm_command):
         self.parser.add_argument("-c", dest="crit", type=int, default=0)
         self.parser.add_argument("-Z", dest="zombie", default=False, action="store_true", help="ignore zombie processes")
     def __call__(self, srv_com, cur_ns):
-        print cur_ns
         # s_time = time.time()
         if cur_ns.arguments:
             name_list = cur_ns.arguments

@@ -1,4 +1,3 @@
-#!/usr/bin/python-init -Ot
 # -*- coding: utf-8 -*-
 #
 # Copyright (C) 2013-2014 Andreas Lang-Nevyjel
@@ -73,7 +72,6 @@ class host_connection(object):
         self.sr_probe = sr_probe(self)
         self.__open = False
         self.__conn_str = conn_str
-        # print "*" * 20
     @property
     def conn_str(self):
         return self.__conn_str
@@ -141,7 +139,6 @@ class host_connection(object):
         # check all messages for current host
         to_messages = [cur_mes for cur_mes in self.messages.itervalues() if cur_mes.check_timeout(cur_time, host_connection.timeout)]
         if to_messages:
-            # print "TO", len(to_messages), self.__conn_str
             for to_mes in to_messages:
                 if not self.tcp_con:
                     pass
@@ -231,9 +228,10 @@ class host_connection(object):
         self.send_result(host_mes)
     def _error(self, zmq_sock):
         # not needed right now
-        print "**** _error", zmq_sock
-        print dir(zmq_sock)
-        print zmq_sock.getsockopt(zmq.EVENTS)
+        # print "**** _error", zmq_sock
+        # print dir(zmq_sock)
+        # print zmq_sock.getsockopt(zmq.EVENTS)
+        pass
         # self._close()
         # raise zmq.ZMQError()
     @staticmethod
@@ -298,7 +296,6 @@ class host_message(object):
         # self.hm_idx = host_message.hm_idx
         # host_message.hm_idx += 1
         # host_message.hm_open.add(self.hm_idx)
-        # print "init hm", self.hm_idx
         self.src_id = src_id
         self.xml_input = xml_input
         self.srv_com = srv_com
@@ -313,7 +310,6 @@ class host_message(object):
         self.com_struct = com_struct
         if com_struct:
             cur_ns, rest = com_struct.handle_commandline((self.srv_com["arg_list"].text or "").split())
-            # print "***", cur_ns, rest
             _e = self.srv_com.builder()
             _arg_list = self.srv_com.xpath(".//ns:arg_list", smart_strings=False)
             if len(_arg_list):
@@ -329,10 +325,6 @@ class host_message(object):
             self.srv_com.delete_subtree("namespace")
             for key, value in vars(cur_ns).iteritems():
                 self.srv_com["namespace:{}".format(key)] = value
-            # print self.srv_com.pretty_print()
-            # for arg_idx, arg in enumerate(rest):
-            #    self.srv_com["arguments:arg%d" % (arg_idx)] = arg
-            # self.srv_com["arguments:rest"] = " ".join(rest)
             self.ns = cur_ns
         else:
             # connect to non-host-monitoring service
@@ -341,7 +333,6 @@ class host_message(object):
     def check_timeout(self, cur_time, to_value):
         # check for timeout, to_value is a global timeout from the host_connection object
         _timeout = abs(cur_time - self.s_time) > min(to_value, self.timeout - 2)
-        # print self.src_id, _timeout, self.timeout, abs(cur_time - self.s_time), to_value
         return _timeout
     def get_runtime(self, cur_time):
         return abs(cur_time - self.s_time)
@@ -398,7 +389,6 @@ class host_message(object):
                 return ret_value
     def __del__(self):
         # host_message.hm_open.remove(self.hm_idx)
-        # print "del {}, still open {}".format(self.hm_idx, len(host_message.hm_open))
         del self.srv_com
         pass
 
