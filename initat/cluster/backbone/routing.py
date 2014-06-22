@@ -257,7 +257,7 @@ class srv_type_routing(object):
                 _cl_dict.setdefault(_bs_hints[_value[0]], []).append(_value[0])
             else:
                 self.__no_bootserver_devices.add((_value[0], _value[2]))
-                self.logger.error("device {:d} ({}) has no bootserver associated".format(
+                self.logger.warning("device {:d} ({}) has no bootserver associated".format(
                     _value[0],
                     _value[2],
                 ))
