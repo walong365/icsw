@@ -27,8 +27,8 @@ from initat.host_monitoring import limits
 from initat.host_monitoring.hm_classes import hm_command, hm_module
 from initat.host_monitoring.server import server_command
 import cPickle
-import os
 import logging_tools
+import os
 try:
     import psycopg2 # @UnresolvedImport
 except:
@@ -52,6 +52,12 @@ KEY = "pgpool"
 NODE_UP_NO_CONN = 1 # Node is up. No connections yet.
 NODE_UP = 2 # Node is up. Connections are pooled.
 NODE_DOWN = 3 # Node is down.
+
+NS_DICT = {
+    NODE_UP_NO_CONN : "node up, no connection",
+    NODE_UP : "node up, connections are pooled",
+    NODE_DOWN : "node down",
+}
 
 class _general(hm_module):
     def init_module(self):
@@ -132,20 +138,30 @@ class pgpool_nodes_command(PgPoolCommand):
     def interpret(self, srv_com, cur_ns):
         result = self.unpack(srv_com[self.key])
         node_count = len(result)
-        nodes_down = [_line[0] for _line in result if int(_line[3]) == NODE_DOWN]
+        state_dict = {
+            _key : [_entry for _entry in result if int(_entry[3]) == _key] for _key in [NODE_DOWN, NODE_UP, NODE_UP_NO_CONN]
+        }
+        # filter empty states
+        state_dict = {_key : _value for _key, _value in state_dict.iteritems() if _value}
+        # state string
+        state_str = ", ".join(["{:d} {} : {}".format(len(state_dict[_key]), NS_DICT[_key], ",".join([_line[1] for _line in state_dict[_key]])) for _key in sorted(state_dict.keys())])
+        nodes_up = len(state_dict.get(NODE_UP, []))
         if cur_ns.arguments:
             t_nc = int(cur_ns.arguments[0])
             if node_count != t_nc:
                 state = limits.nag_STATE_CRITICAL
-                text = "pgpool node count out of range: %d expected %d" % (node_count, t_nc)
-            elif nodes_down:
+                text = "pgpool node count out of range: {:d}, expected: {:d}".format(node_count, t_nc)
+            elif node_count != nodes_up:
                 state = limits.nag_STATE_CRITICAL
-                text = "pgpool: some nodes down: %s" % ", ".join(["node_%s" % i for i in nodes_down])
+                text = "pgpool: {} found but only {}".format(
+                    logging_tools.get_plural("node" , node_count),
+                    logging_tools.get_plural("node up", node_count - nodes_up))
             else:
                 state = limits.nag_STATE_OK
-                text = "pgpool node count: %d and all nodes UP" % node_count
+                text = "pgpool node count: {:d}".format(node_count)
         else:
             state, text = (limits.nag_STATE_CRITICAL, "number of nodes not specified")
+        text = "{}, status: {}".format(text, state_str)
         return state, text
 
 class pgpool_processes_command(PgPoolCommand):
@@ -162,14 +178,19 @@ class pgpool_processes_command(PgPoolCommand):
         process_count = len(result)
         if not cur_ns.min <= process_count <= cur_ns.max:
             state = limits.nag_STATE_CRITICAL
-            text = "pgpool process count out of range: %d not in [%d, %d]" % (
+            text = "pgpool process count out of range: {:d} not in [{:d}, {:d}]".format(
                 process_count,
-                cur_ns.min, cur_ns.max)
+                cur_ns.min,
+                cur_ns.max,
+            )
         else:
             state = limits.nag_STATE_OK
-            text = "pgpool process count: %d" % process_count
+            text = "pgpool process count: {:d} in [{:d}, {:d}]".format(
+                process_count,
+                cur_ns.min,
+                cur_ns.max,
+            )
         return state, text
-
 
 class pgpool_pools_command(PgPoolCommand):
     info_str = "Check for the correct count of pgpool pools"
@@ -189,20 +210,22 @@ class pgpool_pools_command(PgPoolCommand):
         headers = ["pool_pid", "start_time", "pool_id", "backend_id", "database", "username",
             "create_time", "majorversion", "minorversion", "pool_counter", "pool_backendpid", "pool_connected"]
         result = [{key : _val(value) for key, value in zip(headers, line)} for line in result]
-        # pprint.pprint(result)
         pool_count = len(result)
         if not cur_ns.min <= pool_count <= cur_ns.max:
             state = limits.nag_STATE_CRITICAL
-            text = "pgpool pool count out of range: %d not in [%d, %d]" % (
+            text = "pgpool pool count out of range: {:d} not in [{:d}, {:d}]".format(
                 pool_count,
                 cur_ns.min,
                 cur_ns.max,
                 )
         else:
             state = limits.nag_STATE_OK
-            text = "pgpool pool count: %d" % pool_count
+            text = "pgpool pool count: {:d} in [{:d}, {:d}]".format(
+                pool_count,
+                cur_ns.min,
+                cur_ns.max,
+            )
         return state, text
-
 
 class pgpool_version_command(PgPoolCommand):
     info_str = "Check for a specific version of pgpool"
@@ -216,10 +239,14 @@ class pgpool_version_command(PgPoolCommand):
         if cur_ns.arguments:
             t_vers = cur_ns.arguments[0]
             if t_vers != result:
-                state = limits.nag_STATE_CRITICAL
-                text = "Version mismatch: %s != %s" % (t_vers, result)
+                if result.startswith(t_vers) and t_vers:
+                    state = limits.nag_STATE_WARNING
+                    text = "Version not exact : {} != {}".format(t_vers, result)
+                else:
+                    state = limits.nag_STATE_CRITICAL
+                    text = "Version mismatch: {} != {}".format(t_vers, result)
             else:
-                state, text = (limits.nag_STATE_OK, "versions match (%s)" % (t_vers))
+                state, text = (limits.nag_STATE_OK, "versions match ({})".format(t_vers))
         else:
             state, text = (limits.nag_STATE_CRITICAL, "no target version specified")
         return state, text
