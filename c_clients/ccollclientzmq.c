@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 2012,2013 Andreas Lang-Nevyjel, init.at
+  Copyright (C) 2012-2014 Andreas Lang-Nevyjel, init.at
 
   Send feedback to: <lang-nevyjel@init.at>
 
@@ -126,7 +126,7 @@ int main(int argc, char **argv)
     only_send = 0;
     sprintf(host_b, "localhost");
     while (1) {
-        rchar = getopt(argc, argv, "+vm:p:ht:qFsrd");
+        rchar = getopt(argc, argv, "+vm:p:ht:qsrd");
         //printf("%d %c\n", rchar, rchar);
         switch (rchar) {
         case 'p':

@@ -190,7 +190,7 @@ class relay_code(threading_tools.process_pool):
             self.master_uuid = None
     def _handle_relayer_info_result(self, srv_com):
         sync_id = int(srv_com["*sync_id"])
-        ok = sync_id == self.__master_sync_id 
+        ok = sync_id == self.__master_sync_id
         self.log(
             "got ack for syncer_id {:d} (sent: {:d})".format(
                 sync_id,

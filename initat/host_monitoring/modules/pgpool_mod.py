@@ -237,7 +237,8 @@ class pgpool_version_command(PgPoolCommand):
     def interpret(self, srv_com, cur_ns):
         result = self.unpack(srv_com[self.key])[0][0]
         if cur_ns.arguments:
-            t_vers = cur_ns.arguments[0]
+            t_vers = " ".join(cur_ns.arguments)
+            result = result.replace("(", "").replace(")", "").replace("  ", " ")
             if t_vers != result:
                 if result.startswith(t_vers) and t_vers:
                     state = limits.nag_STATE_WARNING

@@ -65,14 +65,23 @@ def client_code():
                     os.getpid()),
                 timeout=global_config["TIMEOUT"]).add_connection(conn_str, srv_com)
             if result:
-                error_result = result.xpath(".//ns:result[@state != '0']", smart_strings=False)
-                if error_result:
-                    error_result = error_result[0]
-                    ret_state, ret_str = (
-                        int(error_result.attrib["state"]),
-                        error_result.attrib["reply"])
+                if global_config["COM_PORT"] == 2001:
+                    error_result = result.xpath(".//ns:result[@state != '0']", smart_strings=False)
+                    if error_result:
+                        error_result = error_result[0]
+                        ret_state, ret_str = (
+                            int(error_result.attrib["state"]),
+                            error_result.attrib["reply"])
+                    else:
+                        ret_state, ret_str = com_struct.interpret(result, cur_ns)
                 else:
-                    ret_state, ret_str = com_struct.interpret(result, cur_ns)
+                    ret_str, ret_state = result.get_log_tuple()
+                    if ret_state in [server_command.SRV_REPLY_STATE_CRITICAL, server_command.SRV_REPLY_STATE_ERROR, server_command.SRV_REPLY_STATE_UNSET]:
+                        ret_state = limits.nag_STATE_CRITICAL
+                    elif ret_state in [server_command.SRV_REPLY_STATE_WARN]:
+                        ret_state = limits.nag_STATE_WARNING
+                    else:
+                        ret_state = limits.nag_STATE_OK
             else:
                 ret_state, ret_str = (limits.nag_STATE_CRITICAL, "timeout")
     else:
