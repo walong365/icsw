@@ -43,6 +43,8 @@ def counter_clone_hack(self, *args):
 
     return self.__class__(*args)
 
+rfc1155.TimeTicks.clone = counter_clone_hack
+rfc1902.TimeTicks.clone = counter_clone_hack
 rfc1155.Counter.clone = counter_clone_hack
 rfc1902.Counter32.clone = counter_clone_hack
 
