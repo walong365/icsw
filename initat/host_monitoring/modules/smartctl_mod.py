@@ -26,22 +26,26 @@ import server_command
 
 class _general(hm_classes.hm_module):
     def base_init(self):
-        self.smartctl_bin = process_tools.find_file("smartctl")
-    def init_module(self):
+        self.smartctl_bin = None
         self.devices = {}
-        if self.smartctl_bin:
-            _stat, _lines = self.smcall("--scan")
-            if not _stat:
-                for line in [_entry for _entry in _lines if not _entry.strip().startswith("#")]:
-                    line = line.strip().split("#")[0].strip()
-                    _dev_name, _dev_opts = line.split(None, 1)
-                    self.log("found device {} ({})".format(_dev_name, _dev_opts))
-                    self.devices[_dev_name] = {
-                        "opts"   : _dev_opts,
-                        "device" : _dev_name,
-                    }
-        else:
-            self.log("no smartctl binary found, no smart info available")
+    def check_for_smartctl(self):
+        _was_there = True if self.smartctl_bin else False
+        self.smartctl_bin = process_tools.find_file("smartctl")
+        if not _was_there and self.smartctl_bin:
+            self._check_devices()
+    def init_module(self):
+        self.check_for_smartctl()
+    def _check_devices(self):
+        _stat, _lines = self.smcall("--scan")
+        if not _stat:
+            for line in [_entry for _entry in _lines if not _entry.strip().startswith("#")]:
+                line = line.strip().split("#")[0].strip()
+                _dev_name, _dev_opts = line.split(None, 1)
+                self.log("found device {} ({})".format(_dev_name, _dev_opts))
+                self.devices[_dev_name] = {
+                    "opts"   : _dev_opts,
+                    "device" : _dev_name,
+                }
     def smcall(self, args):
         cmd_line = "{} {}".format(self.smartctl_bin, args)
         c_stat, c_out = commands.getstatusoutput(cmd_line)
@@ -67,6 +71,7 @@ class smartstat_command(hm_classes.hm_command):
     def __init__(self, name):
         hm_classes.hm_command.__init__(self, name, positional_arguments=True, arguments_name="interface")
     def __call__(self, srv_com, cur_ns):
+        self.module.check_for_smartctl()
         if self.module.smartctl_bin:
             if "arguments:arg0" in srv_com:
                 dev = srv_com["*arguments:arg0"]
