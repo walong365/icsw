@@ -56,9 +56,6 @@ class repo(dict):
         else:
             target_pf = ""
         self.content = file(self.name, "r").read().split("\n")
-        # print "read %s from %s" % (
-        #    logging_tools.get_plural("line", len(self.content)),
-        #    name)
         self._to_dict()
         if "baseurl" not in self:
             print u"no baseurl in repo {}, ingoring".format(self.name)

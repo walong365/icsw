@@ -1,5 +1,5 @@
 #!/bin/bash
-# Copyright (C) 2001,2002,2003,2004,2005,2006,2007 Andreas Lang-Nevyjel
+# Copyright (C) 2001-2007,2014 Andreas Lang-Nevyjel
 #
 # Send feedback to: <lang-nevyjel@init.at>
 # 
@@ -21,7 +21,11 @@
 # removes any lines in INIT INFO block, otherwise chkconfig gets extremly confused on redhat systems (sigh)
 
 file=/etc/init.d/$1
+
 tmpfile=$(mktemp /tmp/.init_XXXXXX)
+
 cat $file | grep  INIT\ INFO -A 100 | grep INIT\ INFO -B 100 | diff - $file | grep \> | sed s/^\>\ //g > $tmpfile
+
 cat $tmpfile > $file
+
 rm -f $tmpfile
