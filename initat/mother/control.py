@@ -239,7 +239,7 @@ class machine(object):
             for master_pk, master_ip in _master_dict.iteritems():
                 cur_id_str = "mps_{:d}".format(master_id)
                 master_id += 1
-                machine.process.send_pool_message("ping", cur_id_str, master_ip, 2, 3.0, "direct")
+                machine.process.send_pool_message("ping", cur_id_str, master_ip, 2, 3.0, target="direct")
                 cd_ping_list.append(_bldr.cd_ping(cur_id_str, pk="{:d}".format(master_pk), pending="1"))
             srv_com["cd_ping_list"] = cd_ping_list
         machine.ping_id = cur_id
