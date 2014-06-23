@@ -25,12 +25,10 @@ import os
 import process_tools
 import re
 import shutil
-import socket
 import tempfile
 import time
 
 OPENVPN_DIR = "/etc/openvpn"
-EXPECTED_FILE = "/etc/sysconfig/host-monitoring.d/openvpn_expected"
 
 class net_speed(object):
     def __init__(self):
@@ -59,8 +57,6 @@ class _general(hm_classes.hm_module):
         hm_classes.hm_module.__init__(self, *args, **kwargs)
         # instance dict
         self.__inst_dict = {}
-        # expected OpenVPN instances
-        self.__expected = None
     def _exec_command(self, com, logger):
         stat, out = commands.getstatusoutput(com)
         if stat:
@@ -116,52 +112,6 @@ class _general(hm_classes.hm_module):
                 mv["{}.rx".format(c_pfix)] = act_rx
                 mv["{}.tx".format(c_pfix)] = act_tx
             # pprint.pprint(ovpn_inst.get_repr())
-    def update_expected(self):
-        ret_field = []
-        if os.path.isfile(EXPECTED_FILE):
-            if not self.__expected:
-                self.__expected = process_tools.cached_file(EXPECTED_FILE, log_handle=self.log)
-            self.__expected.update()
-            ret_field = self.__expected.content.split("\n")
-        else:
-            self.__expected = None
-            try:
-                open(EXPECTED_FILE, "w").write("\n".join([
-                    "# Expected OpenVPN instances",
-                    "# Format:",
-                    "# DEVICE=<INSTANCE> <INSTANCE>",
-                    "# where INSTANCE has the form",
-                    "# instance_name:client1_name{,W|C}:client2_name,{W,C}",
-                    "",
-                    "#gatekeeper=lang-nevyjel:ehkcluster,W:test,E bla:x",
-                    ""]))
-            except:
-                self.log(
-                    u"error creating {}: {}".format(
-                        EXPECTED_FILE,
-                        process_tools.get_except_info()),
-                    logging_tools.LOG_LEVEL_ERROR)
-        return self._parse_expected(ret_field)
-    def _parse_expected(self, in_field):
-        ret_dict = {}
-        lines = [line.strip() for line in in_field if line.strip() and not line.strip().startswith("#")]
-        for line in lines:
-            if line.count("=") == 1:
-                dev_name, dev_stuff = line.split("=", 1)
-                dev_dict = {}
-                ret_dict[dev_name.strip()] = dev_dict
-                instances = dev_stuff.split()
-                for instance in instances:
-                    inst_parts = instance.split(":")
-                    inst_dict = {}
-                    dev_dict[inst_parts.pop(0)] = inst_dict
-                    for inst_part in inst_parts:
-                        c_parts = inst_part.split(",")
-                        client_name = c_parts.pop(0)
-                        inst_dict[client_name] = limits.nag_STATE_CRITICAL
-                        if c_parts and c_parts[0].lower() in ["w"]:
-                            inst_dict[client_name] = limits.nag_STATE_WARNING
-        return ret_dict
     def update_status(self):
         if self.__last_status_update is None or abs(self.__last_status_update - time.time()) > 5:
             # update
@@ -487,41 +437,61 @@ class openvpn_status_command(hm_classes.hm_command):
         else:
             ret_dict = {}
         srv_com["openvpn_instances"] = ret_dict
-    def interpret_old(self, result, parsed_coms):
-        inst_dict = hm_classes.net_to_sys(result[3:])
-        return self._interpret(inst_dict, parsed_coms, self.NOGOOD_srv_com["host"].text)
     def interpret(self, srv_com, cur_ns):
         inst_dict = srv_com["openvpn_instances"]
         return self._interpret(inst_dict, cur_ns, srv_com["host"].text)
+    def _check_single_peer(self, clients, vpn_device, inst_name, peer_name, res_field):
+        ret_state = limits.nag_STATE_OK
+        p_ip = clients.get(peer_name, {}).get("client_ip", "")
+        p_ip_str = " at {}".format(p_ip) if p_ip else ""
+        if clients.has_key(peer_name) and clients[peer_name].get("online", True):
+            peer_dict = clients[peer_name]
+            if peer_dict.has_key("remote"):
+                remote_ip = peer_dict["remote"]
+                if p_ip:
+                    # has p_ip, compare with remote_ip
+                    if remote_ip == p_ip:
+                        # same, ok
+                        pass
+                    else:
+                        # differ, oh-oh
+                        p_ip_str = "{} != {}".format(p_ip_str, remote_ip)
+                        ret_state = max(ret_state, limits.nag_STATE_WARNING)
+                else:
+                    # no p_ip, set p_ip_str according to
+                    p_ip_str = " at {}".format(remote_ip)
+            if "rxs" in peer_dict:
+                res_field.append("%s (Srv on %s, client %s%s ok, %s/s %s/s) | rx=%d tx=%d" % (
+                    inst_name,
+                    vpn_device,
+                    peer_name,
+                    p_ip_str,
+                    logging_tools.get_size_str(peer_dict["rxs"]),
+                    logging_tools.get_size_str(peer_dict["txs"]),
+                    peer_dict["rxs"],
+                    peer_dict["txs"],
+                ))
+            else:
+                res_field.append("%s (Srv on %s, client %s%s ok)" % (
+                    inst_name,
+                    vpn_device,
+                    peer_name,
+                    p_ip_str))
+        else:
+            res_field.append("%s (Srv via %s, client %s%s not found)" % (
+                inst_name,
+                vpn_device,
+                peer_name,
+                p_ip_str))
+            ret_state = max(ret_state, limits.nag_STATE_CRITICAL)
+        return ret_state
     def _interpret(self, res_dict, cur_ns, host):
         inst_name = cur_ns.instance
         peer_name = cur_ns.peer
-        exp_dict = self.module.update_expected()
-        # do we need the expected_dict ?
         if peer_name == "ALL":
             ret_state, res_field = (limits.nag_STATE_OK, [logging_tools.get_plural("instance", len(res_dict.keys()))])
-            host_names = [host]
-            host_exp_dict = None
-            if exp_dict.has_key(host_names[-1]):
-                host_exp_dict = exp_dict[host_names[-1]]
-            else:
-                try:
-                    host_name = socket.gethostbyaddr(host)[0]
-                except:
-                    pass
-                else:
-                    if host_name != host:
-                        host_names.append(host_name)
-                    host_names.append(host_name.split(".")[0])
-                    for host_name in host_names[1:]:
-                        if exp_dict.has_key(host_name):
-                            host_exp_dict = exp_dict[host_name]
-                            break
-            if host_exp_dict is None:
-                ret_state, res_field = (limits.nag_STATE_WARNING, ["no host reference for {}".format(" or ".join(set(host_names)))])
         else:
             ret_state, res_field = (limits.nag_STATE_OK, [])
-            host_exp_dict = None
         if inst_name != "ALL":
             check_instances = [inst_name]
         else:
@@ -557,81 +527,36 @@ class openvpn_status_command(hm_classes.hm_command):
                             res_field.append("no tls-verify script")
                         # peer == client
                         if peer_name != "ALL":
-                            p_ip = clients.get(peer_name, {}).get("client_ip", "")
-                            p_ip_str = " at {}".format(p_ip) if p_ip else ""
-                            if clients.has_key(peer_name) and clients[peer_name].get("online", True):
-                                peer_dict = clients[peer_name]
-                                if peer_dict.has_key("remote"):
-                                    remote_ip = peer_dict["remote"]
-                                    if p_ip:
-                                        # has p_ip, compare with remote_ip
-                                        if remote_ip == p_ip:
-                                            # same, ok
-                                            pass
-                                        else:
-                                            # differ, oh-oh
-                                            p_ip_str = "{} != {}".format(p_ip_str, remote_ip)
-                                            ret_state = max(ret_state, limits.nag_STATE_WARNING)
+                            if peer_name.count(","):
+                                # check more than one peer
+                                ok_peers = []
+                                for _peer_name in peer_name.split(","):
+                                    _field = []
+                                    _local_state = self._check_single_peer(clients, vpn_device, inst_name, _peer_name, _field)
+                                    if _local_state == limits.nag_STATE_OK:
+                                        ok_peers.append(_peer_name)
                                     else:
-                                        # no p_ip, set p_ip_str according to
-                                        p_ip_str = " at {}".format(remote_ip)
-                                if "rxs" in peer_dict:
-                                    res_field.append("%s (Srv on %s, client %s%s ok, %s/s %s/s) | rx=%d tx=%d" % (
-                                        inst_name,
-                                        vpn_device,
-                                        peer_name,
-                                        p_ip_str,
-                                        logging_tools.get_size_str(peer_dict["rxs"]),
-                                        logging_tools.get_size_str(peer_dict["txs"]),
-                                        peer_dict["rxs"],
-                                        peer_dict["txs"],
-                                    ))
-                                else:
-                                    res_field.append("%s (Srv on %s, client %s%s ok)" % (
-                                        inst_name,
-                                        vpn_device,
-                                        peer_name,
-                                        p_ip_str))
+                                        ret_state = max(ret_state, _local_state)
+                                        res_field.extend(_field)
+                                if ok_peers:
+                                    res_field.append("{} ok: {}".format(logging_tools.get_plural("peer", len(ok_peers)), ", ".join(sorted(ok_peers))))
                             else:
-                                res_field.append("%s (Srv via %s, client %s%s not found)" % (
-                                    inst_name,
-                                    vpn_device,
-                                    peer_name,
-                                    p_ip_str))
-                                ret_state = max(ret_state, limits.nag_STATE_CRITICAL)
+                                ret_state = max(ret_state, self._check_single_peer(clients, vpn_device, inst_name, peer_name, res_field))
                         else:
-                            if host_exp_dict is not None and host_exp_dict.has_key(inst_name):
-                                # check clients for found instance
-                                for client in clients:
-                                    if host_exp_dict[inst_name].has_key(client):
-                                        host_exp_dict[inst_name][client] = limits.nag_STATE_OK
                             if clients:
-                                res_field.append("%s (Srv via %s, %s: %s)" % (
+                                res_field.append("{} (server via {}, {}: {})".format(
                                     inst_name,
                                     vpn_device,
                                     logging_tools.get_plural("client", len(clients.keys())),
                                     ",".join(sorted(clients.keys()))))
                             else:
-                                res_field.append("%s (no clients)" % (inst_name))
+                                res_field.append("{} (no clients)".format(inst_name))
                     else:
-                        res_field.append("%s (%s)" % (inst_name, i_type))
+                        res_field.append("{} ({})".format(inst_name, i_type))
                 else:
-                    res_field.append("%s (%s)" % (inst_name, inst_str))
+                    res_field.append("{} ({})".format(inst_name, inst_str))
                     ret_state = max(ret_state, limits.nag_STATE_CRITICAL)
-                # check for missing clients according to host_exp_dict
-                if host_exp_dict is not None and i_type == "server":
-                    if host_exp_dict.has_key(inst_name):
-                        for client_name in sorted(host_exp_dict[inst_name].keys()):
-                            nag_stat = host_exp_dict[inst_name][client_name]
-                            if nag_stat:
-                                res_field.append("%s.%s missing" % (inst_name,
-                                                                    client_name))
-                                ret_state = max(ret_state, nag_stat)
-                    else:
-                        res_field.append("no instance reference for %s" % (inst_name))
-                        ret_state = max(ret_state, limits.nag_STATE_WARNING)
             else:
-                res_field.append("no instance '%s' found" % (inst_name))
+                res_field.append("no instance '{}' found".format(inst_name))
                 ret_state = max(ret_state, limits.nag_STATE_CRITICAL)
-        return ret_state, "%s: %s" % (limits.get_state_str(ret_state),
-                                      ", ".join(res_field))
+        return ret_state, ", ".join(res_field)

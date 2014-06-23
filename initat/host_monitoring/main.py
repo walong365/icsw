@@ -1,7 +1,6 @@
-#!/usr/bin/python-init -Ot
 # -*- coding: utf-8 -*-
 #
-# Copyright (C) 2013,2014 Andreas Lang-Nevyjel
+# Copyright (C) 2013-2014 Andreas Lang-Nevyjel
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -140,7 +139,7 @@ def main():
     elif prog_name == "collclient":
         ret_state = client_code()
     else:
-        print "Unknown operation mode %s" % (prog_name)
+        print "Unknown mode {}".format(prog_name)
         ret_state = -1
     return ret_state
 
