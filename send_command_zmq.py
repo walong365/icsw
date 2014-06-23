@@ -22,7 +22,6 @@
 from lxml import etree # @UnresolvedImports
 import argparse
 import logging_tools
-import os
 import process_tools
 import server_command
 import sys

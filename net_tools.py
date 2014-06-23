@@ -21,7 +21,6 @@
 #
 """ network middleware """
 
-import logging_tools
 import operator
 import server_command
 import sys
