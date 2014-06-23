@@ -19,6 +19,9 @@
 #
 """ module for handling config files """
 
+from collections import OrderedDict
+from multiprocessing import current_process, util, forking, managers
+from multiprocessing.managers import BaseManager, BaseProxy, Server
 import argparse
 import datetime
 import grp
@@ -29,10 +32,6 @@ import pwd
 import re
 import sys
 import threading
-import traceback
-from collections import OrderedDict
-from multiprocessing import Manager, current_process, util, forking, managers
-from multiprocessing.managers import BaseManager, BaseProxy, DictProxy, Server
 # hack for python3
 if sys.version_info[0] == 3:
     unicode = str
@@ -717,7 +716,7 @@ def readconfig(name, c_type=0, in_array=[]):
         if c_type == 0:
             ret_code, ret_array = (True, rcf)
         elif c_type == 1:
-            cd = dict([(x, []) for x in in_array])
+            cd = {_key : [] for _key in in_array}
             for line in rcf:
                 lm = re.match("^\s*(?P<key>[^=]+)\s*=\s*(?P<value>\S+)\s*$", line)
                 if lm:

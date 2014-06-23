@@ -175,3 +175,4 @@ class drbd_config(object):
 def _test_code():
     dc = drbd_config()
     print len(dc.get_net_data())
+
