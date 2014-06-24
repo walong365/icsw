@@ -1114,7 +1114,7 @@ class device(models.Model):
     partdev = models.CharField(max_length=192, blank=True)
     fixed_partdev = models.IntegerField(null=True, blank=True)
     bz2_capable = models.IntegerField(null=True, blank=True)
-    new_state = models.ForeignKey("status", null=True, db_column="newstate_id", blank=True)
+    new_state = models.ForeignKey("backbone.status", null=True, db_column="newstate_id", blank=True)
     rsync = models.BooleanField(default=False)
     rsync_compressed = models.BooleanField(default=False)
     prod_link = models.ForeignKey("backbone.network", db_column="prod_link", null=True, blank=True)
@@ -2220,6 +2220,7 @@ class status(models.Model):
     status = models.CharField(unique=True, max_length=255)
     prod_link = models.BooleanField(default=True)
     memory_test = models.BooleanField(default=False)
+    boot_iso = models.BooleanField(default=False)
     boot_local = models.BooleanField(default=False)
     do_install = models.BooleanField(default=False)
     is_clean = models.BooleanField(default=False)
@@ -2237,15 +2238,9 @@ class status(models.Model):
                 ("mem"   , "memory_test"),
                 ("loc"   , "boot_local"),
                 ("ins"   , "do_install"),
+                ("iso"   , "boot_iso"),
                 ("retain", "is_clean")] if getattr(self, attr_name)]),
             "(*)" if self.allow_boolean_modify else "")
-    def get_xml(self, prod_net=None):
-        return E.status(
-            unicode(self) if prod_net is None else "{} into {}".format(unicode(self), unicode(prod_net)),
-            pk="%d" % (self.pk),
-            prod_net="%d" % (0 if prod_net is None else prod_net.pk),
-            key="status__%d" % (self.pk),
-        )
     class Meta:
         db_table = u'status'
 

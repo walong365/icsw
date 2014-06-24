@@ -102,6 +102,7 @@ class Command(BaseCommand):
         # status
         factories.Status(status="memtest", memory_test=True)
         factories.Status(status="boot_local", boot_local=True)
+        factories.Status(status="boot_iso", boot_iso=True)
         factories.Status(status="boot_clean", prod_link=True, is_clean=True)
         factories.Status(status="installation_clean", prod_link=True, do_install=True, is_clean=True)
         factories.Status(status="boot", prod_link=True) # # FIXME ?

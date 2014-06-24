@@ -282,7 +282,7 @@ class srv_type_routing(object):
     def start_result_feed(self):
         self.result = None
     def _log(self, request, log_lines, log_str, log_level=logging_tools.LOG_LEVEL_OK):
-        if request:
+        if request and hasattr(request, "xml_response"):
             request.xml_response.log(log_level, log_str)
         else:
             log_lines.append((log_level, log_str))
