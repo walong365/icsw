@@ -624,8 +624,12 @@ class host(machine):
             try:
                 os.unlink(os.path.join(pxe_dir, entry))
             except:
-                self.log("error removing netboot file {}".format(entry),
-                         logging_tools.LOG_LEVEL_ERROR)
+                self.log(
+                    "error removing netboot file {}".format(
+                        entry
+                    ),
+                    logging_tools.LOG_LEVEL_ERROR
+                )
             else:
                 self.log("removing netboot file {}".format(entry))
     def clear_kernel_links(self):
