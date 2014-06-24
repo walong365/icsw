@@ -29,6 +29,7 @@ from initat.mother.command_tools import simple_command
 from initat.mother.config import global_config
 import config_tools
 import copy
+import configfile
 import datetime
 import icmp_class
 import ipvx_tools
@@ -77,7 +78,9 @@ class machine(object):
     @staticmethod
     def setup(c_process):
         machine.process = c_process
-        machine.g_log("init")
+        machine.eb_dir = global_config["ETHERBOOT_DIR"]
+        machine.iso_dir = global_config["ISO_DIR"]
+        machine.g_log("init (etherboot_dir={}, isos in{})".format(machine.eb_dir, machine.iso_dir))
         machine.__lut = {}
         # pks
         machine.__unique_keys = set()
@@ -429,7 +432,7 @@ class host(machine):
             link_array = []
             if self.etherboot_dir:
                 link_array.extend([("d", self.etherboot_dir),
-                                   ("d", self.pxelinux_dir),
+                                   # ("d", self.pxelinux_dir),
                                    ("l", (os.path.join(global_config["ETHERBOOT_DIR"], self.name), self.maint_ip.ip)),
                                    # create a link in config dir, dangerous because cluster-config-server is running with restricted rights
                                    ("l", (os.path.join(global_config["CONFIG_DIR"], self.maint_ip.ip), self.name)),
@@ -505,13 +508,7 @@ class host(machine):
     @property
     def etherboot_dir(self):
         if self.maint_ip:
-            return os.path.join(global_config["ETHERBOOT_DIR"], self.maint_ip.ip)
-        else:
-            return None
-    @property
-    def pxelinux_dir(self):
-        if self.maint_ip:
-            return os.path.join(global_config["ETHERBOOT_DIR"], self.maint_ip.ip, "pxelinux.cfg")
+            return os.path.join(self.eb_dir, self.maint_ip.ip)
         else:
             return None
     @property
@@ -521,32 +518,17 @@ class host(machine):
         else:
             return None
     @property
-    def pxe_file_name(self):
-        return os.path.join(self.etherboot_dir, "pxelinux.0")
-    @property
-    def memdisk_file_name(self):
-        return os.path.join(self.etherboot_dir, "memdisk")
-    @property
-    def ldlinux_file_name(self):
-        return os.path.join(self.etherboot_dir, "ldlinux.c32")
-    @property
-    def mboot_file_name(self):
-        return os.path.join(self.etherboot_dir, "mboot.c32")
-    @property
-    def net_file_name(self):
-        return os.path.join(self.etherboot_dir, "bootnet")
-    @property
     def menu_file_name(self):
         return os.path.join(self.etherboot_dir, "menu")
     @property
     def ip_file_name(self):
-        return os.path.join(self.pxelinux_dir, self.maint_ip.get_hex_ip())
+        return os.path.join(self.eb_dir, "pxelinux.cfg", self.maint_ip.get_hex_ip())
     @property
     def ip_mac_file_base_name(self):
         return "01-{}".format(self.maint_ip.netdevice.macaddr.lower().replace(":", "-"))
     @property
     def ip_mac_file_name(self):
-        return os.path.join(self.pxelinux_dir, self.ip_mac_file_base_name)
+        return os.path.join(self.eb_dir, "pxelinux.cfg", self.ip_mac_file_base_name)
     def set_recv_state(self, recv_state="error not set"):
         self.device.recvstate = recv_state
         self.device.recvstate_timestamp = cluster_timezone.localize(datetime.datetime.now())
@@ -579,12 +561,9 @@ class host(machine):
                     ))
                 else:
                     self.log("no state set", logging_tools.LOG_LEVEL_WARN)
-                    self.clear_netboot_files()
+                    # self.clear_netboot_files()
                     self.clear_kernel_links()
                     new_state, new_kernel = (None, None)
-                for t_file in [self.pxe_file_name, self.memdisk_file_name, self.net_file_name]:
-                    if os.path.exists(t_file):
-                        os.unlink(t_file)
                 if new_state:
                     if new_kernel and new_state.prod_link:
                         if machine.process.server_ip:
@@ -592,7 +571,7 @@ class host(machine):
                         else:
                             self.log("no server_ip set", logging_tools.LOG_LEVEL_ERROR)
                     elif new_state.boot_local:
-                        # boot localboot
+                        # boot local
                         self.write_localboot_config()
                     elif new_state.memory_test:
                         # memory test
@@ -602,76 +581,61 @@ class host(machine):
                                  logging_tools.LOG_LEVEL_ERROR)
             else:
                 self.log("new_kernel not set", logging_tools.LOG_LEVEL_ERROR)
-                self.clear_ip_mac_files()
+                # self.clear_ip_mac_files()
                 self.clear_kernel_links()
         else:
             self.log("not node", logging_tools.LOG_LEVEL_WARN)
-    def clear_ip_mac_files(self, except_list=[]):
-        # clears all ip_mac_files except the ones listed in except_list
-        pxe_dir = self.pxelinux_dir
-        for entry in os.listdir(pxe_dir):
-            if entry.startswith("01-") and not entry in except_list:
-                try:
-                    os.unlink(os.path.join(pxe_dir, entry))
-                except:
-                    self.log("error removing pxe-boot file {}".format(entry),
-                             logging_tools.LOG_LEVEL_ERROR)
-                else:
-                    self.log("removing pxe-boot file {}".format(entry))
-    def clear_netboot_files(self):
-        pxe_dir = self.pxelinux_dir
-        for entry in os.listdir(pxe_dir):
-            try:
-                os.unlink(os.path.join(pxe_dir, entry))
-            except:
-                self.log(
-                    "error removing netboot file {}".format(
-                        entry
-                    ),
-                    logging_tools.LOG_LEVEL_ERROR
-                )
-            else:
-                self.log("removing netboot file {}".format(entry))
+    # def clear_ip_mac_files(self, except_list=[]):
+    #    # clears all ip_mac_files except the ones listed in except_list
+    #    pxe_dir = self.pxelinux_dir
+    #    for entry in os.listdir(pxe_dir):
+    #        if entry.startswith("01-") and not entry in except_list:
+    #            try:
+    #                os.unlink(os.path.join(pxe_dir, entry))
+    #            except:
+    #                self.log("error removing pxe-boot file {}".format(entry),
+    #                         logging_tools.LOG_LEVEL_ERROR)
+    #            else:
+    #                self.log("removing pxe-boot file {}".format(entry))
+    # def clear_netboot_files(self):
+    #    pxe_dir = self.pxelinux_dir
+    #    for entry in os.listdir(pxe_dir):
+    #        try:
+    #            os.unlink(os.path.join(pxe_dir, entry))
+    #        except:
+    #            self.log(
+    #                "error removing netboot file {}".format(
+    #                    entry
+    #                ),
+    #                logging_tools.LOG_LEVEL_ERROR
+    #            )
+    #        else:
+    #            self.log("removing netboot file {}".format(entry))
     def clear_kernel_links(self):
         for link_name in ["i", "k"]:
             full_name = os.path.join(self.etherboot_dir, link_name)
             if os.path.islink(full_name):
                 self.log("removing kernel link {}".format(full_name))
                 os.unlink(full_name)
-    def write_memtest_config(self):
-        pxe_dir = self.pxelinux_dir
-        if pxe_dir:
-            if os.path.isdir(pxe_dir):
-                self.clear_ip_mac_files()
-                open(self.ip_file_name    , "w").write("DEFAULT ../../images/memtest.bin\n")
-                open(self.ip_mac_file_name, "w").write("DEFAULT ../../images/memtest.bin\n")
-                if (os.path.isdir(self.etherboot_dir)):
-                    if global_config["PXEBOOT"]:
-                        open(self.pxe_file_name, "wb").write(global_config["PXELINUX_0"])
-                        open(self.memdisk_file_name, "wb").write(global_config["MEMDISK"])
-                        open(self.ldlinux_file_name, "wb").write(global_config["LDLINUX"])
-                    else:
-                        self.log("not PXEBOOT capable (PXELINUX_0 not found)", logging_tools.LOG_LEVEL_ERROR)
-        else:
-            self.log("pxelinux_dir() returned NONE",
-                     logging_tools.LOG_LEVEL_ERROR)
+    # def write_memtest_config(self):
+    #    pxe_dir = self.pxelinux_dir
+    #    if pxe_dir:
+    #        if os.path.isdir(pxe_dir):
+    #            self.clear_ip_mac_files()
+    #            open(self.ip_file_name    , "w").write("DEFAULT ../../images/memtest.bin\n")
+    #            open(self.ip_mac_file_name, "w").write("DEFAULT ../../images/memtest.bin\n")
+    #    else:
+    #        self.log("pxelinux_dir() returned NONE",
+    #                 logging_tools.LOG_LEVEL_ERROR)
     def write_localboot_config(self):
-        if self.pxelinux_dir:
-            if os.path.isdir(self.pxelinux_dir):
-                self.clear_ip_mac_files()
-                for name in [self.ip_file_name, self.ip_mac_file_name]:
-                    open(name, "w").write("\n".join([
-                        "DEFAULT linux",
-                        "LABEL linux",
-                        "IMPLICIT 0",
-                        "LOCALBOOT 0",
-                        ""]))
-                if global_config["PXEBOOT"]:
-                    open(self.pxe_file_name, "w").write(global_config["PXELINUX_0"])
-                    open(self.memdisk_file_name, "wb").write(global_config["MEMDISK"])
-                    open(self.ldlinux_file_name, "w").write(global_config["LDLINUX"])
-                else:
-                    self.log("not PXEBOOT capable (PXELINUX_0 not found)", logging_tools.LOG_LEVEL_ERROR)
+        # self.clear_ip_mac_files()
+        for name in [self.ip_file_name, self.ip_mac_file_name]:
+            open(name, "w").write("\n".join([
+                "DEFAULT linux",
+                "LABEL linux",
+                "IMPLICIT 0",
+                "LOCALBOOT 0",
+                ""]))
     def write_kernel_config(self, new_kernel):
         kern_dst_dir = self.etherboot_dir
         if kern_dst_dir:
@@ -680,6 +644,7 @@ class host(machine):
                     fname = os.path.join(kern_dst_dir, file_name)
                     if os.path.islink(fname):
                         os.unlink(fname)
+                print "go"
                 for stage_name in ["stage2", "stage3"]:
                     stage_source = "{}/lcs/{}".format(
                         global_config["CLUSTER_DIR"],
@@ -774,7 +739,7 @@ class host(machine):
                         self.device.get_boot_uuid(),
                         self.device.kernel_append
                         )])).strip().replace("  ", " ").replace("  ", " ")
-                self.clear_ip_mac_files([self.ip_mac_file_base_name])
+                # self.clear_ip_mac_files([self.ip_mac_file_base_name])
                 if new_kernel.xen_host_kernel:
                     append_field = [
                         "x dom0_mem=524288",
@@ -785,7 +750,8 @@ class host(machine):
                             append_string),
                         "i"]
                 else:
-                    total_append_string = "initrd=i ip=%s:%s::%s %s" % (
+                    total_append_string = "initrd={}/i ip={}:{}::{} {}".format(
+                        self.maint_ip.ip,
                         self.maint_ip.ip,
                         machine.process.server_ip,
                         ipvx_tools.get_network_name_from_mask(self.maint_ip.network.netmask),
@@ -794,7 +760,7 @@ class host(machine):
                 if global_config["NODE_BOOT_DELAY"]:
                     pxe_lines.extend(["TIMEOUT %d" % (global_config["NODE_BOOT_DELAY"]),
                                       "PROMPT 1"])
-                pxe_lines.extend(["DISPLAY menu",
+                pxe_lines.extend(["DISPLAY {}/menu".format(self.maint_ip.ip),
                                   "DEFAULT linux auto"])
                 if new_kernel.name:
                     if new_kernel.xen_host_kernel:
@@ -805,7 +771,7 @@ class host(machine):
                     else:
                         pxe_lines.extend([
                             "LABEL linux",
-                            "    KERNEL k",
+                            "    KERNEL {}/k".format(self.maint_ip.ip),
                             "    APPEND %s" % (total_append_string)])
                 pxe_lines.extend([""])
                 if global_config["FANCY_PXE_INFO"]:
@@ -834,12 +800,6 @@ class host(machine):
                         open(self.mboot_file_name, "w").write(global_config["MBOOT.C32"])
                     else:
                         self.log("not XENBOOT capable (MBOOT.C32 not found)", logging_tools.LOG_LEVEL_ERROR)
-                if global_config["PXEBOOT"]:
-                    open(self.pxe_file_name, "wb").write(global_config["PXELINUX_0"])
-                    open(self.memdisk_file_name, "wb").write(global_config["MEMDISK"])
-                    open(self.ldlinux_file_name, "wb").write(global_config["LDLINUX"])
-                else:
-                    self.log("not PXEBOOT capable (PXELINUX_0 not found)", logging_tools.LOG_LEVEL_ERROR)
             else:
                 self.log("Error: directory %s does not exist" % (kern_dst_dir))
                 # self.device_log_entry(1,
@@ -857,9 +817,9 @@ class host(machine):
         if self.is_node:
             c_dir = self.config_dir
             if not os.path.isdir(c_dir):
-                self.log("config_dir '%s' not found" % (c_dir), logging_tools.LOG_LEVEL_ERROR)
+                self.log("config_dir '{}' not found".format(c_dir), logging_tools.LOG_LEVEL_ERROR)
                 return
-            self.log("starting readdots in dir '%s'" % (c_dir))
+            self.log("starting readdots in dir '{}'".format(c_dir))
             hlist = [(".version"  , "imageversion"       , None, None),
                      (".imagename", "actimage"           , None, None),
                      (".imagename", "act_image"          , image, "name"),
@@ -965,7 +925,7 @@ class host(machine):
                 om_array.extend(['set statements = "' +
                                  'supersede host-name = \\"%s\\" ;' % (self.device.name) +
                                  'if substring (option vendor-class-identifier, 0, 9) = \\"PXEClient\\" { ' +
-                                 'filename = \\"etherboot/%s/pxelinux.0\\" ; ' % (ip_to_write) +
+                                 'filename = \\"etherboot/pxelinux.0\\" ; ' + # % (ip_to_write) +
                                  '} "'])
                 om_array.append('create')
             elif om_shell_com == "delete":
@@ -1223,6 +1183,7 @@ class node_control_process(threading_tools.process_obj):
             self.server_ip = None
             self.log("no IP address in boot-net", logging_tools.LOG_LEVEL_ERROR)
         self.router_obj = config_tools.router_object(self.log)
+        self._setup_etherboot()
         machine.setup(self)
         machine.sync()
         self.register_func("refresh", self._refresh)
@@ -1245,6 +1206,56 @@ class node_control_process(threading_tools.process_obj):
         self.pending_list = []
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
         self.__log_template.log(log_level, what)
+    def _setup_etherboot(self):
+        map_list = [
+            ("pxelinux.0", "PXELINUX_0"),
+            ("memdisk", "MEMDISK"),
+            ("ldlinux.c32", "LDLINUX"),
+            ("mboot.c32", "MBOOT.C32")
+        ]
+        file_names = set([f_name for f_name, _key in map_list])
+        for _dir, _dir_list, _entry_list in os.walk(global_config["ETHERBOOT_DIR"], False):
+            _del_dir = False
+            if os.path.basename(_dir) == "pxelinux.cfg":
+                del_files = _entry_list
+                _del_dir = True
+            else:
+                del_files = set(_entry_list) & file_names
+            if del_files:
+                try:
+                    [os.unlink(os.path.join(_dir, _file_name)) for _file_name in del_files]
+                except:
+                    pass
+            if _del_dir:
+                os.rmdir(_dir)
+        for rel_name, key_name in map_list:
+            t_file = os.path.join(global_config["ETHERBOOT_DIR"], rel_name)
+            if key_name in global_config:
+                try:
+                    file(t_file, "wb").write(global_config[key_name])
+                except:
+                    self.log("cannot create {}: {}".format(t_file, process_tools.get_except_info()), logging_tools.LOG_LEVEL_CRITICAL)
+                else:
+                    self.log("created {}".format(t_file))
+            else:
+                self.log("key {} not found in global_config".format(key_name), logging_tools.LOG_LEVEL_CRITICAL)
+        # cleanup pxelinux.cfg
+        _cfg_dir = os.path.join(global_config["ETHERBOOT_DIR"], "pxelinux.cfg")
+        if os.path.isdir(_cfg_dir):
+            for _entry in os.listdir(_cfg_dir):
+                try:
+                    os.unlink(os.path.join(_cfg_dir, _entry))
+                except:
+                    pass
+        else:
+            os.mkdir(_cfg_dir)
+        # setup isos
+        _iso_dir = os.path.join(global_config["ETHERBOOT_DIR"], "isos")
+        global_config.add_config_entries([
+            ("ISO_DIR", configfile.str_c_var(_iso_dir)),
+            ])
+        if not os.path.isdir(_iso_dir):
+            os.mkdir(_iso_dir)
     def update_router_object(self):
         cur_time = time.time()
         if abs(cur_time - self.router_obj.latest_update) > 5:
