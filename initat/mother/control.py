@@ -540,6 +540,8 @@ class host(machine):
             self.refresh_device()
             self.check_network_settings()
         if self.is_node:
+            # clear files
+            self.clear_netboot_files()
             if self.device.new_kernel:
                 if not self.device.stage1_flavour:
                     self.device.stage1_flavour = "cpio"
@@ -576,6 +578,8 @@ class host(machine):
                     elif new_state.memory_test:
                         # memory test
                         self.write_memtest_config()
+                    elif new_state.boot_iso:
+                        self.write_isoboot_config()
                     else:
                         self.log("cannot handle new_state '{}'".format(unicode(new_state)),
                                  logging_tools.LOG_LEVEL_ERROR)
@@ -585,50 +589,53 @@ class host(machine):
                 self.clear_kernel_links()
         else:
             self.log("not node", logging_tools.LOG_LEVEL_WARN)
-    # def clear_ip_mac_files(self, except_list=[]):
-    #    # clears all ip_mac_files except the ones listed in except_list
-    #    pxe_dir = self.pxelinux_dir
-    #    for entry in os.listdir(pxe_dir):
-    #        if entry.startswith("01-") and not entry in except_list:
-    #            try:
-    #                os.unlink(os.path.join(pxe_dir, entry))
-    #            except:
-    #                self.log("error removing pxe-boot file {}".format(entry),
-    #                         logging_tools.LOG_LEVEL_ERROR)
-    #            else:
-    #                self.log("removing pxe-boot file {}".format(entry))
-    # def clear_netboot_files(self):
-    #    pxe_dir = self.pxelinux_dir
-    #    for entry in os.listdir(pxe_dir):
-    #        try:
-    #            os.unlink(os.path.join(pxe_dir, entry))
-    #        except:
-    #            self.log(
-    #                "error removing netboot file {}".format(
-    #                    entry
-    #                ),
-    #                logging_tools.LOG_LEVEL_ERROR
-    #            )
-    #        else:
-    #            self.log("removing netboot file {}".format(entry))
+    def clear_netboot_files(self):
+        for _f_name in [self.ip_file_name, self.ip_mac_file_name]:
+            try:
+                os.unlink(os.path.join(_f_name))
+            except:
+                self.log(
+                    "error removing file {}".format(
+                        _f_name
+                   ),
+                    logging_tools.LOG_LEVEL_ERROR
+                )
+            else:
+                self.log("removed file {}".format(_f_name))
     def clear_kernel_links(self):
         for link_name in ["i", "k"]:
             full_name = os.path.join(self.etherboot_dir, link_name)
             if os.path.islink(full_name):
                 self.log("removing kernel link {}".format(full_name))
                 os.unlink(full_name)
-    # def write_memtest_config(self):
-    #    pxe_dir = self.pxelinux_dir
-    #    if pxe_dir:
-    #        if os.path.isdir(pxe_dir):
-    #            self.clear_ip_mac_files()
-    #            open(self.ip_file_name    , "w").write("DEFAULT ../../images/memtest.bin\n")
-    #            open(self.ip_mac_file_name, "w").write("DEFAULT ../../images/memtest.bin\n")
-    #    else:
-    #        self.log("pxelinux_dir() returned NONE",
-    #                 logging_tools.LOG_LEVEL_ERROR)
+    def write_isoboot_config(self):
+        if self.device.kernel_append:
+            _iso = self.device.kernel_append
+            self.log("using iso {} for booting".format(_iso))
+            for name in [self.ip_file_name, self.ip_mac_file_name]:
+                open(name, "w").write("\n".join([
+                    "DEFAULT isoboot",
+                    "LABEL isoboot",
+                    "KERNEL memdisk",
+                    "APPEND iso initrd=isos/{} raw".format(_iso),
+                    ""]))
+        else:
+            self.log("no kernel_append (==iso filename) given", logging_tools.LOG_LEVEL_CRITICAL)
+    def write_memtest_config(self):
+        iso_files = [_entry for _entry in os.listdir(self.iso_dir) if _entry.startswith("memtest")]
+        if iso_files:
+            memtest_iso = iso_files[0]
+            self.log("using iso {} for memtest".format(memtest_iso))
+            for name in [self.ip_file_name, self.ip_mac_file_name]:
+                open(name, "w").write("\n".join([
+                    "DEFAULT memtest",
+                    "LABEL memtest",
+                    "KERNEL memdisk",
+                    "APPEND iso initrd=isos/{} raw".format(memtest_iso),
+                    ""]))
+        else:
+            self.log("no memtest iso found in {}".format(self.iso_dir), logging_tools.LOG_LEVEL_ERROR)
     def write_localboot_config(self):
-        # self.clear_ip_mac_files()
         for name in [self.ip_file_name, self.ip_mac_file_name]:
             open(name, "w").write("\n".join([
                 "DEFAULT linux",
@@ -1256,6 +1263,12 @@ class node_control_process(threading_tools.process_obj):
             ])
         if not os.path.isdir(_iso_dir):
             os.mkdir(_iso_dir)
+        for entry in os.listdir(global_config["SHARE_DIR"]):
+            _path = os.path.join(global_config["SHARE_DIR"], entry)
+            if entry.startswith("memtest"):
+                t_path = os.path.join(_iso_dir, entry)
+                self.log("copy from {} to {}".format(_path, t_path))
+                file(t_path, "wb").write(file(_path, "rb").read())
     def update_router_object(self):
         cur_time = time.time()
         if abs(cur_time - self.router_obj.latest_update) > 5:

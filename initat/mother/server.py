@@ -485,7 +485,7 @@ class server_process(threading_tools.process_pool):
         global_config.add_config_entries([
             ("PXEBOOT", configfile.bool_c_var(False, source="default")),
             ("XENBOOT", configfile.bool_c_var(False, source="default"))])
-        pxe_paths = ["%s/share/mother/syslinux/pxelinux.0" % (global_config["CLUSTER_DIR"])]
+        pxe_paths = [os.path.join(global_config["SHARE_DIR"], "syslinux/pxelinux.0")]
         nb_ok = False
         for pxe_path in pxe_paths:
             if os.path.isfile(pxe_path):
@@ -508,7 +508,7 @@ class server_process(threading_tools.process_pool):
                 self.log("Found no pxelinux.0 in {}".format(pxe_path), logging_tools.LOG_LEVEL_WARN)
         if not nb_ok:
             self.log("cannot provide netboot functionality", logging_tools.LOG_LEVEL_CRITICAL)
-        mb32_paths = [os.path.join(global_config["CLUSTER_DIR"], "share/mother/syslinux/mboot.c32")]
+        mb32_paths = [os.path.join(global_config["SHARE_DIR"], "syslinux/mboot.c32")]
         for mb32_path in mb32_paths:
             if os.path.isfile(mb32_path):
                 try:
