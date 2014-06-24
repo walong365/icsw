@@ -267,7 +267,7 @@ class server_process(threading_tools.process_pool, notify_mixin):
             except:
                 self.log("error parsing option_key from '{}': {}".format(
                     keyval,
-                    process_tools.getcept_info()),
+                    process_tools.get_except_info()),
                          logging_tools.LOG_LEVEL_ERROR)
             else:
                 cur_com["server_key:{}".format(key)] = value
