@@ -498,7 +498,8 @@ class server_process(threading_tools.process_pool):
                     global_config.add_config_entries([
                         ("PXEBOOT"   , configfile.bool_c_var(True, source="filesystem")),
                         ("PXELINUX_0", configfile.blob_c_var(pxelinux_0, source="filesystem")),
-                        ("LDLINUX"   , configfile.blob_c_var(file(os.path.join(pxe_dir, "ldlinux.c32"), "r").read(), source="filesystem")),
+                        ("MEMDISK"   , configfile.blob_c_var(file(os.path.join(pxe_dir, "memdisk"), "rb").read(), source="filesystem")),
+                        ("LDLINUX"   , configfile.blob_c_var(file(os.path.join(pxe_dir, "ldlinux.c32"), "rb").read(), source="filesystem")),
                         ])
                     self.log("Found pxelinux.0 and ldlinux.c32 in {}".format(pxe_dir))
                     nb_ok = True

@@ -524,6 +524,9 @@ class host(machine):
     def pxe_file_name(self):
         return os.path.join(self.etherboot_dir, "pxelinux.0")
     @property
+    def memdisk_file_name(self):
+        return os.path.join(self.etherboot_dir, "memdisk")
+    @property
     def ldlinux_file_name(self):
         return os.path.join(self.etherboot_dir, "ldlinux.c32")
     @property
@@ -579,10 +582,9 @@ class host(machine):
                     self.clear_netboot_files()
                     self.clear_kernel_links()
                     new_state, new_kernel = (None, None)
-                pxe_file = self.pxe_file_name
-                net_file = self.net_file_name
-                if os.path.exists(pxe_file):
-                    os.unlink(pxe_file)
+                for t_file in [self.pxe_file_name, self.memdisk_file_name, self.net_file_name]:
+                    if os.path.exists(t_file):
+                        os.unlink(t_file)
                 if new_state:
                     if new_kernel and new_state.prod_link:
                         if machine.process.server_ip:
@@ -641,8 +643,9 @@ class host(machine):
                 open(self.ip_mac_file_name, "w").write("DEFAULT ../../images/memtest.bin\n")
                 if (os.path.isdir(self.etherboot_dir)):
                     if global_config["PXEBOOT"]:
-                        open(self.pxe_file_name, "w").write(global_config["PXELINUX_0"])
-                        open(self.ldlinux_file_name, "w").write(global_config["LDLINUX"])
+                        open(self.pxe_file_name, "wb").write(global_config["PXELINUX_0"])
+                        open(self.memdisk_file_name, "wb").write(global_config["MEMDISK"])
+                        open(self.ldlinux_file_name, "wb").write(global_config["LDLINUX"])
                     else:
                         self.log("not PXEBOOT capable (PXELINUX_0 not found)", logging_tools.LOG_LEVEL_ERROR)
         else:
@@ -661,6 +664,7 @@ class host(machine):
                         ""]))
                 if global_config["PXEBOOT"]:
                     open(self.pxe_file_name, "w").write(global_config["PXELINUX_0"])
+                    open(self.memdisk_file_name, "wb").write(global_config["MEMDISK"])
                     open(self.ldlinux_file_name, "w").write(global_config["LDLINUX"])
                 else:
                     self.log("not PXEBOOT capable (PXELINUX_0 not found)", logging_tools.LOG_LEVEL_ERROR)
@@ -827,8 +831,9 @@ class host(machine):
                     else:
                         self.log("not XENBOOT capable (MBOOT.C32 not found)", logging_tools.LOG_LEVEL_ERROR)
                 if global_config["PXEBOOT"]:
-                    open(self.pxe_file_name, "w").write(global_config["PXELINUX_0"])
-                    open(self.ldlinux_file_name, "w").write(global_config["LDLINUX"])
+                    open(self.pxe_file_name, "wb").write(global_config["PXELINUX_0"])
+                    open(self.memdisk_file_name, "wb").write(global_config["MEMDISK"])
+                    open(self.ldlinux_file_name, "wb").write(global_config["LDLINUX"])
                 else:
                     self.log("not PXEBOOT capable (PXELINUX_0 not found)", logging_tools.LOG_LEVEL_ERROR)
             else:
