@@ -115,7 +115,7 @@ filesinfo = """
 rmsnodeline = """
 <td ng-show="node_struct.toggle['host']">
     {{ data.host }}
-    <button type="button" class="btn btn-xs btn-primary" ng-show="has_rrd(data.host)" ng-click="show_node_rrd($event, data)">
+    <button type="button" class="pull-right btn btn-xs btn-primary" ng-show="has_rrd(data.host)" ng-click="show_node_rrd($event, data)">
         <span class="glyphicon glyphicon-pencil"></span>
     </button>
 </td>
