@@ -83,7 +83,7 @@ device_boot_template = """
                 </div>
             </td>
             <td>
-                <input type="button" class="btn btn-xs btn-warning" ng-show="num_selected && any_type_1_selected" value="modify {{ num_selected }}" ng-click="modify_many($event)"></input>
+                <input type="button" class="btn btn-xs btn-warning" ng-show="num_selected && any_type_1_selected" value="modify ({{ num_selected }})" ng-click="modify_many($event)"></input>
             </td>
         </tr>
     </tfoot>
@@ -154,6 +154,9 @@ device_row_template = """
         </div>
         <span ng-show="!dev.master_connections">
             waiting...
+        </span>
+        <span ng-show="dev.master_connections && dev.master_connections.length == 0">
+            ---
         </span>
     </td>
     <td ng-show="any_type_1_selected">
@@ -311,7 +314,7 @@ device_boot_module.controller("boot_ctrl", ["$scope", "$compile", "$filter", "$t
         $scope.device_edit.modify_data_before_put = (data) ->
             # rewrite new_state / prod_link
             if data.target_state
-                new_state = (entry for entry in $scope.valid_states when entry.idx == data.target_state)[0]
+                new_state = $scope.state_lut[data.target_state]
                 data.new_state = new_state.status
                 data.prod_link = new_state.network
             else
@@ -380,33 +383,45 @@ device_boot_module.controller("boot_ctrl", ["$scope", "$compile", "$filter", "$t
                 prod_nets = (entry for entry in data[5] when entry.network_type_identifier == "p")
                 # check for number of bootservers
                 $scope.bootserver_list = _.uniq(entry.bootserver for entry in $scope.devices when entry.bootserver)
-                valid_states = []
+                network_states = []
+                special_states = []
+                # state lookup table
+                state_lut = []
                 idx = 0
                 for entry in data[4]
                     if not entry.prod_link
                         idx++
-                        valid_states.push(
-                            {
-                                "idx"     : idx
-                                "status"  : entry.idx
-                                "network" : 0
-                                "info"    : entry.info_string
-                            }
-                        )
+                        new_state = {
+                            "idx"       : idx
+                            "status"    : entry.idx
+                            "network"   : 0
+                            "info"      : entry.info_string
+                            "full_info" : entry.info_string
+                        } 
+                        special_states.push(new_state)
+                        state_lut[idx] = new_state
                 for prod_net in prod_nets
-                    for entry in data[4]
-                        if entry.prod_link
+                    net_list = {
+                       "info"    : "#{prod_net.info_string}"
+                       "network" : prod_net.idx
+                       "states"  : []
+                    }
+                    network_states.push(net_list)
+                    for clean_flag in [false, true]
+                        for entry in (_entry for _entry in data[4] when _entry.prod_link and _entry.is_clean == clean_flag)
                             idx++
-                            valid_states.push(
-                                {
-                                    "idx"     : idx
-                                    "status"  : entry.idx
-                                    "network" : prod_net.idx
-                                    "info"    : "#{entry.info_string} into #{prod_net.info_string}"
-                                }
-                            )
-                $scope.valid_states = valid_states
-                $scope.valid_state_lut = build_lut($scope.valid_states)
+                            new_state = {
+                                "idx"       : idx
+                                "status"    : entry.idx
+                                "network"   : prod_net.idx
+                                "info"      : "#{entry.info_string}"
+                                "full_info" : "#{entry.info_string} into #{prod_net.info_string}"
+                            }
+                            net_list.states.push(new_state)
+                            state_lut[idx] = new_state
+                $scope.network_states = network_states
+                $scope.special_states = special_states
+                $scope.state_lut = state_lut
                 $scope.update_info_timeout = $timeout($scope.update_info, 500)
             )
             $scope.update_info = () ->
@@ -447,9 +462,12 @@ device_boot_module.controller("boot_ctrl", ["$scope", "$compile", "$filter", "$t
                                 dev.target_state = 0
                                 # rewrite device new_state / prod_link
                                 if dev.new_state
-                                    _list = (_entry for _entry in $scope.valid_states when _entry.status == dev.new_state)
                                     if dev.prod_link
-                                        _list = (_entry for _entry in _list when _entry.network == dev.prod_link)
+                                        _list = (_entry for _entry in $scope.network_states when _entry.network == dev.prod_link)
+                                        if _list.length
+                                            _list = (_entry for _entry in _list[0]["states"] when _entry.status == dev.new_state)
+                                    else
+                                        _list = (_entry for _entry in $scope.special_states when _entry.status == dev.new_state)
                                     # _list can be empty when networks change theirs types
                                     if _list.length
                                         dev.target_state = _list[0].idx
@@ -641,7 +659,7 @@ device_boot_module.controller("boot_ctrl", ["$scope", "$compile", "$filter", "$t
                     if entry[0] == "t"
                         # target state
                         if dev.target_state
-                            return scope.valid_state_lut[dev.target_state].info
+                            return scope.state_lut[dev.target_state].full_info
                         else
                             return "---"
                         #console.log dev.new_state, dev.prod_link

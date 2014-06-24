@@ -2755,7 +2755,28 @@ class boot_single_form(Form):
         HTML("<h2>{% verbatim %}Device setting for {{ device_info_str }}{% endverbatim %}</h2>"),
             Fieldset(
                 "basic settings",
-                Field("target_state", ng_options="value.idx as value.info for value in valid_states", chosen=True, wrapper_ng_show="bo_enabled['t']"),
+                HTML(
+"""
+{% verbatim %}
+<div ng-repeat="netstate in network_states" class='form-group' ng-show="bo_enabled['t']">
+    <label class='control-label col-sm-4'>
+        network {{ netstate.info }}
+    </label>
+    <div class='col-sm-7'>
+        <select ng-model="_edit_obj.target_state" ng-options="value.idx as value.info for value in netstate.states" chosen="1"></select>
+    </div>
+</div>
+<div class='form-group' ng-show="bo_enabled['t']">
+    <label class='control-label col-sm-4'>
+        special state
+    </label>
+    <div class='col-sm-7'>
+        <select ng-model="_edit_obj.target_state" ng-options="value.idx as value.info for value in special_states" chosen="1"></select>
+    </div>
+</div>
+{% endverbatim %}
+"""
+                ),
                 Field("new_kernel", ng_options="value.idx as value.name for value in kernels", chosen=True, wrapper_ng_show="bo_enabled['k']"),
                 Field("stage1_flavour", ng_options="value.val as value.name for value in stage1_flavours", chosen=True, wrapper_ng_show="bo_enabled['k']"),
                 Field("kernel_append", wrapper_ng_show="bo_enabled['k']"),
@@ -2816,10 +2837,47 @@ class boot_many_form(Form):
     helper.layout = Layout(
         HTML("<h2>Change boot settings of {%verbatim %}{{ device_info_str }}{% endverbatim %}</h2>"),
     )
+    helper.layout.append(
+        Fieldset(
+            "target state",
+            Div(
+                Field(
+                   "change_target_state",
+                   wrapper_ng_show="bo_enabled['t']",
+                ),
+                css_class="col-md-3",
+            ),
+            HTML(
+"""
+{% verbatim %}
+<div class="col-md-9">
+<div ng-repeat="netstate in network_states" class='form-group' ng-show="bo_enabled['t'] && _edit_obj.change_target_state">
+    <label class='control-label col-sm-4'>
+        network {{ netstate.info }}
+    </label>
+    <div class='col-sm-7'>
+        <select ng-model="_edit_obj.target_state" ng-options="value.idx as value.info for value in netstate.states" chosen="1"></select>
+    </div>
+</div>
+<div class='form-group' ng-show="bo_enabled['t'] && _edit_obj.change_target_state">
+    <label class='control-label col-sm-4'>
+        special state
+    </label>
+    <div class='col-sm-7'>
+        <select ng-model="_edit_obj.target_state" ng-options="value.idx as value.info for value in special_states" chosen="1"></select>
+    </div>
+</div>
+</div>
+{% endverbatim %}
+"""
+            ),
+            css_class="row",
+        )
+    )
     for fs_string, el_list in [
         (
-            "Basic settings", [
-                ("target_state", "value.idx as value.info for value in valid_states", {"chosen" : True}, "t", "target_state"),
+            "settings", [
+                # ("target_state", "value.idx as value.info for value in valid_states", {"chosen" : True}, "t", "target_state"),
                 ("new_kernel", "value.idx as value.name for value in kernels", {"chosen" : True}, "k", "new_kernel"),
                 ("stage1_flavour", "value.val as value.name for value in stage1_flavours", {"chosen" : True}, "k", ""),
                 ("kernel_append", None, {}, "k", ""),
@@ -2839,15 +2897,15 @@ class boot_many_form(Form):
                     Div(
                         Div(
                             Field(
-                               "change_%s" % (en_field),
-                               wrapper_ng_show="bo_enabled['%s']" % (en_flag),
+                               "change_{}".format(en_field),
+                               wrapper_ng_show="bo_enabled['{}']".format(en_flag),
                             ) if en_field else HTML(""),
                             css_class="col-md-3",
                         ),
                         Div(
                             Field(
                                 f_name,
-                                wrapper_ng_show="_edit_obj.change_%s && bo_enabled['%s']" % (
+                                wrapper_ng_show="_edit_obj.change_{} && bo_enabled['{}']".format(
                                     {
                                         "k" : "new_kernel",
                                         "i" : "new_image",
