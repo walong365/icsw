@@ -651,7 +651,6 @@ class host(machine):
                     fname = os.path.join(kern_dst_dir, file_name)
                     if os.path.islink(fname):
                         os.unlink(fname)
-                print "go"
                 for stage_name in ["stage2", "stage3"]:
                     stage_source = "{}/lcs/{}".format(
                         global_config["CLUSTER_DIR"],
