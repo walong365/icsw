@@ -957,7 +957,7 @@ class sync_ldap_config(cs_base_class.server_com, ldap_mixin):
                     else:
                         errors.append(err_str)
                         self.log(
-                            u"cannot add map {}: {}".foramt(
+                            u"cannot add map {}: {}".format(
                                 map_to_add,
                                 err_str),
                             logging_tools.LOG_LEVEL_ERROR
