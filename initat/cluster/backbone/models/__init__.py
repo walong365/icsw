@@ -2485,6 +2485,7 @@ class device_serializer(serializers.ModelSerializer):
             "monitor_type",
             # monitoring hint
             "monitoring_hint_set",
+            "uuid",
             )
         read_only_fields = ("uuid",)
 
