@@ -365,6 +365,7 @@ device_network_module.controller("network_ctrl", ["$scope", "$compile", "$filter
                 _dev = {
                     "device" : dev.idx
                     "devname" : "eth0"
+                    "enabled" : 1
                     "netdevice_speed" : (entry.idx for entry in $scope.netdevice_speeds when entry.speed_bps == 1000000000 and entry.full_duplex)[0]
                     "penalty" : 1
                     "net_ip_set" : []
