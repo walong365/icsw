@@ -221,7 +221,7 @@ def check_system(opt_ns):
                 level_list = [int(level) for level, _flag in [entry.split(":") for entry in level_list.strip().split()] if _flag == "on" and level.isdigit()]
                 stat_dict[key.lower()] = level_list
     if config_tools:
-        dev_config = config_tools.device_with_config("%")
+        dev_config = config_tools.device_with_config("server")
     else:
         dev_config = None
     for entry in instance_xml.findall("instance[@to_check='1']"):
