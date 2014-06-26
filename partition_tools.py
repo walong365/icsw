@@ -22,7 +22,6 @@ import logging_tools
 import os
 import process_tools
 import re
-import sys
 
 class uuid_label_struct(dict):
     def __init__(self):
@@ -377,8 +376,3 @@ class disk_lut(object):
 def test_it():
     my_lut = disk_lut()
     print my_lut[("id", "/dev/sda8")]
-
-if __name__ == "__main__":
-    # test_it()
-    print "loadable module, exiting ..."
-    sys.exit(-1)

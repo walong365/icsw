@@ -15,9 +15,8 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
-""" handles ipv4 addresses """
 
-import sys
+""" handles ipv4 addresses """
 
 class ipv4(object):
     def __init__(self, in_value):
@@ -135,6 +134,10 @@ class ipv4(object):
         return self & ipv4(nw_stuff.netmask) == ipv4(nw_stuff.network)
 
 def get_network_name_from_mask(mask):
-    return {"255.255.255.0" : "C",
-            "255.255.0.0"   : "B",
-            "255.0.0.0"     : "A"}.get(mask, mask)
+    return {
+        "255.255.255.0" : "C",
+        "255.255.0.0"   : "B",
+        "255.0.0.0"     : "A",
+    }.get(mask, mask)
+
+

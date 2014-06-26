@@ -21,7 +21,6 @@
 
 import os
 import pickle
-import sys
 import zmq
 
 def zmq_socket_name(sock_name, **kwargs):
@@ -69,6 +68,3 @@ class io_stream(object):
     def __del__(self):
         pass
 
-if __name__ == "__main__":
-    print("Loadable module, exiting ...")
-    sys.exit(0)

@@ -1,5 +1,3 @@
-#!/opt/python-init/bin/python -Ot
-#
 # Copyright (C) 2001-2014 Andreas Lang-Nevyjel, init.at
 #
 # Send feedback to: <lang-nevyjel@init.at>
@@ -31,7 +29,6 @@ import marshal
 import os
 import pickle
 import re
-import sys
 
 XML_NS = "http://www.initat.org/lxml/ns"
 
@@ -367,8 +364,3 @@ class srv_command(object):
         # print "del", srv_command.srvc_open
     def __len__(self):
         return len(etree.tostring(self.tree))
-
-def main():
-    print("Loadable module, exiting...")
-    sys.exit(0)
-
