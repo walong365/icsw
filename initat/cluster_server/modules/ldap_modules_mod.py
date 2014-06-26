@@ -812,7 +812,7 @@ class sync_ldap_config(cs_base_class.server_com, ldap_mixin):
                                 "options"      : "-soft"})
                     for c_str in entry.config.config_str_set.all():
                         if c_str.name in ei_dict[dev_name][act_pk]:
-                            ei_dict[dev_name][act_pk][c_str.name] = c_str.value
+                            ei_dict[dev_name][act_pk][c_str.name] = c_str.value.replace("%h", dev_name)
                 for mach, aeid_d in ei_dict.iteritems():
                     for _aeid_idx, aeid in aeid_d.iteritems():
                         if aeid["export"] and aeid["import"]:
