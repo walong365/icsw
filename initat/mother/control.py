@@ -384,7 +384,7 @@ class host(machine):
         # bootnet device name
         self.bootnetdevice = None
         nd_list, nd_lut = (set(), {})
-        for net_dev in self.device.netdevice_set.all().prefetch_related("net_ip_set", "net_ip_set__network__network_type"):
+        for net_dev in self.device.netdevice_set.all():
             nd_list.add(net_dev.pk)
             nd_lut[net_dev.pk] = net_dev
             if self.device.bootnetdevice_id and net_dev.pk == self.device.bootnetdevice.pk:
@@ -404,13 +404,15 @@ class host(machine):
                     add_penalty=True,
                 )
             )
-            prev_path = None
+            # get hopcount
+            # latest_gen = route_generation.objects.filter(Q(valid=True)).order_by("-pk")[0]
+            # my_hc = hopcount.objects.filter(
+                # Q(route_generation=latest_gen) &
+                # Q(s_netdevice__in=machine.process.sc.netdevice_idx_list) &
+                # Q(d_netdevice__in=nd_list)).order_by("value")
             for _ in all_paths:
-                if _ == prev_path:
-                    continue
-                prev_path = _
                 srv_dev, mach_dev = (machine.process.sc.nd_lut[_[1]], nd_lut[_[2]])
-                for cur_ip in [_ip for _ip in mach_dev.net_ip_set.all() if _ip.network.network_type.identifier != "l"]:
+                for cur_ip in mach_dev.net_ip_set.all():
                     cur_id = cur_ip.network.network_type.identifier
                     srv_ips = list(set([srv_ip.ip for srv_ip in machine.process.sc.identifier_ip_lut.get(cur_id, [])]) & set([x2.ip for x2 in machine.process.sc.netdevice_ip_lut[srv_dev.pk]]))
                     if srv_ips and not cur_ip.ip in server_ip_dict:
@@ -1190,8 +1192,6 @@ class node_control_process(threading_tools.process_obj):
         self._setup_etherboot()
         machine.setup(self)
         machine.sync()
-        # check freq timer
-        self.__cft = 0
         self.register_func("refresh", self._refresh)
         # self.register_func("alter_macaddr", self.alter_macaddr)
         self.register_func("soft_control", self._soft_control)
@@ -1367,10 +1367,8 @@ class node_control_process(threading_tools.process_obj):
         machine.shutdown()
         self.__log_template.close()
     def set_check_freq(self, cur_to):
-        if cur_to != self.__cft:
-            self.__cft = cur_to
-            self.log("changing check_freq of check_commands to %d msecs" % (cur_to))
-            self.change_timer(self._check_commands, cur_to)
+        self.log("changing check_freq of check_commands to %d msecs" % (cur_to))
+        self.change_timer(self._check_commands, cur_to)
     def _check_commands(self):
         simple_command.check()
         if simple_command.idle():

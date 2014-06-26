@@ -39,7 +39,6 @@ import process_tools
 import psutil
 import server_command
 import threading_tools
-import time
 import uuid_tools
 import zmq
 
@@ -70,7 +69,6 @@ class server_process(threading_tools.process_pool):
         self.register_func("contact_hoststatus", self._contact_hoststatus)
         my_uuid = uuid_tools.get_uuid()
         self.log("cluster_device_uuid is '{}'".format(my_uuid.get_urn()))
-        self.__debug = global_config["DEBUG"]
         if self._init_network_sockets():
             self.add_process(initat.mother.kernel.kernel_sync_process("kernel"), start=True)
             self.add_process(initat.mother.command.external_command_process("command"), start=True)
@@ -79,7 +77,6 @@ class server_process(threading_tools.process_pool):
             conf_dict = {key: global_config[key] for key in ["LOG_NAME", "LOG_DESTINATION", "VERBOSE"]}
             self.add_process(snmp_process("snmp_process", conf_dict=conf_dict), start=True)
             connection.close()
-            self.__start_times = {}
             # self.add_process(build_process("build"), start=True)
             # self.register_func("client_update", self._client_update)
             # send initial commands
@@ -198,7 +195,6 @@ class server_process(threading_tools.process_pool):
         while zmq_sock.getsockopt(zmq.RCVMORE):
             data.append(zmq_sock.recv_unicode())
         if len(data) == 2:
-            _com_id = data[0]
             # print "UUID", data[0]
             if data[0].endswith("syslog_scan"):
                 self.send_to_process("control", "syslog_line", data[1])
@@ -210,7 +206,6 @@ class server_process(threading_tools.process_pool):
                     zmq_sock.send_unicode(data[0], zmq.SNDMORE)
                     zmq_sock.send_unicode("error interpreting")
                 else:
-                    self.__start_times[_com_id] = time.time()
                     try:
                         cur_com = srv_com["command"].text
                     except:
@@ -220,8 +215,7 @@ class server_process(threading_tools.process_pool):
                                 node_text = srv_com.tree.findtext(node_ct)
                                 t_proc = "control"
                                 cur_com = node_ct
-                                if self.__debug:
-                                    self.log("got command {}, sending to {} process".format(cur_com, t_proc))
+                                self.log("got command {}, sending to {} process".format(cur_com, t_proc))
                                 self.send_to_process(
                                     t_proc,
                                     cur_com,
@@ -283,12 +277,7 @@ class server_process(threading_tools.process_pool):
             self.log("wrong number of data chunks ({:d} != 2), data is '{}'".format(len(data), data[:20]),
                      logging_tools.LOG_LEVEL_ERROR)
     def _send_return(self, src_id, src_pid, zmq_id, srv_com, *args):
-        if zmq_id in self.__start_times:
-            d_time = time.time() - self.__start_times.pop(zmq_id)
-            dt_str = ", took {}".format(logging_tools.get_diff_time_str(d_time))
-        else:
-            dt_str = ""
-        self.log("returning 0MQ message to {} ({} ...){}".format(zmq_id, srv_com[0:16], dt_str))
+        self.log("returning 0MQ message to {} ({} ...)".format(zmq_id, srv_com[0:16]))
         if zmq_id.endswith(":hoststatus:"):
             self.log("refuse to send return to {}".format(zmq_id), logging_tools.LOG_LEVEL_ERROR)
         else:
@@ -324,8 +313,7 @@ class server_process(threading_tools.process_pool):
                 logging_tools.LOG_LEVEL_ERROR
             )
         else:
-            if self.__debug:
-                self.log("sent '{}' to {} ({})".format(com_str, zmq_id, dst_addr))
+            self.log("sent '{}' to {} ({})".format(com_str, zmq_id, dst_addr))
     # utility calls
     def _prepare_directories(self):
         self.log("Checking directories ...")
