@@ -474,7 +474,7 @@ class server_check(object):
     def _fetch_network_info(self, **kwargs):
         # commented force_flag, FIXME
         if not self.__network_info_fetched or kwargs.get("force", False):
-            for net_dev in self.device.netdevice_set:
+            for net_dev in self.device.netdevice_set.all():
                 if net_dev.enabled:
                     self.netdevice_idx_list.append(net_dev.pk)
                     self.netdevice_ip_lut[net_dev.pk] = []
