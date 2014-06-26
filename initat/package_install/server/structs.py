@@ -33,6 +33,7 @@ import commands
 import datetime
 import logging_tools
 import os
+import process_tools
 import server_command
 import subprocess
 import time
@@ -151,26 +152,34 @@ class repo_type_rpm_yum(repo_type):
                         found_packs.append(p_name)
         cur_search = s_struct.run_info["stuff"]
         cur_search.current_state = "done"
-        cur_search.results = len(found_packs)
+        _found = 0
+        cur_search.results = _found
         cur_search.last_search = cluster_timezone.localize(datetime.datetime.now())
         cur_search.save(update_fields=["last_search", "current_state", "results"])
-        self.log("found for {}: {:d}".format(cur_search.search_string, cur_search.results))
+        self.log("parsing results... ({:d} found)".format(len(found_packs)))
         for p_name in found_packs:
-            parts = p_name.split("-")
-            rel_arch = parts.pop(-1)
-            arch = rel_arch.split(".")[-1]
-            release = rel_arch[:-(len(arch) + 1)]
-            version = parts.pop(-1)
-            name = "-".join(parts)
-            new_sr = package_search_result(
-                name=name,
-
-                arch=arch,
-                version="{}-{}".format(version, release),
-                package_search=cur_search,
-                copied=False,
-                package_repo=None)
-            new_sr.save()
+            try:
+                parts = p_name.split("-")
+                rel_arch = parts.pop(-1)
+                arch = rel_arch.split(".")[-1]
+                release = rel_arch[:-(len(arch) + 1)]
+                version = parts.pop(-1)
+                name = "-".join(parts)
+            except:
+                self.log("cannot parse package name {}: {}".format(p_name, process_tools.get_except_info()), logging_tools.LOG_LEVEL_ERROR)
+            else:
+                _found += 1
+                new_sr = package_search_result(
+                    name=name,
+                    arch=arch,
+                    version="{}-{}".format(version, release),
+                    package_search=cur_search,
+                    copied=False,
+                    package_repo=None)
+                new_sr.save()
+        cur_search.results = _found
+        cur_search.save(update_fields=["results"])
+        self.log("found for {}: {:d}".format(cur_search.search_string, cur_search.results))
 
 class repo_type_rpm_zypper(repo_type):
     REPO_TYPE_STR = "rpm"
