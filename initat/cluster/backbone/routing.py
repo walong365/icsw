@@ -183,7 +183,7 @@ class srv_type_routing(object):
                             _first_ip = "127.0.0.1"
                             _penalty = 1
                         else:
-                            _ri = _dev.get_route_to_other_device(_router, _myself, allow_route_to_other_networks=True)
+                            _ri = _dev.get_route_to_other_device(_router, _myself, allow_route_to_other_networks=True, prefer_production_net=True)
                             if _ri:
                                 _first_ri = _ri[0]
                                 _first_ip = _first_ri[2][1][0]
