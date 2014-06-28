@@ -100,13 +100,11 @@ class colorizer(object):
         return t_name, s_dict
 
 class graph_var(object):
-    def __init__(self, rrd_graph, entry, unique_id, key, dev_name=""):
+    def __init__(self, rrd_graph, entry, key, dev_name=""):
         # XML entry
         self.entry = entry
         # graph key (load.1)
         self.key = key
-        # device pk
-        self.unique_id = unique_id
         # device name
         self.dev_name = dev_name
         self.rrd_graph = rrd_graph
@@ -118,31 +116,36 @@ class graph_var(object):
         return key in self.entry.attrib
     def get(self, key, default):
         return self.entry.attrib.get(key, default)
-    @property
-    def info(self):
+    def info(self, timeshift):
         info = self["info"]
         parts = self["name"].split(".")
         for idx in xrange(len(parts)):
             info = info.replace("${:d}".format(idx + 1), parts[idx])
+        info_parts = []
         if self.dev_name:
-            info = "{} ({})".format(info, str(self.dev_name))
-        return info
+            info_parts.append(unicode(self.dev_name))
+        if timeshift:
+            info_parts.append("ts {}".format(logging_tools.get_diff_time_str(timeshift)))
+        return "{}{}".format(
+            info,
+            " ({})".format(", ".join(info_parts)) if info_parts else "",
+        ).replace(":", "\:")
     def get_color_and_style(self):
         self.color, self.style_dict = self.rrd_graph.colorizer.get_color_and_style(self.entry)
-    @property
-    def config(self):
+    def graph_def(self, unique_id, **kwargs):
+        # unique_id = device pk
+        timeshift = kwargs.get("timeshift", 0)
         self.get_color_and_style()
         src_cf = "AVERAGE"
         if self.entry.tag == "value":
             # pde entry
-            c_lines = [
-                "DEF:{}={}:{}:{}".format(self.name, self["file_name"], self["part"], src_cf),
-            ]
+            _src_str = "{}:{}:{}".format(self["file_name"], self["part"], src_cf)
         else:
             # machvector entry
-            c_lines = [
-                "DEF:{}={}:v:{}".format(self.name, self["file_name"], src_cf),
-            ]
+            _src_str = "{}:v:{}".format(self["file_name"], src_cf)
+        c_lines = [
+            "DEF:{}={}".format(self.name, _src_str)
+        ]
         if int(self.style_dict.get("invert", "0")):
             c_lines.append(
                 "CDEF:{}inv={},-1,*".format(self.name, self.name),
@@ -150,6 +153,8 @@ class graph_var(object):
             draw_name = "{}inv".format(self.name)
         else:
             draw_name = self.name
+        # if timeshift:
+        #    c_lines.append("SHIFT:{}:{:d}".format(draw_name, timeshift))
         draw_type = self.style_dict.get("draw_type", "LINE1")
         if draw_type in ["AREA1", "AREA2", "AREA3"]:
             # support area with outline style
@@ -159,7 +164,7 @@ class graph_var(object):
                         "AREA",
                         draw_name,
                         self.color,
-                        ("{{:<{:d}s}}".format(self.max_info_width)).format(self.info)[:self.max_info_width]
+                        ("{{:<{:d}s}}".format(self.max_info_width)).format(self.info(timeshift))[:self.max_info_width]
                     ),
                     "{}:{}{}".format(
                         draw_type.replace("AREA", "LINE"),
@@ -174,7 +179,35 @@ class graph_var(object):
                     draw_type,
                     draw_name,
                     self.color,
-                    ("{{:<{:d}s}}".format(self.max_info_width)).format(self.info)[:self.max_info_width]),
+                    ("{{:<{:d}s}}".format(self.max_info_width)).format(self.info(timeshift))[:self.max_info_width]),
+            )
+        if timeshift:
+            # draw timeshifted graph
+            ts_name = "{}ts".format(draw_name)
+            ts_draw_type = draw_type.replace("AREA", "LINE")
+            if draw_type != ts_draw_type:
+                ts_color = "#000000"
+            else:
+                ts_color = self.color
+            c_lines.extend(
+                [
+                    "DEF:{}={}:start={:d}:end={:d}".format(
+                        ts_name,
+                        _src_str,
+                        self.rrd_graph.abs_start_time - timeshift,
+                        self.rrd_graph.abs_end_time - timeshift,
+                    ),
+                    "CDEF:{}inv={},{:d},*".format(ts_name, ts_name, -1 if int(self.style_dict.get("invert", "0")) else 1),
+                    "SHIFT:{}inv:{:d}".format(
+                        ts_name,
+                        timeshift,
+                    ),
+                    "{}:{}inv{}::dashes".format(
+                        ts_draw_type,
+                        ts_name,
+                        ts_color,
+                    )
+                ]
             )
         # legend list
         l_list = self.get_legend_list()
@@ -191,7 +224,7 @@ class graph_var(object):
                     "PRINT:{}{}:{:d}.{}.{}=%.4lf".format(
                         self.name,
                         rep_name,
-                        self.unique_id,
+                        unique_id,
                         self.key.replace(":", r"\:"),
                         cf
                     ),
@@ -282,6 +315,8 @@ class RRDGraph(object):
             self.defs = {}
             # reset colorizer for current graph
             self.colorizer.reset()
+            self.abs_start_time = int((self.para_dict["start_time"] - dt_1970).total_seconds())
+            self.abs_end_time = int((self.para_dict["end_time"] - dt_1970).total_seconds())
             rrd_pre_args = [
                     abs_file_loc,
                     "-E",
@@ -301,12 +336,13 @@ class RRDGraph(object):
                     "-cBACK#ffffff",
                     "--end",
                     # offset to fix UTC, FIXME
-                    "{:d}".format(int((self.para_dict["end_time"] - dt_1970).total_seconds())),
+                    "{:d}".format(self.abs_end_time),
                     "--start",
-                    "{:d}".format(int((self.para_dict["start_time"] - dt_1970).total_seconds())),
-                    graph_var(self, None, 0, "").header_line,
+                    "{:d}".format(self.abs_start_time),
+                    graph_var(self, None, "").header_line,
             ]
             _unique = 0
+            draw_keys = []
             for graph_key in sorted(graph_keys):
                 for _cur_id, cur_pk in dev_list:
                     dev_vector = vector_dict[cur_pk]
@@ -318,13 +354,13 @@ class RRDGraph(object):
                         def_xml = dev_vector.find(".//mve[@name='{}']".format(graph_key))
                     if def_xml is not None:
                         _unique += 1
-                        self.defs[(_unique, graph_key)] = graph_var(self, def_xml, _unique, graph_key, dev_dict[cur_pk]).config
+                        self.defs[(_unique, graph_key)] = graph_var(self, def_xml, graph_key, dev_dict[cur_pk]).graph_def(_unique, timeshift=self.para_dict["timeshift"])
+                        draw_keys.append((_unique, graph_key))
             if self.defs:
                 draw_it = True
                 removed_keys = set()
                 while draw_it:
-                    graph_keys = set(self.defs.keys())
-                    rrd_args = rrd_pre_args + sum(self.defs.values(), [])
+                    rrd_args = rrd_pre_args + sum([self.defs[_key] for _key in draw_keys], [])
                     rrd_args.extend([
                         "--title",
                         "{} on {} (tf: {})".format(
@@ -346,7 +382,8 @@ class RRDGraph(object):
                         # reorganize
                         val_dict = {}
                         for key, value in res_dict.iteritems():
-                            cf = key.split(".")[-1]
+                            _split = key.split(".")
+                            cf = _split.pop(-1)
                             try:
                                 value = float(value)
                             except:
@@ -354,11 +391,11 @@ class RRDGraph(object):
                             else:
                                 value = None if value == 0.0 else value
                             # extract device pk from key
-                            _unique_id = int(key.split(".")[0])
-                            _key = key.split(".", 1)[1]
+                            _unique_id = int(_split.pop(0))
+                            _key = ".".join(_split)
                             if value is not None:
-                                val_dict.setdefault((_unique_id, _key[:-len(cf) - 1]), {})[cf] = value
-                        empty_keys = set(graph_keys) - set(val_dict.keys())
+                                val_dict.setdefault((_unique_id, _key), {})[cf] = value
+                        empty_keys = set(draw_keys) - set(val_dict.keys())
                         if empty_keys and self.para_dict["hide_zero"]:
                             self.log(
                                 u"{}: {}".format(
@@ -367,8 +404,10 @@ class RRDGraph(object):
                                 )
                             )
                             removed_keys |= empty_keys
-                            self.defs = {key : value for key, value in self.defs.iteritems() if key not in empty_keys}
-                            if not self.defs:
+                            draw_keys = [_key for _key in draw_keys if _key not in empty_keys]
+                            # self.defs = {key : value for key, value in self.defs.iteritems() if key not in empty_keys}
+                            if not draw_keys:
+                                draw_result = None
                                 draw_it = False
                         else:
                             draw_it = False
@@ -432,7 +471,7 @@ class graph_process(threading_tools.process_obj, threading_tools.operational_err
         for para in srv_com.xpath(".//parameters", smart_strings=False)[0]:
             para_dict[para.tag] = para.text
         # cast to integer
-        para_dict = dict([(key, int(value) if key in [] else value) for key, value in para_dict.iteritems()])
+        para_dict = dict([(key, int(value) if key in ["timeshift"] else value) for key, value in para_dict.iteritems()])
         for key in ["start_time", "end_time"]:
             # cast to datetime
             para_dict[key] = dateutil.parser.parse(para_dict[key])
