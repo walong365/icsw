@@ -90,6 +90,7 @@ class graph_rrds(View):
             E.size(_post.get("size", "400x200")),
             E.hide_zero(self._parse_post_boolean(_post, "hide_zero", "0")),
             E.merge_devices(self._parse_post_boolean(_post, "merge_devices", "1")),
+            E.timeshift(_post.get("timeshift", "0")),
         )
         result = contact_server(request, "grapher", srv_com, timeout=30)
         if result:

@@ -44,6 +44,16 @@ rrd_graph_template = """
         <div class="input-group-btn">
             <input type="button" ng-class="merge_devices && 'btn btn-sm btn-success' || 'btn btn-sm'" value="merge devices" ng-click="merge_devices=!merge_devices"></input>
         </div>
+        <div class="input-group-btn">
+            <div class="btn-group">
+                <button type="button" class="btn btn-sm btn-primary dropdown-toggle" data-toggle="dropdown">
+                    timeshift <span ng-show="active_ts">({{ active_ts.name }})</span><span class="caret"></span>
+                </button>
+                <ul class="dropdown-menu">
+                    <li ng-repeat="ts in all_timeshifts" ng-click="set_active_ts(ts)"><a href="#">{{ ts.name }}</a></li>
+                </ul>
+            </div>
+        </div>
         <div class="input-group">
             <span class="input-group-addon">
                  from
@@ -221,6 +231,9 @@ class pd_timerange
         else
             return moment()
 
+class pd_timeshift
+    constructor: (@name, @seconds) ->
+
 add_rrd_directive = (mod) ->
     mod.controller("rrd_ctrl", ["$scope", "$compile", "$filter", "$templateCache", "Restangular", "paginatorSettings", "restDataSource", "sharedDataSource", "$q", "$modal", "$timeout"
         ($scope, $compile, $filter, $templateCache, Restangular, paginatorSettings, restDataSource, sharedDataSource, $q, $modal, $timeout) ->
@@ -236,6 +249,14 @@ add_rrd_directive = (mod) ->
                 new pd_timerange("current year", moment().startOf("year"), moment().endOf("year"))
                 new pd_timerange("last year", moment().subtract("year", 1).startOf("year"), moment().subtract("year", 1).endOf("year"))
             ]
+            $scope.all_timeshifts = [
+                new pd_timeshift("none", 0)
+                new pd_timeshift("1 hour", 60 * 60)
+                new pd_timeshift("1 day", 24 * 60 * 60)
+                new pd_timeshift("1 week", 7 * 24 * 60 * 60)
+                new pd_timeshift("1 month (31 days)", 31 * 24 * 60 * 60)
+                new pd_timeshift("1 year (365 days)", 365 * 24 * 60 * 60)
+            ]
             moment().utc()
             $scope.dt_valid = true
             $scope.vector_valid = false
@@ -246,6 +267,7 @@ add_rrd_directive = (mod) ->
             $scope.searchstr = ""
             $scope.is_loading = true
             $scope.cur_selected = []
+            $scope.active_ts = undefined
             # to be set by directive
             $scope.auto_select_keys = []
             $scope.draw_on_init = false
@@ -280,6 +302,11 @@ add_rrd_directive = (mod) ->
                 $scope.from_date_mom = new_tr.get_from()
                 $scope.to_date_mom   = new_tr.get_to()
                 $scope.update_dt()
+            $scope.set_active_ts = (new_ts) ->
+                if new_ts.seconds
+                    $scope.active_ts = new_ts
+                else
+                    $scope.active_ts = undefined
             $scope.set_active_dim = (cur_dim) ->
                 $scope.cur_dim = cur_dim
             $scope.new_devsel = (_dev_sel, _devg_sel) ->
@@ -407,6 +434,7 @@ add_rrd_directive = (mod) ->
                         "size"       : $scope.cur_dim
                         "hide_zero"     : $scope.hide_zero
                         "merge_devices" : $scope.merge_devices
+                        "timeshift"     : if $scope.active_ts then $scope.active_ts.seconds else 0
                     }
                     success : (xml) =>
                         graph_list = []

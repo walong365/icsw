@@ -28,7 +28,7 @@
         <li ng-show="CLUSTER_LICENSE.boot.enabled || CLUSTER_LICENSE.package.enabled">
             <a class="dropdown-toggle" data-toggle="dropdown">{% trans "Cluster" %} <b class="caret"></b></a>
             <ul class="dropdown-menu">
-                <li ng-show="SERVICE_TYPES.mother && CLUSTER_LICENSE.boot.enabled"><a href="{% url 'boot:show_boot' %}">{% trans "Nodeboot" %}</a></li>
+                <li ng-show="SERVICE_TYPES.mother && CLUSTER_LICENSE.boot.enabled && check_perm('device.change_boot')"><a href="{% url 'boot:show_boot' %}">{% trans "Nodeboot" %}</a></li>
                 <li ng-show="SERVICE_TYPES.package && CLUSTER_LICENSE.package.enabled && check_perm('package.package_install')"><a href="{% url 'pack:repo_overview' %}">{% trans "Package install" %}</a></li>
                 {% if DJANGO_SERVICE_TYPES.mother or DJANGO_SERVICE_TYPES.package %}
                 <li ng-show="CLUSTER_LICENSE.boot.enabled" class="divider"></li>
