@@ -1,5 +1,3 @@
-#!/usr/bin/python-init -OtW default
-#
 # Copyright (C) 2001-2008,2012-2014 Andreas Lang-Nevyjel, init.at
 #
 # Send feedback to: <lang-nevyjel@init.at>
@@ -29,9 +27,9 @@ from lxml import etree # @UnresolvedImport
 from lxml.builder import E # @UnresolvedImport
 import base64
 import commands
-import os
 import logging_tools
 import networkx
+import os
 import re
 import tempfile
 
@@ -292,11 +290,12 @@ def do_routes(conf):
 
 def do_ssh(conf):
     conf_dict = conf.conf_dict
+    # also used in fetch_ssh_keys
     ssh_types = [("rsa1", 1024), ("dsa", 1024), ("rsa", 1024), ("ecdsa", 521)]
     ssh_field_names = []
     for ssh_type, _size in ssh_types:
         ssh_field_names.extend(["ssh_host_%s_key" % (ssh_type), "ssh_host_%s_key_pub" % (ssh_type)])
-    found_keys_dict = dict([(key, None) for key in ssh_field_names])
+    found_keys_dict = {key : None for key in ssh_field_names}
     for cur_var in device_variable.objects.filter(Q(device=conf_dict["device"]) & Q(name__in=ssh_field_names)):
         try:
             cur_val = base64.b64decode(cur_var.val_blob)

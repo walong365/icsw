@@ -1,8 +1,8 @@
 #!/usr/bin/python-init -Otu
 #
-# Copyright (C) 2001,2002,2003,2004,2005,2006,2007 Andreas Lang, init.at
+# Copyright (C) 2001-2007,2014 Andreas Lang-Nevyjel, init.at
 #
-# Send feedback to: <lang@init.at>
+# Send feedback to: <lang-nevyjel@init.at>
 #
 # this file is part of cluster-config-server
 #
@@ -19,152 +19,131 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
-""" fetches the actual ssh-keys from devices and inserts them into the database """
+""" fetches the various ssh-keys from devices and inserts them into the database """
 
-import getopt
-import mysql_tools
-import logging_tools
-import msock
-import sys
 import os
-import os.path
-import commands
-import array
-import tempfile
+import sys
+
+os.environ.setdefault("DJANGO_SETTINGS_MODULE", "initat.cluster.settings")
+
+from django.db.models import Q
+from initat.cluster.backbone.models import device, device_variable
+import argparse
+import base64
+import ipvx_tools
+import logging_tools
+import net_tools
+import server_command
+
+# also used in generators.py
+
+SSH_TYPES = [("rsa1", 1024), ("dsa", 1024), ("rsa", 1024), ("ecdsa", 521)]
 
 def main():
+    my_parser = argparse.ArgumentParser()
+    my_parser.add_argument("--ip", type=str, default="", help="IP-address of device [%(default)s]")
+    my_parser.add_argument("--port", type=int, default=2001, help="port to connect to [%(default)s]")
+    my_parser.add_argument("--ssh-dir", type=str, default="/etc/ssh", help="directoy to scan [%(default)s]")
+    my_parser.add_argument("--key-prefix", type=str, default="ssh_host_", help="key prefix [%(default)s]")
+    my_parser.add_argument("--overwrite", default=False, action="store_true", help="overwrite existing keys [%(default)s]")
+    opts = my_parser.parse_args()
     try:
-        opts, args = getopt.getopt(sys.argv[1:], "ht:sx:", ["help"])
-    except getopt.GetoptError, bla:
-        print "Commandline error!", bla
+        t_ip = ipvx_tools.ipv4(opts.ip)
+    except:
+        print("cannot parse IP address '{}'".format(opts.ip))
+        sys.exit(1)
+    devices = device.objects.filter(Q(netdevice__net_ip__ip=t_ip))
+    if not len(devices):
+        print("no device with IP '{}' found".format(opts.ip))
         sys.exit(2)
-    tmp_dir = "/tmp/.fsk"
-    fetch_mode = "n"
-    pname = os.path.basename(sys.argv[0])
-    exclude_list = []
-    for opt, arg in opts:
-        if opt in ("-h", "--help"):
-            print "Usage: %s [OPTIONS]" % (pname)
-            print "where OPTIONS are:"
-            print " -h,--help        this help"
-            print " -t DIR           set tempdir to DIR, default is %s" % (tmp_dir)
-            print " -s               fetch server keys via scp, default is node_keys"
-            print " -x NODES         coma-separated list of nodes to be excluded"
-            sys.exit(0)
-        if opt == "-t":
-            tmp_dir = arg
-        if opt == "-s":
-            fetch_mode = "s"
-        if opt == "-x":
-            exclude_list = [x.strip() for x in arg.split(",")]
-    print "Using tempdir %s" % (tmp_dir)
-    if not os.path.isdir(tmp_dir):
-        os.mkdir(tmp_dir)
-    db_con = mysql_tools.dbcon_container()
-    dc = db_con.get_connection("cluster_full_access")
-    if fetch_mode == "n":
-        dc.execute("SELECT d.name, d.device_idx FROM device d INNER JOIN device_type dt INNER JOIN device_config dc INNER JOIN new_config nc INNER JOIN device_group dg LEFT JOIN device d2 ON d2.device_idx=dg.device WHERE " + \
-                   "d.device_group=dg.device_group_idx AND d.device_type=dt.device_type_idx AND dt.identifier='H' AND (d.device_idx=dc.device OR d2.device_idx=dc.device) AND dc.new_config=nc.new_config_idx AND nc.name='node' ORDER BY d.name")
-    else:
-        dc.execute("SELECT d.name, d.device_idx FROM device d INNER JOIN device_type dt INNER JOIN device_config dc INNER JOIN new_config nc INNER JOIN device_group dg LEFT JOIN device d2 ON d2.device_idx=dg.device WHERE " + \
-                   "d.device_group=dg.device_group_idx AND d.device_type=dt.device_type_idx AND dt.identifier='H' AND (d.device_idx=dc.device OR d2.device_idx=dc.device) AND dc.new_config=nc.new_config_idx AND nc.name='node' ORDER BY d.name")
-        all_nodes = [x["name"] for x in dc.fetchall()]
-        dc.execute("SELECT d.name, d.device_idx FROM device d, device_type dt WHERE d.device_type=dt.device_type_idx AND dt.identifier='H' %s ORDER BY d.name" % (all_nodes and " AND ".join(["d.name != '%s'" % (x) for x in all_nodes]) or ""))
-    all_res = dc.fetchall()
-    all_nodes = [x["name"] for x in all_res if x["name"] not in exclude_list]
-    node_lut = dict([(x["name"], x["device_idx"]) for x in all_res if x["name"] in all_nodes])
-    print "Found %s: %s" % (logging_tools.get_plural("node", len(all_nodes)),
-                            logging_tools.compress_list(all_nodes))
-    print "Pinging ... "
-    err, r_dict = msock.single_icmp_ping(all_nodes, 3, 4.0, 1)
-    if err:
-        print "Something went wrong while ping: %d, %s" % (err, msock.long_err(err))
-        sys.exit(-1)
-    print "  ... done"
-    key_types = ["rsa1", "rsa", "dsa"]
-    needed_files = ["ssh_host_%s_key" % (x) for x in key_types]
-    needed_files.extend(["%s.pub" % (x) for x in needed_files])
-    key_names = [x.replace(".", "_") for x in needed_files]
-    for node in all_nodes:
-        sql_str = "SELECT dv.* FROM device d LEFT JOIN device_variable dv ON dv.device=d.device_idx WHERE d.name='%s' AND (%s)" % (node,
-                                                                                                                                   " OR ".join(["dv.name='%s'" % (x) for x in key_names]))
-        dc.execute(sql_str)
-        found_keys = dict([(x["name"], type(x["val_blob"]) == type(array.array("b")) and x["val_blob"].tostring() or x["val_blob"]) for x in dc.fetchall()])
-        node_dir = "%s/%s" % (tmp_dir, node)
-        if not os.path.isdir(node_dir):
-            os.mkdir(node_dir)
-        recreate = False
-        if not r_dict.has_key(node):
-            if found_keys:
-                print "%s not in result_dict but keys present" % (node)
-            else:
-                print "%s not in result_dict, recreating keys..." % (node)
-                recreate = True
+    elif len(devices) > 1:
+        print("more than 1 device with IP '{}' found: {}".format(opts.ip, ", ".join([unicode(_dev) for _dev in devices])))
+        sys.exit(3)
+    _dev = devices[0]
+    print("contacting '{}' with IP '{}'".format(_dev, opts.ip))
+    _conn_str = "tcp://{}:{:d}".format(opts.ip, opts.port)
+    _srv_com = server_command.srv_command(command="get_dir_tree", start_dir=opts.ssh_dir)
+    _reply = net_tools.zmq_connection("fetch_ssh_keys").add_connection(_conn_str, _srv_com)
+    if _reply is None:
+        print("got no result")
+        sys.exit(4)
+    _raw_names = _reply.xpath(".//directory/file/@name")
+    _files = [_name.replace(".pub", "_pub") for _name in _raw_names if _name.startswith(opts.key_prefix)]
+    if not _files:
+        print("no found files starting with {} beneath {}".format(opts.key_prefix, opts.ssh_dir))
+        print("{} found: {}".format(logging_tools.get_plural("file", len(_raw_names)), ", ".join(sorted(_raw_names))))
+        sys.exit(5)
+    keys_found = {}
+    fn_dict = {}
+    for _key_type, _bit_size in SSH_TYPES:
+        if _key_type == "rsa1":
+            _key_name = "ssh_host_key"
         else:
-            if r_dict[node][0] == 0:
-                if found_keys:
-                    print "%s is unknown but keys present" % (node)
+            _key_name = "ssh_host_{}_key".format(_key_type)
+        fn_dict[_key_type] = _key_name
+        fn_dict[_key_name] = _key_type
+        if _key_name in _files and "{}_pub".format(_key_name) in _files:
+            keys_found[_key_type] = {"pub" : None, "priv" : None}
+        else:
+            print "ssh key_type {} not found".format(_key_type)
+    if not keys_found:
+        print("no ssh_keys of any type found")
+        sys.exit(6)
+    _srv_com = server_command.srv_command(command="get_file_content")
+    _bld = _srv_com.builder()
+    _files = _bld.files()
+    for _key_type in keys_found.iterkeys():
+        _key_name = fn_dict[_key_type]
+        _files.append(_bld.file(name=os.path.join(opts.ssh_dir, "{}".format(_key_name)), base64="1"))
+        _files.append(_bld.file(name=os.path.join(opts.ssh_dir, "{}.pub".format(_key_name))))
+    _srv_com["files"] = _files
+    _reply = net_tools.zmq_connection("fetch_ssh_keys").add_connection(_conn_str, _srv_com)
+    if _reply is None:
+        print "got no result"
+        sys.exit(7)
+    result_dict = {}
+    for entry in _reply.xpath(".//ns:files/ns:file[@error='0']"):
+        f_name = os.path.basename(entry.get("name"))
+        if f_name.endswith(".pub"):
+            _kind = "pub"
+            f_name = f_name[:-4]
+        else:
+            _kind = "priv"
+        content = base64.b64decode(entry.text) if int(entry.get("base64", "0")) else entry.text
+        _key_type = fn_dict[f_name]
+        result_dict.setdefault(_key_type, {"priv" : None, "pub" : None})[_kind] = content
+    complete_keys = [key for key, value in result_dict.iteritems() if value["priv"] and value["pub"]]
+    incomplete_keys = [key for key, value in result_dict.iteritems() if not value["priv"] or not value["pub"]]
+    if incomplete_keys:
+        print("*** found incomplete keys: {}".format(", ".join(incomplete_keys)))
+    if complete_keys:
+        print("found {}: {}".format(logging_tools.get_plural("complete key", len(complete_keys)), ", ".join(sorted(complete_keys))))
+        for _ck in complete_keys:
+            var_names = {
+                "priv" : fn_dict[_ck].replace("_host_key", "_host_rsa1_key"),
+                "pub" : "{}_pub".format(fn_dict[_ck].replace("_host_key", "_host_rsa1_key")),
+            }
+            for _kind in ["priv", "pub"]:
+                try:
+                    cur_var = device_variable.objects.get(Q(device=_dev) & Q(name=var_names[_kind]))
+                except device_variable.DoesNotExist:
+                    cur_var = device_variable(
+                        device=_dev,
+                        name=var_names[_kind],
+                        var_type="b",
+                        description="SSH key {}".format(var_names[_kind]),
+                        val_blob=base64.b64encode(result_dict[_key_type][_kind]),
+                    )
+                    cur_var.save()
+                    print "stored new dv for {}".format(var_names[_kind])
                 else:
-                    print "%s is unknown, recreate..." % (node)
-                    recreate = True
-            elif r_dict[node][2] == 0:
-                if found_keys:
-                    print "%s is down but keys present" % (node)
-                else:
-                    print "%s is down, recreate..." % (node)
-                    recreate = True
-            else:
-                if len([True for x in needed_files if os.path.isfile("%s/%s" % (node_dir, x))]) != len(needed_files):
-                    stat, out = commands.getstatusoutput("%scp root@%s:/etc/ssh/*key* %s" % (fetch_mode == "n" and "r" or "s", node, node_dir))
-                    if stat:
-                        print "  Something went wrong contacting %s: %s (%d)" % (node, out, stat)
-                        recreate = False
+                    if opts.overwrite:
+                        cur_var.val_blob = base64.b64encode(result_dict[_key_type][_kind])
+                        cur_var.save()
+                        print "changed dv for {}".format(var_names[_kind])
                     else:
-                        print "  copied keys from %s" % (node)
-                file_dict = dict([(x, file("%s/%s" % (node_dir, x), "r").read()) for x in needed_files if os.path.isfile("%s/%s" % (node_dir, x))])
-                if not found_keys:
-                    print "%s: Inserting found keys into database..." % (node)
-                    for nf in file_dict.keys():
-                        nk = nf.replace(".", "_")
-                        sql_str, sql_tuple = ("INSERT INTO device_variable SET device=%%s, name=%%s, var_type='b', description='SSH key %s', val_blob=%%s" % (nk), (node_lut[node],
-                                                                                                                                                                    nk,
-                                                                                                                                                                    file_dict[nf]))
-                        dc.execute(sql_str, sql_tuple)
-                else:
-                    keys_ok = True
-                    for file_name in needed_files:
-                        key_name = file_name.replace(".", "_")
-                        if file_dict.has_key(file_name) and found_keys.has_key(key_name):
-                            if file_dict[file_name] != found_keys[key_name]:
-                                keys_ok = False
-                        else:
-                            keys_ok = False
-                    if keys_ok:
-                        print "%s: Keys ok" % (node)
-                    else:
-                        print "*** %s: Keys not ok, strange ... " % (node)
-        if recreate:
-            for key_type in key_types:
-                privfn = "ssh_host_%s_key" % (key_type)
-                pubfn  = "ssh_host_%s_key_pub" % (key_type)
-                dc.execute("DELETE FROM device_variable dv WHERE dv.device=%d AND (%s)" % (node_lut[node],
-                                                                                                  " OR ".join(["dv.name='%s'" % (x) for x in [privfn, pubfn]])))
-                sshkn = tempfile.mktemp("sshgen")
-                sshpn = "%s.pub" % (sshkn)
-                os.system("ssh-keygen -t %s -q -b 1024 -f %s -N ''" % (key_type, sshkn))
-                found_keys[privfn] = file(sshkn, "r").read()
-                found_keys[pubfn]  = file(sshpn, "r").read()
-                os.unlink(sshkn)
-                os.unlink(sshpn)
-            print "%s: Inserting new keys into database..." % (node)
-            for nk in found_keys.keys():
-                sql_str, sql_tuple = ("INSERT INTO device_variable SET device=%%s, name=%%s, var_type='b', description='SSH key %s', val_blob=%%s" % (nk), (node_lut[node],
-                                                                                                                                                            nk,
-                                                                                                                                                            found_keys[nk]))
-                dc.execute(sql_str, sql_tuple)
-    dc.release()
-    del db_con
-            
+                        print("dv {} already present".format(var_names[_kind]))
 
 if __name__ == "__main__":
     main()
+

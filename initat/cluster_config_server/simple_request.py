@@ -1,5 +1,3 @@
-#!/usr/bin/python-init -OtW default
-#
 # Copyright (C) 2001-2008,2012-2014 Andreas Lang-Nevyjel, init.at
 #
 # Send feedback to: <lang-nevyjel@init.at>
@@ -21,11 +19,11 @@
 #
 """ cluster-config-server, simple request structure """
 
+from django.db.models import Q
+from initat.cluster.backbone.models import config, config_str, device_variable
 import config_tools
 import logging_tools
 import server_command
-from django.db.models import Q
-from initat.cluster.backbone.models import config, config_str, device_variable
 
 # copy from md-config-server
 class var_cache(dict):

@@ -1,5 +1,3 @@
-#!/usr/bin/python-init -OtW default
-#
 # Copyright (C) 2001-2008,2012-2014 Andreas Lang-Nevyjel, init.at
 #
 # Send feedback to: <lang-nevyjel@init.at>
@@ -255,6 +253,7 @@ class config_control(object):
         db_mod_list = s_req._get_config_str_vars("INIT_MODS")
         return "ok %s" % (" ".join(db_mod_list))
     def _handle_get_autodetect_mods(self, s_req):
+        low_pri_mods = s_req._get_config_str_vars("LOW_PRIORITY_MODS")
         dev_kernel = self.device.new_kernel
         if dev_kernel:
             kernel_name = dev_kernel.name
@@ -306,9 +305,15 @@ class config_control(object):
                                     new_list.append(_entry)
                             pci_list = new_list
                     m_dict = dep_h.find_module_by_modalias([_entry[0] for _entry in pci_list])
+                    unique_mods = []
                     for _entry in pci_list:
                         self.log("{} ({}): {}".format(_entry[0], _entry[1], ", ".join(m_dict.get(_entry[0])) or "---"))
-                    unique_mods = sorted(list(set(sum(m_dict.values(), []))))
+                        for _add_mod in m_dict.get(_entry[0], []):
+                            if _add_mod not in unique_mods:
+                                unique_mods.append(_add_mod)
+                # put low-priority mods to the end of the list
+                unique_mods = [_mod for _mod in unique_mods if _mod not in low_pri_mods] + [_mod for _mod in unique_mods if _mod in low_pri_mods]
+                # unique_mods = sorted(list(set(sum(m_dict.values(), []))))
                 self.log("unique mods: {}: {}".format(
                     logging_tools.get_plural("module", len(unique_mods)),
                     ", ".join(unique_mods),

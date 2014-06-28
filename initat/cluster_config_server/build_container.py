@@ -1,5 +1,3 @@
-#!/usr/bin/python-init -OtW default
-#
 # Copyright (C) 2001-2008,2012-2014 Andreas Lang-Nevyjel, init.at
 #
 # Send feedback to: <lang-nevyjel@init.at>
@@ -21,11 +19,6 @@
 #
 """ cluster-config-server, tree creation """
 
-import os
-import sys
-
-os.environ.setdefault("DJANGO_SETTINGS_MODULE", "initat.cluster.settings")
-
 from django.db.models import Q
 from initat.cluster.backbone.models import wc_files, tree_node
 from initat.cluster_config_server.base_objects import new_config_object, dir_object, copy_object, \
@@ -35,7 +28,9 @@ from initat.cluster_config_server.generators import do_fstab, do_nets, do_routes
 from initat.cluster_config_server.partition_setup import partition_setup
 import base64
 import logging_tools
+import os
 import process_tools
+import sys
 import time
 
 class tree_node_g(object):

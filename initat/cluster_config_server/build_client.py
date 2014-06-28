@@ -1,5 +1,3 @@
-#!/usr/bin/python-init -OtW default
-#
 # Copyright (C) 2001-2008,2012-2014 Andreas Lang-Nevyjel, init.at
 #
 # Send feedback to: <lang-nevyjel@init.at>
@@ -21,17 +19,17 @@
 #
 """ cluster-config-server, build client """
 
-import logging_tools
-import os
-import process_tools
-import shutil
+
 
 from django.db.models import Q
-
 from initat.cluster.backbone.models import device
 from initat.cluster_config_server.build_container import build_container, generated_tree
 from initat.cluster_config_server.config import global_config
 from initat.cluster_config_server.partition_setup import partition_setup
+import logging_tools
+import os
+import process_tools
+import shutil
 
 class build_client(object):
     """ holds all the necessary data for a complex config request """
