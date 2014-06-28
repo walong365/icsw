@@ -21,6 +21,7 @@
 
 from lxml.builder import E # @UnresolvedImport
 import codecs
+import base64
 import logging_tools
 import os
 import process_tools
@@ -157,7 +158,10 @@ def get_file_content(srv_com, log_com, **kwargs):
                         file_entry.attrib["error_str"] = "error reading: {}".format(process_tools.get_except_info())
                     else:
                         try:
-                            file_entry.text = content
+                            if int(file_entry.get("base64", "0")):
+                                file_entry.text = base64.b64encode(content)
+                            else:
+                                file_entry.text = content
                         except:
                             file_entry.attrib["error"] = "1"
                             file_entry.attrib["error_str"] = "error setting content: {}".format(process_tools.get_except_info())

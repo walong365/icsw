@@ -1,5 +1,3 @@
-#!/usr/bin/python-init -Ot
-#
 # Copyright (C) 2001-2014 Andreas Lang-Nevyjel, init.at
 #
 # Send feedback to: <lang-nevyjel@init.at>
@@ -22,7 +20,6 @@
 
 from initat.host_monitoring import filesys_tools
 from initat.host_monitoring import limits, hm_classes
-import Queue
 import commands
 import logging_tools
 import net_tools
@@ -190,7 +187,7 @@ class config_subthread(threading_tools.thread_obj):
     def _interpret_target_sn(self, in_str):
         return 1, in_str
 
-class resync_config_command(object):#s.hmb_command):
+class resync_config_command(object): # s.hmb_command):
     def __init__(self, **args):
         hm_classes.hmb_command.__init__(self, "resync_config", **args)
         self.help_str = "call /root/bin/resync_config.sh (if present)"
@@ -404,7 +401,7 @@ class call_script_command(hm_classes.hm_command):
     def interpret(self, srv_com, cur_ns):
         return limits.nag_STATE_OK, srv_com["result"].attrib["reply"]
 
-class create_file(object):#hm_classes.hmb_command):
+class create_file(object): # hm_classes.hmb_command):
     def __init__(self, **args):
         hm_classes.hmb_command.__init__(self, "create_file", **args)
         self.help_str = "creates a (preferable small) file"
@@ -527,6 +524,3 @@ class check_dir_command(hm_classes.hm_command):
         f_stat = srv_com["result:dir_result"]
         return limits.nag_STATE_OK, "dir %s exists" % (srv_com["result:dir_stat"].attrib["directory"])
 
-if __name__ == "__main__":
-    print "This is a loadable module."
-    sys.exit(0)
