@@ -33,7 +33,7 @@ import base64
 import ipvx_tools
 import logging_tools
 import net_tools
-import server_command
+    import server_command
 
 # also used in generators.py
 
@@ -118,10 +118,10 @@ def main():
         print("*** found incomplete keys: {}".format(", ".join(incomplete_keys)))
     if complete_keys:
         print("found {}: {}".format(logging_tools.get_plural("complete key", len(complete_keys)), ", ".join(sorted(complete_keys))))
-        for _ck in complete_keys:
+        for _key_type in complete_keys:
             var_names = {
-                "priv" : fn_dict[_ck].replace("_host_key", "_host_rsa1_key"),
-                "pub" : "{}_pub".format(fn_dict[_ck].replace("_host_key", "_host_rsa1_key")),
+                "priv" : fn_dict[_key_type].replace("_host_key", "_host_rsa1_key"),
+                "pub" : "{}_pub".format(fn_dict[_key_type].replace("_host_key", "_host_rsa1_key")),
             }
             for _kind in ["priv", "pub"]:
                 try:
