@@ -130,7 +130,7 @@ def remove_dir(srv_com, log_com):
         else:
             dir_entry.attrib["error"] = "0"
     srv_com.set_result(
-        "removed {}{}".formta(
+        "removed {}{}".format(
             logging_tools.get_plural("directory", created),
             " ({:d} failed)".format(failed) if failed else "",
             ),
