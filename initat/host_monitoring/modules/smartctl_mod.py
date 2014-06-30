@@ -21,6 +21,7 @@
 from initat.host_monitoring import hm_classes
 from initat.host_monitoring import limits
 import commands
+import logging_tools
 import process_tools
 import server_command
 
@@ -39,13 +40,16 @@ class _general(hm_classes.hm_module):
         _stat, _lines = self.smcall("--scan")
         if not _stat:
             for line in [_entry for _entry in _lines if not _entry.strip().startswith("#")]:
-                line = line.strip().split("#")[0].strip()
-                _dev_name, _dev_opts = line.split(None, 1)
-                self.log("found device {} ({})".format(_dev_name, _dev_opts))
-                self.devices[_dev_name] = {
-                    "opts"   : _dev_opts,
-                    "device" : _dev_name,
-                }
+                try:
+                    line = line.strip().split("#")[0].strip()
+                    _dev_name, _dev_opts = line.split(None, 1)
+                    self.log("found device {} ({})".format(_dev_name, _dev_opts))
+                    self.devices[_dev_name] = {
+                        "opts"   : _dev_opts,
+                        "device" : _dev_name,
+                    }
+                except:
+                    self.log("error parsing line '{}': {}".format(line, process_tools.get_except_info()), logging_tools.LOG_LEVEL_ERROR)
     def smcall(self, args):
         cmd_line = "{} {}".format(self.smartctl_bin, args)
         c_stat, c_out = commands.getstatusoutput(cmd_line)

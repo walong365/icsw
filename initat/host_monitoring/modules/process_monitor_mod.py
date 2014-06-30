@@ -203,26 +203,23 @@ class procstat_command(hm_classes.hm_command):
                 name_list.append("crond")
         else:
             name_list = []
-        p_dict = process_tools.get_proc_list_new(proc_name_list=name_list)
-        # e_time = time.time()
-        # print e_time - s_time
-        # pprint.pprint(p_dict)
+        _p_dict = {}
+        for key, value in process_tools.get_proc_list_new(proc_name_list=name_list).iteritems():
+            try:
+                if value.is_running():
+                    _p_dict[key] = value.as_dict(
+                        attrs=["pid", "ppid", "uids", "gids", "name", "exe", "cmdline", "status", "ppid", "cpu_affinity"]
+                    )
+            except psutil.NoSuchProcess:
+                pass
         if cur_ns.arguments:
             # try to be smart about cron / crond
-            t_dict = {key : value for key, value in p_dict.iteritems() if value.name() in cur_ns.arguments}
+            t_dict = {key : value for key, value in _p_dict.iteritems() if value["name"] in cur_ns.arguments}
             if not t_dict and cur_ns.arguments[0] == "cron":
-                t_dict = {key : value for key, value in p_dict.iteritems() if value.name() in ["crond"]}
-            p_dict = t_dict
-        # s_time = time.time()
-        # _b = srv_com.builder()
-        # print _b
-        srv_com["process_tree"] = base64.b64encode(bz2.compress(json.dumps(
-            {key : value.as_dict(
-                attrs=["pid", "ppid", "uids", "gids", "name", "exe", "cmdline", "status", "ppid", "cpu_affinity"]
-            ) for key, value in p_dict.iteritems() if value.is_running()})))
-        # format 1: base64 encoded compressed dump of p_dict
+                t_dict = {key : value for key, value in _p_dict.iteritems() if value["name"] in ["crond"]}
+            _p_dict = t_dict
+        srv_com["process_tree"] = base64.b64encode(bz2.compress(json.dumps(_p_dict)))
         srv_com["process_tree"].attrib["format"] = "2"
-        del p_dict
         # print len(srv_com["process_tree"].text)
         # e_time = time.time()
         # print e_time - s_time
