@@ -1099,12 +1099,13 @@ class angular_modal_mixin
                 text : "form validation problem"
                 type : "warning"
 
-# codemirror ui
-angular.module("ui.codemirror", []).constant("uiCodemirrorConfig", {}).directive("uiCodemirror", [
+# codemirror ui, based on version 0.1.0, not 100% OK
+angular.module("ui.codemirrornew", []).constant("uiCodemirrorConfig", {}).directive("uiCodemirror", [
     "uiCodemirrorConfig", "$timeout", (uiCodemirrorConfig, $timeout) ->
         return {
             restrict: "EA"
             require: "?ngModel"
+            priority : 1
             compile: (tElement) ->
                 return (scope, iElement, iAttrs, ngModel) ->
                     value = scope.$eval(iAttrs.ngModel)
@@ -1169,6 +1170,74 @@ angular.module("ui.codemirror", []).constant("uiCodemirrorConfig", {}).directive
                             scope.$apply()
                     )
         }
+])
+
+# codemirror ui, based on version 0.1.2, seems to work
+angular.module('ui.codemirror', []).constant('uiCodemirrorConfig', {}).directive('uiCodemirror', ["uiCodemirrorConfig", (uiCodemirrorConfig) ->
+    return {
+        restrict : "EA"
+        require  : "?ngModel"
+        priority : 1
+        compile : () ->
+            return postLink = (scope, iElement, iAttrs, ngModel) ->
+                value = iElement.text()
+                if iElement[0].tagName == 'TEXTAREA'
+                    codeMirror = window.CodeMirror.fromTextArea(iElement[0], { value: value })
+                else
+                    iElement.html("")
+                    codeMirror = new window.CodeMirror(
+                        (cm_el) ->
+                            iElement.replaceWith(cm_el)
+                        { value : value }
+                    )
+                options = uiCodemirrorConfig.codemirror || {}
+                opts = angular.extend(
+                    {},
+                    uiCodemirrorConfig.codemirror || {},
+                    scope.$eval(iAttrs.uiCodemirror),
+                    scope.$eval(iAttrs.uiCodemirrorOpts)
+                )
+                updateOptions = (newValues) ->
+                    for key of newValues
+                        if newValues.hasOwnProperty(key)
+                            codeMirror.setOption(key, newValues[key])
+                updateOptions(opts)
+                if iAttrs.uiCodemirror
+                    scope.$watch(iAttrs.uiCodemirror, updateOptions, true);
+                if ngModel
+                    ngModel.$formatters.push((value) ->
+                        if angular.isUndefined(value) || value is null
+                            return ''
+                        else if angular.isObject(value) || angular.isArray(value)
+                            throw new Error('ui-codemirror cannot use an object or an array as a model')
+                        else
+                            return value
+                    )
+                    ngModel.$render = () ->
+                        safeViewValue = ngModel.$viewValue || ''
+                        codeMirror.setValue(safeViewValue)
+                        codeMirror.refresh()
+                    codeMirror.on('change', (instance) ->
+                        newValue = instance.getValue()
+                        if newValue != ngModel.$viewValue or true
+                            ngModel.$setViewValue(newValue)
+                        if !scope.$$phase
+                            scope.$apply()
+                    )
+                if iAttrs.uiRefresh
+                    scope.$watch(iAttrs.uiRefresh, (newVal, oldVal) ->
+                        if newVal != oldVal
+                            codeMirror.refresh()
+                    )
+                scope.$on('CodeMirror', (event, callback) ->
+                    if angular.isFunction(callback)
+                        callback(codeMirror)
+                    else
+                        throw new Error('the CodeMirror event requires a callback function')
+                )
+                if angular.isFunction(opts.onLoad)
+                    opts.onLoad(codeMirror)
+    }
 ])
 
 reload_sidebar_tree = (pk_list) ->

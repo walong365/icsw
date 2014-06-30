@@ -22,6 +22,7 @@
 
 """ REST views """
 
+from django.conf import settings
 from django.contrib.contenttypes.models import ContentType
 from django.db.models import get_model, Q
 from initat.core.render import render_string
@@ -57,7 +58,14 @@ logger = logging.getLogger("cluster.rest")
 REST_LIST = []
 for key in dir(models):
     if key.endswith("_serializer") and key not in ["device_selection_serializer"]:
-        REST_LIST.append("_".join(key.split("_")[:-1]))
+        REST_LIST.append((models, "_".join(key.split("_")[:-1])))
+
+init_apps = [_app for _app in settings.INSTALLED_APPS if _app.startswith("initat.cluster")]
+if "initat.cluster.liebherr" in init_apps:
+    from initat.cluster.liebherr import models as liebherr_models
+    for key in dir(liebherr_models):
+        if key.endswith("_serializer") and key not in ["device_selection_serializer"]:
+            REST_LIST.append((liebherr_models, "_".join(key.split("_")[:-1])))
 
 # @api_view(('GET',))
 # def api_root(request, format=None):
@@ -620,9 +628,9 @@ class device_selection_list(APIView):
         ser = device_selection_serializer([device_selection(cur_sel) for cur_sel in request.session.get("sel_list", [])], many=True)
         return Response(ser.data)
 
-for obj_name in REST_LIST:
+for src_mod, obj_name in REST_LIST:
     ser_name = "%s_serializer" % (obj_name)
-    ser_class = getattr(models, ser_name)
+    ser_class = getattr(src_mod, ser_name)
     for mode in ["list", "detail"]:
         class_name = "%s_%s" % (obj_name, mode)
         globals()[class_name] = type(
