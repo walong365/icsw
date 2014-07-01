@@ -38,6 +38,7 @@ import inspect
 import os
 import random
 import string
+import smbpasswd
 
 __all__ = [
     "csw_permission", "csw_permission_serializer",
@@ -754,6 +755,8 @@ def user_pre_save(sender, **kwargs):
             # known hash, pass
             pass
         else:
+            cur_inst.lm_password = smbpasswd.lmhash(passwd)
+            cur_inst.nt_password = smbpasswd.nthash(passwd)
             pw_gen_1 = settings.PASSWORD_HASH_FUNCTION
             if pw_gen_1 == "CRYPT":
                 salt = "".join(random.choice(string.ascii_uppercase + string.digits) for _x in xrange(4))
