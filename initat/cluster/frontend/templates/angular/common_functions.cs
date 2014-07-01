@@ -1215,8 +1215,13 @@ angular.module('ui.codemirror', []).constant('uiCodemirrorConfig', {}).directive
                     )
                     ngModel.$render = () ->
                         safeViewValue = ngModel.$viewValue || ''
+                        cur_cursor = codeMirror.doc.getCursor()
+                        # not needed ?
+                        cur_cinfo = codeMirror.getScrollInfo()
+                        #console.log cur_cursor, cur_cinfo
                         codeMirror.setValue(safeViewValue)
                         codeMirror.refresh()
+                        codeMirror.doc.setCursor(cur_cursor)
                     codeMirror.on('change', (instance) ->
                         newValue = instance.getValue()
                         if newValue != ngModel.$viewValue or true

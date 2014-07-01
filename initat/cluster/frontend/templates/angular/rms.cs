@@ -71,7 +71,7 @@ iostruct = """
     </h4>
     <div ng-show="io_struct.valid"> 
         <tt>
-            <textarea ui-codemirror="editorOptions" ng-model="io_struct.text" ui-refresh="io_struct.refresh">
+            <textarea ui-codemirror="editorOptions" ng-model="io_struct.text">
             </textarea>
         </tt>
     </div>
