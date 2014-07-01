@@ -72,7 +72,7 @@ class repo_type_rpm_yum(repo_type):
     CLEAR_CACHE = "yum -y clean all"
     REPO_CLASS = rpm_repository
     def search_package(self, s_string):
-        return "yum -q --showduplicates search {}".format(s_string)
+        return "yum -v --showduplicates search {}".format(s_string)
     def repo_scan_result(self, s_struct):
         self.log("got repo scan result")
         new_repos = []
@@ -136,28 +136,44 @@ class repo_type_rpm_yum(repo_type):
                 server_command.SRV_REPLY_STATE_OK)
         self.master_process._reload_searches()
     def search_result(self, s_struct):
-        cur_mode = 0
+        cur_mode, _ln = (0, None)
         found_packs = []
         for line in s_struct.read().split("\n"):
             if line.startswith("===="):
+                # header done
                 cur_mode = 1
+                _ln = 0
             elif not line.strip():
-                cur_mode = 2
+                # empty line, check for new package
+                cur_mode = 1
+                _ln = 0
             else:
                 if cur_mode == 1:
-                    p_name = line.split()[0].strip()
-                    if p_name and p_name != ":":
-                        if p_name[0].isdigit() and p_name.count(":"):
-                            p_name = p_name.split(":", 1)[1]
-                        found_packs.append(p_name)
+                    _ln += 1
+                    if _ln == 1:
+                        p_info = [line.strip().split()[0]]
+                    else:
+                        if line.lower().startswith("repo") and line.count(":"):
+                            p_info.append(line.strip().split(":")[1].strip())
+                            found_packs.append(p_info)
+                    #p_name = line.split()[0].strip()
+                    #if p_name and p_name != ":":
+                    #    if p_name[0].isdigit() and p_name.count(":"):
+                    #        p_name = p_name.split(":", 1)[1]
+                    #    found_packs.append(p_name)
         cur_search = s_struct.run_info["stuff"]
         cur_search.current_state = "done"
         _found = 0
         cur_search.results = _found
         cur_search.last_search = cluster_timezone.localize(datetime.datetime.now())
         cur_search.save(update_fields=["last_search", "current_state", "results"])
+        # delete previous search results
+        cur_search.package_search_result_set.all().delete()
         self.log("parsing results... ({:d} found)".format(len(found_packs)))
-        for p_name in found_packs:
+        repo_dict = {_repo.name : _repo for _repo in package_repo.objects.all()}
+        for p_name, repo_name in found_packs:
+            if repo_name == "installed":
+                continue
             try:
                 parts = p_name.split("-")
                 rel_arch = parts.pop(-1)
@@ -175,7 +191,7 @@ class repo_type_rpm_yum(repo_type):
                     version="{}-{}".format(version, release),
                     package_search=cur_search,
                     copied=False,
-                    package_repo=None)
+                    package_repo=repo_dict.get(repo_name, None))
                 new_sr.save()
         cur_search.results = _found
         cur_search.save(update_fields=["results"])
