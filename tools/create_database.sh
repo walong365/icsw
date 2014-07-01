@@ -1,6 +1,6 @@
 #!/bin/bash
 
-echo "deprecated, please user /opt/cluster/sbin/cluster_setup.py"
+echo "deprecated, please user /opt/cluster/sbin/setup_cluster.py"
 exit -1
 
 LIB_DIR="/opt/python-init/lib/python/site-packages"
