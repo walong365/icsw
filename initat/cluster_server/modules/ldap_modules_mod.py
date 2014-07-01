@@ -625,8 +625,8 @@ class sync_ldap_config(cs_base_class.server_com, ldap_mixin):
                             u_stuff.uid * 2)
                         u_stuff.attributes["sambaAcctFlags"] = "[U          ]"
                         u_stuff.attributes["sambaPwdLastSet"] = [u"{:d}".format(int(time.time()))]
-                        u_stuff.attributes["sambaNTPassword"] = u_stuff.nt_password
-                        u_stuff.attributes["sambaLMPassword"] = u_stuff.lm_password
+                        u_stuff.attributes["sambaNTPassword"] = [u_stuff.nt_password]
+                        u_stuff.attributes["sambaLMPassword"] = [u_stuff.lm_password]
                         u_stuff.attributes["sambaPwdCanChange"] = ["0"]
                         u_stuff.attributes["sambaPwdMustChange"] = ["0"]
                         u_stuff.attributes["sambaBadPasswordCount"] = ["0"]
