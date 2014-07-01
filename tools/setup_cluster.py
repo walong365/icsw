@@ -62,6 +62,13 @@ except:
 else:
     DB_PRESENT["mysql"] = True
 
+try:
+    import sqlite3 # @UnresolvedImport
+except:
+    DB_PRESENT["sqlite"] = False
+else:
+    DB_PRESENT["sqlite"] = True
+
 DB_FILE = "/etc/sysconfig/cluster/db.cf"
 LS_FILE = "/etc/sysconfig/cluster/local_settings.py"
 
@@ -223,34 +230,65 @@ class test_mysql(test_db):
         print("FLUSH PRIVILEGES;")
         print("")
 
+class test_sqlite(test_db):
+    def __init__(self, c_dict):
+        test_db.__init__(self, "sqlite", c_dict)
+    def get_connection(self):
+        try:
+            conn = sqlite3.connect(
+                database=self["database"],
+            )
+        except:
+            print("cannot connect: {}".format(process_tools.get_except_info()))
+            conn = None
+        return conn
+    def show_config(self):
+        print("")
+        print("you can create the database and the user with")
+        print("")
+        print("CREATE USER '{}'@'localhost' IDENTIFIED BY '{}';".format(self["user"], self["passwd"]))
+        print("CREATE DATABASE {};".format(self["database"]))
+        print("GRANT ALL ON {}.* TO '{}'@'localhost' IDENTIFIED BY '{}';".format(self["database"], self["user"], self["passwd"]))
+        print("FLUSH PRIVILEGES;")
+        print("")
+
 def enter_data(c_dict, db_choices):
     print("-" * 20)
     print("enter exit to exit installation")
     c_dict["_engine"] = _input("DB engine", c_dict["_engine"], choices=db_choices)
-    c_dict["host"] = _input("DB host", c_dict["host"])
-    c_dict["user"] = _input("DB user", c_dict["user"])
+    if c_dict["_engine"] == "sqlite":
+        c_dict["host"] = ""
+        c_dict["user"] = ""
+    else:
+        c_dict["host"] = _input("DB host", c_dict["host"])
+        c_dict["user"] = _input("DB user", c_dict["user"])
     c_dict["database"] = _input("DB name", c_dict["database"])
-    c_dict["passwd"] = _input("DB passwd", c_dict["passwd"])
-    def_port = {"mysql" : 3306, "psql" : 5432}[c_dict["_engine"]]
-    c_dict["port"] = _input("DB port", def_port)
+    if c_dict["_engine"] == "sqlite":
+        c_dict["passwd"] = ""
+        c_dict["port"] = 0
+    else:
+        def_port = {"mysql" : 3306, "psql" : 5432, "sqlite" : 0}[c_dict["_engine"]]
+        c_dict["passwd"] = _input("DB passwd", c_dict["passwd"])
+        c_dict["port"] = _input("DB port", def_port)
     c_dict["engine"] = {
-        "mysql" : "django.db.backends.mysql",
-        "psql"  : "django.db.backends.postgresql_psycopg2",
+        "mysql"  : "django.db.backends.mysql",
+        "psql"   : "django.db.backends.postgresql_psycopg2",
+        "sqlite" : "django.db.backends.sqlite3",
         }[c_dict["_engine"]]
 
 def create_db_cf(opts):
-    db_choices = [_key for _key in ["psql", "mysql"] if DB_PRESENT[_key]]
+    db_choices = [_key for _key in ["psql", "mysql", "sqlite"] if DB_PRESENT[_key]]
     c_dict = {
         "host"     : opts.host,
         "user"     : opts.user,
         "database" : opts.database,
         "passwd"   : opts.passwd,
-        "_engine"  : "psql" if "psql" in db_choices else db_choices[0],
+        "_engine"  : opts.engine, # "psql" if "psql" in db_choices else db_choices[0],
     }
     while True:
         # enter all relevant data
         enter_data(c_dict, db_choices)
-        test_obj = {"psql" : test_psql, "mysql" : test_mysql}[c_dict["_engine"]](c_dict)
+        test_obj = {"psql" : test_psql, "mysql" : test_mysql, "sqlite" : test_sqlite}[c_dict["_engine"]](c_dict)
         if test_obj.test_connection():
             print("connection successfull")
             break
@@ -384,8 +422,14 @@ def check_db_rights():
 def main():
     default_pw = get_pw()
     my_p = argparse.ArgumentParser()
+    db_choices = [_key for _key in ["psql", "mysql", "sqlite"] if DB_PRESENT[_key]]
+    if db_choices:
+        _def_engine = "psql" if "psql" in db_choices else db_choices[0]
+    else:
+        _def_engine = ""
     db_flags = my_p.add_argument_group("database options")
     db_flags.add_argument("--ignore-existing", default=False, action="store_true", help="Ignore existing db.cf file {} [%(default)s]".format(DB_FILE))
+    db_flags.add_argument("--engine", default=_def_engine, type=str, help="choose database engine [%(default)s]", choices=db_choices)
     db_flags.add_argument("--use-existing", default=False, action="store_true", help="use existing db.cf file {} [%(default)s]".format(DB_FILE))
     db_flags.add_argument("--user", type=str, default="cdbuser", help="set name of database user")
     db_flags.add_argument("--passwd", type=str, default=default_pw, help="set password for database user")
@@ -405,8 +449,9 @@ def main():
     auc_flags.add_argument("--disable-auto-update", default=False, action="store_true", help="disable automatic update [%(default)s]")
     opts = my_p.parse_args()
     DB_MAPPINGS = {
-        "psql"  : "python-modules-psycopg2",
-        "mysql" : "python-modules-mysql",
+        "psql"   : "python-modules-psycopg2",
+        "mysql"  : "python-modules-mysql",
+        "sqlite" : "python-init",
     }
     if not all(DB_PRESENT.values()):
         print("missing databases layers:")
