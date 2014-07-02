@@ -392,7 +392,12 @@ class sge_info(object):
                     client = self.__0mq_context.socket(zmq.DEALER)
                     client.setsockopt(zmq.IDENTITY, "sge_tools:{:d}:{:d}".format(os.getpid(), int(time.time())))
                     client.setsockopt(zmq.LINGER, 100)
-                    client.connect("tcp://{}:{:d}".format(srv_name, self.__server_port))
+                    _conn_str = "tcp://{}:{:d}".format(srv_name, self.__server_port)
+                    try:
+                        client.connect(_conn_str)
+                    except:
+                        self.log("cannot connect to {}: {}".format(_conn_str, process_tools.get_except_info()), logging_tools.LOG_LEVEL_ERROR)
+                        client = None
                     self.__0mq_socket = client
                 client = self.__0mq_socket
             else:
@@ -401,13 +406,16 @@ class sge_info(object):
                 client.setsockopt(zmq.IDENTITY, "sge_tools:{:d}:{:d}".format(os.getpid(), int(time.time())))
                 client.setsockopt(zmq.LINGER, 100)
                 client.connect("tcp://{}:{:d}".format(srv_name, self.__server_port))
-            srv_com = server_command.srv_command(command="get_config")
-            srv_com["needed_dicts"] = list(server_update)
-            # print srv_com.pretty_print()
-            my_poller = zmq.Poller()
-            my_poller.register(client, zmq.POLLIN)
-            client.send_unicode(unicode(srv_com))
-            _sc = True
+            if client is not None:
+                srv_com = server_command.srv_command(command="get_config")
+                srv_com["needed_dicts"] = list(server_update)
+                # print srv_com.pretty_print()
+                my_poller = zmq.Poller()
+                my_poller.register(client, zmq.POLLIN)
+                client.send_unicode(unicode(srv_com))
+                _sc = True
+            else:
+                _sc = False
         # server contacted, make direct calls
         if not self.__never_direct:
             if self.__verbose:
