@@ -176,7 +176,7 @@ device_log_row_template = """
         <th>
             <form class="form-inline">
                 Number of log lines: {{ dev.num_logs }}, show
-                <select ng-model="num_show" class="form-control input-sm" ng-options="value as value for value in [5, 10, 20]">
+                <select ng-model="num_show" class="form-control input-sm" ng-options="value as value for value in [5, 20, 50, 100]">
                 </select>
             </form>
         </th>
