@@ -1272,6 +1272,7 @@ root.angular_add_simple_list_controller = angular_add_simple_list_controller
 root.angular_add_mixin_list_controller = angular_add_mixin_list_controller
 root.build_lut = build_lut
 root.simple_modal_template = simple_modal_template
+root.simple_modal_ctrl = simple_modal_ctrl
 root.simple_modal = simple_modal
 root.reload_sidebar_tree = reload_sidebar_tree
 root.set_index_visibility = set_index_visibility

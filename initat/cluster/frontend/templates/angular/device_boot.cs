@@ -90,7 +90,8 @@ device_boot_template = """
 </table>
 <form class="form-inline">
     <div class="btn-group">
-        <input type="button" ng-class="show_mbl && 'btn btn-sm btn-success' || 'btn btn-sm'" value="macbootlog" ng-click="toggle_show_mbl()"></input>
+        <input type="button" ng-class="show_mbl && 'btn btn-sm btn-success' || 'btn btn-sm'" value="macbootlog" ng-click="toggle_show_mbl()">
+        </input>
     </div>
 </form>
 <div ng-show="show_mbl">
