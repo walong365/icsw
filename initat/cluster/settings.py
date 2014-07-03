@@ -458,7 +458,17 @@ INSTALLED_APPS = tuple(INSTALLED_APPS)
 
 AUTO_CREATE_NEW_DOMAINS = True
 
-HANDBOOK_PRESENT = os.path.exists("/opt/cluster/share/doc/handbook/main.html")
+HANDBOOK_DIR = "/opt/cluster/share/doc/handbook"
+
+HANDBOOK_PDF_PRESENT = os.path.exists(os.path.join(HANDBOOK_DIR, "main.html"))
+
+HANDBOOK_CHUNKS = {}
+if os.path.isdir(os.path.join(HANDBOOK_DIR, "chunks")):
+    for _path, _dirs, _files in os.walk(os.path.join(HANDBOOK_DIR, "chunks")):
+        for _add in [_entry for _entry in _files if _entry.endswith(".xhtml")]:
+            HANDBOOK_CHUNKS[_add.split(".")[0]] = os.path.join(_path, _add)
+
+HANDBOOK_CHUNKS_PRESENT = True if len(HANDBOOK_CHUNKS) else False
 
 PASSWORD_HASH_FUNCTION = "SHA1"
 
