@@ -103,8 +103,8 @@
     <ul class="nav navbar-nav navbar-right">
         <li>
             <p class="navbar-text">
-                <button type="button" class="btn btn-success btn-xs" title="show cluster information" ng-click="redirect_to_info()">
-                    <span class="glyphicon glyphicon-info-sign" style="font-size:12px;"></span>
+                <button type="button" class="btn btn-danger btn-xs" title="cluster server information" ng-click="redirect_to_info()">
+                    <span class="glyphicon glyphicon-tasks" style="font-size:12px;"></span>
                 </button>
                 &nbsp;
                 <button ng-show="HANDBOOK_PDF_PRESENT" type="button" class="btn btn-primary btn-xs" title="show cluster handbook as PDF" ng-click="redirect_to_handbook()">
@@ -112,7 +112,7 @@
                 </button>
                 &nbsp;
                 {% verbatim %}
-                <button ng-show="HANDBOOK_CHUNKS_PRESENT" type="button" class="btn btn-primary btn-xs" title="show {{ HANDBOOK_PAGE }}" ng-click="show_handbook_page()">
+                <button ng-show="HANDBOOK_CHUNKS_PRESENT" type="button" class="btn btn-success btn-xs" title="show {{ HANDBOOK_PAGE }}" ng-click="show_handbook_page()">
                     <span class="glyphicon glyphicon-question-sign" style="font-size:12px;"></span>
                 </button>
                 {% endverbatim %}
@@ -225,7 +225,7 @@ menu_controller = menu_module.controller("menu_base", ["$scope", "$timeout", "$w
             window.location = "/cluster/doc/main.pdf"
             return false
         $scope.show_handbook_page = () ->
-            window.open("{% url 'dyndoc:doc_page' 'x' %}".slice(0, -1) + $scope.HANDBOOK_PAGE, '_blank')
+            window.open("{% url 'dyndoc:doc_page' 'x' %}".slice(0, -1) + $scope.HANDBOOK_PAGE, "cluster documenation", "height=400,width=400,menubar=no,status=no,location=no,titlebar=no")
             return false
         $scope.redirect_to_bgj_info = () ->
             if $scope.check_perm('background_job.show_background')

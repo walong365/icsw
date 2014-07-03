@@ -207,5 +207,6 @@ class get_domain_name_tree(permission_required_mixin, View):
     def get(self, request):
         return render_me(request, "domain_name_tree.html", {
             "domain_name_tree_form" : domain_tree_node_form(),
+            "doc_page"              : "domain_name_tree",
             })()
 
