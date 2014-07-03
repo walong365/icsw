@@ -10,7 +10,7 @@ DT_FORM = "dd, D. MMM YYYY HH:mm:ss"
 
 device_boot_template = """
 <h2>
-    Boot config for {{ devices.length }} devices<span ng-show="num_selected">, {{ num_selected }} selected</span>{{ get_global_bootserver_info() }}
+    <span class="label label-danger" ng-show="conn_problems" title="number of connection problems">{{ conn_problems }}</span> Boot config for {{ devices.length }} devices<span ng-show="num_selected">, {{ num_selected }} selected</span>{{ get_global_bootserver_info() }}
 </h2>
 <form class="form-inline">
     <div class="btn-group">
@@ -331,6 +331,8 @@ device_boot_module.controller("boot_ctrl", ["$scope", "$compile", "$filter", "$t
         $scope.mbl_timeout = undefined
         # at least one boot_info received
         $scope.info_ok = false
+        # number of unsuccessfull connections
+        $scope.conn_problems = 0
         $scope.new_devsel = (_dev_sel, _devg_sel) ->
             if $scope.update_info_timeout
                 $timeout.cancel($scope.update_info_timeout)
@@ -438,9 +440,8 @@ device_boot_module.controller("boot_ctrl", ["$scope", "$compile", "$filter", "$t
                     data    : send_data
                     success : (xml) =>
                         $scope.update_info_timeout = $timeout($scope.update_info, 10000)
-                        parse_xml_response(xml)
-                        # hm, the way to go ?
-                        if true
+                        if parse_xml_response(xml, 40, false)
+                            $scope.conn_problems = 0
                             $scope.info_ok = true
                             _resp = angular.fromJson($(xml).find("value[name='response']").text())
                             for entry in _resp
@@ -492,6 +493,11 @@ device_boot_module.controller("boot_ctrl", ["$scope", "$compile", "$filter", "$t
                             else
                                 $scope.cd_reachable = {}
                             $scope.$digest()
+                        else
+                            $scope.$apply(
+                                $scope.conn_problems++
+                            )
+                            #console.log $scope.conn_problems, xml
                 if $scope.bo_enabled["l"]
                     send_data = {
                         "sel_list" : angular.toJson(([dev.idx, dev.latest_log] for dev in $scope.devices))

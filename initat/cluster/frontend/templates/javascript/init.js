@@ -79,7 +79,7 @@ call_ajax = (in_dict) ->
     cur_xhr = $.ajax(in_dict)
     return cur_xhr
 
-parse_xml_response = (xml, min_level) ->
+parse_xml_response = (xml, min_level, show_error=true) ->
     success = false
     if $(xml).find("response header").length
         ret_state = $(xml).find("response header").attr("code")
@@ -93,7 +93,8 @@ parse_xml_response = (xml, min_level) ->
             else if cur_level == 30
                 noty({"text" : cur_mes.text(), "type" : "warning"})
             else
-                noty({"text" : cur_mes.text(), "type" : "error", "timeout" : false})
+                if show_error
+                    noty({"text" : cur_mes.text(), "type" : "error", "timeout" : false})
     else
         if xml != null
             noty({"text" : "error parsing response", "type" : "error", "timeout" : false})
