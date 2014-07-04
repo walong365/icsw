@@ -231,7 +231,9 @@ TEMPLATE_DIRS = (
     # Always use forward slashes, even on Windows.
     # Don't forget to use absolute paths, not relative paths.
     os.path.join(MEDIA_ROOT, "angular"),
+    "/opt/cluster/share/doc/handbook/chunks",
 )
+
 if "INITIAL_MIGRATION_RUN" in os.environ:
     INSTALLED_APPS = (
         # "django.contrib.auth",
