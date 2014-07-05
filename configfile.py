@@ -100,30 +100,35 @@ class _conf_var(object):
     argparse_type = None
     def __init__(self, def_val, **kwargs):
         self.__default_val = def_val
-        self.__info = kwargs.pop("info", "")
+        self.__info = kwargs.get("info", "")
         if not self.check_type(def_val):
             raise TypeError("Type of Default-value differs from given type ({}, {})".format(
                 type(def_val),
                 str(self.short_type)))
-        self.source = kwargs.pop("source", "default")
-        self.fixed = kwargs.pop("fixed", False)
-        self.is_global = kwargs.pop("is_global", True)
+        self.source = kwargs.get("source", "default")
+        self.fixed = kwargs.get("fixed", False)
+        self.is_global = kwargs.get("is_global", True)
         self.value = self.__default_val
         # for commandline options
-        self._help_string = kwargs.pop("help_string", None)
-        self._autoconf_exclude = kwargs.pop("autoconf_exclude", False)
-        self._short_opts = kwargs.pop("short_options", None)
-        self._choices = kwargs.pop("choices", None)
+        self._help_string = kwargs.get("help_string", None)
+        self._autoconf_exclude = kwargs.get("autoconf_exclude", False)
+        self._short_opts = kwargs.get("short_options", None)
+        self._choices = kwargs.get("choices", None)
         self._nargs = kwargs.get("nargs", None)
         self._database_set = "database" in kwargs
-        self._database = kwargs.pop("database", False)
-        self._writeback = kwargs.pop("writeback", True)
-        self._only_commandline = kwargs.pop("only_commandline", False)
-        if kwargs:
+        self._database = kwargs.get("database", False)
+        self._writeback = kwargs.get("writeback", True)
+        self._only_commandline = kwargs.get("only_commandline", False)
+        kw_keys = set(kwargs) - set([
+            "writeback", "only_commandline", "info", "source", "fixed", "action",
+            "help_string", "autoconf_exclude", "short_options", "choices", "nargs", "database",
+            "writeback"
+        ])
+        if kw_keys:
             print "*** {} for _conf_var('{}') left: {} ***".format(
-                logging_tools.get_plural("keyword argument", len(kwargs)),
+                logging_tools.get_plural("keyword argument", len(kw_keys)),
                 str(self.value),
-                ", ".join(sorted(kwargs)),
+                ", ".join(sorted(kw_keys)),
             )
     def is_commandline_option(self):
         return True if self._help_string else False
@@ -570,7 +575,7 @@ class configuration(object):
                 elif _var._autoconf_exclude:
                     pass
                 elif _var.short_type in ["i", "b", "s"]:
-                    help_string = re.sub("\[%\(default\)(s|i)\]", "", _var._help_string or "")
+                    help_string = re.sub("\[%\(default\)(s|d|i)\]", "", _var._help_string or "").strip()
                     # help_string = (_var._help_string or "") % ({"default" : _var.value})
                     ac.append(
                         E.option(
