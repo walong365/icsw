@@ -20,6 +20,8 @@
 """ module for handling config files """
 
 from collections import OrderedDict
+from lxml import etree # @UnresolvedImport @UnusedImport
+from lxml.builder import E # @UnresolvedImport @UnusedImport
 from multiprocessing import current_process, util, forking, managers
 from multiprocessing.managers import BaseManager, BaseProxy, Server
 import argparse
@@ -32,10 +34,6 @@ import pwd
 import re
 import sys
 import threading
-# hack for python3
-if sys.version_info[0] == 3:
-    unicode = str
-    long = int
 
 class config_proxy(BaseProxy):
     def add_config_entries(self, ce_list, **kwargs):
@@ -77,6 +75,8 @@ class config_proxy(BaseProxy):
         return self._callmethod("parse_file", (args), kwargs)
     def write_file(self, *args):
         return self._callmethod("write_file", (args))
+    def show_autoconfig(self, *args):
+        return self._callmethod("show_autoconfig", (args))
     def get_config_info(self):
         return self._callmethod("get_config_info")
     def single_process_mode(self):
@@ -100,24 +100,31 @@ class _conf_var(object):
     argparse_type = None
     def __init__(self, def_val, **kwargs):
         self.__default_val = def_val
-        self.__info = kwargs.get("info", "")
+        self.__info = kwargs.pop("info", "")
         if not self.check_type(def_val):
             raise TypeError("Type of Default-value differs from given type ({}, {})".format(
                 type(def_val),
                 str(self.short_type)))
-        self.source = kwargs.get("source", "default")
-        self.fixed = kwargs.get("fixed", False)
-        self.is_global = kwargs.get("is_global", True)
+        self.source = kwargs.pop("source", "default")
+        self.fixed = kwargs.pop("fixed", False)
+        self.is_global = kwargs.pop("is_global", True)
         self.value = self.__default_val
         # for commandline options
-        self._help_string = kwargs.get("help_string", None)
-        self._short_opts = kwargs.get("short_options", None)
-        self._choices = kwargs.get("choices", None)
+        self._help_string = kwargs.pop("help_string", None)
+        self._autoconf_exclude = kwargs.pop("autoconf_exclude", False)
+        self._short_opts = kwargs.pop("short_options", None)
+        self._choices = kwargs.pop("choices", None)
         self._nargs = kwargs.get("nargs", None)
         self._database_set = "database" in kwargs
-        self._database = kwargs.get("database", False)
-        self._writeback = kwargs.get("writeback", True)
-        self._only_commandline = kwargs.get("only_commandline", False)
+        self._database = kwargs.pop("database", False)
+        self._writeback = kwargs.pop("writeback", True)
+        self._only_commandline = kwargs.pop("only_commandline", False)
+        if kwargs:
+            print "*** {} for _conf_var('{}') left: {} ***".format(
+                logging_tools.get_plural("keyword argument", len(kwargs)),
+                str(self.value),
+                ", ".join(sorted(kwargs)),
+            )
     def is_commandline_option(self):
         return True if self._help_string else False
     def get_commandline_info(self):
@@ -211,6 +218,7 @@ class _conf_var(object):
 class int_c_var(_conf_var):
     descr = "Integer"
     short_type = "i"
+    long_type = "int"
     argparse_type = int
     def __init__(self, def_val, **kwargs):
         _conf_var.__init__(self, def_val, **kwargs)
@@ -222,6 +230,7 @@ class int_c_var(_conf_var):
 class float_c_var(_conf_var):
     descr = "Float"
     short_type = "f"
+    long_type = "float"
     argparse_type = float
     def __init__(self, def_val, **kwargs):
         _conf_var.__init__(self, def_val, **kwargs)
@@ -233,6 +242,7 @@ class float_c_var(_conf_var):
 class str_c_var(_conf_var):
     descr = "String"
     short_type = "s"
+    long_type = "str"
     argparse_type = str
     def __init__(self, def_val, **kwargs):
         _conf_var.__init__(self, def_val, **kwargs)
@@ -244,6 +254,7 @@ class str_c_var(_conf_var):
 class blob_c_var(_conf_var):
     descr = "Blob"
     short_type = "B"
+    long_type = "blob"
     def __init__(self, def_val, **kwargs):
         _conf_var.__init__(self, def_val, **kwargs)
     def str_to_val(self, val):
@@ -256,6 +267,7 @@ class blob_c_var(_conf_var):
 class bool_c_var(_conf_var):
     descr = "Bool"
     short_type = "b"
+    long_type = "bool"
     def __init__(self, def_val, **kwargs):
         _conf_var.__init__(self, def_val, **kwargs)
     def str_to_val(self, val):
@@ -274,6 +286,7 @@ class bool_c_var(_conf_var):
 class array_c_var(_conf_var):
     descr = "Array"
     short_type = "a"
+    long_type = "array"
     argparse_type = str
     def __init__(self, def_val, **kwargs):
         _conf_var.__init__(self, def_val, **kwargs)
@@ -283,6 +296,7 @@ class array_c_var(_conf_var):
 class dict_c_var(_conf_var):
     descr = "Dict"
     short_type = "d"
+    long_type = "dict"
     def __init__(self, def_val, **kwargs):
         _conf_var.__init__(self, def_val, **kwargs)
     def check_type(self, val):
@@ -291,6 +305,7 @@ class dict_c_var(_conf_var):
 class datetime_c_var(_conf_var):
     descr = "Datetime"
     short_type = "ddt"
+    long_type = "datetime"
     def __init__(self, def_val, **kwargs):
         _conf_var.__init__(self, def_val, **kwargs)
     def check_type(self, val):
@@ -299,6 +314,7 @@ class datetime_c_var(_conf_var):
 class timedelta_c_var(_conf_var):
     descr = "Timedelta"
     short_type = "dtd"
+    long_time = "timedelta"
     def __init__(self, def_val, **kwargs):
         _conf_var.__init__(self, def_val, **kwargs)
     def check_type(self, val):
@@ -381,28 +397,34 @@ class configuration(object):
             for key in gk:
                 if self.get_type(key) in ["a", "d"]:
                     pv = self.pretty_print(key)
-                    f_obj.append([
-                        logging_tools.form_entry(key),
-                        logging_tools.form_entry("list with {}:".format(logging_tools.get_plural("entry", len(pv)))),
-                        logging_tools.form_entry(self.get_type(key)),
-                        logging_tools.form_entry(self.get_source(key)),
-                        ])
+                    f_obj.append(
+                        [
+                            logging_tools.form_entry(key),
+                            logging_tools.form_entry("list with {}:".format(logging_tools.get_plural("entry", len(pv)))),
+                            logging_tools.form_entry(self.get_type(key)),
+                            logging_tools.form_entry(self.get_source(key)),
+                        ]
+                    )
                     for idx, entry in enumerate(pv):
-                        f_obj.append([
-                            logging_tools.form_entry(""),
-                            logging_tools.form_entry(""),
-                            logging_tools.form_entry(entry),
-                            logging_tools.form_entry(str(idx)),
-                            logging_tools.form_entry("---"),
-                            ])
+                        f_obj.append(
+                            [
+                                logging_tools.form_entry(""),
+                                logging_tools.form_entry(""),
+                                logging_tools.form_entry(entry),
+                                logging_tools.form_entry(str(idx)),
+                                logging_tools.form_entry("---"),
+                            ]
+                        )
                 else:
-                    f_obj.append([
-                        logging_tools.form_entry(key, header="key"),
-                        logging_tools.form_entry(self.is_global(key) and "global" or "local", post_str=" : ", header="global"),
-                        logging_tools.form_entry(self.pretty_print(key), header="value"),
-                        logging_tools.form_entry(self.get_type(key), pre_str=", (", post_str=" from ", header="type"),
-                        logging_tools.form_entry(self.get_source(key), post_str=")", header="source"),
-                        ])
+                    f_obj.append(
+                        [
+                            logging_tools.form_entry(key, header="key"),
+                            logging_tools.form_entry(self.is_global(key) and "global" or "local", post_str=" : ", header="global"),
+                            logging_tools.form_entry(self.pretty_print(key), header="value"),
+                            logging_tools.form_entry(self.get_type(key), pre_str=", (", post_str=" from ", header="type"),
+                            logging_tools.form_entry(self.get_source(key), post_str=")", header="source"),
+                        ]
+                    )
             ret_str = unicode(f_obj).split("\n")
         else:
             ret_str = []
@@ -536,6 +558,30 @@ class configuration(object):
                 self.log("Error while writing file {}: {}".format(file_name, process_tools.get_except_info()))
             else:
                 pass
+    def show_autoconfig(self, *args):
+        # returns True if the main process should exit
+        if self.__show_autoconfig:
+            all_keys = self.__c_dict.keys()
+            ac = E.autoconfig(name=self.__name)
+            for key in sorted(all_keys):
+                _var = self.__c_dict[key]
+                if _var._only_commandline:
+                    pass
+                elif _var._autoconf_exclude:
+                    pass
+                elif _var.short_type in ["i", "b", "s"]:
+                    help_string = re.sub("\[%\(default\)(s|i)\]", "", _var._help_string or "")
+                    # help_string = (_var._help_string or "") % ({"default" : _var.value})
+                    ac.append(
+                        E.option(
+                            name=key,
+                            type=_var.long_type,
+                            info=help_string,
+                            default=str(self[key]),
+                        )
+                    )
+            print etree.tostring(ac, pretty_print=True)
+        return self.__show_autoconfig
     def _argparse_exit(self, status=0, message=None):
         if message:
             print(message)
@@ -554,6 +600,7 @@ class configuration(object):
         add_exit_after_writeback_option = kwargs.pop("add_exit_after_writeback_option", False)
         pos_arguments = kwargs.pop("positional_arguments", False)
         pos_arguments_optional = kwargs.pop("positional_arguments_optional", False)
+        add_auto_config_option = kwargs.pop("add_auto_config_option", False)
         partial = kwargs.pop("partial", False)
         self.exit_code = None
         my_parser = argparse.ArgumentParser(**kwargs)
@@ -572,6 +619,8 @@ class configuration(object):
                 my_parser.add_argument("--writeback", dest="writeback", default=False, action="store_true", help="write back changes to configfile [%(default)s]")
                 if add_exit_after_writeback_option:
                     my_parser.add_argument("--exit-after-writeback", dest="exit_after_writeback", default=False, action="store_true", help="exit after config file is written [%(default)s]")
+            if add_auto_config_option:
+                my_parser.add_argument("--show-autoconfig", dest="show_autoconfig", default=False, action="store_true", help="show autoconfig options [%(default)s]")
             if pos_arguments:
                 my_parser.add_argument("arguments", nargs="*" if pos_arguments_optional else "+", help="additional arguments")
             try:
@@ -593,6 +642,7 @@ class configuration(object):
                     self[key] = getattr(options, key)
                 self.positional_arguments = options.arguments if pos_arguments else []
                 self.__writeback_changes = options.writeback if add_writeback_option else False
+                self.__show_autoconfig = options.show_autoconfig
         else:
             options = argparse.Namespace()
         if proxy_call:
@@ -609,7 +659,6 @@ class my_server(Server):
             self.stop_event = threading.Event()
         current_process()._manager_server = self
         _run = True
-        import time
         try:
             while _run:
                 try:
@@ -669,6 +718,7 @@ config_manager.register("config", configuration, config_proxy, exposed=[
     "get_log", "handle_commandline", "keys", "get_type", "get", "get_source",
     "is_global", "database", "is_global", "set_global",
     "__getitem__", "__setitem__", "__contains__", "__delitem__",
+    "show_autoconfig",
     "write_file", "get_config_info", "name", "get_argument_stuff", "fixed"])
 
 cur_manager = config_manager()

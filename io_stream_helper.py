@@ -35,17 +35,21 @@ class io_stream(object):
     def __init__(self, sock_name="/tmp/py_log", **kwargs):
         # ignore protocoll
         self.__sock_name = sock_name
-        zmq_context = kwargs["zmq_context"]
+        zmq_context = kwargs.get("zmq_context", None)
         if zmq_context is None:
             zmq_context = zmq.Context()
         self.__zmq_sock = zmq_context.socket(zmq.PUSH)
         self.__zmq_sock.connect(zmq_socket_name(sock_name, check_ipc_prefix=True))
         self.__protocol = None
     def write(self, err_str):
-        pid, t_dict = (os.getpid(), {
-            "IOS_type"  : "error",
-            "error_str" : err_str,
-            "pid"       : os.getpid()})
+        pid, t_dict = (
+            os.getpid(),
+            {
+                "IOS_type"  : "error",
+                "error_str" : err_str,
+                "pid"       : os.getpid(),
+            }
+        )
         if os.path.isdir("/proc/{:d}".format(pid)):
             try:
                 stat_lines = [(entry.split() + ["", ""])[0 : 2] for entry in file("/proc/{:d}/status".format(pid), "r").read().split("\n")]
@@ -67,4 +71,3 @@ class io_stream(object):
         pass
     def __del__(self):
         pass
-

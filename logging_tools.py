@@ -39,10 +39,6 @@ import traceback
 if sys.platform in ["linux2", "linux3", "linux"]:
     import syslog
 
-if sys.version_info[0] == 3:
-    unicode = str
-    long = int
-
 try:
     import zmq
 except ImportError:
