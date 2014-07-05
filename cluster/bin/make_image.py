@@ -193,6 +193,9 @@ class server_process(threading_tools.process_pool):
         if not self.device and not global_config["FORCE_SERVER"]:
             self.log("not an image server", logging_tools.LOG_LEVEL_ERROR)
             self._int_error("not an image server")
+        elif not process_tools.find_file("xmllint"):
+            self.log("xmllint not found", logging_tools.LOG_LEVEL_ERROR)
+            self._int_error("xmllint not found")
         else:
             self.log("image server is '%s'" % (unicode(self.device) if self.device else "---"))
             self.__builder_names = []
@@ -202,7 +205,8 @@ class server_process(threading_tools.process_pool):
                 self.add_process(build_process(builder_name), start=True)
         connection.close()
         self.__build_lock = False
-        self.init_build()
+        if not self["exit_requested"]:
+            self.init_build()
     def log(self, what, lev=logging_tools.LOG_LEVEL_OK):
         if self.__log_template:
             while self.__log_cache:
@@ -524,6 +528,7 @@ def main():
         positional_arguments=False)
     global_config.write_file()
     if not all_imgs:
+        print("No imags found")
         sys.exit(1)
     ret_state = server_process().loop()
     sys.exit(ret_state)
