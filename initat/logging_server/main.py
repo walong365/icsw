@@ -629,20 +629,20 @@ def main():
         description="logging server, version is {}".format(version.VERSION_STRING),
         add_auto_config_option=True
     )
-    if global_config["KILL_RUNNING"]:
-        process_tools.kill_running_processes() # exclude=configfile.get_manager_pid())
-    # daemon has to be a local variable, otherwise system startup can be severly damaged
-    lockfile_name = global_config["LOCKFILE_NAME"]
-    # attention: global_config is not longer present after the TERM signal
-    process_tools.delete_lockfile(lockfile_name, None, 0)
-    try:
-        os.chmod("/var/lib/logging-server", stat.S_IRWXU | stat.S_IRWXG | stat.S_IRWXO)
-        os.chmod("/var/log/cluster/sockets", stat.S_IRWXU | stat.S_IRWXG | stat.S_IRWXO)
-    except:
-        pass
-    _ret_state = 0
-    global_config.write_file()
     if not global_config.show_autoconfig():
+        if global_config["KILL_RUNNING"]:
+            process_tools.kill_running_processes() # exclude=configfile.get_manager_pid())
+        # daemon has to be a local variable, otherwise system startup can be severly damaged
+        lockfile_name = global_config["LOCKFILE_NAME"]
+        # attention: global_config is not longer present after the TERM signal
+        process_tools.delete_lockfile(lockfile_name, None, 0)
+        try:
+            os.chmod("/var/lib/logging-server", stat.S_IRWXU | stat.S_IRWXG | stat.S_IRWXO)
+            os.chmod("/var/log/cluster/sockets", stat.S_IRWXU | stat.S_IRWXG | stat.S_IRWXO)
+        except:
+            pass
+        _ret_state = 0
+        global_config.write_file()
         process_tools.renice()
         process_tools.change_user_group(global_config["USER"], global_config["GROUP"])
         process_tools.create_lockfile(global_config["LOCKFILE_NAME"])
