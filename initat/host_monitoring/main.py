@@ -70,9 +70,9 @@ def main():
     global_config.add_config_entries([
         ("DEBUG"                  , configfile.bool_c_var(False, help_string="enable debug mode [%(default)s]", short_options="d", only_commandline=True)),
         ("ZMQ_DEBUG"              , configfile.bool_c_var(False, help_string="enable 0MQ debugging [%(default)s]", only_commandline=True)),
-        ("LOG_DESTINATION"        , configfile.str_c_var("uds:/var/lib/logging-server/py_log_zmq")),
-        ("LOG_NAME"               , configfile.str_c_var(prog_name)),
-        ("KILL_RUNNING"           , configfile.bool_c_var(True)),
+        ("LOG_DESTINATION"        , configfile.str_c_var("uds:/var/lib/logging-server/py_log_zmq", autoconf_exclude=True)),
+        ("LOG_NAME"               , configfile.str_c_var(prog_name, autoconf_exclude=True)),
+        ("KILL_RUNNING"           , configfile.bool_c_var(True, autoconf_exclude=True)),
         ("SHOW_COMMAND_INFO"      , configfile.bool_c_var(False, help_string="show command info", only_commandline=True)),
         ("BACKLOG_SIZE"           , configfile.int_c_var(5, help_string="backlog size for 0MQ sockets [%(default)d]")),
         ("VERBOSE"                , configfile.int_c_var(0, help_string="set verbose level [%(default)d]", short_options="v", only_commandline=True)),
@@ -81,10 +81,10 @@ def main():
         ("PID_NAME"               , configfile.str_c_var(
             os.path.join(
                 prog_name,
-                prog_name)))])
+                prog_name), autoconf_exclude=True))])
     if prog_name == "collserver":
         global_config.add_config_entries([
-            ("COM_PORT"   , configfile.int_c_var(2001, info="listening Port", help_string="port to communicate [%(default)i]", short_options="p")),
+            ("COM_PORT"   , configfile.int_c_var(2001, info="listening Port", help_string="port to communicate [%(default)d]", short_options="p", autoconf_exclude=True)),
             ("ENABLE_KSM" , configfile.bool_c_var(False, info="enable KSM", help_string="enable KSM [%(default)s]")),
             ("ENABLE_HUGE", configfile.bool_c_var(False, info="enable hugepages", help_string="enable hugepages [%(default)s]")),
             ("HUGEPAGES"  , configfile.int_c_var(50, info="percentage of memory to use for hugepages", help_string="hugepages percentage [%(default)d]")),
@@ -92,19 +92,19 @@ def main():
             ("AFFINITY"   , configfile.bool_c_var(False, info="enable process_affinity tools", help_string="enables pinning of processes to certain cores", action="store_true")),
             ("TRACK_IPMI" , configfile.bool_c_var(False, info="enable tracking of IPMI sensors", help_string="enable tracking of IPMI sensor data", action="store_true")),
             ("INOTIFY_IDLE_TIMEOUT"   , configfile.int_c_var(5, info="seconds to wait between two inotify() checks", help_string="loop timer for inotify_check [%(default)d]")),
-            ("RUN_ARGUS"              , configfile.bool_c_var(False, help_string="enable argus [%(default)c]")),
+            ("RUN_ARGUS"              , configfile.bool_c_var(False, help_string="enable argus [%(default)s]")),
             ("MACHVECTOR_POLL_COUNTER", configfile.int_c_var(30, help_string="machvector poll counter")),
         ])
     elif prog_name == "collclient":
         global_config.add_config_entries([
             ("IDENTITY_STRING", configfile.str_c_var("collclient", help_string="identity string", short_options="i")),
             ("TIMEOUT"        , configfile.int_c_var(10, help_string="set timeout [%(default)d", only_commandline=True)),
-            ("COM_PORT"       , configfile.int_c_var(2001, info="listening Port", help_string="port to communicate [%(default)i]", short_options="p")),
+            ("COM_PORT"       , configfile.int_c_var(2001, info="listening Port", help_string="port to communicate [%(default)d]", short_options="p")),
             ("HOST"           , configfile.str_c_var("localhost", help_string="host to connect to"))
         ])
     elif prog_name == "collrelay":
         global_config.add_config_entries([
-            ("COM_PORT" , configfile.int_c_var(2004, info="listening Port", help_string="port to communicate [%(default)i]", short_options="p")),
+            ("COM_PORT" , configfile.int_c_var(2004, info="listening Port", help_string="port to communicate [%(default)d]", short_options="p")),
             ("TIMEOUT"  , configfile.int_c_var(8, help_string="timeout for calls to distance machines [%(default)d]")),
             ("AUTOSENSE", configfile.bool_c_var(True, help_string="enable autosensing of 0MQ/TCP Clients [%(default)s]")),
             ])
@@ -117,29 +117,34 @@ def main():
             VERSION_STRING),
         add_writeback_option=prog_name in ["collserver", "collrelay"],
         positional_arguments=prog_name in ["collclient"],
-        partial=prog_name in ["collclient"])
-    global_config.write_file()
-    if global_config["KILL_RUNNING"]:
-        process_tools.kill_running_processes(exclude=configfile.get_manager_pid())
+        partial=prog_name in ["collclient"],
+        add_auto_config_option=prog_name in ["collserver"],
+    )
     if global_config["SHOW_COMMAND_INFO"]:
         show_command_info()
-    if not options.DEBUG and prog_name in ["collserver", "collrelay"]:
-        process_tools.become_daemon()
-    elif prog_name in ["collserver", "collrelay"]:
-        print(
-            "Debugging {} on {}".format(
-                prog_name,
-                process_tools.get_machine_name()
-            )
-        )
-    if prog_name == "collserver":
-        ret_state = server_code().loop()
-    elif prog_name == "collrelay":
-        ret_state = relay_code().loop()
-    elif prog_name == "collclient":
-        ret_state = client_code()
+    if global_config.show_autoconfig():
+        ret_state = 0
     else:
-        print "Unknown mode {}".format(prog_name)
-        ret_state = -1
+        global_config.write_file()
+        if global_config["KILL_RUNNING"]:
+            process_tools.kill_running_processes(exclude=configfile.get_manager_pid())
+        if not options.DEBUG and prog_name in ["collserver", "collrelay"]:
+            process_tools.become_daemon()
+        elif prog_name in ["collserver", "collrelay"]:
+            print(
+                "Debugging {} on {}".format(
+                    prog_name,
+                    process_tools.get_machine_name()
+                )
+            )
+        if prog_name == "collserver":
+            ret_state = server_code().loop()
+        elif prog_name == "collrelay":
+            ret_state = relay_code().loop()
+        elif prog_name == "collclient":
+            ret_state = client_code()
+        else:
+            print "Unknown mode {}".format(prog_name)
+            ret_state = -1
     return ret_state
 
