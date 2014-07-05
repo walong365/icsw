@@ -279,7 +279,7 @@ class config_control(object):
                 # done
                 if _filter == "base":
                     # return list of base modules
-                    unique_mods = ["sd_mod", "nfs"]
+                    unique_mods = ["sd_mod", "nfs", "nfsv3", "nfsv4"]
                     if self.device.partition_table:
                         disc_mods = partition.objects.filter(Q(partition_disc__partition_table=self.device.partition_table)).values_list("partition_fs__kernel_module", flat=True)
                         disc_mods = [_entry for _entry in list(set(sum([cur_part.strip().split() for cur_part in disc_mods], []))) if _entry]
