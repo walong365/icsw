@@ -647,9 +647,11 @@ class configuration(object):
                     self[key] = getattr(options, key)
                 self.positional_arguments = options.arguments if pos_arguments else []
                 self.__writeback_changes = options.writeback if add_writeback_option else False
-                self.__show_autoconfig = options.show_autoconfig
+                self.__show_autoconfig = getattr(options, "show_autoconfig", False)
         else:
             options = argparse.Namespace()
+            self.__writeback_changes = False
+            self.__show_autoconfig = False
         if proxy_call:
             return options, self.exit_code
         else:
