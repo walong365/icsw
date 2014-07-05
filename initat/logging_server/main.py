@@ -1,4 +1,3 @@
-#!/usr/bin/python-init -OtB
 # -*- coding: utf-8 -*-
 #
 # Copyright (C) 2009-2014 Andreas Lang-Nevyjel (lang-nevyjel@init.at)
@@ -22,30 +21,24 @@
 #
 """ logging server, central logging facility """
 
-# import pprint
 from initat.logging_server import version
 import configfile
 import grp
 import io_stream_helper
 import logging
 import logging_tools
-import uuid_tools
 import mail_tools
 import os
 import pickle
+import pprint # @UnneededImport
 import process_tools
 import pwd
 import socket
 import stat
-import sys
 import threading_tools
 import time
+import uuid_tools
 import zmq
-
-PYTHON3 = sys.version_info[0] == 3
-
-if PYTHON3:
-    unicode = str
 
 SEP_STR = "-" * 50
 
@@ -55,7 +48,11 @@ class main_process(threading_tools.process_pool):
         # log structures
         self.__log_cache = []
         self.__handles = {}
+        # which source keys use this handle
         self.__handle_usage = {}
+        # number of usecounts
+        self.__handle_usecount = {}
+        self.__usecount_ts = time.time()
         threading_tools.process_pool.__init__(self, "main", stack_size=2 * 1024 * 1024, zmq=True, zmq_debug=global_config["ZMQ_DEBUG"])
         process_tools.delete_lockfile(global_config["LOCKFILE_NAME"])
         self.register_exception("int_error", self._int_error)
@@ -66,7 +63,7 @@ class main_process(threading_tools.process_pool):
         # self.add_process(log_receiver("receiver", priority=50), start=True)
         self._log_config()
         self._init_network_sockets()
-        self.register_timer(self._update, 60)
+        self.register_timer(self._update, 10 if global_config["DEBUG"] else 60)
         os.umask(2)
         self.__num_write, self.__num_close, self.__num_open = (0, 0, 0)
         self.__num_forward_ok, self.__num_forward_error = (0, 0)
@@ -357,6 +354,7 @@ class main_process(threading_tools.process_pool):
         del self.__handles[h_name]
         if h_name in self.__handle_usage:
             del self.__handle_usage[h_name]
+            del self.__handle_usecount[h_name]
     def _update(self, **kwargs):
         c_handles = sorted([key for key, value in self.__handles.items() if isinstance(value, logging_tools.logfile) and value.check_for_temp_close()])
         if c_handles:
@@ -367,29 +365,16 @@ class main_process(threading_tools.process_pool):
         for c_handle in c_handles:
             self.remove_handle(c_handle)
         self._check_error_dict()
-    def decode_in_str(self, in_str):
-        python_log_com = False
-        try:
-            in_dict = pickle.loads(in_str)
-        except:
-            in_dict = {}
-        if in_dict:
-            # pprint.pprint(in_dict)
-            if "IOS_type" in in_dict:
-                self.log("got error_dict (pid {:d})".format(in_dict["pid"]),
-                         logging_tools.LOG_LEVEL_ERROR)
-                self._feed_error(in_dict)
-                log_com, ret_str, python_log_com = (None, "", False)
-            else:
-                log_com, ret_str, python_log_com = (logging.makeLogRecord(in_dict), "", True)
-        else:
-            if in_str == "meta-server-test":
-                log_com, ret_str, python_log_com = (None, "", False)
-            else:
-                raise ValueError("Unable to dePickle or deMarshal string ({})".format(unicode(in_str[0:10])))
-        return log_com, ret_str, python_log_com
+        self._check_excess_log()
+    def _check_excess_log(self):
+        cur_time = time.time()
+        diff_time = max(1, abs(cur_time - self.__usecount_ts))
+        s_dict = {key : float(value) / diff_time for key, value in self.__handle_usecount.iteritems()}
+        self.__handle_usecount = {key : 0 for key in self.__handle_usecount}
+        s_dict = {key : value for key, value in s_dict.iteritems() if value > global_config["EXCESS_LIMIT"]}
+        # pprint.pprint(s_dict)
     def get_python_handle(self, record):
-        if type(record) == type(""):
+        if type(record) in [str, unicode]:
             # special type for direct handles (log, log_py, err_py)
             sub_dirs = []
             record_host = "localhost"
@@ -490,6 +475,7 @@ class main_process(threading_tools.process_pool):
             logger.handle_name = h_name
             self.__handles[h_name] = logger
             self.__handle_usage[h_name] = set()
+            self.__handle_usecount[h_name] = 0
             logger.info(SEP_STR)
             logger.info("opened {} (file {} in {}) by pid {}".format(full_name, base_name, base_dir, self.pid))
             self.log("added handle {} (file {} in dir {}), total open: {}".format(
@@ -503,7 +489,7 @@ class main_process(threading_tools.process_pool):
         in_str = zmq_socket.recv()
         self.any_message_received()
         if self.net_forwarder:
-            # horay for 0MQ
+            # hooray for 0MQ
             try:
                 self.net_forwarder.send(in_str, zmq.DONTWAIT)
             except:
@@ -514,96 +500,98 @@ class main_process(threading_tools.process_pool):
                 return
         # print "received from %s: %s" % (str(addr), str(data))
         # self.transport.write("ok")
+        self.decode_in_str(in_str)
+    def decode_in_str(self, in_str):
         try:
-            log_com, in_str, python_log_com = self.decode_in_str(in_str)
+            in_dict = pickle.loads(in_str)
         except:
-            self.log(
-                "error reconstructing log-command (len of in_str: {:d}): {}".format(
-                    len(in_str),
-                    process_tools.get_except_info()),
-                logging_tools.LOG_LEVEL_ERROR)
-        else:
-            if log_com:
-                if not python_log_com:
-                    # seldom used, remove ? FIXME
-                    new_log_com = logging.LogRecord(
-                        log_com.get_name(with_sub_names=1),
-                        logging_tools.map_old_to_new_level(log_com.get_log_level()),
-                        "not set",
-                        1,
-                        log_com.get_log_str(),
-                        (),
-                        None)
-                    new_log_com.host = log_com.get_host()
-                    new_log_com.threadName = log_com.get_thread()
-                    log_com.close()
-                    del log_com
-                    log_com = new_log_com
-                    python_log_com = True
-                handle = self.get_python_handle(log_com)
-                h_name = handle.handle_name
-                log_msg = log_com.msg
-                is_command = False
-                try:
-                    src_key = (log_com.processName, log_com.threadName)
-                except:
-                    src_key = ("main", "main")
-                # flag to disable logging of close message (would polute the usage_cache)
-                log_it = True
-                if type(log_msg) == type(""):
-                    if log_msg.lower().startswith("<lch>") and log_msg.lower().endswith("</lch>"):
-                        is_command = True
-                        log_msg = log_msg[5:-6]
-                        if log_msg.lower() == "close":
-                            _close = True
-                            if h_name in self.__handle_usage:
-                                if src_key in self.__handle_usage[h_name]:
-                                    self.__handle_usage[h_name].remove(src_key)
-                                if self.__handle_usage[h_name]:
-                                    _close = False
-                            if _close:
-                                self.remove_handle(handle.handle_name)
-                            log_it = False
-                        elif log_msg.lower().startswith("set_file_size"):
-                            try:
-                                file_size = int(log_msg.split()[1])
-                            except:
-                                pass
-                            else:
-                                for f_handle in handle.handlers:
-                                    if hasattr(f_handle, "set_max_bytes"):
-                                        f_handle.set_max_bytes(file_size)
-                        elif log_msg.lower().startswith("set_max_line_length"):
-                            try:
-                                line_length = int(log_msg.split()[1])
-                            except:
-                                print("**")
-                                pass
-                            else:
-                                for f_handle in handle.handlers:
-                                    f_handle.formatter.set_max_line_length(line_length)
-                        elif log_msg.lower() == "ignore_process_id":
-                            handle.ignore_process_id = True
-                        else:
-                            self.log("unknown command '{}'".format(log_msg),
-                                     logging_tools.LOG_LEVEL_ERROR)
-                if (not is_command or (is_command and global_config["LOG_COMMANDS"])) and log_it:
-                    self.__handle_usage[handle.handle_name].add(src_key)
-                    try:
-                        handle.handle(log_com)
-                    except:
-                        self.log(
-                            "error handling log_com '{}': {}".format(
-                                str(log_com),
-                                process_tools.get_except_info()),
-                            logging_tools.LOG_LEVEL_ERROR)
-                del log_com
-            elif in_str:
-                self.log("error reconstructing log-command (len of in_str: {:d}): no log_com (possibly very long log_str)".format(len(in_str)),
-                         logging_tools.LOG_LEVEL_ERROR)
+            in_dict = {}
+        if in_dict:
+            # pprint.pprint(in_dict)
+            if "IOS_type" in in_dict:
+                self.log("got error_dict (pid {:d}, {})".format(in_dict["pid"], logging_tools.get_plural("key", len(in_dict))))
+                self._feed_error(in_dict)
             else:
-                # error_dict
+                self._handle_log_com(logging.makeLogRecord(in_dict))
+        else:
+            if in_str == "meta-server-test":
                 pass
+                # log_com, ret_str, python_log_com = (None, "", False)
+            else:
+                self.log(
+                    "error reconstructing log-command (len of in_str: {:d}): {}".format(
+                        len(in_str),
+                        process_tools.get_except_info()),
+                    logging_tools.LOG_LEVEL_ERROR
+                )
+    def _handle_log_com(self, log_com):
+        handle = self.get_python_handle(log_com)
+        log_msg = log_com.msg
+        try:
+            src_key = (log_com.processName, log_com.threadName)
+        except:
+            src_key = ("main", "main")
+        # needed ?
+        if type(log_msg) in [str, unicode] and log_msg.lower().startswith("<lch>") and log_msg.lower().endswith("</lch>"):
+            log_it, is_command = (
+                self._handle_command(handle, src_key, log_com, log_msg),
+                True,
+            )
+        else:
+            # flag to disable logging of close message (would polute the usage_cache)
+            log_it, is_command = (True, False)
+        if (not is_command or (is_command and global_config["LOG_COMMANDS"])) and log_it:
+            self.__handle_usage[handle.handle_name].add(src_key)
+            try:
+                self.__handle_usecount[handle.handle_name] += 1
+                handle.handle(log_com)
+            except:
+                self.log(
+                    "error handling log_com '{}': {}".format(
+                        str(log_com),
+                        process_tools.get_except_info()
+                    ),
+                    logging_tools.LOG_LEVEL_ERROR
+                )
+        del log_com
+    def _handle_command(self, handle, src_key, log_com, log_msg):
+        h_name = handle.handle_name
+        log_msg = log_msg[5:-6]
+        log_it = True
+        if log_msg.lower() == "close":
+            _close = True
+            if h_name in self.__handle_usage:
+                if src_key in self.__handle_usage[h_name]:
+                    self.__handle_usage[h_name].remove(src_key)
+                if self.__handle_usage[h_name]:
+                    _close = False
+            if _close:
+                self.remove_handle(handle.handle_name)
+            log_it = False
+        elif log_msg.lower().startswith("set_file_size"):
+            try:
+                file_size = int(log_msg.split()[1])
+            except:
+                pass
+            else:
+                for f_handle in handle.handlers:
+                    if hasattr(f_handle, "set_max_bytes"):
+                        f_handle.set_max_bytes(file_size)
+        elif log_msg.lower().startswith("set_max_line_length"):
+            try:
+                line_length = int(log_msg.split()[1])
+            except:
+                print("**")
+                pass
+            else:
+                for f_handle in handle.handlers:
+                    f_handle.formatter.set_max_line_length(line_length)
+        elif log_msg.lower() == "ignore_process_id":
+            handle.ignore_process_id = True
+        else:
+            self.log("unknown command '{}'".format(log_msg),
+                     logging_tools.LOG_LEVEL_ERROR)
+        return log_it
 
 global_config = configfile.get_global_config("logging-server", single_process=True)
 
@@ -614,31 +602,35 @@ def main():
         ("DEBUG"               , configfile.bool_c_var(False, help_string="enable debug mode [%(default)s]", short_options="d", only_commandline=True)),
         ("ZMQ_DEBUG"           , configfile.bool_c_var(False, help_string="enable 0MQ debugging [%(default)s]", only_commandline=True)),
         ("FROM_NAME"           , configfile.str_c_var("pyerror")),
-        ("FROM_ADDR"           , configfile.str_c_var(socket.getfqdn())),
+        ("FROM_ADDR"           , configfile.str_c_var(socket.getfqdn(), autoconf_exclude=True)),
         ("LOG_FORMAT"          , configfile.str_c_var("%(asctime)s : %(levelname)-5s (%(threadName)s.%(process)d) %(message)s")),
         ("DATE_FORMAT"         , configfile.str_c_var("%a %b %d %H:%M:%S %Y")),
-        ("OUT_HANDLE"          , configfile.str_c_var("/var/lib/logging-server/py_out")),
-        ("ERR_HANDLE"          , configfile.str_c_var("/var/lib/logging-server/py_err")),
-        ("LOG_HANDLE"          , configfile.str_c_var("/var/lib/logging-server/py_log")),
-        ("LOG_DESTINATION"     , configfile.str_c_var("/var/log/cluster/logging-server")),
-        ("LOCKFILE_NAME"       , configfile.str_c_var("/var/lock/logserver/logging_server.lock")),
-        ("LISTEN_PORT"         , configfile.int_c_var(8011)),
-        ("STATISTICS_TIMER"    , configfile.int_c_var(600)),
-        ("SEND_ERROR_MAILS"    , configfile.bool_c_var(True, help="send error mails")),
-        ("LOG_COMMANDS"        , configfile.bool_c_var(True)),
-        ("KILL_RUNNING"        , configfile.bool_c_var(True)),
+        ("OUT_HANDLE"          , configfile.str_c_var("/var/lib/logging-server/py_out", autoconf_exclude=True)),
+        ("ERR_HANDLE"          , configfile.str_c_var("/var/lib/logging-server/py_err", autoconf_exclude=True)),
+        ("LOG_HANDLE"          , configfile.str_c_var("/var/lib/logging-server/py_log", autoconf_exclude=True)),
+        ("LOG_DESTINATION"     , configfile.str_c_var("/var/log/cluster/logging-server", autoconf_exclude=True)),
+        ("LOCKFILE_NAME"       , configfile.str_c_var("/var/lock/logserver/logging_server.lock", autoconf_exclude=True)),
+        ("LISTEN_PORT"         , configfile.int_c_var(8011, autoconf_exclude=True)),
+        ("STATISTICS_TIMER"    , configfile.int_c_var(600, help_string="how often we should log statistical information [%(default)i]")),
+        ("SEND_ERROR_MAILS"    , configfile.bool_c_var(True, help_string="send error mails")),
+        ("LOG_COMMANDS"        , configfile.bool_c_var(True, autoconf_exclude=True)),
+        ("KILL_RUNNING"        , configfile.bool_c_var(True, autoconf_exclude=True)),
+        ("EXCESS_LIMIT"        , configfile.int_c_var(1000, help_string="log lines per second to trigger excess_log [%(default)s]")),
         ("FORWARDER"           , configfile.str_c_var("", help_string="Address to forwared all logs to")),
         ("ONLY_FORWARD"        , configfile.bool_c_var(False, help_string="only forward (no local logging)")),
         ("MAX_AGE_FILES"       , configfile.int_c_var(365, help_string="max age for logfiles in days [%(default)i]", short_options="age")),
-        ("USER"                , configfile.str_c_var("idlog", help_string="run as user [%(default)s]", short_options="u")),
-        ("GROUP"               , configfile.str_c_var("idg", help_string="run as group [%(default)s]", short_options="g")),
+        ("USER"                , configfile.str_c_var("idlog", help_string="run as user [%(default)s]", short_options="u", autoconf_exclude=True)),
+        ("GROUP"               , configfile.str_c_var("idg", help_string="run as group [%(default)s]", short_options="g", autoconf_exclude=True)),
         ("TO_ADDR"             , configfile.str_c_var("lang-nevyjel@init.at", help_string="mail address to send error-mails [%(default)s]")),
         ("LONG_HOST_NAME"      , configfile.str_c_var(long_host_name)),
-        ("MAX_LINE_LENGTH"     , configfile.int_c_var(0))])
+        ("MAX_LINE_LENGTH"     , configfile.int_c_var(0, help_string="max line number size, 0 for unlimited [%(default)i]"))])
     global_config.parse_file()
-    options = global_config.handle_commandline(description="logging server, version is {}".format(version.VERSION_STRING))
+    options = global_config.handle_commandline(
+        description="logging server, version is {}".format(version.VERSION_STRING),
+        add_auto_config_option=True
+    )
     if global_config["KILL_RUNNING"]:
-        process_tools.kill_running_processes()
+        process_tools.kill_running_processes() # exclude=configfile.get_manager_pid())
     # daemon has to be a local variable, otherwise system startup can be severly damaged
     lockfile_name = global_config["LOCKFILE_NAME"]
     # attention: global_config is not longer present after the TERM signal
@@ -650,17 +642,18 @@ def main():
         pass
     _ret_state = 0
     global_config.write_file()
-    process_tools.renice()
-    process_tools.change_user_group(global_config["USER"], global_config["GROUP"])
-    process_tools.create_lockfile(global_config["LOCKFILE_NAME"])
-    if not options.DEBUG:
-        process_tools.become_daemon(mother_hook=process_tools.wait_for_lockfile,
-                                    mother_hook_args=(global_config["LOCKFILE_NAME"], 1))
-        process_tools.set_handles("logging-server")
-    else:
-        print("Debugging logging-server")
-    main_process(options).loop()
-    if not options.DEBUG:
-        process_tools.handles_write_endline()
-    process_tools.delete_lockfile(lockfile_name, None, 0)
+    if not global_config.show_autoconfig():
+        process_tools.renice()
+        process_tools.change_user_group(global_config["USER"], global_config["GROUP"])
+        process_tools.create_lockfile(global_config["LOCKFILE_NAME"])
+        if not options.DEBUG:
+            process_tools.become_daemon(mother_hook=process_tools.wait_for_lockfile,
+                                        mother_hook_args=(global_config["LOCKFILE_NAME"], 1))
+            process_tools.set_handles("logging-server")
+        else:
+            print("Debugging logging-server")
+        main_process(options).loop()
+        if not options.DEBUG:
+            process_tools.handles_write_endline()
+        process_tools.delete_lockfile(lockfile_name, None, 0)
     return _ret_state
