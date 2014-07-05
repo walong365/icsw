@@ -48,6 +48,8 @@ MIGRATION_DIRS = [
 AUTO_FLAG = "/etc/sysconfig/cluster/db_auto_update"
 SYNC_APPS = ["liebherr"]
 
+NEEDED_DIRS = ["/var/log/cluster"]
+
 try:
     import psycopg2 # @UnresolvedImport
 except:
@@ -419,6 +421,21 @@ def check_db_rights():
             if not c_stat.st_mode & stat.S_IROTH:
                 print "setting R_OTHER flag on {} (because owned by root.root)".format(DB_FILE)
                 os.chmod(DB_FILE, c_stat.st_mode | stat.S_IROTH)
+
+def _check_dirs():
+    _missing_dirs = []
+    for _dir in NEEDED_DIRS:
+        if not os.path.isdir(_dir):
+            try:
+                os.makedirs(_dir)
+            except:
+                print("Cannot create directory '{}'".format(_dir))
+        if not os.path.isdir(_dir):
+            _missing_dirs.append(_dir)
+    if _missing_dirs:
+        print("{} missing: {}".format(logging_tools.get_plural("directory", len(_missing_dirs)), ", ".join(sorted(_missing_dirs))))
+        sys.exit(6)
+
 def main():
     default_pw = get_pw()
     my_p = argparse.ArgumentParser()
@@ -448,6 +465,7 @@ def main():
     auc_flags.add_argument("--enable-auto-update", default=False, action="store_true", help="enable automatic update [%(default)s]")
     auc_flags.add_argument("--disable-auto-update", default=False, action="store_true", help="disable automatic update [%(default)s]")
     opts = my_p.parse_args()
+    _check_dirs()
     DB_MAPPINGS = {
         "psql"   : "python-modules-psycopg2",
         "mysql"  : "python-modules-mysql",
