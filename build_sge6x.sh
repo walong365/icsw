@@ -69,6 +69,7 @@ if [ ! -d ${SGE_ROOT}/bin ] ; then
         echo "  - pam-devel"
         echo "  - xorg-x11-devel"
         echo "  - motif-devel (or openmotif-devel)"
+        echo "  - ncurses-devel"
         echo "is missing"
         exit -1 ;
     }
