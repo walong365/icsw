@@ -45,6 +45,7 @@ class server_process(threading_tools.process_pool):
                 "err" : (0, "/var/lib/logging-server/py_err")},
                                       zmq_context=self.zmq_context)
         self.__log_template = logging_tools.get_logger(global_config["LOG_NAME"], global_config["LOG_DESTINATION"], zmq=True, context=self.zmq_context)
+        # self.renice(global_config["NICE_LEVEL"])
         self.install_signal_handlers()
         # init environment
         self._init_environment()
