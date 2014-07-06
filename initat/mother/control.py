@@ -545,8 +545,8 @@ class host(machine):
             self.refresh_device()
             self.check_network_settings()
         if self.is_node:
-            # clear files
-            self.clear_netboot_files()
+            # files to remove
+            self._files_to_rm = set([self.ip_file_name, self.ip_mac_file_name, self.menu_file_name])
             if self.device.new_kernel:
                 if not self.device.stage1_flavour:
                     self.device.stage1_flavour = "cpio"
@@ -568,7 +568,6 @@ class host(machine):
                     ))
                 else:
                     self.log("no state set", logging_tools.LOG_LEVEL_WARN)
-                    # self.clear_netboot_files()
                     self.clear_kernel_links()
                     new_state, new_kernel = (None, None)
                 if new_state:
@@ -592,10 +591,11 @@ class host(machine):
                 self.log("new_kernel not set", logging_tools.LOG_LEVEL_ERROR)
                 # self.clear_ip_mac_files()
                 self.clear_kernel_links()
+            self.remove_files()
         else:
             self.log("not node", logging_tools.LOG_LEVEL_WARN)
-    def clear_netboot_files(self):
-        for _f_name in [self.ip_file_name, self.ip_mac_file_name]:
+    def remove_files(self):
+        for _f_name in self._files_to_rm:
             try:
                 os.unlink(os.path.join(_f_name))
             except:
@@ -613,17 +613,21 @@ class host(machine):
             if os.path.islink(full_name):
                 self.log("removing kernel link {}".format(full_name))
                 os.unlink(full_name)
+    def write_file(self, f_name, f_content, **kwargs):
+        self._files_to_rm.remove(f_name)
+        open(f_name, "w").write(f_content)
     def write_isoboot_config(self):
         if self.device.kernel_append:
             _iso = self.device.kernel_append
             self.log("using iso {} for booting".format(_iso))
             for name in [self.ip_file_name, self.ip_mac_file_name]:
-                open(name, "w").write("\n".join([
+                self.write_file(name, "\n".join([
                     "DEFAULT isoboot",
                     "LABEL isoboot",
                     "KERNEL memdisk",
                     "APPEND iso initrd=isos/{} raw".format(_iso),
-                    ""]))
+                    ""])
+                )
         else:
             self.log("no kernel_append (==iso filename) given", logging_tools.LOG_LEVEL_CRITICAL)
     def write_memtest_config(self):
@@ -632,7 +636,7 @@ class host(machine):
             memtest_iso = iso_files[0]
             self.log("using iso {} for memtest".format(memtest_iso))
             for name in [self.ip_file_name, self.ip_mac_file_name]:
-                open(name, "w").write("\n".join([
+                self.write_file(name, "\n".join([
                     "DEFAULT memtest",
                     "LABEL memtest",
                     "KERNEL memdisk",
@@ -642,7 +646,7 @@ class host(machine):
             self.log("no memtest iso found in {}".format(self.iso_dir), logging_tools.LOG_LEVEL_ERROR)
     def write_localboot_config(self):
         for name in [self.ip_file_name, self.ip_mac_file_name]:
-            open(name, "w").write("\n".join([
+            self.write_file(name, "\n".join([
                 "DEFAULT linux",
                 "LABEL linux",
                 "IMPLICIT 0",
@@ -803,16 +807,16 @@ class host(machine):
                     "will boot %s" % ("in %s" % (logging_tools.get_plural("second", int(global_config["NODE_BOOT_DELAY"] / 10))) if global_config["NODE_BOOT_DELAY"] else "immediately"),
                     "",
                     ""])
-                open(self.ip_file_name    , "w").write("\n".join(pxe_lines))
-                open(self.ip_mac_file_name, "w").write("\n".join(pxe_lines))
-                open(self.menu_file_name  , "w").write("\n".join(menu_lines))
+                self.write_file(self.ip_file_name    , "\n".join(pxe_lines))
+                self.write_file(self.ip_mac_file_name, "\n".join(pxe_lines))
+                self.write_file(self.menu_file_name  , "\n".join(menu_lines))
                 if new_kernel.xen_host_kernel:
                     if global_config["XENBOOT"]:
                         open(self.mboot_file_name, "w").write(global_config["MBOOT.C32"])
                     else:
                         self.log("not XENBOOT capable (MBOOT.C32 not found)", logging_tools.LOG_LEVEL_ERROR)
             else:
-                self.log("Error: directory %s does not exist" % (kern_dst_dir))
+                self.log("Error: directory {} does not exist".format(kern_dst_dir))
                 # self.device_log_entry(1,
                 #                      "e",
                 #                      "error etherboot dir '%s' not found" % (kern_dst_dir),
