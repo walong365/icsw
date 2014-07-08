@@ -836,6 +836,7 @@ class process_pool(timer_base, poller_obj, process_base, exception_handling_mixi
                 sent = True
         if not sent:
             # error sending or unable to flush, buffer
+            self.log("unable to send {} to {}, buffering".format(m_type, t_process), logging_tools.LOG_LEVEL_WARN)
             self.__socket_buffer.setdefault(t_process, []).append((m_type, list(args), dict(kwargs)))
     def _flush_process_buffers(self, t_process):
         flushed = True
@@ -892,7 +893,8 @@ class process_pool(timer_base, poller_obj, process_base, exception_handling_mixi
     def _process_exit_zmq(self, t_name, t_pid, *args):
         self._process_exit(t_name, t_pid)
     def _process_start_zmq(self, t_name, t_pid, *args):
-        self.log("process %s (%d) started" % (t_name, t_pid))
+        self.log("process {} ({:d}) started".format(t_name, t_pid))
+        self._flush_process_buffers(t_name)
         self.process_start(t_name, t_pid)
     def _process_exception(self, t_name, t_pid, *args):
         self.log("process %s (pid %d) exception: %s" % (t_name, t_pid, unicode(args[0])),
