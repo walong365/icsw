@@ -28,8 +28,8 @@ import ldap.modlist # important, do not remove  @UnresolvedImport
 import logging_tools
 import os
 import pprint # @UnusedImport
-import re
 import process_tools
+import re
 import server_command
 import sys
 import time
@@ -319,7 +319,26 @@ class setup_ldap_server(cs_base_class.server_com, ldap_mixin):
                     print par_dict
                     print root_hash, cmd_stat
 
-class init_ldap_config(cs_base_class.server_com, ldap_mixin):
+class command_mixin(object):
+    def call_command(self, command, *args):
+        success, result = (False, [])
+        bin_com = process_tools.find_file(command)
+        if bin_com:
+            c_stat, c_out = commands.getstatusoutput(u"{} {}".format(bin_com, " " .join(args)))
+            if c_stat:
+                result = ["{:d}".format(c_stat)] + c_out.split("\n")
+            else:
+                success = True
+                result = c_out.split("\n")
+        return success, result
+
+# class create_ldap_certs(cs_base_class.server_com, ldap_mixin, command_mixin):
+#    class Meta:
+#        needed_configs = ["ldap_server"]
+#    def _call(self, cur_inst):
+#        pass
+
+class init_ldap_config(cs_base_class.server_com, ldap_mixin, command_mixin):
     class Meta:
         needed_configs = ["ldap_server"]
     def call_command(self, command, *args):

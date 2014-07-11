@@ -78,14 +78,10 @@ class com_instance(object):
         self.sc_obj.log(u"[ci] {}".format(what), log_level)
     def write_start_log(self):
         if self.Meta.write_log:
-            self.log(u"Got command {} (options {}) from host {} (port {:d}) to {}, {}: {}".format(
+            self.log(u"Got command {}, {}: {}".format(
                 self.srv_com["command"].text,
-                "self.opt_str",
-                "self.src_host",
-                0, # "self.src_port",
-                "self.loc_ip",
                 logging_tools.get_plural("config", len(self.Meta.actual_configs)),
-                ", ".join(self.Meta.actual_configs)))
+                ", ".join(self.Meta.actual_configs) or "none"))
     def write_end_log(self):
         if self.Meta.write_log:
             # FIXME

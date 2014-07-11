@@ -275,6 +275,8 @@ class server_process(threading_tools.process_pool, notify_mixin):
         self["exit_requested"] = True
         # show result
         print cur_com["result"].attrib["reply"]
+        if global_config["SHOW_RESULT"]:
+            print cur_com.pretty_print()
     def _execute_command(self, srv_com):
         com_name = srv_com["command"].text
         if com_name in initat.cluster_server.modules.command_dict:
