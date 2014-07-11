@@ -212,7 +212,10 @@ class srv_command(object):
         else:
             return (value, "str")
     def __setitem__(self, key, value):
-        cur_element = self._create_element(key)
+        if key:
+            cur_element = self._create_element(key)
+        else:
+            cur_element = self.__tree
         if etree.iselement(value):
             cur_element.append(value)
         else:
