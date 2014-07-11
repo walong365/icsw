@@ -1231,6 +1231,21 @@ class device(models.Model):
             key="dev__%d" % (self.pk),
             name=self.name
         )
+    def all_ips(self):
+        # return all IPs
+        return list(set(self.netdevice_set.all().values_list("net_ip__ip", flat=True)))
+    def all_dns(self):
+        # return all names, including short ones
+        _list = [self.name, self.full_name]
+        for _domain, _alias, _excl in self.netdevice_set.all().values_list("net_ip__domain_tree_node__full_name", "net_ip__alias", "net_ip__alias_excl"):
+            if _alias:
+                _add_names = _alias.strip().split()
+                if not _excl:
+                    _add_names.append(self.name)
+            else:
+                _add_names = [self.name]
+            _list.extend(["{}.{}".format(_name, _domain) for _name in _add_names])
+        return list(set(_list))
     def get_master_cons(self):
         return [entry for entry in self.cd_cons if entry.parent_id == self.pk]
     def get_slave_cons(self):
