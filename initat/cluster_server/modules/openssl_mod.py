@@ -27,31 +27,51 @@ import logging_tools
 import openssl_tools
 import server_command
 
-class ca_new(cs_base_class.server_com, openssl_tools.openssl_config_mixin):
+def _build_obj(cur_inst, **kwargs):
+    obj_dict = {
+        "CN" : kwargs.get("cn", ""),
+        "C"  : "AT",
+        "ST" : "Vienna",
+        "O"  : "init.at", # Informationstechnologie GmbH",
+        "emailAddress" : "cluster@init.at",
+        "days"         : str(kwargs.get("days", 3650)),
+    }
+    for key, value in obj_dict.iteritems():
+        _key = "server_key:{}".format(key)
+        if  _key in cur_inst.srv_com:
+            obj_dict[key] = cur_inst.srv_com[_key].text
+    return obj_dict
+
+class ca_new(cs_base_class.server_com):
     class Meta:
         needed_option_keys = ["ca_name"]
     def _call(self, cur_inst):
-        self.check_ssl_config(cur_inst)
         _name = cur_inst.srv_com["server_key:ca_name"].text
-        _obj_dict = self._build_obj(cur_inst, cn="{}_ca".format(global_config["SERVER_FULL_NAME"]))
-        cur_ca = openssl_tools.ca(_name, self.call_openssl, _obj_dict)
-        if not cur_ca.ca_ok:
+        _obj_dict = _build_obj(cur_inst, cn="{}_ca".format(global_config["SERVER_FULL_NAME"]))
+        cur_ca = openssl_tools.ca(_name, cur_inst.log)
+        if cur_ca.ca_ok:
             cur_inst.srv_com.set_result(
-                "creation of CA went wrong, please check the logs",
-                server_command.SRV_REPLY_STATE_ERROR,
+                "CA '{}' already present".format(_name),
+                server_command.SRV_REPLY_STATE_WARN,
             )
         else:
-            cur_inst.srv_com.set_result(
-                "CA '{}' successfully created in {}".format(_name, cur_ca.ca_dir)
-            )
+            if cur_ca.create(_obj_dict):
+                cur_inst.srv_com.set_result(
+                    "CA '{}' successfully created in {}".format(_name, cur_ca.ca_dir)
+                )
+            else:
+                cur_inst.srv_com.set_result(
+                    "creation of CA went wrong, please check the logs",
+                    server_command.SRV_REPLY_STATE_ERROR,
+                )
 
-class ca_new_cert(cs_base_class.server_com, openssl_tools.openssl_config_mixin):
+class ca_new_cert(cs_base_class.server_com):
     class Meta:
-        needed_option_keys = ["ca_name", "cert_file"]
+        needed_option_keys = ["ca_name", "cert_file", "ca_mode"]
     def _call(self, cur_inst):
-        self.check_ssl_config(cur_inst)
         _name = cur_inst.srv_com["server_key:ca_name"].text
         _file_name = cur_inst.srv_com["server_key:cert_file"].text
+        _ca_mode = cur_inst.srv_com["server_key:ca_mode"].text
         if "server_key:add_device" in cur_inst.srv_com:
             _dev_name = cur_inst.srv_com["server_key:add_device"].text
             if _dev_name.count("."):
@@ -60,15 +80,15 @@ class ca_new_cert(cs_base_class.server_com, openssl_tools.openssl_config_mixin):
                 _dev = device.objects.get(Q(name=_dev_name))
         else:
             _dev = None
-        _obj_dict = self._build_obj(cur_inst, cn=global_config["SERVER_FULL_NAME"])
-        cur_ca = openssl_tools.ca(_name, self.call_openssl, None)
+        _obj_dict = _build_obj(cur_inst, cn=global_config["SERVER_FULL_NAME"])
+        cur_ca = openssl_tools.ca(_name, cur_inst.log)
         if not cur_ca.ca_ok:
             cur_inst.srv_com.set_result(
                 "CA '{}' is not valid".format(_name),
                 server_command.SRV_REPLY_STATE_ERROR,
             )
         else:
-            if cur_ca.new_cert(_obj_dict, _file_name, device=_dev):
+            if cur_ca.new_cert(_obj_dict, _ca_mode, _file_name, device=_dev):
                 cur_inst.srv_com.set_result(
                     "certificate successfully created in {}".format(_file_name)
                 )
@@ -78,15 +98,14 @@ class ca_new_cert(cs_base_class.server_com, openssl_tools.openssl_config_mixin):
                     server_command.SRV_REPLY_STATE_ERROR,
                 )
 
-class ca_revoke_cert(cs_base_class.server_com, openssl_tools.openssl_config_mixin):
+class ca_revoke_cert(cs_base_class.server_com):
     class Meta:
         needed_option_keys = ["ca_name", "cert_serial", "revoke_cause"]
     def _call(self, cur_inst):
-        self.check_ssl_config(cur_inst)
         _name = cur_inst.srv_com["server_key:ca_name"].text
         _cert_serial = cur_inst.srv_com["server_key:cert_serial"].text
         _revoke_cause = cur_inst.srv_com["server_key:revoke_cause"].text
-        cur_ca = openssl_tools.ca(_name, self.call_openssl, None)
+        cur_ca = openssl_tools.ca(_name, cur_inst.log)
         if not cur_ca.ca_ok:
             cur_inst.srv_com.set_result(
                 "CA '{}' is not valid".format(_name),
@@ -103,13 +122,12 @@ class ca_revoke_cert(cs_base_class.server_com, openssl_tools.openssl_config_mixi
                     server_command.SRV_REPLY_STATE_ERROR,
                 )
 
-class ca_list_certs(cs_base_class.server_com, openssl_tools.openssl_config_mixin):
+class ca_list_certs(cs_base_class.server_com):
     class Meta:
         needed_option_keys = ["ca_name"]
     def _call(self, cur_inst):
-        self.check_ssl_config(cur_inst)
         _name = cur_inst.srv_com["server_key:ca_name"].text
-        cur_ca = openssl_tools.ca(_name, self.call_openssl, None)
+        cur_ca = openssl_tools.ca(_name, cur_inst.log)
         if cur_ca.ca_ok:
             _certs = cur_ca.db
             cur_inst.srv_com.set_result(

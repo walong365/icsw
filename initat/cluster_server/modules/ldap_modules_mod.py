@@ -1027,7 +1027,3 @@ class sync_ldap_config(cs_base_class.server_com, ldap_mixin):
             cur_inst.srv_com.set_result(
                 "ok synced LDAP tree",
             )
-
-if __name__ == "__main__":
-    print "Loadable module, exiting ..."
-    sys.exit(0)
