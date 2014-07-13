@@ -164,7 +164,7 @@ class generated_tree(tree_node_g):
         # wc_files.objects.bulk_create([cur_wc for cur_tn, cur_wc in write_list])
         # print write_list
         active_identifier = cur_bc.conf_dict["net"].identifier
-        cur_c.log("writing config files for %s to %s" % (
+        cur_c.log("writing config files for {} to {}".format(
             active_identifier,
             cur_c.node_dir))
         config_dir = os.path.join(cur_c.node_dir, "content_%s" % (active_identifier))
@@ -172,18 +172,19 @@ class generated_tree(tree_node_g):
             cur_c.log("creating directory %s" % (config_dir))
             os.mkdir(config_dir)
         config_dict = {
-            "f" : "%s/config_files_%s" % (cur_c.node_dir, active_identifier),
-            "l" : "%s/config_links_%s" % (cur_c.node_dir, active_identifier),
-            "d" : "%s/config_dirs_%s" % (cur_c.node_dir, active_identifier),
-            "e" : "%s/config_delete_%s" % (cur_c.node_dir, active_identifier)}
-        handle_dict = {}
+            "f" : os.path.join(cur_c.node_dir, "config_files_{}".format(active_identifier)),
+            "l" : os.path.join(cur_c.node_dir, "config_links_{}".format(active_identifier)),
+            "d" : os.path.join(cur_c.node_dir, "config_dirs_{}".format(active_identifier)),
+            "e" : os.path.join(cur_c.node_dir, "config_delete_{}".format(active_identifier)),
+        }
+        _line_dict = {}
         num_dict = dict([(key, 0) for key in config_dict.iterkeys()])
         for cur_tn, cur_wc in write_list:
             if cur_wc.dest_type not in ["i", "?"] and not cur_tn.intermediate:
                 eff_type = cur_tn.node.content_node.get_effective_type()
-                handle = handle_dict.setdefault(eff_type, file(config_dict[eff_type], "w"))
+                _lines = _line_dict.setdefault(eff_type, [])
                 num_dict[eff_type] += 1
-                out_name = os.path.join(config_dir, "%d" % (num_dict[eff_type]))
+                out_name = os.path.join(config_dir, "{:d}".format(num_dict[eff_type]))
                 try:
                     add_line = cur_tn.node.content_node.write_object(out_name)
                 except:
@@ -191,13 +192,14 @@ class generated_tree(tree_node_g):
                         cur_tn.node.content_node.dest,
                         process_tools.get_except_info()), logging_tools.LOG_LEVEL_CRITICAL)
                 else:
-                    handle.write("%d %s\n" % (num_dict[eff_type], add_line))
-        cur_c.log("closing %s" % (logging_tools.get_plural("handle", len(handle_dict.keys()))))
-        [handle.close() for handle in handle_dict.itervalues()]
+                    _lines.append("{:d} {}".format(num_dict[eff_type], add_line))
+        for _key, _lines in _line_dict.iteritems():
+            file(config_dict[_key], "w").write("\n".join(_lines + [""]))
+        cur_c.log("wrote {}".format(logging_tools.get_plural("file", len(_line_dict))))
         # print cur_c.node_dir, dir(cur_c)
         # print cur_bc.conf_dict["net"]
         # pprint.pprint(cur_bc.conf_dict)
-        cur_c.log("wrote %s" % (logging_tools.get_plural("node", nodes_written)))
+        cur_c.log("wrote {}".format(logging_tools.get_plural("node", nodes_written)))
 
 class build_container(object):
     def __init__(self, b_client, config_dict, conf_dict, g_tree, router_obj):
@@ -316,13 +318,14 @@ class build_container(object):
                     "exec")
             except:
                 exc_info = process_tools.exception_info()
-                self.log("error during compile of %s (%s)" % (
+                self.log("error during compile of {} ({})".format(
                     cur_script.name,
                     logging_tools.get_diff_time_str(time.time() - start_c_time)),
                          logging_tools.LOG_LEVEL_ERROR,
                          register=True)
                 for line in exc_info.log_lines:
-                    self.log("   *** %s" % (line), logging_tools.LOG_LEVEL_ERROR)
+                    self.log("   *** {}".format(line), logging_tools.LOG_LEVEL_ERROR)
+                conf_dict["called"].setdefault(False, []).append((cur_conf.pk, [line for line in exc_info.log_lines]))
             else:
                 compile_time = time.time() - start_c_time
                 # prepare stdout / stderr
@@ -360,7 +363,7 @@ class build_container(object):
                              logging_tools.LOG_LEVEL_ERROR,
                              register=True)
                     for line in exc_info.log_lines:
-                        self.log(" *** %s" % (line), logging_tools.LOG_LEVEL_ERROR)
+                        self.log(" *** {}".format(line), logging_tools.LOG_LEVEL_ERROR)
                     # log stdout / stderr
                     self._show_logs(stdout_c, stderr_c)
                     # create error-entry, preferable not direct in config :-)

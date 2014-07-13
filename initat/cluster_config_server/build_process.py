@@ -380,7 +380,7 @@ class build_process(threading_tools.process_obj):
                     cur_bc.process_scripts(pk)
                 new_tree.write_config(cur_c, cur_bc)
                 if False in conf_dict["called"]:
-                    cur_c.log("error in scripts for %s: %s" % (
+                    cur_c.log("error in scripts for {}: {}".format(
                         logging_tools.get_plural("config", len(conf_dict["called"][False])),
                         ", ".join(sorted([unicode(config_dict[pk]) for pk, err_lines in conf_dict["called"][False]]))),
                               logging_tools.LOG_LEVEL_ERROR,
