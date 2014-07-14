@@ -153,10 +153,10 @@ device_row_template = """
             </ul>
             <span ng-show="!$last">,</span>
         </div>
-        <span ng-show="!dev.master_connections">
+        <span ng-show="!dev.slave_connections">
             waiting...
         </span>
-        <span ng-show="dev.master_connections && dev.master_connections.length == 0">
+        <span ng-show="dev.slave_connections && dev.slave_connections.length == 0">
             ---
         </span>
     </td>

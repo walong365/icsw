@@ -1,22 +1,7 @@
 #!/bin/bash
 
-# now a separate pacakge
-#if [ ! -f /opt/cluster/bin/yuglify ] ; then
-#    echo "installing yuglify"
-#    /opt/cluster/bin/npm -g install yuglify
-#fi
-
-#sed -i sX/usr/bin/env\ nodeX/opt/cluster/bin/nodeXg /opt/cluster/lib/node_modules/yuglify/bin/yuglify
-
 # delete modules install via npm
 rm -rf /opt/cluster/lib/node_modules/yuglify/node_modules
-
-# check for product version
-
-if [ -f /etc/init.d/mother ] ; then
-    # seems to be a cluster
-    touch /etc/sysconfig/cluster/.is_corvus
-fi
 
 # static dir
 STATIC_DIR=/srv/www/htdocs/icsw/static
