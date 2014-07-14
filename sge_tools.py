@@ -799,7 +799,11 @@ class sge_info(object):
                 queue.append(hosts_el)
                 for cur_hlist in queue.findall("hostlist"):
                     for hg_name in cur_hlist.text.split():
-                        hosts_el.extend([E.host(str(name)) for name in hg_lut[hg_name].xpath(".//host/text()", smart_strings=False)] if hg_name.startswith("@") else [E.host(hg_name)])
+                        if hg_name.startswith("@"):
+                            if hg_name in hg_lut:
+                                hosts_el.extend([E.host(str(name)) for name in hg_lut[hg_name].xpath(".//host/text()", smart_strings=False)])
+                        else:
+                            hosts_el.append(E.host(hg_name))
 
 def get_running_headers(options):
     cur_job = E.job(
