@@ -107,6 +107,21 @@ class snmp_scheme(object):
         if hasattr(self, "table_list"):
             _list.append(("T", self.table_list))
         return _list
+    def simplify_dict(self, in_dict):
+        # simplify dict (reduce keys)
+        while True:
+            if len(set([list(_key)[0] for _key in in_dict.iterkeys()])) == 1:
+                in_dict = {tuple(list(_key)[1:]) : _value for _key, _value in in_dict.iteritems()}
+            else:
+                break
+        if len(set([len(_key) for _key in in_dict.iterkeys()])) == 1:
+            # all keys have the same length, remove from behind
+            while True:
+                if len(set([list(_key)[-1] for _key in in_dict.iterkeys()])) == 1:
+                    in_dict = {tuple(list(_key)[:-1]) : _value for _key, _value in in_dict.iteritems()}
+                else:
+                    break
+        return in_dict
     def build(self, job, res_dict):
         headers = {
             "name" : job.device_name,
@@ -137,6 +152,87 @@ class apcv1_scheme(snmp_scheme):
                 name="apc.ampere.used",
             )
         )
+
+class apc_upc_v1_scheme(snmp_scheme):
+    var_list = [
+        simple_snmp_oid("1.3.6.1.4.1.318.1.1.1.3.2.1.0"),
+        simple_snmp_oid("1.3.6.1.4.1.318.1.1.1.3.2.2.0"),
+        simple_snmp_oid("1.3.6.1.4.1.318.1.1.1.3.2.3.0"),
+        simple_snmp_oid("1.3.6.1.4.1.318.1.1.1.3.2.4.0"),
+        simple_snmp_oid("1.3.6.1.4.1.318.1.1.1.4.2.1.0"),
+        simple_snmp_oid("1.3.6.1.4.1.318.1.1.1.4.2.2.0"),
+        simple_snmp_oid("1.3.6.1.4.1.318.1.1.1.4.2.3.0"),
+        simple_snmp_oid("1.3.6.1.4.1.318.1.1.1.4.2.4.0"),
+    ]
+    def feed_trees(self, mv_tree, mon_tree, res_dict):
+        res_dict = self.simplify_dict(res_dict)
+        mv_tree.extend([
+            E.mve(
+                info="Input frequency",
+                unit="1/s",
+                base="1",
+                v_type="i",
+                value="{:d}".format(res_dict[(3, 2, 4)]),
+                name="upc.frequency.in",
+            ),
+            E.mve(
+                info="Output frequency",
+                unit="1/s",
+                base="1",
+                v_type="i",
+                value="{:d}".format(res_dict[(4, 2, 2)]),
+                name="upc.frequency.out",
+            ),
+            E.mve(
+                info="Input line voltage",
+                unit="V",
+                base="1",
+                v_type="i",
+                value="{:d}".format(res_dict[(3, 2, 1)]),
+                name="upc.voltage.in.line",
+            ),
+            E.mve(
+                info="Input line voltage max",
+                unit="V",
+                base="1",
+                v_type="i",
+                value="{:d}".format(res_dict[(3, 2, 2)]),
+                name="upc.voltage.in.line_max",
+            ),
+            E.mve(
+                info="Input line voltage min",
+                unit="V",
+                base="1",
+                v_type="i",
+                value="{:d}".format(res_dict[(3, 2, 3)]),
+                name="upc.voltage.in.line_min",
+            ),
+            E.mve(
+                info="Output voltage",
+                unit="V",
+                base="1",
+                v_type="i",
+                value="{:d}".format(res_dict[(4, 2, 1)]),
+                name="upc.voltage.out",
+            ),
+            E.mve(
+                info="Output load",
+                unit="%",
+                base="1",
+                v_type="i",
+                value="{:d}".format(res_dict[(4, 2, 3)]),
+                name="upc.load.out",
+            ),
+            E.mve(
+                info="Output current",
+                unit="A",
+                base="1",
+                v_type="i",
+                value="{:d}".format(res_dict[(4, 2, 4)]),
+                name="upc.ampere.out",
+            ),
+        ])
+        print res_dict
 
 class snmp_job(object):
     def __init__(self, id_str, ip, snmp_scheme, snmp_version, snmp_read_community, **kwargs):
