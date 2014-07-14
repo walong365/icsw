@@ -83,7 +83,7 @@ device_boot_template = """
                 </div>
             </td>
             <td>
-                <input type="button" class="btn btn-xs btn-warning" ng-show="num_selected && any_type_1_selected" value="modify ({{ num_selected }})" ng-click="modify_many($event)"></input>
+                <input type="button" class="btn btn-xs btn-primary" ng-show="num_selected && any_type_1_selected" value="modify ({{ num_selected }})" ng-click="modify_many($event)"></input>
             </td>
         </tr>
     </tfoot>
@@ -130,7 +130,7 @@ device_row_template = """
     <td ng-repeat="entry in type_1_options()" ng-show="bo_enabled[entry[0]]" ng-class="get_td_class(entry)" ng-bind-html="show_boot_option(entry)">
     </td>
     <td ng-show="bo_enabled['s']">
-        <div class="btn-group">
+        <div class="btn-group" ng-show="valid_net_state()">
             <button type="button" class="btn btn-warning btn-xs dropdown-toggle" data-toggle="dropdown">
                 action <span class="caret"></span>
             </button>
@@ -140,6 +140,7 @@ device_row_template = """
                 <li ng-click="soft_control(dev, 'poweroff')"><a href="#">poweroff</a></li>
             </ul>
         </div>
+        <span class='glyphicon glyphicon-ban-circle' ng-show="!valid_net_state()"></span>"
     </td>
     <td ng-show="bo_enabled['h']">
         <div class="btn-group" ng-repeat="cd_con in dev.slave_connections">
@@ -161,7 +162,7 @@ device_row_template = """
         </span>
     </td>
     <td ng-show="any_type_1_selected">
-        <input type="button" class="btn btn-xs btn-warning" value="modify" ng-click="modify_device(dev, $event)"></input>
+        <input type="button" class="btn btn-xs btn-primary" value="modify" ng-click="modify_device(dev, $event)"></input>
     </td>
     <td ng-show="any_type_3_selected">
         <input type="button" ng-class="get_devlog_class(dev)" ng-value="get_devlog_value(dev)" ng-click="change_devlog_flag(dev)"></input>
@@ -376,7 +377,8 @@ device_boot_module.controller("boot_ctrl", ["$scope", "$compile", "$filter", "$t
                 $scope.device_lut = build_lut($scope.devices)
                 $scope.kernels = data[1]
                 $scope.images = data[2]
-                $scope.partitions = data[3]
+                # only use entries valid for nodeboot
+                $scope.partitions = (entry for entry in data[3] when entry.nodeboot and entry.valid and entry.enabled)
                 $scope.kernel_lut = build_lut($scope.kernels)
                 $scope.image_lut = build_lut($scope.images)
                 $scope.partition_lut = build_lut($scope.partitions)
@@ -456,6 +458,7 @@ device_boot_module.controller("boot_ctrl", ["$scope", "$compile", "$filter", "$t
                                 net_state = entry.net_state
                                 tr_class = {"down" : "danger", "unknown" : "danger", "ping" : "warning", "up" : "success"}[net_state]
                                 dev.network = "#{entry.network} (#{net_state})"
+                                dev.net_state = net_state
                                 dev.recvreq_state = tr_class
                                 dev.network_state = tr_class
                                 # target state
@@ -660,6 +663,8 @@ device_boot_module.controller("boot_ctrl", ["$scope", "$compile", "$filter", "$t
                     return ""
                 else
                     return "warning"
+            scope.valid_net_state = () ->
+                return scope.dev.net_state == "up"
             scope.show_boot_option = (entry) ->
                 dev = scope.dev
                 if scope.info_ok
