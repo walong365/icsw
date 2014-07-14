@@ -54,6 +54,7 @@ class package_parser(argparse.ArgumentParser):
         self.add_argument("--pre-script", default="", help="filename of pre-script content")
         self.add_argument("--postun-script", default="", help="filename of postun-script content")
         self.add_argument("--preun-script", default="", help="filename of preun-script content")
+        self.add_argument("--provides", default="", type=str, help="string of for the %%provide attribute")
         self.add_argument("args", nargs="+", help="file specifier (SRC[:DST])")
     def parse_args(self):
         opts = argparse.ArgumentParser.parse_args(self)
@@ -64,7 +65,7 @@ class package_parser(argparse.ArgumentParser):
                 try:
                     setattr(opts, _scr_name, file(getattr(opts, _scr_name), "r").read())
                 except:
-                    print "error handling %s : %s" % (
+                    print "error handling {} : {}".format(
                         _scr_name,
                         process_tools.get_except_info()
                         )
@@ -146,6 +147,7 @@ class build_package(object):
             "Version: %s" % (self["version"]),
             "Release: %s" % (self["release"]),
             "Group: %s" % (self["package_group"]),
+            "provides: {}".format(self["provides"]) if self["provides"] else "",
             "License: GPL",
             "Vendor: init.at Informationstechnologie GmbH",
             "Summary: %s" % (self.get("summary", "no summary")),
