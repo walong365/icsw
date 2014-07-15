@@ -48,6 +48,7 @@ else
 fi
 
 PID_FILE=/var/run/collectd.pid
+META_FILE=/var/lib/meta-server/collectd
 
 rc_reset
 
@@ -67,9 +68,9 @@ case "$1" in
         ;;
     stop)
         echo -n "Shutting down collectd "
-        if [ -f ${PID_FILE} ] ; then
-            kill $(cat ${PID_FILE})
-            if [ -f ${PID_FILE} ] ; then
+        if [ -f ${META_FILE} ] ; then
+            kill $(/opt/cluster/sbin/get_pids_from_meta.py ${META_FILE})
+            if [ -f ${META_FILE} ] ; then
                 for i in $(seq 40) ; do
                     true
                     echo -n "."
@@ -85,13 +86,29 @@ case "$1" in
             echo "not running"
             rc_failed
         fi
-	rm -f ${SOCK_NAME}
+        rm -f ${SOCK_NAME}
+        rc_status -v
+        ;;
+    force-stop)
+        echo -n "Shutting down collectd (forced) "
+        if [ -f ${META_FILE} ] ; then
+            kill -9 $(/opt/cluster/sbin/get_pids_from_meta.py ${META_FILE})
+        else
+            echo "not running"
+            rc_failed
+        fi
+        rm -f ${SOCK_NAME}
         rc_status -v
         ;;
     restart)
         $0 stop
         $0 start
-    
+        # Remember status and be quiet
+        rc_status
+        ;;
+    force-restart)
+        $0 force-stop
+        $0 start
         # Remember status and be quiet
         rc_status
         ;;

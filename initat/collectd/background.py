@@ -760,6 +760,7 @@ class background(multiprocessing.Process, log_base):
             self.__msi_block.add_actual_pid(data["pid"], mult=3, process_name=src_proc, fuzzy_ceiling=3)
             self.__msi_block.save_block()
         elif data["type"] == "process_exit":
+            self.log("SNMP process {:d} stopped (PID={:d})".format(snmp_idx, data["pid"]), logging_tools.LOG_LEVEL_WARN)
             self.__snmp_dict[snmp_idx]["stopped"] = True
             self.__snmp_dict[snmp_idx]["proc"].join()
             del self.__snmp_dict[snmp_idx]
