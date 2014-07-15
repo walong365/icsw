@@ -408,12 +408,12 @@ class meta_server_info(object):
             ("exe_name"     , "s", None),
             ("need_any_pids", "b", 0),
             ]
+        parsed = False
         if name.startswith("/"):
             self.__file_name = name
             # try to read complete info from file
             self.__name = None
             xml_struct = None
-            parsed = False
             if etree:
                 try:
                     xml_struct = etree.fromstring(open(name, "r").read())
@@ -425,10 +425,13 @@ class meta_server_info(object):
                 # reads pids
                 self.__pids = []
                 self.__pid_names = {}
+                # name from psutil()
+                self.__pid_proc_names = {}
                 self.__pid_fuzzy = {}
                 for cur_idx, pid_struct in enumerate(xml_struct.xpath(".//pid_list/pid", smart_strings=False)):
                     self.__pids.extend([int(pid_struct.text)] * int(pid_struct.get("mult", "1")))
                     self.__pid_names[int(pid_struct.text)] = pid_struct.get("name", "proc{:d}".format(cur_idx + 1))
+                    self.__pid_proc_names[int(pid_struct.text)] = pid_struct.get("proc_name", "")
                     self.__pid_fuzzy[int(pid_struct.text)] = (
                         int(pid_struct.get("fuzzy_floor", "0")),
                         int(pid_struct.get("fuzzy_ceiling", "0")),
@@ -462,6 +465,7 @@ class meta_server_info(object):
                     self.__name = act_dict.get("name", None)
                     self.__pids = sorted([int(cur_pid) for cur_pid in act_dict.get("pids", "").split() if cur_pid.isdigit()])
                     self.__pid_names = {pid : "proc{:d}".format(cur_idx + 1) for cur_idx, pid in enumerate(sorted(list(set(self.__pids))))}
+                    self.__pid_proc_names = {pid : "unknown" for cur_idx, pid in enumerate(sorted(list(set(self.__pids))))}
                     self.__pid_fuzzy = dict([(cur_pid, (0, 0)) for cur_pid in set(self.__pids)])
                     for opt, val_type, def_val in self.__prop_list:
                         if opt in act_dict:
@@ -484,9 +488,11 @@ class meta_server_info(object):
             self.__name = name
             self.__pids = []
             self.__pid_names = {}
+            self.__pid_proc_names = {}
             self.__pid_fuzzy = {}
             for opt, val_type, def_val in self.__prop_list:
                 setattr(self, opt, def_val)
+        self.parsed = parsed
         self.file_init_time = time.time()
     def get_file_name(self):
         return self.__file_name
@@ -536,11 +542,22 @@ class meta_server_info(object):
     def add_actual_pid(self, act_pid=None, mult=1, fuzzy_floor=0, fuzzy_ceiling=0, process_name=""):
         if not act_pid:
             act_pid = os.getpid()
+        try:
+            _ps_name = psutil.Process(pid=act_pid).name()
+        except:
+            logging_tools.my_syslog(
+                "cannot get name of process {:d} :{}".format(
+                    act_pid,
+                    get_except_info()
+                )
+            )
+            _ps_name = ""
         self.__pids.extend(mult * [act_pid])
         self.__pid_fuzzy[act_pid] = (fuzzy_floor, fuzzy_ceiling)
         if not process_name:
             process_name = "proc{:d}".format(len(self.__pid_names) + 1)
         self.__pid_names[act_pid] = process_name
+        self.__pid_proc_names[act_pid] = _ps_name
         self.__pids.sort()
     def remove_actual_pid(self, act_pid=None, mult=0):
         """
@@ -556,8 +573,15 @@ class meta_server_info(object):
             while act_pid in self.__pids:
                 self.__pids.remove(act_pid)
         self.__pids.sort()
-    def get_pids(self):
-        return self.__pids
+    def get_pids(self, process_name=None):
+        if process_name is None:
+            return self.__pids
+        else:
+            if set(self.__pid_proc_names.values()) == set([""]):
+                # no process names set, return all pids
+                return self.__pids
+            else:
+                return [_pid for _pid in self.__pids if self.__pid_proc_names[_pid] == process_name]
     def set_pids(self, in_pids):
         # dangerous, pid_fuzzy not set
         self.__pids = in_pids
@@ -566,6 +590,8 @@ class meta_server_info(object):
         return set(self.__pids)
     def get_process_name(self, pid):
         return self.__pid_names[pid]
+    def get_sys_process_name(self, pid):
+        return self.__pid_proc_names[pid]
     def get_info(self):
         pid_dict = dict([(pid, self.__pids.count(pid)) for pid in self.__pids])
         all_pids = sorted(pid_dict.keys())
@@ -577,7 +603,7 @@ class meta_server_info(object):
         if etree:
             pid_list = E.pid_list()
             for cur_pid in sorted(set(self.__pids)):
-                cur_pid_el = E.pid("{:d}".format(cur_pid), mult="{:d}".format(self.__pids.count(cur_pid)), name=self.__pid_names[cur_pid])
+                cur_pid_el = E.pid("{:d}".format(cur_pid), mult="{:d}".format(self.__pids.count(cur_pid)), name=self.__pid_names[cur_pid], proc_name=self.__pid_proc_names[cur_pid])
                 f_f, f_c = self.__pid_fuzzy[cur_pid]
                 if f_f:
                     cur_pid_el.attrib["fuzzy_floor"] = "{:d}".format(f_f)
@@ -639,6 +665,7 @@ class meta_server_info(object):
             pids_found = [key for key, value in act_dict.iteritems() if value.name() == self.__exe_name]
             self.__pids = sum([[key] * act_tc_dict.get(key, 1) for key in pids_found], [])
             self.__pid_names.update({key : self.__exe_name for key in pids_found})
+            self.__pid_proc_names.update({key : psutil.Process(key).name() for key in pids_found})
         self.__pids_found = dict([(cur_pid, act_tc_dict[cur_pid]) for cur_pid in self.__pids if cur_pid in act_tc_dict.keys()])
         # structure for check_scripts
         self.pids_found = sum([[cur_pid] * act_tc_dict.get(cur_pid, 0) for cur_pid in self.__pids_found.iterkeys()], [])

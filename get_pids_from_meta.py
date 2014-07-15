@@ -22,16 +22,24 @@
 
 """ output the pids from a given meta file as strings """
 
+import argparse
+import os
 import process_tools
 import sys
 
+META_DIR = "/var/lib/meta-server"
+
 def main():
-    if len(sys.argv) > 1:
-        _msi = process_tools.meta_server_info(sys.argv[1])
-        print(" ".join(["{:d}".format(_pid) for _pid in sorted(set(_msi.get_pids()))]))
+    my_parser = argparse.ArgumentParser()
+    my_parser.add_argument("--name", type=str, default="", help="process name to check against [%(default)s]")
+    my_parser.add_argument("--meta", type=str, required=True, help="meta file to use (relative or absolute, when relative search in {} [%(defaults)s]".format(META_DIR))
+    args = my_parser.parse_args()
+    _msi = process_tools.meta_server_info(args.meta if args.meta.startswith("/") else os.path.join(META_DIR, args.meta))
+    if _msi.parsed:
+        print(" ".join(["{:d}".format(_pid) for _pid in sorted(set(_msi.get_pids(process_name=args.name or None)))]))
         sys.exit(0)
     else:
-        print("no meta file given")
+        print("MSI file is not valid")
         sys.exit(1)
 
 if __name__ == "__main__":
