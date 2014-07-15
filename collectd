@@ -93,6 +93,7 @@ case "$1" in
         echo -n "Shutting down collectd (forced) "
         if [ -f ${META_FILE} ] ; then
             kill -9 $(/opt/cluster/sbin/get_pids_from_meta.py ${META_FILE})
+            rm -f ${META_FILE}
         else
             echo "not running"
             rc_failed
