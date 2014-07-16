@@ -574,14 +574,19 @@ class meta_server_info(object):
                 self.__pids.remove(act_pid)
         self.__pids.sort()
     def get_pids(self, process_name=None):
+        pid_list = self.__pids
         if process_name is None:
-            return self.__pids
+            pass
         else:
             if set(self.__pid_proc_names.values()) == set([""]):
                 # no process names set, return all pids
-                return self.__pids
+                pass
             else:
-                return [_pid for _pid in self.__pids if self.__pid_proc_names[_pid] == process_name]
+                pid_list = [_pid for _pid in pid_list if self.__pid_proc_names[_pid] == process_name]
+        # get parent processes
+        _parent_pids = [(_pid, psutil.Process(_pid).parent().pid) for _pid in pid_list]
+        pid_list = [_pid for _pid, _parent in _parent_pids if _parent in pid_list or _parent == 1]
+        return pid_list
     def set_pids(self, in_pids):
         # dangerous, pid_fuzzy not set
         self.__pids = in_pids
