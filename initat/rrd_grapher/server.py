@@ -1,4 +1,4 @@
-# Copyright (C) 2007-2009,2013-2014 Andreas Lang-Nevyjel, init.at
+    # Copyright (C) 2007-2009,2013-2014 Andreas Lang-Nevyjel, init.at
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -199,6 +199,7 @@ class server_process(threading_tools.process_pool, threading_tools.operational_e
         _router = router_object(self.log)
         send_coms = [self._get_disabled_hosts(), self._get_ipmi_hosts(_router), self._get_snmp_hosts(_router)]
         snd_ok, snd_try = (0, 0)
+        _error_keys = set()
         for send_com in send_coms:
             for key in sorted(self._collectd_sockets):
                 snd_try += 1
@@ -206,6 +207,7 @@ class server_process(threading_tools.process_pool, threading_tools.operational_e
                     self._collectd_sockets[key].send_unicode(unicode(send_com))
                 except:
                     self.log("error sending to {}: {}".format(key, process_tools.get_except_info()), logging_tools.LOG_LEVEL_ERROR)
+                    _error_keys.add(key)
                 else:
                     snd_ok += 1
         self.log(
@@ -215,6 +217,8 @@ class server_process(threading_tools.process_pool, threading_tools.operational_e
                 snd_try - snd_ok,
             )
         )
+        if _error_keys:
+            [self._open_collectd_socket(_host) for _host in _error_keys]
     def _check_for_stale_rrds(self):
         cur_time = time.time()
         # set stale after two hours
@@ -335,22 +339,26 @@ class server_process(threading_tools.process_pool, threading_tools.operational_e
             self.register_poller(client, zmq.POLLIN, self._recv_command)
             self.com_socket = client
         # connection to collectd clients
-        collectd_hosts = ["127.0.0.1"]
         self._collectd_sockets = {}
-        for _ch in collectd_hosts:
-            _cs = self.zmq_context.socket(zmq.DEALER)
-            _id_str = "{}:{}:rrd_cs".format(uuid_tools.get_uuid().get_urn(), _ch)
-            _cs.setsockopt(zmq.IDENTITY, self.bind_id)
-            _cs.setsockopt(zmq.SNDHWM, 256)
-            _cs.setsockopt(zmq.RCVHWM, 256)
-            _cs.setsockopt(zmq.SNDTIMEO, 500)
-            _cs.setsockopt(zmq.IMMEDIATE, True)
-            _cs.setsockopt(zmq.TCP_KEEPALIVE, 1)
-            _cs.setsockopt(zmq.TCP_KEEPALIVE_IDLE, 300)
-            _conn_str = "tcp://{}:{:d}".format(_ch, CD_COM_PORT)
-            self.log("connection string for collectd at {} is {}".format(_ch, _conn_str))
-            _cs.connect(_conn_str)
-            self._collectd_sockets[_ch] = _cs
+        collectd_hosts = ["127.0.0.1"]
+        [self._open_collectd_socket(_host) for _host in collectd_hosts]
+    def _open_collectd_socket(self, _ch):
+        if _ch in self._collectd_sockets:
+            self._collectd_sockets[_ch].close()
+            del self._collectd_sockets[_ch]
+        _cs = self.zmq_context.socket(zmq.DEALER)
+        _id_str = "{}:{}:rrd_cs".format(uuid_tools.get_uuid().get_urn(), _ch)
+        _cs.setsockopt(zmq.IDENTITY, self.bind_id)
+        _cs.setsockopt(zmq.SNDHWM, 256)
+        _cs.setsockopt(zmq.RCVHWM, 256)
+        _cs.setsockopt(zmq.SNDTIMEO, 500)
+        _cs.setsockopt(zmq.IMMEDIATE, True)
+        _cs.setsockopt(zmq.TCP_KEEPALIVE, 1)
+        _cs.setsockopt(zmq.TCP_KEEPALIVE_IDLE, 300)
+        _conn_str = "tcp://{}:{:d}".format(_ch, CD_COM_PORT)
+        self.log("connection string for collectd at {} is {}".format(_ch, _conn_str))
+        _cs.connect(_conn_str)
+        self._collectd_sockets[_ch] = _cs
     def _interpret_mv_info(self, in_vector):
         data_store.feed_vector(in_vector[0])
     def _interpret_perfdata_info(self, host_name, pd_type, pd_info):
