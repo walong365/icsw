@@ -48,12 +48,12 @@ KEY = "postgres"
 class pg_stat(object):
     def __init__(self, name, mv):
         self.name = name
-        self.top_key = "db.postgres.%s" % (self.name)
+        self.top_key = "db.postgres.{}".format(self.name)
         self._keys = set()
         self._init_keys(mv)
         self.last_ts = None
     def _key(self, key):
-        _key = "%s.%s" % (self.top_key, key)
+        _key = "{}.{}".format(self.top_key, key)
         if _key not in self._keys:
             self._keys.add(_key)
         return _key
