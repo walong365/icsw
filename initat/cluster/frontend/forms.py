@@ -983,17 +983,20 @@ class partition_form(ModelForm):
                 Field("partition_hex", readonly=True),
             ),
             Fieldset(
+                "Partition flags",
+                Field("bootable"),
+            ),
+            Fieldset(
                 "Mount options",
                 Field("mountpoint", wrapper_ng_show="partition_need_mountpoint(_edit_obj)"),
-                Field("mount_options"),
-                Field("bootable"),
-                Field("fs_freq", min=0, max=1),
-                Field("fs_passno", min=0, max=2),
+                Field("mount_options", wrapper_ng_show="partition_need_mountpoint(_edit_obj)"),
+                Field("fs_freq", min=0, max=1, wrapper_ng_show="partition_need_mountpoint(_edit_obj)"),
+                Field("fs_passno", min=0, max=2, wrapper_ng_show="partition_need_mountpoint(_edit_obj)"),
             ),
             Fieldset(
                 "Check thresholds",
-                Field("warn_threshold", min=0, max=100),
-                Field("crit_threshold", min=0, max=100),
+                Field("warn_threshold", min=0, max=100, wrapper_ng_show="partition_need_mountpoint(_edit_obj)"),
+                Field("crit_threshold", min=0, max=100, wrapper_ng_show="partition_need_mountpoint(_edit_obj)"),
             ),
             FormActions(
                 Submit("submit", "", css_class="primaryAction", ng_value="action_string"),
