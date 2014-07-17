@@ -866,6 +866,8 @@ def partition_pre_save(sender, **kwargs):
         if cur_inst.partition_fs_id:
             if cur_inst.partition_fs.name == "swap":
                 cur_inst.mountpoint = "swap"
+            if not cur_inst.partition_fs.need_mountpoint():
+                cur_inst.mountpoint = ""
             cur_inst.partition_hex = cur_inst.partition_fs.hexid
 
 class partition_disc(models.Model):
@@ -970,7 +972,7 @@ class partition_table(models.Model):
                 ] for p_disc in self.partition_disc_set.all()
             ], [])
         )
-        all_mps = sum([[cur_p.mountpoint for cur_p in p_disc.partition_set.all() if cur_p.mountpoint.strip() and cur_p.mountpoint.strip() != "swap"] for p_disc in self.partition_disc_set.all()], [])
+        all_mps = sum([[cur_p.mountpoint for cur_p in p_disc.partition_set.all() if cur_p.mountpoint.strip() and (cur_p.partition_fs_id and cur_p.partition_fs.need_mountpoint())] for p_disc in self.partition_disc_set.all()], [])
         all_mps.extend([sys_p.mountpoint for sys_p in self.sys_partition_set.all()])
         unique_mps = set(all_mps)
         for non_unique_mp in sorted([name for name in unique_mps if all_mps.count(name) > 1]):
