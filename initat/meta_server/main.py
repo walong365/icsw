@@ -48,7 +48,8 @@ def main():
         ("TO_ADDR"             , configfile.str_c_var("lang-nevyjel@init.at", help_string="mail address to send error-emails to [%(default)s]", short_options="t")),
         ("FAILED_CHECK_TIME"   , configfile.int_c_var(120, help_string="time in seconds to wait befor we do something [%(default)d]")),
         ("TRACK_CSW_MEMORY"    , configfile.bool_c_var(False, help_string="enable tracking of the memory usage of the CSW [%(default)s]", action="store_true")),
-        ("MIN_CHECK_TIME"      , configfile.int_c_var(6, info="minimum time between two checks", autoconf_exclude=True)),
+        ("MIN_CHECK_TIME"      , configfile.int_c_var(60, info="minimum time between two checks [%(default)s]", autoconf_exclude=True)),
+        ("MIN_MEMCHECK_TIME"   , configfile.int_c_var(300, info="minimum time between two memory checks [%(default)s]", autoconf_exclude=True)),
         ("SERVER_FULL_NAME"    , configfile.str_c_var(long_host_name, autoconf_exclude=True)),
         ("PID_NAME"            , configfile.str_c_var("meta-server", autoconf_exclude=True))])
     global_config.parse_file()

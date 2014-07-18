@@ -67,6 +67,7 @@ class main_process(threading_tools.process_pool):
         # check
         self.__check_dict = {}
         self.__last_update_time = time.time() - 2 * global_config["MIN_CHECK_TIME"]
+        self.__last_memcheck_time = time.time() - 2 * global_config["MIN_MEMCHECK_TIME"]
         self.__problem_list = []
         self._init_meminfo()
         self._show_config()
@@ -118,8 +119,11 @@ class main_process(threading_tools.process_pool):
         else:
             self["exit_requested"] = True
     def _init_network_sockets(self):
-        client = self.zmq_context.socket(zmq.ROUTER)
-        # client.setsockopt(zmq.IDENTITY, "ms")
+        client = process_tools.get_socket(
+            self.zmq_context,
+            "ROUTER",
+            identity=process_tools.get_client_uuid("meta"),
+        )
         try:
             client.bind("tcp://*:{:d}".format(global_config["COM_PORT"]))
         except zmq.ZMQError:
@@ -153,11 +157,9 @@ class main_process(threading_tools.process_pool):
                 srv_com["command"].text,
                 srv_com["source"].attrib["host"]))
             srv_com.update_source()
-            srv_com["result"] = {
-                "state" : server_command.SRV_REPLY_STATE_OK,
-                "reply" : "ok"}
+            srv_com.set_result("ok")
             if srv_com["command"].text == "status":
-                srv_com["result"].attrib["reply"] = "ok process is running"
+                srv_com.check_msi_block(self.__msi_block)
             elif srv_com["command"].text == "version":
                 srv_com["result"].attrib["reply"] = "version is {}".format(VERSION_STRING)
             else:
@@ -168,8 +170,12 @@ class main_process(threading_tools.process_pool):
             zmq_sock.send_unicode(src_id, zmq.SNDMORE)
             zmq_sock.send_unicode(unicode(srv_com))
         else:
-            self.log("cannot receive more data, already got '{}'".format(src_id),
-                     logging_tools.LOG_LEVEL_ERROR)
+            self.log(
+                "cannot receive more data, already got '{}'".format(
+                    src_id
+                ),
+                logging_tools.LOG_LEVEL_ERROR
+            )
     def _show_config(self):
         try:
             for log_line, log_level in global_config.get_log():
@@ -188,8 +194,10 @@ class main_process(threading_tools.process_pool):
         if self.vector_socket:
             self.vector_socket.close()
     def _do_commands(self, act_commands):
-        for act_command in act_commands:
-            self._submit_at_command(act_command, 1)
+        if act_commands:
+            self.log("processing {}".format(logging_tools.get_plural("command", len(act_commands))))
+            for act_command in act_commands:
+                self._submit_at_command(act_command, 1)
     def _submit_at_command(self, com, when):
         _c_stat, log_lines = process_tools.submit_at_command(com, when)
         for line in log_lines:
@@ -275,138 +283,146 @@ class main_process(threading_tools.process_pool):
             self.__last_update_time = act_time
             act_commands = self._check_for_new_info(self.__problem_list)
             self._do_commands(act_commands)
-            del_list = []
-            mem_info_dict = {}
-            act_tc_dict = process_tools.get_process_id_list(True, True)
-            act_pid_dict = process_tools.get_proc_list_new(int_pid_list=act_tc_dict.keys())
-            # import pprint
-            # pprint.pprint(act_pid_dict)
-            # print act_pid_list
-            problem_list = []
-            for key, struct in self.__check_dict.iteritems():
-                struct.check_block(act_tc_dict, act_pid_dict)
-                if struct.pid_checks_failed:
-                    problem_list.append(key)
-                    pids_failed_time = abs(struct.get_last_pid_check_ok_time() - act_time)
-                    do_sthg_pids = (struct.pid_checks_failed >= 2 and pids_failed_time > global_config["FAILED_CHECK_TIME"])
-                    do_sthg = do_sthg_pids
-                    if do_sthg_pids:
-                        self.log(
-                            "*** pid check failed for {}: {}".format(
-                                key,
-                                struct.pid_check_string,
-                            ),
-                            logging_tools.LOG_LEVEL_WARN
-                        )
-                    self.log(
-                        "*** {} (pid failed {}, {}): {} remaining, grace time {}, {}".format(
-                            key,
-                            logging_tools.get_plural("time", struct.pid_checks_failed),
-                            struct.pid_check_string,
-                            logging_tools.get_plural("grace_period", max(0, 2 - struct.pid_checks_failed)),
-                            logging_tools.get_plural("second", global_config["FAILED_CHECK_TIME"] - pids_failed_time),
-                            do_sthg and "starting countermeasures" or "still waiting...",
-                        ),
-                        logging_tools.LOG_LEVEL_WARN
-                    )
-                    if do_sthg:
-                        # first submit the at-commands
-                        if struct.stop_command:
-                            self._submit_at_command(struct.stop_command, 1)
-                        if struct.start_command:
-                            self._submit_at_command(struct.start_command, 2)
-                        self.__new_mail.init_text()
-                        self.__new_mail.set_subject("problem with {} on {} (meta-server)".format(key, global_config["SERVER_FULL_NAME"]))
-                        self.__new_mail.append_text([
-                            "check failed for {}: {}".format(
-                                key,
-                                struct.pid_check_string),
-                            "starting repair sequence",
-                            ""])
-                        self.log("*** starting repair sequence",
-                             logging_tools.LOG_LEVEL_WARN)
-                        if struct.kill_pids:
-                            kill_info = struct.kill_all_found_pids()
-                            self.log("  *** kill info: {}".format(kill_info),
-                                     logging_tools.LOG_LEVEL_WARN)
-                            self.__new_mail.append_text([
-                                "trying to kill the remaining pids, kill info : {}".format(kill_info),
-                                ""])
-                        if struct.stop_command:
-                            self.__new_mail.append_text([
-                                "issued the stop command : {}".format(struct.stop_command),
-                                ""])
-                        if struct.start_command:
-                            self.__new_mail.append_text([
-                                "issued the start command : {}".format(struct.start_command),
-                                ""])
-                        struct.remove_meta_block()
-                        _sm_stat, log_lines = self.__new_mail.send_mail()
-                        for line in log_lines:
-                            self.log(line)
-                        del_list.append(key)
-                else:
-                    # check memory consumption if everything is ok
-                    if struct.check_memory:
-                        pids = struct.get_unique_pids()
-                        if pids:
-                            # only count memory for one pid
-                            mem_info_dict[key] = {pid: (struct.get_process_name(pid), process_tools.get_mem_info(pid)) for pid in pids}
-                        else:
-                            mem_info_dict[key] = None
-            if mem_info_dict:
-                self.__act_meminfo_line += 1
-                act_meminfo_keys = sorted(mem_info_dict.keys())
-                if act_meminfo_keys != self.__last_meminfo_keys or self.__act_meminfo_line > 100:
-                    self.__act_meminfo_line = 0
-                    self.__last_meminfo_keys = act_meminfo_keys
-                    self.log("Memory info mapping: {}".format(", ".join(["{:d}: {}".format(act_meminfo_keys.index(key) + 1, key) for key in act_meminfo_keys])))
-                if hm_classes and self.vector_socket:
-                    drop_com = server_command.srv_command(command="set_vector")
-                    mv_valid = act_time + 60
-                    my_vector = drop_com.builder("values")
-                    # handle removal of old keys, track pids, TODO, FIXME
-                    old_keys = set(self.mis_dict.keys())
-                    new_keys = set()
-                    for key in act_meminfo_keys:
-                        tot_mem = 0
-                        for proc_name, mem_usage in mem_info_dict[key].itervalues():
-                            tot_mem += mem_usage
-                            f_key = (key, proc_name)
-                            info_str = "memory usage of {} ({})".format(key, proc_name)
-                            if f_key not in self.mis_dict:
-                                self.mis_dict[f_key] = hm_classes.mvect_entry("mem.icsw.{}.{}".format(key, proc_name), info=info_str, default=0, unit="Byte", base=1024)
-                            self.mis_dict[f_key].update(mem_usage)
-                            self.mis_dict[f_key].info = info_str
-                            self.mis_dict[f_key].valid_until = mv_valid
-                            new_keys.add(f_key)
-                            my_vector.append(self.mis_dict[f_key].build_xml(drop_com.builder))
-                        if proc_name not in self.mis_dict:
-                            self.mis_dict[key] = hm_classes.mvect_entry("mem.icsw.{}.total".format(key), info="memory usage of {}".format(key), default=0, unit="Byte", base=1024)
-                        self.mis_dict[key].update(tot_mem)
-                        self.mis_dict[key].valid_until = mv_valid
-                        new_keys.add(key)
-                        my_vector.append(self.mis_dict[key].build_xml(drop_com.builder))
-                    drop_com["vector"] = my_vector
-                    drop_com["vector"].attrib["type"] = "vector"
-                    self.vector_socket.send_unicode(unicode(drop_com))
-                    del_keys = old_keys - new_keys
-                    if del_keys:
-                        self.log("removing {} from mis_dict".format(logging_tools.get_plural("key", len(del_keys))))
-                        for del_key in del_keys:
-                            del self.mis_dict[del_key]
+            self._check_processes()
+    def _check_processes(self):
+        act_time = time.time()
+        del_list = []
+        mem_info_dict = {}
+        act_tc_dict = process_tools.get_process_id_list(True, True)
+        act_pid_dict = process_tools.get_proc_list_new(int_pid_list=act_tc_dict.keys())
+        _check_mem = act_time > self.__last_memcheck_time + global_config["MIN_MEMCHECK_TIME"]
+        self.__last_memcheck_time = act_time
+        # import pprint
+        # pprint.pprint(act_pid_dict)
+        # print act_pid_list
+        problem_list = []
+        for key, struct in self.__check_dict.iteritems():
+            struct.check_block(act_tc_dict, act_pid_dict)
+            if struct.pid_checks_failed:
+                problem_list.append(key)
+                pids_failed_time = abs(struct.get_last_pid_check_ok_time() - act_time)
+                do_sthg = (struct.pid_checks_failed >= 2 and pids_failed_time >= global_config["FAILED_CHECK_TIME"])
                 self.log(
-                    "Memory info: {}".format(
-                        " / ".join([
-                            process_tools.beautify_mem_info(sum([value[1] for value in mem_info_dict.get(key, {}).itervalues()]), short=True) for key in act_meminfo_keys
-                        ])
-                    )
+                    "*** unit {} (pid check failed for {}, {}): {} remaining, grace time {}, {}".format(
+                        key,
+                        logging_tools.get_plural("time", struct.pid_checks_failed),
+                        struct.pid_check_string,
+                        logging_tools.get_plural("grace_period", max(0, 2 - struct.pid_checks_failed)),
+                        logging_tools.get_plural("second", global_config["FAILED_CHECK_TIME"] - pids_failed_time),
+                        do_sthg and "starting countermeasures" or "still waiting...",
+                    ),
+                    logging_tools.LOG_LEVEL_WARN
                 )
-            if del_list:
-                del_list.sort()
-                self.log("removed {}: {}".format(logging_tools.get_plural("block", len(del_list)), ", ".join(del_list)))
-                for d_p in del_list:
-                    del self.__check_dict[d_p]
+                if do_sthg:
+                    mail_text = [
+                        "check failed for {}: {}".format(
+                            key,
+                            struct.pid_check_string),
+                        "starting repair sequence",
+                        "",
+                    ]
+                    # first submit the at-commands
+                    if struct.stop_command:
+                        self._submit_at_command(struct.stop_command, 1)
+                        mail_text.extend(
+                            [
+                                "issued the stop command : {} in 1 minute".format(struct.stop_command),
+                                "",
+                            ]
+                        )
+                    if struct.start_command:
+                        self._submit_at_command(struct.start_command, 2)
+                        mail_text.extend(
+                            [
+                                "issued the start command : {} in 2 minutes".format(struct.start_command),
+                                "",
+                            ]
+                        )
+                    self.log("*** starting repair sequence",
+                         logging_tools.LOG_LEVEL_WARN)
+                    if struct.kill_pids:
+                        kill_info = struct.kill_all_found_pids()
+                        self.log("  *** kill info: {}".format(kill_info),
+                                 logging_tools.LOG_LEVEL_WARN)
+                        mail_text.extend(
+                            [
+                                "trying to kill the remaining pids, kill info : {}".format(kill_info),
+                                "",
+                            ]
+                        )
+                    self.__new_mail.init_text()
+                    self.__new_mail.set_subject("problem with {} on {} (meta-server)".format(key, global_config["SERVER_FULL_NAME"]))
+                    self.__new_mail.append_text(mail_text)
+                    struct.remove_meta_block()
+                    _sm_stat, log_lines = self.__new_mail.send_mail()
+                    for line in log_lines:
+                        self.log(line)
+                    del_list.append(key)
+            else:
+                # check memory consumption if everything is ok
+                if struct.check_memory and _check_mem:
+                    pids = struct.get_unique_pids()
+                    if pids:
+                        # only count memory for one pid
+                        mem_info_dict[key] = {pid: (struct.get_process_name(pid), process_tools.get_mem_info(pid)) for pid in pids}
+                    else:
+                        mem_info_dict[key] = None
+        if mem_info_dict:
+            self._show_meminfo(mem_info_dict)
+        if del_list:
+            del_list.sort()
+            self.log("removed {}: {}".format(logging_tools.get_plural("block", len(del_list)), ", ".join(del_list)))
+            for d_p in del_list:
+                del self.__check_dict[d_p]
+    def _show_meminfo(self, mem_info_dict):
+        act_time = time.time()
+        self.__act_meminfo_line += 1
+        act_meminfo_keys = sorted(mem_info_dict.keys())
+        if act_meminfo_keys != self.__last_meminfo_keys or self.__act_meminfo_line > 100:
+            self.__act_meminfo_line = 0
+            self.__last_meminfo_keys = act_meminfo_keys
+            self.log("Memory info mapping: {}".format(", ".join(["{:d}: {}".format(act_meminfo_keys.index(key) + 1, key) for key in act_meminfo_keys])))
+        if hm_classes and self.vector_socket:
+            drop_com = server_command.srv_command(command="set_vector")
+            mv_valid = act_time + 2 * global_config["MIN_MEMCHECK_TIME"]
+            my_vector = drop_com.builder("values")
+            # handle removal of old keys, track pids, TODO, FIXME
+            old_keys = set(self.mis_dict.keys())
+            new_keys = set()
+            for key in act_meminfo_keys:
+                tot_mem = 0
+                for proc_name, mem_usage in mem_info_dict[key].itervalues():
+                    tot_mem += mem_usage
+                    f_key = (key, proc_name)
+                    info_str = "memory usage of {} ({})".format(key, proc_name)
+                    if f_key not in self.mis_dict:
+                        self.mis_dict[f_key] = hm_classes.mvect_entry("mem.icsw.{}.{}".format(key, proc_name), info=info_str, default=0, unit="Byte", base=1024)
+                    self.mis_dict[f_key].update(mem_usage)
+                    self.mis_dict[f_key].info = info_str
+                    self.mis_dict[f_key].valid_until = mv_valid
+                    new_keys.add(f_key)
+                    my_vector.append(self.mis_dict[f_key].build_xml(drop_com.builder))
+                if proc_name not in self.mis_dict:
+                    self.mis_dict[key] = hm_classes.mvect_entry("mem.icsw.{}.total".format(key), info="memory usage of {}".format(key), default=0, unit="Byte", base=1024)
+                self.mis_dict[key].update(tot_mem)
+                self.mis_dict[key].valid_until = mv_valid
+                new_keys.add(key)
+                my_vector.append(self.mis_dict[key].build_xml(drop_com.builder))
+            drop_com["vector"] = my_vector
+            drop_com["vector"].attrib["type"] = "vector"
+            self.vector_socket.send_unicode(unicode(drop_com))
+            del_keys = old_keys - new_keys
+            if del_keys:
+                self.log("removing {} from mis_dict".format(logging_tools.get_plural("key", len(del_keys))))
+                for del_key in del_keys:
+                    del self.mis_dict[del_key]
+        self.log(
+            "Memory info: {}".format(
+                " / ".join([
+                    process_tools.beautify_mem_info(sum([value[1] for value in mem_info_dict.get(key, {}).itervalues()]), short=True) for key in act_meminfo_keys
+                ])
+            )
+        )
     def loop_post(self):
         self.network_socket.close()
         self.__log_template.close()
