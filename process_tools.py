@@ -28,6 +28,7 @@ import marshal
 import os
 import pickle
 import platform
+import psutil
 import random
 import re
 import signal
@@ -38,7 +39,8 @@ import sys
 import threading
 import time
 import traceback
-import psutil
+import uuid_tools
+import zmq
 if sys.version_info[0] == 3:
     unicode = str
     long = int
@@ -133,6 +135,38 @@ class exception_info(object):
             if line:
                 self.log_lines.append(" - {:d} : {}".format(line_no, line))
         self.log_lines.append(get_except_info(self.except_info))
+
+# mapping: server type -> postfix for ZMQ_IDENTITY string
+_CLIENT_TYPE_UUID_MAPPING = {
+    "meta"      : "meta-server",
+    "package"   : "package-client",
+}
+
+def get_client_uuid(client_type, uuid=None):
+    if uuid is None:
+        uuid = uuid_tools.get_uuid().get_urn()
+    if not uuid.startswith("urn"):
+        uuid = "urn:uuid:{}".format(uuid)
+    return "{}:{}:".format(
+        uuid,
+        _CLIENT_TYPE_UUID_MAPPING[client_type],
+    )
+
+def get_socket(context, r_type, **kwargs):
+    _sock = context.socket(getattr(zmq, r_type))
+    if r_type in ["ROUTER"]:
+        _sock.setsockopt(zmq.IDENTITY, kwargs["identity"])
+        _sock.setsockopt(zmq.ROUTER_MANDATORY, 1)
+    for _opt, _value in [
+        ("LINGER", 100),
+        ("SNDHWM", 256),
+        ("RCVHWM", 256),
+        ("BACKLOG", 1),
+        ("TCP_KEEPALIVE", 1),
+        ("TCP_KEEPALIVE_IDLE", 300),
+        ]:
+        _sock.setsockopt(getattr(zmq, _opt), _value)
+    return _sock
 
 def zmq_identity_str(id_string):
     return "{}:{}:{:d}".format(
@@ -490,6 +524,7 @@ class meta_server_info(object):
             self.__pid_names = {}
             self.__pid_proc_names = {}
             self.__pid_fuzzy = {}
+            self.pid_checks_ok, self.pid_checks_failed = (0, 0)
             for opt, val_type, def_val in self.__prop_list:
                 setattr(self, opt, def_val)
         self.parsed = parsed
@@ -602,7 +637,7 @@ class meta_server_info(object):
         all_pids = sorted(pid_dict.keys())
         return "{} ({}): {}".format(
             logging_tools.get_plural("different pid", len(all_pids)),
-            logging_tools.get_plural("total pid", len(self.__pids)),
+            logging_tools.get_plural("total thread", len(self.__pids)),
             all_pids and ", ".join(["{:d}{}".format(pid, pid_dict[pid] and " (x {:d})".format(pid_dict[pid]) or "") for pid in all_pids]) or "---")
     def save_block(self):
         if etree:
@@ -680,10 +715,12 @@ class meta_server_info(object):
             ) for cur_pid in self.__pids])
         # print self.__name, self.__pids_found, self.__pids_expected, self.__pid_fuzzy
         bound_dict = {}
+        missing_list = []
         for unique_pid in set(self.__pids_found.keys()) | set(self.__pids_expected.keys()):
             p_f = self.__pids_found.get(unique_pid, 0)
             l_c, u_c = self.__pids_expected[unique_pid]
             if unique_pid not in self.__pids_found:
+                missing_list.append(unique_pid)
                 bound_dict[unique_pid] = -l_c
             elif unique_pid not in self.__pids_expected:
                 bound_dict[unique_pid] = p_f
@@ -699,10 +736,12 @@ class meta_server_info(object):
         # num_expected = sum([value for value in self.__pids_expected.values()])
         self.pid_check_string = ", ".join(["{:d}: {}".format(
             cur_pid,
-            "{:d} {}".format(
-                abs(bound_dict[cur_pid]),
-                "missing" if bound_dict[cur_pid] < 0 else "too many",
-            ) if bound_dict[cur_pid] else "OK",
+            "all {} missing".format(self.__pids_expected[cur_pid][0]) if cur_pid in missing_list else (
+                "{:d} {}".format(
+                    abs(bound_dict[cur_pid]),
+                    "missing (lower bound is {:d})".format(self.__pids_expected[cur_pid][0]) if bound_dict[cur_pid] < 0 else "too many (upper bound is {:d})".format(self.__pids_expected[cur_pid][1]),
+                ) if bound_dict[cur_pid] else "OK"
+            )
             ) for cur_pid in sorted(bound_dict.iterkeys())]) or "no PIDs"
         if any([value != 0 for value in bound_dict.itervalues()]):
             self.pid_checks_failed += 1
@@ -1422,24 +1461,6 @@ def bpt_show_childs(in_dict, idx, start):
         p_list = in_dict[start]["childs"].keys()
         for pid in p_list:
             bpt_show_childs(in_dict[start]["childs"], idx + 2, pid)
-
-# no longer used (only reference was in process_monitor_mod.py)
-# def build_ps_tree(pdict):
-#    # only usable for old-style pslist
-#    def bpt_get_childs(master):
-#        r_dict = {}
-#        for pid in pdict.keys():
-#            _ps = pdict[pid]
-#            if _ps["ppid"] == master:
-#                r_dict[pid] = pdict[pid]
-#                r_dict[pid]["master"] = master
-#                r_dict[pid]["childs"] = bpt_get_childs(pid)
-#        return r_dict
-#    # find master process (with ppid == 0)
-#    ps_tree = bpt_get_childs(0)
-#    # show_childs(ps_tree, 0,ps_tree.keys()[0])
-#    print ps_tree
-#    return ps_tree
 
 def build_ppid_list(p_dict, pid=None):
     if not pid:
