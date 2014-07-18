@@ -129,7 +129,7 @@ case "$1" in
         rc_status -v
         ;;
     *)
-        echo "Usage: $0 {start|stop|status|restart}"
+        echo "Usage: $0 {start|stop|status|restart|force-stop|force-restart}"
         exit 1
         ;;
 esac
