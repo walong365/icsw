@@ -157,25 +157,30 @@ class server_process(threading_tools.process_pool):
         self.socket_dict = {}
         # get all ipv4 interfaces with their ip addresses, dict: interfacename -> IPv4
         for key, sock_type, bind_port, target_func in [
-            ("router", zmq.ROUTER, global_config["SERVER_PUB_PORT"] , self._new_com),
-            ("pull"  , zmq.PULL  , global_config["SERVER_PULL_PORT"], self._new_com),
+            ("router", "ROUTER", global_config["SERVER_PUB_PORT"] , self._new_com),
+            ("pull"  , "PULL"  , global_config["SERVER_PULL_PORT"], self._new_com),
             ]:
-            client = self.zmq_context.socket(sock_type)
-            client.setsockopt(zmq.IDENTITY, self.bind_id)
-            client.setsockopt(zmq.LINGER, 100)
-            client.setsockopt(zmq.SNDHWM, 256)
-            client.setsockopt(zmq.RCVHWM, 256)
-            client.setsockopt(zmq.BACKLOG, 1)
-            client.setsockopt(zmq.TCP_KEEPALIVE, 1)
-            client.setsockopt(zmq.TCP_KEEPALIVE_IDLE, 300)
-            if key == "router":
-                # set mandatory flag
-                client.setsockopt(zmq.ROUTER_MANDATORY, 1)
+            client = process_tools.get_socket(
+                self.zmq_context,
+                sock_type,
+                identity=self.bind_id,
+            )
+            # client = self.zmq_context.socket(sock_type)
+            # client.setsockopt(zmq.IDENTITY, self.bind_id)
+            # client.setsockopt(zmq.LINGER, 100)
+            # client.setsockopt(zmq.SNDHWM, 256)
+            # client.setsockopt(zmq.RCVHWM, 256)
+            # client.setsockopt(zmq.BACKLOG, 1)
+            # client.setsockopt(zmq.TCP_KEEPALIVE, 1)
+            # client.setsockopt(zmq.TCP_KEEPALIVE_IDLE, 300)
+            # if key == "router":
+            #    # set mandatory flag
+            #    client.setsockopt(zmq.ROUTER_MANDATORY, 1)
             conn_str = "tcp://*:{:d}".format(bind_port)
             try:
                 client.bind(conn_str)
             except zmq.ZMQError:
-                self.log("error binding to {}{{{:d}}}: {}".format(
+                self.log("error binding to {}{{{}}}: {}".format(
                     conn_str,
                     sock_type,
                     process_tools.get_except_info()),
@@ -183,7 +188,7 @@ class server_process(threading_tools.process_pool):
                 client.close()
                 success = False
             else:
-                self.log("bind to port {}{{{:d}}}".format(
+                self.log("bind to port {}{{{}}}".format(
                     conn_str,
                     sock_type))
                 self.register_poller(client, zmq.POLLIN, target_func)
