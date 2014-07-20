@@ -49,13 +49,6 @@ class main_process(threading_tools.process_pool):
         self.__log_cache, self.__log_template = ([], None)
         threading_tools.process_pool.__init__(self, "main", zmq=True, zmq_debug=global_config["ZMQ_DEBUG"])
         self.renice()
-        if not global_config["DEBUG"]:
-            process_tools.set_handles(
-                {
-                    "out" : (1, "meta-server.out"),
-                    "err" : (0, "/var/lib/logging-server/py_err")
-                },
-                zmq_context=self.zmq_context)
         # check for correct rights
         self._check_dirs()
         self.__log_template = logging_tools.get_logger(global_config["LOG_NAME"], global_config["LOG_DESTINATION"], zmq=True, context=self.zmq_context)

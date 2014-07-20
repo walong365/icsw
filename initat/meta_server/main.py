@@ -23,9 +23,13 @@
 
 from initat.meta_server.config import global_config
 from initat.meta_server.server import main_process
+from io_stream_helper import io_stream
 import configfile
+import daemon
+import os
 import process_tools
 import socket
+import sys
 
 try:
     from initat.meta_server.version import VERSION_STRING
@@ -66,9 +70,13 @@ def main():
                 process_tools.kill_running_processes(exclude=configfile.get_manager_pid())
         # process_tools.fix_directories("root", "root", [(glob_config["MAIN_DIR"], 0777)])
         if not options.DEBUG:
-            process_tools.become_daemon()
+            with daemon.DaemonContext():
+                sys.stdout = io_stream("/var/lib/logging-server/py_log_zmq")
+                sys.stderr = io_stream("/var/lib/logging-server/py_err_zmq")
+                main_process().loop()
+            os._exit(0)
         else:
             print "Debugging meta-server on {}".format(global_config["SERVER_FULL_NAME"])
-        main_process().loop()
+            main_process().loop()
     return 0
 
