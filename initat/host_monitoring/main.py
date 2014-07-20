@@ -147,10 +147,10 @@ def main():
                 sys.stdout = io_stream("/var/lib/logging-server/py_log_zmq")
                 sys.stderr = io_stream("/var/lib/logging-server/py_err_zmq")
                 global_config = configfile.get_global_config(prog_name, parent_object=global_config)
-                run_code(prog_name)
+                run_code(prog_name, None)
                 configfile.terminate_manager()
-            # dirty but working :-)
-            os.kill(os.getpid(), 9)
+            # exit
+            os._exit(0)
         else:
             if prog_name in ["collserver", "collrelay"]:
                 global_config = configfile.get_global_config(prog_name, parent_object=global_config)
