@@ -17,9 +17,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
-""" package client, configuration """
+""" package client, constants """
 
-import configfile
-import process_tools
-
-global_config = configfile.get_global_config(process_tools.get_programm_name())
+P_SERVER_COM_PORT = 8007
+PACKAGE_CLIENT_PORT = 2003

@@ -19,7 +19,8 @@
 #
 """ daemon to automatically install packages (.rpm, .deb) """
 
-from initat.package_install.client.config import VERSION_STRING, P_SERVER_COM_PORT, PACKAGE_CLIENT_PORT
+from initat.package_install.client.constants import P_SERVER_COM_PORT, PACKAGE_CLIENT_PORT
+from initat.package_install.client.version import VERSION_STRING
 from initat.package_install.client.server import server_process
 from io_stream_helper import io_stream
 import configfile
@@ -97,9 +98,8 @@ def main():
                 process_tools.kill_running_processes()
             process_tools.renice(global_config["NICE_LEVEL"])
             if not global_config["DEBUG"]:
+                print prog_name
                 with daemon.DaemonContext():
-                    sys.stdout = io_stream("/var/lib/logging-server/py_log_zmq")
-                    sys.stderr = io_stream("/var/lib/logging-server/py_err_zmq")
                     global_config = configfile.get_global_config(prog_name, parent_object=global_config)
                     server_process().loop()
                     configfile.terminate_manager()
