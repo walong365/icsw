@@ -286,7 +286,7 @@ class relay_code(threading_tools.process_pool):
         if True:
             self.log("Initialising meta-server-info block")
             msi_block = process_tools.meta_server_info("collrelay")
-            msi_block.add_actual_pid(mult=3, fuzzy_ceiling=3, process_name="main")
+            msi_block.add_actual_pid(mult=3, fuzzy_ceiling=4, process_name="main")
             msi_block.add_actual_pid(act_pid=configfile.get_manager_pid(), mult=3, process_name="manager")
             msi_block.start_command = "/etc/init.d/host-relay start"
             msi_block.stop_command = "/etc/init.d/host-relay force-stop"
