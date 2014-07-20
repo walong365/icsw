@@ -108,7 +108,7 @@ def main():
                     run_code()
                     configfile.terminate_manager()
                 # exit
-                os.kill(os.getpid(), 9)
+                os._exit(0)
             else:
                 print "Debugging {} on {}".format(prog_name, process_tools.get_machine_name())
                 run_code()
