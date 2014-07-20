@@ -77,7 +77,7 @@ def main():
         process_tools.renice()
         process_tools.change_user_group(global_config["USER"], global_config["GROUP"])
         if not options.DEBUG:
-            with daemon.DaemonContext(stdout=sys.stdout, stderr=sys.stderr):
+            with daemon.DaemonContext():
                 sys.stdout = file(os.path.join(global_config["LOG_DESTINATION"], "log.stdout"), "a")
                 sys.stderr = file(os.path.join(global_config["LOG_DESTINATION"], "log.stderr"), "a")
                 main_process(options).loop()
