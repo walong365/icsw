@@ -218,15 +218,13 @@ class main_process(threading_tools.process_pool):
         self.__log_cache = []
     def _feed_error(self, in_dict):
         try:
-            # get error string
-            error_f = [
-                in_dict.get("exc_text", "") or "",
-                in_dict.get("error_str", "") or "",
-            ]
-            error_str = ("\n".join([line for line in error_f if line.rstrip()]))
-            if error_str:
-                error_f = error_str.split("\n")
-            else:
+            # error_str is set in io_stream_helper.io_stream
+            error_str = u"{}{}".format(
+                in_dict.get("exc_text", u"") or u"",
+                in_dict.get("error_str", u"") or u"",
+            )
+            print error_str
+            if not error_str:
                 self.log("cannot extract error_str, using dump of error_dict", logging_tools.LOG_LEVEL_ERROR)
                 error_f = []
                 for key in sorted(in_dict.keys()):
@@ -237,11 +235,16 @@ class main_process(threading_tools.process_pool):
                             key,
                             process_tools.get_except_info(),
                             ))
-
-            self.__eg_dict.setdefault(in_dict["pid"], {
+                error_str = "\n".join(error_f)
+            cur_dict = self.__eg_dict.setdefault(in_dict["pid"], {
                 "last_update" : time.time(),
-                "errors"      : [],
-                "proc_dict"   : in_dict})["errors"].extend(error_f)
+                # error as unicode
+                "error_str"    : u"",
+                # how many lines we have already logged
+                "lines_logged" : 0,
+                "proc_dict"    : in_dict})
+            # append line to errors
+            cur_dict["error_str"] = "{}{}".format(cur_dict["error_str"], error_str)
             # log to err_py
             try:
                 uname = pwd.getpwuid(in_dict.get("uid", -1))[0]
@@ -257,16 +260,27 @@ class main_process(threading_tools.process_pool):
                 uname,
                 in_dict.get("gid", 0),
                 gname)
-            for err_line in error_f:
-                self.log("from pid {:d} ({}): {}".format(
-                    in_dict.get("pid", 0),
-                    pid_str,
-                    err_line.rstrip()),
-                         logging_tools.LOG_LEVEL_ERROR,
-                         "err_py")
+            # log to err_py
+            _lines = cur_dict["error_str"].split("\n")
+            # never log the last line, this line is either incomplete (\n missing) or empty (\n present)
+            for err_line in _lines[cur_dict["lines_logged"]:-1]:
+                self.log(
+                    "from pid {:d} ({}): {}".format(
+                        in_dict.get("pid", 0),
+                        pid_str,
+                        err_line.rstrip()
+                    ),
+                    logging_tools.LOG_LEVEL_ERROR,
+                    "err_py"
+                )
+            cur_dict["lines_logged"] = len(_lines) - 1
         except:
-            self.log("error in handling error_dict: {}".format(process_tools.get_except_info()),
-                     logging_tools.LOG_LEVEL_ERROR)
+            self.log(
+                "error in handling error_dict: {}".format(
+                    process_tools.get_except_info()
+                ),
+                logging_tools.LOG_LEVEL_ERROR
+            )
     def _get_process_info(self, es_dict):
         p_dict = es_dict.get("proc_dict", {})
         return "name {}, ppid {:d}, uid {:d}, gid {:d}".format(
@@ -287,8 +301,9 @@ class main_process(threading_tools.process_pool):
                     global_config["LONG_HOST_NAME"],
                     c_name,
                     process_tools.get_machine_name())
+                err_lines = "".join(es["error_str"]).split("\n")
                 msg_body = "\n".join(["Processinfo {}".format(self._get_process_info(es))] +
-                                     ["{:3d} {}".format(line_num + 1, line) for line_num, line in enumerate(es["errors"])])
+                                     ["{:3d} {}".format(line_num + 1, line) for line_num, line in enumerate(err_lines)])
                 if global_config["SEND_ERROR_MAILS"]:
                     self._send_mail(subject, msg_body)
                     mails_sent += 1
