@@ -31,5 +31,3 @@ global_config = configfile.get_global_config(process_tools.get_programm_name())
 
 P_SERVER_COM_PORT = 8007
 PACKAGE_CLIENT_PORT = 2003
-
-LF_NAME = "/var/lock/package_client.lock"

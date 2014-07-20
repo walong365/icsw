@@ -19,7 +19,7 @@
 #
 """ daemon to automatically install packages (.rpm, .deb) """
 
-from initat.package_install.client.config import global_config, LF_NAME
+from initat.package_install.client.config import global_config
 from initat.package_install.client.install_process import yum_install_process, zypper_install_process, \
     get_srv_command
 import configfile
@@ -39,11 +39,6 @@ class server_process(threading_tools.process_pool):
         threading_tools.process_pool.__init__(self, "main", zmq=True,
             zmq_debug=global_config["ZMQ_DEBUG"]
             )
-        if not global_config["DEBUG"]:
-            process_tools.set_handles({
-                "out" : (1, "package_client.out"),
-                "err" : (0, "/var/lib/logging-server/py_err")},
-                                      zmq_context=self.zmq_context)
         self.__log_template = logging_tools.get_logger(global_config["LOG_NAME"], global_config["LOG_DESTINATION"], zmq=True, context=self.zmq_context)
         # self.renice(global_config["NICE_LEVEL"])
         self.install_signal_handlers()
@@ -53,8 +48,6 @@ class server_process(threading_tools.process_pool):
         self.register_exception("int_error"  , self._int_error)
         self.register_exception("term_error" , self._int_error)
         self.register_exception("alarm_error", self._alarm_error)
-        # set lockfile
-        process_tools.set_lockfile_msg(LF_NAME, "connect...")
         # log buffer
         self._show_config()
         # send buffer

@@ -19,14 +19,17 @@
 #
 """ daemon to automatically install packages (.rpm, .deb) """
 
-from initat.package_install.client.config import global_config, VERSION_STRING, P_SERVER_COM_PORT, PACKAGE_CLIENT_PORT, LF_NAME
+from initat.package_install.client.config import VERSION_STRING, P_SERVER_COM_PORT, PACKAGE_CLIENT_PORT
 from initat.package_install.client.server import server_process
+from io_stream_helper import io_stream
 import configfile
+import daemon
 import os
 import process_tools
+import sys
 
 def main():
-    process_tools.delete_lockfile(LF_NAME, None, 0)
+    global_config = configfile.configuration(process_tools.get_programm_name(), single_process_mode=True)
     prog_name = global_config.name()
     global_config.add_config_entries([
         ("PID_NAME"               , configfile.str_c_var(os.path.join(prog_name, prog_name), autoconf_exclude=True)),
@@ -91,14 +94,18 @@ def main():
         if not ret_code:
             global_config.add_config_entries([("DEBIAN", configfile.bool_c_var(os.path.isfile("/etc/debian_version")))])
             if global_config["KILL_RUNNING"]:
-                process_tools.kill_running_processes(exclude=configfile.get_manager_pid())
+                process_tools.kill_running_processes()
             process_tools.renice(global_config["NICE_LEVEL"])
             if not global_config["DEBUG"]:
-                process_tools.become_daemon(mother_hook=process_tools.wait_for_lockfile, mother_hook_args=(LF_NAME, 5, 200))
+                with daemon.DaemonContext():
+                    sys.stdout = io_stream("/var/lib/logging-server/py_log_zmq")
+                    sys.stderr = io_stream("/var/lib/logging-server/py_err_zmq")
+                    global_config = configfile.get_global_config(prog_name, parent_object=global_config)
+                    server_process().loop()
+                    configfile.terminate_manager()
+                # exit
+                os._exit(0)
             else:
-                print "Debugging %s on %s" % (prog_name, process_tools.get_machine_name())
-                # no longer needed
-                # global_config["LOG_DESTINATION"] = "stdout"
-            ret_code = server_process().loop()
-            process_tools.delete_lockfile(LF_NAME, None, 0)
+                print "Debugging {} on {}".format(prog_name, process_tools.get_machine_name())
+                ret_code = server_process().loop()
     return ret_code
