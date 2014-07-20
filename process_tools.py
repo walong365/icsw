@@ -622,7 +622,14 @@ class meta_server_info(object):
             else:
                 pid_list = [_pid for _pid in pid_list if self.__pid_proc_names[_pid] == process_name]
         # get parent processes
-        _parent_pids = [(_pid, psutil.Process(_pid).parent().pid) for _pid in pid_list]
+        _parent_pids = []
+        for _pid in pid_list:
+            try:
+                _parent_pid = psutil.Process(_pid).parent().pid
+            except psutil.NoSuchProcess:
+                pass
+            else:
+                _parent_pids.append(_parent_pid)
         pid_list = [_pid for _pid, _parent in _parent_pids if _parent in pid_list or _parent == 1]
         return pid_list
     def set_pids(self, in_pids):
