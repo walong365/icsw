@@ -56,18 +56,21 @@ case "$1" in
     stop)
         echo -n "Stopping collserver.py"
         if [ -f ${SERVER_PID} ] ; then
-            kill -s 15 `cat ${SERVER_PID} | head -n 1` || rc_failed
+            if [ -f ${META_FILE} ] ; then
+                /opt/cluster/sbin/get_pids_from_meta.py --meta ${META_FILE} --name collserver.py --signal 15
+            else        
+                kill -s 15 `cat ${SERVER_PID} | head -n 1` || rc_failed
+            fi
             if [ -f ${SERVER_PID} ] ; then
-            for i in $(seq 40) ; do
-                true 
-                echo -n "."
-                if [ -x /bin/usleep ] ; then
-                    usleep 250000
-                else
-                    sleep 1
-                fi
-                [ ! -f ${SERVER_PID} ] && break 
-            done
+                for i in $(seq 40) ; do
+                    echo -n "."
+                    if [ -x /bin/usleep ] ; then
+                        usleep 250000
+                    else
+                        sleep 1
+                    fi
+                    [ ! -f ${SERVER_PID} ] && break 
+                done
             fi
             [ $i -gt 18 ] && rc_failed || rc_reset
         else
@@ -77,7 +80,9 @@ case "$1" in
         ;;
     force-stop)
         echo -n "Force stopping collserver.py"
-        if [ -f ${SERVER_PID} ] ; then
+        if [ -f ${META_FILE} ] ; then
+            /opt/cluster/sbin/get_pids_from_meta.py --meta ${META_FILE} --name collserver.py --signal 9
+        elif [ -f ${SERVER_PID} ] ; then
             kill -9 `cat ${SERVER_PID} ` || rc_failed
         else
             rc_failed
