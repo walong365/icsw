@@ -374,11 +374,14 @@ class process_base(object):
         try:
             threading.stack_size(s_size)
         except:
-            self.log("Error setting stack_size to %s: %s" % (logging_tools.get_size_str(s_size, long_format=True),
-                                                             get_except_info()),
-                     logging_tools.LOG_LEVEL_ERROR)
+            self.log(
+                "Error setting stack_size to {}: {}".format(
+                    logging_tools.get_size_str(s_size, long_format=True),
+                    get_except_info()),
+                logging_tools.LOG_LEVEL_ERROR
+            )
         else:
-            self.log("setting stack_size to %s" % (logging_tools.get_size_str(s_size, long_format=True)))
+            self.log("setting stack_size to {}".format(logging_tools.get_size_str(s_size, long_format=True)))
 
 class exception_handling_mixin(object):
     def __init__(self):
@@ -476,6 +479,9 @@ class process_obj(multiprocessing.Process, timer_base, poller_obj, process_base,
         # copy kwargs for reference
         self.start_kwargs = kwargs
         self.__exit_locked = False
+        # init stdout / stderr targets
+        self.stdout_target = None
+        self.stderr_target = None
     @property
     def global_config(self):
         return self.__global_config
@@ -496,6 +502,8 @@ class process_obj(multiprocessing.Process, timer_base, poller_obj, process_base,
         return self.name
     # def has_key(self, key):
     #    return key in self.__flags
+    def __contains__(self, key):
+        return key in self.__flags
     def __setitem__(self, fn, state):
         self.__flags[fn] = state
     def __getitem__(self, fn):
@@ -580,6 +588,11 @@ class process_obj(multiprocessing.Process, timer_base, poller_obj, process_base,
         threading.currentThread().setName(self.name)
         self._install_signal_handlers()
         self._init_sockets()
+        # redirect stdout / stderr ?
+        if self.stdout_target:
+            sys.stdout = io_stream_helper.io_stream(self.stdout_target, zmq_context=self.zmq_context)
+        if self.stderr_target:
+            sys.stderr = io_stream_helper.io_stream(self.stderr_target, zmq_context=self.zmq_context)
         # call process_init (set pid and stuff)
         self.process_init()
         # now we should have a vaild log command
@@ -817,8 +830,12 @@ class process_pool(timer_base, poller_obj, process_base, exception_handling_mixi
             t_obj.process_pool = self
             self.__processes[t_obj.getName()] = t_obj
             for key in [sub_key for sub_key in sorted(kwargs.keys()) if sub_key not in ["start"]]:
-                self.log("setting attribute '%s' for %s" % (key, t_obj.getName()))
+                self.log("setting attribute '{}' for {}".format(key, t_obj.getName()))
                 setattr(t_obj, key, kwargs[key])
+            if isinstance(sys.stdout, io_stream_helper.io_stream):
+                setattr(t_obj, "stdout_target", sys.stdout.stream_target)
+            if isinstance(sys.stderr, io_stream_helper.io_stream):
+                setattr(t_obj, "stderr_target", sys.stderr.stream_target)
             # copy debug_zmq flag to child process
             t_obj.debug_zmq = self.debug_zmq
             if kwargs.get("start", False):
@@ -885,7 +902,7 @@ class process_pool(timer_base, poller_obj, process_base, exception_handling_mixi
         return True
     def start_process(self, p_name):
         if not self.__processes[p_name].is_alive():
-            self.log("starting process %s" % (p_name))
+            self.log("starting process {}".format(p_name))
             self.__processes[p_name].start()
             self.__processes_running += 1
     def stop_process(self, p_name):

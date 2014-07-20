@@ -19,6 +19,7 @@
 #
 """ sends everything to the local logging-server """
 
+import atexit
 import os
 import pickle
 import zmq
@@ -32,21 +33,33 @@ def zmq_socket_name(sock_name, **kwargs):
     return sock_name
 
 class io_stream(object):
-    def __init__(self, sock_name="/tmp/py_log", **kwargs):
-        # ignore protocoll
-        self.__sock_name = sock_name
+    def __init__(self, sock_name="/var/lib/logging_server/py_err_zmq", **kwargs):
+        self.__sock_name = zmq_socket_name(sock_name, check_ipc_prefix=True)
         zmq_context = kwargs.get("zmq_context", None)
         if zmq_context is None:
             zmq_context = zmq.Context()
         self.__zmq_sock = zmq_context.socket(zmq.PUSH)
-        self.__zmq_sock.connect(zmq_socket_name(sock_name, check_ipc_prefix=True))
-        self.__protocol = None
+        self.__zmq_sock.connect(self.__sock_name)
+        self.__zmq_sock.setsockopt(zmq.LINGER, 60)
+        self.__buffer = u""
+        if kwargs.get("register_atexit", True):
+            atexit.register(self.close)
+    @property
+    def stream_target(self):
+        return self.__sock_name
     def write(self, err_str):
+        self.__buffer = u"{}{}".format(self.__buffer, err_str)
+        if len(self.__buffer) > 1024:
+            self.flush()
+        return len(err_str)
+    def flush(self):
+        if not self.__buffer:
+            return
         pid, t_dict = (
             os.getpid(),
             {
                 "IOS_type"  : "error",
-                "error_str" : err_str,
+                "error_str" : self.__buffer,
                 "pid"       : os.getpid(),
             }
         )
@@ -63,11 +76,13 @@ class io_stream(object):
                     else:
                         t_dict[r_what] = rest
         self.__zmq_sock.send(pickle.dumps(t_dict))
+        self.__buffer = u""
+    def fileno(self):
+        # dangerous, do not use
+        return self.__zmq_sock.getsockopt(zmq.FD)
     def close(self):
         if self.__zmq_sock:
+            self.flush()
             self.__zmq_sock.close()
-        del self.__protocol
-    def flush(self):
-        pass
     def __del__(self):
-        pass
+        self.close()
