@@ -460,6 +460,8 @@ class process_obj(multiprocessing.Process, timer_base, poller_obj, process_base,
         self.kill_myself = kwargs.get("kill_myself", False)
         exception_handling_mixin.__init__(self)
         self.__stack_size = kwargs.get("stack_size", DEFAULT_STACK_SIZE)
+        # received signals
+        self.__signals = []
         # flags
         self.__flags = {}
         # function table
@@ -492,6 +494,9 @@ class process_obj(multiprocessing.Process, timer_base, poller_obj, process_base,
         self.__exit_locked = True
     def unlock_exit(self):
         self.__exit_locked = False
+    @property
+    def signals(self):
+        return self.__signals
     @property
     def process_pool(self):
         return self.__process_pool
@@ -561,6 +566,7 @@ class process_obj(multiprocessing.Process, timer_base, poller_obj, process_base,
         self.__ignore_funcs.extend(f_str)
     def _sig_handler(self, signum, frame):
         sig_str = "got signal {:d}".format(signum)
+        self.__signals.append(signum)
         self.log(sig_str)
         # return self._handle_exception()
         if signum == signal.SIGTERM:
@@ -605,11 +611,20 @@ class process_obj(multiprocessing.Process, timer_base, poller_obj, process_base,
         self.process_exit()
         self._close_sockets()
         self.loop_post()
+        # file("/tmp/close", "a").write(self.name + "\n")
         self.zmq_finish()
+        # file("/tmp/close", "a").write(self.name + "2\n")
         return 0
     def loop_post(self):
         pass
     def zmq_finish(self):
+        if self.stdout_target:
+            sys.stdout.close()
+            sys.stdout = None
+        if self.stderr_target:
+            sys.stderr.close()
+            sys.stderr = None
+        # file("/tmp/close", "a").write(os.getcwd() + "\n")
         self.zmq_context.term()
     def _exit_process(self, **kwargs):
         self.log("exit_process called for process {} (pid={:d})".format(self.name, self.pid))
@@ -815,7 +830,8 @@ class process_pool(timer_base, poller_obj, process_base, exception_handling_mixi
             # zmq_context.term() is not working for fully daemonized programs, bug in 0MQ ?
             pass
         else:
-            self.zmq_context.term()
+            pass
+        self.zmq_context.term()
     def add_process(self, t_obj, **kwargs):
         # add a process_object to the process_pool
         if t_obj.getName() in self.__processes:

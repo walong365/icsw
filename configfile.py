@@ -755,11 +755,11 @@ def get_global_config(c_name, single_process=False, ignore_lock=False, parent_ob
         return globals()["CONFIG_MANAGER"]
 
 # not needed ?
-# def terminate_manager():
+def terminate_manager():
 #    pass
 #    return
 #    # os.kill(cur_manager._process.pid, 9)
-#    cur_manager.shutdown()
+    cur_manager.shutdown()
 #    cur_manager.join()
 
 class gc_proxy(object):
