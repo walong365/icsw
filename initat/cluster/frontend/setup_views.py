@@ -63,9 +63,7 @@ class validate_partition(View):
             "lvm_vg_set",
             "lvm_lv_set__lvm_vg",
             ).order_by("name").get(Q(pk=_post["pt_pk"]))
-        print "v0"
         prob_list = cur_part.validate()
-        print "v1"
         request.xml_response["response"] = E.problems(
             valid="1" if cur_part.valid else "0",
             *[E.problem(p_str, g_problem="1" if g_problem else "0", level="%d" % (cur_lev)) for cur_lev, p_str, g_problem in prob_list]
