@@ -1,5 +1,3 @@
-#!/usr/bin/python-init -Otu
-#
 # Copyright (C) 2013 Andreas Lang-Nevyjel
 #
 # Send feedback to: <lang-nevyjel@init.at>
@@ -19,15 +17,21 @@
 #
 """ SNMP relayer """
 
+from initat.snmp_relay.version import VERSION_STRING
+from io_stream_helper import io_stream
 import configfile
+import daemon
+import os
 import process_tools
 import sys
-from initat.snmp_relay.config import global_config
-from initat.snmp_relay.server import server_process
-from initat.snmp_relay.version import VERSION_STRING
+
+def run_code():
+    from initat.snmp_relay.server import server_process
+    server_process().loop()
 
 def main():
     # read global configfile
+    global_config = configfile.configuration(process_tools.get_programm_name(), single_process_mode=True)
     prog_name = global_config.name()
     global_config.add_config_entries([
         ("BASEDIR_NAME"    , configfile.str_c_var("/etc/sysconfig/snmp-relay.d")),
@@ -47,21 +51,27 @@ def main():
             prog_name,
             prog_name)))])
     global_config.parse_file()
-    _options = global_config.handle_commandline(positional_arguments=False,
-                                               partial=False,
-                                               add_writeback_option=True)
+    _options = global_config.handle_commandline(
+        positional_arguments=False,
+        partial=False,
+        add_writeback_option=True,
+    )
     global_config.write_file()
     if global_config["KILL_RUNNING"]:
-        process_tools.kill_running_processes(exclude=configfile.get_manager_pid())
-    # handledict = {"out"    : (1, "snmp-relay.out"),
-    #              "err"    : (0, "/var/lib/logging-server/py_err"),
-    #              "strict" : 0}
+        process_tools.kill_running_processes()
     process_tools.ALLOW_MULTIPLE_INSTANCES = False
     process_tools.renice()
     if global_config["DAEMONIZE"] and not global_config["DEBUG"]:
-        process_tools.become_daemon()
-        # hc_ok = process_tools.set_handles(handledict)
+        with daemon.DaemonContext():
+            sys.stdout = io_stream("/var/lib/logging-server/py_log_zmq")
+            sys.stderr = io_stream("/var/lib/logging-server/py_err_zmq")
+            global_config = configfile.get_global_config(prog_name, parent_object=global_config)
+            run_code()
+            configfile.terminate_manager()
+        # exit
+        os._exit(0)
     else:
         print "Debugging snmp-relayer"
-    ret_code = server_process().loop()
-    sys.exit(ret_code)
+        global_config = configfile.get_global_config(prog_name, parent_object=global_config)
+        run_code()
+    sys.exit(0)
