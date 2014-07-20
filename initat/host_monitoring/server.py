@@ -66,11 +66,6 @@ class server_code(threading_tools.process_pool):
             zmq_contexts=1,
             zmq_debug=global_config["ZMQ_DEBUG"])
         self.renice(global_config["NICE_LEVEL"])
-        # if not global_config["DEBUG"]:
-        #    process_tools.set_handles({
-        #        "out" : (1, "host-monitoring.out"),
-        #        "err" : (0, "/var/lib/logging-server/py_err")},
-        #                              zmq_context=self.zmq_context)
         self.add_process(socket_process("socket"), start=True)
         self.__log_template = logging_tools.get_logger(
             global_config["LOG_NAME"],

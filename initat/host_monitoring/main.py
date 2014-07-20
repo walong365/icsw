@@ -25,6 +25,7 @@
 from initat.host_monitoring import hm_classes
 from initat.host_monitoring.version import VERSION_STRING
 import daemon
+from io_stream_helper import io_stream
 import configfile
 import logging_tools
 import os
@@ -143,10 +144,11 @@ def main():
         if global_config["KILL_RUNNING"]:
             process_tools.kill_running_processes()
         if not options.DEBUG and prog_name in ["collserver", "collrelay"]:
-            with daemon.DaemonContext(stdout=sys.stdout, stderr=sys.stderr):
+            with daemon.DaemonContext():
+                sys.stdout = io_stream("/var/lib/logging-server/py_log_zmq")
+                sys.stderr = io_stream("/var/lib/logging-server/py_err_zmq")
                 global_config = configfile.get_global_config("collserver", parent_object=global_config)
                 ret_state = run_code(prog_name)
-                configfile.terminate_manager()
         else:
             global_config = configfile.get_global_config("collserver", parent_object=global_config)
             if prog_name in ["collserver", "collrelay"]:
