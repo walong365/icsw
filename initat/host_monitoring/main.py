@@ -24,9 +24,9 @@
 
 from initat.host_monitoring import hm_classes
 from initat.host_monitoring.version import VERSION_STRING
-import daemon
 from io_stream_helper import io_stream
 import configfile
+import daemon
 import logging_tools
 import os
 import process_tools
@@ -63,7 +63,7 @@ def show_command_info():
             print("-" * 10)
     sys.exit(0)
 
-def run_code(prog_name):
+def run_code(prog_name, global_config):
     if prog_name == "collserver":
         from initat.host_monitoring.server import server_code
         ret_state = server_code().loop()
@@ -72,15 +72,14 @@ def run_code(prog_name):
         ret_state = relay_code().loop()
     elif prog_name == "collclient":
         from initat.host_monitoring.client import client_code
-        ret_state = client_code()
+        ret_state = client_code(global_config)
     else:
         print "Unknown mode {}".format(prog_name)
         ret_state = -1
     return ret_state
 
 def main():
-    global_config = configfile.configuration("collserver", single_process_mode=True)
-    # local_config =
+    global_config = configfile.configuration(process_tools.get_programm_name(), single_process_mode=True)
     prog_name = global_config.name()
     global_config.add_config_entries([
         ("DEBUG"                  , configfile.bool_c_var(False, help_string="enable debug mode [%(default)s]", short_options="d", only_commandline=True)),
@@ -147,16 +146,19 @@ def main():
             with daemon.DaemonContext():
                 sys.stdout = io_stream("/var/lib/logging-server/py_log_zmq")
                 sys.stderr = io_stream("/var/lib/logging-server/py_err_zmq")
-                global_config = configfile.get_global_config("collserver", parent_object=global_config)
-                ret_state = run_code(prog_name)
+                global_config = configfile.get_global_config(prog_name, parent_object=global_config)
+                run_code(prog_name)
+                configfile.terminate_manager()
+            # dirty but working :-)
+            os.kill(os.getpid(), 9)
         else:
-            global_config = configfile.get_global_config("collserver", parent_object=global_config)
             if prog_name in ["collserver", "collrelay"]:
+                global_config = configfile.get_global_config(prog_name, parent_object=global_config)
                 print(
                     "Debugging {} on {}".format(
                         prog_name,
                         process_tools.get_machine_name()
                     )
                 )
-            ret_state = run_code(prog_name)
+            ret_state = run_code(prog_name, global_config)
     return ret_state

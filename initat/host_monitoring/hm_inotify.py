@@ -388,7 +388,12 @@ class inotify_process(threading_tools.process_obj):
         try:
             self.__watcher.check(self.__idle_timeout * 1000)
         except:
-            self.log("excepted")
+            if self.signals:
+                self.log("excepted, signals: {}".format(", ".join(["{:d}".format(_sign) for _sign in self.signals])))
+                # we received some signals, reduce idle_timeout
+                self.__idle_timeout = 0.1
+            else:
+                self.log("excepted")
         remove_ids = []
         for fw_id, fw_struct in self.__file_watcher_dict.iteritems():
             if not fw_struct.inotify():

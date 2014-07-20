@@ -57,6 +57,9 @@ class file_object(object):
         self.__fd = None
         self.__first_call = True
         self.__seek_to_end = args.get("seek_to_end", True)
+    def close(self):
+        if self.__fd:
+            self.__fd.close()
     def read_lines(self):
         if not self.__fd:
             self.open_it()
@@ -236,6 +239,9 @@ class _general(hm_classes.hm_module):
             mv.register_entry("mail.queued", 0, "number of queued mails")
             mv.register_entry("mail.active", 0, "number of active mails")
             mv.register_entry("mail.hold", 0, "number of hold mails")
+    def stop_module(self):
+        self.log("closing maillog object")
+        self.__maillog_object.close()
     def get_mailcount(self):
         return self._get_mail_queue_entries()
     def mailq_command_valid(self):
