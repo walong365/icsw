@@ -241,24 +241,23 @@ class main_process(threading_tools.process_pool):
         self.log("calling command '{}'".format(act_command))
         s_time = time.time()
         _sub = subprocess.Popen(act_command.strip().split(), stdout=subprocess.PIPE, stderr=subprocess.PIPE, close_fds=False, cwd="/")
-        print "a"
         ret_code = _sub.wait()
-        print "b", ret_code, dir(_sub)
-        # _stdout, _stderr = _sub.communicate()
-        import select
-        _hd = {key : {"fn" : getattr(_sub, key).fileno(), "data" : []} for key in ["stdout", "stderr"]}
-        _lut = {_value["fn"] : _key for _key, _value in _hd.iteritems()}
-        for _idx in xrange(20):
-            _rlist, _wlist, _xlist = select.select(_lut.keys(), [], [], 1000)
-            print _rlist, _wlist, _xlist
-            for _rh in _rlist:
-                _key = _lut[_rh]
-                print "*", _rh, _key
-                # print help(getattr(_sub, _key).read)
-                _hd[_key]["data"].append(getattr(_sub, _key).read(5))
-            print _hd
-        _stdout, _stderr = ("", "")
-        print "c"
+        if False:
+            print "b", ret_code, dir(_sub)
+            # _stdout, _stderr = _sub.communicate()
+            import select
+            _hd = {key : {"fn" : getattr(_sub, key).fileno(), "data" : []} for key in ["stdout", "stderr"]}
+            _lut = {_value["fn"] : _key for _key, _value in _hd.iteritems()}
+            for _idx in xrange(20):
+                _rlist, _wlist, _xlist = select.select(_lut.keys(), [], [], 1000)
+                print _rlist, _wlist, _xlist
+                for _rh in _rlist:
+                    _key = _lut[_rh]
+                    print "*", _rh, _key
+                    # print help(getattr(_sub, _key).read)
+                    _hd[_key]["data"].append(getattr(_sub, _key).read(5))
+                print _hd
+        _stdout, _stderr = _sub.communicate()
         e_time = time.time()
         self.log("execution took {}, return code was {:d}".format(
             logging_tools.get_diff_time_str(e_time - s_time),
