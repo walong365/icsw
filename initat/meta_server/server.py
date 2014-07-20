@@ -185,14 +185,23 @@ class main_process(threading_tools.process_pool):
                 if msi_block is not None:
                     self._handle_msi_command(srv_com, msi_block)
             elif srv_com["command"].text == "version":
-                srv_com["result"].attrib["repl    y"] = "version is {}".format(VERSION_STRING)
+                srv_com.set_result("version is {}".format(VERSION_STRING))
             else:
                 srv_com.set_result(
                     "unknown command '{}'".format(srv_com["command"].text),
                     server_command.SRV_REPLY_STATE_ERROR
                 )
-            zmq_sock.send_unicode(src_id, zmq.SNDMORE)
-            zmq_sock.send_unicode(unicode(srv_com))
+            try:
+                zmq_sock.send_unicode(src_id, zmq.SNDMORE | zmq.NOBLOCK)
+                zmq_sock.send_unicode(unicode(srv_com), zmq.NOBLOCK)
+            except:
+                self.log(
+                    "error sending reply to {}: {}".format(
+                        src_id,
+                        process_tools.get_except_info(),
+                    ),
+                    logging_tools.LOG_LEVEL_ERROR
+                )
         else:
             self.log(
                 "cannot receive more data, already got '{}'".format(
@@ -223,40 +232,31 @@ class main_process(threading_tools.process_pool):
             srv_com.set_result("msi block {} exists".format(msi_block.name))
         else:
             self.log("processing command {} for block {}".format(command, msi_block.name))
-            if command == "msi_stop":
+            if command in ["msi_force_stop", "msi_stop"]:
                 if msi_block.stop_command:
+                    _com = msi_block.stop_command
+                    if not command.count("force"):
+                        _com = _com.replace("force-stop", "stop")
                     self._call_command(msi_block.stop_command, srv_com)
                 else:
                     srv_com.set_result("no stop_command given for {}".format(msi_block.name), server_command.SRV_REPLY_STATE_ERROR)
-            elif command == "msi_restart":
+            elif command in ["msi_restart", "msi_force_restart"]:
                 if msi_block.stop_command and msi_block.start_command:
-                    self._call_command(msi_block.stop_command, srv_com)
-                    self._call_command(msi_block.start_command, srv_com)
+                    _com = msi_block.stop_command
+                    if not command.count("force"):
+                        _com = _com.replace("force-stop", "stop")
+                    self._call_command(_com, srv_com)
+                    # needed ?
+                    time.sleep(0.5)
+                    self._call_command(msi_block.start_command, srv_com, merge_reply=True)
                 else:
                     srv_com.set_result("no stop or start command given for {}".format(msi_block.name), server_command.SRV_REPLY_STATE_ERROR)
-
-            print msi_block.start_command, msi_block.stop_command
-    def _call_command(self, act_command, srv_com=None):
+    def _call_command(self, act_command, srv_com=None, merge_reply=False):
         # call command directly
         self.log("calling command '{}'".format(act_command))
         s_time = time.time()
         _sub = subprocess.Popen(act_command.strip().split(), stdout=subprocess.PIPE, stderr=subprocess.PIPE, close_fds=False, cwd="/")
         ret_code = _sub.wait()
-        if False:
-            print "b", ret_code, dir(_sub)
-            # _stdout, _stderr = _sub.communicate()
-            import select
-            _hd = {key : {"fn" : getattr(_sub, key).fileno(), "data" : []} for key in ["stdout", "stderr"]}
-            _lut = {_value["fn"] : _key for _key, _value in _hd.iteritems()}
-            for _idx in xrange(20):
-                _rlist, _wlist, _xlist = select.select(_lut.keys(), [], [], 1000)
-                print _rlist, _wlist, _xlist
-                for _rh in _rlist:
-                    _key = _lut[_rh]
-                    print "*", _rh, _key
-                    # print help(getattr(_sub, _key).read)
-                    _hd[_key]["data"].append(getattr(_sub, _key).read(5))
-                print _hd
         _stdout, _stderr = _sub.communicate()
         e_time = time.time()
         self.log("execution took {}, return code was {:d}".format(
@@ -272,9 +272,17 @@ class main_process(threading_tools.process_pool):
             else:
                 self.log("{} is empty".format(_name))
         if srv_com is not None:
-            srv_com.set_result(
+            _r_str, _r_state = (
                 "returncode is {:d} for '{}'".format(ret_code, act_command),
                 server_command.SRV_REPLY_STATE_OK if ret_code == 0 else server_command.SRV_REPLY_STATE_ERROR,
+            )
+            if merge_reply:
+                _prev_r_str, _prev_r_state = srv_com.get_log_tuple(map_to_log_level=False)
+                _r_str = "{}, {}".format(_prev_r_str, _r_str)
+                _r_state = max(_prev_r_state, _r_state)
+            srv_com.set_result(
+                _r_str,
+                _r_state,
                 )
     def _call_at_commands(self, act_commands):
         # call command via the at daemon
