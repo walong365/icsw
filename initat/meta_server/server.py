@@ -27,11 +27,13 @@ import logging_tools
 import mail_tools
 import os
 import process_tools
+import subprocess
 import server_command
 import stat
 import threading_tools
 import time
 import zmq
+from StringIO import StringIO
 
 try:
     from initat.host_monitoring import hm_classes
@@ -72,7 +74,7 @@ class main_process(threading_tools.process_pool):
         self._init_meminfo()
         self._show_config()
         act_commands = self._check_for_new_info([])
-        self._do_commands(act_commands)
+        self._call_at_commands(act_commands)
         self.register_timer(self._check, 30, instant=True)
     def log(self, what, lev=logging_tools.LOG_LEVEL_OK):
         if self.__log_template:
@@ -144,8 +146,26 @@ class main_process(threading_tools.process_pool):
         else:
             vector_socket = None
         self.vector_socket = vector_socket
-        self.mis_dict = {}
         # memory info send dict
+        self.mis_dict = {}
+    def _get_msi_block(self, srv_com):
+        # check if a valid msi-block name is stored in arg_list
+        _msi_block = None
+        _args = srv_com["*arg_list"].strip()
+        if _args:
+            msi_name = _args.split()[0]
+            if msi_name in self.__check_dict:
+                _msi_block = self.__check_dict[msi_name]
+            else:
+                # check for new instances
+                self._check_for_new_info([], ignore_commands=True)
+                if msi_name in self.__check_dict:
+                    _msi_block = self.__check_dict[msi_name]
+                else:
+                    srv_com.set_result("msi block '{}' does not exist".format(msi_name), server_command.SRV_REPLY_STATE_ERROR)
+        else:
+            srv_com.set_result("no args given", server_command.SRV_REPLY_STATE_ERROR)
+        return _msi_block
     def _recv_command(self, zmq_sock):
         src_id = zmq_sock.recv()
         more = zmq_sock.getsockopt(zmq.RCVMORE)
@@ -160,8 +180,12 @@ class main_process(threading_tools.process_pool):
             srv_com.set_result("ok")
             if srv_com["command"].text == "status":
                 srv_com.check_msi_block(self.__msi_block)
+            elif srv_com["*command"] in ["msi_exists", "msi_stop", "msi_restart", "msi_force_stop", "msi_force_restart"]:
+                msi_block = self._get_msi_block(srv_com)
+                if msi_block is not None:
+                    self._handle_msi_command(srv_com, msi_block)
             elif srv_com["command"].text == "version":
-                srv_com["result"].attrib["reply"] = "version is {}".format(VERSION_STRING)
+                srv_com["result"].attrib["repl    y"] = "version is {}".format(VERSION_STRING)
             else:
                 srv_com.set_result(
                     "unknown command '{}'".format(srv_com["command"].text),
@@ -193,7 +217,68 @@ class main_process(threading_tools.process_pool):
             self.__msi_block.remove_meta_block()
         if self.vector_socket:
             self.vector_socket.close()
-    def _do_commands(self, act_commands):
+    def _handle_msi_command(self, srv_com, msi_block):
+        command = srv_com["*command"]
+        if command == "msi_exists":
+            srv_com.set_result("msi block {} exists".format(msi_block.name))
+        else:
+            self.log("processing command {} for block {}".format(command, msi_block.name))
+            if command == "msi_stop":
+                if msi_block.stop_command:
+                    self._call_command(msi_block.stop_command, srv_com)
+                else:
+                    srv_com.set_result("no stop_command given for {}".format(msi_block.name), server_command.SRV_REPLY_STATE_ERROR)
+            elif command == "msi_restart":
+                if msi_block.stop_command and msi_block.start_command:
+                    self._call_command(msi_block.stop_command, srv_com)
+                    self._call_command(msi_block.start_command, srv_com)
+                else:
+                    srv_com.set_result("no stop or start command given for {}".format(msi_block.name), server_command.SRV_REPLY_STATE_ERROR)
+
+            print msi_block.start_command, msi_block.stop_command
+    def _call_command(self, act_command, srv_com=None):
+        # call command directly
+        self.log("calling command '{}'".format(act_command))
+        s_time = time.time()
+        _sub = subprocess.Popen(act_command.strip().split(), stdout=subprocess.PIPE, stderr=subprocess.PIPE, close_fds=False, cwd="/")
+        print "a"
+        ret_code = _sub.wait()
+        print "b", ret_code, dir(_sub)
+        # _stdout, _stderr = _sub.communicate()
+        import select
+        _hd = {key : {"fn" : getattr(_sub, key).fileno(), "data" : []} for key in ["stdout", "stderr"]}
+        _lut = {_value["fn"] : _key for _key, _value in _hd.iteritems()}
+        for _idx in xrange(20):
+            _rlist, _wlist, _xlist = select.select(_lut.keys(), [], [], 1000)
+            print _rlist, _wlist, _xlist
+            for _rh in _rlist:
+                _key = _lut[_rh]
+                print "*", _rh, _key
+                # print help(getattr(_sub, _key).read)
+                _hd[_key]["data"].append(getattr(_sub, _key).read(5))
+            print _hd
+        _stdout, _stderr = ("", "")
+        print "c"
+        e_time = time.time()
+        self.log("execution took {}, return code was {:d}".format(
+            logging_tools.get_diff_time_str(e_time - s_time),
+            ret_code,
+            ))
+        for _val, _name, _lev in [(_stdout, "stdout", logging_tools.LOG_LEVEL_OK), (_stderr, "stderr", logging_tools.LOG_LEVEL_ERROR)]:
+            if _val.strip():
+                _lines = _val.split("\n")
+                self.log("{} has {} ({})".format(_name, logging_tools.get_plural("byte", len(_val)), logging_tools.get_plural("line", len(_lines))))
+                for _line_num, _line in enumerate(_lines):
+                    self.log(" {:3d} : {}".format(_line_num + 1, _line), _lev)
+            else:
+                self.log("{} is empty".format(_name))
+        if srv_com is not None:
+            srv_com.set_result(
+                "returncode is {:d} for '{}'".format(ret_code, act_command),
+                server_command.SRV_REPLY_STATE_OK if ret_code == 0 else server_command.SRV_REPLY_STATE_ERROR,
+                )
+    def _call_at_commands(self, act_commands):
+        # call command via the at daemon
         if act_commands:
             self.log("processing {}".format(logging_tools.get_plural("command", len(act_commands))))
             for act_command in act_commands:
@@ -204,32 +289,33 @@ class main_process(threading_tools.process_pool):
             self.log(line)
     def _init_meminfo(self):
         self.__last_meminfo_keys, self.__act_meminfo_line = ([], 0)
-    def _check_for_new_info(self, problem_list):
+    def _check_for_new_info(self, problem_list, ignore_commands=False):
         # problem_list: list of problematic blocks we have to check
         change, act_commands = (False, [])
         if os.path.isdir(global_config["MAIN_DIR"]):
             for fname in os.listdir(global_config["MAIN_DIR"]):
                 full_name = os.path.join(global_config["MAIN_DIR"], fname)
                 if fname == ".command":
-                    try:
-                        act_commands = [
-                            s_line for s_line in [
-                                line.strip() for line in file(full_name, "r").read().split("\n")
-                            ] if not s_line.startswith("#") and s_line
-                        ]
-                    except:
-                        self.log("error reading {} file {}: {}".format(fname, full_name, process_tools.get_except_info()), logging_tools.LOG_LEVEL_ERROR)
-                        act_commands = []
-                    else:
-                        act_time = time.localtime()
-                        new_name = "{}_{:04d}{:02d}{:02d}_{:02d}:{:02d}:{:02d}".format(fname, act_time[0], act_time[1], act_time[2], act_time[3], act_time[4], act_time[5])
-                        self.log("read {} from {} file {}, renaming to {}".format(logging_tools.get_plural("command", len(act_commands)), fname, full_name, new_name))
+                    if not ignore_commands:
                         try:
-                            os.rename(full_name, os.path.join(global_config["MAIN_DIR"], new_name))
+                            act_commands = [
+                                s_line for s_line in [
+                                    line.strip() for line in file(full_name, "r").read().split("\n")
+                                ] if not s_line.startswith("#") and s_line
+                            ]
                         except:
-                            self.log("error renaming {} to {}: {}".format(fname, new_name, process_tools.get_except_info()), logging_tools.LOG_LEVEL_ERROR)
+                            self.log("error reading {} file {}: {}".format(fname, full_name, process_tools.get_except_info()), logging_tools.LOG_LEVEL_ERROR)
+                            act_commands = []
                         else:
-                            pass
+                            act_time = time.localtime()
+                            new_name = "{}_{:04d}{:02d}{:02d}_{:02d}:{:02d}:{:02d}".format(fname, act_time[0], act_time[1], act_time[2], act_time[3], act_time[4], act_time[5])
+                            self.log("read {} from {} file {}, renaming to {}".format(logging_tools.get_plural("command", len(act_commands)), fname, full_name, new_name))
+                            try:
+                                os.rename(full_name, os.path.join(global_config["MAIN_DIR"], new_name))
+                            except:
+                                self.log("error renaming {} to {}: {}".format(fname, new_name, process_tools.get_except_info()), logging_tools.LOG_LEVEL_ERROR)
+                            else:
+                                pass
                 elif fname.startswith(".command_"):
                     pass
                 elif fname.endswith(".hb"):
@@ -282,7 +368,7 @@ class main_process(threading_tools.process_pool):
         else:
             self.__last_update_time = act_time
             act_commands = self._check_for_new_info(self.__problem_list)
-            self._do_commands(act_commands)
+            self._call_at_commands(act_commands)
             self._check_processes()
     def _check_processes(self):
         act_time = time.time()
