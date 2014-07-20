@@ -21,13 +21,16 @@
 
 from initat.package_install.client.constants import P_SERVER_COM_PORT, PACKAGE_CLIENT_PORT
 from initat.package_install.client.version import VERSION_STRING
-from initat.package_install.client.server import server_process
 from io_stream_helper import io_stream
 import configfile
 import daemon
 import os
 import process_tools
 import sys
+
+def run_code():
+    from initat.package_install.client.server import server_process
+    server_process().loop()
 
 def main():
     global_config = configfile.configuration(process_tools.get_programm_name(), single_process_mode=True)
@@ -98,14 +101,15 @@ def main():
                 process_tools.kill_running_processes()
             process_tools.renice(global_config["NICE_LEVEL"])
             if not global_config["DEBUG"]:
-                print prog_name
                 with daemon.DaemonContext():
+                    sys.stdout = io_stream("/var/lib/logging-server/py_log_zmq")
+                    sys.stderr = io_stream("/var/lib/logging-server/py_err_zmq")
                     global_config = configfile.get_global_config(prog_name, parent_object=global_config)
-                    server_process().loop()
+                    run_code()
                     configfile.terminate_manager()
                 # exit
-                os._exit(0)
+                os.kill(os.getpid(), 9)
             else:
                 print "Debugging {} on {}".format(prog_name, process_tools.get_machine_name())
-                ret_code = server_process().loop()
-    return ret_code
+                run_code()
+    return 0
