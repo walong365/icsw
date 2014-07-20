@@ -629,7 +629,7 @@ class meta_server_info(object):
             except psutil.NoSuchProcess:
                 pass
             else:
-                _parent_pids.append(_parent_pid)
+                _parent_pids.append((_pid, _parent_pid))
         pid_list = [_pid for _pid, _parent in _parent_pids if _parent in pid_list or _parent == 1]
         return pid_list
     def set_pids(self, in_pids):
