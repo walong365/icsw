@@ -56,7 +56,6 @@ _SRV_TYPE_UUID_MAPPING = {
     "package"   : "package-server"
 }
 
-
 # mapping: server type -> valid config names
 _SRV_NAME_TYPE_MAPPING = {
     "mother"    : ["mother_server"],
@@ -322,4 +321,3 @@ class srv_type_routing(object):
                                 _sub_name,
                             )
                         )
-
