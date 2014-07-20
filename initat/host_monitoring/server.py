@@ -1,4 +1,3 @@
-#!/usr/bin/python-init -Ot
 # -*- coding: utf-8 -*-
 #
 # Copyright (C) 2013-2014 Andreas Lang-Nevyjel
@@ -67,11 +66,11 @@ class server_code(threading_tools.process_pool):
             zmq_contexts=1,
             zmq_debug=global_config["ZMQ_DEBUG"])
         self.renice(global_config["NICE_LEVEL"])
-        if not global_config["DEBUG"]:
-            process_tools.set_handles({
-                "out" : (1, "host-monitoring.out"),
-                "err" : (0, "/var/lib/logging-server/py_err")},
-                                      zmq_context=self.zmq_context)
+        # if not global_config["DEBUG"]:
+        #    process_tools.set_handles({
+        #        "out" : (1, "host-monitoring.out"),
+        #        "err" : (0, "/var/lib/logging-server/py_err")},
+        #                              zmq_context=self.zmq_context)
         self.add_process(socket_process("socket"), start=True)
         self.__log_template = logging_tools.get_logger(
             global_config["LOG_NAME"],
@@ -99,6 +98,7 @@ class server_code(threading_tools.process_pool):
         if not self._init_commands():
             self._sigint("error init")
         self.register_timer(self._check_cpu_usage, 30, instant=True)
+        # self["exit_requested"] = True
     def log(self, what, lev=logging_tools.LOG_LEVEL_OK):
         if self.__log_template:
             while self.__log_cache:

@@ -23,11 +23,8 @@
 """ host-monitoring, main part """
 
 from initat.host_monitoring import hm_classes
-from initat.host_monitoring.client import client_code
-from initat.host_monitoring.config import global_config
-from initat.host_monitoring.relay import relay_code
-from initat.host_monitoring.server import server_code
 from initat.host_monitoring.version import VERSION_STRING
+import daemon
 import configfile
 import logging_tools
 import os
@@ -65,7 +62,24 @@ def show_command_info():
             print("-" * 10)
     sys.exit(0)
 
+def run_code(prog_name):
+    if prog_name == "collserver":
+        from initat.host_monitoring.server import server_code
+        ret_state = server_code().loop()
+    elif prog_name == "collrelay":
+        from initat.host_monitoring.relay import relay_code
+        ret_state = relay_code().loop()
+    elif prog_name == "collclient":
+        from initat.host_monitoring.client import client_code
+        ret_state = client_code()
+    else:
+        print "Unknown mode {}".format(prog_name)
+        ret_state = -1
+    return ret_state
+
 def main():
+    global_config = configfile.configuration("collserver", single_process_mode=True)
+    # local_config =
     prog_name = global_config.name()
     global_config.add_config_entries([
         ("DEBUG"                  , configfile.bool_c_var(False, help_string="enable debug mode [%(default)s]", short_options="d", only_commandline=True)),
@@ -127,24 +141,20 @@ def main():
     else:
         global_config.write_file()
         if global_config["KILL_RUNNING"]:
-            process_tools.kill_running_processes(exclude=configfile.get_manager_pid())
+            process_tools.kill_running_processes()
         if not options.DEBUG and prog_name in ["collserver", "collrelay"]:
-            process_tools.become_daemon()
-        elif prog_name in ["collserver", "collrelay"]:
-            print(
-                "Debugging {} on {}".format(
-                    prog_name,
-                    process_tools.get_machine_name()
-                )
-            )
-        if prog_name == "collserver":
-            ret_state = server_code().loop()
-        elif prog_name == "collrelay":
-            ret_state = relay_code().loop()
-        elif prog_name == "collclient":
-            ret_state = client_code()
+            with daemon.DaemonContext(stdout=sys.stdout, stderr=sys.stderr):
+                global_config = configfile.get_global_config("collserver", parent_object=global_config)
+                ret_state = run_code(prog_name)
+                configfile.terminate_manager()
         else:
-            print "Unknown mode {}".format(prog_name)
-            ret_state = -1
+            global_config = configfile.get_global_config("collserver", parent_object=global_config)
+            if prog_name in ["collserver", "collrelay"]:
+                print(
+                    "Debugging {} on {}".format(
+                        prog_name,
+                        process_tools.get_machine_name()
+                    )
+                )
+            ret_state = run_code(prog_name)
     return ret_state
-
