@@ -533,6 +533,9 @@ class meta_server_info(object):
         return self.__file_name
     def get_name(self):
         return self.__name
+    @property
+    def name(self):
+        return self.__name
     def get_last_pid_check_ok_time(self):
         return self.__last_check_ok
     def set_last_pid_check_ok_time(self, last_t=None):
@@ -636,7 +639,7 @@ class meta_server_info(object):
         pid_dict = dict([(pid, self.__pids.count(pid)) for pid in self.__pids])
         all_pids = sorted(pid_dict.keys())
         return "{} ({}): {}".format(
-            logging_tools.get_plural("different pid", len(all_pids)),
+            logging_tools.get_plural("unique pid", len(all_pids)),
             logging_tools.get_plural("total thread", len(self.__pids)),
             all_pids and ", ".join(["{:d}{}".format(pid, pid_dict[pid] and " (x {:d})".format(pid_dict[pid]) or "") for pid in all_pids]) or "---")
     def save_block(self):

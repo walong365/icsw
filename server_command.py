@@ -382,4 +382,3 @@ class srv_command(object):
                 "no MSI-block defined",
                 SRV_REPLY_STATE_WARN,
             )
-        

@@ -357,6 +357,8 @@ class configuration(object):
         os.seteuid(new_uid)
     def single_process_mode(self):
         return self.__spm
+    def get_var(self, key):
+        return self.__c_dict[key]
     def add_config_entries(self, entries, **kwargs):
         if type(entries) == type({}):
             entries = [(key, value) for key, value in entries.iteritems()]
@@ -674,11 +676,14 @@ class my_server(Server):
                             c = self.listener.accept()
                         except (OSError, IOError):
                             continue
-                        t = threading.Thread(target=self.handle_request, args=(c,))
-                        t.daemon = True
-                        t.start()
-                except (KeyboardInterrupt, SystemExit):
+                        _thread = threading.Thread(target=self.handle_request, args=(c,))
+                        _thread.daemon = True
+                        _thread.start()
+                except (KeyboardInterrupt):
                     pass
+                except (SystemExit):
+                    # system exit requested, exit loop
+                    _run = False
                 except:
                     raise
         finally:
@@ -730,18 +735,31 @@ config_manager.register("config", configuration, config_proxy, exposed=[
 
 cur_manager = config_manager()
 
-CONFIG_INIT = False
+CONFIG_MANAGER_INIT = False
 
-def get_global_config(c_name, single_process=False, ignore_lock=False):
+def get_global_config(c_name, single_process=False, ignore_lock=False, parent_object=None):
     # lock against double-init, for instance md-config-server includes process_monitor_mod which
     # in turn tries to start the global_config manager (but from a different module)
-    if not globals()["CONFIG_INIT"] or ignore_lock:
-        globals()["CONFIG_INIT"] = True
+    if not globals()["CONFIG_MANAGER_INIT"] or ignore_lock:
+        globals()["CONFIG_MANAGER_INIT"] = True
         if single_process:
             return configuration(c_name, single_process_mode=True)
         else:
             cur_manager.start()
-            return cur_manager.config(c_name)
+            _ret = cur_manager.config(c_name)
+            if parent_object is not None:
+                _ret.add_config_entries([(_key, parent_object.get_var(_key)) for _key in parent_object.keys()])
+            globals()["CONFIG_MANAGER"] = _ret
+            return _ret
+    else:
+        return globals()["CONFIG_MANAGER"]
+
+def terminate_manager():
+    pass
+    return
+    # os.kill(cur_manager._process.pid, 9)
+    cur_manager.shutdown()
+    cur_manager.join()
 
 class gc_proxy(object):
     def __init__(self, g_config):

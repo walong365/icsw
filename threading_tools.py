@@ -533,14 +533,18 @@ class process_obj(multiprocessing.Process, timer_base, poller_obj, process_base,
         # flush pool
         self.send_pool_message("process_start")
     def _close_sockets(self):
-        # wait for the last commands to settle
-        time.sleep(0.25)
+        # wait for the last commands to settle, commented out by ALN on 20.7.2014
+        # time.sleep(0.25)
         self.__com_socket.close()
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
-        print("process %s (%d) %s: %s" % (self.name,
-                                          self.pid,
-                                          logging_tools.get_log_level_str(log_level),
-                                          what))
+        print(
+            "process {} ({:d}) {}: {}".format(
+                self.name,
+                self.pid,
+                logging_tools.get_log_level_str(log_level),
+                what
+            )
+        )
     def register_func(self, f_str, f_call):
         self.__func_table[f_str] = f_call
     def add_ignore_func(self, f_str):
@@ -793,7 +797,12 @@ class process_pool(timer_base, poller_obj, process_base, exception_handling_mixi
         self.__ignore_funcs.extend(f_str)
     def _close_pp_sockets(self):
         self.__com_socket.close()
-        self.zmq_context.term()
+        # hack to check if we run fully daemonized
+        if os.getcwd() == "/":
+            # zmq_context.term() is not working for fully daemonized programs, bug in 0MQ ?
+            pass
+        else:
+            self.zmq_context.term()
     def add_process(self, t_obj, **kwargs):
         # add a process_object to the process_pool
         if t_obj.getName() in self.__processes:
