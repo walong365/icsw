@@ -78,14 +78,6 @@ class relay_code(threading_tools.process_pool):
         host_connection.init(self, global_config["BACKLOG_SIZE"], self.__global_timeout, self.__verbose)
         # init lut
         self.__old_send_lut = {}
-        if not global_config["DEBUG"]:
-            _c_flag, self.__io_dict = process_tools.set_handles(
-                {"out" : (1, "collrelay.out"),
-                 "err" : (0, "/var/lib/logging-server/py_err_zmq")},
-                zmq_context=self.zmq_context,
-                ext_return=True)
-        else:
-            self.__io_dict = None
         # we need no icmp capability in relaying
         self.add_process(socket_process("socket", icmp=False), start=True)
         self.__log_template = logging_tools.get_logger(global_config["LOG_NAME"], global_config["LOG_DESTINATION"], zmq=True, context=self.zmq_context)
@@ -887,11 +879,6 @@ class relay_code(threading_tools.process_pool):
             self.client_socket.close()
         host_connection.global_close()
     def _close_io_sockets(self):
-        if self.__io_dict:
-            for key, value in self.__io_dict.iteritems():
-                if value["type"] == "s":
-                    self.log("closing stream for %s" % (key))
-                    value["handle"].close()
         if self.network_socket:
             self.network_socket.close()
     def loop_end(self):
