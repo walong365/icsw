@@ -69,7 +69,7 @@ case "$1" in
     stop)
         echo -n "Shutting down collectd "
         if [ -f ${META_FILE} ] ; then
-            kill $(/opt/cluster/sbin/get_pids_from_meta.py --meta ${META_FILE} --name collectd)
+            /opt/cluster/sbin/get_pids_from_meta.py --meta ${META_FILE} --name collectd --signal 15
             if [ -f ${META_FILE} ] ; then
                 for i in $(seq 40) ; do
                     true
