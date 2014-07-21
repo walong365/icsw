@@ -27,13 +27,12 @@ import logging_tools
 import mail_tools
 import os
 import process_tools
-import subprocess
 import server_command
 import stat
+import subprocess
 import threading_tools
 import time
 import zmq
-from StringIO import StringIO
 
 try:
     from initat.host_monitoring import hm_classes
