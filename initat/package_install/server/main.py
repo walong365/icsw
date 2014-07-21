@@ -73,9 +73,9 @@ def main():
     sql_info = config_tools.server_check(server_type="package_server")
     if not sql_info.effective_device:
         print "not a package_server"
-        sys.exit(5)
+        return 5
     if global_config["CHECK"]:
-        sys.exit(0)
+        return 0
     if global_config["KILL_RUNNING"]:
         _log_lines = process_tools.kill_running_processes(prog_name + ".py")
     global_config.add_config_entries([("SERVER_IDX", configfile.int_c_var(sql_info.effective_device.pk, database=False))])
@@ -86,6 +86,8 @@ def main():
     process_tools.change_user_group_path(os.path.dirname(os.path.join(process_tools.RUN_DIR, global_config["PID_NAME"])), global_config["USER"], global_config["GROUP"])
     process_tools.change_user_group(global_config["USER"], global_config["GROUP"])
     if not global_config["DEBUG"]:
+        # close DB connection
+        connection.close()
         with daemon.DaemonContext():
             sys.stdout = io_stream("/var/lib/logging-server/py_log_zmq")
             sys.stderr = io_stream("/var/lib/logging-server/py_err_zmq")
