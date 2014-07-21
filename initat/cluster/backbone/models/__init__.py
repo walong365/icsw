@@ -208,13 +208,6 @@ class architecture(models.Model):
     idx = models.AutoField(db_column="architecture_idx", primary_key=True)
     architecture = models.CharField(default="", unique=True, max_length=128)
     date = models.DateTimeField(auto_now_add=True)
-    def get_xml(self):
-        return E.architecture(
-            self.architecture,
-            pk="{:d}".format(self.idx),
-            key="arch__{:d}".format(self.idx),
-            architecture=self.architecture,
-        )
     class Meta:
         db_table = u'architecture'
     def __unicode__(self):
@@ -567,20 +560,6 @@ class device_variable(models.Model):
         else:
             return "get_value for {}".format(self.var_type)
     value = property(get_value, set_value)
-    def get_xml(self):
-        dev_xml = E.device_variable(
-            pk="%d" % (self.pk),
-            key="dv__%d" % (self.pk),
-            device="%d" % (self.device_id),
-            is_public="1" if self.is_public else "0",
-            name=self.name,
-            description=self.description or "",
-            var_type=self.var_type)
-        if self.var_type == "i":
-            dev_xml.attrib["value"] = "%d" % (self.val_int)
-        elif self.var_type == "s":
-            dev_xml.attrib["value"] = self.val_str
-        return dev_xml
     def __unicode__(self):
         return "{}[{}] = {}".format(
             self.name,
@@ -644,13 +623,6 @@ class device_config(models.Model):
     date = models.DateTimeField(auto_now_add=True)
     def home_info(self):
         return self.info_str
-    def get_xml(self):
-        return E.device_config(
-            pk="%d" % (self.pk),
-            key="dc__%d" % (self.pk),
-            device="%d" % (self.device_id),
-            config="%d" % (self.config_id)
-        )
     class Meta:
         db_table = u'device_config'
 
@@ -687,15 +659,6 @@ class partition_fs(models.Model):
     kernel_module = models.CharField(max_length=128, default="")
     # flags
     date = models.DateTimeField(auto_now_add=True)
-    def get_xml(self):
-        return E.partition_fs(
-            self.name,
-            pk="{:d}".format(self.pk),
-            key="partfs__{:d}".format(self.pk),
-            identifier=self.identifier,
-            descr=self.descr,
-            hexid=self.hexid,
-        )
     def need_mountpoint(self):
         return True if self.hexid in ["83"] else False
     def __unicode__(self):
@@ -728,16 +691,6 @@ class lvm_lv(models.Model):
     warn_threshold = models.IntegerField(null=True, blank=True, default=85)
     crit_threshold = models.IntegerField(null=True, blank=True, default=95)
     date = models.DateTimeField(auto_now_add=True)
-    def get_xml(self):
-        return E.lvm_lv(
-            pk="{:d}".format(self.pk),
-            key="lvm_lv__{:d}".format(self.pk),
-            lvm_vg="{:d}".format(self.lvm_vg_id or 0),
-            mountpoint="{}".format(self.mountpoint),
-            name="{}".format(self.name),
-            warn_threshold="{:d}".format(self.warn_threshold or 0),
-            crit_threshold="{:d}".format(self.crit_threshold or 0),
-       )
     class Meta:
         db_table = u'lvm_lv'
         ordering = ("name",)
@@ -758,16 +711,6 @@ class lvm_vg(models.Model):
     partition_table = models.ForeignKey("backbone.partition_table")
     name = models.CharField(max_length=192)
     date = models.DateTimeField(auto_now_add=True)
-    def get_xml(self):
-        return E.lvm_vg(
-            E.lvm_lvs(
-                *[cur_lv.get_xml() for cur_lv in self.lvm_lv_set.all()]
-            ),
-            pk="{:d}".format(self.pk),
-            key="lvm_vg__{:d}".format(self.pk),
-            partition_table="{:d}".format(self.partition_table_id or 0),
-            name=self.name,
-        )
     class Meta:
         db_table = u'lvm_vg'
         ordering = ("name",)
@@ -790,28 +733,6 @@ class partition(models.Model):
     warn_threshold = models.IntegerField(null=True, blank=True, default=85)
     crit_threshold = models.IntegerField(null=True, blank=True, default=95)
     date = models.DateTimeField(auto_now_add=True)
-    def get_xml(self):
-        p_xml = E.partition(
-            pk="{:d}".format(self.pk),
-            key="part__{:d}".format(self.pk),
-            mountpoint=self.mountpoint or "",
-            mount_options=self.mount_options or "",
-            pnum="%d" % (self.pnum or 0),
-            partition_fs="%d" % (self.partition_fs_id),
-            size="%d" % (self.size if type(self.size) in [long, int] else 0),
-            bootable="%d" % (1 if self.bootable else 0),
-            fs_freq="%d" % (self.fs_freq),
-            fs_passno="%d" % (self.fs_passno),
-            warn_threshold="%d" % (self.warn_threshold or 0),
-            crit_threshold="%d" % (self.crit_threshold or 0),
-        )
-        if hasattr(self, "problems"):
-            p_xml.append(
-                E.problems(
-                    *[E.problem(what, level="%d" % (log_level)) for log_level, what, is_global in self.problems if is_global is False]
-                )
-            )
-        return p_xml
     def _validate(self, p_disc):
         p_list = []
         p_name = "{}{:d}".format(p_disc, self.pnum)
@@ -877,24 +798,6 @@ class partition_disc(models.Model):
     label_type = models.CharField(max_length=128, default="gpt", choices=[("gpt", "GPT"), ("msdos", "MSDOS")])
     priority = models.IntegerField(null=True, default=0)
     date = models.DateTimeField(auto_now_add=True)
-    def get_xml(self):
-        pd_xml = E.partition_disc(
-            self.disc,
-            E.partitions(
-                *[sub_part.get_xml() for sub_part in self.partition_set.all()]
-                ),
-            pk="%d" % (self.pk),
-            key="pdisc__%d" % (self.pk),
-            priority="%d" % (self.priority),
-            disc=self.disc,
-        )
-        if hasattr(self, "problems"):
-            pd_xml.append(
-                E.problems(
-                    *[E.problem(what, level="%d" % (log_level)) for log_level, what, is_global in self.problems if not is_global]
-                )
-            )
-        return pd_xml
     def _validate(self):
         my_parts = self.partition_set.all()
         p_list = sum([[(cur_lev, "*{:d} : {}".format(part.pnum, msg), flag) for cur_lev, msg, flag in part._validate(self)] for part in my_parts], [])
@@ -994,24 +897,6 @@ class partition_table(models.Model):
             self.valid = new_valid
             self.save()
         return prob_list
-    def get_xml(self, **kwargs):
-        pt_xml = E.partition_table(
-            unicode(self),
-            E.partition_discs(
-                *[sub_disc.get_xml() for sub_disc in self.partition_disc_set.all()]
-                ),
-            E.lvm_info(
-                *[cur_vg.get_xml() for cur_vg in self.lvm_vg_set.all().prefetch_related("lvm_lv_set")]
-            ),
-            name=self.name,
-            pk="%d" % (self.pk),
-            key="ptable__%d" % (self.pk),
-            description=unicode(self.description),
-            valid="1" if self.valid else "0",
-            enabled="1" if self.enabled else "0",
-            nodeboot="1" if self.nodeboot else "0",
-        )
-        return pt_xml
     def __unicode__(self):
         return self.name
     class Meta:
@@ -1527,40 +1412,6 @@ class device_group(models.Model):
         return new_md
     def get_metadevice_name(self):
         return "METADEV_{}".format(self.name)
-    def get_xml(self,
-                full=True,
-                with_devices=True,
-                with_variables=False,
-                with_monitoring=False,
-                ignore_enabled=False,
-                full_name=False):
-        if not self.domain_tree_node_id:
-            self.domain_tree_node = domain_tree_node.objects.get(Q(depth=0))
-            self.save()
-        cur_xml = E.device_group(
-            unicode(self),
-            pk="%d" % (self.pk),
-            key="devg__%d" % (self.pk),
-            name=self.name,
-            domain_tree_node="%d" % (self.domain_tree_node_id),
-            description=self.description or "",
-            is_cdg="1" if self.cluster_device_group else "0",
-            enabled="1" if self.enabled else "0",
-        )
-        if with_devices:
-            if ignore_enabled:
-                sub_list = self.device_group.all()
-            else:
-                # manual filtering, otherwise we would trigger a new DB-query
-                sub_list = [cur_dev for cur_dev in self.device_group.all() if cur_dev.enabled]
-            cur_xml.append(
-                E.devices(*[cur_dev.get_xml(
-                    full=full,
-                    with_variables=with_variables,
-                    with_monitoring=with_monitoring,
-                    full_name=full_name) for cur_dev in sub_list])
-            )
-        return cur_xml
     class Meta:
         db_table = u'device_group'
         ordering = ("-cluster_device_group", "name",)
@@ -1700,15 +1551,6 @@ class device_type(models.Model):
     priority = models.IntegerField(default=0)
     description = models.CharField(unique=True, max_length=192)
     date = models.DateTimeField(auto_now_add=True)
-    def get_xml(self):
-        return E.device_type(
-            unicode(self),
-            name=self.description,
-            priority="%d" % (self.priority),
-            identifier=self.identifier,
-            pk="%d" % (self.pk),
-            key="devt__%d" % (self.pk)
-        )
     def __unicode__(self):
         return self.description
     class Meta:
@@ -1740,15 +1582,6 @@ class devicelog(models.Model):
             text=text,
         )
         return cur_log
-    def get_xml(self):
-        return E.devicelog(
-            pk="%d" % (self.pk),
-            key="devlog__%d" % (self.pk),
-            log_source_name=unicode(self.log_source.name),
-            log_status_name=unicode(self.log_status.name),
-            text=unicode(self.text),
-            date=unicode(self.date)
-        )
     def __unicode__(self):
         return u"{} ({}, {}:{:d})".format(
             self.text,
@@ -1782,26 +1615,6 @@ class image(models.Model):
     full_build = models.BooleanField(default=False)
     date = models.DateTimeField(auto_now_add=True)
     enabled = models.BooleanField(default=True)
-    def get_xml(self):
-        if self.size_string and self.size_string.count(";"):
-            self.size_string = logging_tools.get_size_str(self.size or 0)
-            self.save()
-        cur_img = E.image(
-            unicode(self),
-            pk="%d" % (self.pk),
-            key="image__%d" % (self.pk),
-            name="%s" % (self.name),
-            enabled="1" if self.enabled else "0",
-            version="%d" % (self.version),
-            release="%d" % (self.release),
-            sys_vendor="%s" % (self.sys_vendor),
-            sys_version="%s" % (self.sys_version),
-            sys_release="%s" % (self.sys_release),
-            size_string="%s" % (self.size_string),
-            size="%d" % (self.size or 0),
-            architecture="%d" % (self.architecture_id or 0),
-        )
-        return cur_img
     def __unicode__(self):
         return "{} (arch {})".format(
             self.name,
@@ -1865,18 +1678,6 @@ class kernel(models.Model):
     date = models.DateTimeField(auto_now_add=True)
     def get_usecount(self):
         return 5
-    def get_xml(self):
-        return E.kernel(
-            pk="%d" % (self.pk),
-            key="kernel__%d" % (self.pk),
-            name=self.name,
-            major=self.major,
-            minor=self.minor,
-            version="%d" % (self.version),
-            release="%d" % (self.release),
-            enabled="1" if self.enabled else "0",
-            bitcount="%d" % (self.bitcount or 0),
-        )
     def __unicode__(self):
         return self.name
     class Meta:
@@ -2321,24 +2122,6 @@ class wc_files(models.Model):
     content = models.TextField(blank=True, default="")
     binary = models.BooleanField(default=False)
     date = models.DateTimeField(auto_now_add=True)
-    def get_xml(self):
-        try:
-            # stupid hack, FIXME
-            E.content(
-                self.content
-            )
-        except:
-            c_str = "<BINARY>"
-        else:
-            c_str = self.content
-        return E.content(
-            c_str,
-            run_number="%d" % (self.run_number),
-            uid="%d" % (self.uid),
-            gid="%d" % (self.gid),
-            mode="%d" % (self.mode),
-            error_flag="1" if self.error_flag else "0"
-        )
     class Meta:
         db_table = u'wc_files'
 
