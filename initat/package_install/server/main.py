@@ -86,9 +86,9 @@ def main():
     process_tools.change_user_group_path(os.path.dirname(os.path.join(process_tools.RUN_DIR, global_config["PID_NAME"])), global_config["USER"], global_config["GROUP"])
     process_tools.change_user_group(global_config["USER"], global_config["GROUP"])
     if not global_config["DEBUG"]:
-        with daemon.DaemonContext(stdout=sys.stdout, stderr=sys.stderr):
-            # sys.stdout = io_stream("/var/lib/logging-server/py_log_zmq")
-            # sys.stderr = io_stream("/var/lib/logging-server/py_err_zmq")
+        with daemon.DaemonContext():
+            sys.stdout = io_stream("/var/lib/logging-server/py_log_zmq")
+            sys.stderr = io_stream("/var/lib/logging-server/py_err_zmq")
             global_config = configfile.get_global_config(prog_name, parent_object=global_config)
             configfile.enable_config_access(global_config["USER"], global_config["GROUP"])
             run_code()
