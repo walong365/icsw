@@ -103,7 +103,7 @@ class scan_for_images(View):
                                 f_image.text,
                                 present="1" if f_image.text in present_img_names else "0",
                                 name=f_image.text,
-                                pk="%d" % (f_num + 1),
+                                pk="{:d}".format(f_num + 1),
                                 **f_image.attrib)
                         )
                     request.xml_response["response"] = f_img_list

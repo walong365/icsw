@@ -917,15 +917,11 @@ class partition_table_form(ModelForm):
                         css_class="col-md-4",
                     ),
                     Div(
-                        Submit("submit", "", css_class="primaryAction", ng_value="get_action_string()"),
+                        Submit("submit", "", css_class="primaryAction", ng_value="submit"),
                         css_class="col-md-4",
                     ),
                     css_class="row",
                 ),
-            ),
-            Fieldset(
-                "Detailed partition layout",
-                HTML('<div disklayout ng-if="!create_mode && modal_active && !settings.use_modal">'),
             ),
         )
     )

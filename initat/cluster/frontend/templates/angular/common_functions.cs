@@ -968,10 +968,12 @@ class angular_edit_mixin
         if @edit_div
             @edit_div.remove()
     form_error : (field_name) =>
-        if @scope.form[field_name].$valid
-            return ""
-        else
-            return "has-error"
+        # hm, hack. needed in partition_table.cs / part_overview.html
+        if field_name of @scope.form
+            if @scope.form[field_name].$valid
+                return ""
+            else
+                return "has-error"
     modify : () ->
         if not @scope.form.$invalid
             if @scope.create_mode

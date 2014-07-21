@@ -29,7 +29,9 @@
 {% verbatim %}
 
 <script type="text/ng-template" id="layout.html">
-    <h4 ng-class="edit_obj.valid && 'text-success' || 'text-danger'">Problems: {{ error_list.length }}</h4>
+    {{ part }}
+    <partdata></partdata>
+    <h4 ng-class="part.valid && 'text-success' || 'text-danger'">Problems: {{ error_list.length }}</h4>
     <ul ng-show="error_list.length" class="list-group">
         <li ng-repeat="error in error_list" class="list-group-item">
             {{ error.msg }}
@@ -45,9 +47,8 @@
                 </th>
                 <th colspan="2"></th>
             </tr>
-            <tr partclean ng-repeat="disc in edit_obj.partition_disc_set"></tr>
-            <tr partdisc ng-repeat="disc in edit_obj.partition_disc_set"></tr>
-            <tr class="danger">
+            <tr partdisc ng-repeat="disc in part.partition_disc_set"></tr>
+            <tr class="warning">
                 <th colspan="10">system partitions ({{ edit_obj.sys_partition_set.length }} defined)</th>
                 <th>
                     <input type="button" class="btn btn-success btn-xs" ng-click="sys_edit.create($event)" value="create sys"/>
@@ -137,13 +138,13 @@
     <td ng-class="obj.valid && 'success' || 'danger'">{{ obj.valid | yesno1  }}</td>
     <td ng-class="obj.valid && 'success' || 'danger'">{{ obj.nodeboot | yesno1 }}</td>
     <td class="text-center">{{ obj.act_partition_table.length }} / {{ obj.new_partition_table.length }}</td>
-    <td><input type="button" class="btn btn-primary btn-xs" ng-click="edit($event, obj)" value="modify"/></td>
+    <td><input type="button" class="btn btn-primary btn-xs" ng-show="not_open(obj)" ng-click="edit_part(obj)" value="modify"/></td>
     <td><input type="button" class="btn btn-danger btn-xs" ng-show="fn.delete_ok(obj)" ng-click="delete(obj)" value="delete"/></td>
 </script>
 
-<tabset>
-    <tab heading="Partitions">
-        <div ng-controller="partition_table_base">
+<div ng-controller="partition_table_base">
+    <tabset>
+        <tab heading="Partitions">
             <div class="col-sm-12">
                 <h2>Partition tables ({{entries.length}} entries),
                     <input class="btn btn-primary" type="button" ng-click="reload()" value="reload"/>&nbsp;
@@ -159,17 +160,17 @@
                     </tfoot>
                 </table>
             </div>
-            <div ng-if="modal_active && !settings.use_modal" class="col-sm-12">
-                <div class="panel panel-default">
-                    <div class="panel-body">
-                        <div edittemplate ng-if="modal_active && !settings.use_modal" class="col-sm-12">
-                        </div>
-                    </div>
-                </div>
+        </tab>
+        <tab ng-repeat="part in edit_pts" active="part.tab_active">
+            <tab-heading>
+                <span class="glyphicon glyphicon-remove" ng-click="close_part(part)"></span>{{ part.name }}
+            </tab-heading>
+            <div>
+                <disklayout ></disklayout>
             </div>
-        </div>
-    </tab>
-</tabset>
+        </tab>
+    </tabset>
+</div>
 
 </div>
 
