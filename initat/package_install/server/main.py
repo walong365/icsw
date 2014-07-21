@@ -1,5 +1,3 @@
-#!/usr/bin/python-init -Ot
-#
 # Copyright (C) 2001-2009,2012-2014 Andreas Lang-Nevyjel
 #
 # this file is part of package-server
@@ -21,25 +19,27 @@
 #
 """ package server """
 
-import os
-import sys
-
-os.environ.setdefault("DJANGO_SETTINGS_MODULE", "initat.cluster.settings")
-
 from initat.cluster.backbone.models import log_source
-from initat.package_install.server.config import global_config, P_SERVER_PUB_PORT, PACKAGE_CLIENT_PORT
-from initat.package_install.server.server import server_process
-import cluster_location
+from initat.package_install.server.constants import P_SERVER_PUB_PORT, PACKAGE_CLIENT_PORT
+from io_stream_helper import io_stream
 import config_tools
 import configfile
+import daemon
+import os
 import process_tools
+import sys
 
 try:
     from initat.package_install.server.version import VERSION_STRING
 except ImportError:
     VERSION_STRING = "?.?"
 
+def run_code():
+    from initat.package_install.server.server import server_process
+    server_process().loop()
+
 def main():
+    global_config = configfile.configuration(process_tools.get_programm_name(), single_process_mode=True)
     long_host_name, _mach_name = process_tools.get_fqdn()
     prog_name = global_config.name()
     global_config.add_config_entries([
@@ -72,23 +72,26 @@ def main():
     if global_config["CHECK"]:
         sys.exit(0)
     if global_config["KILL_RUNNING"]:
-        _log_lines = process_tools.kill_running_processes(prog_name + ".py", exclude=configfile.get_manager_pid())
+        _log_lines = process_tools.kill_running_processes(prog_name + ".py")
     global_config.add_config_entries([("SERVER_IDX", configfile.int_c_var(sql_info.effective_device.pk, database=False))])
     global_config.add_config_entries([("LOG_SOURCE_IDX", configfile.int_c_var(log_source.create_log_source_entry("package-server", "Cluster PackageServer", device=sql_info.effective_device).pk))])
     process_tools.fix_directories(global_config["USER"], global_config["GROUP"], ["/var/run/package-server"])
     process_tools.renice()
     process_tools.fix_sysconfig_rights()
     process_tools.change_user_group_path(os.path.dirname(os.path.join(process_tools.RUN_DIR, global_config["PID_NAME"])), global_config["USER"], global_config["GROUP"])
-    configfile.enable_config_access(global_config["USER"], global_config["GROUP"])
     process_tools.change_user_group(global_config["USER"], global_config["GROUP"])
     if not global_config["DEBUG"]:
-        process_tools.become_daemon()
-        process_tools.set_handles({"out" : (1, "package-server.out"),
-                                   "err" : (0, "/var/lib/logging-server/py_err")})
+        with daemon.DaemonContext():
+            sys.stdout = io_stream("/var/lib/logging-server/py_log_zmq")
+            sys.stderr = io_stream("/var/lib/logging-server/py_err_zmq")
+            global_config = configfile.get_global_config(prog_name, parent_object=global_config)
+            configfile.enable_config_access(global_config["USER"], global_config["GROUP"])
+            run_code()
+            configfile.terminate_manager()
+        os.kill(os.getpid(), 9)
     else:
         print "Debugging package-server on %s" % (long_host_name)
-    ret_code = server_process().loop()
-    sys.exit(ret_code)
-
-if __name__ == "__main__":
-    main()
+        global_config = configfile.get_global_config(prog_name, parent_object=global_config)
+        configfile.enable_config_access(global_config["USER"], global_config["GROUP"])
+        run_code()
+    return 0

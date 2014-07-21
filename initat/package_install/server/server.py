@@ -49,6 +49,8 @@ class server_process(threading_tools.process_pool):
         self._log_config()
         # idx for delayed commands
         self.__delayed_id, self.__delayed_struct = (0, {})
+        # close DB connection
+        connection.close()
         self._re_insert_config()
         self.__msi_block = self._init_msi_block()
         self._init_clients()
