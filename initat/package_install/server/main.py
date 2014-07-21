@@ -60,7 +60,7 @@ def main():
         ("DELETE_MISSING_REPOS"     , configfile.bool_c_var(False, help_string="delete non-existing repos from DB")),
     ])
     global_config.parse_file()
-    _options = global_config.handle_commandline(description="%s, version is %s" % (prog_name,
+    _options = global_config.handle_commandline(description="{}, version is {}".format(prog_name,
                                                                                   VERSION_STRING),
                                                add_writeback_option=True,
                                                positional_arguments=False)
@@ -90,7 +90,7 @@ def main():
             configfile.terminate_manager()
         os.kill(os.getpid(), 9)
     else:
-        print "Debugging package-server on %s" % (long_host_name)
+        print "Debugging package-server on {}".format(long_host_name)
         global_config = configfile.get_global_config(prog_name, parent_object=global_config)
         configfile.enable_config_access(global_config["USER"], global_config["GROUP"])
         run_code()
