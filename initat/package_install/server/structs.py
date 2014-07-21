@@ -21,9 +21,9 @@
 
 from django.db.models import Q
 from initat.cluster.backbone.models import package_repo, cluster_timezone, \
-     package_search_result, device_variable, device, package_device_connection, \
-     package_device_connection_wp_serializer, package_repo_serializer, \
-     package_service
+    package_search_result, device_variable, device, package_device_connection, \
+    package_device_connection_wp_serializer, package_repo_serializer, \
+    package_service
 from initat.package_install.server.config import global_config
 from initat.package_install.server.constants import  CONFIG_NAME, \
     PACKAGE_VERSION_VAR_NAME, LAST_CONTACT_VAR_NAME

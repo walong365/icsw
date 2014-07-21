@@ -19,6 +19,7 @@
 #
 """ package server """
 
+from django.db import connection
 from initat.cluster.backbone.models import log_source
 from initat.package_install.server.constants import P_SERVER_PUB_PORT, PACKAGE_CLIENT_PORT
 from io_stream_helper import io_stream
@@ -60,10 +61,14 @@ def main():
         ("DELETE_MISSING_REPOS"     , configfile.bool_c_var(False, help_string="delete non-existing repos from DB")),
     ])
     global_config.parse_file()
-    _options = global_config.handle_commandline(description="{}, version is {}".format(prog_name,
-                                                                                  VERSION_STRING),
-                                               add_writeback_option=True,
-                                               positional_arguments=False)
+    _options = global_config.handle_commandline(
+        description="{}, version is {}".format(
+            prog_name,
+            VERSION_STRING
+        ),
+        add_writeback_option=True,
+        positional_arguments=False,
+    )
     global_config.write_file()
     sql_info = config_tools.server_check(server_type="package_server")
     if not sql_info.effective_device:
@@ -81,9 +86,9 @@ def main():
     process_tools.change_user_group_path(os.path.dirname(os.path.join(process_tools.RUN_DIR, global_config["PID_NAME"])), global_config["USER"], global_config["GROUP"])
     process_tools.change_user_group(global_config["USER"], global_config["GROUP"])
     if not global_config["DEBUG"]:
-        with daemon.DaemonContext():
-            sys.stdout = io_stream("/var/lib/logging-server/py_log_zmq")
-            sys.stderr = io_stream("/var/lib/logging-server/py_err_zmq")
+        with daemon.DaemonContext(stdout=sys.stdout, stderr=sys.stderr):
+            # sys.stdout = io_stream("/var/lib/logging-server/py_log_zmq")
+            # sys.stderr = io_stream("/var/lib/logging-server/py_err_zmq")
             global_config = configfile.get_global_config(prog_name, parent_object=global_config)
             configfile.enable_config_access(global_config["USER"], global_config["GROUP"])
             run_code()
