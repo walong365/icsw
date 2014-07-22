@@ -454,8 +454,7 @@ class ipmi_builder(object):
             _dev_xml.get("ipmi_username"),
             _dev_xml.get("ipmi_password"),
             _iface_str,
-        ),
-
+        )
 
 class bg_job(object):
     def __init__(self, id_str, comline, builder, **kwargs):
@@ -658,14 +657,15 @@ class background(multiprocessing.Process, log_base):
                 logging_tools.get_plural("SNMP process", to_start),
                 min_idx,
                 ))
+            _npid = 1
             for new_idx in xrange(min_idx, min_idx + to_start):
-                _npid = 1
                 while _npid in self.__used_proc_ids:
                     _npid += 1
                 self.__used_proc_ids.add(_npid)
                 cur_struct = {
                     "npid" : _npid,
-                    "name" : "snmp_{:d}".format(_npid),
+                    "name" : "snmp_{:d}".format(new_idx),
+                    "msi_name" : "snmp_{:d}".format(_npid),
                     "proc" : snmp_process("snmp_{:d}".format(new_idx), conf_dict, ignore_signals=True),
                     "running" : False,
                     "stopped" : False,
@@ -763,12 +763,13 @@ class background(multiprocessing.Process, log_base):
         if data["type"] == "process_start":
             self.__snmp_dict[snmp_idx]["running"] = True
             # print data
-            self.__msi_block.add_actual_pid(data["pid"], mult=3, process_name=src_proc, fuzzy_ceiling=3)
+            self.__msi_block.add_actual_pid(data["pid"], mult=3, process_name=self.__snmp_dict[snmp_idx]["msi_name"], fuzzy_ceiling=3)
             self.__msi_block.save_block()
         elif data["type"] == "process_exit":
             self.log("SNMP process {:d} stopped (PID={:d})".format(snmp_idx, data["pid"]), logging_tools.LOG_LEVEL_WARN)
             self.__snmp_dict[snmp_idx]["stopped"] = True
             self.__used_proc_ids.remove(self.__snmp_dict[snmp_idx]["npid"])
+            # self.log(str(self.__used_proc_ids))
             self.__snmp_dict[snmp_idx]["proc"].join()
             del self.__snmp_dict[snmp_idx]
             self.__msi_block.remove_actual_pid(data["pid"], mult=3)
