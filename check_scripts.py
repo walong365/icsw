@@ -221,7 +221,7 @@ def check_system(opt_ns):
                 key, level_list = line.split(None, 1)
                 level_list = [int(level) for level, _flag in [entry.split(":") for entry in level_list.strip().split()] if _flag == "on" and level.isdigit()]
                 stat_dict[key.lower()] = level_list
-    if config_tools:
+    if config_tools and not opt_ns.no_database:
         dev_config = config_tools.device_with_config("server")
     else:
         dev_config = None
@@ -549,6 +549,7 @@ def main():
     my_parser.add_argument("--force", default=False, action="store_true", help="call force-stop if available [%(default)s]")
     my_parser.add_argument("--failed", default=False, action="store_true", help="show only instances in failed state [%(default)s]")
     my_parser.add_argument("--every", default=0, type=int, help="check again every N seconds, only available for show [%(default)s]")
+    my_parser.add_argument("--no-database", default=False, action="store_true", help="disable use of database [%(default)s]")
     opt_ns = my_parser.parse_args()
     if opt_ns.all or opt_ns.almost_all:
         opt_ns.thread = True
