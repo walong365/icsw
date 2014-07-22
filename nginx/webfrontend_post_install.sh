@@ -24,7 +24,8 @@ if [ -f /etc/sysconfig/cluster/db.cf ] ; then
     /etc/init.d/memcached restart
 
     # migrate static_precompiler if needed
-    /opt/python-init/lib/python/site-packages/initat/cluster/manage.py migrate static_precompiler
+    # removed, should be done via cluster-setup
+    # /opt/python-init/lib/python/site-packages/initat/cluster/manage.py migrate static_precompiler
 fi
 
 
