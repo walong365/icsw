@@ -65,9 +65,16 @@ class hm_icmp_protocol(icmp_class.icmp_protocol):
         cur_time = time.time()
         _to_del = [key for key, value in self.__work_dict.iteritems() if abs(value["start"] - cur_time) > 60]
         if _to_del:
-            self.log("removing {}".format(logging_tools.get_plural("ping", len(_to_del))))
+            _unhandled = [key for key in _to_del if key not in self.__handled]
+            self.log("removing {} ({:d} unhandled)".format(
+                logging_tools.get_plural("ping", len(_to_del)),
+                len(_unhandled),
+                ))
             for _del in _to_del:
-                self.__handled.remove(_del)
+                if _del in _unhandled:
+                    pass
+                else:
+                    self.__handled.remove(_del)
                 del self[_del]
     def __contains__(self, key):
         return key in self.__work_dict
@@ -120,7 +127,7 @@ class hm_icmp_protocol(icmp_class.icmp_protocol):
         cur_time = time.time()
         # print cur_time
         # pprint.pprint(self.__work_dict)
-        if key in self:
+        if key in self and key not in self.__handled:
             value = self[key]
             if value["sent"] < value["num"]:
                 # send if last send was at least slide_time ago
@@ -191,9 +198,10 @@ class hm_icmp_protocol(icmp_class.icmp_protocol):
                 value = self[_key]
                 if _key in self.__handled:
                     self.log(
-                        "got delay ping result ({}) for host {}".format(
+                        "got delay ping result ({}) for host {} ({.2f})".format(
                             seqno,
-                            value["host"]
+                            value["host"],
+                            recv_time - value["start"],
                         ),
                         logging_tools.LOG_LEVEL_WARN,
                     )
