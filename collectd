@@ -92,7 +92,7 @@ case "$1" in
     force-stop)
         echo -n "Shutting down collectd (forced) "
         if [ -f ${META_FILE} ] ; then
-            kill -9 $(/opt/cluster/sbin/get_pids_from_meta.py --meta ${META_FILE} --name collectd)
+            /opt/cluster/sbin/get_pids_from_meta.py --meta ${META_FILE} --name collectd --signal 9
             rm -f ${META_FILE}
         else
             echo "not running"
