@@ -643,6 +643,7 @@ class background(multiprocessing.Process, log_base):
     def _init_snmp(self):
         self.queue_name = IPC_SOCK_SNMP
         self.__snmp_dict = {}
+        self.__used_proc_ids = set()
     def _check_snmp_procs(self):
         cur_running = self.__snmp_dict.keys()
         to_start = global_config["SNMP_PROCS"] - len(cur_running)
@@ -658,8 +659,13 @@ class background(multiprocessing.Process, log_base):
                 min_idx,
                 ))
             for new_idx in xrange(min_idx, min_idx + to_start):
+                _npid = 1
+                while _npid in self.__used_proc_ids:
+                    _npid += 1
+                self.__used_proc_ids.add(_npid)
                 cur_struct = {
-                    "name" : "snmp_{:d}".format(new_idx),
+                    "npid" : _npid,
+                    "name" : "snmp_{:d}".format(_npid),
                     "proc" : snmp_process("snmp_{:d}".format(new_idx), conf_dict, ignore_signals=True),
                     "running" : False,
                     "stopped" : False,
@@ -762,6 +768,7 @@ class background(multiprocessing.Process, log_base):
         elif data["type"] == "process_exit":
             self.log("SNMP process {:d} stopped (PID={:d})".format(snmp_idx, data["pid"]), logging_tools.LOG_LEVEL_WARN)
             self.__snmp_dict[snmp_idx]["stopped"] = True
+            self.__used_proc_ids.remove(self.__snmp_dict[snmp_idx]["npid"])
             self.__snmp_dict[snmp_idx]["proc"].join()
             del self.__snmp_dict[snmp_idx]
             self.__msi_block.remove_actual_pid(data["pid"], mult=3)
