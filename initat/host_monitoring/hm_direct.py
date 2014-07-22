@@ -41,11 +41,14 @@ class hm_icmp_protocol(icmp_class.icmp_protocol):
         self.__work_dict, self.__seqno_dict = ({}, {})
         self.__pings_in_flight = 0
         self.__debug = global_config["DEBUG"]
+        # keys already handled
+        self.__handled = set()
         # group dict for ping to multiple hosts
         self.__group_dict = {}
         self.__group_idx = 0
         self.init_socket()
         self.__process.register_socket(self.socket, select.POLLIN, self.received)
+        self.__process.register_timer(self._check_timeout, 30)
         # self.raw_socket.bind("0.0.0.0")
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
         self.__log_template.log(log_level, "[icmp] {}".format(what))
@@ -58,6 +61,14 @@ class hm_icmp_protocol(icmp_class.icmp_protocol):
             if seq_key in self.__seqno_dict:
                 del self.__seqno_dict[seq_key]
         del self.__work_dict[key]
+    def _check_timeout(self):
+        cur_time = time.time()
+        _to_del = [key for key, value in self.__work_dict.iteritems() if abs(value["start"] - cur_time) > 60]
+        if _to_del:
+            self.log("removing {}".format(logging_tools.get_plural("ping", len(_to_del))))
+            for _del in _to_del:
+                self.__handled.remove(_del)
+                del self[_del]
     def __contains__(self, key):
         return key in self.__work_dict
     def ping(self, seq_str, target_list, num_pings, timeout):
@@ -94,12 +105,15 @@ class hm_icmp_protocol(icmp_class.icmp_protocol):
                 "recv_list"  : {}}
             self.__pings_in_flight += 1
         if self.__debug:
+            _wft = [key for key, value in self.__work_dict.iteritems() if key in self.__handled]
             self.log(
-                "{} in flight: {}".format(
+                "{} in flight: {}, {} waiting for timeout: {}".format(
                     logging_tools.get_plural("ping", self.__pings_in_flight),
-                    ", ".join(sorted([value["host"] for value in self.__work_dict.itervalues()]))
-                    )
+                    ", ".join(sorted([value["host"] for key, value in self.__work_dict.iteritems() if key not in self.__handled])),
+                    logging_tools.get_plural("ping", len(_wft)),
+                    ", ".join(sorted(_wft)),
                 )
+            )
         for key in seq_list:
             self._update(key)
     def _update(self, key, from_reply=False):
@@ -153,7 +167,7 @@ class hm_icmp_protocol(icmp_class.icmp_protocol):
                     del self.__group_dict[key]
                 else:
                     self.__process.send_ping_result(key, value["sent"], value["recv_ok"], all_times, ", ".join(value["error_list"]))
-                del self[key]
+                self.__handled.add(key) # del self[key]
                 self.__pings_in_flight -= 1
         else:
             if from_reply:
@@ -166,16 +180,30 @@ class hm_icmp_protocol(icmp_class.icmp_protocol):
         if dgram and dgram.packet_type == 0 and dgram.ident == self.__process.pid & 0x7fff:
             seqno = dgram.seqno
             if seqno not in self.__seqno_dict:
-                self.log("got result with unknown seqno {:d}".format(seqno),
-                         logging_tools.LOG_LEVEL_ERROR)
+                self.log(
+                    "got result with unknown seqno {:d}".format(
+                        seqno
+                    ),
+                    logging_tools.LOG_LEVEL_ERROR
+                )
             else:
-                value = self[self.__seqno_dict[seqno]]
-                if not seqno in value["recv_list"]:
-                    value["recv_list"][seqno] = recv_time
-                    # if seqno in value["sent_list"]:
-                    #    print value["recv_list"][seqno] - value["sent_list"][seqno]
-                    value["recv_ok"] += 1
-                self._update(self.__seqno_dict[seqno], from_reply=True)
+                _key = self.__seqno_dict[seqno]
+                value = self[_key]
+                if _key in self.__handled:
+                    self.log(
+                        "got delay ping result ({}) for host {}".format(
+                            seqno,
+                            value["host"]
+                        ),
+                        logging_tools.LOG_LEVEL_WARN,
+                    )
+                else:
+                    if not seqno in value["recv_list"]:
+                        value["recv_list"][seqno] = recv_time
+                        # if seqno in value["sent_list"]:
+                        #    print value["recv_list"][seqno] - value["sent_list"][seqno]
+                        value["recv_ok"] += 1
+                    self._update(self.__seqno_dict[seqno], from_reply=True)
 
 class tcp_con(object):
     pending = []
@@ -284,4 +312,3 @@ class socket_process(threading_tools.process_obj):
         if self.icmp_protocol:
             self.icmp_protocol.close()
         self.__log_template.close()
-

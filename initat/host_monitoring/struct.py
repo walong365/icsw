@@ -88,9 +88,15 @@ class host_connection(object):
         host_connection.backlog_size = backlog_size
         host_connection.timeout = timeout
         host_connection.verbose = verbose
+        host_connection.g_log("backlog size is {:d}, timeout is {:d}, verbose is {}".format(
+            host_connection.backlog_size,
+            host_connection.timeout,
+            str(host_connection.verbose),
+            )
+        )
         # router socket
         new_sock = host_connection.relayer_process.zmq_context.socket(zmq.ROUTER)
-        id_str = "relayer_rtr_%s" % (process_tools.get_machine_name())
+        id_str = "relayer_rtr_{}".format(process_tools.get_machine_name())
         new_sock.setsockopt(zmq.IDENTITY, id_str)
         new_sock.setsockopt(zmq.LINGER, 0)
         new_sock.setsockopt(zmq.SNDHWM, host_connection.backlog_size)
@@ -131,7 +137,7 @@ class host_connection(object):
     def global_close():
         host_connection.zmq_socket.close()
     @staticmethod
-    def g_log(what, log_level):
+    def g_log(what, log_level=logging_tools.LOG_LEVEL_OK):
         host_connection.relayer_process.log("[hc] %s" % (what), log_level)
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
         host_connection.relayer_process.log("[hc %s] %s" % (self.__conn_str, what), log_level)
@@ -143,7 +149,14 @@ class host_connection(object):
                 if not self.tcp_con:
                     pass
                     # self.__backlog_counter -= 1
-                self.return_error(to_mes, "timeout (after %.2f seconds)" % (to_mes.get_runtime(cur_time)))
+                self.return_error(
+                    to_mes,
+                    "timeout (after {:.2f} seconds [{:.2f}, {:.2f}])".format(
+                        to_mes.get_runtime(cur_time),
+                        host_connection.timeout,
+                        to_mes.timeout,
+                    )
+                )
     def _open(self):
         if not self.__open:
             try:
@@ -299,6 +312,7 @@ class host_message(object):
         self.src_id = src_id
         self.xml_input = xml_input
         self.srv_com = srv_com
+        # print srv_com.pretty_print()
         self.timeout = int(srv_com.get("timeout", "10"))
         self.srv_com[""].append(srv_com.builder("relayer_id", self.src_id))
         self.s_time = time.time()

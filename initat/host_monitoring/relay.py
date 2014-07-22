@@ -1,4 +1,3 @@
-#!/usr/bin/python-init -Ot
 # -*- coding: utf-8 -*-
 #
 # Copyright (C) 2013-2014 Andreas Lang-Nevyjel
@@ -74,6 +73,7 @@ class relay_code(threading_tools.process_pool):
         self.renice(global_config["NICE_LEVEL"])
         # pending_connection.init(self)
         self.__global_timeout = global_config["TIMEOUT"]
+        self._show_config()
         self._get_mon_version()
         host_connection.init(self, global_config["BACKLOG_SIZE"], self.__global_timeout, self.__verbose)
         # init lut
@@ -96,7 +96,6 @@ class relay_code(threading_tools.process_pool):
         self.__last_master_contact = None
         self.register_func("socket_result", self._socket_result)
         self.version_dict = {}
-        self._show_config()
         self._init_master()
         if self.objgraph:
             self.register_timer(self._objgraph_run, 30, instant=True)
