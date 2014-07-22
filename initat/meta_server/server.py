@@ -316,8 +316,10 @@ class main_process(threading_tools.process_pool):
                             else:
                                 pass
                 elif fname.startswith(".command_"):
+                    # ignore old command files
                     pass
                 elif fname.endswith(".hb"):
+                    # ignore heartbeat files
                     pass
                 else:
                     fn_dict = dict([(m_block.get_file_name(), m_block) for m_block in self.__check_dict.itervalues()])
@@ -380,11 +382,11 @@ class main_process(threading_tools.process_pool):
         # import pprint
         # pprint.pprint(act_pid_dict)
         # print act_pid_list
-        problem_list = []
+        self.__problem_list = []
         for key, struct in self.__check_dict.iteritems():
             struct.check_block(act_tc_dict, act_pid_dict)
             if struct.pid_checks_failed:
-                problem_list.append(key)
+                self.__problem_list.append(key)
                 pids_failed_time = abs(struct.get_last_pid_check_ok_time() - act_time)
                 do_sthg = (struct.pid_checks_failed >= 2 and pids_failed_time >= global_config["FAILED_CHECK_TIME"])
                 self.log(
