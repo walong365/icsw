@@ -9,6 +9,9 @@ if rpm -q noctua > /dev/null ; then
         echo "moving SQLite database ${DB_FILE} to /tmp"
         mv ${DB_FILE} /tmp
     fi
+    # remove all migrations, not needed here (done via setup_cluster.py)
+    #echo "removing all migration dirs"
+    #find /opt/python-init/lib/python/site-packages/ -type d -iname migrations -exec rm -rf {} \;
 else
     echo "NOCTUA not installed";
 fi
