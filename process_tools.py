@@ -724,6 +724,7 @@ class meta_server_info(object):
             self.__pids.count(cur_pid) + self.__pid_fuzzy.get(cur_pid, (0, 0))[1])
             ) for cur_pid in self.__pids])
         # print self.__name, self.__pids_found, self.__pids_expected, self.__pid_fuzzy
+        # difference to requested threadcount
         bound_dict = {}
         missing_list = []
         for unique_pid in set(self.__pids_found.keys()) | set(self.__pids_expected.keys()):
@@ -747,9 +748,10 @@ class meta_server_info(object):
         self.pid_check_string = ", ".join(["{:d}: {}".format(
             cur_pid,
             "all {} missing".format(self.__pids_expected[cur_pid][0]) if cur_pid in missing_list else (
-                "{:d} {}".format(
+                "{:d} {} ({:d} found)".format(
                     abs(bound_dict[cur_pid]),
                     "missing (lower bound is {:d})".format(self.__pids_expected[cur_pid][0]) if bound_dict[cur_pid] < 0 else "too many (upper bound is {:d})".format(self.__pids_expected[cur_pid][1]),
+                    self.__pids_found.get(cur_pid, 0),
                 ) if bound_dict[cur_pid] else "OK"
             )
             ) for cur_pid in sorted(bound_dict.iterkeys())]) or "no PIDs"
