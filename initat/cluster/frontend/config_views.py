@@ -113,7 +113,12 @@ def _get_device_configs(sel_list, **kwargs):
     for meta_conf in meta_confs:
         dg_dict.setdefault(meta_conf.device.device_group_id, []).append(meta_conf.config_id)
     for cur_conf in all_confs:
-        xml_resp.append(cur_conf.get_xml())
+        xml_resp.append(
+            E.device_config(
+                device="{:d}".format(cur_conf.device_id),
+                config="{:d}".format(cur_conf.config_id),
+            )
+        )
     # add meta device configs
     # print "***", all_devs, dev_list, device.objects.get(Q(pk=284))
     for sbm_dev in all_devs:
