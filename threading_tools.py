@@ -634,13 +634,13 @@ class process_obj(multiprocessing.Process, timer_base, poller_obj, process_base,
     # def optimize_message_list(self, in_list):
     #    return in_list
     def process_init(self):
-        self.log("process_init (%s, pid=%d)" % (self.name, self.pid))
+        self.log("process_init ({}, pid={:d})".format(self.name, self.pid))
     def process_running(self):
         pass
     def loop_start(self):
-        self.log("process_loop_start (%s, pid=%d)" % (self.name, self.pid))
+        self.log("process_loop_start ({}, pid={:d})".format(self.name, self.pid))
     def loop_end(self):
-        self.log("process_loop_end (%s, pid=%d)" % (self.name, self.pid))
+        self.log("process_loop_end ({}, pid={:d})".format(self.name, self.pid))
     def any_message_received(self):
         pass
     def _handle_message(self, zmq_socket):
@@ -945,11 +945,11 @@ class process_pool(timer_base, poller_obj, process_base, exception_handling_mixi
     def _process_exit(self, t_name, t_pid):
         self.__processes_running -= 1
         if t_pid:
-            self.log("process %s (%d) exited" % (t_name, t_pid))
+            self.log("process {} ({:d}) exited".format(t_name, t_pid))
             # remove process from structures
             self.__processes[t_name].join()
         else:
-            self.log("process %s forced exit" % (t_name))
+            self.log("process {} forced exit".format(t_name))
         del self.__processes[t_name]
         # self.__sockets[t_name].close()
         # del self.__sockets[t_name]
