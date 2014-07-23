@@ -1,5 +1,3 @@
-#!/usr/bin/python-init -Otu
-#
 # Copyright (C) 2009-2014 Andreas Lang-Nevyjel
 #
 # Send feedback to: <lang-nevyjel@init.at>
@@ -232,7 +230,7 @@ class server_process(threading_tools.process_pool):
                 process_tools.remove_pids(self.__pid_name, pid=p_pid)
                 self.__msi_block.remove_actual_pid(p_pid)
                 self.__msi_block.save_block()
-            self.log("helper process %s stopped, restarting" % (p_name))
+            self.log("helper process {} stopped, restarting".format(p_name))
             proc_struct = self.__process_dict[p_name]
             proc_struct["call_count"] = 0
             proc_struct["state"] = "running"
