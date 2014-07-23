@@ -748,9 +748,9 @@ class meta_server_info(object):
         self.pid_check_string = ", ".join(["{:d}: {}".format(
             cur_pid,
             "all {} missing".format(self.__pids_expected[cur_pid][0]) if cur_pid in missing_list else (
-                "{:d} {} ({:d} found)".format(
+                "{:d} {}, {:d} found)".format(
                     abs(bound_dict[cur_pid]),
-                    "missing (lower bound is {:d})".format(self.__pids_expected[cur_pid][0]) if bound_dict[cur_pid] < 0 else "too many (upper bound is {:d})".format(self.__pids_expected[cur_pid][1]),
+                    "missing (lower bound is {:d}".format(self.__pids_expected[cur_pid][0]) if bound_dict[cur_pid] < 0 else "too many (upper bound is {:d}".format(self.__pids_expected[cur_pid][1]),
                     self.__pids_found.get(cur_pid, 0),
                 ) if bound_dict[cur_pid] else "OK"
             )
@@ -780,7 +780,7 @@ class meta_server_info(object):
                     ok_pids += [pid]
             return "{} to kill ({}); ok: {}, error: {}".format(
                 logging_tools.get_plural("pid", len(all_pids)),
-                ",".join(["{:d}".format(cur_pid) for cur_pid in all_pids]),
+                ", ".join(["{:d}".format(cur_pid) for cur_pid in all_pids]),
                 ok_pids and "{} ({})".format(
                     logging_tools.get_plural("pid", len(ok_pids)),
                     ", ".join(["{:d}".format(cur_pid) for cur_pid in ok_pids])) or "---",
@@ -1100,19 +1100,6 @@ def set_handles(pfix, error_only=False, **kwargs):
         return h_changed, new_h_struct
     else:
         return h_changed
-
-def handles_write_endline(error_only=False):
-    act_time = time.ctime(time.time())
-    if error_only:
-        t_handles = [sys.stderr]
-    else:
-        t_handles = [sys.stdout, sys.stderr]
-    for t_handle in t_handles:
-        if not isinstance(t_handle, io_stream):
-            t_handle.write(
-                "ending at {}\n{}\n".format(
-                    act_time,
-                    "-" * 40))
 
 def renice(nice=16):
     try:
