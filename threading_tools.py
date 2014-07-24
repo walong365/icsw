@@ -45,7 +45,7 @@ _DEBUG = False
 
 def _debug(what):
     if _DEBUG:
-        print "dbg {:5d}: {}".format(os.getpid(), what)
+        print "dbg {} {:5d}: {}".format(str(time.ctime()), os.getpid(), what)
 
 # base class
 class exception_handling_base(object):
@@ -537,6 +537,7 @@ class process_obj(multiprocessing.Process, timer_base, poller_obj, process_base,
                     raise
                 time.sleep(0.1)
             else:
+                _debug("sent pool message {}".format(str(args)))
                 break
     def _init_sockets(self):
         if self.debug_zmq:
@@ -547,6 +548,7 @@ class process_obj(multiprocessing.Process, timer_base, poller_obj, process_base,
         # cast to str, no unicode allowed
         com_socket.setsockopt(zmq.IDENTITY, str(self.name))
         com_socket.setsockopt(zmq.ROUTER_MANDATORY, True)
+        com_socket.setsockopt(zmq.IMMEDIATE, True)
         self.register_poller(com_socket, zmq.POLLIN, self._handle_message)
         com_socket.connect(self.__process_pool.queue_name)
         self.__com_socket = com_socket
@@ -562,7 +564,7 @@ class process_obj(multiprocessing.Process, timer_base, poller_obj, process_base,
                 self.name,
                 self.pid,
                 logging_tools.get_log_level_str(log_level),
-                what
+                what,
             )
         )
     def register_func(self, f_str, f_call):
@@ -820,6 +822,7 @@ class process_pool(timer_base, poller_obj, process_base, exception_handling_mixi
     def _add_com_socket(self):
         zmq_socket = self.zmq_context.socket(zmq.ROUTER)
         zmq_socket.setsockopt(zmq.IDENTITY, "main")
+        zmq_socket.setsockopt(zmq.IMMEDIATE, True)
         zmq_socket.setsockopt(zmq.ROUTER_MANDATORY, True)
         process_tools.bind_zmq_socket(zmq_socket, self.queue_name)
         self.register_poller(zmq_socket, zmq.POLLIN, self._tp_message_received)
@@ -950,6 +953,7 @@ class process_pool(timer_base, poller_obj, process_base, exception_handling_mixi
     def _process_exit_zmq(self, t_name, t_pid, *args):
         self._process_exit(t_name, t_pid)
     def _process_start_zmq(self, t_name, t_pid, *args):
+        _debug("got start from {} {:d}".format(t_name, t_pid))
         self.log("process {} ({:d}) started".format(t_name, t_pid))
         self._flush_process_buffers(t_name)
         self.process_start(t_name, t_pid)
