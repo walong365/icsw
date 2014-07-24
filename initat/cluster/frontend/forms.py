@@ -90,7 +90,7 @@ class authentication_form(Form):
             for pk, al_list in all_aliases:
                 for cur_al in al_list:
                     if cur_al in rev_dict:
-                        raise ValidationError("Alias '%s' is not unique" % (cur_al))
+                        raise ValidationError("Alias '{}' is not unique".format(cur_al))
                     elif cur_al in all_logins:
                         # ignore aliases which are also logins
                         pass

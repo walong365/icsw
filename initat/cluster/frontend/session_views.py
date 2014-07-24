@@ -22,6 +22,7 @@
 
 """ basic session views """
 
+from django.contrib.auth import authenticate
 from django.contrib.auth import login, logout, authenticate
 from django.core.urlresolvers import reverse
 from django.db.models import Q
@@ -87,7 +88,9 @@ def login_page(request, **kwargs):
             "login_form"        : kwargs.get("login_form", authentication_form()),
             "from_logout"       : kwargs.get("from_logout", False),
             "login_hints"       : _get_login_hints(),
-            "app_path"          : reverse("session:login")})()
+            "app_path"          : reverse("session:login")
+            }
+        )()
 
 class sess_logout(View):
     def get(self, request):
@@ -95,20 +98,34 @@ class sess_logout(View):
         logout(request)
         return login_page(request, from_logout=from_logout)
 
+def _login(request, _user_object, login_form=None):
+    print _user_object
+    login(request, _user_object)
+    request.session["user_vars"] = dict([(user_var.name, user_var) for user_var in _user_object.user_variable_set.all()])
+    # for alias logins login_name != login
+    if login_form is not None:
+        request.session["login_name"] = login_form.get_login_name()
+        request.session["password"] = base64.b64encode(login_form.cleaned_data.get("password").decode("utf-8"))
+    else:
+        request.session["login_name"] = _user_object.login
+    _user_object.login_count += 1
+    _user_object.save(update_fields=["login_count"])
+    update_session_object(request)
+
 class sess_login(View):
     def get(self, request):
+        if user.objects.all().count():
+            if sum(user.objects.all().values_list("login_count", flat=True)) == 0:
+                first_user = authenticate(username=user.objects.all().values_list("login", flat=True)[0], password="AUTO_LOGIN")
+                if first_user is not None:
+                    _login(request, first_user)
+                    return HttpResponseRedirect(reverse("user:account_info"))
         return login_page(request)
     def post(self, request):
         _post = request.POST
         login_form = authentication_form(data=_post)
         if login_form.is_valid():
             db_user = login_form.get_user()
-            login(request, db_user)
-            request.session["password"] = base64.b64encode(login_form.cleaned_data.get("password").decode("utf-8"))
-            request.session["user_vars"] = dict([(user_var.name, user_var) for user_var in db_user.user_variable_set.all()])
-            # for alias logins login_name != login
-            request.session["login_name"] = login_form.get_login_name()
-            update_session_object(request)
+            _login(request, db_user, login_form)
             return HttpResponseRedirect(reverse("main:index"))
         return login_page(request, login_form=login_form)
-
