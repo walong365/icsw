@@ -41,6 +41,12 @@ except:
 # default stacksize
 DEFAULT_STACK_SIZE = 2 * 1024 * 1024
 
+_DEBUG = False
+
+def _debug(what):
+    if _DEBUG:
+        print "dbg {:5d}: {}".format(os.getpid(), what)
+
 # base class
 class exception_handling_base(object):
     pass
@@ -143,17 +149,18 @@ class debug_zmq_ctx(zmq.Context):
     ctx_idx = 0
     def __init__(self, *args, **kwargs):
         self.zmq_idx = debug_zmq_ctx.ctx_idx
+        self.pid = os.getpid()
         debug_zmq_ctx.ctx_idx += 1
         zmq.Context.__init__(self, *args, **kwargs)
         self._sockets_open = set()
     def __setattr__(self, key, value):
-        if key in ["zmq_idx", "_sockets_open"]:
+        if key in ["zmq_idx", "_sockets_open", "pid"]:
             # not defined in zmq.Context
             self.__dict__[key] = value
         else:
             super(debug_zmq_ctx, self).__setattr__(key, value)
     def __delattr__(self, key):
-        if key in ["zmq_idx", "_sockets_open"]:
+        if key in ["zmq_idx", "_sockets_open", "pid"]:
             # not defined in zmq.Context
             if key in self.__dict__:
                 del self.__dict__[key]
@@ -161,7 +168,7 @@ class debug_zmq_ctx(zmq.Context):
             super(debug_zmq_ctx, self).__delattr__(key)
     def log(self, out_str):
         t_name = threading.currentThread().name
-        print("[[zmq_idx={:d}, t_name={:<20s}]] {}".format(self.zmq_idx, t_name, out_str))
+        print("[[zmq_idx={:d}, {:5d}, t_name={:<20s}]] {}".format(self.zmq_idx, self.pid, t_name, out_str))
     def _interpret_sock_type(self, s_type):
         l_type = ""
         for _s_type in ["XPUB", "XSUB", "REP", "REQ", "ROUTER", "SUB", "DEALER", "PULL", "PUB", "PUSH"]:
@@ -547,7 +554,7 @@ class process_obj(multiprocessing.Process, timer_base, poller_obj, process_base,
         self.send_pool_message("process_start")
     def _close_sockets(self):
         # wait for the last commands to settle, commented out by ALN on 20.7.2014
-        # time.sleep(0.25)
+        time.sleep(0.25)
         self.__com_socket.close()
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
         print(
@@ -608,12 +615,14 @@ class process_obj(multiprocessing.Process, timer_base, poller_obj, process_base,
         self.loop_start()
         self.loop()
         self.loop_end()
+        _debug("exit")
         self.process_exit()
+        _debug("exit sent")
         self._close_sockets()
+        _debug("closed")
         self.loop_post()
-        # file("/tmp/close", "a").write(self.name + "\n")
         self.zmq_finish()
-        # file("/tmp/close", "a").write(self.name + "2\n")
+        _debug("done")
         return 0
     def loop_post(self):
         pass
@@ -621,10 +630,11 @@ class process_obj(multiprocessing.Process, timer_base, poller_obj, process_base,
         if self.stdout_target:
             sys.stdout.close()
             sys.stdout = None
+            _debug("closed stdout")
         if self.stderr_target:
             sys.stderr.close()
             sys.stderr = None
-        # file("/tmp/close", "a").write(os.getcwd() + "\n")
+            _debug("closed stderr")
         self.zmq_context.term()
     def _exit_process(self, **kwargs):
         self.log("exit_process called for process {} (pid={:d})".format(self.name, self.pid))
@@ -925,13 +935,18 @@ class process_pool(timer_base, poller_obj, process_base, exception_handling_mixi
         if self.__processes[p_name].is_alive():
             _kill = self.__processes[p_name].kill_myself
             _pid = self.__processes[p_name].pid
-            self.log("sending exit{} to process {}".format(
-                " and kill signal ({:d})".format(_pid) if _kill else "",
-                p_name)
+            _kill_sig = 15
+            self.log("sending exit{} to process {} ({:d})".format(
+                " and kill signal ({:d})".format(_kill_sig) if _kill else "",
+                p_name,
+                _pid,
+                )
             )
+            # _debug("send exit to {:d}".format(_pid))
             self.send_to_process(p_name, "exit")
+            # _debug("sent exit to {:d}".format(_pid))
             if _kill:
-                os.kill(_pid, 15)
+                os.kill(_pid, _kill_sig)
     def _process_exit_zmq(self, t_name, t_pid, *args):
         self._process_exit(t_name, t_pid)
     def _process_start_zmq(self, t_name, t_pid, *args):
@@ -947,7 +962,9 @@ class process_pool(timer_base, poller_obj, process_base, exception_handling_mixi
         if t_pid:
             self.log("process {} ({:d}) exited".format(t_name, t_pid))
             # remove process from structures
+            _debug("join_wait for {:d}".format(t_pid))
             self.__processes[t_name].join()
+            _debug("join_done for {:d}".format(t_pid))
         else:
             self.log("process {} forced exit".format(t_name))
         del self.__processes[t_name]
