@@ -55,6 +55,7 @@ class server_process(threading_tools.process_pool):
         self.register_func("int_error", self._int_error)
         self.register_func("snmp_finished", self._snmp_finished)
         self.__verbose = global_config["VERBOSE"]
+        self.__max_calls = global_config["MAX_CALLS"] if not global_config["DAEMONIZE"] else 5
         self._log_config()
         # init luts
         self.__ip_lut, self.__forward_lut = ({}, {})
@@ -99,8 +100,9 @@ class server_process(threading_tools.process_pool):
                 "socket"     : proc_socket,
                 "call_count" : 0,
                 "in_use"     : False,
-                "state"      : "running",
-                "proc_name"  : proc_name}
+                "state"      : "waiting",
+                "proc_name"  : proc_name,
+            }
     def _get_host_object(self, host_name, snmp_community, snmp_version):
         host_tuple = (host_name, snmp_community, snmp_version)
         if not self.__host_objects.has_key(host_tuple):
@@ -122,20 +124,21 @@ class server_process(threading_tools.process_pool):
         process_tools.save_pids(global_config["PID_NAME"], mult=3)
         cf_pids = 2 # + global_config["SNMP_PROCESSES"]
         process_tools.append_pids(global_config["PID_NAME"], pid=configfile.get_manager_pid(), mult=cf_pids)
-        if global_config["DAEMONIZE"]:
-            self.log("Initialising meta-server-info block")
-            msi_block = process_tools.meta_server_info("snmp-relay")
-            msi_block.add_actual_pid(mult=3, fuzzy_ceiling=4, process_name="main")
-            msi_block.add_actual_pid(act_pid=configfile.get_manager_pid(), mult=cf_pids, process_name="manager")
-            msi_block.start_command = "/etc/init.d/snmp-relay start"
-            msi_block.stop_command = "/etc/init.d/snmp-relay force-stop"
-            msi_block.kill_pids = True
-            # msi_block.heartbeat_timeout = 120
-            msi_block.save_block()
-        else:
-            msi_block = None
+        self.log("Initialising meta-server-info block")
+        msi_block = process_tools.meta_server_info("snmp-relay")
+        msi_block.add_actual_pid(mult=3, fuzzy_ceiling=4, process_name="main")
+        msi_block.add_actual_pid(act_pid=configfile.get_manager_pid(), mult=cf_pids, process_name="manager")
+        msi_block.start_command = "/etc/init.d/snmp-relay start"
+        msi_block.stop_command = "/etc/init.d/snmp-relay force-stop"
+        msi_block.kill_pids = True
+        # msi_block.heartbeat_timeout = 120
+        msi_block.save_block()
         self.__msi_block = msi_block
     def process_start(self, src_process, src_pid):
+        proc_struct = self.__process_dict[src_process]
+        # set state to running
+        proc_struct["state"] = "running"
+        proc_struct["call_count"] = 0
         process_tools.append_pids(self.__pid_name, src_pid, mult=3)
         if self.__msi_block:
 
@@ -214,7 +217,10 @@ class server_process(threading_tools.process_pool):
                 pass
             else:
                 # resolve full name
-                ip_addr = socket.gethostbyname(full_name)
+                try:
+                    ip_addr = socket.gethostbyname(full_name)
+                except:
+                    self.log("error looking up {}: {}".format(full_name, process_tools.get_except_info()), logging_tools.LOG_LEVEL_ERROR)
             if ip_addr not in self.__ip_lut:
                 self.log("resolved %s to %s" % (target, ip_addr))
                 self.__ip_lut[ip_addr] = target
@@ -226,20 +232,16 @@ class server_process(threading_tools.process_pool):
         return ip_addr
     def process_exit(self, p_name, p_pid):
         if not self["exit_requested"]:
-            if global_config["DAEMONIZE"]:
-                process_tools.remove_pids(self.__pid_name, pid=p_pid)
-                self.__msi_block.remove_actual_pid(p_pid)
-                self.__msi_block.save_block()
+            process_tools.remove_pids(self.__pid_name, pid=p_pid)
+            self.__msi_block.remove_actual_pid(p_pid)
+            self.__msi_block.save_block()
             self.log("helper process {} stopped, restarting".format(p_name))
             proc_struct = self.__process_dict[p_name]
-            proc_struct["call_count"] = 0
-            proc_struct["state"] = "running"
             conf_dict = {key: global_config[key] for key in ["LOG_NAME", "LOG_DESTINATION", "VERBOSE"]}
             proc_struct["socket"] = self.add_process(snmp_process(p_name, conf_dict=conf_dict), start=True)
     def _snmp_finished(self, src_proc, src_pid, *args, **kwargs):
         proc_struct = self.__process_dict[src_proc]
         proc_struct["in_use"] = False
-        proc_struct["call_count"] += 1
         envelope, error_list, _received, snmp_dict = args
         cur_scheme = self.__pending_schemes[envelope]
         cur_scheme.snmp = snmp_dict
@@ -247,22 +249,23 @@ class server_process(threading_tools.process_pool):
             cur_scheme.flag_error(cur_error)
         self._snmp_end(cur_scheme)
         del self.__pending_schemes[envelope]
-        if self.__queued_requests:
-            self.log("sending request from buffer (size: %d)" % (len(self.__queued_requests)))
-            self._start_snmp_fetch(self.__queued_requests.pop(0))
-        if proc_struct["call_count"] == global_config["MAX_CALLS"]:
-            self.log("recycling helper process %s after %d calls" % (
+        # call count can be higher than MAX_CALLS
+        if proc_struct["call_count"] > self.__max_calls and proc_struct["state"] in ["running"]:
+            self.log("recycling helper process {} after {:d} calls".format(
                 src_proc,
                 proc_struct["call_count"],
             ))
             self.stop_process(src_proc)
             proc_struct["state"] = "stopping"
+        if self.__queued_requests:
+            self.log("sending request from buffer (size: {:d})".format(len(self.__queued_requests)))
+            self._start_snmp_fetch(self.__queued_requests.pop(0))
     def _start_snmp_fetch(self, scheme):
         # free_processes = sorted([(value["call_count"], key) for key, value in self.__process_dict.iteritems() if not value["in_use"] and value["state"] == "running"])
         free_processes = sorted([(value["call_count"], key) for key, value in self.__process_dict.iteritems() if value["state"] == "running"])
         _cache_ok, num_cached, num_refresh, num_pending, num_hot_enough = scheme.pre_snmp_start(self.log)
         if self.__verbose:
-            self.log("%sinfo for %s: %s" % (
+            self.log("{}info for {}: {}".format(
                 "[F] " if num_refresh else "[I] ",
                 scheme.net_obj.name,
                 ", ".join(["%d %s" % (cur_num, info_str) for cur_num, info_str in [
@@ -274,6 +277,7 @@ class server_process(threading_tools.process_pool):
             if free_processes:
                 proc_struct = self.__process_dict[free_processes[0][1]]
                 proc_struct["in_use"] = True
+                proc_struct["call_count"] += 1
                 self.send_to_process(proc_struct["proc_name"], "fetch_snmp", *scheme.proc_data)
                 self.__pending_schemes[scheme.envelope] = scheme
             else:
@@ -428,11 +432,11 @@ class server_process(threading_tools.process_pool):
                 logging_tools.get_size_str(cur_mem),
                 logging_tools.get_plural("message", self.__num_messages)))
         if not self.__num_messages % 50:
-            # log thread usage
-            self.log("thread usage: %s" % (", ".join(["%d" % (self.__process_dict[key]["call_count"]) for key in sorted(self.__process_dict.iterkeys())])))
+            # log process usage
+            self.log("process usage: {}".format(", ".join(["{:d}".format(self.__process_dict[key]["call_count"]) for key in sorted(self.__process_dict.iterkeys())])))
     def _send_return(self, envelope, ret_state, ret_str):
         if self.__verbose > 3:
-            self.log("_send_return, envelope is %s (%d, %s)" % (
+            self.log("_send_return, envelope is {} ({:d}, {})".format(
                 envelope,
                 ret_state,
                 ret_str,

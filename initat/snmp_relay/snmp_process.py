@@ -390,7 +390,7 @@ class snmp_process(threading_tools.process_obj):
         if to_keys:
             for to_key in to_keys:
                 del self.__req_id_lut[to_key]
-            cur_batch.log("deleted {}".format(logging_tools.get_plural("request ID", len(to_keys))))
+            cur_batch.log("deleted {} (timeout)".format(logging_tools.get_plural("request ID", len(to_keys))))
         del self.__job_dict[cur_batch.key]
         self.__disp.jobFinished(cur_batch.key)
     def loop(self):
