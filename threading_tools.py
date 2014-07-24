@@ -351,6 +351,7 @@ class poller_obj(object):
                                 self.poller_handler[sock][r_type](self._socket_lut.get(sock, sock))
                             except:
                                 exc_info = process_tools.exception_info()
+                                open("/tmp/exc", "a").write("\n".join(exc_info.log_lines + ["", ""]))
                                 self.log(
                                     "error calling handler in poller_obj: {}".format(
                                         process_tools.get_except_info()
@@ -603,8 +604,10 @@ class process_obj(multiprocessing.Process, timer_base, poller_obj, process_base,
         self._init_sockets()
         # redirect stdout / stderr ?
         if self.stdout_target:
+            self.orig_stdout = sys.stdout
             sys.stdout = io_stream_helper.io_stream(self.stdout_target, zmq_context=self.zmq_context, register_atexit=False)
         if self.stderr_target:
+            self.orig_stderr = sys.stderr
             sys.stderr = io_stream_helper.io_stream(self.stderr_target, zmq_context=self.zmq_context, register_atexit=False)
         # call process_init (set pid and stuff)
         self.process_init()
@@ -629,11 +632,11 @@ class process_obj(multiprocessing.Process, timer_base, poller_obj, process_base,
     def zmq_finish(self):
         if self.stdout_target:
             sys.stdout.close()
-            sys.stdout = None
+            sys.stderr = self.orig_stdout
             _debug("closed stdout")
         if self.stderr_target:
             sys.stderr.close()
-            sys.stderr = None
+            sys.stderr = self.orig_stderr
             _debug("closed stderr")
         self.zmq_context.term()
     def _exit_process(self, **kwargs):
