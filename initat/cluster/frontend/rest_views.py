@@ -331,9 +331,9 @@ class fetch_forms(viewsets.ViewSet):
 class ext_peer_object(dict):
     def __init__(self, *args, **kwargs):
         dict.__init__(self, **kwargs)
-        self["fqdn"] = "%s%s" % (
+        self["fqdn"] = "{}{}".format(
             self["device__name"],
-            ".%s" % (self["device__domain_tree_node__full_name"]) if self["device__domain_tree_node__full_name"] else "",
+            ".{}".format(self["device__domain_tree_node__full_name"]) if self["device__domain_tree_node__full_name"] else "",
             )
 
 class ext_peer_serializer(serializers.Serializer):
