@@ -66,7 +66,7 @@ class main_process(threading_tools.process_pool):
         self._init_meminfo()
         self._show_config()
         act_commands = self._check_for_new_info([])
-        self._call_at_commands(act_commands)
+        self._call_commands(act_commands)
         self.register_timer(self._check, 30, instant=True)
     def log(self, what, lev=logging_tools.LOG_LEVEL_OK):
         if self.__log_template:
@@ -243,6 +243,9 @@ class main_process(threading_tools.process_pool):
                     self._call_command(msi_block.start_command, srv_com, merge_reply=True)
                 else:
                     srv_com.set_result("no stop or start command given for {}".format(msi_block.name), server_command.SRV_REPLY_STATE_ERROR)
+    def _call_commands(self, act_commands):
+        for _com in act_commands:
+            self._call_command(_com)
     def _call_command(self, act_command, srv_com=None, merge_reply=False):
         # call command directly
         self.log("calling command '{}'".format(act_command))
@@ -281,11 +284,9 @@ class main_process(threading_tools.process_pool):
         if act_commands:
             self.log("processing {}".format(logging_tools.get_plural("command", len(act_commands))))
             for act_command in act_commands:
-                self._submit_at_command(act_command, 1)
-    def _submit_at_command(self, com, when):
-        _c_stat, log_lines = process_tools.submit_at_command(com, when)
-        for line in log_lines:
-            self.log(line)
+                _c_stat, log_lines = process_tools.submit_at_command(act_command, 1)
+                for line in log_lines:
+                    self.log(line)
     def _init_meminfo(self):
         self.__last_meminfo_keys, self.__act_meminfo_line = ([], 0)
     def _check_for_new_info(self, problem_list, ignore_commands=False):
@@ -369,7 +370,7 @@ class main_process(threading_tools.process_pool):
         else:
             self.__last_update_time = act_time
             act_commands = self._check_for_new_info(self.__problem_list)
-            self._call_at_commands(act_commands)
+            self._call_commands(act_commands)
             self._check_processes()
     def _check_processes(self):
         act_time = time.time()
@@ -409,25 +410,16 @@ class main_process(threading_tools.process_pool):
                         "starting repair sequence",
                         "",
                     ]
-                    # first submit the at-commands
+                    self.log("*** starting repair sequence",
+                         logging_tools.LOG_LEVEL_WARN)
                     if struct.stop_command:
-                        self._submit_at_command(struct.stop_command, 1)
+                        self._call_command(struct.stop_command)
                         mail_text.extend(
                             [
                                 "issued the stop command : {} in 1 minute".format(struct.stop_command),
                                 "",
                             ]
                         )
-                    if struct.start_command:
-                        self._submit_at_command(struct.start_command, 2)
-                        mail_text.extend(
-                            [
-                                "issued the start command : {} in 2 minutes".format(struct.start_command),
-                                "",
-                            ]
-                        )
-                    self.log("*** starting repair sequence",
-                         logging_tools.LOG_LEVEL_WARN)
                     if struct.kill_pids:
                         kill_info = struct.kill_all_found_pids()
                         self.log("  *** kill info: {}".format(kill_info),
@@ -435,6 +427,14 @@ class main_process(threading_tools.process_pool):
                         mail_text.extend(
                             [
                                 "trying to kill the remaining pids, kill info : {}".format(kill_info),
+                                "",
+                            ]
+                        )
+                    if struct.start_command:
+                        self._call_command(struct.start_command)
+                        mail_text.extend(
+                            [
+                                "issued the start command : {} in 2 minutes".format(struct.start_command),
                                 "",
                             ]
                         )
