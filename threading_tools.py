@@ -342,9 +342,7 @@ class poller_obj(object):
                 sock = self.fd_lookup[sock]
             if sock in self._socket_lut:
                 sock = self._socket_lut[sock]
-            # print "..", sock, sock in self.poller_handler
             if sock in self.poller_handler:
-                # print zmq.POLLIN, zmq.POLLOUT, zmq.POLLERR
                 for r_type in set([zmq.POLLIN, zmq.POLLOUT, zmq.POLLERR]):
                     if c_type & r_type:
                         # the socket could vanish
@@ -373,7 +371,7 @@ class poller_obj(object):
                             )
                             time.sleep(0.5)
             else:
-                self.log("socket %s not found in handler_dict" % (str(sock)), logging_tools.LOG_LEVEL_CRITICAL)
+                self.log("socket {} not found in handler_dict".format(str(sock)), logging_tools.LOG_LEVEL_CRITICAL)
                 time.sleep(0.5)
 
 class process_base(object):
@@ -605,9 +603,9 @@ class process_obj(multiprocessing.Process, timer_base, poller_obj, process_base,
         self._init_sockets()
         # redirect stdout / stderr ?
         if self.stdout_target:
-            sys.stdout = io_stream_helper.io_stream(self.stdout_target, zmq_context=self.zmq_context)
+            sys.stdout = io_stream_helper.io_stream(self.stdout_target, zmq_context=self.zmq_context, register_atexit=False)
         if self.stderr_target:
-            sys.stderr = io_stream_helper.io_stream(self.stderr_target, zmq_context=self.zmq_context)
+            sys.stderr = io_stream_helper.io_stream(self.stderr_target, zmq_context=self.zmq_context, register_atexit=False)
         # call process_init (set pid and stuff)
         self.process_init()
         # now we should have a vaild log command
@@ -828,10 +826,14 @@ class process_pool(timer_base, poller_obj, process_base, exception_handling_mixi
         self.register_poller(zmq_socket, zmq.POLLIN, self._tp_message_received)
         self.__com_socket = zmq_socket
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
-        print("process_pool %s (%d) %s: %s" % (self.get_name(),
-                                               os.getpid(),
-                                               logging_tools.get_log_level_str(log_level),
-                                               what))
+        print(
+            "process_pool {} ({:d}) {}: {}".format(
+                self.get_name(),
+                os.getpid(),
+                logging_tools.get_log_level_str(log_level),
+                what,
+            )
+        )
     def add_ignore_func(self, f_str):
         if type(f_str) != type([]):
             f_str = [f_str]

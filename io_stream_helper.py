@@ -84,5 +84,7 @@ class io_stream(object):
         if self.__zmq_sock:
             self.flush()
             self.__zmq_sock.close()
+            # important: set socket attribute to None
+            self.__zmq_sock = None
     def __del__(self):
         self.close()
