@@ -533,6 +533,9 @@ class user(models.Model):
     # SHA encrypted
     password = models.CharField(max_length=128, blank=True)
     password_ssha = models.CharField(max_length=128, blank=True, default="")
+    # nt and lm hashes of passwords
+    nt_password = models.CharField(max_length=255, blank=True, default="")
+    lm_password = models.CharField(max_length=255, blank=True, default="")
     # cluster_contact = models.BooleanField()
     first_name = models.CharField(max_length=765, blank=True, default="")
     last_name = models.CharField(max_length=765, blank=True, default="")
@@ -541,13 +544,13 @@ class user(models.Model):
     pager = models.CharField(max_length=765, blank=True, default="", verbose_name="mobile")
     tel = models.CharField(max_length=765, blank=True, default="")
     comment = models.CharField(max_length=765, blank=True, default="")
-    nt_password = models.CharField(max_length=255, blank=True, default="")
-    lm_password = models.CharField(max_length=255, blank=True, default="")
     date = models.DateTimeField(auto_now_add=True)
     allowed_device_groups = models.ManyToManyField("device_group", blank=True)
     home_dir_created = models.BooleanField(default=False)
     secondary_groups = models.ManyToManyField("group", related_name="secondary", blank=True)
     last_login = models.DateTimeField(null=True)
+    # login count
+    login_count = models.IntegerField(default=0)
     # deprecated
     permissions = models.ManyToManyField(csw_permission, related_name="db_user_permissions", blank=True)
     object_permissions = models.ManyToManyField(csw_object_permission, related_name="db_user_permissions", blank=True)
