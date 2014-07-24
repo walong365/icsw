@@ -91,18 +91,33 @@ class server_process(threading_tools.process_pool):
         # pending schemes
         self.__pending_schemes = {}
         self.__process_dict = {}
+        # mapping: real name -> internal (MSI) name
+        # we need unique process names, otherwise 0MQ will loose messages (sigh)
+        self.__process_mapping = {}
+        self.__snmp_process_id = 0
         conf_dict = {key: global_config[key] for key in ["LOG_NAME", "LOG_DESTINATION", "VERBOSE"]}
         for idx in xrange(num_processes):
-            proc_name = "snmp_%d" % (idx)
-            new_proc = snmp_process(proc_name, conf_dict=conf_dict)
+            # msi name
+            proc_name = "snmp_{:d}".format(idx)
+            full_name = self._get_unique_process_name(proc_name)
+            # real process name
+            new_proc = snmp_process(full_name, conf_dict=conf_dict)
             proc_socket = self.add_process(new_proc, start=True)
-            self.__process_dict[proc_name] = {
-                "socket"     : proc_socket,
-                "call_count" : 0,
-                "in_use"     : False,
-                "state"      : "waiting",
-                "proc_name"  : proc_name,
+            _struct = {
+                "socket"       : proc_socket,
+                "call_count"   : 0,
+                "process_name" : full_name,
+                "in_use"       : False,
+                "state"        : "waiting",
             }
+            self.__process_dict[proc_name] = _struct
+    def _get_unique_process_name(self, loc_name):
+        self.__snmp_process_id += 1
+        self.__snmp_process_id %= 1000
+        full_name = "snmp_{:d}".format(self.__snmp_process_id)
+        self.__process_mapping[full_name] = loc_name
+        self.log("process mapping: {} => {}".format(full_name, loc_name))
+        return full_name
     def _get_host_object(self, host_name, snmp_community, snmp_version):
         host_tuple = (host_name, snmp_community, snmp_version)
         if not self.__host_objects.has_key(host_tuple):
@@ -135,14 +150,14 @@ class server_process(threading_tools.process_pool):
         msi_block.save_block()
         self.__msi_block = msi_block
     def process_start(self, src_process, src_pid):
-        proc_struct = self.__process_dict[src_process]
+        _loc_name = self.__process_mapping[src_process]
+        proc_struct = self.__process_dict[_loc_name]
         # set state to running
         proc_struct["state"] = "running"
         proc_struct["call_count"] = 0
         process_tools.append_pids(self.__pid_name, src_pid, mult=3)
         if self.__msi_block:
-
-            self.__msi_block.add_actual_pid(src_pid, mult=3, fuzzy_ceiling=3, process_name=src_process)
+            self.__msi_block.add_actual_pid(src_pid, mult=3, fuzzy_ceiling=3, process_name=_loc_name)
             self.__msi_block.save_block()
     def _int_error(self, err_cause):
         self.log("_int_error() called, cause %s" % (str(err_cause)), logging_tools.LOG_LEVEL_WARN)
@@ -231,16 +246,21 @@ class server_process(threading_tools.process_pool):
                 self.log("ip resolving: %s -> %s" % (orig_target, ip_addr))
         return ip_addr
     def process_exit(self, p_name, p_pid):
+        _loc_name = self.__process_mapping[p_name]
         if not self["exit_requested"]:
             process_tools.remove_pids(self.__pid_name, pid=p_pid)
             self.__msi_block.remove_actual_pid(p_pid)
             self.__msi_block.save_block()
-            self.log("helper process {} stopped, restarting".format(p_name))
-            proc_struct = self.__process_dict[p_name]
+            self.log("helper process {} (=={}) stopped, restarting".format(p_name, _loc_name))
+            del self.__process_mapping[p_name]
+            proc_struct = self.__process_dict[_loc_name]
+            full_name = self._get_unique_process_name(_loc_name)
+            proc_struct["process_name"] = full_name
             conf_dict = {key: global_config[key] for key in ["LOG_NAME", "LOG_DESTINATION", "VERBOSE"]}
-            proc_struct["socket"] = self.add_process(snmp_process(p_name, conf_dict=conf_dict), start=True)
+            proc_struct["socket"] = self.add_process(snmp_process(full_name, conf_dict=conf_dict), start=True)
     def _snmp_finished(self, src_proc, src_pid, *args, **kwargs):
-        proc_struct = self.__process_dict[src_proc]
+        _loc_name = self.__process_mapping[src_proc]
+        proc_struct = self.__process_dict[_loc_name]
         proc_struct["in_use"] = False
         envelope, error_list, _received, snmp_dict = args
         cur_scheme = self.__pending_schemes[envelope]
@@ -261,7 +281,6 @@ class server_process(threading_tools.process_pool):
             self.log("sending request from buffer (size: {:d})".format(len(self.__queued_requests)))
             self._start_snmp_fetch(self.__queued_requests.pop(0))
     def _start_snmp_fetch(self, scheme):
-        # free_processes = sorted([(value["call_count"], key) for key, value in self.__process_dict.iteritems() if not value["in_use"] and value["state"] == "running"])
         free_processes = sorted([(value["call_count"], key) for key, value in self.__process_dict.iteritems() if value["state"] == "running"])
         _cache_ok, num_cached, num_refresh, num_pending, num_hot_enough = scheme.pre_snmp_start(self.log)
         if self.__verbose:
@@ -278,7 +297,7 @@ class server_process(threading_tools.process_pool):
                 proc_struct = self.__process_dict[free_processes[0][1]]
                 proc_struct["in_use"] = True
                 proc_struct["call_count"] += 1
-                self.send_to_process(proc_struct["proc_name"], "fetch_snmp", *scheme.proc_data)
+                self.send_to_process(proc_struct["process_name"], "fetch_snmp", *scheme.proc_data)
                 self.__pending_schemes[scheme.envelope] = scheme
             else:
                 self.__queued_requests.append(scheme)
