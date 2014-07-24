@@ -366,7 +366,7 @@ device_network_module.controller("network_ctrl", ["$scope", "$compile", "$filter
                 _dev = {
                     "device" : dev.idx
                     "devname" : "eth0"
-                    "enabled" : 1
+                    "enabled" : true
                     "netdevice_speed" : (entry.idx for entry in $scope.netdevice_speeds when entry.speed_bps == 1000000000 and entry.full_duplex)[0]
                     "penalty" : 1
                     "net_ip_set" : []
@@ -460,8 +460,8 @@ device_network_module.controller("network_ctrl", ["$scope", "$compile", "$filter
             $scope.peer_edit.edit(peer.peer, event).then(
                 (mod_peer) ->
                     if mod_peer != false
-                        true
-                        # console.log "modpeer"
+                        # rebuild luts
+                        $scope.build_luts()
             )
         $scope.delete_peer_information = (ndip_obj, event) ->
             # find device / netdevice
