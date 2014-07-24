@@ -229,6 +229,7 @@ device_network_module.controller("network_ctrl", ["$scope", "$compile", "$filter
                 $scope.networks = data[4]
                 $scope.network_lut = build_lut($scope.networks)
                 $scope.domain_tree_node = data[5]
+                $scope.dtn_lut = build_lut($scope.domain_tree_node)
                 $scope.nd_peers = data[6]
                 $scope.build_luts()
                 for cur_form in data[7] 
@@ -508,7 +509,7 @@ device_network_module.controller("network_ctrl", ["$scope", "$compile", "$filter
                 (res) ->
                     if res
                         true
-                        # console.log "delnd"
+                        #console.log "delnd"
             )
         $scope.get_ndip_class = (ndip_obj) ->
             if ndip_obj.device
@@ -546,11 +547,16 @@ device_network_module.controller("network_ctrl", ["$scope", "$compile", "$filter
         $scope.get_peer_target = (ndip_obj) ->
             if ndip_obj.target of $scope.nd_lut
                 peer = $scope.nd_lut[ndip_obj.target]
-                return "#{peer.devname} (#{peer.penalty}) on " + String($scope.dev_lut[peer.device].name)
+                _dev = $scope.dev_lut[peer.device]
+                if _dev.domain_tree_node of $scope.dtn_lut
+                    _domain = "." + $scope.dtn_lut[_dev.domain_tree_node].full_name
+                else
+                    _domain = ""
+                return "#{peer.devname} (#{peer.penalty}) on " + String(_dev.name) + _domain
             else
                 if ndip_obj.target of $scope.nd_peer_lut
                     peer = $scope.nd_peer_lut[ndip_obj.target]
-                    return "#{peer.devname} (#{peer.penalty}) on #{peer.device_name}"
+                    return "#{peer.devname} (#{peer.penalty}) on #{peer.fqdn}"
                 else
                     return "N/A (disabled device ?)"
         $scope.copy_network = (src_obj, event) ->
