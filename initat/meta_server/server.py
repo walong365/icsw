@@ -279,14 +279,6 @@ class main_process(threading_tools.process_pool):
                 _r_str,
                 _r_state,
                 )
-    def _call_at_commands(self, act_commands):
-        # call command via the at daemon
-        if act_commands:
-            self.log("processing {}".format(logging_tools.get_plural("command", len(act_commands))))
-            for act_command in act_commands:
-                _c_stat, log_lines = process_tools.submit_at_command(act_command, 1)
-                for line in log_lines:
-                    self.log(line)
     def _init_meminfo(self):
         self.__last_meminfo_keys, self.__act_meminfo_line = ([], 0)
     def _check_for_new_info(self, problem_list, ignore_commands=False):
