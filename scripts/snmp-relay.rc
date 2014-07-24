@@ -33,6 +33,7 @@ RELAY_BIN=/opt/cluster/sbin/snmp-relay.py
 PYTHON_BIN=/opt/python-init/bin/python
 RELAY_PID=/var/run/snmp-relay/snmp-relay.pid
 SERVER_DIRS="/var/run/snmp-relay"
+META_FILE=/var/lib/meta-server/snmp-relay
 
 test -x ${RELAY_BIN} || exit 5
 test -x ${PYTHON_BIN} || exit 5
@@ -56,11 +57,15 @@ case "$1" in
     stop)      
         echo -n "Stopping snmp-relay.py"
         if [ -f ${RELAY_PID} ] ; then
-            kill -s 15 `cat ${RELAY_PID} | head -n 1`
+            if [ -f ${META_FILE} ] ; then
+                /opt/cluster/sbin/get_pids_from_meta.py --meta ${META_FILE} --name snmp-relay.py --signal 15
+            else        
+                kill -s 15 `cat ${RELAY_PID} | head -n 1` || rc_failed
+            fi
             for i in $(seq 20) ; do
-            [ ! -f ${RELAY_PID} ] && break
-            echo -n "."
-            sleep 2
+                [ ! -f ${RELAY_PID} ] && break
+                echo -n "."
+                sleep 2
             done
             [ $i -gt 16 ] && rc_failed || rc_reset
         else
@@ -71,11 +76,15 @@ case "$1" in
     force-stop)
         echo -n "Force stopping snmp-relay.py"
         if [ -f ${RELAY_PID} ] ; then
-            kill -9 `cat ${RELAY_PID} ` || rc_failed
+            if [ -f ${META_FILE} ] ; then
+                /opt/cluster/sbin/get_pids_from_meta.py --meta ${META_FILE} --name snmp-relay.py --signal 9
+            else        
+                kill -s 9 `cat ${RELAY_PID} | head -n 1` || rc_failed
+            fi
         else
             rc_failed
         fi
-        rm -f ${RELAY_PID}
+        rm -f ${RELAY_PID} ${META_FILE}
         sleep 1
         rc_status -v
         ;;
