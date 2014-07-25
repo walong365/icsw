@@ -20,7 +20,6 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
 """ logging tools """
-
 import bz2
 import datetime
 import gzip
@@ -334,10 +333,12 @@ class log_adapter(logging.LoggerAdapter):
 
 class zmq_handler(logging.Handler):
     def __init__(self, t_sock, logger_struct, **kwargs):
-        self.__target = t_sock
+        self.set_target(t_sock)
         self._open = True
         logging.Handler.__init__(self)
         self.__logger = logger_struct
+    def set_target(self, t_sock):
+        self.__target = t_sock
     def makePickle(self, record):
         """
         Pickles the record in binary format with a length prefix, and
@@ -451,14 +452,25 @@ class init_handler_unified(zmq_handler):
     zmq_context = None
     def __init__(self, filename=None, *args, **kwargs):
         if not init_handler.zmq_context:
-            init_handler.zmq_context = zmq.Context()
+            self._init_zmq()
+        pub = self._socket()
+        zmq_handler.__init__(self, pub, None)
+    def _init_zmq(self):
+        init_handler.init_pid = os.getpid()
+        init_handler.zmq_context = zmq.Context()
+    def _socket(self):
         cur_context = init_handler.zmq_context
         pub = cur_context.socket(zmq.PUSH)
         pub.connect(rewrite_log_destination("uds:/var/lib/logging-server/py_log_zmq"))
-        zmq_handler.__init__(self, pub, None)
+        return pub
     def emit(self, record):
         if record.name.startswith("init.at."):
             record.name = record.name[8:]
+        if os.getpid() != init_handler.init_pid:
+            # dont share zmq-contexts between processes
+            self._init_zmq()
+            pub = self._socket()
+            self.set_target(pub)
         self.format(record)
         form_str = "{:<s}/{}[{:d}]"
         record.threadName = form_str.format(record.name, record.threadName, record.lineno)
