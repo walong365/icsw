@@ -198,7 +198,7 @@ class hm_icmp_protocol(icmp_class.icmp_protocol):
                 value = self[_key]
                 if _key in self.__handled:
                     self.log(
-                        "got delay ping result ({}) for host {} ({.2f})".format(
+                        "got delay ping result ({}) for host {} ({:.2f})".format(
                             seqno,
                             value["host"],
                             recv_time - value["start"],
