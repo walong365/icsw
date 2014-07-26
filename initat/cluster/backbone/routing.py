@@ -172,6 +172,7 @@ class srv_type_routing(object):
                 for _dev in _sc[_conf_name]:
                     # routing info
                     if _dev.effective_device.device_type.identifier == "MD":
+                        # server-like config is set for an md-device, not good
                         self.logger.error("device '{}' (srv_type {}) has an illegal device_type {}".format(
                             _dev.effective_device.full_name,
                             _srv_type,
